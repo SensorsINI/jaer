@@ -576,7 +576,8 @@ public class StreamCommand implements SerialPortEventListener
     protected synchronized void terminateCurrentCommand()
     {
         // clear current command
-        cmdWatchdog.cancel();
+        if (cmdWatchdog != null)
+            cmdWatchdog.cancel();
         cmdWatchdog= null;
         currentCommand= null;
         
@@ -761,8 +762,13 @@ public class StreamCommand implements SerialPortEventListener
             sendCommand(cmdPipe.remove(0));
     }
     
+    /**
+     * stops watchdog fur current command and cancels all further scheduled
+     * commands.
+     */
     public synchronized void clearCommandPipe()
     {
+        terminateCurrentCommand();
         cmdPipe.clear();
     }
 

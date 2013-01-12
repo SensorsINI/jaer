@@ -267,8 +267,8 @@ public class GlobalOpticalFlowAnalyser {
 
         // save frame data for this & precedent frame for every XXX-th specified
         // or if an error is detected
-        if (getRelativeSeq() % frameSaveRate == 0 ||
-            fm.getLengthDifference() > 0.1)
+        if (getRelativeSeq() % frameSaveRate == 0 && frame.hasPhoto())
+            //|| fm.getLengthDifference() > 0.1)
             pictures.add(new FramePicture(frame));
     }
 
@@ -288,10 +288,10 @@ public class GlobalOpticalFlowAnalyser {
             dt=frame.getTimeCapturedMs()-frame.getPastMotionData()[0].getTimeCapturedMs();
             
             // we want the raw values...
-            dx= frame.getGlobalX()      *dt/MotionDataMDC2D.globalScaleFactor;
-            dy= frame.getGlobalY()      *dt/MotionDataMDC2D.globalScaleFactor;
-            dx2= frame.getGlobalX2()    *dt/MotionDataMDC2D.globalScaleFactor;
-            dy2= frame.getGlobalY2()    *dt/MotionDataMDC2D.globalScaleFactor;
+            dx= frame.getGlobalX();
+            dy= frame.getGlobalY();
+            dx2= frame.getGlobalX2();
+            dy2= frame.getGlobalY2();
             SpatialEventData phidgetData= frame.getPhidgetData();
             if (phidgetData==null) {
                 px= Float.NaN;

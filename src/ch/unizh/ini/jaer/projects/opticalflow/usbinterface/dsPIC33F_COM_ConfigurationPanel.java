@@ -4,6 +4,7 @@ Copyright June 13, 2011 Andreas Steiner, Inst. of Neuroinformatics, UNI-ETH Zuri
 
 package ch.unizh.ini.jaer.projects.opticalflow.usbinterface;
 
+import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MotionDataMDC2D;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
@@ -35,6 +36,9 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
     private dsPIC33F_COM_CommandLineWindow commandLineWindow;
     private String lastAnalyseName= "";
     private boolean initializing;
+    private boolean dontUpdateNow;
+    
+    static final Logger log=Logger.getLogger(dsPIC33F_COM_ConfigurationPanel.class.getName());
 
     /** Creates new form dsPIC33F_COM_ConfigurationPanel */
     public dsPIC33F_COM_ConfigurationPanel(dsPIC33F_COM_OpticalFlowHardwareInterface hardwareInterface) {
@@ -50,10 +54,29 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         for(String portName : hardwareInterface.getAvailablePortNames())
             comCombo.addItem(portName);
 
-        delaysCB.setSelectedItem( Integer.toString(hardwareInterface.getDelay1Ms()) ); // assume symmetric delays
-        onChipBiasCB.setSelected( hardwareInterface.isOnChipBiases() );
+        delaysCB.setSelectedItem( Integer.toString(hardwareInterface.getDelayUs()/1000) ); // assume symmetric delays
+        enableBiasgen.setSelected( hardwareInterface.isOnChipBiases() );
         comCombo.setSelectedItem( hardwareInterface.getPortName() );
         debuggingCB.setSelected( hardwareInterface.isDebugging() );
+        pixelsCB.setSelected( hardwareInterface.isStreamPixels() );
+        nthFrameCB.setSelectedItem( Integer.toString(hardwareInterface.getNthFrame()) );
+        
+        dontUpdateNow= true;
+        onChipADC.setSelected(hardwareInterface.isOnChipADC());            
+        switch (hardwareInterface.getChannel()) {
+            case MotionDataMDC2D.PHOTO:
+                channelCB.setSelectedItem("photo");
+                break;
+            case MotionDataMDC2D.LMC1:
+                channelCB.setSelectedItem("LMC1");
+                break;
+            case MotionDataMDC2D.LMC2:
+                channelCB.setSelectedItem("LMC2");
+                break;
+            default:
+                assert false;
+        }
+        dontUpdateNow= false;
         
         initializing= false;
     }
@@ -67,7 +90,7 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
     }
     
     public void setOnChipBias(boolean b) {
-        onChipBiasCB.setSelected(b);
+        enableBiasgen.setSelected(b);
     }
     
     public void answerReceived(final String cmd,String answer)
@@ -97,7 +120,7 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         jLabel1 = new javax.swing.JLabel();
         comCombo = new javax.swing.JComboBox();
         statusText = new javax.swing.JTextField();
-        onChipBiasCB = new javax.swing.JCheckBox();
+        enableBiasgen = new javax.swing.JCheckBox();
         streamingCB = new javax.swing.JCheckBox();
         resetButton = new javax.swing.JButton();
         showCmdLineButton = new javax.swing.JButton();
@@ -109,6 +132,12 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         delaysCB = new javax.swing.JComboBox();
         debuggingCB = new javax.swing.JCheckBox();
         fpnButton = new javax.swing.JButton();
+        pixelsCB = new javax.swing.JCheckBox();
+        jLabel4 = new javax.swing.JLabel();
+        nthFrameCB = new javax.swing.JComboBox();
+        jLabel5 = new javax.swing.JLabel();
+        channelCB = new javax.swing.JComboBox();
+        onChipADC = new javax.swing.JCheckBox();
 
         jLabel1.setText("port to use");
 
@@ -120,18 +149,20 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         });
 
         statusText.setEditable(false);
-        statusText.setFont(new java.awt.Font("Monospaced", 0, 11));
+        statusText.setFont(new java.awt.Font("Monospaced", 0, 11)); // NOI18N
         statusText.setText("(status)");
 
-        onChipBiasCB.setSelected(true);
-        onChipBiasCB.setText("on chip biases");
-        onChipBiasCB.addActionListener(new java.awt.event.ActionListener() {
+        enableBiasgen.setSelected(true);
+        enableBiasgen.setText("enable biasgen");
+        enableBiasgen.setToolTipText("activate on chip current bias generator (needs voltage biases either from on chip or off chip)");
+        enableBiasgen.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                onChipBiasCBActionPerformed(evt);
+                enableBiasgenActionPerformed(evt);
             }
         });
 
         streamingCB.setText("streaming");
+        streamingCB.setToolTipText("start streaming frames");
         streamingCB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 streamingCBActionPerformed(evt);
@@ -139,6 +170,7 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         });
 
         resetButton.setText("reset");
+        resetButton.setToolTipText("reset micro controller");
         resetButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 resetButtonActionPerformed(evt);
@@ -146,15 +178,17 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         });
 
         showCmdLineButton.setText("cmds");
+        showCmdLineButton.setToolTipText("show command window");
         showCmdLineButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 showCmdLineButtonActionPerformed(evt);
             }
         });
 
-        analysisPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("global flow analysis"));
+        analysisPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("log data"));
 
-        frameSaveRateCB.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "100", "50", "2" }));
+        frameSaveRateCB.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "10000", "1000", "100", "50", "2" }));
+        frameSaveRateCB.setToolTipText("specify how many frames should be saved (raw data)");
         frameSaveRateCB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 frameSaveRateCBActionPerformed(evt);
@@ -162,6 +196,7 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         });
 
         analyseButton.setText("start");
+        analyseButton.setToolTipText("start logging data (see log output where data is saved)");
         analyseButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 analyseButtonActionPerformed(evt);
@@ -191,7 +226,7 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
 
         jLabel3.setText("delays [ms]");
 
-        delaysCB.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "10", "15", "20", "30", "40" }));
+        delaysCB.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "0", "1", "2", "5", "10", "15", "20", "30", "40" }));
         delaysCB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 delaysCBActionPerformed(evt);
@@ -199,6 +234,7 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         });
 
         debuggingCB.setText("dbg");
+        debuggingCB.setToolTipText("enable debug output");
         debuggingCB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 debuggingCBActionPerformed(evt);
@@ -206,9 +242,45 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         });
 
         fpnButton.setText("FPN");
+        fpnButton.setToolTipText("remove fixed pattern noise using currently recorded image");
         fpnButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 fpnButtonActionPerformed(evt);
+            }
+        });
+
+        pixelsCB.setText("pixels");
+        pixelsCB.setToolTipText("include pixel data into frames (vs only global motion vector)");
+        pixelsCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                pixelsCBActionPerformed(evt);
+            }
+        });
+
+        jLabel4.setText("every nth frame");
+
+        nthFrameCB.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15" }));
+        nthFrameCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                nthFrameCBActionPerformed(evt);
+            }
+        });
+
+        jLabel5.setText("channel");
+
+        channelCB.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "photo", "LMC1", "LMC2" }));
+        channelCB.setToolTipText("what channel to sample values from");
+        channelCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                channelCBActionPerformed(evt);
+            }
+        });
+
+        onChipADC.setText("use on chip ADC");
+        onChipADC.setToolTipText("whether to use on chip ADC (will probably crash firmware!)");
+        onChipADC.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                onChipADCActionPerformed(evt);
             }
         });
 
@@ -226,7 +298,7 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(comCombo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(statusText, javax.swing.GroupLayout.DEFAULT_SIZE, 476, Short.MAX_VALUE))
+                                .addComponent(statusText))
                             .addGroup(layout.createSequentialGroup()
                                 .addComponent(resetButton)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -234,17 +306,30 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(debuggingCB)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(fpnButton, javax.swing.GroupLayout.DEFAULT_SIZE, 57, Short.MAX_VALUE)
-                                .addGap(111, 111, 111)
+                                .addComponent(fpnButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addGap(58, 58, 58)
                                 .addComponent(jLabel3)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(delaysCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addComponent(enableBiasgen)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(onChipBiasCB)
+                                .addComponent(streamingCB)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(streamingCB)))
+                                .addComponent(pixelsCB)))
                         .addContainerGap())
-                    .addComponent(analysisPanel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                        .addComponent(jLabel5)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(channelCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(onChipADC)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(jLabel4)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(nthFrameCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(analysisPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -256,21 +341,34 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(streamingCB)
-                    .addComponent(onChipBiasCB)
+                    .addComponent(enableBiasgen)
                     .addComponent(resetButton)
                     .addComponent(showCmdLineButton)
                     .addComponent(jLabel3)
                     .addComponent(delaysCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(debuggingCB)
-                    .addComponent(fpnButton))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(analysisPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(fpnButton)
+                    .addComponent(pixelsCB))
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(analysisPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                .addComponent(jLabel4)
+                                .addComponent(nthFrameCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(13, 13, 13)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel5)
+                            .addComponent(channelCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(onChipADC))))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         comCombo.getAccessibleContext().setAccessibleDescription("select the port to which the MDC2Dv2 is connected");
         statusText.getAccessibleContext().setAccessibleDescription("indicates the status of the board");
-        onChipBiasCB.getAccessibleContext().setAccessibleDescription("switches between external DAC and on-chip bias generator -- be sure to DISCONNECT the jumpers before selecting");
+        enableBiasgen.getAccessibleContext().setAccessibleDescription("switches between external DAC and on-chip bias generator -- be sure to DISCONNECT the jumpers before selecting");
         streamingCB.getAccessibleContext().setAccessibleDescription("starts/stops the actual transmission of frame data");
         resetButton.getAccessibleContext().setAccessibleDescription("re-initialize the device -- click after reset of the microcontroller");
     }// </editor-fold>//GEN-END:initComponents
@@ -312,13 +410,13 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
             hardwareInterface.stopStreaming();
     }//GEN-LAST:event_streamingCBActionPerformed
 
-    private void onChipBiasCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_onChipBiasCBActionPerformed
+    private void enableBiasgenActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_enableBiasgenActionPerformed
         try {
-            hardwareInterface.getChip().getBiasgen().setPowerDown(!onChipBiasCB.isSelected());
+            hardwareInterface.getChip().getBiasgen().setPowerDown(!enableBiasgen.isSelected());
         } catch (HardwareInterfaceException ex) {
             Logger.getLogger(dsPIC33F_COM_ConfigurationPanel.class.getName()).log(Level.WARNING, null, ex);
         }
-    }//GEN-LAST:event_onChipBiasCBActionPerformed
+    }//GEN-LAST:event_enableBiasgenActionPerformed
 
     private void resetButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetButtonActionPerformed
         try {
@@ -347,17 +445,15 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
     }//GEN-LAST:event_showCmdLineButtonActionPerformed
 
     private void frameSaveRateCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_frameSaveRateCBActionPerformed
-        // TODO add your handling code here:
+        // do nothing
     }//GEN-LAST:event_frameSaveRateCBActionPerformed
 
     private void delaysCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_delaysCBActionPerformed
         int ms= Integer.parseInt((String) delaysCB.getSelectedItem());
         
-        if (ms < 10)
-            delaysCB.setSelectedIndex(0);
         ms= Integer.parseInt((String) delaysCB.getSelectedItem());
         
-        hardwareInterface.setDelayMs(ms);                
+        hardwareInterface.setDelayUs(ms*1000);
     }//GEN-LAST:event_delaysCBActionPerformed
 
     private void debuggingCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_debuggingCBActionPerformed
@@ -368,20 +464,60 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         hardwareInterface.setFPN();
     }//GEN-LAST:event_fpnButtonActionPerformed
 
+    private void pixelsCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_pixelsCBActionPerformed
+        hardwareInterface.setStreamPixels(pixelsCB.isSelected());
+    }//GEN-LAST:event_pixelsCBActionPerformed
+
+    private void nthFrameCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_nthFrameCBActionPerformed
+        int nth = Integer.parseInt((String) nthFrameCB.getSelectedItem());
+        hardwareInterface.setNthFrame(nth);
+    }//GEN-LAST:event_nthFrameCBActionPerformed
+
+    protected void updateChannelADC() {
+        if (dontUpdateNow)
+            return;
+        try {
+            String which= (String)channelCB.getSelectedItem();
+            if (which.equals("photo"))
+                hardwareInterface.setChannel(MotionDataMDC2D.PHOTO, onChipADC.isSelected());
+            else if (which.equals("LMC1"))
+                hardwareInterface.setChannel(MotionDataMDC2D.LMC1, onChipADC.isSelected());
+            else if (which.equals("LMC2"))
+                hardwareInterface.setChannel(MotionDataMDC2D.LMC2, onChipADC.isSelected());
+            else assert false;
+        } catch (HardwareInterfaceException e) {
+            log.warning("could not set channel : "+e);
+        }
+    }
+    
+    private void channelCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_channelCBActionPerformed
+        updateChannelADC();
+    }//GEN-LAST:event_channelCBActionPerformed
+
+    private void onChipADCActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_onChipADCActionPerformed
+        updateChannelADC();
+    }//GEN-LAST:event_onChipADCActionPerformed
+
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton analyseButton;
     private javax.swing.JPanel analysisPanel;
+    private javax.swing.JComboBox channelCB;
     private javax.swing.JComboBox comCombo;
     private javax.swing.JCheckBox debuggingCB;
     private javax.swing.JComboBox delaysCB;
+    private javax.swing.JCheckBox enableBiasgen;
     private javax.swing.JButton fpnButton;
     private javax.swing.JComboBox frameSaveRateCB;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
-    private javax.swing.JCheckBox onChipBiasCB;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
+    private javax.swing.JComboBox nthFrameCB;
+    private javax.swing.JCheckBox onChipADC;
+    private javax.swing.JCheckBox pixelsCB;
     private javax.swing.JButton resetButton;
     private javax.swing.JButton showCmdLineButton;
     private javax.swing.JTextField statusText;

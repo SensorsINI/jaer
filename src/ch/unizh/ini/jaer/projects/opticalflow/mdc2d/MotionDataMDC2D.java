@@ -32,24 +32,17 @@ public class MotionDataMDC2D extends MotionData {
                             LMC2=BIT6,
                             ON_CHIP_ADC=BIT7;
 
-    // data from the lmc channels of the MDC2D chip
-    private float[][] lmc1;
-    private float[][] lmc2;
-    
     private int channel; //the channel used for calculations in the MotionAlgorithms
-
-    public static int globalScaleFactor =10; //this is an arbituary scale factor that compensates for historical differences in the display method for global vector
 
     private int numLocalToAverageForGlobal; //the number of pixel which have meaningful output. Some noise reduction methods set local motion values to zero if for example the neighbors dont show a similar response. When averaging these 0 schuold not be counted for normalization reasons.
     /** Creates a new instance of MotionData */
     public MotionDataMDC2D(Chip2DMotion setchip) {
         super(setchip);
-        lmc1=new float[chip.getSizeX()][chip.getSizeY()];
-        lmc2=new float[chip.getSizeX()][chip.getSizeY()];
         NUM_PASTMOTIONDATA=50; // store the 5 previous MotionData for computations
     }
 
 
+    public static boolean enabled = false;
     public static float thresh=0;
     public static float match =0;
     public static int   temporalAveragesNum= 5;
@@ -130,8 +123,6 @@ public class MotionDataMDC2D extends MotionData {
 
     @Override
     protected void fillAdditional(){
-        this.lmc1 = extractRawChannel(1); //1 is the index of the 2nd row
-        this.lmc2 = extractRawChannel(2); //3 is the index of the 3th row
     }
 
 
@@ -191,6 +182,8 @@ public class MotionDataMDC2D extends MotionData {
      * The algorithm computes a global motion.
      */
     protected void calculateMotion_srinivasan(){
+        if (getPastMotionData() == null)
+            return;
         float[][] raw=this.extractRawChannel(channel);
         float[][] past=this.getPastMotionData()[0].extractRawChannel(channel);
         Matrix A = new Matrix(new double[2][2]);
@@ -229,8 +222,8 @@ public class MotionDataMDC2D extends MotionData {
         try{
             Matrix x = A.solve(b);
             if(dt!=0){
-                this.setGlobalX((float)x.get(0, 0)/(float)dt*globalScaleFactor);
-                this.setGlobalY((float)x.get(1, 0)/(float)dt*globalScaleFactor);
+                this.setGlobalX((float)x.get(0, 0));
+                this.setGlobalY((float)x.get(1, 0));
             }else{
                 this.setGlobalX((0));
                 this.setGlobalY((0));
@@ -312,8 +305,8 @@ public class MotionDataMDC2D extends MotionData {
         try{
             Matrix x = A.solve(b);
             if(dt!=0){
-                this.setGlobalX((float)x.get(0, 0)/(float)dt*globalScaleFactor);
-                this.setGlobalY((float)x.get(1, 0)/(float)dt*globalScaleFactor);
+                this.setGlobalX((float)x.get(0, 0));
+                this.setGlobalY((float)x.get(1, 0));
             }else{
                 this.setGlobalX((0));
                 this.setGlobalY((0));
@@ -706,9 +699,9 @@ public class MotionDataMDC2D extends MotionData {
         }
         if(numLocalToAverageForGlobal!=0){ //check for division by 0 (not very likely to happen, but if it does it clamps the global vector to infinity
             globalUx /= this.numLocalToAverageForGlobal;
-            this.setGlobalX(globalUx*globalScaleFactor);
+            this.setGlobalX(globalUx);
             globalUy /= this.numLocalToAverageForGlobal;
-            this.setGlobalY(globalUy*globalScaleFactor);
+            this.setGlobalY(globalUy);
         } else {
             globalUx=0;
             globalUy=0;
@@ -862,7 +855,7 @@ public class MotionDataMDC2D extends MotionData {
 //        setContents(0x7F);
 //        if(true)return;
         // add the calculated contents...
-        setContents( getContents()
+        setContents( chip.getCaptureMode()
                      | MotionData.GLOBAL_X | MotionData.GLOBAL_Y
                      | MotionData.UX | MotionData.UY );
     }

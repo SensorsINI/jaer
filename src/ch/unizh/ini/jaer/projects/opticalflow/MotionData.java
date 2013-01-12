@@ -12,6 +12,7 @@ package ch.unizh.ini.jaer.projects.opticalflow;
  *Copyright November 24, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 
+import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MotionDataMDC2D;
 import com.phidgets.SpatialEventData;
 import java.io.*;
 import java.util.Random;
@@ -53,6 +54,8 @@ public abstract class MotionData implements Cloneable{
     
     /** The time in System.currentTimeMillis() that this data was captured */
     private long timeCapturedMs=0;
+    /** dt is the precise measurement of time elapsed between two frames as set on firmware (microseconds)*/
+    private long dt=0;
 
 
     protected float [][][] rawDataPixel; //Array containing the raw data [channel][posX][posY]
@@ -135,6 +138,8 @@ public abstract class MotionData implements Cloneable{
      * (or directly setFilledIn(false)) before !
      */
     public final void collectMotionInfo(){
+        if (!MotionDataMDC2D.enabled)
+            return; // ;)
         if (filledIn == false) {
             fillPh(); //write the photoreceptor data
             fillUxUy(); //write the local and global motion data
@@ -172,6 +177,22 @@ public abstract class MotionData implements Cloneable{
      */
     public long getTimeCapturedMs() {
         return timeCapturedMs;
+    }
+
+    /**
+     * time elapsed between two frames in microseconds. this value 
+     * @return dt between adjacacent frames [us]
+     */
+    public long getDt() {
+        return dt;
+    }
+
+    /**
+     * see @getDt
+     * @param dt 
+     */
+    public void setDt(long dt) {
+        this.dt = dt;
     }
 
 

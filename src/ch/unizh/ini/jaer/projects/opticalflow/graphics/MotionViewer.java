@@ -892,11 +892,14 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
                             }
                             try {
                                 motionData = hardware.getData(); // exchanges data with hardware interface, returns the new data buffer
+                                /*
+                                 * this should be done in the hardware interface class -- andstein
                                 try {
                                     motionData.collectMotionInfo();
                                 } catch (Exception e) {
                                     ;
                                 }
+                                */
                             } catch (java.util.concurrent.TimeoutException to) {
                                 log.warning(to.getMessage());
                                 hardware.close();

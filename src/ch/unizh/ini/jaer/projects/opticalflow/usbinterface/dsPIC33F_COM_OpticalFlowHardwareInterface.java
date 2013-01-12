@@ -11,7 +11,6 @@ import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MotionDataMDC2D;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
-import java.util.concurrent.Exchanger;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
@@ -28,7 +27,7 @@ import com.phidgets.SpatialPhidget;
 import com.phidgets.event.*;
 
 import gnu.io.PortInUseException;
-import java.util.Calendar;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.prefs.Preferences;
 import javax.swing.JPanel;
@@ -61,13 +60,16 @@ import javax.swing.SwingUtilities;
  * that project can be downloaded at 
  * <a href="http://people.ee.ethz.ch/~andstein/mdc2d/">http://people.ee.ethz.ch/~andstein/mdc2d/</a> 
  * <br /><br />
+ * 
+ * TODO http://www.phidgets.com/docs/OS_-_Windows#Quick_Downloads
  *
  * @see ch.unizh.ini.jaer.projects.dspic.serial.StreamCommand
  * @author andstein
  */
 
 public class dsPIC33F_COM_OpticalFlowHardwareInterface
-        implements MotionChipInterface,StreamCommandListener {
+        implements MotionChipInterface,StreamCommandListener,
+        SpatialDataListener, ErrorListener, AttachListener, DetachListener {
 
     static final Logger log=Logger.getLogger(dsPIC33F_COM_OpticalFlowHardwareInterface.class.getName());
     static Preferences prefs = Preferences.userNodeForPackage(dsPIC33F_COM_OpticalFlowHardwareInterface.class);
@@ -102,42 +104,7 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
     //  features a TPS79328 that provides an aVDD at 3.28V)
     private final static float VDD_SHOULD_BE= 3.33f;
     private final static float VDD_IS= 3.28f;
-
-    // begin class state variables -- synchronized with device in initializeDevice()
-    protected String portName= prefs.get("port", ""); // "" means no connection
-    private int delay1_us = prefs.getInt("delay1", 20000); // delays between consecutive frames
-    private int delay2_us = prefs.getInt("delay2", 20000); // (alternate: delay1->delay2->delay1->...)
-    protected int[] ipotValues=null; // cache of pot values used for checking which ones to send
-    protected int[] vpotValues=null; // cache of pot values used for checking which ones to send
-    protected int channel = prefs.getInt("channel",MotionDataMDC2D.LMC1);
-    protected boolean onChipADC = prefs.getBoolean("onChipADC",false); // see setChannel()
-    protected boolean onChipBiases = prefs.getBoolean("onChipBiases",true);
-    // end class state variables
-
-    /**
-     * get values of current configuration. the returned string is a
-     * human readable representation of the state of the hardware interface
-     * and the device. use this for log purposes
-     * @return human readable representation of the current state of the
-     *      hardware interface / device
-     */
-    public String dump() {
-        return 
-                dsPIC33F_COM_OpticalFlowHardwareInterface.class.getName()+" "+
-                "["+PROTOCOL_MAJOR+"/"+PROTOCOL_MINOR+"] : "+
-                "port="+portName+"; "+
-                "delays="+delay1_us+"us/"+delay2_us+"us; "+
-                "channel="+channel+"; "+
-                "onChipADC="+onChipADC+"; "+
-                "onChipBiases="+onChipBiases+"; ";
-    }
     
-    // states of opening procedure; see open() and setPortName()
-    private boolean triedOpening= false;
-    private boolean triedReset= false;
-    private boolean verified= false;
-    private boolean hardwareError= false;
-
     private StreamCommand serial;
     private dsPIC33F_COM_ConfigurationPanel configPanel;
 
@@ -155,6 +122,123 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
     protected GlobalOpticalFlowAnalyser analyser= null;
     protected boolean analysing= false;
     
+    // phidget data is simply saved in listener and transfered to message
+    // in worker thread
+    int phidgetsAttached= 0;
+    SpatialPhidget phidget;
+    SpatialEventData phidgetData;
+    Object phidgetDataSynchronizer= new Object();
+
+    // begin class state variables -- synchronized with device in initializeDevice()
+    protected String portName= prefs.get("port", ""); // "" means no connection
+    private int delay1_us = prefs.getInt("delay1", 20000); // delays between consecutive frames
+    private int delay2_us = prefs.getInt("delay2", 20000); // (alternate: delay1->delay2->delay1->...)
+    private int nthFrame = prefs.getInt("nthFrame", 1);
+    protected int[] ipotValues=null; // cache of pot values used for checking which ones to send
+    protected int[] vpotValues=null; // cache of pot values used for checking which ones to send
+    protected int channel = prefs.getInt("channel",MotionDataMDC2D.LMC1);
+    protected boolean onChipADC = prefs.getBoolean("onChipADC",false); // see setChannel()
+    protected boolean onChipBiases = prefs.getBoolean("onChipBiases",true);
+    protected boolean streamPixels = prefs.getBoolean("streamPixels",true);
+    // end class state variables
+
+    /**
+     * get values of current configuration. the returned string is a
+     * human readable representation of the state of the hardware interface
+     * and the device. use this for log purposes
+     * @return human readable representation of the current state of the
+     *      hardware interface / device
+     */
+    public String dump() {
+        return 
+                dsPIC33F_COM_OpticalFlowHardwareInterface.class.getName()+" "+
+                "["+PROTOCOL_MAJOR+"/"+PROTOCOL_MINOR+"] : "+
+                "port="+portName+"; "+
+                "delays="+delay1_us+"us/"+delay2_us+"us; "+
+                "channel="+channel+"; "+
+                "pixels="+streamPixels+"; "+
+                "onChipADC="+onChipADC+"; "+
+                "onChipBiases="+onChipBiases+"; ";
+    }
+    
+    // states of opening procedure; see open() and setPortName()
+    private boolean verified= false; // correct "version" answer received
+    private boolean versionTimeout= false; // no one listening ?
+    private String versionError= null;
+    private String ioErrorString= null;
+    private int commandErrors= 0; // cumulative
+    private int streamingErrors= 0; // cumulative
+    // other status data
+    private int pushingFps;
+    private int parsingFps;
+    private int exchangingFps;
+    
+    
+    protected void threadSafeUpdateStatus(final String msg) {
+        Runnable doUpdate= new Runnable() {
+            @Override
+            public void run() {
+                if (configPanel.isValid())
+                    configPanel.setStatus(msg);
+            }
+        };
+        SwingUtilities.invokeLater(doUpdate);
+    }
+    
+    /**
+     * mangle all status variables into a string that is displayed (thread
+     * safely) via the GUI
+     */
+    protected void updateStatus() {
+        String etc="";
+        if (commandErrors != 0)
+            etc+= commandErrors+" cmd errors";
+        if (streamingErrors != 0)
+            etc+= " "+streamingErrors+" streaming errors";
+        if (phidgetsAttached>0)
+            etc+= " phidget";
+        if (etc.length() != 0)
+            etc = " ["+etc+"]";
+        
+        if (ioErrorString != null) {
+            threadSafeUpdateStatus("I/O error : "+ioErrorString);
+            return;
+        }
+        
+        if (serial.isConnected()) {
+            
+            if (versionError != null) {
+                threadSafeUpdateStatus("version error : "+versionError);
+                return;
+            }
+            if (versionTimeout) {
+                threadSafeUpdateStatus("no device attached?");
+                return;
+            }
+            
+            if (verified) {
+                if (isStreaming())
+                    threadSafeUpdateStatus(pushingFps+"/"+parsingFps+"/"+exchangingFps+" fps" +etc);
+                else
+                    threadSafeUpdateStatus("connected" +etc);
+            } else
+                threadSafeUpdateStatus("device not listening");
+        } else
+            threadSafeUpdateStatus("could not open serial");
+    }
+    
+    protected void resetStats() {
+        log.info("resettings statistics");
+
+        this.verified= false;
+        this.versionTimeout= false;
+        this.ioErrorString= null;
+        this.versionError= null;
+        this.commandErrors= 0;
+        this.streamingErrors= 0;
+    }
+
+
     /**
      * creates a new hardware interface instance; will <i>not yet connect</i> to
      * the device
@@ -166,13 +250,51 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         
         serial= new StreamCommand(this,DSPIC_FCY/(16*(DSPIC_BRGVAL+1)));
         configPanel= new dsPIC33F_COM_ConfigurationPanel(this);
-        configPanel.setStatus("not connected");
+        updateStatus();
 
         // the actual thread will be created in startStreaming()
         currentBuffer= chip.getEmptyMotionData();
         sequenceNumber= 0;
-        converter= new DataConverter(new Exchanger<MotionData>(), chip.getEmptyMotionData());
+        converter= new DataConverter(chip);
         converterThread= null;
+        
+        Timer fpsTimer= new Timer(true);
+        fpsTimer.schedule(new TimerTask() {
+            int lastMessagesPushed= -1;
+            int lastMessagesParsed= -1;
+            int lastMessagesExchanged= -1;
+            @Override
+            public void run() {
+                if (converter != null) {
+                    pushingFps= converter.getMessagesPushed() - lastMessagesPushed;
+                    lastMessagesPushed += pushingFps;
+                    parsingFps= converter.getMessagesParsed() - lastMessagesParsed;
+                    lastMessagesParsed += parsingFps;
+                    exchangingFps= converter.getMessagesExchanged() - lastMessagesExchanged;
+                    lastMessagesExchanged += exchangingFps;
+                    
+                    updateStatus();
+                }
+            }
+        }, 0, 1000);
+
+        phidget= null;
+        phidgetData= null;
+        try {
+
+            phidget = new SpatialPhidget();
+
+            phidget.addAttachListener(this);
+            phidget.addDetachListener(this);
+            phidget.addErrorListener(this);
+            phidget.addSpatialDataListener(this);
+            
+            phidget.openAny();
+
+        } catch (PhidgetException ex) {
+            log.warning("could not phidget.lopenAny(): "+ex);
+        }
+    
     }
 
     
@@ -197,45 +319,51 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
     
     /**
      * is called upon completed opening and synchronizes device configuration
-     * with class variables; also resets configPanel according to these values
+     * with class variables; also resets configPanel according to these values;
+     * initialization will be run in a new thread
      */
     public void initializeDevice()
     {
-        if (!isOpen())
-            return;
-        
-        // set on-chip bias generator, ADC
-        sendCommand("onchip " + (onChipADC?"1":"0"));
-        sendCommand("pd " + (onChipBiases?"0":"1"));
-        
-        // set capturing delays
-        sendDelayCommands();
-        // set acquisition time :
-        // timer ISR called every 100 cycles -> 2.5us/pixel -> 1ms/frame
-        sendCommand("set timer_cycles 0064");
-        
-        // choose channel
-        if (channel == MotionDataMDC2D.PHOTO)
-            sendCommand("channel recep");
-        if (channel == MotionDataMDC2D.LMC1)
-            sendCommand("channel lmc1");
-        if (channel == MotionDataMDC2D.LMC2)
-            sendCommand("channel lmc2");
+        Runnable doReset= new Runnable() {
+            @Override
+            public void run() {
+                // set on-chip bias generator, ADC
+                sendCommand("onchip " + (onChipADC?"1":"0"));
+                sendCommand("pd " + (onChipBiases?"0":"1"));
 
-        // resend all biases
-        ipotValues= null;
-        vpotValues= null;
-        try {
-            sendConfiguration(chip.getBiasgen());
-        } catch (HardwareInterfaceException ex) {
-            log.warning("could not send configuration : " + ex);
-        }
-        
-        // restart streaming if was streaming before
-        if (isStreaming()) {
-            stopStreaming();
-            startStreaming();
-        }
+                // set capturing delays
+                sendDelayCommands();
+                serial.sendCommand("nth " + String.format("%04X",nthFrame));
+                // set acquisition time :
+                // timer ISR called every 100 cycles -> 2.5us/pixel -> 1ms/frame
+                sendCommand("set timer_cycles 0064");
+                //sendCommand("set timer_cycles 0032");
+
+                // choose channel
+                if (channel == MotionDataMDC2D.PHOTO)
+                    sendCommand("channel recep");
+                if (channel == MotionDataMDC2D.LMC1)
+                    sendCommand("channel lmc1");
+                if (channel == MotionDataMDC2D.LMC2)
+                    sendCommand("channel lmc2");
+
+                // resend all biases
+                ipotValues= null;
+                vpotValues= null;
+                try {
+                    sendConfiguration(chip.getBiasgen());
+                } catch (HardwareInterfaceException ex) {
+                    log.warning("could not send configuration : " + ex);
+                }
+
+                // restart streaming if was streaming before
+                if (isStreaming()) {
+                    stopStreaming();
+                    startStreaming();
+                }
+            }
+        };
+        new Thread(doReset).start();
     }
 
     @Override
@@ -264,8 +392,10 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         // re-open the device
         verified= false;
         
-        if (cmd.equals("version"))
-            updateStatus("no device attached");
+        if (cmd.equals("version")) {
+            versionTimeout= true;
+            updateStatus();
+        }
     }
 
     @Override
@@ -289,6 +419,32 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
     public boolean isOnChipBiases() {
         return onChipBiases;
     }
+
+    /**
+     * @see setStreamPixels
+     * @return whether pixels are currently streamed
+     */
+    public boolean isStreamPixels() {
+        return streamPixels;
+    }
+
+    /**
+     * whether to stream pixels in frames. set this to false to achieve
+     * fast (>60 fps) message streaming
+     * @param streamPixels whether to stream pixels or not
+     */
+    public void setStreamPixels(boolean streamPixels) {
+        if (streamPixels == this.streamPixels)
+            return;
+        this.streamPixels = streamPixels;
+        prefs.putBoolean("streamPixels",streamPixels);
+        
+        if (streamPixels)
+            sendCommand("stream frames srinivasan");
+        else
+            sendCommand("stream srinivasan");
+    }
+    
 
     @Override
     public void setChannel(int bit, boolean onChip) throws HardwareInterfaceException {
@@ -354,51 +510,105 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
      * @param delayMs delay between frames ("<code>dt</code>") in milliseconds
      * @see ch.unizh.ini.jaer.projects.opticalflow.MotionData#getTimeCapturedMs
      */
-    public void setDelayMs(int delayMs) {
-        delay1_us= 1000 * delayMs;
-        delay2_us= 1000 * delayMs;
+    public void setDelayUs(int delayUs) {
+        delay1_us = delay2_us = delayUs;
         prefs.putInt("delay1", delay1_us);
         prefs.putInt("delay2", delay2_us);
         sendDelayCommands();
     }
     
-    public int getDelay1Ms() {
-        return delay1_us / 1000;
-    }
-    public int getDelay2Ms() {
-        return delay2_us / 1000;
+    public int getDelayUs() {
+        assert delay1_us==delay2_us;
+        return delay1_us;
     }
 
+    /**
+     * #see setNthFrame
+     */
+    public int getNthFrame() {
+        return nthFrame;
+    }
+
+    /**
+     * set every how manieth frame should be sent to the host computer
+     * @param nthFrame 1 means send every frame, 2 sends every second frame
+     *      and so on
+     */
+    public void setNthFrame(int nthFrame) {
+        assert nthFrame>0;
+        this.nthFrame = nthFrame;
+        prefs.putInt("nthFrame", nthFrame);
+        serial.sendCommand("nth " + String.format("%04X",nthFrame));
+    }
 
     /**
      * all data gets piped through this class; coming in as <code>StreamCommandMessage</code>
      * on one side and getting out as <code>MotionData</code> on the other side
      * <br /><br />
      * 
-     * the MotionData is <i>exchanged</i> in a blocking way so that the data converter
-     * stops until its last unpacked frame is actually used by the motion viewer
-     * and the motion viewer blocks in the exchange until the data converter
-     * got a new message that could be converted into a frame
+     * the converter has two internal buffers, one being currently modified
+     * (<code>frame</code>) and the other waiting to be exchanged
+     * (<code>frame2</code>); when the motion viewer thread pulls
+     * a new motion data, <code>frame2</code> is synchronously 
+     * switched with the motion viewer's buffer
      * <br /><br />
      * 
-     * this exchanging scheme ensures that if all the returned <code>MotionData</code>
-     * are put into a queue, the last two of them are always references to
-     * different objects (with different internal buffers) and can thereby
-     * be used for motion calculation
+     * this exchanging scheme allows for non blocking data procdessing in the
+     * converter thread; if data is received faster than the motion viewer
+     * is pulling it, not all frames are displayed, although they can still
+     * be processed and saved to disk
      * <br /><br />
      * 
      * @see ch.unizh.ini.jaer.projects.dspic.serial.StreamCommandMessage
      * @see ch.unizh.ini.jaer.projects.opticalflow.MotionData
      */
-    protected class DataConverter implements Runnable, 
-            SpatialDataListener, ErrorListener, AttachListener, DetachListener
+    protected class DataConverter implements Runnable
     {
-        private Exchanger<MotionData> dataOut;
+        
+        class MotionExchangeRingBuffer
+        {
+            MotionData[] data;
+            int i,j;
+            
+            MotionExchangeRingBuffer(Chip2DMotion chip,int size) {
+                data= new MotionData[size];
+                for(int i=0; i<data.length; i++)
+                    data[i]= chip.getEmptyMotionData();
+                i=j=0;
+            }
+            MotionExchangeRingBuffer(Chip2DMotion chip) {
+                this(chip,10);
+            }
+            
+            public boolean available() {
+                return i!=j;
+            }
+            
+            public MotionData push(MotionData buffer) {
+                i = (i+1) % data.length;
+                MotionData ret= data[i];
+                data[i]= buffer;
+                return ret;
+            }
+            
+            public MotionData pull(MotionData buffer) {
+                assert i!=j;
+                j = (j+1) % data.length;
+                MotionData ret= data[j];
+                data[j] = buffer;
+                return ret;
+            }
+        }
+        
         private LinkedList<StreamCommandMessage> messages;
         private MotionData frame;
+        private MotionExchangeRingBuffer buffer;
+        private boolean newDataAvailable,frame3new;
         private boolean stopped;
         private int width;
-        private int messagesPushed, messagesParsed;
+        private int messagesPushed;    // messages pushed from serial callback
+        private int messagesParsed;    // messages parsed in converter's loop
+        private int messagesExchanged; // messages relied to motion viewer
         
         /** timeout for getting data from device -- <code>MotionViewer</code> calls close() when this occurs ! */
         private static final long DATA_TIMEOUT_MS=  20000;
@@ -413,47 +623,22 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
          */
         public final static int MAX_QUEUED_MESSAGES= 2;
         
-        // phidget data is simply saved in listener and transfered to message
-        // in worker thread
-        SpatialPhidget phidget;
-        SpatialEventData phidgetData;
-        Object phidgetDataSynchronizer= new Object();
-
         /**
          * creates a new instance of this class; the thread must later be
          * started via a call to <code>start()</code> of a <code>Thread</code>
          * instance based on this runnable
          * 
-         * @param dst an <code>Exchanger</code> that will be used to swap the
-         *      <code>MotionData</code> with the <code>MotionViewer</code>
-         *      thread
-         * @param motionBuffer an object that will be swapped with another
-         *      MotionData in the .exchange() (and must therefore not be the
-         *      same object that is used for the .exchange() call !)
+         * @param chip to generate empty datas for internal buffers
          * @see java.lang.Thread
          */
-        public DataConverter(Exchanger<MotionData> dst,MotionData motionBuffer)
+        public DataConverter(Chip2DMotion chip)
         {
-            dataOut= dst;
             messages= new LinkedList<StreamCommandMessage>();
-            frame= motionBuffer;
-            width= frame.chip.getSizeX();
-            messagesPushed = messagesParsed = 0;
-
-            phidget= null;
-            try {
-                
-                phidget = new SpatialPhidget();
-
-                phidget.addAttachListener(this);
-                phidget.addDetachListener(this);
-                phidget.addErrorListener(this);
-          
-                phidget.openAny();
             
-            } catch (PhidgetException ex) {
-                log.warning("could not phidget.lopenAny(): "+ex);
-            }
+            frame= chip.getEmptyMotionData();
+            buffer= new MotionExchangeRingBuffer(chip);
+
+            messagesPushed = messagesParsed = messagesExchanged = 0;
 
             stopped= false;
         }
@@ -619,7 +804,34 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
             while (messages.size() == 0)
                 wait();
         }
+
+        /**
+         * number of messages received (pushed from serial callback)
+         * since class creation
+         * @return messages pushed (=messages received)
+         */
+        public int getMessagesPushed() {
+            return messagesPushed;
+        }
         
+        /**
+         * number of messages parsed since class creation
+         * @return messages parsed
+         */
+        public int getMessagesParsed() {
+            return messagesParsed;
+        }
+
+        /**
+         * number of messages exchanged with main thread since class
+         * creation
+         * @return number of messages relied to viewing thread (=frames
+         *      displayed)
+         */
+        public int getMessagesExchanged() {
+            return messagesExchanged;
+        }
+
         /**
          * this method should be implemented reasonably fast in order not to
          * loose any more message that are already lost by the relatively
@@ -641,17 +853,19 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
                 // interfaces; the actual delay is the one set via setDelayMs()
                 // which is much more precise than the delay estimated here...
                 frame.setTimeCapturedMs(System.currentTimeMillis());
-
+                
+                // set the raw pixel data -- for compatibility with the other
+                // code we indicate presence of all kind of data that is merely
+                // copied -- use setChannel() to change the transmitted pixel
+                // data...
+                frame.setContents( MotionData.PHOTO |
+                                    MotionDataMDC2D.LMC1 |
+                                    MotionDataMDC2D.LMC2 |
+                                    MotionDataMDC2D.ON_CHIP_ADC );
+                frame.setDt(getDelayUs());
+                
                 if (hasPixelData(message)) {
                     
-                    // set the raw pixel data -- for compatibility with the other
-                    // code we indicate presence of all kind of data that is merely
-                    // copied -- use setChannel() to change the transmitted pixel
-                    // data...
-                    frame.setContents( MotionData.PHOTO |
-                                       MotionDataMDC2D.LMC1 |
-                                       MotionDataMDC2D.LMC2 |
-                                       MotionDataMDC2D.ON_CHIP_ADC );
                     float[][][] rawData= frame.getRawDataPixel();
 
                     // extract the transmitted channel into the first array...
@@ -671,20 +885,24 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
                     for(int channel=1; channel<rawData.length; channel++)
                         for(int y=0; y<chip.getSizeY(); y++)
                             System.arraycopy(rawData[0][y], 0, rawData[channel][y], 0, chip.getSizeX());
+
+                    // ...and then calculate hostside motion information
+                    if (hasPixelData(message))
+                        frame.collectMotionInfo();
+
+                } else {
+                    // "disable" pixel content
+                    frame.setContents(0);
+                    // reset stale calculated values
+                    frame.setGlobalX(0);
+                    frame.setGlobalY(0);
                 }
 
                 
                 // we need at least 2 frames for motion...
                 if (frame.getPastMotionData() != null && frame.getPastMotionData().length>0)
                 {
-                    // delay from this frame to last frame (ms)
-                    long dt=frame.getTimeCapturedMs()-frame.getPastMotionData()[0].getTimeCapturedMs();
-                    
-                    // first calculate motion via MotionDataMDC2D
-                    // (skip this step if no frames are being streamed)
-                    if (message.getType() != MESSAGE_DXDY)
-                        frame.collectMotionInfo();
-                
+                                    
                     // if the firmware sent some global motion values, also save them to the
                     // frame -- else set them to zero
                     if (hasGlobalMotion(message)) {
@@ -708,8 +926,8 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
                             float dy= globalMotionY(message);
                             
                             // ... and fill into globalX2/Y2 (scaled same way as MotionDataMDC2D)
-                            frame.setGlobalX2(dx/dt * MotionDataMDC2D.globalScaleFactor);
-                            frame.setGlobalY2(dy/dt * MotionDataMDC2D.globalScaleFactor);
+                            frame.setGlobalX2(dx);
+                            frame.setGlobalY2(dy);
 
                         }
 
@@ -747,14 +965,46 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
             return true;
                         
         }
-
+        
+        protected synchronized void swapFrames() {
+            frame = buffer.push(frame);
+            this.notify();
+        }
+        
+        /**
+         * use this method to exchange a <code>MotionData</code> object from the motion
+         * viewer loop; this method will wait for new data if the motion viewer
+         * thread pulls faster than data is received
+         * <br /><br />
+         * 
+         * @param data to exchange, must be a different object from the one
+         *      exchanged last time
+         * @param timeout how long to wait for new data (milliseconds)
+         * @return the object that was exchanged in the last call to this
+         *      method
+         * 
+         * @throws InterruptedException
+         * @throws TimeoutException indicates that the streaming has stopped
+         */
+        public synchronized MotionData exchangeMotionData(MotionData data,long timeout)
+                throws InterruptedException,TimeoutException {
+            if (!buffer.available())
+                this.wait(timeout);
+            if (!buffer.available())
+                throw new TimeoutException();
+            
+            messagesExchanged++;
+            return buffer.pull(data);
+        }
+        
+        public MotionData exchangeMotionData(MotionData data)
+                throws InterruptedException,TimeoutException {
+            return exchangeMotionData(data, 300000);
+        }
+        
         @Override
         public void run() {
             if (debugging) System.err.println("converter started");
-            
-            if (phidget != null)
-                phidget.addSpatialDataListener(this);
-            phidgetData= null;
             
             while(!stopped) {
                 try
@@ -769,13 +1019,14 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
                         
                         synchronized(phidgetDataSynchronizer) {
                             frame.setPhidgetData(phidgetData);
-                            phidgetData= null;
+                            //phidgetData= null; //set to zero if measurement too slow
                         }
 
                         // exchange buffer, make history
                         MotionData last= frame.clone(); // a *shallow* copy
-                        frame= dataOut.exchange(frame); // switch frame with other thread
+                        swapFrames();
                         frame.setLastMotionData(last); // therefore, pixel buffers in pastMotionData *alternate*
+                        
                     } else {
                         log.warning("discarded bogus frame");
                         
@@ -788,9 +1039,6 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
 //                    log.info("interrupted : e="+e);
                 }
             }
-
-            if (phidget != null)
-                phidget.removeSpatialDataListener(this);
 
             if (debugging) System.err.println("converter stopped");
             stopped= false;
@@ -815,52 +1063,6 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
             messages.add(message);
             messagesPushed++;
             notify();
-        }
-
-        /**
-         * use this method to exchange a <code>MotionData</code> object from the motion
-         * viewer loop
-         * <br /><br />
-         * 
-         * it will block until new data arrived and is unpacked into the
-         * provided <code>MotionData</code> object
-         * 
-         * @param data to exchange, must be a different object from the one
-         *      exchanged last time
-         * @return the object that was exchanged in the last call to this
-         *      method
-         * @throws InterruptedException
-         * @throws TimeoutException indicates that the streaming has stopped
-         */
-        public MotionData exchangeMotionData(MotionData data)
-                throws InterruptedException,TimeoutException {
-            return dataOut.exchange(data,DATA_TIMEOUT_MS,TimeUnit.MILLISECONDS);
-        }
-
-        @Override
-        public void attached(AttachEvent ae) {
-            log.info("attachment of " + ae);
-            try {
-                ((SpatialPhidget) ae.getSource()).setDataRate(10); //set data rate to 496ms
-            } catch (PhidgetException pe) {
-                log.warning("Problem setting data rate : " +pe);
-            }
-        }
-        @Override
-        public void detached(DetachEvent ae) {
-            log.info("detachment of " + ae);
-        }
-        @Override
-        public void error(ErrorEvent ee) {
-            log.warning("error event for " + ee);
-        }
-        @Override
-        
-        public void data(SpatialDataEvent sde) {
-            synchronized(phidgetDataSynchronizer) {
-                phidgetData= sde.getData()[0];
-                //System.err.println("got data + "+phidgetData.getAngularRate());
-            }
         }
 
     }
@@ -929,7 +1131,10 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         }catch(InterruptedException e){
             return null;
         }catch(java.util.concurrent.TimeoutException to){
-            throw new TimeoutException("timeout when exchanging MotionBuffer with ConverterThread");
+            //throw new TimeoutException("timeout when exchanging MotionBuffer with ConverterThread");
+            //throwing a timeout exception will cause motion viewer to close
+            //the hardware -- that certainly won't help...
+            return null;
         }
     }
 
@@ -971,15 +1176,11 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         }
         prefs.put("port", portName==null?"":portName);
         
-        updateStatus("");
-
         if (serial.isConnected())
             close();
         
         this.portName= portName; // prevents race condition while debugging .close()
-        this.triedOpening= false;
-        this.triedReset= false;
-        this.hardwareError= false;
+        resetStats();
                 
         log.info("portName set to " + portName);
         
@@ -1128,7 +1329,7 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         }
 
         serial.close();
-        updateStatus("not connected");
+        updateStatus();
 
         log.info("interface closed");
     }
@@ -1142,12 +1343,8 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
      * @see #open
      */
     public void doReset() throws HardwareInterfaceException {
-        if (isOpen()) {
+        if (serial.isConnected())
             sendCommand("reset");
-        } else {
-            triedReset= false;
-            open();
-        }
     }
 
     /**
@@ -1167,13 +1364,17 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
      */
     @Override
     public void open() throws HardwareInterfaceException {
-        if (isOpen())
+        
+        if (serial.isConnected()) {
+            if (!verified && debugging)
+                log.info("not yet verified");
             return;
+        }
 
         // we cannot even try to open the device as long as we haven't got
         // a port name provided via the control panel
         // we do not try to open if we already tried to send a reset, either...
-        if (portName == null || triedReset || hardwareError)
+        if (portName == null || ioErrorString != null)
             // this will display "WAITING for device..." in MotionViewer until isOpen()==true
             return; 
 
@@ -1181,37 +1382,39 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
             // try to establish a serial connection
             serial.connect(portName);
         } catch (PortInUseException ex) {
-            updateStatus("port in use");
+            ioErrorString = "port in use";
+            updateStatus();
             log.warning("port " + portName + " is already in use by another application");
-            hardwareError= true;
             return;
         } catch (Exception ex) {
             // this happens if a non-compatible port is selected (baud rate etc)
-            updateStatus("I/O error");
+            ioErrorString= ex.toString();
+            updateStatus();
             log.warning("I/O error while opening port " + portName + " : " + ex);
-            hardwareError= true;
             return;
         }
+        
+        resetStats();
+        
+        sendCommand("version");
+        updateStatus();
 
-        // serial connection is established at this point, bot not yet
-        // verified
-        verified= false;
-
+        /*
         // there are two figures :
         if (!triedOpening) {
             // it's our first try so we simply send a version command
             // and parse the output asynchronously...
             sendCommand("version");
-            updateStatus("verifying...");
             triedOpening= true;
         } else {
             // we already tried once and did not get a valid answer
             // this can be because the firmware crashed and needs a reset
             // the command ISR should be responding in any case
             sendCommand("reset");
-            updateStatus("tried reset...");
             triedReset= true;
         }
+    
+        */
     }
 
     /**
@@ -1230,13 +1433,11 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
      */
     public void startStreaming() {
         //TODO check whether this can be removed (should always be open!)
-        if (!isOpen())
-            try {
-                open();
-            } catch (HardwareInterfaceException ex) {
-                log.warning("could not start streaming because could not open interface");
-                return;
-            }
+        if (!isOpen()) {
+            log.warning("cannot start streaming : interface not open/verified");
+            configPanel.setStreaming(false);
+            return;
+        }
 
         configPanel.setStreaming(true);
 
@@ -1246,7 +1447,10 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         converterThread= new Thread(converter, "converter");
         converterThread.start();
 
-        sendCommand("stream frames srinivasan");
+        if (streamPixels)
+            sendCommand("stream frames srinivasan");
+        else
+            sendCommand("stream srinivasan");
         sendCommand("start");
     }
 
@@ -1283,6 +1487,7 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
      */
     @Override
     public boolean isOpen() {
+        updateStatus();
         return serial.isConnected() && verified;
     }
 
@@ -1313,6 +1518,7 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         // but evtl the MotionData has changes its structure...
         converter.setMotionData(chip.getEmptyMotionData());
     }
+    
 
     /**
      * for debugging where exact timing is relevant
@@ -1373,32 +1579,33 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
             System.err.format("%s : (%s)<%s\n", exactTimeString(), cmd, answer);
         
         configPanel.answerReceived(cmd, answer);
-
-        if (cmd.equals("version"))
+        
+        //FIXME ideally reset/version answer would be different...
+        if (answer.startsWith("uart_MDC2D version "))
+        //if (cmd.equals("version"))
         {
             if (getMajorVersion(answer) == PROTOCOL_MAJOR &&
                 getMinorVersion(answer) >= PROTOCOL_MINOR ) {
 
+                log.info("version verified : "+answer);
                 verified= true;
-                updateStatus("connected");
-
-                // once the connection is established and the device verified,
-                // it still needs to be initialized with biases etc
-                // this will also start streaming
+                serial.clearCommandPipe();
                 initializeDevice();
 
             } else {
                 // clean up, indicate error
-                updateStatus("version conflict : " + answer);
+                versionError = answer;
                 log.warning("version conflict : " + answer);
             }
         }
 
         // this always indicates an error
         if (answer.charAt(0) == '!') {
-            updateStatus("error : " + cmd);
+            commandErrors++;
             log.warning("command error (" + cmd + ") : " + answer);
         }
+        
+        updateStatus();
     }
 
     @Override
@@ -1407,46 +1614,17 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         return;
     }
     
-    /**
-     * update the status text in configPanel from within any thread
-     * @param msg 
-     */
-    protected void updateStatus(final String msg) {
-        Runnable doUpdate= new Runnable() {
-            @Override
-            public void run() {
-                if (configPanel.isValid())
-                    configPanel.setStatus(msg);
-            }
-        };
-        SwingUtilities.invokeLater(doUpdate);
-    }
 
     @Override
     public void messageReceived(StreamCommandMessage message) {
 
         if (message.getType() == MESSAGE_RESET)
         {
+            resetStats();
             // device start-up; -> re-initialize device...
-            log.info("device reset message received");
-            if (getMajorVersion(message.getAsString()) == PROTOCOL_MAJOR) {
-
-                // we're up and running
-                verified= true;
-                updateStatus("connected");
-                // always initialize device after reset -- this synchronizes
-                // the device's state with this instance's
-                initializeDevice();
-                
-                // it is NOT allowed to try another reset after a successful one
-//                triedReset= false;
-
-            } else {
-                // clean up, indicate error
-                updateStatus("version conflict : " + message.getAsString());
-                log.warning("version conflict : " + message.getAsString());
-            }
-            initializeDevice();
+            log.info("device reset message receive; checking version...");
+            // if right version is detected, device will be initialized
+            serial.sendCommand("version");
             return;
         }
 
@@ -1468,6 +1646,7 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         if (isAnalysing())
             analyser.incrementStreamingErrors();
 
+        streamingErrors++;
         
         if (error == StreamCommandListener.STREAMING_OUT_OF_SYNC) {
             // having lost some bytes is not that much of an issue,
@@ -1488,4 +1667,31 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         prefs.putBoolean("debugging",debugging);
     }
 
+    @Override
+    public void attached(AttachEvent ae) {
+        log.info("phidget attached : " + ae);
+        phidgetsAttached++;
+        try {
+            SpatialPhidget sp = (SpatialPhidget) ae.getSource();
+            sp.setDataRate(10); //set data rate to 496ms
+        } catch (PhidgetException pe) {
+            log.warning("Problem setting data rate : " +pe);
+        }
+    }
+    @Override
+    public void detached(DetachEvent ae) {
+        phidgetsAttached--;
+        log.info("phidget detached : " + ae);
+    }
+    @Override
+    public void error(ErrorEvent ee) {
+        log.warning("error event for " + ee);
+    }
+    @Override
+    public void data(SpatialDataEvent sde) {
+        synchronized(phidgetDataSynchronizer) {
+            phidgetData= sde.getData()[0];
+            //System.err.println("got data + "+phidgetData.getAngularRate());
+        }
+    }
 }

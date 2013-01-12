@@ -50,7 +50,7 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
     private float globalMotionGain=prefs.getFloat("OpticalFlowDisplayMethod.globalMotionGain",1f);
     private float globalMotionOffset=prefs.getFloat("OpticalFlowDisplayMethod.globalMotionOffset",0.5f);
     private float vectorLengthScale=prefs.getFloat("OpticalFlowDisplayMethod.vectorLengthScale",.5f);
-    private float angularVectorScale=prefs.getFloat("OpticalFlowDisplayMethod.angularVectorScale",0.2f);
+    private float angularVectorScale= .001f;//prefs.getFloat("OpticalFlowDisplayMethod.angularVectorScale",0.001f);
     
     private boolean photoDisplayEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.photoDisplayEnabled",true),
             localDisplayEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.localDisplayEnabled",false),
@@ -58,7 +58,7 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
             globalDisplay2Enabled=prefs.getBoolean("OpticalFlowDisplayMethod.globalDisplay2Enabled",true),
             absoluteCoordinates=prefs.getBoolean("OpticalFlowDisplayMethod.absoluteCoordinatesEnabled",false),
             localMotionColorsEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.localMotionColorsEnabled",false),
-            angularRateEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.angularRateEnabled",false);
+            angularRateEnabled=prefs.getBoolean("OpticalFlowDisplayMethod.angularRateEnabled",true);
 
     private int rawChannelToDisplay=0;
     
@@ -176,11 +176,18 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
             gl.glEnd();
         }
 
-        // get the global X and Y from motionData and rescale
-        gx=motionData.getGlobalX()*globalMotionGain*GAIN_FACTOR*MOTION_VECTOR_FACTOR;
-        gy=motionData.getGlobalY()*globalMotionGain*GAIN_FACTOR*MOTION_VECTOR_FACTOR;
-        gx2=motionData.getGlobalX2()*globalMotionGain*GAIN_FACTOR*MOTION_VECTOR_FACTOR;
-        gy2=motionData.getGlobalY2()*globalMotionGain*GAIN_FACTOR*MOTION_VECTOR_FACTOR;
+        // get the global X and Y from motionData
+        gx=motionData.getGlobalX();
+        gy=motionData.getGlobalY();
+        gx2=motionData.getGlobalX2();
+        gy2=motionData.getGlobalY2();
+        /*
+        // scale using time between frames (microseconds)
+        gx  /= motionData.getDt() / 1e6;
+        gy  /= motionData.getDt() / 1e6;
+        gx2 /= motionData.getDt() / 1e6;
+        gy2 /= motionData.getDt() / 1e6;
+        */
         
         // now draw motion vector arrows on top of pixel colors
         if(hasLocal && isLocalDisplayEnabled()){
@@ -200,8 +207,8 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
             gl.glColor3f(1,1,1);
             gl.glLineWidth(4f);
             gl.glBegin(GL.GL_LINES);
-            gl.glVertex3f(nCols/2+.5f,nRows/2+.5f,1); // put at z=1 to draw above pixels
-            gl.glVertex3f(nCols/2+.5f+gx,nRows/2+.5f+gy,1);
+            gl.glVertex3f(nCols/2, nRows/2, 1); // put at z=1 to draw above pixels
+            gl.glVertex3f(nCols/2*(1+gx), nRows/2*(1+gy), 1);
             gl.glEnd();
         }
         // global2 vector
@@ -209,8 +216,8 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
             gl.glColor3f(1,0,0);
             gl.glLineWidth(2f);
             gl.glBegin(GL.GL_LINES);
-            gl.glVertex3f(nCols/2+.5f,nRows/2+.5f,1); // put at z=1 to draw above pixels
-            gl.glVertex3f(nCols/2+.5f+gx2,nRows/2+.5f+gy2,1);
+            gl.glVertex3f(nCols/2, nRows/2, 1); // put at z=1 to draw above pixels
+            gl.glVertex3f(nCols/2*(1+gx2), nRows/2*(1+gy2), 1);
             gl.glEnd();
         }
         // draw SpatialPhidget angular rate
@@ -218,8 +225,8 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
             gl.glColor3f(0,0,1);
             gl.glLineWidth(2f);
             gl.glBegin(GL.GL_LINES);
-            gl.glVertex3f(nCols/2+.5f,nRows/2+.5f,1); // put at z=1 to draw above pixels
-            gl.glVertex3f(nCols/2+.5f+ang1*angularVectorScale,nRows/2+.5f-ang2*angularVectorScale,1);
+            gl.glVertex3f(nCols/2, nRows/2, 1); // put at z=1 to draw above pixels
+            gl.glVertex3f(nCols/2*(1+ang1*angularVectorScale), nRows/2*(1-ang2*angularVectorScale), 1);
             gl.glEnd();
             //if (motionData.getSequenceNumber() % 100 == 0)
             //    System.err.println("SpatialPhidget : ang1="+ang1+"; ang2="+ang2);
@@ -375,6 +382,7 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
 
     public void setAngularRateEnabled(boolean angularRateEnabled) {
         this.angularRateEnabled = angularRateEnabled;
+        prefs.putBoolean("OpticalFlowDisplayMethod.angularRateEnabled",angularRateEnabled);
     }
 
 }
