@@ -22,6 +22,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import java.awt.Graphics2D;
 import com.sun.opengl.util.GLUT;
 import javax.media.opengl.GL;
+import net.sf.jaer.Description;
 import net.sf.jaer.util.EngineeringFormat;
 
 
@@ -35,7 +36,7 @@ import net.sf.jaer.util.EngineeringFormat;
  *
  * @author jaeckeld
  */
-
+@Description("LED tracker which is part of David Jaeckel's robot head project")
 public class LEDTracker extends EventFilter2D implements Observer, FrameAnnotater{
    
     private float minEventRate=getPrefs().getFloat("RetinaCochleaFilter.minEventRate",0.2f);

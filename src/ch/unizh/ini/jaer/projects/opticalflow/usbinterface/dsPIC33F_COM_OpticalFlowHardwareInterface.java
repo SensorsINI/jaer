@@ -446,6 +446,10 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
     }
     
 
+    /** Sets the data to be transmitted from the sensor
+     * @param bit word with bits set from MotionDataMDC2D
+     * @param onChip true to use on-chip ADC to convert analog values, false to use off-chip ADC
+     */
     @Override
     public void setChannel(int bit, boolean onChip) throws HardwareInterfaceException {
         channel  = bit;

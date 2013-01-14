@@ -10,15 +10,17 @@ import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.Parameters;
 import java.util.Observable;
 import java.util.Observer;
 import javax.media.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- *
+ * Tracks blinking LED markers with complex blinking patterns (e.g. SOS morse code) that can be learned on the fly
  * @author matthias
  */
+@Description("Tracks blinking LED markers with complext blinking patterns that can be learned on the fly")
 public class SmartSpatioTemporalTracker extends EventFilter2D implements Observer, FrameAnnotater {
     
     private EventTracker tracker;

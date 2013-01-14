@@ -17,7 +17,8 @@ import ch.unizh.ini.jaer.projects.opticalflow.graphics.*;
 import java.util.logging.Logger;
 
 /**
- * The starter for the optical flow chip demo.q
+ * The starter for the optical flow chip demo of Andreas Steiner and Shih-Chii Liu using the MDC2D chip.
+ * 
  *
  
  * @author  tobi

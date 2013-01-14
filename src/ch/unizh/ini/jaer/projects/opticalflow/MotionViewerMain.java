@@ -18,7 +18,7 @@ import ch.unizh.ini.jaer.projects.opticalflow.graphics.*;
 import java.util.logging.Logger;
 
 /**
- * The starter for the optical flow chip demo.q
+ * The starter for the optical flow chip demo using Alan Stockers sensor built Pit Gebbers; see http://www.ini.uzh.ch/~tobi/studentProjectReports/gebbersUSBMotionBoard2007.pdf.
  *
  
  * @author  tobi

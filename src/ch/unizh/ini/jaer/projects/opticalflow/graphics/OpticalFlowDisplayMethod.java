@@ -86,6 +86,8 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
         int nCols=chip.getSizeX();
         int sx=nCols-1;
         int sy=nRows-1; // for not drawing motion pixels on edge
+        if(chip.getLastData()==null) return; // important this is before gl.glPushMatrix or else call it before return
+               chip.getCanvas().checkGLError(gl, glu, "before rendering anything");
         gl.glPushMatrix();
         // chip is displayed upside down if we just render row as row, we subtract from num rows to flip it insteead of trying to figure out
         // graphics transformation
@@ -102,7 +104,6 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
         gl.glClear(GL.GL_COLOR_BUFFER_BIT);
         gl.glLineWidth(1f);
         MotionData motionData;
-        if(chip.getLastData()==null) return;
         motionData=(MotionData)chip.getLastData(); // relies on capture or file input in MotionViewer or elsewhere to fill this field
         
         boolean hasGlobal=isGlobalDisplayEnabled() ; // global is just avg of local vectors
@@ -232,19 +233,20 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
             //    System.err.println("SpatialPhidget : ang1="+ang1+"; ang2="+ang2);
         }
         gl.glPopMatrix();
+               chip.getCanvas().checkGLError(gl, glu, "after global motion vectors");
     }
     
 // draws motion vector arrow from point x,y with magnitude ux, uy
     private void arrow(GL gl, float x,float y,float ux, float uy){
         gl.glColor3f(1,1,1);
-        gl.glPointSize(3);
+        gl.glPointSize(5);
         gl.glBegin(GL.GL_POINTS);
-        gl.glVertex3f(x,y,0);
+            gl.glVertex3f(x,y,0);
         gl.glEnd();
         gl.glBegin(GL.GL_LINES);
-        float ex=x+vectorLengthScale*MOTION_VECTOR_FACTOR*ux, ey=y+vectorLengthScale*MOTION_VECTOR_FACTOR*uy;
-        gl.glVertex2f(x,y);
-        gl.glVertex2f(ex,ey);
+            float ex=x+vectorLengthScale*MOTION_VECTOR_FACTOR*ux, ey=y+vectorLengthScale*MOTION_VECTOR_FACTOR*uy;
+            gl.glVertex2f(x,y);
+            gl.glVertex2f(ex,ey);
         gl.glEnd();
     }
     
@@ -344,7 +346,7 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
     
     public void setGlobalDisplay2Enabled(boolean globalDisplay2Enabled) {
         this.globalDisplay2Enabled = globalDisplay2Enabled;
-        prefs.putBoolean("OpticalFlowDisplayMethod.globalDisplay2Enabled",globalDisplayEnabled);
+        prefs.putBoolean("OpticalFlowDisplayMethod.globalDisplay2Enabled",globalDisplay2Enabled);
     }
     
     public float getVectorLengthScale() {
