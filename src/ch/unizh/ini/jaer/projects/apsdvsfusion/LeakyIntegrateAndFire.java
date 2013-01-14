@@ -14,8 +14,9 @@ public class LeakyIntegrateAndFire implements FiringModel {
 
 	private float membranePotential = 0.0f;
 	private int lastSpikeTime = 0;
+	private int refractoredUntil = 0;
 	private int lastIncreaseTime = 0;
-	
+	private boolean resetted = true;
 	/**
 	 * 
 	 */
@@ -39,36 +40,32 @@ public class LeakyIntegrateAndFire implements FiringModel {
 	 */
 	@Override
 	public boolean receiveSpike(double value, int timeInUs) {
+		// this event happened before the last recorded one -> time most likely wrapped around
 		if (timeInUs < lastIncreaseTime) {
 			lastIncreaseTime = timeInUs;
 			membranePotential = (float)value;
 		}
-        if (timeInUs > lastSpikeTime) { // Refractory period
+		// normal processing
+        if (timeInUs > refractoredUntil) { // Refractory period
         	membranePotential *= Math.exp(((float)(lastIncreaseTime - timeInUs)) / tau);
         	membranePotential += value;
-        	lastIncreaseTime = timeInUs;
-        	if (membranePotential > threshold) {
-        		membranePotential = 0.0f;
-        		lastSpikeTime = timeInUs + refractoryTime;
-        		return true;
-        	}
-        	else if (membranePotential < 0.0f)
-        		membranePotential = 0.0f;
         }
-        // time wrapped around...
-        else if (timeInUs + Integer.MAX_VALUE/2 < lastSpikeTime) {
-        	//membranePotential *= Math.exp(((float)(lastIncreaseTime - timeInUs)) / tau);
+        else if (timeInUs < refractoredUntil || resetted) 
         	membranePotential = (float)value;
-        	lastIncreaseTime = timeInUs;
-        	if (membranePotential > threshold) {
-        		membranePotential = 0.0f;
-        		lastSpikeTime = timeInUs + refractoryTime;
-        		return true;
-        	}
-        	else if (membranePotential < 0.0f)
-        		membranePotential = 0.0f;
-        }
-		return false;
+        // still inside refractory time. Avoid further processing: 
+        else return false;
+
+    	lastIncreaseTime = timeInUs;
+    	resetted = false;
+    	if (membranePotential > threshold) {
+    		membranePotential = 0.0f;
+    		lastSpikeTime = timeInUs;
+    		refractoredUntil = timeInUs + refractoryTime;
+    		return true;
+    	}
+    	else if (membranePotential < 0.0f)
+    		membranePotential = 0.0f;
+   		return false;
 	}
 
 	/* (non-Javadoc)
@@ -76,9 +73,11 @@ public class LeakyIntegrateAndFire implements FiringModel {
 	 */
 	@Override
 	public void reset() {
-		this.lastSpikeTime = 0;
+		this.lastSpikeTime = Integer.MIN_VALUE;
 		this.membranePotential = 0.0f;
-		this.lastIncreaseTime = 0;
+		this.lastIncreaseTime = Integer.MIN_VALUE;
+		this.refractoredUntil = Integer.MIN_VALUE;
+		this.resetted = true;
 	}
 
 }

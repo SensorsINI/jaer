@@ -100,6 +100,7 @@ public class SpikingOutputViewer implements SpikeHandler {
 		}
 	}
 
+	@Override
 	public void reset() {
         synchronized (receivedSpikesBuffer) {
         	for (int x = 0; x < receivedSpikesBuffer.length; x++) {

@@ -70,11 +70,15 @@ public class ExpressionBasedIKUserInterface extends JFrame {
     		this.setLayout(layout);
     		viewerPanel = new JPanel();
             viewerPanel.setLayout(new BorderLayout());
-    		this.add(viewerPanel, BorderLayout.CENTER);
-    		viewerPanel.add(soViewer.getDisplay(), BorderLayout.CENTER);
+            viewerPanel.setBackground(Color.BLACK);
+
+
+            viewerPanel.add(soViewer.getDisplay(), BorderLayout.CENTER);
 //    		viewerPanel.setPreferredSize(new Dimension(400,400));
     		viewerPanel.validate();
             
+    		this.add(viewerPanel, BorderLayout.CENTER);
+    		
 //            GridBagConstraints c = new GridBagConstraints();
 //            c.fill=GridBagConstraints.HORIZONTAL;
 //            c.gridx=viewers.size() % 5;

@@ -33,6 +33,12 @@ public class SpikeHandlerSet implements SpikeHandler {
 		
 	}
 	
+	@Override
+	public void reset() {
+		for (SpikeHandler sh : spikeHandlers) 
+			sh.reset();
+	}
+
 	public boolean addSpikeHandler(SpikeHandler handler) {
 		if (!this.spikeHandlers.contains(handler)) {
 			spikeHandlers.add(handler);
@@ -48,4 +54,7 @@ public class SpikeHandlerSet implements SpikeHandler {
 		}
 		else return false;
 	}
+
+
+
 }
