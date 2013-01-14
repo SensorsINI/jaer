@@ -181,7 +181,7 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 		mainPanel.setPreferredSize(new Dimension(850,400));
 		this.pack();
 		this.setVisible(true);
-		addKernel(7,7,128,128,128,128,"0.05","0.05");
+//		addKernel(7,7,128,128,128,128,"0.05","0.05");
 	}
 	
 //	
