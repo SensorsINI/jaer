@@ -120,8 +120,10 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 //            out = null; // garbage collect
         	if (spikingOutputViewerManager != null)
         		spikingOutputViewerManager.kill();
-        	if (expressionBasedIKUserInterface != null)
+        	if (expressionBasedIKUserInterface != null) {
         		expressionBasedIKUserInterface.setVisible(false);
+        		expressionBasedIKUserInterface.savePrefs();
+        	}
         }
     }
 	
@@ -248,8 +250,20 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	 */
 	@Override
 	public void resetFilter() {
-		
+		synchronized (kernelProcessors) {
+			for (KernelProcessor kp : kernelProcessors) {
+				kp.reset();
+			}
+		}
 	}
+	
+	@Override
+	synchronized public void cleanup() {
+    	if (expressionBasedIKUserInterface != null) {
+    		expressionBasedIKUserInterface.savePrefs();
+    	}
+    }
+
 
 	
 //	@Override

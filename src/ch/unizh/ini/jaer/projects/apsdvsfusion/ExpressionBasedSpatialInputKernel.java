@@ -4,6 +4,7 @@
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
 import java.util.HashMap;
+import java.util.prefs.Preferences;
 
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -28,8 +29,8 @@ public class ExpressionBasedSpatialInputKernel implements InputKernel {
 	String onExpressionString = "0.01";
 	String offExpressionString = "0.01";
 	
-	ExpressionTreeNode onExpressionTree = null;
-	ExpressionTreeNode offExpressionTree = null;
+//	ExpressionTreeNode onExpressionTree = null;
+//	ExpressionTreeNode offExpressionTree = null;
 	
 	boolean evaluateExpressionAsReceptiveField = true;
 	float[][] onConvolutionValues = null;
@@ -167,7 +168,7 @@ public class ExpressionBasedSpatialInputKernel implements InputKernel {
 	}
 
 	@Override
-	public void apply(int tx, int ty, int time, Polarity polarity,
+	public synchronized void apply(int tx, int ty, int time, Polarity polarity,
 			FiringModelMap map, SpikeHandler spikeHandler) {
 		tx = tx - centerX + offsetX;
 		ty = ty - centerY + offsetY;
@@ -210,7 +211,27 @@ public class ExpressionBasedSpatialInputKernel implements InputKernel {
 		this.offsetY = offsetY;
 	}
 
+	public synchronized void savePrefs(Preferences prefs, String prefString) {
+		prefs.put(prefString+"onExpressionString", onExpressionString);
+		prefs.put(prefString+"offExpressionString", offExpressionString);
+		prefs.putInt(prefString+"width", width);
+		prefs.putInt(prefString+"height", height);
+		prefs.putInt(prefString+"centerX", centerX);
+		prefs.putInt(prefString+"centerY", centerY);
+		prefs.putInt(prefString+"offsetX", offsetX);
+		prefs.putInt(prefString+"offsetY", offsetY);
+	}
 	
-	
+	public synchronized void loadPrefs(Preferences prefs, String prefString) {
+		int width = prefs.getInt(prefString+"width", this.width);
+		int height = prefs.getInt(prefString+"height", this.height);
+		changeSize(width, height);
+		centerX = prefs.getInt(prefString+"centerX", centerX);
+		centerY = prefs.getInt(prefString+"centerY", centerY);
+		offsetX = prefs.getInt(prefString+"offsetX", offsetX);
+		offsetY = prefs.getInt(prefString+"offsetY", offsetY);
+		setOnExpressionString(prefs.get(prefString+"onExpressionString", onExpressionString));
+		setOffExpressionString(offExpressionString = prefs.get(prefString+"offExpressionString", offExpressionString));
+	}
 
 }

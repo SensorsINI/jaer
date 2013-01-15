@@ -47,10 +47,13 @@ public class LeakyIntegrateAndFire implements FiringModel {
 		}
 		// normal processing
         if (timeInUs > refractoredUntil) { // Refractory period
-        	membranePotential *= Math.exp(((float)(lastIncreaseTime - timeInUs)) / tau);
+        	if (lastIncreaseTime-timeInUs > 0)
+        		membranePotential = 0.0f;
+        	else
+        		membranePotential *= Math.exp(((float)(lastIncreaseTime - timeInUs)) / tau);
         	membranePotential += value;
         }
-        else if (timeInUs < refractoredUntil || resetted) 
+        else if (timeInUs < lastSpikeTime || resetted) 
         	membranePotential = (float)value;
         // still inside refractory time. Avoid further processing: 
         else return false;

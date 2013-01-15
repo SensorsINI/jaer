@@ -42,7 +42,7 @@ public class ArrayFiringModelMap implements FiringModelMap {
 		this(chip.getSizeX(), chip.getSizeY(), fmc);
 	}
 	
-	public void changeSize(int sizeX, int sizeY) {
+	public synchronized void changeSize(int sizeX, int sizeY) {
 		if (sizeX != this.sizeX || sizeY != this.sizeY) {
 			this.sizeX = sizeX;
 			this.sizeY = sizeY;

@@ -7,18 +7,26 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GraphicsConfiguration;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.HeadlessException;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Random;
+import java.util.prefs.Preferences;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
@@ -37,7 +45,8 @@ import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutput
 public class ExpressionBasedIKUserInterface extends JFrame {
 	private JPanel mainPanel = new JPanel();
 	private BorderLayout mainPanelLayout = new BorderLayout();
-	private JPanel viewerPanel = new JPanel();
+	private JPanel viewerPanel = new JPanel(new GridBagLayout());
+	private GridBagConstraints viewerPanelConstraints = new GridBagConstraints();
 	private SpatioTemporalFusion stfFilter;
 	SpikingOutputViewerManager spikingOutputViewerManager;
 	ExpressionBasedKernelEditDialog editDialog;
@@ -101,6 +110,7 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 				@Override
 				public void stateChanged(ChangeEvent arg0) {
 					setActivationState(enableBox.isSelected());
+					ExpressionBasedIKUserInterface.this.savePrefs();
 				}
 			});
     		editButton.addActionListener(new ActionListener() {
@@ -117,9 +127,23 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 			});
     		this.setBorder(BorderFactory.createLineBorder(Color.black));
     		this.validate();
+
+    	
     	}
+		public void savePrefs(Preferences prefs, String prefString) {
+			inputKernel.savePrefs(prefs, prefString+"inputKernel.");
+			kernelProcessor.savePrefs(prefs, prefString+"kernelProcessor.");
+			prefs.putBoolean(prefString+"enabled", kernelProcessor.isEnabled());
+		}
+		public void loadPrefs(Preferences prefs, String prefString) {
+			inputKernel.loadPrefs(prefs, prefString+"inputKernel.");
+			kernelProcessor.loadPrefs(prefs, prefString+"kernelProcessor.");
+			setActivationState(prefs.getBoolean(prefString+"enabled", kernelProcessor.isEnabled()));
+			
+		}
     	protected void setActivationState(boolean enabled) {
     		kernelProcessor.setEnabled(enabled);
+    		enableBox.setSelected(enabled);
     	}
     	protected void editKernel() {
 			editDialog.setParameters(inputKernel.getWidth(),
@@ -139,6 +163,7 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 						inputKernel.setOnExpressionString(editDialog.getOnExpressionString());
 						inputKernel.setOffExpressionString(editDialog.getOffExpressionString());
 						inputKernel.setInputOutputSizes(inputWidth, inputHeight, editDialog.getOutWidth(), editDialog.getOutHeight());
+						ExpressionBasedIKUserInterface.this.savePrefs();
 						ExpressionBasedIKUserInterface.this.pack();
 //						viewerPanel.add(soViewer.getDisplay());
 					}
@@ -150,6 +175,7 @@ public class ExpressionBasedIKUserInterface extends JFrame {
     		stfFilter.removeKernelProcessor(kernelProcessor);
     		spikingOutputViewerManager.removeOutputViewer(soViewer);
     		removePanel(this);
+			ExpressionBasedIKUserInterface.this.savePrefs();
     		ExpressionBasedIKUserInterface.this.pack();
     		ExpressionBasedIKUserInterface.this.repaint();
     		panels.remove(this);
@@ -162,6 +188,13 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 	 */
 	public ExpressionBasedIKUserInterface(SpatioTemporalFusion stfFilter, SpikingOutputViewerManager spikingOutputViewerManager) {
 		super("ConvolutionKernel-Viewer");
+		
+		viewerPanelConstraints.gridx = 0;
+		viewerPanelConstraints.gridy = 0;
+		viewerPanelConstraints.fill = GridBagConstraints.BOTH;
+		viewerPanelConstraints.weightx = 0.5;
+		viewerPanelConstraints.weighty = 0.5;
+		viewerPanelConstraints.insets = new Insets(5, 5, 5, 5);
 		editDialog = new ExpressionBasedKernelEditDialog(this);
 		this.spikingOutputViewerManager = spikingOutputViewerManager;
 		this.stfFilter = stfFilter;
@@ -174,15 +207,55 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				addKernel();
+				ExpressionBasedIKUserInterface.this.savePrefs();
 			} 
 		});
 		mainPanel.add(buttonPanel,BorderLayout.NORTH);
 		mainPanel.add(viewerPanel,BorderLayout.CENTER);
 		mainPanel.setPreferredSize(new Dimension(850,400));
+		
+		loadPrefs();
+		this.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent arg0) {
+				savePrefs();
+			}
+		});
+		
 		this.pack();
 		this.setVisible(true);
 //		addKernel(7,7,128,128,128,128,"0.05","0.05");
+		
 	}
+
+	protected void savePrefs() {
+		Preferences p = getPrefs();
+		p.putInt(makePrefString("kernelCount"), panels.size());
+		for (int i = 0; i < panels.size(); i++) {
+			ExpressionBasedSpatialIKPanel panel = panels.get(i);
+			panel.savePrefs(p, makePrefString("kernel"+i+"."));
+		}
+	}
+
+	protected void loadPrefs() {
+		Preferences p = getPrefs();
+		int panelCount = p.getInt(makePrefString("kernelCount"), panels.size());
+		panels.clear();
+		for (int i = 0; i < panelCount; i++) {
+			addKernel(3,3,128,128,128,128,"0.01","0.01");
+			panels.get(panels.size()-1).loadPrefs(p, makePrefString("kernel"+i+"."));
+		}
+	}
+	
+	protected Preferences getPrefs() {
+		return stfFilter.getPrefs();
+	}
+	
+	protected String makePrefString(String name) {
+		return "SpatioTemporalFusion.UserInterface."+name;
+	}
+	
+	
 	
 //	
 //	ArrayList<SimpleKernelProcessor> kernelProcessors = new ArrayList<SimpleKernelProcessor>();
@@ -194,7 +267,8 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 		final ExpressionBasedSpatialIKPanel soViewerPanel = new ExpressionBasedSpatialIKPanel(kernelWidth, kernelHeight, inputWidth, inputHeight, outputWidth, outputHeight, onExpressionString, offExpressionString);
 		if (SwingUtilities.isEventDispatchThread()) {
 			panels.add(soViewerPanel);
-			viewerPanel.add(soViewerPanel);
+			viewerPanel.add(soViewerPanel, viewerPanelConstraints);
+			viewerPanelConstraints.gridx++;
 			this.pack();
 		}
 		else {
@@ -202,7 +276,8 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 				@Override
 				public void run() {
 					panels.add(soViewerPanel);
-					viewerPanel.add(soViewerPanel);
+					viewerPanel.add(soViewerPanel, viewerPanelConstraints);
+					viewerPanelConstraints.gridx++;
 					ExpressionBasedIKUserInterface.this.pack();
 				}
 			});
@@ -216,7 +291,8 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 			ExpressionBasedSpatialIKPanel soViewerPanel = new ExpressionBasedSpatialIKPanel(editDialog.getKernelWidth(), editDialog.getKernelHeight(), 128,128,editDialog.getOutWidth(), editDialog.getOutHeight(), editDialog.getOnExpressionString(), editDialog.getOffExpressionString());
 
 			panels.add(soViewerPanel);
-			viewerPanel.add(soViewerPanel);
+			viewerPanel.add(soViewerPanel, viewerPanelConstraints);
+			viewerPanelConstraints.gridx++;
 			this.pack();
 		}
 		
@@ -268,6 +344,12 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 		SpikingOutputViewerManager spikingOutputViewerManager = new SpikingOutputViewerManager(); 
 		stfFilter.setFilterEnabled(true);
 		ExpressionBasedIKUserInterface ui = stfFilter.expressionBasedIKUserInterface;//new ExpressionBasedIKUserInterface(stfFilter, spikingOutputViewerManager);
+		ui.addWindowListener(new WindowAdapter() {
+			public void windowClosing(WindowEvent we) {
+				System.exit(0);
+			}
+		});
+		
 		Random r = new Random(1);
 		ui.addKernel(7,7,128,128,128,128,"0.05","0.05");
 		int time = 0;
@@ -286,6 +368,5 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 			}
 			stfFilter.filterPacket(ep);
 		}
-		System.exit(0);
 	}
 }

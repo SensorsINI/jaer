@@ -3,12 +3,16 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Frame;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
@@ -36,7 +40,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-import net.sf.jaer.graphics.ImageDisplay;
+//import net.sf.jaer.graphics.ImageDisplay;
 
 /**
  * @author Dennis
@@ -45,8 +49,8 @@ import net.sf.jaer.graphics.ImageDisplay;
 public class ExpressionBasedKernelEditDialog extends JDialog implements ActionListener, PropertyChangeListener {
 	JTextField onExpressionField = new JTextField();
 	JTextField offExpressionField = new JTextField();
-	ImageDisplay onConvolutionDisplay = ImageDisplay.createOpenGLCanvas();
-	ImageDisplay offConvolutionDisplay = ImageDisplay.createOpenGLCanvas();
+	NonGLImageDisplay onConvolutionDisplay = NonGLImageDisplay.createNonGLDisplay();
+	NonGLImageDisplay offConvolutionDisplay = NonGLImageDisplay.createNonGLDisplay();
 	//	int width = 5, height = 5;
 
 	ExpressionBasedSpatialInputKernel myExpressionKernel = new ExpressionBasedSpatialInputKernel(7, 7);
@@ -129,8 +133,8 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 	public ExpressionBasedKernelEditDialog(Frame aFrame) {
 		super(aFrame, "Edit kernel expressions", true);
 
-        onConvolutionDisplay.setBorderSpacePixels(18);
-        offConvolutionDisplay.setBorderSpacePixels(18);
+//        onConvolutionDisplay.setBorderSpacePixels(18);
+//        offConvolutionDisplay.setBorderSpacePixels(18);
 
 //		onConvolutionDisplay.setSize(300,300);
 		onConvolutionDisplay.setPreferredSize(new Dimension(250,250));
@@ -138,38 +142,54 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 		offConvolutionDisplay.setPreferredSize(new Dimension(250,250));
 //        onConvolutionDisplay.setTitleLabel("Range: [ "+myFormatter.format(min)+"   "+myFormatter.format(max)+" ] ");
 
-		JPanel myPanel = new JPanel(new SpringLayout());
+		JPanel inputPanel = new JPanel(new SpringLayout());
 //		this.setContentPane(myPanel);
 		JLabel jLabelOn = new JLabel("Expression for ON-Events:");
-		myPanel.add(jLabelOn);
-		myPanel.add(onExpressionField);
+		inputPanel.add(jLabelOn);
+		inputPanel.add(onExpressionField);
 		onExpressionField.setText(myExpressionKernel.getOnExpressionString());
 		jLabelOn.setLabelFor(onExpressionField);
 		JLabel jLabelOff = new JLabel("Expression for OFF-Events:");
-		myPanel.add(jLabelOff);
-		myPanel.add(offExpressionField);
+		inputPanel.add(jLabelOff);
+		inputPanel.add(offExpressionField);
 		offExpressionField.setText(myExpressionKernel.getOffExpressionString());
 		jLabelOff.setLabelFor(offExpressionField);
-		widthSpinner = addLabeledSpinner(myPanel, "Width", new SpinnerNumberModel(7, 1, 101, 2));
-		heightSpinner = addLabeledSpinner(myPanel, "Height", new SpinnerNumberModel(7, 1, 101, 2));
+		widthSpinner = addLabeledSpinner(inputPanel, "Width", new SpinnerNumberModel(7, 1, 101, 2));
+		heightSpinner = addLabeledSpinner(inputPanel, "Height", new SpinnerNumberModel(7, 1, 101, 2));
 
-		outWidthSpinner = addLabeledSpinner(myPanel, "Output field width", new SpinnerNumberModel(128, 1, 200, 1));
-		outHeightSpinner = addLabeledSpinner(myPanel, "Output field height", new SpinnerNumberModel(128, 1, 200, 1));
+		outWidthSpinner = addLabeledSpinner(inputPanel, "Output field width", new SpinnerNumberModel(128, 1, 200, 1));
+		outHeightSpinner = addLabeledSpinner(inputPanel, "Output field height", new SpinnerNumberModel(128, 1, 200, 1));
+		
 		
 		
 //		kernelFrame = new JFrame("Kernel values (left: ON, right: OFF)");
 		JPanel kernelFramePanel = new JPanel();
 //		kernelFrame.setContentPane(kernelFramePanel);
-        kernelFramePanel.setBackground(Color.BLACK);
-        kernelFramePanel.setLayout(new FlowLayout());
-        JPanel onPanel = new JPanel();
-        onPanel.setPreferredSize(new Dimension(250,250));
-        onPanel.add(onConvolutionDisplay);
-        JPanel offPanel = new JPanel();
-        offPanel.add(offConvolutionDisplay);
-        offPanel.setPreferredSize(new Dimension(250,250));
-		kernelFramePanel.add(onPanel);
-		kernelFramePanel.add(offPanel);
+//        kernelFramePanel.setBackground(Color.BLACK);
+//        kernelFramePanel.setLayout(new FlowLayout());
+        kernelFramePanel.setLayout(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+        c.fill = GridBagConstraints.BOTH;
+        c.weightx = 0.5;
+        c.weighty = 0.5;
+        c.gridx = 0;
+        c.gridy = 0;
+        c.ipadx = 5;
+        kernelFramePanel.add(onConvolutionDisplay,c);
+        c.gridx = 1;
+        c.insets = new Insets(0,10,0,0);
+        kernelFramePanel.add(offConvolutionDisplay,c);
+//        c.gridx = 2;
+//        kernelFramePanel.add(new JButton("Test"),c);
+        
+//        JPanel onPanel = new JPanel();
+//        onPanel.setPreferredSize(new Dimension(250,250));
+//        onPanel.add(onConvolutionDisplay);
+//        JPanel offPanel = new JPanel();
+//        offPanel.add(offConvolutionDisplay);
+//        offPanel.setPreferredSize(new Dimension(250,250));
+//		kernelFramePanel.add(onPanel);
+//		kernelFramePanel.add(offPanel);
 //		kernelFrame.pack();
 //		kernelFrame.setSize(450, 250);
 //		kernelFrame.setVisible(true);
@@ -254,12 +274,16 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 		});
 		
 		
-		makeCompactGrid(myPanel,6, 2, //rows, cols
+		makeCompactGrid(inputPanel,6, 2, //rows, cols
 				10, 10,        //initX, initY
                 6, 10);       //xPad, yPad			
 		
-
-		Object[] array = {myPanel, kernelFramePanel};
+		JPanel combinedPanel = new JPanel(new BorderLayout());
+		combinedPanel.add(inputPanel, BorderLayout.NORTH);
+		combinedPanel.add(kernelFramePanel, BorderLayout.CENTER);
+		
+		
+		Object[] array = {combinedPanel};
 		 
         //Create an array specifying the number of dialog buttons
         //and their text.
@@ -329,7 +353,7 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 ////		kernelFrame.setVisible(visible);
 //	}
 	
-    public void plot(final float[][] convolutionValues, final ImageDisplay display) {
+    public void plot(final float[][] convolutionValues, final NonGLImageDisplay display) {
         float max=Float.NEGATIVE_INFINITY;
         float min=Float.POSITIVE_INFINITY;
         for (int i=0; i<convolutionValues.length; i++)

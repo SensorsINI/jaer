@@ -3,6 +3,8 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
+import java.util.prefs.Preferences;
+
 import net.sf.jaer.event.PolarityEvent;
 
 /**
@@ -17,8 +19,8 @@ public class SimpleKernelProcessor extends KernelProcessor {
 
 	
 	
-	String onExpression = "1";//getPrefs().get("Expression", "1");
-	String offExpression = "1";//getPrefs().get("Expression", "1");
+//	String onExpression = "1";//getPrefs().get("Expression", "1");
+//	String offExpression = "1";//getPrefs().get("Expression", "1");
 
 
 	/**
@@ -48,21 +50,21 @@ public class SimpleKernelProcessor extends KernelProcessor {
 		spikeHandler.removeSpikeHandler(handler);
 	}
 	
-	public String getOnExpression() {
-		return onExpression;
-	}
-
-	public void setOnExpression(String onExpression) {
-		this.onExpression = onExpression;
-	}
-
-	public String getOffExpression() {
-		return offExpression;
-	}
-
-	public void setOffExpression(String offExpression) {
-		this.offExpression = offExpression;
-	}
+//	public String getOnExpression() {
+//		return onExpression;
+//	}
+//
+//	public void setOnExpression(String onExpression) {
+//		this.onExpression = onExpression;
+//	}
+//
+//	public String getOffExpression() {
+//		return offExpression;
+//	}
+//
+//	public void setOffExpression(String offExpression) {
+//		this.offExpression = offExpression;
+//	}
 
 	
 	@Override
@@ -78,5 +80,18 @@ public class SimpleKernelProcessor extends KernelProcessor {
 		firingModelMap.reset();
 		spikeHandler.reset();
 	}
+	public void savePrefs(Preferences prefs, String prefString) {
+		prefs.putInt(prefString+"outWidth",firingModelMap.getSizeX());
+		prefs.putInt(prefString+"outHeight",firingModelMap.getSizeY());
+	}
 
+	
+	public void loadPrefs(Preferences prefs, String prefString) {
+		int sizeX = prefs.getInt(prefString+"outWidth",firingModelMap.getSizeX());
+		int sizeY = prefs.getInt(prefString+"outHeight",firingModelMap.getSizeY());
+		firingModelMap.changeSize(sizeX, sizeY);
+	}
+	
+	
+	
 }

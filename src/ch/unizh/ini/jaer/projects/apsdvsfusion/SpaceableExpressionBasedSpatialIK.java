@@ -3,6 +3,8 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
+import java.util.prefs.Preferences;
+
 import net.sf.jaer.event.PolarityEvent.Polarity;
 
 /**
@@ -59,7 +61,7 @@ public class SpaceableExpressionBasedSpatialIK extends
 				+ (spacingY * (outputHeight + 2));
 	}
 	
-	public void apply(int tx, int ty, int time, Polarity polarity,
+	public synchronized void apply(int tx, int ty, int time, Polarity polarity,
 			FiringModelMap map, SpikeHandler spikeHandler) {
 		int kx = (kernelOffsetX - tx) % spacingX;
 		int ox = (outputWidth + 1) - (kernelOffsetX - tx) / spacingX; 
@@ -84,18 +86,50 @@ public class SpaceableExpressionBasedSpatialIK extends
 		
 		int maxOx = map.getSizeX();
 		int maxOy = map.getSizeY();
-		while (ox < maxOx && kx < width) {
-			int ky = kyInitial, oy = oyInitial;
-			while (oy < maxOy && ky < height) {
-				if (map.get(ox,oy).receiveSpike(convolutionValues[kx][ky], time)) {
-					spikeHandler.spikeAt(ox,oy,time, Polarity.On);
+		// nonsense for debugging...
+		if (convolutionValues.length < width) {
+			maxOx = map.getSizeX();
+		}
+		if (ox < maxOx && kx < width && kyInitial < height && oyInitial < maxOy) {
+			synchronized (map) {
+				while (ox < maxOx && kx < width) {
+					int ky = kyInitial, oy = oyInitial;
+					while (oy < maxOy && ky < height) {
+						if (map.get(ox,oy).receiveSpike(convolutionValues[kx][ky], time)) {
+							spikeHandler.spikeAt(ox,oy,time, Polarity.On);
+						}
+						ky += spacingY;
+						oy ++;
+					}
+					kx += spacingX;
+					ox ++;
 				}
-				ky += spacingY;
-				oy ++;
 			}
-			kx += spacingX;
-			ox ++;
 		}
 	}
+	
+	public synchronized void savePrefs(Preferences prefs, String prefString) {
+		super.savePrefs(prefs, prefString);
+		prefs.putInt(prefString+"spacingX",spacingX);
+		prefs.putInt(prefString+"spacingY",spacingY);
+		prefs.putInt(prefString+"kernelOffsetX",kernelOffsetX);
+		prefs.putInt(prefString+"kernelOffsetX",kernelOffsetY);
+		prefs.putInt(prefString+"inputWidth",inputWidth);
+		prefs.putInt(prefString+"inputHeight",inputHeight);
+		prefs.putInt(prefString+"outputWidth",outputWidth);
+		prefs.putInt(prefString+"outputHeight",outputHeight);
+	}
 
+	
+	public synchronized void loadPrefs(Preferences prefs, String prefString) {
+		spacingX = prefs.getInt(prefString+"spacingX",spacingX);
+		spacingY = prefs.getInt(prefString+"spacingY",spacingY);
+		kernelOffsetX = prefs.getInt(prefString+"kernelOffsetX",kernelOffsetX);
+		kernelOffsetY = prefs.getInt(prefString+"kernelOffsetX",kernelOffsetY);
+		inputWidth = prefs.getInt(prefString+"inputWidth",inputWidth);
+		inputHeight = prefs.getInt(prefString+"inputHeight",inputHeight);
+		outputWidth = prefs.getInt(prefString+"outputWidth",outputWidth);
+		outputHeight = prefs.getInt(prefString+"outputHeight",outputHeight);
+		super.loadPrefs(prefs, prefString);
+	}
 }
