@@ -11,8 +11,12 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.HeadlessException;
 import java.awt.Insets;
+import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
@@ -51,6 +55,7 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 	SpikingOutputViewerManager spikingOutputViewerManager;
 	ExpressionBasedKernelEditDialog editDialog;
 	ArrayList<ExpressionBasedSpatialIKPanel> panels = new ArrayList<ExpressionBasedIKUserInterface.ExpressionBasedSpatialIKPanel>();
+	int grayLevels = -1;
 	
     public class ExpressionBasedSpatialIKPanel extends JPanel {
     	SpikingOutputViewer soViewer;
@@ -125,6 +130,7 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 					deleteKernel();
 				}
 			});
+    		
     		this.setBorder(BorderFactory.createLineBorder(Color.black));
     		this.validate();
 
@@ -139,7 +145,8 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 			inputKernel.loadPrefs(prefs, prefString+"inputKernel.");
 			kernelProcessor.loadPrefs(prefs, prefString+"kernelProcessor.");
 			setActivationState(prefs.getBoolean(prefString+"enabled", kernelProcessor.isEnabled()));
-			
+			soViewer.changeSize(kernelProcessor.getOutWidth(), kernelProcessor.getOutHeight());
+			this.validate();
 		}
     	protected void setActivationState(boolean enabled) {
     		kernelProcessor.setEnabled(enabled);
@@ -154,8 +161,8 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 					inputKernel.getOffExpressionString());
 			editDialog.setVisible(true);
 			if (editDialog.isValuesAccepted()) {
-				synchronized (inputKernel) {
-					synchronized (kernelProcessor) {
+				synchronized (kernelProcessor) {
+					synchronized (inputKernel) {
 //						viewerPanel.remove(soViewer.getDisplay());
 						inputKernel.changeSize(editDialog.getKernelWidth(), editDialog.getKernelHeight());
 						kernelProcessor.changeOutSize(editDialog.getOutWidth(), editDialog.getOutHeight());
@@ -175,10 +182,10 @@ public class ExpressionBasedIKUserInterface extends JFrame {
     		stfFilter.removeKernelProcessor(kernelProcessor);
     		spikingOutputViewerManager.removeOutputViewer(soViewer);
     		removePanel(this);
+    		panels.remove(this);
 			ExpressionBasedIKUserInterface.this.savePrefs();
     		ExpressionBasedIKUserInterface.this.pack();
     		ExpressionBasedIKUserInterface.this.repaint();
-    		panels.remove(this);
     	}
     	
     }
@@ -222,14 +229,63 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 			}
 		});
 		
+		this.addComponentListener(new ComponentAdapter() {
+			@Override
+			public void componentResized(ComponentEvent arg0) {
+				saveWindowBounds();
+			}
+			@Override
+			public void componentMoved(ComponentEvent arg0) {
+				saveWindowBounds();
+			}
+		});
+
 		this.pack();
+		loadWindowBounds();
 		this.setVisible(true);
+		setGrayLevels(getPrefs().getInt(makePrefString("grayLevels"), 4));
 //		addKernel(7,7,128,128,128,128,"0.05","0.05");
 		
 	}
 
+	public int getGrayLevels() {
+		return grayLevels;
+	}
+
+	public void setGrayLevels(int grayLevels) {
+		if (this.grayLevels != grayLevels) {
+			this.grayLevels = grayLevels;
+			for (ExpressionBasedSpatialIKPanel panel : panels) {
+				panel.soViewer.setGrayLevels(grayLevels);
+			}
+			getPrefs().putInt(makePrefString("grayLevels"), grayLevels);			
+		}
+		
+	}
+	
+	protected void saveWindowBounds() {
+		Preferences p = getPrefs();
+		Rectangle rect = this.getBounds();
+		p.putDouble(makePrefString("windowX"), rect.getX());
+		p.putDouble(makePrefString("windowY"), rect.getY());
+		p.putDouble(makePrefString("windowWidth"), rect.getWidth());
+		p.putDouble(makePrefString("windowHeight"), rect.getHeight());
+	}
+	
+	protected void loadWindowBounds() {
+		Preferences p = getPrefs();
+		
+		Rectangle rect = this.getBounds();
+		this.setBounds(new Rectangle((int)p.getDouble(makePrefString("windowX"), rect.getX()),
+				(int)p.getDouble(makePrefString("windowY"), rect.getY()),
+				(int)p.getDouble(makePrefString("windowWidth"), rect.getWidth()),
+				(int)p.getDouble(makePrefString("windowHeight"), rect.getHeight())));
+	}
+	
 	protected void savePrefs() {
 		Preferences p = getPrefs();
+		saveWindowBounds();
+		
 		p.putInt(makePrefString("kernelCount"), panels.size());
 		for (int i = 0; i < panels.size(); i++) {
 			ExpressionBasedSpatialIKPanel panel = panels.get(i);
@@ -239,6 +295,8 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 
 	protected void loadPrefs() {
 		Preferences p = getPrefs();
+		loadWindowBounds();
+
 		int panelCount = p.getInt(makePrefString("kernelCount"), panels.size());
 		panels.clear();
 		for (int i = 0; i < panelCount; i++) {
@@ -269,7 +327,8 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 			panels.add(soViewerPanel);
 			viewerPanel.add(soViewerPanel, viewerPanelConstraints);
 			viewerPanelConstraints.gridx++;
-			this.pack();
+			this.validate();
+			this.repaint();
 		}
 		else {
 			SwingUtilities.invokeLater(new Runnable() {
@@ -278,7 +337,8 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 					panels.add(soViewerPanel);
 					viewerPanel.add(soViewerPanel, viewerPanelConstraints);
 					viewerPanelConstraints.gridx++;
-					ExpressionBasedIKUserInterface.this.pack();
+					ExpressionBasedIKUserInterface.this.validate();
+					ExpressionBasedIKUserInterface.this.repaint();
 				}
 			});
 		}
@@ -293,7 +353,8 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 			panels.add(soViewerPanel);
 			viewerPanel.add(soViewerPanel, viewerPanelConstraints);
 			viewerPanelConstraints.gridx++;
-			this.pack();
+			this.validate();
+			this.repaint();
 		}
 		
 		

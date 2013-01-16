@@ -84,7 +84,9 @@ public class Sparsify extends EventFilter2D {
     
     public int polarityPass=0;  // (a)ll, (b)lack, (w)hite
 
+    Random rand = new Random();
 
+    
     // Deal with incoming packet
     @Override 
     public EventPacket<?> filterPacket( EventPacket<?> P){
@@ -103,15 +105,28 @@ public class Sparsify extends EventFilter2D {
 
             out.setEventClass(PolarityEvent.class);
             int eventLimit = (maxFreq>=0)?(int)(P.getSize()*maxFreq/rate):P.getSize();
+            int totalEvents = P.getSize();
+        	PolarityEvent.Polarity pol = (polarityPass < 0)?PolarityEvent.Polarity.Off:PolarityEvent.Polarity.Off;
+            if (polarityPass != 0) {
+            	totalEvents = 0;
+	            for (Object p:P)  {
+	            	PolarityEvent e=(PolarityEvent) p;
+	            	if (e.polarity == pol) 
+	            		totalEvents++;
+	            }
+            }
             for (Object p:P)  { 
             	// iterate over the input packet**
             	PolarityEvent e=(PolarityEvent) p;// P.getEvent(i);
-            	if ((polarityPass==0) || (polarityPass<0 && (e.polarity==e.polarity.Off)) || (polarityPass>0 && (e.polarity==e.polarity.On))) {   
-            		PolarityEvent x=(PolarityEvent)outItr.nextOutput();  // make an output event**
-            		x.copyFrom(e);
-            		eventLimit--;
-            		if (eventLimit <= 0)
-            			break;
+				if ((polarityPass == 0) || (e.polarity == pol)) {
+					if (rand.nextInt(totalEvents) < eventLimit) {
+	            		PolarityEvent x=(PolarityEvent)outItr.nextOutput();  // make an output event**
+	            		x.copyFrom(e);
+	            		eventLimit--;
+	            		if (eventLimit <= 0)
+	            			break;
+					}
+					totalEvents--;
             	}
             }
 

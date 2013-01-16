@@ -24,7 +24,16 @@ public class SpikingOutputViewer implements SpikeHandler {
     float[] state;  // Array of unit states.
 	public int[][] receivedSpikes;
 	public int[][] receivedSpikesBuffer;
-    
+    int grayLevels;
+	
+	public int getGrayLevels() {
+		return grayLevels;
+	}
+
+	public void setGrayLevels(int grayLevels) {
+		this.grayLevels = grayLevels;
+	}
+
 	public SpikingOutputViewer(int sizeX, int sizeY)    {
     	changeSize(sizeX, sizeY);
         display = NonGLImageDisplay.createNonGLDisplay();
@@ -84,8 +93,12 @@ public class SpikingOutputViewer implements SpikeHandler {
                     		for (int y = 0; y < receivedSpikesBuffer[x].length; y++) {
                     			int value = receivedSpikesBuffer[x][y];
                     			receivedSpikesBuffer[x][y] = 0;
-                    			if (value > maxValueInBuffer) value = maxValueInBuffer;
-                    			display.setPixmapGray(x, y, (float)value / (float)maxValueInBuffer);
+//                    			if (value > maxValueInBuffer) value = maxValueInBuffer;
+//                    			display.setPixmapGray(x, y, (float)value / (float)maxValueInBuffer);
+                    			if (value < grayLevels)
+                    				display.setPixmapGray(x, y, (float)value / (float)grayLevels);
+                    			else
+                    				display.setPixmapGray(x, y, 1.0f);
                     		}
                     	}
                     }
