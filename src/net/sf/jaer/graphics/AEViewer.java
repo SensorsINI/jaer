@@ -4179,7 +4179,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //        log.info("doSingleStep");
         setPaused(true); // better to set paused before single step starts
         setDoSingleStepEnabled(true);
-        interruptViewloop();
+//        interruptViewloop();
     }
 
     public void setDoSingleStepEnabled(boolean yes) {
