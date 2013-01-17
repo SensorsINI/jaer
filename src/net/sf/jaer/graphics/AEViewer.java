@@ -1661,11 +1661,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             while (stop == false/*&& !isInterrupted()*/) { // the only way to break out of the run loop is either setting stop true or by some uncaught exception.
                 // now getString the data to be displayed
-                if (!isPaused() || isSingleStep()) {
+                if (!isPaused() || isSingleStep() && !isInterrupted()) { // we check interrupted to make sure we are not getting data after being interrupted
 //                    if(isSingleStep()){
 //                        log.info("getting data for single step");
 //                    }
-                    // if !paused we always getString data. below, if singleStepEnabled, we set paused after getting data.
+                    // if !paused we always get data. below, if singleStepEnabled, we set paused after getting data.
                     // when the user unpauses via menu, we disable singleStepEnabled
                     // another flag, doSingleStep, tells loop to do a single data acquisition and then pause again
                     // in this branch, getString new data to show
@@ -2200,7 +2200,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     try {
                         wait(1000);
                     } catch (java.lang.InterruptedException e) {
-//                        log.log(Level.INFO, "viewLoop idle wait() was interrupted: {0}", e.toString());
+                        log.log(Level.INFO, "viewLoop idle wait() was interrupted: {0}", e.toString());
                     }
                 }
             }
@@ -2658,7 +2658,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
-        bindingGroup = new org.jdesktop.beansbinding.BindingGroup();
 
         jProgressBar1 = new javax.swing.JProgressBar();
         renderModeButtonGroup = new javax.swing.ButtonGroup();
@@ -2819,9 +2818,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         buttonsPanel.setMaximumSize(new java.awt.Dimension(1002, 200));
         buttonsPanel.setLayout(new javax.swing.BoxLayout(buttonsPanel, javax.swing.BoxLayout.X_AXIS));
 
-        biasesToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10));
-        biasesToggleButton.setText("Biases");
-        biasesToggleButton.setToolTipText("Shows or hides the bias generator control panel");
+        biasesToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
+        biasesToggleButton.setText("HW Configuration");
+        biasesToggleButton.setToolTipText("Shows or hides the hardware configuration (e.g. bias generator, scanner, ADC, etc) control panel");
         biasesToggleButton.setAlignmentY(0.0F);
         biasesToggleButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
         biasesToggleButton.addActionListener(new java.awt.event.ActionListener() {
@@ -2831,7 +2830,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         buttonsPanel.add(biasesToggleButton);
 
-        filtersToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10));
+        filtersToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
         filtersToggleButton.setText("Filters");
         filtersToggleButton.setToolTipText("Shows or hides the filter window");
         filtersToggleButton.setAlignmentY(0.0F);
@@ -2843,7 +2842,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         buttonsPanel.add(filtersToggleButton);
 
-        dontRenderToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10));
+        dontRenderToggleButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
         dontRenderToggleButton.setText("Don't render");
         dontRenderToggleButton.setToolTipText("Disables rendering to spped up processing");
         dontRenderToggleButton.setAlignmentY(0.0F);
@@ -2855,7 +2854,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         buttonsPanel.add(dontRenderToggleButton);
 
-        loggingButton.setFont(new java.awt.Font("Tahoma", 0, 10));
+        loggingButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
         loggingButton.setMnemonic('l');
         loggingButton.setText("Start logging");
         loggingButton.setToolTipText("Starts or stops logging or relogging");
@@ -2863,7 +2862,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         loggingButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
         buttonsPanel.add(loggingButton);
 
-        multiModeButton.setFont(new java.awt.Font("Tahoma", 0, 10));
+        multiModeButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
         multiModeButton.setMnemonic('l');
         multiModeButton.setText("Multi-Input Mode");
         multiModeButton.setToolTipText("Starts or stops logging or relogging");
@@ -2887,12 +2886,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jPanel1.setLayout(new java.awt.BorderLayout());
 
         statusTextField.setEditable(false);
-        statusTextField.setFont(new java.awt.Font("Tahoma", 0, 10));
+        statusTextField.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
         statusTextField.setToolTipText("Status messages show here");
         statusTextField.setFocusable(false);
         jPanel1.add(statusTextField, java.awt.BorderLayout.CENTER);
 
-        showConsoleOutputButton.setFont(new java.awt.Font("Tahoma", 0, 10));
+        showConsoleOutputButton.setFont(new java.awt.Font("Tahoma", 0, 10)); // NOI18N
         showConsoleOutputButton.setText("Console");
         showConsoleOutputButton.setToolTipText("Shows console output window");
         showConsoleOutputButton.setFocusable(false);
@@ -3200,8 +3199,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         viewBiasesMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_B, java.awt.event.InputEvent.CTRL_MASK));
         viewBiasesMenuItem.setMnemonic('b');
-        viewBiasesMenuItem.setText("Biases");
-        viewBiasesMenuItem.setToolTipText("Shows chip or board biasing controls");
+        viewBiasesMenuItem.setText("Biases/HW Configuration");
+        viewBiasesMenuItem.setToolTipText("Shows chip or board configuration controls");
         viewBiasesMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 viewBiasesMenuItemActionPerformed(evt);
@@ -3409,10 +3408,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         pauseRenderingCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_SPACE, 0));
         pauseRenderingCheckBoxMenuItem.setText("Paused");
-
-        org.jdesktop.beansbinding.Binding binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${paused}"), pauseRenderingCheckBoxMenuItem, org.jdesktop.beansbinding.BeanProperty.create("selected"));
-        bindingGroup.addBinding(binding);
-
+        pauseRenderingCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                pauseRenderingCheckBoxMenuItemActionPerformed(evt);
+            }
+        });
         viewMenu.add(pauseRenderingCheckBoxMenuItem);
 
         viewSingleStepMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PERIOD, 0));
@@ -3566,9 +3566,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         interfaceMenu.setText("Interface");
         interfaceMenu.setToolTipText("Select the HW interface to use");
         interfaceMenu.addMenuListener(new javax.swing.event.MenuListener() {
-            public void menuCanceled(javax.swing.event.MenuEvent evt) {
-            }
             public void menuDeselected(javax.swing.event.MenuEvent evt) {
+            }
+            public void menuCanceled(javax.swing.event.MenuEvent evt) {
             }
             public void menuSelected(javax.swing.event.MenuEvent evt) {
                 interfaceMenuMenuSelected(evt);
@@ -3756,8 +3756,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         menuBar.add(helpMenu);
 
         setJMenuBar(menuBar);
-
-        bindingGroup.bind();
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
@@ -4179,7 +4177,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     synchronized public void doSingleStep() {
 //        log.info("doSingleStep");
+        setPaused(true); // better to set paused before single step starts
         setDoSingleStepEnabled(true);
+        interruptViewloop();
     }
 
     public void setDoSingleStepEnabled(boolean yes) {
@@ -4195,7 +4195,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     synchronized public void singleStepDone() {
         if (isSingleStep()) {
             setDoSingleStepEnabled(false);
-            setPaused(true);
+//            setPaused(true); // it is already set by doSingleStep
         }
 //        caviarViewer.getSyncPlayer().singleStepDone();
     }
@@ -5377,6 +5377,10 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
 //        jaerViewer.launchMultiModeViewer();
     }//GEN-LAST:event_multiModeButtonActionPerformed
 
+    private void pauseRenderingCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_pauseRenderingCheckBoxMenuItemActionPerformed
+        setPaused(pauseRenderingCheckBoxMenuItem.isSelected());
+    }//GEN-LAST:event_pauseRenderingCheckBoxMenuItemActionPerformed
+
     /** Returns desired frame rate of FrameRater
      * 
      * @return desired frame rate in Hz. 
@@ -5412,7 +5416,8 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
 //        log.info("settings paused=" + paused);
         boolean old = isPaused();
         jaerViewer.getSyncPlayer().setPaused(paused);
-        interruptViewloop();  // to break out of exchangeers that might be waiting
+        pauseRenderingCheckBoxMenuItem.setSelected(paused);
+        interruptViewloop();  // to break out of exchangeers that might be waiting, problem is that it also interrupts a singleStep ....
         firePropertyChange(EVENT_PAUSED, old, isPaused());
     }
 
@@ -6014,6 +6019,5 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
     private javax.swing.JMenuItem zoomCenterMenuItem;
     private javax.swing.JMenuItem zoomInMenuItem;
     private javax.swing.JMenuItem zoomOutMenuItem;
-    private org.jdesktop.beansbinding.BindingGroup bindingGroup;
     // End of variables declaration//GEN-END:variables
 }

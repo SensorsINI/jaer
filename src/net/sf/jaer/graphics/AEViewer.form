@@ -331,8 +331,8 @@
                   <KeyStroke key="Ctrl+B"/>
                 </Property>
                 <Property name="mnemonic" type="int" value="98"/>
-                <Property name="text" type="java.lang.String" value="Biases"/>
-                <Property name="toolTipText" type="java.lang.String" value="Shows chip or board biasing controls"/>
+                <Property name="text" type="java.lang.String" value="Biases/HW Configuration"/>
+                <Property name="toolTipText" type="java.lang.String" value="Shows chip or board configuration controls"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewBiasesMenuItemActionPerformed"/>
@@ -576,9 +576,9 @@
                 </Property>
                 <Property name="text" type="java.lang.String" value="Paused"/>
               </Properties>
-              <BindingProperties>
-                <BindingProperty name="selected" source="Form" sourcePath="${paused}" target="pauseRenderingCheckBoxMenuItem" targetPath="selected" updateStrategy="0" immediately="false"/>
-              </BindingProperties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="pauseRenderingCheckBoxMenuItemActionPerformed"/>
+              </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="viewSingleStepMenuItem">
               <Properties>
@@ -1051,8 +1051,8 @@
                 <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
                   <Font name="Tahoma" size="10" style="0"/>
                 </Property>
-                <Property name="text" type="java.lang.String" value="Biases"/>
-                <Property name="toolTipText" type="java.lang.String" value="Shows or hides the bias generator control panel"/>
+                <Property name="text" type="java.lang.String" value="HW Configuration"/>
+                <Property name="toolTipText" type="java.lang.String" value="Shows or hides the hardware configuration (e.g. bias generator, scanner, ADC, etc) control panel"/>
                 <Property name="alignmentY" type="float" value="0.0"/>
                 <Property name="margin" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
                   <Insets value="[2, 2, 2, 2]"/>
