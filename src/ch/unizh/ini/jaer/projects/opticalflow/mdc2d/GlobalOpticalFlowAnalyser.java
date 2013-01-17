@@ -21,7 +21,7 @@ import java.util.logging.Logger;
 
 /**
  * When streaming frames containing global motion vectors, use this class
- * to save the vectors and some of the frame data and to write it subsequently
+ * to save the vectors in RAM and some of the frame data and to write it subsequently
  * to the disk in <code>.csv</code> format for further analysis.
  * <br /><br />
  * 
@@ -31,6 +31,23 @@ import java.util.logging.Logger;
  * 
  * the data is only stored in memory and has to be written to the disk by
  * calling <code>storeData</code>, once the analysis is finished
+ * 
+ * 
+The class "GlobalOpticalFlowAnalyser"  will write all motion data
+(global flow x/y as well as some of the raw frame data) to a directory
+as used by Andi Steiner's python scripts (basically a text file
+containing recording settings such as channel fps etc and a csv file
+containing the data). You can directly call the methods
+startAnalysis() and stopAnalysis() on the hardware interface
+dsPIC33F_COM_OpticalFlowHardwareInterface. the directories will be
+created in the current working directory unless this is changed in the
+source of GlobalOpticalFlowAnalyser [1]. note that no new thread is
+created for writing the data to disk. the parameter 'saveRate' was
+mainly used for debugging (calculating global flow on the computer and
+compare it to the firmware output) and can only be used if the raw
+data is  streamed (unchecked checkbox "pixels" in the GUI).
+
+* 
  * 
  * @author andstein
  */
@@ -42,7 +59,7 @@ public class GlobalOpticalFlowAnalyser {
     protected int frameSaveRate= 100;
 
     /** directory where all data will be stored */
-    public static final String storagePath= ".";
+    public static final String storagePath= "."; // startup folder
     
     protected String dirName;
     protected boolean dataStored= false;
@@ -128,7 +145,7 @@ public class GlobalOpticalFlowAnalyser {
         File destinationDirectory;
         
         if (!storageDir.isDirectory()) 
-            throw new IOException(storagePath + " does not exist");
+            throw new IOException(storagePath + " folder does not exist or is not a directory");
         else {
             int i=0;
             do {
@@ -137,8 +154,8 @@ public class GlobalOpticalFlowAnalyser {
             } while(destinationDirectory.exists());
 
             destinationDirectory.mkdir();
-            log.info("storing data to " + destinationDirectory.getCanonicalPath());
-        }
+            log.info("writing memory logged data to folder " + destinationDirectory.getAbsolutePath()+ " from startup folder "+System.getProperties().getProperty("user.dir"));
+       }
 
         // generate general info, including lost frames etc
         BufferedWriter infoWriter= new BufferedWriter(new FileWriter(destinationDirectory.getPath() + File.separator + infoFileName));
@@ -411,4 +428,11 @@ public class GlobalOpticalFlowAnalyser {
         }
         
     }
+
+    @Override
+    public String toString() {
+        return "GlobalOpticalFlowAnalyser dirName="+dirName+" storagePath="+storagePath+" bogusFrames="+bogusFrames+" streamingErrors="+streamingErrors;
+    }
+    
+    
 }

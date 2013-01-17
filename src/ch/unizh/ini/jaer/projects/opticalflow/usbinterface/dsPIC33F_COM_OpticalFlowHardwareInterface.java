@@ -11,7 +11,6 @@ import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MotionDataMDC2D;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 import net.sf.jaer.biasgen.Biasgen;
@@ -20,6 +19,7 @@ import net.sf.jaer.biasgen.VDAC.VPot;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 import ch.unizh.ini.jaer.projects.dspic.serial.*;
+import ch.unizh.ini.jaer.projects.opticalflow.graphics.MotionViewer;
 import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.GlobalOpticalFlowAnalyser;
 import com.phidgets.PhidgetException;
 import com.phidgets.SpatialEventData;
@@ -27,11 +27,15 @@ import com.phidgets.SpatialPhidget;
 import com.phidgets.event.*;
 
 import gnu.io.PortInUseException;
+import java.io.File;
+import java.net.SocketException;
 import java.util.*;
-import java.util.logging.Level;
 import java.util.prefs.Preferences;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import net.sf.jaer.util.RemoteControl;
+import net.sf.jaer.util.RemoteControlCommand;
+import net.sf.jaer.util.RemoteControlled;
 
 
 /**
@@ -69,7 +73,7 @@ import javax.swing.SwingUtilities;
 
 public class dsPIC33F_COM_OpticalFlowHardwareInterface
         implements MotionChipInterface,StreamCommandListener,
-        SpatialDataListener, ErrorListener, AttachListener, DetachListener {
+        SpatialDataListener, ErrorListener, AttachListener, DetachListener, RemoteControlled {
 
     static final Logger log=Logger.getLogger(dsPIC33F_COM_OpticalFlowHardwareInterface.class.getName());
     static Preferences prefs = Preferences.userNodeForPackage(dsPIC33F_COM_OpticalFlowHardwareInterface.class);
@@ -121,6 +125,9 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
     // for collecting & analysing global motion calculation data
     protected GlobalOpticalFlowAnalyser analyser= null;
     protected boolean analysing= false;
+       public final String REMOTE_START_ANALYSIS = "startAnalysis";
+    public final String REMOTE_STOP_ANALYSIS = "stopAnalysis";
+   private RemoteControl remoteControl = null; 
     
     // phidget data is simply saved in listener and transfered to message
     // in worker thread
@@ -294,7 +301,16 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         } catch (PhidgetException ex) {
             log.warning("could not phidget.lopenAny(): "+ex);
         }
-    
+      // add remote control commands
+        try {
+            remoteControl = new RemoteControl(MotionViewer.REMOTE_CONTROL_PORT);
+            remoteControl.addCommandListener(this, REMOTE_START_ANALYSIS + " <pathname> <skipframes>", "starts logging raw motion sensor data to a directory pathname. Several files will be logged there. 2 sequential raw pixel image frames will be logged every skipframe frames.");
+            remoteControl.addCommandListener(this, REMOTE_STOP_ANALYSIS, "stops logging raw data to a file"); // see processRemoteControlCommand
+            log.info("created " + remoteControl + " for remote control of some MotionViewer functions");
+        } catch (SocketException ex) {
+            log.warning(ex.toString());
+        }
+   
     }
 
     
@@ -1076,10 +1092,15 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
      * 
      * @param name of the directory where to save the 
      * @param saveRate 2 out of <code>saveRate</code> frames will be stored with
-     *      all their pixel values
+     *      all their pixel values, otherwise only global motion signals will be stored. 
+     * (Two frames are stored to allow offline motion analysis for those successive frames).
      * @see GlobalOpticalFlowAnalyser
      */
     public void startAnalysis(String name,int saveRate) { 
+        if(isAnalysing()){
+            log.warning("already analyzing on "+analyser);
+            return;
+        }
         analyser= new GlobalOpticalFlowAnalyser(this,name,saveRate); 
         analysing= true;
     }
@@ -1098,6 +1119,10 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
      * @see #startAnalysis
      */
     public void  stopAnalysis() { 
+        if(!isAnalysing()){
+            log.warning("analysis was not running");
+            return;
+        }
         analysing= false;
         analyser.finish(); 
         analyser= null; 
@@ -1698,4 +1723,38 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
             //System.err.println("got data + "+phidgetData.getAngularRate());
         }
     }
+    
+         /** Processes remote control commands for this AEViewer. A list of commands can be obtained
+     * from a remote host by sending ? or help. The port number is logged to the console on startup.
+     * @param command the parsed command (first token)
+     * @param line the line sent from the remote host.
+     * @return confirmation of command.
+     */
+    public String processRemoteControlCommand(RemoteControlCommand command, String line) {
+        String[] tokens = line.split("\\s");
+        log.finer("got command " + command + " with line=\"" + line + "\"");
+        try {
+            if (command.getCmdName().equals(REMOTE_START_ANALYSIS)) {
+                if (tokens.length < 3) {
+                    return "not enough arguments, needs pathname and skipframes, e.g. startAnalysis testfolder 100\n";
+                }
+                String f = tokens[1].toString();
+                int skipframes=Integer.parseInt(tokens[2].toString());
+                startAnalysis(f, skipframes);
+                if (f == null) {
+                    return "Couldn't start analysis to directory=" + f + ", startAnalysis returned " + f + "\n";
+                } else {
+                    return "starting analysis logging to " + f + "\n";
+                }
+            } else if (command.getCmdName().equals(REMOTE_STOP_ANALYSIS)) {
+                stopAnalysis();
+                return "stopped analysis\n";
+            }
+        } catch (Exception e) {
+            log.warning(e.toString());
+            return e.toString() + "\n";
+        }
+        return null;
+    }
+
 }

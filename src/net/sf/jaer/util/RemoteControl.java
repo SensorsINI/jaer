@@ -116,7 +116,7 @@ public class RemoteControl /* implements RemoteControlled */{
         } catch ( SocketException e ){
             throw new SocketException(e + " on port " + port);
         }
-        log.info("Constructed " + this);
+        log.info("Constructed uninitialized and empty " + this);
         ( T = new RemoteControlDatagramSocketThread() ).start();
     }
 

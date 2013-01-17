@@ -860,7 +860,7 @@ OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
     /** The actual borders in model space around the chip area. */
     private Borders borders = new Borders();
 
-    /** Sets the projection matrix so that we getString an orthographic projection that is the size of the
+    /** Sets the projection matrix so that we get an orthographic projection that is the size of the
     canvas with z volume -ZCLIP to ZCLIP padded with extra space around the sides.
 
     @param g the GL context

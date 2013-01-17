@@ -1593,15 +1593,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return;
             } // don't render while filechooser is active
             boolean subsamplingEnabled = getRenderer().isSubsamplingEnabled();
-            if (isPaused()) {
-                getRenderer().setSubsamplingEnabled(false);
-            }
+//            if (isPaused()) {
+//                getRenderer().setSubsamplingEnabled(false);
+//            } // not needed and always overwrites the preference value
             if (!(getRenderer().isAccumulateEnabled() && isPaused())) {
                 getRenderer().render(packet);
             }
-            if (isPaused()) {
-                getRenderer().setSubsamplingEnabled(subsamplingEnabled);
-            }
+//            if (isPaused()) {
+//                getRenderer().setSubsamplingEnabled(subsamplingEnabled);
+//            }
 //            if(renderImageEnabled) {
             if (isActiveRenderingEnabled()) {
                 if (canvasFileWriter.writingMovieEnabled) {

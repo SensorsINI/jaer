@@ -108,8 +108,8 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
         
         boolean hasGlobal=isGlobalDisplayEnabled() ; // global is just avg of local vectors
         boolean hasGlobal2=isGlobalDisplay2Enabled() ; // global is just avg of local vectors
-        boolean hasPhoto=isPhotoDisplayEnabled() && motionData.hasPhoto(); // marks display of photo
-        boolean hasLocal=(isLocalMotionColorsEnabled()||isLocalDisplayEnabled()) && motionData.hasLocalX()&&motionData.hasLocalY(); // marks to show any local motion
+        boolean hasPhoto=isPhotoDisplayEnabled() && (motionData!=null && motionData.hasPhoto()); // marks display of photo
+        boolean hasLocal=(isLocalMotionColorsEnabled()||isLocalDisplayEnabled()) && (motionData!=null && motionData.hasLocalX()&&motionData.hasLocalY()); // marks to show any local motion
         
         float scale=10f/chip.getRenderer().getColorScale(); // values are scaled down when color scale increased
         // local motion vectors

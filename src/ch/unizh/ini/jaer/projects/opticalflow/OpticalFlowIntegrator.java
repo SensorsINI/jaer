@@ -66,7 +66,6 @@ public class OpticalFlowIntegrator
     protected PanTiltParserPanel parserPanel= null;
     
     public void setPanTiltParserPanel(PanTiltParserPanel panel) {
-        logg.info("###################do you get called?"+panel.hashCode());
         
         parserPanel= panel;
     }

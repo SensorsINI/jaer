@@ -12,6 +12,7 @@ import ch.unizh.ini.jaer.projects.opticalflow.*;
 import ch.unizh.ini.jaer.projects.opticalflow.graphics.BiasgenPanelMDC2D;
 import ch.unizh.ini.jaer.projects.opticalflow.graphics.OpticalFlowDisplayMethod;
 import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.SiLabsC8051F320_OpticalFlowHardwareInterface;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Observable;
@@ -23,6 +24,7 @@ import net.sf.jaer.biasgen.VDAC.*;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.util.RemoteControl;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 
@@ -37,7 +39,7 @@ import net.sf.jaer.util.RemoteControlled;
  *     HardwareInterace</li>
  * </ul>
  */
-public class MDC2D extends Chip2DMotion {
+public class MDC2D extends Chip2DMotion  {
 
     // the names of the optic flow methods. The String array must have the same
     // order as the numbering of the constants below
@@ -68,9 +70,9 @@ public class MDC2D extends Chip2DMotion {
         getCanvas().addDisplayMethod(new OpticalFlowDisplayMethod(this.getCanvas()));
         getCanvas().setOpenGLEnabled(true);
         getCanvas().setScale(22f);
-    }
+     }
 
-
+  
     // Returns a empty MotionData MDC2D Object
     @Override
     public MotionData getEmptyMotionData(){
@@ -384,6 +386,7 @@ public class MDC2D extends Chip2DMotion {
 
 
     }
+     
 
  
 }

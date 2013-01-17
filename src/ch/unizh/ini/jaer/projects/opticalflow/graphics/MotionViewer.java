@@ -6,10 +6,7 @@
 package ch.unizh.ini.jaer.projects.opticalflow.graphics;
 
 import ch.unizh.ini.jaer.projects.opticalflow.*;
-import edu.stanford.ejalbert.BrowserLauncher;
-import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URL;
 import net.sf.jaer.aemonitor.*;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.chip.*;
@@ -18,7 +15,6 @@ import ch.unizh.ini.jaer.chip.retina.*;
 import net.sf.jaer.eventio.*;
 import net.sf.jaer.graphics.*;
 import net.sf.jaer.util.*;
-import net.sf.jaer.util.browser.*;
 import ch.unizh.ini.jaer.projects.opticalflow.io.*;
 import ch.unizh.ini.jaer.projects.opticalflow.io.MotionOutputStream;
 import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.MotionChipInterface;
@@ -32,6 +28,7 @@ import java.awt.image.*;
 import java.beans.*;
 import java.beans.PropertyChangeListener;
 import java.io.*;
+import java.net.SocketException;
 import java.text.*;
 import java.util.*;
 import java.util.logging.*;
@@ -43,12 +40,20 @@ import javax.swing.*;
  * Shows retina live and allows for controlling view and recording and playing back events.
  * @author  tobi
  */
-public class MotionViewer extends javax.swing.JFrame implements PropertyChangeListener, DropTargetListener {
+public class MotionViewer extends javax.swing.JFrame implements PropertyChangeListener, DropTargetListener, RemoteControlled {
 
     public static String HELP_URL_USER_GUIDE = "http://www.ini.unizh.ch/~tobi/caviar/INI-AE-Biasgen/";
     public static String HELP_URL_JAVADOC;
     public static DynamicFontSizeJLabel numericPanel;
     private MotionOutputStream loggingOutputStream;
+    public static final String REMOTE_START_LOGGING = "startlogging";
+    public static final String REMOTE_STOP_LOGGING = "stoplogging";
+   private RemoteControl remoteControl = null; 
+   /** Default port number for remote control of this MotionViewer (same as AEViewer).
+     *
+     */
+    public static final int REMOTE_CONTROL_PORT = 8997; // TODO make this the starting port number but find a free one if not available.
+
 
     static {
         String curDir = System.getProperty("user.dir");
@@ -89,7 +94,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
     ChipCanvas chipCanvas;
     volatile boolean loggingEnabled = false;
     DateFormat loggingFilenameDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ssZ");
-    File loggingFile;
+    File loggingFile=null;
     DropTarget dropTarget;
     File draggedFile;
     private boolean loggingPlaybackImmediatelyEnabled = prefs.getBoolean("MotionViewer.loggingPlaybackImmediatelyEnabled", false);
@@ -193,6 +198,15 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
         // init menu items that are checkboxes to correct initial state
         loggingPlaybackImmediatelyCheckBoxMenuItem.setSelected(isLoggingPlaybackImmediatelyEnabled());
         pauseRenderingCheckBoxMenuItem.setSelected(isPaused());
+       // add remote control commands
+        try {
+            remoteControl = new RemoteControl(REMOTE_CONTROL_PORT);
+            remoteControl.addCommandListener(this, REMOTE_START_LOGGING + " <filename>", "starts logging raw motion sensor data to a file");
+            remoteControl.addCommandListener(this, REMOTE_STOP_LOGGING, "stops logging raw data to a file");
+            log.info("created " + remoteControl + " for remote control of some MotionViewer functions");
+        } catch (SocketException ex) {
+            log.warning(ex.toString());
+        }
 
     }
 
@@ -2256,6 +2270,34 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
     public MotionChipInterface getHardware() {
         return this.hardware;
     }
+    
+    
+      /** Processes remote control commands for this AEViewer. A list of commands can be obtained
+     * from a remote host by sending ? or help. The port number is logged to the console on startup.
+     * @param command the parsed command (first token)
+     * @param line the line sent from the remote host.
+     * @return confirmation of command.
+     */
+    public String processRemoteControlCommand(RemoteControlCommand command, String line) {
+        String[] tokens = line.split("\\s");
+        log.finer("got command " + command + " with line=\"" + line + "\"");
+        try {
+            if (command.getCmdName().equals(REMOTE_START_LOGGING)) {
+                if (tokens.length < 1) {
+                    return "not enough arguments\n";
+                }
+                File f = startLogging();
+                    return "starting logging to " + f + "\n";
+            } else if (command.getCmdName().equals(REMOTE_STOP_LOGGING)) {
+                stopLogging(); 
+                return "stopped logging to "+loggingFile+"\n";
+            } 
+        } catch (Exception e) {
+            return e.toString() + "\n";
+        }
+        return null;
+    }
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenuItem aboutMenuItem;
     private javax.swing.JCheckBoxMenuItem autoscaleContrastEnabledCheckBoxMenuItem;

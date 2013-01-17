@@ -1624,6 +1624,8 @@ public class SBret10 extends APSDVSchip {
             pixmap.rewind();
         }
 
+        private int printedOutOfBoundsWarnings=100;
+        
         /** Changes scanned pixel value according to scan-out order
          * 
          * @param ind the pixel to change, which marches from LL corner to right, then to next row up and so on. Physically on chip this is actually from UL corner.
@@ -1632,6 +1634,12 @@ public class SBret10 extends APSDVSchip {
          * @param step the step size which multiplies each color component
          */
         private void changeCDVSPixel(int ind, float[] f, float[] c, float step) {
+            if(ind<0 || ind>f.length-2){
+                if(--printedOutOfBoundsWarnings>0){
+                    log.warning("index "+ind+" is out of bounds for the pixel array; maybe you are trying to play a file recorded before 2013?  Use the class SBRet10old to play these files");
+                }
+                return;
+            }
             float r = c[0] * step, g = c[1] * step, b = c[2] * step;
             f[ind] += r;
             f[ind + 1] += g;
