@@ -85,7 +85,7 @@
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="showControlsToggleButtonActionPerformed"/>
           </Events>
         </Component>
-        <Component class="javax.swing.JToggleButton" name="helpBut">
+        <Component class="javax.swing.JButton" name="helpBut">
           <Properties>
             <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
               <Font name="Tahoma" size="9" style="0"/>

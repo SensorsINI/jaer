@@ -1256,7 +1256,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         enabledCheckBox = new javax.swing.JCheckBox();
         resetButton = new javax.swing.JButton();
         showControlsToggleButton = new javax.swing.JToggleButton();
-        helpBut = new javax.swing.JToggleButton();
+        helpBut = new javax.swing.JButton();
 
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
 
@@ -1441,12 +1441,12 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }//GEN-LAST:event_showControlsToggleButtonActionPerformed
 
     private void helpButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_helpButActionPerformed
-        if(getFilter()!=null) getFilter().showHelpInBrowser();
+              if(getFilter()!=null) getFilter().showHelpInBrowser();
     }//GEN-LAST:event_helpButActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     protected javax.swing.JCheckBox enabledCheckBox;
-    private javax.swing.JToggleButton helpBut;
+    private javax.swing.JButton helpBut;
     protected javax.swing.JPanel jPanel1;
     private javax.swing.JButton resetButton;
     private javax.swing.JToggleButton showControlsToggleButton;
