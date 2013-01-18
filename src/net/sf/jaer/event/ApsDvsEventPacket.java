@@ -2,8 +2,9 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package eu.seebetter.ini.chips.sbret10;
+package net.sf.jaer.event;
 
+import net.sf.jaer.event.ApsDvsEvent;
 import java.util.Iterator;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;

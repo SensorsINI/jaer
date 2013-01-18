@@ -6,6 +6,7 @@ created 26 Oct 2008 for new cDVSTest chip
  */
 package eu.seebetter.ini.chips.sbret10;
 
+import net.sf.jaer.event.ApsDvsEventPacket;
 import ch.unizh.ini.config.fx2.TriStateablePortBit;
 import ch.unizh.ini.config.fx2.PortBit;
 import ch.unizh.ini.config.onchip.OutputMux;
@@ -19,7 +20,7 @@ import ch.unizh.ini.jaer.chip.retina.*;
 import com.sun.opengl.util.j2d.TextRenderer;
 import eu.seebetter.ini.chips.*;
 import eu.seebetter.ini.chips.config.*;
-import eu.seebetter.ini.chips.sbret10.ApsDvsEvent.ReadoutType;
+import net.sf.jaer.event.ApsDvsEvent.ReadoutType;
 import eu.seebetter.ini.chips.sbret10.SBret10old.SBret10Config.*;
 import eu.seebetter.ini.chips.seebetter20.SeeBetter20;
 import java.awt.event.ActionEvent;
@@ -166,7 +167,7 @@ public class SBret10old extends APSDVSchip {
         displayIntensity = getPrefs().getBoolean("displayIntensity", true);
         displayLogIntensityChangeEvents = getPrefs().getBoolean("displayLogIntensityChangeEvents", true);
 
-        setRenderer((new SBret10Renderer(this)));
+        setRenderer((new SBret10Rendererold(this)));
 
         sbretDisplayMethod = new SBret10DisplayMethod(this);
         getCanvas().addDisplayMethod(sbretDisplayMethod);
@@ -1535,7 +1536,7 @@ public class SBret10old extends APSDVSchip {
      *
      * @author tobi
      */
-    public class SBret10Renderer extends RetinaRenderer {
+    public class SBret10Rendererold extends RetinaRenderer {
 
         private SBret10old cDVSChip = null;
 //        private final float[] redder = {1, 0, 0}, bluer = {0, 0, 1}, greener={0,1,0}, brighter = {1, 1, 1}, darker = {-1, -1, -1};
@@ -1550,7 +1551,7 @@ public class SBret10old extends APSDVSchip {
         /** Control scaling and offset of display of log intensity values. */
         int apsIntensityGain, apsIntensityOffset;
 
-        public SBret10Renderer(SBret10old chip) {
+        public SBret10Rendererold(SBret10old chip) {
             super(chip);
             cDVSChip = chip;
             agcEnabled = chip.getPrefs().getBoolean("agcEnabled", false);

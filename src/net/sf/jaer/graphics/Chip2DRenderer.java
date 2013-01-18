@@ -258,7 +258,7 @@ public class Chip2DRenderer implements Observer {
         resetPixmapGrayLevel(value);
         grayValue = value;
     }
-
+    
     /** @param accumulateEnabled true to accumulate data to frame (don't reset to start value each cycle) */
     public void setAccumulateEnabled(final boolean accumulateEnabled) {
         this.accumulateEnabled = accumulateEnabled;
@@ -285,6 +285,14 @@ public class Chip2DRenderer implements Observer {
         prefs.putInt("Chip2DRenderer.colorScale", colorScale);
     }
 
+    public int getWidth(){
+        return sizeX;
+    }
+    
+    public int getHeight(){
+        return sizeY;
+    }
+    
     /** Sets the x of the selected pixel.
      *
      * @param xsel

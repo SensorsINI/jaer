@@ -17,7 +17,7 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.util.EngineeringFormat;
 import com.sun.opengl.util.GLUT;
-import eu.seebetter.ini.chips.sbret10.ApsDvsEventPacket;
+import net.sf.jaer.event.ApsDvsEventPacket;
 import java.util.Iterator;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;

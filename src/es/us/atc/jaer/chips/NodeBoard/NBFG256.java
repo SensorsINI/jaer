@@ -12,7 +12,7 @@ import es.us.atc.jaer.chips.NodeBoard.NBFG256.NBFG256DisplayMethod;
 import eu.seebetter.ini.chips.*;
 //import es.us.atc.jaer.chips.NodeBoard.ApsDvsEvent;
 //import eu.seebetter.ini.chips.sbret10.SBret10.SBret10Config.*;
-import eu.seebetter.ini.chips.sbret10.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEvent;
 import java.awt.geom.Point2D.Float;
 import java.util.logging.Level;
 import net.sf.jaer.aemonitor.*;

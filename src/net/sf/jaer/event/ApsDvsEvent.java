@@ -1,4 +1,4 @@
-package eu.seebetter.ini.chips.sbret10;
+package net.sf.jaer.event;
 
 
 import net.sf.jaer.event.BasicEvent;
@@ -13,13 +13,13 @@ public class ApsDvsEvent extends PolarityEvent {
     public enum ReadoutType {A,B,C,EOF};
     
     /** The ADC sample value. Has value -1 by convention for non-sample events. */
-    protected int adcSample = 0;
+    public int adcSample = 0;
     
     /** Set if this event is a start bit event, e.g. start of frame sample. */
-    protected boolean startOfFrame=false;
+    public boolean startOfFrame=false;
     
     /** This bit determines whether it is the first read (A) or the second read (B) of a pixel */
-    protected ReadoutType readoutType = ReadoutType.A;
+    public ReadoutType readoutType = ReadoutType.A;
 
     public ApsDvsEvent() {
     }

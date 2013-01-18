@@ -12,7 +12,7 @@
 package eu.seebetter.ini.chips.sbret10;
 
 import eu.seebetter.ini.chips.sbret10.SBret10old.SBret10DisplayMethod;
-import eu.seebetter.ini.chips.sbret10.SBret10old.SBret10Renderer;
+import eu.seebetter.ini.chips.sbret10.SBret10old.SBret10Rendererold;
 import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -26,18 +26,18 @@ import net.sf.jaer.graphics.AEChipRenderer;
 public class SBret10DisplayControlPanelold extends javax.swing.JPanel implements PropertyChangeListener{
 
     private SBret10DisplayMethod displayMethod=null;
-    private SBret10Renderer renderer=null;
+    private SBret10Rendererold renderer=null;
     private SBret10old chip;
 
     public SBret10DisplayControlPanelold(SBret10old chip) {
         this.chip=chip;
         this.displayMethod=(SBret10DisplayMethod)chip.getCanvas().getDisplayMethod();
-        this.renderer=(SBret10Renderer)chip.getRenderer();
+        this.renderer=(SBret10Rendererold)chip.getRenderer();
         initComponents();
         renderer.getSupport().addPropertyChangeListener(AEChipRenderer.COLOR_SCALE, this);
-        renderer.getSupport().addPropertyChangeListener(SBret10.SBret10Renderer.AGC_VALUES, this);
-        renderer.getSupport().addPropertyChangeListener(SBret10.SBret10Renderer.APS_INTENSITY_GAIN, this);
-        renderer.getSupport().addPropertyChangeListener(SBret10.SBret10Renderer.APS_INTENSITY_OFFSET, this);
+        renderer.getSupport().addPropertyChangeListener(SBret10Rendererold.AGC_VALUES, this);
+        renderer.getSupport().addPropertyChangeListener(SBret10Rendererold.APS_INTENSITY_GAIN, this);
+        renderer.getSupport().addPropertyChangeListener(SBret10Rendererold.APS_INTENSITY_OFFSET, this);
     }
 
     /** This method is called from within the constructor to
@@ -619,14 +619,14 @@ public class SBret10DisplayControlPanelold extends javax.swing.JPanel implements
     public void propertyChange(PropertyChangeEvent evt) {
         if(evt.getPropertyName()==AEChipRenderer.COLOR_SCALE){
             colorScaleSpinner.setValue((Integer)evt.getNewValue());
-        }else if(evt.getPropertyName()==SBret10.SBret10Renderer.AGC_VALUES){
+        }else if(evt.getPropertyName()==SBret10Rendererold.AGC_VALUES){
             Point2D.Float f=(Point2D.Float)evt.getNewValue();
             minTF.setText(String.format("%.0f",f.x));
             maxTF.setText(String.format("%.0f",f.y));
             gainAGCTF.setText(String.format("%.0f",SBret10.MAX_ADC/(f.y-f.x)));
-        }else if(evt.getPropertyName()==SBret10.SBret10Renderer.APS_INTENSITY_GAIN){
+        }else if(evt.getPropertyName()==SBret10Rendererold.APS_INTENSITY_GAIN){
             gainSlider.setValue(renderer.getApsIntensityGain());
-        }else if(evt.getPropertyName()==SBret10.SBret10Renderer.APS_INTENSITY_OFFSET){
+        }else if(evt.getPropertyName()==SBret10Rendererold.APS_INTENSITY_OFFSET){
             offsetSlider.setValue(renderer.getApsIntensityOffset());
         }
     }
@@ -634,7 +634,7 @@ public class SBret10DisplayControlPanelold extends javax.swing.JPanel implements
     /**
      * @return the renderer
      */
-    public SBret10Renderer getRenderer() {
+    public SBret10Rendererold getRenderer() {
         return renderer;
     }
 

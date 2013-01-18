@@ -2,11 +2,13 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package eu.seebetter.ini.chips.sbret10;
+package net.sf.jaer.eventprocessing.filter;
 
 import java.util.Iterator;
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -16,12 +18,12 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  * @author tobi
  */
 @Description("Enables filtering out of either DVS or APS events from ApsDvsEventPacket")
-public class ApsEventFilter extends EventFilter2D {
+public class ApsDvsEventFilter extends EventFilter2D {
 
     private boolean filterDVSEvents=getBoolean("filterDVSEvents",false);
     private boolean filterAPSEvents=getBoolean("filterAPSEvents",false);
     
-    public ApsEventFilter(AEChip chip) {
+    public ApsDvsEventFilter(AEChip chip) {
         super(chip);
     }
 

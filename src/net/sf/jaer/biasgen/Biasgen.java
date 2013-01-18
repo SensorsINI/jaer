@@ -675,7 +675,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
      * explicitly asked to do so. E.g. setters do not store preferences. Otherwise this can lead to an infinite loop of 
      * set/notify/set.
      */
-    protected interface HasPreference {
+    public interface HasPreference {
 
         void loadPreference();
 
