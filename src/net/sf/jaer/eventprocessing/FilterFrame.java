@@ -5,6 +5,7 @@
  */
 package net.sf.jaer.eventprocessing;
 
+import java.awt.Desktop;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.util.*;
 import net.sf.jaer.util.WindowSaver;
@@ -14,6 +15,7 @@ import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.net.URI;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
@@ -165,6 +167,8 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         setTimeLimitMenuItem = new javax.swing.JMenuItem();
         jSeparator4 = new javax.swing.JSeparator();
         restoreFilterEnabledStateCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
+        helpMenu = new javax.swing.JMenu();
+        jaerFilterHelpMI = new javax.swing.JMenuItem();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("FilterControl");
@@ -210,7 +214,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         jToolBar1.add(jPanel1);
 
         jbuttonSelectFilt.setText("Select Filters...");
-        jbuttonSelectFilt.setActionCommand("Select Filters...");
+        jbuttonSelectFilt.setToolTipText("Opens dialog to select loaded filters");
         jbuttonSelectFilt.setFocusable(false);
         jbuttonSelectFilt.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         jbuttonSelectFilt.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
@@ -277,7 +281,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         viewMenu.setText("View");
 
         customizeMenuItem.setMnemonic('c');
-        customizeMenuItem.setText("Customize...");
+        customizeMenuItem.setText("Select Filters...");
         customizeMenuItem.setToolTipText("Choose the filters you want to see");
         customizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -293,10 +297,10 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         modeMenu.addMenuListener(new javax.swing.event.MenuListener() {
             public void menuCanceled(javax.swing.event.MenuEvent evt) {
             }
-            public void menuDeselected(javax.swing.event.MenuEvent evt) {
-            }
             public void menuSelected(javax.swing.event.MenuEvent evt) {
                 modeMenuMenuSelected(evt);
+            }
+            public void menuDeselected(javax.swing.event.MenuEvent evt) {
             }
         });
 
@@ -363,6 +367,18 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         modeMenu.add(restoreFilterEnabledStateCheckBoxMenuItem);
 
         mainMenuBar.add(modeMenu);
+
+        helpMenu.setText("Help");
+
+        jaerFilterHelpMI.setText("Go to jAER wiki Filter page");
+        jaerFilterHelpMI.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jaerFilterHelpMIActionPerformed(evt);
+            }
+        });
+        helpMenu.add(jaerFilterHelpMI);
+
+        mainMenuBar.add(helpMenu);
 
         setJMenuBar(mainMenuBar);
 
@@ -604,6 +620,10 @@ private void updateIntervalFieldActionPerformed(java.awt.event.ActionEvent evt) 
         filterChain.customize();
     }//GEN-LAST:event_jbuttonSelectFiltActionPerformed
 
+    private void jaerFilterHelpMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jaerFilterHelpMIActionPerformed
+        showInBrowser(EventFilter.HELP_FILTER_URL);
+    }//GEN-LAST:event_jaerFilterHelpMIActionPerformed
+
     private void filterVisibleBiases(String string) {
         if (string == null || string.isEmpty()) {
             for (FilterPanel p : filterPanels) {
@@ -657,7 +677,17 @@ private void updateIntervalFieldActionPerformed(java.awt.event.ActionEvent evt) 
         return null;
     }
     
-    
+    private void showInBrowser(String url) {
+        if (!Desktop.isDesktopSupported()) {
+            log.warning("No Desktop support, can't show help from " + url);
+            return;
+        }
+        try {
+            Desktop.getDesktop().browse(new URI(url));
+        } catch (Exception ex) {
+            log.warning("Couldn't show " + url + "; caught " + ex);
+        }
+    }
     
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -667,12 +697,14 @@ private void updateIntervalFieldActionPerformed(java.awt.event.ActionEvent evt) 
     private javax.swing.JMenuItem exitMenuItem;
     private javax.swing.JMenu fileMenu;
     protected javax.swing.JPanel filtersPanel;
+    private javax.swing.JMenu helpMenu;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JSeparator jSeparator2;
     private javax.swing.JSeparator jSeparator3;
     private javax.swing.JSeparator jSeparator4;
     private javax.swing.JToolBar jToolBar1;
+    private javax.swing.JMenuItem jaerFilterHelpMI;
     private javax.swing.JButton jbuttonSelectFilt;
     private javax.swing.JCheckBoxMenuItem limitTimeCheckBoxMenuItem;
     private javax.swing.JMenuItem loadMenuItem;

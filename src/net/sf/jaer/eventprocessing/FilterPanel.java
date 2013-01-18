@@ -13,6 +13,7 @@ import java.beans.*;
 import java.beans.Introspector;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.util.*;
 import java.util.logging.Logger;
 import javax.swing.*;
@@ -169,6 +170,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         getFilter().getPropertyChangeSupport().addPropertyChangeListener(this);
         ToolTipManager.sharedInstance().setDismissDelay(10000); // to show tips
         setToolTipText(f.getDescription());
+        helpBut.setToolTipText("<html>"+f.getDescription()+"<p>Click to show/create wiki page");
     }
 
     // checks for group container and adds to that if needed.
@@ -1254,6 +1256,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         enabledCheckBox = new javax.swing.JCheckBox();
         resetButton = new javax.swing.JButton();
         showControlsToggleButton = new javax.swing.JToggleButton();
+        helpBut = new javax.swing.JToggleButton();
 
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
 
@@ -1296,6 +1299,17 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             }
         });
         jPanel1.add(showControlsToggleButton);
+
+        helpBut.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
+        helpBut.setText("?");
+        helpBut.setToolTipText("Shows help on jAER wiki");
+        helpBut.setMargin(new java.awt.Insets(1, 5, 1, 5));
+        helpBut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                helpButActionPerformed(evt);
+            }
+        });
+        jPanel1.add(helpBut);
 
         add(jPanel1);
 
@@ -1426,8 +1440,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         // TODO add your handling code here:
     }//GEN-LAST:event_showControlsToggleButtonActionPerformed
 
+    private void helpButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_helpButActionPerformed
+        if(getFilter()!=null) getFilter().showHelpInBrowser();
+    }//GEN-LAST:event_helpButActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     protected javax.swing.JCheckBox enabledCheckBox;
+    private javax.swing.JToggleButton helpBut;
     protected javax.swing.JPanel jPanel1;
     private javax.swing.JButton resetButton;
     private javax.swing.JToggleButton showControlsToggleButton;
@@ -1646,4 +1665,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //        }
 //        
 //    }
+    
+ 
+
 }

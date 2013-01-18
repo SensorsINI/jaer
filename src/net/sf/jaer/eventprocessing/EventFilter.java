@@ -9,10 +9,12 @@
  */
 package net.sf.jaer.eventprocessing;
 
+import java.awt.Desktop;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import net.sf.jaer.chip.*;
 import java.beans.*;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.Observable;
 import java.util.Set;
@@ -46,6 +48,9 @@ Fires PropertyChangeEvent for the following
 @Description("Base event processing class")
 public abstract class EventFilter extends Observable {
 
+    /** URL for jAER wiki help page for event filters */
+    public static String HELP_FILTER_URL="http://sourceforge.net/apps/trac/jaer/wiki/filt";
+    
     public EventProcessingPerformanceMeter perf;
     /** The preferences for this filter, by default in the EventFilter package node
      * @see setEnclosed
@@ -762,5 +767,22 @@ public abstract class EventFilter extends Observable {
         } catch (Exception e) {
             return null;
         }
+    }
+    
+    private void showInBrowser(String url) {
+        if (!Desktop.isDesktopSupported()) {
+            log.warning("No Desktop support, can't show help from " + url);
+            return;
+        }
+        try {
+            Desktop.getDesktop().browse(new URI(url));
+        } catch (Exception ex) {
+            log.warning("Couldn't show " + url + "; caught " + ex);
+        }
+    }
+    
+    /** Shows help from the jAER wiki page for filter documentation */
+    public void showHelpInBrowser(){
+        showInBrowser(EventFilter.HELP_FILTER_URL+"/"+getClass().getName());
     }
 }

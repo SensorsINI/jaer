@@ -1,4 +1,4 @@
-<?xml version="1.1" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8" ?>
 
 <Form version="1.2" maxVersion="1.2" type="org.netbeans.modules.form.forminfo.JFrameFormInfo">
   <NonVisualComponents>
@@ -59,7 +59,7 @@
             <MenuItem class="javax.swing.JMenuItem" name="customizeMenuItem">
               <Properties>
                 <Property name="mnemonic" type="int" value="99"/>
-                <Property name="text" type="java.lang.String" value="Customize..."/>
+                <Property name="text" type="java.lang.String" value="Select Filters..."/>
                 <Property name="toolTipText" type="java.lang.String" value="Choose the filters you want to see"/>
               </Properties>
               <Events>
@@ -152,6 +152,21 @@
             </MenuItem>
           </SubComponents>
         </Menu>
+        <Menu class="javax.swing.JMenu" name="helpMenu">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="Help"/>
+          </Properties>
+          <SubComponents>
+            <MenuItem class="javax.swing.JMenuItem" name="jaerFilterHelpMI">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Go to jAER wiki Filter page"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jaerFilterHelpMIActionPerformed"/>
+              </Events>
+            </MenuItem>
+          </SubComponents>
+        </Menu>
       </SubComponents>
     </Menu>
   </NonVisualComponents>
@@ -229,7 +244,7 @@
         <Component class="javax.swing.JButton" name="jbuttonSelectFilt">
           <Properties>
             <Property name="text" type="java.lang.String" value="Select Filters..."/>
-            <Property name="actionCommand" type="java.lang.String" value="Select Filters..."/>
+            <Property name="toolTipText" type="java.lang.String" value="Opens dialog to select loaded filters"/>
             <Property name="focusable" type="boolean" value="false"/>
             <Property name="horizontalTextPosition" type="int" value="0"/>
             <Property name="verticalTextPosition" type="int" value="3"/>
