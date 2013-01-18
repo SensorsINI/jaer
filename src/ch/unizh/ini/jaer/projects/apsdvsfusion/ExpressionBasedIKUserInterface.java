@@ -74,7 +74,7 @@ public class ExpressionBasedIKUserInterface extends JFrame {
     		inputKernel = new SpaceableExpressionBasedSpatialIK(kernelWidth, kernelHeight);
     		inputKernel.setOnExpressionString(onExpressionString);
     		inputKernel.setOffExpressionString(offExpressionString);
-    		soViewer = spikingOutputViewerManager.createOutputViewer(outputWidth, outputHeight);
+    		soViewer = spikingOutputViewerManager.createOutputViewer(outputWidth, outputHeight, getGrayLevels());
     		inputKernel.setInputOutputSizes(inputWidth, inputHeight, outputWidth, outputHeight);
     		kernelProcessor = new SimpleKernelProcessor(outputWidth,outputHeight,inputKernel);
     		kernelProcessor.addSpikeHandler(soViewer);
@@ -150,6 +150,7 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 		}
     	protected void setActivationState(boolean enabled) {
     		kernelProcessor.setEnabled(enabled);
+    		soViewer.setActive(enabled);
     		enableBox.setSelected(enabled);
     	}
     	protected void editKernel() {
@@ -171,7 +172,9 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 						inputKernel.setOffExpressionString(editDialog.getOffExpressionString());
 						inputKernel.setInputOutputSizes(inputWidth, inputHeight, editDialog.getOutWidth(), editDialog.getOutHeight());
 						ExpressionBasedIKUserInterface.this.savePrefs();
-						ExpressionBasedIKUserInterface.this.pack();
+//						ExpressionBasedIKUserInterface.this.pack();
+						ExpressionBasedIKUserInterface.this.validate();
+						ExpressionBasedIKUserInterface.this.repaint();
 //						viewerPanel.add(soViewer.getDisplay());
 					}
 				}
@@ -184,8 +187,10 @@ public class ExpressionBasedIKUserInterface extends JFrame {
     		removePanel(this);
     		panels.remove(this);
 			ExpressionBasedIKUserInterface.this.savePrefs();
-    		ExpressionBasedIKUserInterface.this.pack();
-    		ExpressionBasedIKUserInterface.this.repaint();
+			ExpressionBasedIKUserInterface.this.validate();
+			ExpressionBasedIKUserInterface.this.repaint();
+//    		ExpressionBasedIKUserInterface.this.pack();
+//    		ExpressionBasedIKUserInterface.this.repaint();
     	}
     	
     }

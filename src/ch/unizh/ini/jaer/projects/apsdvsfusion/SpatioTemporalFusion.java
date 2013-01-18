@@ -61,7 +61,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	
 	ExpressionBasedIKUserInterface expressionBasedIKUserInterface = null;
 	SpikingOutputViewerManager spikingOutputViewerManager = null;
-	int grayLevels = 4;
+	private int grayLevels = 4;
 	
 	boolean filterEvents = false;
 	SpikeHandler filterSpikeHandler = new SpikeHandler() {
@@ -85,7 +85,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	 */
 	public SpatioTemporalFusion(AEChip chip) {
 		super(chip);
-		this.setFilterEnabled(false);
+//		this.setFilterEnabled(false);
         setPropertyTooltip("grayLevels", "Number of displayed gray levels");
 //		firingModelMap = new ArrayFiringModelMap(chip, IntegrateAndFire.getCreator());
 //		inputKernel = new ExpressionBasedSpatialInputKernel(5, 5);
@@ -135,7 +135,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
     	}
     	else return getPrefs().getInt("SpatioTemporalFusion.UserInterface.grayLevels",4);
     }
-    public void setGraphLevels(int grayLevels) {
+    public void setGrayLevels(int grayLevels) {
     	if (expressionBasedIKUserInterface != null) {
     		expressionBasedIKUserInterface.setGrayLevels(grayLevels);
     	}

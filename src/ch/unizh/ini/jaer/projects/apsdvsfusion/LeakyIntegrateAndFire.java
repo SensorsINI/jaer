@@ -41,7 +41,7 @@ public class LeakyIntegrateAndFire implements FiringModel {
 	@Override
 	public boolean receiveSpike(double value, int timeInUs) {
 		// this event happened before the last recorded one -> time most likely wrapped around
-		if (timeInUs < lastIncreaseTime) {
+ 		if (timeInUs < lastIncreaseTime) {
 			lastIncreaseTime = timeInUs;
 			membranePotential = (float)value;
 		}
@@ -49,12 +49,19 @@ public class LeakyIntegrateAndFire implements FiringModel {
         if (timeInUs > refractoredUntil) { // Refractory period
         	if (lastIncreaseTime-timeInUs > 0)
         		membranePotential = 0.0f;
-        	else
+        	else {
         		membranePotential *= Math.exp(((float)(lastIncreaseTime - timeInUs)) / tau);
+//        		if (membranePotential == Float.NaN) {
+//        			membranePotential = 0.0f;
+//        		}
+        	}
         	membranePotential += value;
         }
-        else if (timeInUs < lastSpikeTime || resetted) 
+        else if (timeInUs < lastSpikeTime || resetted) {
+        	lastSpikeTime = timeInUs;
+        	refractoredUntil = timeInUs;
         	membranePotential = (float)value;
+        }
         // still inside refractory time. Avoid further processing: 
         else return false;
 

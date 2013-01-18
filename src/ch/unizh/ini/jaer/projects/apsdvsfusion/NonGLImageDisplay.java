@@ -3,6 +3,7 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Rectangle;
+import java.util.ArrayList;
 
 import javax.swing.JPanel;
 
@@ -11,6 +12,11 @@ public class NonGLImageDisplay extends JPanel {
 		int sizeX = -1, sizeY = -1;
 		boolean square;
 		private float rectWidth, rectHeight; 
+		ArrayList<UpdateListener> listeners = new ArrayList<UpdateListener>();
+		
+		public interface UpdateListener {
+			public void displayUpdated(Object display);
+		}
 		
 		public NonGLImageDisplay(int width, int height, boolean square) {
 			this.square = square;
@@ -21,6 +27,19 @@ public class NonGLImageDisplay extends JPanel {
 		public NonGLImageDisplay(int width, int height) {
 			this(width, height, true);
 		}
+		
+		public void addUpdateListener(UpdateListener listener) {
+			listeners.add(listener);
+		}
+		public void removeUpdateListener(UpdateListener listener) {
+			if (listeners.contains(listener)) 
+				listeners.remove(listener);
+		}
+		protected void informAboutUpdate() {
+			for (UpdateListener listener : listeners)
+				listener.displayUpdated(this);
+		}
+		
 		public void setSizeX(int sizeX) {
 			setImageSize(sizeX, sizeY);
 		}
@@ -103,6 +122,7 @@ public class NonGLImageDisplay extends JPanel {
 				posx = nextPosx;
 				nextPosx += rWidth;
 			}
+			informAboutUpdate();
 		}
 
 		public static NonGLImageDisplay createNonGLDisplay() {

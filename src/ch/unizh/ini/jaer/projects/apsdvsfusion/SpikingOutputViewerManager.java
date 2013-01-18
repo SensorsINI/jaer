@@ -56,8 +56,8 @@ public class SpikingOutputViewerManager {
      
     
     
-    public SpikingOutputViewer createOutputViewer(int sizeX, int sizeY) {
-    	SpikingOutputViewer soViewer = new SpikingOutputViewer(sizeX, sizeY);
+    public SpikingOutputViewer createOutputViewer(int sizeX, int sizeY, int grayLevels) {
+    	SpikingOutputViewer soViewer = new SpikingOutputViewer(sizeX, sizeY, grayLevels);
     	addOutputViewer(soViewer);
     	
 //    	JPanel displayPanel=new JPanel();
