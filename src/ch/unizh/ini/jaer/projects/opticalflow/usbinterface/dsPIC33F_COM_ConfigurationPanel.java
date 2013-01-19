@@ -100,8 +100,7 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         Runnable doUpdate= new Runnable() {
             @Override
             public void run() {
-                if (commandLineWindow.isValid())
-                    commandLineWindow.logString("("+cmd+") > " + str);
+                commandLineWindow.logString("("+cmd+") > " + str);
             }
         };
         SwingUtilities.invokeLater(doUpdate);

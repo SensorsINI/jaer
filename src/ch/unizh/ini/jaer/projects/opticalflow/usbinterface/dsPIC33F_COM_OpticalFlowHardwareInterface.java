@@ -175,6 +175,7 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
     private String ioErrorString= null;
     private int commandErrors= 0; // cumulative
     private int streamingErrors= 0; // cumulative
+    private int calculationErrors= 0;
     // other status data
     private int pushingFps;
     private int parsingFps;
@@ -199,9 +200,11 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
     protected void updateStatus() {
         String etc="";
         if (commandErrors != 0)
-            etc+= commandErrors+" cmd errors";
+            etc+= commandErrors+" cmd errs";
         if (streamingErrors != 0)
-            etc+= " "+streamingErrors+" streaming errors";
+            etc+= " "+streamingErrors+" stream errs";
+        if (calculationErrors != 0)
+            etc+= " "+calculationErrors+" calc errs";
         if (phidgetsAttached>0)
             etc+= " phidget";
         if (etc.length() != 0)
@@ -242,6 +245,7 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         this.ioErrorString= null;
         this.versionError= null;
         this.commandErrors= 0;
+        this.calculationErrors= 0;
         this.streamingErrors= 0;
     }
 
@@ -930,8 +934,11 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
                         
                         if (globalMotionError(message)) {
                             // this indicates an error
-                            log.warning("firmware could not calculate Srinivasan : code=0x" + 
-                                    Integer.toHexString(globalMotionErrorCode(message)));
+                            if (debugging)
+                                log.warning("firmware could not calculate Srinivasan : code=0x" + 
+                                        Integer.toHexString(globalMotionErrorCode(message)));
+                            
+                            calculationErrors++;
                             
                             if (isAnalysing())
                                 analyser.addErroneousCalculations(globalMotionErrorCode(message),frame);
