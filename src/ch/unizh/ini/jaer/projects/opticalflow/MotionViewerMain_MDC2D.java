@@ -15,6 +15,7 @@ package ch.unizh.ini.jaer.projects.opticalflow;
 import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.*;
 import ch.unizh.ini.jaer.projects.opticalflow.graphics.*;
 import java.util.logging.Logger;
+import javax.swing.SwingUtilities;
 
 /**
  * The starter for the optical flow chip demo of Andreas Steiner and Shih-Chii Liu using the MDC2D chip.
@@ -29,8 +30,12 @@ public class MotionViewerMain_MDC2D{
     public static void main(String[] args){
         
         Chip2DMotion chip=new MDC2D();
-        MotionViewer viewer=new MotionViewer(chip);
-        viewer.setVisible(true);
+        final MotionViewer viewer=new MotionViewer(chip);
+        SwingUtilities.invokeLater(new Runnable() { // we have to do this or sometimes we get a deadlock in AWT waiting on something, if the window is slow to appear
+            public void run() {
+                viewer.setVisible(true);
+            }
+        });
 
     }
 }
