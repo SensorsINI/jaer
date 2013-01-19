@@ -481,9 +481,17 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
 //                }
 //            }
 
-            setPlaybackControlsEnabledState(true);
-            setPlayMode(PlayMode.LIVE);
-            setTitleAccordingToState();
+              setPlayMode(PlayMode.LIVE);
+          SwingUtilities.invokeLater(new Runnable(){
+
+                @Override
+                public void run() {
+                     setPlaybackControlsEnabledState(true);
+                    setTitleAccordingToState();
+                 }
+                
+            });
+           
         } catch (Exception e) {
             log.warning(e.getMessage());
             if (hardware != null) {
