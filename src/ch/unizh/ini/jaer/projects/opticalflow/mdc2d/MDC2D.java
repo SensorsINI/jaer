@@ -13,9 +13,13 @@ import ch.unizh.ini.jaer.projects.opticalflow.graphics.BiasgenPanelMDC2D;
 import ch.unizh.ini.jaer.projects.opticalflow.graphics.OpticalFlowDisplayMethod;
 import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.SiLabsC8051F320_OpticalFlowHardwareInterface;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Observable;
+import java.util.prefs.InvalidPreferencesFormatException;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
 import javax.swing.JPanel;
@@ -110,6 +114,9 @@ public class MDC2D extends Chip2DMotion  {
     /** describes the biases on the chip */
     public class MDC2DBiasgen extends Biasgen implements ChipControlPanel{
 
+  
+
+ 
         public PotArray ipots = new IPotArray(this);
         public PotArray vpots = new PotArray(this);
         public int[] potValues;
@@ -148,7 +155,7 @@ public class MDC2D extends Chip2DMotion  {
 
 
             //ipotArray = new IPotArray(this); //construct IPotArray whit shift register stuff
-            ipots.addPot(new IPot(this, "VRegRefBiasAmp", 0, IPot.Type.NORMAL, Pot.Sex.P, 1,       0, "sets bias of feedback follower in srcbias"));
+            ipots.addPot(new IPot(this,"VRegRefBiasAmp", 0, IPot.Type.NORMAL, Pot.Sex.P, 1,       0, "sets bias of feedback follower in srcbias"));
             ipots.addPot(new IPot(this,"Vrefminbias",          1,Pot.Type.NORMAL,Pot.Sex.N,1,    1,"sets bias for Srcrefmin follower from resis divider"));
             ipots.addPot(new IPot(this,"VprBias",              2,Pot.Type.NORMAL,Pot.Sex.P,1,      2,"bias current for pr"));
             ipots.addPot(new IPot(this,"VRegRefBiasMain",      3,Pot.Type.NORMAL,Pot.Sex.P,1,      3,"sets bias of pfet which sets ref to srcbias"));
@@ -162,6 +169,31 @@ public class MDC2D extends Chip2DMotion  {
             ipots.addPot(new IPot(this,"Vprbuff",              0xb,Pot.Type.NORMAL,Pot.Sex.P,1,      0xb,"bias current for pr scr foll to lmc1"));
    }
 
+
+        @Override
+        public void loadPreferences() {
+            //        log.info("Biasgen.loadPreferences()");
+            startBatchEdit();
+            if (getPotArray() != null) {
+                ipots.loadPreferences();
+                vpots.loadPreferences();
+                getMasterbias().loadPreferences();
+            }
+
+            try {
+                endBatchEdit();
+            } catch (HardwareInterfaceException e) {
+                log.warning(e.toString());
+            }
+        }
+
+        @Override
+        public void storePreferences() {
+            log.info("storing preferences to preferences tree");
+            ipots.storePreferences();
+            vpots.storePreferences();
+            getMasterbias().storePreferences();
+        }
 
         public PotArray getIPotArray() {
             return ipots;
