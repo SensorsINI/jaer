@@ -306,6 +306,12 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 		panels.clear();
 		for (int i = 0; i < panelCount; i++) {
 			addKernel(3,3,128,128,128,128,"0.01","0.01");
+			while (panels.size() <= i) {
+				try {
+					Thread.sleep(100);
+				} catch (InterruptedException e) {
+				}
+			}
 			panels.get(panels.size()-1).loadPrefs(p, makePrefString("kernel"+i+"."));
 		}
 	}
@@ -417,9 +423,10 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 		});
 		
 		Random r = new Random(1);
-		ui.addKernel(7,7,128,128,128,128,"0.05","0.05");
+//		ui.addKernel(7,7,128,128,128,128,"0.05","0.05");
 		int time = 0;
-		for (int i = 0; i < 100000; i++) {
+		long startTime = System.nanoTime();
+		for (int i = 0; i < 1000; i++) {
 			EventPacket<PolarityEvent> ep = new EventPacket<PolarityEvent>(PolarityEvent.class);
             OutputEventIterator outItr = ep.outputIterator();
 			Iterator<PolarityEvent> it = ep.inputIterator();
@@ -434,5 +441,7 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 			}
 			stfFilter.filterPacket(ep);
 		}
+		long endTime = System.nanoTime();
+		System.out.println("Total time in ms: "+(endTime-startTime)/1000000);
 	}
 }
