@@ -66,8 +66,8 @@ public class LeakyIntegrateAndFire implements FiringModel {
 	/* (non-Javadoc)
 	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModel#receiveSpike(double, int)
 	 */
-	@Override
-	public boolean receiveSpike(double value, int timeInUs) {
+//	@Override
+	public boolean receiveSpikeFloat(double value, int timeInUs) {
 		// this event happened before the last recorded one -> time most likely wrapped around
 		if (timeInUs < lastIncreaseTime) {
 			lastIncreaseTime = timeInUs;
@@ -100,7 +100,7 @@ public class LeakyIntegrateAndFire implements FiringModel {
 	}
 
 //	@Override
-	public boolean receiveSpikeInt(double value, int timeInUs) {
+	public boolean receiveSpike(double value, int timeInUs) {
 		int intValue = (int)(value * multiplicator);
 		// this event happened before the last recorded one -> time most likely wrapped around
 		if (timeInUs < lastIncreaseTime) {
@@ -160,7 +160,7 @@ public class LeakyIntegrateAndFire implements FiringModel {
 		int counter = 0;
 		for (int i = 0; i < 10000000; i++) {
 			double d = r.nextDouble()/10.0;
-			if (lif.receiveSpikeInt(d, time) && (!lif.receiveSpike(d,time))) counter++;
+			if (lif.receiveSpike(d, time) && (!lif.receiveSpikeFloat(d,time))) counter++;
 			time += r.nextInt(500);
 		}
 		long endTime = System.nanoTime();
