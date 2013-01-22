@@ -60,6 +60,7 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         debuggingCB.setSelected( hardwareInterface.isDebugging() );
         pixelsCB.setSelected( hardwareInterface.isStreamPixels() );
         nthFrameCB.setSelectedItem( Integer.toString(hardwareInterface.getNthFrame()) );
+        shiftAccCB.setSelectedItem( Integer.toString(hardwareInterface.getShiftAcc()) );
         
         dontUpdateNow= true;
         onChipADC.setSelected(hardwareInterface.isOnChipADC());            
@@ -137,6 +138,10 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         jLabel5 = new javax.swing.JLabel();
         channelCB = new javax.swing.JComboBox();
         onChipADC = new javax.swing.JCheckBox();
+        jLabel6 = new javax.swing.JLabel();
+        shiftAccCB = new javax.swing.JComboBox();
+        jLabel7 = new javax.swing.JLabel();
+        cyclesPixelCB = new javax.swing.JComboBox();
 
         jLabel1.setText("port to use");
 
@@ -226,6 +231,7 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         jLabel3.setText("delays [ms]");
 
         delaysCB.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "0", "1", "2", "5", "10", "15", "20", "30", "40" }));
+        delaysCB.setToolTipText("delay (in milliseconds) to wait between acquiring consecutive frames; additional to the inherent delay due to calculation etc");
         delaysCB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 delaysCBActionPerformed(evt);
@@ -259,6 +265,7 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         jLabel4.setText("every nth frame");
 
         nthFrameCB.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15" }));
+        nthFrameCB.setToolTipText("if set to one, every frame will be sent to the computer");
         nthFrameCB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 nthFrameCBActionPerformed(evt);
@@ -280,6 +287,27 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         onChipADC.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 onChipADCActionPerformed(evt);
+            }
+        });
+
+        jLabel6.setText("reduce precision");
+
+        shiftAccCB.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "0", "1", "2", "3", "4", "5", "6" }));
+        shiftAccCB.setToolTipText("increasing this value will prevent overflow errors and reduce the precision of the calculated value");
+        shiftAccCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                shiftAccCBActionPerformed(evt);
+            }
+        });
+
+        jLabel7.setText("cycles/pixel");
+        jLabel7.setToolTipText("");
+
+        cyclesPixelCB.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "25", "50", "100", "150", "200", "250", "300", "350", "400" }));
+        cyclesPixelCB.setToolTipText("specify period (clock cycles) to wait after moving the scanner before sampling analog values -- ");
+        cyclesPixelCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cyclesPixelCBActionPerformed(evt);
             }
         });
 
@@ -324,9 +352,19 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(onChipADC)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jLabel4)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(nthFrameCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                                .addComponent(jLabel4)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(nthFrameCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                                .addComponent(jLabel6)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(shiftAccCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                                .addComponent(jLabel7)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(cyclesPixelCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(analysisPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
         );
@@ -351,17 +389,26 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(analysisPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                .addComponent(jLabel4)
-                                .addComponent(nthFrameCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                            .addGroup(layout.createSequentialGroup()
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                    .addComponent(jLabel4)
+                                    .addComponent(nthFrameCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                    .addComponent(jLabel6)
+                                    .addComponent(shiftAccCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))))
                     .addGroup(layout.createSequentialGroup()
                         .addGap(13, 13, 13)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(jLabel5)
                             .addComponent(channelCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(onChipADC))))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel7)
+                    .addComponent(cyclesPixelCB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -467,11 +514,6 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         hardwareInterface.setStreamPixels(pixelsCB.isSelected());
     }//GEN-LAST:event_pixelsCBActionPerformed
 
-    private void nthFrameCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_nthFrameCBActionPerformed
-        int nth = Integer.parseInt((String) nthFrameCB.getSelectedItem());
-        hardwareInterface.setNthFrame(nth);
-    }//GEN-LAST:event_nthFrameCBActionPerformed
-
     protected void updateChannelADC() {
         if (dontUpdateNow)
             return;
@@ -497,6 +539,21 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
         updateChannelADC();
     }//GEN-LAST:event_onChipADCActionPerformed
 
+    private void nthFrameCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_nthFrameCBActionPerformed
+        int nth = Integer.parseInt((String) nthFrameCB.getSelectedItem());
+        hardwareInterface.setNthFrame(nth);
+    }//GEN-LAST:event_nthFrameCBActionPerformed
+
+    private void shiftAccCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_shiftAccCBActionPerformed
+        int shiftAcc = Integer.parseInt((String) shiftAccCB.getSelectedItem());
+        hardwareInterface.setShiftAcc(shiftAcc);
+    }//GEN-LAST:event_shiftAccCBActionPerformed
+
+    private void cyclesPixelCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cyclesPixelCBActionPerformed
+        int cyclesPixel = Integer.parseInt((String) cyclesPixelCB.getSelectedItem());
+        hardwareInterface.setCyclesPixel(cyclesPixel);
+    }//GEN-LAST:event_cyclesPixelCBActionPerformed
+
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -504,6 +561,7 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
     private javax.swing.JPanel analysisPanel;
     private javax.swing.JComboBox channelCB;
     private javax.swing.JComboBox comCombo;
+    private javax.swing.JComboBox cyclesPixelCB;
     private javax.swing.JCheckBox debuggingCB;
     private javax.swing.JComboBox delaysCB;
     private javax.swing.JCheckBox enableBiasgen;
@@ -514,10 +572,13 @@ public class dsPIC33F_COM_ConfigurationPanel extends javax.swing.JPanel {
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
     private javax.swing.JComboBox nthFrameCB;
     private javax.swing.JCheckBox onChipADC;
     private javax.swing.JCheckBox pixelsCB;
     private javax.swing.JButton resetButton;
+    private javax.swing.JComboBox shiftAccCB;
     private javax.swing.JButton showCmdLineButton;
     private javax.swing.JTextField statusText;
     private javax.swing.JCheckBox streamingCB;

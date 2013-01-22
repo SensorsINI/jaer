@@ -127,11 +127,15 @@ public class StreamCommand implements SerialPortEventListener
         and all the host-side input buffers; a larger value will not result in
         any harm... */
     public static final long CMD_TIMEOUT= 500;
+    /** time (in milliseconds) RTS should be asserted when a command is sent.
+        if set too low commands might not get parsed properly and firmware
+        buffers can get into undefined blocking states */
+    public static final long RTS_TIMEOUT= 20;
     
     // keeping track of ongoing commands
     private String currentCommand;
     private ArrayList<String> cmdPipe;
-    TimerTask cmdWatchdog;
+    TimerTask cmdWatchdog, rtsWatchdog;
 
     // communication object and i/o streams
     private SerialPort port= null;
@@ -196,6 +200,7 @@ public class StreamCommand implements SerialPortEventListener
         currentCommand= null;
         cmdPipe= new ArrayList<String>();
         cmdWatchdog= null;
+        rtsWatchdog= null;
         message= new StreamCommandMessage();
         
         messageTimes= new ArrayList<Long>();
@@ -747,8 +752,18 @@ public class StreamCommand implements SerialPortEventListener
         cmdWatchdog= new SendCommandTimer(this, cmd);
         new Timer("cmdWachdog (" + cmd + ")").schedule(cmdWatchdog, CMD_TIMEOUT);
         
-        // end command-mode
-        port.setRTS(false);
+        // end command-mode after some ms
+        if (rtsWatchdog != null)
+            rtsWatchdog.cancel();
+        
+        rtsWatchdog= new TimerTask() {
+            @Override
+            public void run() {
+                rtsWatchdog = null;
+                port.setRTS(false);
+            }
+        };
+        new Timer("rtsWatchdog").schedule(rtsWatchdog, RTS_TIMEOUT);
         
         // update stats
         cmdsSent+= 1;

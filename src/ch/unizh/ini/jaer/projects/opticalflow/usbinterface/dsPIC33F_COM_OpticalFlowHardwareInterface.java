@@ -147,6 +147,8 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
     protected boolean onChipADC = prefs.getBoolean("onChipADC",false); // see setChannel()
     protected boolean onChipBiases = prefs.getBoolean("onChipBiases",true);
     protected boolean streamPixels = prefs.getBoolean("streamPixels",true);
+    protected int shiftAcc = prefs.getInt("shiftAcc",3);
+    protected int cyclesPixel = prefs.getInt("cyclesPixel",100);
     // end class state variables
 
     /**
@@ -356,8 +358,9 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
                 serial.sendCommand("nth " + String.format("%04X",nthFrame));
                 // set acquisition time :
                 // timer ISR called every 100 cycles -> 2.5us/pixel -> 1ms/frame
-                sendCommand("set timer_cycles 0064");
+                sendCommand("set timer_cycles " + String.format("%04X", cyclesPixel));
                 //sendCommand("set timer_cycles 0032");
+                sendCommand("set shiftacc " + String.format("%04X",shiftAcc));
 
                 // choose channel
                 if (channel == MotionDataMDC2D.PHOTO)
@@ -515,7 +518,52 @@ public class dsPIC33F_COM_OpticalFlowHardwareInterface
         sendCommand("set main_us1 " + String.format("%04X",delay1_us) 
                      + " main_us2 " + String.format("%04X",delay2_us));
     }
-            
+
+    /**
+     * see @setShiftAcc
+     * @return current value of shiftAcc
+     */
+    public int getShiftAcc() {
+        return shiftAcc;
+    }
+
+    /**
+     * set how many bits the accumulator should be shifted before transferring
+     * its value into the dsPIC's 16 bit registers. increase this value to
+     * prevent "overflow errors" (might occur because of high contrast in
+     * frames). increasing this value will decrease the precision of the
+     * calculated motion vector
+     * 
+     * @param shiftAcc by how many bits the accumulator should be shifted to
+     *      the right before transferring its value into the 16bit registers
+     */
+    public void setShiftAcc(int shiftAcc) {
+        this.shiftAcc = shiftAcc;
+        sendCommand("set shiftacc " + String.format("%04X",shiftAcc));
+        prefs.putInt("shiftAcc", shiftAcc);
+    }
+
+    /**
+     * @return number of cycles the firmware waits between moving the scanner
+     *      and sampling the analog value.
+     */
+    public int getCyclesPixel() {
+        return cyclesPixel;
+    }
+
+    /**
+     * set the number of cycles the firmware waits between moving the scanner
+     * and sampling the analog value
+     * 
+     * @param cyclesPixel a high value will increase the frame acquisition time
+     *      and a low value might impact the quality of the acquired signal
+     */
+    public void setCyclesPixel(int cyclesPixel) {
+        this.cyclesPixel = cyclesPixel;
+        sendCommand("set timer_cycles " + String.format("%04X", cyclesPixel));
+        prefs.putInt("cyclesPixel", cyclesPixel);
+    }
+
 
     /**
      * call this to set the <code>dt</code> between two adjacent frames.
