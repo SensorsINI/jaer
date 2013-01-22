@@ -87,7 +87,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             grayBuffer.rewind();
             for (int y = 0; y < textureWidth; y++) {
                 for (int x = 0; x < textureHeight; x++) {
-                    if(config.isDisplayFrames()){
+                    if(config.isDisplayFrames() &&(colorMode!=ColorMode.Contrast || colorMode!=ColorMode.GrayLevel)){
                         grayBuffer.put(0);
                         grayBuffer.put(0);
                         grayBuffer.put(0);
@@ -282,6 +282,9 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
     }
     
+    /** changes alpha of ON map
+     * @param index 0-(size of pixel array-1) of pixel
+     */
     private void updateOnMap(int index){
         int alphaIdx = index + 3;
         float[] map = onMap.array();
