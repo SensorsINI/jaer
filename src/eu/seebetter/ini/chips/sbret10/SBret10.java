@@ -93,7 +93,7 @@ public class SBret10 extends APSDVSchip {
     public void setPowerDown(boolean powerDown){
         config.powerDown.set(powerDown);
         try {
-            config.sendChipConfig();
+            config.sendOnChipConfigChain();
         } catch (HardwareInterfaceException ex) {
             Logger.getLogger(SBret10.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -231,7 +231,7 @@ public class SBret10 extends APSDVSchip {
                         a.readoutType = ApsDvsEvent.ReadoutType.EOF;
                         if(snapshot){
                             snapshot = false;
-                            config.adc.setAdcEnabled(false);
+                            config.apsReadoutControl.setAdcEnabled(false);
                         }
                     }
                 }
@@ -291,7 +291,7 @@ public class SBret10 extends APSDVSchip {
      */
     public void takeSnapshot() {
         snapshot = true;
-        config.adc.setAdcEnabled(true);
+        config.apsReadoutControl.setAdcEnabled(true);
     }
     
     /**
@@ -302,7 +302,7 @@ public class SBret10 extends APSDVSchip {
     }
 
     /**
-     * @param displayLogIntensityChangeEvents the displayLogIntensityChangeEvents to set
+     * @param displayEvents the displayEvents to set
      */
     public void setIgnoreReadout(boolean ignoreReadout) {
         this.ignoreReadout = ignoreReadout;
@@ -329,7 +329,7 @@ public class SBret10 extends APSDVSchip {
                 exposureRenderer.setColor(1, 1, 1, 1);
             }
             super.display(drawable);
-            if(config.graphics != null && config.graphics.displayIntensity){
+            if(config.videoControl != null && config.videoControl.displayFrames){
                 GL gl = drawable.getGL();
                 exposureRender(gl); 
             }

@@ -52,7 +52,6 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
         float gray = renderer.getGrayValue();
         gl.glClearColor(gray, gray, gray, 0f);
         gl.glClear(GL.GL_COLOR_BUFFER_BIT);
-
         return gray;
     }
 
@@ -71,10 +70,14 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
         FloatBuffer pixmap = renderer.getPixmap();
         FloatBuffer onMap = null;
         FloatBuffer offMap = null;
+        boolean displayEvents = false;
+        boolean displayFrames = true;
         if(renderer instanceof AEFrameChipRenderer){
             AEFrameChipRenderer frameRenderer = (AEFrameChipRenderer) renderer;
             onMap = frameRenderer.getOnMap();
             offMap = frameRenderer.getOffMap();
+            displayFrames = frameRenderer.isDisplayFrames();
+            displayEvents = frameRenderer.isDisplayEvents();
         }
         int width = renderer.getWidth();
         int height = renderer.getHeight();
@@ -89,23 +92,24 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
         gl.glBlendFunc (GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA); 
         gl.glEnable (GL.GL_BLEND);
         
-        gl.glBindTexture(GL.GL_TEXTURE_2D, 0);
-        gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
-        gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP);
-        gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP);
-        gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR);
-        gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR);
-        gl.glTexEnvf(GL.GL_TEXTURE_ENV, GL.GL_TEXTURE_ENV_MODE, GL.GL_REPLACE);
-        gl.glTexImage2D (GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, 
-                        GL.GL_FLOAT, pixmap);
+        if(displayFrames){
+            gl.glBindTexture(GL.GL_TEXTURE_2D, 0);
+            gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
+            gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP);
+            gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP);
+            gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR);
+            gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR);
+            gl.glTexEnvf(GL.GL_TEXTURE_ENV, GL.GL_TEXTURE_ENV_MODE, GL.GL_REPLACE);
+            gl.glTexImage2D (GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, 
+                            GL.GL_FLOAT, pixmap);
+
+            gl.glEnable(GL.GL_TEXTURE_2D);
+            gl.glBindTexture (GL.GL_TEXTURE_2D, 0);
+            drawPolygon(gl, width, height);      
+            gl.glDisable(GL.GL_TEXTURE_2D);
+        }
         
-        gl.glEnable(GL.GL_TEXTURE_2D);
-        gl.glBindTexture (GL.GL_TEXTURE_2D, 0);
-        drawPolygon(gl, width, height);      
-        gl.glDisable(GL.GL_TEXTURE_2D);
-        
-        
-        if(onMap != null){
+        if(onMap != null && displayEvents){
             gl.glBindTexture(GL.GL_TEXTURE_2D, 1);
             gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP);

@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.logging.Logger;
 import javax.swing.JButton;
+import net.sf.jaer.config.ApsDvsConfig;
 import net.sf.jaer.util.filter.LowpassFilter2d;
 
 /**
@@ -34,8 +35,6 @@ import net.sf.jaer.util.filter.LowpassFilter2d;
  */
 public class AEFrameChipRenderer extends AEChipRenderer {
     
-    public boolean displayEvents;
-    public boolean displayFrames;
     public int textureWidth; //due to hardware acceloration reasons, has to be a 2^x with x a natural number
     public int textureHeight; //due to hardware acceloration reasons, has to be a 2^x with x a natural number
     
@@ -46,6 +45,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     private boolean agcEnabled;
     public boolean textureRendering = true;
     private float[] onColor, offColor;
+    private ApsDvsConfig config;
     
     protected FloatBuffer pixBuffer;
     protected FloatBuffer onMap, onBuffer;
@@ -60,12 +60,11 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     
     public AEFrameChipRenderer(AEChip chip) {
         super(chip);
+        config = (ApsDvsConfig)chip.getBiasgen();
         agcEnabled = chip.getPrefs().getBoolean("agcEnabled", false);
         setAGCTauMs(chip.getPrefs().getFloat("agcTauMs", 1000));
         apsIntensityGain = chip.getPrefs().getInt("apsIntensityGain", 1);
         apsIntensityOffset = chip.getPrefs().getInt("apsIntensityOffset", 0);
-        displayEvents = chip.getPrefs().getBoolean("displayLogIntensityChangeEvents", true);
-        displayFrames = chip.getPrefs().getBoolean("displayIntensity", true);
         onColor = new float[4];
         offColor = new float[4];
         resetFrame(0.5f);
@@ -88,7 +87,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             grayBuffer.rewind();
             for (int y = 0; y < textureWidth; y++) {
                 for (int x = 0; x < textureHeight; x++) {
-                    if(displayEvents){
+                    if(config.isDisplayFrames()){
                         grayBuffer.put(0);
                         grayBuffer.put(0);
                         grayBuffer.put(0);
@@ -213,7 +212,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             ApsDvsEvent e = (ApsDvsEvent) allItr.next();                        
             int type = e.getType();
             if(!e.isAdcSample()){
-                if(displayEvents){
+                if(config.isDisplayEvents()){
                     if (xsel >= 0 && ysel >= 0) { // find correct mouse pixel interpretation to make sounds for large pixels
                         int xs = xsel, ys = ysel;
                         if (e.x == xs && e.y == ys) {
@@ -230,7 +229,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                             break;
                     }
                 }
-            }else if(e.isAdcSample() && displayFrames && !chip.getAeViewer().isPaused()){
+            }else if(e.isAdcSample() && config.isDisplayFrames() && !chip.getAeViewer().isPaused()){
                 updateFrameBuffer(e);
             }
         }
@@ -536,24 +535,25 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             chip.getAeViewer().interruptViewloop();
         }
         getSupport().firePropertyChange(APS_INTENSITY_OFFSET, old, apsIntensityOffset);
+    } 
+    
+    /** @return the gray level of the rendered data; used to determine whether a pixel needs to be drawn */
+    @Override
+    public float getGrayValue() {
+        if(config.isDisplayFrames()){
+            grayValue = 0.5f;
+        }else{
+            grayValue = 0.0f;
+        }
+        return this.grayValue;
     }
     
-    public void setDisplayEvents(boolean displayEvents) {
-        this.displayEvents = displayEvents;
-    }
-
-    public void setDisplayFrames(boolean displayFrames) {
-       this.displayFrames = displayFrames;
-    }
-
-    public boolean isDisplayEvents() {
-        return displayEvents;
-    }
-
-    public boolean isDisplayIntensity() {
-        return displayFrames;
+    public boolean isDisplayFrames(){
+        return config.isDisplayFrames();
     }
     
-    
+    public boolean isDisplayEvents(){
+        return config.isDisplayEvents();
+    }
 
 }

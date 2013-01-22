@@ -32,6 +32,7 @@ import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceControlsCF;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
+import net.sf.jaer.config.ApsDvsConfig;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.ParameterControlPanel;
 
@@ -39,13 +40,14 @@ import net.sf.jaer.util.ParameterControlPanel;
  *
  * @author Christian
  */
-public class SBret10config extends LatticeMachFX2config{
+public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
     
     protected ShiftedSourceBiasCF ssn, ssp;
     
-    int address = 0;
-    JPanel bPanel;
-    JTabbedPane bgTabbedPane;
+    JPanel configPanel;
+    JTabbedPane configTabbedPane;
+    
+    //*********** FX2 *********************
     // portA
     protected PortBit runCpld = new PortBit(chip, "a3", "runCpld", "(A3) Set high to run CPLD which enables event capture, low to hold logic in reset", true);
     protected PortBit extTrigger = new PortBit(chip, "a1", "extTrigger", "(A1) External trigger to debug APS statemachine", false);
@@ -55,6 +57,8 @@ public class SBret10config extends LatticeMachFX2config{
     /** Bias generator power down bit */
     protected PortBit powerDown = new PortBit(chip, "e2", "powerDown", "(E2) High to disable master bias and tie biases to default rails", false);
     protected PortBit nChipReset = new PortBit(chip, "e3", "nChipReset", "(E3) Low to reset AER circuits and hold pixels in reset, High to run", true); // shouldn't need to manipulate from host
+    
+    //*********** CPLD *********************
     // CPLD shift register contents specified here by CPLDInt and CPLDBit
     protected CPLDInt exposureB = new CPLDInt(chip, 15, 0, "exposureB", "time between reset and readout of a pixel", 0);
     protected CPLDInt exposureC = new CPLDInt(chip, 31, 16, "exposureC", "time between reset and readout of a pixel for a second time (min 240!)", 240);
@@ -65,11 +69,10 @@ public class SBret10config extends LatticeMachFX2config{
     protected CPLDInt padding = new CPLDInt(chip, 109, 96, "pad", "used to zeros", 0);
     protected CPLDBit testPixAPSread = new CPLDBit(chip, 110, "testPixAPSread", "enables continuous scanning of testpixel", false);
     protected CPLDBit useC = new CPLDBit(chip, 111, "useC", "enables a second readout", false);
-    //
-    // lists of ports and CPLD config
-    protected ADC adc;
     
-    protected GraphicOptions graphics;
+    // graphic options for rendering
+    protected VideoControl videoControl;
+    
 //        private Scanner scanner; 
     protected ApsReadoutControl apsReadoutControl;
 
@@ -79,8 +82,9 @@ public class SBret10config extends LatticeMachFX2config{
     public SBret10config(Chip chip) {
         super(chip);
         this.chip = (AEChip)chip;
-        setName("SBret10Biasgen");
+        setName("SBret10 Configuration");
 
+        
         // port bits
         addConfigValue(nChipReset);
         addConfigValue(powerDown);
@@ -123,10 +127,6 @@ public class SBret10config extends LatticeMachFX2config{
         ssBiases[1] = ssn;
         ssBiases[0] = ssp;
 
-
-        // DAC object for simple voltage DAC
-        final float Vdd = 1.8f;
-
         setPotArray(new AddressedIPotArray(this));
 
         try {
@@ -155,15 +155,12 @@ public class SBret10config extends LatticeMachFX2config{
         }
 
         //graphicOptions
-        graphics = new GraphicOptions();
+        videoControl = new VideoControl();
+        videoControl.addObserver(this);
         
         // on-chip configuration chain
         chipConfigChain = new SBRet10ChipConfigChain(chip);
         chipConfigChain.addObserver(this);
-
-        // adc 
-        adc = new ADC();
-        adc.addObserver(this);
 
         // control of log readout
         apsReadoutControl = new ApsReadoutControl();
@@ -172,12 +169,10 @@ public class SBret10config extends LatticeMachFX2config{
         loadPreferences();
         setBatchEditOccurring(false);
         try {
-            sendOnchipConfig();
+            sendConfiguration(this);
         } catch (HardwareInterfaceException ex) {
             Logger.getLogger(SBret10.class.getName()).log(Level.SEVERE, null, ex);
         }
-        byte[] b = formatConfigurationBytes(this);
-
     }
     
     /** Momentarily puts the pixels and on-chip AER logic in reset and then releases the reset.
@@ -199,8 +194,8 @@ public class SBret10config extends LatticeMachFX2config{
     @Override
     public JPanel buildControlPanel() {
 //            if(displayControlPanel!=null) return displayControlPanel;
-        bPanel = new JPanel();
-        bPanel.setLayout(new BorderLayout());
+        configPanel = new JPanel();
+        configPanel.setLayout(new BorderLayout());
         // add a reset button on top of everything
         final Action resetChipAction = new AbstractAction("Reset chip") {
             {putValue(Action.SHORT_DESCRIPTION, "Resets the pixels and the AER logic momentarily");}
@@ -214,39 +209,49 @@ public class SBret10config extends LatticeMachFX2config{
         JPanel specialButtons = new JPanel();
         specialButtons.setLayout(new BoxLayout(specialButtons, BoxLayout.X_AXIS));
         specialButtons.add(new JButton(resetChipAction));
-        bPanel.add(specialButtons, BorderLayout.NORTH);
+        configPanel.add(specialButtons, BorderLayout.NORTH);
 
-        bgTabbedPane = new JTabbedPane();
+        configTabbedPane = new JTabbedPane();
         setBatchEditOccurring(true); // stop updates on building panel
+        
+        //graphics
+        JPanel videoControlPanel = new JPanel();
+        videoControlPanel.setLayout(new BoxLayout(videoControlPanel, BoxLayout.Y_AXIS));
+        configTabbedPane.add("Video Control", videoControlPanel);
+        videoControlPanel.add(new ParameterControlPanel(videoControl));
+        
+        //biasgen
         JPanel combinedBiasShiftedSourcePanel = new JPanel();
         combinedBiasShiftedSourcePanel.setLayout(new BoxLayout(combinedBiasShiftedSourcePanel, BoxLayout.Y_AXIS));
         combinedBiasShiftedSourcePanel.add(super.buildControlPanel());
         combinedBiasShiftedSourcePanel.add(new ShiftedSourceControlsCF(ssn));
         combinedBiasShiftedSourcePanel.add(new ShiftedSourceControlsCF(ssp));
-        bgTabbedPane.addTab("Biases", combinedBiasShiftedSourcePanel);
-        bgTabbedPane.addTab("Output MUX control", chipConfigChain.buildMuxControlPanel());
+        configTabbedPane.addTab("Bias Current Control", combinedBiasShiftedSourcePanel);
+        
+        //muxes
+        configTabbedPane.addTab("Debug Output MUX control", chipConfigChain.buildMuxControlPanel());
 
+        //aps readout
         JPanel apsReadoutPanel = new JPanel();
         apsReadoutPanel.setLayout(new BoxLayout(apsReadoutPanel, BoxLayout.Y_AXIS));
-        bgTabbedPane.add("APS Readout", apsReadoutPanel);
-        apsReadoutPanel.add(new ParameterControlPanel(adc));
+        configTabbedPane.add("APS Readout Control", apsReadoutPanel);
         apsReadoutPanel.add(new ParameterControlPanel(apsReadoutControl));
 
+        //chip config
         JPanel chipConfigPanel = chipConfigChain.getChipConfigPanel();
+        configTabbedPane.addTab("Chip configuration", chipConfigPanel);
 
-        bgTabbedPane.addTab("Chip configuration", chipConfigPanel);
-
-        bPanel.add(bgTabbedPane, BorderLayout.CENTER);
+        configPanel.add(configTabbedPane, BorderLayout.CENTER);
         // only select panel after all added
 
         try {
-            bgTabbedPane.setSelectedIndex(chip.getPrefs().getInt("SBret10.bgTabbedPaneSelectedIndex", 0));
+            configTabbedPane.setSelectedIndex(chip.getPrefs().getInt("SBret10.bgTabbedPaneSelectedIndex", 0));
         } catch (IndexOutOfBoundsException e) {
-            bgTabbedPane.setSelectedIndex(0);
+            configTabbedPane.setSelectedIndex(0);
         }
         // add listener to store last selected tab
 
-        bgTabbedPane.addMouseListener(
+        configTabbedPane.addMouseListener(
                 new java.awt.event.MouseAdapter() {
 
                     @Override
@@ -255,7 +260,7 @@ public class SBret10config extends LatticeMachFX2config{
                     }
                 });
         setBatchEditOccurring(false);
-        return bPanel;
+        return configPanel;
     }
     
     /** The central point for communication with HW from biasgen. All objects in SeeBetterConfig are Observables
@@ -277,26 +282,23 @@ public class SBret10config extends LatticeMachFX2config{
 //            log.info("update with " + observable);
         try {
             if (observable instanceof IPot || observable instanceof VPot) { // must send all of the onchip shift register values to replace shift register contents
-                sendOnchipConfig();
+                sendOnChipConfig();
             } else if (observable instanceof OutputMux || observable instanceof OnchipConfigBit) {
-                sendChipConfig();
+                sendOnChipConfigChain();
             } else if (observable instanceof SBRet10ChipConfigChain) {
-                sendChipConfig();
+                sendOnChipConfigChain();
             } else if (observable instanceof Masterbias) {
                 powerDown.set(getMasterbias().isPowerDownEnabled());
             } else if (observable instanceof TriStateablePortBit) { // tristateable should come first before configbit since it is subclass
                 TriStateablePortBit b = (TriStateablePortBit) observable;
                 byte[] bytes = {(byte) ((b.isSet() ? (byte) 1 : (byte) 0) | (b.isHiZ() ? (byte) 2 : (byte) 0))};
-                sendConfig(CMD_SETBIT, b.getPortbit(), bytes); // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]= OR of value (1,0), hiZ=2/0, bit is set if tristate, unset if driving port
+                sendFx2ConfigCommand(CMD_SETBIT, b.getPortbit(), bytes); // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]= OR of value (1,0), hiZ=2/0, bit is set if tristate, unset if driving port
             } else if (observable instanceof PortBit) {
                 PortBit b = (PortBit) observable;
                 byte[] bytes = {b.isSet() ? (byte) 1 : (byte) 0};
-                sendConfig(CMD_SETBIT, b.getPortbit(), bytes); // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]=value (1,0)
+                sendFx2ConfigCommand(CMD_SETBIT, b.getPortbit(), bytes); // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]=value (1,0)
             } else if (observable instanceof CPLDConfigValue) {
                     sendCPLDConfig();
-            } else if (observable instanceof ADC) {
-                sendCPLDConfig(); // CPLD register updates on device side save and restore the RUN_ADC flag
-//                    update(runAdc, null);
             } else if (observable instanceof AddressedIPot) { 
                 sendAIPot((AddressedIPot)observable);
             } else {
@@ -308,12 +310,15 @@ public class SBret10config extends LatticeMachFX2config{
     }
 
     private void tabbedPaneMouseClicked(java.awt.event.MouseEvent evt) {
-        chip.getPrefs().putInt("SBret10.bgTabbedPaneSelectedIndex", bgTabbedPane.getSelectedIndex());
+        chip.getPrefs().putInt("SBret10.bgTabbedPaneSelectedIndex", configTabbedPane.getSelectedIndex());
     }
 
     /** Controls the APS intensity readout by wrapping the relevant bits */
     public class ApsReadoutControl implements Observer {
 
+        int channel = chip.getPrefs().getInt("ADC.channel", 3);
+        public final String EVENT_ADC_ENABLED = "adcEnabled", EVENT_ADC_CHANNEL = "adcChannel";
+        
         private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
         public final String EVENT_TESTPIXEL = "testpixelEnabled";
 
@@ -326,6 +331,14 @@ public class SBret10config extends LatticeMachFX2config{
             frameDelay.addObserver(this);
             testPixAPSread.addObserver(this);
             useC.addObserver(this);
+        }
+        
+        public boolean isAdcEnabled() {
+            return runAdc.isSet();
+        }
+
+        public void setAdcEnabled(boolean yes) {
+            runAdc.set(yes);
         }
 
         public void setColSettleCC(int cc) {
@@ -396,39 +409,6 @@ public class SBret10config extends LatticeMachFX2config{
 
         @Override
         public void update(Observable o, Object arg) {
-            
-        }
-
-        /**
-            * @return the propertyChangeSupport
-            */
-        public PropertyChangeSupport getPropertyChangeSupport() {
-            return propertyChangeSupport;
-        }
-    }
-
-    public class ADC extends Observable implements Observer {
-        
-        int channel = chip.getPrefs().getInt("ADC.channel", 3);
-        public final String EVENT_ADC_ENABLED = "adcEnabled", EVENT_ADC_CHANNEL = "adcChannel";
-        private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
-
-        public ADC() {
-            runAdc.addObserver(this);
-        }
-
-        public boolean isAdcEnabled() {
-            return runAdc.isSet();
-        }
-
-        public void setAdcEnabled(boolean yes) {
-            runAdc.set(yes);
-        }
-
-        @Override
-        public void update(Observable o, Object arg) {
-            setChanged();
-            notifyObservers(arg);
             if (o == runAdc) {
                 propertyChangeSupport.firePropertyChange(EVENT_ADC_ENABLED, null, runAdc.isSet());
             } // TODO
@@ -442,47 +422,47 @@ public class SBret10config extends LatticeMachFX2config{
         }
     }
     
-    public class GraphicOptions extends Observable implements Observer {
+    public class VideoControl extends Observable implements Observer {
         
         private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
         
-        public boolean displayIntensity, displayLogIntensityChangeEvents;
+        public boolean displayFrames, displayEvents;
         public final String EVENT_GRAPHICS_DISPLAY_INTENSITY = "displayIntensity", EVENT_GRAPHICS_DISPLAY_EVENTS = "displayEvents";
 
-        public GraphicOptions() {
-            displayIntensity = true;
-            displayLogIntensityChangeEvents = true;
+        public VideoControl() {
+            displayFrames = true;
+            displayEvents = true;
         }
 
         /**
-        * @return the displayLogIntensity
+        * @return the displayFrames
         */
-        public boolean isDisplayIntensity() {
-            return displayIntensity;
+        public boolean isDisplayFrames() {
+            return displayFrames;
         }
         
         /**
-        * @param displayLogIntensity the displayLogIntensity to set
+        * @param displayFrames the displayFrames to set
         */
-        public void setDisplayIntensity(boolean displayIntensity) {
-            this.displayIntensity = displayIntensity;
-            chip.getPrefs().putBoolean("displayIntensity", displayIntensity);
+        public void setDisplayFrames(boolean displayFrames) {
+            this.displayFrames = displayFrames;
+            chip.getPrefs().putBoolean("displayFrames", displayFrames);
             chip.getAeViewer().interruptViewloop();
         }
 
         /**
-        * @return the displayLogIntensityChangeEvents
+        * @return the displayEvents
         */
-        public boolean isDisplayLogIntensityChangeEvents() {
-            return displayLogIntensityChangeEvents;
+        public boolean isDisplayEvents() {
+            return displayEvents;
         }
 
         /**
-        * @param displayLogIntensityChangeEvents the displayLogIntensityChangeEvents to set
+        * @param displayEvents the displayEvents to set
         */
-        public void setDisplayLogIntensityChangeEvents(boolean displayLogIntensityChangeEvents) {
-            this.displayLogIntensityChangeEvents = displayLogIntensityChangeEvents;
-            chip.getPrefs().putBoolean("displayLogIntensityChangeEvents", displayLogIntensityChangeEvents);
+        public void setDisplayEvents(boolean displayEvents) {
+            this.displayEvents = displayEvents;
+            chip.getPrefs().putBoolean("displayEvents", displayEvents);
             chip.getAeViewer().interruptViewloop();
         }
 
@@ -501,6 +481,26 @@ public class SBret10config extends LatticeMachFX2config{
         public PropertyChangeSupport getPropertyChangeSupport() {
             return propertyChangeSupport;
         }
+    }
+    
+    @Override
+    public boolean isDisplayFrames() {
+        return videoControl.displayFrames;
+    }
+
+    @Override
+    public void setDisplayFrames(boolean displayFrames) {
+        videoControl.displayFrames = displayFrames;
+    }
+
+    @Override
+    public boolean isDisplayEvents() {
+        return videoControl.displayEvents;
+    }
+
+    @Override
+    public void setDisplayEvents(boolean displayEvents) {
+        videoControl.displayFrames = displayEvents;
     }
 
     /**
