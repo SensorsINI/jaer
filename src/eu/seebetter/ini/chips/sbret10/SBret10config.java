@@ -422,16 +422,17 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         }
     }
     
-    public class VideoControl extends Observable implements Observer {
+    public class VideoControl extends Observable implements Observer, Biasgen.HasPreference {
         
         private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
         
-        public boolean displayFrames, displayEvents;
-        public final String EVENT_GRAPHICS_DISPLAY_INTENSITY = "displayIntensity", EVENT_GRAPHICS_DISPLAY_EVENTS = "displayEvents";
-
+        public boolean displayEvents = chip.getPrefs().getBoolean("VideoControl.displayEvents", true);
+        public boolean displayFrames = chip.getPrefs().getBoolean("VideoControl.displayFrames", true);
+        public boolean useAutoContrast = chip.getPrefs().getBoolean("VideoControl.useAutoContrast", false);
+        
+        
         public VideoControl() {
-            displayFrames = true;
-            displayEvents = true;
+            hasPreferencesList.add(this);
         }
 
         /**
@@ -446,7 +447,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         */
         public void setDisplayFrames(boolean displayFrames) {
             this.displayFrames = displayFrames;
-            chip.getPrefs().putBoolean("displayFrames", displayFrames);
+            chip.getPrefs().putBoolean("VideoControl.displayFrames", displayFrames);
             chip.getAeViewer().interruptViewloop();
         }
 
@@ -462,7 +463,23 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         */
         public void setDisplayEvents(boolean displayEvents) {
             this.displayEvents = displayEvents;
-            chip.getPrefs().putBoolean("displayEvents", displayEvents);
+            chip.getPrefs().putBoolean("VideoControl.displayEvents", displayEvents);
+            chip.getAeViewer().interruptViewloop();
+        }
+        
+        /**
+        * @return the displayEvents
+        */
+        public boolean isUseAutoContrast() {
+            return useAutoContrast;
+        }
+
+        /**
+        * @param displayEvents the displayEvents to set
+        */
+        public void setUseAutoContrast(boolean useAutoContrast) {
+            this.useAutoContrast = useAutoContrast;
+            chip.getPrefs().putBoolean("VideoControl.useAutoContrast", useAutoContrast);
             chip.getAeViewer().interruptViewloop();
         }
 
@@ -481,26 +498,50 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         public PropertyChangeSupport getPropertyChangeSupport() {
             return propertyChangeSupport;
         }
+
+        @Override
+        public void loadPreference() {
+            displayFrames = chip.getPrefs().getBoolean("VideoControl.displayFrames", true);
+            displayEvents = chip.getPrefs().getBoolean("VideoControl.displayEvents", true);
+            useAutoContrast = chip.getPrefs().getBoolean("VideoControl.useAutoContrast", true);
+        }
+
+        @Override
+        public void storePreference() {
+            chip.getPrefs().putBoolean("VideoControl.displayEvents", displayEvents);
+            chip.getPrefs().putBoolean("VideoControl.displayFrames", displayFrames);
+            chip.getPrefs().putBoolean("VideoControl.useAutoContrast", useAutoContrast);
+        }
     }
     
     @Override
     public boolean isDisplayFrames() {
-        return videoControl.displayFrames;
+        return videoControl.isDisplayFrames();
     }
 
     @Override
     public void setDisplayFrames(boolean displayFrames) {
-        videoControl.displayFrames = displayFrames;
+        videoControl.setDisplayFrames(displayFrames);
     }
 
     @Override
     public boolean isDisplayEvents() {
-        return videoControl.displayEvents;
+        return videoControl.isDisplayEvents();
     }
 
     @Override
     public void setDisplayEvents(boolean displayEvents) {
-        videoControl.displayFrames = displayEvents;
+        videoControl.setDisplayEvents(displayEvents);
+    }
+    
+    @Override
+    public boolean isUseAutoContrast(){
+        return videoControl.isUseAutoContrast();
+    }
+    
+    @Override
+    public void setUseAutoContrast(boolean useAutoContrast){
+        videoControl.setUseAutoContrast(useAutoContrast);
     }
 
     /**

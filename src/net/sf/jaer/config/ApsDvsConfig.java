@@ -17,4 +17,8 @@ public interface ApsDvsConfig {
     public abstract boolean isDisplayEvents();
     
     public abstract void setDisplayEvents(boolean displayEvents);
+    
+    public abstract boolean isUseAutoContrast();
+    
+    public abstract void setUseAutoContrast(boolean useAutoContrast);
 }

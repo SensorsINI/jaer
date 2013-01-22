@@ -40,9 +40,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     
     private int sizeX, sizeY, maxADC;
     private int timestamp = 0;
-    private LowpassFilter2d agcFilter = new LowpassFilter2d();  // 2 lp values are min and max log intensities from each frame
-    private float minAGC, maxAGC;
-    private boolean agcEnabled;
+    private LowpassFilter2d lowpassFilter = new LowpassFilter2d();  // 2 lp values are min and max log intensities from each frame
+    private float minValue, maxValue;
     public boolean textureRendering = true;
     private float[] onColor, offColor;
     private ApsDvsConfig config;
@@ -61,7 +60,6 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     public AEFrameChipRenderer(AEChip chip) {
         super(chip);
         config = (ApsDvsConfig)chip.getBiasgen();
-        agcEnabled = chip.getPrefs().getBoolean("agcEnabled", false);
         setAGCTauMs(chip.getPrefs().getFloat("agcTauMs", 1000));
         apsIntensityGain = chip.getPrefs().getInt("apsIntensityGain", 1);
         apsIntensityOffset = chip.getPrefs().getInt("apsIntensityOffset", 0);
@@ -74,8 +72,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     /** Overridden to make gray buffer special for bDVS array */
     @Override
     protected void resetPixmapGrayLevel(float value) {
-        maxAGC = Float.MIN_VALUE;
-        minAGC = Float.MAX_VALUE;
+        maxValue = Float.MIN_VALUE;
+        minValue = Float.MAX_VALUE;
         checkPixmapAllocation();
         final int n = 4 * textureWidth * textureHeight;
         boolean madebuffer = false;
@@ -87,7 +85,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             grayBuffer.rewind();
             for (int y = 0; y < textureWidth; y++) {
                 for (int x = 0; x < textureHeight; x++) {
-                    if(config.isDisplayFrames() &&(colorMode!=ColorMode.Contrast || colorMode!=ColorMode.GrayLevel)){
+                    if(config.isDisplayFrames()){
                         grayBuffer.put(0);
                         grayBuffer.put(0);
                         grayBuffer.put(0);
@@ -219,15 +217,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                             playSpike(type);
                         }
                     }
-                    int index = getIndex(e.x, e.y);
-                    switch (e.polarity) {
-                        case On:
-                            updateOnMap(index);
-                            break;
-                        case Off:
-                            updateOffMap(index);
-                            break;
-                    }
+                    updateEventMaps(e);
                 }
             }else if(e.isAdcSample() && config.isDisplayFrames() && !chip.getAeViewer().isPaused()){
                 updateFrameBuffer(e);
@@ -251,17 +241,17 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             if(e.isStartOfFrame())startFrame(e.timestamp);
         }else if(e.isB()){
             float val = ((float)buf[index]-(float)e.getAdcSample());
+            if(config.isUseAutoContrast()){
+                if (val < minValue) {
+                    minValue = val;
+                } else if (val > maxValue) {
+                    maxValue = val;
+                }
+            }
             val = normalizeFramePixel(val);
             buf[index] = val;
             buf[index+1] = val;
             buf[index+2] = val;
-            if(agcEnabled){
-                if (val < minAGC) {
-                    minAGC = val;
-                } else if (val > maxAGC) {
-                    maxAGC = val;
-                }
-            }
         }
         if(e.isEOF()){
             endFrame();
@@ -270,14 +260,14 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     
     private void startFrame(int ts){
         timestamp=ts;
-        maxAGC = Float.MIN_VALUE;
-        minAGC = Float.MAX_VALUE;
+        maxValue = Float.MIN_VALUE;
+        minValue = Float.MAX_VALUE;
     }
     
     private void endFrame(){
         System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixmap.array().length);
-        if (minAGC > 0 && maxAGC > 0) { // don't adapt to first frame which is all zeros
-            java.awt.geom.Point2D.Float filter2d = agcFilter.filter2d((float)minAGC, (float)maxAGC, timestamp);
+        if (minValue > 0 && maxValue > 0) { // don't adapt to first frame which is all zeros
+            java.awt.geom.Point2D.Float filter2d = lowpassFilter.filter2d((float)minValue, (float)maxValue, timestamp);
             getSupport().firePropertyChange(AGC_VALUES, null, filter2d); // inform listeners (GUI) of new AGC min/max filterd log intensity values
         }
     }
@@ -285,20 +275,33 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     /** changes alpha of ON map
      * @param index 0-(size of pixel array-1) of pixel
      */
-    private void updateOnMap(int index){
-        int alphaIdx = index + 3;
-        float[] map = onMap.array();
-        float alpha = map[alphaIdx]+(1.0f/(float)colorScale);
-        alpha = normalizeEvent(alpha);
-        map[alphaIdx] = alpha;
-    }
-    
-    private void updateOffMap(int index){
-        int alphaIdx = index + 3;
-        float[] map = offMap.array();
-        float alpha = map[alphaIdx]+(1.0f/(float)colorScale);
-        alpha = normalizeEvent(alpha);
-        map[alphaIdx] = alpha;
+    private void updateEventMaps(ApsDvsEvent e){
+        float[] map;
+        int index = getIndex(e.x, e.y);
+        if(e.polarity == ApsDvsEvent.Polarity.On){
+            map = onMap.array();
+        }else{
+            map = offMap.array();
+        }
+        if(colorMode == ColorMode.ColorTime){
+            int ts0 = packet.getFirstTimestamp();
+            float dt = packet.getDurationUs();
+            int ind = (int) Math.floor((NUM_TIME_COLORS - 1) * (e.timestamp - ts0) / dt);
+            if (ind < 0) {
+                ind = 0;
+            } else if (ind >= timeColors.length) {
+                ind = timeColors.length - 1;
+            }
+            map[index] = timeColors[ind][0];
+            map[index + 1] = timeColors[ind][1];
+            map[index + 2] = timeColors[ind][2];
+            map[index + 3] = 0.5f;
+        }else{
+            int alphaIdx = index + 3;
+            float alpha = map[alphaIdx]+(1.0f/(float)colorScale);
+            alpha = normalizeEvent(alpha);
+            map[alphaIdx] = alpha;
+        }
     }
     
     private int getIndex(int x, int y){
@@ -339,32 +342,6 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             colorScale = 64;
         }
         this.colorScale = colorScale;
-        // we set eventContrast so that colorScale events takes us from .5 to 1, i.e., .5*(eventContrast^cs)=1, so eventContrast=2^(1/cs)
-        eventContrast = (float) (Math.pow(2, 1.0 / colorScale)); // e.g. cs=1, eventContrast=2, cs=2, eventContrast=2^0.5, etc
-        prefs.putInt("Chip2DRenderer.colorScale", colorScale);
-        
-        if (old == this.colorScale) {
-            return;
-        }
-        float r = (float) old / colorScale; // e.g. r=0.5 when scale changed from 1 to 2
-        if (onMap == null && offMap == null) {
-            return;
-        }
-        
-        switch (colorMode) {
-            case GrayLevel:
-            case Contrast:
-                
-                break;
-            case RedGreen:
-                    
-                break;
-            default:
-                // rendering method unknown, reset to default value
-                log.warning("colorMode " + colorMode + " unknown, reset to default value 0");
-                setColorMode(ColorMode.GrayLevel);
-        }
-        getSupport().firePropertyChange(COLOR_SCALE, old, colorScale);
     }
     
      private static int ceilingPow2(int n) {
@@ -404,14 +381,14 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     private float normalizeFramePixel(float value) {
         float v;
-        if (!agcEnabled) {
+        if (!config.isUseAutoContrast()) {
             v = (float) (apsIntensityGain*value+apsIntensityOffset) / (float) maxADC;
         } else {
-            java.awt.geom.Point2D.Float filter2d = agcFilter.getValue2d();
+            java.awt.geom.Point2D.Float filter2d = lowpassFilter.getValue2d();
             float offset = filter2d.x;
             float range = (filter2d.y - filter2d.x);
-            v = ((value - offset)) / range;
-//                System.out.println("offset="+offset+" range="+range+" value="+value+" v="+v);
+            v = ((value - offset)) / (range);
+//           System.out.println("offset="+offset+" range="+range+" value="+value+" v="+v);
         }
         if (v < 0) {
             v = 0;
@@ -431,44 +408,29 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     }
 
     public float getAGCTauMs() {
-        return agcFilter.getTauMs();
+        return lowpassFilter.getTauMs();
     }
 
     public void setAGCTauMs(float tauMs) {
         if (tauMs < 10) {
             tauMs = 10;
         }
-        agcFilter.setTauMs(tauMs);
+        lowpassFilter.setTauMs(tauMs);
         chip.getPrefs().putFloat("agcTauMs", tauMs);
     }
 
-    /**
-        * @return the agcEnabled
-        */
-    public boolean isAgcEnabled() {
-        return agcEnabled;
-    }
-
-    /**
-        * @param agcEnabled the agcEnabled to set
-        */
-    public void setAgcEnabled(boolean agcEnabled) {
-        this.agcEnabled = agcEnabled;
-        chip.getPrefs().putBoolean("agcEnabled", agcEnabled);
-    }
-
     public void applyAGCValues() {
-        java.awt.geom.Point2D.Float f = agcFilter.getValue2d();
+        java.awt.geom.Point2D.Float f = lowpassFilter.getValue2d();
         setApsIntensityOffset(agcOffset());
         setApsIntensityGain(agcGain());
     }
 
     private int agcOffset() {
-        return (int) agcFilter.getValue2d().x;
+        return (int) lowpassFilter.getValue2d().x;
     }
 
     private int agcGain() {
-        java.awt.geom.Point2D.Float f = agcFilter.getValue2d();
+        java.awt.geom.Point2D.Float f = lowpassFilter.getValue2d();
         float diff = f.y - f.x;
         if (diff < 1) {
             return 1;
@@ -543,7 +505,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     /** @return the gray level of the rendered data; used to determine whether a pixel needs to be drawn */
     @Override
     public float getGrayValue() {
-        if(config.isDisplayFrames()){
+        if(config.isDisplayFrames() || colorMode==ColorMode.Contrast || colorMode==ColorMode.GrayLevel){
             grayValue = 0.5f;
         }else{
             grayValue = 0.0f;
