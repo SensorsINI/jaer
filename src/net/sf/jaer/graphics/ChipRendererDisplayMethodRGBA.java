@@ -20,7 +20,7 @@ import javax.media.opengl.GLAutoDrawable;
 /**
  * Renders using OpenGL the RGB histogram values from Chip2DRenderer. 
 
- * @author tobi
+ * @author Christian Brandli
  * @see net.sf.jaer.graphics.Chip2DRenderer
  * @see net.sf.jaer.graphics.AEChipRenderer
  */
