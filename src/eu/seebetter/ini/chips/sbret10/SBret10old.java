@@ -1471,7 +1471,7 @@ public class SBret10old extends APSDVSchip {
                 renderer.setColor(1, .2f, .2f, 0.4f);
             }
             if (exposureRenderer == null) {
-                exposureRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 8), true, true);
+                exposureRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 12), true, true);
                 exposureRenderer.setColor(1, 1, 1, 1);
             }
             super.display(drawable);
@@ -1497,7 +1497,7 @@ public class SBret10old extends APSDVSchip {
             // label arrays
             if (txt != null) {
                 renderer.begin3DRendering();
-                renderer.draw3D(txt, x, y, 0, .4f); // x,y,z, scale factor 
+                renderer.draw3D(txt, x, y, 0, .6f); // x,y,z, scale factor 
                 renderer.end3DRendering();
                 if(displayIntensity){
                     exposureRenderer.begin3DRendering();
