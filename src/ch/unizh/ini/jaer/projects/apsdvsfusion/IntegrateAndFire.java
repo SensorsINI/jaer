@@ -7,20 +7,23 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
  * @author Dennis Goehlsdorf
  *
  */
-public class IntegrateAndFire implements FiringModel {
+public class IntegrateAndFire extends FiringModel {
 	float sum = 0.0f;
 	float threshold = 1.0f;
 	/**
 	 * 
 	 */
-	public IntegrateAndFire() {
+	public IntegrateAndFire(int x, int y, FiringModelMap map) {
+		super(x,y,map);
 		// TODO Auto-generated constructor stub
 	}
 	
 	public static FiringModelCreator getCreator() {
 		return new FiringModelCreator() {
-			public FiringModel createUnit(int x, int y) {
-				return new IntegrateAndFire();
+
+			@Override
+			public FiringModel createUnit(int x, int y, FiringModelMap map) {
+				return new IntegrateAndFire(x,y,map);
 			}
 		};
 	}
@@ -29,21 +32,21 @@ public class IntegrateAndFire implements FiringModel {
 	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModel#receiveSpike(double)
 	 */
 	@Override
-	public boolean receiveSpike(double value, int timeInMs) {
+	public void receiveSpike(double value, int timeInUs) {
 		sum+= value;
 		if (sum > threshold) {
 			sum = 0.0f;
-			return true;
+			emitSpike(1.0, timeInUs);
 		}
 		else if (sum < 0.0f) {
 			sum = 0.0f;
 		}
-		return false;
 	}
 
 	@Override
 	public void reset() {
 		sum = 0.0f;
 	}
+
 
 }

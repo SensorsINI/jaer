@@ -28,8 +28,8 @@ public class SimpleKernelProcessor extends KernelProcessor {
 	 */
 	public SimpleKernelProcessor(int outSizeX, int outSizeY, InputKernel inputKernel) {
 //		firingModelMap = new ArrayFiringModelMap(outSizeX, outSizeY, IntegrateAndFire.getCreator());
-		firingModelMap = new ArrayFiringModelMap(outSizeX, outSizeY, LeakyIntegrateAndFire.getCreator(36000, 7000,1.5f));
 		spikeHandler = new SpikeHandlerSet();
+		firingModelMap = new ArrayFiringModelMap(outSizeX, outSizeY, spikeHandler, LeakyIntegrateAndFire.getCreator(36000, 7000,1.5f));
 		this.inputKernel = inputKernel;
 	}
 

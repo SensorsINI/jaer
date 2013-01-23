@@ -9,7 +9,7 @@ import net.sf.jaer.chip.AEChip;
  * @author Dennis Goehlsdorf
  *
  */
-public class ArrayFiringModelMap implements FiringModelMap {
+public class ArrayFiringModelMap extends FiringModelMap {
 	FiringModelCreator fmc;
 	int sizeX = 0, sizeY = 0;
 //	int offsetX = 0, offsetY = 0;
@@ -31,15 +31,16 @@ public class ArrayFiringModelMap implements FiringModelMap {
 
 	FiringModel[][] map = null;
 	
-	public ArrayFiringModelMap(int sizeX, int sizeY, FiringModelCreator fmc) {
+	public ArrayFiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler, FiringModelCreator fmc) {
+		super(sizeX, sizeY, spikeHandler);
 		this.fmc = fmc;
 		changeSize(sizeX, sizeY);
 //		this.offsetX = offsetX;
 //		this.offsetY = offsetY;
 	}
 	
-	public ArrayFiringModelMap(AEChip chip, FiringModelCreator fmc) {
-		this(chip.getSizeX(), chip.getSizeY(), fmc);
+	public ArrayFiringModelMap(AEChip chip, SpikeHandler spikeHandler, FiringModelCreator fmc) {
+		this(chip.getSizeX(), chip.getSizeY(), spikeHandler, fmc);
 	}
 	
 	public synchronized void changeSize(int sizeX, int sizeY) {
@@ -49,7 +50,7 @@ public class ArrayFiringModelMap implements FiringModelMap {
 			map = new FiringModel[sizeX][sizeY];
 			for (int x = 0; x < sizeX; x++) {
 				for (int y = 0; y < sizeY; y++) {
-					map[x][y] = fmc.createUnit(x, y);
+					map[x][y] = fmc.createUnit(x, y, this);
 				}
 			}
 		}

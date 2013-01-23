@@ -9,12 +9,13 @@ import java.util.Random;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.event.PolarityEvent.Polarity;
 
 /**
  * @author Dennis Goehlsdorf
  *
  */
-public class LeakyIntegrateAndFire implements FiringModel {
+public class LeakyIntegrateAndFire extends FiringModel {
 	float threshold = 1.0f;
 	float tau = 1.0f;    
 	int refractoryTime = 70000; // refractory time of 70 us
@@ -25,23 +26,27 @@ public class LeakyIntegrateAndFire implements FiringModel {
 	private int lastIncreaseTime = 0;
 	private boolean resetted = true;
 	
-	private int multiplicator = 1 << 20;
-	private final int intThreshold = 1 << 20;
+	private final static int shifter = 20;
+	private final static int multValueDivisorShift = 10;	
+	private final static int multValueCounterShift = 14;
+
+	private int multiplicator = 1 << shifter;
+	private final int intThreshold = 1 << shifter;
 	private int intTau = (int)(1.0/Math.log(2.0));
 	private int intMembranePotential = 0;
 	
-	private final static int multValueShift = 14;
-	private final static int multValueCounter = 1 << multValueShift;
+	private final static int multValueCounter = 1 << multValueCounterShift;
 	private final static int multValues[] = new int[multValueCounter];
 	static {
 		for (int i = 0; i < multValues.length; i++) {
-			multValues[i] = (int)(Math.exp(-((double)i) / ((double)multValueCounter)) * (1 << 10));
+			multValues[i] = (int)(Math.pow(2.0,((double)(-(i))) / ((double)multValueCounter)) * ((double)(1 << multValueDivisorShift)));
 		}
 	}
 	/**
 	 * 
 	 */
-	public LeakyIntegrateAndFire(float tau, int refractoryTime, float threshold) {
+	public LeakyIntegrateAndFire(int x, int y, float tau, int refractoryTime, float threshold, FiringModelMap map) {
+		super(x,y,map);
 		this.refractoryTime = refractoryTime;
 		this.tau = tau;
 		this.threshold = threshold;
@@ -49,15 +54,16 @@ public class LeakyIntegrateAndFire implements FiringModel {
 	}
 	
 	protected void calculateIntValues() {
-		intTau = (int)(1.0/Math.log(2.0)*tau);
+		intTau = (int)(Math.log(2.0)*tau);
 		//intThreshold = 1 << 20;
-		multiplicator = (int)((1 << 20) * (1.0 / threshold)); 
+		multiplicator = (int)((1 << shifter) * (1.0 / threshold)); 
 	}
 
 	public static FiringModelCreator getCreator(final float tau, final int refractoryTime, final float threshold) {
 		return new FiringModelCreator() {
-			public FiringModel createUnit(int x, int y) {
-				return new LeakyIntegrateAndFire(tau, refractoryTime, threshold);
+			@Override
+			public FiringModel createUnit(int x, int y, FiringModelMap map) {
+				return new LeakyIntegrateAndFire(x,y,tau, refractoryTime, threshold,map);
 			}
 		};
 	}
@@ -71,6 +77,7 @@ public class LeakyIntegrateAndFire implements FiringModel {
 		// this event happened before the last recorded one -> time most likely wrapped around
 		if (timeInUs < lastIncreaseTime) {
 			lastIncreaseTime = timeInUs;
+			refractoredUntil = timeInUs;
 			membranePotential = (float)value;
 		}
 		// normal processing
@@ -79,12 +86,14 @@ public class LeakyIntegrateAndFire implements FiringModel {
         		membranePotential = 0.0f;
         	else
         		membranePotential *= Math.exp(((float)(lastIncreaseTime - timeInUs)) / tau);
+//        	float dummy = (float)Math.exp((lastIncreaseTime - timeInUs)/(tau*2.0));
         	membranePotential += value;
         }
         else if (timeInUs < lastSpikeTime || resetted) 
         	membranePotential = (float)value;
         // still inside refractory time. Avoid further processing: 
-        else return false;
+        else 
+        	return false;
 
     	lastIncreaseTime = timeInUs;
     	resetted = false;
@@ -100,11 +109,12 @@ public class LeakyIntegrateAndFire implements FiringModel {
 	}
 
 //	@Override
-	public boolean receiveSpike(double value, int timeInUs) {
-		int intValue = (int)(value * multiplicator);
+	public final void receiveSpike(double value, int timeInUs) {
+		final int intValue = (int)(value * multiplicator);
 		// this event happened before the last recorded one -> time most likely wrapped around
 		if (timeInUs < lastIncreaseTime) {
 			lastIncreaseTime = timeInUs;
+			refractoredUntil = timeInUs;
 			intMembranePotential = intValue;
 		}
 		// normal processing
@@ -112,18 +122,20 @@ public class LeakyIntegrateAndFire implements FiringModel {
         	if (lastIncreaseTime-timeInUs > 0)
         		intMembranePotential = 0;
         	else {
-        		int diff = timeInUs - lastIncreaseTime;
-				int reductions = diff / intTau;
-        		intMembranePotential *= multValues[((diff - (reductions * intTau)) << multValueShift) / intTau];
-        		intMembranePotential >>= (reductions+10);
+        		final int diff = timeInUs - lastIncreaseTime;
+				final int reductions = diff / intTau;
+//        		intMembranePotential *= multValues[(int)(((long)(diff - (reductions * intTau))) << multValueCounterShift) / intTau];
+//        		intMembranePotential *= multValues[8000];
+        		intMembranePotential *= multValues[(int)(((diff - (reductions * intTau))) << multValueCounterShift) / intTau];
+        		intMembranePotential >>= (reductions+multValueDivisorShift);
+        		
         	}
-// TODO        		intMembranePotential *= Math.exp(((float)(lastIncreaseTime - timeInUs)) / tau);
         	intMembranePotential += intValue;
         }
         else if (timeInUs < lastSpikeTime || resetted) 
         	intMembranePotential = intValue;
         // still inside refractory time. Avoid further processing: 
-        else return false;
+        else return;
 
     	lastIncreaseTime = timeInUs;
     	resetted = false;
@@ -131,11 +143,10 @@ public class LeakyIntegrateAndFire implements FiringModel {
     		intMembranePotential = 0;
     		lastSpikeTime = timeInUs;
     		refractoredUntil = timeInUs + refractoryTime;
-    		return true;
+    		emitSpike(1.0, timeInUs);
     	}
     	else if (intMembranePotential < 0)
     		intMembranePotential = 0;
-   		return false;
 	}
 
 	
@@ -153,15 +164,39 @@ public class LeakyIntegrateAndFire implements FiringModel {
 	}
 	
 	public static void main(String[] args) {
-		LeakyIntegrateAndFire lif = new LeakyIntegrateAndFire(10000, 6000, 1.0f);
-		Random r = new Random();
+		SpikeHandler spikeHandler = new SpikeHandler() {
+			@Override
+			public void spikeAt(int x, int y, int time, Polarity polarity) {
+			}
+			@Override
+			public void reset() {
+			}
+		};
+		FiringModelMap map = new FiringModelMap(1,1,spikeHandler) {
+			@Override 
+			public void reset() {
+			}
+			@Override
+			public FiringModel get(int x, int y) {
+				return null;
+			}
+		};
+		LeakyIntegrateAndFire lifA = new LeakyIntegrateAndFire(0,0,10000, 6, 1.0f,map);
+		LeakyIntegrateAndFire lifB = new LeakyIntegrateAndFire(0,0,10000, 6, 1.0f,map);
+		Random r = new Random(0);
 		int time = 0;
 		long startTime = System.nanoTime();
 		int counter = 0;
-		for (int i = 0; i < 10000000; i++) {
-			double d = r.nextDouble()/10.0;
-			if (lif.receiveSpike(d, time) && (!lif.receiveSpikeFloat(d,time))) counter++;
-			time += r.nextInt(500);
+		for (int i = 0; i < 100000000; i++) {
+//			double d = r.nextDouble()/2.0;
+//			if (lifA.receiveSpike(d, time)) 
+//				counter++;
+//			time += r.nextInt(lifA.intTau * 2);
+			double d = 0.5;
+			
+			lifA.receiveSpike(d, time); 
+
+			time += lifA.intTau / 2;
 		}
 		long endTime = System.nanoTime();
 		System.out.println("Total time in ms: "+(endTime-startTime)/1000000);

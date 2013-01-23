@@ -8,5 +8,5 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
  *
  */
 public interface FiringModelCreator {
-	public FiringModel createUnit(int x, int y);
+	public FiringModel createUnit(int x, int y, FiringModelMap map);
 }

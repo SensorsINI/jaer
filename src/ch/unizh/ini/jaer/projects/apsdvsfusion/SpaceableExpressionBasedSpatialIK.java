@@ -95,9 +95,10 @@ public class SpaceableExpressionBasedSpatialIK extends
 				while (ox < maxOx && kx < width) {
 					int ky = kyInitial, oy = oyInitial;
 					while (oy < maxOy && ky < height) {
-						if (map.get(ox,oy).receiveSpike(convolutionValues[kx][ky], time)) {
-							spikeHandler.spikeAt(ox,oy,time, Polarity.On);
-						}
+						map.get(ox,oy).receiveSpike(convolutionValues[kx][ky], time);
+//						if () {
+//							spikeHandler.spikeAt(ox,oy,time, Polarity.On);
+//						}
 						ky += spacingY;
 						oy ++;
 					}

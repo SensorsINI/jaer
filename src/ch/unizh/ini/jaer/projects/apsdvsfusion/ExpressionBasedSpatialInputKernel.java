@@ -184,9 +184,10 @@ public class ExpressionBasedSpatialInputKernel implements InputKernel {
 //		ty -= map.getOffsetY();
 		for (int x = minx; x < maxx; x++, tx++) {
 			for (int y = miny, ity = ty; y < maxy; y++, ity++) {
-				if (map.get(tx,ity).receiveSpike(convolutionValues[x][y], time)) {
-					spikeHandler.spikeAt(tx,ity,time, Polarity.On);
-				}
+				map.get(tx,ity).receiveSpike(convolutionValues[x][y], time);
+//				if () {
+//					spikeHandler.spikeAt(tx,ity,time, Polarity.On);
+//				}
 			}
 		}
 	}

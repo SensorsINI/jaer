@@ -11,11 +11,11 @@ public class PostponedFireEvent implements Comparable<PostponedFireEvent> {
 	int fireTime;
 	int x, y;
 	//DynamicHeap<PostponedFireEvent>.Entry myEntry = null;
-	SustainedActivityFiringModel firingModel;
+	SchedulableFiringModel firingModel;
 	/**
 	 * 
 	 */
-	public PostponedFireEvent(int x, int y, int fireTime, SustainedActivityFiringModel firingModel) {
+	public PostponedFireEvent(int x, int y, int fireTime, SchedulableFiringModel firingModel) {
 		this.x = x;
 		this.y = y;
 		this.fireTime = fireTime;
@@ -34,11 +34,11 @@ public class PostponedFireEvent implements Comparable<PostponedFireEvent> {
 		this.fireTime = time;
 	}
 	
-	public void setFiringModel(SustainedActivityFiringModel firingModel) { 
+	public void setFiringModel(SchedulableFiringModel firingModel) { 
 		this.firingModel = firingModel;
 	}
 	
-	public SustainedActivityFiringModel getFiringModel() {
+	public SchedulableFiringModel getFiringModel() {
 		return firingModel;
 	}
 	
