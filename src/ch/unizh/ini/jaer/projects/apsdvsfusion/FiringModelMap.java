@@ -8,15 +8,26 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
  *
  */
 public abstract class FiringModelMap {
-	int sizeX, sizeY;
+	int sizeX = -1, sizeY = -1;
+	FiringModelCreator firingModelCreator = null;
 	SpikeHandler spikeHandler;
 	public FiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler) {
-		this.sizeX = sizeX;
-		this.sizeY = sizeY;
 		this.spikeHandler = spikeHandler;
+		changeSize(sizeX, sizeY);
 	}
 	
- 	public SpikeHandler getSpikeHandler() {
+	public FiringModelCreator getFiringModelCreator() {
+		return firingModelCreator;
+	}
+
+	public void setFiringModelCreator(FiringModelCreator firingModelCreator) {
+		this.firingModelCreator = firingModelCreator;
+		buildUnits();
+	}
+	
+	public abstract void buildUnits(); 
+
+	public SpikeHandler getSpikeHandler() {
 		return spikeHandler;
 	}
 
@@ -24,6 +35,8 @@ public abstract class FiringModelMap {
 		this.spikeHandler = spikeHandler;
 	}
 
+	
+	
 	public int getSizeX() {
 		return sizeX;
 	}
@@ -33,9 +46,12 @@ public abstract class FiringModelMap {
 //	public int getOffsetX();
 //	public int getOffsetY();
 	
-	public void changeSize(int sizeX, int sizeY) {
-		this.sizeX = sizeX;
-		this.sizeY = sizeY;
+	public synchronized void changeSize(int sizeX, int sizeY) {
+		if (sizeX != this.sizeX || sizeY != this.sizeY) {
+			this.sizeX = sizeX;
+			this.sizeY = sizeY;
+			buildUnits();
+		}
 	}
 
 	public abstract FiringModel get(int x, int y);

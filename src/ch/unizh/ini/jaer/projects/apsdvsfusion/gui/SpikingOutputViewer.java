@@ -1,15 +1,12 @@
 /**
  * 
  */
-package ch.unizh.ini.jaer.projects.apsdvsfusion;
+package ch.unizh.ini.jaer.projects.apsdvsfusion.gui;
 
 import java.awt.Dimension;
-import java.awt.Graphics2D;
-import java.awt.image.BufferStrategy;
-
-import javax.swing.SwingUtilities;
 
 import net.sf.jaer.event.PolarityEvent.Polarity;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikeHandler;
 //import net.sf.jaer.graphics.ImageDisplay;
 
 /**

@@ -5,6 +5,8 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
 import java.util.prefs.Preferences;
 
+import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.LeakyIntegrateAndFire;
+
 import net.sf.jaer.event.PolarityEvent;
 
 /**
@@ -14,7 +16,7 @@ import net.sf.jaer.event.PolarityEvent;
 public class SimpleKernelProcessor extends KernelProcessor {
 
 	InputKernel inputKernel;
-	FiringModelMap firingModelMap;
+	SchedulableFiringModelMap firingModelMap;
 	SpikeHandlerSet spikeHandler;
 
 	
@@ -29,10 +31,42 @@ public class SimpleKernelProcessor extends KernelProcessor {
 	public SimpleKernelProcessor(int outSizeX, int outSizeY, InputKernel inputKernel) {
 //		firingModelMap = new ArrayFiringModelMap(outSizeX, outSizeY, IntegrateAndFire.getCreator());
 		spikeHandler = new SpikeHandlerSet();
-		firingModelMap = new ArrayFiringModelMap(outSizeX, outSizeY, spikeHandler, LeakyIntegrateAndFire.getCreator(36000, 7000,1.5f));
+		SchedulableWrapperMap smap = new SchedulableWrapperMap(outSizeX, outSizeY, spikeHandler);
+		firingModelMap = smap;
+		smap.setFiringModelMap(new ArrayFiringModelMap(outSizeX, outSizeY, spikeHandler));
+		final FiringModelCreator internalModelCreator = LeakyIntegrateAndFire.getCreator(36000, 7000,1.5f);
+		smap.setFiringModelCreator(new SchedulableFiringModelCreator() {
+			@Override
+			public SchedulableFiringModel createUnit(final int x, final int y,
+					final SchedulableFiringModelMap map) {
+				return new SchedulableFiringModel(x, y, map) {
+					FiringModel internalModel = internalModelCreator.createUnit(x, y, map);
+					@Override
+					public void reset() {
+						internalModel.reset();
+					}
+					
+					@Override
+					protected void processSpike(double value, int timeInUs) {
+						internalModel.receiveSpike(value, timeInUs);
+						scheduleEvent(timeInUs+100000);
+					}
+					
+					@Override
+					protected void executeScheduledEvent(int time) {
+						emitSpike(1.0, time);
+					}
+				};
+			}
+		});
+		smap.setFiringModelCreator(LeakyIntegrateAndFire.getCreator(36000, 7000,1.5f));
 		this.inputKernel = inputKernel;
 	}
 
+	
+	public void processUntil(int timeInUs) {
+		firingModelMap.processScheduledEvents(timeInUs);
+	}
 	
 	public int getOutWidth() {
 		return firingModelMap.getSizeX();

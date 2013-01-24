@@ -1,15 +1,13 @@
 /**
  * 
  */
-package ch.unizh.ini.jaer.projects.apsdvsfusion;
+package ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel;
 
-import java.util.Iterator;
-import java.util.Random;
-
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
-import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModel;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelCreator;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikeHandler;
 
 /**
  * @author Dennis Goehlsdorf
@@ -73,7 +71,7 @@ public class LeakyIntegrateAndFire extends FiringModel {
 	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModel#receiveSpike(double, int)
 	 */
 //	@Override
-	public boolean receiveSpikeFloat(double value, int timeInUs) {
+	public void receiveSpikeFloat(double value, int timeInUs) {
 		// this event happened before the last recorded one -> time most likely wrapped around
 		if (timeInUs < lastIncreaseTime) {
 			lastIncreaseTime = timeInUs;
@@ -93,7 +91,7 @@ public class LeakyIntegrateAndFire extends FiringModel {
         	membranePotential = (float)value;
         // still inside refractory time. Avoid further processing: 
         else 
-        	return false;
+        	return;
 
     	lastIncreaseTime = timeInUs;
     	resetted = false;
@@ -101,14 +99,13 @@ public class LeakyIntegrateAndFire extends FiringModel {
     		membranePotential = 0.0f;
     		lastSpikeTime = timeInUs;
     		refractoredUntil = timeInUs + refractoryTime;
-    		return true;
+    		emitSpike(1.0, timeInUs);
     	}
     	else if (membranePotential < 0.0f)
     		membranePotential = 0.0f;
-   		return false;
 	}
 
-//	@Override
+	@Override
 	public final void receiveSpike(double value, int timeInUs) {
 		final int intValue = (int)(value * multiplicator);
 		// this event happened before the last recorded one -> time most likely wrapped around
@@ -180,12 +177,22 @@ public class LeakyIntegrateAndFire extends FiringModel {
 			public FiringModel get(int x, int y) {
 				return null;
 			}
+			@Override
+			public void buildUnits() {
+			}
 		};
 		LeakyIntegrateAndFire lifA = new LeakyIntegrateAndFire(0,0,10000, 6, 1.0f,map);
-		LeakyIntegrateAndFire lifB = new LeakyIntegrateAndFire(0,0,10000, 6, 1.0f,map);
-		Random r = new Random(0);
+//		LeakyIntegrateAndFire lifB = new LeakyIntegrateAndFire(0,0,10000, 6, 1.0f,map);
+//		Random r = new Random(0);
 		int time = 0;
 		long startTime = System.nanoTime();
+//		double a = 0.0;
+//		int a = 0;
+//		for (int i = 0; i < 1000000000; i++) {
+////			a += 2.3;
+//			a += 2;
+////			printf("hm\n\r");
+//		}
 		int counter = 0;
 		for (int i = 0; i < 100000000; i++) {
 //			double d = r.nextDouble()/2.0;

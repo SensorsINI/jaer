@@ -6,7 +6,6 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.GraphicsConfiguration;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.HeadlessException;
@@ -16,21 +15,16 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
-import java.awt.event.ComponentListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.Random;
 import java.util.prefs.Preferences;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
-import javax.swing.JComponent;
 import javax.swing.JFrame;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
@@ -39,14 +33,19 @@ import javax.swing.event.ChangeListener;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
-
-import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.SpikingOutputViewer;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.SpikingOutputViewerManager;
+//import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
 
 /**
  * @author Dennis
  *
  */
 public class ExpressionBasedIKUserInterface extends JFrame {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 5681386888199806072L;
 	private JPanel mainPanel = new JPanel();
 	private BorderLayout mainPanelLayout = new BorderLayout();
 	private JPanel viewerPanel = new JPanel(new GridBagLayout());
@@ -58,7 +57,11 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 	int grayLevels = -1;
 	
     public class ExpressionBasedSpatialIKPanel extends JPanel {
-    	SpikingOutputViewer soViewer;
+    	/**
+		 * 
+		 */
+		private static final long serialVersionUID = 3797114114409894258L;
+		SpikingOutputViewer soViewer;
     	ExpressionBasedSpatialInputKernel inputKernel;
     	SimpleKernelProcessor kernelProcessor;
     	JPanel viewerPanel;
@@ -192,7 +195,9 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 //    		ExpressionBasedIKUserInterface.this.pack();
 //    		ExpressionBasedIKUserInterface.this.repaint();
     	}
-    	
+    	public void processUntil(int timeInUs) {
+    		kernelProcessor.processUntil(timeInUs);
+    	}
     }
 	
 	/**
@@ -408,12 +413,17 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 		this.pack();
 		
 	}
+	
+	public void processUntil(int timeInUs) {
+		for (ExpressionBasedSpatialIKPanel panel : panels)
+			panel.processUntil(timeInUs);
+	}
 	protected void removePanel(ExpressionBasedSpatialIKPanel panel) {
 		viewerPanel.remove(panel);
 	}
 	public static void main(String[] args) {
 		SpatioTemporalFusion stfFilter = new SpatioTemporalFusion(null);
-		SpikingOutputViewerManager spikingOutputViewerManager = new SpikingOutputViewerManager(); 
+//		SpikingOutputViewerManager spikingOutputViewerManager = new SpikingOutputViewerManager(); 
 		stfFilter.setFilterEnabled(true);
 		ExpressionBasedIKUserInterface ui = stfFilter.expressionBasedIKUserInterface;//new ExpressionBasedIKUserInterface(stfFilter, spikingOutputViewerManager);
 		ui.addWindowListener(new WindowAdapter() {
@@ -428,8 +438,9 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 		long startTime = System.nanoTime();
 		for (int i = 0; i < 1000; i++) {
 			EventPacket<PolarityEvent> ep = new EventPacket<PolarityEvent>(PolarityEvent.class);
-            OutputEventIterator outItr = ep.outputIterator();
-			Iterator<PolarityEvent> it = ep.inputIterator();
+            @SuppressWarnings("rawtypes")
+			OutputEventIterator outItr = ep.outputIterator();
+//			Iterator<PolarityEvent> it = ep.inputIterator();
 			for (int j = 0; j < 1000; j++) {
                 PolarityEvent pe = (PolarityEvent) outItr.nextOutput();
 				

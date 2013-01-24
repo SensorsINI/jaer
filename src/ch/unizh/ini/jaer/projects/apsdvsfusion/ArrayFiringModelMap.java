@@ -10,8 +10,8 @@ import net.sf.jaer.chip.AEChip;
  *
  */
 public class ArrayFiringModelMap extends FiringModelMap {
-	FiringModelCreator fmc;
-	int sizeX = 0, sizeY = 0;
+//	FiringModelCreator fmc;
+//	int sizeX = 0, sizeY = 0;
 //	int offsetX = 0, offsetY = 0;
 //	public int getOffsetY() {
 //		return offsetY;
@@ -31,30 +31,25 @@ public class ArrayFiringModelMap extends FiringModelMap {
 
 	FiringModel[][] map = null;
 	
-	public ArrayFiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler, FiringModelCreator fmc) {
+	public ArrayFiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler) {
 		super(sizeX, sizeY, spikeHandler);
-		this.fmc = fmc;
-		changeSize(sizeX, sizeY);
+	//	this.fmc = fmc;
+	//	changeSize(sizeX, sizeY);
 //		this.offsetX = offsetX;
 //		this.offsetY = offsetY;
 	}
 	
-	public ArrayFiringModelMap(AEChip chip, SpikeHandler spikeHandler, FiringModelCreator fmc) {
-		this(chip.getSizeX(), chip.getSizeY(), spikeHandler, fmc);
+	public ArrayFiringModelMap(AEChip chip, SpikeHandler spikeHandler/*, FiringModelCreator fmc*/) {
+		this(chip.getSizeX(), chip.getSizeY(), spikeHandler/*, fmc*/);
 	}
 	
-	public synchronized void changeSize(int sizeX, int sizeY) {
-		if (sizeX != this.sizeX || sizeY != this.sizeY) {
-			this.sizeX = sizeX;
-			this.sizeY = sizeY;
-			map = new FiringModel[sizeX][sizeY];
-			for (int x = 0; x < sizeX; x++) {
-				for (int y = 0; y < sizeY; y++) {
-					map[x][y] = fmc.createUnit(x, y, this);
-				}
-			}
-		}
-	}
+//	public synchronized void changeSize(int sizeX, int sizeY) {
+//		if (sizeX != this.sizeX || sizeY != this.sizeY) {
+//			super.changeSize(sizeX, sizeY);
+////			this.sizeX = sizeX;
+////			this.sizeY = sizeY;
+//		}
+//	}
 	
 	/* (non-Javadoc)
 	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap#get(int, int)
@@ -78,14 +73,26 @@ public class ArrayFiringModelMap extends FiringModelMap {
 	}
 
 	@Override
-	public int getSizeX() {
-		return sizeX;
+	public void buildUnits() {
+		map = new FiringModel[sizeX][sizeY];
+		if (getFiringModelCreator() != null) {
+			for (int x = 0; x < sizeX; x++) {
+				for (int y = 0; y < sizeY; y++) {
+					map[x][y] = getFiringModelCreator().createUnit(x, y, this);
+				}
+			}
+		}
 	}
 
-	@Override
-	public int getSizeY() {
-		// TODO Auto-generated method stub
-		return sizeY;
-	}
+//	@Override
+//	public int getSizeX() {
+//		return sizeX;
+//	}
+//
+//	@Override
+//	public int getSizeY() {
+//		// TODO Auto-generated method stub
+//		return sizeY;
+//	}
 
 }

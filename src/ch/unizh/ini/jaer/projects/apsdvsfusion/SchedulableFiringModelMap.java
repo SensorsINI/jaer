@@ -34,35 +34,12 @@ public abstract class SchedulableFiringModelMap extends FiringModelMap {
 	/* (non-Javadoc)
 	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap#get(int, int)
 	 */
-//	@Override
-	public abstract SchedulableFiringModel get(int x, int y);
+////	@Override
+//	public abstract SchedulableFiringModel get(int x, int y);
 
 	/* (non-Javadoc)
 	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap#getSizeX()
 	 */
-	@Override
-	public int getSizeX() {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-	/* (non-Javadoc)
-	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap#getSizeY()
-	 */
-	@Override
-	public int getSizeY() {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-	/* (non-Javadoc)
-	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap#changeSize(int, int)
-	 */
-	@Override
-	public void changeSize(int sizeX, int sizeY) {
-		// TODO Auto-generated method stub
-
-	}
 
 	/* (non-Javadoc)
 	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap#reset()

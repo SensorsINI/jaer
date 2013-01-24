@@ -12,7 +12,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
-import java.text.DecimalFormat;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -29,7 +28,7 @@ import javax.swing.event.ChangeListener;
 
 import net.sf.jaer.graphics.ImageDisplay;
 
-import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
+//import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
 
 /**
  * @author Dennis
@@ -286,7 +285,7 @@ public class ExpressionKernelEditor extends JFrame {
             layout = (SpringLayout)parent.getLayout();
         } catch (ClassCastException exc) {
             System.err.println("The first argument to makeCompactGrid must use SpringLayout.");
-            return;
+            return; 
         }
 
         //Align all cells in each column and make them the same width.

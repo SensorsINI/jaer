@@ -3,41 +3,16 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.Dimension;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JSpinner;
-import javax.swing.JTextField;
-import javax.swing.SpinnerModel;
-import javax.swing.SpinnerNumberModel;
-import javax.swing.Spring;
-import javax.swing.SpringLayout;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
-
-import jspikestack.ImageDisplay;
-import jspikestack.KernelMaker2D.Scaling;
-
-import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
-import ch.unizh.ini.jaer.projects.apsdvsfusion.mathexpression.IllegalExpressionException;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
-import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.graphics.AEViewer;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.SpikingOutputViewerManager;
+//import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
 
 /**
  * Filter class that uses a defined kernel function to compute not spatially filtered output spikes.
@@ -61,7 +36,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	
 	ExpressionBasedIKUserInterface expressionBasedIKUserInterface = null;
 	SpikingOutputViewerManager spikingOutputViewerManager = null;
-	private int grayLevels = 4;
+//	private int grayLevels = 4;
 	
 	boolean filterEvents = false;
 	SpikeHandler filterSpikeHandler = new SpikeHandler() {
@@ -165,6 +140,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	/* (non-Javadoc)
 	 * @see net.sf.jaer.eventprocessing.EventFilter2D#filterPacket(net.sf.jaer.event.EventPacket)
 	 */
+	@SuppressWarnings("unchecked")
 	@Override
 	public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!filterEnabled) {
@@ -175,12 +151,16 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
         }
 //        getPrefs()
 		checkOutputPacketEventType(in);
-        OutputEventIterator<?> oi=out.outputIterator();
+//        OutputEventIterator<?> oi=out.outputIterator();
 //        firingModelMap.changeSize(chip.getSizeX(), chip.getSizeY());
  //       PolarityEvent e;
         out.setEventClass(PolarityEvent.class);
-        int beforePackageTime = time;
+//        int beforePackageTime = time;
+        int maxTime = Integer.MIN_VALUE;
 		for (BasicEvent be : in) {
+			if (be.getTimestamp() > maxTime) {
+				maxTime = be.getTimestamp();
+			}
 			if (be instanceof PolarityEvent) {
 				synchronized (kernelProcessors) {
 					for (KernelProcessor kp : kernelProcessors) {
@@ -195,6 +175,8 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 //				inputKernel.apply(be.x, be.y, be.timestamp, ((PolarityEvent)be).polarity, firingModelMap, spikeHandler);
 			}
 		}
+		if (expressionBasedIKUserInterface != null)
+			expressionBasedIKUserInterface.processUntil(maxTime);
 		if (filterEvents)
 			return out;
 		else 

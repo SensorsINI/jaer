@@ -1,7 +1,11 @@
 /**
  * 
  */
-package ch.unizh.ini.jaer.projects.apsdvsfusion;
+package ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel;
+
+import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModel;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelCreator;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap;
 
 /**
  * @author Dennis Goehlsdorf

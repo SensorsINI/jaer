@@ -3,10 +3,7 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Random;
 
 /**
  * @author Dennis

@@ -3,7 +3,6 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
-import java.util.LinkedList;
 
 import net.sf.jaer.event.PolarityEvent.Polarity;
 

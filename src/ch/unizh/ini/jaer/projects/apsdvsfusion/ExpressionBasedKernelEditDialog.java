@@ -4,11 +4,9 @@
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -24,9 +22,7 @@ import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 
-import javax.swing.JButton;
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -40,6 +36,8 @@ import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
+import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.NonGLImageDisplay;
+
 //import net.sf.jaer.graphics.ImageDisplay;
 
 /**
@@ -47,6 +45,10 @@ import javax.swing.event.ChangeListener;
  *
  */
 public class ExpressionBasedKernelEditDialog extends JDialog implements ActionListener, PropertyChangeListener {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -5468936818753278940L;
 	JTextField onExpressionField = new JTextField();
 	JTextField offExpressionField = new JTextField();
 	NonGLImageDisplay onConvolutionDisplay = NonGLImageDisplay.createNonGLDisplay();

@@ -6,12 +6,7 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
 import java.util.HashMap;
 import java.util.prefs.Preferences;
 
-import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
-import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
-
 import ch.unizh.ini.jaer.projects.apsdvsfusion.mathexpression.ExpressionTreeBuilder;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.mathexpression.ExpressionTreeNode;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.mathexpression.IllegalExpressionException;

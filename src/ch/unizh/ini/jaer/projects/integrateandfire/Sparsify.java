@@ -23,34 +23,16 @@ import javax.swing.*;
 
 
 // JAER Stuff
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
+import java.util.Random;
+
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.event.EventPacket;
-import java.util.*;
-
-
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventio.*;
-import net.sf.jaer.hardwareinterface.*;
-import net.sf.jaer.hardwareinterface.usb.toradex.ToradexOakG3AxisAccelerationSensor;
-import net.sf.jaer.hardwareinterface.usb.toradex.ToradexOakG3AxisAccelerationSensorGUI;
 //import ch.unizh.ini.caviar.eventio.AEServerSocket;
-import net.sf.jaer.eventprocessing.*;
 //import ch.unizh.ini.caviar.eventprocessing.label.SimpleOrientationFilter;
-import net.sf.jaer.graphics.FrameAnnotater;
 //import ch.unizh.ini.caviar.util.filter.LowpassFilter;
-import java.awt.Graphics2D;
-import java.io.*;
-import java.io.BufferedOutputStream;
-import java.io.DataOutputStream;
-import java.net.Socket;
-import javax.media.opengl.*;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.glu.*;
-import net.sf.jaer.util.TobiLogger;
 
 
 
@@ -72,7 +54,7 @@ public class Sparsify extends EventFilter2D {
     //------------------------------------------------------
     // Main Methods
 
-    public float maxFreq=1000;  // Frequency (Hz) at which half the events are discarded
+    public float maxFreq=getPrefs().getFloat("Sparsify.maxFreq", 1000.0f);  // Frequency (Hz) at which half the events are discarded
 
    // private int ababab = getPrefs().getInt("Sparsify.ababab", 1050);
 
@@ -88,7 +70,8 @@ public class Sparsify extends EventFilter2D {
 
     
     // Deal with incoming packet
-    @Override 
+    @SuppressWarnings("unchecked")
+	@Override 
     public EventPacket<?> filterPacket( EventPacket<?> P){
 		if (!filterEnabled)
 			return P;
@@ -101,7 +84,7 @@ public class Sparsify extends EventFilter2D {
             return P;
         else
         {
-            OutputEventIterator outItr=out.outputIterator();
+			OutputEventIterator<?> outItr=out.outputIterator();
 
             out.setEventClass(PolarityEvent.class);
             int eventLimit = (maxFreq>=0)?(int)(P.getSize()*maxFreq/rate):P.getSize();
@@ -174,7 +157,7 @@ public class Sparsify extends EventFilter2D {
     }
     
     public void setMaxFreq(float dt) {
-        getPrefs().putFloat("Sparsify.MaxFreq",dt);
+        getPrefs().putFloat("Sparsify.maxFreq",dt);
         support.firePropertyChange("maxFreq",this.maxFreq,dt);
         this.maxFreq = dt;
     }

@@ -1,4 +1,4 @@
-package ch.unizh.ini.jaer.projects.apsdvsfusion;
+package ch.unizh.ini.jaer.projects.apsdvsfusion.gui;
 
 import java.awt.Color;
 import java.awt.Graphics;
@@ -8,10 +8,14 @@ import java.util.ArrayList;
 import javax.swing.JPanel;
 
 public class NonGLImageDisplay extends JPanel {
+		/**
+	 * 
+	 */
+	private static final long serialVersionUID = -31584012951370181L;
 		Color[][] pixmap;
 		int sizeX = -1, sizeY = -1;
 		boolean square;
-		private float rectWidth, rectHeight; 
+//		private float rectWidth, rectHeight; 
 		ArrayList<UpdateListener> listeners = new ArrayList<UpdateListener>();
 		
 		public interface UpdateListener {
