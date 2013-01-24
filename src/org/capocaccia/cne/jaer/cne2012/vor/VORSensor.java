@@ -175,7 +175,7 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
     public synchronized void cleanup() {
         super.cleanup();
         try {
-            spatial.close();
+            if(spatial!=null) spatial.close();
         } catch (PhidgetException ex) {
             Logger.getLogger(VORSensor.class.getName()).log(Level.SEVERE, null, ex);
         }
