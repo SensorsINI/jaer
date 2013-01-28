@@ -32,12 +32,16 @@ public class DynamicHeap<T extends Comparable<T>> {
 			reposition(this);
 		}
 		public void remove() {
-			if (position >= 0)
-				DynamicHeap.this.remove(position);
+			synchronized (DynamicHeap.this) {
+				if (position >= 0)
+					DynamicHeap.this.remove(position);
+			}
 		}
 		public void setContent(T content) {
-			this.content = content;
-			reposition(this);
+			synchronized (DynamicHeap.this) {
+				this.content = content;
+				reposition(this);
+			}
 		}
 		public String toString() {
 			return content.toString()+"@"+position;
@@ -49,7 +53,7 @@ public class DynamicHeap<T extends Comparable<T>> {
 	 */
 	public DynamicHeap() {
 	}
-	public Entry add(Entry entry) {
+	public synchronized Entry add(Entry entry) {
 		if (entry != null) {
 			entry.position = list.size();
 			list.add(entry);
@@ -57,7 +61,7 @@ public class DynamicHeap<T extends Comparable<T>> {
 		}
 		return entry;
 	}
-	public Entry add(T content) {
+	public synchronized Entry add(T content) {
 		Entry entry = new Entry(content);
 		add(entry);
 		return entry;
@@ -78,7 +82,7 @@ public class DynamicHeap<T extends Comparable<T>> {
 		}
 		else return -1;
 	}
-	public void moveUp(Entry entry) {
+	protected void moveUp(Entry entry) {
 		moveUp(entry,entry.position);
 	}
 	private int moveDownOnce(Entry entry, int position) {
@@ -121,10 +125,10 @@ public class DynamicHeap<T extends Comparable<T>> {
 		}
 		else return -1;
 	}
-	public void moveDown(Entry entry) {
+	protected void moveDown(Entry entry) {
 		moveDown(entry,entry.position);
 	}
-	public void reposition(Entry entry) {
+	public synchronized void reposition(Entry entry) {
 		if (entry.position < 0)
 			add(entry);
 		else {
@@ -133,13 +137,13 @@ public class DynamicHeap<T extends Comparable<T>> {
 		}
 	}
 	
-	public Entry remove(int position) {
+	public synchronized Entry remove(int position) {
 		if (position >= 0 && position < list.size()) {
 			Entry ret = list.get(position);
 			ret.position = -1;
 
 			Entry replacement = list.remove(list.size()-1);
-			if (list.size() > 0) {
+			if (list.size() > position) {
 				replacement.position = position;
 				list.set(position,replacement);
 				moveDown(replacement,position);
@@ -160,19 +164,19 @@ public class DynamicHeap<T extends Comparable<T>> {
 	public int size() {
 		return list.size();
 	}
-	public Entry peek() {
+	public synchronized Entry peek() {
 		if (list.size() > 0)
 			return list.get(0);
 		else return null;
 	}
-	public Entry poll() {
+	public synchronized Entry poll() {
 		return remove(0);
 	}
-	public Entry push(Entry entry) {
+	public synchronized Entry push(Entry entry) {
 		return add(entry);
 	}
 	
-	public Entry push(T content) {
+	public synchronized Entry push(T content) {
 		return add(content);
 	}
 	

@@ -24,6 +24,7 @@ public class SpikingOutputViewer implements SpikeHandler, NonGLImageDisplay.Upda
 	public int[][] outputBuffer;
 	
 	Object receivedSpikesLock = new Object();
+	Object outputBufferLock = new Object();
     int grayLevels;
 	boolean active = true;
     
@@ -60,20 +61,23 @@ public class SpikingOutputViewer implements SpikeHandler, NonGLImageDisplay.Upda
     public void changeSize(int sizeX, int sizeY) {
     	if (sizeX != this.sizeX || sizeY != this.sizeY) {
     		synchronized (this) {
-				
-	        	this.sizeX = sizeX;
-	        	this.sizeY = sizeY;
-	        	this.receivedSpikes = new int[sizeX][sizeY];
-	        	this.receivedSpikesBuffer = new int[sizeX][sizeY];
-	        	this.outputBuffer = new int[sizeX][sizeY];
-	        	if (display != null) {
-	//                display = ImageDisplay.createOpenGLCanvas();
-	//                display.setSizeX(sizeX);
-	//                display.setSizeY(sizeY);
-	//                display.setPreferredSize(new Dimension(250,250));
-	//                display.setBorderSpacePixels(1);
-	//                this.display.setFontSize(14);
-	        		display.setImageSize(sizeX, sizeY);
+				synchronized (this.outputBufferLock) {
+					synchronized (receivedSpikesLock) {
+			        	this.sizeX = sizeX;
+			        	this.sizeY = sizeY;
+			        	this.receivedSpikes = new int[sizeX][sizeY];
+			        	this.receivedSpikesBuffer = new int[sizeX][sizeY];
+			        	this.outputBuffer = new int[sizeX][sizeY];
+			        	if (display != null) {
+			//                display = ImageDisplay.createOpenGLCanvas();
+			//                display.setSizeX(sizeX);
+			//                display.setSizeY(sizeY);
+			//                display.setPreferredSize(new Dimension(250,250));
+			//                display.setBorderSpacePixels(1);
+			//                this.display.setFontSize(14);
+			        		display.setImageSize(sizeX, sizeY);
+						}
+					}
 				}
         	}
     	}
@@ -85,7 +89,7 @@ public class SpikingOutputViewer implements SpikeHandler, NonGLImageDisplay.Upda
     	// swap buffer and receivedSpikes:
 //    	synchronized (this) {
     	if (active) {
-    		synchronized (this.outputBuffer) {
+    		synchronized (this.outputBufferLock) {
     			// quickly exchange buffer and receivedSpikes to allow further processing of spikes:
     			synchronized (receivedSpikesLock) {
     				int[][] dummy = receivedSpikes;
@@ -158,7 +162,7 @@ public class SpikingOutputViewer implements SpikeHandler, NonGLImageDisplay.Upda
 	@Override
 	public void displayUpdated(Object display) {
 		// clear buffer
-        synchronized (outputBuffer) {
+        synchronized (outputBufferLock) {
         	for (int x = 0; x < outputBuffer.length; x++) {
         		for (int y = 0; y < outputBuffer[x].length; y++) {
         			outputBuffer[x][y] = 0;

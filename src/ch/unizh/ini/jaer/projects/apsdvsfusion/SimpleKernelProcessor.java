@@ -3,9 +3,11 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
+import java.util.Random;
 import java.util.prefs.Preferences;
 
 import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.LeakyIntegrateAndFire;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.SimplePoissonModel;
 
 import net.sf.jaer.event.PolarityEvent;
 
@@ -34,32 +36,37 @@ public class SimpleKernelProcessor extends KernelProcessor {
 		SchedulableWrapperMap smap = new SchedulableWrapperMap(outSizeX, outSizeY, spikeHandler);
 		firingModelMap = smap;
 		smap.setFiringModelMap(new ArrayFiringModelMap(outSizeX, outSizeY, spikeHandler));
-		final FiringModelCreator internalModelCreator = LeakyIntegrateAndFire.getCreator(36000, 7000,1.5f);
-		smap.setFiringModelCreator(new SchedulableFiringModelCreator() {
-			@Override
-			public SchedulableFiringModel createUnit(final int x, final int y,
-					final SchedulableFiringModelMap map) {
-				return new SchedulableFiringModel(x, y, map) {
-					FiringModel internalModel = internalModelCreator.createUnit(x, y, map);
-					@Override
-					public void reset() {
-						internalModel.reset();
-					}
-					
-					@Override
-					protected void processSpike(double value, int timeInUs) {
-						internalModel.receiveSpike(value, timeInUs);
-						scheduleEvent(timeInUs+100000);
-					}
-					
-					@Override
-					protected void executeScheduledEvent(int time) {
-						emitSpike(1.0, time);
-					}
-				};
-			}
-		});
-		smap.setFiringModelCreator(LeakyIntegrateAndFire.getCreator(36000, 7000,1.5f));
+		smap.setFiringModelCreator(SimplePoissonModel.getCreator());
+//		final FiringModelCreator internalModelCreator = LeakyIntegrateAndFire.getCreator(36000, 7000,1.5f);
+//		smap.setFiringModelCreator(new SchedulableFiringModelCreator() {
+//			@Override
+//			public SchedulableFiringModel createUnit(final int x, final int y,
+//					final SchedulableFiringModelMap map) {
+//				return new SchedulableFiringModel(x, y, map) {
+//					FiringModel internalModel = internalModelCreator.createUnit(x, y, map);
+//					Random r =new Random(); 
+//					@Override
+//					public void reset() {
+//						internalModel.reset();
+//					}
+//				
+//					@Override
+//					protected void processSpike(double value, int timeInUs) {
+//						internalModel.receiveSpike(value, timeInUs);
+//						if (r.nextFloat() < 0.5)
+//							scheduleEvent(timeInUs+500000);
+//					}
+//					
+//					@Override
+//					protected void executeScheduledEvent(int time) {
+//						super.emitSpike(1.0, time);
+//						if (r.nextFloat() < 0.5)
+//							scheduleEvent(time+500000);
+//					}
+//				};
+//			}
+//		});
+//		smap.setFiringModelCreator(LeakyIntegrateAndFire.getCreator(36000, 7000,1.5f));
 		this.inputKernel = inputKernel;
 	}
 

@@ -17,6 +17,10 @@ public abstract class SchedulableFiringModel extends FiringModel {
 		heapEntry = map.createEntry(scheduledEvent);
 	}
 	
+	public void unschedule() {
+		heapEntry.remove();
+	}
+	
 	public void scheduleEvent(int time) {
 		scheduledEvent.setFireTime(time);
 		heapEntry.contentChanged();
