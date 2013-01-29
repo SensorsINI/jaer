@@ -91,7 +91,7 @@ public class IntegerDecayModel {
 	
 	public void decay(int timePassed) {
 		final int reductions = timePassed / tau;
-		value *= multValues[(int)(((timePassed - (reductions * tau))) << multValueCounterShift) / tau];
+		value *= multValues[(int)((((long)(timePassed - (reductions * tau))) << multValueCounterShift) / tau)];
 		value >>= (reductions+multValueDivisorShift);
 	}
 

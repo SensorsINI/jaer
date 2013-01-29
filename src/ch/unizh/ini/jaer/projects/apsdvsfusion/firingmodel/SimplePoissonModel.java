@@ -19,7 +19,7 @@ public class SimplePoissonModel extends SchedulableFiringModel {
 	int lastTime = Integer.MIN_VALUE;
 	int nextSpikeTime = Integer.MIN_VALUE;
 	// after 10 successive spikes, the average spike rate should be 100 Hz:  
-	float lambda = 1.0f/100000f;
+	float lambda = 1.0f/1000000f;
 	Random random = new Random();
 	/**
 	 * @param x
@@ -29,7 +29,7 @@ public class SimplePoissonModel extends SchedulableFiringModel {
 	public SimplePoissonModel(int x, int y, SchedulableFiringModelMap map) {
 		super(x, y, map);
 		// timeconstant = 1s
-		currentPotential.setTimeConstant(1000000f);
+		currentPotential.setTimeConstant(100000f);
 		// TODO Auto-generated constructor stub
 	}
 	
@@ -57,7 +57,7 @@ public class SimplePoissonModel extends SchedulableFiringModel {
 
 	private void scheduleNextSpike(int time) {
 		if (currentPotential.getIntValue() > 0) {
-			int newIntervall = (int)(Math.log(random.nextDouble()) / (lambda * currentPotential.getValue()));
+			int newIntervall = (int)(-Math.log(random.nextDouble()) / (lambda * currentPotential.getValue()));
 			if (lastSpikeSchedulingTime >= 0) {
 				if (nextSpikeTime - (lastSpikeSchedulingTime - newIntervall) < time) {
 					emitSpike(1.0,time);
