@@ -93,4 +93,11 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap implements
 		if (map != null)
 			map.buildUnits();
 	}
+
+	@Override
+	public void reset() {
+		if (map != null)
+			map.reset();
+		
+	}
 }

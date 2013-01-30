@@ -14,12 +14,14 @@ import ch.unizh.ini.jaer.projects.apsdvsfusion.SchedulableFiringModelMap;
  *
  */
 public class SimplePoissonModel extends SchedulableFiringModel {
-	IntegerDecayModel currentPotential = new IntegerDecayModel();
+	IntegerDecayModel logPotential = new IntegerDecayModel();
+//	// stores the difference between the last and the new potential  
+//	private float changeFactor = 1.0f;
 	int lastSpikeSchedulingTime = -1;
 	int lastTime = Integer.MIN_VALUE;
 	int nextSpikeTime = Integer.MIN_VALUE;
-	// after 10 successive spikes, the average spike rate should be 100 Hz:  
-	float lambda = 1.0f/1000000f;
+	// at the maximum logPotential of 2.0, the spike rate should be 100 Hz: 
+	float lambda = 1.0f/40000f;
 	Random random = new Random();
 	/**
 	 * @param x
@@ -29,25 +31,29 @@ public class SimplePoissonModel extends SchedulableFiringModel {
 	public SimplePoissonModel(int x, int y, SchedulableFiringModelMap map) {
 		super(x, y, map);
 		// timeconstant = 1s
-		currentPotential.setTimeConstant(100000f);
+		logPotential.setTimeConstant(1e7f);
+		// We never want to exceed IntegerDecayModel.ONE. Since we want to max out at +- 2.0, the maximum number
+		// we might ask is +- 4.0. In the worst case, an intermediate value would then be +- 6.0.
+		// I set the multiplicator to 1/8 to make sure +-6.0 is in the Integer range.
+		logPotential.setMultiplicator(0.125f);
 		// TODO Auto-generated constructor stub
 	}
 	
 	public void setTimeConstant(float timeConstant) {
-		currentPotential.setTimeConstant(timeConstant);
+		logPotential.setTimeConstant(timeConstant);
 	}
 	
 	public float getTimeConstant() {
-		return currentPotential.getTimeConstant();
+		return logPotential.getTimeConstant();
 	}
 
 	private void updateToTime(int time) {
 		if (time > lastTime) {
 			int timePassed = time - lastTime;
 			if (timePassed > 0)
-				currentPotential.decay(timePassed);
+				logPotential.decay(timePassed);
 			else
-				currentPotential.setIntValue(0);
+				logPotential.setIntValue(0);
 		}
 		else
 			lastSpikeSchedulingTime = Integer.MIN_VALUE;
@@ -56,24 +62,28 @@ public class SimplePoissonModel extends SchedulableFiringModel {
 	
 
 	private void scheduleNextSpike(int time) {
-		if (currentPotential.getIntValue() > 0) {
-			int newIntervall = (int)(-Math.log(random.nextDouble()) / (lambda * currentPotential.getValue()));
-			if (lastSpikeSchedulingTime >= 0) {
-				if (nextSpikeTime - (lastSpikeSchedulingTime - newIntervall) < time) {
-					emitSpike(1.0,time);
-					lastSpikeSchedulingTime = -1;
-					scheduleNextSpike(time);
-					return;
-				}
-				else {
-					nextSpikeTime -= lastSpikeSchedulingTime - newIntervall;
-				}
-			}
-			else {
+		if (logPotential.getIntValue() > 0) {
+//			// if there was a spike scheduled before (meaning this function call was triggered by a potential change),
+//			// take the time it should take until this scheduled spike and multiply it by the potential change.
+//			if (lastSpikeSchedulingTime >= 0) {
+//				lastSpikeSchedulingTime = (int)((nextSpikeTime - time) * changeFactor);
+//				nextSpikeTime = lastSpikeSchedulingTime + time;
+////				if (nextSpikeTime - (lastSpikeSchedulingTime - newIntervall) < time) {
+////					emitSpike(1.0,time);
+////					lastSpikeSchedulingTime = -1;
+////					scheduleNextSpike(time);
+////					return;
+////				}
+////				else {
+////					nextSpikeTime -= lastSpikeSchedulingTime - newIntervall;
+////				}
+//			}
+//			else {
+				int newIntervall = (int)(-Math.log(random.nextDouble()) / (lambda * logPotential.getValue()));
 				lastSpikeSchedulingTime = newIntervall;
 				nextSpikeTime= time+lastSpikeSchedulingTime;
-			}
-			lastSpikeSchedulingTime = newIntervall;
+//			}
+//			lastSpikeSchedulingTime = newIntervall;
 			scheduleEvent(nextSpikeTime);
 		}
 		else unschedule();
@@ -95,7 +105,26 @@ public class SimplePoissonModel extends SchedulableFiringModel {
 	@Override
 	protected void processSpike(double value, int timeInUs) {
 		updateToTime(timeInUs);
-		currentPotential.add(value);
+//		int before = logPotential.getIntValue();
+		if (value > 0) {
+			// assure bounds of +- 2.0, which corresponds to IntegerDecayModel.HALF, giving us an additional bit
+			// for preventing overflow 
+			if (value > 4.0)
+				value = 4.0;
+			logPotential.add(value);
+			if (logPotential.getIntValue() > IntegerDecayModel.QUARTER)
+				logPotential.setIntValue(IntegerDecayModel.QUARTER);
+		}
+		else if (value < 0) {
+			if (value < -4.0)
+				value = -4.0;			
+			logPotential.add(value);
+			if (logPotential.getIntValue() < IntegerDecayModel.MINUSQUARTER)
+				logPotential.setIntValue(IntegerDecayModel.MINUSQUARTER);
+		}
+//		if (before > 0) {
+//			changeFactor = (float)logPotential.getIntValue() / (float)before;
+//		}
 		scheduleNextSpike(timeInUs);
 	}
 
@@ -104,9 +133,10 @@ public class SimplePoissonModel extends SchedulableFiringModel {
 	 */
 	@Override
 	public void reset() {
-		currentPotential.setIntValue(0);
+		logPotential.setIntValue(0);
 		lastTime = Integer.MIN_VALUE;
 		lastSpikeSchedulingTime = -1; 
+		unschedule();
 	}
 	
 	public static SchedulableFiringModelCreator getCreator() {

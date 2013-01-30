@@ -44,11 +44,12 @@ public abstract class SchedulableFiringModelMap extends FiringModelMap {
 	/* (non-Javadoc)
 	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap#reset()
 	 */
-	@Override
-	public void reset() {
-		// TODO Auto-generated method stub
-
-	}
+//	@Override
+//	public void reset() {
+//		super.reset();
+//		// TODO Auto-generated method stub
+//
+//	}
 
 	/**
 	 * @param args
