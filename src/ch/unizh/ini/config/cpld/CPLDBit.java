@@ -7,6 +7,7 @@ package ch.unizh.ini.config.cpld;
 import ch.unizh.ini.config.ConfigBit;
 import ch.unizh.ini.config.ConfigBit;
 import java.util.prefs.PreferenceChangeEvent;
+import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.Chip;
 
 /** A bit output from CPLD port. */
@@ -14,7 +15,7 @@ import net.sf.jaer.chip.Chip;
  *
  * @author tobi
  */
-public class CPLDBit extends CPLDConfigValue implements ConfigBit {
+public class CPLDBit extends CPLDConfigValue implements ConfigBit, HasPreference {
     int pos; // bit position from lsb position in CPLD config
     boolean value;
     boolean def;

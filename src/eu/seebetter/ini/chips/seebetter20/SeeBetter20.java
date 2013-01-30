@@ -1501,14 +1501,14 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             @Override
             public void loadPreference() {
                 for (OnchipConfigBit b : bits) {
-                    b.loadPreference();
+                    b.loadPreferences();
                 }
             }
 
             @Override
             public void storePreference() {
                 for (OnchipConfigBit b : bits) {
-                    b.storePreference();
+                    b.storePreferences();
                 }
             }
 
@@ -1574,14 +1574,14 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
             @Override
             public void loadPreference() {
                 for (OnchipConfigBit b : bits) {
-                    b.loadPreference();
+                    b.loadPreferences();
                 }
             }
 
             @Override
             public void storePreference() {
                 for (OnchipConfigBit b : bits) {
-                    b.storePreference();
+                    b.storePreferences();
                 }
             }
 

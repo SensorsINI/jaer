@@ -5,7 +5,6 @@
 package ch.unizh.ini.config.boards;
 
 import ch.unizh.ini.config.AbstractConfigValue;
-import ch.unizh.ini.config.HasPreference;
 import ch.unizh.ini.config.cpld.CPLDConfigValue;
 import ch.unizh.ini.config.cpld.CPLDShiftRegister;
 import ch.unizh.ini.config.fx2.PortBit;
@@ -13,12 +12,14 @@ import ch.unizh.ini.config.fx2.TriStateablePortBit;
 import ch.unizh.ini.config.onchip.ChipConfigChain;
 import ch.unizh.ini.config.onchip.OnchipConfigBit;
 import ch.unizh.ini.config.onchip.OutputMux;
-import eu.seebetter.ini.chips.sbret10.SBret10;
-import eu.seebetter.ini.chips.sbret10.SBret10config;
 import java.math.BigInteger;
 import java.text.ParseException;
 import java.util.*;
-import net.sf.jaer.biasgen.*;
+import net.sf.jaer.biasgen.AddressedIPot;
+import net.sf.jaer.biasgen.AddressedIPotArray;
+import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.biasgen.Biasgen.HasPreference;
+import net.sf.jaer.biasgen.Pot;
 import net.sf.jaer.biasgen.VDAC.VPot;
 import net.sf.jaer.biasgen.coarsefine.AddressedIPotCF;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
@@ -36,7 +37,7 @@ public class LatticeMachFX2config extends Biasgen implements HasPreference{
     public AEChip chip;      
     protected ShiftedSourceBiasCF[] ssBiases = new ShiftedSourceBiasCF[2];
     protected ChipConfigChain chipConfigChain = null;
-    protected ArrayList<Biasgen.HasPreference> hasPreferencesList = new ArrayList<Biasgen.HasPreference>();
+    protected ArrayList<HasPreference> hasPreferenceList = new ArrayList<HasPreference>();
     
     public LatticeMachFX2config(Chip chip) {
         super(chip);
@@ -237,6 +238,7 @@ public class LatticeMachFX2config extends Biasgen implements HasPreference{
             return;
         }
         configValues.add(value);
+        value.addToPreferenceList(hasPreferenceList);
         if (value instanceof CPLDConfigValue) {
             cpldConfig.add((CPLDConfigValue) value);
         } else if (value instanceof PortBit) {
@@ -283,8 +285,8 @@ public class LatticeMachFX2config extends Biasgen implements HasPreference{
     public void loadPreference() {
         super.loadPreferences();
 
-        if (hasPreferencesList != null) {
-            for (HasPreference hp : hasPreferencesList) {
+        if (hasPreferenceList != null) {
+            for (HasPreference hp : hasPreferenceList) {
                 hp.loadPreference();
             }
         }
@@ -299,7 +301,7 @@ public class LatticeMachFX2config extends Biasgen implements HasPreference{
     @Override
     public void storePreference() {
         super.storePreferences();
-        for (HasPreference hp : hasPreferencesList) {
+        for (HasPreference hp : hasPreferenceList) {
             hp.storePreference();
         }
         if (ssBiases != null) {

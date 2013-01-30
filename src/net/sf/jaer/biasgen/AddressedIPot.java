@@ -206,14 +206,17 @@ public class AddressedIPot extends Pot implements Cloneable, Observer, RemoteCon
     /** Builds the component used to control the IPot. This component is the user interface.
      @return a JComponent that can be added to a GUI
      */
+    @Override
     public JComponent makeGUIPotControl() {
         return new AddressedIPotGUIControl(this);
     }
     
+    @Override
     public float getPhysicalValue() {
         return getCurrent();
     }
     
+    @Override
     public String getPhysicalValueUnits() {
         return "A";
     }

@@ -10,13 +10,14 @@ import ch.unizh.ini.config.ConfigTristate;
 import ch.unizh.ini.config.ConfigTristate;
 import ch.unizh.ini.config.Tristate;
 import ch.unizh.ini.config.Tristate;
+import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.Chip;
 
 /**
  *
  * @author tobi
  */
-public class TriStateableCPLDBit extends CPLDBit implements ConfigTristate {
+public class TriStateableCPLDBit extends CPLDBit implements ConfigTristate, HasPreference {
     int hiZBit;
     volatile boolean hiZEnabled = false;
     String hiZKey;

@@ -166,7 +166,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         apsReadoutControl = new ApsReadoutControl();
 
         setBatchEditOccurring(true);
-        loadPreferences();
+        loadPreference();
         setBatchEditOccurring(false);
         try {
             sendConfiguration(this);
@@ -422,17 +422,18 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         }
     }
     
-    public class VideoControl extends Observable implements Observer, Biasgen.HasPreference {
+    public class VideoControl extends Observable implements Observer, HasPreference {
         
         private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
         
         public boolean displayEvents = chip.getPrefs().getBoolean("VideoControl.displayEvents", true);
         public boolean displayFrames = chip.getPrefs().getBoolean("VideoControl.displayFrames", true);
         public boolean useAutoContrast = chip.getPrefs().getBoolean("VideoControl.useAutoContrast", false);
-        
+        public float contrast = chip.getPrefs().getFloat("VideoControl.contrast", 1.0f);
+        public float brightness = chip.getPrefs().getFloat("VideoControl.brightness", 0.0f);
         
         public VideoControl() {
-            hasPreferencesList.add(this);
+            hasPreferenceList.add(this);
         }
 
         /**
@@ -482,6 +483,38 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
             chip.getPrefs().putBoolean("VideoControl.useAutoContrast", useAutoContrast);
             chip.getAeViewer().interruptViewloop();
         }
+        
+        /**
+        * @return the contrast
+        */
+        public float getContrast() {
+            return contrast;
+        }
+
+        /**
+        * @param contrast the contrast to set
+        */
+        public void setContrast(float contrast) {
+            this.contrast = contrast;
+            chip.getPrefs().putFloat("VideoControl.contrast", contrast);
+            chip.getAeViewer().interruptViewloop();
+        }
+        
+        /**
+        * @return the brightness
+        */
+        public float getBrightness() {
+            return brightness;
+        }
+
+        /**
+        * @param brightness the brightness to set
+        */
+        public void setBrightness(float brightness) {
+            this.brightness = brightness;
+            chip.getPrefs().putFloat("VideoControl.brightness", brightness);
+            chip.getAeViewer().interruptViewloop();
+        }
 
         @Override
         public void update(Observable o, Object arg) {
@@ -503,7 +536,9 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         public void loadPreference() {
             displayFrames = chip.getPrefs().getBoolean("VideoControl.displayFrames", true);
             displayEvents = chip.getPrefs().getBoolean("VideoControl.displayEvents", true);
-            useAutoContrast = chip.getPrefs().getBoolean("VideoControl.useAutoContrast", true);
+            useAutoContrast = chip.getPrefs().getBoolean("VideoControl.useAutoContrast", false);
+            contrast = chip.getPrefs().getFloat("VideoControl.contrast", 1.0f);
+            brightness = chip.getPrefs().getFloat("VideoControl.brightness", 0.0f);
         }
 
         @Override
@@ -511,6 +546,8 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
             chip.getPrefs().putBoolean("VideoControl.displayEvents", displayEvents);
             chip.getPrefs().putBoolean("VideoControl.displayFrames", displayFrames);
             chip.getPrefs().putBoolean("VideoControl.useAutoContrast", useAutoContrast);
+            chip.getPrefs().putFloat("VideoControl.contrast", contrast);
+            chip.getPrefs().putFloat("VideoControl.brightness", brightness);
         }
     }
     
@@ -543,6 +580,26 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
     public void setUseAutoContrast(boolean useAutoContrast){
         videoControl.setUseAutoContrast(useAutoContrast);
     }
+    
+    @Override
+    public float getContrast(){
+        return videoControl.getContrast();
+    }
+    
+    @Override
+    public void setContrast(float contrast){
+        videoControl.setContrast(contrast);
+    }
+    
+    @Override
+    public float getBrightness(){
+        return videoControl.getBrightness();
+    }
+    
+    @Override
+    public void setBrightness(float brightness){
+        videoControl.setBrightness(brightness);
+    }
 
     /**
     * Formats bits represented in a string as '0' or '1' as a byte array to be sent over the interface to the firmware, for loading
@@ -569,7 +626,6 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
                 nArow = new OnchipConfigBit(chip, "nArow", 4, "use nArow in the AER state machine", false),
                 useAout = new OnchipConfigBit(chip, "useAout", 5, "turn the pads for the analog MUX outputs on", true)
                 ;
-        OnchipConfigBit[] configBits = {resetCalib, typeNCalib, resetTestpixel, hotPixelSuppression, nArow, useAout};
 
         //Muxes
         OutputMux[] amuxes = {new AnalogOutputMux(1), new AnalogOutputMux(2), new AnalogOutputMux(3)};
@@ -584,11 +640,19 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
 
             TOTAL_CONFIG_BITS = 24;
             
-            hasPreferencesList.add(this);
+            hasPreferenceList.add(this);
+            configBits = new OnchipConfigBit[6];
+            configBits[0] = resetCalib;
+            configBits[1] = typeNCalib;
+            configBits[2] = resetTestpixel;
+            configBits[3] = hotPixelSuppression;
+            configBits[4] = nArow;
+            configBits[5] = useAout;
             for (OnchipConfigBit b : configBits) {
                 b.addObserver(this);
             }
-
+            
+            
             muxes.addAll(Arrays.asList(bmuxes)); 
             muxes.addAll(Arrays.asList(dmuxes)); // 4 digital muxes, first in list since at end of chain - bits must be sent first, before any biasgen bits
             muxes.addAll(Arrays.asList(amuxes)); // finally send the 3 voltage muxes

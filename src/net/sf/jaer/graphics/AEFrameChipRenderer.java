@@ -52,17 +52,11 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     
     /** PropertyChange */
     public static final String AGC_VALUES = "AGCValuesChanged";
-    /** PropertyChange when value is changed */
-    public static final String APS_INTENSITY_GAIN = "apsIntensityGain", APS_INTENSITY_OFFSET = "apsIntensityOffset";
-    /** Control scaling and offset of display of log intensity values. */
-    int apsIntensityGain, apsIntensityOffset;
     
     public AEFrameChipRenderer(AEChip chip) {
         super(chip);
         config = (ApsDvsConfig)chip.getBiasgen();
         setAGCTauMs(chip.getPrefs().getFloat("agcTauMs", 1000));
-        apsIntensityGain = chip.getPrefs().getInt("apsIntensityGain", 1);
-        apsIntensityOffset = chip.getPrefs().getInt("apsIntensityOffset", 0);
         onColor = new float[4];
         offColor = new float[4];
         resetFrame(0.5f);
@@ -241,12 +235,10 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             if(e.isStartOfFrame())startFrame(e.timestamp);
         }else if(e.isB()){
             float val = ((float)buf[index]-(float)e.getAdcSample());
-            if(config.isUseAutoContrast()){
-                if (val < minValue) {
-                    minValue = val;
-                } else if (val > maxValue) {
-                    maxValue = val;
-                }
+            if (val < minValue) {
+                minValue = val;
+            } else if (val > maxValue) {
+                maxValue = val;
             }
             val = normalizeFramePixel(val);
             buf[index] = val;
@@ -382,7 +374,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     private float normalizeFramePixel(float value) {
         float v;
         if (!config.isUseAutoContrast()) {
-            v = (float) (apsIntensityGain*value+apsIntensityOffset) / (float) maxADC;
+            v = (float) (config.getContrast()*value+config.getBrightness()) / (float) maxADC;
         } else {
             java.awt.geom.Point2D.Float filter2d = lowpassFilter.getValue2d();
             float offset = filter2d.x;
@@ -421,8 +413,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     public void applyAGCValues() {
         java.awt.geom.Point2D.Float f = lowpassFilter.getValue2d();
-        setApsIntensityOffset(agcOffset());
-        setApsIntensityGain(agcGain());
+        config.setBrightness(agcOffset());
+        config.setContrast(agcGain());
     }
 
     private int agcOffset() {
@@ -446,61 +438,10 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     public void setMaxADC(int max){
         maxADC = max;
     }
-
-    /**
-        * Value from 1 to maxADC. Gain of 1, offset of 0 turns full scale ADC to 1. Gain of maxADC makes a single count go full scale.
-        * @return the apsIntensityGain
-        */
-    public int getApsIntensityGain() {
-        return apsIntensityGain;
+    
+    public void resetAutoContrast(){
+        
     }
-
-    /**
-        * Value from 1 to maxADC. Gain of 1, offset of 0 turns full scale ADC to 1.
-        * Gain of maxADC makes a single count go full scale.
-        * @param apsIntensityGain the apsIntensityGain to set
-        */
-    public void setApsIntensityGain(int apsIntensityGain) {
-        int old = this.apsIntensityGain;
-        if (apsIntensityGain < 1) {
-            apsIntensityGain = 1;
-        } else if (apsIntensityGain > maxADC) {
-            apsIntensityGain = maxADC;
-        }
-        this.apsIntensityGain = apsIntensityGain;
-        chip.getPrefs().putInt("apsIntensityGain", apsIntensityGain);
-        if (chip.getAeViewer() != null) {
-            chip.getAeViewer().interruptViewloop();
-        }
-        getSupport().firePropertyChange(APS_INTENSITY_GAIN, old, apsIntensityGain);
-    }
-
-    /**
-        * Value subtracted from ADC count before gain multiplication. Ranges from 0 to maxADC.
-        * @return the apsIntensityOffset
-        */
-    public int getApsIntensityOffset() {
-        return apsIntensityOffset;
-    }
-
-    /**
-        * Sets value subtracted from ADC count before gain multiplication. Clamped between 0 to maxADC.
-        * @param apsIntensityOffset the apsIntensityOffset to set
-        */
-    public void setApsIntensityOffset(int apsIntensityOffset) {
-        int old = this.apsIntensityOffset;
-        if (apsIntensityOffset < 0) {
-            apsIntensityOffset = 0;
-        } else if (apsIntensityOffset > maxADC) {
-            apsIntensityOffset = maxADC;
-        }
-        this.apsIntensityOffset = apsIntensityOffset;
-        chip.getPrefs().putInt("apsIntensityOffset", apsIntensityOffset);
-        if (chip.getAeViewer() != null) {
-            chip.getAeViewer().interruptViewloop();
-        }
-        getSupport().firePropertyChange(APS_INTENSITY_OFFSET, old, apsIntensityOffset);
-    } 
     
     /** @return the gray level of the rendered data; used to determine whether a pixel needs to be drawn */
     @Override

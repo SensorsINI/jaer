@@ -21,4 +21,12 @@ public interface ApsDvsConfig {
     public abstract boolean isUseAutoContrast();
     
     public abstract void setUseAutoContrast(boolean useAutoContrast);
+    
+    public abstract float getContrast();
+    
+    public abstract void setContrast(float contrast);
+    
+    public abstract float getBrightness();
+    
+    public abstract void setBrightness(float brightness);
 }

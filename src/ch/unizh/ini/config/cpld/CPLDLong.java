@@ -8,12 +8,13 @@ import ch.unizh.ini.config.cpld.CPLDConfigValue;
 import ch.unizh.ini.config.ConfigInt;
 import ch.unizh.ini.config.ConfigInt;
 import java.util.prefs.PreferenceChangeEvent;
+import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.Chip;
 
 /** A integer configuration value on CPLD shift register.
  * @author tobi
  */
-public class CPLDLong extends CPLDConfigValue implements ConfigInt {
+public class CPLDLong extends CPLDConfigValue implements ConfigInt, HasPreference {
 
     volatile long value;
     int def;

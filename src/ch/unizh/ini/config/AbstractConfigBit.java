@@ -8,13 +8,14 @@ import java.awt.event.ActionEvent;
 import java.util.prefs.PreferenceChangeEvent;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
+import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.Chip;
 
 /**
  * Base class for configuration bits - both originating from USB chip and CPLD logic chip.
  * @author tobi
  */
-public class AbstractConfigBit extends AbstractConfigValue implements ConfigBit {
+public class AbstractConfigBit extends AbstractConfigValue implements ConfigBit, HasPreference {
 
     protected volatile boolean value;
     protected boolean def; // default preference value

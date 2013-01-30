@@ -4,11 +4,11 @@
  */
 package ch.unizh.ini.config;
 
-import eu.seebetter.ini.chips.seebetter1011.SeeBetter1011;
+import java.util.ArrayList;
 import java.util.Observable;
 import java.util.prefs.PreferenceChangeListener;
 import java.util.prefs.Preferences;
-import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.Chip;
 
 /**
@@ -54,6 +54,10 @@ public abstract class AbstractConfigValue extends Observable implements Preferen
 
     public String getDescription() {
         return tip;
+    }
+    
+    public void addToPreferenceList(ArrayList<HasPreference> hasPreferencesList){
+        hasPreferencesList.add(this);
     }
     
 }

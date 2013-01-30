@@ -1376,14 +1376,14 @@ public class SBret10old extends APSDVSchip {
             @Override
             public void loadPreference() {
                 for (OnchipConfigBit b : configBits) {
-                    b.loadPreference();
+                    b.loadPreferences();
                 }
             }
 
             @Override
             public void storePreference() {
                 for (OnchipConfigBit b : configBits) {
-                    b.storePreference();
+                    b.storePreferences();
                 }
             }
             

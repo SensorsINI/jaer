@@ -7,6 +7,7 @@ package ch.unizh.ini.config.fx2;
 import ch.unizh.ini.config.fx2.PortBit;
 import ch.unizh.ini.config.ConfigTristate;
 import ch.unizh.ini.config.Tristate;
+import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.Chip;
 
 /** 
@@ -14,7 +15,7 @@ import net.sf.jaer.chip.Chip;
  *
  * @author tobi
  */
-public class TriStateablePortBit extends PortBit implements ConfigTristate {
+public class TriStateablePortBit extends PortBit implements ConfigTristate, HasPreference {
     volatile boolean hiZEnabled = false;
     String hiZKey;
     Tristate def;

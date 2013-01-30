@@ -1,8 +1,8 @@
 package ch.unizh.ini.config.onchip;
 
 
-import ch.unizh.ini.config.HasPreference;
 import ch.unizh.ini.config.AbstractConfigBit;
+import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.Chip;
 
 

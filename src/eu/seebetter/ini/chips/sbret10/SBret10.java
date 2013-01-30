@@ -99,7 +99,7 @@ public class SBret10 extends APSDVSchip {
         }
     }
 
-    /** Creates a new instance of cDVSTest10
+    /** Creates a new instance of SBRet10
      * @param hardwareInterface an existing hardware interface. This constructor is preferred. It makes a new cDVSTest10Biasgen object to talk to the on-chip biasgen.
      */
     public SBret10(HardwareInterface hardwareInterface) {

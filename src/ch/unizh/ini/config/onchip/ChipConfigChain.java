@@ -5,26 +5,18 @@
 package ch.unizh.ini.config.onchip;
 
 import ch.unizh.ini.config.MuxControlPanel;
-import ch.unizh.ini.config.OutputMap;
-import ch.unizh.ini.config.fx2.PortBit;
-import eu.seebetter.ini.chips.sbret10.SBret10config;
-import java.awt.BorderLayout;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
-import javax.swing.BoxLayout;
 import javax.swing.JPanel;
-import javax.swing.JRadioButton;
-import javax.swing.border.TitledBorder;
-import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.Chip;
 
 /**
  *
  * @author Christian
  */
-public abstract class ChipConfigChain extends Observable implements Biasgen.HasPreference, Observer {
+public abstract class ChipConfigChain extends Observable implements HasPreference, Observer {
 
     public Chip sbChip;
 
