@@ -4,14 +4,13 @@
  */
 package eu.seebetter.ini.chips.config;
 
-import ch.unizh.ini.config.fx2.PortBit;
-import ch.unizh.ini.config.HasPreferences;
-import ch.unizh.ini.config.cpld.CPLDShiftRegister;
-import ch.unizh.ini.config.cpld.CPLDConfigValue;
 import ch.unizh.ini.config.AbstractConfigValue;
+import ch.unizh.ini.config.cpld.CPLDConfigValue;
+import ch.unizh.ini.config.cpld.CPLDShiftRegister;
+import ch.unizh.ini.config.fx2.PortBit;
 import java.util.ArrayList;
 import net.sf.jaer.biasgen.Biasgen;
-import net.sf.jaer.biasgen.IPotGroup;
+import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.Chip;
 
 /**
@@ -19,7 +18,7 @@ import net.sf.jaer.chip.Chip;
  * 
  * @author tobi
  */
-public class SBretCPLDConfig extends Biasgen implements HasPreferences {
+public class SBretCPLDConfig extends Biasgen implements HasPreference {
 
     /** Active container for CPLD configuration, which know how to format the data for the CPLD shift register.
      * 
@@ -72,21 +71,21 @@ public class SBretCPLDConfig extends Biasgen implements HasPreferences {
     }
 
     @Override
-    public void loadPreferences() {
+    public void loadPreference() {
         super.loadPreferences();
         if (configValues != null) {
             for (AbstractConfigValue v : configValues) {
-                v.loadPreferences();
+                v.loadPreference();
             }
         }
     }
 
     @Override
-    public void storePreferences() {
+    public void storePreference() {
         super.storePreferences();
         if (configValues != null) {
             for (AbstractConfigValue v : configValues) {
-                v.storePreferences();
+                v.storePreference();
             }
         }
     }

@@ -5,7 +5,6 @@
 package eu.seebetter.ini.chips.config;
 
 import ch.unizh.ini.config.fx2.PortBit;
-import ch.unizh.ini.config.HasPreferences;
 import ch.unizh.ini.config.cpld.CPLDShiftRegister;
 import ch.unizh.ini.config.cpld.CPLDConfigValue;
 import ch.unizh.ini.config.AbstractConfigValue;
@@ -76,7 +75,7 @@ public class SeeBetterChipConfig extends Biasgen implements Biasgen.HasPreferenc
         super.loadPreferences();
         if (configValues != null) {
             for (AbstractConfigValue v : configValues) {
-                v.loadPreferences();
+                v.loadPreference();
             }
         }
     }
@@ -86,7 +85,7 @@ public class SeeBetterChipConfig extends Biasgen implements Biasgen.HasPreferenc
         super.storePreferences();
         if (configValues != null) {
             for (AbstractConfigValue v : configValues) {
-                v.storePreferences();
+                v.storePreference();
             }
         }
     }

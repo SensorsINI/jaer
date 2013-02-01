@@ -9,7 +9,6 @@ package eu.seebetter.ini.chips.seebetter1011;
 import ch.unizh.ini.config.fx2.TriStateablePortBit;
 import ch.unizh.ini.config.fx2.PortBit;
 import ch.unizh.ini.config.onchip.OnchipConfigBit;
-import ch.unizh.ini.config.HasPreferences;
 import ch.unizh.ini.config.cpld.CPLDInt;
 import ch.unizh.ini.config.cpld.CPLDConfigValue;
 import ch.unizh.ini.config.cpld.CPLDBit;
@@ -63,6 +62,7 @@ import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.border.TitledBorder;
 import net.sf.jaer.Description;
+import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.biasgen.Pot.Sex;
 import net.sf.jaer.biasgen.Pot.Type;
 import net.sf.jaer.biasgen.VDAC.DAC;
@@ -1365,14 +1365,14 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
             @Override
             public void loadPreference() {
                 for (OnchipConfigBit b : bits) {
-                    b.loadPreferences();
+                    b.loadPreference();
                 }
             }
 
             @Override
             public void storePreference() {
                 for (OnchipConfigBit b : bits) {
-                    b.storePreferences();
+                    b.storePreference();
                 }
             }
 
@@ -2263,7 +2263,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
      * 
      * @author Tobi
      */
-    public class LogIntensityFrameData implements HasPreferences {
+    public class LogIntensityFrameData implements HasPreference {
 
         /** The scanner is 16 wide by 32 high  */
         public final int WIDTH = BDVSArray.width, HEIGHT = BDVSArray.height; // width is BDVS pixels not scanner registers
@@ -2282,7 +2282,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         private int lasttimestamp=-1;
         
         public LogIntensityFrameData() {
-            loadPreferences();
+            loadPreference();
         }
         
         private int index(int x, int y){
@@ -2398,13 +2398,13 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         public void setCalibData1() {
             System.arraycopy(data, 0, calibData1, 0, NUMSAMPLES);
             calculateCalibration();
-            storePreferences();
+            storePreference();
         }
 
         public void setCalibData2() {
             System.arraycopy(data, 0, calibData2, 0, NUMSAMPLES);
             calculateCalibration();
-            storePreferences();
+            storePreference();
             //substractMean();
         }
 
@@ -2506,14 +2506,14 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         }
 
         @Override
-        public void loadPreferences() {
+        public void loadPreference() {
             calibData1 = getArray(CALIB1_KEY);
             calibData2 = getArray(CALIB2_KEY);
             calculateCalibration();
         }
 
         @Override
-        public void storePreferences() {
+        public void storePreference() {
             putArray(calibData1, CALIB1_KEY);
             putArray(calibData2, CALIB2_KEY);
         }
