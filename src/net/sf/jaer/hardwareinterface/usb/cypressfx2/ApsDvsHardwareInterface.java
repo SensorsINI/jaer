@@ -365,7 +365,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                     if ((dataword & TYPE_WORD_BIT) == TYPE_WORD_BIT) {
                                         if((dataword & FRAME_START_BIT) == FRAME_START_BIT)resetFrameAddressCounters();
                                         int readcycle = (dataword & APSDVSchip.ADC_READCYCLE_MASK)>>APSDVSchip.ADC_READCYCLE_SHIFT;
-                                        if(!(countY[readcycle]<chip.getSizeY())){
+                                        if(countY[readcycle]>=chip.getSizeY()){
                                             countY[readcycle] = 0;
                                             countX[readcycle]++;
                                         }

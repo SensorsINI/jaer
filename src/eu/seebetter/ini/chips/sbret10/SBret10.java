@@ -220,9 +220,9 @@ public class SBret10 extends APSDVSchip {
                     if(e.isC() && e.x == 0 && e.y == 0){
                         exposureC = e.timestamp-firstFrameTs;
                     }
-                    if(((config.useC.isSet() && e.isC()) || (!config.useC.isSet() && e.isB()))  && e.x == (short)(chip.getSizeX()-1) && e.y == (short)(chip.getSizeY()-1)){
+                    if(((config.useC.isSet() && e.isC()) || (!config.useC.isSet() && e.isB()))  && e.x == 0 && e.y == (short)(chip.getSizeY()-1)){
                         lastADCevent();
-                        //insert and end of frame event
+                        //insert an "end of frame" event
                         ApsDvsEvent a = (ApsDvsEvent) outItr.nextOutput();
                         a.adcSample = 0;
                         a.timestamp = (timestamps[i]);
