@@ -19,26 +19,28 @@ import net.sf.jaer.eventprocessing.filter.SubSampler;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- * Models approach cell discovered by Botond Roska group in Basel.
+ * Models a single approach cell discovered by Botond Roska group in Basel.
  * This cell responds to approaching (expanding, but not translating) dark objects, such
  * as perhaps a hungry bird diving on the mouse.
  * 
  * From Botond: The important point is NO delay.
 
-Small subunits, OFF excitation and ON inhibition. 
-* Importantly both have a nonlinearity such that the ON subunit does not respond when there 
-* is a decreasing signal and its response increases nonlinearly with contrast. 
-* ( you can implement as nonlinearity that has two segments, zero up to a positive number and then 
-* linear or below zero it is zero and above zero some exponential ( same thing for OFF )
+        Small subunits, that make OFF excitation and ON inhibition input to the approach cell.
+        * 
+        Importantly both subunits have an expansive nonlinearity such that the ON subunit does not respond when there 
+       is a darkening input signal and its response increases nonlinearly with contrast. 
+        (you can implement as nonlinearity that has two segments, zero up to a positive number and then 
+       linear or below zero it is zero and above zero some exponential.
+       * Same nonlinearity for OFF subunits.
 
-Ganglion cell is much larger than the subunits and sums them together.
+        Ganglion cell is much larger than the subunits and sums them together.
 
-This way when there is lateral motion the ON inhibition and OFF excitation 
-* sums together to zero response ( because of the lack of delay) but when 
-* there is approach motion ( black bar) then there is only excitation.
+        This way when there is lateral motion the ON inhibition and OFF excitation 
+        sums together to zero response (because of the lack of delay) but when 
+        there is approach motion  of a black object then there is only excitation.
 
-The importance of the nonlinearity is that this system will 
-* respond when there is an approaching object. 
+        The importance of the nonlinearity is that this way the system will 
+        respond when there is an approaching object. 
 * 
  * @author tobi
  */
@@ -81,8 +83,8 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
 
     @Override
     public void initFilter() {
-        onSubunits=new Subunits();
-        offSubunits=new Subunits();
+        onSubunits=new Subunits(SubunitType.On);
+        offSubunits=new Subunits(SubunitType.Off);
     }
 
     @Override
@@ -96,15 +98,24 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
         }
     }
 
-    private class Subunits {
+     private  enum SubunitType {Off, On};
+       
+     private class Subunits {
 
-        float[][] activity=new float[(chip.getSizeX()>>subunitSubsamplingBits)+1][(chip.getSizeY()>>subunitSubsamplingBits)+1];
+        float[][] activity;
+        SubunitType type;
+        int[][] lastUpdateTimestamp;
         
-        public Subunits() {
-            
+        public Subunits(SubunitType type) {
+            this.type=type;
+            activity=new float[(chip.getSizeX()>>subunitSubsamplingBits)+1][(chip.getSizeY()>>subunitSubsamplingBits)+1];
+           lastUpdateTimestamp=new int[(chip.getSizeX()>>subunitSubsamplingBits)+1][(chip.getSizeY()>>subunitSubsamplingBits)+1];
         }
+        
         public void update(PolarityEvent e){
+            // subsample retina address to clump retina input pixel blocks.
             int x=e.x>>subunitSubsamplingBits, y=e.y>>subunitSubsamplingBits;
+            // excite with 
             activity[x][y]=activity[x][y]+(e.polarity==Polarity.Off?-1:+1);
         }
     }
