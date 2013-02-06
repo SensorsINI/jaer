@@ -62,7 +62,7 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
     private float subunitDecayTimeconstantMs = getFloat("subunitDecayTimeconstantMs", 60);
     private boolean enableSpikeSound = getBoolean("enableSpikeSound", true);
     private ApproachCellModel approachCellModel = new ApproachCellModel();
-    private float synapticWeight = getFloat("synapticWeight", 18);
+    private float synapticWeight = getFloat("synapticWeight", 30);
     private float maxSpikeRateHz = getFloat("maxSpikeRateHz", 100);
     private float onOffWeightRatio = getFloat("onOffWeightRatio", 1.2f);
     private int minUpdateIntervalUs = getInt("minUpdateIntervalUs", 10000);
