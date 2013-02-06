@@ -66,6 +66,7 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
     private float maxSpikeRateHz = getFloat("maxSpikeRateHz", 100);
     private float onOffWeightRatio = getFloat("onOffWeightRatio", 1.2f);
     private int minUpdateIntervalUs = getInt("minUpdateIntervalUs", 10000);
+    private boolean surroundSuppressionEnabled = getBoolean("surroundSuppressionEnabled", false);
 //    private SubSampler subSampler=new SubSampler(chip);
     private Subunits subunits;
     private SpikeSound spikeSound = new SpikeSound();
@@ -84,6 +85,7 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
         setPropertyTooltip("maxSpikeRateHz", "Maximum spike rate of approach cell in Hz");
         setPropertyTooltip("onOffWeightRatio", "Inhibitory ON subunits are weighted by factor more than excitatory OFF subunit activity to the approach cell");
         setPropertyTooltip("minUpdateIntervalUs", "subunits activities are decayed to zero at least this often in us, even if they receive no input");
+        setPropertyTooltip("surroundSuppressionEnabled", "subunits are suppressed by surrounding activity of same type; reduces response to global dimming");
 
     }
     private int lastApproachCellSpikeCheckTimestamp = 0;
@@ -151,7 +153,7 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
         if (showApproachCell && approachCellModel.spikeRate > 0) {
             gl.glColor4f(1, 1, 1, .2f);
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
-            float radius=chip.getMaxSize()*approachCellModel.spikeRate/maxSpikeRateHz/2;
+            float radius = chip.getMaxSize() * approachCellModel.spikeRate / maxSpikeRateHz / 2;
             glu.gluDisk(quad, 0, radius, 32, 1);
         }
         gl.glPopMatrix();
@@ -177,21 +179,6 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
         if (arg != null && (arg == AEChip.EVENT_SIZEX || arg == AEChip.EVENT_SIZEY) && chip.getNumPixels() > 0) {
             initFilter();
         }
-    }
-
-    /**
-     * @return the minUpdateIntervalUs
-     */
-    public int getMinUpdateIntervalUs() {
-        return minUpdateIntervalUs;
-    }
-
-    /**
-     * @param minUpdateIntervalUs the minUpdateIntervalUs to set
-     */
-    public void setMinUpdateIntervalUs(int minUpdateIntervalUs) {
-        this.minUpdateIntervalUs = minUpdateIntervalUs;
-        putInt("minUpdateIntervalUs", minUpdateIntervalUs);
     }
 
     // handles all subunits on and off
@@ -244,8 +231,10 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
                 }
             }
         }
+        float totalInhibition, totalExcitation;
 
         float computeOnInhibition() {
+            totalInhibition = 0;
             float onInhibition = 0;
             for (int x = 0; x < nx; x++) {
                 for (int y = 0; y < ny; y++) {
@@ -284,29 +273,29 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
             onSubunits = new Subunit[nx][ny];
             for (int x = 0; x < nx; x++) {
                 for (int y = 0; y < ny; y++) {
-                    onSubunits[x][y] = new Subunit();
+                    onSubunits[x][y] = new Subunit(x, y, onSubunits);
                 }
             }
             offSubunits = new Subunit[nx][ny];
             for (int x = 0; x < nx; x++) {
                 for (int y = 0; y < ny; y++) {
-                    offSubunits[x][y] = new Subunit();
+                    offSubunits[x][y] = new Subunit(x, y, offSubunits);
                 }
             }
         }
 
         private void render(GL gl) {
             final float alpha = .2f;
-            final float scaleRadius=.05f;
+            final float scaleRadius = .05f;
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
             for (int x = 0; x < nx; x++) {
                 for (int y = 0; y < ny; y++) {
                     gl.glPushMatrix();
                     gl.glTranslatef(x << subunitSubsamplingBits, y << subunitSubsamplingBits, 5);
                     gl.glColor4f(1, 0, 0, alpha);
-                    glu.gluDisk(quad, 0, scaleRadius*offSubunits[x][y].computeInputToApproachCell(), 16, 1);
+                    glu.gluDisk(quad, 0, scaleRadius * offSubunits[x][y].computeInputToApproachCell(), 16, 1);
                     gl.glColor4f(0, 1, 0, alpha);
-                    glu.gluDisk(quad, 0, scaleRadius*onSubunits[x][y].computeInputToApproachCell(), 16, 1);
+                    glu.gluDisk(quad, 0, scaleRadius * onSubunits[x][y].computeInputToApproachCell(), 16, 1);
                     gl.glPopMatrix();
                 }
             }
@@ -319,6 +308,14 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
     private class Subunit {
 
         float vmem;
+        int x, y;
+        Subunit[][] mySubunits;
+
+        public Subunit(int x, int y, Subunit[][] mySubunits) {
+            this.x = x;
+            this.y = y;
+            this.mySubunits = mySubunits;
+        }
 
         public void decayBy(float factor) {
             vmem *= factor;
@@ -329,11 +326,43 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
         }
 
         /**
-         * subunit input is exponential function of vmem
+         * subunit input is pure rectification
          */
         public float computeInputToApproachCell() {
-            if(vmem<0) return 0;
-            else return vmem;
+            if (!surroundSuppressionEnabled) {
+                if (vmem < 0) {
+                    return 0; // actually it cannot be negative since it only gets excitation from DVS events
+                } else {
+                    return vmem;
+                }
+            } else { // surround inhibition
+                // here we return the half-rectified local difference between ourselves and our neighbors
+                int n = 0;
+                float sum = 0;
+                if (x + 1 < subunits.nx) {
+                    sum += mySubunits[x + 1][y].vmem;
+                    n++;
+                }
+                if (x - 1 >= 0) {
+                    sum += mySubunits[x - 1][y].vmem;
+                    n++;
+                }
+                if (y + 1 < subunits.ny) {
+                    sum += mySubunits[x][y + 1].vmem;
+                    n++;
+                }
+                if (y - 1 >= 0) {
+                    sum += mySubunits[x][y - 1].vmem;
+                    n++;
+                }
+                sum /= n;
+                float result = vmem - sum;
+                if (result < 0) {
+                    return 0;
+                } else {
+                    return result; // half rectify result
+                }
+            }
 //            return (float) Math.exp(vmem / synapticWeight / (1 << subunitSubsamplingBits));
         }
     }
@@ -349,7 +378,7 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
 
         synchronized private boolean update(int timestamp) {
             // compute subunit input to us
-            spikeRate = synapticWeight*(subunits.computeOffExcitation() - onOffWeightRatio * subunits.computeOnInhibition());
+            spikeRate = synapticWeight * (subunits.computeOffExcitation() - onOffWeightRatio * subunits.computeOnInhibition());
             int dtUs = timestamp - lastTimestamp;
             lastTimestamp = timestamp;
             if (spikeRate > getMaxSpikeRateHz()) {
@@ -485,5 +514,35 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
     public void setOnOffWeightRatio(float onOffWeightRatio) {
         this.onOffWeightRatio = onOffWeightRatio;
         putFloat("onOffWeightRatio", onOffWeightRatio);
+    }
+
+    /**
+     * @return the minUpdateIntervalUs
+     */
+    public int getMinUpdateIntervalUs() {
+        return minUpdateIntervalUs;
+    }
+
+    /**
+     * @param minUpdateIntervalUs the minUpdateIntervalUs to set
+     */
+    public void setMinUpdateIntervalUs(int minUpdateIntervalUs) {
+        this.minUpdateIntervalUs = minUpdateIntervalUs;
+        putInt("minUpdateIntervalUs", minUpdateIntervalUs);
+    }
+
+    /**
+     * @return the surroundSuppressionEnabled
+     */
+    public boolean isSurroundSuppressionEnabled() {
+        return surroundSuppressionEnabled;
+    }
+
+    /**
+     * @param surroundSuppressionEnabled the surroundSuppressionEnabled to set
+     */
+    public void setSurroundSuppressionEnabled(boolean surroundSuppressionEnabled) {
+        this.surroundSuppressionEnabled = surroundSuppressionEnabled;
+        putBoolean("surroundSuppressionEnabled", surroundSuppressionEnabled);
     }
 }
