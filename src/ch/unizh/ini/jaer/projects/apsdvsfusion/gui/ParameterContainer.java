@@ -14,7 +14,7 @@ import javax.swing.JComponent;
 
 /**
  * 
- * @author Dennis Goehlsdorf, derived from Peter O´Connor's Controllable, which was derived from Tobi Dellbruck's EventFilter
+ * @author Dennis Goehlsdorf, derived from Peter OConnor's Controllable, which was derived from Tobi Dellbruck's EventFilter
  */
 public abstract class ParameterContainer implements Serializable {
 
