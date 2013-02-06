@@ -4,6 +4,8 @@
  */
 package eu.seebetter.ini.retinamodel;
 
+import com.sun.opengl.util.j2d.TextRenderer;
+import java.awt.Font;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Random;
@@ -15,6 +17,7 @@ import javax.media.opengl.glu.GLUquadric;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -50,21 +53,24 @@ import net.sf.jaer.util.SpikeSound;
  * @author tobi
  */
 @Description("Models approach cell discovered by Botond Roska group")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+//@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class ApproachCell extends EventFilter2D implements FrameAnnotater, Observer {
 
     private boolean showSubunits = getBoolean("showSubunits", true);
     private boolean showApproachCell = getBoolean("showApproachCell", true);
     private int subunitSubsamplingBits = getInt("subunitSubsamplingBits", 4); // each subunit is 2^n squared pixels
-    private float subunitDecayTimeconstantMs = getFloat("subunitDecayTimeconstantMs", 30);
+    private float subunitDecayTimeconstantMs = getFloat("subunitDecayTimeconstantMs", 60);
     private boolean enableSpikeSound = getBoolean("enableSpikeSound", true);
     private ApproachCellModel approachCellModel = new ApproachCellModel();
-    private float synapticEFoldingConstant=getFloat("synapticEFoldingConstant",10);
-    private float maxSpikeRateHz=getFloat("maxSpikeRateHz",100);
-    
+    private float synapticWeight = getFloat("synapticWeight", 18);
+    private float maxSpikeRateHz = getFloat("maxSpikeRateHz", 100);
+    private float onOffWeightRatio = getFloat("onOffWeightRatio", 1.2f);
+    private int minUpdateIntervalUs = getInt("minUpdateIntervalUs", 10000);
 //    private SubSampler subSampler=new SubSampler(chip);
     private Subunits subunits;
     private SpikeSound spikeSound = new SpikeSound();
+    float onInhibition = 0, offExcitation = 0; // summed subunit input to approach cell
+    private TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 10), true, true);
 
     public ApproachCell(AEChip chip) {
         super(chip);
@@ -72,12 +78,15 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
         setPropertyTooltip("showSubunits", "Enables showing subunit activity annotation over retina output");
         setPropertyTooltip("showApproachCell", "Enables showing approach cell activity annotation over retina output");
         setPropertyTooltip("subunitSubsamplingBits", "Each subunit integrates events from 2^n by 2^n pixels, where n=subunitSubsamplingBits");
-        setPropertyTooltip("synapticEFoldingConstant", "Subunit activity inputs to the approach neuron with exponential of subunit activity where exponential efolds with this constant");
+        setPropertyTooltip("synapticWeight", "Subunit activity inputs to the approach neuron are weighted this much; use to adjust response magnitude");
         setPropertyTooltip("subunitDecayTimeconstantMs", "Subunit activity decays with this time constant in ms");
         setPropertyTooltip("enableSpikeSound", "Enables audio spike output from approach cell");
         setPropertyTooltip("maxSpikeRateHz", "Maximum spike rate of approach cell in Hz");
+        setPropertyTooltip("onOffWeightRatio", "Inhibitory ON subunits are weighted by factor more than excitatory OFF subunit activity to the approach cell");
+        setPropertyTooltip("minUpdateIntervalUs", "subunits activities are decayed to zero at least this often in us, even if they receive no input");
 
     }
+    private int lastApproachCellSpikeCheckTimestamp = 0;
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -86,11 +95,19 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
         }
         for (Object o : in) {
             PolarityEvent e = (PolarityEvent) o;
-            subunits.update(e);
-            boolean spiked = approachCellModel.update(e.timestamp);
 
+            subunits.update(e);
+            int dt = e.timestamp - lastApproachCellSpikeCheckTimestamp;
+            if (dt < 0) {
+                lastApproachCellSpikeCheckTimestamp = e.timestamp;
+                return in;
+            }
+            if (dt > minUpdateIntervalUs) {
+                lastApproachCellSpikeCheckTimestamp = e.timestamp;
+                approachCellModel.update(e.timestamp);
+            }
         }
-        System.out.println(String.format("spikeRate=%.1g \tonActivity=%.2f \toffActivity=%.1f",approachCellModel.spikeRate,subunits.onActivity,subunits.offActivity));
+//        System.out.println(String.format("spikeRate=%.1g \tonActivity=%.2f \toffActivity=%.1f", approachCellModel.spikeRate, onInhibition, offExcitation));
 
         return in;
     }
@@ -130,20 +147,27 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
             }
         }
         gl.glPushMatrix();
-        gl.glTranslatef(chip.getSizeX()/2, chip.getSizeY()/2,10);
-        if (showApproachCell && approachCellModel.spikeRate>0) {
-            gl.glColor4f(1, 1, 1, .3f);
+        gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 10);
+        if (showApproachCell && approachCellModel.spikeRate > 0) {
+            gl.glColor4f(1, 1, 1, .2f);
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
-            glu.gluDisk(quad, 0, approachCellModel.spikeRate, 32, 1);
+            float radius=chip.getMaxSize()*approachCellModel.spikeRate/maxSpikeRateHz/2;
+            glu.gluDisk(quad, 0, radius, 32, 1);
         }
         gl.glPopMatrix();
-        
-        if(showSubunits){
-            // on activity
-            gl.glColor4f(0,1,0,.3f);
-            gl.glRectf(-10, 0, -5, subunits.computeOnActivity());
-            gl.glColor4f(1,0,0,.3f);
-            gl.glRectf(-20, 0, -15, subunits.computeOffActivity());
+
+        if (showSubunits) {
+            gl.glColor4f(0, 1, 0, .3f);
+            gl.glRectf(-10, 0, -5, onInhibition);
+            gl.glColor4f(1, 0, 0, .3f);
+            gl.glRectf(-20, 0, -15, offExcitation);
+            renderer.begin3DRendering();
+            renderer.setColor(1, 1, 1, .3f);
+            renderer.draw3D("on", -10, -3, 0, .4f);
+            renderer.draw3D("off", -20, -3, 0, .4f);
+            renderer.end3DRendering();
+            // render all the subunits now
+            subunits.render(gl);
         }
 
     }
@@ -155,19 +179,29 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
         }
     }
 
-    private enum SubunitType {
+    /**
+     * @return the minUpdateIntervalUs
+     */
+    public int getMinUpdateIntervalUs() {
+        return minUpdateIntervalUs;
+    }
 
-        Off, On
-    };
+    /**
+     * @param minUpdateIntervalUs the minUpdateIntervalUs to set
+     */
+    public void setMinUpdateIntervalUs(int minUpdateIntervalUs) {
+        this.minUpdateIntervalUs = minUpdateIntervalUs;
+        putInt("minUpdateIntervalUs", minUpdateIntervalUs);
+    }
 
     // handles all subunits on and off
     private class Subunits {
 
         Subunit[][] onSubunits, offSubunits;
-        float onActivity = 0, offActivity = 0;
         int nx;
         int ny;
         int ntot;
+        int lastUpdateTimestamp;
 
         public Subunits() {
             reset();
@@ -178,34 +212,74 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
             // subsample retina address to clump retina input pixel blocks.
             int x = e.x >> subunitSubsamplingBits, y = e.y >> subunitSubsamplingBits;
             // on subunits are updated by ON events, off by OFF events
-            float oldActivity;
             switch (e.polarity) {
                 case Off: // these subunits are excited by OFF events and in turn excite the approach cell
-                    oldActivity = offSubunits[x][y].vmem;
-                    offSubunits[x][y].update(e);
-                    offActivity = offActivity + offSubunits[x][y].vmem - oldActivity;
+                    offSubunits[x][y].update(e); // ad event to subunit
                     break;
                 case On: // these are excited by ON activity and in turn inhibit the approach cell
-                    oldActivity = onSubunits[x][y].vmem;
                     onSubunits[x][y].update(e);
-                    onActivity = onActivity + onSubunits[x][y].vmem - oldActivity;
+            }
+            maybeDecayAll(e);
+        }
+
+        void maybeDecayAll(BasicEvent e) {
+            int dt = e.timestamp - lastUpdateTimestamp;
+            if (dt < 0) {
+                lastUpdateTimestamp = e.timestamp;
+                return;
+            }
+            if (dt > minUpdateIntervalUs) {
+                lastUpdateTimestamp = e.timestamp;
+                // now update all subunits to RC decay activity toward zero
+                float decayFactor = (float) Math.exp(-dt / (1000 * subunitDecayTimeconstantMs));
+                for (int x = 0; x < nx; x++) {
+                    for (int y = 0; y < ny; y++) {
+                        onSubunits[x][y].decayBy(decayFactor);
+                    }
+                }
+                for (int x = 0; x < nx; x++) {
+                    for (int y = 0; y < ny; y++) {
+                        offSubunits[x][y].decayBy(decayFactor);
+                    }
+                }
             }
         }
 
-        float computeOnActivity() {
-            return onActivity / ntot;
+        float computeOnInhibition() {
+            float onInhibition = 0;
+            for (int x = 0; x < nx; x++) {
+                for (int y = 0; y < ny; y++) {
+                    onInhibition += onSubunits[x][y].computeInputToApproachCell();
+                }
+            }
+            onInhibition /= ntot;
+            ApproachCell.this.onInhibition = onInhibition;
+            return onInhibition;
         }
 
-        float computeOffActivity() {
-            return offActivity / ntot;
+        float computeOffExcitation() {
+            float offExcitation = 0;
+            for (int x = 0; x < nx; x++) {
+                for (int y = 0; y < ny; y++) {
+                    offExcitation += offSubunits[x][y].computeInputToApproachCell();
+                }
+            }
+            offExcitation /= ntot;
+            ApproachCell.this.offExcitation = offExcitation;
+            return offExcitation;
         }
 
         synchronized private void reset() {
-            onActivity = 0;
-            offActivity = 0;
-            nx = (chip.getSizeX() >> getSubunitSubsamplingBits()) ;
-            ny = (chip.getSizeY() >> getSubunitSubsamplingBits()) ;
-            if(nx<1)nx=1; if(ny<1) ny=1; // always at least one subunit
+            onInhibition = 0;
+            offExcitation = 0;
+            nx = (chip.getSizeX() >> getSubunitSubsamplingBits());
+            ny = (chip.getSizeY() >> getSubunitSubsamplingBits());
+            if (nx < 1) {
+                nx = 1;
+            }
+            if (ny < 1) {
+                ny = 1; // always at least one subunit
+            }
             ntot = nx * ny;
             onSubunits = new Subunit[nx][ny];
             for (int x = 0; x < nx; x++) {
@@ -220,6 +294,24 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
                 }
             }
         }
+
+        private void render(GL gl) {
+            final float alpha = .2f;
+            final float scaleRadius=.05f;
+            glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
+            for (int x = 0; x < nx; x++) {
+                for (int y = 0; y < ny; y++) {
+                    gl.glPushMatrix();
+                    gl.glTranslatef(x << subunitSubsamplingBits, y << subunitSubsamplingBits, 5);
+                    gl.glColor4f(1, 0, 0, alpha);
+                    glu.gluDisk(quad, 0, scaleRadius*offSubunits[x][y].computeInputToApproachCell(), 16, 1);
+                    gl.glColor4f(0, 1, 0, alpha);
+                    glu.gluDisk(quad, 0, scaleRadius*onSubunits[x][y].computeInputToApproachCell(), 16, 1);
+                    gl.glPopMatrix();
+                }
+            }
+
+        }
     }
 
     // models one single subunit ON of OFF.
@@ -227,20 +319,22 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
     private class Subunit {
 
         float vmem;
-//        SubunitType type;
-        int lastUpdateTimestamp;
+
+        public void decayBy(float factor) {
+            vmem *= factor;
+        }
 
         public void update(PolarityEvent e) {
-            int dt = e.timestamp - lastUpdateTimestamp;
-            lastUpdateTimestamp=e.timestamp;
-            if (dt < 0) {
-                lastUpdateTimestamp = e.timestamp;
-                log.warning("negative delta time=" + dt + " from " + e + "; ignoring event");
-                return;
-            }
-            float decayFactor = (float) Math.exp(-dt / (1000 * subunitDecayTimeconstantMs));
-            vmem *= decayFactor;
             vmem = vmem + 1;
+        }
+
+        /**
+         * subunit input is exponential function of vmem
+         */
+        public float computeInputToApproachCell() {
+            if(vmem<0) return 0;
+            else return vmem;
+//            return (float) Math.exp(vmem / synapticWeight / (1 << subunitSubsamplingBits));
         }
     }
 
@@ -253,11 +347,14 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
 //        float refracPeriodMs;
         Random r = new Random();
 
-        private boolean update(int timestamp) {
+        synchronized private boolean update(int timestamp) {
+            // compute subunit input to us
+            spikeRate = synapticWeight*(subunits.computeOffExcitation() - onOffWeightRatio * subunits.computeOnInhibition());
             int dtUs = timestamp - lastTimestamp;
             lastTimestamp = timestamp;
-            spikeRate = (float) (Math.exp(subunits.computeOffActivity()/synapticEFoldingConstant) - Math.exp(subunits.computeOnActivity()/synapticEFoldingConstant));
-            if(spikeRate>getMaxSpikeRateHz()) spikeRate=getMaxSpikeRateHz();
+            if (spikeRate > getMaxSpikeRateHz()) {
+                spikeRate = getMaxSpikeRateHz();
+            }
             if (r.nextFloat() < spikeRate * 1e-6f * dtUs) {
                 if (enableSpikeSound) {
                     spikeSound.play();
@@ -281,7 +378,7 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
      */
     public void setShowSubunits(boolean showSubunits) {
         this.showSubunits = showSubunits;
-        putBoolean("showSubunits",showSubunits);
+        putBoolean("showSubunits", showSubunits);
     }
 
     /**
@@ -296,7 +393,7 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
      */
     public void setShowApproachCell(boolean showApproachCell) {
         this.showApproachCell = showApproachCell;
-        putBoolean("showApproachCell",showApproachCell);
+        putBoolean("showApproachCell", showApproachCell);
     }
 
     /**
@@ -311,7 +408,7 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
      */
     synchronized public void setSubunitSubsamplingBits(int subunitSubsamplingBits) {
         this.subunitSubsamplingBits = subunitSubsamplingBits;
-        putInt("subunitSubsamplingBits",subunitSubsamplingBits);
+        putInt("subunitSubsamplingBits", subunitSubsamplingBits);
         resetFilter();
     }
 
@@ -327,7 +424,7 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
      */
     public void setSubunitDecayTimeconstantMs(float subunitDecayTimeconstantMs) {
         this.subunitDecayTimeconstantMs = subunitDecayTimeconstantMs;
-        putFloat("subunitDecayTimeconstantMs",subunitDecayTimeconstantMs);
+        putFloat("subunitDecayTimeconstantMs", subunitDecayTimeconstantMs);
     }
 
     /**
@@ -342,22 +439,22 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
      */
     public void setEnableSpikeSound(boolean enableSpikeSound) {
         this.enableSpikeSound = enableSpikeSound;
-        putBoolean("enableSpikeSound",enableSpikeSound);
+        putBoolean("enableSpikeSound", enableSpikeSound);
     }
 
     /**
-     * @return the synapticEFoldingConstant
+     * @return the synapticWeight
      */
-    public float getSynapticEFoldingConstant() {
-        return synapticEFoldingConstant;
+    public float getSynapticWeight() {
+        return synapticWeight;
     }
 
     /**
-     * @param synapticEFoldingConstant the synapticEFoldingConstant to set
+     * @param synapticWeight the synapticWeight to set
      */
-    public void setSynapticEFoldingConstant(float synapticEFoldingConstant) {
-        this.synapticEFoldingConstant = synapticEFoldingConstant;
-        putFloat("synapticEFoldingConstant",synapticEFoldingConstant);
+    public void setSynapticWeight(float synapticWeight) {
+        this.synapticWeight = synapticWeight;
+        putFloat("synapticWeight", synapticWeight);
     }
 
     /**
@@ -372,6 +469,21 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
      */
     public void setMaxSpikeRateHz(float maxSpikeRateHz) {
         this.maxSpikeRateHz = maxSpikeRateHz;
-        putFloat("maxSpikeRateHz",maxSpikeRateHz);
+        putFloat("maxSpikeRateHz", maxSpikeRateHz);
+    }
+
+    /**
+     * @return the onOffWeightRatio
+     */
+    public float getOnOffWeightRatio() {
+        return onOffWeightRatio;
+    }
+
+    /**
+     * @param onOffWeightRatio the onOffWeightRatio to set
+     */
+    public void setOnOffWeightRatio(float onOffWeightRatio) {
+        this.onOffWeightRatio = onOffWeightRatio;
+        putFloat("onOffWeightRatio", onOffWeightRatio);
     }
 }
