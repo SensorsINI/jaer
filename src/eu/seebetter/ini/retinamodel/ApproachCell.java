@@ -25,9 +25,128 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.SpikeSound;
 
 /**
- * Models a single approach cell discovered by Botond Roska group in Basel. This
+ * Models a single PV-5 approach cell discovered by Botond Roska group in Basel. This
  * cell responds to approaching (expanding, but not translating) dark objects,
  * such as perhaps a hungry bird diving on the mouse.
+ * 
+ * This model is described in the paper below, Nature Neuroscience, 2009.
+ * 
+ * Approach sensitivity in the retina processed by a
+multifunctional neural circuit
+Thomas A Münch1,3,4, Rava Azeredo da Silveira2,4, Sandra Siegert1, Tim James Viney1, Gautam B Awatramani1,3 &
+Botond Roska1
+The detection of approaching objects, such as looming predators, is necessary for survival. Which neurons and circuits mediate
+this function? We combined genetic labeling of cell types, two-photon microscopy, electrophysiology and theoretical modeling to
+address this question. We identify an approach-sensitive ganglion cell type in the mouse retina, resolve elements of its afferent
+neural circuit, and describe how these confer approach sensitivity on the ganglion cell. The circuit’s essential building block is
+a rapid inhibitory pathway: it selectively suppresses responses to non-approaching objects. This rapid inhibitory pathway, which
+includes AII amacrine cells connected to bipolar cells through electrical synapses, was previously described in the context of
+night-time vision. In the daytime conditions of our experiments, the same pathway conveys signals in the reverse direction.
+The dual use of a neural pathway in different physiological conditions illustrates the efficiency with which several functions
+can be accommodated in a single circuit.
+* 
+* 1Neural Circuit Laboratories, Friedrich Miescher Institute for Biomedical Research, Basel, Switzerland. 2Department of Physics and Department of Cognitive Studies,
+École Normale Supérieure, Paris, France. 3Present addresses: Laboratory for Retinal Circuits and Optogenetics, Centre for Integrative Neuroscience, Eberhard-Karls
+University Tübingen, Tübingen, Germany (T.A.M.); Department of Anatomy and Neurobiology, Dalhousie University, Halifax, Nova Scotia, Canada (G.B.A.). 4These
+authors contributed equally to this work. Correspondence should be addressed to B.R. (botond.roska@fmi.ch).
+* 
+* Computational model of approach sensitivity
+We incorporated the various elements of the proposed composite
+receptive field of the PV-5 cell into a computational model
+(Supplementary Fig. 5). The model PV-5 cell sums over a large region
+covered by many push-pull subunits (Supplementary Figs. 5a,b) that
+excite the PV-5 cell in response to local OFF inputs and inhibit it
+Peak current (pA)
+CPP/ APB
+NBQX
+Control
+***
+NS
+c
+n = 4
+n = 4
+n = 4
+0
+–20
+–40
+AII amacrine cell: control
+–400 –200 0 200 400
+–400
+–200
+0
+200
+400
+Stimulus onset Motion Stimulus onset Motion
+Approaching Lateral
+Lateral Receding
+a
+AII amacrine cell: CPP/NBQX
+Approaching Lateral
+Lateral Receding
+b
+Velocity of right edge (μm s–1)
+Velocity of left edge (μm s–1)
+–400 –200 0 200 400
+–400
+–200
+0
+200
+400
+Velocity of right edge (μm s–1)
+-40 0 Velocity of left edge (μm s–1)
+pA
+Figure 8 The functional properties of AII
+amacrine cells are consistent with the rapid
+inhibitory signal in PV-5 ganglion cells.
+(a,b) Motion-response map of an AII amacrine
+cell in control conditions (a) and with CPP/
+NBQX (b). Map is analogous to that in
+Figure 1c. The recorded cell was clamped to
+−60 mV. The radii of the disks are proportional
+to the peak magnitudes of inward currents
+evoked by stimulus motion. The radii of
+the dotted circles are proportional to the
+reduction of the excitatory currents after the
+initial presentations of the black bar. The
+quadrant that corresponds to approaching
+motion is shaded in light gray. (c) Average
+peak magnitudes of excitatory currents in AII amacrine cells, in the lateral and receding quadrants of the motion-response map, under different
+pharmacological conditions (CPP/NBQX and 10 μM APB). Error bars, s.e.m.; ***P < 0.001; NS, P ≥ 0.05.
+© 2009 Nature America, Inc. All rights reserved.
+1314 VOLUME 12 | NUMBER 10 | october 2009 nature NEUR OSCIEN CE
+art ic l e s
+in response to local ON inputs. The two processes—excitation and
+inhibition—occur with similar dynamics (Supplementary Fig. 5c).
+As a result, inhibition prevents responses to undesired stimuli (such
+as the laterally moving object in Supplementary Fig. 5b).
+As a key element, signals from subunits are rectified before being
+summed by the PV-5 cell (Supplementary Fig. 5c). Because of this
+concave nonlinearity, strong local signals are favored over weak diffuse
+ones. Thus, the model PV-5 cell responds to the expanding edges of an
+approaching object even if the visual field undergoes slow brightening
+so as to prevent overall dimming (such as in Fig. 2a). The computational
+model reproduces the data (Figs. 1d and 2c) and closely follows
+experimental traces for an array of input patterns and velocities.
+* 
+* 
+* Computational model of approach sensitivity
+We incorporated the various elements of the proposed composite
+receptive field of the PV-5 cell into a computational model
+(Supplementary Fig. 5). The model PV-5 cell sums over a large region
+covered by many push-pull subunits (Supplementary Figs. 5a,b) that
+excite the PV-5 cell in response to local OFF inputs and inhibit it
+* in response to local ON inputs. The two processes—excitation and
+inhibition—occur with similar dynamics (Supplementary Fig. 5c).
+As a result, inhibition prevents responses to undesired stimuli (such
+as the laterally moving object in Supplementary Fig. 5b).
+As a key element, signals from subunits are rectified before being
+summed by the PV-5 cell (Supplementary Fig. 5c). Because of this
+concave nonlinearity, strong local signals are favored over weak diffuse
+ones. Thus, the model PV-5 cell responds to the expanding edges of an
+approaching object even if the visual field undergoes slow brightening
+so as to prevent overall dimming (such as in Fig. 2a). The computational
+model reproduces the data (Figs. 1d and 2c) and closely follows
+experimental traces for an array of input patterns and velocities.
  *
  * From Botond: The important point is NO delay.
  *
@@ -95,6 +214,7 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
         if (!(in.getEventPrototype() instanceof PolarityEvent)) {
             return in;
         }
+        if(subunits==null) resetFilter();
         for (Object o : in) {
             PolarityEvent e = (PolarityEvent) o;
 
@@ -164,8 +284,9 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
             gl.glColor4f(1, 0, 0, .3f);
             gl.glRectf(-20, 0, -15, offExcitation);
             renderer.begin3DRendering();
-            renderer.setColor(1, 1, 1, .3f);
+            renderer.setColor(0, 1, 0, .3f);
             renderer.draw3D("on", -10, -3, 0, .4f);
+            renderer.setColor(1, 0, 0, .3f);
             renderer.draw3D("off", -20, -3, 0, .4f);
             renderer.end3DRendering();
             // render all the subunits now
@@ -299,6 +420,13 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
                     gl.glPopMatrix();
                 }
             }
+                        renderer.begin3DRendering();
+            renderer.setColor(0, 1, 0, 1);
+            renderer.draw3D("Inhibitory ON subunits", 0, chip.getSizeY(), 0, .5f);
+            renderer.setColor(1, 0, 0, 1);
+            renderer.draw3D("Excitatory OFF subunits", chip.getSizeX()/2, chip.getSizeY(), 0,.5f);
+            renderer.end3DRendering();
+
 
         }
     }
