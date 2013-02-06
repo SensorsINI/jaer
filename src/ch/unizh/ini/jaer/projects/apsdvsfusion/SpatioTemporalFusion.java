@@ -5,12 +5,17 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
 import java.util.ArrayList;
 
+import javax.swing.JButton;
+import javax.swing.JComponent;
+
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterBrowserPanel;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterContainer;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.SpikingOutputViewerManager;
 //import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
 
@@ -218,6 +223,37 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	 */
 	@Override
 	public void initFilter() {
+		addControls(new ParameterBrowserPanel(new ParameterContainer("TestClass") {
+			String myString;
+			float myFloat;
+			int myInt;
+			public String getMyString() {
+				return myString;
+			}
+			public void setMyString(String myString) {
+				this.myString = myString;
+			}
+			public float getMyFloat() {
+				return myFloat;
+			}
+			public void setMyFloat(float myFloat) {
+				this.myFloat = myFloat;
+			}
+			public int getMyInt() {
+				return myInt;
+			}
+			public void setMyInt(int myInt) {
+				this.myInt = myInt;
+			}
+			public void do_TestButton() {
+				
+			}
+			@Override
+			protected JComponent createCustomControls() {
+				return new JButton("Hello");
+			}
+			
+		}));
 //		setExpression("0");
 	}
 
