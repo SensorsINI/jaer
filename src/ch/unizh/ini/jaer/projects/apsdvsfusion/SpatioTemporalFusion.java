@@ -221,8 +221,8 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	/* (non-Javadoc)
 	 * @see net.sf.jaer.eventprocessing.EventFilter#initFilter()
 	 */
-	@Override
-	public void initFilter() {
+//	@Override
+	public void do_addStuffToPanel() {
 		addControls(new ParameterBrowserPanel(new ParameterContainer("TestClass") {
 			String myString;
 			float myFloat;
@@ -330,5 +330,11 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 			if (kernelProcessors.contains(kernelProcessor))
 				kernelProcessors.remove(kernelProcessor);
 		}
+	}
+
+	@Override
+	public void initFilter() {
+		// TODO Auto-generated method stub
+		
 	}
 }

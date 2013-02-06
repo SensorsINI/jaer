@@ -121,7 +121,7 @@ setPropertyTooltip("multiOriOutputEnabled", "Enables multiple event output for a
  *@see net.sf.jaer.eventprocessing.EventFilter#setPropertyTooltip(java.lang.String, java.lang.String, java.lang.String)
  * @see net.sf.jaer.eventprocessing.EventFilter
  */
-public class ParameterBrowserPanel extends javax.swing.JPanel implements PropertyChangeListener {
+public class ParameterBrowserPanel extends CollapsablePanel implements PropertyChangeListener {
 
     /**
 	 * 
@@ -148,9 +148,9 @@ public class ParameterBrowserPanel extends javax.swing.JPanel implements Propert
 
     ParameterContainer parameterContainer;
     
-    
     /** Creates new form FilterPanel */
     public ParameterBrowserPanel(ParameterContainer topLevel) {
+    	super(topLevel.getName());
 //        titledBorder = new TitledBorder("Network Controls");
 //        titledBorder.getBorderInsets(this).set(1, 1, 1, 1);
 ////        titledBorder.setBorder(BorderFactory.createLineBorder(Color.blue));
@@ -158,8 +158,8 @@ public class ParameterBrowserPanel extends javax.swing.JPanel implements Propert
 //        redLineBorder = BorderFactory.createLineBorder(Color.blue);
 //        setBorder(titledBorder);
         initComponents();
-        
-        addController(topLevel,this);
+
+        addController(topLevel,getContentPanel());
     }
 
 //    public GeneralController() {
@@ -238,24 +238,30 @@ public class ParameterBrowserPanel extends javax.swing.JPanel implements Propert
     
     
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
-    void addController(final ParameterContainer parameterContainer,final JPanel hostPanel) {
+    void addController(final ParameterContainer parameterContainer,final JPanel topPanel) {
 //        JPanel control = null;
 //        NetController filter = getControllable();
         
+		JPanel hostPanel = new JPanel();
+		topPanel.setLayout(new BorderLayout());
+		topPanel.add(new JLabel("   "),BorderLayout.WEST);
+		topPanel.add(hostPanel,BorderLayout.CENTER);
         hostPanel.setLayout(new javax.swing.BoxLayout(hostPanel, javax.swing.BoxLayout.Y_AXIS));
         
-        boolean topLevel=hostPanel==this;
+        hostPanel.setBorder(BorderFactory.createMatteBorder(0, 1, 0, 0, Color.black));
         
         
-        if (topLevel) // Top-Level control
-        {   titledBorder = new TitledBorder(parameterContainer.getName());
-            titledBorder.getBorderInsets(this).set(1, 1, 1, 1);
-    //        titledBorder.setBorder(BorderFactory.createLineBorder(Color.blue));
-    //        normalBorder = BorderFactory.createLineBorder(Color.blue);
-            redLineBorder = BorderFactory.createLineBorder(Color.blue);
-            setBorder(titledBorder);
+//        boolean topLevel=hostPanel==this;
         
-        }
+//        if (topLevel) // Top-Level control
+//        {   titledBorder = new TitledBorder(parameterContainer.getName());
+//            titledBorder.getBorderInsets(this).set(1, 1, 1, 1);
+//    //        titledBorder.setBorder(BorderFactory.createLineBorder(Color.blue));
+//    //        normalBorder = BorderFactory.createLineBorder(Color.blue);
+//            redLineBorder = BorderFactory.createLineBorder(Color.blue);
+//            setBorder(titledBorder);
+//        
+//        }
         
         setParameterContainer(parameterContainer);
         try {
@@ -376,10 +382,10 @@ public class ParameterBrowserPanel extends javax.swing.JPanel implements Propert
             // these must be saved and then sorted in case there are property groups defined.
 
             final JPanel groupPanel;
-            if (topLevel)
-            {   groupPanel=this;                
-            }  
-            else
+//            if (topLevel)
+//            {   groupPanel=this;                
+//            }  
+//            else
             {
                 String s=parameterContainer.getName();
                 groupPanel = new JPanel();
@@ -1464,11 +1470,11 @@ public class ParameterBrowserPanel extends javax.swing.JPanel implements Propert
     private void setBorderActive(final boolean yes) {
         // see http://forum.java.sun.com/thread.jspa?threadID=755789
         if (yes) {
-            ((TitledBorder) getBorder()).setTitleColor(SystemColor.textText);
-            titledBorder.setBorder(redLineBorder);
+//            ((TitledBorder) getBorder()).setTitleColor(SystemColor.textText);
+//            titledBorder.setBorder(redLineBorder);
         } else {
-            ((TitledBorder) getBorder()).setTitleColor(SystemColor.textInactiveText);
-            titledBorder.setBorder(normalBorder);
+//            ((TitledBorder) getBorder()).setTitleColor(SystemColor.textInactiveText);
+//            titledBorder.setBorder(normalBorder);
         }
 
     }
