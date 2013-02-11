@@ -15,29 +15,31 @@ import ch.unizh.ini.jaer.projects.apsdvsfusion.mathexpression.IllegalExpressionE
  * @author Dennis
  *
  */
-public class ExpressionBasedSpatialInputKernel implements InputKernel {
+public class ExpressionBasedSpatialInputKernel extends SignalTransformationKernel {
 	int width = -1, height = -1;
 
 	int centerX, centerY;
 	int offsetX, offsetY;
 
-	String onExpressionString = "0.01";
-	String offExpressionString = "0.01";
+//	String onExpressionString = "0.01";
+	String expressionString = "0.01";
 	
 //	ExpressionTreeNode onExpressionTree = null;
 //	ExpressionTreeNode offExpressionTree = null;
 	
 	boolean evaluateExpressionAsReceptiveField = true;
-	float[][] onConvolutionValues = null;
-	public synchronized float[][] getOnConvolutionValues() {
-		return onConvolutionValues;
+	float[][] convolutionValues = null;
+	
+	
+	public synchronized float[][] getConvolutionValues() {
+		return convolutionValues;
 	}
 
-	public synchronized float[][] getOffConvolutionValues() {
-		return offConvolutionValues;
-	}
-
-	float[][] offConvolutionValues = null;
+//	public synchronized float[][] getOffConvolutionValues() {
+//		return offConvolutionValues;
+//	}
+//
+//	float[][] offConvolutionValues = null;
 
 	/**
 	 * 
@@ -46,30 +48,30 @@ public class ExpressionBasedSpatialInputKernel implements InputKernel {
 		changeSize(width, height);
 	}
 	
-	public String getOnExpressionString() {
-		return onExpressionString;
+	public String getExpressionString() {
+		return expressionString;
 	}
 
 
-	public void setOnExpressionString(String onExpressionString) {
+	public void setExpressionString(String expressionString) {
 		try {
-			this.onConvolutionValues = evaluateExpression(onExpressionString, onConvolutionValues, this.onExpressionString);
-			this.onExpressionString = onExpressionString;
+			this.convolutionValues = evaluateExpression(expressionString, convolutionValues, this.expressionString);
+			this.expressionString = expressionString;
 		} catch (IllegalExpressionException e) {
 		}
 	}
 
-	public String getOffExpressionString() {
-		return offExpressionString;
-	}
-
-	public void setOffExpressionString(String offExpressionString) {
-		try {
-			this.offConvolutionValues = evaluateExpression(offExpressionString, offConvolutionValues, this.offExpressionString);
-			this.offExpressionString = offExpressionString;
-		} catch (IllegalExpressionException e) {
-		}
-	}
+//	public String getOffExpressionString() {
+//		return offExpressionString;
+//	}
+//
+//	public void setOffExpressionString(String offExpressionString) {
+//		try {
+//			this.offConvolutionValues = evaluateExpression(offExpressionString, offConvolutionValues, this.offExpressionString);
+//			this.offExpressionString = offExpressionString;
+//		} catch (IllegalExpressionException e) {
+//		}
+//	}
 	
 	protected synchronized float[][] evaluateExpression(String expressionString, float[][] oldConvolutionValues, String oldString) throws IllegalExpressionException {
 		ExpressionTreeNode et = ExpressionTreeBuilder.parseString(expressionString);
@@ -121,8 +123,8 @@ public class ExpressionBasedSpatialInputKernel implements InputKernel {
 			this.width = width;
 			this.height = height;
 			try {
-				onConvolutionValues = evaluateExpression(onExpressionString, new float[width][height], "0");
-				offConvolutionValues = evaluateExpression(offExpressionString, new float[width][height], "0");
+				convolutionValues = evaluateExpression(expressionString, new float[width][height], "0");
+//				offConvolutionValues = evaluateExpression(offExpressionString, new float[width][height], "0");
 			} catch (IllegalExpressionException e) {
 			}
 			
@@ -162,54 +164,73 @@ public class ExpressionBasedSpatialInputKernel implements InputKernel {
 		recomputeMappings();
 	}
 
+
 	@Override
-	public synchronized void apply(int tx, int ty, int time, Polarity polarity,
-			FiringModelMap map, SpikeHandler spikeHandler) {
+	public void signalAt(int tx, int ty, int time, double value) {
+//		// TODO Auto-generated method stub
+//		
+//	}
+//	
+//	@Override
+////	public synchronized void apply(int tx, int ty, int time, Polarity polarity,
+////			FiringModelMap map, SpikeHandler spikeHandler) {
+//	public synchronized void apply(int tx, int ty, int time, Polarity polarity,
+//			FiringModelMap map, SpikeHandler spikeHandler) {
 		tx = tx - centerX + offsetX;
 		ty = ty - centerY + offsetY;
-		int minx = Math.max(0, -tx), maxx = Math.min(width, map.getSizeX()-tx);
-		int miny = Math.max(0, -ty), maxy = Math.min(height, map.getSizeY()-ty);
+//		int minx = Math.max(0, -tx), maxx = Math.min(width, map.getSizeX()-tx);
+//		int miny = Math.max(0, -ty), maxy = Math.min(height, map.getSizeY()-ty);
+		int minx = Math.max(0, -tx), maxx = Math.min(width, getOutputWidth()-tx);
+		int miny = Math.max(0, -ty), maxy = Math.min(height, getOutputHeight()-ty);
 		tx += minx; ty += miny;
-		float[][] convolutionValues;
-		if (polarity == Polarity.On) 
-			convolutionValues = onConvolutionValues;
-		else
-			convolutionValues = offConvolutionValues;
+//		float[][] convolutionValues;
+//		if (polarity == Polarity.On) 
+//			convolutionValues = onConvolutionValues;
+//		else
+//			convolutionValues = offConvolutionValues;
 //		tx -= map.getOffsetX();
 //		ty -= map.getOffsetY();
-		for (int x = minx; x < maxx; x++, tx++) {
-			for (int y = miny, ity = ty; y < maxy; y++, ity++) {
-				map.get(tx,ity).receiveSpike(convolutionValues[x][y], time);
-//				if () {
-//					spikeHandler.spikeAt(tx,ity,time, Polarity.On);
-//				}
-			}
+		final FiringModelMap map = getOutputMap();
+		if (value == 1.0) {
+			for (int x = minx; x < maxx; x++, tx++) 
+				for (int y = miny, ity = ty; y < maxy; y++, ity++) 
+					map.get(tx,ity).receiveSpike(convolutionValues[x][y], time);
+		}
+		else if (value == -1.0) {
+			for (int x = minx; x < maxx; x++, tx++) 
+				for (int y = miny, ity = ty; y < maxy; y++, ity++) 
+					map.get(tx,ity).receiveSpike(-convolutionValues[x][y], time);
+		}
+		else if (value != 0.0) {
+			for (int x = minx; x < maxx; x++, tx++) 
+				for (int y = miny, ity = ty; y < maxy; y++, ity++) 
+					map.get(tx,ity).receiveSpike(value * convolutionValues[x][y], time);
 		}
 	}
 
-	@Override
-	public int getOffsetX() {
-		return offsetX;
-	}
-
-	@Override
-	public int getOffsetY() {
-		return offsetY;
-	}
-
-	@Override
-	public void setOffsetX(int offsetX) {
-		this.offsetX = offsetX;
-	}
-
-	@Override
-	public void setOffsetY(int offsetY) {
-		this.offsetY = offsetY;
-	}
+////	@Override
+//	public int getOffsetX() {
+//		return offsetX;
+//	}
+//
+////	@Override
+//	public int getOffsetY() {
+//		return offsetY;
+//	}
+//
+////	@Override
+//	public void setOffsetX(int offsetX) {
+//		this.offsetX = offsetX;
+//	}
+//
+////	@Override
+//	public void setOffsetY(int offsetY) {
+//		this.offsetY = offsetY;
+//	}
 
 	public synchronized void savePrefs(Preferences prefs, String prefString) {
-		prefs.put(prefString+"onExpressionString", onExpressionString);
-		prefs.put(prefString+"offExpressionString", offExpressionString);
+		prefs.put(prefString+"expressionString", expressionString);
+//		prefs.put(prefString+"offExpressionString", offExpressionString);
 		prefs.putInt(prefString+"width", width);
 		prefs.putInt(prefString+"height", height);
 		prefs.putInt(prefString+"centerX", centerX);
@@ -226,8 +247,10 @@ public class ExpressionBasedSpatialInputKernel implements InputKernel {
 		centerY = prefs.getInt(prefString+"centerY", centerY);
 		offsetX = prefs.getInt(prefString+"offsetX", offsetX);
 		offsetY = prefs.getInt(prefString+"offsetY", offsetY);
-		setOnExpressionString(prefs.get(prefString+"onExpressionString", onExpressionString));
-		setOffExpressionString(offExpressionString = prefs.get(prefString+"offExpressionString", offExpressionString));
+		setExpressionString(prefs.get(prefString+"expressionString", expressionString));
+//		setOnExpressionString(prefs.get(prefString+"onExpressionString", onExpressionString));
+//		setOffExpressionString(offExpressionString = prefs.get(prefString+"offExpressionString", offExpressionString));
 	}
+
 
 }

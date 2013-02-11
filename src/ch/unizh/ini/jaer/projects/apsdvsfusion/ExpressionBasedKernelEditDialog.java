@@ -50,9 +50,9 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 	 */
 	private static final long serialVersionUID = -5468936818753278940L;
 	JTextField onExpressionField = new JTextField();
-	JTextField offExpressionField = new JTextField();
+//	JTextField offExpressionField = new JTextField();
 	NonGLImageDisplay onConvolutionDisplay = NonGLImageDisplay.createNonGLDisplay();
-	NonGLImageDisplay offConvolutionDisplay = NonGLImageDisplay.createNonGLDisplay();
+//	NonGLImageDisplay offConvolutionDisplay = NonGLImageDisplay.createNonGLDisplay();
 	//	int width = 5, height = 5;
 
 	ExpressionBasedSpatialInputKernel myExpressionKernel = new ExpressionBasedSpatialInputKernel(7, 7);
@@ -80,9 +80,9 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 	}
 
 //	
-	public String getOffString() {
-		return offExpressionField.getText();
-	}
+//	public String getOffString() {
+//		return offExpressionField.getText();
+//	}
 	public String getOnString() {
 		return onExpressionField.getText();
 	}
@@ -95,19 +95,19 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 	public String getOnExpressionString() {
 		return onExpressionField.getText();
 	}
-	public String getOffExpressionString() {
-		return offExpressionField.getText();
-	}
+//	public String getOffExpressionString() {
+//		return offExpressionField.getText();
+//	}
 	public boolean isValuesAccepted() {
 		return valuesAccepted;
 	}
 	public void setParameters(int width, int height, int inWidth, int inHeight, int outWidth, int outHeight, String onExpressionString, String offExpressionString) {
 		myExpressionKernel.changeSize(width, height);
 		myExpressionKernel.setInputOutputSizes(inWidth, inHeight, outWidth, outHeight);
-		myExpressionKernel.setOnExpressionString(onExpressionString);
-		myExpressionKernel.setOffExpressionString(offExpressionString);
+		myExpressionKernel.setExpressionString(onExpressionString);
+//		myExpressionKernel.setOffExpressionString(offExpressionString);
 		onExpressionField.setText(onExpressionString);
-		offExpressionField.setText(offExpressionString);
+//		offExpressionField.setText(offExpressionString);
 		widthSpinner.setValue(width);
 		heightSpinner.setValue(height);
 		outWidthSpinner.setValue(outWidth);
@@ -141,7 +141,7 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 //		onConvolutionDisplay.setSize(300,300);
 		onConvolutionDisplay.setPreferredSize(new Dimension(250,250));
 //        onConvolutionDisplay.setImageSize(7,7);
-		offConvolutionDisplay.setPreferredSize(new Dimension(250,250));
+//		offConvolutionDisplay.setPreferredSize(new Dimension(250,250));
 //        onConvolutionDisplay.setTitleLabel("Range: [ "+myFormatter.format(min)+"   "+myFormatter.format(max)+" ] ");
 
 		JPanel inputPanel = new JPanel(new SpringLayout());
@@ -149,13 +149,13 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 		JLabel jLabelOn = new JLabel("Expression for ON-Events:");
 		inputPanel.add(jLabelOn);
 		inputPanel.add(onExpressionField);
-		onExpressionField.setText(myExpressionKernel.getOnExpressionString());
+		onExpressionField.setText(myExpressionKernel.getExpressionString());
 		jLabelOn.setLabelFor(onExpressionField);
-		JLabel jLabelOff = new JLabel("Expression for OFF-Events:");
-		inputPanel.add(jLabelOff);
-		inputPanel.add(offExpressionField);
-		offExpressionField.setText(myExpressionKernel.getOffExpressionString());
-		jLabelOff.setLabelFor(offExpressionField);
+//		JLabel jLabelOff = new JLabel("Expression for OFF-Events:");
+//		inputPanel.add(jLabelOff);
+//		inputPanel.add(offExpressionField);
+//		offExpressionField.setText("0");//myExpressionKernel.getOffExpressionString());
+//		jLabelOff.setLabelFor(offExpressionField);
 		widthSpinner = addLabeledSpinner(inputPanel, "Width", new SpinnerNumberModel(7, 1, 101, 2));
 		heightSpinner = addLabeledSpinner(inputPanel, "Height", new SpinnerNumberModel(7, 1, 101, 2));
 
@@ -180,7 +180,7 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
         kernelFramePanel.add(onConvolutionDisplay,c);
         c.gridx = 1;
         c.insets = new Insets(0,10,0,0);
-        kernelFramePanel.add(offConvolutionDisplay,c);
+  //      kernelFramePanel.add(offConvolutionDisplay,c);
 //        c.gridx = 2;
 //        kernelFramePanel.add(new JButton("Test"),c);
         
@@ -213,8 +213,8 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 		widthSpinner.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent arg0) {
 				myExpressionKernel.setWidth((Integer)widthSpinner.getModel().getValue());
-				plot(myExpressionKernel.getOnConvolutionValues(), onConvolutionDisplay);
-				plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
+				plot(myExpressionKernel.getConvolutionValues(), onConvolutionDisplay);
+//				plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
 			}
 		});
 		
@@ -222,8 +222,8 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 		heightSpinner.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent arg0) {
 				myExpressionKernel.setHeight((Integer)heightSpinner.getModel().getValue());
-				plot(myExpressionKernel.getOnConvolutionValues(), onConvolutionDisplay);
-				plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
+				plot(myExpressionKernel.getConvolutionValues(), onConvolutionDisplay);
+//				plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
 			}
 		});
 		
@@ -244,27 +244,27 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 		onExpressionField.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
-				myExpressionKernel.setOnExpressionString(onExpressionField.getText());
-				myExpressionKernel.setOffExpressionString(offExpressionField.getText());
-				plot(myExpressionKernel.getOnConvolutionValues(), onConvolutionDisplay);
-				plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
+				myExpressionKernel.setExpressionString(onExpressionField.getText());
+//				myExpressionKernel.setOffExpressionString(offExpressionField.getText());
+				plot(myExpressionKernel.getConvolutionValues(), onConvolutionDisplay);
+//				plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
 			}
 		});
-		offExpressionField.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent arg0) {
-				updatePlots();
-			}
-		});
-		offExpressionField.addFocusListener(new FocusListener() {
-			@Override
-			public void focusLost(FocusEvent arg0) {
-				updatePlots();
-			}
-			@Override
-			public void focusGained(FocusEvent arg0) {
-			}
-		});
+//		offExpressionField.addActionListener(new ActionListener() {
+//			@Override
+//			public void actionPerformed(ActionEvent arg0) {
+//				updatePlots();
+//			}
+//		});
+//		offExpressionField.addFocusListener(new FocusListener() {
+//			@Override
+//			public void focusLost(FocusEvent arg0) {
+//				updatePlots();
+//			}
+//			@Override
+//			public void focusGained(FocusEvent arg0) {
+//			}
+//		});
 		onExpressionField.addFocusListener(new FocusListener() {
 			@Override
 			public void focusLost(FocusEvent arg0) {
@@ -276,7 +276,7 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 		});
 		
 		
-		makeCompactGrid(inputPanel,6, 2, //rows, cols
+		makeCompactGrid(inputPanel,5, 2, //rows, cols
 				10, 10,        //initX, initY
                 6, 10);       //xPad, yPad			
 		
@@ -336,17 +336,17 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 	}
 
 	protected void updatePlots() {
-		myExpressionKernel.setOnExpressionString(onExpressionField.getText());
-		myExpressionKernel.setOffExpressionString(offExpressionField.getText());
-		plot(myExpressionKernel.getOnConvolutionValues(), onConvolutionDisplay);
-		plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
+		myExpressionKernel.setExpressionString(onExpressionField.getText());
+//		myExpressionKernel.setOffExpressionString(offExpressionField.getText());
+		plot(myExpressionKernel.getConvolutionValues(), onConvolutionDisplay);
+//		plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
 	}
 	
 	public ExpressionBasedSpatialInputKernel createInputKernel() {
 		ExpressionBasedSpatialInputKernel kernel = new SpaceableExpressionBasedSpatialIK(
 				myExpressionKernel.getWidth(), myExpressionKernel.getHeight());
-		kernel.setOffExpressionString(myExpressionKernel.getOffExpressionString());
-		kernel.setOnExpressionString(myExpressionKernel.getOnExpressionString());
+//		kernel.setOffExpressionString(myExpressionKernel.getOffExpressionString());
+		kernel.setExpressionString(myExpressionKernel.getExpressionString());
 		return kernel;
 	}
 	

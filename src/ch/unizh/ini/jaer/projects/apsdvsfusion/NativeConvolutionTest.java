@@ -10,7 +10,7 @@ import net.sf.jaer.event.PolarityEvent.Polarity;
  * @author Dennis
  *
  */
-public class NativeConvolutionTest implements InputKernel {
+public class NativeConvolutionTest extends SignalTransformationKernel {
 
 	static {
 		 System.loadLibrary("NativeConvolution"); 
@@ -21,18 +21,11 @@ public class NativeConvolutionTest implements InputKernel {
 	 * 
 	 */
 	public NativeConvolutionTest() {
-		// TODO Auto-generated constructor stub
 	}
 
 	/* (non-Javadoc)
 	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.InputKernel#apply(int, int, int, net.sf.jaer.event.PolarityEvent.Polarity, ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap, ch.unizh.ini.jaer.projects.apsdvsfusion.SpikeHandler)
 	 */
-	@Override
-	public void apply(int x, int y, int time, Polarity polarity,
-			FiringModelMap map, SpikeHandler spikeHandler) {
-		// TODO Auto-generated method stub
-
-	}
 	
 	protected void spike(int x, int y) {
 		System.out.format("Spike at %d/%d!", x,y);
@@ -60,27 +53,28 @@ public class NativeConvolutionTest implements InputKernel {
 		test.runNative(1,1,1,test);
 	}
 
-	@Override
-	public int getOffsetX() {
-		// TODO Auto-generated method stub
-		return 0;
-	}
+//	@Override
+//	public int getOffsetX() {
+//		return 0;
+//	}
+//
+//	@Override
+//	public int getOffsetY() {
+//		return 0;
+//	}
+//
+//	@Override
+//	public void setOffsetX(int offsetX) {
+//		
+//	}
+//
+//	@Override
+//	public void setOffsetY(int offsetY) {
+//		
+//	}
 
 	@Override
-	public int getOffsetY() {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-	@Override
-	public void setOffsetX(int offsetX) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void setOffsetY(int offsetY) {
-		// TODO Auto-generated method stub
+	public void signalAt(int x, int y, int time, double value) {
 		
 	}
 

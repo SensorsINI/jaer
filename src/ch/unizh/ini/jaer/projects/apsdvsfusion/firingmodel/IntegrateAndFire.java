@@ -23,7 +23,12 @@ public class IntegrateAndFire extends FiringModel {
 	}
 	
 	public static FiringModelCreator getCreator() {
-		return new FiringModelCreator() {
+		return new FiringModelCreator("IntegrateAndFire") {
+
+			/**
+			 * 
+			 */
+			private static final long serialVersionUID = -9075663597897695761L;
 
 			@Override
 			public FiringModel createUnit(int x, int y, FiringModelMap map) {

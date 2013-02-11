@@ -3,7 +3,6 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel;
 
-import net.sf.jaer.event.PolarityEvent.Polarity;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelCreator;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap;
@@ -61,7 +60,12 @@ public class LeakyIntegrateAndFire extends FiringModel {
 	}
 
 	public static FiringModelCreator getCreator(final float tau, final int refractoryTime, final float threshold) {
-		return new FiringModelCreator() {
+		return new FiringModelCreator("LeakyIntegrateAndFireCreator") {
+			/**
+			 * 
+			 */
+			private static final long serialVersionUID = -4257683486443778516L;
+
 			@Override
 			public FiringModel createUnit(int x, int y, FiringModelMap map) {
 				return new LeakyIntegrateAndFire(x,y,tau, refractoryTime, threshold,map);
@@ -69,6 +73,9 @@ public class LeakyIntegrateAndFire extends FiringModel {
 		};
 	}
 	
+	public static FiringModelCreator getCreator() {
+		return getCreator(36000, 7000,1.5f);
+	}
 	
 	/* (non-Javadoc)
 	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModel#receiveSpike(double, int)
@@ -170,7 +177,7 @@ public class LeakyIntegrateAndFire extends FiringModel {
 	public static void main(String[] args) {
 		SpikeHandler spikeHandler = new SpikeHandler() {
 			@Override
-			public void spikeAt(int x, int y, int time, Polarity polarity) {
+			public void signalAt(int x, int y, int time, double value) {
 			}
 			@Override
 			public void reset() {

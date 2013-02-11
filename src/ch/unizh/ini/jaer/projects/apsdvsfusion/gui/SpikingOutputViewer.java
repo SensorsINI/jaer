@@ -134,9 +134,9 @@ public class SpikingOutputViewer implements SpikeHandler, NonGLImageDisplay.Upda
     }
 
 	@Override
-	public void spikeAt(int x, int y, int time, Polarity polarity) {
+	public void signalAt(int x, int y, int time, double value) {
 		synchronized (receivedSpikesLock) {
-			receivedSpikes[x][y]++;
+			receivedSpikes[x][y] += value;
 		}
 	}
 

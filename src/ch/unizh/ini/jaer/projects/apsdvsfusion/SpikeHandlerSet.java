@@ -27,9 +27,9 @@ public class SpikeHandlerSet implements SpikeHandler {
 	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.SpikeHandler#spikeAt(int, int, int, net.sf.jaer.event.PolarityEvent.Polarity)
 	 */
 	@Override
-	public void spikeAt(int x, int y, int time, Polarity polarity) {
+	public void signalAt(int x, int y, int time, double value/*Polarity polarity*/) {
 		for (SpikeHandler sh : spikeHandlers) 
-			sh.spikeAt(x, y, time, polarity);
+			sh.signalAt(x, y, time, value);
 		
 	}
 	

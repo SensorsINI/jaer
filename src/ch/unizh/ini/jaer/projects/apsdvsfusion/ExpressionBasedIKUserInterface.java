@@ -71,12 +71,13 @@ public class ExpressionBasedIKUserInterface extends JFrame {
     	BorderLayout layout;
     	int inputWidth, inputHeight;
     	
-    	public ExpressionBasedSpatialIKPanel(int kernelWidth, int kernelHeight, int inputWidth, int inputHeight, int outputWidth, int outputHeight, String onExpressionString, String offExpressionString) {
+    	public ExpressionBasedSpatialIKPanel(int kernelWidth, int kernelHeight, int inputWidth, int inputHeight, int outputWidth, int outputHeight, String onExpressionString/*, String offExpressionString*/) {
     		this.inputWidth = inputWidth;
     		this.inputHeight = inputHeight;
     		inputKernel = new SpaceableExpressionBasedSpatialIK(kernelWidth, kernelHeight);
-    		inputKernel.setOnExpressionString(onExpressionString);
-    		inputKernel.setOffExpressionString(offExpressionString);
+    		inputKernel.setExpressionString(onExpressionString);
+//    		inputKernel.setOnExpressionString(onExpressionString);
+//    		inputKernel.setOffExpressionString(offExpressionString);
     		soViewer = spikingOutputViewerManager.createOutputViewer(outputWidth, outputHeight, getGrayLevels());
     		inputKernel.setInputOutputSizes(inputWidth, inputHeight, outputWidth, outputHeight);
     		kernelProcessor = new SimpleKernelProcessor(outputWidth,outputHeight,inputKernel);
@@ -161,8 +162,8 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 					inputKernel.getHeight(), inputWidth, inputHeight,
 					kernelProcessor.getOutWidth(),
 					kernelProcessor.getOutHeight(),
-					inputKernel.getOnExpressionString(),
-					inputKernel.getOffExpressionString());
+					inputKernel.getExpressionString(), "0");
+//					inputKernel.getOffExpressionString());
 			editDialog.setVisible(true);
 			if (editDialog.isValuesAccepted()) {
 				synchronized (kernelProcessor) {
@@ -171,8 +172,8 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 						inputKernel.changeSize(editDialog.getKernelWidth(), editDialog.getKernelHeight());
 						kernelProcessor.changeOutSize(editDialog.getOutWidth(), editDialog.getOutHeight());
 						soViewer.changeSize(editDialog.getOutWidth(), editDialog.getOutHeight());
-						inputKernel.setOnExpressionString(editDialog.getOnExpressionString());
-						inputKernel.setOffExpressionString(editDialog.getOffExpressionString());
+						inputKernel.setExpressionString(editDialog.getOnExpressionString());
+//						inputKernel.setOffExpressionString(editDialog.getOffExpressionString());
 						inputKernel.setInputOutputSizes(inputWidth, inputHeight, editDialog.getOutWidth(), editDialog.getOutHeight());
 						ExpressionBasedIKUserInterface.this.savePrefs();
 //						ExpressionBasedIKUserInterface.this.pack();
@@ -310,7 +311,7 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 		int panelCount = p.getInt(makePrefString("kernelCount"), panels.size());
 		panels.clear();
 		for (int i = 0; i < panelCount; i++) {
-			addKernel(3,3,128,128,128,128,"0.01","0.01");
+			addKernel(3,3,128,128,128,128,"0.01"/*,"0.01"*/);
 			while (panels.size() <= i) {
 				try {
 					Thread.sleep(100);
@@ -337,8 +338,8 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 //	ArrayList<SpikingOutputViewer> soViewers = new ArrayList<SpikingOutputViewer>();
 //	ArrayList<ExpressionBasedSpatialIKPanel> soViewerPanels = new ArrayList<ExpressionBasedSpatialIKPanel>(); 
 	
-	public void addKernel(int kernelWidth, int kernelHeight, int inputWidth, int inputHeight, int outputWidth, int outputHeight, String onExpressionString, String offExpressionString) {
-		final ExpressionBasedSpatialIKPanel soViewerPanel = new ExpressionBasedSpatialIKPanel(kernelWidth, kernelHeight, inputWidth, inputHeight, outputWidth, outputHeight, onExpressionString, offExpressionString);
+	public void addKernel(int kernelWidth, int kernelHeight, int inputWidth, int inputHeight, int outputWidth, int outputHeight, String onExpressionString/*, String offExpressionString*/) {
+		final ExpressionBasedSpatialIKPanel soViewerPanel = new ExpressionBasedSpatialIKPanel(kernelWidth, kernelHeight, inputWidth, inputHeight, outputWidth, outputHeight, onExpressionString/*, offExpressionString*/);
 		if (SwingUtilities.isEventDispatchThread()) {
 			panels.add(soViewerPanel);
 			viewerPanel.add(soViewerPanel, viewerPanelConstraints);
@@ -364,7 +365,7 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 		editDialog.setParameters(7,7, 128, 128,128,128, "0.01","0.01");
 		editDialog.setVisible(true);
 		if (editDialog.isValuesAccepted()) {
-			ExpressionBasedSpatialIKPanel soViewerPanel = new ExpressionBasedSpatialIKPanel(editDialog.getKernelWidth(), editDialog.getKernelHeight(), 128,128,editDialog.getOutWidth(), editDialog.getOutHeight(), editDialog.getOnExpressionString(), editDialog.getOffExpressionString());
+			ExpressionBasedSpatialIKPanel soViewerPanel = new ExpressionBasedSpatialIKPanel(editDialog.getKernelWidth(), editDialog.getKernelHeight(), 128,128,editDialog.getOutWidth(), editDialog.getOutHeight(), editDialog.getOnExpressionString()/*, editDialog.getOffExpressionString()*/);
 
 			panels.add(soViewerPanel);
 			viewerPanel.add(soViewerPanel, viewerPanelConstraints);

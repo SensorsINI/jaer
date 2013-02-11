@@ -10,6 +10,8 @@ import net.sf.jaer.event.PolarityEvent.Polarity;
  *
  */
 public abstract class FiringModel {
+	
+	
 	int x, y;
 	FiringModelMap firingModelMap;
 
@@ -42,7 +44,7 @@ public abstract class FiringModel {
 	}
 
 	public void emitSpike(double value, int timeInUs) {
-		firingModelMap.getSpikeHandler().spikeAt(x, y, timeInUs, Polarity.On);
+		firingModelMap.getSpikeHandler().signalAt(x, y, timeInUs, value);
 	}
 	
 	public abstract void receiveSpike(double value, int timeInUs);

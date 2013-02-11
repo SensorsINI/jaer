@@ -45,12 +45,15 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	
 	boolean filterEvents = false;
 	SpikeHandler filterSpikeHandler = new SpikeHandler() {
-		public void spikeAt(int x, int y, int time, Polarity polarity) {
+		public void signalAt(int x, int y, int time, double value) {
 			PolarityEvent pe = (PolarityEvent)out.getOutputIterator().nextOutput();
 			pe.setX((short)x);
 			pe.setY((short)y);
 			pe.setSpecial(false);
-			pe.setPolarity(polarity);
+			if (value < 0)
+				pe.setPolarity(Polarity.Off);
+			else
+				pe.setPolarity(Polarity.On);
 			pe.setTimestamp(time);
 		}
 
@@ -173,7 +176,11 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 //							System.out.println(time + " -> " + be.timestamp);
 //						if (be.timestamp < beforePackageTime) 
 //							System.out.println("time decreased from last package: "+beforePackageTime+" -> "+be.timestamp);
-						kp.spikeAt(be.x,be.y,be.timestamp, ((PolarityEvent)be).getPolarity());
+						if (((PolarityEvent)be).getPolarity() == Polarity.On)
+							kp.signalAt(be.x,be.y,be.timestamp, 1.0);
+						else
+							kp.signalAt(be.x,be.y,be.timestamp, -1.0);
+							
 						time = be.timestamp;
 					}
 				}

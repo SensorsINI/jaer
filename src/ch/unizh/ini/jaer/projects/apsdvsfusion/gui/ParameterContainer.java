@@ -16,12 +16,12 @@ import javax.swing.JComponent;
  * 
  * @author Dennis Goehlsdorf, derived from Peter OConnor's Controllable, which was derived from Tobi Dellbruck's EventFilter
  */
-public abstract class ParameterContainer implements Serializable {
+public abstract class ParameterContainer /*implements Serializable */{
 
 	/**
 	 * 
 	 */
-	private static final long serialVersionUID = 7279068027303003157L;
+//	private static final long serialVersionUID = 7279068027303003157L;
 
 	protected PropertyChangeSupport support = new PropertyChangeSupport(this);
 

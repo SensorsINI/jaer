@@ -29,6 +29,10 @@ public class ArrayFiringModelMap extends FiringModelMap {
 //		this.offsetX = offsetX;
 //	}
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -3373722547563031984L;
 	FiringModel[][] map = null;
 	
 	public ArrayFiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler) {

@@ -18,11 +18,11 @@ public abstract class KernelProcessor implements SpikeHandler {
 	public KernelProcessor() {
 	}
 
-	protected abstract void processSpike(int x, int y, int time, PolarityEvent.Polarity polarity);
+	protected abstract void processSpike(int x, int y, int time, double value/*PolarityEvent.Polarity polarity*/);
 	
-	public void spikeAt(int x, int y, int time, PolarityEvent.Polarity polarity) {
+	public void signalAt(int x, int y, int time, double value/*PolarityEvent.Polarity polarity*/) {
 		if (enabled) {
-			processSpike(x,y,time, polarity);
+			processSpike(x,y,time, value);
 		}
 	}
 

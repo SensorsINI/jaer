@@ -17,7 +17,7 @@ import net.sf.jaer.event.PolarityEvent;
  */
 public class SimpleKernelProcessor extends KernelProcessor {
 
-	InputKernel inputKernel;
+	SignalTransformationKernel inputKernel;
 	SchedulableFiringModelMap firingModelMap;
 	SpikeHandlerSet spikeHandler;
 
@@ -30,7 +30,7 @@ public class SimpleKernelProcessor extends KernelProcessor {
 	/**
 	 * 
 	 */
-	public SimpleKernelProcessor(int outSizeX, int outSizeY, InputKernel inputKernel) {
+	public SimpleKernelProcessor(int outSizeX, int outSizeY, SignalTransformationKernel inputKernel) {
 //		firingModelMap = new ArrayFiringModelMap(outSizeX, outSizeY, IntegrateAndFire.getCreator());
 		spikeHandler = new SpikeHandlerSet();
 		SchedulableWrapperMap smap = new SchedulableWrapperMap(outSizeX, outSizeY, spikeHandler);
@@ -109,9 +109,9 @@ public class SimpleKernelProcessor extends KernelProcessor {
 
 	
 	@Override
-	protected void processSpike(int x, int y, int time, PolarityEvent.Polarity polarity) {
+	protected void processSpike(int x, int y, int time, double value/*PolarityEvent.Polarity polarity*/) {
 		synchronized (this) {
-			inputKernel.apply(x, y, time, polarity, firingModelMap, spikeHandler);
+			inputKernel.signalAt(x, y, time, value);//polarity, firingModelMap, spikeHandler);
 		}
 	}
 

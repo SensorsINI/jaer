@@ -7,11 +7,41 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
  * @author Dennis
  *
  */
-public class SchedulableWrapperMap extends SchedulableFiringModelMap implements
-		FiringModelCreator {
+public class SchedulableWrapperMap extends SchedulableFiringModelMap /*implements
+		FiringModelCreator */{
+	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 3135959582771085761L;
+
+	public class SchedulableWrapperFiringModelCreator extends FiringModelCreator {
+
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = -3674544035563757031L;
+
+		SchedulableWrapperFiringModelCreator() {
+			super("SchedulableWrapperFiringModel");
+		}
+
+
+		@Override
+		public FiringModel createUnit(int x, int y, FiringModelMap map) {
+			if (schedulableFiringModelCreator != null)
+				return schedulableFiringModelCreator.createUnit(x, y, SchedulableWrapperMap.this);
+			else if (getFiringModelCreator() != null)
+				return getFiringModelCreator().createUnit(x, y, map);
+			else
+				return null;
+		}
+		
+	}
 	
 	FiringModelMap map = null;
 	SchedulableFiringModelCreator schedulableFiringModelCreator = null;
+	SchedulableWrapperFiringModelCreator myCreatorProxy = new SchedulableWrapperFiringModelCreator();
 	
 	/**
 	 * @param sizeX
@@ -47,24 +77,18 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap implements
 	public void setFiringModelMap(FiringModelMap map) {
 		this.map = map;
 		if (map != null) {
-			map.setFiringModelCreator(this);
+			map.setFiringModelCreator(myCreatorProxy);
 			map.changeSize(sizeX, sizeY);
 			map.buildUnits();
 		}
 	}
 
-	/* (non-Javadoc)
-	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelCreator#createUnit(int, int, ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap)
-	 */
-	@Override
-	public FiringModel createUnit(int x, int y, FiringModelMap map) {
-		if (schedulableFiringModelCreator != null)
-			return schedulableFiringModelCreator.createUnit(x, y, this);
-		else if (getFiringModelCreator() != null)
-			return getFiringModelCreator().createUnit(x, y, map);
-		else
-			return null;
-	}
+//	/* (non-Javadoc)
+//	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelCreator#createUnit(int, int, ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap)
+//	 */
+//	@Override
+//	public FiringModel createUnit(int x, int y, FiringModelMap map) {
+//	}
 
 	/* (non-Javadoc)
 	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.SchedulableFiringModelMap#get(int, int)

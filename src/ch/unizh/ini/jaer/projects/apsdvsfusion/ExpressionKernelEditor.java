@@ -118,8 +118,8 @@ public class ExpressionKernelEditor extends JFrame {
 		widthSpinner.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent arg0) {
 				myExpressionKernel.setWidth((Integer)widthSpinner.getModel().getValue());
-				plot(myExpressionKernel.getOnConvolutionValues(), onConvolutionDisplay);
-				plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
+				plot(myExpressionKernel.getConvolutionValues(), onConvolutionDisplay);
+//				plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
 			}
 		});
 		
@@ -127,8 +127,8 @@ public class ExpressionKernelEditor extends JFrame {
 		heightSpinner.addChangeListener(new ChangeListener() {
 			public void stateChanged(ChangeEvent arg0) {
 				myExpressionKernel.setHeight((Integer)heightSpinner.getModel().getValue());
-				plot(myExpressionKernel.getOnConvolutionValues(), onConvolutionDisplay);
-				plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
+				plot(myExpressionKernel.getConvolutionValues(), onConvolutionDisplay);
+//				plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
 			}
 		});
 		
@@ -149,10 +149,10 @@ public class ExpressionKernelEditor extends JFrame {
 		onExpressionField.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
-				myExpressionKernel.setOnExpressionString(onExpressionField.getText());
-				myExpressionKernel.setOffExpressionString(offExpressionField.getText());
-				plot(myExpressionKernel.getOnConvolutionValues(), onConvolutionDisplay);
-				plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
+				myExpressionKernel.setExpressionString(onExpressionField.getText());
+//				myExpressionKernel.setOffExpressionString(offExpressionField.getText());
+				plot(myExpressionKernel.getConvolutionValues(), onConvolutionDisplay);
+//				plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
 			}
 		});
 		offExpressionField.addActionListener(new ActionListener() {
@@ -187,17 +187,17 @@ public class ExpressionKernelEditor extends JFrame {
 	}
 	
 	private void updatePlots() {
-		myExpressionKernel.setOnExpressionString(onExpressionField.getText());
-		myExpressionKernel.setOffExpressionString(offExpressionField.getText());
-		plot(myExpressionKernel.getOnConvolutionValues(), onConvolutionDisplay);
-		plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
+		myExpressionKernel.setExpressionString(onExpressionField.getText());
+//		myExpressionKernel.setOffExpressionString(offExpressionField.getText());
+		plot(myExpressionKernel.getConvolutionValues(), onConvolutionDisplay);
+//		plot(myExpressionKernel.getOffConvolutionValues(), offConvolutionDisplay);
 	}
 	
 	public ExpressionBasedSpatialInputKernel createInputKernel() {
 		ExpressionBasedSpatialInputKernel kernel = new SpaceableExpressionBasedSpatialIK(
 				myExpressionKernel.getWidth(), myExpressionKernel.getHeight());
-		kernel.setOffExpressionString(myExpressionKernel.getOffExpressionString());
-		kernel.setOnExpressionString(myExpressionKernel.getOnExpressionString());
+//		kernel.setOffExpressionString(myExpressionKernel.getOffExpressionString());
+		kernel.setExpressionString(myExpressionKernel.getExpressionString());
 		return kernel;
 	}
 	
