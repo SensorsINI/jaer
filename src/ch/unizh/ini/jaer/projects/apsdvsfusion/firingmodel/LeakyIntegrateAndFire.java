@@ -3,6 +3,8 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel;
 
+import java.util.prefs.Preferences;
+
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelCreator;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap;
@@ -59,8 +61,8 @@ public class LeakyIntegrateAndFire extends FiringModel {
 //		multiplicator = (int)((1 << shifter) * (1.0 / threshold)); 
 	}
 
-	public static FiringModelCreator getCreator(final float tau, final int refractoryTime, final float threshold) {
-		return new FiringModelCreator("LeakyIntegrateAndFireCreator") {
+	public static FiringModelCreator getCreator(final float tau, final int refractoryTime, final float threshold, Preferences parentPrefs, String nodeName) {
+		return new FiringModelCreator("LeakyIntegrateAndFireCreator", parentPrefs, nodeName) {
 			/**
 			 * 
 			 */
@@ -73,8 +75,8 @@ public class LeakyIntegrateAndFire extends FiringModel {
 		};
 	}
 	
-	public static FiringModelCreator getCreator() {
-		return getCreator(36000, 7000,1.5f);
+	public static FiringModelCreator getCreator(Preferences parentPrefs, String nodeName) {
+		return getCreator(36000, 7000,1.5f, parentPrefs, nodeName);
 	}
 	
 	/* (non-Javadoc)
@@ -183,7 +185,7 @@ public class LeakyIntegrateAndFire extends FiringModel {
 			public void reset() {
 			}
 		};
-		FiringModelMap map = new FiringModelMap(1,1,spikeHandler) {
+		FiringModelMap map = new FiringModelMap(1,1,spikeHandler, null, "") {
 			@Override 
 			public void reset() {
 			}

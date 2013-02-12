@@ -3,10 +3,16 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.util.ArrayList;
+import java.util.prefs.Preferences;
 
 import javax.swing.JButton;
 import javax.swing.JComponent;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
@@ -31,6 +37,47 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 //	FiringModelMap firingModelMap;
 //	
 //	String expression = getPrefs().get("Expression", "1");
+	FiringModelMap onMap, offMap;
+	ArrayList<FiringModelMap> firingModelMaps = new ArrayList<FiringModelMap>();
+	
+	
+	public final class STFParameterContainer extends ParameterContainer {
+//		String myString;
+//		float myFloat;
+//		int myInt;
+		JPanel customPanel = new JPanel();
+		
+		public STFParameterContainer(Preferences parentPrefs, String nodeName) {
+			super("Maps", parentPrefs, nodeName);
+			customPanel.setLayout(new GridBagLayout());
+		}
+
+
+		public void fillPanel() {
+			customPanel.removeAll();
+			GridBagConstraints gbc = new GridBagConstraints();
+			gbc.weightx = 1;
+			gbc.weighty = 1;
+			gbc.gridy = 0;
+			gbc.gridx = 0;
+//			gbc.fill = GridBagConstraints.BOTH;
+			for (FiringModelMap map : firingModelMaps) {
+				if (map != onMap && map != offMap) {
+					customPanel.add(new ParameterBrowserPanel(map));
+					gbc.gridy++;
+				}
+			}
+	        JFrame frame = (JFrame) SwingUtilities.getRoot(customPanel);
+	        if (frame != null)
+	        	frame.pack();
+		}
+		
+		@Override
+		protected JComponent createCustomControls() {
+			fillPanel();
+			return customPanel;
+		}
+	}
 
 	ArrayList<KernelProcessor> kernelProcessors = new ArrayList<KernelProcessor>();
 	
@@ -43,6 +90,9 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	SpikingOutputViewerManager spikingOutputViewerManager = null;
 //	private int grayLevels = 4;
 	
+	private boolean panelAdded = false;
+	private STFParameterContainer stfParameterContainer = new STFParameterContainer(getPrefs(), "SpatioTemporalFusion");
+
 	boolean filterEvents = false;
 	SpikeHandler filterSpikeHandler = new SpikeHandler() {
 		public void signalAt(int x, int y, int time, double value) {
@@ -70,6 +120,34 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		super(chip);
 //		this.setFilterEnabled(false);
         setPropertyTooltip("grayLevels", "Number of displayed gray levels");
+        this.onMap = new FiringModelMap(128,128, getPrefs() , "onMap") {
+			@Override
+			public void reset() {
+			}
+			@Override
+			public FiringModel get(int x, int y) {
+				return null;
+			}
+			@Override
+			public void buildUnits() {
+			}
+		};
+		this.offMap = new FiringModelMap(128,128, getPrefs(), "offMap") {
+			@Override
+			public void buildUnits() {
+			}
+			@Override
+			public FiringModel get(int x, int y) {
+				return null;
+			}
+			@Override
+			public void reset() {
+			}
+		};
+		firingModelMaps.add(onMap);
+		firingModelMaps.add(offMap);
+		stfParameterContainer.restoreParameters();
+		
 //		firingModelMap = new ArrayFiringModelMap(chip, IntegrateAndFire.getCreator());
 //		inputKernel = new ExpressionBasedSpatialInputKernel(5, 5);
 //		kernelProcessors 
@@ -176,10 +254,12 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 //							System.out.println(time + " -> " + be.timestamp);
 //						if (be.timestamp < beforePackageTime) 
 //							System.out.println("time decreased from last package: "+beforePackageTime+" -> "+be.timestamp);
+						
 						if (((PolarityEvent)be).getPolarity() == Polarity.On)
-							kp.signalAt(be.x,be.y,be.timestamp, 1.0);
+							onMap.getSpikeHandler().signalAt(be.x, be.y, be.timestamp, 1.0);
 						else
-							kp.signalAt(be.x,be.y,be.timestamp, -1.0);
+							offMap.getSpikeHandler().signalAt(be.x, be.y, be.timestamp, 1.0);
+//							kp.signalAt(be.x,be.y,be.timestamp, -1.0);
 							
 						time = be.timestamp;
 					}
@@ -228,40 +308,21 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	/* (non-Javadoc)
 	 * @see net.sf.jaer.eventprocessing.EventFilter#initFilter()
 	 */
+	
+	
 //	@Override
-	public void do_addStuffToPanel() {
-		addControls(new ParameterBrowserPanel(new ParameterContainer("TestClass") {
-			String myString;
-			float myFloat;
-			int myInt;
-			public String getMyString() {
-				return myString;
-			}
-			public void setMyString(String myString) {
-				this.myString = myString;
-			}
-			public float getMyFloat() {
-				return myFloat;
-			}
-			public void setMyFloat(float myFloat) {
-				this.myFloat = myFloat;
-			}
-			public int getMyInt() {
-				return myInt;
-			}
-			public void setMyInt(int myInt) {
-				this.myInt = myInt;
-			}
-			public void do_TestButton() {
-				
-			}
-			@Override
-			protected JComponent createCustomControls() {
-				return new JButton("Hello");
-			}
-			
-		}));
+	public void doShowParameterPanel() {
+		if (!panelAdded) {
+			panelAdded = true;
+			addControls(new ParameterBrowserPanel(stfParameterContainer));
+		}
+		
 //		setExpression("0");
+	}
+	
+	public void doAddMap() {
+		firingModelMaps.add(new SchedulableWrapperMap(128, 128, null, getPrefs(), "map"+(firingModelMaps.size() - 2)));
+		stfParameterContainer.fillPanel();
 	}
 
 //	public void setExpression(String expression) {

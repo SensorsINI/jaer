@@ -3,6 +3,8 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
+import java.util.prefs.Preferences;
+
 /**
  * @author Dennis
  *
@@ -14,8 +16,8 @@ public abstract class SchedulableFiringModelMap extends FiringModelMap {
 	/**
 	 * 
 	 */
-	public SchedulableFiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler) {
-		super(sizeX, sizeY, spikeHandler);
+	public SchedulableFiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler, Preferences parentPrefs, String nodeName) {
+		super(sizeX, sizeY, spikeHandler, parentPrefs, nodeName);
 	}
 
 	

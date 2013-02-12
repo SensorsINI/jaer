@@ -3,6 +3,8 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
+import java.util.prefs.Preferences;
+
 /**
  * @author Dennis
  *
@@ -22,8 +24,8 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*implement
 		 */
 		private static final long serialVersionUID = -3674544035563757031L;
 
-		SchedulableWrapperFiringModelCreator() {
-			super("SchedulableWrapperFiringModel");
+		SchedulableWrapperFiringModelCreator(Preferences parentPrefs, String nodeName) {
+			super("SchedulableWrapperFiringModel", parentPrefs, nodeName);
 		}
 
 
@@ -41,15 +43,15 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*implement
 	
 	FiringModelMap map = null;
 	SchedulableFiringModelCreator schedulableFiringModelCreator = null;
-	SchedulableWrapperFiringModelCreator myCreatorProxy = new SchedulableWrapperFiringModelCreator();
+	SchedulableWrapperFiringModelCreator myCreatorProxy = new SchedulableWrapperFiringModelCreator(getPrefs(), "creatorProxy");
 	
 	/**
 	 * @param sizeX
 	 * @param sizeY
 	 * @param spikeHandler
 	 */
-	public SchedulableWrapperMap(int sizeX, int sizeY, SpikeHandler spikeHandler) {
-		super(sizeX, sizeY, spikeHandler);
+	public SchedulableWrapperMap(int sizeX, int sizeY, SpikeHandler spikeHandler, Preferences parentPrefs, String nodeName) {
+		super(sizeX, sizeY, spikeHandler, parentPrefs, nodeName);
 		// TODO Auto-generated constructor stub
 	}
 	

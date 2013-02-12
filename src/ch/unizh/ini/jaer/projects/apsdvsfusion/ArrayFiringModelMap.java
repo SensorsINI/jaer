@@ -3,6 +3,8 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
+import java.util.prefs.Preferences;
+
 import net.sf.jaer.chip.AEChip;
 
 /**
@@ -35,16 +37,16 @@ public class ArrayFiringModelMap extends FiringModelMap {
 	private static final long serialVersionUID = -3373722547563031984L;
 	FiringModel[][] map = null;
 	
-	public ArrayFiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler) {
-		super(sizeX, sizeY, spikeHandler);
+	public ArrayFiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler, Preferences parentPrefs, String nodeName) {
+		super(sizeX, sizeY, spikeHandler, parentPrefs, nodeName);
 	//	this.fmc = fmc;
 	//	changeSize(sizeX, sizeY);
 //		this.offsetX = offsetX;
 //		this.offsetY = offsetY;
 	}
 	
-	public ArrayFiringModelMap(AEChip chip, SpikeHandler spikeHandler/*, FiringModelCreator fmc*/) {
-		this(chip.getSizeX(), chip.getSizeY(), spikeHandler/*, fmc*/);
+	public ArrayFiringModelMap(AEChip chip, SpikeHandler spikeHandler/*, FiringModelCreator fmc*/, Preferences parentPrefs, String nodeName) {
+		this(chip.getSizeX(), chip.getSizeY(), spikeHandler/*, fmc*/, parentPrefs, nodeName);
 	}
 	
 //	public synchronized void changeSize(int sizeX, int sizeY) {

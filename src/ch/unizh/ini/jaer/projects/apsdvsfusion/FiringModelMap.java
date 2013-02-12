@@ -4,6 +4,7 @@
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
 import java.util.ArrayList;
+import java.util.prefs.Preferences;
 
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterContainer;
 
@@ -39,15 +40,16 @@ public abstract class FiringModelMap extends ParameterContainer {
 //	private FiringModelMapParameterContainer myParameterContainer = createParameterContainer();
 	
 	
-	public FiringModelMap(int sizeX, int sizeY) {
-		super("FiringModelMap");
+	public FiringModelMap(int sizeX, int sizeY, Preferences parentPrefs, String nodeName) {
+		super("FiringModelMap", parentPrefs, nodeName);
 		this.spikeHandlerSet = new SpikeHandlerSet()/*spikeHandler*/;
 		changeSize(sizeX, sizeY);
 	}
 	
-	public FiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler) {
-		this(sizeX, sizeY);
-		this.spikeHandlerSet.addSpikeHandler(spikeHandler);
+	public FiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler, Preferences parentPrefs, String nodeName) {
+		this(sizeX, sizeY, parentPrefs, nodeName);
+		if (spikeHandler != null)
+			this.spikeHandlerSet.addSpikeHandler(spikeHandler);
 	}
 
 //	protected FiringModelMapParameterContainer createParameterContainer() {

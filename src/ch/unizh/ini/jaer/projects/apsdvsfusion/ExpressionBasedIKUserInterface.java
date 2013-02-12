@@ -71,7 +71,12 @@ public class ExpressionBasedIKUserInterface extends JFrame {
     	BorderLayout layout;
     	int inputWidth, inputHeight;
     	
-    	public ExpressionBasedSpatialIKPanel(int kernelWidth, int kernelHeight, int inputWidth, int inputHeight, int outputWidth, int outputHeight, String onExpressionString/*, String offExpressionString*/) {
+		public ExpressionBasedSpatialIKPanel(int kernelWidth, int kernelHeight,
+				int inputWidth, int inputHeight, int outputWidth,
+				int outputHeight, String onExpressionString/*
+															 * , String
+															 * offExpressionString
+															 */) {
     		this.inputWidth = inputWidth;
     		this.inputHeight = inputHeight;
     		inputKernel = new SpaceableExpressionBasedSpatialIK(kernelWidth, kernelHeight);
@@ -80,7 +85,7 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 //    		inputKernel.setOffExpressionString(offExpressionString);
     		soViewer = spikingOutputViewerManager.createOutputViewer(outputWidth, outputHeight, getGrayLevels());
     		inputKernel.setInputOutputSizes(inputWidth, inputHeight, outputWidth, outputHeight);
-    		kernelProcessor = new SimpleKernelProcessor(outputWidth,outputHeight,inputKernel);
+    		kernelProcessor = new SimpleKernelProcessor(outputWidth,outputHeight,inputKernel, stfFilter.getPrefs(), "kernelProcessor");
     		kernelProcessor.addSpikeHandler(soViewer);
     		stfFilter.addKernelProcessor(kernelProcessor);
     		

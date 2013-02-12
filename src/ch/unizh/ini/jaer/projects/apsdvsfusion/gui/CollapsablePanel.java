@@ -9,7 +9,11 @@ import javax.swing.*;
   
 public class CollapsablePanel extends JPanel {  
   
-    private boolean selected;  
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 7317872465701427906L;
+	private boolean selected;  
     JPanel contentPanel;  
     /**
 	 * @return the contentPanel
@@ -18,10 +22,13 @@ public class CollapsablePanel extends JPanel {
 	
   
     private class HeaderPanel extends JPanel implements MouseListener {  
-        String text;  
+        /**
+		 * 
+		 */
+		private static final long serialVersionUID = -8883518187114071940L;
+		String text;  
         Font font;  
-        BufferedImage open, closed;  
-        final int OFFSET = 2, PAD = 5;  
+        final int OFFSET = 2;//, PAD = 5;  
   
         public HeaderPanel(String text) {  
             addMouseListener(this);  
@@ -29,8 +36,8 @@ public class CollapsablePanel extends JPanel {
             font = new Font("sans-serif", Font.PLAIN, 12);  
             // setRequestFocusEnabled(true);  
             setPreferredSize(new Dimension(200, 20));  
-            int w = getWidth();  
-            int h = getHeight();  
+//            int w = getWidth();  
+//            int h = getHeight();  
   
             /*try { 
                 open = ImageIO.read(new File("images/arrow_down_mini.png")); 
@@ -100,8 +107,8 @@ public class CollapsablePanel extends JPanel {
         GridBagConstraints gbc = new GridBagConstraints();  
         gbc.insets = new Insets(1, 3, 0, 3);  
         gbc.weightx = 1.0;  
-        gbc.fill = gbc.HORIZONTAL;  
-        gbc.gridwidth = gbc.REMAINDER;  
+        gbc.fill = GridBagConstraints.HORIZONTAL;  
+        gbc.gridwidth = GridBagConstraints.REMAINDER;  
   
         selected = false;  
         headerPanel = new HeaderPanel(text);  
@@ -166,13 +173,13 @@ public class CollapsablePanel extends JPanel {
         JPanel second = new JPanel();
         second.add(new JButton("Hello"));
         JPanel p1 = new JPanel(new GridBagLayout());  
-        gbc.gridwidth = gbc.RELATIVE;  
+        gbc.gridwidth = GridBagConstraints.RELATIVE;  
         p1.add(new JButton("button 1"), gbc);  
-        gbc.gridwidth = gbc.REMAINDER;  
+        gbc.gridwidth = GridBagConstraints.REMAINDER;  
         p1.add(new JButton("button 2"), gbc);  
-        gbc.gridwidth = gbc.RELATIVE;  
+        gbc.gridwidth = GridBagConstraints.RELATIVE;  
         p1.add(new JButton("button 3"), gbc);  
-        gbc.gridwidth = gbc.REMAINDER;  
+        gbc.gridwidth = GridBagConstraints.REMAINDER;  
         p1.add(new JButton("button 4"), gbc);  
         
         CollapsablePanel secondcp = new CollapsablePanel("second", second);

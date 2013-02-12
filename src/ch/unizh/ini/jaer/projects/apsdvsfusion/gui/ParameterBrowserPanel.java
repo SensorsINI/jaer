@@ -138,8 +138,8 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
     private Method[] methods;
     private static Logger log = Logger.getLogger("Filters");
     final float fontSize = 10f;
-    private Border normalBorder, redLineBorder;
-    private TitledBorder titledBorder;
+//    private Border normalBorder, redLineBorder;
+//    private TitledBorder titledBorder;
     private HashMap<String, HasSetter> setterMap = new HashMap<String, HasSetter>(); // map from filter to property, to apply property change events to control
     protected java.util.ArrayList<JComponent> controls = new ArrayList<JComponent>();
     private HashMap<String, Container> groupContainerMap = new HashMap<String, Container>();
@@ -241,14 +241,15 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
     void addController(final ParameterContainer parameterContainer,final JPanel topPanel) {
 //        JPanel control = null;
 //        NetController filter = getControllable();
-        
+        if (parameterContainer != null)
+        	parameterContainer.getSupport().addPropertyChangeListener(this);
 		JPanel hostPanel = new JPanel();
 		topPanel.setLayout(new BorderLayout());
 		topPanel.add(new JLabel("   "),BorderLayout.WEST);
 		topPanel.add(hostPanel,BorderLayout.CENTER);
         hostPanel.setLayout(new javax.swing.BoxLayout(hostPanel, javax.swing.BoxLayout.Y_AXIS));
         
-        hostPanel.setBorder(BorderFactory.createMatteBorder(0, 1, 0, 0, Color.black));
+        hostPanel.setBorder(BorderFactory.createMatteBorder(1, 1, 1, 1, Color.lightGray));
         
         
 //        boolean topLevel=hostPanel==this;
@@ -392,7 +393,7 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
     //            groupPanel.setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
                 groupPanel.setLayout(new BoxLayout(groupPanel,BoxLayout.Y_AXIS));
                 groupPanel.setName(s);
-                groupPanel.setBorder(new TitledBorder(s));
+//                groupPanel.setBorder(new TitledBorder(s));
     //            groupPanel.setLayout(new GridLayout(0, 1));
                 groupContainerMap.put(s, groupPanel);
                 hostPanel.add(groupPanel);

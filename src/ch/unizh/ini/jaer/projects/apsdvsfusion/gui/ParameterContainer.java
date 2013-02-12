@@ -5,23 +5,37 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion.gui;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.geom.Point2D;
+import java.beans.BeanInfo;
+import java.beans.IntrospectionException;
+import java.beans.Introspector;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.beans.PropertyDescriptor;
 import java.io.Serializable;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.*;
+import java.util.logging.Logger;
+import java.util.prefs.Preferences;
 
 import javax.swing.JComponent;
+
 //import javax.swing.JOptionPane;
+
 
 /**
  * 
- * @author Dennis Goehlsdorf, derived from Peter OConnor's Controllable, which was derived from Tobi Dellbruck's EventFilter
+ * @author Dennis Goehlsdorf, derived from Peter OConnor's Controllable, which was derived from Tobi Delbruck's EventFilter
  */
-public abstract class ParameterContainer /*implements Serializable */{
+public abstract class ParameterContainer implements /*Serializable,*/ PropertyChangeListener {
 
 	/**
 	 * 
 	 */
 //	private static final long serialVersionUID = 7279068027303003157L;
+    private static Logger log = Logger.getLogger("Filters");
 
 	protected PropertyChangeSupport support = new PropertyChangeSupport(this);
 
@@ -42,22 +56,83 @@ public abstract class ParameterContainer /*implements Serializable */{
 
 	transient ArrayList<ActionListener> listeners = new ArrayList<ActionListener>();
 
-	private String name = "";
+	private Preferences prefs;
+	
+	private String name;
 	// public SpikeStack net;
 
 	// public static enum Options {LIF_STP_RBM,LIF_BASIC_RBM};
 
-
-
-	public ParameterContainer(String name) {
+    abstract class SingleParameter<T> {
+    	Method writeMethod;
+    	Method readMethod;
+    	String propertyName;
+    	public SingleParameter(Method readMethod, Method writeMethod, String propertyName) {
+    		this.writeMethod = writeMethod;
+    		this.readMethod = readMethod;
+    		this.propertyName = propertyName;
+    	}
+    	void set(Object newValue) {
+    		try {
+				writeMethod.invoke(ParameterContainer.this, newValue);
+			} catch (IllegalArgumentException e) {
+				log.warning("Illegal argument while invoking setter method.");
+				e.printStackTrace();
+			} catch (IllegalAccessException e) {
+				log.warning("Illegal access while invoking setter method.");
+				e.printStackTrace();
+			} catch (InvocationTargetException e) {
+				log.warning("Target could not be invoked while invoking setter method.");
+				e.printStackTrace();
+			}
+    	}
+    	@SuppressWarnings("unchecked")
+		T get() {
+    		try {
+				return (T)readMethod.invoke(ParameterContainer.this, (Object[])null);
+			} catch (IllegalArgumentException e) {
+				log.warning("Illegal argument while invoking getter method.");
+				e.printStackTrace();
+			} catch (IllegalAccessException e) {
+				log.warning("Illegal access while invoking getter method.");
+				e.printStackTrace();
+			} catch (InvocationTargetException e) {
+				log.warning("Target could not be invoked while invoking getter method.");
+				e.printStackTrace();
+			}
+			return null;
+    	}
+    	void restore() {
+    		set(readParameter());
+    	}
+    	abstract void storeParameter(Object newValue);
+    	abstract T readParameter();
+    }
+    
+    private HashMap<String, SingleParameter<?>> setterMethods = new HashMap<String, SingleParameter<?>>();
+	
+	
+	public ParameterContainer(String name, Preferences parentPrefs, String nodeName) {
 		this.name = name;
+		this.prefs = parentPrefs.node(nodeName);
+		support.addPropertyChangeListener(this);
+		discoverParameters();
 	}
 
+    public PropertyChangeSupport getSupport() {
+        return support;
+    }
+
+    public Preferences getPrefs() {
+		return prefs;
+	}
+	
 	public String getName() {
 		return name;
 	}
 	
 	public void setName(String name) {
+		getSupport().firePropertyChange("name", this.name, name);
 		this.name = name;
 	}
 
@@ -239,6 +314,131 @@ public abstract class ParameterContainer /*implements Serializable */{
 	 */
 	public boolean hasPropertyGroups() {
 		return property2GroupMap != null;
+	}
+
+    public void restoreParameters() {
+    	for (SingleParameter<?> sp : setterMethods.values()) {
+    		sp.restore();
+    	}
+    }
+    
+	private void discoverParameters() {
+        BeanInfo info;
+		try {
+			info = Introspector.getBeanInfo(this.getClass());
+	        PropertyDescriptor[] props = info.getPropertyDescriptors();
+	        for (PropertyDescriptor p : props) {
+//                try {
+                  Class<?> c = p.getPropertyType();
+                  String name = p.getName();
+                  if (c != null && (p.getReadMethod() != null && p.getWriteMethod() != null) && 
+                		  (c == Integer.TYPE ||
+                				 c  == Float.TYPE ||
+                				 c == Boolean.TYPE ||
+                				 c == String.class ||
+                				 c.isEnum() || 
+                				 c==Point2D.Float.class)) {
+//                	  setterMethods.put(name, p.getWriteMethod());
+                  }
+                  if (c == Integer.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                	  setterMethods.put(name, new SingleParameter<Integer>(p.getReadMethod(), p.getWriteMethod(),name) {
+						@Override
+						void storeParameter(Object newValue) {
+							getPrefs().putInt(propertyName, (Integer)newValue);
+						}
+						@Override
+						Integer readParameter() {
+							return getPrefs().getInt(propertyName, get());
+						}
+                	  });
+                  } else if (c == Float.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                	  setterMethods.put(name, new SingleParameter<Float>(p.getReadMethod(), p.getWriteMethod(),name) {
+  						@Override
+  						void storeParameter(Object newValue) {
+  							getPrefs().putFloat(propertyName, (Float)newValue);
+  						}
+
+						@Override
+						Float readParameter() {
+							return getPrefs().getFloat(propertyName, get());
+						}
+                  	  });
+                  } else if (c == Boolean.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                	  setterMethods.put(name, new SingleParameter<Boolean>(p.getReadMethod(), p.getWriteMethod(),name) {
+  						@Override
+  						void storeParameter(Object newValue) {
+  							getPrefs().putBoolean(propertyName, (Boolean)newValue);
+  						}
+						@Override
+						Boolean readParameter() {
+							return getPrefs().getBoolean(propertyName, get());
+						}
+                  	  });
+                  } else if (c == String.class && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                	  setterMethods.put(name, new SingleParameter<String>(p.getReadMethod(), p.getWriteMethod(),name) {
+  						@Override
+  						void storeParameter(Object newValue) {
+  							getPrefs().put(propertyName, (String)newValue);
+  						}
+
+						@Override
+						String readParameter() {
+							return getPrefs().get(propertyName, get());
+						}
+                  	  });
+                  } else if (c != null && c.isEnum() && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                	  final Class<?> cf = c; 
+                	  setterMethods.put(name, new SingleParameter<Enum<?>>(p.getReadMethod(), p.getWriteMethod(),name) {
+                		  final Object[] enumConstants = cf.getClass().getEnumConstants();
+  						@Override
+  						void storeParameter(Object newValue) {
+  							getPrefs().put(propertyName, ((Enum<?>)newValue).toString());
+  						}
+
+						@Override
+						Enum<?> readParameter() {
+							String value = getPrefs().get(propertyName, get().toString());
+							for (Object o : enumConstants) {
+								if (o.toString().toUpperCase().equals(value.toUpperCase())) {
+									return (Enum<?>)o;
+								}
+							}
+							return null;
+						}
+                  	  });
+                  } else if (c != null && c==Point2D.Float.class && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                	  setterMethods.put(name, new SingleParameter<Point2D>(p.getReadMethod(), p.getWriteMethod(),name) {
+  						@Override
+  						void storeParameter(Object newValue) {
+  							getPrefs().putFloat(propertyName, (Float)newValue);
+  							getPrefs().putInt(propertyName, (Integer)newValue);
+  						}
+
+						@Override
+						Point2D readParameter() {
+							Point2D def = get();
+							def.setLocation(getPrefs().getDouble(propertyName+".x", def.getX()), getPrefs().getDouble(propertyName+".y", def.getY()));
+							return def;
+						}
+                  	  });
+                  } else {
+                  }
+	        }
+		} catch (IntrospectionException e) {
+			log.warning("Problem while introspecting an instance of "+this.getClass().getName()+" named '"+this.name+"'!");
+			e.printStackTrace();
+		}
+		
+	}
+	
+	@Override
+	public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
+		Object newValue = propertyChangeEvent.getNewValue();
+		if (newValue != null && !newValue.equals(propertyChangeEvent.getOldValue())) {
+			SingleParameter<?> setter = setterMethods.get(propertyChangeEvent.getPropertyName());
+			if (setter != null)
+				setter.storeParameter(newValue);
+		}
 	}
 
 }

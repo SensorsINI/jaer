@@ -30,12 +30,13 @@ public class SimpleKernelProcessor extends KernelProcessor {
 	/**
 	 * 
 	 */
-	public SimpleKernelProcessor(int outSizeX, int outSizeY, SignalTransformationKernel inputKernel) {
+	public SimpleKernelProcessor(int outSizeX, int outSizeY, SignalTransformationKernel inputKernel, Preferences parentPrefs, String nodeName) {
 //		firingModelMap = new ArrayFiringModelMap(outSizeX, outSizeY, IntegrateAndFire.getCreator());
 		spikeHandler = new SpikeHandlerSet();
-		SchedulableWrapperMap smap = new SchedulableWrapperMap(outSizeX, outSizeY, spikeHandler);
+		Preferences prefs = parentPrefs.node(nodeName);
+		SchedulableWrapperMap smap = new SchedulableWrapperMap(outSizeX, outSizeY, spikeHandler, prefs, "schedulableWrapperMap");
 		firingModelMap = smap;
-		smap.setFiringModelMap(new ArrayFiringModelMap(outSizeX, outSizeY, spikeHandler));
+		smap.setFiringModelMap(new ArrayFiringModelMap(outSizeX, outSizeY, spikeHandler, prefs, "firingModelMap"));
 		smap.setFiringModelCreator(SimplePoissonModel.getCreator());
 //		final FiringModelCreator internalModelCreator = LeakyIntegrateAndFire.getCreator(36000, 7000,1.5f);
 //		smap.setFiringModelCreator(new SchedulableFiringModelCreator() {

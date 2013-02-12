@@ -3,6 +3,8 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel;
 
+import java.util.prefs.Preferences;
+
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelCreator;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap;
@@ -22,8 +24,8 @@ public class IntegrateAndFire extends FiringModel {
 		// TODO Auto-generated constructor stub
 	}
 	
-	public static FiringModelCreator getCreator() {
-		return new FiringModelCreator("IntegrateAndFire") {
+	public static FiringModelCreator getCreator(Preferences parentPrefs, String nodeName) {
+		return new FiringModelCreator("IntegrateAndFire", parentPrefs, nodeName) {
 
 			/**
 			 * 
