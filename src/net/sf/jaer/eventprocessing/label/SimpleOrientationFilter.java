@@ -58,6 +58,9 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
     private boolean showVectorsEnabled = getPrefs().getBoolean("SimpleOrientationFilter.showVectorsEnabled",false);
     private float oriHistoryMixingFactor = getPrefs().getFloat("SimpleOrientationFilter.oriHistoryMixingFactor",0.1f);
     private float oriDiffThreshold = getPrefs().getFloat("SimpleOrientationFilter.oriDiffThreshold",0.5f);
+    private boolean jitterVectorLocations=getBoolean("jitterVectorLocations", true);
+    private float jitterAmountPixels=getFloat("jitterAmountPixels",.5f);
+    
     /** Times of most recent input events: [x][y][polarity] */
     protected int[][][] lastTimesMap; // x,y,polarity
     /** Scalar map of past orientation values: [x][y] */
@@ -87,6 +90,8 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
         setPropertyTooltip(size,"length","length of half of RF, total length is length*2+1");
         setPropertyTooltip(tim,"oriHistoryEnabled","enable use of prior orientation values to filter out events not consistent with history");
         setPropertyTooltip(disp,"showVectorsEnabled","shows local orientation segments");
+        setPropertyTooltip(disp,"jitterAmountPixels","how much to jitter vector origins by in pixels");
+        setPropertyTooltip(disp,"jitterVectorLocations","whether to jitter vector location to see overlapping vectors more easily");
         setPropertyTooltip(tim,"oriHistoryMixingFactor","mixing factor for history of local orientation, increase to learn new orientations more quickly");
         setPropertyTooltip(tim,"oriDiffThreshold","orientation must be within this value of historical value to pass");
     }
@@ -308,9 +313,6 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
         getPrefs().putInt("SimpleOrientationFilter.width",width);
     }
 
-    public void annotate (Graphics2D g){
-    }
-
     public void annotate (GLAutoDrawable drawable){
         if ( !isAnnotationEnabled() ){
             return;
@@ -347,14 +349,21 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
         }
     }
 
+    Random r=new Random();
+    
     // plots a single motion vector which is the number of pixels per second times scaling
     private void drawOrientationVector (GL gl,OrientationEvent e){
         if ( !e.hasOrientation ){
             return;
         }
         OrientationEvent.UnitVector d = OrientationEvent.unitVectors[e.orientation];
-        gl.glVertex2f(e.x - d.x * length,e.y - d.y * length);
-        gl.glVertex2f(e.x + d.x * length,e.y + d.y * length);
+        float jx=0, jy=0;
+        if(jitterVectorLocations){
+            jx=(r.nextFloat()-.5f)*jitterAmountPixels;
+            jy=(r.nextFloat()-.5f)*jitterAmountPixels;
+        }
+        gl.glVertex2f(e.x - d.x * length+jx,e.y - d.y * length+jy);
+        gl.glVertex2f(e.x + d.x * length+jx,e.y + d.y * length+jy);
     }
 
     public boolean isShowVectorsEnabled (){
@@ -364,10 +373,6 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
     public void setShowVectorsEnabled (boolean showVectorsEnabled){
         this.showVectorsEnabled = showVectorsEnabled;
         getPrefs().putBoolean("SimpleOrientationFilter.showVectorsEnabled",showVectorsEnabled);
-    }
-
-    public void annotate (float[][][] frame){
-//        if(!isAnnotationEnabled()) return;
     }
 
     public boolean isShowGlobalEnabled (){
@@ -669,5 +674,37 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
     public void setOriHistoryEnabled (boolean oriHistoryEnabled){
         this.oriHistoryEnabled = oriHistoryEnabled;
         getPrefs().putBoolean("SimpleOrientationFilter.oriHistoryEnabled",oriHistoryEnabled);
+    }
+
+    /**
+     * @return the jitterVectorLocations
+     */
+    public boolean isJitterVectorLocations() {
+        return jitterVectorLocations;
+    }
+
+    /**
+     * @param jitterVectorLocations the jitterVectorLocations to set
+     */
+    public void setJitterVectorLocations(boolean jitterVectorLocations) {
+        this.jitterVectorLocations = jitterVectorLocations;
+        putBoolean("jitterVectorLocations", jitterVectorLocations);
+        getChip().getAeViewer().interruptViewloop();
+    }
+
+    /**
+     * @return the jitterAmountPixels
+     */
+    public float getJitterAmountPixels() {
+        return jitterAmountPixels;
+    }
+
+    /**
+     * @param jitterAmountPixels the jitterAmountPixels to set
+     */
+    public void setJitterAmountPixels(float jitterAmountPixels) {
+        this.jitterAmountPixels = jitterAmountPixels;
+        putFloat("jitterAmountPixels",jitterAmountPixels);
+        getChip().getAeViewer().interruptViewloop();
     }
 }

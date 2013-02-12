@@ -22,6 +22,7 @@ import java.awt.geom.*;
 import java.awt.geom.AffineTransform;
 import java.util.Observable;
 import java.util.Observer;
+import java.util.Random;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.*;
@@ -43,43 +44,33 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     final int NUM_INPUT_TYPES=8; // 4 orientations * 2 polarities
     private int sizex,sizey; // chip sizes
     private boolean showGlobalEnabled=getPrefs().getBoolean("DirectionSelectiveFilter.showGlobalEnabled",false);
-    {setPropertyTooltip("showGlobalEnabled","shows global tranlational, rotational, and expansive motion");}
     private boolean showVectorsEnabled=getPrefs().getBoolean("DirectionSelectiveFilter.showVectorsEnabled",false);
-    {setPropertyTooltip("showVectorsEnabled","shows local motion vectors");}
     
     /** event must occur within this time in us to generate a motion event */
     private int maxDtThreshold=getPrefs().getInt("DirectionSelectiveFilter.maxDtThreshold",100000); // default 100ms
-    {setPropertyTooltip("maxDtThreshold","max delta time (us) that is considered");}
     private int minDtThreshold=getPrefs().getInt("DirectionSelectiveFilter.minDtThreshold",100); // min 100us to filter noise or multiple spikes 
-    {setPropertyTooltip("minDtThreshold","min delta time (us) for past events allowed for selecting a particular direction");}
     
     private int searchDistance=getPrefs().getInt("DirectionSelectiveFilter.searchDistance",3);
-    {setPropertyTooltip("searchDistance","search distance perpindicular to orientation, 1 means search 1 to each side");}
     private float ppsScale=getPrefs().getFloat("DirectionSelectiveFilter.ppsScale",.05f);
-    {setPropertyTooltip("ppsScale","scale of pixels per second to draw local and global motion vectors");}
     
 //    private float maxSpeedPPS=prefs.getFloat("DirectionSelectiveFilter.maxSpeedPPS",100);
     
     private boolean speedControlEnabled=getPrefs().getBoolean("DirectionSelectiveFilter.speedControlEnabled", true);
-    {setPropertyTooltip("speedControlEnabled","enables filtering of excess speeds");}
     private float speedMixingFactor=getPrefs().getFloat("DirectionSelectiveFilter.speedMixingFactor",.001f);
-    {setPropertyTooltip("speedMixingFactor","speeds computed are mixed with old values with this factor");}
     private int excessSpeedRejectFactor=getPrefs().getInt("DirectionSelectiveFilter.excessSpeedRejectFactor",3);
-    {setPropertyTooltip("excessSpeedRejectFactor","local speeds this factor higher than average are rejected as non-physical");}
     
     private boolean showRawInputEnabled=getPrefs().getBoolean("DirectionSelectiveFilter.showRawInputEnabled",false);
-    {setPropertyTooltip("showRawInputEnabled","shows the input events, instead of the motion types");}
     
     private boolean useAvgDtEnabled=getPrefs().getBoolean("DirectionSelectiveFilter.useAvgDtEnabled",false);
-    {setPropertyTooltip("useAvgDtEnabled","uses average delta time over search instead of minimum");}
 
     // taulow sets time const of lowpass filter, limiting max frequency
     private int tauLow=getPrefs().getInt("DirectionSelectiveFilter.tauLow",100);
-    {setPropertyTooltip("tauLow","time constant in ms of lowpass filters for global motion signals");}
 
     private int subSampleShift=getPrefs().getInt("DirectionSelectiveFilter.subSampleShift",0);
-    {setPropertyTooltip("subSampleShift","Shift subsampled timestamp map stores by this many bits");}
-    
+
+    private boolean jitterVectorLocations=getBoolean("jitterVectorLocations", true);
+    private float jitterAmountPixels=getFloat("jitterAmountPixels",.5f);
+ 
     
     private EventPacket oriPacket=null;
     
@@ -106,8 +97,24 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
         oriFilter=new SimpleOrientationFilter(chip);
         oriFilter.setAnnotationEnabled(false);
         setEnclosedFilter(oriFilter);
-        motionVectors=new MotionVectors();
-    }
+        motionVectors = new MotionVectors();
+        final String disp="Display";
+        setPropertyTooltip(disp,"ppsScale", "scale of pixels per second to draw local and global motion vectors");
+        setPropertyTooltip("subSampleShift", "Shift subsampled timestamp map stores by this many bits");
+        setPropertyTooltip("tauLow", "time constant in ms of lowpass filters for global motion signals");
+        setPropertyTooltip("useAvgDtEnabled", "uses average delta time over search instead of minimum");
+        setPropertyTooltip(disp,"showRawInputEnabled", "shows the input events, instead of the motion types");
+        setPropertyTooltip("excessSpeedRejectFactor", "local speeds this factor higher than average are rejected as non-physical");
+        setPropertyTooltip("speedMixingFactor", "speeds computed are mixed with old values with this factor");
+        setPropertyTooltip("speedControlEnabled", "enables filtering of excess speeds");
+        setPropertyTooltip("searchDistance", "search distance perpindicular to orientation, 1 means search 1 to each side");
+        setPropertyTooltip("minDtThreshold", "min delta time (us) for past events allowed for selecting a particular direction");
+        setPropertyTooltip("maxDtThreshold", "max delta time (us) that is considered");
+        setPropertyTooltip(disp,"showVectorsEnabled", "shows local motion vectors");
+        setPropertyTooltip(disp,"showGlobalEnabled", "shows global tranlational, rotational, and expansive motion");
+        setPropertyTooltip(disp, "jitterAmountPixels", "how much to jitter vector origins by in pixels");
+        setPropertyTooltip(disp,"jitterVectorLocations","whether to jitter vector location to see overlapping vectors more easily");
+   }
     
     public Object getFilterState() {
         return lastTimesMap;
@@ -209,18 +216,39 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
             gl.glPopMatrix();
         }
     }
-    
+    Random r = new Random();
+
     // plots a single motion vector which is the number of pixels per second times scaling
-    void drawMotionVector(GL gl, MotionOrientationEvent e, int frameDuration){
-        gl.glVertex2s(e.x,e.y);
-        MotionOrientationEvent.Dir d=MotionOrientationEvent.unitDirs[e.direction];
-        float speed=e.speed*ppsScale;
+    void drawMotionVector(GL gl, MotionOrientationEvent e, int frameDuration) {
+        float jx = 0, jy = 0;
+        if (jitterVectorLocations) {
+            jx = (r.nextFloat() - .5f) * jitterAmountPixels;
+            jy = (r.nextFloat() - .5f) * jitterAmountPixels;
+        }
+        float startx=e.x+jx,starty=e.y+jy;
+        gl.glVertex2f(startx,starty);
+        MotionOrientationEvent.Dir d = MotionOrientationEvent.unitDirs[e.direction];
+        float speed = e.speed * ppsScale;
 //        Point2D.Float vector=MotionOrientationEvent.computeMotionVector(e);
 //        float xcomp=(float)(vector.getX()*ppsScale);
 //        float ycomp=(float)(vector.getY()*ppsScale);
 //        gl.glVertex2d(e.x+xcomp, e.y+ycomp);
         // motion vector points in direction of motion, *from* dir value (minus sign) which points in direction from prevous event
-        gl.glVertex2f(e.x-d.x*speed,e.y-d.y*speed);
+        float endx=e.x-d.x*speed+jx, endy=e.y-d.y*speed+jy;
+        gl.glVertex2f(endx,endy);
+        // compute arrowhead
+        final float headlength=1;
+        float vecx=endx-startx, vecy=endy-starty; // orig vec
+        float vx2=vecy, vy2=-vecx; // right angles +90 CW
+        float arx=-vecx+vx2, ary=-vecy+vy2; // halfway between pointing back to origin
+        float l=(float)Math.sqrt(arx*arx+ary*ary); // length
+        arx=arx/l*headlength; ary=ary/l*headlength; // normalize to headlength
+        // draw arrow (half)
+        gl.glVertex2f(endx,endy);
+        gl.glVertex2f(endx+arx, endy+ary);
+        // other half, 90 degrees
+         gl.glVertex2f(endx,endy);
+         gl.glVertex2f((endx+ary), endy-arx);
     }
     
     synchronized public EventPacket filterPacket(EventPacket in) {
@@ -691,6 +719,39 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
         if(subSampleShift<0) subSampleShift=0; else if(subSampleShift>4) subSampleShift=4;
         this.subSampleShift = subSampleShift;
         getPrefs().putInt("DirectionSelectiveFilter.subSampleShift",subSampleShift);
+    }
+
+    /**
+     * @return the jitterVectorLocations
+     */
+    public boolean isJitterVectorLocations() {
+        return jitterVectorLocations;
+    }
+
+
+    /**
+     * @param jitterVectorLocations the jitterVectorLocations to set
+     */
+    public void setJitterVectorLocations(boolean jitterVectorLocations) {
+        this.jitterVectorLocations = jitterVectorLocations;
+        putBoolean("jitterVectorLocations", jitterVectorLocations);
+        getChip().getAeViewer().interruptViewloop();
+    }
+
+    /**
+     * @return the jitterAmountPixels
+     */
+    public float getJitterAmountPixels() {
+        return jitterAmountPixels;
+    }
+
+    /**
+     * @param jitterAmountPixels the jitterAmountPixels to set
+     */
+    public void setJitterAmountPixels(float jitterAmountPixels) {
+        this.jitterAmountPixels = jitterAmountPixels;
+        putFloat("jitterAmountPixels",jitterAmountPixels);
+        getChip().getAeViewer().interruptViewloop();
     }
 
    
