@@ -12,7 +12,7 @@ import net.sf.jaer.event.PolarityEvent;
  * @author Dennis Goehlsdorf
  *
  */
-public abstract class SignalTransformationKernel extends ParameterContainer implements SignalHandler  {
+public abstract class SignalTransformationKernel extends ParameterContainer implements SpikeHandler  {
 //	public void apply(int x, int y, int time, PolarityEvent.Polarity polarity, FiringModelMap map, SpikeHandler spikeHandler);
 //	public void apply(int x, int y, int time, PolarityEvent.Polarity polarity, FiringModelMap map, SpikeHandler spikeHandler);
 //	public void addOffset(int x, int y);

@@ -113,8 +113,16 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 	
 	
 	public ParameterContainer(String name, Preferences parentPrefs, String nodeName) {
+		this(name, parentPrefs.node(nodeName));
+	}
+	public ParameterContainer(String name, Preferences prefs) {
+//	public ParameterContainer(String name, Preferences parentPrefs, String nodeName) {
 		this.name = name;
-		this.prefs = parentPrefs.node(nodeName);
+		this.prefs = prefs;
+		if (prefs == null) {
+			this.prefs = Preferences.userNodeForPackage(this.getClass());
+		}
+//		this.prefs = parentPrefs.node(nodeName);
 		support.addPropertyChangeListener(this);
 		discoverParameters();
 	}

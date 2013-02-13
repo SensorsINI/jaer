@@ -253,5 +253,11 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 //		setOffExpressionString(offExpressionString = prefs.get(prefString+"offExpressionString", offExpressionString));
 	}
 
+	@Override
+	public void reset() {
+		// TODO Auto-generated method stub
+		
+	}
+
 
 }

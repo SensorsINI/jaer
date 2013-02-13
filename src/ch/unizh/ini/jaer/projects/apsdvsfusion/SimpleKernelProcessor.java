@@ -117,7 +117,7 @@ public class SimpleKernelProcessor extends KernelProcessor {
 	}
 
 
-	@Override
+//	@Override
 	public void reset() {
 		firingModelMap.reset();
 		spikeHandler.reset();

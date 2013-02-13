@@ -127,7 +127,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 			pe.setTimestamp(time);
 		}
 
-		@Override
+//		@Override
 		public void reset() {
 		}
 

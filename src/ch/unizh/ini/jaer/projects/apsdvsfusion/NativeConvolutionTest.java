@@ -81,4 +81,10 @@ public class NativeConvolutionTest extends SignalTransformationKernel {
 		
 	}
 
+	@Override
+	public void reset() {
+		// TODO Auto-generated method stub
+		
+	}
+
 }
