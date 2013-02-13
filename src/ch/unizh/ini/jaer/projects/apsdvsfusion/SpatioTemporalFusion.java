@@ -8,6 +8,7 @@ import java.awt.GridBagLayout;
 import java.util.ArrayList;
 import java.util.prefs.Preferences;
 
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
@@ -46,16 +47,20 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 //		float myFloat;
 //		int myInt;
 		JPanel customPanel = new JPanel();
+		GridBagConstraints gbc = new GridBagConstraints();
+		ArrayList<ParameterBrowserPanel> mapPanels = new ArrayList<ParameterBrowserPanel>(); 
+		int panelCounter = 0;
 		
 		public STFParameterContainer(Preferences parentPrefs, String nodeName) {
 			super("Maps", parentPrefs, nodeName);
 			customPanel.setLayout(new GridBagLayout());
+//			customPanel.setLayout(new BoxLayout(customPanel, BoxLayout.Y_AXIS));
 		}
 
 
 		public void fillPanel() {
 			customPanel.removeAll();
-			GridBagConstraints gbc = new GridBagConstraints();
+			
 			gbc.weightx = 1;
 			gbc.weighty = 1;
 			gbc.gridy = 0;
@@ -63,8 +68,11 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 //			gbc.fill = GridBagConstraints.BOTH;
 			for (FiringModelMap map : firingModelMaps) {
 				if (map != onMap && map != offMap) {
-					customPanel.add(new ParameterBrowserPanel(map));
+					ParameterBrowserPanel newMapPanel = new ParameterBrowserPanel(map); 
+					customPanel.add(newMapPanel, gbc);
+					mapPanels.add(newMapPanel);
 					gbc.gridy++;
+					panelCounter++;
 				}
 			}
 	        JFrame frame = (JFrame) SwingUtilities.getRoot(customPanel);
@@ -72,6 +80,18 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	        	frame.pack();
 		}
 		
+		public void mapAdded() {
+			if (panelCounter < firingModelMaps.size()) {
+				ParameterBrowserPanel newMapPanel = new ParameterBrowserPanel(firingModelMaps.get(firingModelMaps.size()-1)); 
+				customPanel.add(newMapPanel, gbc);
+				mapPanels.add(newMapPanel);
+				gbc.gridy++;
+				panelCounter++;
+		        JFrame frame = (JFrame) SwingUtilities.getRoot(customPanel);
+		        if (frame != null)
+		        	frame.pack();
+			}
+		}
 		@Override
 		protected JComponent createCustomControls() {
 			fillPanel();
@@ -322,7 +342,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	
 	public void doAddMap() {
 		firingModelMaps.add(new SchedulableWrapperMap(128, 128, null, getPrefs(), "map"+(firingModelMaps.size() - 2)));
-		stfParameterContainer.fillPanel();
+		stfParameterContainer.mapAdded();
 	}
 
 //	public void setExpression(String expression) {

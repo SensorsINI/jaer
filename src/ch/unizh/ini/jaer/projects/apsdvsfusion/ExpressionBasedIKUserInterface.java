@@ -79,7 +79,7 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 															 */) {
     		this.inputWidth = inputWidth;
     		this.inputHeight = inputHeight;
-    		inputKernel = new SpaceableExpressionBasedSpatialIK(kernelWidth, kernelHeight);
+    		inputKernel = new SpaceableExpressionBasedSpatialIK(kernelWidth, kernelHeight, stfFilter.getPrefs(), "inputKernel");
     		inputKernel.setExpressionString(onExpressionString);
 //    		inputKernel.setOnExpressionString(onExpressionString);
 //    		inputKernel.setOffExpressionString(offExpressionString);
@@ -218,7 +218,7 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 		viewerPanelConstraints.weightx = 0.5;
 		viewerPanelConstraints.weighty = 0.5;
 		viewerPanelConstraints.insets = new Insets(5, 5, 5, 5);
-		editDialog = new ExpressionBasedKernelEditDialog(this);
+		editDialog = new ExpressionBasedKernelEditDialog(this, stfFilter.getPrefs());
 		this.spikingOutputViewerManager = spikingOutputViewerManager;
 		this.stfFilter = stfFilter;
 		this.setContentPane(mainPanel);

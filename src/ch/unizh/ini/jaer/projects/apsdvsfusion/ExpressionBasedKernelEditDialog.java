@@ -21,6 +21,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.prefs.Preferences;
 
 import javax.swing.JDialog;
 import javax.swing.JLabel;
@@ -55,7 +56,8 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 //	NonGLImageDisplay offConvolutionDisplay = NonGLImageDisplay.createNonGLDisplay();
 	//	int width = 5, height = 5;
 
-	ExpressionBasedSpatialInputKernel myExpressionKernel = new ExpressionBasedSpatialInputKernel(7, 7);
+	Preferences parentPrefs;
+	ExpressionBasedSpatialInputKernel myExpressionKernel;
 //	JFrame kernelFrame;
 	
 	int outWidth = 128;
@@ -132,9 +134,10 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 	JSpinner outHeightSpinner;
 
 	/** Creates the reusable dialog. */
-	public ExpressionBasedKernelEditDialog(Frame aFrame) {
+	public ExpressionBasedKernelEditDialog(Frame aFrame, Preferences parentPrefs) {
 		super(aFrame, "Edit kernel expressions", true);
-
+		this.parentPrefs = parentPrefs;
+		myExpressionKernel = new ExpressionBasedSpatialInputKernel(7, 7, parentPrefs, "myExpressionKernel");
 //        onConvolutionDisplay.setBorderSpacePixels(18);
 //        offConvolutionDisplay.setBorderSpacePixels(18);
 
@@ -344,7 +347,7 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 	
 	public ExpressionBasedSpatialInputKernel createInputKernel() {
 		ExpressionBasedSpatialInputKernel kernel = new SpaceableExpressionBasedSpatialIK(
-				myExpressionKernel.getWidth(), myExpressionKernel.getHeight());
+				myExpressionKernel.getWidth(), myExpressionKernel.getHeight(), parentPrefs, "newKernel");
 //		kernel.setOffExpressionString(myExpressionKernel.getOffExpressionString());
 		kernel.setExpressionString(myExpressionKernel.getExpressionString());
 		return kernel;
@@ -563,7 +566,7 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 		setVisible(false);
 	}
 	public static void main(String[] args) {
-		ExpressionBasedKernelEditDialog dialog = new ExpressionBasedKernelEditDialog(null);
+		ExpressionBasedKernelEditDialog dialog = new ExpressionBasedKernelEditDialog(null, null);
 		dialog.setVisible(true);
 	}
 }

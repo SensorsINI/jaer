@@ -4,6 +4,8 @@
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
 
+import java.util.prefs.Preferences;
+
 import net.sf.jaer.event.PolarityEvent.Polarity;
 
 /**
@@ -20,7 +22,8 @@ public class NativeConvolutionTest extends SignalTransformationKernel {
 	/** 
 	 * 
 	 */
-	public NativeConvolutionTest() {
+	public NativeConvolutionTest(Preferences parentPrefs,	String nodeName) {
+		super("NativeConvolutionTest", parentPrefs, nodeName);
 	}
 
 	/* (non-Javadoc)
@@ -47,7 +50,7 @@ public class NativeConvolutionTest extends SignalTransformationKernel {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		NativeConvolutionTest test = new NativeConvolutionTest();
+		NativeConvolutionTest test = new NativeConvolutionTest(null,"NativeConvolutionTest");
 		test.initNativeSimpleClass();
 		System.out.println("piep");
 		test.runNative(1,1,1,test);

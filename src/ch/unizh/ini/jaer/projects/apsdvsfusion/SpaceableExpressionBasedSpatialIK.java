@@ -22,8 +22,9 @@ public class SpaceableExpressionBasedSpatialIK extends
 	 * @param width
 	 * @param height
 	 */
-	public SpaceableExpressionBasedSpatialIK(int width, int height) {
-		super(width, height);
+	public SpaceableExpressionBasedSpatialIK(int width, int height, Preferences parentPrefs,	String nodeName) {
+		super(width, height, parentPrefs, nodeName);
+		setName("SpaceableExpressionBasedSpatialIK");
 	}
 	
 	public synchronized void setInputOutputSizes(int inputWidth, int inputHeight, int outputWidth, int outputHeight) {

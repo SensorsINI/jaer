@@ -3,9 +3,17 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.util.ArrayList;
 import java.util.prefs.Preferences;
 
+import javax.swing.JComponent;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+
+import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterBrowserPanel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterContainer;
 
 /**
@@ -23,6 +31,50 @@ public abstract class FiringModelMap extends ParameterContainer {
 	SpikeHandlerSet spikeHandlerSet;
 	ArrayList<SignalTransformationKernel> inputKernels = new ArrayList<SignalTransformationKernel>();
 	
+	
+	public class FiringModelMapCustomControls extends JPanel {
+		GridBagConstraints gbc = new GridBagConstraints();
+		ArrayList<ParameterBrowserPanel> panels = new ArrayList<ParameterBrowserPanel>();
+		int panelCounter = 0;
+		private FiringModelMapCustomControls() {
+			this.setLayout(new GridBagLayout());
+			fillPanel();
+		}
+		
+		private void fillPanel() {
+			removeAll();
+			
+			gbc.weightx = 1;
+			gbc.weighty = 1;
+			gbc.gridy = 0;
+			gbc.gridx = 0;
+//			gbc.fill = GridBagConstraints.BOTH;
+			for (SignalTransformationKernel stk : inputKernels) {
+				ParameterBrowserPanel newPanel = new ParameterBrowserPanel(stk); 
+				add(newPanel, gbc);
+				panels.add(newPanel);
+				gbc.gridy++;
+				panelCounter++;
+			}
+	        JFrame frame = (JFrame) SwingUtilities.getRoot(this);
+	        if (frame != null)
+	        	frame.pack();
+		}
+		public void kernelAdded() {
+			if (panelCounter < inputKernels.size()) {
+				ParameterBrowserPanel newPanel = new ParameterBrowserPanel(inputKernels.get(inputKernels.size()-1)); 
+				add(newPanel, gbc);
+				panels.add(newPanel);
+				gbc.gridy++;
+				panelCounter++;
+		        JFrame frame = (JFrame) SwingUtilities.getRoot(this);
+		        if (frame != null)
+		        	frame.pack();
+			}
+		}
+		
+		
+	}
 //	public class FiringModelMapParameterContainer extends ParameterContainer {
 //		/**
 //		 * 
@@ -117,6 +169,22 @@ public abstract class FiringModelMap extends ParameterContainer {
 		}
 	}
 
+	FiringModelMapCustomControls myControls = null;
+	@Override
+	protected JComponent createCustomControls() {
+		if (myControls == null) {
+			myControls = new FiringModelMapCustomControls();
+		}
+		return myControls;
+	}
+	
 	public abstract FiringModel get(int x, int y);
 	public abstract void reset();
+	
+	public void doAddKernel() {
+		inputKernels.add(new SpaceableExpressionBasedSpatialIK(7, 7, getPrefs(), "inputKernel"+inputKernels.size()));
+		if (myControls != null) {
+			myControls.kernelAdded();
+		}
+	}
 }

@@ -44,7 +44,8 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 	/**
 	 * 
 	 */
-	public ExpressionBasedSpatialInputKernel(int width, int height) {
+	public ExpressionBasedSpatialInputKernel(int width, int height, Preferences parentPrefs,	String nodeName) {
+		super("ExpressionBasedSpatialInputKernel",parentPrefs, nodeName);
 		changeSize(width, height);
 	}
 	
