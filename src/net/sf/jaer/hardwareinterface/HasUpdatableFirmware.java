@@ -7,7 +7,7 @@ package net.sf.jaer.hardwareinterface;
 
 /**
  * Interface has firmware that can be updated from the host, e.g. via USB. A hardware interface that implements this interface
- * can eaily be updated.
+ * can easily be updated.
  * 
  * @author tobi
  */
