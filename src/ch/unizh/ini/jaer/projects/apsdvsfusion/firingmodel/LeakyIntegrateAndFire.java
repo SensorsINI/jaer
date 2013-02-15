@@ -61,8 +61,8 @@ public class LeakyIntegrateAndFire extends FiringModel {
 //		multiplicator = (int)((1 << shifter) * (1.0 / threshold)); 
 	}
 
-	public static FiringModelCreator getCreator(final float tau, final int refractoryTime, final float threshold, Preferences parentPrefs, String nodeName) {
-		return new FiringModelCreator("LeakyIntegrateAndFireCreator", parentPrefs, nodeName) {
+	public static FiringModelCreator getCreator(final float tau, final int refractoryTime, final float threshold, Preferences prefs) {
+		return new FiringModelCreator("LeakyIntegrateAndFireCreator", prefs) {
 			/**
 			 * 
 			 */
@@ -75,8 +75,8 @@ public class LeakyIntegrateAndFire extends FiringModel {
 		};
 	}
 	
-	public static FiringModelCreator getCreator(Preferences parentPrefs, String nodeName) {
-		return getCreator(36000, 7000,1.5f, parentPrefs, nodeName);
+	public static FiringModelCreator getCreator(Preferences prefs) {
+		return getCreator(36000, 7000,1.5f, prefs);
 	}
 	
 	/* (non-Javadoc)

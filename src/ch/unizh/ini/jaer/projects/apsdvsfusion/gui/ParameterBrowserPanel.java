@@ -17,6 +17,8 @@ import javax.swing.*;
 import javax.swing.border.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+
+import ch.unizh.ini.jaer.projects.apsdvsfusion.ParameterContainer;
 //import EngineeringFormat;
 
 import net.sf.jaer.util.EngineeringFormat;
@@ -132,7 +134,7 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
 
         void set(Object o);
     }
-    static final float ALIGNMENT = Component.LEFT_ALIGNMENT;
+    public static final float ALIGNMENT = Component.LEFT_ALIGNMENT;
     private BeanInfo info;
     private PropertyDescriptor[] props;
     private Method[] methods;
@@ -145,12 +147,13 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
     private HashMap<String, Container> groupContainerMap = new HashMap<String, Container>();
 //    private JPanel inheritedPanel = null;
     private float DEFAULT_REAL_VALUE=0.01f; // value jumped to from zero on key or wheel up
-
+    private boolean showNameField = true;
     ParameterContainer parameterContainer;
     
     /** Creates new form FilterPanel */
-    public ParameterBrowserPanel(ParameterContainer topLevel) {
+    public ParameterBrowserPanel(ParameterContainer topLevel, boolean showNameField) {
     	super(topLevel.getName());
+    	this.showNameField = showNameField;
 //        titledBorder = new TitledBorder("Network Controls");
 //        titledBorder.getBorderInsets(this).set(1, 1, 1, 1);
 ////        titledBorder.setBorder(BorderFactory.createLineBorder(Color.blue));
@@ -161,6 +164,11 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
 
         addController(topLevel,getContentPanel());
     }
+    
+    public ParameterBrowserPanel(ParameterContainer topLevel) {
+    	this(topLevel, true);
+    }
+    
 
 //    public GeneralController() {
 //        log.info("building FilterPanel for "+f);
@@ -247,7 +255,13 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
 		topPanel.setLayout(new BorderLayout());
 		topPanel.add(new JLabel("   "),BorderLayout.WEST);
 		topPanel.add(hostPanel,BorderLayout.CENTER);
-        hostPanel.setLayout(new javax.swing.BoxLayout(hostPanel, javax.swing.BoxLayout.Y_AXIS));
+//        hostPanel.setLayout(new javax.swing.BoxLayout(hostPanel, javax.swing.BoxLayout.Y_AXIS));
+        hostPanel.setLayout(new GridBagLayout());
+        GridBagConstraints gbcHost = new GridBagConstraints();
+        gbcHost.weightx = 1.0;
+        gbcHost.weighty = 1.0;
+        gbcHost.fill = GridBagConstraints.BOTH;
+        gbcHost.gridy = 0;
         
         hostPanel.setBorder(BorderFactory.createMatteBorder(1, 1, 1, 1, Color.lightGray));
         
@@ -316,7 +330,8 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
 //                tb.getBorderInsets(this).set(1, 1, 1, 1);
 //                control.setBorder(tb);
 //                control.setMinimumSize(new Dimension(0, 0));
-                hostPanel.add(controla);
+                hostPanel.add(controla, gbcHost);
+                gbcHost.gridy++;
                 controls.add(controla);
             }
 
@@ -383,24 +398,30 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             // these must be saved and then sorted in case there are property groups defined.
 
             final JPanel groupPanel;
-//            if (topLevel)
-//            {   groupPanel=this;                
-//            }  
-//            else
-            {
-                String s=parameterContainer.getName();
-                groupPanel = new JPanel();
-    //            groupPanel.setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-                groupPanel.setLayout(new BoxLayout(groupPanel,BoxLayout.Y_AXIS));
-                groupPanel.setName(s);
-//                groupPanel.setBorder(new TitledBorder(s));
-    //            groupPanel.setLayout(new GridLayout(0, 1));
-                groupContainerMap.put(s, groupPanel);
-                hostPanel.add(groupPanel);
-                groupPanel.add(controla);
-                controls.add(groupPanel); // visibility list
-            }
+            //            if (topLevel)
+            //            {   groupPanel=this;                
+            //            }  
+            //            else
             
+            String pcName = parameterContainer.getName();
+            groupPanel = new JPanel();
+            //            groupPanel.setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+            //                groupPanel.setLayout(new BoxLayout(groupPanel,BoxLayout.Y_AXIS));
+            groupPanel.setLayout(new GridBagLayout());
+            groupPanel.setName(pcName);
+            //                groupPanel.setBorder(new TitledBorder(s));
+            //            groupPanel.setLayout(new GridLayout(0, 1));
+            groupContainerMap.put(pcName, groupPanel);
+            hostPanel.add(groupPanel, gbcHost);
+            gbcHost.gridy++;
+            GridBagConstraints gbcGroup = new GridBagConstraints();
+            gbcGroup.weightx = 1.0;
+            gbcGroup.weighty = 1.0;
+            gbcGroup.fill = GridBagConstraints.BOTH;
+            gbcGroup.gridy = 0;
+            groupPanel.add(controla, gbcGroup);
+            gbcGroup.gridy++;
+            controls.add(groupPanel); // visibility list
 
             if (getParameterContainer().hasPropertyGroups()) {
                 Set<String> groupSet = getParameterContainer().getPropertyGroupSet();
@@ -484,7 +505,8 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
 //                        if (p.getName().equals("annotationEnabled")) {
 //                            continue;
 //                        }
-                        control = new StringControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+                    	if (showNameField || !p.getName().equals("name"))
+                    		control = new StringControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
 //                        myadd(control, name, inherited);
                     } else if (c != null && c.isEnum() && p.getReadMethod() != null && p.getWriteMethod() != null) {
                         control = new EnumControl((Class<? extends Enum<?>>)c, getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
@@ -497,16 +519,17 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                     }
                     if (control != null) {
                         control.setToolTipText(getParameterContainer().getPropertyTooltip(name));
-                    }
+                    } 
 
                 } catch (Exception e) {
                     log.warning(e + " caught on property " + p.getName() + " from EventFilter " + parameterContainer);
                 }
-                if (control!=null)
-                    groupPanel.add(control);
+                if (control!=null) {
+                    groupPanel.add(control, gbcGroup);
+                    gbcGroup.gridy++;
+                }
                 
             }
-            
             
             
 //            final ArrayList<JPanel> subcontrols=new ArrayList();            
@@ -540,8 +563,9 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
 //            filter.updateControl();
             
             JComponent custom = getParameterContainer().createCustomControls();
-            if (custom != null) {
-            	groupPanel.add(custom);
+            if (custom != null) { 
+            	groupPanel.add(custom, gbcGroup);
+            	gbcGroup.gridy++;
             }
             
 //            groupContainerMap = null;
@@ -705,6 +729,20 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                     }
                 }
             });
+            textField.addFocusListener(new FocusListener() {
+				@Override
+				public void focusLost(FocusEvent arg0) {
+                    try {
+                        w.invoke(filter, textField.getText());
+                    } catch (Exception e2) {
+                        e2.printStackTrace();
+                    }
+				}
+				
+				@Override
+				public void focusGained(FocusEvent arg0) {
+				}
+			});
         }
     }
     final float factor = 1.51f, wheelFactor = 1.05f; // factors to change by with arrow and mouse wheel
@@ -1367,7 +1405,11 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
 //                            propertyChangeEvent.getSource() + " for property=" +
 //                            propertyChangeEvent.getPropertyName() +
 //                            " newValue=" + propertyChangeEvent.getNewValue());
-                    HasSetter setter = setterMap.get(propertyChangeEvent.getPropertyName());
+                	if (propertyChangeEvent.getPropertyName().equals("name")) {
+                		setTitle(propertyChangeEvent.getNewValue().toString());
+                	}
+                	
+                	HasSetter setter = setterMap.get(propertyChangeEvent.getPropertyName());
                     if (setter == null) {
                         if (!printedSetterWarning) {
                             log.warning("in filter " + getParameterContainer() + " there is no setter for property change from property named " + propertyChangeEvent.getPropertyName());

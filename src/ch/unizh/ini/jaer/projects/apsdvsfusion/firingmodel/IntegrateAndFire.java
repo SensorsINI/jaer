@@ -24,8 +24,8 @@ public class IntegrateAndFire extends FiringModel {
 		// TODO Auto-generated constructor stub
 	}
 	
-	public static FiringModelCreator getCreator(Preferences parentPrefs, String nodeName) {
-		return new FiringModelCreator("IntegrateAndFire", parentPrefs, nodeName) {
+	public static FiringModelCreator getCreator(Preferences prefs) {
+		return new FiringModelCreator("IntegrateAndFire", prefs) {
 
 			/**
 			 * 

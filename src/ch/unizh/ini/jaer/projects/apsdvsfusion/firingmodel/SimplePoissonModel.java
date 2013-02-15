@@ -4,6 +4,7 @@
 package ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel;
 
 import java.util.Random;
+import java.util.prefs.Preferences;
 
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SchedulableFiringModel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SchedulableFiringModelCreator;
@@ -139,8 +140,8 @@ public class SimplePoissonModel extends SchedulableFiringModel {
 		unschedule();
 	}
 	
-	public static SchedulableFiringModelCreator getCreator() {
-		return new SchedulableFiringModelCreator() {
+	public static SchedulableFiringModelCreator getCreator(Preferences prefs) {
+		return new SchedulableFiringModelCreator("SimplePoissonModel",prefs) {
 			@Override
 			public SchedulableFiringModel createUnit(int x, int y,
 					SchedulableFiringModelMap map) {

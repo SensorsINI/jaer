@@ -8,7 +8,6 @@ import java.util.prefs.Preferences;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.IntegrateAndFire;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.LeakyIntegrateAndFire;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.SimplePoissonModel;
-import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterContainer;
 
 /**
  * @author Dennis Goehlsdorf
@@ -23,17 +22,20 @@ public abstract class FiringModelCreator extends ParameterContainer {
 	public FiringModelCreator(String name, Preferences parentPrefs, String nodeName) {
 		super(name, parentPrefs, nodeName);
 	}
+	public FiringModelCreator(String name, Preferences prefs) {
+		super(name, prefs);
+	}
 	public abstract FiringModel createUnit(int x, int y, FiringModelMap map);
 	
-	public enum FiringModelType {
+	public static enum FiringModelType {
 		INTEGRATEANDFIRE, LEAKYINTEGRATEANDFIRE
 	}
 	
-	public static FiringModelCreator getCreator(FiringModelType model, Preferences parentPrefs, String nodeName) {
+	public static FiringModelCreator getCreator(FiringModelType model, Preferences prefs) {
 		if (model == FiringModelType.INTEGRATEANDFIRE)
-			return IntegrateAndFire.getCreator(parentPrefs, nodeName);
+			return IntegrateAndFire.getCreator(prefs);
 		else if (model == FiringModelType.LEAKYINTEGRATEANDFIRE) {
-			return LeakyIntegrateAndFire.getCreator(parentPrefs, nodeName);
+			return LeakyIntegrateAndFire.getCreator(prefs);
 		} 
 		else return null;
 	}

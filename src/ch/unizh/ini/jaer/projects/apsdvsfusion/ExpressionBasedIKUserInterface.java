@@ -85,7 +85,7 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 //    		inputKernel.setOffExpressionString(offExpressionString);
     		soViewer = spikingOutputViewerManager.createOutputViewer(outputWidth, outputHeight, getGrayLevels());
     		inputKernel.setInputOutputSizes(inputWidth, inputHeight, outputWidth, outputHeight);
-    		kernelProcessor = new SimpleKernelProcessor(outputWidth,outputHeight,inputKernel, stfFilter.getPrefs(), "kernelProcessor");
+    		kernelProcessor = new SimpleKernelProcessor(outputWidth,outputHeight,inputKernel, stfFilter.getPrefs().node("kernelProcessor"));
     		kernelProcessor.addSpikeHandler(soViewer);
     		stfFilter.addKernelProcessor(kernelProcessor);
     		

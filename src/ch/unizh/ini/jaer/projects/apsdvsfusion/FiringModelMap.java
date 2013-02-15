@@ -3,18 +3,21 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
+import java.awt.Component;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.util.ArrayList;
 import java.util.prefs.Preferences;
 
+import javax.swing.BoxLayout;
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterBrowserPanel;
-import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterContainer;
 
 /**
  * @author Dennis Goehlsdorf
@@ -31,25 +34,24 @@ public abstract class FiringModelMap extends ParameterContainer {
 	SpikeHandlerSet spikeHandlerSet;
 	ArrayList<SignalTransformationKernel> inputKernels = new ArrayList<SignalTransformationKernel>();
 	
-	
 	public class FiringModelMapCustomControls extends JPanel {
 		GridBagConstraints gbc = new GridBagConstraints();
 		ArrayList<ParameterBrowserPanel> panels = new ArrayList<ParameterBrowserPanel>();
 		int panelCounter = 0;
-		private FiringModelMapCustomControls() {
+		protected FiringModelMapCustomControls() {
 			this.setLayout(new GridBagLayout());
-			fillPanel();
-		}
-		
-		private void fillPanel() {
-			removeAll();
-			
 			gbc.weightx = 1;
 			gbc.weighty = 1;
 			gbc.gridy = 0;
 			gbc.gridx = 0;
-//			gbc.fill = GridBagConstraints.BOTH;
-			for (SignalTransformationKernel stk : inputKernels) {
+			gbc.fill = GridBagConstraints.BOTH;
+			fillPanel();
+		}
+		
+		protected void fillPanel() {
+			removeAll();
+
+            for (SignalTransformationKernel stk : inputKernels) {
 				ParameterBrowserPanel newPanel = new ParameterBrowserPanel(stk); 
 				add(newPanel, gbc);
 				panels.add(newPanel);
@@ -92,12 +94,26 @@ public abstract class FiringModelMap extends ParameterContainer {
 //	private FiringModelMapParameterContainer myParameterContainer = createParameterContainer();
 	
 	
+
+	
+	public FiringModelMap(int sizeX, int sizeY, Preferences prefs) {
+		super("FiringModelMap", prefs);
+		this.spikeHandlerSet = new SpikeHandlerSet()/*spikeHandler*/;
+		changeSize(sizeX, sizeY);
+	}
+
 	public FiringModelMap(int sizeX, int sizeY, Preferences parentPrefs, String nodeName) {
 		super("FiringModelMap", parentPrefs, nodeName);
 		this.spikeHandlerSet = new SpikeHandlerSet()/*spikeHandler*/;
 		changeSize(sizeX, sizeY);
 	}
 	
+	public FiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler, Preferences prefs) {
+		this(sizeX, sizeY, prefs);
+		if (spikeHandler != null)
+			this.spikeHandlerSet.addSpikeHandler(spikeHandler);
+	}
+
 	public FiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler, Preferences parentPrefs, String nodeName) {
 		this(sizeX, sizeY, parentPrefs, nodeName);
 		if (spikeHandler != null)
@@ -171,7 +187,7 @@ public abstract class FiringModelMap extends ParameterContainer {
 
 	FiringModelMapCustomControls myControls = null;
 	@Override
-	protected JComponent createCustomControls() {
+	public JComponent createCustomControls() {
 		if (myControls == null) {
 			myControls = new FiringModelMapCustomControls();
 		}

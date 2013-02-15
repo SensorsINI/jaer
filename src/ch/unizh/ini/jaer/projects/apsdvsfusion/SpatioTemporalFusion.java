@@ -22,7 +22,6 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterBrowserPanel;
-import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterContainer;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.SpikingOutputViewerManager;
 //import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
 
@@ -65,7 +64,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 			gbc.weighty = 1;
 			gbc.gridy = 0;
 			gbc.gridx = 0;
-//			gbc.fill = GridBagConstraints.BOTH;
+			gbc.fill = GridBagConstraints.BOTH;
 			for (FiringModelMap map : firingModelMaps) {
 				if (map != onMap && map != offMap) {
 					ParameterBrowserPanel newMapPanel = new ParameterBrowserPanel(map); 
@@ -93,7 +92,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 			}
 		}
 		@Override
-		protected JComponent createCustomControls() {
+		public JComponent createCustomControls() {
 			fillPanel();
 			return customPanel;
 		}
@@ -334,14 +333,16 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	public void doShowParameterPanel() {
 		if (!panelAdded) {
 			panelAdded = true;
-			addControls(new ParameterBrowserPanel(stfParameterContainer));
+			addControls(new ParameterBrowserPanel(stfParameterContainer, false));
 		}
 		
 //		setExpression("0");
 	}
 	
 	public void doAddMap() {
-		firingModelMaps.add(new SchedulableWrapperMap(128, 128, null, getPrefs(), "map"+(firingModelMaps.size() - 2)));
+		SchedulableWrapperMap newMap = new SchedulableWrapperMap(128, 128, null, getPrefs().node("map"+(firingModelMaps.size() - 2)));
+		newMap.setName("Map "+(firingModelMaps.size() - 1));
+		firingModelMaps.add(newMap);
 		stfParameterContainer.mapAdded();
 	}
 

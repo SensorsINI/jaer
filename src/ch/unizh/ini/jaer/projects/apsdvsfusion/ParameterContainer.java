@@ -1,7 +1,7 @@
 /**
  * 
  */
-package ch.unizh.ini.jaer.projects.apsdvsfusion.gui;
+package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -144,7 +144,7 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 		this.name = name;
 	}
 
-	protected JComponent createCustomControls() {
+	public JComponent createCustomControls() {
 		return null;
 	}
 
@@ -228,7 +228,7 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 	}
 
 	/** @return the tooltip for the property */
-	protected String getPropertyTooltip(String propertyName) {
+	public String getPropertyTooltip(String propertyName) {
 		if (propertyTooltipMap == null) {
 			return null;
 		}
@@ -297,7 +297,7 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 	 * 
 	 * @return Set view of property groups.
 	 */
-	protected Set<String> getPropertyGroupSet() {
+	public Set<String> getPropertyGroupSet() {
 		if (group2PropertyListMap == null) {
 			return null;
 		}

@@ -3,7 +3,23 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
+import java.awt.GridBagConstraints;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.prefs.Preferences;
+
+import javax.swing.BoxLayout;
+import javax.swing.JComboBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+
+import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelCreator.FiringModelType;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap.FiringModelMapCustomControls;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterBrowserPanel;
 
 /**
  * @author Dennis
@@ -17,6 +33,104 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*implement
 	 */
 	private static final long serialVersionUID = 3135959582771085761L;
 
+	
+	public class SchedulableFiringModelMapCustomControls extends FiringModelMapCustomControls {
+		GridBagConstraints creatorConstraints;
+		
+		JPanel creatorPanel = null;
+		protected SchedulableFiringModelMapCustomControls() {
+			super();
+		}
+		
+		protected void fillPanel() {
+			JPanel creatorPanel = new JPanel();
+            creatorPanel.setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+            creatorPanel.setAlignmentX(ParameterBrowserPanel.ALIGNMENT);
+            JLabel label = new JLabel("Creator:");
+            label.setFont(label.getFont().deriveFont(10f));
+			creatorPanel.add(label);
+
+			final ArrayList<Object> creatorList = new ArrayList<Object>();
+			final FiringModelType[] firingModelCreatorTypes = FiringModelCreator.FiringModelType.class.getEnumConstants();
+			creatorList.addAll(Arrays.asList(firingModelCreatorTypes));
+			creatorList.addAll(Arrays.asList(SchedulableFiringModelCreator.FiringModelType.class.getEnumConstants()));
+
+			final JComboBox<Object> creatorComboBox = new JComboBox<Object>(creatorList.toArray());
+			creatorComboBox.setFont(creatorComboBox.getFont().deriveFont(10f));
+			creatorPanel.add(creatorComboBox);
+			
+			creatorComboBox.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					if (creatorComboBox.getSelectedIndex() < firingModelCreatorTypes.length) {
+						SchedulableWrapperMap.this.setFiringModelCreator(FiringModelCreator
+								.getCreator(
+										(FiringModelCreator.FiringModelType) creatorComboBox
+												.getSelectedItem(), getPrefs()
+												.node("creator")));
+					}
+					else {
+						SchedulableWrapperMap.this.setFiringModelCreator(SchedulableFiringModelCreator
+								.getCreator(
+										(SchedulableFiringModelCreator.FiringModelType) creatorComboBox
+												.getSelectedItem(), getPrefs()
+												.node("creator")));
+					}
+					creatorChanged();
+				}
+			});
+			
+			add(creatorPanel,gbc);
+			gbc.gridy++;
+			
+			creatorConstraints = new GridBagConstraints();
+			creatorConstraints.weightx = gbc.weightx;
+			creatorConstraints.weighty = gbc.weighty;
+			creatorConstraints.gridx = gbc.gridx;
+			creatorConstraints.gridy = gbc.gridy;
+			creatorConstraints.fill = gbc.fill;
+			gbc.gridy++;
+			
+			creatorChanged();
+			
+			super.fillPanel();
+		}
+		
+		protected void creatorChanged() {
+			if (creatorPanel != null) {
+				remove(creatorPanel);
+			}
+			if (schedulableFiringModelCreator == null) {
+				if (getFiringModelCreator() != null) {
+					creatorPanel = new ParameterBrowserPanel(getFiringModelCreator());
+				}
+				else creatorPanel = null;
+			}
+			else
+				creatorPanel = new ParameterBrowserPanel(schedulableFiringModelCreator);
+			if (creatorPanel != null) {
+				add(creatorPanel, creatorConstraints);
+			}
+	        JFrame frame = (JFrame) SwingUtilities.getRoot(this);
+	        if (frame != null)
+	        	frame.pack();
+		}
+//		public void kernelAdded() {
+//			if (panelCounter < inputKernels.size()) {
+//				ParameterBrowserPanel newPanel = new ParameterBrowserPanel(inputKernels.get(inputKernels.size()-1)); 
+//				add(newPanel, gbc);
+//				panels.add(newPanel);
+//				gbc.gridy++;
+//				panelCounter++;
+//		        JFrame frame = (JFrame) SwingUtilities.getRoot(this);
+//		        if (frame != null)
+//		        	frame.pack();
+//			}
+//		}
+		
+		
+	}
+	
 	public class SchedulableWrapperFiringModelCreator extends FiringModelCreator {
 
 		/**
@@ -52,6 +166,10 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*implement
 	 */
 	public SchedulableWrapperMap(int sizeX, int sizeY, SpikeHandler spikeHandler, Preferences parentPrefs, String nodeName) {
 		super(sizeX, sizeY, spikeHandler, parentPrefs, nodeName);
+		// TODO Auto-generated constructor stub
+	}
+	public SchedulableWrapperMap(int sizeX, int sizeY, SpikeHandler spikeHandler, Preferences prefs) {
+		super(sizeX, sizeY, spikeHandler, prefs);
 		// TODO Auto-generated constructor stub
 	}
 	

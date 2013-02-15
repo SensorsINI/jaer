@@ -3,7 +3,23 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.prefs.Preferences;
+
+import javax.swing.BoxLayout;
+import javax.swing.JComboBox;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+
+import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelCreator.FiringModelType;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterBrowserPanel;
 
 /**
  * @author Dennis
@@ -11,6 +27,7 @@ import java.util.prefs.Preferences;
  */
 public abstract class SchedulableFiringModelMap extends FiringModelMap {
 
+	
 	DynamicHeap<PostponedFireEvent> heap = new DynamicHeap<PostponedFireEvent>();
 	
 	/**
@@ -18,6 +35,9 @@ public abstract class SchedulableFiringModelMap extends FiringModelMap {
 	 */
 	public SchedulableFiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler, Preferences parentPrefs, String nodeName) {
 		super(sizeX, sizeY, spikeHandler, parentPrefs, nodeName);
+	}
+	public SchedulableFiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler, Preferences prefs) {
+		super(sizeX, sizeY, spikeHandler, prefs);
 	}
 
 	

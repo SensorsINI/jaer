@@ -19,6 +19,7 @@ public class CollapsablePanel extends JPanel {
 	 * @return the contentPanel
 	 */
 	HeaderPanel headerPanel;
+	String title;
 	
   
     private class HeaderPanel extends JPanel implements MouseListener {  
@@ -26,13 +27,13 @@ public class CollapsablePanel extends JPanel {
 		 * 
 		 */
 		private static final long serialVersionUID = -8883518187114071940L;
-		String text;  
+//		String text;  
         Font font;  
         final int OFFSET = 2;//, PAD = 5;  
   
-        public HeaderPanel(String text) {  
+        public HeaderPanel(/*String text*/) {  
             addMouseListener(this);  
-            this.text = text;  
+//            this.text = text;  
             font = new Font("sans-serif", Font.PLAIN, 12);  
             // setRequestFocusEnabled(true);  
             setPreferredSize(new Dimension(200, 20));  
@@ -61,11 +62,11 @@ public class CollapsablePanel extends JPanel {
 //                g2.drawImage(closed, PAD, 0, h, h, this); 
             g2.setFont(font);  
             FontRenderContext frc = g2.getFontRenderContext();  
-            LineMetrics lm = font.getLineMetrics(text, frc);  
+            LineMetrics lm = font.getLineMetrics(title, frc);  
             float height = lm.getAscent() + lm.getDescent();  
             float x = OFFSET;  
             float y = (h + height) / 2 - lm.getDescent();  
-            g2.drawString(text, x, y);
+            g2.drawString(title, x, y);
             int th = ((int)height)-2;
             if (selected) {
             	arrow.addPoint(width - 3*th/2 + 1, h/2 - th/4);
@@ -102,16 +103,18 @@ public class CollapsablePanel extends JPanel {
   
 
     
-    public CollapsablePanel(String text, JPanel contentPanel) {  
+    public CollapsablePanel(String title, JPanel contentPanel) {  
         super(new GridBagLayout());  
+        this.title = title;
+        
         GridBagConstraints gbc = new GridBagConstraints();  
         gbc.insets = new Insets(1, 3, 0, 3);  
         gbc.weightx = 1.0;  
         gbc.fill = GridBagConstraints.HORIZONTAL;  
         gbc.gridwidth = GridBagConstraints.REMAINDER;  
-  
+        
         selected = false;  
-        headerPanel = new HeaderPanel(text);  
+        headerPanel = new HeaderPanel();  
   
         setBackground(new Color(200, 200, 220));  
         this.contentPanel = contentPanel;  
@@ -128,8 +131,29 @@ public class CollapsablePanel extends JPanel {
   
     }  
     
-    public CollapsablePanel(String text) {
-    	this(text, new JPanel());
+    
+    
+    /**
+	 * @return the title
+	 */
+	public String getTitle() {
+		return title;
+	}
+
+
+
+	/**
+	 * @param title the title to set
+	 */
+	public void setTitle(String title) {
+		this.title = title;
+		headerPanel.repaint();
+	}
+
+
+
+	public CollapsablePanel(String title) {
+    	this(title, new JPanel());
     }
   
 	protected JPanel getContentPanel() {

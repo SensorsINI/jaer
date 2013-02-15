@@ -5,7 +5,6 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
 import java.util.prefs.Preferences;
 
-import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterContainer;
 import net.sf.jaer.event.PolarityEvent;
 
 /**

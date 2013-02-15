@@ -37,6 +37,19 @@ public class ArrayFiringModelMap extends FiringModelMap {
 	private static final long serialVersionUID = -3373722547563031984L;
 	FiringModel[][] map = null;
 	
+	public ArrayFiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler, Preferences prefs) {
+		super(sizeX, sizeY, spikeHandler, prefs);
+	//	this.fmc = fmc;
+	//	changeSize(sizeX, sizeY);
+//		this.offsetX = offsetX;
+//		this.offsetY = offsetY;
+	}
+
+	public ArrayFiringModelMap(AEChip chip, SpikeHandler spikeHandler/*, FiringModelCreator fmc*/, Preferences prefs) {
+		this(chip.getSizeX(), chip.getSizeY(), spikeHandler/*, fmc*/, prefs);
+	}
+
+	@Deprecated
 	public ArrayFiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler, Preferences parentPrefs, String nodeName) {
 		super(sizeX, sizeY, spikeHandler, parentPrefs, nodeName);
 	//	this.fmc = fmc;
@@ -45,6 +58,7 @@ public class ArrayFiringModelMap extends FiringModelMap {
 //		this.offsetY = offsetY;
 	}
 	
+	@Deprecated
 	public ArrayFiringModelMap(AEChip chip, SpikeHandler spikeHandler/*, FiringModelCreator fmc*/, Preferences parentPrefs, String nodeName) {
 		this(chip.getSizeX(), chip.getSizeY(), spikeHandler/*, fmc*/, parentPrefs, nodeName);
 	}
