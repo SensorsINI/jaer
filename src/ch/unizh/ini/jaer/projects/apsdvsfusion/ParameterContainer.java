@@ -144,7 +144,14 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 		this.name = name;
 	}
 
-	public JComponent createCustomControls() {
+	private JComponent myControls = null;
+	public final JComponent getCustomControls() {
+		if (myControls == null) 
+			myControls = createCustomControls();
+		return createCustomControls();
+	}
+	
+	protected JComponent createCustomControls() {
 		return null;
 	}
 
@@ -441,12 +448,18 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 	
 	@Override
 	public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
-		Object newValue = propertyChangeEvent.getNewValue();
-		if (newValue != null && !newValue.equals(propertyChangeEvent.getOldValue())) {
-			SingleParameter<?> setter = setterMethods.get(propertyChangeEvent.getPropertyName());
-			if (setter != null)
-				setter.storeParameter(newValue);
+		if (propertyChangeEvent.getSource() == this) {
+			Object newValue = propertyChangeEvent.getNewValue();
+			if (newValue != null && !newValue.equals(propertyChangeEvent.getOldValue())) {
+				SingleParameter<?> setter = setterMethods.get(propertyChangeEvent.getPropertyName());
+				if (setter != null)
+					setter.storeParameter(newValue);
+			}
 		}
 	}
 
+	@Override
+	public String toString() {
+		return name;
+	}
 }

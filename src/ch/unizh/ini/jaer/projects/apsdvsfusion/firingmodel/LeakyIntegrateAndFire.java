@@ -52,7 +52,31 @@ public class LeakyIntegrateAndFire extends FiringModel {
 		this.threshold = threshold;
 		calculateIntValues();
 	}
-	
+
+	public synchronized float getThreshold() {
+		return threshold;
+	}
+
+	public synchronized void setThreshold(float threshold) {
+		this.threshold = threshold;
+	}
+
+	public synchronized float getTau() {
+		return tau;
+	}
+
+	public synchronized void setTau(float tau) {
+		this.tau = tau;
+	}
+
+	public synchronized int getRefractoryTime() {
+		return refractoryTime;
+	}
+
+	public synchronized void setRefractoryTime(int refractoryTime) {
+		this.refractoryTime = refractoryTime;
+	}
+
 	protected void calculateIntValues() {
 		expDecay.setTimeConstant(tau);
 		expDecay.setMultiplicator(1.0f / threshold);
@@ -61,8 +85,13 @@ public class LeakyIntegrateAndFire extends FiringModel {
 //		multiplicator = (int)((1 << shifter) * (1.0 / threshold)); 
 	}
 
-	public static FiringModelCreator getCreator(final float tau, final int refractoryTime, final float threshold, Preferences prefs) {
+	@SuppressWarnings("unused")
+	public static FiringModelCreator getCreator(final float tau_, final int refractoryTime_, final float threshold_, Preferences prefs) {
 		return new FiringModelCreator("LeakyIntegrateAndFireCreator", prefs) {
+			float threshold = threshold_;
+			float tau = tau_;    
+			int refractoryTime = refractoryTime_; // refractory time of 70 us
+
 			/**
 			 * 
 			 */
@@ -72,6 +101,34 @@ public class LeakyIntegrateAndFire extends FiringModel {
 			public FiringModel createUnit(int x, int y, FiringModelMap map) {
 				return new LeakyIntegrateAndFire(x,y,tau, refractoryTime, threshold,map);
 			}
+
+			public float getThreshold() {
+				return threshold;
+			}
+
+			public void setThreshold(float threshold) {
+				getSupport().firePropertyChange("threshold", this.threshold, threshold);
+				this.threshold = threshold;
+			}
+
+			public float getTau() {
+				return tau;
+			}
+
+			public void setTau(float tau) {
+				getSupport().firePropertyChange("tau", this.tau, tau);
+				this.tau = tau;
+			}
+
+			public int getRefractoryTime() {
+				return refractoryTime;
+			}
+
+			public void setRefractoryTime(int refractoryTime) {
+				getSupport().firePropertyChange("refractoryTime", this.refractoryTime, refractoryTime);
+				this.refractoryTime = refractoryTime;
+			}
+			
 		};
 	}
 	

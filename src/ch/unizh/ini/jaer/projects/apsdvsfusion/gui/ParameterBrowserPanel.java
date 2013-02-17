@@ -421,7 +421,6 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             gbcGroup.gridy = 0;
             groupPanel.add(controla, gbcGroup);
             gbcGroup.gridy++;
-            controls.add(groupPanel); // visibility list
 
             if (getParameterContainer().hasPropertyGroups()) {
                 Set<String> groupSet = getParameterContainer().getPropertyGroupSet();
@@ -528,6 +527,8 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                     groupPanel.add(control, gbcGroup);
                     gbcGroup.gridy++;
                 }
+                if (gbcGroup.gridy > 0)
+                	controls.add(groupPanel); // visibility list
                 
             }
             
@@ -562,7 +563,7 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             
 //            filter.updateControl();
             
-            JComponent custom = getParameterContainer().createCustomControls();
+            JComponent custom = getParameterContainer().getCustomControls();  
             if (custom != null) { 
             	groupPanel.add(custom, gbcGroup);
             	gbcGroup.gridy++;
@@ -576,7 +577,7 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
         }
         
         
-        add(Box.createHorizontalGlue());
+//        add(Box.createHorizontalGlue());
         
         setControlsVisible(true);
 //        System.out.println("added glue to "+this);

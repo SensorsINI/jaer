@@ -35,6 +35,10 @@ public abstract class FiringModelMap extends ParameterContainer {
 	ArrayList<SignalTransformationKernel> inputKernels = new ArrayList<SignalTransformationKernel>();
 	
 	public class FiringModelMapCustomControls extends JPanel {
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = 3283137316302825455L;
 		GridBagConstraints gbc = new GridBagConstraints();
 		ArrayList<ParameterBrowserPanel> panels = new ArrayList<ParameterBrowserPanel>();
 		int panelCounter = 0;
@@ -49,7 +53,7 @@ public abstract class FiringModelMap extends ParameterContainer {
 		}
 		
 		protected void fillPanel() {
-			removeAll();
+//			removeAll();
 
             for (SignalTransformationKernel stk : inputKernels) {
 				ParameterBrowserPanel newPanel = new ParameterBrowserPanel(stk); 
@@ -64,7 +68,8 @@ public abstract class FiringModelMap extends ParameterContainer {
 		}
 		public void kernelAdded() {
 			if (panelCounter < inputKernels.size()) {
-				ParameterBrowserPanel newPanel = new ParameterBrowserPanel(inputKernels.get(inputKernels.size()-1)); 
+				ParameterBrowserPanel newPanel = new ParameterBrowserPanel(inputKernels.get(inputKernels.size()-1));
+				newPanel.toggleSelection();
 				add(newPanel, gbc);
 				panels.add(newPanel);
 				gbc.gridy++;
@@ -135,6 +140,10 @@ public abstract class FiringModelMap extends ParameterContainer {
 	
 	public abstract void buildUnits(); 
 
+	public void doBuildUnits() {
+		buildUnits();
+	}
+	
 	public SpikeHandler getSpikeHandler() {
 		return spikeHandlerSet;
 	}

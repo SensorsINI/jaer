@@ -3,7 +3,19 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.beans.PropertyChangeEvent;
+import java.util.ArrayList;
 import java.util.prefs.Preferences;
+
+import javax.swing.BoxLayout;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+
+import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap.FiringModelMapCustomControls;
 
 import net.sf.jaer.event.PolarityEvent;
 
@@ -111,7 +123,80 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 		this.outputMap = outputMap;
 	}
 	
+	JComboBox myComboBox = new JComboBox();
+	Object currentSelection = null;
 	
+	@Override
+	public JComponent createCustomControls() {
+		JPanel myPanel = new JPanel();
+		myPanel.setLayout(new BoxLayout(myPanel,BoxLayout.X_AXIS));
+		JLabel label = new JLabel("Input map:");
+		label.setFont(label.getFont().deriveFont(10f));
+		myPanel.add(label);
+		myComboBox.setFont(myComboBox.getFont().deriveFont(10f));
+		SpatioTemporalFusion stf = SpatioTemporalFusion.getInstance(this);
+		ArrayList<FiringModelMap> contents;
+		if (stf != null) {
+			stf.getSupport().addPropertyChangeListener("firingModelMaps", this);
+			contents = stf.getFiringModelMaps();
+		}
+		else 
+			contents = new ArrayList<FiringModelMap>();
+		updateComboBox(new ArrayList<FiringModelMap>(), contents);
+
+		myPanel.add(myComboBox);
+		
+		myComboBox.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				Object newSelection = myComboBox.getSelectedItem();
+				if (newSelection != currentSelection) {
+					currentSelection = newSelection;
+					setInputMap((FiringModelMap)currentSelection);
+				}
+			}
+		});
+		return myPanel;
+	}
+	
+	protected void updateComboBox(ArrayList<FiringModelMap> oldContents, ArrayList<FiringModelMap> newContents) {
+		Object selection = myComboBox.getSelectedItem();
+		myComboBox.removeAllItems();
+		if (newContents != null) {
+			for (FiringModelMap map : newContents) {
+				myComboBox.addItem(map);
+				if (!oldContents.contains(map))
+					map.getSupport().addPropertyChangeListener("name",this);
+			}
+			if (newContents.contains(selection))
+				myComboBox.setSelectedItem(selection);
+		}
+		if (oldContents != null) {
+			for (FiringModelMap map : oldContents) {
+				if (!newContents.contains(map)) 
+					map.getSupport().removePropertyChangeListener(this);
+			}
+		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
+		super.propertyChange(propertyChangeEvent);
+		SpatioTemporalFusion stf = SpatioTemporalFusion.getInstance(this);
+		if (propertyChangeEvent.getSource() == stf) {
+			if (propertyChangeEvent.getPropertyName().equals("firingModelMaps")) {
+				updateComboBox((ArrayList<FiringModelMap>)propertyChangeEvent.getOldValue(),(ArrayList<FiringModelMap>)propertyChangeEvent.getNewValue());
+			}
+		}
+		else if (propertyChangeEvent.getSource() instanceof FiringModelMap) {
+			ArrayList<FiringModelMap> contents;
+			if (stf != null) contents = stf.getFiringModelMaps();
+			else contents = new ArrayList<FiringModelMap>();
+			updateComboBox(contents, contents);
+		}
+	}
+	
+
 //	public int getOffsetX();
 //	public int getOffsetY();
 //	public void setOffsetX(int offsetX);

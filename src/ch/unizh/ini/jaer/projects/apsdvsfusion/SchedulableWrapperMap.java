@@ -12,6 +12,7 @@ import java.util.prefs.Preferences;
 
 import javax.swing.BoxLayout;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -34,17 +35,22 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*implement
 	private static final long serialVersionUID = 3135959582771085761L;
 
 	
-	public class SchedulableFiringModelMapCustomControls extends FiringModelMapCustomControls {
+	public class SchedulableWrapperMapCustomControls extends FiringModelMapCustomControls {
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = -3732732764361496540L;
+
 		GridBagConstraints creatorConstraints;
 		
 		JPanel creatorPanel = null;
-		protected SchedulableFiringModelMapCustomControls() {
+		protected SchedulableWrapperMapCustomControls() {
 			super();
 		}
 		
 		protected void fillPanel() {
 			JPanel creatorPanel = new JPanel();
-            creatorPanel.setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+            creatorPanel.setLayout(new BoxLayout(creatorPanel, BoxLayout.X_AXIS));
             creatorPanel.setAlignmentX(ParameterBrowserPanel.ALIGNMENT);
             JLabel label = new JLabel("Creator:");
             label.setFont(label.getFont().deriveFont(10f));
@@ -55,7 +61,7 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*implement
 			creatorList.addAll(Arrays.asList(firingModelCreatorTypes));
 			creatorList.addAll(Arrays.asList(SchedulableFiringModelCreator.FiringModelType.class.getEnumConstants()));
 
-			final JComboBox<Object> creatorComboBox = new JComboBox<Object>(creatorList.toArray());
+			final JComboBox creatorComboBox = new JComboBox(creatorList.toArray());
 			creatorComboBox.setFont(creatorComboBox.getFont().deriveFont(10f));
 			creatorPanel.add(creatorComboBox);
 			
@@ -244,4 +250,13 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*implement
 			map.reset();
 		
 	}
+
+	@Override
+	public JComponent createCustomControls() {
+		if (myControls == null) {
+			myControls = new SchedulableWrapperMapCustomControls();
+		}
+		return myControls;
+	}
+
 }
