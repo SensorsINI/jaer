@@ -226,18 +226,18 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 	SchedulableWrapperFiringModelCreator myCreatorProxy = new SchedulableWrapperFiringModelCreator(
 			getPrefs(), "creatorProxy");
 
-	/**
-	 * @param sizeX
-	 * @param sizeY
-	 * @param signalHandler
-	 */
-	@Deprecated
-	public SchedulableWrapperMap(int sizeX, int sizeY,
-			SignalHandler signalHandler, Preferences parentPrefs,
-			String nodeName) {
-		super(sizeX, sizeY, signalHandler, parentPrefs, nodeName);
-		init();
-	}
+//	/**
+//	 * @param sizeX
+//	 * @param sizeY
+//	 * @param signalHandler
+//	 */
+//	@Deprecated
+//	public SchedulableWrapperMap(int sizeX, int sizeY,
+//			SignalHandler signalHandler, Preferences parentPrefs,
+//			String nodeName) {
+//		super(sizeX, sizeY, signalHandler, parentPrefs, nodeName);
+//		init();
+//	}
 
 	public SchedulableWrapperMap(int sizeX, int sizeY,
 			SignalHandler signalHandler, FiringModelMap internalMap,

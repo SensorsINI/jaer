@@ -33,9 +33,9 @@ public abstract class SchedulableFiringModelMap extends FiringModelMap {
 	/**
 	 * 
 	 */
-	public SchedulableFiringModelMap(int sizeX, int sizeY, SignalHandler spikeHandler, Preferences parentPrefs, String nodeName) {
-		super(sizeX, sizeY, spikeHandler, parentPrefs, nodeName);
-	}
+//	public SchedulableFiringModelMap(int sizeX, int sizeY, SignalHandler spikeHandler, Preferences parentPrefs, String nodeName) {
+//		super(sizeX, sizeY, spikeHandler, parentPrefs, nodeName);
+//	}
 	public SchedulableFiringModelMap(int sizeX, int sizeY, SignalHandler spikeHandler, Preferences prefs) {
 		super(sizeX, sizeY, spikeHandler, prefs);
 	}

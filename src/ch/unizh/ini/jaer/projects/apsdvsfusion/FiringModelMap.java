@@ -41,6 +41,9 @@ public abstract class FiringModelMap extends ParameterContainer {
 	FiringModelCreator firingModelCreator = null;
 	SignalHandlerSet signalHandlerSet;
 	ArrayList<SignalTransformationKernel> inputKernels = new ArrayList<SignalTransformationKernel>();
+	private ArrayList<Integer> indexMappings = new ArrayList<Integer>();
+	private int indexPosition = getPrefs().getInt("indexPosition", 0);
+	
 	boolean monitored = false;
 	boolean filterOutput = false;
 	boolean enabled = true;
@@ -106,6 +109,17 @@ public abstract class FiringModelMap extends ParameterContainer {
 		        	frame.pack();
 			}
 		}
+		public void kernelRemoved(int index) {
+			if (index >= 0 && index < panelCounter) {
+				ParameterBrowserPanel panel = panels.get(index);
+				panels.remove(index);
+				kernelPanel.remove(panel);
+				panelCounter--;
+		        JFrame frame = (JFrame) SwingUtilities.getRoot(this);
+		        if (frame != null)
+		        	frame.pack();
+			}
+		}
 		
 		
 	}
@@ -136,14 +150,14 @@ public abstract class FiringModelMap extends ParameterContainer {
 		changeSize(sizeX, sizeY);
 	}
 
-	@Deprecated
-	public FiringModelMap(int sizeX, int sizeY, Preferences parentPrefs, String nodeName) {
-		super("FiringModelMap", parentPrefs, nodeName);
-		setMapID(Math.abs(mapIDSelector.nextInt()));
-		addExcludedProperty("mapID");
-		this.signalHandlerSet = new SignalHandlerSet()/*spikeHandler*/;
-		changeSize(sizeX, sizeY);
-	}
+//	@Deprecated
+//	public FiringModelMap(int sizeX, int sizeY, Preferences parentPrefs, String nodeName) {
+//		super("FiringModelMap", parentPrefs, nodeName);
+//		setMapID(Math.abs(mapIDSelector.nextInt()));
+//		addExcludedProperty("mapID");
+//		this.signalHandlerSet = new SignalHandlerSet()/*spikeHandler*/;
+//		changeSize(sizeX, sizeY);
+//	}
 	
 	public FiringModelMap(int sizeX, int sizeY, SignalHandler spikeHandler, Preferences prefs) {
 		this(sizeX, sizeY, prefs);
@@ -151,12 +165,12 @@ public abstract class FiringModelMap extends ParameterContainer {
 			this.signalHandlerSet.addSpikeHandler(spikeHandler);
 	}
 
-	@Deprecated
-	public FiringModelMap(int sizeX, int sizeY, SignalHandler spikeHandler, Preferences parentPrefs, String nodeName) {
-		this(sizeX, sizeY, parentPrefs, nodeName);
-		if (spikeHandler != null)
-			this.signalHandlerSet.addSpikeHandler(spikeHandler);
-	}
+//	@Deprecated
+//	public FiringModelMap(int sizeX, int sizeY, SignalHandler spikeHandler, Preferences parentPrefs, String nodeName) {
+//		this(sizeX, sizeY, parentPrefs, nodeName);
+//		if (spikeHandler != null)
+//			this.signalHandlerSet.addSpikeHandler(spikeHandler);
+//	}
 
 	public int getMapID() {
 		return mapID;
@@ -201,8 +215,33 @@ public abstract class FiringModelMap extends ParameterContainer {
 		}
 	}
 
+	public void removeKernel(SignalTransformationKernel kernel) {
+		if (inputKernels.contains(kernel)) {
+			int position = inputKernels.indexOf(kernel);
+			inputKernels.remove(kernel);
+			indexMappings.remove(position);
+			kernel.disconnectKernel();
+			getPrefs().putInt("kernelCount",inputKernels.size());
+			for (int i = 0; i < indexMappings.size(); i++) {
+				getPrefs().putInt("indexMappings"+(i), indexMappings.get(i));
+			}
+			if (myControls != null) 
+				myControls.kernelRemoved(position);
+		}
+	}
+	
+	public void removeMap() {
+		ArrayList<SignalTransformationKernel> inputKernels = new ArrayList<SignalTransformationKernel>(this.inputKernels);
+		for (SignalTransformationKernel kernel : inputKernels) {
+			removeKernel(kernel);
+		}
+		SpatioTemporalFusion stf = SpatioTemporalFusion.getInstance(this);
+		if (stf != null) {
+			// TODO: remove Map!
+		}
+	}
+	
 	public void doDelete_Map() {
-		// TODO: delete this map!
 	}
 	
 	
@@ -290,22 +329,39 @@ public abstract class FiringModelMap extends ParameterContainer {
 	public abstract FiringModel get(int x, int y);
 	public abstract void reset();
 	
-	public void doAddKernel() {
-		SpaceableExpressionBasedSpatialIK newKernel = new SpaceableExpressionBasedSpatialIK(7, 7, getPrefs().node("inputKernel"+inputKernels.size()));
-		newKernel.setName("kernel"+newKernel.getKernelID());
-		newKernel.setOutputMap(this);
-		inputKernels.add(newKernel);
-		if (myControls != null) {
-			myControls.kernelAdded();
+	private void addKernel(SignalTransformationKernel newKernel, int nodeIndex) {
+		if (newKernel != null) {
+			newKernel.setOutputMap(this);
+			inputKernels.add(newKernel);
+			newKernel.setPreferences(getPrefs().node("inputKernel"+nodeIndex));
+			indexMappings.add(nodeIndex);
+			
+			indexPosition = nodeIndex+1;
+			
+			if (myControls != null) {
+				myControls.kernelAdded();
+			}
+			getPrefs().putInt("kernelCount",inputKernels.size());
+			getPrefs().putInt("indexPosition", indexPosition);
+			getPrefs().putInt("indexMappings"+(indexMappings.size()-1), indexMappings.get(indexMappings.size()-1));
 		}
-		getPrefs().putInt("kernelCount",inputKernels.size());
+	}
+	
+	public void doAddKernel() {
+		SpaceableExpressionBasedSpatialIK newKernel = 
+				new SpaceableExpressionBasedSpatialIK(7, 7, getPrefs().node("inputKernel"+indexPosition));
+		newKernel.setName("kernel"+newKernel.getKernelID());
+		addKernel(newKernel, indexPosition);
 	}
 
 
     public void restoreKernels() {
     	int kernelCount = getPrefs().getInt("kernelCount",0);
     	for (int i = 0; i < kernelCount; i++) {
-    		doAddKernel();
+    		int mapping = getPrefs().getInt("indexMappings"+(indexMappings.size()-1), i);
+    		SpaceableExpressionBasedSpatialIK newKernel = 
+    				new SpaceableExpressionBasedSpatialIK(7, 7, getPrefs().node("inputKernel"+mapping));
+    		addKernel(newKernel,mapping);
 		}
     	for (SignalTransformationKernel kernel : inputKernels) {
     		kernel.restoreParameters();

@@ -5,9 +5,10 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeEvent; 
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
+import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
 import javax.swing.BoxLayout;
@@ -16,10 +17,7 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
-import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap.FiringModelMapCustomControls;
-
-import net.sf.jaer.event.PolarityEvent;
-
+ 
 /**
  * @author Dennis Goehlsdorf
  *
@@ -139,7 +137,6 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 			if (this.inputMap != null) {
 				this.inputMap.addSignalHandler(this);
 				getPrefs().putInt("inputMapID", this.inputMap.getMapID());
-//				getPrefs().put("inputMapName", this.inputMap.getName());
 			}
 			else 
 				getPrefs().putInt("inputMapID", -1);
@@ -170,6 +167,7 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 		}
 	}
 	
+	@SuppressWarnings("rawtypes")
 	JComboBox myComboBox = new JComboBox();
 	Object currentSelection = null;
 	
@@ -224,6 +222,7 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 		return myPanel;
 	}
 	
+	@SuppressWarnings("unchecked")
 	protected void updateComboBox(ArrayList<FiringModelMap> oldContents, ArrayList<FiringModelMap> newContents) {
 		Object selection = myComboBox.getSelectedItem();
 		if (myComboBox.getItemCount() == 0) {
@@ -289,7 +288,38 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 		this.enabled = enabled;
 	}
 	
+	protected void disconnectKernel() {
+		SpatioTemporalFusion stf = SpatioTemporalFusion.getInstance(this);
+		ArrayList<FiringModelMap> contents;
+		if (stf != null) {
+			// stop listening to changes in firingModelMaps:
+			stf.getSupport().removePropertyChangeListener(this);
+			contents = stf.getFiringModelMaps();
+		}
+		else 
+			contents = new ArrayList<FiringModelMap>();
+		// stop listening to changes to the list of available maps:
+		updateComboBox(contents,new ArrayList<FiringModelMap>());
+		
+		setInputMap(null);
+		setOutputMap(null);
+		try {
+			getPrefs().removeNode();
+		} catch (BackingStoreException e) {
+			e.printStackTrace();
+		} catch (IllegalStateException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void doDelete_Kernel() {
+		FiringModelMap map = getOutputMap();
+		if (map != null)
+			map.removeKernel(this);
+	}
 
+	
+	
 //	public int getOffsetX();
 //	public int getOffsetY();
 //	public void setOffsetX(int offsetX);

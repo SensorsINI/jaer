@@ -174,7 +174,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
    		
 //		this.setFilterEnabled(false);
         setPropertyTooltip("grayLevels", "Number of displayed gray levels");
-        this.onMap = new FiringModelMap(128,128, getPrefs() , "onMap") {
+        this.onMap = new FiringModelMap(128,128, getPrefs().node("onMap")) {
 			@Override
 			public void reset() {
 			}
@@ -186,7 +186,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 			public void buildUnits() {
 			}
 		};
-		this.offMap = new FiringModelMap(128,128, getPrefs(), "offMap") {
+		this.offMap = new FiringModelMap(128,128, getPrefs().node("offMap")) {
 			@Override
 			public void buildUnits() {
 			}

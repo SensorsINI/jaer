@@ -18,6 +18,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.logging.Logger;
+import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
 import javax.swing.JComponent;
@@ -122,7 +123,6 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
     
     private HashMap<String, SingleParameter<?>> setterMethods = new HashMap<String, SingleParameter<?>>();
 	
-	
 	public ParameterContainer(String name, Preferences parentPrefs, String nodeName) {
 		this(name, parentPrefs.node(nodeName));
 	}
@@ -138,6 +138,17 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 		discoverParameters();
 	}
 
+	public void setPreferences(Preferences prefs) {
+		if (!prefs.absolutePath().equals(this.prefs)) {
+			try {
+				prefs.removeNode();
+			} catch (BackingStoreException e) {
+				e.printStackTrace();
+			}
+			this.prefs = prefs;
+		}
+	}
+	
     public PropertyChangeSupport getSupport() {
         return support;
     }

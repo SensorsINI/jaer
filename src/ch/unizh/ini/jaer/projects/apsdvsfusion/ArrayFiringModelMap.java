@@ -49,19 +49,19 @@ public class ArrayFiringModelMap extends FiringModelMap {
 		this(chip.getSizeX(), chip.getSizeY(), spikeHandler/*, fmc*/, prefs);
 	}
 
-	@Deprecated
-	public ArrayFiringModelMap(int sizeX, int sizeY, SignalHandler spikeHandler, Preferences parentPrefs, String nodeName) {
-		super(sizeX, sizeY, spikeHandler, parentPrefs, nodeName);
-	//	this.fmc = fmc;
-	//	changeSize(sizeX, sizeY);
-//		this.offsetX = offsetX;
-//		this.offsetY = offsetY;
-	}
+//	@Deprecated
+//	public ArrayFiringModelMap(int sizeX, int sizeY, SignalHandler spikeHandler, Preferences parentPrefs, String nodeName) {
+//		super(sizeX, sizeY, spikeHandler, parentPrefs, nodeName);
+//	//	this.fmc = fmc;
+//	//	changeSize(sizeX, sizeY);
+////		this.offsetX = offsetX;
+////		this.offsetY = offsetY;
+//	}
 	
-	@Deprecated
-	public ArrayFiringModelMap(AEChip chip, SignalHandler spikeHandler/*, FiringModelCreator fmc*/, Preferences parentPrefs, String nodeName) {
-		this(chip.getSizeX(), chip.getSizeY(), spikeHandler/*, fmc*/, parentPrefs, nodeName);
-	}
+//	@Deprecated
+//	public ArrayFiringModelMap(AEChip chip, SignalHandler spikeHandler/*, FiringModelCreator fmc*/, Preferences parentPrefs, String nodeName) {
+//		this(chip.getSizeX(), chip.getSizeY(), spikeHandler/*, fmc*/, parentPrefs, nodeName);
+//	}
 	
 //	public synchronized void changeSize(int sizeX, int sizeY) {
 //		if (sizeX != this.sizeX || sizeY != this.sizeY) {

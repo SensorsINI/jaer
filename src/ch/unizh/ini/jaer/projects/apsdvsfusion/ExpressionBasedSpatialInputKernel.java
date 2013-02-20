@@ -385,6 +385,15 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 		return myPanel;
 	}
 	
+	protected void disconnectKernel() {
+		SpatioTemporalFusion stf = SpatioTemporalFusion.getInstance(this);
+		if (stf != null && usedExpressionsListener != null) {
+			stf.getSupport().removePropertyChangeListener(usedExpressionsListener);
+		}
+		super.disconnectKernel();
+	}
+	
+	
     public void updateConvolutionViewer() {
 		if (convolutionViewer != null && convolutionValues != null) {
 	        float max=Float.NEGATIVE_INFINITY;
