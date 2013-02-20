@@ -137,7 +137,7 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 	public ExpressionBasedKernelEditDialog(Frame aFrame, Preferences parentPrefs) {
 		super(aFrame, "Edit kernel expressions", true);
 		this.parentPrefs = parentPrefs;
-		myExpressionKernel = new ExpressionBasedSpatialInputKernel(7, 7, parentPrefs, "myExpressionKernel");
+		myExpressionKernel = new ExpressionBasedSpatialInputKernel(7, 7, parentPrefs.node("myExpressionKernel"));
 //        onConvolutionDisplay.setBorderSpacePixels(18);
 //        offConvolutionDisplay.setBorderSpacePixels(18);
 
@@ -347,7 +347,7 @@ public class ExpressionBasedKernelEditDialog extends JDialog implements ActionLi
 	
 	public ExpressionBasedSpatialInputKernel createInputKernel() {
 		ExpressionBasedSpatialInputKernel kernel = new SpaceableExpressionBasedSpatialIK(
-				myExpressionKernel.getWidth(), myExpressionKernel.getHeight(), parentPrefs, "newKernel");
+				myExpressionKernel.getWidth(), myExpressionKernel.getHeight(), parentPrefs.node("newKernel"));
 //		kernel.setOffExpressionString(myExpressionKernel.getOffExpressionString());
 		kernel.setExpressionString(myExpressionKernel.getExpressionString());
 		return kernel;

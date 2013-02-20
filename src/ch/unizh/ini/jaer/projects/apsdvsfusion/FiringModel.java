@@ -44,7 +44,7 @@ public abstract class FiringModel {
 	}
 
 	public void emitSpike(double value, int timeInUs) {
-		firingModelMap.getSpikeHandler().signalAt(x, y, timeInUs, value);
+		firingModelMap.getSignalHandler().signalAt(x, y, timeInUs, value);
 	}
 	
 	public abstract void receiveSpike(double value, int timeInUs);

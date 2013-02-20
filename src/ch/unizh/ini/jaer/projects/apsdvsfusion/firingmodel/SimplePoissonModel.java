@@ -42,7 +42,6 @@ public class SimplePoissonModel extends SchedulableFiringModel {
 		// we might ask is +- 4.0. In the worst case, an intermediate value would then be +- 6.0.
 		// I set the multiplicator to 1/8 to make sure +-6.0 is in the Integer range.
 		logPotential.setMultiplicator(0.125f);
-		// TODO Auto-generated constructor stub
 	}
 	
 	public synchronized float getLambda() {
@@ -170,50 +169,66 @@ public class SimplePoissonModel extends SchedulableFiringModel {
 		this.negativeSpikesOn = negativeSpikesOn;
 	}
 
-	public static SchedulableFiringModelCreator getCreator(Preferences prefs) {
-		return new SchedulableFiringModelCreator("SimplePoissonModel",prefs) {
-			
-			private float timeConstant = 1e7f;
-			private float lambda = 1.0f/40000f;
-			private boolean negativeSpikesOn = false;
+	public static class Creator extends SchedulableFiringModelCreator {
+		private float timeConstant = 1e7f;
+		private float maxSpikesPerSecond = 100f;
+		private float lambda = 1.0f/40000f;
+		private boolean negativeSpikesOn = false;
 
-			@Override
-			public SchedulableFiringModel createUnit(int x, int y,
-					SchedulableFiringModelMap map) {
-				SimplePoissonModel simplePoissonModel = new SimplePoissonModel(x, y, map);
-				simplePoissonModel.setTimeConstant(timeConstant);
-				simplePoissonModel.setLambda(lambda);
-				simplePoissonModel.setNegativeSpikesOn(negativeSpikesOn);
-				return simplePoissonModel;
-			}
-			@SuppressWarnings("unused")
-			public float getTimeConstant() {
-				return timeConstant;
-			}
-			@SuppressWarnings("unused")
-			public void setTimeConstant(float timeConstant) {
-				getSupport().firePropertyChange("timeConstant", this.timeConstant, timeConstant);
-				this.timeConstant = timeConstant;
-			}
-			@SuppressWarnings("unused")
-			public float getLambda() {
-				return lambda;
-			}
-			@SuppressWarnings("unused")
-			public void setLambda(float lambda) {
-				getSupport().firePropertyChange("lambda", this.lambda, lambda);
-				this.lambda = lambda;
-			}
-			@SuppressWarnings("unused")
-			public boolean isNegativeSpikesOn() {
-				return negativeSpikesOn;
-			}
-			@SuppressWarnings("unused")
-			public void setNegativeSpikesOn(boolean negativeSpikesOn) {
-				getSupport().firePropertyChange("negativeSpikesOn", this.negativeSpikesOn, negativeSpikesOn);
-				this.negativeSpikesOn = negativeSpikesOn;
-			}
-		};
+		public Creator(Preferences prefs) {
+			super("SimplePoissonModel",prefs);
+		}
+		
+		@Override
+		public SchedulableFiringModel createUnit(int x, int y,
+				SchedulableFiringModelMap map) {
+			SimplePoissonModel simplePoissonModel = new SimplePoissonModel(x, y, map);
+			simplePoissonModel.setTimeConstant(timeConstant);
+			simplePoissonModel.setLambda(lambda);
+			simplePoissonModel.setNegativeSpikesOn(negativeSpikesOn);
+			return simplePoissonModel;
+		}
+		public float getTimeConstant() {
+			return timeConstant;
+		}
+		public void setTimeConstant(float timeConstant) {
+			getSupport().firePropertyChange("timeConstant", this.timeConstant, timeConstant);
+			this.timeConstant = timeConstant;
+		}
+		public float getLambda() {
+			return lambda;
+		}
+//		public void setLambda(float lambda) {
+//			getSupport().firePropertyChange("lambda", this.lambda, lambda);
+//			this.lambda = lambda;
+//		}
+		public boolean isNegativeSpikesOn() {
+			return negativeSpikesOn;
+		}
+		public void setNegativeSpikesOn(boolean negativeSpikesOn) {
+			getSupport().firePropertyChange("negativeSpikesOn", this.negativeSpikesOn, negativeSpikesOn);
+			this.negativeSpikesOn = negativeSpikesOn;
+		}
+
+		/**
+		 * @param maxSpikesPerSecond the maxSpikesPerSecond to set
+		 */
+		public void setMaxSpikesPerSecond(float maxSpikesPerSecond) {
+			getSupport().firePropertyChange("maxSpikesPerSecond", this.maxSpikesPerSecond, maxSpikesPerSecond);
+			this.maxSpikesPerSecond = maxSpikesPerSecond;
+		}
+
+		/**
+		 * @return the maxSpikesPerSecond
+		 */
+		public float getMaxSpikesPerSecond() {
+			return maxSpikesPerSecond;
+		}
+		
+	}
+	
+	public static SchedulableFiringModelCreator getCreator(Preferences prefs) {
+		return new Creator(prefs);
 	}
 
 }

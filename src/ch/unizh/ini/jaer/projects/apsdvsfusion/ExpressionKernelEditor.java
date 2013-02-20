@@ -42,7 +42,7 @@ public class ExpressionKernelEditor extends JFrame {
 	ImageDisplay offConvolutionDisplay = ImageDisplay.createOpenGLCanvas();
 	//	int width = 5, height = 5;
 
-	ExpressionBasedSpatialInputKernel myExpressionKernel = new ExpressionBasedSpatialInputKernel(7, 7, null, "");
+	ExpressionBasedSpatialInputKernel myExpressionKernel = new ExpressionBasedSpatialInputKernel(7, 7, null);
 	JFrame kernelFrame;
 	
 	int outWidth = 128;
@@ -195,7 +195,7 @@ public class ExpressionKernelEditor extends JFrame {
 	
 	public ExpressionBasedSpatialInputKernel createInputKernel() {
 		ExpressionBasedSpatialInputKernel kernel = new SpaceableExpressionBasedSpatialIK(
-				myExpressionKernel.getWidth(), myExpressionKernel.getHeight(), null, "");
+				myExpressionKernel.getWidth(), myExpressionKernel.getHeight(), null);
 //		kernel.setOffExpressionString(myExpressionKernel.getOffExpressionString());
 		kernel.setExpressionString(myExpressionKernel.getExpressionString());
 		return kernel;

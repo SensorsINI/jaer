@@ -16,6 +16,34 @@ import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap;
 public class IntegrateAndFire extends FiringModel {
 	float sum = 0.0f;
 	float threshold = 1.0f;
+	
+	public static class Creator extends FiringModelCreator {
+		private float threshold = 1.0f;
+		public Creator(Preferences prefs) {
+			super("IntegrateAndFire", prefs);
+		}
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = -9075663597897695761L;
+
+		
+		public float getThreshold() {
+			return threshold;
+		}
+
+
+		public void setThreshold(float threshold) {
+			getSupport().firePropertyChange("threshold", this.threshold, threshold);
+			this.threshold = threshold;
+		}
+
+
+		@Override
+		public FiringModel createUnit(int x, int y, FiringModelMap map) {
+			return new IntegrateAndFire(x,y,map);
+		}
+	}
 	/**
 	 * 
 	 */
@@ -25,18 +53,7 @@ public class IntegrateAndFire extends FiringModel {
 	}
 	
 	public static FiringModelCreator getCreator(Preferences prefs) {
-		return new FiringModelCreator("IntegrateAndFire", prefs) {
-
-			/**
-			 * 
-			 */
-			private static final long serialVersionUID = -9075663597897695761L;
-
-			@Override
-			public FiringModel createUnit(int x, int y, FiringModelMap map) {
-				return new IntegrateAndFire(x,y,map);
-			}
-		};
+		return new Creator(prefs);
 	}
 
 	/* (non-Javadoc)

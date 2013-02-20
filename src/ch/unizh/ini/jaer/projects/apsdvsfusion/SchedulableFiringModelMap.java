@@ -33,22 +33,37 @@ public abstract class SchedulableFiringModelMap extends FiringModelMap {
 	/**
 	 * 
 	 */
-	public SchedulableFiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler, Preferences parentPrefs, String nodeName) {
+	public SchedulableFiringModelMap(int sizeX, int sizeY, SignalHandler spikeHandler, Preferences parentPrefs, String nodeName) {
 		super(sizeX, sizeY, spikeHandler, parentPrefs, nodeName);
 	}
-	public SchedulableFiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler, Preferences prefs) {
+	public SchedulableFiringModelMap(int sizeX, int sizeY, SignalHandler spikeHandler, Preferences prefs) {
 		super(sizeX, sizeY, spikeHandler, prefs);
 	}
-
 	
-	public void processScheduledEvents(int uptoTime) {
-		while (!heap.isEmpty() && heap.peek().getContent().getFireTime() <= uptoTime) {
-			PostponedFireEvent event = heap.poll().getContent();
-			// TODO: 
-			event.getFiringModel().executeScheduledEvent(event.getFireTime());
+	public void clearHeap() {
+		if (heap != null) {
+			synchronized (heap) {
+				heap.clear();
+			}
+			
 		}
 	}
 	
+	public void processScheduledEvents(int uptoTime) {
+		if (enabled) {
+			while (!heap.isEmpty() && heap.peek().getContent().getFireTime() <= uptoTime) {
+				PostponedFireEvent event = heap.poll().getContent();
+				// TODO: 
+				event.getFiringModel().executeScheduledEvent(event.getFireTime());
+			}
+		} 
+	}
+	
+	@Override
+	public void setEnabled(boolean enabled) {
+		super.setEnabled(enabled);
+		clearHeap();
+	}
 
 	public DynamicHeap<PostponedFireEvent>.Entry createEntry(PostponedFireEvent event) {
 		return heap.createEntry(event);

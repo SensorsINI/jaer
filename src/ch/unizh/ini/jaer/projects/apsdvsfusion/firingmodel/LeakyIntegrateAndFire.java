@@ -8,7 +8,7 @@ import java.util.prefs.Preferences;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelCreator;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap;
-import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikeHandler;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.SignalHandler;
 
 /**
  * @author Dennis Goehlsdorf
@@ -85,51 +85,60 @@ public class LeakyIntegrateAndFire extends FiringModel {
 //		multiplicator = (int)((1 << shifter) * (1.0 / threshold)); 
 	}
 
+	public static class Creator extends FiringModelCreator {
+		float threshold;
+		float tau;    
+		int refractoryTime; // refractory time of 70 us
+
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = -4257683486443778516L;
+
+		public Creator(float threshold, float tau, int refractoryTime, Preferences prefs) {
+			super("LeakyIntegrateAndFireCreator", prefs);
+			this.threshold = threshold;
+			this.tau = tau;
+			this.refractoryTime = refractoryTime;
+		}
+		
+		@Override
+		public FiringModel createUnit(int x, int y, FiringModelMap map) {
+			return new LeakyIntegrateAndFire(x,y,tau, refractoryTime, threshold,map);
+		}
+
+		public float getThreshold() {
+			return threshold;
+		}
+
+		public void setThreshold(float threshold) {
+			getSupport().firePropertyChange("threshold", this.threshold, threshold);
+			this.threshold = threshold;
+		}
+
+		public float getTau() {
+			return tau;
+		}
+
+		public void setTau(float tau) {
+			getSupport().firePropertyChange("tau", this.tau, tau);
+			this.tau = tau;
+		}
+
+		public int getRefractoryTime() {
+			return refractoryTime;
+		}
+
+		public void setRefractoryTime(int refractoryTime) {
+			getSupport().firePropertyChange("refractoryTime", this.refractoryTime, refractoryTime);
+			this.refractoryTime = refractoryTime;
+		}
+		
+	}
+	
 	@SuppressWarnings("unused")
-	public static FiringModelCreator getCreator(final float tau_, final int refractoryTime_, final float threshold_, Preferences prefs) {
-		return new FiringModelCreator("LeakyIntegrateAndFireCreator", prefs) {
-			float threshold = threshold_;
-			float tau = tau_;    
-			int refractoryTime = refractoryTime_; // refractory time of 70 us
-
-			/**
-			 * 
-			 */
-			private static final long serialVersionUID = -4257683486443778516L;
-
-			@Override
-			public FiringModel createUnit(int x, int y, FiringModelMap map) {
-				return new LeakyIntegrateAndFire(x,y,tau, refractoryTime, threshold,map);
-			}
-
-			public float getThreshold() {
-				return threshold;
-			}
-
-			public void setThreshold(float threshold) {
-				getSupport().firePropertyChange("threshold", this.threshold, threshold);
-				this.threshold = threshold;
-			}
-
-			public float getTau() {
-				return tau;
-			}
-
-			public void setTau(float tau) {
-				getSupport().firePropertyChange("tau", this.tau, tau);
-				this.tau = tau;
-			}
-
-			public int getRefractoryTime() {
-				return refractoryTime;
-			}
-
-			public void setRefractoryTime(int refractoryTime) {
-				getSupport().firePropertyChange("refractoryTime", this.refractoryTime, refractoryTime);
-				this.refractoryTime = refractoryTime;
-			}
-			
-		};
+	public static FiringModelCreator getCreator(final float tau, final int refractoryTime, final float threshold, Preferences prefs) {
+		return new Creator(threshold, tau, refractoryTime, prefs);
 	}
 	
 	public static FiringModelCreator getCreator(Preferences prefs) {
@@ -234,7 +243,7 @@ public class LeakyIntegrateAndFire extends FiringModel {
 	}
 	
 	public static void main(String[] args) {
-		SpikeHandler spikeHandler = new SpikeHandler() {
+		SignalHandler spikeHandler = new SignalHandler() {
 			@Override
 			public void signalAt(int x, int y, int time, double value) {
 			}

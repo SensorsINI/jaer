@@ -37,6 +37,15 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 //	private static final long serialVersionUID = 7279068027303003157L;
     private static Logger log = Logger.getLogger("Filters");
 
+    private static boolean storageAllowed = true;
+    
+    public static void disableStorage() {
+    	storageAllowed = false;
+    }
+    public static void enableStorage() {
+    	storageAllowed = true;
+    }
+    
 	protected PropertyChangeSupport support = new PropertyChangeSupport(this);
 
 	/** The key,value table of property tooltip strings. */
@@ -52,6 +61,8 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 	 */
 	protected HashMap<String, ArrayList<String>> group2PropertyListMap = null;
 
+	private HashSet<String> excludedProperties = new HashSet<String>();
+	
 	// EventListener listener=new EventListener() {};
 
 	transient ArrayList<ActionListener> listeners = new ArrayList<ActionListener>();
@@ -450,7 +461,7 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 	public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
 		if (propertyChangeEvent.getSource() == this) {
 			Object newValue = propertyChangeEvent.getNewValue();
-			if (newValue != null && !newValue.equals(propertyChangeEvent.getOldValue())) {
+			if (newValue != null && !newValue.equals(propertyChangeEvent.getOldValue()) && storageAllowed) {
 				SingleParameter<?> setter = setterMethods.get(propertyChangeEvent.getPropertyName());
 				if (setter != null)
 					setter.storeParameter(newValue);
@@ -458,6 +469,14 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 		}
 	}
 
+	public void addExcludedProperty(String propertyName) {
+		excludedProperties.add(propertyName);
+	}
+	
+	public boolean isPropertyExcluded(String propertyName) {
+		return excludedProperties.contains(propertyName);
+	}
+	
 	@Override
 	public String toString() {
 		return name;

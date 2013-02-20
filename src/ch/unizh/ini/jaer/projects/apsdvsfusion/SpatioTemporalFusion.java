@@ -22,6 +22,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.MapOutputViewer;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterBrowserPanel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.SpikingOutputViewerManager;
 //import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
@@ -44,6 +45,15 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		}
 	}
 	
+	static SpatioTemporalFusion getInstance(FiringModelMap requestingMap) {
+		if (runningInstances.size() == 0)
+			return null;
+		else {
+			return runningInstances.get(0);
+		}
+	}
+	
+	ArrayList<String> usedExpressionStrings = new ArrayList<String>();
 	
 //	InputKernel inputKernel;
 //	FiringModelMap firingModelMap;
@@ -52,6 +62,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	FiringModelMap onMap, offMap;
 	ArrayList<FiringModelMap> firingModelMaps = new ArrayList<FiringModelMap>();
 	
+	Object filteringLock = new Object();
 	
 	public final class STFParameterContainer extends ParameterContainer {
 //		String myString;
@@ -62,12 +73,12 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		ArrayList<ParameterBrowserPanel> mapPanels = new ArrayList<ParameterBrowserPanel>(); 
 		int panelCounter = 0;
 
-		@Deprecated
-		public STFParameterContainer(Preferences parentPrefs, String nodeName) {
-			super("Maps", parentPrefs.node(nodeName));
-			customPanel.setLayout(new GridBagLayout());
-//			customPanel.setLayout(new BoxLayout(customPanel, BoxLayout.Y_AXIS));
-		}
+//		@Deprecated
+//		public STFParameterContainer(Preferences parentPrefs, String nodeName) {
+//			super("Maps", parentPrefs.node(nodeName));
+//			customPanel.setLayout(new GridBagLayout());
+////			customPanel.setLayout(new BoxLayout(customPanel, BoxLayout.Y_AXIS));
+//		}
 
 		public STFParameterContainer(Preferences prefs) {
 			super("Maps", prefs);
@@ -99,7 +110,8 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		
 		public void mapAdded() {
 			if (panelCounter < firingModelMaps.size()) {
-				ParameterBrowserPanel newMapPanel = new ParameterBrowserPanel(firingModelMaps.get(firingModelMaps.size()-1)); 
+				ParameterBrowserPanel newMapPanel = new ParameterBrowserPanel(firingModelMaps.get(firingModelMaps.size()-1));
+				newMapPanel.toggleSelection();
 				customPanel.add(newMapPanel, gbc);
 				mapPanels.add(newMapPanel);
 				gbc.gridy++;
@@ -123,15 +135,15 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 //	boolean kernelEditorActive = false;
 //	ExpressionKernelEditor kernelEditor = null;// = new ExpressionKernelEditor(this);
 	
-	ExpressionBasedIKUserInterface expressionBasedIKUserInterface = null;
+	MapOutputViewer mapOutputViewer = null;
 	SpikingOutputViewerManager spikingOutputViewerManager = null;
 //	private int grayLevels = 4;
 	
 	private boolean panelAdded = false;
-	private STFParameterContainer stfParameterContainer = new STFParameterContainer(getPrefs(), "SpatioTemporalFusion");
+	private STFParameterContainer stfParameterContainer = new STFParameterContainer(getPrefs().node("spatioTemporalFusion"));
 
 	boolean filterEvents = false;
-	SpikeHandler filterSpikeHandler = new SpikeHandler() {
+	SignalHandler filterSpikeHandler = new SignalHandler() {
 		public void signalAt(int x, int y, int time, double value) {
 			PolarityEvent pe = (PolarityEvent)out.getOutputIterator().nextOutput();
 			pe.setX((short)x);
@@ -156,6 +168,10 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	public SpatioTemporalFusion(AEChip chip) {
 		super(chip);
 		runningInstances.add(this);
+		spikingOutputViewerManager = new SpikingOutputViewerManager();
+   		mapOutputViewer = new MapOutputViewer(this, spikingOutputViewerManager);
+		
+   		
 //		this.setFilterEnabled(false);
         setPropertyTooltip("grayLevels", "Number of displayed gray levels");
         this.onMap = new FiringModelMap(128,128, getPrefs() , "onMap") {
@@ -184,10 +200,12 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		};
 		onMap.setName("On input map");
 		offMap.setName("Off input map");
+		onMap.setMapID(0);
+		offMap.setMapID(1);
 		firingModelMaps.add(onMap);
 		firingModelMaps.add(offMap);
 		stfParameterContainer.restoreParameters();
-		
+		loadSettings();
 //		firingModelMap = new ArrayFiringModelMap(chip, IntegrateAndFire.getCreator());
 //		inputKernel = new ExpressionBasedSpatialInputKernel(5, 5);
 //		kernelProcessors 
@@ -199,6 +217,29 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		//viewer.setVisible(true);
 	}
 
+	public Object getFilteringLock() {
+		return filteringLock;
+	}
+	
+	public void addExpressionString(String s) {
+		ArrayList<String> oldList = new ArrayList<String>(usedExpressionStrings);
+		if (usedExpressionStrings.contains(s)) {
+			usedExpressionStrings.remove(s);
+		}
+		usedExpressionStrings.add(0, s);
+		while (usedExpressionStrings.size() > 20) {
+			usedExpressionStrings.remove(usedExpressionStrings.size()-1);
+		}
+		for (int i = 0; i < usedExpressionStrings.size(); i++) {
+			getPrefs().put("usedExpressionString"+i, usedExpressionStrings.get(i));
+		}
+		getSupport().firePropertyChange("usedExpressionStrings", oldList, usedExpressionStrings);
+	}
+	
+	public ArrayList<String> getUsedExpressionStrings() {
+		return usedExpressionStrings;
+	}
+	
     @Override
     synchronized public void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
@@ -212,9 +253,9 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
         	if (spikingOutputViewerManager == null) 
         		spikingOutputViewerManager = new SpikingOutputViewerManager();
        		spikingOutputViewerManager.run();
-        	if (expressionBasedIKUserInterface == null)
-        		expressionBasedIKUserInterface = new ExpressionBasedIKUserInterface(this, spikingOutputViewerManager);
-       		expressionBasedIKUserInterface.setVisible(true);
+        	if (mapOutputViewer == null)
+        		mapOutputViewer = new MapOutputViewer(this, spikingOutputViewerManager);
+//       		expressionBasedIKUserInterface.setVisible(true);
         } else {
 //        	if (kernelEditor != null)
 //        		kernelEditor.setVisible(false);
@@ -223,22 +264,23 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 //            out = null; // garbage collect
         	if (spikingOutputViewerManager != null)
         		spikingOutputViewerManager.kill();
-        	if (expressionBasedIKUserInterface != null) {
-        		expressionBasedIKUserInterface.setVisible(false);
-        		expressionBasedIKUserInterface.savePrefs();
+        	if (mapOutputViewer != null) {
+        		mapOutputViewer.setVisible(false);
+        		mapOutputViewer.savePrefs();
         	}
         }
     }
+   
 	
     public int getGrayLevels() {
-    	if (expressionBasedIKUserInterface != null) {
-    		return expressionBasedIKUserInterface.getGrayLevels();
+    	if (mapOutputViewer != null) {
+    		return mapOutputViewer.getGrayLevels();
     	}
     	else return getPrefs().getInt("SpatioTemporalFusion.UserInterface.grayLevels",4);
     }
     public void setGrayLevels(int grayLevels) {
-    	if (expressionBasedIKUserInterface != null) {
-    		expressionBasedIKUserInterface.setGrayLevels(grayLevels);
+    	if (mapOutputViewer != null) {
+    		mapOutputViewer.setGrayLevels(grayLevels);
     	}
     	else getPrefs().putInt("SpatioTemporalFusion.UserInterface.grayLevels",grayLevels);
     }
@@ -261,6 +303,13 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		}
 	}
 	
+	public void addViewerFor(FiringModelMap map) {
+		mapOutputViewer.addViewerFor(map);
+	}
+	
+	public void removeViewerFor(FiringModelMap map) {
+		mapOutputViewer.removeViewerFor(map);
+	}
 
 	int time = 0;
 	/* (non-Javadoc)
@@ -269,50 +318,56 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	@SuppressWarnings("unchecked")
 	@Override
 	public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if (!filterEnabled) {
-            return in;
-        }
-        if (enclosedFilter != null) {
-            in = enclosedFilter.filterPacket(in);
-        }
-//        getPrefs()
-		checkOutputPacketEventType(in);
-//        OutputEventIterator<?> oi=out.outputIterator();
-//        firingModelMap.changeSize(chip.getSizeX(), chip.getSizeY());
- //       PolarityEvent e;
-        out.setEventClass(PolarityEvent.class);
-//        int beforePackageTime = time;
-        int maxTime = Integer.MIN_VALUE;
-		for (BasicEvent be : in) {
-			if (be.getTimestamp() > maxTime) {
-				maxTime = be.getTimestamp();
-			}
-			if (be instanceof PolarityEvent) {
-				synchronized (kernelProcessors) {
-					for (KernelProcessor kp : kernelProcessors) {
-//						if (be.timestamp < time)
-//							System.out.println(time + " -> " + be.timestamp);
-//						if (be.timestamp < beforePackageTime) 
-//							System.out.println("time decreased from last package: "+beforePackageTime+" -> "+be.timestamp);
-						
-						if (((PolarityEvent)be).getPolarity() == Polarity.On)
-							onMap.getSpikeHandler().signalAt(be.x, be.y, be.timestamp, 1.0);
-						else
-							offMap.getSpikeHandler().signalAt(be.x, be.y, be.timestamp, 1.0);
-//							kp.signalAt(be.x,be.y,be.timestamp, -1.0);
-							
-						time = be.timestamp;
-					}
+		synchronized (filteringLock) {
+	        if (!filterEnabled) {
+	            return in;
+	        }
+	        if (enclosedFilter != null) {
+	            in = enclosedFilter.filterPacket(in);
+	        }
+	//        getPrefs()
+			checkOutputPacketEventType(in);
+	//        OutputEventIterator<?> oi=out.outputIterator();
+	//        firingModelMap.changeSize(chip.getSizeX(), chip.getSizeY());
+	 //       PolarityEvent e;
+	        out.setEventClass(PolarityEvent.class);
+	//        int beforePackageTime = time;
+	        int maxTime = Integer.MIN_VALUE;
+			for (BasicEvent be : in) {
+				if (be.getTimestamp() > maxTime) {
+					maxTime = be.getTimestamp();
 				}
-//				inputKernel.apply(be.x, be.y, be.timestamp, ((PolarityEvent)be).polarity, firingModelMap, spikeHandler);
+				if (be instanceof PolarityEvent) {
+					if (((PolarityEvent)be).getPolarity() == Polarity.On)
+						onMap.getSignalHandler().signalAt(be.x, be.y, be.timestamp, 1.0);
+					else
+						offMap.getSignalHandler().signalAt(be.x, be.y, be.timestamp, 1.0);
+	//				synchronized (kernelProcessors) {
+	//					for (KernelProcessor kp : kernelProcessors) {
+	////						if (be.timestamp < time)
+	////							System.out.println(time + " -> " + be.timestamp);
+	////						if (be.timestamp < beforePackageTime) 
+	////							System.out.println("time decreased from last package: "+beforePackageTime+" -> "+be.timestamp);
+	//						
+	////							kp.signalAt(be.x,be.y,be.timestamp, -1.0);
+	//							
+	//						time = be.timestamp;
+	//					}
+	//				}
+	//				inputKernel.apply(be.x, be.y, be.timestamp, ((PolarityEvent)be).polarity, firingModelMap, spikeHandler);
+				}
 			}
+	//		if (expressionBasedIKUserInterface != null)
+	//			expressionBasedIKUserInterface.processUntil(maxTime);
+			for (FiringModelMap map : firingModelMaps) {
+				if (map instanceof SchedulableFiringModelMap)
+					((SchedulableFiringModelMap)map).processScheduledEvents(maxTime);
+			}
+			if (filterEvents)
+				return out;
+			else 
+				return in;
 		}
-		if (expressionBasedIKUserInterface != null)
-			expressionBasedIKUserInterface.processUntil(maxTime);
-		if (filterEvents)
-			return out;
-		else 
-			return in;
 	}
 
 	
@@ -330,10 +385,21 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 //	}
 	
 	
+	public void setMapObserved(FiringModelMap map, boolean observed) {
+		if (observed) {
+			if (!map.getSignalHandler().contains(filterSpikeHandler))
+				map.addSignalHandler(filterSpikeHandler);
+		}
+		else {
+			map.removeSignalHandler(filterSpikeHandler);
+		}
+	}
+
+	
 	public void doClear() {
 		// setExpression(expression);
-		if (expressionBasedIKUserInterface != null)
-			expressionBasedIKUserInterface.reset();
+		if (mapOutputViewer != null)
+			mapOutputViewer.reset();
 		if (spikingOutputViewerManager != null) {
 			spikingOutputViewerManager.reset();
 		}
@@ -350,7 +416,8 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	 */
 	
 	public void doShowOutputViewer() {
-		
+		if (mapOutputViewer != null)
+			mapOutputViewer.setVisible(!mapOutputViewer.isVisible());
 	}
 	
 //	@Override
@@ -366,14 +433,41 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	}
 	
 	public void doAddMap() {
-		SchedulableWrapperMap newMap = new SchedulableWrapperMap(128, 128, null, getPrefs().node("map"+(firingModelMaps.size() - 2)));
-		newMap.setName("Map "+(firingModelMaps.size() - 1));
-		ArrayList<FiringModelMap> oldMaps = new ArrayList<FiringModelMap>(firingModelMaps);
-		firingModelMaps.add(newMap);
-		stfParameterContainer.mapAdded();
-		getSupport().firePropertyChange("firingModelMaps", oldMaps, firingModelMaps);
+		synchronized (firingModelMaps) {
+			SchedulableWrapperMap newMap = new SchedulableWrapperMap(128, 128, null, getPrefs().node("map"+(firingModelMaps.size() - 2)));
+			newMap.setName("Map "+(firingModelMaps.size() - 1));
+			ArrayList<FiringModelMap> oldMaps = new ArrayList<FiringModelMap>(firingModelMaps);
+			firingModelMaps.add(newMap);
+			stfParameterContainer.mapAdded();
+			getPrefs().putInt("mapCount", firingModelMaps.size()-2);
+			getSupport().firePropertyChange("firingModelMaps", oldMaps, firingModelMaps);
+		}
 	}
 	
+	
+	public void loadSettings() {
+		ParameterContainer.disableStorage();
+		for (int i = 0; i < 20; i++) {
+			String s = getPrefs().get("usedExpressionString"+i, "");
+			if (!s.equals("")) {
+				addExpressionString(s);
+			}
+		}
+		int mapCount = getPrefs().getInt("mapCount", 0);
+		for (int i = 0; i < mapCount; i++) {
+			doAddMap();
+		}
+		// operate in 2 steps to make sure the map IDs have been restored before initializing the kernels.
+		for (FiringModelMap map : firingModelMaps) {
+			if (map  != onMap && map != offMap)
+				map.restoreParameters();
+		}
+		for (FiringModelMap map : firingModelMaps) {
+			if (map  != onMap && map != offMap)
+				map.restoreKernels();
+		}
+		ParameterContainer.enableStorage();
+	}
 
 
 //	public void setExpression(String expression) {
@@ -411,12 +505,17 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 				kp.reset();
 			}
 		}
+		synchronized (firingModelMaps) {
+			for (FiringModelMap map : firingModelMaps) {
+				map.reset();
+			}
+		}
 	}
 	
 	@Override
 	synchronized public void cleanup() {
-    	if (expressionBasedIKUserInterface != null) {
-    		expressionBasedIKUserInterface.savePrefs();
+    	if (mapOutputViewer != null) {
+    		mapOutputViewer.savePrefs();
     	}
     }
 

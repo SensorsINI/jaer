@@ -3,10 +3,32 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
+import java.awt.Dimension;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Stack;
 import java.util.prefs.Preferences;
 
+import javax.swing.BoxLayout;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+
+import com.sun.corba.se.spi.legacy.connection.GetEndPointInfoAgainException;
+
 import net.sf.jaer.event.PolarityEvent.Polarity;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.CollapsablePanel;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.NonGLImageDisplay;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.mathexpression.ExpressionTreeBuilder;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.mathexpression.ExpressionTreeNode;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.mathexpression.IllegalExpressionException;
@@ -22,7 +44,7 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 	int offsetX, offsetY;
 
 //	String onExpressionString = "0.01";
-	String expressionString = "0.01";
+	String expressionString = "0";
 	
 //	ExpressionTreeNode onExpressionTree = null;
 //	ExpressionTreeNode offExpressionTree = null;
@@ -44,10 +66,20 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 	/**
 	 * 
 	 */
-	public ExpressionBasedSpatialInputKernel(int width, int height, Preferences parentPrefs,	String nodeName) {
-		super("ExpressionBasedSpatialInputKernel",parentPrefs, nodeName);
+	public ExpressionBasedSpatialInputKernel(int width, int height, Preferences prefs) {
+		super("ExpressionBasedSpatialInputKernel",prefs);
 		changeSize(width, height);
+		addExcludedProperty("centerX");
+		addExcludedProperty("centerY");
+		addExcludedProperty("expressionString");
+		
 	}
+	
+//	@Deprecated
+//	public ExpressionBasedSpatialInputKernel(int width, int height, Preferences parentPrefs,	String nodeName) {
+//		super("ExpressionBasedSpatialInputKernel",parentPrefs, nodeName);
+//		changeSize(width, height);
+//	}
 	
 	public String getExpressionString() {
 		return expressionString;
@@ -55,10 +87,15 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 
 
 	public void setExpressionString(String expressionString) {
+		if (expressionString != null && !expressionString.equals("")) {
 		try {
 			this.convolutionValues = evaluateExpression(expressionString, convolutionValues, this.expressionString);
+			updateConvolutionViewer();
+			getSupport().firePropertyChange("expressionString", this.expressionString, expressionString);
 			this.expressionString = expressionString;
+			SpatioTemporalFusion.getInstance(this).addExpressionString(expressionString);
 		} catch (IllegalExpressionException e) {
+		}
 		}
 	}
 
@@ -105,9 +142,11 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 	}
 	
 	public synchronized void setWidth(int width) {
+		getSupport().firePropertyChange("width", this.width, width);
 		changeSize(width, height);
 	}
 	public synchronized void setHeight(int height) {
+		getSupport().firePropertyChange("height", this.height, height);
 		changeSize(width, height);
 	}
 
@@ -125,6 +164,7 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 			this.height = height;
 			try {
 				convolutionValues = evaluateExpression(expressionString, new float[width][height], "0");
+				updateConvolutionViewer();
 //				offConvolutionValues = evaluateExpression(offExpressionString, new float[width][height], "0");
 			} catch (IllegalExpressionException e) {
 			}
@@ -168,44 +208,45 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 
 	@Override
 	public void signalAt(int tx, int ty, int time, double value) {
-//		// TODO Auto-generated method stub
-//		
-//	}
-//	
-//	@Override
-////	public synchronized void apply(int tx, int ty, int time, Polarity polarity,
-////			FiringModelMap map, SpikeHandler spikeHandler) {
-//	public synchronized void apply(int tx, int ty, int time, Polarity polarity,
-//			FiringModelMap map, SpikeHandler spikeHandler) {
-		tx = tx - centerX + offsetX;
-		ty = ty - centerY + offsetY;
-//		int minx = Math.max(0, -tx), maxx = Math.min(width, map.getSizeX()-tx);
-//		int miny = Math.max(0, -ty), maxy = Math.min(height, map.getSizeY()-ty);
-		int minx = Math.max(0, -tx), maxx = Math.min(width, getOutputWidth()-tx);
-		int miny = Math.max(0, -ty), maxy = Math.min(height, getOutputHeight()-ty);
-		tx += minx; ty += miny;
-//		float[][] convolutionValues;
-//		if (polarity == Polarity.On) 
-//			convolutionValues = onConvolutionValues;
-//		else
-//			convolutionValues = offConvolutionValues;
-//		tx -= map.getOffsetX();
-//		ty -= map.getOffsetY();
-		final FiringModelMap map = getOutputMap();
-		if (value == 1.0) {
-			for (int x = minx; x < maxx; x++, tx++) 
-				for (int y = miny, ity = ty; y < maxy; y++, ity++) 
-					map.get(tx,ity).receiveSpike(convolutionValues[x][y], time);
-		}
-		else if (value == -1.0) {
-			for (int x = minx; x < maxx; x++, tx++) 
-				for (int y = miny, ity = ty; y < maxy; y++, ity++) 
-					map.get(tx,ity).receiveSpike(-convolutionValues[x][y], time);
-		}
-		else if (value != 0.0) {
-			for (int x = minx; x < maxx; x++, tx++) 
-				for (int y = miny, ity = ty; y < maxy; y++, ity++) 
-					map.get(tx,ity).receiveSpike(value * convolutionValues[x][y], time);
+		if (isEnabled()) {
+	//		
+	//	}
+	//	
+	//	@Override
+	////	public synchronized void apply(int tx, int ty, int time, Polarity polarity,
+	////			FiringModelMap map, SpikeHandler spikeHandler) {
+	//	public synchronized void apply(int tx, int ty, int time, Polarity polarity,
+	//			FiringModelMap map, SpikeHandler spikeHandler) {
+			tx = tx - centerX + offsetX;
+			ty = ty - centerY + offsetY;
+	//		int minx = Math.max(0, -tx), maxx = Math.min(width, map.getSizeX()-tx);
+	//		int miny = Math.max(0, -ty), maxy = Math.min(height, map.getSizeY()-ty);
+			int minx = Math.max(0, -tx), maxx = Math.min(width, getOutputWidth()-tx);
+			int miny = Math.max(0, -ty), maxy = Math.min(height, getOutputHeight()-ty);
+			tx += minx; ty += miny;
+	//		float[][] convolutionValues;
+	//		if (polarity == Polarity.On) 
+	//			convolutionValues = onConvolutionValues;
+	//		else
+	//			convolutionValues = offConvolutionValues;
+	//		tx -= map.getOffsetX();
+	//		ty -= map.getOffsetY();
+			final FiringModelMap map = getOutputMap();
+			if (value == 1.0) {
+				for (int x = minx; x < maxx; x++, tx++) 
+					for (int y = miny, ity = ty; y < maxy; y++, ity++) 
+						map.get(tx,ity).receiveSpike(convolutionValues[x][y], time);
+			}
+			else if (value == -1.0) {
+				for (int x = minx; x < maxx; x++, tx++) 
+					for (int y = miny, ity = ty; y < maxy; y++, ity++) 
+						map.get(tx,ity).receiveSpike(-convolutionValues[x][y], time);
+			}
+			else if (value != 0.0) {
+				for (int x = minx; x < maxx; x++, tx++) 
+					for (int y = miny, ity = ty; y < maxy; y++, ity++) 
+						map.get(tx,ity).receiveSpike(value * convolutionValues[x][y], time);
+			}
 		}
 	}
 
@@ -258,6 +299,164 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 		// TODO Auto-generated method stub
 		
 	}
+	
+	JComboBox expressionComboBox = new JComboBox();
+	PropertyChangeListener usedExpressionsListener = null;
+	NonGLImageDisplay convolutionViewer = null;
+	
+	@Override
+	public JComponent createCustomControls() {
+		JComponent parentComponent = super.createCustomControls();
+		JPanel myPanel = new JPanel();
+		myPanel.setLayout(new GridBagLayout());
+		GridBagConstraints gbc = new GridBagConstraints();
+		gbc.weightx = 1;
+		gbc.weighty = 1;
+		gbc.gridy = 0;
+		gbc.gridx = 0;
+		gbc.fill = GridBagConstraints.BOTH;
 
+		myPanel.add(parentComponent, gbc);
+		gbc.gridy++;
+		
+		JPanel expressionPanel = new JPanel();
+		expressionPanel.setLayout(new BoxLayout(expressionPanel,BoxLayout.X_AXIS));
+		
+		JLabel label = new JLabel("Expression:");
+		label.setFont(label.getFont().deriveFont(10f));
+		expressionPanel.add(label);
+		
+		expressionComboBox.setEditable(true);
+		expressionComboBox.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				setExpressionString((String)expressionComboBox.getSelectedItem());
+				if (!getExpressionString().equals(expressionComboBox.getSelectedItem()))
+					expressionComboBox.setSelectedItem(getExpressionString());
+			}
+		});
+		expressionComboBox.addFocusListener(new FocusListener() {
+			@Override
+			public void focusLost(FocusEvent arg0) {
+				setExpressionString((String)expressionComboBox.getSelectedItem());
+				if (!getExpressionString().equals(expressionComboBox.getSelectedItem()))
+					expressionComboBox.setSelectedItem(getExpressionString());
+			}
+			@Override
+			public void focusGained(FocusEvent arg0) {		}
+		});
+		getSupport().addPropertyChangeListener("expressionString",new PropertyChangeListener() {
+			@Override
+			public void propertyChange(PropertyChangeEvent evt) {
+				if (!evt.getNewValue().equals(expressionComboBox.getSelectedItem())) {
+					expressionComboBox.setSelectedItem(evt.getNewValue());
+				}
+			}
+		});
+		expressionComboBox.setFont(myComboBox.getFont().deriveFont(10f));
+
+		
+		
+		SpatioTemporalFusion stf = SpatioTemporalFusion.getInstance(this);
+		if (stf != null) {
+			usedExpressionsListener = new PropertyChangeListener() {
+				@SuppressWarnings("unchecked")
+				@Override
+				public void propertyChange(PropertyChangeEvent evt) {
+					fillExpressionsComboBox((ArrayList<String>)evt.getNewValue());
+				}
+			};
+			stf.getSupport().addPropertyChangeListener("usedExpressionStrings", usedExpressionsListener);
+			fillExpressionsComboBox(stf.getUsedExpressionStrings());
+		}
+		expressionPanel.add(expressionComboBox);
+		
+		myPanel.add(expressionPanel, gbc);
+		gbc.gridy++;
+		
+		convolutionViewer = new NonGLImageDisplay(getWidth(), getHeight());
+		convolutionViewer.setPreferredSize(new Dimension(250,250));
+		CollapsablePanel kernelViewerPanel = new CollapsablePanel("Kernel shape",convolutionViewer);
+		updateConvolutionViewer();
+		
+		myPanel.add(kernelViewerPanel, gbc);
+		gbc.gridy++;
+		
+		return myPanel;
+	}
+	
+    public void updateConvolutionViewer() {
+		if (convolutionViewer != null && convolutionValues != null) {
+	        float max=Float.NEGATIVE_INFINITY;
+	        float min=Float.POSITIVE_INFINITY;
+	        for (int i=0; i<convolutionValues.length; i++)
+	            for (int j=0; j<convolutionValues[i].length; j++)
+	            {   max=Math.max(max,convolutionValues[i][j]);
+	                min=Math.min(min,convolutionValues[i][j]);
+	            }
+	        
+	        max=Math.max(max,min+Float.MIN_VALUE);
+	        
+	        max=Math.abs(max);
+	        min=Math.abs(min);
+	        final float absmax=Math.max(min,max);
+	        
+	        max=absmax;
+	        min=-absmax;
+	
+	        if (convolutionViewer.getSizeX() != convolutionValues.length || convolutionViewer.getSizeY() != convolutionValues[0].length)
+	        	convolutionViewer.setImageSize(convolutionValues.length,convolutionValues[0].length);
+	                
+	//        disp.setPreferredSize(new Dimension(300,300));
+	        SwingUtilities.invokeLater(new Runnable() {
+				
+				@Override
+				public void run() {
+					for (int x = 0; x < convolutionValues.length; x++)
+						for (int y = 0; y < convolutionValues[x].length; y++) {
+							float val = convolutionValues[x][y];
+							if (val > absmax)
+								convolutionViewer.setPixmapRGB(x, y, 1.0f, 0, 0);
+							else if (val > 0)
+								convolutionViewer.setPixmapRGB(x, y, val / absmax, 0, 0);
+							else if (val < -absmax)
+								convolutionViewer.setPixmapRGB(x, y, 0, 0, 1.0f);
+							else
+								convolutionViewer.setPixmapRGB(x, y, 0, 0, -val / absmax);
+						}
+			        convolutionViewer.repaint();
+				}
+			});
+			for (int x = 0; x < convolutionValues.length; x++)
+				for (int y = 0; y < convolutionValues[x].length; y++) {
+					float val = convolutionValues[x][y];
+					if (val > absmax)
+						convolutionViewer.setPixmapRGB(x, y, 1.0f, 0, 0);
+					else if (val > 0)
+						convolutionViewer.setPixmapRGB(x, y, val / absmax, 0, 0);
+					else if (val < -absmax)
+						convolutionViewer.setPixmapRGB(x, y, 0, 0, 1.0f);
+					else
+						convolutionViewer.setPixmapRGB(x, y, 0, 0, -val / absmax);
+				}
+	        convolutionViewer.repaint();
+		}
+    }
+	
+	
+	public void fillExpressionsComboBox(ArrayList<String> items) {
+		for (int i = 0; i < items.size(); i++) {
+			if (expressionComboBox.getItemCount() <= i || !expressionComboBox.getItemAt(i).equals(items.get(i)))
+				expressionComboBox.insertItemAt(items.get(i), i);
+		}
+//		Stack<Integer> toRemove = new Stack<Integer>();
+//		for (int i = items.size(); i < expressionComboBox.getItemCount(); i++) {
+//			if (items.contains(expressionComboBox.getItemAt(i)))
+//					toRemove.push(i);
+//		}
+//		while (toRemove.size() > 0) {
+//			expressionComboBox.removeItemAt(toRemove.pop());
+//		}
+	}
 
 }

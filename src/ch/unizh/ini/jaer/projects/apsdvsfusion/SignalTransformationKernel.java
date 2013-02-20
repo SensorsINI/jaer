@@ -6,6 +6,7 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.prefs.Preferences;
 
@@ -23,10 +24,15 @@ import net.sf.jaer.event.PolarityEvent;
  * @author Dennis Goehlsdorf
  *
  */
-public abstract class SignalTransformationKernel extends ParameterContainer implements SpikeHandler  {
+public abstract class SignalTransformationKernel extends ParameterContainer implements SignalHandler  {
 //	public void apply(int x, int y, int time, PolarityEvent.Polarity polarity, FiringModelMap map, SpikeHandler spikeHandler);
 //	public void apply(int x, int y, int time, PolarityEvent.Polarity polarity, FiringModelMap map, SpikeHandler spikeHandler);
 //	public void addOffset(int x, int y);
+	
+	private static int kernelCounter = 0;
+	private int getNextKernelID() {
+		return ++kernelCounter;
+	}
 	
 	//	public 
 	private int inputWidth, inputHeight;
@@ -35,10 +41,22 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 	private FiringModelMap inputMap;
 	private FiringModelMap outputMap;
 	
+	private int kernelID = getNextKernelID();
+	
+	private boolean enabled = true;
+	
+	public SignalTransformationKernel(String name, Preferences prefs) {
+		super(name, prefs);
+	}
+
+	@Deprecated
 	public SignalTransformationKernel(String name, Preferences parentPrefs,	String nodeName) {
 		super(name, parentPrefs, nodeName);
 	}
-
+	
+	public int getKernelID() {
+		return kernelID;
+	}
 	
 	/**
 	 * @return the inputWidth
@@ -68,6 +86,8 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 		return outputHeight;
 	}
 
+	protected void inputSizeChanged(int oldWidth, int oldHeight, int newWidth, int newHeight) {
+	}
 	
 	protected void outputSizeChanged(int oldWidth, int oldHeight, int newWidth, int newHeight) {
 	}
@@ -82,8 +102,6 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 		}
 	}
 
-	protected void intputSizeChanged(int oldWidth, int oldHeight, int newWidth, int newHeight) {
-	}
 	
 	public synchronized void setInputSize(int width, int height) {
 		if (width != inputWidth || height != inputHeight) {
@@ -91,7 +109,7 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 			int dh = this.inputHeight;
 			this.inputWidth = width;
 			this.inputHeight = height;
-			outputSizeChanged(dw, dh, inputWidth, inputHeight);
+			inputSizeChanged(dw, dh, inputWidth, inputHeight);
 		}
 	}
 
@@ -106,7 +124,27 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 	 * @param inputMap the inputMap to set
 	 */
 	public synchronized void setInputMap(FiringModelMap inputMap) {
-		this.inputMap = inputMap;
+		if (inputMap != this.inputMap) {
+			getSupport().firePropertyChange("inputMap", this.inputMap, inputMap);
+			if (this.inputMap != null)
+				this.inputMap.removeSignalHandler(this);
+			boolean changeSize = (this.inputMap == null || inputMap == null || this.inputMap.getSizeX() != inputMap.getSizeX() || this.inputMap.getSizeY() != inputMap.getSizeY());
+			this.inputMap = inputMap;
+			if (changeSize) {
+				if (inputMap != null)
+					setInputSize(inputMap.getSizeX(), inputMap.getSizeY());
+				else 
+					setInputSize(1, 1);
+			}
+			if (this.inputMap != null) {
+				this.inputMap.addSignalHandler(this);
+				getPrefs().putInt("inputMapID", this.inputMap.getMapID());
+//				getPrefs().put("inputMapName", this.inputMap.getName());
+			}
+			else 
+				getPrefs().putInt("inputMapID", -1);
+		}
+		
 	}
 
 	/**
@@ -120,7 +158,16 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 	 * @param outputMap the outputMap to set
 	 */
 	public synchronized void setOutputMap(FiringModelMap outputMap) {
-		this.outputMap = outputMap;
+		if (outputMap != this.outputMap) {
+			boolean changeSize = (this.inputMap == null || inputMap == null || this.inputMap.getSizeX() != inputMap.getSizeX() || this.inputMap.getSizeY() != inputMap.getSizeY());
+			this.outputMap = outputMap;
+			if (changeSize) {
+				if (outputMap != null)
+					setOutputSize(outputMap.getSizeX(), outputMap.getSizeY());
+				else 
+					setOutputSize(1, 1);
+			}
+		}
 	}
 	
 	JComboBox myComboBox = new JComboBox();
@@ -144,6 +191,14 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 			contents = new ArrayList<FiringModelMap>();
 		updateComboBox(new ArrayList<FiringModelMap>(), contents);
 
+		getSupport().addPropertyChangeListener("inputMap", new PropertyChangeListener() {
+			@Override
+			public void propertyChange(PropertyChangeEvent evt) {
+				if (evt.getNewValue() != evt.getOldValue()) {
+					myComboBox.setSelectedItem(evt.getNewValue());
+				}
+			}
+		});
 		myPanel.add(myComboBox);
 		
 		myComboBox.addActionListener(new ActionListener() {
@@ -151,8 +206,18 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 			public void actionPerformed(ActionEvent arg0) {
 				Object newSelection = myComboBox.getSelectedItem();
 				if (newSelection != currentSelection) {
-					currentSelection = newSelection;
-					setInputMap((FiringModelMap)currentSelection);
+					SpatioTemporalFusion stf = SpatioTemporalFusion.getInstance(SignalTransformationKernel.this);
+					if (stf != null) {
+						synchronized (stf.getFilteringLock()) {
+							currentSelection = newSelection;
+							if (currentSelection instanceof FiringModelMap)
+								setInputMap((FiringModelMap)currentSelection);
+							else 
+								setInputMap(null);
+						}
+
+					}
+
 				}
 			}
 		});
@@ -161,8 +226,12 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 	
 	protected void updateComboBox(ArrayList<FiringModelMap> oldContents, ArrayList<FiringModelMap> newContents) {
 		Object selection = myComboBox.getSelectedItem();
+		if (myComboBox.getItemCount() == 0) {
+			selection = getInputMap();
+		}
 		myComboBox.removeAllItems();
 		if (newContents != null) {
+			myComboBox.addItem("none");
 			for (FiringModelMap map : newContents) {
 				myComboBox.addItem(map);
 				if (!oldContents.contains(map))
@@ -194,6 +263,30 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 			else contents = new ArrayList<FiringModelMap>();
 			updateComboBox(contents, contents);
 		}
+	}
+
+	@Override
+	public void restoreParameters() {
+    	super.restoreParameters();
+    	int inputMapID = getPrefs().getInt("inputMapID",-1);
+    	if (inputMapID >= 0) {
+    		ArrayList<FiringModelMap> maps = SpatioTemporalFusion.getInstance(this).getFiringModelMaps();
+    		synchronized (maps) { 
+    			for (FiringModelMap map : maps) {
+    				if (map.getMapID() == inputMapID)
+    					this.setInputMap(map);
+    			}
+    		}
+    	}
+    }
+	
+	public boolean isEnabled() {
+		return enabled;
+	}
+
+	public void setEnabled(boolean enabled) {
+		getSupport().firePropertyChange("enabled", this.enabled, enabled);
+		this.enabled = enabled;
 	}
 	
 

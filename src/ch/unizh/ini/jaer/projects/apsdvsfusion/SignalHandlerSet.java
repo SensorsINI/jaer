@@ -11,14 +11,14 @@ import net.sf.jaer.event.PolarityEvent.Polarity;
  * @author Dennis
  *
  */
-public class SpikeHandlerSet implements SpikeHandler {
+public class SignalHandlerSet implements SignalHandler {
 
-	ArrayList<SpikeHandler> spikeHandlers = new ArrayList<SpikeHandler>();
+	ArrayList<SignalHandler> spikeHandlers = new ArrayList<SignalHandler>();
 	
 	/**
 	 * 
 	 */
-	public SpikeHandlerSet() {
+	public SignalHandlerSet() {
 	}
 	
 	
@@ -28,26 +28,31 @@ public class SpikeHandlerSet implements SpikeHandler {
 	 */
 	@Override
 	public void signalAt(int x, int y, int time, double value/*Polarity polarity*/) {
-		for (SpikeHandler sh : spikeHandlers) 
+		
+		for (SignalHandler sh : spikeHandlers) 
 			sh.signalAt(x, y, time, value);
 		
 	}
 	
 	@Override
 	public void reset() {
-		for (SpikeHandler sh : spikeHandlers) 
+		for (SignalHandler sh : spikeHandlers) 
 			sh.reset();
 	}
 
-	public boolean addSpikeHandler(SpikeHandler handler) {
+	public boolean addSpikeHandler(SignalHandler handler) {
 		if (!this.spikeHandlers.contains(handler)) {
 			spikeHandlers.add(handler);
 			return true;
 		}
 		else return false;
 	}
+	
+	public boolean contains(SignalHandler handler) {
+		return spikeHandlers.contains(handler);
+	}
 
-	public boolean removeSpikeHandler(SpikeHandler handler) {
+	public boolean removeSpikeHandler(SignalHandler handler) {
 		if (this.spikeHandlers.contains(handler)) {
 			spikeHandlers.remove(handler);
 			return true;

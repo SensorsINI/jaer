@@ -79,7 +79,7 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 															 */) {
     		this.inputWidth = inputWidth;
     		this.inputHeight = inputHeight;
-    		inputKernel = new SpaceableExpressionBasedSpatialIK(kernelWidth, kernelHeight, stfFilter.getPrefs(), "inputKernel");
+    		inputKernel = new SpaceableExpressionBasedSpatialIK(kernelWidth, kernelHeight, stfFilter.getPrefs().node("inputKernel"));
     		inputKernel.setExpressionString(onExpressionString);
 //    		inputKernel.setOnExpressionString(onExpressionString);
 //    		inputKernel.setOffExpressionString(offExpressionString);
@@ -427,38 +427,39 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 	protected void removePanel(ExpressionBasedSpatialIKPanel panel) {
 		viewerPanel.remove(panel);
 	}
-	public static void main(String[] args) {
-		SpatioTemporalFusion stfFilter = new SpatioTemporalFusion(null);
-//		SpikingOutputViewerManager spikingOutputViewerManager = new SpikingOutputViewerManager(); 
-		stfFilter.setFilterEnabled(true);
-		ExpressionBasedIKUserInterface ui = stfFilter.expressionBasedIKUserInterface;//new ExpressionBasedIKUserInterface(stfFilter, spikingOutputViewerManager);
-		ui.addWindowListener(new WindowAdapter() {
-			public void windowClosing(WindowEvent we) {
-				System.exit(0);
-			}
-		});
-		
-		Random r = new Random(1);
-//		ui.addKernel(7,7,128,128,128,128,"0.05","0.05");
-		int time = 0;
-		long startTime = System.nanoTime();
-		for (int i = 0; i < 1000; i++) {
-			EventPacket<PolarityEvent> ep = new EventPacket<PolarityEvent>(PolarityEvent.class);
-            @SuppressWarnings("rawtypes")
-			OutputEventIterator outItr = ep.outputIterator();
-//			Iterator<PolarityEvent> it = ep.inputIterator();
-			for (int j = 0; j < 1000; j++) {
-                PolarityEvent pe = (PolarityEvent) outItr.nextOutput();
-				
-//				PolarityEvent pe = it.next();//new PolarityEvent();
-				pe.setX((short)r.nextInt(128));
-				pe.setY((short)r.nextInt(128));
-				pe.setTimestamp(time++);
-//				ep.(packet)(pe);
-			}
-			stfFilter.filterPacket(ep);
-		}
-		long endTime = System.nanoTime();
-		System.out.println("Total time in ms: "+(endTime-startTime)/1000000);
-	}
+
+//	public static void main(String[] args) {
+//		SpatioTemporalFusion stfFilter = new SpatioTemporalFusion(null);
+////		SpikingOutputViewerManager spikingOutputViewerManager = new SpikingOutputViewerManager(); 
+//		stfFilter.setFilterEnabled(true);
+//		ExpressionBasedIKUserInterface ui = stfFilter.mapOutputViewer;//new ExpressionBasedIKUserInterface(stfFilter, spikingOutputViewerManager);
+//		ui.addWindowListener(new WindowAdapter() {
+//			public void windowClosing(WindowEvent we) {
+//				System.exit(0);
+//			}
+//		});
+//		
+//		Random r = new Random(1);
+////		ui.addKernel(7,7,128,128,128,128,"0.05","0.05");
+//		int time = 0;
+//		long startTime = System.nanoTime();
+//		for (int i = 0; i < 1000; i++) {
+//			EventPacket<PolarityEvent> ep = new EventPacket<PolarityEvent>(PolarityEvent.class);
+//            @SuppressWarnings("rawtypes")
+//			OutputEventIterator outItr = ep.outputIterator();
+////			Iterator<PolarityEvent> it = ep.inputIterator();
+//			for (int j = 0; j < 1000; j++) {
+//                PolarityEvent pe = (PolarityEvent) outItr.nextOutput();
+//				
+////				PolarityEvent pe = it.next();//new PolarityEvent();
+//				pe.setX((short)r.nextInt(128));
+//				pe.setY((short)r.nextInt(128));
+//				pe.setTimestamp(time++);
+////				ep.(packet)(pe);
+//			}
+//			stfFilter.filterPacket(ep);
+//		}
+//		long endTime = System.nanoTime();
+//		System.out.println("Total time in ms: "+(endTime-startTime)/1000000);
+//	}
 }

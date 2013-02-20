@@ -3,10 +3,12 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
+import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.util.ArrayList;
+import java.util.Random;
 import java.util.prefs.Preferences;
 
 import javax.swing.BoxLayout;
@@ -17,6 +19,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
+import ch.unizh.ini.jaer.projects.apsdvsfusion.ParameterContainer.SingleParameter;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.CollapsablePanel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterBrowserPanel;
 
 /**
@@ -29,10 +33,17 @@ public abstract class FiringModelMap extends ParameterContainer {
 	 */
 	private static final long serialVersionUID = 3772350769713414996L;
 	
+	private static Random mapIDSelector = new Random();
+	
+	private int mapID = -1;
+	
 	int sizeX = -1, sizeY = -1;
 	FiringModelCreator firingModelCreator = null;
-	SpikeHandlerSet spikeHandlerSet;
+	SignalHandlerSet signalHandlerSet;
 	ArrayList<SignalTransformationKernel> inputKernels = new ArrayList<SignalTransformationKernel>();
+	boolean monitored = false;
+	boolean filterOutput = false;
+	boolean enabled = true;
 	
 	public class FiringModelMapCustomControls extends JPanel {
 		/**
@@ -40,8 +51,10 @@ public abstract class FiringModelMap extends ParameterContainer {
 		 */
 		private static final long serialVersionUID = 3283137316302825455L;
 		GridBagConstraints gbc = new GridBagConstraints();
+		GridBagConstraints gbcKernel = new GridBagConstraints();
 		ArrayList<ParameterBrowserPanel> panels = new ArrayList<ParameterBrowserPanel>();
 		int panelCounter = 0;
+		JPanel kernelPanel;
 		protected FiringModelMapCustomControls() {
 			this.setLayout(new GridBagLayout());
 			gbc.weightx = 1;
@@ -49,19 +62,33 @@ public abstract class FiringModelMap extends ParameterContainer {
 			gbc.gridy = 0;
 			gbc.gridx = 0;
 			gbc.fill = GridBagConstraints.BOTH;
+			gbcKernel.weightx = 1;
+			gbcKernel.weighty = 1;
+			gbcKernel.gridy = 0;
+			gbcKernel.gridx = 0;
+			gbcKernel.fill = GridBagConstraints.BOTH;
 			fillPanel();
 		}
 		
 		protected void fillPanel() {
 //			removeAll();
-
+			JPanel dummyPanel = new JPanel();
+			dummyPanel.setLayout(new BorderLayout());
+			dummyPanel.add(new JLabel("   "), BorderLayout.WEST);
+			kernelPanel = new JPanel();
+			dummyPanel.add(kernelPanel,BorderLayout.CENTER);
+			kernelPanel.setLayout(new GridBagLayout());
+			CollapsablePanel collapsablePanel = new CollapsablePanel("Input kernels",dummyPanel);
             for (SignalTransformationKernel stk : inputKernels) {
 				ParameterBrowserPanel newPanel = new ParameterBrowserPanel(stk); 
-				add(newPanel, gbc);
+				kernelPanel.add(newPanel, gbcKernel);
 				panels.add(newPanel);
-				gbc.gridy++;
+				gbcKernel.gridy++;
 				panelCounter++;
 			}
+            collapsablePanel.toggleSelection();
+            add(collapsablePanel, gbc);
+            gbc.gridy++;
 	        JFrame frame = (JFrame) SwingUtilities.getRoot(this);
 	        if (frame != null)
 	        	frame.pack();
@@ -70,9 +97,9 @@ public abstract class FiringModelMap extends ParameterContainer {
 			if (panelCounter < inputKernels.size()) {
 				ParameterBrowserPanel newPanel = new ParameterBrowserPanel(inputKernels.get(inputKernels.size()-1));
 				newPanel.toggleSelection();
-				add(newPanel, gbc);
+				kernelPanel.add(newPanel, gbcKernel);
 				panels.add(newPanel);
-				gbc.gridy++;
+				gbcKernel.gridy++;
 				panelCounter++;
 		        JFrame frame = (JFrame) SwingUtilities.getRoot(this);
 		        if (frame != null)
@@ -103,31 +130,81 @@ public abstract class FiringModelMap extends ParameterContainer {
 	
 	public FiringModelMap(int sizeX, int sizeY, Preferences prefs) {
 		super("FiringModelMap", prefs);
-		this.spikeHandlerSet = new SpikeHandlerSet()/*spikeHandler*/;
+		setMapID(Math.abs(mapIDSelector.nextInt()));
+		addExcludedProperty("mapID");
+		this.signalHandlerSet = new SignalHandlerSet()/*spikeHandler*/;
 		changeSize(sizeX, sizeY);
 	}
 
+	@Deprecated
 	public FiringModelMap(int sizeX, int sizeY, Preferences parentPrefs, String nodeName) {
 		super("FiringModelMap", parentPrefs, nodeName);
-		this.spikeHandlerSet = new SpikeHandlerSet()/*spikeHandler*/;
+		setMapID(Math.abs(mapIDSelector.nextInt()));
+		addExcludedProperty("mapID");
+		this.signalHandlerSet = new SignalHandlerSet()/*spikeHandler*/;
 		changeSize(sizeX, sizeY);
 	}
 	
-	public FiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler, Preferences prefs) {
+	public FiringModelMap(int sizeX, int sizeY, SignalHandler spikeHandler, Preferences prefs) {
 		this(sizeX, sizeY, prefs);
 		if (spikeHandler != null)
-			this.spikeHandlerSet.addSpikeHandler(spikeHandler);
+			this.signalHandlerSet.addSpikeHandler(spikeHandler);
 	}
 
-	public FiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler, Preferences parentPrefs, String nodeName) {
+	@Deprecated
+	public FiringModelMap(int sizeX, int sizeY, SignalHandler spikeHandler, Preferences parentPrefs, String nodeName) {
 		this(sizeX, sizeY, parentPrefs, nodeName);
 		if (spikeHandler != null)
-			this.spikeHandlerSet.addSpikeHandler(spikeHandler);
+			this.signalHandlerSet.addSpikeHandler(spikeHandler);
 	}
 
+	public int getMapID() {
+		return mapID;
+	}
+	
+	public void setMapID(int mapID) {
+		getSupport().firePropertyChange("mapID", this.mapID, mapID);
+		this.mapID = mapID;
+	}
 //	protected FiringModelMapParameterContainer createParameterContainer() {
 //		return new FiringModelMapParameterContainer("FiringModelMap");
 //	}
+	
+	
+	public boolean isMonitored() {
+		return monitored;
+	}
+
+	public void setMonitored(boolean monitored) {
+		if (monitored != this.monitored) {
+			getSupport().firePropertyChange("monitored", this.monitored, monitored);
+			this.monitored = monitored;
+			if (this.monitored) {
+				SpatioTemporalFusion.getInstance(this).addViewerFor(this);
+			}
+			else
+				SpatioTemporalFusion.getInstance(this).removeViewerFor(this);
+		}
+	}
+
+	
+	
+	public boolean isFilterOutput() {
+		return filterOutput;
+	}
+
+	public void setFilterOutput(boolean filterOutput) {
+		if (filterOutput != this.filterOutput) {
+			getSupport().firePropertyChange("filterOutput", this.filterOutput, filterOutput);
+			this.filterOutput = filterOutput;
+			SpatioTemporalFusion.getInstance(this).setMapObserved(this, filterOutput);
+		}
+	}
+
+	public void doDelete_Map() {
+		// TODO: delete this map!
+	}
+	
 	
 	public FiringModelCreator getFiringModelCreator() {
 		return firingModelCreator;
@@ -144,16 +221,20 @@ public abstract class FiringModelMap extends ParameterContainer {
 		buildUnits();
 	}
 	
-	public SpikeHandler getSpikeHandler() {
-		return spikeHandlerSet;
+	public SignalHandlerSet getSignalHandler() {
+		return signalHandlerSet;
 	}
 
-	public void addSpikeHandler(SpikeHandler spikeHandler) {
-		this.spikeHandlerSet.addSpikeHandler(spikeHandler);
+	protected void setSignalHandlerSet(SignalHandlerSet signalHandlerSet) {
+		this.signalHandlerSet = signalHandlerSet;
+	}
+	
+	public void addSignalHandler(SignalHandler signalHandler) {
+		this.signalHandlerSet.addSpikeHandler(signalHandler);
 	}
 
-	public void removeSpikeHandler(SpikeHandler spikeHandler) {
-		this.spikeHandlerSet.removeSpikeHandler(spikeHandler);
+	public void removeSignalHandler(SignalHandler signalHandler) {
+		this.signalHandlerSet.removeSpikeHandler(signalHandler);
 	}
 	
 	
@@ -172,6 +253,7 @@ public abstract class FiringModelMap extends ParameterContainer {
 	 * @param sizeX the sizeX to set
 	 */
 	public synchronized void setSizeX(int sizeX) {
+		getSupport().firePropertyChange("sizeX", this.sizeX, sizeX);
 		changeSize(sizeX, sizeY);
 	}
 
@@ -179,6 +261,7 @@ public abstract class FiringModelMap extends ParameterContainer {
 	 * @param sizeY the sizeY to set
 	 */
 	public synchronized void setSizeY(int sizeY) {
+		getSupport().firePropertyChange("sizeY", this.sizeY, sizeY);
 		changeSize(sizeX, sizeY);
 	}
 
@@ -189,7 +272,8 @@ public abstract class FiringModelMap extends ParameterContainer {
 			this.sizeY = sizeY;
 			buildUnits();
 			for (SignalTransformationKernel kernel : inputKernels) {
-				kernel.outputSizeChanged(ox, oy, sizeX, sizeY);
+				kernel.setOutputSize(sizeX, sizeY);
+//				kernel.outputSizeChanged(ox, oy, sizeX, sizeY);
 			}
 		}
 	}
@@ -207,9 +291,35 @@ public abstract class FiringModelMap extends ParameterContainer {
 	public abstract void reset();
 	
 	public void doAddKernel() {
-		inputKernels.add(new SpaceableExpressionBasedSpatialIK(7, 7, getPrefs(), "inputKernel"+inputKernels.size()));
+		SpaceableExpressionBasedSpatialIK newKernel = new SpaceableExpressionBasedSpatialIK(7, 7, getPrefs().node("inputKernel"+inputKernels.size()));
+		newKernel.setName("kernel"+newKernel.getKernelID());
+		newKernel.setOutputMap(this);
+		inputKernels.add(newKernel);
 		if (myControls != null) {
 			myControls.kernelAdded();
 		}
+		getPrefs().putInt("kernelCount",inputKernels.size());
 	}
+
+
+    public void restoreKernels() {
+    	int kernelCount = getPrefs().getInt("kernelCount",0);
+    	for (int i = 0; i < kernelCount; i++) {
+    		doAddKernel();
+		}
+    	for (SignalTransformationKernel kernel : inputKernels) {
+    		kernel.restoreParameters();
+    	}
+    }
+
+	public boolean isEnabled() {
+		return enabled;
+	}
+
+	public void setEnabled(boolean enabled) {
+		getSupport().firePropertyChange("enabled", this.enabled, enabled);
+		this.enabled = enabled;
+	}
+	
+    
 }

@@ -37,7 +37,7 @@ public class ArrayFiringModelMap extends FiringModelMap {
 	private static final long serialVersionUID = -3373722547563031984L;
 	FiringModel[][] map = null;
 	
-	public ArrayFiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler, Preferences prefs) {
+	public ArrayFiringModelMap(int sizeX, int sizeY, SignalHandler spikeHandler, Preferences prefs) {
 		super(sizeX, sizeY, spikeHandler, prefs);
 	//	this.fmc = fmc;
 	//	changeSize(sizeX, sizeY);
@@ -45,12 +45,12 @@ public class ArrayFiringModelMap extends FiringModelMap {
 //		this.offsetY = offsetY;
 	}
 
-	public ArrayFiringModelMap(AEChip chip, SpikeHandler spikeHandler/*, FiringModelCreator fmc*/, Preferences prefs) {
+	public ArrayFiringModelMap(AEChip chip, SignalHandler spikeHandler/*, FiringModelCreator fmc*/, Preferences prefs) {
 		this(chip.getSizeX(), chip.getSizeY(), spikeHandler/*, fmc*/, prefs);
 	}
 
 	@Deprecated
-	public ArrayFiringModelMap(int sizeX, int sizeY, SpikeHandler spikeHandler, Preferences parentPrefs, String nodeName) {
+	public ArrayFiringModelMap(int sizeX, int sizeY, SignalHandler spikeHandler, Preferences parentPrefs, String nodeName) {
 		super(sizeX, sizeY, spikeHandler, parentPrefs, nodeName);
 	//	this.fmc = fmc;
 	//	changeSize(sizeX, sizeY);
@@ -59,7 +59,7 @@ public class ArrayFiringModelMap extends FiringModelMap {
 	}
 	
 	@Deprecated
-	public ArrayFiringModelMap(AEChip chip, SpikeHandler spikeHandler/*, FiringModelCreator fmc*/, Preferences parentPrefs, String nodeName) {
+	public ArrayFiringModelMap(AEChip chip, SignalHandler spikeHandler/*, FiringModelCreator fmc*/, Preferences parentPrefs, String nodeName) {
 		this(chip.getSizeX(), chip.getSizeY(), spikeHandler/*, fmc*/, parentPrefs, nodeName);
 	}
 	
@@ -78,7 +78,7 @@ public class ArrayFiringModelMap extends FiringModelMap {
 	public FiringModel get(int x, int y) {
 //		if (x+offsetX >= 0 && x+offsetX < sizeX && y+offsetY >= 0 && y+offsetY < sizeY) 
 //			return map[x+offsetX][y+offsetY];
-		if (x >= 0 && x < sizeX && y >= 0 && y < sizeY) 
+		if (enabled && x >= 0 && x < sizeX && y >= 0 && y < sizeY) 
 			return map[x][y];
 		return null;
 	}
@@ -87,7 +87,8 @@ public class ArrayFiringModelMap extends FiringModelMap {
 	public void reset() {
 		for (int x = 0; x < sizeX; x++) {
 			for (int y = 0; y < sizeY; y++) {
-				map[x][y].reset();
+				if (map[x][y] != null)
+					map[x][y].reset();
 			}
 		}
 	}

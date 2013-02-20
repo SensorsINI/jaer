@@ -9,7 +9,7 @@ import net.sf.jaer.event.PolarityEvent;
  * @author Dennis
  *
  */
-public abstract class KernelProcessor implements SpikeHandler {
+public abstract class KernelProcessor implements SignalHandler {
 
 	boolean enabled = true;
 	/**

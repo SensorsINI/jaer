@@ -412,15 +412,15 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             //                groupPanel.setBorder(new TitledBorder(s));
             //            groupPanel.setLayout(new GridLayout(0, 1));
             groupContainerMap.put(pcName, groupPanel);
-            hostPanel.add(groupPanel, gbcHost);
-            gbcHost.gridy++;
+
             GridBagConstraints gbcGroup = new GridBagConstraints();
             gbcGroup.weightx = 1.0;
             gbcGroup.weighty = 1.0;
             gbcGroup.fill = GridBagConstraints.BOTH;
             gbcGroup.gridy = 0;
-            groupPanel.add(controla, gbcGroup);
-            gbcGroup.gridy++;
+// TODO: Watch these lines!
+//            groupPanel.add(controla, gbcGroup);
+//            gbcGroup.gridy++;
 
             if (getParameterContainer().hasPropertyGroups()) {
                 Set<String> groupSet = getParameterContainer().getPropertyGroupSet();
@@ -465,61 +465,62 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
 //                            inherited = true;
 //                        }
 //                    }
-
-                    if (c == Integer.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
-
-                        SliderParams params;
-                        if ((params = isSliderType(p, parameterContainer)) != null) {
-                            control = new IntSliderControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod(), params);
-                        } else {
-                            control = new IntControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
-                        }
-//                        myadd(control, name, inherited);
-                    } else if (c == Float.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
-                        SliderParams params;
-                        if ((params = isSliderType(p, parameterContainer)) != null) {
-                            control = new FloatSliderControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod(), params);
-                        } else {
-                            control = new FloatControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
-
-                        }
-//                        myadd(control, name, inherited);
-                    } else if (c == Boolean.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
-                        if (p.getName().equals("filterEnabled")) { // built in, skip
-                            continue;
-                        }
-                        if (p.getName().equals("annotationEnabled")) {// built in, skip
-                            continue;
-                        }
-                        if (p.getName().equals("selected")) {// built in, skip
-                            continue;
-                        }
-
-                        control = new BooleanControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
-//                        myadd(control, name, inherited);
-                    } else if (c == String.class && p.getReadMethod() != null && p.getWriteMethod() != null) {
-//                        if (p.getName().equals("filterEnabled")) {
-//                            continue;
-//                        }
-//                        if (p.getName().equals("annotationEnabled")) {
-//                            continue;
-//                        }
-                    	if (showNameField || !p.getName().equals("name"))
-                    		control = new StringControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
-//                        myadd(control, name, inherited);
-                    } else if (c != null && c.isEnum() && p.getReadMethod() != null && p.getWriteMethod() != null) {
-                        control = new EnumControl((Class<? extends Enum<?>>)c, getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
-//                        myadd(control, name, inherited);
-                    }else if (c != null && c==Point2D.Float.class && p.getReadMethod() != null && p.getWriteMethod() != null) {
-                        control = new Point2DControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
-//                        myadd(control, name, inherited);
-                    } else {
-//                    log.warning("unknown property type "+p.getPropertyType()+" for property "+p.getName());
+                    if (!getParameterContainer().isPropertyExcluded(name)) {
+                    
+	                    if (c == Integer.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
+	
+	                        SliderParams params;
+	                        if ((params = isSliderType(p, parameterContainer)) != null) {
+	                            control = new IntSliderControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod(), params);
+	                        } else {
+	                            control = new IntControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+	                        }
+	//                        myadd(control, name, inherited);
+	                    } else if (c == Float.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
+	                        SliderParams params;
+	                        if ((params = isSliderType(p, parameterContainer)) != null) {
+	                            control = new FloatSliderControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod(), params);
+	                        } else {
+	                            control = new FloatControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+	
+	                        }
+	//                        myadd(control, name, inherited);
+	                    } else if (c == Boolean.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
+	                        if (p.getName().equals("filterEnabled")) { // built in, skip
+	                            continue;
+	                        }
+	                        if (p.getName().equals("annotationEnabled")) {// built in, skip
+	                            continue;
+	                        }
+	                        if (p.getName().equals("selected")) {// built in, skip
+	                            continue;
+	                        }
+	
+	                        control = new BooleanControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+	//                        myadd(control, name, inherited);
+	                    } else if (c == String.class && p.getReadMethod() != null && p.getWriteMethod() != null) {
+	//                        if (p.getName().equals("filterEnabled")) {
+	//                            continue;
+	//                        }
+	//                        if (p.getName().equals("annotationEnabled")) {
+	//                            continue;
+	//                        }
+	                    	if (showNameField || !p.getName().equals("name"))
+	                    		control = new StringControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+	//                        myadd(control, name, inherited);
+	                    } else if (c != null && c.isEnum() && p.getReadMethod() != null && p.getWriteMethod() != null) {
+	                        control = new EnumControl((Class<? extends Enum<?>>)c, getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+	//                        myadd(control, name, inherited);
+	                    }else if (c != null && c==Point2D.Float.class && p.getReadMethod() != null && p.getWriteMethod() != null) {
+	                        control = new Point2DControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+	//                        myadd(control, name, inherited);
+	                    } else {
+	//                    log.warning("unknown property type "+p.getPropertyType()+" for property "+p.getName());
+	                    }
+	                    if (control != null) {
+	                        control.setToolTipText(getParameterContainer().getPropertyTooltip(name));
+	                    } 
                     }
-                    if (control != null) {
-                        control.setToolTipText(getParameterContainer().getPropertyTooltip(name));
-                    } 
-
                 } catch (Exception e) {
                     log.warning(e + " caught on property " + p.getName() + " from EventFilter " + parameterContainer);
                 }
@@ -563,10 +564,15 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             
 //            filter.updateControl();
             
+            if (gbcGroup.gridy > 0) {
+	            hostPanel.add(groupPanel, gbcHost);
+	            gbcHost.gridy++;
+            }
+
             JComponent custom = getParameterContainer().getCustomControls();  
             if (custom != null) { 
-            	groupPanel.add(custom, gbcGroup);
-            	gbcGroup.gridy++;
+            	hostPanel.add(custom, gbcHost);
+            	gbcHost.gridy++;
             }
             
 //            groupContainerMap = null;
@@ -1005,7 +1011,6 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             }
             add(tf);
             tf.addActionListener(new ActionListener() {
-
                 public void actionPerformed(ActionEvent e) {
                     try {
                         int y = Integer.parseInt(
@@ -1020,6 +1025,25 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                     }
                 }
             });
+            tf.addFocusListener(new FocusListener() {
+				@Override
+				public void focusLost(FocusEvent arg0) {
+                    try {
+                        int y = Integer.parseInt(
+                                tf.getText());
+                        w.invoke(filter, new Integer(y)); // write int value
+                    } catch (NumberFormatException fe) {
+                        tf.selectAll();
+                    } catch (InvocationTargetException ite) {
+                        ite.printStackTrace();
+                    } catch (IllegalAccessException iae) {
+                        iae.printStackTrace();
+                    }
+				}
+				@Override
+				public void focusGained(FocusEvent arg0) {
+				}
+			});
             tf.addKeyListener(new java.awt.event.KeyAdapter() {
 
                 public void keyPressed(java.awt.event.KeyEvent evt) {
@@ -1256,6 +1280,28 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                     }
                 }
             });
+            tf.addFocusListener(new FocusListener() {
+				
+				@Override
+				public void focusLost(FocusEvent e) {
+                    try {
+                        float y = engFmt.parseFloat(tf.getText());
+                        w.invoke(filter, new Float(y));
+                        Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
+                        nval = x.floatValue();
+                        tf.setText(engFmt.format(nval));
+                    } catch (NumberFormatException fe) {
+                        tf.selectAll();
+                    } catch (InvocationTargetException ite) {
+                        ite.printStackTrace();
+                    } catch (IllegalAccessException iae) {
+                        iae.printStackTrace();
+                    }
+				}
+				@Override
+				public void focusGained(FocusEvent e) {
+				}
+			});
             tf.addKeyListener(new java.awt.event.KeyAdapter() {
 
                 {

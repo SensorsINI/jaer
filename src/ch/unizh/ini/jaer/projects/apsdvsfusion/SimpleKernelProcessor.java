@@ -19,7 +19,7 @@ public class SimpleKernelProcessor extends KernelProcessor {
 
 	SignalTransformationKernel inputKernel;
 	SchedulableFiringModelMap firingModelMap;
-	SpikeHandlerSet spikeHandler;
+	SignalHandlerSet spikeHandler;
 
 	
 	
@@ -32,8 +32,8 @@ public class SimpleKernelProcessor extends KernelProcessor {
 	 */
 	public SimpleKernelProcessor(int outSizeX, int outSizeY, SignalTransformationKernel inputKernel, Preferences prefs) {
 //		firingModelMap = new ArrayFiringModelMap(outSizeX, outSizeY, IntegrateAndFire.getCreator());
-		spikeHandler = new SpikeHandlerSet();
-		SchedulableWrapperMap smap = new SchedulableWrapperMap(outSizeX, outSizeY, spikeHandler, prefs, "schedulableWrapperMap");
+		spikeHandler = new SignalHandlerSet();
+		SchedulableWrapperMap smap = new SchedulableWrapperMap(outSizeX, outSizeY, spikeHandler, prefs.node("schedulableWrapperMap"));
 		firingModelMap = smap;
 		smap.setFiringModelMap(new ArrayFiringModelMap(outSizeX, outSizeY, spikeHandler, prefs.node("firingModelMap")));
 		smap.setFiringModelCreator(SimplePoissonModel.getCreator(prefs.node("creator")));
@@ -84,10 +84,10 @@ public class SimpleKernelProcessor extends KernelProcessor {
 	public void changeOutSize(int width, int height) {
 		firingModelMap.changeSize(width, height);
 	}
-	public void addSpikeHandler(SpikeHandler handler) {
+	public void addSpikeHandler(SignalHandler handler) {
 		spikeHandler.addSpikeHandler(handler);
 	}
-	public void removeSpikeHandler(SpikeHandler handler) {
+	public void removeSpikeHandler(SignalHandler handler) {
 		spikeHandler.removeSpikeHandler(handler);
 	}
 	

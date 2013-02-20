@@ -4,16 +4,19 @@
 package ch.unizh.ini.jaer.projects.apsdvsfusion.gui;
 
 import java.awt.Dimension;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 
 import net.sf.jaer.event.PolarityEvent.Polarity;
-import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikeHandler;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.SignalHandler;
 //import net.sf.jaer.graphics.ImageDisplay;
 
 /**
  * @author Dennis
  *
  */
-public class SpikingOutputViewer implements SpikeHandler, NonGLImageDisplay.UpdateListener {
+public class SpikingOutputViewer implements SignalHandler, NonGLImageDisplay.UpdateListener, PropertyChangeListener {
 
 	int sizeX = 0, sizeY = 0;
     NonGLImageDisplay display ;
@@ -28,7 +31,7 @@ public class SpikingOutputViewer implements SpikeHandler, NonGLImageDisplay.Upda
     int grayLevels;
 	boolean active = true;
     
-    
+    FiringModelMap map = null;
 	
 	public boolean isActive() {
 		return active;
@@ -46,6 +49,14 @@ public class SpikingOutputViewer implements SpikeHandler, NonGLImageDisplay.Upda
 		this.grayLevels = grayLevels;
 	}
 
+	public SpikingOutputViewer(FiringModelMap map, int grayLevels) {
+    	this(map.getSizeX(), map.getSizeY(), grayLevels);
+    	this.map = map;
+    	map.addSignalHandler(this);
+    	map.getSupport().addPropertyChangeListener("sizeX",this);
+    	map.getSupport().addPropertyChangeListener("sizeY",this);
+	}
+	
 	public SpikingOutputViewer(int sizeX, int sizeY, int grayLevels)    {
     	changeSize(sizeX, sizeY);
     	setGrayLevels(grayLevels);
@@ -58,6 +69,15 @@ public class SpikingOutputViewer implements SpikeHandler, NonGLImageDisplay.Upda
 //        this.display.setFontSize(14);
     }
     
+	public void releaseMap() {
+		if (map != null) {
+			map.removeSignalHandler(this);
+	    	map.getSupport().removePropertyChangeListener("sizeX",this);
+	    	map.getSupport().removePropertyChangeListener("sizeY",this);
+	    	map = null;
+		}
+	}
+	
     public void changeSize(int sizeX, int sizeY) {
     	if (sizeX != this.sizeX || sizeY != this.sizeY) {
     		synchronized (this) {
@@ -103,10 +123,15 @@ public class SpikingOutputViewer implements SpikeHandler, NonGLImageDisplay.Upda
             			outputBuffer[x][y] += receivedSpikesBuffer[x][y];
             			receivedSpikesBuffer[x][y] = 0;
             			value = outputBuffer[x][y];
-            			if (value < grayLevels)
+            			if (value >= 0 && value < grayLevels)
             				display.setPixmapGray(x, y, (float)value / (float)grayLevels);
-            			else
+            			else if (value < 0 && value > -grayLevels)
+            				display.setPixmapRGB(x, y, -(float)value / (float)grayLevels, 0, 0);
+            			else if (value > 0)
             				display.setPixmapGray(x, y, 1.0f);
+            			else if (value < 0)
+            				display.setPixmapRGB(x, y, 1.0f, 0, 0);
+            				
             		}
             	}
 	    	}
@@ -136,7 +161,8 @@ public class SpikingOutputViewer implements SpikeHandler, NonGLImageDisplay.Upda
 	@Override
 	public void signalAt(int x, int y, int time, double value) {
 		synchronized (receivedSpikesLock) {
-			receivedSpikes[x][y] += value;
+			if (x < receivedSpikes.length && y < receivedSpikes[x].length)
+				receivedSpikes[x][y] += value;
 		}
 	}
 
@@ -169,6 +195,19 @@ public class SpikingOutputViewer implements SpikeHandler, NonGLImageDisplay.Upda
         		}
         	}
         }
+	}
+
+	@Override
+	public void propertyChange(PropertyChangeEvent evt) {
+		if (evt.getSource() instanceof FiringModelMap) {
+			FiringModelMap map = (FiringModelMap)evt.getSource();
+			if ((evt.getPropertyName().equals("sizeX") && ((Integer)evt.getNewValue() != this.sizeX))) {
+				changeSize((Integer)evt.getNewValue(), sizeY); 
+			}
+			else if ((evt.getPropertyName().equals("sizeY")) && ((Integer)evt.getNewValue() != this.sizeY)) {
+				changeSize(sizeX,(Integer)evt.getNewValue()); 
+			}
+		}
 	}
 
 }

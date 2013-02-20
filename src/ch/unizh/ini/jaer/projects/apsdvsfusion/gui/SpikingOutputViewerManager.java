@@ -8,6 +8,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 //import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
 
+import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap;
+
 /**
  * @author Dennis
  *
@@ -34,6 +36,21 @@ public class SpikingOutputViewerManager {
 	}
      
     
+    public SpikingOutputViewer createOutputViewer(FiringModelMap map, int grayLevels) {
+    	SpikingOutputViewer soViewer = new SpikingOutputViewer(map, grayLevels);
+    	addOutputViewer(soViewer);
+    	
+//    	JPanel displayPanel=new JPanel();
+//        
+//        displayPanel.setBackground(Color.darkGray);
+//        displayPanel.setLayout(new BorderLayout());
+//        
+//        displayPanel.add(soViewer.getDisplay(),BorderLayout.CENTER);  
+//        statePanel.add(displayPanel);
+//        statePanel.validate();
+
+        return soViewer;
+    }
     
     public SpikingOutputViewer createOutputViewer(int sizeX, int sizeY, int grayLevels) {
     	SpikingOutputViewer soViewer = new SpikingOutputViewer(sizeX, sizeY, grayLevels);
