@@ -169,7 +169,7 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
      */    
     @Override
     public void initFilter() {
-        xPixels = 16;
+        xPixels = 64;
         yPixels = xPixels;
         xStart = chip.getSizeX()/2 - xPixels/2;
         yStart = chip.getSizeY()/2 - yPixels/2;
@@ -378,6 +378,22 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
             return false;
         } // END IF
     } // END METHOD
+
+    @Override
+    public synchronized void cleanup() {
+        super.cleanup();
+        if(neuronFrame!=null) neuronFrame.dispose();
+    }
+
+    @Override
+    public synchronized void setFilterEnabled(boolean yes) {
+        super.setFilterEnabled(yes);
+        if(!isFilterEnabled()){
+            hideNeuronFrame();
+        }
+    }
+    
+    
     
     /**
      * Updates Weights of synapses connecting pixels to the neurons according to STDP Learning Rule
@@ -418,6 +434,10 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
             createNeuronFrame();
     } // END METHOD
 
+    void hideNeuronFrame(){
+        if(neuronFrame!=null) neuronFrame.setVisible(false);
+    }
+    
     /**
      * Creates Neuron Weight Matrix Frame
      */
