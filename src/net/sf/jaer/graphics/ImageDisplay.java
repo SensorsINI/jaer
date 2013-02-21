@@ -382,6 +382,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
      * @param gray the gray value, in range 0-1.
      */
     synchronized public void setPixmapGray(int x, int y, float gray) {
+        if(x<0 || x>sizeX || y<0 || y>sizeY)return;
         setPixmapPosition(x, y);
         pixmap.put(new float[]{gray, gray, gray});
     }

@@ -89,7 +89,7 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
             }
             ts = i.timestamp;
             short x = (short) (i.x >>> subsampleBy), y = (short) (i.y >>> subsampleBy);
-            if ((x < 0 || y < 0)) {
+            if (x < 0 || x > sx || y < 0 || y > sy) {
                 continue;
             }
             int lastt = lastTimestamps[x][y];

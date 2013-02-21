@@ -113,25 +113,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
         
         grayBuffer.rewind();
-        for (int y = 0; y < textureWidth; y++) {
-            for (int x = 0; x < textureHeight; x++) {
-                grayBuffer.put(onColor[0]);
-                grayBuffer.put(onColor[1]);
-                grayBuffer.put(onColor[2]);
-                grayBuffer.put(onColor[3]);
-            }
-        }
+        Arrays.fill(grayBuffer.array(), 0.0f);
         System.arraycopy(grayBuffer.array(), 0, onMap.array(), 0, n);
-        
-        grayBuffer.rewind();
-        for (int y = 0; y < textureWidth; y++) {
-            for (int x = 0; x < textureHeight; x++) {
-                grayBuffer.put(offColor[0]);
-                grayBuffer.put(offColor[1]);
-                grayBuffer.put(offColor[2]);
-                grayBuffer.put(offColor[3]);
-            }
-        }
         System.arraycopy(grayBuffer.array(), 0, offMap.array(), 0, n);
         
         grayBuffer.rewind();
@@ -289,10 +272,18 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             map[index + 2] = timeColors[ind][2];
             map[index + 3] = 0.5f;
         }else{
-            int alphaIdx = index + 3;
-            float alpha = map[alphaIdx]+(1.0f/(float)colorScale);
+            float alpha = map[index+3]+(1.0f/(float)colorScale);
             alpha = normalizeEvent(alpha);
-            map[alphaIdx] = alpha;
+            if(e.polarity == PolarityEvent.Polarity.On){
+                map[index] = onColor[0];
+                map[index+1] = onColor[1];
+                map[index+2] = onColor[2];
+            }else{
+                map[index] = offColor[0];
+                map[index+1] = offColor[1];
+                map[index+2] = offColor[2];
+            }
+            map[index+3] = alpha;
         }
     }
     

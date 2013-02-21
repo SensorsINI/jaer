@@ -215,6 +215,10 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     public int getChipNumber() {
         return this.chipNumber;
     }
+    
+    public Chip getChip(){
+        return chip;
+    }
 
     /** return the max value representing all stages of current splitter enabled */
     public int getMaxBitValue() {
