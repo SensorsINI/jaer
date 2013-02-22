@@ -312,7 +312,7 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 		}
 	}
 	
-	public void doDelete_Kernel() {
+	public void doDelete() {
 		FiringModelMap map = getOutputMap();
 		if (map != null)
 			map.removeKernel(this);

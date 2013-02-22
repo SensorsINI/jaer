@@ -7,8 +7,11 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
 import javax.swing.BoxLayout;
@@ -43,6 +46,13 @@ public abstract class FiringModelMap extends ParameterContainer {
 	ArrayList<SignalTransformationKernel> inputKernels = new ArrayList<SignalTransformationKernel>();
 	private ArrayList<Integer> indexMappings = new ArrayList<Integer>();
 	private int indexPosition = getPrefs().getInt("indexPosition", 0);
+	
+	private PropertyChangeListener creatorChangeListener = new PropertyChangeListener() {
+		@Override
+		public void propertyChange(PropertyChangeEvent e) {
+			buildUnits();
+		}
+	};
 	
 	boolean monitored = false;
 	boolean filterOutput = false;
@@ -230,18 +240,25 @@ public abstract class FiringModelMap extends ParameterContainer {
 		}
 	}
 	
-	public void removeMap() {
+	public void disconnectMap() {
 		ArrayList<SignalTransformationKernel> inputKernels = new ArrayList<SignalTransformationKernel>(this.inputKernels);
 		for (SignalTransformationKernel kernel : inputKernels) {
 			removeKernel(kernel);
 		}
-		SpatioTemporalFusion stf = SpatioTemporalFusion.getInstance(this);
-		if (stf != null) {
-			// TODO: remove Map!
+		try {
+			getPrefs().removeNode();
+		} catch (BackingStoreException e) {
+			e.printStackTrace();
+		} catch (IllegalStateException e) {
+			e.printStackTrace();
 		}
 	}
 	
-	public void doDelete_Map() {
+	public void doDelete() {
+		SpatioTemporalFusion stf = SpatioTemporalFusion.getInstance(this);
+		if (stf != null) {
+			stf.removeMap(this);
+		}
 	}
 	
 	
@@ -250,13 +267,19 @@ public abstract class FiringModelMap extends ParameterContainer {
 	}
 
 	public void setFiringModelCreator(FiringModelCreator firingModelCreator) {
-		this.firingModelCreator = firingModelCreator;
-		buildUnits();
+		if (firingModelCreator != this.firingModelCreator) {
+			if (this.firingModelCreator != null)
+				this.firingModelCreator.getSupport().removePropertyChangeListener(creatorChangeListener);
+			this.firingModelCreator = firingModelCreator;
+			if (this.firingModelCreator != null)
+				this.firingModelCreator.getSupport().addPropertyChangeListener(creatorChangeListener);
+			buildUnits();
+		}
 	}
 	
 	public abstract void buildUnits(); 
 
-	public void doBuildUnits() {
+	public void doBuild_Units() {
 		buildUnits();
 	}
 	
@@ -337,6 +360,9 @@ public abstract class FiringModelMap extends ParameterContainer {
 			indexMappings.add(nodeIndex);
 			
 			indexPosition = nodeIndex+1;
+			for (Integer index : indexMappings) 
+				if (index >= indexPosition)
+					indexPosition = index + 1;
 			
 			if (myControls != null) {
 				myControls.kernelAdded();
@@ -347,7 +373,7 @@ public abstract class FiringModelMap extends ParameterContainer {
 		}
 	}
 	
-	public void doAddKernel() {
+	public void doAdd_Kernel() {
 		SpaceableExpressionBasedSpatialIK newKernel = 
 				new SpaceableExpressionBasedSpatialIK(7, 7, getPrefs().node("inputKernel"+indexPosition));
 		newKernel.setName("kernel"+newKernel.getKernelID());

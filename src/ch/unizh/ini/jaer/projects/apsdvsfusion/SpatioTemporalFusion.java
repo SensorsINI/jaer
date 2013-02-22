@@ -61,8 +61,13 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 //	String expression = getPrefs().get("Expression", "1");
 	FiringModelMap onMap, offMap;
 	ArrayList<FiringModelMap> firingModelMaps = new ArrayList<FiringModelMap>();
+	private ArrayList<Integer> mapIndexMappings = new ArrayList<Integer>();
+	private int mapIndexPosition = getPrefs().getInt("mapIndexPosition", 0);
+	
 	
 	Object filteringLock = new Object();
+	
+	Preferences myPreferencesNode;
 	
 	public final class STFParameterContainer extends ParameterContainer {
 //		String myString;
@@ -121,6 +126,19 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		        	frame.pack();
 			}
 		}
+		
+		public void mapRemoved(int index) {
+			if (panelCounter > index && index >= 0) {
+				ParameterBrowserPanel panel = mapPanels.get(index);
+				mapPanels.remove(index);
+				customPanel.remove(panel);
+				panelCounter--;
+		        JFrame frame = (JFrame) SwingUtilities.getRoot(customPanel);
+		        if (frame != null)
+		        	frame.pack();
+			}
+		}
+		
 		@Override
 		public JComponent createCustomControls() {
 			fillPanel();
@@ -140,7 +158,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 //	private int grayLevels = 4;
 	
 	private boolean panelAdded = false;
-	private STFParameterContainer stfParameterContainer = new STFParameterContainer(getPrefs().node("spatioTemporalFusion"));
+	private STFParameterContainer stfParameterContainer; 
 
 	boolean filterEvents = false;
 	SignalHandler filterSpikeHandler = new SignalHandler() {
@@ -162,15 +180,20 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 
 	};
 	
+	
+	
 	/**
 	 * @param chip
 	 */
 	public SpatioTemporalFusion(AEChip chip) {
 		super(chip);
+		
+		stfParameterContainer = new STFParameterContainer(getPrefs());
 		runningInstances.add(this);
 		spikingOutputViewerManager = new SpikingOutputViewerManager();
    		mapOutputViewer = new MapOutputViewer(this, spikingOutputViewerManager);
-		
+
+   		
    		
 //		this.setFilterEnabled(false);
         setPropertyTooltip("grayLevels", "Number of displayed gray levels");
@@ -217,6 +240,14 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		//viewer.setVisible(true);
 	}
 
+	@Override
+	public Preferences getPrefs() {
+		if (myPreferencesNode == null) {
+			this.myPreferencesNode = super.getPrefs().node("apsdvsfusion").node("spatiotemporalfusion");
+		}
+		return myPreferencesNode;
+	}
+	
 	public Object getFilteringLock() {
 		return filteringLock;
 	}
@@ -396,20 +427,20 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	}
 
 	
-	public void doClear() {
-		// setExpression(expression);
-		if (mapOutputViewer != null)
-			mapOutputViewer.reset();
-		if (spikingOutputViewerManager != null) {
-			spikingOutputViewerManager.reset();
-		}
-//		if (spikingOutputDisplay != null)
-//			spikingOutputDisplay.reset();
-		synchronized (kernelProcessors) {
-			if (kernelProcessors != null)
-				kernelProcessors.clear();
-		}
-	}
+//	public void doClear() {
+//		// setExpression(expression);
+//		if (mapOutputViewer != null)
+//			mapOutputViewer.reset();
+//		if (spikingOutputViewerManager != null) {
+//			spikingOutputViewerManager.reset();
+//		}
+////		if (spikingOutputDisplay != null)
+////			spikingOutputDisplay.reset();
+//		synchronized (kernelProcessors) {
+//			if (kernelProcessors != null)
+//				kernelProcessors.clear();
+//		}
+//	}
 	
 	/* (non-Javadoc)
 	 * @see net.sf.jaer.eventprocessing.EventFilter#initFilter()
@@ -432,15 +463,53 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 //		setExpression("0");
 	}
 	
-	public void doAddMap() {
-		synchronized (firingModelMaps) {
-			SchedulableWrapperMap newMap = new SchedulableWrapperMap(128, 128, null, getPrefs().node("map"+(firingModelMaps.size() - 2)));
-			newMap.setName("Map "+(firingModelMaps.size() - 1));
+	public void removeMap(FiringModelMap map) {
+		if (firingModelMaps.contains(map)) {
+			int removedIndex = firingModelMaps.indexOf(map)-2;
+			firingModelMaps.remove(removedIndex+2);
+
+			mapIndexMappings.remove(removedIndex);
+			mapIndexPosition = -1;
+			for (Integer index : mapIndexMappings) 
+				if (index >= mapIndexPosition)
+					mapIndexPosition = index + 1;
+			map.disconnectMap();
+			
+			getPrefs().putInt("mapCount",firingModelMaps.size()-2);
+			for (int i = 0; i < mapIndexMappings.size(); i++) {
+				getPrefs().putInt("mapIndexMappings"+(i), mapIndexMappings.get(i));
+			}
+			stfParameterContainer.mapRemoved(removedIndex);
+		}
+	}
+	
+	protected void addMap(FiringModelMap map, int mapNodeIndex) {
+		if (map != null) {
+			map.setPreferences(getPrefs().node("map"+mapNodeIndex));
 			ArrayList<FiringModelMap> oldMaps = new ArrayList<FiringModelMap>(firingModelMaps);
-			firingModelMaps.add(newMap);
+			firingModelMaps.add(map);
+			mapIndexMappings.add(mapNodeIndex);
+			mapIndexPosition = -1;
+			for (Integer index : mapIndexMappings) 
+				if (index >= mapIndexPosition)
+					mapIndexPosition = index + 1;
 			stfParameterContainer.mapAdded();
-			getPrefs().putInt("mapCount", firingModelMaps.size()-2);
 			getSupport().firePropertyChange("firingModelMaps", oldMaps, firingModelMaps);
+	
+			getPrefs().putInt("mapCount", firingModelMaps.size()-2);
+			getPrefs().putInt("mapIndexPosition", mapIndexPosition);
+			getPrefs().putInt("mapIndexMappings"+(mapIndexMappings.size()-1), mapIndexMappings.get(mapIndexMappings.size()-1));
+		}
+	
+	}
+	
+	public void doAdd_Map() {
+		synchronized (firingModelMaps) {
+			SchedulableWrapperMap newMap = new SchedulableWrapperMap(128, 128, null, getPrefs().node("map"+mapIndexPosition));
+			newMap.setName("Map "+(mapIndexPosition + 1));
+			addMap(newMap, mapIndexPosition);
+			
+			
 		}
 	}
 	
@@ -450,12 +519,17 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		for (int i = 0; i < 20; i++) {
 			String s = getPrefs().get("usedExpressionString"+i, "");
 			if (!s.equals("")) {
+
 				addExpressionString(s);
 			}
 		}
 		int mapCount = getPrefs().getInt("mapCount", 0);
 		for (int i = 0; i < mapCount; i++) {
-			doAddMap();
+    		int mapping = getPrefs().getInt("mapIndexMappings"+(mapIndexMappings.size()-1), i);
+			
+			SchedulableWrapperMap newMap = new SchedulableWrapperMap(128, 128, null, getPrefs().node("map"+(firingModelMaps.size() - 2)));
+			
+			addMap(newMap, mapping);
 		}
 		// operate in 2 steps to make sure the map IDs have been restored before initializing the kernels.
 		for (FiringModelMap map : firingModelMaps) {

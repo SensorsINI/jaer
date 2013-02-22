@@ -78,11 +78,13 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
     abstract class SingleParameter<T> {
     	Method writeMethod;
     	Method readMethod;
+    	String lowerCasePropertyName;
     	String propertyName;
     	public SingleParameter(Method readMethod, Method writeMethod, String propertyName) {
     		this.writeMethod = writeMethod;
     		this.readMethod = readMethod;
     		this.propertyName = propertyName;
+    		this.lowerCasePropertyName = propertyName.toLowerCase();
     	}
     	void set(Object newValue) {
     		try {
@@ -139,9 +141,9 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 	}
 
 	public void setPreferences(Preferences prefs) {
-		if (!prefs.absolutePath().equals(this.prefs)) {
+		if (!prefs.absolutePath().equals(this.prefs.absolutePath())) {
 			try {
-				prefs.removeNode();
+				this.prefs.removeNode();
 			} catch (BackingStoreException e) {
 				e.printStackTrace();
 			}
@@ -381,46 +383,46 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
                 	  setterMethods.put(name, new SingleParameter<Integer>(p.getReadMethod(), p.getWriteMethod(),name) {
 						@Override
 						void storeParameter(Object newValue) {
-							getPrefs().putInt(propertyName, (Integer)newValue);
+							getPrefs().putInt(lowerCasePropertyName, (Integer)newValue);
 						}
 						@Override
 						Integer readParameter() {
-							return getPrefs().getInt(propertyName, get());
+							return getPrefs().getInt(lowerCasePropertyName, get());
 						}
                 	  });
                   } else if (c == Float.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
                 	  setterMethods.put(name, new SingleParameter<Float>(p.getReadMethod(), p.getWriteMethod(),name) {
   						@Override
   						void storeParameter(Object newValue) {
-  							getPrefs().putFloat(propertyName, (Float)newValue);
+  							getPrefs().putFloat(lowerCasePropertyName, (Float)newValue);
   						}
 
 						@Override
 						Float readParameter() {
-							return getPrefs().getFloat(propertyName, get());
+							return getPrefs().getFloat(lowerCasePropertyName, get());
 						}
                   	  });
                   } else if (c == Boolean.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
                 	  setterMethods.put(name, new SingleParameter<Boolean>(p.getReadMethod(), p.getWriteMethod(),name) {
   						@Override
   						void storeParameter(Object newValue) {
-  							getPrefs().putBoolean(propertyName, (Boolean)newValue);
+  							getPrefs().putBoolean(lowerCasePropertyName, (Boolean)newValue);
   						}
 						@Override
 						Boolean readParameter() {
-							return getPrefs().getBoolean(propertyName, get());
+							return getPrefs().getBoolean(lowerCasePropertyName, get());
 						}
                   	  });
                   } else if (c == String.class && p.getReadMethod() != null && p.getWriteMethod() != null) {
                 	  setterMethods.put(name, new SingleParameter<String>(p.getReadMethod(), p.getWriteMethod(),name) {
   						@Override
   						void storeParameter(Object newValue) {
-  							getPrefs().put(propertyName, (String)newValue);
+  							getPrefs().put(lowerCasePropertyName, (String)newValue);
   						}
 
 						@Override
 						String readParameter() {
-							return getPrefs().get(propertyName, get());
+							return getPrefs().get(lowerCasePropertyName, get());
 						}
                   	  });
                   } else if (c != null && c.isEnum() && p.getReadMethod() != null && p.getWriteMethod() != null) {
@@ -429,12 +431,12 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
                 		  final Object[] enumConstants = cf.getClass().getEnumConstants();
   						@Override
   						void storeParameter(Object newValue) {
-  							getPrefs().put(propertyName, ((Enum<?>)newValue).toString());
+  							getPrefs().put(lowerCasePropertyName, ((Enum<?>)newValue).toString());
   						}
 
 						@Override
 						Enum<?> readParameter() {
-							String value = getPrefs().get(propertyName, get().toString());
+							String value = getPrefs().get(lowerCasePropertyName, get().toString());
 							for (Object o : enumConstants) {
 								if (o.toString().toUpperCase().equals(value.toUpperCase())) {
 									return (Enum<?>)o;
@@ -447,14 +449,17 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
                 	  setterMethods.put(name, new SingleParameter<Point2D>(p.getReadMethod(), p.getWriteMethod(),name) {
   						@Override
   						void storeParameter(Object newValue) {
-  							getPrefs().putFloat(propertyName, (Float)newValue);
-  							getPrefs().putInt(propertyName, (Integer)newValue);
+  							Point2D newPoint = (Point2D)newValue;
+  							
+  							getPrefs().putDouble(lowerCasePropertyName+".x", newPoint.getX());
+  							getPrefs().putDouble(lowerCasePropertyName+".y", newPoint.getY());
+//  							getPrefs().putInt(propertyName, (Integer)newValue);
   						}
 
 						@Override
 						Point2D readParameter() {
 							Point2D def = get();
-							def.setLocation(getPrefs().getDouble(propertyName+".x", def.getX()), getPrefs().getDouble(propertyName+".y", def.getY()));
+							def.setLocation(getPrefs().getDouble(lowerCasePropertyName+".x", def.getX()), getPrefs().getDouble(lowerCasePropertyName+".y", def.getY()));
 							return def;
 						}
                   	  });
@@ -492,4 +497,5 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 	public String toString() {
 		return name;
 	}
+	
 }

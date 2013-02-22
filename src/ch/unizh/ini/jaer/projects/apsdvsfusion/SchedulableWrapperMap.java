@@ -38,8 +38,16 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 	 */
 	private static final long serialVersionUID = 3135959582771085761L;
 	final ArrayList<Object> creatorList = new ArrayList<Object>();
-	private int firingModelCreatorCounter;
+//	private int firingModelCreatorCounter;
 
+	private PropertyChangeListener creatorChangeListener = new PropertyChangeListener() {
+		@Override
+		public void propertyChange(PropertyChangeEvent e) {
+			buildUnits();
+		}
+	};
+	
+	
 	public class SchedulableWrapperMapCustomControls extends
 			FiringModelMapCustomControls {
 		/**
@@ -86,7 +94,7 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 			JPanel creatorPanel = new JPanel();
             creatorPanel.setLayout(new BoxLayout(creatorPanel, BoxLayout.X_AXIS));
             creatorPanel.setAlignmentX(ParameterBrowserPanel.ALIGNMENT);
-            JLabel label = new JLabel("Creator:");
+            JLabel label = new JLabel("Unit-Type:");
             label.setFont(label.getFont().deriveFont(10f));
 			creatorPanel.add(label);
 
@@ -160,13 +168,13 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 			if (schedulableFiringModelCreator == null) {
 				FiringModelCreator firingModelCreator2 = getFiringModelCreator();
 				if (firingModelCreator2 != null) {
-					firingModelCreator2.setName("Creator parameters");
+					firingModelCreator2.setName("Unit parameters");
 					creatorPanel = new ParameterBrowserPanel(
 							firingModelCreator2, false);
 				} else
 					creatorPanel = null;
 			} else {
-				schedulableFiringModelCreator.setName("Creator parameters");
+				schedulableFiringModelCreator.setName("Unit parameters");
 				creatorPanel = new ParameterBrowserPanel(
 						schedulableFiringModelCreator, false);
 			}
@@ -296,7 +304,7 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 		creatorList.addAll(Arrays
 				.asList(SchedulableFiringModelCreator.FiringModelType.class
 						.getEnumConstants()));
-		firingModelCreatorCounter = firingModelCreatorTypes.length;
+//		firingModelCreatorCounter = firingModelCreatorTypes.length;
 	}
 
 	@Override
@@ -310,11 +318,13 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 
 	public synchronized void setFiringModelCreator(
 			SchedulableFiringModelCreator creator) {
+		if (this.schedulableFiringModelCreator != null)
+			this.schedulableFiringModelCreator.getSupport().removePropertyChangeListener(creatorChangeListener);
 		this.schedulableFiringModelCreator = creator;
 		super.setFiringModelCreator(null);
-		if (map != null) {
-			map.buildUnits();
-		}
+		if (this.schedulableFiringModelCreator != null)
+			this.schedulableFiringModelCreator.getSupport().addPropertyChangeListener(creatorChangeListener);
+		buildUnits();
 	}
 
 	public void setFiringModelMap(FiringModelMap map) {
