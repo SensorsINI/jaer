@@ -109,7 +109,7 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
         setPropertyTooltip("resetOnLoop", "Resets on loop in Playback of file");
     }
 
-    protected boolean displayNeuronWeightMean = getPrefs().getBoolean("StdpFeatureLearningI.displayNeuronWeightMean", false);
+    protected boolean displayNeuronWeightMean = getPrefs().getBoolean("StdpFeatureLearningI.displayNeuronWeightMean", true);
     {
         setPropertyTooltip("displayNeuronWeightMean", "Displays each Neurons weight matrix mean");
     }
@@ -124,10 +124,22 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
         setPropertyTooltip("fireMaxOnlyOnceOnSpike", "Input spike can only trigger at most one neuron to fire");
     }
 
-    protected boolean displayCombinedPolarity = getPrefs().getBoolean("StdpFeatureLearningI.displayCombinedPolarity", false);
+    protected boolean displayCombinedPolarity = getPrefs().getBoolean("StdpFeatureLearningI.displayCombinedPolarity", true);
     {
         setPropertyTooltip("displayCombinedPolarity", "Display Combined Polarities in Neuron Weight Matrix");
     }
+    
+    protected boolean neuronFireIndicator = getPrefs().getBoolean("StdpFeatureLearningI.neuronFireIndicator", false);
+    {
+        setPropertyTooltip("neuronFireIndicator", "Draw a box around firing neuron");
+    }
+    
+    protected boolean neuronFireHistogram = getPrefs().getBoolean("StdpFeatureLearningI.neuronFireHistogram", true);
+    {
+        setPropertyTooltip("neuronFireHistogram", "Draw a box around firing neuron with color corresponding to number of times its fired");
+    }
+    
+    
     
     // Input
     int xPixels;        // Number of pixels in x direction for input
@@ -147,7 +159,9 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
     private int t0;                         // Timestamp at which neurons are over lateral inhibition
     private int nextNeuronToUpdate;         // Helps indicates neuron in which to start update, is generally neuron next to one which fired last
     private boolean fireInhibitor;          // Inhibits all other neurons from firing 
-
+    private boolean[] neuronFire;           // Indicates which neurons fire for a given time stamp
+    private int tLoopOffset;                // time offset for looped playback so that time doesn't rewind when looping a recording
+            
     // Display Variables 
     GLU glu = null;                 // OpenGL Utilities
     JFrame neuronFrame = null;      // Frame displaying neuron weight matrix
@@ -184,11 +198,14 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
         t0 = 0;
         nextNeuronToUpdate = 0;
         fireInhibitor = false;
-                
+        neuronFire = new boolean[neuronsL1];                
+        tLoopOffset = 0;
+
         Random r = new Random(); // Used to generate random number for initial synapse weight
         for (int n=0; n<neuronsL1; n++) {
             neuronPotential[n] = 0;
             neuronFireTiming[n] = 0;
+            neuronFire[n] = false;
             for (int p = 0; p<numPolarities; p++) {
                 for (int x=0; x<xPixels; x++) {
                     for (int y=0; y<yPixels; y++) {
@@ -307,6 +324,11 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
         checkNeuronFrame();
         neuronCanvas.repaint();
 
+        // Reset neuronFire array
+        // OPTIMIZE THIS?
+        for (int n=0; n<neuronsL1; n++)
+            neuronFire[n] = false;
+        
         // Output Filtered Events
         // NOTE: If subsample is enabled, out will include subsampled events but address has not been modified 
         //       This should only matter when recording out from this filter, which should not be important
@@ -318,7 +340,7 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
      * @param e Polarity Events which are considered input spikes into the neurons
      */
     private void applySTDP(PolarityEvent e) {
-        int ts = e.timestamp;
+        int ts = e.timestamp + tLoopOffset;
         int x = e.x - xStart;
         int y = e.y - yStart;
         int polarity = e.getType();
@@ -327,22 +349,28 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
             // Update all Neuron Integration states
             for (int nIdx=0; nIdx<neuronsL1; nIdx++) {
                 // Start update from neuron next to the one that fired last
+                // OPTIMIZE THIS
                 int n = (nextNeuronToUpdate + nIdx) % neuronsL1;
                 // Make sure neuron is not in its refractory period
                 if (ts >= neuronFireTiming[n]+tRefrac) {
-                    boolean fire = updateNeuronIntegrationState(n, ts, polarity, x, y);
+                    boolean potentialAboveThres = updateNeuronIntegrationState(n, ts, polarity, x, y);
                     // Only update synapses if fireInhibitor is disabled
                     // fireInhibitor will only be enabled if fireMaxOnlyOnceOnSpike is on 
                     // and a neuron has already fired for the given input spike / event
-                    if (fireInhibitor == false)
+                    if (fireInhibitor == false) 
                         // If Neuron Fires Then 
-                        if (fire == true) {
+                        if (potentialAboveThres == true) {
+                            // Indicate that neuron has fired
+                            // OPTIMIZE THIS
+                            neuronFire[n] = true;
                             // Update synapse weights of these neurons
                             updateSynapseWeights(n, ts);
                             // Inhibit all neurons
                             t0 = ts + tInhibit;
                             // Update neuron fire timing maps
                             neuronFireTiming[n] = ts;
+                            // Update which neuron to start updating on next spike
+                            nextNeuronToUpdate++;
                             if (fireMaxOnlyOnceOnSpike == true) 
                                 fireInhibitor = true;
                         } // END IF - Fire 
@@ -353,7 +381,6 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
         fireInhibitor = false;
         // Update pixel spike timing maps
         pixelSpikeTiming[polarity][x][y] = ts;
-        nextNeuronToUpdate++;
     } // END METHOD
     
     /**
@@ -367,7 +394,7 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
      */
     private boolean updateNeuronIntegrationState(int neuron, int ts, int polarity, int x, int y) {
         // Neuron Update equation
-        double temp = - (ts - neuronSpikeTiming[neuron]) / tauLeak;
+        double temp = - (ts - neuronSpikeTiming[neuron]) / (double) tauLeak;
         neuronPotential[neuron] = neuronPotential[neuron] * (float) Math.exp(temp) + synapseWeights[neuron][polarity][x][y];  
         neuronSpikeTiming[neuron] = ts;
         // If updated potential is above firing threshold, then fire and reset
@@ -409,7 +436,7 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
                     if (ts-pixelSpikeTiming[p][x][y]<=tLTP) {
                         synapseWeights[neuron][p][x][y] = synapseWeights[neuron][p][x][y] + 
                                 alphaPlus * (float) Math.exp(-betaPlus * 
-                                (synapseWeights[neuron][p][x][y] - wMin) / (wMax - wMin));
+                                (synapseWeights[neuron][p][x][y] - wMin) / (double) (wMax - wMin));
                         // Cut off at wMax
                         if (synapseWeights[neuron][p][x][y] > wMax) 
                             synapseWeights[neuron][p][x][y] = wMax;
@@ -417,7 +444,7 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
                     } else {
                         synapseWeights[neuron][p][x][y] = synapseWeights[neuron][p][x][y] - 
                                 alphaMinus * (float) Math.exp(-betaMinus * 
-                                (wMax - synapseWeights[neuron][p][x][y]) / (wMax - wMin));
+                                (wMax - synapseWeights[neuron][p][x][y]) / (double) (wMax - wMin));
                         // Cut off at wMin
                         if (synapseWeights[neuron][p][x][y] < wMin) 
                             synapseWeights[neuron][p][x][y] = wMin;
@@ -465,7 +492,7 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
                 // Prepare drawing canvas
                 int padding = 5;
                 int neuronsPerRow = 8;
-                int neuronsPerColumn = (int) Math.ceil((double)neuronsL1/(double)neuronsPerRow);
+                int neuronsPerColumn = (int) Math.ceil(neuronsL1/(double)neuronsPerRow);
                 
                 // Draw in canvas
                 GL gl = drawable.getGL();
@@ -486,15 +513,17 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
                             for (int y=0; y<yPixels; y++) {
                                 // Either Combines polarities into single pixel or separates them into ON and OFF
                                 if (displayCombinedPolarity == true && p==0) {
-                                    float wON = (synapseWeights[n][0][x][y] - wMin) / (wMax - wMin);
-                                    float wOFF = (synapseWeights[n][1][x][y] - wMin) / (wMax - wMin);
+                                    // OPTIMIZE THIS
+                                    float wON = (synapseWeights[n][0][x][y] - wMin) / (float) (wMax - wMin);
+                                    float wOFF = (synapseWeights[n][1][x][y] - wMin) / (float) (wMax - wMin);
                                     //float wCombined = (wON + wOFF) / 2;
                                     //gl.glColor3f(wON, wCombined, wOFF);
                                     gl.glColor3f(wON, 0, wOFF);
                                     gl.glRectf(xOffset+x, yOffset+y + p*yPixels, xOffset+x + 1, yOffset+y + p*yPixels + 1);
                                 } else if (displayCombinedPolarity == false) {
                                     // Normalized weight for synapse betyween wMin and wMax
-                                    float w = (synapseWeights[n][p][x][y] - wMin) / (wMax - wMin);
+                                    float w = (synapseWeights[n][p][x][y] - wMin) / (float) (wMax - wMin);
+                                    // OPTIMIZE THIS
                                     if (p==0) 
                                         gl.glColor3f(w, w, 0);
                                     else  
@@ -504,14 +533,50 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
                             } // END LOOP - Y
                         } // END LOOP - X
                     } // END LOOP - Polarity
+                    
                     if (displayNeuronWeightMean == true) {
                         final int font = GLUT.BITMAP_HELVETICA_12;
                         GLUT glut = chip.getCanvas().getGlut();
                         gl.glColor3f(1, 1, 1);
                         gl.glRasterPos3f(xOffset, yOffset, 0);
                         // Neuron info
-                        glut.glutBitmapString(font, String.format("%.2f", getNeuronMeanWeight(n)));
+                        //glut.glutBitmapString(font, String.format("%.2f", getNeuronMeanWeight(n)));
+                        glut.glutBitmapString(font, String.format("%.2f %.2f %.2f %.2f", 
+                                getNeuronMeanWeight(n), getNeuronSTDWeight(n), getNeuronMinWeight(n), getNeuronMaxWeight(n)));
                     }
+                    
+//                    // Draw Box around firing neuron
+//                    if (neuronFireHistogram == true) {
+//                        if (neuronFire[n] == true) {
+//                            gl.glPushMatrix();
+//                            gl.glLineWidth(1f);
+//                            gl.glBegin(GL.GL_LINE_LOOP);
+//                            gl.glColor3f(0.25f,0.5f,0.25f);
+//                            gl.glVertex2f(xOffset,yOffset);
+//                            gl.glVertex2f(xOffset,yOffset+yPixels*2);
+//                            gl.glVertex2f(xOffset+xPixels,yOffset+yPixels*2);
+//                            gl.glVertex2f(xOffset,yOffset+yPixels*2);
+//                            gl.glEnd();
+//                            gl.glPopMatrix();
+//                        }
+//                    }
+
+                    // Draw Box around firing neuron
+                    if (neuronFireIndicator == true) {
+                        if (neuronFire[n] == true) {
+                            gl.glPushMatrix();
+                            gl.glLineWidth(1f);
+                            gl.glBegin(GL.GL_LINE_LOOP);
+                            gl.glColor3f(0.25f,0.5f,0.25f);
+                            gl.glVertex2f(xOffset,yOffset);
+                            gl.glVertex2f(xOffset,yOffset+yPixels*2);
+                            gl.glVertex2f(xOffset+xPixels,yOffset+yPixels*2);
+                            gl.glVertex2f(xOffset,yOffset+yPixels*2);
+                            gl.glEnd();
+                            gl.glPopMatrix();
+                        }
+                    }
+                
                     // Adjust x and y Offsets
                     xOffset += xPixels+padding; 
                     if (n%neuronsPerRow == neuronsPerRow-1) {
@@ -562,6 +627,37 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
                 for (int y=0; y<yPixels; y++)
                     mean += synapseWeights[neuron][p][x][y];
         return mean/(numPolarities*xPixels*yPixels);
+    }
+                    
+    public float getNeuronSTDWeight(int neuron) {
+        float mean = getNeuronMeanWeight(neuron);
+        float var = 0;
+        for (int p=0; p<numPolarities; p++)
+            for (int x=0; x<xPixels; x++)
+                for (int y=0; y<yPixels; y++)
+                    var += (mean-synapseWeights[neuron][p][x][y])*(mean-synapseWeights[neuron][p][x][y]);
+        double std = Math.sqrt(var/(double)(numPolarities*xPixels*yPixels));
+        return (float) std;
+    }
+                    
+    public float getNeuronMinWeight(int neuron) {
+        float min = synapseWeights[neuron][0][0][0];
+        for (int p=0; p<numPolarities; p++)
+            for (int x=0; x<xPixels; x++)
+                for (int y=0; y<yPixels; y++)
+                    if (min > synapseWeights[neuron][p][x][y]) 
+                        min = synapseWeights[neuron][p][x][y];
+        return min;
+    }
+                    
+    public float getNeuronMaxWeight(int neuron) {
+        float max = synapseWeights[neuron][0][0][0];
+        for (int p=0; p<numPolarities; p++)
+            for (int x=0; x<xPixels; x++)
+                for (int y=0; y<yPixels; y++)
+                    if (max < synapseWeights[neuron][p][x][y]) 
+                        max = synapseWeights[neuron][p][x][y];
+        return max;
     }
                     
     public int getFireThres() {
@@ -811,6 +907,22 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
         this.displayCombinedPolarity = displayCombinedPolarity;
     }
     // END displayCombinedPolarity
+
+    public boolean isNeuronFireHistogram() {
+        return neuronFireHistogram;
+    }
+    synchronized public void setNeuronFireHistogram(boolean neuronFireHistogram) {
+        this.neuronFireHistogram = neuronFireHistogram;
+    }
+    // END displayCombinedPolarity
+
+    public boolean isNeuronFireIndicator() {
+        return neuronFireIndicator;
+    }
+    synchronized public void setNeuronFireIndicator(boolean neuronFireIndicator) {
+        this.neuronFireIndicator = neuronFireIndicator;
+    }
+    // END neuronFireIndicator
 
 } // END CLASS
 
