@@ -34,8 +34,9 @@ public class IntegrateAndFire extends FiringModel {
 
 
 		public void setThreshold(float threshold) {
-			getSupport().firePropertyChange("threshold", this.threshold, threshold);
+			float before = this.threshold;
 			this.threshold = threshold;
+			getSupport().firePropertyChange("threshold", before, threshold);
 		}
 
 

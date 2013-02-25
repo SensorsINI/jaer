@@ -21,7 +21,6 @@ import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelCreator.FiringModelType;
-import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap.FiringModelMapCustomControls;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterBrowserPanel;
 
 /**
@@ -36,6 +35,7 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 	/**
 	 * 
 	 */
+	@SuppressWarnings("unused")
 	private static final long serialVersionUID = 3135959582771085761L;
 	final ArrayList<Object> creatorList = new ArrayList<Object>();
 //	private int firingModelCreatorCounter;
@@ -43,7 +43,12 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 	private PropertyChangeListener creatorChangeListener = new PropertyChangeListener() {
 		@Override
 		public void propertyChange(PropertyChangeEvent e) {
-			buildUnits();
+			SpatioTemporalFusion stf = SpatioTemporalFusion.getInstance(SchedulableWrapperMap.this);
+			if (stf != null) {
+				synchronized (stf.getFilteringLock()) {
+					buildUnits();
+				}
+			}
 		}
 	};
 	
@@ -66,7 +71,7 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 		protected int getCreatorIndex() {
 			// super stupid and slow way to find out which entry in the Combo box should be selected. Any other ideas?
 			FiringModelCreator fmc = getFiringModelCreator();
-			SchedulableFiringModelCreator sfmc = getFiringModelMapCreator();
+			SchedulableFiringModelCreator sfmc = getSchedulableFiringModelCreator();
 			Class<?> c;
 			if (sfmc != null) {
 				c = sfmc.getClass();
@@ -99,6 +104,7 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 			creatorPanel.add(label);
 
 
+			@SuppressWarnings({ "unchecked", "rawtypes" })
 			final JComboBox creatorComboBox = new JComboBox(creatorList.toArray());
 			getSupport().addPropertyChangeListener("firingModelCreator", new PropertyChangeListener() {
 				@Override
@@ -207,6 +213,7 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 		/**
 		 * 
 		 */
+		@SuppressWarnings("unused")
 		private static final long serialVersionUID = -3674544035563757031L;
 
 		SchedulableWrapperFiringModelCreator(Preferences parentPrefs,
@@ -260,14 +267,15 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 	public SchedulableWrapperMap(int sizeX, int sizeY,
 			SignalHandler signalHandler, Preferences prefs) {
 		this(sizeX, sizeY, signalHandler, new ArrayFiringModelMap(sizeX, sizeY,
-				null, prefs.node("internalMap")), prefs);
+				null, (prefs != null)?prefs.node("internalMap"):null), prefs);
 
 	}
 
-	public SchedulableFiringModelCreator getFiringModelMapCreator() {
+	public SchedulableFiringModelCreator getSchedulableFiringModelCreator() {
 		return schedulableFiringModelCreator;
 	}
 
+	@SuppressWarnings("unused")
 	public void setFiringModelCreator(Object descriptor) {
 		getSupport().firePropertyChange("firingModelCreator", "unknown", descriptor.toString());
 		if (descriptor == null || (descriptor.equals("none") || descriptor.equals("null"))) {
@@ -311,9 +319,7 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 	public synchronized void setFiringModelCreator(FiringModelCreator creator) {
 		this.schedulableFiringModelCreator = null;
 		super.setFiringModelCreator(creator);
-		if (map != null) {
-			map.buildUnits();
-		}
+		buildUnits();
 	}
 
 	public synchronized void setFiringModelCreator(
@@ -322,6 +328,8 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 			this.schedulableFiringModelCreator.getSupport().removePropertyChangeListener(creatorChangeListener);
 		this.schedulableFiringModelCreator = creator;
 		super.setFiringModelCreator(null);
+		if (myControls != null)
+			((SchedulableWrapperMapCustomControls)myControls).creatorChanged();
 		if (this.schedulableFiringModelCreator != null)
 			this.schedulableFiringModelCreator.getSupport().addPropertyChangeListener(creatorChangeListener);
 		buildUnits();
@@ -332,7 +340,7 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 		if (map != null) {
 			map.setFiringModelCreator(myCreatorProxy);
 			map.changeSize(sizeX, sizeY);
-			map.buildUnits();
+			buildUnits();
 		}
 	}
 
@@ -374,6 +382,7 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 
 	@Override
 	public void buildUnits() {
+		clearHeap();
 		if (map != null)
 			map.buildUnits();
 	}
@@ -390,6 +399,12 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 	public void restoreParameters() {
 		super.restoreParameters();
 		setFiringModelCreator(getPrefs().get("creator-type", "none"));
+		if (schedulableFiringModelCreator != null) {
+			schedulableFiringModelCreator.restoreParameters();
+		}
+		else if (getFiringModelCreator() != null) {
+			getFiringModelCreator().restoreParameters();
+		}
 	}
 
 	@Override

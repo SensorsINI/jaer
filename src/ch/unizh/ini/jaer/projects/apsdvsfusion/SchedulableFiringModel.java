@@ -9,7 +9,7 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
  */
 public abstract class SchedulableFiringModel extends FiringModel {
 	final DynamicHeap<PostponedFireEvent>.Entry heapEntry;
-	final PostponedFireEvent scheduledEvent;
+	public final PostponedFireEvent scheduledEvent;
 	
 	public SchedulableFiringModel(int x, int y, SchedulableFiringModelMap map) {
 		super(x,y,map);

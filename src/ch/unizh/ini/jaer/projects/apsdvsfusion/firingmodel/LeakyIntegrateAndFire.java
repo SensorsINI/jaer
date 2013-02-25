@@ -112,8 +112,9 @@ public class LeakyIntegrateAndFire extends FiringModel {
 		}
 
 		public void setThreshold(float threshold) {
-			getSupport().firePropertyChange("threshold", this.threshold, threshold);
+			float before = this.threshold;
 			this.threshold = threshold;
+			getSupport().firePropertyChange("threshold", before, threshold);
 		}
 
 		public float getTau() {
@@ -121,8 +122,9 @@ public class LeakyIntegrateAndFire extends FiringModel {
 		}
 
 		public void setTau(float tau) {
-			getSupport().firePropertyChange("tau", this.tau, tau);
+			float before = this.tau;
 			this.tau = tau;
+			getSupport().firePropertyChange("tau", before, tau);
 		}
 
 		public int getRefractoryTime() {
@@ -130,8 +132,9 @@ public class LeakyIntegrateAndFire extends FiringModel {
 		}
 
 		public void setRefractoryTime(int refractoryTime) {
-			getSupport().firePropertyChange("refractoryTime", this.refractoryTime, refractoryTime);
+			int before = this.refractoryTime;
 			this.refractoryTime = refractoryTime;
+			getSupport().firePropertyChange("refractoryTime", before, refractoryTime);
 		}
 		
 	}

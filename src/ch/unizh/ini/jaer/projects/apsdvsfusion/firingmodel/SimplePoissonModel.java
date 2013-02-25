@@ -9,6 +9,7 @@ import java.util.prefs.Preferences;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SchedulableFiringModel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SchedulableFiringModelCreator;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SchedulableFiringModelMap;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.SchedulableWrapperMap;
 
 /**
  * @author Dennis
@@ -171,8 +172,8 @@ public class SimplePoissonModel extends SchedulableFiringModel {
 
 	public static class Creator extends SchedulableFiringModelCreator {
 		private float timeConstant = 1e7f;
-		private float maxSpikesPerSecond = 100f;
-		private float lambda = 1.0f/40000f;
+		private float maxSpikesPerSecond = 50f;
+//		private float lambda = maxSpikesPerSecond / 2e-6f;
 		private boolean negativeSpikesOn = false;
 
 		public Creator(Preferences prefs) {
@@ -184,7 +185,7 @@ public class SimplePoissonModel extends SchedulableFiringModel {
 				SchedulableFiringModelMap map) {
 			SimplePoissonModel simplePoissonModel = new SimplePoissonModel(x, y, map);
 			simplePoissonModel.setTimeConstant(timeConstant);
-			simplePoissonModel.setLambda(lambda);
+			simplePoissonModel.setLambda(maxSpikesPerSecond / 2e6f);
 			simplePoissonModel.setNegativeSpikesOn(negativeSpikesOn);
 			return simplePoissonModel;
 		}
@@ -192,12 +193,13 @@ public class SimplePoissonModel extends SchedulableFiringModel {
 			return timeConstant;
 		}
 		public void setTimeConstant(float timeConstant) {
-			getSupport().firePropertyChange("timeConstant", this.timeConstant, timeConstant);
+			float before = this.timeConstant;
 			this.timeConstant = timeConstant;
+			getSupport().firePropertyChange("timeConstant", before, timeConstant);
 		}
-		public float getLambda() {
-			return lambda;
-		}
+//		public float getLambda() {
+//			return lambda;
+//		}
 //		public void setLambda(float lambda) {
 //			getSupport().firePropertyChange("lambda", this.lambda, lambda);
 //			this.lambda = lambda;
@@ -206,16 +208,19 @@ public class SimplePoissonModel extends SchedulableFiringModel {
 			return negativeSpikesOn;
 		}
 		public void setNegativeSpikesOn(boolean negativeSpikesOn) {
-			getSupport().firePropertyChange("negativeSpikesOn", this.negativeSpikesOn, negativeSpikesOn);
+			boolean before = this.negativeSpikesOn;
 			this.negativeSpikesOn = negativeSpikesOn;
+			getSupport().firePropertyChange("negativeSpikesOn", before, negativeSpikesOn);
 		}
 
 		/**
 		 * @param maxSpikesPerSecond the maxSpikesPerSecond to set
 		 */
 		public void setMaxSpikesPerSecond(float maxSpikesPerSecond) {
-			getSupport().firePropertyChange("maxSpikesPerSecond", this.maxSpikesPerSecond, maxSpikesPerSecond);
+			float before = this.maxSpikesPerSecond;
 			this.maxSpikesPerSecond = maxSpikesPerSecond;
+			getSupport().firePropertyChange("maxSpikesPerSecond", before, maxSpikesPerSecond);
+//			this.lambda = maxSpikesPerSecond / 2e-6f;
 		}
 
 		/**
@@ -230,5 +235,20 @@ public class SimplePoissonModel extends SchedulableFiringModel {
 	public static SchedulableFiringModelCreator getCreator(Preferences prefs) {
 		return new Creator(prefs);
 	}
+//	public static void main(String[] args) {
+//		SchedulableWrapperMap map = new SchedulableWrapperMap(100, 100, null, null);
+//		SimplePoissonModel.Creator creator = new SimplePoissonModel.Creator(null);
+//		creator.setMaxSpikesPerSecond(100);
+//		SchedulableFiringModel m = creator.createUnit(0, 0, map);
+//		m.receiveSpike(2.0, 0);
+//		int avg = 0;
+//		for (int i = 0; i < 100000; i++) {
+//			m.receiveSpike(0.0, 0);
+//			avg += m.scheduledEvent.getFireTime();
+////			System.out.println(m.scheduledEvent.getFireTime());
+//		}
+//		avg /= 100000;
+//		System.out.println(avg);
+//	}
 
 }

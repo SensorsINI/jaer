@@ -88,7 +88,8 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		public STFParameterContainer(Preferences prefs) {
 			super("Maps", prefs);
 			customPanel.setLayout(new GridBagLayout());
-//			customPanel.setLayout(new BoxLayout(customPanel, BoxLayout.Y_AXIS));
+			fillPanel();
+			//			customPanel.setLayout(new BoxLayout(customPanel, BoxLayout.Y_AXIS));
 		}
 
 		public void fillPanel() {
@@ -114,7 +115,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		}
 		
 		public void mapAdded() {
-			if (panelCounter < firingModelMaps.size()) {
+			if (panelCounter < firingModelMaps.size()-2) {
 				ParameterBrowserPanel newMapPanel = new ParameterBrowserPanel(firingModelMaps.get(firingModelMaps.size()-1));
 				newMapPanel.toggleSelection();
 				customPanel.add(newMapPanel, gbc);
@@ -141,7 +142,6 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		
 		@Override
 		public JComponent createCustomControls() {
-			fillPanel();
 			return customPanel;
 		}
 	}
@@ -387,13 +387,13 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	//				}
 	//				inputKernel.apply(be.x, be.y, be.timestamp, ((PolarityEvent)be).polarity, firingModelMap, spikeHandler);
 				}
+				for (FiringModelMap map : firingModelMaps) {
+					if (map instanceof SchedulableFiringModelMap)
+						((SchedulableFiringModelMap)map).processScheduledEvents(be.getTimestamp());
+				}
 			}
 	//		if (expressionBasedIKUserInterface != null)
 	//			expressionBasedIKUserInterface.processUntil(maxTime);
-			for (FiringModelMap map : firingModelMaps) {
-				if (map instanceof SchedulableFiringModelMap)
-					((SchedulableFiringModelMap)map).processScheduledEvents(maxTime);
-			}
 			if (filterEvents)
 				return out;
 			else 
@@ -525,9 +525,9 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		}
 		int mapCount = getPrefs().getInt("mapCount", 0);
 		for (int i = 0; i < mapCount; i++) {
-    		int mapping = getPrefs().getInt("mapIndexMappings"+(mapIndexMappings.size()-1), i);
+    		int mapping = getPrefs().getInt("mapIndexMappings"+(mapIndexMappings.size()), i);
 			
-			SchedulableWrapperMap newMap = new SchedulableWrapperMap(128, 128, null, getPrefs().node("map"+(firingModelMaps.size() - 2)));
+			SchedulableWrapperMap newMap = new SchedulableWrapperMap(128, 128, null, getPrefs().node("map"+mapping));
 			
 			addMap(newMap, mapping);
 		}

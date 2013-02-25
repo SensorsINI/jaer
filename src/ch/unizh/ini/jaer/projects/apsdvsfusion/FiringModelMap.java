@@ -50,7 +50,12 @@ public abstract class FiringModelMap extends ParameterContainer {
 	private PropertyChangeListener creatorChangeListener = new PropertyChangeListener() {
 		@Override
 		public void propertyChange(PropertyChangeEvent e) {
-			buildUnits();
+			SpatioTemporalFusion stf = SpatioTemporalFusion.getInstance(FiringModelMap.this);
+			if (stf != null) {
+				synchronized (stf.getFilteringLock()) {
+					buildUnits();
+				}
+			}
 		}
 	};
 	
@@ -279,9 +284,9 @@ public abstract class FiringModelMap extends ParameterContainer {
 	
 	public abstract void buildUnits(); 
 
-	public void doBuild_Units() {
-		buildUnits();
-	}
+//	public void doBuild_Units() {
+//		buildUnits();
+//	}
 	
 	public SignalHandlerSet getSignalHandler() {
 		return signalHandlerSet;
@@ -384,7 +389,7 @@ public abstract class FiringModelMap extends ParameterContainer {
     public void restoreKernels() {
     	int kernelCount = getPrefs().getInt("kernelCount",0);
     	for (int i = 0; i < kernelCount; i++) {
-    		int mapping = getPrefs().getInt("indexMappings"+(indexMappings.size()-1), i);
+    		int mapping = getPrefs().getInt("indexMappings"+(indexMappings.size()), i);
     		SpaceableExpressionBasedSpatialIK newKernel = 
     				new SpaceableExpressionBasedSpatialIK(7, 7, getPrefs().node("inputKernel"+mapping));
     		addKernel(newKernel,mapping);
