@@ -35,7 +35,6 @@ import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.AEViewer;
-import net.sf.jaer.graphics.AEViewer.PlayMode;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
 
@@ -110,9 +109,9 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
         setPropertyTooltip("betaMinus", "Weight decrement damping factor");
     }
 
-    protected boolean resetOnLoop = getPrefs().getBoolean("StdpFeatureLearningI.resetOnLoop", true);
+    protected boolean keepWeightsOnRewind = getPrefs().getBoolean("StdpFeatureLearningI.keepWeightsOnRewind", true);
     {
-        setPropertyTooltip("resetOnLoop", "Resets on loop in Playback of file");
+        setPropertyTooltip("keepWeightsOnRewind", "Resets everything on loop in Playback of file except for synapse weights");
     }
 
     protected boolean displayNeuronStatistics = getPrefs().getBoolean("StdpFeatureLearningI.displayNeuronStatistics", true);
@@ -135,22 +134,17 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
         setPropertyTooltip("displayCombinedPolarity", "Display Combined Polarities in Neuron Weight Matrix");
     }
     
-//    protected boolean neuronFireIndicator = getPrefs().getBoolean("StdpFeatureLearningI.neuronFireIndicator", false);
-//    {
-//        setPropertyTooltip("neuronFireIndicator", "Draw a box around firing neuron");
-//    }
-//    
     protected boolean neuronFireHistogram = getPrefs().getBoolean("StdpFeatureLearningI.neuronFireHistogram", true);
     {
         setPropertyTooltip("neuronFireHistogram", "Draw a box around firing neuron with color corresponding to number of times its fired in given packet");
     }
     
     // Input
-    int xPixels;        // Number of pixels in x direction for input
-    int yPixels;        // Number of pixels in y direction for input
-    int xStart;         // Indicates x position of pixel (0,0)
-    int yStart;         // Indicates x position of pixel (0,0)
-    int numPolarities;  // Indicates total number of polarities of pixels
+    private int xPixels;        // Number of pixels in x direction for input
+    private int yPixels;        // Number of pixels in y direction for input
+    private int xStart;         // Indicates x position of pixel (0,0)
+    private int yStart;         // Indicates x position of pixel (0,0)
+    private int numPolarities;  // Indicates total number of polarities of pixels
 
     // Neurons
     private int neuronsL1;                  // Number of neurons pixels are projecting to - Layer 1
@@ -165,15 +159,16 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
     private boolean fireInhibitor;          // Inhibits all other neurons from firing 
     private int[] neuronFire;               // Indicates number of times a particular neuron has fired for a given time stamp or packet
     private int numNeuronFire;              // Indicates number of times the neurons have fired for a given time stamp or packet
-    private boolean ignoreRewind;           // Indicates number of times the neurons have fired for a given time stamp or packet
+    private boolean rewind = false;         // Indicates rewind in playback
             
     // Display Variables 
-    GLU glu = null;                 // OpenGL Utilities
-    JFrame neuronFrame = null;      // Frame displaying neuron weight matrix
-    GLCanvas neuronCanvas = null;   // Canvas on which neuronFrame is drawn
+    private GLU glu = null;                 // OpenGL Utilities
+    private JFrame neuronFrame = null;      // Frame displaying neuron weight matrix
+    private GLCanvas neuronCanvas = null;   // Canvas on which neuronFrame is drawn
 
-    boolean addedViewerPropertyChangeListener = false;
-    
+    // Listeners
+    private boolean viewerPropertyChangeListenerInit; // Indicates that listener for viewer changes has been initialized
+
     /** 
      * Constructor 
      * @param chip Called with AEChip properties
@@ -186,67 +181,75 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
 
     /**
      * Called on creation
-     * Initializes all the variables
+     * Initializes all 'final' size variables and declares arrays
+     * resetFilter call at end of method actually initializes all values
      */    
     @Override
     public void initFilter() {
-        xPixels = 16;
+        xPixels = 64;
         yPixels = xPixels;
         xStart = chip.getSizeX()/2 - xPixels/2;
         yStart = chip.getSizeY()/2 - yPixels/2;
         numPolarities = 2;
+        
         neuronsL1 = 48;
         neuronPotential = new float[neuronsL1];
         synapseWeights = new float[neuronsL1][numPolarities][xPixels][yPixels];
         pixelSpikeTiming = new int[numPolarities][xPixels][yPixels];
         neuronFireTiming = new int[neuronsL1];
         neuronSpikeTiming = new int[neuronsL1];
+        neuronFire = new int[neuronsL1];
+
+        viewerPropertyChangeListenerInit = false;
+        
+        resetFilter();
+    } // END METHOD
+
+    /**
+     * Called on filter reset which happens on creation of filter, on reset button press, and on rewind 
+     * Initializes all variables which aren't final to their default values
+     * Note that synapseWeights are either initialized to wInit paramaters or left as they were previously
+     */    
+    @Override
+    synchronized public void resetFilter() {
         neuronSpikeTimingInit = false;
         t0 = 0;
         nextNeuronToUpdate = 0;
         fireInhibitor = false;
-        neuronFire = new int[neuronsL1];
         numNeuronFire = 0;
-        ignoreRewind = false;
-        
-        
-        Random r = new Random(); // Used to generate random number for initial synapse weight
+
         for (int n=0; n<neuronsL1; n++) {
             neuronPotential[n] = 0;
             neuronFireTiming[n] = 0;
             neuronFire[n] = 0;
-            for (int p = 0; p<numPolarities; p++) {
-                for (int x=0; x<xPixels; x++) {
-                    for (int y=0; y<yPixels; y++) {
-                        if (n==0) 
-                            pixelSpikeTiming[p][x][y] = 0;
-                        // wInit is Gaussian distributed 
-                        double wInit = r.nextGaussian()*wInitSTD+wInitMean;
-                        if (wInit < wMin) 
+        } // END LOOP - Neurons
+        
+        for (int p=0; p<numPolarities; p++) 
+            for (int x=0; x<xPixels; x++) 
+                for (int y=0; y<yPixels; y++) 
+                    pixelSpikeTiming[p][x][y] = 0;
+        
+        // Keep current weights on rewind if keepWeightsOnRewind is enabled
+        // Otherwise initialize random weights according to parameters
+        if ((keepWeightsOnRewind == true && rewind == true) == false) {
+            Random r = new Random(); // Used to generate random number for initial synapse weight
+            for (int n=0; n<neuronsL1; n++) 
+                for (int p=0; p<numPolarities; p++) 
+                    for (int x=0; x<xPixels; x++) 
+                        for (int y=0; y<yPixels; y++) {
+                            // wInit is Gaussian distributed 
+                            double wInit = r.nextGaussian()*wInitSTD+wInitMean;
+                            if (wInit < wMin) 
                             wInit = wMin;
-                        if (wInit > wMax) 
-                            wInit = wMax;
-                        synapseWeights[n][p][x][y] = (float) wInit;
-                    } // END LOOP - yPixels
-                } // END LOOP - xPixels
-            } // END LOOP - polarities
-        } // END LOOP - neuronsL1
-    } // END METHOD
-
-    /**
-     * Called on filter reset
-     * If resetFilter is called because of loop in playback, then don't reset 
-     * biases unless resetOnLoop is enabled
-     */    
-    @Override
-    synchronized public void resetFilter() {
-        // FIX!!
-        if (ignoreRewind == true) {
-            neuronSpikeTimingInit = false;
-            ignoreRewind = false;
-        } else {
-            initFilter();
-        } // END IF
+                            if (wInit > wMax) 
+                                wInit = wMax;
+                            synapseWeights[n][p][x][y] = (float) wInit; 
+                        } // END LOOP - All synapses
+        } // END IF - Synapse Weight Initialization
+        
+        // Make sure rewind flag is turned off at end
+        if (rewind == true) 
+            rewind = false;
     } // END METHOD
 
     /**
@@ -283,28 +286,32 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
             initFilter();
     } // END METHOD
 
-    private void checkForRewindEvent() {
-        AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
-        if (player != null) {
-            AEFileInputStream in = (AEFileInputStream) (player.getAEInputStream());
-            if (in != null) {
-                in.getSupport().addPropertyChangeListener(this);
-                log.info("added ourselves for PropertyChangeEvents from " + in);
-            }
-        }
-    }
     /**
-     * Check for property changes coming from AEViwer and AEFileInputStream
-     * @param evt event coming from AEFileInputStream indicating rewind of playback
+     * Check for property changes coming from AEViewer and AEFileInputStream
+     * Every FileOpen create new FileInputStream listener which would detect when playback is looped 
+     * @param evt event coming from AEViewer or AEFileInputStream
      */
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getSource() instanceof AEFileInputStream) 
-            if (evt.getPropertyName().equals(AEInputStream.EVENT_REWIND)) 
-                if (resetOnLoop == false)
-                    ignoreRewind = true;
+        if (evt.getSource() instanceof AEFileInputStream) {
+            if (evt.getPropertyName().equals(AEInputStream.EVENT_REWIND)) { 
+                rewind = true;
+            } else if (evt.getPropertyName().equals(AEInputStream.EVENT_WRAPPED_TIME)) {
+                rewind = true;
+            } // END IF
+        } else if (evt.getSource() instanceof AEViewer) {
+            if (evt.getPropertyName().equals(AEViewer.EVENT_FILEOPEN)) { 
+                log.info("File Open");
+                AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
+                AEFileInputStream in = (AEFileInputStream) (player.getAEInputStream());
+                in.getSupport().addPropertyChangeListener(this);
+                // Treat FileOpen same as a rewind
+                rewind = true;
+                resetFilter();
+            } // END IF
+        } // END IF
+    } // END IF
 
-    }
     /** 
      * Annotation or drawing method
      * @param drawable OpenGL Rendering Object
@@ -346,21 +353,16 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
         // If necessary, pre filter input packet 
         if(enclosedFilter!=null) 
             in=enclosedFilter.filterPacket(in);
+        // Add listener to viewer which in turn will add listener to Input Files for control on rewind
+        if (viewerPropertyChangeListenerInit == false) {
+            chip.getAeViewer().addPropertyChangeListener(this);
+            chip.getAeViewer().getAePlayer().getSupport().addPropertyChangeListener(this); // TODO might be duplicated callback
+            viewerPropertyChangeListenerInit = true;
+        }
         // Set output package out contents to be same class as in
         checkOutputPacketEventType(in);
         // Pre allocated Output Event Iterator used to set final out package 
         OutputEventIterator outItr = out.outputIterator();
-
-        // TEST
-        if (!addedViewerPropertyChangeListener) {
-            if (chip.getAeViewer() != null) {
-                chip.getAeViewer().addPropertyChangeListener(this);
-                chip.getAeViewer().getAePlayer().getSupport().addPropertyChangeListener(this); // TODO might be duplicated callback
-                checkForRewindEvent();
-                addedViewerPropertyChangeListener = true;
-                
-            }
-        }
 
         // Event Iterator - Write only relevant events inside xPixels by yPixels window to out
         // Apply STDP Rule
@@ -373,7 +375,7 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
                 double subSampleByY = Math.log((double)chip.getSizeY()/yPixels)/Math.log(2); 
                 e.x = (short) ((e.x >>> (int) subSampleByX) + xStart);
                 e.y = (short) ((e.y >>> (int) subSampleByY) + yStart);
-            }
+            } // END IF
             if ((e.x >= xStart && e.x < xStart + xPixels && e.y >= yStart && e.y < yStart + yPixels)) {
                 // Assume that first ever event's timestamp is initial neuronSpikeTiming for all neurons
                 if (neuronSpikeTimingInit == false) {
@@ -589,12 +591,12 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
                         // Neuron info
                         gl.glRasterPos3f(xOffset, yOffset, 0);
                         glut.glutBitmapString(font, String.format("M %.2f", getNeuronMeanWeight(n)));
-                        gl.glRasterPos3f(xOffset, yOffset+4, 0);
-                        glut.glutBitmapString(font, String.format("S %.2f", getNeuronSTDWeight(n)));
-                        gl.glRasterPos3f(xOffset, yOffset+8, 0);
-                        glut.glutBitmapString(font, String.format("- %.2f", getNeuronMinWeight(n)));
-                        gl.glRasterPos3f(xOffset, yOffset+12, 0);
-                        glut.glutBitmapString(font, String.format("+ %.2f", getNeuronMaxWeight(n)));
+                        //gl.glRasterPos3f(xOffset, yOffset+4, 0);
+                        //glut.glutBitmapString(font, String.format("S %.2f", getNeuronSTDWeight(n)));
+                        //gl.glRasterPos3f(xOffset, yOffset+8, 0);
+                        //glut.glutBitmapString(font, String.format("- %.2f", getNeuronMinWeight(n)));
+                        //gl.glRasterPos3f(xOffset, yOffset+12, 0);
+                        //glut.glutBitmapString(font, String.format("+ %.2f", getNeuronMaxWeight(n)));
                     } // END IF 
                     
                     // Draw Box around firing neuron with color corresponding to 
@@ -925,13 +927,13 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
     }
     // END betaMinus
     
-    public boolean isResetOnLoop() {
-        return resetOnLoop;
+    public boolean isKeepWeightsOnRewind() {
+        return keepWeightsOnRewind;
     }
-    synchronized public void setResetOnLoop(boolean resetOnLoop) {
-        this.resetOnLoop = resetOnLoop;
+    synchronized public void setKeepWeightsOnRewind(boolean keepWeightsOnRewind) {
+        this.keepWeightsOnRewind = keepWeightsOnRewind;
     }
-    // END resetOnLoop
+    // END keepWeightsOnRewind
 
     public boolean isDisplayNeuronStatistics() {
         return displayNeuronStatistics;
@@ -973,15 +975,7 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
     }
     // END displayCombinedPolarity
 
-//    public boolean isNeuronFireIndicator() {
-//        return neuronFireIndicator;
-//    }
-//    synchronized public void setNeuronFireIndicator(boolean neuronFireIndicator) {
-//        this.neuronFireIndicator = neuronFireIndicator;
-//    }
-//    // END neuronFireIndicator
-
-} // END CLASS
+} // END CLASS - StdpFeatureLearningI
 
 
 
