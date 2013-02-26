@@ -24,7 +24,21 @@ public class AEInputStream implements Closeable {
 
     // TODO needs to be combined with AEFileInputStream so that AEFileInputStream extends AEInputStream
 
-    /** Property change event. */
+    /**
+     * Property change event. Listeners should check for events using these static String objects.
+     * <ul> 
+     * <li>EVENT_EOF end of input file or stream
+     * <li>EVENT_WRAPPED_TIME means timestamp has wrapped around 32-bit value
+     * <li>EVENT_POSITION means input stream position has changed (called on
+     * every packet) 
+     * <li>EVENT_REWIND means files has just rewound to start
+     * <li>EVENT_MARKSET means the mark has just been set on the stream for
+     * later possible rewind 
+     * <li>EVENT_MARKCLEARED means the mark was cleared
+     * <li>EVENT_INIT is called after initialization of the input stream,
+     * <li>EVENT_NON_MONOTONIC_TIMESTAMP a non-monotonic timestamp was detected
+     * </ul>
+     */
      public static final String EVENT_EOF="eof", EVENT_WRAPPED_TIME="wrappedTime", EVENT_POSITION="posiiton", EVENT_REWIND="rewind",
              EVENT_MARKSET="markset", EVENT_MARKCLEARED="markcleared", EVENT_INIT="init", EVENT_NON_MONOTONIC_TIMESTAMP="nonMonotonicTimestamp";
 
