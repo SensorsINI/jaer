@@ -93,7 +93,9 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 			updateConvolutionViewer();
 			getSupport().firePropertyChange("expressionString", this.expressionString, expressionString);
 			this.expressionString = expressionString;
-			SpatioTemporalFusion.getInstance(this).addExpressionString(expressionString);
+			final SpatioTemporalFusion stf = SpatioTemporalFusion.getInstance(this);
+			if (stf != null)
+				stf.addExpressionString(expressionString);
 		} catch (IllegalExpressionException e) {
 		}
 		}
@@ -116,6 +118,8 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 		float[][] newValues = new float[oldConvolutionValues.length][oldConvolutionValues[0].length];
 		try {
 			HashMap<String, Double> map = new HashMap<String, Double>();
+			float centerX = (width-1) / 2f;
+			float centerY = (height-1) / 2f;
 			for (int x = 0; x < width; x++) {
 				map.put("x", (double)(x - centerX));
 				for (int y = 0; y < height; y++) {

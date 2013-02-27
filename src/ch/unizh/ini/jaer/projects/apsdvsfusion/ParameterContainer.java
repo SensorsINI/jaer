@@ -125,9 +125,9 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
     
     private HashMap<String, SingleParameter<?>> setterMethods = new HashMap<String, SingleParameter<?>>();
 	
-	public ParameterContainer(String name, Preferences parentPrefs, String nodeName) {
-		this(name, parentPrefs.node(nodeName));
-	}
+//	public ParameterContainer(String name, Preferences parentPrefs, String nodeName) {
+//		this(name, parentPrefs.node(nodeName));
+//	}
 	public ParameterContainer(String name, Preferences prefs) {
 //	public ParameterContainer(String name, Preferences parentPrefs, String nodeName) {
 		this.name = name;

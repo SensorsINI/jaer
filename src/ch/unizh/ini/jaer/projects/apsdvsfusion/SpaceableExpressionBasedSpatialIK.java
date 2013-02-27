@@ -3,6 +3,7 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
+import java.awt.geom.Point2D;
 import java.util.prefs.Preferences;
 
 import net.sf.jaer.event.PolarityEvent.Polarity;
@@ -13,6 +14,9 @@ import net.sf.jaer.event.PolarityEvent.Polarity;
  */
 public class SpaceableExpressionBasedSpatialIK extends
 		ExpressionBasedSpatialInputKernel {
+	boolean outWidthBiggerThanInWidth = true, outHeightBiggerThanInHeight = true;
+	
+	boolean spacingAutomatic = true;
 	int spacingX = 1, spacingY = 1;
 	int kernelOffsetX = 0, kernelOffsetY = 0;
 //	int inputWidth = 1, inputHeight = 1, outputHeight = 1, outputWidth = 1;
@@ -33,6 +37,8 @@ public class SpaceableExpressionBasedSpatialIK extends
 //		setName("SpaceableExpressionBasedSpatialIK");
 //	}
 	
+	
+	
 	public synchronized void setInputOutputSizes(int inputWidth, int inputHeight, int outputWidth, int outputHeight) {
 		super.setInputSize(inputWidth, inputHeight);
 		super.setOutputSize(outputWidth, outputHeight);
@@ -42,6 +48,7 @@ public class SpaceableExpressionBasedSpatialIK extends
 
 	}
 
+
 	protected synchronized void inputSizeChanged(int oldWidth, int oldHeight, int newWidth, int newHeight) {
 		recomputeMappings();
 	}
@@ -50,15 +57,109 @@ public class SpaceableExpressionBasedSpatialIK extends
 		recomputeMappings();
 	}
 	
+	
+	/**
+	 * @return the spacingAutomatic
+	 */
+	public boolean isSpacingAutomatic() {
+		return spacingAutomatic;
+	}
 
+	/**
+	 * @param spacingAutomatic the spacingAutomatic to set
+	 */
+	public void setSpacingAutomatic(boolean spacingAutomatic) {
+		if (spacingAutomatic != this.spacingAutomatic) {
+			this.spacingAutomatic = spacingAutomatic;
+			getSupport().firePropertyChange("spacingAutomatic", spacingAutomatic, !spacingAutomatic);
+		}
+	}
+	
+	/**
+	 * @return the spacingX
+	 */
+	public int getSpacingX() {
+		return spacingX;
+	}
+
+	/**
+	 * @param spacingX the spacingX to set
+	 */
+	public void setSpacingX(int spacingX) {
+		int before = this.spacingX;
+		this.spacingX = spacingX;
+		recomputeMappings();
+		getSupport().firePropertyChange("spacingX", before, this.spacingX);
+	}
+
+	/**
+	 * @return the spacingY
+	 */
+	public int getSpacingY() {
+		return spacingY;
+	}
+
+	/**
+	 * @param spacingY the spacingY to set
+	 */
+	public void setSpacingY(int spacingY) {
+		int before = this.spacingY;
+		this.spacingY = spacingY;
+		recomputeMappings();
+		getSupport().firePropertyChange("spacingY", before, this.spacingY);
+	}
+
+	protected void computeSpacing(int inputWidth, int inputHeight, int outputWidth, int outputHeight) {
+		if (isSpacingAutomatic()) {
+			int before = spacingX;
+			spacingX = Math.max(1,inputWidth / outputWidth);
+			// make sure the input space is covered nicely, non-covered input should be smaller than non-covered output
+			if (inputWidth - outputWidth * spacingX > outputWidth * (spacingX+1) - inputWidth)
+				spacingX++;
+			if (spacingX != before)
+				getSupport().firePropertyChange("spacingX", before, spacingX);
+
+			// same for y:
+			before = spacingY;
+			spacingY = Math.max(1,inputHeight / outputHeight);
+			// make sure the input space is covered nicely, non-covered input should be smaller than non-covered output
+			if (inputHeight - outputHeight * spacingY > outputHeight * (spacingY+1) - inputHeight)
+				spacingX++;
+			if (spacingY != before)
+				getSupport().firePropertyChange("spacingY", before, spacingY);
+		
+		}
+	}
+	
 	@Override
 	protected void recomputeMappings() {
 		int outputWidth = getOutputWidth();
 		int outputHeight = getOutputHeight();
 		if (outputWidth <= 0) outputWidth = 1;
 		if (outputHeight <= 0) outputHeight = 1;
-		spacingX = Math.max(1,getInputWidth() / outputWidth);
-		int rest = getInputWidth() - ((outputWidth-1) * spacingX + 1);
+		int inputWidth = getInputWidth();
+		int inputHeight = getInputHeight();
+		if (inputWidth <= 0) inputWidth = 1;
+		if (inputHeight <= 0) inputHeight = 1;
+		
+		outWidthBiggerThanInWidth = outputWidth >= inputWidth;
+		outHeightBiggerThanInHeight = outputHeight >= inputHeight;
+		
+		// flip input and output sizes if output is bigger than input:
+		if (outWidthBiggerThanInWidth) {
+			int dummy = outputWidth;
+			outputWidth = inputWidth;
+			inputWidth = dummy;
+		}
+		if (outHeightBiggerThanInHeight) {
+			int dummy = outputHeight;
+			outputHeight = inputHeight;
+			inputHeight = dummy;
+		}
+		
+		computeSpacing(inputWidth, inputHeight, outputWidth, outputHeight);
+
+		int rest = inputWidth - ((outputWidth-1) * spacingX + 1);
 		int startX = rest / 2;
 		// which position of the input would be centered on the position -1 in
 		// the output?
@@ -69,12 +170,13 @@ public class SpaceableExpressionBasedSpatialIK extends
 				+ (spacingX * (outputWidth + 2));
 		
 		// now the same for y:
-		spacingY = Math.max(1,getInputHeight() / outputHeight);
-		rest = getInputHeight() - ((outputHeight-1) * spacingY + 1);
+		rest = inputHeight - ((outputHeight-1) * spacingY + 1);
 		int startY = rest / 2;
 		centeredOnMinusOne = -spacingY + startY;
 		kernelOffsetY = centerY + centeredOnMinusOne
 				+ (spacingY * (outputHeight + 2));
+		
+		
 	}
 	
 	
@@ -189,5 +291,34 @@ public class SpaceableExpressionBasedSpatialIK extends
 //		outputWidth = prefs.getInt(prefString+"outputWidth",outputWidth);
 //		outputHeight = prefs.getInt(prefString+"outputHeight",outputHeight);
 		super.loadPrefs(prefs, prefString);
+	}
+	public static void main(String[] args) {
+		SpaceableExpressionBasedSpatialIK k = new SpaceableExpressionBasedSpatialIK(4, 4, null);
+		final int[] pos = new int[2];
+		final FiringModel model = new FiringModel(0,0,null) {
+			@Override
+			public void reset() {
+			}
+			
+			@Override
+			public void receiveSpike(double value, int timeInUs) {
+				System.out.println("Signal "+value+" at ("+pos[0]+"/"+pos[1]+")");
+			}
+			
+		};
+		k.setOutputMap(new ArrayFiringModelMap(16,16,null,null) {
+			@Override
+			public FiringModel get(int x, int y) {
+				pos[0] = x; pos[1] = y;
+				return model;
+			}
+		});
+		k.setInputOutputSizes(35, 35, 16, 16);
+		k.setExpressionString("x + 1.5");
+		
+		k.signalAt(0, 0, 0, 1.0);
+		k.signalAt(1, 0, 0, 1.0);
+		k.signalAt(2, 0, 0, 1.0);
+		k.signalAt(3, 0, 0, 1.0);
 	}
 }

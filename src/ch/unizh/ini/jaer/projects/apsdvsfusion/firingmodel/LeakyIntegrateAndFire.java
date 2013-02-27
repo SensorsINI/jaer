@@ -255,9 +255,6 @@ public class LeakyIntegrateAndFire extends FiringModel {
 			}
 		};
 		FiringModelMap map = new FiringModelMap(1,1,spikeHandler, null) {
-			@Override 
-			public void reset() {
-			}
 			@Override
 			public FiringModel get(int x, int y) {
 				return null;

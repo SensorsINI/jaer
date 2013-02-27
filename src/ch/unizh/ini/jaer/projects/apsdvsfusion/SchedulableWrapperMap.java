@@ -216,9 +216,8 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 		@SuppressWarnings("unused")
 		private static final long serialVersionUID = -3674544035563757031L;
 
-		SchedulableWrapperFiringModelCreator(Preferences parentPrefs,
-				String nodeName) {
-			super("SchedulableWrapperFiringModel", parentPrefs, nodeName);
+		SchedulableWrapperFiringModelCreator(Preferences prefs) {
+			super("SchedulableWrapperFiringModel", prefs);
 			// final ArrayList<Object> creatorList = new ArrayList<Object>();
 
 		}
@@ -239,7 +238,7 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 	FiringModelMap map = null;
 	SchedulableFiringModelCreator schedulableFiringModelCreator = null;
 	SchedulableWrapperFiringModelCreator myCreatorProxy = new SchedulableWrapperFiringModelCreator(
-			getPrefs(), "creatorProxy");
+			getPrefs().node("creatorProxy"));
 
 //	/**
 //	 * @param sizeX
@@ -389,6 +388,7 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 
 	@Override
 	public void reset() {
+		super.reset();
 		clearHeap();
 		if (map != null)
 			map.reset();

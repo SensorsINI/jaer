@@ -85,6 +85,7 @@ public class ArrayFiringModelMap extends FiringModelMap {
 
 	@Override
 	public void reset() {
+		super.reset();
 		for (int x = 0; x < sizeX; x++) {
 			for (int y = 0; y < sizeY; y++) {
 				if (map[x][y] != null)

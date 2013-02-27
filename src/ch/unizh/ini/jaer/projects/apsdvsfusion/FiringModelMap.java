@@ -355,7 +355,10 @@ public abstract class FiringModelMap extends ParameterContainer {
 	}
 	
 	public abstract FiringModel get(int x, int y);
-	public abstract void reset();
+	public void reset() {
+		for (SignalTransformationKernel kernel : inputKernels) 
+			kernel.reset();
+	}
 	
 	private void addKernel(SignalTransformationKernel newKernel, int nodeIndex) {
 		if (newKernel != null) {

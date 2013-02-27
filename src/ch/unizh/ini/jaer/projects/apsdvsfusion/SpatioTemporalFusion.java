@@ -37,7 +37,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 
 	static ArrayList<SpatioTemporalFusion> runningInstances = new ArrayList<SpatioTemporalFusion>();
 	
-	static SpatioTemporalFusion getInstance(SignalTransformationKernel requestingKernel) {
+	static SpatioTemporalFusion getInstance(SignalHandler requestingKernel) {
 		if (runningInstances.size() == 0)
 			return null;
 		else {
@@ -54,6 +54,8 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	}
 	
 	ArrayList<String> usedExpressionStrings = new ArrayList<String>();
+	SpikeSoundSignalHandler spikeSoundSignalHandler;
+	
 	
 //	InputKernel inputKernel;
 //	FiringModelMap firingModelMap;
@@ -193,14 +195,11 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		spikingOutputViewerManager = new SpikingOutputViewerManager();
    		mapOutputViewer = new MapOutputViewer(this, spikingOutputViewerManager);
 
-   		
+   		spikeSoundSignalHandler = new SpikeSoundSignalHandler(this,"SpikeSound",getPrefs().node("spikesound"));
    		
 //		this.setFilterEnabled(false);
         setPropertyTooltip("grayLevels", "Number of displayed gray levels");
         this.onMap = new FiringModelMap(128,128, getPrefs().node("onMap")) {
-			@Override
-			public void reset() {
-			}
 			@Override
 			public FiringModel get(int x, int y) {
 				return null;
@@ -216,9 +215,6 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 			@Override
 			public FiringModel get(int x, int y) {
 				return null;
-			}
-			@Override
-			public void reset() {
 			}
 		};
 		onMap.setName("On input map");
@@ -456,8 +452,21 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		if (!panelAdded) {
 			panelAdded = true;
 			ParameterBrowserPanel controls = new ParameterBrowserPanel(stfParameterContainer, false);
+			ParameterBrowserPanel spikeSoundControls = new ParameterBrowserPanel(spikeSoundSignalHandler, false);
 			controls.toggleSelection();
-			addControls(controls);
+			JPanel myPanel = new JPanel();
+			myPanel.setLayout(new GridBagLayout());
+			GridBagConstraints gbc = new GridBagConstraints();
+			gbc.weightx = 1;
+			gbc.weighty = 1;
+			gbc.gridy = 0;
+			gbc.gridx = 0;
+			gbc.fill = GridBagConstraints.BOTH;
+			myPanel.add(controls,gbc);
+			gbc.gridy++;
+			myPanel.add(spikeSoundControls,gbc);
+			gbc.gridy++;
+			addControls(myPanel);
 		}
 		
 //		setExpression("0");
@@ -540,6 +549,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 			if (map  != onMap && map != offMap)
 				map.restoreKernels();
 		}
+		spikeSoundSignalHandler.restoreParameters();
 		ParameterContainer.enableStorage();
 	}
 

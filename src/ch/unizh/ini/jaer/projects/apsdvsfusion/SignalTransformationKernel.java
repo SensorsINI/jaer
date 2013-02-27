@@ -47,10 +47,10 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 		super(name, prefs);
 	}
 
-	@Deprecated
-	public SignalTransformationKernel(String name, Preferences parentPrefs,	String nodeName) {
-		super(name, parentPrefs, nodeName);
-	}
+//	@Deprecated
+//	public SignalTransformationKernel(String name, Preferences parentPrefs,	String nodeName) {
+//		super(name, parentPrefs, nodeName);
+//	}
 	
 	public int getKernelID() {
 		return kernelID;
@@ -193,7 +193,10 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 			@Override
 			public void propertyChange(PropertyChangeEvent evt) {
 				if (evt.getNewValue() != evt.getOldValue()) {
-					myComboBox.setSelectedItem(evt.getNewValue());
+					if (evt.getNewValue() != null)
+						myComboBox.setSelectedItem(evt.getNewValue());
+					else
+						myComboBox.setSelectedIndex(0);
 				}
 			}
 		});
@@ -238,6 +241,8 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 			}
 			if (newContents.contains(selection))
 				myComboBox.setSelectedItem(selection);
+			else if (selection == null) 
+				myComboBox.setSelectedIndex(0);
 		}
 		if (oldContents != null) {
 			for (FiringModelMap map : oldContents) {

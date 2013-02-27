@@ -22,8 +22,8 @@ public class NativeConvolutionTest extends SignalTransformationKernel {
 	/** 
 	 * 
 	 */
-	public NativeConvolutionTest(Preferences parentPrefs,	String nodeName) {
-		super("NativeConvolutionTest", parentPrefs, nodeName);
+	public NativeConvolutionTest(Preferences prefs) {
+		super("NativeConvolutionTest", prefs);
 	}
 
 	/* (non-Javadoc)
@@ -50,7 +50,7 @@ public class NativeConvolutionTest extends SignalTransformationKernel {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		NativeConvolutionTest test = new NativeConvolutionTest(null,"NativeConvolutionTest");
+		NativeConvolutionTest test = new NativeConvolutionTest(null);
 		test.initNativeSimpleClass();
 		System.out.println("piep");
 		test.runNative(1,1,1,test);
