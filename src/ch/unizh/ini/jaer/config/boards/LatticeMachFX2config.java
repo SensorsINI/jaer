@@ -2,16 +2,16 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package ch.unizh.ini.config.boards;
+package ch.unizh.ini.jaer.config.boards;
 
-import ch.unizh.ini.config.AbstractConfigValue;
-import ch.unizh.ini.config.cpld.CPLDConfigValue;
-import ch.unizh.ini.config.cpld.CPLDShiftRegister;
-import ch.unizh.ini.config.fx2.PortBit;
-import ch.unizh.ini.config.fx2.TriStateablePortBit;
-import ch.unizh.ini.config.onchip.ChipConfigChain;
-import ch.unizh.ini.config.onchip.OnchipConfigBit;
-import ch.unizh.ini.config.onchip.OutputMux;
+import ch.unizh.ini.jaer.config.AbstractConfigValue;
+import ch.unizh.ini.jaer.config.cpld.CPLDConfigValue;
+import ch.unizh.ini.jaer.config.cpld.CPLDShiftRegister;
+import ch.unizh.ini.jaer.config.fx2.PortBit;
+import ch.unizh.ini.jaer.config.fx2.TriStateablePortBit;
+import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
+import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
+import ch.unizh.ini.jaer.config.onchip.OutputMux;
 import java.math.BigInteger;
 import java.text.ParseException;
 import java.util.*;

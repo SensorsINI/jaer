@@ -2,9 +2,9 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package ch.unizh.ini.config;
+package ch.unizh.ini.jaer.config;
 
-import ch.unizh.ini.config.onchip.OutputMux;
+import ch.unizh.ini.jaer.config.onchip.OutputMux;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.util.ArrayList;

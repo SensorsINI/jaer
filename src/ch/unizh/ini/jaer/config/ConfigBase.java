@@ -1,4 +1,4 @@
-package ch.unizh.ini.config;
+package ch.unizh.ini.jaer.config;
 
 
 import java.util.Observer;

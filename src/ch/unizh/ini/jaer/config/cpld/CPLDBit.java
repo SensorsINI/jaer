@@ -2,10 +2,10 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package ch.unizh.ini.config.cpld;
+package ch.unizh.ini.jaer.config.cpld;
 
-import ch.unizh.ini.config.ConfigBit;
-import ch.unizh.ini.config.ConfigBit;
+import ch.unizh.ini.jaer.config.ConfigBit;
+import ch.unizh.ini.jaer.config.ConfigBit;
 import java.util.prefs.PreferenceChangeEvent;
 import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.Chip;

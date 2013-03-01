@@ -2,9 +2,9 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package ch.unizh.ini.config.cpld;
+package ch.unizh.ini.jaer.config.cpld;
 
-import ch.unizh.ini.config.AbstractConfigValue;
+import ch.unizh.ini.jaer.config.AbstractConfigValue;
 import java.util.logging.Logger;
 import java.util.prefs.PreferenceChangeEvent;
 import net.sf.jaer.chip.Chip;

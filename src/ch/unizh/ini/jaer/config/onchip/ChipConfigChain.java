@@ -2,9 +2,9 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package ch.unizh.ini.config.onchip;
+package ch.unizh.ini.jaer.config.onchip;
 
-import ch.unizh.ini.config.MuxControlPanel;
+import ch.unizh.ini.jaer.config.MuxControlPanel;
 import java.util.ArrayList;
 import java.util.Observable;
 import java.util.Observer;

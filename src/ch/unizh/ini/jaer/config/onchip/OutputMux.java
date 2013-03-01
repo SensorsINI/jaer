@@ -2,9 +2,9 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package ch.unizh.ini.config.onchip;
+package ch.unizh.ini.jaer.config.onchip;
 
-import ch.unizh.ini.config.OutputMap;
+import ch.unizh.ini.jaer.config.OutputMap;
 import java.util.Observable;
 import java.util.logging.Logger;
 import net.sf.jaer.biasgen.Biasgen.HasPreference;

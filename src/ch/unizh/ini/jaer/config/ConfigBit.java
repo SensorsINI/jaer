@@ -1,4 +1,4 @@
-package ch.unizh.ini.config;
+package ch.unizh.ini.jaer.config;
 
 /** Interface for a configuration boolean bit. */
 public interface ConfigBit extends ConfigBase {

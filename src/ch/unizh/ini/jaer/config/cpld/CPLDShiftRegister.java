@@ -2,11 +2,11 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package ch.unizh.ini.config.cpld;
+package ch.unizh.ini.jaer.config.cpld;
 
-import ch.unizh.ini.config.cpld.CPLDConfigValue;
-import ch.unizh.ini.config.cpld.CPLDBit;
-import ch.unizh.ini.config.ConfigInt;
+import ch.unizh.ini.jaer.config.cpld.CPLDConfigValue;
+import ch.unizh.ini.jaer.config.cpld.CPLDBit;
+import ch.unizh.ini.jaer.config.ConfigInt;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;

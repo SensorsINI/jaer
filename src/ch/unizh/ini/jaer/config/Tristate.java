@@ -1,4 +1,4 @@
-package ch.unizh.ini.config;
+package ch.unizh.ini.jaer.config;
 
 /** Used for tristate outputs */
 public enum Tristate {

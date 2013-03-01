@@ -2,10 +2,10 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package ch.unizh.ini.config.fx2;
+package ch.unizh.ini.jaer.config.fx2;
 
-import ch.unizh.ini.config.AbstractConfigBit;
-import ch.unizh.ini.config.ConfigBit;
+import ch.unizh.ini.jaer.config.AbstractConfigBit;
+import ch.unizh.ini.jaer.config.ConfigBit;
 import net.sf.jaer.chip.Chip;
 
 /**
