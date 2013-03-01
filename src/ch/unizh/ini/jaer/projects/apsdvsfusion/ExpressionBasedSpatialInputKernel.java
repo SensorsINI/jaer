@@ -46,6 +46,8 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 //	String onExpressionString = "0.01";
 	String expressionString = "0";
 	
+	Object convolutionValuesLock = new Object();
+	
 //	ExpressionTreeNode onExpressionTree = null;
 //	ExpressionTreeNode offExpressionTree = null;
 	
@@ -89,8 +91,10 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 	public void setExpressionString(String expressionString) {
 		if (expressionString != null && !expressionString.equals("")) {
 		try {
-			this.convolutionValues = evaluateExpression(expressionString, convolutionValues, this.expressionString);
-			updateConvolutionViewer();
+			synchronized (convolutionValuesLock) {
+				this.convolutionValues = evaluateExpression(expressionString, convolutionValues, this.expressionString);
+				convolutionValuesChanged();
+			}
 			getSupport().firePropertyChange("expressionString", this.expressionString, expressionString);
 			this.expressionString = expressionString;
 			final SpatioTemporalFusion stf = SpatioTemporalFusion.getInstance(this);
@@ -162,19 +166,25 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 		return height;
 	}
 	
+	protected void convolutionValuesChanged() {
+		updateConvolutionViewer();
+	}
+	
 	public synchronized void changeSize(int width, int height) {
 		if (width != this.width || height != this.height && width >= 0 && height >= 0) {
-			this.width = width;
-			this.height = height;
-			try {
-				convolutionValues = evaluateExpression(expressionString, new float[width][height], "0");
-				updateConvolutionViewer();
-//				offConvolutionValues = evaluateExpression(offExpressionString, new float[width][height], "0");
-			} catch (IllegalExpressionException e) {
+			synchronized (convolutionValuesLock) {
+				this.width = width;
+				this.height = height;
+				try {
+						convolutionValues = evaluateExpression(expressionString, new float[width][height], "0");
+						convolutionValuesChanged();
+	//				offConvolutionValues = evaluateExpression(offExpressionString, new float[width][height], "0");
+				} catch (IllegalExpressionException e) {
+				}
+				
+				this.centerX = width/2;
+				this.centerY = height/2;
 			}
-			
-			this.centerX = width/2;
-			this.centerY = height/2;
 			recomputeMappings();
 		}
 	}
