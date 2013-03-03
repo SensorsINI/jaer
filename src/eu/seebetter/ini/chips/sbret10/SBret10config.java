@@ -4,17 +4,17 @@
  */
 package eu.seebetter.ini.chips.sbret10;
 
-import ch.unizh.ini.config.MuxControlPanel;
-import ch.unizh.ini.config.OutputMap;
-import ch.unizh.ini.config.boards.LatticeMachFX2config;
-import ch.unizh.ini.config.cpld.CPLDBit;
-import ch.unizh.ini.config.cpld.CPLDConfigValue;
-import ch.unizh.ini.config.cpld.CPLDInt;
-import ch.unizh.ini.config.fx2.PortBit;
-import ch.unizh.ini.config.fx2.TriStateablePortBit;
-import ch.unizh.ini.config.onchip.ChipConfigChain;
-import ch.unizh.ini.config.onchip.OnchipConfigBit;
-import ch.unizh.ini.config.onchip.OutputMux;
+import ch.unizh.ini.jaer.config.MuxControlPanel;
+import ch.unizh.ini.jaer.config.OutputMap;
+import ch.unizh.ini.jaer.config.boards.LatticeMachFX2config;
+import ch.unizh.ini.jaer.config.cpld.CPLDBit;
+import ch.unizh.ini.jaer.config.cpld.CPLDConfigValue;
+import ch.unizh.ini.jaer.config.cpld.CPLDInt;
+import ch.unizh.ini.jaer.config.fx2.PortBit;
+import ch.unizh.ini.jaer.config.fx2.TriStateablePortBit;
+import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
+import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
+import ch.unizh.ini.jaer.config.onchip.OutputMux;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.beans.PropertyChangeSupport;

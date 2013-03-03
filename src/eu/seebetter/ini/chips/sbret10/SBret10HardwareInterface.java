@@ -12,7 +12,6 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2Biasgen;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;
-import eu.seebetter.ini.chips.sbret10.SBret10old;
 import javax.swing.ProgressMonitor;
 import java.io.*;
 
