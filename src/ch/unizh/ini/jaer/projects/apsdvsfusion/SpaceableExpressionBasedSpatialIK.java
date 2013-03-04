@@ -54,8 +54,8 @@ public class SpaceableExpressionBasedSpatialIK extends
 			xSize *= spacingX;
 		if (outHeightBiggerThanInHeight)
 			ySize *= spacingY;
-		this.scaledCenterX = xSize / 2 + (centerX - width/2) * spacingX;
-		this.scaledCenterY = ySize / 2 + (centerY - height/2) * spacingY;
+		this.scaledCenterX = (xSize-1) / 2 + (centerX - (width-1)/2) * spacingX;
+		this.scaledCenterY = (ySize-1) / 2 + (centerY - (height-1)/2) * spacingY;
 		float[][] newScaledConvolutionValues = new float[xSize][ySize];
 		synchronized (convolutionValuesLock) {
 			for (int xc = 0; xc < convolutionValues.length; xc++) {
@@ -476,7 +476,7 @@ public class SpaceableExpressionBasedSpatialIK extends
 			}
 			
 		};
-		int inX = 16, inY = 19, outX = 4, outY = 8;
+		int inX = 20, inY = 19, outX = 8, outY = 8;
 		k.setOutputMap(new ArrayFiringModelMap(outX,outY,null,null) {
 			@Override
 			public FiringModel get(int x, int y) {
@@ -485,11 +485,11 @@ public class SpaceableExpressionBasedSpatialIK extends
 			}
 		});
 		k.setInputOutputSizes(inX, inY, outX, outY);
-		k.setExpressionString("x + 1.5");
+		k.setExpressionString("x + "+(((float)(k.getWidth()-1))/2.0f));
 		
-		k.signalAt(0, 0, 0, 1.0);
-		k.signalAt(1, 0, 0, 1.0);
-		k.signalAt(2, 0, 0, 1.0);
-		k.signalAt(3, 0, 0, 1.0);
+		for (int i = 0; i < inX; i++) {
+			System.out.println("Injecting Signal at "+i+":");
+			k.signalAt(i, 1, 0, 1.0);
+		}
 	}
 }

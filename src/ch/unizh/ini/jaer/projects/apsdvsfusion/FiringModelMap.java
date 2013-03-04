@@ -334,7 +334,7 @@ public abstract class FiringModelMap extends ParameterContainer {
 
 	public synchronized void changeSize(int sizeX, int sizeY) {
 		if (sizeX != this.sizeX || sizeY != this.sizeY) {
-			int ox = this.sizeX, oy = this.sizeY;
+//			int ox = this.sizeX, oy = this.sizeY;
 			this.sizeX = sizeX;
 			this.sizeY = sizeY;
 			buildUnits();

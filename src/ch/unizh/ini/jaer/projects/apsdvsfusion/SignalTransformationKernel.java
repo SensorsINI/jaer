@@ -261,11 +261,17 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 				updateComboBox((ArrayList<FiringModelMap>)propertyChangeEvent.getOldValue(),(ArrayList<FiringModelMap>)propertyChangeEvent.getNewValue());
 			}
 		}
-		else if (propertyChangeEvent.getSource() instanceof FiringModelMap) {
-			ArrayList<FiringModelMap> contents;
-			if (stf != null) contents = stf.getFiringModelMaps();
-			else contents = new ArrayList<FiringModelMap>();
-			updateComboBox(contents, contents);
+		else if (propertyChangeEvent.getSource() == inputMap) {
+			if (propertyChangeEvent.getPropertyName().equals("name")) {
+				ArrayList<FiringModelMap> contents;
+				if (stf != null) contents = stf.getFiringModelMaps();
+				else contents = new ArrayList<FiringModelMap>();
+				updateComboBox(contents, contents);
+			}
+			else if (propertyChangeEvent.getPropertyName().equals("sizeX")) 
+				setInputSize((Integer)propertyChangeEvent.getNewValue(), this.inputHeight);
+			else if (propertyChangeEvent.getPropertyName().equals("sizeY")) 
+				setInputSize(this.inputWidth,(Integer)propertyChangeEvent.getNewValue());
 		}
 	}
 

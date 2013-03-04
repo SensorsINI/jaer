@@ -368,6 +368,21 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 	}
 
 	@Override
+	public synchronized void setSizeX(int sizeX) {
+		if (map != null)
+			map.setSizeX(sizeX);
+		super.setSizeX(sizeX);
+	}
+
+	@Override
+	public synchronized void setSizeY(int sizeY) {
+		if (map != null)
+			map.setSizeY(sizeY);
+		super.setSizeY(sizeY);
+	}
+	
+	
+	@Override
 	public synchronized void changeSize(int sizeX, int sizeY) {
 		if (sizeX != this.sizeX || sizeY != this.sizeY) {
 			clearHeap();

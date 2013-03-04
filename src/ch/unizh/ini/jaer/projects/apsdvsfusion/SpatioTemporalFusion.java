@@ -56,6 +56,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	ArrayList<String> usedExpressionStrings = new ArrayList<String>();
 	SpikeSoundSignalHandler spikeSoundSignalHandler;
 	
+	int currentSizeX = 128, currentSizeY = 128;
 	
 //	InputKernel inputKernel;
 //	FiringModelMap firingModelMap;
@@ -199,7 +200,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
    		
 //		this.setFilterEnabled(false);
         setPropertyTooltip("grayLevels", "Number of displayed gray levels");
-        this.onMap = new FiringModelMap(128,128, getPrefs().node("onMap")) {
+        this.onMap = new FiringModelMap(currentSizeX,currentSizeY, getPrefs().node("onMap")) {
 			@Override
 			public FiringModel get(int x, int y) {
 				return null;
@@ -208,7 +209,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 			public void buildUnits() {
 			}
 		};
-		this.offMap = new FiringModelMap(128,128, getPrefs().node("offMap")) {
+		this.offMap = new FiringModelMap(currentSizeX,currentSizeY, getPrefs().node("offMap")) {
 			@Override
 			public void buildUnits() {
 			}
@@ -353,11 +354,20 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	            in = enclosedFilter.filterPacket(in);
 	        }
 	//        getPrefs()
+	        
+	        if (chip.getSizeX() != currentSizeX || chip.getSizeY() != currentSizeY) {
+	        	currentSizeX = chip.getSizeX();
+	        	currentSizeY = chip.getSizeY();
+	        	onMap.setSizeX(currentSizeX);
+	        	onMap.setSizeY(currentSizeY);
+	        	offMap.setSizeX(currentSizeX);
+	        	offMap.setSizeY(currentSizeY);
+	        }
 			checkOutputPacketEventType(in);
 	//        OutputEventIterator<?> oi=out.outputIterator();
 	//        firingModelMap.changeSize(chip.getSizeX(), chip.getSizeY());
 	 //       PolarityEvent e;
-	        out.setEventClass(PolarityEvent.class);
+	        out.setEventClass(getChip().getEventClass());//PolarityEvent.class);
 	//        int beforePackageTime = time;
 	        int maxTime = Integer.MIN_VALUE;
 			for (BasicEvent be : in) {
@@ -514,7 +524,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	
 	public void doAdd_Map() {
 		synchronized (firingModelMaps) {
-			SchedulableWrapperMap newMap = new SchedulableWrapperMap(128, 128, null, getPrefs().node("map"+mapIndexPosition));
+			SchedulableWrapperMap newMap = new SchedulableWrapperMap(currentSizeX, currentSizeY, null, getPrefs().node("map"+mapIndexPosition));
 			newMap.setName("Map "+(mapIndexPosition + 1));
 			addMap(newMap, mapIndexPosition);
 			

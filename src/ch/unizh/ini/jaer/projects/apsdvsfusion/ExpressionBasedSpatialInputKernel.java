@@ -182,8 +182,8 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 				} catch (IllegalExpressionException e) {
 				}
 				
-				this.centerX = width/2;
-				this.centerY = height/2;
+				this.centerX = (width-1)/2;
+				this.centerY = (height-1)/2;
 			}
 			recomputeMappings();
 		}
