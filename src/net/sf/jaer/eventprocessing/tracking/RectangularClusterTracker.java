@@ -30,7 +30,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
- * Tracks blobs of events using a rectangular hypothesis about the object shape.
+ * This complex and highly configurable tracker tracks blobs of events using a rectangular hypothesis about the object shape.
  * Many parameters constrain the hypothesese in various ways, including perspective projection, fixed aspect ratio,
  * variable size and aspect ratio, "mixing factor" that determines how much each event moves a cluster, etc.
  * <p>
@@ -41,8 +41,15 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     // TODO split out the Cluster object as it's own class.
     // TODO delegate worker object to update the clusters (RectangularClusterTrackerDelegate)
 
-    /** The list of clusters. */
+    /**
+     * The list of clusters (visible and invisible).
+     */
     volatile protected java.util.List<Cluster> clusters = new LinkedList<Cluster>();
+    /**
+     * The list of visible clusters.
+     */
+    private LinkedList<Cluster> visibleClusters=new LinkedList<Cluster>();
+
     private AEChipRenderer renderer;
 //    /** the number of classes of objects */
 //    private final int NUM_CLASSES=2;
@@ -179,7 +186,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         setPropertyTooltip(lifetime, "thresholdVelocityForVisibleCluster", "cluster must have at least this velocity in pixels/sec to become visible");
         setPropertyTooltip(global, "maxNumClusters", "Sets the maximum potential number of clusters");
         setPropertyTooltip(update, "velAngDiffDegToNotMerge", "relative angle in degrees of cluster velocity vectors to not merge overlapping clusters");
-        setPropertyTooltip(update, "dontMergeEver", "never merge overlapping clusters");
+        setPropertyTooltip(lifetime, "dontMergeEver", "never merge overlapping clusters");
         setPropertyTooltip(sizing, "angleFollowsVelocity", "cluster angle is set by velocity vector angle; requires that useVelocity is on");
         setPropertyTooltip(disp, "showClusterVelocity", "annotates velocity in pixels/second");
         setPropertyTooltip(disp, "showClusterEps", "shows cluster events per second");
@@ -528,6 +535,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         }
         
     }
+    
 
     /** This method updates the list of clusters, pruning and
      * merging clusters and updating positions based on cluster velocities.
@@ -542,8 +550,11 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         mergeClusters();
         updateClusterLocations(t);
         updateClusterPaths(t);
+        visibleClusters.clear();
         for(Cluster c:clusters){
-            c.checkAndSetClusterVisibilityFlag(t);
+            if(c.checkAndSetClusterVisibilityFlag(t)){
+                visibleClusters.add(c);
+            }
         }
     }
 
@@ -706,13 +717,14 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
     /** Returns total number of clusters, including those that have been
      * seeded but may not have received sufficient support yet.
-     * @return number of Cluster's in clusters list.
+     * @return number of Clusters in clusters list.
      */
     public int getNumClusters() {
         return clusters.size();
     }
 
     /** Returns number of "visible" clusters; those that have received sufficient support.
+     * This field is updated by updateClusterList()
      * 
      * @return number
      */
@@ -1839,8 +1851,9 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
          * 
          * @see #isVisible() 
          * @param t the current timestamp
+         * @return true if cluster is visible
          */
-        public void checkAndSetClusterVisibilityFlag(int t){
+        public boolean checkAndSetClusterVisibilityFlag(int t){
               boolean ret = true;
             if (numEvents < thresholdEventsForVisibleCluster) {
                 ret = false;
@@ -1855,8 +1868,9 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             }
             hasObtainedSupport = ret;
             visibilityFlag=ret;
-          
+            return ret;
         }
+        
         /** Returns the flag that marks cluster visibility. This flag is set by <code>checkAndSetClusterVisibilityFlag</code>.
          * This flag flags whether cluster has gotten enough support. 
             @return true if cluster has obtained enough support.
@@ -2340,6 +2354,9 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         }
     } // Cluster
 
+    /** Returns list of all cluster, visible and invisible
+     * @return list of clusters
+     */
     public java.util.List<RectangularClusterTracker.Cluster> getClusters() {
         return this.clusters;
     }
@@ -3331,6 +3348,14 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     
     public float getSurroundInhibitionCost()
     {return surroundInhibitionCost;}
+
+    /**
+     * Returns list of actually visible clusters that have received enough support and pass other visibility tests. Updated every packet or update interval.
+     * @return the visibleClusters
+     */
+    public LinkedList<Cluster> getVisibleClusters() {
+        return visibleClusters;
+    }
     
     protected FastClusterFinder fastClusterFinder=new FastClusterFinder();
     
