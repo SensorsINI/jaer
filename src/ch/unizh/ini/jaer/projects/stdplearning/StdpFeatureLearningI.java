@@ -186,7 +186,7 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
      */    
     @Override
     public void initFilter() {
-        xPixels = 64;
+        xPixels = 16;
         yPixels = xPixels;
         xStart = chip.getSizeX()/2 - xPixels/2;
         yStart = chip.getSizeY()/2 - yPixels/2;
@@ -208,7 +208,7 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
     /**
      * Called on filter reset which happens on creation of filter, on reset button press, and on rewind 
      * Initializes all variables which aren't final to their default values
-     * Note that synapseWeights are either initialized to wInit paramaters or left as they were previously
+     * Note that synapseWeights are either initialized to wInit parameters or left as they were previously
      */    
     @Override
     synchronized public void resetFilter() {
@@ -354,6 +354,7 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
         if(enclosedFilter!=null) 
             in=enclosedFilter.filterPacket(in);
         // Add listener to viewer which in turn will add listener to Input Files for control on rewind
+        // Do this in filterPacket to make sure that AEViewer is already initialized
         if (viewerPropertyChangeListenerInit == false) {
             chip.getAeViewer().addPropertyChangeListener(this);
             chip.getAeViewer().getAePlayer().getSupport().addPropertyChangeListener(this); // TODO might be duplicated callback
@@ -384,9 +385,9 @@ public class StdpFeatureLearningI extends EventFilter2D implements Observer, Fra
                     neuronSpikeTimingInit = true;
                 } else {
                     applySTDP(e);
-                    // Sets out variable
-                    outItr.nextOutput().copyFrom(e);
                 } // END IF
+                // Sets out variable
+                outItr.nextOutput().copyFrom(e);
             } // END IF
         } // END FOR
         
