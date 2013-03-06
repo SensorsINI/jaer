@@ -117,7 +117,9 @@ public class SpaceableExpressionBasedSpatialIK extends
 	public void setSpacingAutomatic(boolean spacingAutomatic) {
 		if (spacingAutomatic != this.spacingAutomatic) {
 			this.spacingAutomatic = spacingAutomatic;
-			getSupport().firePropertyChange("spacingAutomatic", spacingAutomatic, !spacingAutomatic);
+			getSupport().firePropertyChange("spacingAutomatic", !spacingAutomatic, spacingAutomatic);
+			if (spacingAutomatic) 
+				recomputeMappings();
 		}
 	}
 	

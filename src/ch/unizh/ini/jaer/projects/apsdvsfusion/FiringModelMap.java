@@ -320,7 +320,7 @@ public abstract class FiringModelMap extends ParameterContainer {
 	 * @param sizeX the sizeX to set
 	 */
 	public synchronized void setSizeX(int sizeX) {
-		getSupport().firePropertyChange("sizeX", this.sizeX, sizeX);
+//		getSupport().firePropertyChange("sizeX", this.sizeX, sizeX);
 		changeSize(sizeX, sizeY);
 	}
 
@@ -328,19 +328,24 @@ public abstract class FiringModelMap extends ParameterContainer {
 	 * @param sizeY the sizeY to set
 	 */
 	public synchronized void setSizeY(int sizeY) {
-		getSupport().firePropertyChange("sizeY", this.sizeY, sizeY);
+//		getSupport().firePropertyChange("sizeY", this.sizeY, sizeY);
 		changeSize(sizeX, sizeY);
 	}
 
 	public synchronized void changeSize(int sizeX, int sizeY) {
 		if (sizeX != this.sizeX || sizeY != this.sizeY) {
 //			int ox = this.sizeX, oy = this.sizeY;
+			int beforeX = this.sizeX;
+			int beforeY = this.sizeY;
 			this.sizeX = sizeX;
 			this.sizeY = sizeY;
 			buildUnits();
+			if (beforeX != sizeX)
+				getSupport().firePropertyChange("sizeX", beforeX, this.sizeX);
+			if (beforeY != sizeY)
+				getSupport().firePropertyChange("sizeY", beforeY, this.sizeY);
 			for (SignalTransformationKernel kernel : inputKernels) {
 				kernel.setOutputSize(sizeX, sizeY);
-//				kernel.outputSizeChanged(ox, oy, sizeX, sizeY);
 			}
 		}
 	}

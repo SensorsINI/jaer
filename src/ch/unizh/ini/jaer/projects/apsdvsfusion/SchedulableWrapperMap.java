@@ -367,19 +367,19 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 			return null;
 	}
 
-	@Override
-	public synchronized void setSizeX(int sizeX) {
-		if (map != null)
-			map.setSizeX(sizeX);
-		super.setSizeX(sizeX);
-	}
-
-	@Override
-	public synchronized void setSizeY(int sizeY) {
-		if (map != null)
-			map.setSizeY(sizeY);
-		super.setSizeY(sizeY);
-	}
+//	@Override
+//	public synchronized void setSizeX(int sizeX) {
+//		if (map != null)
+//			map.setSizeX(sizeX);
+//		super.setSizeX(sizeX);
+//	}
+//
+//	@Override
+//	public synchronized void setSizeY(int sizeY) {
+//		if (map != null)
+//			map.setSizeY(sizeY);
+//		super.setSizeY(sizeY);
+//	}
 	
 	
 	@Override

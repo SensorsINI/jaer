@@ -946,8 +946,8 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                     try {
 //                        int v = slider.getValue();
                         currentValue = minValue + (maxValue - minValue) * ((float) slider.getValue() / (slider.getMaximum() - slider.getMinimum()));
-                        w.invoke(filter, new Float(currentValue)); // write int value
                         fc.set(new Float(currentValue));
+                        w.invoke(filter, new Float(currentValue)); // write int value
 
 //                        tf.setText(engFmt.format(currentValue));
                     } catch (InvocationTargetException ite) {
@@ -1068,8 +1068,8 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                                 } else {
                                     nval = (int) Math.round(initValue * factor);
                                 }
-                                w.invoke(filter, new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
+                                w.invoke(filter, new Integer(nval));
                                 fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
@@ -1084,8 +1084,8 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                                 } else {
                                     nval = (int) Math.round(initValue / factor);
                                 }
-                                w.invoke(filter, new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
+                                w.invoke(filter, new Integer(nval));
                                 fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
@@ -1147,8 +1147,8 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                                 } else {
                                     nval = (int) Math.round(initValue * wheelFactor);
                                 }
-                                w.invoke(filter, new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
+                                w.invoke(filter, new Integer(nval));
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
                             } catch (IllegalAccessException iae) {
@@ -1165,8 +1165,8 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                                 if (nval < 0) {
                                     nval = 0;
                                 }
-                                w.invoke(filter, new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
+                                w.invoke(filter, new Integer(nval));
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
                             } catch (IllegalAccessException iae) {

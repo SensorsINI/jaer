@@ -124,8 +124,10 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 	public synchronized void setInputMap(FiringModelMap inputMap) {
 		if (inputMap != this.inputMap) {
 			getSupport().firePropertyChange("inputMap", this.inputMap, inputMap);
-			if (this.inputMap != null)
+			if (this.inputMap != null) {
 				this.inputMap.removeSignalHandler(this);
+				this.inputMap.getSupport().removePropertyChangeListener(this);
+			}
 			boolean changeSize = (this.inputMap == null || inputMap == null || this.inputMap.getSizeX() != inputMap.getSizeX() || this.inputMap.getSizeY() != inputMap.getSizeY());
 			this.inputMap = inputMap;
 			if (changeSize) {
@@ -136,6 +138,7 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 			}
 			if (this.inputMap != null) {
 				this.inputMap.addSignalHandler(this);
+				this.inputMap.getSupport().addPropertyChangeListener(this);
 				getPrefs().putInt("inputMapID", this.inputMap.getMapID());
 			}
 			else 
@@ -195,7 +198,7 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 				if (evt.getNewValue() != evt.getOldValue()) {
 					if (evt.getNewValue() != null)
 						myComboBox.setSelectedItem(evt.getNewValue());
-					else
+					else if (myComboBox.getItemCount() > 0)
 						myComboBox.setSelectedIndex(0);
 				}
 			}
@@ -261,17 +264,19 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 				updateComboBox((ArrayList<FiringModelMap>)propertyChangeEvent.getOldValue(),(ArrayList<FiringModelMap>)propertyChangeEvent.getNewValue());
 			}
 		}
-		else if (propertyChangeEvent.getSource() == inputMap) {
+		else if (propertyChangeEvent.getSource() instanceof FiringModelMap) {
 			if (propertyChangeEvent.getPropertyName().equals("name")) {
 				ArrayList<FiringModelMap> contents;
 				if (stf != null) contents = stf.getFiringModelMaps();
 				else contents = new ArrayList<FiringModelMap>();
 				updateComboBox(contents, contents);
 			}
-			else if (propertyChangeEvent.getPropertyName().equals("sizeX")) 
-				setInputSize((Integer)propertyChangeEvent.getNewValue(), this.inputHeight);
-			else if (propertyChangeEvent.getPropertyName().equals("sizeY")) 
-				setInputSize(this.inputWidth,(Integer)propertyChangeEvent.getNewValue());
+			else if (propertyChangeEvent.getSource() == inputMap) {
+				if (propertyChangeEvent.getPropertyName().equals("sizeX")) 
+					setInputSize((Integer)propertyChangeEvent.getNewValue(), this.inputHeight);
+				else if (propertyChangeEvent.getPropertyName().equals("sizeY")) 
+					setInputSize(this.inputWidth,(Integer)propertyChangeEvent.getNewValue());
+			}
 		}
 	}
 
