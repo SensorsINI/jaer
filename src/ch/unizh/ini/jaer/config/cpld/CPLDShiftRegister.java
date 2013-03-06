@@ -129,6 +129,10 @@ public class CPLDShiftRegister {
         this.bytes = bytes;
         return bytes;
     }
+    
+    public int getShiftRegisterLength(){
+        return numBits;
+    }
 
     @Override
     public String toString() {

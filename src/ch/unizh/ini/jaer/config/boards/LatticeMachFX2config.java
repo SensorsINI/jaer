@@ -7,6 +7,10 @@ package ch.unizh.ini.jaer.config.boards;
 import ch.unizh.ini.jaer.config.AbstractConfigValue;
 import ch.unizh.ini.jaer.config.cpld.CPLDConfigValue;
 import ch.unizh.ini.jaer.config.cpld.CPLDShiftRegister;
+import ch.unizh.ini.jaer.config.dac.DAC;
+import ch.unizh.ini.jaer.config.dac.DAC_AD5391_channel;
+import ch.unizh.ini.jaer.config.dac.DACchannel;
+import ch.unizh.ini.jaer.config.dac.DACchannelArray;
 import ch.unizh.ini.jaer.config.fx2.PortBit;
 import ch.unizh.ini.jaer.config.fx2.TriStateablePortBit;
 import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
@@ -15,11 +19,14 @@ import ch.unizh.ini.jaer.config.onchip.OutputMux;
 import java.math.BigInteger;
 import java.text.ParseException;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.sf.jaer.biasgen.AddressedIPot;
 import net.sf.jaer.biasgen.AddressedIPotArray;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.biasgen.Pot;
+import net.sf.jaer.biasgen.PotArray;
 import net.sf.jaer.biasgen.VDAC.VPot;
 import net.sf.jaer.biasgen.coarsefine.AddressedIPotCF;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
@@ -52,6 +59,8 @@ public class LatticeMachFX2config extends Biasgen implements HasPreference{
             CMD_SCANNER = new Fx2ConfigCmd(3, "SCANNER"),
             CMD_CHIP_CONFIG = new Fx2ConfigCmd(4, "CHIP"),
             CMD_SETBIT = new Fx2ConfigCmd(5, "SETBIT"),
+            CMD_VDAC = new Fx2ConfigCmd(6, "VDAC"), 
+            CMD_INITDAC = new Fx2ConfigCmd(7, "INITDAC"),
             CMD_CPLD_CONFIG = new Fx2ConfigCmd(8, "CPLD");
     public final String[] CMD_NAMES = {"IPOT", "AIPOT", "SCANNER", "CHIP", "SET_BIT", "CPLD_CONFIG"};
     final byte[] emptyByteArray = new byte[0];
@@ -114,9 +123,96 @@ public class LatticeMachFX2config extends Biasgen implements HasPreference{
     protected CPLDShiftRegister cpldConfig = new CPLDShiftRegister();
     
     protected void sendCPLDConfig() throws HardwareInterfaceException {
-        byte[] bytes = cpldConfig.getBytes();
-//        log.info("Send CPLD Config: "+cpldConfig.toString());
-        sendFx2ConfigCommand(CMD_CPLD_CONFIG, 0, bytes);
+        if(cpldConfig.getShiftRegisterLength() > 0){
+            byte[] bytes = cpldConfig.getBytes();
+    //        log.info("Send CPLD Config: "+cpldConfig.toString());
+            sendFx2ConfigCommand(CMD_CPLD_CONFIG, 0, bytes);
+        }
+    }
+    
+    /***************************  DAC  *************************/
+    
+    protected DACchannelArray dacChannels = new DACchannelArray(this);
+    protected DAC dac = null;
+    
+    protected void setDAC(DAC dac){
+        this.dac = dac;
+    }
+    
+    protected void setDACchannelArray(DACchannelArray dacChannels){
+        this.dacChannels = dacChannels;
+    }
+    
+    protected void addDACchannel(String s) throws ParseException {
+        try {
+            String d = ",";
+            StringTokenizer t = new StringTokenizer(s, d);
+            if (t.countTokens() != 2) {
+                throw new Error("only " + t.countTokens() + " tokens in pot " + s + "; use , to separate tokens for name,tooltip");
+            }
+            String name = t.nextToken();
+            String tip = t.nextToken();
+
+            int address = dacChannels.getNumChannels();
+            dacChannels.addChannel(new DACchannel(chip, name, dac, address++, 0, 0, tip));
+        } catch (Exception e) {
+            throw new Error(e.toString());
+        }
+    }
+    
+    // sends VR to init DAC
+    public void initDAC() throws HardwareInterfaceException {
+        sendFx2ConfigCommand(CMD_INITDAC, 0, new byte[0]);
+    }
+
+    protected boolean sendDACchannel(DACchannel channel) throws HardwareInterfaceException {
+        int chan = channel.getChannel();
+        int value = channel.getBitValue();
+        byte[] b = new byte[6]; // 2*24=48 bits
+        byte msb = (byte) (0xff & ((0xf00 & value) >> 8));
+        byte lsb = (byte) (0xff & value);
+        byte dat1 = 0;
+        byte dat2 = (byte) 0xC0;
+        byte dat3 = 0;
+        dat1 |= (0xff & ((chan % 16) & 0xf));
+        dat2 |= ((msb & 0xf) << 2) | ((0xff & (lsb & 0xc0) >> 6));
+        dat3 |= (0xff & ((lsb << 2)));
+        if (chan < 16) { // these are first VPots in list; they need to be loaded first to isSet to the second DAC in the daisy chain
+            b[0] = dat1;
+            b[1] = dat2;
+            b[2] = dat3;
+            b[3] = 0;
+            b[4] = 0;
+            b[5] = 0;
+        } else { // second DAC VPots, loaded second to end up at start of daisy chain shift register
+            b[0] = 0;
+            b[1] = 0;
+            b[2] = 0;
+            b[3] = dat1;
+            b[4] = dat2;
+            b[5] = dat3;
+        }
+        sendFx2ConfigCommand(CMD_VDAC, 0, b); // value=CMD_VDAC, index=0, bytes as above
+        return true;
+    }
+    
+    public boolean sendDACconfig(){
+        log.info("Send DAC Config");
+
+        if(dac == null || dacChannels == null){
+            return false;
+        }
+        Iterator i = dacChannels.getChannelIterator();
+        while(i.hasNext()){
+            DACchannel iPot = (DACchannel) i.next();
+            try {
+                if(!sendDACchannel(iPot))return false;
+            } catch (HardwareInterfaceException ex) {
+                Logger.getLogger(LatticeMachFX2config.class.getName()).log(Level.SEVERE, null, ex);
+                return false;
+            }
+        }
+        return true;
     }
     
     
@@ -279,6 +375,7 @@ public class LatticeMachFX2config extends Biasgen implements HasPreference{
 
         sendCPLDConfig();
         sendFx2Config();
+        sendDACconfig();
     } 
     
     @Override
@@ -296,6 +393,12 @@ public class LatticeMachFX2config extends Biasgen implements HasPreference{
                 ss.loadPreferences();
             }
         }
+        
+        if (dacChannels != null) {
+            for (DACchannel channel : dacChannels.getChannels()){
+                channel.loadPreferences();
+            }
+        }
     }
 
     @Override
@@ -307,6 +410,11 @@ public class LatticeMachFX2config extends Biasgen implements HasPreference{
         if (ssBiases != null) {
             for (ShiftedSourceBiasCF ss : ssBiases) {
                 ss.storePreferences();
+            }
+        }
+        if (dacChannels != null) {
+            for (DACchannel channel : dacChannels.getChannels()){
+                channel.storePreferences();
             }
         }
     }
