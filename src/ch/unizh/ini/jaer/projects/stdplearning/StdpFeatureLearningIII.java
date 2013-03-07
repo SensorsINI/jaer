@@ -43,92 +43,92 @@ import net.sf.jaer.graphics.FrameAnnotater;
 public class StdpFeatureLearningIII extends RectangularClusterTracker implements Observer, FrameAnnotater, PropertyChangeListener {
 
     // Controls
-    protected int fireThres = getPrefs().getInt("StdpFeatureLearningI.fireThres", 40000);
+    protected int fireThres = getPrefs().getInt("StdpFeatureLearningIII.fireThres", 40000);
     {
         setPropertyTooltip("fireThres", "Threshold directly affecting selectivity of neuron");
     }
 
-    protected int tLTP = getPrefs().getInt("StdpFeatureLearningI.tLTP", 2000);
+    protected int tLTP = getPrefs().getInt("StdpFeatureLearningIII.tLTP", 2000);
     {
         setPropertyTooltip("tLTP", "Size of temporal cluster to learn with a single neuron (us)");
     }
 
-    protected int tRefrac = getPrefs().getInt("StdpFeatureLearningI.tRefrac", 10000);
+    protected int tRefrac = getPrefs().getInt("StdpFeatureLearningIII.tRefrac", 10000);
     {
         setPropertyTooltip("tRefrac", "Refractory period of neuron (us)");
     }
 
-    protected int tInhibit = getPrefs().getInt("StdpFeatureLearningI.tInhibit", 1500);
+    protected int tInhibit = getPrefs().getInt("StdpFeatureLearningIII.tInhibit", 1500);
     {
         setPropertyTooltip("tInhibit", "Refractory period of neuron (us)");
     }
     
-    protected int tauLeak = getPrefs().getInt("StdpFeatureLearningI.tauLeak", 5000);
+    protected int tauLeak = getPrefs().getInt("StdpFeatureLearningIII.tauLeak", 5000);
     {
         setPropertyTooltip("tauLeak", "Leak time constant (us)");
     }
 
-    protected int wMin = getPrefs().getInt("StdpFeatureLearningI.wMin", 1);
+    protected int wMin = getPrefs().getInt("StdpFeatureLearningIII.wMin", 1);
     {
         setPropertyTooltip("wMin", "Minimum weight");
     }
 
-    protected int wMax = getPrefs().getInt("StdpFeatureLearningI.wMax", 1000);
+    protected int wMax = getPrefs().getInt("StdpFeatureLearningIII.wMax", 1000);
     {
         setPropertyTooltip("wMax", "Maximum weight");
     }
     
-    protected int wInitMean = getPrefs().getInt("StdpFeatureLearningI.wInitMean", 800);
+    protected int wInitMean = getPrefs().getInt("StdpFeatureLearningIII.wInitMean", 800);
     {
         setPropertyTooltip("wInitMean", "Initial weight mean");
     }
 
-    protected int wInitSTD = getPrefs().getInt("StdpFeatureLearningI.wInitSTD", 160);
+    protected int wInitSTD = getPrefs().getInt("StdpFeatureLearningIII.wInitSTD", 160);
     {
         setPropertyTooltip("wInitSTD", "Initial weight standard deviation");
     }
 
-    protected int alphaPlus = getPrefs().getInt("StdpFeatureLearningI.alphaPlus", 100);
+    protected int alphaPlus = getPrefs().getInt("StdpFeatureLearningIII.alphaPlus", 100);
     {
         setPropertyTooltip("alphaPlus", "Weight increment");
     }
 
-    protected int alphaMinus = getPrefs().getInt("StdpFeatureLearningI.alphaMinus", 50);
+    protected int alphaMinus = getPrefs().getInt("StdpFeatureLearningIII.alphaMinus", 50);
     {
         setPropertyTooltip("alphaMinus", "Weight decrement");
     }
 
-    protected int betaPlus = getPrefs().getInt("StdpFeatureLearningI.betaPlus", 0);
+    protected int betaPlus = getPrefs().getInt("StdpFeatureLearningIII.betaPlus", 0);
     {
         setPropertyTooltip("betaPlus", "Weight increment damping factor");
     }
 
-    protected int betaMinus = getPrefs().getInt("StdpFeatureLearningI.betaMinus", 0);
+    protected int betaMinus = getPrefs().getInt("StdpFeatureLearningIII.betaMinus", 0);
     {
         setPropertyTooltip("betaMinus", "Weight decrement damping factor");
     }
 
-    protected boolean keepWeightsOnRewind = getPrefs().getBoolean("StdpFeatureLearningI.keepWeightsOnRewind", true);
+    protected boolean keepWeightsOnRewind = getPrefs().getBoolean("StdpFeatureLearningIII.keepWeightsOnRewind", true);
     {
         setPropertyTooltip("keepWeightsOnRewind", "Resets everything on loop in Playback of file except for synapse weights");
     }
 
-    protected boolean displayNeuronStatistics = getPrefs().getBoolean("StdpFeatureLearningI.displayNeuronStatistics", true);
+    protected boolean displayNeuronStatistics = getPrefs().getBoolean("StdpFeatureLearningIII.displayNeuronStatistics", true);
     {
         setPropertyTooltip("displayNeuronStatistics", "Displays each Neurons weight matrix statistics: Mean, STD, Min, Max");
     }
 
-    protected boolean fireMaxOnlyOnceOnSpike = getPrefs().getBoolean("StdpFeatureLearningI.fireMaxOnlyOnceOnSpike", false);
+    protected boolean fireMaxOnlyOnceOnSpike = getPrefs().getBoolean("StdpFeatureLearningIII.fireMaxOnlyOnceOnSpike", false);
     {
         setPropertyTooltip("fireMaxOnlyOnceOnSpike", "Input spike can only trigger at most one neuron to fire");
     }
 
-    protected boolean displayCombinedPolarity = getPrefs().getBoolean("StdpFeatureLearningI.displayCombinedPolarity", true);
+    protected boolean displayCombinedPolarity = getPrefs().getBoolean("StdpFeatureLearningIII.displayCombinedPolarity", true);
     {
         setPropertyTooltip("displayCombinedPolarity", "Display Combined Polarities in Neuron Weight Matrix");
     }
     
-    protected boolean neuronFireHistogram = getPrefs().getBoolean("StdpFeatureLearningI.neuronFireHistogram", true);
+    protected boolean neuronFireHistogram = getPrefs().getBoolean("StdpFeatureLearningIII.neuronFireHistogram", true);
     {
         setPropertyTooltip("neuronFireHistogram", "Draw a box around firing neuron with color corresponding to number of times its fired in given packet");
     }
@@ -850,7 +850,7 @@ public class StdpFeatureLearningIII extends RectangularClusterTracker implements
         return this.fireThres;
     }
     public void setFireThres(final int fireThres) {
-        getPrefs().putInt("StdpFeatureLearningI.fireThres", fireThres);
+        getPrefs().putInt("StdpFeatureLearningIII.fireThres", fireThres);
         getSupport().firePropertyChange("fireThres", this.fireThres, fireThres);
         this.fireThres = fireThres;
     }
@@ -866,7 +866,7 @@ public class StdpFeatureLearningIII extends RectangularClusterTracker implements
         return this.tLTP;
     }
     public void setTLTP(final int tLTP) {
-        getPrefs().putInt("StdpFeatureLearningI.tLTP", tLTP);
+        getPrefs().putInt("StdpFeatureLearningIII.tLTP", tLTP);
         getSupport().firePropertyChange("tLTP", this.tLTP, tLTP);
         this.tLTP = tLTP;
     }
@@ -882,7 +882,7 @@ public class StdpFeatureLearningIII extends RectangularClusterTracker implements
         return this.tRefrac;
     }
     public void setTRefrac(final int tRefrac) {
-        getPrefs().putInt("StdpFeatureLearningI.tRefrac", tRefrac);
+        getPrefs().putInt("StdpFeatureLearningIII.tRefrac", tRefrac);
         getSupport().firePropertyChange("tRefrac", this.tRefrac, tRefrac);
         this.tRefrac = tRefrac;
     }
@@ -898,7 +898,7 @@ public class StdpFeatureLearningIII extends RectangularClusterTracker implements
         return this.tInhibit;
     }
     public void setTInhibit(final int tInhibit) {
-        getPrefs().putInt("StdpFeatureLearningI.tInhibit", tInhibit);
+        getPrefs().putInt("StdpFeatureLearningIII.tInhibit", tInhibit);
         getSupport().firePropertyChange("tInhibit", this.tInhibit, tInhibit);
         this.tInhibit = tInhibit;
     }
@@ -914,7 +914,7 @@ public class StdpFeatureLearningIII extends RectangularClusterTracker implements
         return this.tauLeak;
     }
     public void setTauLeak(final int tauLeak) {
-        getPrefs().putInt("StdpFeatureLearningI.tauLeak", tauLeak);
+        getPrefs().putInt("StdpFeatureLearningIII.tauLeak", tauLeak);
         getSupport().firePropertyChange("tauLeak", this.tauLeak, tauLeak);
         this.tauLeak = tauLeak;
     }
@@ -930,7 +930,7 @@ public class StdpFeatureLearningIII extends RectangularClusterTracker implements
         return this.wMin;
     }
     public void setWMin(final int wMin) {
-        getPrefs().putInt("StdpFeatureLearningI.wMin", wMin);
+        getPrefs().putInt("StdpFeatureLearningIII.wMin", wMin);
         getSupport().firePropertyChange("wMin", this.wMin, wMin);
         this.wMin = wMin;
     }
@@ -946,7 +946,7 @@ public class StdpFeatureLearningIII extends RectangularClusterTracker implements
         return this.wMax;
     }
     public void setWMax(final int wMax) {
-        getPrefs().putInt("StdpFeatureLearningI.wMax", wMax);
+        getPrefs().putInt("StdpFeatureLearningIII.wMax", wMax);
         getSupport().firePropertyChange("wMax", this.wMax, wMax);
         this.wMax = wMax;
     }
@@ -962,7 +962,7 @@ public class StdpFeatureLearningIII extends RectangularClusterTracker implements
         return this.wInitMean;
     }
     public void setWInitMean(final int wInitMean) {
-        getPrefs().putInt("StdpFeatureLearningI.wInitMean", wInitMean);
+        getPrefs().putInt("StdpFeatureLearningIII.wInitMean", wInitMean);
         getSupport().firePropertyChange("wInitMean", this.wInitMean, wInitMean);
         this.wInitMean = wInitMean;
     }
@@ -978,7 +978,7 @@ public class StdpFeatureLearningIII extends RectangularClusterTracker implements
         return this.wInitSTD;
     }
     public void setWInitSTD(final int wInitSTD) {
-        getPrefs().putInt("StdpFeatureLearningI.wInitSTD", wInitSTD);
+        getPrefs().putInt("StdpFeatureLearningIII.wInitSTD", wInitSTD);
         getSupport().firePropertyChange("wInitSTD", this.wInitSTD, wInitSTD);
         this.wInitSTD = wInitSTD;
     }
@@ -994,7 +994,7 @@ public class StdpFeatureLearningIII extends RectangularClusterTracker implements
         return this.alphaPlus;
     }
     public void setAlphaPlus(final int alphaPlus) {
-        getPrefs().putInt("StdpFeatureLearningI.alphaPlus", alphaPlus);
+        getPrefs().putInt("StdpFeatureLearningIII.alphaPlus", alphaPlus);
         getSupport().firePropertyChange("alphaPlus", this.alphaPlus, alphaPlus);
         this.alphaPlus = alphaPlus;
     }
@@ -1010,7 +1010,7 @@ public class StdpFeatureLearningIII extends RectangularClusterTracker implements
         return this.alphaMinus;
     }
     public void setAlphaMinus(final int alphaMinus) {
-        getPrefs().putInt("StdpFeatureLearningI.alphaMinus", alphaMinus);
+        getPrefs().putInt("StdpFeatureLearningIII.alphaMinus", alphaMinus);
         getSupport().firePropertyChange("alphaMinus", this.alphaMinus, alphaMinus);
         this.alphaMinus = alphaMinus;
     }
@@ -1026,7 +1026,7 @@ public class StdpFeatureLearningIII extends RectangularClusterTracker implements
         return this.betaPlus;
     }
     public void setBetaPlus(final int betaPlus) {
-        getPrefs().putInt("StdpFeatureLearningI.betaPlus", betaPlus);
+        getPrefs().putInt("StdpFeatureLearningIII.betaPlus", betaPlus);
         getSupport().firePropertyChange("betaPlus", this.betaPlus, betaPlus);
         this.betaPlus = betaPlus;
     }
@@ -1042,7 +1042,7 @@ public class StdpFeatureLearningIII extends RectangularClusterTracker implements
         return this.betaMinus;
     }
     public void setBetaMinus(final int betaMinus) {
-        getPrefs().putInt("StdpFeatureLearningI.betaMinus", betaMinus);
+        getPrefs().putInt("StdpFeatureLearningIII.betaMinus", betaMinus);
         getSupport().firePropertyChange("betaMinus", this.betaMinus, betaMinus);
         this.betaMinus = betaMinus;
     }
