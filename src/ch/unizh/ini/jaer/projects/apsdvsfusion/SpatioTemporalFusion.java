@@ -53,6 +53,19 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		}
 	}
 	
+	static Object getFilteringLock(SignalHandler requestingKernel) {
+		SpatioTemporalFusion stf = getInstance(requestingKernel);
+		if (stf != null) 
+			return stf.getFilteringLock();
+		else return new Object();
+	}
+	static Object getFilteringLock(FiringModelMap requestingMap) {
+		SpatioTemporalFusion stf = getInstance(requestingMap);
+		if (stf != null) 
+			return stf.getFilteringLock();
+		else return new Object();
+	}
+	
 	ArrayList<String> usedExpressionStrings = new ArrayList<String>();
 	SpikeSoundSignalHandler spikeSoundSignalHandler;
 	

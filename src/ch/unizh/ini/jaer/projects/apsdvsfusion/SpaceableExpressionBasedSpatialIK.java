@@ -57,6 +57,7 @@ public class SpaceableExpressionBasedSpatialIK extends
 		this.scaledCenterX = (xSize-1) / 2 + (centerX - (width-1)/2) * spacingX;
 		this.scaledCenterY = (ySize-1) / 2 + (centerY - (height-1)/2) * spacingY;
 		float[][] newScaledConvolutionValues = new float[xSize][ySize];
+//		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
 		synchronized (convolutionValuesLock) {
 			for (int xc = 0; xc < convolutionValues.length; xc++) {
 				int minX = (outWidthBiggerThanInWidth?xc*spacingX:xc);
@@ -85,9 +86,11 @@ public class SpaceableExpressionBasedSpatialIK extends
 	}
 	
 	
-	public synchronized void setInputOutputSizes(int inputWidth, int inputHeight, int outputWidth, int outputHeight) {
-		super.setInputSize(inputWidth, inputHeight);
-		super.setOutputSize(outputWidth, outputHeight);
+	public void setInputOutputSizes(int inputWidth, int inputHeight, int outputWidth, int outputHeight) {
+		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
+			super.setInputSize(inputWidth, inputHeight);
+			super.setOutputSize(outputWidth, outputHeight);
+		}
 //		recomputeMappings();
 
 //		changeOffset((outputWidth - inputWidth) / 2 ,(outputWidth - outputHeight) / 2);
@@ -95,11 +98,11 @@ public class SpaceableExpressionBasedSpatialIK extends
 	}
 
 
-	protected synchronized void inputSizeChanged(int oldWidth, int oldHeight, int newWidth, int newHeight) {
+	protected void inputSizeChanged(int oldWidth, int oldHeight, int newWidth, int newHeight) {
 		recomputeMappings();
 	}
 	
-	protected synchronized void outputSizeChanged(int oldWidth, int oldHeight, int newWidth, int newHeight) {
+	protected void outputSizeChanged(int oldWidth, int oldHeight, int newWidth, int newHeight) {
 		recomputeMappings();
 	}
 	
@@ -182,263 +185,211 @@ public class SpaceableExpressionBasedSpatialIK extends
 	
 	@Override
 	protected void recomputeMappings() {
-		int outputWidth = getOutputWidth();
-		int outputHeight = getOutputHeight();
-		if (outputWidth <= 0) outputWidth = 1;
-		if (outputHeight <= 0) outputHeight = 1;
-		int inputWidth = getInputWidth();
-		int inputHeight = getInputHeight();
-		if (inputWidth <= 0) inputWidth = 1;
-		if (inputHeight <= 0) inputHeight = 1;
-		
-		outWidthBiggerThanInWidth = outputWidth >= inputWidth;
-		outHeightBiggerThanInHeight = outputHeight >= inputHeight;
-		
-		// flip input and output sizes if output is bigger than input:
-		if (outWidthBiggerThanInWidth) {
-			int dummy = outputWidth;
-			outputWidth = inputWidth;
-			inputWidth = dummy;
+		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
+			int outputWidth = getOutputWidth();
+			int outputHeight = getOutputHeight();
+			if (outputWidth <= 0) outputWidth = 1;
+			if (outputHeight <= 0) outputHeight = 1;
+			int inputWidth = getInputWidth();
+			int inputHeight = getInputHeight();
+			if (inputWidth <= 0) inputWidth = 1;
+			if (inputHeight <= 0) inputHeight = 1;
+			
+			outWidthBiggerThanInWidth = outputWidth >= inputWidth;
+			outHeightBiggerThanInHeight = outputHeight >= inputHeight;
+			
+			// flip input and output sizes if output is bigger than input:
+			if (outWidthBiggerThanInWidth) {
+				int dummy = outputWidth;
+				outputWidth = inputWidth;
+				inputWidth = dummy;
+			}
+			if (outHeightBiggerThanInHeight) {
+				int dummy = outputHeight;
+				outputHeight = inputHeight;
+				inputHeight = dummy;
+			}
+			
+			computeSpacing(inputWidth, inputHeight, outputWidth, outputHeight);
+	
+			int restX = inputWidth - ((outputWidth-1) * spacingX + 1);
+			int startX = restX / 2;
+	
+			// the input pixel that maps to the output pixel with index 0 through the first position of the kernel:
+			if (scaledConvolutionValues != null)
+				projectingToZeroX = startX + (scaledConvolutionValues.length - scaledCenterX - 1);
+			else 
+				projectingToZeroX = 0;
+			
+			
+			// which position of the input would be centered on the position -1 in
+			// the output?
+			int centeredOnMinusOne = -spacingX + startX;
+			// starting offset in the kernel, sufficiently increased (spacingX *
+			// (outputWidth +2)) to avoid problems with negative numbers
+			kernelOffsetX = scaledCenterX + centeredOnMinusOne
+					+ (spacingX * (outputWidth + 2));
+			
+			// now the same for y:
+			int restY = inputHeight - ((outputHeight-1) * spacingY + 1);
+			int startY = restY / 2;
+			
+			if (scaledConvolutionValues != null && scaledConvolutionValues.length > 0)
+				projectingToZeroY = startY + (scaledConvolutionValues[0].length - scaledCenterY - 1);
+			else
+				projectingToZeroY = 0;
+			
+			centeredOnMinusOne = -spacingY + startY;
+			kernelOffsetY = scaledCenterY + centeredOnMinusOne
+					+ (spacingY * (outputHeight + 2));
+			
+			fillPrecomputedProjectionBounds();
 		}
-		if (outHeightBiggerThanInHeight) {
-			int dummy = outputHeight;
-			outputHeight = inputHeight;
-			inputHeight = dummy;
-		}
-		
-		computeSpacing(inputWidth, inputHeight, outputWidth, outputHeight);
-
-		int restX = inputWidth - ((outputWidth-1) * spacingX + 1);
-		int startX = restX / 2;
-
-		// the input pixel that maps to the output pixel with index 0 through the first position of the kernel:
-		if (scaledConvolutionValues != null)
-			projectingToZeroX = startX + (scaledConvolutionValues.length - scaledCenterX - 1);
-		else 
-			projectingToZeroX = 0;
-		
-		
-		// which position of the input would be centered on the position -1 in
-		// the output?
-		int centeredOnMinusOne = -spacingX + startX;
-		// starting offset in the kernel, sufficiently increased (spacingX *
-		// (outputWidth +2)) to avoid problems with negative numbers
-		kernelOffsetX = scaledCenterX + centeredOnMinusOne
-				+ (spacingX * (outputWidth + 2));
-		
-		// now the same for y:
-		int restY = inputHeight - ((outputHeight-1) * spacingY + 1);
-		int startY = restY / 2;
-		
-		if (scaledConvolutionValues != null && scaledConvolutionValues.length > 0)
-			projectingToZeroY = startY + (scaledConvolutionValues[0].length - scaledCenterY - 1);
-		else
-			projectingToZeroY = 0;
-		
-		centeredOnMinusOne = -spacingY + startY;
-		kernelOffsetY = scaledCenterY + centeredOnMinusOne
-				+ (spacingY * (outputHeight + 2));
-		
-		
 	}
 	
+
+	class ProjectionBounds {
+		int spacingX, spacingY;
+		int ox, oy;
+		int kx, ky;
+		boolean nothingToDo = false; 
+	}
+	
+	protected ProjectionBounds computeProjectionBounds(int tx, int ty, int width, int height, int outputWidth, int outputHeight) {
+		ProjectionBounds ret = new ProjectionBounds();
+		if (!outWidthBiggerThanInWidth) {
+			ret.spacingX = this.spacingX;
+			// assign to tx the difference between target and zero-projection
+			tx -= projectingToZeroX;
+			if (tx >=0) {
+				ret.ox = (tx / this.spacingX);//(-offsetX/spacingX);
+				ret.kx = ret.ox*this.spacingX - tx;
+				if (ret.kx < 0) {
+					ret.ox++;
+					ret.kx += this.spacingX;
+				}
+			}
+			else {
+				ret.ox = 0;
+				ret.kx = -tx;
+			}
+		}
+		else {
+			ret.spacingX = 1;
+			ret.ox = (projectingToZeroX - width + 1) + this.spacingX * tx;
+			ret.kx = 0;
+			if (ret.ox < 0) {
+				ret.kx = -ret.ox;
+				ret.ox = 0;
+			}
+		}
+
+		if (!outHeightBiggerThanInHeight) {
+			ret.spacingY = this.spacingY;
+			// assign to ty the difference between target and zero-projection
+			ty -= projectingToZeroY;
+			if (ty>=0) {
+				ret.oy = (ty / this.spacingY);//(-offsetX/spacingX);
+				ret.ky = ret.oy*this.spacingY - ty;
+				if (ret.ky < 0) {
+					ret.oy++;
+					ret.ky += this.spacingY;
+				}
+			}
+			else {
+				ret.oy = 0;
+				ret.ky = -ty;
+			}
+		}
+		else {
+			ret.spacingY = 1;
+			ret.oy = (projectingToZeroY - height + 1) + this.spacingY * ty;
+			ret.ky = 0;
+			if (ret.oy < 0) {
+				ret.ky = -ret.oy;
+				ret.oy = 0;
+			}
+		}
+		ret.nothingToDo = !(ret.ox < outputWidth && ret.kx < width && ret.ky < height && ret.oy < outputHeight);
+		return ret;
+	}
+	
+	private ProjectionBounds[][] precomputedProjectionBounds = new ProjectionBounds[0][0];
+	private int assumedKernelWidth = 0, assumedKernelHeight = 0;
+	private int assumedOutputWidth = 0, assumedOutputHeight = 0; 
+	private int assumedInputWidth = 0, assumedInputHeight = 0; 
+	
+	
+	protected void fillPrecomputedProjectionBounds() {
+		int inputWidth = getInputWidth();
+		int inputHeight = getInputHeight();
+		int assumedOutputWidth = getOutputWidth();
+		int assumedOutputHeight = getOutputHeight();
+		int assumedKernelWidth = convolutionValues.length;
+		int assumedKernelHeight = (assumedKernelWidth > 0)?convolutionValues[0].length:0;
+		ProjectionBounds[][] precomputedProjectionBounds = new ProjectionBounds[inputWidth][inputHeight];
+		for (int x = 0; x < inputWidth; x++) {
+			for (int y = 0; y < inputHeight; y++) {
+				precomputedProjectionBounds[x][y] = computeProjectionBounds(x, y, assumedKernelWidth, assumedKernelHeight, assumedOutputWidth, assumedOutputHeight);
+			}
+		}
+		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
+			this.assumedOutputWidth = assumedOutputWidth;
+			this.assumedOutputHeight = assumedOutputHeight;
+			this.assumedInputWidth = inputWidth;
+			this.assumedInputHeight = inputHeight;
+			this.assumedKernelWidth = assumedKernelWidth;
+			this.assumedKernelHeight = assumedKernelHeight;
+			this.precomputedProjectionBounds = precomputedProjectionBounds;
+		}
+		
+	}
 	
 	@Override
 	public void signalAt(int tx, int ty, int time, double value) {
 		if (isEnabled()) {
-			// copy link to make sure the convolutionValues don't change in the meantime...
-			float[][] convolutionValues = scaledConvolutionValues;
-			int width = (convolutionValues != null)?convolutionValues.length:0;
-			int height = (width > 0)?convolutionValues[0].length:0;
-			int spacingX;
-			int spacingY;
-			int ox;
-			int kx;
+			if (tx >= 0 && ty >= 0 && tx < assumedInputWidth && ty < assumedInputHeight) {
+				ProjectionBounds bounds = precomputedProjectionBounds[tx][ty];
+				// copy link to make sure the convolutionValues don't change in the meantime...
+				float[][] convolutionValues = scaledConvolutionValues;
+				int kernelWidth = (convolutionValues != null)?convolutionValues.length:0;
+				int kernelHeight = (kernelWidth > 0)?convolutionValues[0].length:0;
+				int outputWidth = getOutputWidth();
+				int outputHeight = getOutputHeight();
+				if (outputWidth == assumedOutputWidth && outputHeight == assumedOutputHeight && kernelWidth == assumedKernelWidth && kernelHeight == assumedKernelHeight)
+					bounds = precomputedProjectionBounds[tx][ty];
+				else 
+					bounds = computeProjectionBounds(tx, ty, kernelWidth, kernelHeight, outputWidth, outputHeight);
+				int spacingX = bounds.spacingX;
+				int spacingY = bounds.spacingY;
+				int ox = bounds.ox;
+				int kx = bounds.kx;
+
+
+				// now: increase x and y until o* or k* hit the boundaries
+				if (!bounds.nothingToDo) {
+					final FiringModelMap map = getOutputMap();
+//					synchronized (map) {
+						if (value == 1.0) {
+							for (; ox < outputWidth && kx < kernelWidth; ox++, kx+= spacingX) 
+								for (int ky = bounds.ky, oy = bounds.oy; oy < outputHeight && ky < kernelHeight; oy++, ky+= spacingY) 
+									map.signalAt(ox, oy, convolutionValues[kx][ky], time);
+						} else if (value == -1.0) {
+							for (; ox < outputWidth && kx < kernelWidth; ox++, kx+= spacingX) 
+								for (int ky = bounds.ky, oy = bounds.oy; oy < outputHeight && ky < kernelHeight; oy++, ky+= spacingY) 
+									map.signalAt(ox, oy, -convolutionValues[kx][ky], time);
+						} else if (value != 0.0) {
+							for (; ox < outputWidth && kx < kernelWidth; ox++, kx+= spacingX) 
+								for (int ky = bounds.ky, oy = bounds.oy; oy < outputHeight && ky < kernelHeight; oy++, ky+= spacingY) 
+									map.signalAt(ox, oy, value * convolutionValues[kx][ky], time);
+						}
+//					}
+				}
 			
-			int oyInitial;
-			int kyInitial;
-
-			if (!outWidthBiggerThanInWidth) {
-				spacingX = this.spacingX;
-				// assign to tx the difference between target and zero-projection
-				tx -= projectingToZeroX;
-				if (tx >=0) {
-					ox = (tx / this.spacingX);//(-offsetX/spacingX);
-					kx = ox*this.spacingX - tx;
-					if (kx < 0) {
-						ox++;
-						kx += this.spacingX;
-					}
-				}
-				else {
-					ox = 0;
-					kx = -tx;
-				}
 			}
-			else {
-				spacingX = 1;
-				ox = (projectingToZeroX - width + 1) + this.spacingX * tx;
-				kx = 0;
-				if (ox < 0) {
-					kx = -ox;
-					ox = 0;
-				}
-			}
-
-			if (!outHeightBiggerThanInHeight) {
-				spacingY = this.spacingY;
-				// assign to ty the difference between target and zero-projection
-				ty -= projectingToZeroY;
-				if (ty>=0) {
-					oyInitial = (ty / this.spacingY);//(-offsetX/spacingX);
-					kyInitial = oyInitial*this.spacingY - ty;
-					if (kyInitial < 0) {
-						oyInitial++;
-						kyInitial += this.spacingY;
-					}
-				}
-				else {
-					oyInitial = 0;
-					kyInitial = -ty;
-				}
-			}
-			else {
-				spacingY = 1;
-				oyInitial = (projectingToZeroY - height + 1) + this.spacingY * ty;
-				kyInitial = 0;
-				if (oyInitial < 0) {
-					kyInitial = -oyInitial;
-					oyInitial = 0;
-				}
-			}
-
-			int maxOx = getOutputWidth();
-			int maxOy = getOutputHeight();
-
-			//			int kyMinInitial = kyMin;
-			//			int oyMinInitial = oyMin;
-
-
-			// now: increase x and y until o* or k* hit the boundaries
-			if (ox < maxOx && kx < width && kyInitial < height && oyInitial < maxOy) {
-				final FiringModelMap map = getOutputMap();
-				if (value == 1.0) {
-					synchronized (map) {
-						for (; ox < maxOx && kx < width; ox++, kx+= spacingX) {
-							for (int ky = kyInitial, oy = oyInitial; oy < maxOy && ky < height; oy++, ky+= spacingY) {
-								FiringModel firingModel = map.get(ox,oy);
-								if (firingModel != null)
-									firingModel.receiveSpike(convolutionValues[kx][ky], time);
-							}
-						}
-					}
-				} else if (value == -1.0) {
-					synchronized (map) {
-						for (; ox < maxOx && kx < width; ox++, kx+= spacingX) {
-							for (int ky = kyInitial, oy = oyInitial; oy < maxOy && ky < height; oy++, ky+= spacingY) {
-								FiringModel firingModel = map.get(ox,oy);
-								if (firingModel != null)
-									firingModel.receiveSpike(-convolutionValues[kx][ky], time);
-							}
-						}
-					}
-				} else if (value != 0.0) {
-					synchronized (map) {
-						for (; ox < maxOx && kx < width; ox++, kx+= spacingX) {
-							for (int ky = kyInitial, oy = oyInitial; oy < maxOy && ky < height; oy++, ky+= spacingY) {
-								FiringModel firingModel = map.get(ox,oy);
-								if (firingModel != null)
-									firingModel.receiveSpike(value * convolutionValues[kx][ky], time);
-							}
-						}
-					}
-				}
-			}
-			//
-
-
-			
-//			// old, working version:
-//			int kx = (kernelOffsetX - tx) % spacingX;
-//			int ox = (getOutputWidth() + 1) - (kernelOffsetX - tx) / spacingX; 
-//			if (ox < 0) {
-//				kx -= spacingX * ox;
-//				ox = 0;
-//			}
-//	
-//			int kyInitial = (kernelOffsetY - ty) % spacingY;
-//			int oyInitial = (getOutputHeight() + 1) - (kernelOffsetY - ty) / spacingY;
-//			if (oyInitial < 0) {
-//				kyInitial -= spacingY * oyInitial;
-//				oyInitial = 0;
-//			}
-//	
-//	//		float[][] convolutionValues;
-//	//		if (polarity == Polarity.On) 
-//	//			convolutionValues = onConvolutionValues;
-//	//		else
-//	//			convolutionValues = offConvolutionValues;
-//	
-//			
-//			// nonsense for debugging...
-//			if (convolutionValues.length < width) {
-//				maxOx = getOutputWidth();
-//			}
-//			if (ox < maxOx && kx < width && kyInitial < height && oyInitial < maxOy) {
-//				final FiringModelMap map = getOutputMap();
-//				if (value == 1.0) {
-//					synchronized (map) {
-//						while (ox < maxOx && kx < width) {
-//							int ky = kyInitial, oy = oyInitial;
-//							while (oy < maxOy && ky < height) {
-//								FiringModel firingModel = map.get(ox,oy);
-//								if (firingModel != null)
-//									firingModel.receiveSpike(convolutionValues[kx][ky], time);
-//								ky += spacingY;
-//								oy ++;
-//							}
-//							kx += spacingX;
-//							ox ++;
-//						}
-//					}
-//				} else if (value == -1.0) {
-//					synchronized (map) {
-//						while (ox < maxOx && kx < width) {
-//							int ky = kyInitial, oy = oyInitial;
-//							while (oy < maxOy && ky < height) {
-//								FiringModel firingModel = map.get(ox,oy);
-//								if (firingModel != null)
-//									firingModel.receiveSpike(-convolutionValues[kx][ky], time);
-//								ky += spacingY;
-//								oy ++;
-//							}
-//							kx += spacingX;
-//							ox ++;
-//						}
-//					}
-//				} else if (value != 0.0) {
-//					synchronized (map) {
-//						while (ox < maxOx && kx < width) {
-//							int ky = kyInitial, oy = oyInitial;
-//							while (oy < maxOy && ky < height) {
-//								FiringModel firingModel = map.get(ox,oy);
-//								if (firingModel != null)
-//									firingModel.receiveSpike(value * convolutionValues[kx][ky], time);
-//								ky += spacingY;
-//								oy ++;
-//							}
-//							kx += spacingX;
-//							ox ++;
-//						}
-//					}
-//				}
-//			}
 		}
 	}
 	
-//	public synchronized void apply(int tx, int ty, int time, Polarity polarity,
-//			FiringModelMap map, SpikeHandler spikeHandler) {
-//	}
 	
 	public synchronized void savePrefs(Preferences prefs, String prefString) {
 		super.savePrefs(prefs, prefString);
@@ -446,10 +397,6 @@ public class SpaceableExpressionBasedSpatialIK extends
 		prefs.putInt(prefString+"spacingY",spacingY);
 		prefs.putInt(prefString+"kernelOffsetX",kernelOffsetX);
 		prefs.putInt(prefString+"kernelOffsetX",kernelOffsetY);
-//		prefs.putInt(prefString+"inputWidth",inputWidth);
-//		prefs.putInt(prefString+"inputHeight",inputHeight);
-//		prefs.putInt(prefString+"outputWidth",outputWidth);
-//		prefs.putInt(prefString+"outputHeight",outputHeight);
 	}
 
 	
@@ -484,6 +431,11 @@ public class SpaceableExpressionBasedSpatialIK extends
 			public FiringModel get(int x, int y) {
 				pos[0] = x; pos[1] = y;
 				return model;
+			}
+			@Override
+			public void signalAt(int x, int y, double value, int timeInUs) {
+				pos[0] = x; pos[1] = y;
+				model.receiveSpike(value, timeInUs);
 			}
 		});
 		k.setInputOutputSizes(inX, inY, outX, outY);

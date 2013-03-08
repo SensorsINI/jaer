@@ -43,11 +43,8 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 	private PropertyChangeListener creatorChangeListener = new PropertyChangeListener() {
 		@Override
 		public void propertyChange(PropertyChangeEvent e) {
-			SpatioTemporalFusion stf = SpatioTemporalFusion.getInstance(SchedulableWrapperMap.this);
-			if (stf != null) {
-				synchronized (stf.getFilteringLock()) {
-					buildUnits();
-				}
+			synchronized (SpatioTemporalFusion.getFilteringLock(SchedulableWrapperMap.this)) {
+				buildUnits();
 			}
 		}
 	};
@@ -315,23 +312,27 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 	}
 
 	@Override
-	public synchronized void setFiringModelCreator(FiringModelCreator creator) {
-		this.schedulableFiringModelCreator = null;
-		super.setFiringModelCreator(creator);
-		buildUnits();
+	public void setFiringModelCreator(FiringModelCreator creator) {
+		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
+			this.schedulableFiringModelCreator = null;
+			super.setFiringModelCreator(creator);
+			buildUnits();
+		}
 	}
 
-	public synchronized void setFiringModelCreator(
+	public void setFiringModelCreator(
 			SchedulableFiringModelCreator creator) {
-		if (this.schedulableFiringModelCreator != null)
-			this.schedulableFiringModelCreator.getSupport().removePropertyChangeListener(creatorChangeListener);
-		this.schedulableFiringModelCreator = creator;
-		super.setFiringModelCreator(null);
-		if (myControls != null)
-			((SchedulableWrapperMapCustomControls)myControls).creatorChanged();
-		if (this.schedulableFiringModelCreator != null)
-			this.schedulableFiringModelCreator.getSupport().addPropertyChangeListener(creatorChangeListener);
-		buildUnits();
+		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
+			if (this.schedulableFiringModelCreator != null)
+				this.schedulableFiringModelCreator.getSupport().removePropertyChangeListener(creatorChangeListener);
+			this.schedulableFiringModelCreator = creator;
+			super.setFiringModelCreator(null);
+			if (myControls != null)
+				((SchedulableWrapperMapCustomControls)myControls).creatorChanged();
+			if (this.schedulableFiringModelCreator != null)
+				this.schedulableFiringModelCreator.getSupport().addPropertyChangeListener(creatorChangeListener);
+			buildUnits();
+		}
 	}
 
 	public void setFiringModelMap(FiringModelMap map) {
@@ -383,14 +384,16 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 	
 	
 	@Override
-	public synchronized void changeSize(int sizeX, int sizeY) {
-		if (sizeX != this.sizeX || sizeY != this.sizeY) {
-			clearHeap();
-			super.changeSize(sizeX, sizeY);
-//			this.sizeX = sizeX;
-//			this.sizeY = sizeY;
-			if (map != null)
-				map.changeSize(sizeX, sizeY);
+	public void changeSize(int sizeX, int sizeY) {
+		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
+			if (sizeX != this.sizeX || sizeY != this.sizeY) {
+				clearHeap();
+				super.changeSize(sizeX, sizeY);
+	//			this.sizeX = sizeX;
+	//			this.sizeY = sizeY;
+				if (map != null)
+					map.changeSize(sizeX, sizeY);
+			}
 		}
 	}
 

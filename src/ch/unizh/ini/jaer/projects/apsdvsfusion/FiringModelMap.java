@@ -50,11 +50,8 @@ public abstract class FiringModelMap extends ParameterContainer {
 	private PropertyChangeListener creatorChangeListener = new PropertyChangeListener() {
 		@Override
 		public void propertyChange(PropertyChangeEvent e) {
-			SpatioTemporalFusion stf = SpatioTemporalFusion.getInstance(FiringModelMap.this);
-			if (stf != null) {
-				synchronized (stf.getFilteringLock()) {
-					buildUnits();
-				}
+			synchronized (SpatioTemporalFusion.getFilteringLock(FiringModelMap.this)) {
+				buildUnits();
 			}
 		}
 	};
@@ -319,7 +316,7 @@ public abstract class FiringModelMap extends ParameterContainer {
 	/**
 	 * @param sizeX the sizeX to set
 	 */
-	public synchronized void setSizeX(int sizeX) {
+	public void setSizeX(int sizeX) {
 //		getSupport().firePropertyChange("sizeX", this.sizeX, sizeX);
 		changeSize(sizeX, sizeY);
 	}
@@ -327,25 +324,26 @@ public abstract class FiringModelMap extends ParameterContainer {
 	/**
 	 * @param sizeY the sizeY to set
 	 */
-	public synchronized void setSizeY(int sizeY) {
-//		getSupport().firePropertyChange("sizeY", this.sizeY, sizeY);
+	public void setSizeY(int sizeY) {
 		changeSize(sizeX, sizeY);
 	}
 
-	public synchronized void changeSize(int sizeX, int sizeY) {
-		if (sizeX != this.sizeX || sizeY != this.sizeY) {
-//			int ox = this.sizeX, oy = this.sizeY;
-			int beforeX = this.sizeX;
-			int beforeY = this.sizeY;
-			this.sizeX = sizeX;
-			this.sizeY = sizeY;
-			buildUnits();
-			if (beforeX != sizeX)
-				getSupport().firePropertyChange("sizeX", beforeX, this.sizeX);
-			if (beforeY != sizeY)
-				getSupport().firePropertyChange("sizeY", beforeY, this.sizeY);
-			for (SignalTransformationKernel kernel : inputKernels) {
-				kernel.setOutputSize(sizeX, sizeY);
+	public  void changeSize(int sizeX, int sizeY) {
+		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
+			if (sizeX != this.sizeX || sizeY != this.sizeY) {
+	//			int ox = this.sizeX, oy = this.sizeY;
+				int beforeX = this.sizeX;
+				int beforeY = this.sizeY;
+				this.sizeX = sizeX;
+				this.sizeY = sizeY;
+				buildUnits();
+				if (beforeX != sizeX)
+					getSupport().firePropertyChange("sizeX", beforeX, this.sizeX);
+				if (beforeY != sizeY)
+					getSupport().firePropertyChange("sizeY", beforeY, this.sizeY);
+				for (SignalTransformationKernel kernel : inputKernels) {
+					kernel.setOutputSize(sizeX, sizeY);
+				}
 			}
 		}
 	}
@@ -360,6 +358,13 @@ public abstract class FiringModelMap extends ParameterContainer {
 	}
 	
 	public abstract FiringModel get(int x, int y);
+	
+	public void signalAt(int x, int y, double value, int timeInUs) {
+		FiringModel model = get(x, y);
+		if (model != null)
+			model.receiveSpike(value, timeInUs);
+	}
+	
 	public void reset() {
 		for (SignalTransformationKernel kernel : inputKernels) 
 			kernel.reset();

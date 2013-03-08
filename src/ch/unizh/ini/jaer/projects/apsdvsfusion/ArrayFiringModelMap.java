@@ -71,6 +71,13 @@ public class ArrayFiringModelMap extends FiringModelMap {
 //		}
 //	}
 	
+	@Override
+	public void signalAt(int x, int y, double value, int timeInUs) {
+		if (enabled && x >= 0 && x < sizeX && y >= 0 && y < sizeY)
+			map[x][y].receiveSpike(value, timeInUs);
+	}
+
+	
 	/* (non-Javadoc)
 	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap#get(int, int)
 	 */
@@ -96,14 +103,15 @@ public class ArrayFiringModelMap extends FiringModelMap {
 
 	@Override
 	public void buildUnits() {
-		map = new FiringModel[sizeX][sizeY];
+		FiringModel[][] newMap = new FiringModel[sizeX][sizeY];
 		if (getFiringModelCreator() != null) {
 			for (int x = 0; x < sizeX; x++) {
 				for (int y = 0; y < sizeY; y++) {
-					map[x][y] = getFiringModelCreator().createUnit(x, y, this);
+					newMap[x][y] = getFiringModelCreator().createUnit(x, y, this);
 				}
 			}
 		}
+		map = newMap;
 	}
 
 //	@Override

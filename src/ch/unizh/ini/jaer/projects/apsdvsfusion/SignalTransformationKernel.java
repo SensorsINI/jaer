@@ -90,59 +90,65 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 	protected void outputSizeChanged(int oldWidth, int oldHeight, int newWidth, int newHeight) {
 	}
 	
-	public synchronized void setOutputSize(int width, int height) {
-		if (width != outputWidth || height != outputHeight) {
-			int dw = this.outputWidth;
-			int dh = this.outputHeight;
-			this.outputWidth = width;
-			this.outputHeight = height;
-			outputSizeChanged(dw, dh, outputWidth, outputHeight);
+	public void setOutputSize(int width, int height) {
+		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
+			if (width != outputWidth || height != outputHeight) {
+				int dw = this.outputWidth;
+				int dh = this.outputHeight;
+				this.outputWidth = width;
+				this.outputHeight = height;
+				outputSizeChanged(dw, dh, outputWidth, outputHeight);
+			}
 		}
 	}
 
 	
-	public synchronized void setInputSize(int width, int height) {
-		if (width != inputWidth || height != inputHeight) {
-			int dw = this.inputWidth;
-			int dh = this.inputHeight;
-			this.inputWidth = width;
-			this.inputHeight = height;
-			inputSizeChanged(dw, dh, inputWidth, inputHeight);
+	public void setInputSize(int width, int height) {
+		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
+			if (width != inputWidth || height != inputHeight) {
+				int dw = this.inputWidth;
+				int dh = this.inputHeight;
+				this.inputWidth = width;
+				this.inputHeight = height;
+				inputSizeChanged(dw, dh, inputWidth, inputHeight);
+			}
 		}
 	}
 
 	/**
 	 * @return the inputMap
 	 */
-	public synchronized FiringModelMap getInputMap() {
+	public FiringModelMap getInputMap() {
 		return inputMap;
 	}
 
 	/**
 	 * @param inputMap the inputMap to set
 	 */
-	public synchronized void setInputMap(FiringModelMap inputMap) {
-		if (inputMap != this.inputMap) {
-			getSupport().firePropertyChange("inputMap", this.inputMap, inputMap);
-			if (this.inputMap != null) {
-				this.inputMap.removeSignalHandler(this);
-				this.inputMap.getSupport().removePropertyChangeListener(this);
-			}
-			boolean changeSize = (this.inputMap == null || inputMap == null || this.inputMap.getSizeX() != inputMap.getSizeX() || this.inputMap.getSizeY() != inputMap.getSizeY());
-			this.inputMap = inputMap;
-			if (changeSize) {
-				if (inputMap != null)
-					setInputSize(inputMap.getSizeX(), inputMap.getSizeY());
+	public void setInputMap(FiringModelMap inputMap) {
+		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
+			if (inputMap != this.inputMap) {
+				getSupport().firePropertyChange("inputMap", this.inputMap, inputMap);
+				if (this.inputMap != null) {
+					this.inputMap.removeSignalHandler(this);
+					this.inputMap.getSupport().removePropertyChangeListener(this);
+				}
+				boolean changeSize = (this.inputMap == null || inputMap == null || this.inputMap.getSizeX() != inputMap.getSizeX() || this.inputMap.getSizeY() != inputMap.getSizeY());
+				this.inputMap = inputMap;
+				if (changeSize) {
+					if (inputMap != null)
+						setInputSize(inputMap.getSizeX(), inputMap.getSizeY());
+					else 
+						setInputSize(1, 1);
+				}
+				if (this.inputMap != null) {
+					this.inputMap.addSignalHandler(this);
+					this.inputMap.getSupport().addPropertyChangeListener(this);
+					getPrefs().putInt("inputMapID", this.inputMap.getMapID());
+				}
 				else 
-					setInputSize(1, 1);
+					getPrefs().putInt("inputMapID", -1);
 			}
-			if (this.inputMap != null) {
-				this.inputMap.addSignalHandler(this);
-				this.inputMap.getSupport().addPropertyChangeListener(this);
-				getPrefs().putInt("inputMapID", this.inputMap.getMapID());
-			}
-			else 
-				getPrefs().putInt("inputMapID", -1);
 		}
 		
 	}
@@ -150,22 +156,24 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 	/**
 	 * @return the outputMap
 	 */
-	public synchronized FiringModelMap getOutputMap() {
+	public FiringModelMap getOutputMap() {
 		return outputMap;
 	}
 
 	/**
 	 * @param outputMap the outputMap to set
 	 */
-	public synchronized void setOutputMap(FiringModelMap outputMap) {
-		if (outputMap != this.outputMap) {
-			boolean changeSize = (this.inputMap == null || inputMap == null || this.inputMap.getSizeX() != inputMap.getSizeX() || this.inputMap.getSizeY() != inputMap.getSizeY());
-			this.outputMap = outputMap;
-			if (changeSize) {
-				if (outputMap != null)
-					setOutputSize(outputMap.getSizeX(), outputMap.getSizeY());
-				else 
-					setOutputSize(1, 1);
+	public void setOutputMap(FiringModelMap outputMap) {
+		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
+			if (outputMap != this.outputMap) {
+				boolean changeSize = (this.inputMap == null || inputMap == null || this.inputMap.getSizeX() != inputMap.getSizeX() || this.inputMap.getSizeY() != inputMap.getSizeY());
+				this.outputMap = outputMap;
+				if (changeSize) {
+					if (outputMap != null)
+						setOutputSize(outputMap.getSizeX(), outputMap.getSizeY());
+					else 
+						setOutputSize(1, 1);
+				}
 			}
 		}
 	}
@@ -210,18 +218,13 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 			public void actionPerformed(ActionEvent arg0) {
 				Object newSelection = myComboBox.getSelectedItem();
 				if (newSelection != currentSelection) {
-					SpatioTemporalFusion stf = SpatioTemporalFusion.getInstance(SignalTransformationKernel.this);
-					if (stf != null) {
-						synchronized (stf.getFilteringLock()) {
-							currentSelection = newSelection;
-							if (currentSelection instanceof FiringModelMap)
-								setInputMap((FiringModelMap)currentSelection);
-							else 
-								setInputMap(null);
-						}
-
+					synchronized (SpatioTemporalFusion.getFilteringLock(SignalTransformationKernel.this)) {
+						currentSelection = newSelection;
+						if (currentSelection instanceof FiringModelMap)
+							setInputMap((FiringModelMap)currentSelection);
+						else 
+							setInputMap(null);
 					}
-
 				}
 			}
 		});
