@@ -7,6 +7,7 @@ import java.util.prefs.Preferences;
 
 import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.IntegrateAndFire;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.LeakyIntegrateAndFire;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.LinearThresholdIF;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.SimplePoissonModel;
 
 /**
@@ -28,12 +29,15 @@ public abstract class FiringModelCreator extends ParameterContainer {
 	public abstract FiringModel createUnit(int x, int y, FiringModelMap map);
 	
 	public static enum FiringModelType {
-		INTEGRATEANDFIRE, LEAKYINTEGRATEANDFIRE
+		INTEGRATEANDFIRE, LINEARTHRESHOLDIF, LEAKYINTEGRATEANDFIRE
 	}
 	
 	public static FiringModelCreator getCreator(FiringModelType model, Preferences prefs) {
 		if (model == FiringModelType.INTEGRATEANDFIRE)
 			return IntegrateAndFire.getCreator(prefs);
+		else if (model == FiringModelType.LINEARTHRESHOLDIF) {
+			return LinearThresholdIF.getCreator(prefs);
+		} 
 		else if (model == FiringModelType.LEAKYINTEGRATEANDFIRE) {
 			return LeakyIntegrateAndFire.getCreator(prefs);
 		} 

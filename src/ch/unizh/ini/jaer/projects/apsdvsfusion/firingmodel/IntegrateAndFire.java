@@ -42,7 +42,9 @@ public class IntegrateAndFire extends FiringModel {
 
 		@Override
 		public FiringModel createUnit(int x, int y, FiringModelMap map) {
-			return new IntegrateAndFire(x,y,map);
+			IntegrateAndFire integrateAndFire = new IntegrateAndFire(x,y,map);
+			integrateAndFire.setThreshold(threshold);
+			return integrateAndFire;
 		}
 	}
 	/**
@@ -55,6 +57,16 @@ public class IntegrateAndFire extends FiringModel {
 	
 	public static FiringModelCreator getCreator(Preferences prefs) {
 		return new Creator(prefs);
+	}
+
+
+	
+	public float getThreshold() {
+		return threshold;
+	}
+
+	public void setThreshold(float threshold) {
+		this.threshold = threshold;
 	}
 
 	/* (non-Javadoc)
