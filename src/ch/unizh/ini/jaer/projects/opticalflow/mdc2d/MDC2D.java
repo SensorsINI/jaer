@@ -70,6 +70,7 @@ public class MDC2D extends Chip2DMotion  {
         setBiasgen(new MDC2DBiasgen(this, dac));
         setSizeX(NUM_COLUMNS);
         setSizeY(NUM_ROWS);
+        setName(CHIPNAME); // for biasgen window title
 
         getCanvas().addDisplayMethod(new OpticalFlowDisplayMethod(this.getCanvas()));
         getCanvas().setOpenGLEnabled(true);
@@ -139,7 +140,7 @@ public class MDC2D extends Chip2DMotion  {
             // create the appropriate PotArray
             vpots.addPot(new VPot(MDC2D.this, "VRegRefBiasAmp", dac, 0, Pot.Type.NORMAL, Pot.Sex.P, 1,       16, "sets bias of feedback follower in srcbias"));
             vpots.addPot(new VPot(MDC2D.this,"VRegRefBiasMain",dac,      1,Pot.Type.NORMAL,Pot.Sex.P,1,      17,"sets bias of pfet which sets ref to srcbias"));
-            vpots.addPot(new VPot(MDC2D.this,"VprBias",dac,              2,Pot.Type.NORMAL,Pot.Sex.P,1,      18,"bias current for pr"));
+            vpots.addPot(new VPot(MDC2D.this,"VprBias",dac,              2,Pot.Type.NORMAL,Pot.Sex.P,1,      18,"bias current for photoreceptor"));
             vpots.addPot(new VPot(MDC2D.this,"Vlmcfb",dac,               3,Pot.Type.NORMAL,Pot.Sex.N,1,      19,"bias current for diffosor"));
             vpots.addPot(new VPot(MDC2D.this,"Vprbuff",dac,              4,Pot.Type.NORMAL,Pot.Sex.P,1,      20,"bias current for pr scr foll to lmc1"));
             vpots.addPot(new VPot(MDC2D.this,"Vprlmcbias",dac,           5,Pot.Type.NORMAL,Pot.Sex.P,1,      21,"bias current for lmc1"));
@@ -157,7 +158,7 @@ public class MDC2D extends Chip2DMotion  {
             //ipotArray = new IPotArray(this); //construct IPotArray whit shift register stuff
             ipots.addPot(new IPot(this,"VRegRefBiasAmp", 0, IPot.Type.NORMAL, Pot.Sex.P, 1,       0, "sets bias of feedback follower in srcbias"));
             ipots.addPot(new IPot(this,"Vrefminbias",          1,Pot.Type.NORMAL,Pot.Sex.N,1,    1,"sets bias for Srcrefmin follower from resis divider"));
-            ipots.addPot(new IPot(this,"VprBias",              2,Pot.Type.NORMAL,Pot.Sex.P,1,      2,"bias current for pr"));
+            ipots.addPot(new IPot(this,"VprBias",              2,Pot.Type.NORMAL,Pot.Sex.P,1,      2,"bias current for photoreceptor"));
             ipots.addPot(new IPot(this,"VRegRefBiasMain",      3,Pot.Type.NORMAL,Pot.Sex.P,1,      3,"sets bias of pfet which sets ref to srcbias"));
             ipots.addPot(new IPot(this,"Vlmcfb",               4,Pot.Type.NORMAL,Pot.Sex.N,1,      4,"bias current for diffosor"));
             ipots.addPot(new IPot(this,"Vlmcbuff",             5,Pot.Type.NORMAL,Pot.Sex.P,1,      5,"bias current for lmc2"));
