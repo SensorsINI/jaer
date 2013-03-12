@@ -3,8 +3,6 @@
  * and open the template in the editor.
  */
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
-import sait.dvs.jhlee.gesture.blurringFilter.BlurringFilter2DTracker;
-import sait.dvs.jhlee.gesture.blurringFilter.BlurringFilter2DTracker.Cluster;
 import java.awt.Graphics2D;
 //import java.util.ArrayList;
 import java.awt.geom.Point2D;
@@ -22,6 +20,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 //import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 //import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
+import net.sf.jaer.eventprocessing.tracking.ClusterTracker.Cluster;
 import net.sf.jaer.eventprocessing.tracking.ClusterTrackerInterface;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -335,9 +334,6 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater,Obse
             ( (EventFilter2D)tracker ).resetFilter();
         }
         switch ( trackerToUse ){
-            case BlurringFilter2DTracker:
-                tracker = new BlurringFilter2DTracker(chip);
-                break;
             case RectangularClusterTracker:
                 tracker = new RectangularClusterTracker(chip);
         }
