@@ -603,12 +603,13 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
      * @return boolean indicating whether neuron has fired 
      */
     private boolean updateNeuronL2IntegrationState(int c, int neuron, int ts, int neuronL1) {
+        float fireThresL2 = fireThres / 1000f;
         // Neuron Update equation
         double temp = - (ts - neuronL2SpikeTiming[c][neuron]) / (double) tauLeak;
         neuronL2Potential[c][neuron] = neuronL2Potential[c][neuron] * (float) Math.exp(temp) + synapseWeightsL2[neuron][neuronL1];  
         neuronL2SpikeTiming[c][neuron] = ts;
         // If updated potential is above firing threshold, then fire and reset
-        if (neuronL2Potential[c][neuron] >= fireThres) {
+        if (neuronL2Potential[c][neuron] >= fireThresL2) {
             neuronL2Potential[c][neuron] = 0;
             return true;
         } else {
@@ -648,9 +649,10 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
                     } // END IF - All synapses
         // L2
         } else if (layer == 1) {
+            int tLTPL2 = tLTP*10;
             for (int nL1=0; nL1<neuronsL1; nL1++) {
                 // LTP - Long Term Potentiation
-                if (ts-neuronL1FireTiming[c][nL1]<=tLTP) {
+                if (ts-neuronL1FireTiming[c][nL1]<=tLTPL2) {
                     synapseWeightsL2[neuron][nL1] = synapseWeightsL2[neuron][nL1] + 
                             alphaPlus * (float) Math.exp(-betaPlus * 
                             (synapseWeightsL2[neuron][nL1] - wMin) / (double) (wMax - wMin));
