@@ -685,15 +685,17 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
                 for (int p=0; p<numPolarities; p++) 
                     for (int x=0; x<xPixels; x++) 
                         for (int y=0; y<yPixels; y++) 
-                            synapseWeightMapL2[nL2][p][x][y] += synapseWeightsL1[nL1][p][x][y]*synapseWeightsL2[nL2][nL1];
+                            synapseWeightMapL2[nL2][p][x][y] = synapseWeightMapL2[nL2][p][x][y] + 
+                                    synapseWeightsL1[nL1][p][x][y]*(synapseWeightsL2[nL2][nL1]-wMin) / 
+                                    (float) (wMax-wMin);
         
         // Normalize 
         for (int nL2=0; nL2<neuronsL2; nL2++) 
             for (int p=0; p<numPolarities; p++) 
                 for (int x=0; x<xPixels; x++) 
                     for (int y=0; y<yPixels; y++) 
-                        synapseWeightMapL2[nL2][p][x][y] = (synapseWeightMapL2[nL2][p][x][y] - wMin*wMin) /
-                                (float)((wMax*wMax - wMin*wMin)*neuronsL2); // CHECK - FIX
+                        synapseWeightMapL2[nL2][p][x][y] = synapseWeightMapL2[nL2][p][x][y] /
+                                (float)neuronsL1; // CHECK - FIX
     }
 
     /**
@@ -917,8 +919,8 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
                             // Handle Polarity cases independently, not through a for loop
                             //float wOFF = (synapseWeightMapL2[n][0][x][y] - wMin) / (float) (wMax - wMin);
                             //float wON = (synapseWeightMapL2[n][1][x][y] - wMin) / (float) (wMax - wMin);
-                            float wOFF = synapseWeightMapL2[n][0][x][y]/3f;
-                            float wON = synapseWeightMapL2[n][1][x][y]/3f;
+                            float wOFF = (synapseWeightMapL2[n][0][x][y]- wMin) / (float) (wMax - wMin);
+                            float wON = (synapseWeightMapL2[n][1][x][y] - wMin) / (float) (wMax - wMin);
                             if (displayCombinedPolarity == true) {
                                 gl.glColor3f(wON, 0, wOFF);
                                 gl.glRectf(xOffset+x, yOffset+y+yPixels, 
