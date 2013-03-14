@@ -71,11 +71,7 @@ public class GlobalViewer extends javax.swing.JFrame {
 //            }
             
 //            inputDisplays.clear();
-            packetStreams.clear();
-            
-            
-            if (viewers.size() > 0) 
-            	waitFlag=new CyclicBarrier(viewers.size(),new ViewLoop());
+            packetStreams.clear();            
             
             // Add all the viewers
             for (int i=0; i<viewers.size(); i++) 
@@ -93,6 +89,9 @@ public class GlobalViewer extends javax.swing.JFrame {
 //                
 //                jt.add(men);
                 JMenuBar m=v.getToolBar();
+                
+                // Disable spawning new windows inside here
+                m.getMenu(0).getItem(0).setEnabled(false);
                 jp.add(m,BorderLayout.NORTH);
                 
                 
@@ -102,14 +101,32 @@ public class GlobalViewer extends javax.swing.JFrame {
                 addPacketStream(v);
 //                addDisplayWriter(v.getPanel(),new Dimension(400,400));
                 addDisplayWriter(jp,new Dimension(400,400));
+                refreshPlayingLocks();
                 v.setWatched(true);
-                v.setSemaphore(waitFlag);
 //                inputDisplays.add(v);
             }
             
             resynchronize();
         }
         
+        private int countPlayingViewers(){
+            int active_players = 0;
+            for (AEViewer.Ambassador v:aeviewers){
+                if(v.getMode() == AEViewer.PlayMode.PLAYBACK) {
+                    active_players++;
+                }
+            }
+            return active_players;
+        }
+        
+        public void refreshPlayingLocks(){
+            int playing = countPlayingViewers();
+            playing = (playing > 0) ? playing : aeviewers.size();
+            waitFlag = new CyclicBarrier(playing, new ViewLoop());                
+            for (AEViewer.Ambassador v:aeviewers)
+                v.setSemaphore(waitFlag);
+        }
+                
         
         public void resynchronize()
         {
@@ -286,10 +303,7 @@ public class GlobalViewer extends javax.swing.JFrame {
 
             
             });
-            bottomBar.add(button);
-            
-            button=new JButton("Do Something");
-            bottomBar.add(button);
+            bottomBar.add(button);            
             
             final JToggleButton but=new JToggleButton("Show Filters");
             but.addActionListener(new ActionListener(){

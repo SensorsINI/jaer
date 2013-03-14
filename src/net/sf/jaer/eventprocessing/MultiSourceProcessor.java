@@ -7,6 +7,7 @@ package net.sf.jaer.eventprocessing;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -39,12 +40,18 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
     
     public int lastEventTime=Integer.MIN_VALUE;
     
+    boolean liveSources = false;
+    
+    // Keep track of desynchronized, possibly looping time sources
+    int[] bufferLoopOffsets;
+    int[] bufferStarts;
+    int[] bufferPrevTimes;
+    
     /** Initialize a MultiSensoryFilter with the chip, and the number of inputs
      it will take
      */
     public MultiSourceProcessor(AEChip chip) // Why is "chip" so tightly bound with viewing options??
     {   super(chip);        
-    
     
         int nInputs=getInputNames().length;
     
@@ -57,6 +64,12 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
             buffers.add(new LinkedList());
         
         queueAlive=new boolean[buffers.size()];
+        bufferLoopOffsets = new int[buffers.size()];
+        bufferStarts = new int[buffers.size()];
+        bufferPrevTimes = new int[buffers.size()];
+        
+        // Ensure proper comparison
+        Arrays.fill(bufferStarts,Integer.MAX_VALUE);
         
         out=new EventPacket();
         
@@ -129,79 +142,47 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
      */
     EventPacket mergePackets(ArrayList<EventPacket> packets)
     {
-        /*
-         * packet 0:    ooooo \
-         * packet 1:  ooooooo - pq --> oooooooooooooooo     : output packet
-         * packet 2:     oooo /
-         */
-//        
-//        if (lastEvts==null)
-//        {   lastEvts=new ArrayList();
-//            for (int i=0; i<buffers.size(); i++)
-//                lastEvts.add(new BasicEvent());
-//            
-//        }
-        
-//        if (packets.size()==1)
-//        {    //out.setElementData(packets.get(0).getElementData());
-//             
-//            //return out;
-//            return packets.get(0);
-//        }
-        
+
         if (packets.size()==1)
             return packets.get(0);
-        
-        
-        
-        int goToTime=Integer.MIN_VALUE;
-        
-        
-        try {
 
-            
-            
+        int goToTime=Integer.MIN_VALUE;        
+        
+        try { 
             // Step 1: dump all events into queues
-            for (int i = 0; i < packets.size(); i++) {
-//                BasicEvent lastEvent=new BasicEvent();
-//                if (!buffers.get(i).isEmpty())
-//                    lastEvent.copyFrom(((LinkedList<BasicEvent>)buffers.get(i)).peekLast());
-                
-//                for (int j = 0; j < packets.get(i).getSize(); j++) {
-//                    BasicEvent currentEvent = packets.get(i).getEvent(j);
-//                    if (currentEvent.timestamp < lastEvts.get(i).timestamp) {
-//                        System.out.println("TimeStamp Nonmonotonicity: "+currentEvent.timestamp+" < "+ lastEvts.get(i).timestamp);
-//                    }
-//                    lastEvts.get(i).copyFrom(currentEvent);
-////                    if (!buffers.get(i).isEmpty())
-////                        lastEvent.copyFrom(((LinkedList<BasicEvent>)buffers.get(i)).peekLast());
-//                }
-                               
-                
-//                Iterator<BasicEvent> itr = packets.get(i).iterator();
-//                Iterator<BasicEvent> itr = packets.get(i).inputIterator();
-                
-                
+            for (int i = 0; i < packets.size(); i++) {                                
                 BasicEvent ev = null;
+                
+                // Skip uninitialized sources
+                if(packets.get(i)==null)
+                    continue;
+                
                 for (int k=0; k<packets.get(i).getSize(); k++)  {
-//                    ev = itr.next();                                
                     ev = packets.get(i).getEvent(k);
-
+                    
+                    // Find true start time, so that times run from zero to +inf
+                    if(ev.timestamp < bufferStarts[i])
+                        bufferStarts[i] = ev.timestamp;
+                                        
+                    // Subtract off start time and add loop offset time
+                    ev.timestamp -= bufferStarts[i] + bufferLoopOffsets[i];
+                    
+                    // If we've looped in time, continue adding time
+                    if(bufferPrevTimes[i] > ev.timestamp)
+                        bufferLoopOffsets[i] += bufferPrevTimes[i];
+                    
+                    // Store this time for next iteration
+                    bufferPrevTimes[i]=ev.timestamp;
+                    
                     BasicEvent evo = ev.getClass().newInstance(); // This seems WRONG! Alternative would be adding a copy method to all events
                     evo.copyFrom(ev);
                     evo.source = (byte) i;
                     
                     LinkedList<BasicEvent> testBuf=(LinkedList)buffers.get(i);
                     
-//                    if(!testBuf.isEmpty() && lastEvts.get(i)!=testBuf.peekLast())
-//                    if(itr.next()!=packets.get(i).getEvent(k))  
-//                        System.out.println("Sumething funny going on");
-                        
-                    if (!testBuf.isEmpty() && testBuf.getLast().timestamp>evo.timestamp)
-                         System.out.println("NonMonotonicTimeStamp!");
+                    //if (!testBuf.isEmpty() && testBuf.getLast().timestamp>evo.timestamp)
+                    //     System.out.println("NonMonotonicTimeStamp!");
                     
-                    
-//                    lastEvts.set(i,evo);
                     buffers.get(i).add(evo);
                 }
 
@@ -215,11 +196,7 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
             Logger.getLogger(MultiSourceProcessor.class.getName()).log(Level.SEVERE, null, ex);
         }
         
-        
         goToTime-=getMaxWaitTime();
-        
-        
-        
         
         /* Step 2, if dead queues have received events, revive them, add their 
          * elements back into the priority queue.
@@ -229,29 +206,22 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
             {   if (!queueAlive[i] && !buffers.get(i).isEmpty())
                 {   BasicEvent ev=buffers.get(i).poll();
                     ev.source=(byte)i;
-                    
+
                     
                     if (lastEventTime!=Integer.MIN_VALUE && ev.timestamp-lastEventTime<0)
-                    {   resynchronize();
-                        
+                    {   
+                        resynchronize();                        
                         throw new RuntimeException("The event-streams from your sources are out of synch. "
                                 + "by "+(ev.timestamp-lastEventTime)/1000+"ms, which is more than the max wait time of "+
                                 maxWaitTime/1000+"ms.  Either synchronize your sources or set a bigger maxWaitTime.");
                     
                     }
+                    
                     pq.add(ev);
-                    
-                    
+           
                     queueAlive[i]=true;
                 }
             }
-//            // If we've gotten here, each buffer has at least one event
-//            for (byte i=0; i<buffers.size(); i++)
-//            {   BasicEvent ev=buffers.get(i).poll();
-//                ev.source=i;
-//                pq.add(ev);
-//            }
-//            // Each source will now have an event in the priority queue
         }
                 
             
@@ -265,9 +235,6 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
         out.clear();
         OutputEventIterator<BasicEvent> outItr=out.outputIterator();
         
-//        String lastEventType="";
-        
-//        int lastTimestamp=Integer.MIN_VALUE;
         BasicEvent ev=null;
         while(!pq.isEmpty())
         {
@@ -279,13 +246,6 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
             ev=pq.poll();
                         
             outItr.writeToNextOutput(ev);
-//            if (ev.timestamp<lastTimestamp) // Check for monotonicity
-//            {   System.out.println("Timestamp decrease detected: ("+lastEventType+"-->"+ev.toString()+")  Resetting event queues!");
-//                resynchronize();
-//                break;
-//            }
-//            lastTimestamp=ev.timestamp;
-//            lastEventType=ev.toString();
             
             // If last-pulled-from-buffer is empty  
             if (buffers.get(ev.source).isEmpty())
@@ -293,74 +253,23 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
                 if (queueAlive[ev.source])
                 {   // Mark the queue as dead, do not replace item polled from Priority Queue, return
                     queueAlive[ev.source]=false;
-//                    System.out.println("nA:"+nA+"\t nB:"+nB); 
                     break;
                 }
                 
             }
             else 
-            {   // Replace event polled with event from same buffer
+            {
+                // Replace event polled with event from same buffer
                 BasicEvent pulledFromBuffer=buffers.get(ev.source).poll();
                 
                 pq.add(pulledFromBuffer);
             }
-                        
-//            if (ev.source==0) nA++; else if (ev.source==1) nB++;
-            
         }
         
         if (ev!=null)
             lastEventTime=ev.timestamp;
         
-        // Confirm ordering
-        
-//        for (int i=1; i<out.getSize(); i++)
-//        {
-//            if (out.getEvent(i).timestamp<out.getEvent(i-1).timestamp)
-//                System.out.println("NON-MONOTONIC TIMESTAMPS!");
-//        }
-        
-        
-        
-//        out.
         return out;
-        
-//        while(true)
-//        {
-//            BasicEvent ev=pq.peek();
-//            
-//            if (buffers.get(ev.source).isEmpty())
-//            {   System.out.println("nA:"+nA+"\t nB:"+nB); 
-//                return out;            
-//            }
-//            
-//            outItr.writeToNextOutput(pq.poll());
-//                        
-//            if (ev.source==0) nA++; else if (ev.source==1) nB++;
-//            
-//            // If last-pulled-from queue is empty  
-//            if (buffers.get(ev.source).isEmpty())
-//            {   // If furthermore, this queue was had no input events in this round
-//                if (queueAlive[ev.source])
-//                {   System.out.println("nA:"+nA+"\t nB:"+nB); 
-//                    return out;
-//                }
-//            }
-//            else 
-//                
-//            BasicEvent pulledFromQueue=buffers.get(ev.source).poll();
-//            
-//            if (pulledFromQueue.timestamp < ev.timestamp)
-//            {
-//                System.out.println("Timestamp decrease detected.  Resetting event queues!");
-//                resynchronize();
-//                return out;
-//            }
-//            
-//            // Replace the last item pulled from the PQ with an item from the same buffer.
-//            pq.add(pulledFromQueue);
-//        }
-        
         
     }
     

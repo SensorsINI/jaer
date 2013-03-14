@@ -88,7 +88,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     // set true to force null hardware (None in interface menu) even if only single interface 
     private boolean nullInterface = false;
-    
+
     /** Utility method to return a URL to a file in the installation.
      * 
      * @param path relative to root of installation, e.g. "/doc/USBAERmini2userguide.pdf"
@@ -1673,7 +1673,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                     // Grab input from one of various sources
                     boolean skipTheRest = grabInput();
-                    if (skipTheRest) continue;
+                    
+                    // If there's nothing to do:
+                    if (skipTheRest) {
+                        continue;
+                    }
 
                     
                     numRawEvents = aeRaw.getNumEvents();
@@ -1759,8 +1763,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         Logger.getLogger(AEViewer.class.getName()).log(Level.SEVERE, null, ex);
                     } catch (BrokenBarrierException ex) {
                         Logger.getLogger(AEViewer.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                    
+                    }                    
                 }
                 
                 
@@ -1997,6 +2000,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     if (aemon == null || !aemon.isOpen()) {
                         statisticsLabel.setText("Choose desired HardwareInterface from Interface menu");
 //                                setPlayMode(PlayMode.WAITING); // we don't need to set it again
+                        
                         try {
                             Thread.sleep(600);
                         } catch (InterruptedException e) {
@@ -5606,9 +5610,13 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
             return;
         }
         final PlayMode oldMode = this.playMode;
-        log.info("Changing PlayMode from " + this.playMode + " to " + playMode);
+        log.info("Changing PlayMode from " + this.playMode + " to " + playMode);      
+        
         synchronized (viewLoop) {
-            this.playMode = playMode;
+            this.playMode = playMode;                    
+            if(globalized){
+                getJaerViewer().globalViewer.refreshPlayingLocks();
+            }
             interruptViewloop();
         }
 //        if(this.playMode==PlayMode.WAITING){
@@ -5748,6 +5756,10 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
         
         JPanel displayPanel;
         
+        public PlayMode getMode(){
+            return getPlayMode();
+        }
+        
         public void setID(int ident)
         {
             id=ident;
@@ -5764,8 +5776,8 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
 //            JMenu jm=new JMenu("Interface");
 //            buildInterfaceMenu(jm);
             
-            jt.add(viewMenu);
-            
+            jt.add(fileMenu);
+            jt.add(viewMenu);            
             jt.add(deviceMenu);
             jt.add(interfaceMenu);
             jt.add(controlMenu);
@@ -5857,18 +5869,18 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
      */
     public static Class hardwareInterface2chipClassName(HardwareInterface hw)
     {
-        if(hw==null) {
-            JOptionPane.showConfirmDialog(null, "null hardware, cannot find appropriate chip class", "null hardware", JOptionPane.WARNING_MESSAGE);
-            Logger.getAnonymousLogger().warning("null hardware, can't find chip class");
+        if(hw==null)
             return null;
-        }
         
         if (hw.toString().contains("DVS128"))
             return ch.unizh.ini.jaer.chip.retina.DVS128.class;
         else if (hw.toString().contains("Cochlea"))
             return ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.class;
-        else
+        else {
+            JOptionPane.showConfirmDialog(null, "Unknown hardware, cannot find appropriate chip class.", "null hardware", JOptionPane.WARNING_MESSAGE);
+            Logger.getAnonymousLogger().warning("Unknown hardware, can't find chip class.");
             return null;
+        }
     }
     
     
