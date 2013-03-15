@@ -3,9 +3,14 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
+import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.Random;
 import java.util.prefs.Preferences;
 
 import javax.swing.BoxLayout;
@@ -17,15 +22,18 @@ import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.MapOutputViewer;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.NonGLImageDisplay;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterBrowserPanel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.SpikingOutputViewerManager;
 //import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
+import eu.seebetter.ini.chips.APSDVSchip;
 
 /**
  * Filter class that uses a defined kernel function to compute not spatially filtered output spikes.
@@ -179,15 +187,17 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	boolean filterEvents = false;
 	SignalHandler filterSpikeHandler = new SignalHandler() {
 		public void signalAt(int x, int y, int time, double value) {
-			PolarityEvent pe = (PolarityEvent)out.getOutputIterator().nextOutput();
-			pe.setX((short)x);
-			pe.setY((short)y);
-			pe.setSpecial(false);
-			if (value < 0)
-				pe.setPolarity(Polarity.Off);
-			else
-				pe.setPolarity(Polarity.On);
-			pe.setTimestamp(time);
+			if (filterEvents) {
+				PolarityEvent pe = (PolarityEvent)out.getOutputIterator().nextOutput();
+				pe.setX((short)x);
+				pe.setY((short)y);
+				pe.setSpecial(false);
+				if (value < 0)
+					pe.setPolarity(Polarity.Off);
+				else
+					pe.setPolarity(Polarity.On);
+				pe.setTimestamp(time);
+			}
 		}
 
 //		@Override
@@ -280,6 +290,12 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	public ArrayList<String> getUsedExpressionStrings() {
 		return usedExpressionStrings;
 	}
+
+	
+	JFrame adcMonitor = null; 
+	JPanel adcMonitorPanel = null;
+	int adcOutResolution = 100;
+	NonGLImageDisplay display = new NonGLImageDisplay(adcOutResolution, adcOutResolution);
 	
     @Override
     synchronized public void setFilterEnabled(boolean yes) {
@@ -296,6 +312,13 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
        		spikingOutputViewerManager.run();
         	if (mapOutputViewer == null)
         		mapOutputViewer = new MapOutputViewer(this, spikingOutputViewerManager);
+        	if (adcMonitor == null) {
+        		adcMonitor = new JFrame();
+        		adcMonitorPanel = new JPanel();
+        		adcMonitor.setContentPane(display);
+        		adcMonitor.setPreferredSize(new Dimension(300,300));
+        	}
+    		adcMonitor.setVisible(true);
 //       		expressionBasedIKUserInterface.setVisible(true);
         } else {
 //        	if (kernelEditor != null)
@@ -309,6 +332,8 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
         		mapOutputViewer.setVisible(false);
         		mapOutputViewer.savePrefs();
         	}
+        	if (adcMonitor != null)
+        		adcMonitor.setVisible(false);
         }
     }
    
@@ -333,14 +358,20 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	public void setFilterEvents(boolean filterEvents) {
 		if (filterEvents != this.filterEvents) {
 			this.filterEvents = filterEvents;
-			for (KernelProcessor kp : kernelProcessors) {
-				if (kp instanceof SimpleKernelProcessor) {
-					if (filterEvents)
-						((SimpleKernelProcessor)kp).addSpikeHandler(filterSpikeHandler);
-					else 
-						((SimpleKernelProcessor)kp).removeSpikeHandler(filterSpikeHandler);
-				}
-			}
+//			for (FiringModelMap map : firingModelMaps) {
+//				if (filterEvents)
+//					map.addSignalHandler(filterSpikeHandler);
+//				else 
+//					map.removeSignalHandler(filterSpikeHandler);
+//			}
+//			for (KernelProcessor kp : kernelProcessors) {
+//				if (kp instanceof SimpleKernelProcessor) {
+//					if (filterEvents)
+//						((SimpleKernelProcessor)kp).addSpikeHandler(filterSpikeHandler);
+//					else 
+//						((SimpleKernelProcessor)kp).removeSpikeHandler(filterSpikeHandler);
+//				}
+//			}
 		}
 	}
 	
@@ -352,7 +383,119 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		mapOutputViewer.removeViewerFor(map);
 	}
 
+	void evaluateADCEvent(ApsDvsEvent e) {
+		int x = e.getX();
+		int y = e.getY();
+		if (x >= 0 && x < currentSizeX && y >= 0 && y < currentSizeY) {
+			final int adcSample = e.getAdcSample();
+			if (adcSample < adcMin)
+				adcMin = adcSample;
+			if (adcSample > adcMax)
+				adcMax = adcSample;
+			if (adcPlusEventMap[x][y] == 50 && adcMinusEventMap[x][y] == 40 && adcMap[x][y] >= 0) {
+				
+				baList.add(new BeforeAfter(adcMap[x][y],adcSample));
+			}
+			adcMap[x][y] = adcSample;
+			adcPlusEventMap[x][y] = 0;
+			adcMinusEventMap[x][y] = 0;
+		}
+	}
+	
+	void summarizeAPS() {
+		int w = adcOutResolution, h = adcOutResolution;
+//		BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+		int[][] counters = new int[w][h];
+		
+		for (BeforeAfter ba : baList) {
+			counters[(ba.before - adcMin) * (w-1) / (adcMax - adcMin)][(ba.after - adcMin) * (h-1) / (adcMax - adcMin)]++;
+		}
+	
+		baList.clear();
+		int maxValue = 1;
+		
+		for (int i = 0; i < counters.length; i++) {
+			for (int j = 0; j < counters[i].length; j++) {
+				if (counters[i][j] > maxValue)
+					maxValue = counters[i][j];
+			}
+		}
+		
+		Random r = new Random();
+		for (int i = 0; i < counters.length; i++) {
+			for (int j = 0; j < counters[i].length; j++) {
+//				int value = counters[i][j] * 255 / maxValue;
+				display.setPixmapGray(i, j, r.nextFloat());
+//				display.setPixmapGray(i, j, ((float)counters[i][j])/((float)maxValue));
+//				img.setRGB(i, h-j-1, (value << 16) | (value << 8) | (value));
+			}
+		}
+//		return img;
+	}
+	
+	void evaluatePlusEvent(BasicEvent e) {
+		int x = e.getX();
+		int y = e.getY();
+		if (x >= 0 && x < currentSizeX && y >= 0 && y < currentSizeY) {
+			adcPlusEventMap[x][y]++;
+		}
+	}
+	  
+	void evaluateMinusEvent(BasicEvent e) {
+		int x = e.getX();
+		int y = e.getY();
+		if (x >= 0 && x < currentSizeX && y >= 0 && y < currentSizeY) {
+			adcMinusEventMap[x][y]++;
+		}
+	}
+
+	class BeforeAfter {
+		int before;
+		int after;
+		public BeforeAfter(int before, int after) {
+			this.before = before;
+			this.after = after;
+		}
+		/**
+		 * @return the before
+		 */
+		public int getBefore() {
+			return before;
+		}
+		/**
+		 * @return the after
+		 */
+		public int getAfter() {
+			return after;
+		}
+		
+	}
+	LinkedList<BeforeAfter> baList = new LinkedList<BeforeAfter>();
+	
+	int plusCounter = 0;
+	int minusCounter = 0;
+	
 	int time = 0;
+	
+	int adcMap[][] = createADCMap(currentSizeX, currentSizeY);
+	int adcPlusEventMap[][] = createADCMap(currentSizeX, currentSizeY);
+	int adcMinusEventMap[][] = createADCMap(currentSizeX, currentSizeY);
+	
+	int adcMin = Integer.MAX_VALUE;
+	int adcMax = Integer.MIN_VALUE;
+	
+	int[][] createADCMap(int width, int height) {
+		int adcMap[][] = new int[width][height];
+		for (int i = 0; i < adcMap.length; i++) {
+			for (int j = 0; j < adcMap[i].length; j++) {
+				adcMap[i][j] = -1;
+			}
+		}
+		return adcMap;
+	}
+	
+	
+	
 	/* (non-Javadoc)
 	 * @see net.sf.jaer.eventprocessing.EventFilter2D#filterPacket(net.sf.jaer.event.EventPacket)
 	 */
@@ -360,6 +503,8 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	@Override
 	public EventPacket<?> filterPacket(EventPacket<?> in) {
 		synchronized (filteringLock) {
+			// causes a reset of the output iterator. 
+			out.outputIterator();
 	        if (!filterEnabled) {
 	            return in;
 	        }
@@ -375,23 +520,45 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	        	onMap.setSizeY(currentSizeY);
 	        	offMap.setSizeX(currentSizeX);
 	        	offMap.setSizeY(currentSizeY);
+	        	adcMap = createADCMap(currentSizeX, currentSizeY);
+	        	adcPlusEventMap = createADCMap(currentSizeX, currentSizeY);
+	        	adcMinusEventMap = createADCMap(currentSizeX, currentSizeY);
 	        }
 			checkOutputPacketEventType(in);
-	//        OutputEventIterator<?> oi=out.outputIterator();
-	//        firingModelMap.changeSize(chip.getSizeX(), chip.getSizeY());
-	 //       PolarityEvent e;
-	        out.setEventClass(getChip().getEventClass());//PolarityEvent.class);
-	//        int beforePackageTime = time;
-	        int maxTime = Integer.MIN_VALUE;
+
+//			out.setEventClass(getChip().getEventClass());//PolarityEvent.class);
+			
+
+			
+			int maxTime = Integer.MIN_VALUE;
 			for (BasicEvent be : in) {
 				if (be.getTimestamp() > maxTime) {
 					maxTime = be.getTimestamp();
 				}
 				if (be instanceof PolarityEvent) {
-					if (((PolarityEvent)be).getPolarity() == Polarity.On)
-						onMap.getSignalHandler().signalAt(be.x, be.y, be.timestamp, 1.0);
-					else
-						offMap.getSignalHandler().signalAt(be.x, be.y, be.timestamp, 1.0);
+					boolean adcSample = false;
+					if (be instanceof ApsDvsEvent) {
+						ApsDvsEvent ade = ((ApsDvsEvent)be);
+						if (ade.isAdcSample()) {
+							adcSample = true;
+							evaluateADCEvent(ade);
+						}
+					}
+					if (!adcSample) {
+						
+						if (((PolarityEvent)be).getPolarity() == Polarity.On) {
+							onMap.getSignalHandler().signalAt(be.x, be.y, be.timestamp, 1.0);
+							evaluatePlusEvent(be);
+//							plusCounter++;
+						}
+						else {
+							offMap.getSignalHandler().signalAt(be.x, be.y, be.timestamp, 1.0);
+							evaluateMinusEvent(be);
+//							minusCounter++;
+						}
+//						if ((plusCounter + minusCounter) % 1000 == 0)
+//							System.out.println("Ratio: "+((float)plusCounter)/((float)minusCounter));
+					}
 	//				synchronized (kernelProcessors) {
 	//					for (KernelProcessor kp : kernelProcessors) {
 	////						if (be.timestamp < time)
@@ -607,6 +774,9 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	 */
 	@Override
 	public void resetFilter() {
+		if (isFilterEnabled()) {
+			summarizeAPS();
+		}
 		synchronized (kernelProcessors) {
 			for (KernelProcessor kp : kernelProcessors) {
 				kp.reset();
