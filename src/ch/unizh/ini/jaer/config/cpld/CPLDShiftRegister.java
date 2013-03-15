@@ -47,6 +47,7 @@ public class CPLDShiftRegister {
             minBit = val.lsb;
         }
         cpldConfigValues.add(val);
+        numBits += val.getNumBits();
     }
 
     /** Returns byte[] to send to uC to load into CPLD shift register.

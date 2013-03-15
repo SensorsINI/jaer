@@ -39,6 +39,10 @@ public class CPLDConfigValue extends AbstractConfigValue {
         this.msb = endBit;
         nBits = endBit - startBit + 1;
     }
+    
+    public int getNumBits(){
+        return nBits;
+    }
 
     @Override
     public void preferenceChange(PreferenceChangeEvent evt) {
