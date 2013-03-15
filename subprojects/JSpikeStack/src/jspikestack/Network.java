@@ -398,9 +398,8 @@ public class Network<AxonType extends Axon> implements Serializable {
     // </editor-fold>
     
     // <editor-fold defaultstate="collapsed" desc=" Feeding and Eating Events ">
-    
     /** Add an event to the input queue */
-    public void addToQueue(PSP ev)
+    public void addToQueue(PSP ev)            
     {   // TODO: confirm timestamp monotonicity
         inputBuffer.add(ev);
     }    

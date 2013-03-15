@@ -23,8 +23,8 @@ public abstract class NetMapper {
     boolean baseTimeSet=false;
     
     public boolean isBaseTimeSet()
-    {   return baseTimeSet;
-        
+    {   
+        return baseTimeSet;        
     }
 
     public void setBaseTime(int zeroTime)

@@ -19,7 +19,6 @@ import net.sf.jaer.event.PolarityEvent;
  */
 @Description("Implements an associative memory between audio and visual stimuli using a network of spiking neurons.")
 public class AudioVisualNet extends SpikeFilter<AxonSTP,AxonSTP.Globals,UnitLIF.Globals,BasicEvent> {
-
     
     public AudioVisualNet(AEChip chip)
     {   super(chip);  // 2 inputs
@@ -186,8 +185,12 @@ public class AudioVisualNet extends SpikeFilter<AxonSTP,AxonSTP.Globals,UnitLIF.
     public float getAudioInputStrength()
     {   return audioInputStrength;        
     }
-    
-    
+
+    // Set filter to startup disabled, regardless
+    @Override 
+    public void setPreferredEnabledState() {
+        setFilterEnabled(false);
+    }
     
     @Override
     public void setDreamMode(boolean dreamMode)

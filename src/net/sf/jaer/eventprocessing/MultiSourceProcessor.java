@@ -64,12 +64,11 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
             buffers.add(new LinkedList());
         
         queueAlive=new boolean[buffers.size()];
-        bufferLoopOffsets = new int[buffers.size()];
         bufferStarts = new int[buffers.size()];
         bufferPrevTimes = new int[buffers.size()];
         
         // Ensure proper comparison
-        Arrays.fill(bufferStarts,Integer.MAX_VALUE);
+        Arrays.fill(bufferStarts,Integer.MIN_VALUE);
         
         out=new EventPacket();
         
@@ -160,19 +159,50 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
                 for (int k=0; k<packets.get(i).getSize(); k++)  {
                     ev = packets.get(i).getEvent(k);
                     
-                    // Find true start time, so that times run from zero to +inf
-                    if(ev.timestamp < bufferStarts[i])
+                    if(bufferStarts[i] == Integer.MIN_VALUE)
                         bufferStarts[i] = ev.timestamp;
-                                        
+                    
+                    ev.timestamp -= bufferStarts[i];
+                    
+                    /*
+                    // Find true start time, so that times run from zero to +inf
+                    if(bufferStarts[i] == Integer.MIN_VALUE)
+                        bufferStarts[i] = ev.timestamp;
+                    int preadjust = ev.timestamp;                    
                     // Subtract off start time and add loop offset time
-                    ev.timestamp -= bufferStarts[i] + bufferLoopOffsets[i];
+                    ev.timestamp = ev.timestamp - bufferStarts[i] + bufferLoopOffsets[i];
                     
                     // If we've looped in time, continue adding time
-                    if(bufferPrevTimes[i] > ev.timestamp)
-                        bufferLoopOffsets[i] += bufferPrevTimes[i];
+                    if(bufferPrevTimes[i] > ev.timestamp){
+                        // If we somehow looped back before a time we've seen,
+                        //   create a new artificial start time that keeps it all
+                        //   sane and monotonic and correct.
+                        if(ev.timestamp < 0){
+                            bufferStarts[i] = preadjust + bufferLoopOffsets[i] - 
+                                    bufferPrevTimes[i] - 1;
+                            ev.timestamp = preadjust - bufferStarts[i] + bufferLoopOffsets[i];
+                        }
+                        else {
+                            bufferLoopOffsets[i] = bufferPrevTimes[i]+1;
+                            ev.timestamp += bufferLoopOffsets[i];
+                        }
+                    }
+                    
+                    
+                    if (ev.timestamp < 0)
+                        throw new RuntimeException("Event found below initial timestamp. Time:" +
+                                ev.timestamp);
                     
                     // Store this time for next iteration
                     bufferPrevTimes[i]=ev.timestamp;
+                    */
+                    
+                    
+                    if (ev.timestamp < 0)
+                        throw new RuntimeException("Event found below initial timestamp. Time:" +
+                                ev.timestamp);
+                    
+                    bufferPrevTimes[i] = ev.timestamp;
                     
                     BasicEvent evo = ev.getClass().newInstance(); // This seems WRONG! Alternative would be adding a copy method to all events
                     evo.copyFrom(ev);
@@ -207,15 +237,15 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
                 {   BasicEvent ev=buffers.get(i).poll();
                     ev.source=(byte)i;
 
-                    
+                    /*
                     if (lastEventTime!=Integer.MIN_VALUE && ev.timestamp-lastEventTime<0)
                     {   
-                        resynchronize();                        
+                        resynchronize();      
                         throw new RuntimeException("The event-streams from your sources are out of synch. "
                                 + "by "+(ev.timestamp-lastEventTime)/1000+"ms, which is more than the max wait time of "+
                                 maxWaitTime/1000+"ms.  Either synchronize your sources or set a bigger maxWaitTime.");
-                    
                     }
+                    */
                     
                     pq.add(ev);
            
@@ -278,12 +308,11 @@ public abstract class MultiSourceProcessor extends EventFilter2D {
     {
         lastEventTime=Integer.MIN_VALUE;
         for (int i=0;i<buffers.size();i++)
-        {   buffers.get(i).clear();
+        {   
+            bufferStarts[i] = Integer.MIN_VALUE;
+            buffers.get(i).clear();
             queueAlive[i]=false;
         }
         pq.clear();
-        
-        
     }
-    
 }

@@ -1763,7 +1763,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         Logger.getLogger(AEViewer.class.getName()).log(Level.SEVERE, null, ex);
                     } catch (BrokenBarrierException ex) {
                         Logger.getLogger(AEViewer.class.getName()).log(Level.SEVERE, null, ex);
-                    }                    
+                    } 
+                    
                 }
                 
                 
@@ -5778,7 +5779,7 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
             
             jt.add(fileMenu);
             jt.add(viewMenu);            
-            jt.add(deviceMenu);
+            //jt.add(deviceMenu);
             jt.add(interfaceMenu);
             jt.add(controlMenu);
             jt.add(monSeqMenu);
@@ -5876,6 +5877,8 @@ private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.Action
             return ch.unizh.ini.jaer.chip.retina.DVS128.class;
         else if (hw.toString().contains("Cochlea"))
             return ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.class;
+        else if (hw.toString().contains("Retina"))
+            return ch.unizh.ini.jaer.chip.retina.DVS128.class;    
         else {
             JOptionPane.showConfirmDialog(null, "Unknown hardware, cannot find appropriate chip class.", "null hardware", JOptionPane.WARNING_MESSAGE);
             Logger.getAnonymousLogger().warning("Unknown hardware, can't find chip class.");

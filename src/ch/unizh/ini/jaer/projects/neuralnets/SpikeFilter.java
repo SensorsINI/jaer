@@ -66,7 +66,7 @@ public abstract class SpikeFilter<AxonType extends Axon,AxonGlobalType extends A
         if (lastEvTime==Integer.MAX_VALUE && !inputs.isEmpty())
         {   lastEvTime=inputs.getFirstTimestamp();
         }
-        
+        BasicEvent lastEvt;
         // Iterate through events
         for (int k=0; k<inputs.getSize(); k++)
         {   
@@ -89,9 +89,9 @@ public abstract class SpikeFilter<AxonType extends Axon,AxonGlobalType extends A
 //                wrapNet.reset();                
 //                return inputs;
             }
-            
             wrapNet.addToQueue(ev);
             
+            lastEvt = ev;
             lastEvTime=ev.timestamp;
         }
                 
@@ -109,14 +109,12 @@ public abstract class SpikeFilter<AxonType extends Axon,AxonGlobalType extends A
     }
     
     @Override
-    public void initFilter()
+    public void initFilter()            
     {
-    }
         
-    /** This should reset the filter back to where it was before you did anything with it.*/
-    @Override
-    public void resetFilter()
-    {           
+    }
+    
+    public void hardResetFilter(){
         wrapNet=null;
         net=null;
         unitGlobs=null;
@@ -128,12 +126,13 @@ public abstract class SpikeFilter<AxonType extends Axon,AxonGlobalType extends A
         super.removeDisplays();
         
         
-        nc=null;
+        nc=null;                      
+    }
         
-        
-        
-//        net.plot.enable=false;
-        
+    @Override
+    public void resetFilter()
+    {                   
+        doReset_Network();
     }
         
     // </editor-fold>
@@ -188,10 +187,7 @@ public abstract class SpikeFilter<AxonType extends Axon,AxonGlobalType extends A
     }
         
     int lastEvTime=Integer.MAX_VALUE;
-    
-    
-    
-    
+
     // </editor-fold>
     
     // <editor-fold  defaultstate="collapsed" desc=" Abstract Methods ">
@@ -255,7 +251,7 @@ public abstract class SpikeFilter<AxonType extends Axon,AxonGlobalType extends A
     /** Start the thing */
     public void initializeNetwork()
     {
-        resetFilter();
+        hardResetFilter();
         
         Network net=makeInitialNet();
         customizeNet(net);
@@ -296,9 +292,10 @@ public abstract class SpikeFilter<AxonType extends Axon,AxonGlobalType extends A
         super.resynchronize();
         if (wrapNet!=null)
             wrapNet.reset();
-        if (nc.view!=null)
-            nc.view.reset();
-        
+        if(nc!=null)
+            if (nc.view!=null)
+                nc.view.reset();
+        lastEvTime = Integer.MAX_VALUE;
     }
     
     public void addControls()

@@ -57,53 +57,36 @@ public class GlobalViewer extends javax.swing.JFrame {
         // <editor-fold defaultstate="collapsed" desc=" Builder/Startup Methods " >
          
         // Methods -----------------------------------------
-        public void collectAllInputs(ArrayList<AEViewer> viewers){
-            
-//            try {
-//                for (LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
-//                    if ("Nimbus".equals(info.getName())) {
-//                        UIManager.setLookAndFeel(info.getClassName());
-//                        break;
-//                    }
-//                }
-//            } catch (Exception e) {
-//                // If Nimbus is not available, you can set the GUI to another look and feel.
-//            }
-            
-//            inputDisplays.clear();
+        public void addAllInputs(ArrayList<AEViewer> viewers){
             packetStreams.clear();            
-            
-            // Add all the viewers
             for (int i=0; i<viewers.size(); i++) 
             {   
                 AEViewer.Ambassador v=viewers.get(i).getAmbassador();
                 
-//                Component jp=v.getPanel();
-                
+                v.setID(i);
+                aeviewers.add(v);
+                addPacketStream(v);
+            }
+        }
+        public void displayAllInputs(){
+            
+            // Add all the viewers
+            for (int i=0; i<aeviewers.size(); i++) 
+            {   
+                AEViewer.Ambassador v=aeviewers.get(i);
+
                 JPanel jp=new JPanel();
                 jp.setLayout(new BorderLayout());
                 jp.add(v.getPanel(),BorderLayout.CENTER);
-//                JToolBar jt=new JToolBar();
-                
-//                JMenu men=new JMenu("Interface");
-//                
-//                jt.add(men);
                 JMenuBar m=v.getToolBar();
                 
                 // Disable spawning new windows inside here
                 m.getMenu(0).getItem(0).setEnabled(false);
                 jp.add(m,BorderLayout.NORTH);
-                
-                
-                
-                v.setID(i);
-                aeviewers.add(v);
-                addPacketStream(v);
-//                addDisplayWriter(v.getPanel(),new Dimension(400,400));
+
                 addDisplayWriter(jp,new Dimension(400,400));
-                refreshPlayingLocks();
+                refreshPlayingLocks();   
                 v.setWatched(true);
-//                inputDisplays.add(v);
             }
             
             resynchronize();
@@ -112,7 +95,8 @@ public class GlobalViewer extends javax.swing.JFrame {
         private int countPlayingViewers(){
             int active_players = 0;
             for (AEViewer.Ambassador v:aeviewers){
-                if(v.getMode() == AEViewer.PlayMode.PLAYBACK) {
+                if(v.getMode() == AEViewer.PlayMode.PLAYBACK || 
+                   v.getMode() == AEViewer.PlayMode.LIVE ) {
                     active_players++;
                 }
             }
@@ -143,16 +127,12 @@ public class GlobalViewer extends javax.swing.JFrame {
         }
         
                 
-        public void start(){
-            
+        public void start(){            
             enabled=true;
-//            viewLoop.start();
-                        
-            initComponents();
             
-            collectAllInputs(jaerView.getViewers());
-            
-//            buildDisplay();
+            addAllInputs(jaerView.getViewers());                     
+            initComponents();            
+            displayAllInputs();
             
         }
                 
@@ -249,31 +229,16 @@ public class GlobalViewer extends javax.swing.JFrame {
         
         void initComponents()
         {
-//            JDesktopPane desk=new JDesktopPane();
-//            this.setContentPane(desk);
-//            deskt.setDragMode(JDesktopPane.OUTLINE_DRAG_MODE);
-//            desk.setDesktopManager(new DesktopManager());
-            
             this.setTitle("Global Viewer");
             
             this.setBackground(Color.DARK_GRAY);
             this.setLayout(new BorderLayout());
-            
-            
-            
+   
             filterPanel=new JPanel();
             filterPanel.setLayout(new FlowLayout());
-//            jsc=new JScrollPane(filterPanel);
-//            jsc.add(filterPanel);
             this.add(new JScrollPane(filterPanel,JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,JScrollPane.HORIZONTAL_SCROLLBAR_NEVER),BorderLayout.WEST);
-//            this.add(jsc);
-//            filterPanel.setBackground(Color.GRAY);
-//            filterPanel.setLayout(new BorderLayout());
-            
-            
             bottomBar=new JToolBar();
             this.add(bottomBar,BorderLayout.SOUTH);
-//            bottomBar.setBackground(Color.GRAY);
             
             JButton button;
             
@@ -305,55 +270,21 @@ public class GlobalViewer extends javax.swing.JFrame {
             });
             bottomBar.add(button);            
             
-            final JToggleButton but=new JToggleButton("Show Filters");
+            final JToggleButton but=new JToggleButton("Hide Filters");
             but.addActionListener(new ActionListener(){
                 @Override
                 public void actionPerformed(ActionEvent e) {
                     
-                    if (but.isSelected())
-                    {
-                        
-                        procNet.setInputStreams(getInputStreams());
-
-                        if (multiInputControl == null) {
-                            
-                            multiInputControl = new MultiInputFrame(jaerView.getViewers().get(0).getChip(), procNet,filterPanel);
-//                            MultiInputFrame mif = new MultiInputFrame(jaerView.getViewers().get(0).getChip(), procNet,filterPanel);
-
-                            
-//                            jsc.setVisible(true);
-                            
-//                            mif.setVisible(true);
-//                            
-//                            mif.getComponents();
-//                            
-////                            multiInputControl = mif.getContentPane();
-//                            multiInputControl = mif.getRootPane();
-//                            
-//                            mif.dispose();
-                        }
-                        else
-                            multiInputControl.setHidden(false);
-//                            multiInputControl.setVisible(true);
-//                            filterPanel.add(multiInputControl,BorderLayout.CENTER);
-//                        GlobalViewer.this.add(mifp,BorderLayout.WEST);
-
-                        but.setText("Hide Filters");
+                    if (!but.isSelected()){
+                        launchShowFiltersPanel();      
+                        but.setText("Hide Filters");                                            
                     }
-                    else
-                    {   multiInputControl.setHidden(true);
-//                        filterPanel.remove(multiInputControl);
+                    else {   
+                        multiInputControl.setHidden(true);
                         multiInputControl.setVisible(false);
-                        
-//                        filterPanel.remove(multiInputControl);
                         but.setText("Show Filters");
-                        
-                        
                     }
-                    GlobalViewer.this.pack();
-//                            jsc.revalidate();
-                
-                    
+                    GlobalViewer.this.pack();    
                 }
             });
             bottomBar.add(but);
@@ -394,30 +325,20 @@ public class GlobalViewer extends javax.swing.JFrame {
             });
             bottomBar.add(button);
             
-            
             viewPanel=new JDesktopPane();
-//            viewPanel.setLayout(new FlowLayout());
             viewPanel.setVisible(true);
-            
-            
-            
-//            viewPanel=new JPanel();
+
             this.add(viewPanel,BorderLayout.CENTER);
             viewPanel.setBackground(Color.DARK_GRAY); 
-//            viewPanel.setLayout(new FlowLayout());
-            
-            
-//            buildDisplay();
-
-//            this.setPreferredSize(new Dimension(1000,800));
-            
-//            this.setExtendedState(JFrame.MAXIMIZED_BOTH); 
             
             this.setState(JFrame.NORMAL);
             Toolkit toolkit = Toolkit.getDefaultToolkit();
             Dimension dimension = toolkit.getScreenSize();
             dimension.height*=.8;
             this.setPreferredSize(dimension);
+            
+            // Start with show filters enabled
+            launchShowFiltersPanel();
             
             pack();
             setVisible(true);
@@ -428,7 +349,15 @@ public class GlobalViewer extends javax.swing.JFrame {
                 v.setVisible(false);
             
         }
-        
+        public void launchShowFiltersPanel(){
+            procNet.setInputStreams(getInputStreams());
+
+             if (multiInputControl == null) {                            
+                 multiInputControl = new MultiInputFrame(jaerView.getViewers().get(0).getChip(), procNet,filterPanel);
+             }
+             else
+                 multiInputControl.setHidden(false);
+        }
 //        
 //        public void buildDisplay()
 //        {   viewPanel.removeAll();

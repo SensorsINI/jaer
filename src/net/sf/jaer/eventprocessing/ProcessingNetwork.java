@@ -175,8 +175,11 @@ public class ProcessingNetwork {
             // Step 1: Prepare all inputs
             for (PacketStream p:sources)
                 if (!p.isReady())
-                {   boolean status=p.process();
-                    if (!status) return false;
+                {   
+                    boolean status=p.process();
+                    
+                    // No longer wait for filters to be ready
+                    //if (!status) return false;
                 }
                 
             // Step 2: Compute the output packet.
