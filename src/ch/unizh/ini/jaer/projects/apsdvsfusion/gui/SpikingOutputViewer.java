@@ -16,8 +16,8 @@ import ch.unizh.ini.jaer.projects.apsdvsfusion.SignalHandler;
  * @author Dennis
  *
  */
-public class SpikingOutputViewer implements SignalHandler, NonGLImageDisplay.UpdateListener, PropertyChangeListener {
-
+public class SpikingOutputViewer implements ContinuousOutputViewer, SignalHandler, NonGLImageDisplay.UpdateListener, PropertyChangeListener {
+ 
 	int sizeX = 0, sizeY = 0;
     NonGLImageDisplay display ;
     int maxValueInBuffer = 0;
@@ -101,11 +101,10 @@ public class SpikingOutputViewer implements SignalHandler, NonGLImageDisplay.Upd
 				}
         	}
     	}
-    	
     }
 
     /* Update layerStatePlots to current network time */
-    public void update()  {
+    public void updateOutput()  {
     	// swap buffer and receivedSpikes:
 //    	synchronized (this) {
     	if (active) {

@@ -60,7 +60,7 @@ public class MapOutputViewer extends JFrame {
 	private JPanel viewerPanel = new JPanel(new GridBagLayout());
 	private GridBagConstraints viewerPanelConstraints = new GridBagConstraints();
 	private SpatioTemporalFusion stfFilter;
-	SpikingOutputViewerManager spikingOutputViewerManager;
+	ContinuousOutputViewerManager spikingOutputViewerManager;
 //	ExpressionBasedKernelEditDialog editDialog;
 	ArrayList<MapPanel> panels = new ArrayList<MapPanel>();
 	int grayLevels = -1;
@@ -225,7 +225,7 @@ public class MapOutputViewer extends JFrame {
 	/**
 	 * @throws HeadlessException
 	 */
-	public MapOutputViewer(SpatioTemporalFusion stfFilter, SpikingOutputViewerManager spikingOutputViewerManager) {
+	public MapOutputViewer(SpatioTemporalFusion stfFilter, ContinuousOutputViewerManager spikingOutputViewerManager) {
 		super("Map-Output-Viewer");
 		
 		viewerPanelConstraints.gridx = 0;

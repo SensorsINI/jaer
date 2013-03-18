@@ -14,9 +14,9 @@ import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap;
  * @author Dennis
  *
  */
-public class SpikingOutputViewerManager {
+public class ContinuousOutputViewerManager {
 
-	ArrayList<SpikingOutputViewer> viewers = new ArrayList<SpikingOutputViewer>();
+	ArrayList<ContinuousOutputViewer> viewers = new ArrayList<ContinuousOutputViewer>();
     
 //	JPanel statePanel=new JPanel();
 //    JPanel myPanel;
@@ -32,7 +32,7 @@ public class SpikingOutputViewerManager {
 	/**
 	 * 
 	 */
-	public SpikingOutputViewerManager() {
+	public ContinuousOutputViewerManager() {
 	}
      
     
@@ -68,14 +68,14 @@ public class SpikingOutputViewerManager {
         return soViewer;
     }
     
-    public void addOutputViewer(SpikingOutputViewer soViewer) {
+    public void addOutputViewer(ContinuousOutputViewer soViewer) {
     	synchronized (viewers) {
     		if (!viewers.contains(soViewer))
     			this.viewers.add(soViewer);
 		}
     }
     
-    public void removeOutputViewer(SpikingOutputViewer soViewer) {
+    public void removeOutputViewer(ContinuousOutputViewer soViewer) {
     	synchronized (viewers) {
     		if (viewers.contains(soViewer))
     			viewers.remove(soViewer);
@@ -229,7 +229,7 @@ public class SpikingOutputViewerManager {
     private void runViewLoop() {
         if (viewLoop!=null && viewLoop.isAlive())
             throw new RuntimeException("You're trying to start the View Loop, but it's already running");
-    	viewLoop = new Thread("SpikingOutputDisplay") {
+    	viewLoop = new Thread("ContinuousOutputDisplay") {
             @Override
             public void run()
             {
@@ -242,9 +242,9 @@ public class SpikingOutputViewerManager {
             			//                            Logger.getLogger(NetPlotter.class.getName()).log(Level.SEVERE, null, ex);
             		}
             	}
-            	synchronized(SpikingOutputViewerManager.this)
+            	synchronized(ContinuousOutputViewerManager.this)
             	{
-            		SpikingOutputViewerManager.this.notify();
+            		ContinuousOutputViewerManager.this.notify();
             	}
             }
         };
@@ -253,8 +253,8 @@ public class SpikingOutputViewerManager {
     
     protected void updateSingleViewers() {
     	synchronized (viewers) {
-        	for (SpikingOutputViewer sov : viewers) {
-        		sov.update();
+        	for (ContinuousOutputViewer sov : viewers) {
+        		sov.updateOutput();
     		}
 		}
     }

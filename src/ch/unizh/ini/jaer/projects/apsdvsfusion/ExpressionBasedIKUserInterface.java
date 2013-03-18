@@ -34,7 +34,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.SpikingOutputViewer;
-import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.SpikingOutputViewerManager;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ContinuousOutputViewerManager;
 //import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
 
 /**
@@ -51,7 +51,7 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 	private JPanel viewerPanel = new JPanel(new GridBagLayout());
 	private GridBagConstraints viewerPanelConstraints = new GridBagConstraints();
 	private SpatioTemporalFusion stfFilter;
-	SpikingOutputViewerManager spikingOutputViewerManager;
+	ContinuousOutputViewerManager spikingOutputViewerManager;
 	ExpressionBasedKernelEditDialog editDialog;
 	ArrayList<ExpressionBasedSpatialIKPanel> panels = new ArrayList<ExpressionBasedIKUserInterface.ExpressionBasedSpatialIKPanel>();
 	int grayLevels = -1;
@@ -209,7 +209,7 @@ public class ExpressionBasedIKUserInterface extends JFrame {
 	/**
 	 * @throws HeadlessException
 	 */
-	public ExpressionBasedIKUserInterface(SpatioTemporalFusion stfFilter, SpikingOutputViewerManager spikingOutputViewerManager) {
+	public ExpressionBasedIKUserInterface(SpatioTemporalFusion stfFilter, ContinuousOutputViewerManager spikingOutputViewerManager) {
 		super("ConvolutionKernel-Viewer");
 		
 		viewerPanelConstraints.gridx = 0;
