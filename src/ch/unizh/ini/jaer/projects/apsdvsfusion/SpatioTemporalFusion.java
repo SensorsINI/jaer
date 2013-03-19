@@ -300,6 +300,24 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	int adcOutResolution = 549;
 	NonGLImageDisplay display = new NonGLImageDisplay(adcOutResolution, adcOutResolution);
 	
+	class FrameOutputViewer extends NonGLImageDisplay implements ContinuousOutputViewer {
+		public FrameOutputViewer(int sizeX, int sizeY) {
+			super(sizeX, sizeY);
+		}
+		
+		@Override
+		public void updateOutput() {
+			this.repaint();
+		}
+	}
+	FrameOutputViewer myFrameViewer = new FrameOutputViewer(128, 128);
+	JFrame apsMonitor = null;
+	ContinuousOutputViewerManager frameViewerManager = new ContinuousOutputViewerManager();
+	{
+		frameViewerManager.addOutputViewer(myFrameViewer);
+	}
+	
+	
     @Override
     synchronized public void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
@@ -316,12 +334,20 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
         	if (mapOutputViewer == null)
         		mapOutputViewer = new MapOutputViewer(this, spikingOutputViewerManager);
         	if (adcMonitor == null) {
-        		adcMonitor = new JFrame();
+        		adcMonitor = new JFrame("Spike influence monitor");
         		adcMonitorPanel = new JPanel();
         		adcMonitor.setContentPane(display);
         		adcMonitor.setPreferredSize(new Dimension(300,300));
         	}
     		adcMonitor.setVisible(true);
+    		
+    		if (apsMonitor == null) {
+    			apsMonitor = new JFrame("APS monitor");
+    			apsMonitor.setContentPane(myFrameViewer);
+    			apsMonitor.setPreferredSize(new Dimension(480,360));
+    		}
+    		apsMonitor.setVisible(true);
+    		frameViewerManager.run();
 //       		expressionBasedIKUserInterface.setVisible(true);
         } else {
 //        	if (kernelEditor != null)
@@ -337,6 +363,10 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
         	}
         	if (adcMonitor != null)
         		adcMonitor.setVisible(false);
+        	if (apsMonitor != null)
+        		apsMonitor.setVisible(false);
+        	if (frameViewerManager != null)
+        		frameViewerManager.kill();
         }
     }
    
@@ -406,6 +436,8 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	public void setSelectedOutput(ADCType selectedOutput) {
 		getSupport().firePropertyChange("selectedOutput", this.selectedOutput, selectedOutput);
 		clearRegression();
+		adcMin = Integer.MAX_VALUE;
+		adcMax = Integer.MIN_VALUE;
 		this.selectedOutput = selectedOutput;
 		
 	}
@@ -448,20 +480,22 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		adcMin = Integer.MAX_VALUE;
 		adcMax = Integer.MIN_VALUE;
 		before2sum = 0; plus2sum = 0; minus2sum = 0; beforeAfterSum = 0; plusAfterSum = 0; minusAfterSum = 0; plusChangeSum = 0; minusChangeSum = 0;
-		a = 0; b = 0; m = 0;
+		plusEventEffects = 0; minusEventEffect = 0; m = 0;
 		regressionOutputCount = 0;
 		totalChange = 0;
 		countedEvents = 0;
 	}
 	
 	long before2sum = 0, plus2sum = 0, minus2sum = 0, beforeAfterSum = 0, plusAfterSum = 0, minusAfterSum = 0, plusChangeSum = 0, minusChangeSum = 0;
-	double a = 0, b = 0, m = 0;
+	float plusEventEffects = 0, minusEventEffect = 0, m = 0;
 	long regressionOutputCount = 0;
 	long totalChange = 0;
 	long countedEvents = 0;
 
 	int aTime = 0, bTime = 0;
 	int lastValuePlus = 0, lastValueMinus = 0;
+	
+
 	
 	void evaluateADCEvent(ApsDvsEvent e) {
 		int x = e.getX();
@@ -497,19 +531,34 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 			oldValue = adcCMap[x][y];
 		if (x >= 0	&& x < currentSizeX && y >= 0	&& y < currentSizeY) {
 			int adcSample = e.getAdcSample();
-			if (adcSample < adcMin)
-				adcMin = adcSample;
-			if (adcSample > adcMax)
-				adcMax = adcSample;
 			if ((e.isA() && selectedOutput == ADCType.A) || 
 					(e.isB() && (selectedOutput == ADCType.B || selectedOutput == ADCType.DIFF_B)) || 
 					(e.isC() && selectedOutput == ADCType.C)) {
+				if (e.isStartOfFrame() && false) {
+					// reduce influence of past measurements by dividing all accumulating values by 2 at the start of a new frame
+					before2sum >>= 1;
+					plus2sum >>= 1;
+					minus2sum >>= 1;
+					beforeAfterSum >>= 1;
+					plusAfterSum >>= 1;
+					minusAfterSum >>= 1;
+					plusChangeSum >>= 1;
+					minusChangeSum >>= 1;
+					
+				}
 				if (oldValue >= 0) { // && adcSample != adcAMap[x][y]) {
 					//						if (adcPlusEventMap[x][y] == plusEvents && adcMinusEventMap[x][y] == minusEvents) {
 					if (selectedOutput == ADCType.DIFF_B) {
 						oldValue = adcDIFF_BMap[x][y];
 						adcSample = adcAMap[x][y] - adcSample;
 					}
+					if (adcSample < adcMin)
+						adcMin = adcSample;
+					if (adcSample >= adcMax)
+						adcMax = adcSample+1;
+					
+					approximatedADCValues[x][y] = adcSample;
+					myFrameViewer.setPixmapGray(x, y, ((adcSample - adcMin) << 8) / (adcMax - adcMin));
 					
 //					// linear regression: assume after = m * before + a * plus + b * minus + epsilon
 //					// => minimize quadratic error
@@ -539,13 +588,13 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 						minus2sum += adcMinusEventMap[x][y]*adcMinusEventMap[x][y];
 						plusChangeSum += adcPlusEventMap[x][y] * change;
 						minusChangeSum += adcMinusEventMap[x][y] * change;
-						double total2 = plus2sum + minus2sum;
+						float total2 = plus2sum + minus2sum;
 						if (total2 > 0) {
-							a = ((double)plusChangeSum) / total2;
-							b = ((double)minusChangeSum) / total2;
+							plusEventEffects = ((float)plusChangeSum) / total2;
+							minusEventEffect = ((float)minusChangeSum) / total2;
 							regressionOutputCount++;
 							if (regressionOutputCount % 1000 == 0) 
-								System.out.println("Change = "+a+" * plus + "+b+" * minus; Avg change: "+((double)totalChange)/((double)countedEvents));
+								System.out.println("Change = "+plusEventEffects+" * plus + "+minusEventEffect+" * minus; Avg change: "+((double)totalChange)/((double)countedEvents));
 						}
 //					}
 
@@ -568,18 +617,6 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		}
 			//			System.out.println(x+"/"+y);
 	}
-	
-	class FrameOutputViewer extends NonGLImageDisplay implements ContinuousOutputViewer {
-		public FrameOutputViewer(int sizeX, int sizeY) {
-			super(sizeX, sizeY);
-		}
-		
-		@Override
-		public void updateOutput() {
-			this.repaint();
-		}
-	}
-	FrameOutputViewer myFrameViewer = new FrameOutputViewer(128, 128);
 	
 	
 	
@@ -631,6 +668,10 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		int y = e.getY();
 		if (x >= 0 && x < currentSizeX && y >= 0 && y < currentSizeY) {
 			adcPlusEventMap[x][y]++;
+			approximatedADCValues[x][y] += plusEventEffects;
+			if (adcMax > adcMin)
+				myFrameViewer.setPixmapGray(x, y, (((int)approximatedADCValues[x][y] - adcMin) << 8) / (adcMax - adcMin));
+
 		}
 	}
 	  
@@ -639,6 +680,9 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		int y = e.getY();
 		if (x >= 0 && x < currentSizeX && y >= 0 && y < currentSizeY) {
 			adcMinusEventMap[x][y]++;
+			approximatedADCValues[x][y] += minusEventEffect;
+			if (adcMax > adcMin)
+				myFrameViewer.setPixmapGray(x, y, (((int)approximatedADCValues[x][y] - adcMin) << 8) / (adcMax - adcMin));
 		}
 	}
 
@@ -670,6 +714,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	
 	int time = 0;
 	
+	float[][] approximatedADCValues =  new float[currentSizeX][currentSizeY];
 	int adcAMap[][] = createADCMap(currentSizeX, currentSizeY);
 	int adcBMap[][] = createADCMap(currentSizeX, currentSizeY);
 	int adcDIFF_BMap[][] = createADCMap(currentSizeX, currentSizeY);
@@ -770,6 +815,8 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	        if (chip.getSizeX() != currentSizeX || chip.getSizeY() != currentSizeY) {
 	        	currentSizeX = chip.getSizeX();
 	        	currentSizeY = chip.getSizeY();
+	        	approximatedADCValues = new float[currentSizeX][currentSizeY];
+	        	myFrameViewer.setImageSize(currentSizeX, currentSizeY);
 	        	onMap.setSizeX(currentSizeX);
 	        	onMap.setSizeY(currentSizeY);
 	        	offMap.setSizeX(currentSizeX);

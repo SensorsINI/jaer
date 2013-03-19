@@ -74,6 +74,14 @@ public class NonGLImageDisplay extends JPanel {
 		}
 	}
 
+	public void setPixmapGray(int x, int y, int value) {
+		if (value < 0)
+			value = 0;
+		else if (value > 255)
+			value = 255;
+		image.setRGB(x, sizeY-y-1, (value << 16)|(value << 8)|(value));
+	}
+	
 	public void setPixmapGray(int x, int y, float value) {
 		if (value < 0)
 			value = 0;
