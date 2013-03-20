@@ -557,8 +557,28 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 					if (adcSample >= adcMax)
 						adcMax = adcSample+1;
 					
-					approximatedADCValues[x][y] = adcSample;
-					myFrameViewer.setPixmapGray(x, y, ((adcSample - adcMin) << 8) / (adcMax - adcMin));
+					if (useAPSFrameToReset) {
+						approximatedADCValues[x][y] = adcSample;
+					}
+					else {
+						if (useMultiplication) {
+							if ((plusEffect > 1.0f && adcSample > approximatedADCValues[x][y]*plusEffect) ||
+									(plusEffect < 1.0 && adcSample < approximatedADCValues[x][y] * plusEffect))
+								approximatedADCValues[x][y] *= plusEffect;
+							if ((minusEffect > 1.0f && adcSample > approximatedADCValues[x][y]*minusEffect) ||
+									(minusEffect < 1.0 && adcSample < approximatedADCValues[x][y] * minusEffect))
+								approximatedADCValues[x][y] *= minusEffect;
+						}
+						else {
+							if ((plusEffect > 0.0f && adcSample > approximatedADCValues[x][y]+plusEffect) ||
+									(plusEffect < 0.0f && adcSample < approximatedADCValues[x][y] + plusEffect))
+								approximatedADCValues[x][y] += plusEffect;
+							if ((minusEffect > 0.0f && adcSample > approximatedADCValues[x][y]+minusEffect) ||
+									(minusEffect < 0.0 && adcSample < approximatedADCValues[x][y] + minusEffect))
+								approximatedADCValues[x][y] += minusEffect;
+						}
+					}
+					myFrameViewer.setPixmapGray(x, y, (((int)approximatedADCValues[x][y] - adcMin) << 8) / (adcMax - adcMin));
 					
 //					// linear regression: assume after = m * before + a * plus + b * minus + epsilon
 //					// => minimize quadratic error
@@ -619,8 +639,95 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	}
 	
 	
+	float plusEffect = getPrefs().getFloat("plusEffect", 10);
+	float minusEffect = getPrefs().getFloat("minusEffect", -10);
+	
+	float plusEffectBuffer = getPrefs().getFloat("plusEffectBuffer", 1.1f);
+	float minusEffectBuffer = getPrefs().getFloat("minusEffectBuffer", 1.0f/1.1f);
+	
+	boolean useMultiplication = getPrefs().getBoolean("useMultiplication", false);
+	boolean useAPSFrameToReset = getPrefs().getBoolean("useAPSFrameToReset", true);
 	
 	
+	
+	/**
+	 * @return the plusEffect
+	 */
+	public float getPlusEffect() {
+		return plusEffect;
+	}
+
+	/**
+	 * @param plusEffect the plusEffect to set
+	 */
+	public void setPlusEffect(float plusEffect) {
+		getSupport().firePropertyChange("plusEffect", this.plusEffect, plusEffect);
+		getPrefs().putFloat("plusEffect", plusEffect);
+		this.plusEffect = plusEffect;
+	}
+
+	/**
+	 * @return the minusEffect
+	 */
+	public float getMinusEffect() {
+		return minusEffect;
+	}
+
+	/**
+	 * @param minusEffect the minusEffect to set
+	 */
+	public void setMinusEffect(float minusEffect) {
+		getSupport().firePropertyChange("minusEffect", this.minusEffect, minusEffect);
+		getPrefs().putFloat("minusEffect", minusEffect);
+		this.minusEffect = minusEffect;
+	}
+
+	
+	
+	/**
+	 * @return the useMultiplication
+	 */
+	public boolean isUseMultiplication() {
+		return useMultiplication;
+	}
+
+	/**
+	 * @param useMultiplication the useMultiplication to set
+	 */
+	public void setUseMultiplication(boolean useMultiplication) {
+		if (this.useMultiplication != useMultiplication) {
+			getSupport().firePropertyChange("useMultiplication", this.useMultiplication, useMultiplication);
+			getPrefs().putBoolean("useMultiplication", useMultiplication);
+			float pBuffer = plusEffect;
+			float mBuffer = minusEffect;
+			setPlusEffect(plusEffectBuffer);
+			setMinusEffect(minusEffectBuffer);
+			plusEffectBuffer = pBuffer;
+			minusEffectBuffer = mBuffer;
+			getPrefs().putFloat("plusEffectBuffer",pBuffer);
+			getPrefs().putFloat("minusEffectBuffer",mBuffer);
+			this.useMultiplication = useMultiplication;
+		}
+	}
+	
+	
+
+	/**
+	 * @return the useAPSFrameToReset
+	 */
+	public boolean isUseAPSFrameToReset() {
+		return useAPSFrameToReset;
+	}
+
+	/**
+	 * @param useAPSFrameToReset the useAPSFrameToReset to set
+	 */
+	public void setUseAPSFrameToReset(boolean useAPSFrameToReset) {
+		getSupport().firePropertyChange("useAPSFrameToReset", this.useAPSFrameToReset, useAPSFrameToReset);
+		this.useAPSFrameToReset = useAPSFrameToReset;
+		getPrefs().putBoolean("useAPSFrameToReset", useAPSFrameToReset);
+	}
+
 	void summarizeAPS() {
 		if (display.getSizeX() != adcOutResolution || display.getSizeY() != adcOutResolution) {
 			display.setImageSize(adcOutResolution, adcOutResolution);
@@ -668,10 +775,15 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		int y = e.getY();
 		if (x >= 0 && x < currentSizeX && y >= 0 && y < currentSizeY) {
 			adcPlusEventMap[x][y]++;
-			approximatedADCValues[x][y] += plusEventEffects;
-			if (adcMax > adcMin)
+			if (adcMax > adcMin) {
+				if (useMultiplication)
+					approximatedADCValues[x][y] = (approximatedADCValues[x][y] - adcMin) * plusEffect + adcMin;
+	//				approximatedADCValues[x][y] *= plusEffect;
+				else
+					approximatedADCValues[x][y] += plusEffect;
+//			approximatedADCValues[x][y] += plusEventEffects;
 				myFrameViewer.setPixmapGray(x, y, (((int)approximatedADCValues[x][y] - adcMin) << 8) / (adcMax - adcMin));
-
+			}
 		}
 	}
 	  
@@ -680,9 +792,14 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		int y = e.getY();
 		if (x >= 0 && x < currentSizeX && y >= 0 && y < currentSizeY) {
 			adcMinusEventMap[x][y]++;
-			approximatedADCValues[x][y] += minusEventEffect;
-			if (adcMax > adcMin)
+			if (adcMax > adcMin) {
+				if (useMultiplication)
+					approximatedADCValues[x][y] = (approximatedADCValues[x][y] - adcMin) * minusEffect + adcMin;
+				else
+					approximatedADCValues[x][y] += minusEffect;
+//			approximatedADCValues[x][y] += minusEventEffect;
 				myFrameViewer.setPixmapGray(x, y, (((int)approximatedADCValues[x][y] - adcMin) << 8) / (adcMax - adcMin));
+			}
 		}
 	}
 
