@@ -53,77 +53,92 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
         setPropertyTooltip("neuronsL2", "Number of neurons in layer 2");
     }
 
-    protected int baseFireThres = getPrefs().getInt("StdpFeatureLearningV.baseFireThres", 40000);
+    protected float baseFireThresL1 = getPrefs().getFloat("StdpFeatureLearningV.baseFireThresL1", 40000);
     {
-        setPropertyTooltip("baseFireThres", "Threshold directly affecting selectivity of neuron");
+        setPropertyTooltip("baseFireThresL1", "Threshold directly affecting selectivity of neuron");
     }
 
-    protected int minFireThres = getPrefs().getInt("StdpFeatureLearningV.minFireThres", 10000);
+    protected float baseFireThresL2 = getPrefs().getFloat("StdpFeatureLearningV.baseFireThresL2", 4000);
     {
-        setPropertyTooltip("minFireThres", "Minimum threshold directly affecting selectivity of neuron");
+        setPropertyTooltip("baseFireThresL2", "Threshold directly affecting selectivity of neuron");
     }
 
-    protected int maxFireThres = getPrefs().getInt("StdpFeatureLearningV.maxFireThres", 100000);
+    protected int tLTPL1 = getPrefs().getInt("StdpFeatureLearningV.tLTPL1", 2000);
     {
-        setPropertyTooltip("maxFireThres", "Max threshold directly affecting selectivity of neuron");
+        setPropertyTooltip("tLTPL1", "time window during which LTP occurs (us)");
     }
 
-    protected int tLTP = getPrefs().getInt("StdpFeatureLearningV.tLTP", 2000);
+    protected int tLTPL2 = getPrefs().getInt("StdpFeatureLearningV.tLTPL2", 20000);
     {
-        setPropertyTooltip("tLTP", "time window during which LTP occurs (us)");
+        setPropertyTooltip("tLTPL2", "time window during which LTP occurs (us)");
     }
 
-    protected int tRefrac = getPrefs().getInt("StdpFeatureLearningV.tRefrac", 10000);
+    protected int tRefracL1 = getPrefs().getInt("StdpFeatureLearningV.tRefracL1", 10000);
     {
-        setPropertyTooltip("tRefrac", "Refractory period of neuron (us)");
+        setPropertyTooltip("tRefracL1", "Refractory period of neuron (us)");
     }
 
-    protected int tInhibit = getPrefs().getInt("StdpFeatureLearningV.tInhibit", 1500);
+    protected int tRefracL2 = getPrefs().getInt("StdpFeatureLearningV.tRefracL2", 10000);
     {
-        setPropertyTooltip("tInhibit", "Refractory period of neuron (us)");
+        setPropertyTooltip("tRefracL2", "Refractory period of neuron (us)");
+    }
+
+    protected int tInhibitL1 = getPrefs().getInt("StdpFeatureLearningV.tInhibitL1", 1500);
+    {
+        setPropertyTooltip("tInhibitL1", "Refractory period of neuron (us)");
     }
     
-    protected int tauLeak = getPrefs().getInt("StdpFeatureLearningV.tauLeak", 5000);
+    protected int tInhibitL2 = getPrefs().getInt("StdpFeatureLearningV.tInhibitL2", 1500);
     {
-        setPropertyTooltip("tauLeak", "Leak time constant (us)");
+        setPropertyTooltip("tInhibitL2", "Refractory period of neuron (us)");
+    }
+    
+    protected int tauLeakL1 = getPrefs().getInt("StdpFeatureLearningV.tauLeakL1", 5000);
+    {
+        setPropertyTooltip("tauLeakL1", "Leak time constant (us)");
     }
 
-    protected int wMin = getPrefs().getInt("StdpFeatureLearningV.wMin", 1);
+    protected int tauLeakL2 = getPrefs().getInt("StdpFeatureLearningV.tauLeakL2", 5000);
+    {
+        setPropertyTooltip("tauLeakL2", "Leak time constant (us)");
+    }
+
+    protected float wMin = getPrefs().getFloat("StdpFeatureLearningV.wMin", 1);
     {
         setPropertyTooltip("wMin", "Minimum weight");
     }
 
-    protected int wMax = getPrefs().getInt("StdpFeatureLearningV.wMax", 1000);
+    protected float wMax = getPrefs().getFloat("StdpFeatureLearningV.wMax", 1000);
     {
         setPropertyTooltip("wMax", "Maximum weight");
     }
     
-    protected int wInitMean = getPrefs().getInt("StdpFeatureLearningV.wInitMean", 800);
+    protected float wInitMean = getPrefs().getFloat("StdpFeatureLearningV.wInitMean", 800);
     {
         setPropertyTooltip("wInitMean", "Initial weight mean");
     }
 
-    protected int wInitSTD = getPrefs().getInt("StdpFeatureLearningV.wInitSTD", 160);
+    protected float wInitSTD = getPrefs().getFloat("StdpFeatureLearningV.wInitSTD", 160);
     {
         setPropertyTooltip("wInitSTD", "Initial weight standard deviation");
     }
 
-    protected int alphaPlus = getPrefs().getInt("StdpFeatureLearningV.alphaPlus", 100);
+    protected float alphaPlus = getPrefs().getFloat("StdpFeatureLearningV.alphaPlus", 100);
     {
         setPropertyTooltip("alphaPlus", "Weight increment");
     }
 
-    protected int alphaMinus = getPrefs().getInt("StdpFeatureLearningV.alphaMinus", 50);
+    protected float alphaMinus = getPrefs().getFloat("StdpFeatureLearningV.alphaMinus", 50);
     {
         setPropertyTooltip("alphaMinus", "Weight decrement");
     }
 
-    protected int betaPlus = getPrefs().getInt("StdpFeatureLearningV.betaPlus", 0);
+    protected float betaPlus = getPrefs().getFloat("StdpFeatureLearningV.betaPlus", 0);
     {
         setPropertyTooltip("betaPlus", "Weight increment damping factor");
     }
 
-    protected int betaMinus = getPrefs().getInt("StdpFeatureLearningV.betaMinus", 0);
+    protected float betaMinus = getPrefs().getFloat("StdpFeatureLearningV.betaMinus", 0);
     {
         setPropertyTooltip("betaMinus", "Weight decrement damping factor");
     }
@@ -168,26 +183,33 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
     private float[][] synapseWeightsL2;         // Synaptic weights of [neuronL2][neuronL1]
     private float[][][][] synapseWeightMapL2;   // Synaptic weights reconstruction of average activity in [neuronL2][polarity][x][y]
     private int[][][][] pixelSpikeTiming;       // Last spike time of [cluster][polarity][x][y]
-    private int[][] neuronL1SpikeTiming;        // Last input spike time of [cluster][neuronL1]
-    private int[][] neuronL1FireTiming;         // Last output fire time of [cluster][neuronL1]
-    private int[][] neuronL2SpikeTiming;        // Last input spike time of [cluster][neuronL2]
-    private int[][] neuronL2FireTiming;         // Last output fire time of [cluster][neuronL2]
-    private boolean[] neuronSpikeTimingInit;    // Indicates whether variable has been initialized or needs to be reset for 
-    private float fireThres;                    // Value at which neurons start to fire 
+    private int[][] neuronL1PreSpikeTiming;     // Last input spike time of [cluster][neuronL1]
+    private int[][] neuronL1PostSpikeTiming;    // Last output fire time of [cluster][neuronL1]
+    private int[][] neuronL2PreSpikeTiming;     // Last input spike time of [cluster][neuronL2]
+    private int[][] neuronL2PostSpikeTiming;    // Last output fire time of [cluster][neuronL2]
+    private boolean[] neuronPreSpikeTimingInit; // Indicates whether variable has been initialized or needs to be reset for 
+    private float[][] fireThres;                // Value at which neurons start to fire [cluster][layer]
     private int[][] t0;                         // Timestamp at which neurons are over lateral inhibition in [cluster][layer]
     private int[][] nextNeuronToUpdate;         // Helps indicates neuron in which to start update, is generally neuron next to one which fired last [cluster][layer]
     private boolean[][] fireInhibitor;          // Inhibits all other neurons in group from firing [cluster][layer]
     private boolean rewind;                     // Indicates rewind in playback
-            
+
+    private int[][] neuronFire;                 // Indicates number of times a particular neuron has fired for a given time stamp or packet [cluster][neuron]
+    private int[] numNeuronFire;                // Indicates number of times the neurons have fired for a given time stamp or packet [cluster]
+
     // Listeners
     private boolean viewerPropertyChangeListenerInit; // Indicates that listener for viewer changes has been initialized - used to detect open file and rewind
 
+    private float[][][][] clusterWeightMap;   // Synaptic weights reconstruction of average activity in [cluster][polarity][x][y]
+    
     // Display Variables 
     private GLU glu = null;                 // OpenGL Utilities
     private JFrame neuronL1Frame = null;      // Frame displaying neuronL1 weight matrix
     private GLCanvas neuronL1Canvas = null;   // Canvas on which neuronL1Frame is drawn
     private JFrame neuronL2Frame = null;      // Frame displaying neuronL1 weight matrix
     private GLCanvas neuronL2Canvas = null;   // Canvas on which neuronL1Frame is drawn
+    private JFrame clusterFrame = null;      // Frame displaying neuronL1 weight matrix
+    private GLCanvas clusterCanvas = null;   // Canvas on which neuronL1Frame is drawn
 
     /** 
      * Constructor 
@@ -205,7 +227,7 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
      * resetFilter call at end of method actually initializes all values
      */    
     @Override
-    public void initFilter() {
+    public synchronized void initFilter() {
         super.initFilter();
         
         xPixels = 16;
@@ -225,21 +247,25 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
         synapseWeightsL2 = new float[neuronsL2][neuronsL1];
         synapseWeightMapL2 = new float[neuronsL2][numPolarities][xPixels][yPixels];
         pixelSpikeTiming = new int[numClusters][numPolarities][xPixels][yPixels];
-        neuronL1FireTiming = new int[numClusters][neuronsL1];
-        neuronL2FireTiming = new int[numClusters][neuronsL2];
-        neuronL1SpikeTiming = new int[numClusters][neuronsL1];
-        neuronL2SpikeTiming = new int[numClusters][neuronsL2];
-        neuronSpikeTimingInit = new boolean[numClusters];
+        neuronL1PreSpikeTiming = new int[numClusters][neuronsL1];
+        neuronL2PreSpikeTiming = new int[numClusters][neuronsL2];
+        neuronL1PostSpikeTiming = new int[numClusters][neuronsL1];
+        neuronL2PostSpikeTiming = new int[numClusters][neuronsL2];
+        neuronPreSpikeTimingInit = new boolean[numClusters];
 
+        fireThres = new float[numClusters][numLayers];
         t0 = new int[numClusters][numLayers];
         nextNeuronToUpdate = new int[numClusters][numLayers];
         fireInhibitor = new boolean[numClusters][numLayers];
 
         viewerPropertyChangeListenerInit = false;
         
+        clusterWeightMap = new float[numClusters][numPolarities][xPixels][yPixels];
+
         rewind = false;
-        
-        fireThres = baseFireThres; 
+
+        neuronFire = new int[numClusters][neuronsL1];
+        numNeuronFire = new int[numClusters];
 
         resetFilter();
     } // END METHOD
@@ -301,22 +327,27 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
      * Called on reset or whenever a new cluster is found
      */    
     private void resetCluster(int c) {
-        neuronSpikeTimingInit[c] = false;
+        neuronPreSpikeTimingInit[c] = false;
+        //numNeuronFire[c] = 0;
 
+        fireThres[c][0] = baseFireThresL1;
+        fireThres[c][1] = baseFireThresL2;
         for (int l=0; l<numLayers; l++) {
             t0[c][l] = 0;
             nextNeuronToUpdate[c][l] = 0;
+
             fireInhibitor[c][l] = false;
         }
         
         for (int nL1=0; nL1<neuronsL1; nL1++) {
             neuronL1Potential[c][nL1] = 0;
-            neuronL1FireTiming[c][nL1] = 0;
+            neuronL1PostSpikeTiming[c][nL1] = 0;
+            //neuronFire[c][nL1] = 0;
         } // END LOOP - NeuronsL1
 
         for (int nL2=0; nL2<neuronsL2; nL2++) {
             neuronL2Potential[c][nL2] = 0;
-            neuronL2FireTiming[c][nL2] = 0;
+            neuronL2PostSpikeTiming[c][nL2] = 0;
         } // END LOOP - NeuronsL2
 
         for (int p=0; p<numPolarities; p++) 
@@ -340,12 +371,21 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
             viewerPropertyChangeListenerInit = true;
         } // END IF
         
-      
         // Update cluster information once per packet
         // That is, update x and yStart variables and reset cluster information for clusters which aren't persistent
         // And determine which clusters are active for learning or initialization
         updateClusters();
 
+        // Reset neuronFire count and array as well as clusterActive (to be reactivated next updateClusters())
+        for (int c=0; c<numClusters; c++) {
+            if (clusterActive[c] == false) {
+                numNeuronFire[c] = 0;
+                for (int n=0; n<neuronsL1; n++) {
+                    neuronFire[c][n] = 0;
+                } // END LOOP
+            }
+        } // END LOOP
+        
         // Event Iterator - Write only relevant events inside xPixels by yPixels window to out
         // Apply STDP Rule
         for (Object o : in) {
@@ -354,12 +394,12 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
             // Assume that current event's timestamp is initial neuronSpikeTiming for all clusters that need to reset
             for (int c=0; c<numClusters; c++) { 
                 if (clusterActive[c] == true) {
-                    if (neuronSpikeTimingInit[c] == false) {
+                    if (neuronPreSpikeTimingInit[c] == false) {
                         for (int nL1=0; nL1<neuronsL1; nL1++) 
-                            neuronL1SpikeTiming[c][nL1] = e.timestamp;
+                            neuronL1PreSpikeTiming[c][nL1] = e.timestamp;
                         for (int nL2=0; nL2<neuronsL2; nL2++) 
-                            neuronL2SpikeTiming[c][nL2] = e.timestamp;
-                        neuronSpikeTimingInit[c] = true;
+                            neuronL2PreSpikeTiming[c][nL2] = e.timestamp;
+                        neuronPreSpikeTimingInit[c] = true;
                     } else {
                         // Check what clusters the events belong to
                         if (e.x >= xStart[c] &&  e.x < xPixels + xStart[c] && 
@@ -370,10 +410,15 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
             } // END LOOP - numClusters 
         } // END LOOP - Event Iterator
         
+        
         // Draw Neuron Weight Matrix
+        constructClusterMap();
         checkNeuronFrame();
         neuronL1Canvas.repaint();
         neuronL2Canvas.repaint();
+        clusterCanvas.repaint();
+
+
 
         // Output Filtered Events
         return in;
@@ -492,7 +537,7 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
                 // Start update from neuron next to the one that fired last
                 int n = (nextNeuronToUpdate[c][layer] + nIdx) % neuronsL1;
                 // Make sure neuron is not in its refractory period
-                if (ts >= neuronL1FireTiming[c][n]+tRefrac) {
+                if (ts >= neuronL1PostSpikeTiming[c][n]+tRefracL1) {
                     boolean potentialAboveThres = updateNeuronL1IntegrationState(c, n, ts, polarity, x, y);
                     // Only update synapses if fireInhibitor is disabled
                     // fireInhibitor will only be enabled if fireMaxOnlyOnceOnSpike is on 
@@ -500,13 +545,18 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
                     if (fireInhibitor[c][layer] == false) 
                         // If Neuron Fires Then 
                         if (potentialAboveThres == true) {
+                            // Indicate number of times neuron has fired in this particular data packet
+                            neuronFire[c][n]++;
+                            numNeuronFire[c]++;
+//                            constructClusterMap();
                             // Update synapse weights of these neurons
+                            // CHECK! MAYBE UPDATE ON EVERY SKIPE
                             updateSynapseWeights(c, layer, n, ts);
                             // Inhibit all neurons
-                            t0[c][layer] = ts + tInhibit;
+                            t0[c][layer] = ts + tInhibitL1;
                             // Update neuron fire timing maps
-                            neuronL1FireTiming[c][n] = ts;
-                            // STDP FOR LAYER 2 - MAKE CODE BETTER ASAP
+                            neuronL1PostSpikeTiming[c][n] = ts;
+                            // STDP FOR LAYER 2 - MAKE CODE BETTER 
                             applySTDPL2(c, ts, n);
                             // Update which neuron to start updating on next spike
                             nextNeuronToUpdate[c][layer]=n+1;
@@ -541,7 +591,7 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
                 // Start update from neuron next to the one that fired last
                 int n = (nextNeuronToUpdate[c][layer] + nIdx) % neuronsL2;
                 // Make sure neuron is not in its refractory period
-                if (ts >= neuronL2FireTiming[c][n]+tRefrac) {
+                if (ts >= neuronL2PostSpikeTiming[c][n]+tRefracL2) {
                     boolean potentialAboveThres = updateNeuronL2IntegrationState(c, n, ts, nL1);
                     // Only update synapses if fireInhibitor is disabled
                     // fireInhibitor will only be enabled if fireMaxOnlyOnceOnSpike is on 
@@ -552,9 +602,9 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
                             // Update synapse weights of these neurons
                             updateSynapseWeights(c, layer, n, ts);
                             // Inhibit all neurons
-                            t0[c][layer] = ts + tInhibit;
+                            t0[c][layer] = ts + tInhibitL2;
                             // Update neuron fire timing maps
-                            neuronL2FireTiming[c][n] = ts;
+                            neuronL2PostSpikeTiming[c][n] = ts;
                             // Update which neuron to start updating on next spike
                             nextNeuronToUpdate[c][layer]=n+1;
                             // If we allow neuron to fire only once per spike, then finish updating potentials for all neurons and inhibit firing
@@ -579,12 +629,13 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
      * @return boolean indicating whether neuron has fired 
      */
     private boolean updateNeuronL1IntegrationState(int c, int neuron, int ts, int polarity, int x, int y) {
+        int layer = 0;
         // Neuron Update equation
-        double temp = - (ts - neuronL1SpikeTiming[c][neuron]) / (double) tauLeak;
+        double temp = - (ts - neuronL1PreSpikeTiming[c][neuron]) / (double) tauLeakL1;
         neuronL1Potential[c][neuron] = neuronL1Potential[c][neuron] * (float) Math.exp(temp) + synapseWeightsL1[neuron][polarity][x][y];  
-        neuronL1SpikeTiming[c][neuron] = ts;
+        neuronL1PreSpikeTiming[c][neuron] = ts;
         // If updated potential is above firing threshold, then fire and reset
-        if (neuronL1Potential[c][neuron] >= fireThres) {
+        if (neuronL1Potential[c][neuron] >= fireThres[c][layer]) {
             neuronL1Potential[c][neuron] = 0;
             return true;
         } else {
@@ -603,13 +654,13 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
      * @return boolean indicating whether neuron has fired 
      */
     private boolean updateNeuronL2IntegrationState(int c, int neuron, int ts, int neuronL1) {
-        float fireThresL2 = fireThres / 1000f;
+        int layer = 1;
         // Neuron Update equation
-        double temp = - (ts - neuronL2SpikeTiming[c][neuron]) / (double) tauLeak;
+        double temp = - (ts - neuronL2PreSpikeTiming[c][neuron]) / (double) tauLeakL2;
         neuronL2Potential[c][neuron] = neuronL2Potential[c][neuron] * (float) Math.exp(temp) + synapseWeightsL2[neuron][neuronL1];  
-        neuronL2SpikeTiming[c][neuron] = ts;
+        neuronL2PreSpikeTiming[c][neuron] = ts;
         // If updated potential is above firing threshold, then fire and reset
-        if (neuronL2Potential[c][neuron] >= fireThresL2) {
+        if (neuronL2Potential[c][neuron] >= fireThres[c][layer]) {
             neuronL2Potential[c][neuron] = 0;
             return true;
         } else {
@@ -630,7 +681,7 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
                 for (int x=0; x<xPixels; x++)
                     for (int y=0; y<yPixels; y++) {
                         // LTP - Long Term Potentiation
-                        if (ts-pixelSpikeTiming[c][p][x][y]<=tLTP) {
+                        if (ts-pixelSpikeTiming[c][p][x][y]<=tLTPL1) {
                             synapseWeightsL1[neuron][p][x][y] = synapseWeightsL1[neuron][p][x][y] + 
                                     alphaPlus * (float) Math.exp(-betaPlus * 
                                     (synapseWeightsL1[neuron][p][x][y] - wMin) / (double) (wMax - wMin));
@@ -649,10 +700,9 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
                     } // END IF - All synapses
         // L2
         } else if (layer == 1) {
-            int tLTPL2 = tLTP*10;
             for (int nL1=0; nL1<neuronsL1; nL1++) {
                 // LTP - Long Term Potentiation
-                if (ts-neuronL1FireTiming[c][nL1]<=tLTPL2) {
+                if (ts-neuronL1PostSpikeTiming[c][nL1]<=tLTPL2) {
                     synapseWeightsL2[neuron][nL1] = synapseWeightsL2[neuron][nL1] + 
                             alphaPlus * (float) Math.exp(-betaPlus * 
                             (synapseWeightsL2[neuron][nL1] - wMin) / (double) (wMax - wMin));
@@ -681,23 +731,54 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
                     for (int y=0; y<yPixels; y++) 
                         synapseWeightMapL2[nL2][p][x][y] = 0;
                 
+        // Calculate mean of weights
+        float[] mean = new float[neuronsL2];
+        for (int nL2=0; nL2<neuronsL2; nL2++) { 
+            for (int nL1=0; nL1<neuronsL1; nL1++) { 
+                mean[nL2] += synapseWeightsL2[nL2][nL1];
+            }
+            mean[nL2] /= neuronsL1;
+        }
+        
         // Sum all weighted synapse weight matrices
+        float[] count = new float[neuronsL2];
         for (int nL2=0; nL2<neuronsL2; nL2++) 
             for (int nL1=0; nL1<neuronsL1; nL1++) 
-                for (int p=0; p<numPolarities; p++) 
-                    for (int x=0; x<xPixels; x++) 
-                        for (int y=0; y<yPixels; y++) 
-                            synapseWeightMapL2[nL2][p][x][y] = synapseWeightMapL2[nL2][p][x][y] + 
-                                    synapseWeightsL1[nL1][p][x][y]*(synapseWeightsL2[nL2][nL1]-wMin) / 
-                                    (float) (wMax-wMin);
+                if (synapseWeightsL2[nL2][nL1] >= mean[nL2]) {
+                    count[nL2]++;
+                    for (int p=0; p<numPolarities; p++) 
+                        for (int x=0; x<xPixels; x++) 
+                            for (int y=0; y<yPixels; y++) 
+                                synapseWeightMapL2[nL2][p][x][y] = synapseWeightMapL2[nL2][p][x][y] +
+                                        synapseWeightsL1[nL1][p][x][y]*synapseWeightsL2[nL2][nL1];
+                }
         
         // Normalize 
+//        float minWeightMap = neuronsL1 * wMin * wMin;
+//        float maxWeightMap = neuronsL1 * wMax * wMax;
         for (int nL2=0; nL2<neuronsL2; nL2++) 
             for (int p=0; p<numPolarities; p++) 
                 for (int x=0; x<xPixels; x++) 
                     for (int y=0; y<yPixels; y++) 
-                        synapseWeightMapL2[nL2][p][x][y] = synapseWeightMapL2[nL2][p][x][y] /
-                                (float)neuronsL1; // CHECK - FIX
+                        synapseWeightMapL2[nL2][p][x][y] = (synapseWeightMapL2[nL2][p][x][y] - count[nL2] * wMin * wMin) / 
+                                (count[nL2] * wMax * wMax - count[nL2] * wMin * wMin); // CHECK - FIX
+    }
+
+    private void constructClusterMap() {
+        // Clear map
+        for (int c=0; c<numClusters; c++) 
+            for (int p=0; p<numPolarities; p++) 
+                for (int x=0; x<xPixels; x++) 
+                    for (int y=0; y<yPixels; y++) 
+                        clusterWeightMap[c][p][x][y] = 0;
+                
+        // Sum all weighted synapse weight matrices
+        for (int c=0; c<numClusters; c++) 
+            for (int nL1=0; nL1<neuronsL1; nL1++) 
+                for (int p=0; p<numPolarities; p++) 
+                    for (int x=0; x<xPixels; x++) 
+                        for (int y=0; y<yPixels; y++) 
+                            clusterWeightMap[c][p][x][y] += neuronFire[c][nL1]*synapseWeightsL1[nL1][p][x][y]/(float)numNeuronFire[c];
     }
 
     /**
@@ -709,6 +790,8 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
             createNeuronL1Frame();
         if (neuronL2Frame == null || (neuronL2Frame != null && !neuronL2Frame.isVisible())) 
             createNeuronL2Frame();
+        if (clusterFrame == null || (clusterFrame != null && !clusterFrame.isVisible())) 
+            createClusterFrame();
     } // END METHOD
 
     /**
@@ -719,6 +802,8 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
             neuronL1Frame.setVisible(false);
         if(neuronL2Frame!=null) 
             neuronL2Frame.setVisible(false);
+        if(clusterFrame!=null) 
+            clusterFrame.setVisible(false);
     } // END METHOD
     
     /**
@@ -727,7 +812,7 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
     void createNeuronL1Frame() {
         // Initializes neuronFrame
         neuronL1Frame = new JFrame("Neuron Layer 1 Synapse Weight Matrix");
-        neuronL1Frame.setPreferredSize(new Dimension(400, 400));
+        neuronL1Frame.setPreferredSize(new Dimension(400, 800));
         // Creates drawing canvas
         neuronL1Canvas = new GLCanvas();
         // Adds listeners to canvas so that it will be updated as needed
@@ -871,7 +956,7 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
     void createNeuronL2Frame() {
         // Initializes neuronFrame
         neuronL2Frame = new JFrame("Neuron Layer 2 Synapse Weight Matrix");
-        neuronL2Frame.setPreferredSize(new Dimension(400, 400));
+        neuronL2Frame.setPreferredSize(new Dimension(400, 800));
         // Creates drawing canvas
         neuronL2Canvas = new GLCanvas();
         // Adds listeners to canvas so that it will be updated as needed
@@ -919,10 +1004,8 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
                     for (int x=0; x<xPixels; x++) {
                         for (int y=0; y<yPixels; y++) {
                             // Handle Polarity cases independently, not through a for loop
-                            //float wOFF = (synapseWeightMapL2[n][0][x][y] - wMin) / (float) (wMax - wMin);
-                            //float wON = (synapseWeightMapL2[n][1][x][y] - wMin) / (float) (wMax - wMin);
-                            float wOFF = (synapseWeightMapL2[n][0][x][y]- wMin) / (float) (wMax - wMin);
-                            float wON = (synapseWeightMapL2[n][1][x][y] - wMin) / (float) (wMax - wMin);
+                            float wOFF = synapseWeightMapL2[n][0][x][y];
+                            float wON = synapseWeightMapL2[n][1][x][y];
                             if (displayCombinedPolarity == true) {
                                 gl.glColor3f(wON, 0, wOFF);
                                 gl.glRectf(xOffset+x, yOffset+y+yPixels, 
@@ -1014,6 +1097,120 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
     } // END METHOD
 
     /**
+     * Creates Neuron Weight Matrix Frame
+     */
+    void createClusterFrame() {
+        // Initializes clusterFrame
+        clusterFrame = new JFrame("Cluster Feature Reconstruction");
+        clusterFrame.setPreferredSize(new Dimension(400, 800));
+        // Creates drawing canvas
+        clusterCanvas = new GLCanvas();
+        // Adds listeners to canvas so that it will be updated as needed
+        clusterCanvas.addGLEventListener(new GLEventListener() {
+            // Called by the drawable immediately after the OpenGL context is initialized
+            @Override
+            public void init(GLAutoDrawable drawable) {
+            
+            }
+
+            // Called by the drawable to initiate OpenGL rendering by the client
+            // Used to draw and update canvas
+            @Override
+            synchronized public void display(GLAutoDrawable drawable) {
+                if (synapseWeightsL1 == null) 
+                    return;
+
+                //constructClusterMap();
+                
+                // Prepare drawing canvas
+                int clusterPadding = 5;
+                int xPixelsPerCluster = xPixels + clusterPadding;
+                int yPixelsPerCluster = yPixels * numPolarities + clusterPadding;
+                int clustersPerRow = (int) Math.sqrt((double) numClusters); 
+                int clustersPerColumn = (int) Math.ceil((double)numClusters / clustersPerRow);
+                int pixelsPerRow = xPixelsPerCluster * clustersPerRow - clusterPadding;
+                int pixelsPerColumn = yPixelsPerCluster * clustersPerColumn - clusterPadding;
+                
+                // Draw in canvas
+                GL gl = drawable.getGL();
+                // Creates and scales drawing matrix so that each integer unit represents any given pixel
+                gl.glLoadIdentity();
+                gl.glScalef(drawable.getWidth() / (float) pixelsPerRow, 
+                        drawable.getHeight() / (float) pixelsPerColumn, 1);
+                // Sets the background color for when glClear is called
+                gl.glClearColor(0, 0, 0, 0);
+                gl.glClear(GL.GL_COLOR_BUFFER_BIT);
+                
+                int xOffset = 0;
+                int yOffset = 0;
+
+                // Draw all Neurons
+                // Draw weight matrix
+                for (int c=0; c<numClusters; c++) {
+                    for (int x=0; x<xPixels; x++) {
+                        for (int y=0; y<yPixels; y++) {
+                            // Handle Polarity cases independently, not through a for loop
+                            float wOFF = (clusterWeightMap[c][0][x][y] - wMin) / (float) (wMax - wMin);
+                            float wON = (clusterWeightMap[c][1][x][y] - wMin) / (float) (wMax - wMin);
+                            if (displayCombinedPolarity == true) {
+                                gl.glColor3f(wON, 0, wOFF);
+                                gl.glRectf(xOffset+x, yOffset+y+yPixels, 
+                                        xOffset+x + 1, yOffset+y+yPixels + 1);
+                            } else if (displayCombinedPolarity == false) {
+                                gl.glColor3f(wOFF, wOFF, 0);
+                                gl.glRectf(xOffset+x, yOffset+y, 
+                                        xOffset+x + 1, yOffset+y + 1);
+                                gl.glColor3f(0, wON, wON);
+                                gl.glRectf(xOffset+x, yOffset+y + yPixels, 
+                                        xOffset+x + 1, yOffset+y + yPixels + 1);
+                            } // END IF - Display Polarity
+                        } // END LOOP - Y
+                    } // END LOOP - X
+
+                    // Adjust x and y Offsets
+                    xOffset += xPixelsPerCluster; 
+                    if (c%clustersPerRow == clustersPerRow-1) {
+                        xOffset = 0;
+                        yOffset += yPixelsPerCluster;
+                    } // END IF
+                } // END LOOP - Neuron
+                // Log error if there is any in OpenGL
+                int error = gl.glGetError();
+                if (error != GL.GL_NO_ERROR) {
+                    if (glu == null) 
+                        glu = new GLU();
+                    log.log(Level.WARNING, "GL error number {0} {1}", new Object[]{error, glu.gluErrorString(error)});
+                } // END IF
+            } // END METHOD - Display
+            
+            // Called by the drawable during the first repaint after the component has been resized 
+            // Adds a border to canvas by adding perspective to it and then flattening out image
+            @Override
+            synchronized public void reshape(GLAutoDrawable drawable, int x, int y, int width, int height) {
+                GL gl = drawable.getGL();
+                final int border = 10;
+                gl.glMatrixMode(GL.GL_PROJECTION);
+                gl.glLoadIdentity(); 
+                gl.glOrtho(-border, drawable.getWidth() + border, -border, drawable.getHeight() + border, 10000, -10000);
+                gl.glMatrixMode(GL.GL_MODELVIEW);
+                gl.glViewport(0, 0, width, height);
+            } // END METHOD
+
+            // Called by drawable when display mode or display device has changed
+            @Override
+            public void displayChanged(GLAutoDrawable drawable, boolean modeChanged, boolean deviceChanged) {
+ 
+            } // END METHOD
+        }); // END SCOPE - GLEventListener
+        
+        // Add neuronCanvas to neuronFrame
+        clusterFrame.getContentPane().add(clusterCanvas);
+        // Causes window to be sized to fit the preferred size and layout of its subcomponents
+        clusterFrame.pack();
+        clusterFrame.setVisible(true);
+    } // END METHOD
+
+    /**
      * Called when filter is turned off 
      * makes sure neuronFrame gets turned off
      */    
@@ -1023,6 +1220,8 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
             neuronL1Frame.dispose();
         if(neuronL2Frame!=null) 
             neuronL2Frame.dispose();
+        if(clusterFrame!=null) 
+            clusterFrame.dispose();
     } // END METHOD
 
     /**
@@ -1204,242 +1403,322 @@ public class StdpFeatureLearningV extends RectangularClusterTracker implements O
     }
     // END neuronsL2
     
-    public int getBaseFireThres() {
-        return this.baseFireThres;
+    public float getBaseFireThresL1() {
+        return this.baseFireThresL1;
     }
-    public void setBaseFireThres(final int baseFireThres) {
-        getPrefs().putInt("StdpFeatureLearningV.baseFireThres", baseFireThres);
-        getSupport().firePropertyChange("baseFireThres", this.baseFireThres, baseFireThres);
-        this.baseFireThres = baseFireThres;
+    public void setBaseFireThresL1(final float baseFireThresL1) {
+        getPrefs().putFloat("StdpFeatureLearningV.baseFireThresL1", baseFireThresL1);
+        getSupport().firePropertyChange("baseFireThresL1", this.baseFireThresL1, baseFireThresL1);
+        this.baseFireThresL1 = baseFireThresL1;
     }
-    public int getBaseFireThresMin() {
+    public float getBaseFireThresL1Min() {
         return 1;
     }
-    public int getBaseFireThresMax() {
+    public float getBaseFireThresL1Max() {
         return 100000;
     }
     // END baseFireThres
 
-    public int getMinFireThres() {
-        return this.minFireThres;
+    public float getBaseFireThresL2() {
+        return this.baseFireThresL2;
     }
-    public void setMinFireThres(final int minFireThres) {
-        getPrefs().putInt("StdpFeatureLearningV.minFireThres", minFireThres);
-        getSupport().firePropertyChange("minFireThres", this.minFireThres, minFireThres);
-        this.minFireThres = minFireThres;
+    public void setBaseFireThresL2(final float baseFireThresL2) {
+        getPrefs().putFloat("StdpFeatureLearningV.baseFireThresL2", baseFireThresL2);
+        getSupport().firePropertyChange("baseFireThresL2", this.baseFireThresL2, baseFireThresL2);
+        this.baseFireThresL2 = baseFireThresL2;
     }
-    public int getMinFireThresMin() {
+    public float getBaseFireThresL2Min() {
         return 1;
     }
-    public int getMinFireThresMax() {
+    public float getBaseFireThresL2Max() {
         return 100000;
     }
-    // END minFireThres
+    // END baseFireThres
 
-    public int getMaxFireThres() {
-        return this.maxFireThres;
-    }
-    public void setMaxFireThres(final int maxFireThres) {
-        getPrefs().putInt("StdpFeatureLearningV.maxFireThres", maxFireThres);
-        getSupport().firePropertyChange("maxFireThres", this.maxFireThres, maxFireThres);
-        this.maxFireThres = maxFireThres;
-    }
-    public int getMaxFireThresMin() {
-        return 1;
-    }
-    public int getMaxFireThresMax() {
-        return 100000;
-    }
-    // END maxFireThres
+//    public int getMinFireThres() {
+//        return this.minFireThres;
+//    }
+//    public void setMinFireThres(final int minFireThres) {
+//        getPrefs().putInt("StdpFeatureLearningV.minFireThres", minFireThres);
+//        getSupport().firePropertyChange("minFireThres", this.minFireThres, minFireThres);
+//        this.minFireThres = minFireThres;
+//    }
+//    public int getMinFireThresMin() {
+//        return 1;
+//    }
+//    public int getMinFireThresMax() {
+//        return 100000;
+//    }
+//    // END minFireThres
+//
+//    public int getMaxFireThres() {
+//        return this.maxFireThres;
+//    }
+//    public void setMaxFireThres(final int maxFireThres) {
+//        getPrefs().putInt("StdpFeatureLearningV.maxFireThres", maxFireThres);
+//        getSupport().firePropertyChange("maxFireThres", this.maxFireThres, maxFireThres);
+//        this.maxFireThres = maxFireThres;
+//    }
+//    public int getMaxFireThresMin() {
+//        return 1;
+//    }
+//    public int getMaxFireThresMax() {
+//        return 100000;
+//    }
+//    // END maxFireThres
 
-    public int getTLTP() {
-        return this.tLTP;
+    public int getTLTPL1() {
+        return this.tLTPL1;
     }
-    public void setTLTP(final int tLTP) {
-        getPrefs().putInt("StdpFeatureLearningV.tLTP", tLTP);
-        getSupport().firePropertyChange("tLTP", this.tLTP, tLTP);
-        this.tLTP = tLTP;
+    public void setTLTPL1(final int tLTPL1) {
+        getPrefs().putFloat("StdpFeatureLearningV.tLTPL1", tLTPL1);
+        getSupport().firePropertyChange("tLTPL1", this.tLTPL1, tLTPL1);
+        this.tLTPL1 = tLTPL1;
     }
-    public int getTLTPMin() {
+    public int getTLTPL1Min() {
         return 1;
     }
-    public int getTLTPMax() {
+    public int getTLTPL1Max() {
         return 100000;
     }
-    // END tLTP
+    // END tLTPL1
     
-    public int getTRefrac() {
-        return this.tRefrac;
+    public int getTLTPL2() {
+        return this.tLTPL2;
     }
-    public void setTRefrac(final int tRefrac) {
-        getPrefs().putInt("StdpFeatureLearningV.tRefrac", tRefrac);
-        getSupport().firePropertyChange("tRefrac", this.tRefrac, tRefrac);
-        this.tRefrac = tRefrac;
+    public void setTLTPL2(final int tLTPL2) {
+        getPrefs().putFloat("StdpFeatureLearningV.tLTPL2", tLTPL2);
+        getSupport().firePropertyChange("tLTPL2", this.tLTPL2, tLTPL2);
+        this.tLTPL2 = tLTPL2;
     }
-    public int getTRefracMin() {
+    public int getTLTPL2Min() {
         return 1;
     }
-    public int getTRefracMax() {
+    public int getTLTPL2Max() {
         return 100000;
     }
-    // END tRefrac
+    // END tLTPL2
     
-    public int getTInhibit() {
-        return this.tInhibit;
+    public int getTRefracL1() {
+        return this.tRefracL1;
     }
-    public void setTInhibit(final int tInhibit) {
-        getPrefs().putInt("StdpFeatureLearningV.tInhibit", tInhibit);
-        getSupport().firePropertyChange("tInhibit", this.tInhibit, tInhibit);
-        this.tInhibit = tInhibit;
+    public void setTRefracL1(final int tRefracL1) {
+        getPrefs().putInt("StdpFeatureLearningV.tRefracL1", tRefracL1);
+        getSupport().firePropertyChange("tRefracL1", this.tRefracL1, tRefracL1);
+        this.tRefracL1 = tRefracL1;
     }
-    public int getTInhibitMin() {
+    public int getTRefracL1Min() {
         return 1;
     }
-    public int getTInhibitMax() {
+    public int getTRefracL1Max() {
         return 100000;
     }
-    // END tRefrac
+    // END tRefracL1
+    
+    public int getTRefracL2() {
+        return this.tRefracL2;
+    }
+    public void setTRefracL2(final int tRefracL2) {
+        getPrefs().putInt("StdpFeatureLearningV.tRefracL2", tRefracL2);
+        getSupport().firePropertyChange("tRefracL2", this.tRefracL2, tRefracL2);
+        this.tRefracL2 = tRefracL2;
+    }
+    public int getTRefracL2Min() {
+        return 1;
+    }
+    public int getTRefracL2Max() {
+        return 100000;
+    }
+    // END tRefracL2
+    
+    public int getTInhibitL1() {
+        return this.tInhibitL1;
+    }
+    public void setTInhibitL1(final int tInhibitL1) {
+        getPrefs().putInt("StdpFeatureLearningV.tInhibitL1", tInhibitL1);
+        getSupport().firePropertyChange("tInhibitL1", this.tInhibitL1, tInhibitL1);
+        this.tInhibitL1 = tInhibitL1;
+    }
+    public int getTInhibitL1Min() {
+        return 1;
+    }
+    public int getTInhibitL1Max() {
+        return 100000;
+    }
+    // END tRefracL1
 
-    public int getTauLeak() {
-        return this.tauLeak;
+    public int getTInhibitL2() {
+        return this.tInhibitL2;
     }
-    public void setTauLeak(final int tauLeak) {
-        getPrefs().putInt("StdpFeatureLearningV.tauLeak", tauLeak);
-        getSupport().firePropertyChange("tauLeak", this.tauLeak, tauLeak);
-        this.tauLeak = tauLeak;
+    public void setTInhibitL2(final int tInhibitL2) {
+        getPrefs().putInt("StdpFeatureLearningV.tInhibitL2", tInhibitL2);
+        getSupport().firePropertyChange("tInhibitL2", this.tInhibitL2, tInhibitL2);
+        this.tInhibitL2 = tInhibitL2;
     }
-    public int getTauLeakMin() {
+    public int getTInhibitL2Min() {
         return 1;
     }
-    public int getTauLeakMax() {
+    public int getTInhibitL2Max() {
         return 100000;
     }
-    // END tauLeak
+    // END tRefracL2
+
+    public int getTauLeakL1() {
+        return this.tauLeakL1;
+    }
+    public void setTauLeakL1(final int tauLeakL1) {
+        getPrefs().putInt("StdpFeatureLearningV.tauLeakL1", tauLeakL1);
+        getSupport().firePropertyChange("tauLeakL1", this.tauLeakL1, tauLeakL1);
+        this.tauLeakL1 = tauLeakL1;
+    }
+    public int getTauLeakL1Min() {
+        return 1;
+    }
+    public int getTauLeakL1Max() {
+        return 100000;
+    }
+    // END tauLeakL1
     
-    public int getWMin() {
+    public int getTauLeakL2() {
+        return this.tauLeakL2;
+    }
+    public void setTauLeakL2(final int tauLeakL2) {
+        getPrefs().putInt("StdpFeatureLearningV.tauLeakL2", tauLeakL2);
+        getSupport().firePropertyChange("tauLeakL2", this.tauLeakL2, tauLeakL2);
+        this.tauLeakL2 = tauLeakL2;
+    }
+    public int getTauLeakL2Min() {
+        return 1;
+    }
+    public int getTauLeakL2Max() {
+        return 100000;
+    }
+    // END tauLeakL2
+    
+    public float getWMin() {
         return this.wMin;
     }
-    public void setWMin(final int wMin) {
-        getPrefs().putInt("StdpFeatureLearningV.wMin", wMin);
+    public void setWMin(final float wMin) {
+        getPrefs().putFloat("StdpFeatureLearningV.wMin", wMin);
         getSupport().firePropertyChange("wMin", this.wMin, wMin);
         this.wMin = wMin;
     }
-    public int getWMinMin() {
+    public float getWMinMin() {
         return 1;
     }
-    public int getWMinMax() {
+    public float getWMinMax() {
         return 10000;
     }
     // END wMin
     
-    public int getWMax() {
+    public float getWMax() {
         return this.wMax;
     }
-    public void setWMax(final int wMax) {
-        getPrefs().putInt("StdpFeatureLearningV.wMax", wMax);
+    public void setWMax(final float wMax) {
+        getPrefs().putFloat("StdpFeatureLearningV.wMax", wMax);
         getSupport().firePropertyChange("wMax", this.wMax, wMax);
         this.wMax = wMax;
     }
-    public int getWMaxMin() {
+    public float getWMaxMin() {
         return 1;
     }
-    public int getWMaxMax() {
+    public float getWMaxMax() {
         return 10000;
     }
     // END wMax
 
-    public int getWInitMean() {
+    public float getWInitMean() {
         return this.wInitMean;
     }
-    public void setWInitMean(final int wInitMean) {
-        getPrefs().putInt("StdpFeatureLearningV.wInitMean", wInitMean);
+    public void setWInitMean(final float wInitMean) {
+        getPrefs().putFloat("StdpFeatureLearningV.wInitMean", wInitMean);
         getSupport().firePropertyChange("wInitMean", this.wInitMean, wInitMean);
         this.wInitMean = wInitMean;
     }
-    public int getWInitMeanMin() {
+    public float getWInitMeanMin() {
         return 1;
     }
-    public int getWInitMeanMax() {
+    public float getWInitMeanMax() {
         return 10000;
     }
     // END wInitMean
     
-    public int getWInitSTD() {
+    public float getWInitSTD() {
         return this.wInitSTD;
     }
-    public void setWInitSTD(final int wInitSTD) {
-        getPrefs().putInt("StdpFeatureLearningV.wInitSTD", wInitSTD);
+    public void setWInitSTD(final float wInitSTD) {
+        getPrefs().putFloat("StdpFeatureLearningV.wInitSTD", wInitSTD);
         getSupport().firePropertyChange("wInitSTD", this.wInitSTD, wInitSTD);
         this.wInitSTD = wInitSTD;
     }
-    public int getWInitSTDMin() {
+    public float getWInitSTDMin() {
         return 1;
     }
-    public int getWInitSTDMax() {
+    public float getWInitSTDMax() {
         return 10000;
     }
     // END wInitSTD
 
-    public int getAlphaPlus() {
+    public float getAlphaPlus() {
         return this.alphaPlus;
     }
-    public void setAlphaPlus(final int alphaPlus) {
-        getPrefs().putInt("StdpFeatureLearningV.alphaPlus", alphaPlus);
+    public void setAlphaPlus(final float alphaPlus) {
+        getPrefs().putFloat("StdpFeatureLearningV.alphaPlus", alphaPlus);
         getSupport().firePropertyChange("alphaPlus", this.alphaPlus, alphaPlus);
         this.alphaPlus = alphaPlus;
     }
-    public int getAlphaPlusMin() {
+    public float getAlphaPlusMin() {
         return 0;
     }
-    public int getAlphaPlusMax() {
+    public float getAlphaPlusMax() {
         return 1000;
     }
     // END alphaPlus
 
-    public int getAlphaMinus() {
+    public float getAlphaMinus() {
         return this.alphaMinus;
     }
-    public void setAlphaMinus(final int alphaMinus) {
-        getPrefs().putInt("StdpFeatureLearningV.alphaMinus", alphaMinus);
+    public void setAlphaMinus(final float alphaMinus) {
+        getPrefs().putFloat("StdpFeatureLearningV.alphaMinus", alphaMinus);
         getSupport().firePropertyChange("alphaMinus", this.alphaMinus, alphaMinus);
         this.alphaMinus = alphaMinus;
     }
-    public int getAlphaMinusMin() {
+    public float getAlphaMinusMin() {
         return 0;
     }
-    public int getAlphaMinusMax() {
+    public float getAlphaMinusMax() {
         return 1000;
     }
     // END alphaMinus
 
-    public int getBetaPlus() {
+    public float getBetaPlus() {
         return this.betaPlus;
     }
-    public void setBetaPlus(final int betaPlus) {
-        getPrefs().putInt("StdpFeatureLearningV.betaPlus", betaPlus);
+    public void setBetaPlus(final float betaPlus) {
+        getPrefs().putFloat("StdpFeatureLearningV.betaPlus", betaPlus);
         getSupport().firePropertyChange("betaPlus", this.betaPlus, betaPlus);
         this.betaPlus = betaPlus;
     }
-    public int getBetaPlusMin() {
+    public float getBetaPlusMin() {
         return 0;
     }
-    public int getBetaPlusMax() {
+    public float getBetaPlusMax() {
         return 1000;
     }
     // END betaPlus
 
-    public int getBetaMinus() {
+    public float getBetaMinus() {
         return this.betaMinus;
     }
-    public void setBetaMinus(final int betaMinus) {
-        getPrefs().putInt("StdpFeatureLearningV.betaMinus", betaMinus);
+    public void setBetaMinus(final float betaMinus) {
+        getPrefs().putFloat("StdpFeatureLearningV.betaMinus", betaMinus);
         getSupport().firePropertyChange("betaMinus", this.betaMinus, betaMinus);
         this.betaMinus = betaMinus;
     }
-    public int getBetaMinusMin() {
+    public float getBetaMinusMin() {
         return 0;
     }
-    public int getBetaMinusMax() {
+    public float getBetaMinusMax() {
         return 1000;
     }
     // END betaMinus

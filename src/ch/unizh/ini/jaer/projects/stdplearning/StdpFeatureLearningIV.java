@@ -1,7 +1,7 @@
 /*
- * StdpFeatureLearningIII.java
+ * StdpFeatureLearningIV.java
  * 
- * Created on March 4, 2013
+ * Created on March 6, 2013
  * 
  * Implements 'Extraction of Temporally correlated features from dynamic vision 
  * sensors with spike-timing-dependent-plasticity' Paper in DVS
@@ -43,19 +43,34 @@ import net.sf.jaer.graphics.FrameAnnotater;
 public class StdpFeatureLearningIV extends RectangularClusterTracker implements Observer, FrameAnnotater, PropertyChangeListener {
 
     // Controls
-    protected int neurons = getPrefs().getInt("StdpFeatureLearningIV.fireThres", 12);
+    protected int neurons = getPrefs().getInt("StdpFeatureLearningIV.neurons", 12);
     {
-        setPropertyTooltip("neurons", "Number of neurons");
+        setPropertyTooltip("neurons", "Number of neurons in layer 1");
     }
 
-    protected int fireThres = getPrefs().getInt("StdpFeatureLearningIV.fireThres", 40000);
+    protected int baseFireThres = getPrefs().getInt("StdpFeatureLearningIV.baseFireThres", 40000);
     {
-        setPropertyTooltip("fireThres", "Threshold directly affecting selectivity of neuron");
+        setPropertyTooltip("baseFireThres", "Threshold directly affecting selectivity of neuron");
+    }
+
+    protected int minFireThres = getPrefs().getInt("StdpFeatureLearningIV.minFireThres", 10000);
+    {
+        setPropertyTooltip("minFireThres", "Minimum threshold directly affecting selectivity of neuron");
+    }
+
+    protected int maxFireThres = getPrefs().getInt("StdpFeatureLearningIV.maxFireThres", 100000);
+    {
+        setPropertyTooltip("maxFireThres", "Max threshold directly affecting selectivity of neuron");
+    }
+
+    protected boolean adaptiveFireThres = getPrefs().getBoolean("StdpFeatureLearningIV.adaptiveFireThres", true);
+    {
+        setPropertyTooltip("adaptiveFireThres", "Enables adaptive threshold based on current local spike activity");
     }
 
     protected int tLTP = getPrefs().getInt("StdpFeatureLearningIV.tLTP", 2000);
     {
-        setPropertyTooltip("tLTP", "Size of temporal cluster to learn with a single neuron (us)");
+        setPropertyTooltip("tLTP", "time window during which LTP occurs (us)");
     }
 
     protected int tRefrac = getPrefs().getInt("StdpFeatureLearningIV.tRefrac", 10000);
@@ -118,9 +133,9 @@ public class StdpFeatureLearningIV extends RectangularClusterTracker implements 
         setPropertyTooltip("keepWeightsOnRewind", "Resets everything on loop in Playback of file except for synapse weights");
     }
 
-    protected boolean displayNeuronStatistics = getPrefs().getBoolean("StdpFeatureLearningIV.displayNeuronStatistics", true);
+    protected boolean displayNeuronStatistics = getPrefs().getBoolean("StdpFeatureLearningIV.displayNeuronStatistics", false);
     {
-        setPropertyTooltip("displayNeuronStatistics", "Displays each Neurons weight matrix statistics: Mean, STD, Min, Max");
+        setPropertyTooltip("displayNeuronStatistics", "Displays each Neurons weight matrix statistics: Mean");
     }
 
     protected boolean fireMaxOnlyOnceOnSpike = getPrefs().getBoolean("StdpFeatureLearningIV.fireMaxOnlyOnceOnSpike", false);
@@ -133,11 +148,6 @@ public class StdpFeatureLearningIV extends RectangularClusterTracker implements 
         setPropertyTooltip("displayCombinedPolarity", "Display Combined Polarities in Neuron Weight Matrix");
     }
     
-    protected boolean neuronFireHistogram = getPrefs().getBoolean("StdpFeatureLearningIV.neuronFireHistogram", true);
-    {
-        setPropertyTooltip("neuronFireHistogram", "Draw a box around firing neuron with color corresponding to number of times its fired in given packet");
-    }
-    
     // Input
     private int xPixels;        // Number of pixels in x direction for input
     private int yPixels;        // Number of pixels in y direction for input
@@ -145,21 +155,20 @@ public class StdpFeatureLearningIV extends RectangularClusterTracker implements 
 
     // Neurons
     private int numClusters;                // Total number of clusters 
-    private int[] clusterID;                // Clusters ID number, used to distinguish between clusters that persist through time or new ones
-    private boolean[] clusterActive;        // Indicates whether cluster is currently active
+    private int[] clusterID;                // Clusters ID number, used to distinguish between clusters that persist through time or newly created ones [cluster]
+    private boolean[] clusterActive;        // Indicates whether cluster is currently active [cluster]
     private int[] xStart;                   // (0,0) Coordinate pixel for [cluster]
     private int[] yStart;                   // (0,0) Coordinate pixel for [cluster]
-    private float[] neuronPotential;      // Neuron Potential [neuron]
-    private float[][][][] synapseWeights; // Synaptic weights of [neuron][polarity][x][y]
+    private float[][] neuronPotential;      // Neuron Potential [neuron]
+    private float[][][][] synapseWeights;   // Synaptic weights of [neuron][polarity][x][y]
     private int[][][][] pixelSpikeTiming;   // Last spike time of [cluster][polarity][x][y]
-    private int[] neuronFireTiming;       // Last fire time of [neuron]
-    private int[] neuronSpikeTiming;      // Last spike time of [neuron]
-    private boolean neuronSpikeTimingInit;// Indicates whether variable has been initialized or needs to be reset for 
-    private int t0;                       // Timestamp at which neurons are over lateral inhibition in 
-    private int nextNeuronToUpdate;       // Helps indicates neuron in which to start update, is generally neuron next to one which fired last 
-    private boolean fireInhibitor;        // Inhibits all other neurons in group from firing 
-    private int[] neuronFire;             // Indicates number of times a particular neuron has fired for a given time stamp or packet [neuron]
-    private int numNeuronFire;            // Indicates number of times the neurons have fired for a given time stamp or packet 
+    private int[][] neuronFireTiming;       // Last fire time of [neuron]
+    private int[][] neuronSpikeTiming;      // Last spike time of [neuron]
+    private boolean[] neuronSpikeTimingInit;// Indicates whether variable has been initialized or needs to be reset for 
+    private float[] fireThres;              // Indicates total number of polarities of pixels
+    private int[] t0;                       // Timestamp at which neurons are over lateral inhibition in 
+    private int[] nextNeuronToUpdate;       // Helps indicates neuron in which to start update, is generally neuron next to one which fired last 
+    private boolean[] fireInhibitor;        // Inhibits all other neurons in group from firing 
     private boolean rewind;                 // Indicates rewind in playback
             
     // Listeners
@@ -198,12 +207,17 @@ public class StdpFeatureLearningIV extends RectangularClusterTracker implements 
         clusterActive = new boolean[numClusters];
         xStart = new int[numClusters];                   
         yStart = new int[numClusters];                   
-        neuronPotential = new float[neurons];
+        neuronPotential = new float[numClusters][neurons];
         synapseWeights = new float[neurons][numPolarities][xPixels][yPixels];
         pixelSpikeTiming = new int[numClusters][numPolarities][xPixels][yPixels];
-        neuronFireTiming = new int[neurons];
-        neuronSpikeTiming = new int[neurons];
-        neuronFire = new int[neurons];
+        neuronFireTiming = new int[numClusters][neurons];
+        neuronSpikeTiming = new int[numClusters][neurons];
+        neuronSpikeTimingInit = new boolean[numClusters];
+
+        fireThres = new float [numClusters];    
+        t0 = new int[numClusters];
+        nextNeuronToUpdate = new int[numClusters];
+        fireInhibitor = new boolean[numClusters];
 
         viewerPropertyChangeListenerInit = false;
         
@@ -221,24 +235,14 @@ public class StdpFeatureLearningIV extends RectangularClusterTracker implements 
     public synchronized void resetFilter() {
         super.resetFilter();
 
-        neuronSpikeTimingInit = false;
-        t0 = 0;
-        nextNeuronToUpdate = 0;
-        fireInhibitor = false;
-        numNeuronFire = 0;
-
-        for (int n=0; n<neurons; n++) {
-            neuronPotential[n] = 0;
-            neuronFireTiming[n] = 0;
-            neuronFire[n] = 0;
-        } // END LOOP - Neurons
-
         // Reset all cluster neuron variables 
         for (int c=0; c<numClusters; c++) { 
-            clusterID[c] = c;
             clusterActive[c] = false;
+            clusterID[c] = c;
+            fireThres[c] = baseFireThres; // CHECK
             resetCluster(c);
         }        
+
         // Keep current weights on rewind if keepWeightsOnRewind is enabled
         // Otherwise initialize random weights according to parameters
         if ((keepWeightsOnRewind == true && rewind == true) == false) {
@@ -268,6 +272,17 @@ public class StdpFeatureLearningIV extends RectangularClusterTracker implements 
      * Called on reset or whenever a new cluster is found
      */    
     private void resetCluster(int c) {
+        neuronSpikeTimingInit[c] = false;
+
+        t0[c] = 0;
+        nextNeuronToUpdate[c] = 0;
+        fireInhibitor[c] = false;
+        
+        for (int n=0; n<neurons; n++) {
+            neuronPotential[c][n] = 0;
+            neuronFireTiming[c][n] = 0;
+        } // END LOOP - Neurons
+
         for (int p=0; p<numPolarities; p++) 
             for (int x=0; x<xPixels; x++) 
                 for (int y=0; y<yPixels; y++) 
@@ -282,50 +297,45 @@ public class StdpFeatureLearningIV extends RectangularClusterTracker implements 
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
         super.filterPacket(in);  
-
+        
         if (viewerPropertyChangeListenerInit == false) {
             chip.getAeViewer().addPropertyChangeListener(this);
-            chip.getAeViewer().getAePlayer().getSupport().addPropertyChangeListener(this); // TODO might be duplicated callback
+            chip.getAeViewer().getAePlayer().getSupport().addPropertyChangeListener(this); 
             viewerPropertyChangeListenerInit = true;
-        }
+        } // END IF
+        
+      
         // Update cluster information once per packet
         // That is, update x and yStart variables and reset cluster information for clusters which aren't persistent
         // And determine which clusters are active for learning or initialization
         updateClusters();
-        
+
         // Event Iterator - Write only relevant events inside xPixels by yPixels window to out
         // Apply STDP Rule
         for (Object o : in) {
             // Cast to PolarityEvent since we are interested in timestamp and polarity of spike
             PolarityEvent e = (PolarityEvent) o;
             // Assume that current event's timestamp is initial neuronSpikeTiming for all clusters that need to reset
-                    if (neuronSpikeTimingInit == false) {
+            for (int c=0; c<numClusters; c++) { 
+                if (clusterActive[c] == true) {
+                    if (neuronSpikeTimingInit[c] == false) {
                         for (int n=0; n<neurons; n++) 
-                            neuronSpikeTiming[n] = e.timestamp;
-                        neuronSpikeTimingInit = true;
+                            neuronSpikeTiming[c][n] = e.timestamp;
+                        neuronSpikeTimingInit[c] = true;
                     } else {
                         // Check what clusters the events belong to
-                        for (int c=0; c<numClusters; c++) {
-                            if (clusterActive[c] == true) {
-                                if (e.x >= xStart[c] &&  e.x < xPixels + xStart[c] && 
-                                        e.y >= yStart[c] && e.y < yPixels + yStart[c]) {
-                                    applySTDP(c, e.getTimestamp(), e.getX()-xStart[c], e.getY()-yStart[c], e.getType());
-                                } // END IF
-                            } // END IF - Cluster Active
-                        } // END LOOP - numClusters 
-                    } // END IF
+                        if (e.x >= xStart[c] &&  e.x < xPixels + xStart[c] && 
+                                e.y >= yStart[c] && e.y < yPixels + yStart[c]) 
+                            applySTDP(c, e.getTimestamp(), e.getX()-xStart[c], e.getY()-yStart[c], e.getType());
+                    } // END IF - neuronSpikeTimingInit
+                } // END IF - Cluster Active
+            } // END LOOP - numClusters 
         } // END LOOP - Event Iterator
         
         // Draw Neuron Weight Matrix
         checkNeuronFrame();
         neuronCanvas.repaint();
 
-        // Reset neuronFire count and array as well as clusterActive (to be reactivated next updateClusters())
-        numNeuronFire = 0;
-        for (int n=0; n<neurons; n++) {
-            neuronFire[n] = 0;
-        } // END LOOP
-        
         // Output Filtered Events
         return in;
     } // END METHOD
@@ -363,7 +373,7 @@ public class StdpFeatureLearningIV extends RectangularClusterTracker implements 
      * Resets cluster internal STDP variables if new clusters are available
      */
     private void updateClusters() {
-        RectangularClusterTracker.Cluster[] tempCluster = new RectangularClusterTracker.Cluster[numClusters];       // Holds visible clusters in clusters
+        Cluster[] tempCluster = new RectangularClusterTracker.Cluster[numClusters];       // Holds visible clusters in clusters
         boolean[] tempClusterFound = new boolean[numClusters];  // Indicates if visible cluster ID in clusters has been found in clusterID  
         boolean[] clusterFound = new boolean[numClusters];      // Indicates if clusterID has been found and updated
 
@@ -415,6 +425,17 @@ public class StdpFeatureLearningIV extends RectangularClusterTracker implements 
                         clusterID[cID] = tempCluster[i].getClusterNumber();
                         xStart[cID] = (int) (tempCluster[i].getLocation().x-xPixels/2f);
                         yStart[cID] = (int) (tempCluster[i].getLocation().y-yPixels/2f);
+                        if (adaptiveFireThres == true) {
+                            double spreadFireThres = 250;
+                            double shiftFireThres = 150;
+                            //fireThres[cID] = (float) (maxFireThres / 
+                            //        (1 + Math.exp(- (tempCluster[i].getMass() - shiftFireThres) / spreadFireThres)) 
+                            //        + minFireThres);
+                            fireThres[cID] = (float) (maxFireThres / 
+                                    (1 + Math.exp(- (tempCluster[i].getMass() - shiftFireThres) / spreadFireThres)) 
+                                    + minFireThres);
+                            //System.out.printf("%d %f\n", i, tempCluster[i].getMass());
+                        }
                         clusterActive[cID] = true;
                         resetCluster(cID);
                         break;
@@ -422,7 +443,7 @@ public class StdpFeatureLearningIV extends RectangularClusterTracker implements 
                 } // END LOOP - numClusters
             } // END IF - tempClusterFound
         } // END LOOP - Visible Clusters
-        
+
     } // END METHOD
 
     /**
@@ -436,40 +457,37 @@ public class StdpFeatureLearningIV extends RectangularClusterTracker implements 
      */
     private void applySTDP(int c, int ts, int x, int y, int polarity) {
         // If Neurons aren't inhibited
-        if (ts >= t0) {
+        if (ts >= t0[c]) {
             // Update all Neuron Integration states
             for (int nIdx=0; nIdx<neurons; nIdx++) {
                 // Start update from neuron next to the one that fired last
-                int n = (nextNeuronToUpdate + nIdx) % neurons;
+                int n = (nextNeuronToUpdate[c] + nIdx) % neurons;
                 // Make sure neuron is not in its refractory period
-                if (ts >= neuronFireTiming[n]+tRefrac) {
-                    boolean potentialAboveThres = updateNeuronIntegrationState(n, ts, polarity, x, y);
+                if (ts >= neuronFireTiming[c][n]+tRefrac) {
+                    boolean potentialAboveThres = updateNeuronIntegrationState(c, n, ts, polarity, x, y);
                     // Only update synapses if fireInhibitor is disabled
                     // fireInhibitor will only be enabled if fireMaxOnlyOnceOnSpike is on 
                     // and a neuron has already fired for the given input spike / event
-                    if (fireInhibitor == false) 
+                    if (fireInhibitor[c] == false) 
                         // If Neuron Fires Then 
                         if (potentialAboveThres == true) {
-                            // Indicate number of times neuron has fired in this particular data packet
-                            neuronFire[n]++;
-                            numNeuronFire++;
                             // Update synapse weights of these neurons
                             updateSynapseWeights(c, n, ts);
                             // Inhibit all neurons
-                            t0 = ts + tInhibit;
+                            t0[c] = ts + tInhibit;
                             // Update neuron fire timing maps
-                            neuronFireTiming[n] = ts;
+                            neuronFireTiming[c][n] = ts;
                             // Update which neuron to start updating on next spike
-                            nextNeuronToUpdate=n+1;
+                            nextNeuronToUpdate[c]=n+1;
                             // If we allow neuron to fire only once per spike, then finish updating potentials for all neurons and inhibit firing
                             if (fireMaxOnlyOnceOnSpike == true) 
-                                fireInhibitor = true;
+                                fireInhibitor[c] = true;
                         } // END IF - Fire 
                 } // END IF - Refractory period
             } // END LOOP - Neurons
         } // END IF - Inhibition
         // Make sure fireInhibitor is turned off after all neurons have been updated
-        fireInhibitor = false;
+        fireInhibitor[c] = false;
         // Update pixel spike timing maps
         pixelSpikeTiming[c][polarity][x][y] = ts;
     } // END METHOD
@@ -484,14 +502,14 @@ public class StdpFeatureLearningIV extends RectangularClusterTracker implements 
      * @param y Y address of pixel / spike
      * @return boolean indicating whether neuron has fired 
      */
-    private boolean updateNeuronIntegrationState(int neuron, int ts, int polarity, int x, int y) {
+    private boolean updateNeuronIntegrationState(int c, int neuron, int ts, int polarity, int x, int y) {
         // Neuron Update equation
-        double temp = - (ts - neuronSpikeTiming[neuron]) / (double) tauLeak;
-        neuronPotential[neuron] = neuronPotential[neuron] * (float) Math.exp(temp) + synapseWeights[neuron][polarity][x][y];  
-        neuronSpikeTiming[neuron] = ts;
+        double temp = - (ts - neuronSpikeTiming[c][neuron]) / (double) tauLeak;
+        neuronPotential[c][neuron] = neuronPotential[c][neuron] * (float) Math.exp(temp) + synapseWeights[neuron][polarity][x][y];  
+        neuronSpikeTiming[c][neuron] = ts;
         // If updated potential is above firing threshold, then fire and reset
-        if (neuronPotential[neuron] >= fireThres) {
-            neuronPotential[neuron] = 0;
+        if (neuronPotential[c][neuron] >= fireThres[c]) {
+            neuronPotential[c][neuron] = 0;
             return true;
         } else {
             return false;
@@ -633,19 +651,19 @@ public class StdpFeatureLearningIV extends RectangularClusterTracker implements 
 
                     // Draw Box around firing neuron with color corresponding to 
                     // Neuron Firing Rate in given Packet
-                    if (neuronFireHistogram == true) {
-                        float color = neuronFire[n]/(float)numNeuronFire;
-                        gl.glPushMatrix();
-                        gl.glLineWidth(1f);
-                        gl.glBegin(GL.GL_LINE_LOOP);
-                        gl.glColor3f(color,color,color);
-                        gl.glVertex2f(xOffset,yOffset);
-                        gl.glVertex2f(xOffset,yOffset+yPixels*2);
-                        gl.glVertex2f(xOffset+xPixels,yOffset+yPixels*2);
-                        gl.glVertex2f(xOffset,yOffset+yPixels*2);
-                        gl.glEnd();
-                        gl.glPopMatrix();
-                    } // END IF
+//                    if (neuronFireHistogram == true) {
+//                        float color = neuronFire[n]/(float)numNeuronFire;
+//                        gl.glPushMatrix();
+//                        gl.glLineWidth(1f);
+//                        gl.glBegin(GL.GL_LINE_LOOP);
+//                        gl.glColor3f(color,color,color);
+//                        gl.glVertex2f(xOffset,yOffset);
+//                        gl.glVertex2f(xOffset,yOffset+yPixels*2);
+//                        gl.glVertex2f(xOffset+xPixels,yOffset+yPixels*2);
+//                        gl.glVertex2f(xOffset,yOffset+yPixels*2);
+//                        gl.glEnd();
+//                        gl.glPopMatrix();
+//                    } // END IF
 
                     // Adjust x and y Offsets
                     xOffset += xPixelsPerNeuron; 
@@ -726,6 +744,16 @@ public class StdpFeatureLearningIV extends RectangularClusterTracker implements 
         if (gl == null) 
             return;
 
+        final int font = GLUT.BITMAP_HELVETICA_18;
+        GLUT glut = chip.getCanvas().getGlut();
+        if (adaptiveFireThres == true) {
+            gl.glColor3f(1f, 1f, 1f);
+            for (int c=0; c<numClusters; c++) {
+                gl.glRasterPos3f(0, c*5, 0);
+                glut.glutBitmapString(font, String.format("Fire Threshold: %5.0f", fireThres[c]));
+            }
+        }
+
         // Draw Box around relevant pixels with label of cluster number
         for (int c=0; c<numClusters; c++) {
             //if (clusterActive[c] == true) {
@@ -741,8 +769,6 @@ public class StdpFeatureLearningIV extends RectangularClusterTracker implements 
                 gl.glEnd();
                 gl.glPopMatrix();
                 // Label
-                final int font = GLUT.BITMAP_HELVETICA_18;
-                GLUT glut = chip.getCanvas().getGlut();
                 gl.glColor3f(1f, 1f, 1f);
                 gl.glRasterPos3f(xStart[c], yStart[c], 0);
                 glut.glutBitmapString(font, String.format("%d", c));
@@ -854,21 +880,63 @@ public class StdpFeatureLearningIV extends RectangularClusterTracker implements 
     }
     // END neurons
     
-    public int getFireThres() {
-        return this.fireThres;
+    public int getBaseFireThres() {
+        return this.baseFireThres;
     }
-    public void setFireThres(final int fireThres) {
-        getPrefs().putInt("StdpFeatureLearningIV.fireThres", fireThres);
-        getSupport().firePropertyChange("fireThres", this.fireThres, fireThres);
-        this.fireThres = fireThres;
+    public void setBaseFireThres(final int baseFireThres) {
+        getPrefs().putInt("StdpFeatureLearningIV.baseFireThres", baseFireThres);
+        getSupport().firePropertyChange("baseFireThres", this.baseFireThres, baseFireThres);
+        this.baseFireThres = baseFireThres;
     }
-    public int getFireThresMin() {
+    public int getBaseFireThresMin() {
         return 1;
     }
-    public int getFireThresMax() {
+    public int getBaseFireThresMax() {
         return 100000;
     }
-    // END fireThres
+    // END baseFireThres
+
+    public int getMinFireThres() {
+        return this.minFireThres;
+    }
+    public void setMinFireThres(final int minFireThres) {
+        getPrefs().putInt("StdpFeatureLearningIV.minFireThres", minFireThres);
+        getSupport().firePropertyChange("minFireThres", this.minFireThres, minFireThres);
+        this.minFireThres = minFireThres;
+    }
+    public int getMinFireThresMin() {
+        return 1;
+    }
+    public int getMinFireThresMax() {
+        return 100000;
+    }
+    // END minFireThres
+
+    public int getMaxFireThres() {
+        return this.maxFireThres;
+    }
+    public void setMaxFireThres(final int maxFireThres) {
+        getPrefs().putInt("StdpFeatureLearningIV.maxFireThres", maxFireThres);
+        getSupport().firePropertyChange("maxFireThres", this.maxFireThres, maxFireThres);
+        this.maxFireThres = maxFireThres;
+    }
+    public int getMaxFireThresMin() {
+        return 1;
+    }
+    public int getMaxFireThresMax() {
+        return 100000;
+    }
+    // END maxFireThres
+
+    public boolean isAdaptiveFireThres() {
+        return adaptiveFireThres;
+    }
+    synchronized public void setAdaptiveFireThres(boolean adaptiveFireThres) {
+        this.adaptiveFireThres = adaptiveFireThres;
+        for (int c=0; c<numClusters; c++)
+            fireThres[c] = baseFireThres;
+    }
+    // END adaptiveFireThres
     
     public int getTLTP() {
         return this.tLTP;
@@ -1091,14 +1159,6 @@ public class StdpFeatureLearningIV extends RectangularClusterTracker implements 
     }
     synchronized public void setDisplayCombinedPolarity(boolean displayCombinedPolarity) {
         this.displayCombinedPolarity = displayCombinedPolarity;
-    }
-    // END displayCombinedPolarity
-
-    public boolean isNeuronFireHistogram() {
-        return neuronFireHistogram;
-    }
-    synchronized public void setNeuronFireHistogram(boolean neuronFireHistogram) {
-        this.neuronFireHistogram = neuronFireHistogram;
     }
     // END displayCombinedPolarity
 

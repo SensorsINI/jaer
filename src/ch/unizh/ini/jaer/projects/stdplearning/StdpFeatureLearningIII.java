@@ -230,6 +230,7 @@ public class StdpFeatureLearningIII extends RectangularClusterTracker implements
             clusterID[c] = c;
             resetCluster(c);
         }        
+
         // Keep current weights on rewind if keepWeightsOnRewind is enabled
         // Otherwise initialize random weights according to parameters
         if ((keepWeightsOnRewind == true && rewind == true) == false) {
