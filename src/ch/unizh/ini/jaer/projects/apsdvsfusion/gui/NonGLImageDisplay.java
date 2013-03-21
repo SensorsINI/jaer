@@ -3,10 +3,24 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion.gui;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Rectangle;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
+import java.awt.image.WritableRaster;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 
+import javax.imageio.ImageIO;
+import javax.swing.JFileChooser;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
 
 public class NonGLImageDisplay extends JPanel {
 		/**
@@ -14,6 +28,8 @@ public class NonGLImageDisplay extends JPanel {
 	 */
 	private static final long serialVersionUID = -31584012951370181L;
 	BufferedImage image = null;
+	BufferedImage tempImage = null;
+	BufferedImage saveImage = null;
 	Color[][] pixmap;
 	int sizeX = -1, sizeY = -1;
 	boolean square;
@@ -24,9 +40,65 @@ public class NonGLImageDisplay extends JPanel {
 		public void displayUpdated(Object display);
 	}
 
+	static BufferedImage deepCopy(BufferedImage bi) {
+		 ColorModel cm = bi.getColorModel();
+		 boolean isAlphaPremultiplied = cm.isAlphaPremultiplied();
+		 WritableRaster raster = bi.copyData(null);
+		 return new BufferedImage(cm, raster, isAlphaPremultiplied, null);
+	}
+	
+	JPopupMenu contextMenu = new JPopupMenu("Image actions");
+	final JFileChooser fc = new JFileChooser();
+	
 	public NonGLImageDisplay(int width, int height, boolean square) {
+		for (String s : ImageIO.getWriterFormatNames()) 
+			System.out.println(s);
+		JMenuItem takeSnapShotMenuItem = new JMenuItem("Save snapshot");
+		takeSnapShotMenuItem.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				int returnVal = fc.showSaveDialog(NonGLImageDisplay.this);
+				BufferedImage sv = saveImage;
+		        if (returnVal == JFileChooser.APPROVE_OPTION && sv != null) {
+		            File file = fc.getSelectedFile();
+		            try {
+						ImageIO.write(saveImage, "bmp", file);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+		        } 				
+			}
+		});
+		contextMenu.add(takeSnapShotMenuItem);
+		contextMenu.addPopupMenuListener(new PopupMenuListener() {
+			@Override
+			public void popupMenuWillBecomeVisible(PopupMenuEvent arg0) {
+			}
+			
+			@Override
+			public void popupMenuWillBecomeInvisible(PopupMenuEvent arg0) {
+				tempImage = null;
+			}
+			
+			@Override
+			public void popupMenuCanceled(PopupMenuEvent arg0) {
+				tempImage = null;
+			}
+		});
 		this.square = square;
 		setImageSize(sizeX, sizeY);
+		this.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				if (e.getButton() == MouseEvent.BUTTON3) {
+					if (image != null) {
+						tempImage = deepCopy(image);
+						saveImage = tempImage;
+					}
+					contextMenu.show(NonGLImageDisplay.this, e.getX(), e.getY());
+				}
+			}
+		});
 		//			this.createBufferStrategy(2);
 		//			bufferStrategy = getBufferStrategy();			
 	}
@@ -160,8 +232,11 @@ public class NonGLImageDisplay extends JPanel {
 		g.fillRect((int) startx, (int)(starty- sizeY*rHeight),(int)(sizeX * rWidth),(int)(sizeY*rHeight));
 //		float posx = startx, nextPosx = posx+rWidth, posy = starty - rHeight, lastPosY = starty;
 		
-		
-		g.drawImage(image, imageStartX, imageStartY, imageWidth, imageHeight, Color.black, null);
+		BufferedImage tempImg = this.tempImage;
+		if (tempImg != null) 
+			g.drawImage(tempImg, imageStartX, imageStartY, imageWidth, imageHeight, Color.black, null);
+		else
+			g.drawImage(image, imageStartX, imageStartY, imageWidth, imageHeight, Color.black, null);
 //		for (int x = 0; x < pixmap.length; x++) {
 //			posy = starty - rHeight;
 //			lastPosY = starty;
@@ -182,7 +257,7 @@ public class NonGLImageDisplay extends JPanel {
 	public static NonGLImageDisplay createNonGLDisplay() {
 		return new NonGLImageDisplay(10,10);
 	}
-
+	
 	@Deprecated
 	public void setBorderSpacePixels(int pixels) {
 	}
