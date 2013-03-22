@@ -1177,6 +1177,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 				map.reset();
 			}
 		}
+		spikeSoundSignalHandler.reset();
 	}
 	
 	@Override

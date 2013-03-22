@@ -2,6 +2,7 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion.gui;
 
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -51,8 +52,8 @@ public class NonGLImageDisplay extends JPanel {
 	final JFileChooser fc = new JFileChooser();
 	
 	public NonGLImageDisplay(int width, int height, boolean square) {
-		for (String s : ImageIO.getWriterFormatNames()) 
-			System.out.println(s);
+//		for (String s : ImageIO.getWriterFormatNames()) 
+//			System.out.println(s);
 		JMenuItem takeSnapShotMenuItem = new JMenuItem("Save snapshot");
 		takeSnapShotMenuItem.addActionListener(new ActionListener() {
 			@Override
@@ -60,9 +61,28 @@ public class NonGLImageDisplay extends JPanel {
 				int returnVal = fc.showSaveDialog(NonGLImageDisplay.this);
 				BufferedImage sv = saveImage;
 		        if (returnVal == JFileChooser.APPROVE_OPTION && sv != null) {
+		        	int sx = sv.getWidth();
+		        	int sy = sv.getHeight();
+		        	int factor = Math.max(640/sx, 1);
+		        	factor = Math.max(480/sy, factor);
+		        	while (factor*sx < 640 || factor*sy < 480)
+		        		factor++;
+//		        	Image scaled = sv.getScaledInstance(sx * factor, sy * factor, Image.SCALE_FAST);
+		        	BufferedImage scaled = new BufferedImage(sx * factor, sy * factor, BufferedImage.TYPE_INT_RGB);
+		        	for (int x = 0; x < sx; x++) {
+						for (int y = 0; y < sy; y++) {
+			        		int value = sv.getRGB(x, y); 
+			        		for (int fx = 0; fx < factor; fx++) {
+								for (int fy = 0; fy < factor; fy++) {
+									scaled.setRGB(x*factor + fx, y*factor+fy, value);
+								}
+							}
+						}
+						
+					}
 		            File file = fc.getSelectedFile();
 		            try {
-						ImageIO.write(saveImage, "bmp", file);
+						ImageIO.write(scaled, "png", file);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}

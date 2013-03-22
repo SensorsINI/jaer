@@ -4,11 +4,15 @@
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
 import java.awt.Component;
+import java.awt.Toolkit;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.prefs.Preferences;
 
 import javax.swing.BoxLayout;
@@ -40,6 +44,13 @@ public class SpikeSoundSignalHandler extends ParameterContainer implements
 	
 	private SpatioTemporalFusion stf;
 	
+	private LinkedList<Integer> spikeTimesRecordBuffer = new LinkedList<Integer>();
+	private LinkedList<Integer> spikeTimesRecord = null;
+	int recordedMinTime = Integer.MAX_VALUE;
+	int recordedMaxTime = Integer.MIN_VALUE;
+	
+	boolean recordTrace = false;
+	
 	/**
 	 * @param name
 	 * @param prefs
@@ -56,10 +67,52 @@ public class SpikeSoundSignalHandler extends ParameterContainer implements
 	public void signalAt(int x, int y, int time, double value) {
 		if (x >= minX && x < maxX && y >= minY && y < maxY) {
 			spikeSound.play();
+			if (recordTrace) {
+				spikeTimesRecordBuffer.add(time);
+			}
+		}
+		if (recordTrace) {
+			if (time < recordedMinTime)
+				recordedMinTime = time;
+			if (time > recordedMaxTime)
+				recordedMaxTime = time;
 		}
 	}
 	
 	
+	public void do_Copy_trace() {
+		if (spikeTimesRecord != null) {
+			StringBuilder sb = new StringBuilder();
+			sb.append(recordedMinTime+"\t0\n");
+			for (int i : spikeTimesRecord) {
+				sb.append(i+"\t0\n"+i+"\t100\n"+i+"\t0\n");
+			}
+			sb.append(recordedMaxTime+"\t0\n");
+			Toolkit toolkit = Toolkit.getDefaultToolkit();
+			Clipboard clipboard = toolkit.getSystemClipboard();
+			StringSelection strSel = new StringSelection(sb.toString());
+			clipboard.setContents(strSel, null);
+		}
+	}
+	
+
+	/**
+	 * @return the recordTrace
+	 */
+	public boolean isRecordTrace() {
+		return recordTrace;
+	}
+
+	/**
+	 * @param recordTrace the recordTrace to set
+	 */
+	public void setRecordTrace(boolean recordTrace) {
+		if (recordTrace != this.recordTrace) {
+			this.recordTrace = recordTrace;
+			getSupport().firePropertyChange("recordTrace", !recordTrace, recordTrace);
+		}
+		
+	}
 
 	/**
 	 * @return the minX
@@ -264,6 +317,10 @@ public class SpikeSoundSignalHandler extends ParameterContainer implements
 	 */
 	@Override
 	public void reset() {
+		if (recordTrace) {
+			spikeTimesRecord = spikeTimesRecordBuffer;
+			spikeTimesRecordBuffer = new LinkedList<Integer>();
+		}
 	}
 
 }

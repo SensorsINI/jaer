@@ -314,8 +314,10 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 	@Override
 	public void setFiringModelCreator(FiringModelCreator creator) {
 		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
-			this.schedulableFiringModelCreator = null;
+			this.setFiringModelCreator((SchedulableFiringModelCreator)null);
 			super.setFiringModelCreator(creator);
+			if (myControls != null)
+				((SchedulableWrapperMapCustomControls)myControls).creatorChanged();
 			buildUnits();
 		}
 	}

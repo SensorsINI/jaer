@@ -14,10 +14,11 @@ import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.IntegrateAndFire.Crea
  * @author Dennis
  *
  */
-public class LinearThresholdIF extends IntegrateAndFire {
+public class LinearThresholdIF extends FiringModel {
 	int refractoryTime = 70000; // refractory time of 70 us
 	// frequency in Hz:
 	float thresholdFrequency = 5f;
+	float threshold = 1.0f;
 	
 	
 	private float membranePotential = 0.0f;
@@ -45,8 +46,9 @@ public class LinearThresholdIF extends IntegrateAndFire {
 
 
 		public void setThreshold(float threshold) {
-			getSupport().firePropertyChange("threshold", this.threshold, threshold);
+			float before = this.threshold;
 			this.threshold = threshold;
+			getSupport().firePropertyChange("threshold", before, this.threshold);
 		}
 
 		
@@ -58,8 +60,9 @@ public class LinearThresholdIF extends IntegrateAndFire {
 
 
 		public void setThresholdFrequency(float thresholdFrequency) {
-			getSupport().firePropertyChange("thresholdFrequency", this.thresholdFrequency, thresholdFrequency);
+			float before = this.thresholdFrequency;
 			this.thresholdFrequency = thresholdFrequency;
+			getSupport().firePropertyChange("thresholdFrequency", before, this.thresholdFrequency);
 		}
 
 		
@@ -70,8 +73,9 @@ public class LinearThresholdIF extends IntegrateAndFire {
 
 
 		public void setRefractoryTime(int refractoryTime) {
-			getSupport().firePropertyChange("refractoryTime", this.refractoryTime, refractoryTime);
+			int before = this.refractoryTime;
 			this.refractoryTime = refractoryTime;
+			getSupport().firePropertyChange("refractoryTime", before, this.refractoryTime);
 		}
 
 
@@ -118,7 +122,9 @@ public class LinearThresholdIF extends IntegrateAndFire {
 		this.thresholdFrequency = thresholdFrequency;
 	}
 
-
+	public void setThreshold(float threshold) {
+		this.threshold = threshold;
+	}
 
 	/* (non-Javadoc)
 	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModel#receiveSpike(double, int)
