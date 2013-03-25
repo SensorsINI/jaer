@@ -16,7 +16,7 @@ public abstract class BinaryOperationETNode implements ExpressionTreeNode {
 	abstract static class SimpleBinaryOperationCreator implements BinaryOperationETNodeCreator {
 		String symbol;
 		int priority;
-		
+		 
 		public SimpleBinaryOperationCreator(String symbol, int priority) {
 			this.symbol = symbol;
 			this.priority = priority;

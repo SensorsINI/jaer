@@ -8,6 +8,6 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion.mathexpression;
  *
  */
 public interface FunctionETNodeCreator extends ExpressionTreeNodeCreator {
-	public FunctionETNode createExpressionTreeNode(ExpressionTreeNode[] arguments) throws IllegalExpressionException;
+	public ExpressionTreeNode createExpressionTreeNode(ExpressionTreeNode[] arguments) throws IllegalExpressionException;
 	public int getNumberOfArguments();
 }

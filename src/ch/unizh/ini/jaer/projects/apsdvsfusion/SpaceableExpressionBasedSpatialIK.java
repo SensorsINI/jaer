@@ -38,6 +38,9 @@ public class SpaceableExpressionBasedSpatialIK extends
 	public SpaceableExpressionBasedSpatialIK(int width, int height, Preferences prefs) {
 		super(width, height, prefs);
 		setName("SpaceableExpressionBasedSpatialIK");
+		addExcludedProperty("spacingX");
+		addExcludedProperty("spacingY");
+		addExcludedProperty("spacingAutomatic");
 	}
 
 //	@Deprecated

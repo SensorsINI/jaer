@@ -426,7 +426,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	/**
 	 * @return the selectedOutput
 	 */
-	public ADCType getSelectedOutput() {
+	public ADCType getSelectedOutputX() {
 		return selectedOutput;
 	}
 
@@ -447,7 +447,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	/**
 	 * @return the plusEvents
 	 */
-	public int getPlusEvents() {
+	public int getPlusEventsX() {
 		return plusEvents;
 	}
 
@@ -463,7 +463,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	/**
 	 * @return the minusEvents
 	 */
-	public int getMinusEvents() {
+	public int getMinusEventsX() {
 		return minusEvents;
 	}
 
@@ -653,7 +653,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	/**
 	 * @return the plusEffect
 	 */
-	public float getPlusEffect() {
+	public float getPlusEffectX() {
 		return plusEffect;
 	}
 
@@ -669,7 +669,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	/**
 	 * @return the minusEffect
 	 */
-	public float getMinusEffect() {
+	public float getMinusEffectX() {
 		return minusEffect;
 	}
 
@@ -687,7 +687,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	/**
 	 * @return the useMultiplication
 	 */
-	public boolean isUseMultiplication() {
+	public boolean isUseMultiplicationX() {
 		return useMultiplication;
 	}
 
@@ -715,7 +715,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	/**
 	 * @return the useAPSFrameToReset
 	 */
-	public boolean isUseAPSFrameToReset() {
+	public boolean isUseAPSFrameToResetX() {
 		return useAPSFrameToReset;
 	}
 

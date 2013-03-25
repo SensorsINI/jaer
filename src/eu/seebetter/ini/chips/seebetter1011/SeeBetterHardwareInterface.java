@@ -296,7 +296,7 @@ public class SeeBetterHardwareInterface extends CypressFX2Biasgen {
          * Therefore for a valid event only 15 bits of the 16 transmitted timestamp bits are valid, bit 15
          * is the status bit. overflow happens every 32 ms.
          * This way, no roll overs go by undetected, and the problem of invalid wraps doesn't arise.
-         *@param b the data buffer
+         *@param minusEventEffect the data buffer
          *@see #translateEvents
          */
         static private final byte Xmask = (byte) 0x01;

@@ -215,7 +215,7 @@ public class ExpressionTreeBuilder {
 //		String test = "a*b + c +sin(a)";
 //		String test = "a*b + (c +sin(a))";
 //		String test = "a*(b) + c +sin(a)";
-		String test = "-(b*(-a+c)+100)";
+		String test = "exp(-(b*(-a+c)+100))";
 		try {
 			ExpressionTreeNode etn = parseString(test);
 			HashMap<String, Double> variables = new HashMap<String, Double>();

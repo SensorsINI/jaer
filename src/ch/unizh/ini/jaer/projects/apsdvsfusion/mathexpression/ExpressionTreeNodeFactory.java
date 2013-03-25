@@ -99,6 +99,7 @@ public class ExpressionTreeNodeFactory {
 //			}
 //		});
 		
+		
 		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("normal",200, 3) {
 			@Override 
 			protected double compute(double[] arguments) {
@@ -107,6 +108,20 @@ public class ExpressionTreeNodeFactory {
 								* ((arguments[0] - arguments[1]) / arguments[2])
 								* ((arguments[0] - arguments[1]) / arguments[2]));
 			}	});
+		
+		ExpressionTreeNodeFactory.addFunction(new SimpleFunctionETNodeCreator("gauss",200, 7) { // x, y, centerx, centery, sigmax, sigmay, angle
+			@Override 
+			protected double compute(double[] arguments) {
+				double angle = arguments[6] * Math.PI / 180.0;
+				double x = arguments[0], y = arguments[1];
+				double x0 = arguments[2], y0 = arguments[3];
+				double sigmax = arguments[4], sigmay = arguments[5];
+				double a = Math.cos(angle)*Math.cos(angle) / (2 * sigmax * sigmax)+ Math.sin(angle) * Math.sin(angle) / (2 * sigmay * sigmay);
+				double b = - Math.sin(2 * angle) / (4 * sigmax * sigmax) + Math.sin(2 * angle) / (4 * sigmay * sigmay);
+				double c = Math.sin(angle)*Math.sin(angle) / (2 * sigmax * sigmax)+ Math.cos(angle) * Math.cos(angle) / (2 * sigmay * sigmay);
+				return Math.exp(-( a * (x - x0) * (x - x0) + 2 * b * (x - x0)*(y - y0) + c * (y - y0)* (y - y0)));
+			}	});
+				
 
 		
 		ExpressionTreeNodeFactory.addConstant("PI", Math.PI);
@@ -137,7 +152,7 @@ public class ExpressionTreeNodeFactory {
 		return ret;
 	}
 	
-	static FunctionETNode createFunctionNode(String symbol, ExpressionTreeNode[] arguments) throws IllegalExpressionException {
+	static ExpressionTreeNode createFunctionNode(String symbol, ExpressionTreeNode[] arguments) throws IllegalExpressionException {
 		FunctionETNodeCreator c = functionMap.get(symbol);
 		if (c != null)
 			return c.createExpressionTreeNode(arguments);

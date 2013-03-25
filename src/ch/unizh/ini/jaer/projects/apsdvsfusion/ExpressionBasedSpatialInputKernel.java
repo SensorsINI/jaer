@@ -409,6 +409,7 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 	
 	
     public void updateConvolutionViewer() {
+    	final float[][] convolutionValues = this.convolutionValues;
 		if (convolutionViewer != null && convolutionValues != null) {
 	        float max=Float.NEGATIVE_INFINITY;
 	        float min=Float.POSITIVE_INFINITY;
@@ -437,30 +438,34 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 				public void run() {
 					for (int x = 0; x < convolutionValues.length; x++)
 						for (int y = 0; y < convolutionValues[x].length; y++) {
+							int mx = convolutionValues.length - x - 1;
+							int my = convolutionValues[x].length - y - 1;
 							float val = convolutionValues[x][y];
 							if (val > absmax)
-								convolutionViewer.setPixmapRGB(x, y, 1.0f, 0, 0);
+								convolutionViewer.setPixmapRGB(mx, my, 1.0f, 0, 0);
 							else if (val > 0)
-								convolutionViewer.setPixmapRGB(x, y, val / absmax, 0, 0);
+								convolutionViewer.setPixmapRGB(mx, my, val / absmax, 0, 0);
 							else if (val < -absmax)
-								convolutionViewer.setPixmapRGB(x, y, 0, 0, 1.0f);
+								convolutionViewer.setPixmapRGB(mx, my, 0, 0, 1.0f);
 							else
-								convolutionViewer.setPixmapRGB(x, y, 0, 0, -val / absmax);
+								convolutionViewer.setPixmapRGB(mx, my, 0, 0, -val / absmax);
 						}
 			        convolutionViewer.repaint();
 				}
 			});
 			for (int x = 0; x < convolutionValues.length; x++)
 				for (int y = 0; y < convolutionValues[x].length; y++) {
+					int mx = convolutionValues.length - x - 1;
+					int my = convolutionValues[x].length - y - 1;
 					float val = convolutionValues[x][y];
 					if (val > absmax)
-						convolutionViewer.setPixmapRGB(x, y, 1.0f, 0, 0);
+						convolutionViewer.setPixmapRGB(mx, my, 1.0f, 0, 0);
 					else if (val > 0)
-						convolutionViewer.setPixmapRGB(x, y, val / absmax, 0, 0);
+						convolutionViewer.setPixmapRGB(mx, my, val / absmax, 0, 0);
 					else if (val < -absmax)
-						convolutionViewer.setPixmapRGB(x, y, 0, 0, 1.0f);
+						convolutionViewer.setPixmapRGB(mx, my, 0, 0, 1.0f);
 					else
-						convolutionViewer.setPixmapRGB(x, y, 0, 0, -val / absmax);
+						convolutionViewer.setPixmapRGB(mx, my, 0, 0, -val / absmax);
 				}
 	        convolutionViewer.repaint();
 		}
@@ -472,6 +477,8 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 			if (expressionComboBox.getItemCount() <= i || !expressionComboBox.getItemAt(i).equals(items.get(i)))
 				expressionComboBox.insertItemAt(items.get(i), i);
 		}
+//		expressionComboBox.setMaximumSize(new Dimension(200,(int)expressionComboBox.getSize().getHeight()));
+		
 //		Stack<Integer> toRemove = new Stack<Integer>();
 //		for (int i = items.size(); i < expressionComboBox.getItemCount(); i++) {
 //			if (items.contains(expressionComboBox.getItemAt(i)))

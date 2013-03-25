@@ -32,3 +32,8 @@ exp(- 0.5 * ( (x + y)^2 / 8^2 / 2)  + (y - x)^2 / 8^2 / 2 ) * cos(2 * PI / 8 * (
 
 90 degree:
 exp(- 0.5 * ( (y)^2 / 2^2 + (-x)^2 / 2^2)) * cos(2 * PI / 7 * (y) + PI / 2) * 0.07
+
+gauss:
+exp((-1)*( a * (x - x0)^2 + 2 * b * (x - x0)*(y - y0) + c * (y - y0)^2))
+a = cos^2(alpha) / (2 sigma_x^2) + sin^2(alpha) / (2 sigma_y^2)
+b = - sin(2 alpha) / (4 sigma_x^2) + cos^2(alpha) / (2 sigma_x^2) 	 	 	 	
