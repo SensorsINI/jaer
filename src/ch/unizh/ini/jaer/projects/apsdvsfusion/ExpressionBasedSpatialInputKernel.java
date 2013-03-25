@@ -428,46 +428,52 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 	        max=absmax;
 	        min=-absmax;
 	
-	        if (convolutionViewer.getSizeX() != convolutionValues.length || convolutionViewer.getSizeY() != convolutionValues[0].length)
-	        	convolutionViewer.setImageSize(convolutionValues.length,convolutionValues[0].length);
 	                
 	//        disp.setPreferredSize(new Dimension(300,300));
-	        SwingUtilities.invokeLater(new Runnable() {
-				
-				@Override
-				public void run() {
-					for (int x = 0; x < convolutionValues.length; x++)
-						for (int y = 0; y < convolutionValues[x].length; y++) {
-							int mx = convolutionValues.length - x - 1;
-							int my = convolutionValues[x].length - y - 1;
-							float val = convolutionValues[x][y];
-							if (val > absmax)
-								convolutionViewer.setPixmapRGB(mx, my, 1.0f, 0, 0);
-							else if (val > 0)
-								convolutionViewer.setPixmapRGB(mx, my, val / absmax, 0, 0);
-							else if (val < -absmax)
-								convolutionViewer.setPixmapRGB(mx, my, 0, 0, 1.0f);
-							else
-								convolutionViewer.setPixmapRGB(mx, my, 0, 0, -val / absmax);
-						}
-			        convolutionViewer.repaint();
-				}
-			});
-			for (int x = 0; x < convolutionValues.length; x++)
-				for (int y = 0; y < convolutionValues[x].length; y++) {
-					int mx = convolutionValues.length - x - 1;
-					int my = convolutionValues[x].length - y - 1;
-					float val = convolutionValues[x][y];
-					if (val > absmax)
-						convolutionViewer.setPixmapRGB(mx, my, 1.0f, 0, 0);
-					else if (val > 0)
-						convolutionViewer.setPixmapRGB(mx, my, val / absmax, 0, 0);
-					else if (val < -absmax)
-						convolutionViewer.setPixmapRGB(mx, my, 0, 0, 1.0f);
-					else
-						convolutionViewer.setPixmapRGB(mx, my, 0, 0, -val / absmax);
-				}
-	        convolutionViewer.repaint();
+	        if (!SwingUtilities.isEventDispatchThread()) {
+		        SwingUtilities.invokeLater(new Runnable() {
+					
+					@Override
+					public void run() {
+				        if (convolutionViewer.getSizeX() != convolutionValues.length || convolutionViewer.getSizeY() != convolutionValues[0].length)
+				        	convolutionViewer.setImageSize(convolutionValues.length,convolutionValues[0].length);
+						for (int x = 0; x < convolutionValues.length; x++)
+							for (int y = 0; y < convolutionValues[x].length; y++) {
+								int mx = convolutionValues.length - x - 1;
+								int my = convolutionValues[x].length - y - 1;
+								float val = convolutionValues[x][y];
+								if (val > absmax)
+									convolutionViewer.setPixmapRGB(mx, my, 1.0f, 0, 0);
+								else if (val > 0)
+									convolutionViewer.setPixmapRGB(mx, my, val / absmax, 0, 0);
+								else if (val < -absmax)
+									convolutionViewer.setPixmapRGB(mx, my, 0, 0, 1.0f);
+								else
+									convolutionViewer.setPixmapRGB(mx, my, 0, 0, -val / absmax);
+							}
+				        convolutionViewer.repaint();
+					}
+				});
+	        }
+	        else {
+		        if (convolutionViewer.getSizeX() != convolutionValues.length || convolutionViewer.getSizeY() != convolutionValues[0].length)
+		        	convolutionViewer.setImageSize(convolutionValues.length,convolutionValues[0].length);
+				for (int x = 0; x < convolutionValues.length; x++)
+					for (int y = 0; y < convolutionValues[x].length; y++) {
+						int mx = convolutionValues.length - x - 1;
+						int my = convolutionValues[x].length - y - 1;
+						float val = convolutionValues[x][y];
+						if (val > absmax)
+							convolutionViewer.setPixmapRGB(mx, my, 1.0f, 0, 0);
+						else if (val > 0)
+							convolutionViewer.setPixmapRGB(mx, my, val / absmax, 0, 0);
+						else if (val < -absmax)
+							convolutionViewer.setPixmapRGB(mx, my, 0, 0, 1.0f);
+						else
+							convolutionViewer.setPixmapRGB(mx, my, 0, 0, -val / absmax);
+					}
+		        convolutionViewer.repaint();
+	        }
 		}
     }
 	

@@ -22,7 +22,15 @@ Gabor edge detector:
 x_theta=x*cos(theta)+y*sin(theta);
 y_theta=-x*sin(theta)+y*cos(theta);
  
-exp(- 0.5 * ( (x*cos(theta)+y*sin(theta))^2 / sigma_x^2 + (-x*sin(theta)+y*cos(theta))^2 / sigma_y^2)).*cos(2*PI / lambda * (x*cos(theta)+y*sin(theta)) + psi);
+exp((- 0.5) * ( (x*cos(theta)+y*sin(theta))^2 / sigma_x^2 + (-x*sin(theta)+y*cos(theta))^2 / sigma_y^2)) * cos(2*PI / lambda * (x*cos(theta)+y*sin(theta)) + psi)
+
+theta = PI * 5/3
+sigma_x = 1.1
+sigma_y = 2.4
+psi = PI * 5 / 3
+lambda = 4.1
+exp((- 0.5) * ( (x*cos(PI * 5 / 3)+y*sin(PI * 5 / 3))^2 / 1.1^2 + (-x*sin(PI * 5 / 3)+y*cos(PI * 5 / 3))^2 / 2.4^2)) * cos(2*PI / 4.1 * (x*cos(PI * 5 / 3)+y*sin(PI * 5 / 3)) + PI *5/3)
+ 
 
 45 degree:
 exp(- 0.5 * ( (x + y)^2 / 8^2 / 2)  + (y - x)^2 / 8^2 / 2 ) * cos(2 * PI / 8 * (x*0.7071+y*0.7071) + PI/2) * 0.03

@@ -202,7 +202,11 @@ public class NonGLImageDisplay extends JPanel {
 		else if (b > 1.0)
 			b = 1;
 		
-		image.setRGB(x, sizeY - y - 1, (((int)(r * 255f))<<16) + (((int)(g * 255f))<<8) + ((int)(b * 255f)));
+		if (x < 0 || y < 0 || x >= image.getWidth() || y >= image.getHeight()) {
+			System.out.println("Oh no!");
+		}
+		else
+			image.setRGB(x, sizeY - y - 1, (((int)(r * 255f))<<16) + (((int)(g * 255f))<<8) + ((int)(b * 255f)));
 //		if (r == 0.0 && g == 0.0 && b == 0.0)
 //			this.pixmap[x][y] = null;
 //		else {
