@@ -45,8 +45,9 @@ public class LeakyIntegrateAndFire extends FiringModel {
 	/**
 	 * 
 	 */
-	public LeakyIntegrateAndFire(int x, int y, float tau, int refractoryTime, float threshold, FiringModelMap map) {
-		super(x,y,map);
+	public LeakyIntegrateAndFire(int x, int y, float tau, int refractoryTime, float threshold, SignalHandler handler) {
+//	public LeakyIntegrateAndFire(int x, int y, float tau, int refractoryTime, float threshold, FiringModelMap map) {
+		super(x,y,handler);
 		this.refractoryTime = refractoryTime;
 		this.tau = tau;
 		this.threshold = threshold;
@@ -104,7 +105,7 @@ public class LeakyIntegrateAndFire extends FiringModel {
 		
 		@Override
 		public FiringModel createUnit(int x, int y, FiringModelMap map) {
-			return new LeakyIntegrateAndFire(x,y,tau, refractoryTime, threshold,map);
+			return new LeakyIntegrateAndFire(x,y,tau, refractoryTime, threshold,map.getSignalHandler());
 		}
 
 		public float getThreshold() {
@@ -263,7 +264,7 @@ public class LeakyIntegrateAndFire extends FiringModel {
 			public void buildUnits() {
 			}
 		};
-		LeakyIntegrateAndFire lifA = new LeakyIntegrateAndFire(0,0,10000, 6, 1.0f,map);
+		LeakyIntegrateAndFire lifA = new LeakyIntegrateAndFire(0,0,10000, 6, 1.0f,map.getSignalHandler());
 //		LeakyIntegrateAndFire lifB = new LeakyIntegrateAndFire(0,0,10000, 6, 1.0f,map);
 //		Random r = new Random(0);
 		int time = 0;

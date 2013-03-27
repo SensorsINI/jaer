@@ -291,6 +291,8 @@ public abstract class FiringModelMap extends ParameterContainer {
 
 	protected void setSignalHandlerSet(SignalHandlerSet signalHandlerSet) {
 		this.signalHandlerSet = signalHandlerSet;
+		// rebuild all units to make sure the units point to the correct signal handler!
+		buildUnits();
 	}
 	
 	public void addSignalHandler(SignalHandler signalHandler) {

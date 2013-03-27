@@ -23,7 +23,7 @@ public class ContinuousOutputViewerManager {
 //    Component controlPanel;
  //   JTextComponent textComponent;
     Thread viewLoop;
-    public int updateMicros=30000;           // Update interval, in milliseconds
+    public volatile int updateMicros=30000;           // Update interval, in milliseconds
     private volatile boolean enable=true;
 //    private JFrame displayFrame = null;
     
@@ -35,6 +35,12 @@ public class ContinuousOutputViewerManager {
 	public ContinuousOutputViewerManager() {
 	}
      
+	public void setUpdateMicros(int micros) {
+		if (micros != updateMicros) {
+			this.updateMicros = micros;
+		}
+		
+	}
     
     public SpikingOutputViewer createOutputViewer(FiringModelMap map, int grayLevels) {
     	SpikingOutputViewer soViewer = new SpikingOutputViewer(map, grayLevels);

@@ -8,6 +8,7 @@ import java.util.prefs.Preferences;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelCreator;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.SignalHandler;
 
 /**
  * @author Dennis Goehlsdorf
@@ -42,7 +43,7 @@ public class IntegrateAndFire extends FiringModel {
 
 		@Override
 		public FiringModel createUnit(int x, int y, FiringModelMap map) {
-			IntegrateAndFire integrateAndFire = new IntegrateAndFire(x,y,map);
+			IntegrateAndFire integrateAndFire = new IntegrateAndFire(x,y,map.getSignalHandler());
 			integrateAndFire.setThreshold(threshold);
 			return integrateAndFire;
 		}
@@ -50,8 +51,9 @@ public class IntegrateAndFire extends FiringModel {
 	/**
 	 * 
 	 */
-	public IntegrateAndFire(int x, int y, FiringModelMap map) {
-		super(x,y,map);
+//	public IntegrateAndFire(int x, int y, FiringModelMap map) {
+	public IntegrateAndFire(int x, int y, SignalHandler handler) {
+		super(x,y,handler);
 		// TODO Auto-generated constructor stub
 	}
 	

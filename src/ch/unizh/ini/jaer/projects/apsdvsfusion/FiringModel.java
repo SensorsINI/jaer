@@ -13,18 +13,25 @@ public abstract class FiringModel {
 	
 	
 	int x, y;
-	FiringModelMap firingModelMap;
+//	FiringModelMap firingModelMap;
+	SignalHandler signalHandler;
 
-	public FiringModelMap getFiringModelMap() {
-		return firingModelMap;
+	
+//	public FiringModelMap getFiringModelMap() {
+//		return firingModelMap;
+//	}
+//	public void setFiringModelMap(FiringModelMap firingModelMap) {
+//		this.firingModelMap = firingModelMap;
+//	}
+	public void setSignalHandler(SignalHandler handler) {
+		
 	}
-	public void setFiringModelMap(FiringModelMap firingModelMap) {
-		this.firingModelMap = firingModelMap;
-	}
-	public FiringModel(int x, int y, FiringModelMap map) {
+	public FiringModel(int x, int y, SignalHandler handler) { //FiringModelMap map) {
 		this.x = x;
 		this.y = y;
-		this.firingModelMap = map;
+		setSignalHandler(signalHandler);
+//		setFiringModelMap(map);
+//		this.firingModelMap = map;
 	}
 	public void setCoordinate(int x, int y) {
 		this.x = x;
@@ -44,7 +51,8 @@ public abstract class FiringModel {
 	}
 
 	public void emitSpike(double value, int timeInUs) {
-		firingModelMap.getSignalHandler().signalAt(x, y, timeInUs, value);
+		signalHandler.signalAt(x, y, timeInUs, value);
+//		firingModelMap.getSignalHandler().signalAt(x, y, timeInUs, value);
 	}
 	
 	public abstract void receiveSpike(double value, int timeInUs);

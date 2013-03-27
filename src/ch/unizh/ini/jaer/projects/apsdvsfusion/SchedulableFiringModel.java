@@ -11,8 +11,8 @@ public abstract class SchedulableFiringModel extends FiringModel {
 	final DynamicHeap<PostponedFireEvent>.Entry heapEntry;
 	public final PostponedFireEvent scheduledEvent;
 	
-	public SchedulableFiringModel(int x, int y, SchedulableFiringModelMap map) {
-		super(x,y,map);
+	public SchedulableFiringModel(int x, int y, SignalHandler handler, SchedulableFiringModelMap map) {
+		super(x,y,handler);
 		scheduledEvent = new PostponedFireEvent(x, y, Integer.MAX_VALUE, this);
 		heapEntry = map.createEntry(scheduledEvent);
 	}

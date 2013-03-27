@@ -130,7 +130,7 @@ public class MapOutputViewer extends JFrame {
 			};
 			map.getSupport().addPropertyChangeListener("name", mapNameListener);
     		buttonPanel.add(nameLabel);
-//    		buttonPanel.add(enableBox);
+//    		buttonPanel.add(enableBox); 
 //    		buttonPanel.add(editButton);
 //    		buttonPanel.add(deleteButton);
     		

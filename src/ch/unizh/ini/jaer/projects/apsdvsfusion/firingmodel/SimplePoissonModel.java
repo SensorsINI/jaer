@@ -10,6 +10,7 @@ import ch.unizh.ini.jaer.projects.apsdvsfusion.SchedulableFiringModel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SchedulableFiringModelCreator;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SchedulableFiringModelMap;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SchedulableWrapperMap;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.SignalHandler;
 
 /**
  * @author Dennis
@@ -35,8 +36,8 @@ public class SimplePoissonModel extends SchedulableFiringModel {
 	 * @param y
 	 * @param map
 	 */
-	public SimplePoissonModel(int x, int y, SchedulableFiringModelMap map) {
-		super(x, y, map);
+	public SimplePoissonModel(int x, int y, SignalHandler handler, SchedulableFiringModelMap map) {
+		super(x, y, handler, map);
 		// timeconstant = 1s
 		logPotential.setTimeConstant(1e7f);
 		// We never want to exceed IntegerDecayModel.ONE. Since we want to max out at +- 2.0, the maximum number
@@ -183,7 +184,7 @@ public class SimplePoissonModel extends SchedulableFiringModel {
 		@Override
 		public SchedulableFiringModel createUnit(int x, int y,
 				SchedulableFiringModelMap map) {
-			SimplePoissonModel simplePoissonModel = new SimplePoissonModel(x, y, map);
+			SimplePoissonModel simplePoissonModel = new SimplePoissonModel(x, y, map.getSignalHandler(), map);
 			simplePoissonModel.setTimeConstant(timeConstant);
 			simplePoissonModel.setLambda(maxSpikesPerSecond / 2e6f);
 			simplePoissonModel.setNegativeSpikesOn(negativeSpikesOn);

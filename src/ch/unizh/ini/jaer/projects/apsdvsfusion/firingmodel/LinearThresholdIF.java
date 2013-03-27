@@ -8,6 +8,7 @@ import java.util.prefs.Preferences;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelCreator;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.SignalHandler;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.IntegrateAndFire.Creator;
 
 /**
@@ -81,7 +82,7 @@ public class LinearThresholdIF extends FiringModel {
 
 		@Override
 		public FiringModel createUnit(int x, int y, FiringModelMap map) {
-			LinearThresholdIF linearThresholdIF = new LinearThresholdIF(x,y,map);
+			LinearThresholdIF linearThresholdIF = new LinearThresholdIF(x,y,map.getSignalHandler());
 			linearThresholdIF.setThreshold(threshold);
 			linearThresholdIF.setRefractoryTime(refractoryTime);
 			linearThresholdIF.setThresholdFrequency(thresholdFrequency);
@@ -92,10 +93,10 @@ public class LinearThresholdIF extends FiringModel {
 	/**
 	 * @param x
 	 * @param y
-	 * @param map
+	 * @param handler
 	 */
-	public LinearThresholdIF(int x, int y, FiringModelMap map) {
-		super(x, y, map);
+	public LinearThresholdIF(int x, int y, SignalHandler handler) {//FiringModelMap map) {
+		super(x, y, handler);
 	}
 
 	
