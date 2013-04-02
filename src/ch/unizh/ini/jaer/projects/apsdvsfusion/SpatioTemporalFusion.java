@@ -146,7 +146,8 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		public void mapAdded() {
 			if (panelCounter < firingModelMaps.size()-2) {
 				ParameterBrowserPanel newMapPanel = new ParameterBrowserPanel(firingModelMaps.get(firingModelMaps.size()-1));
-				newMapPanel.toggleSelection();
+				if (!loading)
+					newMapPanel.toggleSelection();
 				customPanel.add(newMapPanel, gbc);
 				mapPanels.add(newMapPanel);
 				gbc.gridy++;
@@ -344,14 +345,14 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
         		adcMonitor.setContentPane(display);
         		adcMonitor.setPreferredSize(new Dimension(300,300));
         	}
-    		adcMonitor.setVisible(true);
+//    		adcMonitor.setVisible(true);
     		
     		if (apsMonitor == null) {
     			apsMonitor = new JFrame("APS monitor");
     			apsMonitor.setContentPane(myFrameViewer);
     			apsMonitor.setPreferredSize(new Dimension(480,360));
     		}
-    		apsMonitor.setVisible(true);
+//    		apsMonitor.setVisible(true);
     		frameViewerManager.run();
 //       		expressionBasedIKUserInterface.setVisible(true);
         } else {
@@ -1132,8 +1133,9 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		}
 	}
 	
-	
+	boolean loading = false;
 	public void loadSettings() {
+		loading = true;
 		ParameterContainer.disableStorage();
 		for (int i = 0; i < 20; i++) {
 			String s = getPrefs().get("usedExpressionString"+i, "");
@@ -1161,6 +1163,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		}
 		spikeSoundSignalHandler.restoreParameters();
 		ParameterContainer.enableStorage();
+		loading = false;
 	}
 
 

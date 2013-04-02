@@ -104,9 +104,11 @@ public class ExpressionTreeBuilder {
 					if (!st.hasMoreTokens())
 						throw new IllegalExpressionException("Error while parsing arguments of function "+token+"!");
 					LinkedList<ExpressionTreeNode> arguments = new LinkedList<ExpressionTreeNode>();
-					while (parseString(st,arguments).equals(",")) {
+					String exitChar = parseString(st,arguments);
+					while (exitChar != null && exitChar.equals(",")) {
 						if (!st.hasMoreTokens())
 							throw new IllegalExpressionException("Error while parsing arguments of function "+token+"!");
+						exitChar = parseString(st,arguments);
 					}
 					if (arguments.size() != ExpressionTreeNodeFactory.getFunctionArgumentCount(token))
 						throw new IllegalExpressionException("The function '"+token+"' expects "+ExpressionTreeNodeFactory.getFunctionArgumentCount(token)+" arguments instead of "+arguments.size()+"!");
@@ -129,7 +131,7 @@ public class ExpressionTreeBuilder {
 			else if (token.equals("(")) {
 				int lengthBefore = expressions.size();
 				String exitChar = parseString(st,expressions);
-				if (!exitChar.equals(")"))
+				if (exitChar == null || (!exitChar.equals(")")))
 					throw new IllegalExpressionException("')' expected!");
 				lastTokenWasAnExpression = true;
 				if (negateNext && expressions.size() == lengthBefore+1)
