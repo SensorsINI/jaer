@@ -915,8 +915,8 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 					evaluateMinusEvent(be);
 					minusCounter++;
 				}
-				if ((plusCounter + minusCounter) % 1000 == 0)
-					System.out.println("Ratio: "+((float)plusCounter)/((float)minusCounter));
+//				if ((plusCounter + minusCounter) % 1000 == 0)
+//					System.out.println("Ratio: "+((float)plusCounter)/((float)minusCounter));
 			}
 //				synchronized (kernelProcessors) {
 //					for (KernelProcessor kp : kernelProcessors) {

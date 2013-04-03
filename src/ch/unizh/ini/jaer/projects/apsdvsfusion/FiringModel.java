@@ -24,12 +24,14 @@ public abstract class FiringModel {
 //		this.firingModelMap = firingModelMap;
 //	}
 	public void setSignalHandler(SignalHandler handler) {
-		
+//		if (handler == null)
+//			System.out.println("ups");
+		this.signalHandler = handler;
 	}
 	public FiringModel(int x, int y, SignalHandler handler) { //FiringModelMap map) {
 		this.x = x;
 		this.y = y;
-		setSignalHandler(signalHandler);
+		setSignalHandler(handler);
 //		setFiringModelMap(map);
 //		this.firingModelMap = map;
 	}
@@ -51,7 +53,8 @@ public abstract class FiringModel {
 	}
 
 	public void emitSpike(double value, int timeInUs) {
-		signalHandler.signalAt(x, y, timeInUs, value);
+//		if (signalHandler != null)
+			signalHandler.signalAt(x, y, timeInUs, value);
 //		firingModelMap.getSignalHandler().signalAt(x, y, timeInUs, value);
 	}
 	
