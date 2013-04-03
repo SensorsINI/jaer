@@ -1458,9 +1458,12 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                 	
                 	HasSetter setter = setterMap.get(propertyChangeEvent.getPropertyName());
                     if (setter == null) {
-                        if (!printedSetterWarning) {
-                            log.warning("in filter " + getParameterContainer() + " there is no setter for property change from property named " + propertyChangeEvent.getPropertyName());
-                            printedSetterWarning = true;
+                        if (!getParameterContainer().isPropertyExcluded(propertyChangeEvent.getPropertyName()) && !printedSetterWarning) {
+                        	Object o = propertyChangeEvent.getNewValue();
+                        	if (o instanceof Integer || o instanceof String || o instanceof Float || o instanceof Double || o instanceof Boolean || o instanceof Point2D || o instanceof Enum) {
+                        		log.warning("in parameter container " + getParameterContainer() + " (class :"+getParameterContainer().getClass().toString()+") there is no setter for property change from property named " + propertyChangeEvent.getPropertyName());
+                        		printedSetterWarning = true;
+                        	}
                         }
                     } else {
                         setter.set(propertyChangeEvent.getNewValue());

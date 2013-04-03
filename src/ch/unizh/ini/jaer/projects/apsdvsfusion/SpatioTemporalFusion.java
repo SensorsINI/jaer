@@ -526,7 +526,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	int lastValuePlus = 0, lastValueMinus = 0;
 	
 
-	public void doResetRatio() {
+	public void XdoResetRatio() {
 		this.plusCounter = 1;
 		this.minusCounter = 1;
 	}

@@ -132,16 +132,16 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 				}
 			}
 			
-			if (evaluateExpressionAsReceptiveField) {
-				// reflect if in receptive field mode:
-				for (int x = 0; x < width; x++) {
-					for (int y = 0; y < height; y++) {
-						oldConvolutionValues[width-x-1][height-y-1] = newValues[x][y];
-					}
-				}
-				return oldConvolutionValues;
-			}
-			else
+//			if (evaluateExpressionAsReceptiveField) {
+//				// reflect if in receptive field mode:
+//				for (int x = 0; x < width; x++) {
+//					for (int y = 0; y < height; y++) {
+//						oldConvolutionValues[width-x-1][height-y-1] = newValues[x][y];
+//					}
+//				}
+//				return oldConvolutionValues;
+//			}
+//			else
 				return newValues;
 		}
 		catch (RuntimeException e) {
@@ -369,8 +369,6 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 		});
 		expressionComboBox.setFont(myComboBox.getFont().deriveFont(10f));
 
-		
-		
 		SpatioTemporalFusion stf = SpatioTemporalFusion.getInstance(this);
 		if (stf != null) {
 			usedExpressionsListener = new PropertyChangeListener() {
