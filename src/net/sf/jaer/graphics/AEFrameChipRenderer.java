@@ -208,6 +208,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     
     private void updateFrameBuffer(ApsDvsEvent e){
         int index = getIndex(e.x, e.y);
+        if(index<0)return;
         float[] buf = pixBuffer.array();
         if(index > buf.length)return;
         if(e.isA()){
@@ -253,6 +254,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     private void updateEventMaps(ApsDvsEvent e){
         float[] map;
         int index = getIndex(e.x, e.y);
+        if(index<0)return;
         if(e.polarity == ApsDvsEvent.Polarity.On){
             map = onMap.array();
         }else{
@@ -288,6 +290,10 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     }
     
     private int getIndex(int x, int y){
+        if(x<0 || y<0 || x>=sizeX || y>=sizeY){
+            log.warning("Event out of bounds cannot be rendered");
+            return -1;
+        }
         if(textureRendering){
             return  4* (x + y * textureWidth);
         }else{
