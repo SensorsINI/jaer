@@ -58,7 +58,7 @@ public class VORSensorForSteadicam extends EventFilter2D implements FrameAnnotat
     HighpassFilter rollFilter = new HighpassFilter();
     private float highpassTauMsTranslation = getFloat("highpassTauMsTranslation", 1000);
     private float highpassTauMsRotation = getFloat("highpassTauMsRotation", 1000);
-    float radPerPixel = 1;
+    float radPerPixel;
 //    private ArrayBlockingQueue<PhidgetsSpatialEvent> spatialDataQueue = new ArrayBlockingQueue<PhidgetsSpatialEvent>(9 * 4); // each phidgets sample could be 9 (3 gyro + 3 accel + 3 compass) and we want room for 4 samples
     private volatile boolean resetCalled=false;
     
@@ -72,7 +72,6 @@ public class VORSensorForSteadicam extends EventFilter2D implements FrameAnnotat
         setPropertyTooltip("sampleIntervalMs", "sensor sample interval in ms, min 4ms, powers of two, e.g. 4,8,16,32...");
         setPropertyTooltip("highpassTauMsTranslation", "highpass filter time constant in ms to relax transform back to zero for translation (pan, tilt) components");
         setPropertyTooltip("highpassTauMsRotation", "highpass filter time constant in ms to relax transform back to zero for rotation (roll) component");
-          radPerPixel = (float) Math.asin(getChip().getPixelWidthUm() * 1e-3f /lensFocalLengthMm);
    }
 
     @Override
@@ -159,6 +158,8 @@ public class VORSensorForSteadicam extends EventFilter2D implements FrameAnnotat
         if (chip.getClass() == DVS128Phidget.class) {
             ((DVS128Phidget)chip).doZeroGyro();
         }
+        radPerPixel = (float) Math.asin(getChip().getPixelWidthUm() * 1e-3f /lensFocalLengthMm);
+
     }
 
     @Override
@@ -243,7 +244,6 @@ public class VORSensorForSteadicam extends EventFilter2D implements FrameAnnotat
     public float getTiltRate() {
         if (chip.getClass() == DVS128Phidget.class) {
             tiltRate = (float)(-((DVS128Phidget)chip).getGyro()[1]);
-//            tiltRate = (float)(((DVS128Phidget)chip).getGyro()[1]);
         }
         return tiltRate;
     }
