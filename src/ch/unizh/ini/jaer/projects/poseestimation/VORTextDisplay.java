@@ -99,6 +99,7 @@ public class VORTextDisplay extends EventFilter2D implements FrameAnnotater, Obs
         GL gl = drawable.getGL();
         if (gl == null) 
             return;
+
         if (chip.getClass() == DVS128Phidget.class) {
             acceleration = ((DVS128Phidget)chip).getAcceleration().clone();
             gyro = ((DVS128Phidget)chip).getGyro().clone();

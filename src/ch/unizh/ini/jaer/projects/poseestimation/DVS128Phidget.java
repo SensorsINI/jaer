@@ -32,22 +32,22 @@ public class DVS128Phidget extends DVS128 {
     SpatialPhidget spatial = null;
 
     // VOR Outputs and Helper Variables
-    private double[] accelerationFromPhidget, 
-            gyroFromPhidget, 
+    private double[] accelerationFromPhidget = new double[3], 
+            gyroFromPhidget = new double[3], 
             compassFromPhidget = new double[3];     // Sensor values 
+    private int timeUsFromPhidget;
     private boolean init = false;                   // Indicates if sensor values have been initialized
     
     // VOR Variables
-    private int samplingRateMs = 80;                // Sampling Rate - multiple of 8 under 1000 or 4 
+    private int samplingPeriodMs = 4;                // Sampling Rate - multiple of 8 under 1000 or 4 
     private static double accelDataMin = -1f;       // From User Manual 
     private static double gyroDataMin = -400f;      // From User Manual 
     private static double compassDataMin = -4.1f;   // From User Manual 
-
     // Outputs
     private double[] acceleration,
             gyro,
             compass = new double[3];                // Actual values that will be seen by filters
-    
+    private int timeUs;
     /** 
      * Constructor 
      */
@@ -72,13 +72,14 @@ public class DVS128Phidget extends DVS128 {
             public void attached(AttachEvent ae) {
                 log.log(Level.INFO, "attachment of {0}", ae);
                 try {
-                    ((SpatialPhidget) ae.getSource()).setDataRate(samplingRateMs); 
+                    ((SpatialPhidget) ae.getSource()).setDataRate(samplingPeriodMs); 
                     StringBuilder sb = new StringBuilder();
                     sb.append("Serial: ").append(spatial.getSerialNumber()).append("\n");
                     sb.append("Accel Axes: ").append(spatial.getAccelerationAxisCount()).append("\n");
                     sb.append("Gyro Axes: ").append(spatial.getGyroAxisCount()).append("\n");
                     sb.append("Compass Axes: ").append(spatial.getCompassAxisCount()).append("\n");
                     sb.append("Data Rate: ").append(spatial.getDataRate()).append("\n");
+//                    spatial.zeroGyro();
                     log.info(sb.toString());
                 } catch (PhidgetException pe) {
                     log.log(Level.WARNING, "Problem setting data rate: {0}", pe.toString());
@@ -117,16 +118,19 @@ public class DVS128Phidget extends DVS128 {
                     log.warning("Empty data");
                     return;
                 }
-                // Update sensor values
+                // Update sensor and timestamp values
                 accelerationFromPhidget = sde.getData()[0].getAcceleration();
                 gyroFromPhidget = sde.getData()[0].getAngularRate();
                 compassFromPhidget = sde.getData()[0].getMagneticField();
+                timeUsFromPhidget = sde.getData()[0].getTimeSeconds() * 1000000 + sde.getData()[0].getTimeMicroSeconds();
+
                 // Run this only when sensor gets initialized, set final values to sensor values
                 if (init == false) {
                     acceleration = accelerationFromPhidget.clone();
                     gyro = gyroFromPhidget.clone();
                     compass = compassFromPhidget.clone();
-
+                    timeUs = timeUsFromPhidget;
+                    
                     init = true;
                 } // END IF
             } // END METHOD
@@ -140,6 +144,21 @@ public class DVS128Phidget extends DVS128 {
         } // END TRY
     }
     
+    public void doZeroGyro() {
+        try {
+            zeroGyro();
+        } catch (PhidgetException ex) {
+            log.warning(ex.toString());
+        }
+    }
+
+    // delegated methods
+    public void zeroGyro() throws PhidgetException {
+        if (spatial != null && spatial.isAttached()) {
+            spatial.zeroGyro();
+        }
+    }
+
     /** 
      * Getter for acceleration
      * @return acceleration vector from either sensor or file
@@ -163,6 +182,15 @@ public class DVS128Phidget extends DVS128 {
     public double[] getCompass() {
         return compass;
     } // END METHOD
+    
+    /** 
+     * Getter for time
+     * @return time in us 
+     */
+    public int getTimeUs() {
+        return timeUs;
+    } // END METHOD
+    
     
     /** 
      * Extractor class deals with retina and sensor data
@@ -280,6 +308,7 @@ public class DVS128Phidget extends DVS128 {
                             acceleration = accelerationFromPhidget.clone();
                             gyro = gyroFromPhidget.clone();
                             compass = compassFromPhidget.clone();
+                            timeUs = timeUsFromPhidget;
                         } // END IF
                         PolarityEvent e = (PolarityEvent) outItr.nextOutput();
                         e.address = addr;

@@ -25,11 +25,11 @@ import net.sf.jaer.graphics.FrameAnnotater;
 public class SaveSpatialEventFile extends EventFilter2D implements Observer {
     
     // Sensor Outputs gotten from DVS128 Class
-    private double[] acceleration, 
-            gyro, 
+    private double[] acceleration = new double[3], 
+            gyro = new double[3], 
             compass = new double[3];        // Sensor values 
-    private double[] prevAcceleration, 
-            prevGyro, 
+    private double[] prevAcceleration = new double[3], 
+            prevGyro = new double[3], 
             prevCompass = new double[3];    // Previous sensor values 
     private boolean init = false;           // Indicated whether sensor values have been initialized 
     
@@ -136,12 +136,12 @@ public class SaveSpatialEventFile extends EventFilter2D implements Observer {
                     spatialEvent.setData(o.timestamp, gyro[2], SpatialEvent.Spatial.GyroZ);
                     outItr.nextOutput().copyFrom(spatialEvent);
                     // Compass
-                    spatialEvent.setData(o.timestamp, compass[0], SpatialEvent.Spatial.CompassX);
-                    outItr.nextOutput().copyFrom(spatialEvent);
-                    spatialEvent.setData(o.timestamp, compass[1], SpatialEvent.Spatial.CompassY);
-                    outItr.nextOutput().copyFrom(spatialEvent);
-                    spatialEvent.setData(o.timestamp, compass[2], SpatialEvent.Spatial.CompassZ);
-                    outItr.nextOutput().copyFrom(spatialEvent);
+//                    spatialEvent.setData(o.timestamp, compass[0], SpatialEvent.Spatial.CompassX);
+//                    outItr.nextOutput().copyFrom(spatialEvent);
+//                    spatialEvent.setData(o.timestamp, compass[1], SpatialEvent.Spatial.CompassY);
+//                    outItr.nextOutput().copyFrom(spatialEvent);
+//                    spatialEvent.setData(o.timestamp, compass[2], SpatialEvent.Spatial.CompassZ);
+//                    outItr.nextOutput().copyFrom(spatialEvent);
                 } // END IF - Sensor Value Compare
             } // END IF - Chip Check
             // Write out individual DVS events to out - calls SpatialEvent method copyFrom() which redirects to copyFrom of PolarityEvent
