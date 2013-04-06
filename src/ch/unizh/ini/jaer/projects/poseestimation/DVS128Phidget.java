@@ -44,8 +44,8 @@ public class DVS128Phidget extends DVS128 {
     private static double gyroDataMin = -400f;      // From User Manual 
     private static double compassDataMin = -4.1f;   // From User Manual 
     // Outputs
-    private double[] acceleration,
-            gyro,
+    private double[] acceleration = new double[3],
+            gyro = new double[3],
             compass = new double[3];                // Actual values that will be seen by filters
     private int timeUs;
     /** 

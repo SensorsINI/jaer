@@ -182,7 +182,7 @@ public class VORSensorForSteadicam extends EventFilter2D implements FrameAnnotat
         gl.glLineWidth(6f);
         gl.glBegin(GL.GL_LINES);
         gl.glVertex2f(0, 0);
-        gl.glVertex2d(getPanRate(), getTiltRate());
+        gl.glVertex2f(getPanRate(), getTiltRate());
         gl.glEnd();
         gl.glPopMatrix();
 
@@ -191,8 +191,8 @@ public class VORSensorForSteadicam extends EventFilter2D implements FrameAnnotat
         gl.glTranslatef(chip.getSizeX() / 2, (chip.getSizeY() * 3) / 4, 0);
         gl.glLineWidth(6f);
         gl.glBegin(GL.GL_LINES);
-        gl.glVertex2i(0, 0);
-        gl.glVertex2d(getRollRate(), 0);
+        gl.glVertex2f(0, 0);
+        gl.glVertex2f(getRollRate(), 0);
         gl.glEnd();
         gl.glPopMatrix();
 
