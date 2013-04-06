@@ -20,7 +20,7 @@ import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
-@Description("Class that outputs SpatialEvents when saved. Used to record retina events and spatial data together for playback later")
+@Description("Class that outputs SpatialEvents when saved from VOR sensor (Phidgets). Used to record retina events and spatial data together for playback later")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class SaveSpatialEventFile extends EventFilter2D implements Observer {
     
