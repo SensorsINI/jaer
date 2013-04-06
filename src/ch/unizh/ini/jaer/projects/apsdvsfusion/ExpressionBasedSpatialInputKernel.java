@@ -14,7 +14,6 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Stack;
 import java.util.prefs.Preferences;
 
 import javax.swing.BoxLayout;
@@ -24,9 +23,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
-import com.sun.corba.se.spi.legacy.connection.GetEndPointInfoAgainException;
 
-import net.sf.jaer.event.PolarityEvent.Polarity;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.CollapsablePanel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.NonGLImageDisplay;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.mathexpression.ExpressionTreeBuilder;
