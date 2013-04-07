@@ -28,8 +28,8 @@ public class DynamicFontSizeJLabel extends JLabel {
 
     public DynamicFontSizeJLabel() {
         super();
-        setFont(new java.awt.Font("Bitstream Vera Sans Mono 11 Bold", 0, 11));
-//        setFont(new java.awt.Font("Monospaced", 0, 24));
+//        setFont(new java.awt.Font("Bitstream Vera Sans Mono 11 Bold", 0, 11));
+        setFont(new java.awt.Font("Monospaced", Font.BOLD, 24));
 //        setFont(new java.awt.Font("Arial Narrow", Font.BOLD, 24));
         addComponentListener(new java.awt.event.ComponentAdapter() {
             public void componentResized(java.awt.event.ComponentEvent evt) {

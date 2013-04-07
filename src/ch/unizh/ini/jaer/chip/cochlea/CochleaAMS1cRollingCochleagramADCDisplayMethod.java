@@ -50,7 +50,7 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
     private Category[] activityCategories;
     private XYChart activityChart;
     /** Max number of ADC samples to display for each ADC channel */
-    public static final int NUM_ACTIVITY_SAMPLES = 50000;
+    public static final int NUM_ACTIVITY_SAMPLES = CochleaAMS1cADCSamples.MAX_NUM_SAMPLES;
     /** Trace color */
     public static final Color[] colors = {Color.RED, Color.GREEN, Color.BLUE, Color.getHSBColor(60f/360, .5f, .8f)};
     GLJPanel activityPan;
@@ -74,7 +74,7 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
 
     @Override
     public void display(GLAutoDrawable drawable) {
-        super.display(drawable);
+        super.display(drawable); // display the events from cochlea channels as for normal rolling cochleagram display
 
 
         int sx = chip.getSizeX();
@@ -112,7 +112,13 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
             DataBuffer data = adcSamples.getCurrentReadingDataBuffer(); // plot data being collected now, without consuming it
 
             timeAxis.setMinimum(startTime);
-            timeAxis.setMaximum(startTime + timeWidthUs); // TODO this comes from AE data in rolling event strip chart, but if no events, not set properly
+            int maxTime=adcSamples.getMaxTime();
+            if(maxTime>startTime+timeWidthUs) {
+                clearScreenEnabled=true;
+                startTime=maxTime;
+            } // reset strip chart 
+            
+            timeAxis.setMaximum(startTime+timeWidthUs); // TODO this comes from AE data in rolling event strip chart, but if no events, not set properly
             int chan = 0;
             for (ChannelBuffer cb : data.channelBuffers) {
                 if (isHidden(chan)) {

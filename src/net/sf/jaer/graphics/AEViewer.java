@@ -7,6 +7,7 @@
  */
 package net.sf.jaer.graphics;
 
+import com.inilabs.jaer.chip.dvs128.DVS128;
 import edu.stanford.ejalbert.BrowserLauncher;
 import java.net.SocketException;
 import java.net.URI;
@@ -544,6 +545,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
 
         statisticsLabel = new DynamicFontSizeJLabel();
+//        statisticsLabel.setFont(new java.awt.Font("Bitstream Vera Sans Mono 11 Bold", 0, 8));
         statisticsLabel.setToolTipText("Time slice/Absolute time, NumEvents/NumFiltered, events/sec, Frame rate acheived/desired, Time expansion X contraction /, delay after frame, color scale");
         statisticsPanel.add(statisticsLabel);
         PropertyChangeListener[] list = statisticsLabel.getPropertyChangeListeners();
@@ -2284,8 +2286,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 String thisTimeString = String.format("%5.3fs ", thisTime);
 
                 String rateString = null;
-                if (ratekeps >= 10e3f) {
-                    rateString = "   >10 Meps ";
+                if (ratekeps >= 40e3f) {
+                    rateString = "   >40 Meps ";
                 } else {
                     rateString = String.format("%5.1fkeps", ratekeps); //String.format("%6.2fkeps ",ratekeps);
                 }

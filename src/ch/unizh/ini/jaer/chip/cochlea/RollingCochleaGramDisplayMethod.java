@@ -33,13 +33,13 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
     }
     final float rasterWidth = 0.003f; // width of screen;
     final int BORDER = 50; // pixels
-    protected int startTime = 0;
-    boolean clearScreenEnabled = true;
+    protected int startTime = 0; // the time (in timestamp units) that the strip starts at currently; is updated when chart reaches timeWidthUs
+    protected boolean clearScreenEnabled = true; // set by rendering when it is time to resetart the strip chart because time has passed right edge
     int font = GLUT.BITMAP_HELVETICA_18;
     int oldColorScale = 0;
     boolean hasBlend = false;
     boolean hasBlendChecked = false;
-    /** Set by rendering to total width in us time */
+    /** Set by rendering to total width in us time of current strip chart */
     protected float timeWidthUs; // set horizontal scale so that we can just use relative timestamp for x
     /** set by rendering so that 1 unit drawing scale draws to right side, 0 to left during rendering, using scaling as in
     <pre>

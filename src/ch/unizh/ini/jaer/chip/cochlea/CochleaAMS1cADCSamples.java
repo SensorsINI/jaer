@@ -23,7 +23,7 @@ final public class CochleaAMS1cADCSamples implements Observer {
 
     final static Logger log = Logger.getLogger("CochleaAMS1c");
 //    public static final int WIDTH = 64, HEIGHT = 1;
-    public static final int MAX_NUM_SAMPLES = 100000; // fixed max size now, with sync() call to reset to start of array // WIDTH * HEIGHT;
+    public static final int MAX_NUM_SAMPLES = 200000; // fixed max size now, with sync() call to reset to start of array // WIDTH * HEIGHT;
     public static final int NUM_CHANNELS = 4;
     public static final int MAX_ADC_VALUE = 1023;
     DataBuffer data1 = new DataBuffer(), data2 = new DataBuffer();
@@ -35,6 +35,9 @@ final public class CochleaAMS1cADCSamples implements Observer {
     private int scanLength = DEFAULT_SCAN_LENGTH;
     private boolean hasScannerData = false; // flag to mark that buffers should wrap at scanLength on write and read
     private CochleaAMS1c cochleaChip;
+    private int maxTime=0; // holds maximum sample time, is reset if time wraps around
+    private boolean maxTimeInitialized=false;
+    private int lastMaxTime=0; // used to check for time wrapping
 
     public CochleaAMS1cADCSamples(CochleaAMS1c cochleaChip) {
         this.cochleaChip = cochleaChip; // cannot access biasgen/scanner yet, not constructed yet probably
@@ -93,6 +96,15 @@ final public class CochleaAMS1cADCSamples implements Observer {
      */
     public DataBuffer getCurrentWritingDataBuffer() {
         return currentWritingDataBuffer;
+    }
+
+    /**
+     * Reset if time wraps.
+     * 
+     * @return the maxTime
+     */
+    public int getMaxTime() {
+        return maxTime;
     }
 
     /** A single samples */
@@ -160,6 +172,11 @@ final public class CochleaAMS1cADCSamples implements Observer {
                 samples[writeCounter].time = time;
                 samples[writeCounter].data = val;
                 writeCounter++;
+                if(!maxTimeInitialized || time>maxTime || time<lastMaxTime){
+                    maxTime=time;
+                    maxTimeInitialized=true;
+                }
+                lastMaxTime=time;
             }
 
             if (writeCounter == MAX_NUM_SAMPLES) {
@@ -261,4 +278,6 @@ final public class CochleaAMS1cADCSamples implements Observer {
             dataOut[i] = dataIn[i] - mean;
         }
     }
+    
+    
 }
