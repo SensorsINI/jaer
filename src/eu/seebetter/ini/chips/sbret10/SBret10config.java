@@ -66,9 +66,9 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
     protected CPLDInt rowSettle = new CPLDInt(chip, 63, 48, "rowSettle", "time to settle a row select before readout", 0);
     protected CPLDInt resSettle = new CPLDInt(chip, 79, 64, "resSettle", "time to settle a reset before readout", 0);
     protected CPLDInt frameDelay = new CPLDInt(chip, 95, 80, "frameDelay", "time between two frames", 0);
-    protected CPLDInt padding = new CPLDInt(chip, 109, 96, "pad", "used to zeros", 0);
+    protected CPLDInt padding = new CPLDInt(chip, 109, 96, "pad", "used to insert necessary unused (but should be zero) bits", 0);
     protected CPLDBit testPixAPSread = new CPLDBit(chip, 110, "testPixAPSread", "enables continuous scanning of testpixel", false);
-    protected CPLDBit useC = new CPLDBit(chip, 111, "useC", "enables a second readout", false);
+    protected CPLDBit useC = new CPLDBit(chip, 111, "useC", "enables a second readout for double exposure", false);
     
     // graphic options for rendering
     protected VideoControl videoControl;
