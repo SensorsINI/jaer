@@ -291,7 +291,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     
     private int getIndex(int x, int y){
         if(x<0 || y<0 || x>=sizeX || y>=sizeY){
-            log.warning("Event out of bounds cannot be rendered");
+            log.warning(String.format("Event x=%d y=%d out of bounds cannot be rendered in bounds sizeX=%d sizeY=%d",x,y,sizeX,sizeY));
             return -1;
         }
         if(textureRendering){
