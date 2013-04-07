@@ -285,6 +285,8 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
                 sendOnChipConfig();
             } else if (observable instanceof OutputMux || observable instanceof OnchipConfigBit) {
                 sendOnChipConfigChain();
+            } else if (observable instanceof ShiftedSourceBiasCF ) {
+                sendOnChipConfig();
             } else if (observable instanceof SBRet10ChipConfigChain) {
                 sendOnChipConfigChain();
             } else if (observable instanceof Masterbias) {

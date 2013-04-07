@@ -110,13 +110,13 @@ public class AddressedIPotCF extends AddressedIPot {
         this.setSex(sex);
         this.fineBitValue=fineValue;
         this.coarseBitValue=coarseValue;
-        updateBitValue();
         this.currentLevel=lowCurrentModeEnabled?CurrentLevel.Low:CurrentLevel.Normal;
         this.biasEnabled=enabled?BiasEnabled.Enabled:BiasEnabled.Disabled;
         this.displayPosition=displayPosition;
         this.tooltipString=tooltipString;
         this.address=address;
         loadPreferences(); // do this after name is set
+        updateBitValue(); // must be after preferences are loaded
       if(chip.getRemoteControl()!=null){
             chip.getRemoteControl().addCommandListener(this, String.format(SETIC+"%s <bitvalue>",getName()), "Set the bitValue of coarse current "+getName());
             chip.getRemoteControl().addCommandListener(this, String.format(SETIF+"%s <bitvalue>",getName()), "Set the bitValue of fine current "+getName());
@@ -476,7 +476,7 @@ public class AddressedIPotCF extends AddressedIPot {
                 setFineBitValue(Integer.parseInt(val));
             } else if (key.equals(base + KEY_BITVALUE_COARSE)) {
                 if(getFineBitValue()!=Integer.parseInt(val)){
-                    log.info("coarse bit value change from preferences");
+                    log.info("fine bit value change from preferences");
                 }
                 setFineBitValue(Integer.parseInt(val));
             } else if (key.equals(base + KEY_ENABLED)) {

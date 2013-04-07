@@ -123,8 +123,8 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         return this.potArray;
     }
 
-    public void setPotArray(final PotArray PotArray) {
-        this.potArray = PotArray;
+    public void setPotArray(final PotArray potArray) {
+        this.potArray = potArray;
     }
 
     public Masterbias getMasterbias() {

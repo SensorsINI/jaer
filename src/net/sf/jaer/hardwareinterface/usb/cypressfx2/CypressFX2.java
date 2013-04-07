@@ -1581,6 +1581,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      */
     @Override
     public synchronized void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
+        /* tobi commented synchronized but "deadlock" occurs only in debug mode, to try to solve problem of locking in exit menu because AEViewer waits on Thread.join but hardware interface is owned by AWT-EventQueue synchronized */
 //        log.info("setting event acquisition="+enable);
         setInEndpointEnabled(enable);
         if (enable) {

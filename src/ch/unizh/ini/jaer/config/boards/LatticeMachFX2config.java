@@ -268,7 +268,7 @@ public class LatticeMachFX2config extends Biasgen implements HasPreference{
             return false; // not ready yet, called by super
         }
         String hex = String.format("%02X%02X%02X",bytes[2],bytes[1],bytes[0]);
-        //log.info("Send AIPot for "+pot.getName()+" with value "+hex);
+        log.info("Send AIPot for "+pot.getName()+" with value "+hex);
         sendFx2ConfigCommand(CMD_AIPOT, 0, bytes); // the usual packing of ipots with other such as shifted sources, on-chip voltage dac, and diagnotic mux output and extra configuration
         return true;
     }
@@ -377,7 +377,15 @@ public class LatticeMachFX2config extends Biasgen implements HasPreference{
         sendFx2Config();
         sendDACconfig();
     } 
+
+    @Override
+    public void loadPreferences() {
+        loadPreference();
+    }
     
+    /**
+     *
+     */
     @Override
     public void loadPreference() {
         super.loadPreferences();
@@ -401,6 +409,14 @@ public class LatticeMachFX2config extends Biasgen implements HasPreference{
         }
     }
 
+    @Override
+    public void storePreferences() {
+        storePreference();
+    }
+
+    /**
+     *
+     */
     @Override
     public void storePreference() {
         super.storePreferences();

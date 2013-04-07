@@ -63,6 +63,27 @@ public class AddressedIPotCFGUIControl extends javax.swing.JPanel implements Obs
     public AddressedIPotCFGUIControl(AddressedIPotCF pot) {
         this.pot = pot;
         initComponents(); // this has unfortunate byproduect of resetting pot value to 0... don't know how to prevent stateChanged event
+        dontProcessFineBiasSlider = true;
+        fineBiasSlider.setMaximum(AddressedIPotCF.maxFineBitValue - 1); // TODO replace with getter,  needed to prevent extraneous callbacks
+        dontProcessCoarseBiasSlider = true;
+        coarseBiasSlider.setMaximum(AddressedIPotCF.maxCoarseBitValue - 1);
+//        dontProcessFineBiasSlider = true;
+//        bufferBiasSlider.setMinorTickSpacing(1);
+//        dontProcessFineBiasSlider = true;
+//        bufferBiasSlider.setMajorTickSpacing(1);
+//        dontProcessFineBiasSlider = true;
+//        bufferBiasSlider.setMinimum(0);
+//
+//        dontProcessCoarseBiasSlider = true;
+////        biasSlider.setMaximum(pot.maxBitValue); // TODO this is immense value, perhaps 10^7, is it ok?
+//        biasSlider.setMaximum(100); // TODO this is immense value, perhaps 10^7, is it ok?
+//        dontProcessCoarseBiasSlider = true;
+//        biasSlider.setMinorTickSpacing(1);
+//        dontProcessCoarseBiasSlider = true;
+//        biasSlider.setMajorTickSpacing(1);
+//        dontProcessCoarseBiasSlider = true;
+//        biasSlider.setMinimum(0);
+
         sexComboBox.putClientProperty("JComboBox.isTableCellEditor", Boolean.FALSE);
         typeComboBox.putClientProperty("JComboBox.isTableCellEditor", Boolean.FALSE);
         currentLevelComboBox.putClientProperty("JComboBox.isTableCellEditor", Boolean.FALSE);
@@ -102,28 +123,9 @@ public class AddressedIPotCFGUIControl extends javax.swing.JPanel implements Obs
             sexComboBox.setSelectedItem(pot.getSex().toString());
 
 //            sliderAndValuePanel.setVisible(true);
-            pot.loadPreferences(); // to get around slider value change
+            pot.loadPreferences(); // to get around slider value change TODO maybe not needed
             pot.addObserver(this); // when pot changes, so does this gui control view
         }
-        //dontProcessFineBiasSlider = true;
-        fineBiasSlider.setMaximum(AddressedIPotCF.maxFineBitValue - 1); // TODO replace with getter,  needed to prevent extraneous callbacks
-        coarseBiasSlider.setMaximum(AddressedIPotCF.maxCoarseBitValue - 1);
-//        dontProcessFineBiasSlider = true;
-//        bufferBiasSlider.setMinorTickSpacing(1);
-//        dontProcessFineBiasSlider = true;
-//        bufferBiasSlider.setMajorTickSpacing(1);
-//        dontProcessFineBiasSlider = true;
-//        bufferBiasSlider.setMinimum(0);
-//
-//        dontProcessCoarseBiasSlider = true;
-////        biasSlider.setMaximum(pot.maxBitValue); // TODO this is immense value, perhaps 10^7, is it ok?
-//        biasSlider.setMaximum(100); // TODO this is immense value, perhaps 10^7, is it ok?
-//        dontProcessCoarseBiasSlider = true;
-//        biasSlider.setMinorTickSpacing(1);
-//        dontProcessCoarseBiasSlider = true;
-//        biasSlider.setMajorTickSpacing(1);
-//        dontProcessCoarseBiasSlider = true;
-//        biasSlider.setMinimum(0);
         updateAppearance();  // set controls up with values from ipot
         allInstances.add(this);
     }

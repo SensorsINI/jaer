@@ -4,7 +4,7 @@
  */
 package net.sf.jaer.biasgen.coarsefine;
 
-import eu.seebetter.ini.chips.seebetter20.*;
+import java.util.prefs.PreferenceChangeEvent;
 import javax.swing.JComponent;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.util.RemoteControlCommand;
@@ -293,6 +293,37 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
             KEY_OPERATINGMODE = "OperatingMode";
     static String SEP = ".";
 
+    @Override
+    public void preferenceChange(PreferenceChangeEvent e) {
+        // TODO we get pref change events here but by this time the new values have already been set and there is no change in value so the GUI elements are not updated
+        try {
+            String base = prefsKey() + SEP;
+            String key = e.getKey();
+            if (!key.startsWith(base)) {
+                return;
+            }
+            String val = e.getNewValue();
+//            log.info("key="+key+" value="+val);
+            if (key.equals(base + KEY_REFVALUE)) {
+                if (getRefBitValue()!= Integer.parseInt(val)) {
+                    log.info("reference voltage bit value change from preferences");
+                }
+                setRefBitValue(Integer.parseInt(val));
+            } else if (key.equals(base + KEY_REGVALUE)) {
+                if (getRegBitValue()!= Integer.parseInt(val)) {
+                    log.info("regulator bit value changed from preferences");
+                }
+                setRegBitValue(Integer.parseInt(val));
+            } else if (key.equals(base + KEY_OPERATINGMODE)) {
+                setOperatingMode(OperatingMode.valueOf(val));
+            } else if (key.equals(base + KEY_VOLTAGELEVEL)) {
+                setVoltageLevel(VoltageLevel.valueOf(val));
+            }
+        } catch (Exception ex) {
+            log.warning("while responding to preference change event " + e + ", caught " + ex.toString());
+        }
+    }
+
     /** stores as a preference the bit value */
     @Override
     public void storePreferences() {
@@ -326,6 +357,8 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
         int v = prefs.getInt(key, 0);
         return v;
     }
+    
+
 
     /** sets the bit value based on desired current and {@link #masterbias} current.
      * Observers are notified if value changes.
@@ -421,7 +454,7 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
      */
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof AddressedIPot)) {
+        if (!(obj instanceof ShiftedSourceBiasCF)) {
             return false;
         }
         ShiftedSourceBiasCF other = (ShiftedSourceBiasCF) obj;

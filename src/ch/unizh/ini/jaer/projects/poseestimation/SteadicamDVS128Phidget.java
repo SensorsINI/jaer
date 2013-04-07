@@ -143,7 +143,7 @@ public class SteadicamDVS128Phidget extends EventFilter2D implements FrameAnnota
         sy2 = chip.getSizeY() / 2;
         checkOutputPacketEventType(in);
         transformList.clear(); // empty list of transforms to be applied
-        getEnclosedFilterChain().filterPacket(in); // issues callbacks to us periodically via update based on 
+        getEnclosedFilterChain().filterPacket(in); // compute the list of transforms based on gyro data
 
         if (isElectronicStabilizationEnabled()) {
             int sizex = chip.getSizeX() - 1;

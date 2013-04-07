@@ -142,7 +142,7 @@ public class Chip2DRenderer implements Observer {
     protected int selectedPixelEventCount = 0;
 
     public Chip2DRenderer() {
-        setColorScale(prefs.getInt("Chip2DRenderer.colorScale", 1));
+        setColorScale(prefs.getInt("Chip2DRenderer.colorScale", 2)); // tobi changed default to 2 events full scale Apr 2013
     }
 
     public Chip2DRenderer(Chip2D chip) {

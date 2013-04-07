@@ -18,7 +18,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
  * Tracks blinking LED markers with complex blinking patterns (e.g. SOS morse code) that can be learned on the fly
- * @author matthias
+ * @author matthias Hofstetter 
  */
 @Description("Tracks blinking LED markers with complext blinking patterns that can be learned on the fly")
 public class SmartSpatioTemporalTracker extends EventFilter2D implements Observer, FrameAnnotater {

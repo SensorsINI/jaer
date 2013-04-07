@@ -318,7 +318,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
     }
     
-    /** Overrides color scale setting to update the stored accumulated pixmap when the color scale is changed.
+    /** Overrides color scale setting to NOT update the stored accumulated pixmap when the color scale is changed.
     
      * */
     @Override
@@ -327,10 +327,11 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         if (colorScale < 1) {
             colorScale = 1;
         }
-        if (colorScale > 64) {
-            colorScale = 64;
+        if (colorScale > 128) {
+            colorScale = 128;
         }
         this.colorScale = colorScale;
+        prefs.putInt("Chip2DRenderer.colorScale", colorScale);
     }
     
      private static int ceilingPow2(int n) {
