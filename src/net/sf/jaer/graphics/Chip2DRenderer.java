@@ -5,6 +5,7 @@ import java.util.Observable;
 import java.util.Observer;
 import net.sf.jaer.chip.Chip2D;
 import java.util.ArrayList;
+import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 /**
@@ -17,6 +18,7 @@ A general class for rendering chip output to a 2d array of float values for draw
  */
 public class Chip2DRenderer implements Observer {
 
+    protected static Logger log=Logger.getLogger(Chip2DRenderer.class.getSimpleName());
     private int sizeX,  sizeY;
     protected Preferences prefs = Preferences.userNodeForPackage(Chip2DRenderer.class);
     /** the chip rendered for */
@@ -262,6 +264,7 @@ public class Chip2DRenderer implements Observer {
     /** @param accumulateEnabled true to accumulate data to frame (don't reset to start value each cycle) */
     public void setAccumulateEnabled(final boolean accumulateEnabled) {
         this.accumulateEnabled = accumulateEnabled;
+        log.info("accumulate rendering = "+accumulateEnabled);
     }
 
     public void setAutoscaleEnabled(final boolean autoscaleEnabled) {
