@@ -43,6 +43,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  */
 @Description("SBret version 1.0")
 public class SBret10 extends APSDVSchip {
+    private final int ADC_NUMBER_OF_TRAILING_ZEROS = Integer.numberOfTrailingZeros(ADC_READCYCLE_MASK); // speedup in loop
     
     // following define bit masks for various hardware data types. 
     // The hardware interface translateEvents method packs the raw device data into 32 bit 'addresses' and timestamps.
@@ -181,7 +182,7 @@ public class SBret10 extends APSDVSchip {
                     //APS event
                     ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
                     e.adcSample = data & ADC_DATA_MASK;
-                    int sampleType = (data & ADC_READCYCLE_MASK)>>Integer.numberOfTrailingZeros(ADC_READCYCLE_MASK);
+                    int sampleType = (data & ADC_READCYCLE_MASK)>>ADC_NUMBER_OF_TRAILING_ZEROS;
                     switch(sampleType){
                         case 0:
                             e.readoutType = ApsDvsEvent.ReadoutType.A;

@@ -7,7 +7,8 @@ package eu.seebetter.ini.chips;
 import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 
 /**
- *
+ * Constants for APSDVSChip AE data format such as raw address encodings.
+ * 
  * @author Christian
  */
 abstract public class APSDVSchip extends AETemporalConstastRetina{

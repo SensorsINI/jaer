@@ -196,7 +196,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                     }
                     updateEventMaps(e);
                 }
-            }else if(e.isAdcSample() && config.isDisplayFrames() && !chip.getAeViewer().isPaused()){
+            }else if(e.isAdcSample() && config.isDisplayFrames() && !chip.getAeViewer().isPaused()){ // TODO need to handle single step updates here
                 updateFrameBuffer(e);
             }
         }
@@ -291,7 +291,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     
     private int getIndex(int x, int y){
         if(x<0 || y<0 || x>=sizeX || y>=sizeY){
-            log.warning(String.format("Event x=%d y=%d out of bounds cannot be rendered in bounds sizeX=%d sizeY=%d",x,y,sizeX,sizeY));
+            log.warning(String.format("Event x=%d y=%d out of bounds and cannot be rendered in bounds sizeX=%d sizeY=%d",x,y,sizeX,sizeY));
             return -1;
         }
         if(textureRendering){
