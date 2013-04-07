@@ -7,7 +7,6 @@
  */
 package net.sf.jaer.graphics;
 
-import com.inilabs.jaer.chip.dvs128.DVS128;
 import edu.stanford.ejalbert.BrowserLauncher;
 import java.net.SocketException;
 import java.net.URI;
