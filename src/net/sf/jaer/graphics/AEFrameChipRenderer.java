@@ -207,17 +207,18 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     }
     
     private void updateFrameBuffer(ApsDvsEvent e){
-        int index = getIndex(e.x, e.y);
-        if(index<0)return;
         float[] buf = pixBuffer.array();
-        if(index > buf.length)return;
         if(e.isA()){
+            int index = getIndex(e.x, e.y);
+            if(index<0 || index >= buf.length)return;
             float val = e.getAdcSample();
             buf[index] = val;
             buf[index+1] = val;
             buf[index+2] = val;
             if(e.isStartOfFrame())startFrame(e.timestamp);
         }else if(e.isB()){
+            int index = getIndex(e.x, e.y);
+            if(index<0 || index >= buf.length)return;
             float val = ((float)buf[index]-(float)e.getAdcSample());
             if (val < minValue) {
                 minValue = val;
@@ -254,12 +255,12 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     private void updateEventMaps(ApsDvsEvent e){
         float[] map;
         int index = getIndex(e.x, e.y);
-        if(index<0)return;
         if(e.polarity == ApsDvsEvent.Polarity.On){
             map = onMap.array();
         }else{
             map = offMap.array();
         }
+        if(index<0 || index>=map.length)return;
         if(colorMode == ColorMode.ColorTime){
             int ts0 = packet.getFirstTimestamp();
             float dt = packet.getDurationUs();
