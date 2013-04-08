@@ -289,9 +289,15 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
     }
     
+    final int INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS=1000;
+    private long lastWarningPrintedTimeMs=Integer.MAX_VALUE;
+    
     private int getIndex(int x, int y){
-        if(x<0 || y<0 || x>=sizeX || y>=sizeY){
-            log.warning(String.format("Event x=%d y=%d out of bounds and cannot be rendered in bounds sizeX=%d sizeY=%d",x,y,sizeX,sizeY));
+        if (x < 0 || y < 0 || x >= sizeX || y >= sizeY) {
+            if (System.currentTimeMillis() - lastWarningPrintedTimeMs > INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS) {
+                log.warning(String.format("Event x=%d y=%d out of bounds and cannot be rendered in bounds sizeX=%d sizeY=%d- delaying next warning for %dms", x, y, sizeX, sizeY,INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS));
+                lastWarningPrintedTimeMs = System.currentTimeMillis();
+            }
             return -1;
         }
         if(textureRendering){
