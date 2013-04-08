@@ -33,11 +33,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * {@link #setHardwareInterface} is used when the hardware interface is constructed after the retina object.
  *The constructor that takes a hardware interface also constructs the biasgen interface.
  * <p>
- * SeeBetter 10 and 11 feature several arrays of pixels, a fully configurable bias generator,
- * and a configurable output selector for digital and analog current and voltage outputs for characterization.
- * The output is word serial and includes an intensity neuron which rides onto the other addresses.
- * <p>
- * SeeBetter 10 and 11 are built in UMC18 CIS process and has 14.5u pixels.
+ * SBRet10 has 240x180 pixels and is built in 180nm technology. It has a rolling shutter APS readout with CDS in digital domain.
  *
  * @author tobi, christian
  */
@@ -79,6 +75,8 @@ public class SBret10 extends APSDVSchip {
         setEventExtractor(new SBret10Extractor(this));
 
         setBiasgen(config = new SBret10config(this));
+        
+        // hardware interface is ApsDvsHardwareInterface
 
         apsDVSrenderer = new AEFrameChipRenderer(this);
         apsDVSrenderer.setMaxADC(MAX_ADC);

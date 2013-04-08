@@ -18,7 +18,6 @@ import ch.unizh.ini.jaer.chip.dvs320.cDVSTestHardwareInterface;
 import net.sf.jaer.util.HexString;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;
-import eu.seebetter.ini.chips.sbret10.SBret10HardwareInterface;
 import eu.seebetter.ini.chips.seebetter1011.SeeBetterHardwareInterface;
 import eu.seebetter.ini.chips.seebetter20.SeeBetter20HardwareInterface;
 import java.util.*;

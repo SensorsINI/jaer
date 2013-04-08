@@ -18,9 +18,9 @@ import java.io.*;
 import java.util.Arrays;
 
 /**
- * Adds functionality of SeeBetter10/11 retina test chips to base classes for Cypress FX2 interface.
+ * Adds functionality of apsDVS sensors to based CypressFX2Biasgen class. The key method is translateEvents that parses the data from the sensor to construct jAER raw events.
  *
- * @author tobi
+ * @author Christian/Tobi
  */
 public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 
