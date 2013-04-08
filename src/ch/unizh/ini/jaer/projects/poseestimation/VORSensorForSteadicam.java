@@ -73,6 +73,7 @@ public class VORSensorForSteadicam extends EventFilter2D implements FrameAnnotat
         setPropertyTooltip("highpassTauMsTranslation", "highpass filter time constant in ms to relax transform back to zero for translation (pan, tilt) components");
         setPropertyTooltip("highpassTauMsRotation", "highpass filter time constant in ms to relax transform back to zero for rotation (roll) component");
         setPropertyTooltip("lensFocalLengthMm", "sets lens focal length in mm to adjust the scaling from camera rotation to pixel space");
+        setPropertyTooltip("zeroGyro", "zeros the gyro output. Sensor should be stationary for period of 1-2 seconds during zeroing");
    }
 
     @Override
@@ -142,6 +143,12 @@ public class VORSensorForSteadicam extends EventFilter2D implements FrameAnnotat
         return tr;
     }
 
+    public void doZeroGyro(){
+              if (chip.getClass() == DVS128Phidget.class) {
+            ((DVS128Phidget)chip).doZeroGyro();
+        }
+ 
+    }
     @Override
     synchronized public void resetFilter() {
         resetCalled=true;
@@ -156,10 +163,7 @@ public class VORSensorForSteadicam extends EventFilter2D implements FrameAnnotat
         panTranslationFilter.reset();
         tiltTranslationFilter.reset();
         rollFilter.reset();
-        if (chip.getClass() == DVS128Phidget.class) {
-            ((DVS128Phidget)chip).doZeroGyro();
-        }
-        radPerPixel = (float) Math.asin(getChip().getPixelWidthUm() * 1e-3f /lensFocalLengthMm);
+         radPerPixel = (float) Math.asin(getChip().getPixelWidthUm() * 1e-3f /lensFocalLengthMm);
 
     }
 
