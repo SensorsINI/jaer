@@ -372,10 +372,11 @@ public class LatticeMachFX2config extends Biasgen implements HasPreference{
         if (!sendOnChipConfig()) {
             return;
         }
-
-        sendCPLDConfig();
         sendFx2Config();
         sendDACconfig();
+        sendCPLDConfig();
+        sendCPLDConfig();
+        
     } 
 
     @Override
