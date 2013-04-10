@@ -160,6 +160,14 @@ public class CollapsablePanel extends JPanel {
 		return contentPanel;
 	}
 
+    public void setExpanded(boolean expanded) {
+    	if (expanded != selected)
+    		toggleSelection();
+    }
+	
+    public boolean isExpanded() {
+    	 return this.selected;
+    }
     
     public void toggleSelection() {  
         selected = !selected;  

@@ -63,7 +63,7 @@ public class MapOutputViewer extends JFrame {
 	ContinuousOutputViewerManager spikingOutputViewerManager;
 //	ExpressionBasedKernelEditDialog editDialog;
 	ArrayList<MapPanel> panels = new ArrayList<MapPanel>();
-	int grayLevels = -1;
+//	int grayLevels = -1;
 	
     public class MapPanel extends JPanel {
     	/**
@@ -87,7 +87,14 @@ public class MapOutputViewer extends JFrame {
     		this.map = map;
 //    		inputKernel.setOnExpressionString(onExpressionString);
 //    		inputKernel.setOffExpressionString(offExpressionString);
-    		soViewer = spikingOutputViewerManager.createOutputViewer(map, getGrayLevels());
+    		soViewer = spikingOutputViewerManager.createOutputViewer(map, map.getGrayLevels());
+    		map.getSupport().addPropertyChangeListener("grayLevels",new PropertyChangeListener() {
+				@Override
+				public void propertyChange(PropertyChangeEvent e) {
+					if (e.getPropertyName().equals("grayLevels"))
+						soViewer.setGrayLevels((Integer)e.getNewValue());
+				}
+			});
 //    		inputKernel.setInputOutputSizes(inputWidth, inputHeight, outputWidth, outputHeight);
 //    		kernelProcessor = new SimpleKernelProcessor(outputWidth,outputHeight,inputKernel, stfFilter.getPrefs().node("kernelProcessor"));
 //    		kernelProcessor.addSpikeHandler(soViewer);
@@ -279,25 +286,25 @@ public class MapOutputViewer extends JFrame {
 		this.pack();
 		loadWindowBounds();
 //		this.setVisible(true);
-		setGrayLevels(getPrefs().getInt(makePrefString("grayLevels"), 4));
+//		setGrayLevels(getPrefs().getInt(makePrefString("grayLevels"), 4));
 //		addKernel(7,7,128,128,128,128,"0.05","0.05");
 		
 	}
 
-	public int getGrayLevels() {
-		return grayLevels;
-	}
-
-	public void setGrayLevels(int grayLevels) {
-		if (this.grayLevels != grayLevels) {
-			this.grayLevels = grayLevels;
-			for (MapPanel panel : panels) {
-				panel.soViewer.setGrayLevels(grayLevels);
-			}
-			getPrefs().putInt(makePrefString("grayLevels"), grayLevels);			
-		}
-		
-	}
+//	public int getGrayLevels() {
+//		return grayLevels;
+//	}
+//
+//	public void setGrayLevels(int grayLevels) {
+//		if (this.grayLevels != grayLevels) {
+//			this.grayLevels = grayLevels;
+//			for (MapPanel panel : panels) {
+//				panel.soViewer.setGrayLevels(grayLevels);
+//			}
+//			getPrefs().putInt(makePrefString("grayLevels"), grayLevels);			
+//		}
+//		
+//	}
 	
 	protected void saveWindowBounds() {
 		Preferences p = getPrefs();

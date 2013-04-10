@@ -69,8 +69,10 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 	transient ArrayList<ActionListener> listeners = new ArrayList<ActionListener>();
 
 	private Preferences prefs;
-	
+
 	private String name;
+	
+	private boolean controlsExpanded = false;
 	// public SpikeStack net;
 
 	// public static enum Options {LIF_STP_RBM,LIF_BASIC_RBM};
@@ -136,6 +138,7 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 			this.prefs = Preferences.userNodeForPackage(this.getClass());
 		}
 //		this.prefs = parentPrefs.node(nodeName);
+		addExcludedProperty("controlsExpanded");
 		support.addPropertyChangeListener(this);
 		discoverParameters();
 	}
@@ -168,13 +171,30 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 		this.name = name;
 	}
 
+	
+	
+	/**
+	 * @return the controlsExpanded
+	 */
+	public boolean isControlsExpanded() {
+		return controlsExpanded;
+	}
+	/**
+	 * @param controlsExpanded the controlsExpanded to set
+	 */
+	public void setControlsExpanded(boolean controlsExpanded) {
+		boolean before = this.controlsExpanded;
+		this.controlsExpanded = controlsExpanded;
+		getSupport().firePropertyChange("controlsExpanded",before, controlsExpanded);
+	}
+
 	private JComponent myControls = null;
 	public final JComponent getCustomControls() {
 		if (myControls == null) 
 			myControls = createCustomControls();
 		return createCustomControls();
 	}
-	
+
 	protected JComponent createCustomControls() {
 		return null;
 	}

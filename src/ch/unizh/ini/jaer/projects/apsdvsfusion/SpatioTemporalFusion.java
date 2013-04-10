@@ -6,6 +6,8 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -229,7 +231,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
    		spikeSoundSignalHandler = new SpikeSoundSignalHandler(this,"SpikeSound",getPrefs().node("spikesound"));
    		
 //		this.setFilterEnabled(false);
-        setPropertyTooltip("grayLevels", "Number of displayed gray levels");
+//        setPropertyTooltip("grayLevels", "Number of displayed gray levels");
         this.onMap = new FiringModelMap(currentSizeX,currentSizeY, getPrefs().node("onMap")) {
 			@Override
 			public FiringModel get(int x, int y) {
@@ -379,19 +381,19 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	
     
     
-    public int getGrayLevels() {
-    	if (mapOutputViewer != null) {
-    		return mapOutputViewer.getGrayLevels();
-    	}
-    	else return getPrefs().getInt("SpatioTemporalFusion.UserInterface.grayLevels",4);
-    }
-    public void setGrayLevels(int grayLevels) {
-    	if (mapOutputViewer != null) {
-    		mapOutputViewer.setGrayLevels(grayLevels);
-    	}
-    	else getPrefs().putInt("SpatioTemporalFusion.UserInterface.grayLevels",grayLevels);
-    }
-    
+//    public int getGrayLevels() {
+//    	if (mapOutputViewer != null) {
+//    		return mapOutputViewer.getGrayLevels();
+//    	}
+//    	else return getPrefs().getInt("SpatioTemporalFusion.UserInterface.grayLevels",4);
+//    }
+//    public void setGrayLevels(int grayLevels) {
+//    	if (mapOutputViewer != null) {
+//    		mapOutputViewer.setGrayLevels(grayLevels);
+//    	}
+//    	else getPrefs().putInt("SpatioTemporalFusion.UserInterface.grayLevels",grayLevels);
+//    }
+//    
     
     
 	/**
@@ -1073,6 +1075,71 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 			gbc.gridy = 0;
 			gbc.gridx = 0;
 			gbc.fill = GridBagConstraints.BOTH;
+			
+			JPanel demoButtonPanel = new JPanel();
+			JButton demoAButton = new JButton("Demo A");
+			JButton demoBButton = new JButton("Demo B");
+			JButton demoCButton = new JButton("Demo C");
+			demoAButton.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					int index = 0;
+					for (FiringModelMap map : firingModelMaps) {
+						if (map != onMap && map != offMap) {
+							boolean show = (index == 0);
+							map.setEnabled(show);
+							map.setMonitored(show);
+							map.setControlsExpanded(show);
+							index++;
+						}
+					}
+				}
+			});
+			demoBButton.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					int index = 0;
+					for (FiringModelMap map : firingModelMaps) {
+						if (map != onMap && map != offMap) {
+							boolean show = (index == 1);
+							map.setEnabled(show);
+							map.setMonitored(show);
+							map.setControlsExpanded(show);
+							SignalTransformationKernel onKernel = map.getKernel(0);
+							if (onKernel != null) {
+								onKernel.setEnabled(true);
+								onKernel.setControlsExpanded(false);
+							}
+							SignalTransformationKernel feedbackKernel = map.getKernel(1);
+							if (feedbackKernel != null) {
+								feedbackKernel.setEnabled(false);
+								feedbackKernel.setControlsExpanded(true);
+							}
+							index++;
+						}
+					}
+				}
+			});
+			demoCButton.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+					int index = 0;
+					for (FiringModelMap map : firingModelMaps) {
+						if (map != onMap && map != offMap) {
+							boolean show = (index >1 && index <5);
+							map.setEnabled(show);
+							map.setMonitored(show);
+							map.setControlsExpanded(false);
+							index++;
+						}
+					}
+				}
+			});
+			demoButtonPanel.add(demoAButton);
+			demoButtonPanel.add(demoBButton);
+			demoButtonPanel.add(demoCButton);
+			myPanel.add(demoButtonPanel,gbc);
+			gbc.gridy++;
 			myPanel.add(controls,gbc);
 			gbc.gridy++;
 			myPanel.add(spikeSoundControls,gbc);

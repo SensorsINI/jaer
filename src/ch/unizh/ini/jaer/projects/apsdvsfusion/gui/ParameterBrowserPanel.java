@@ -1445,6 +1445,9 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                 boolean yes = (Boolean) propertyChangeEvent.getNewValue();
                 enabledCheckBox.setSelected(yes);
                 setBorderActive(yes);
+            } else if (propertyChangeEvent.getPropertyName().equals("controlsExpanded")) { // comes from EventFilter when filter is enabled or disabled
+//              log.info("propertyChangeEvent name="+propertyChangeEvent.getPropertyName()+" src="+propertyChangeEvent.getSource()+" oldValue="+propertyChangeEvent.getOldValue()+" newValue="+propertyChangeEvent.getNewValue());
+            	this.setExpanded((Boolean)propertyChangeEvent.getNewValue());
             } else {
                 // we need to find the control and set it appropriately. we don't need to set the property itself since this has already been done!
                 try {
@@ -1508,6 +1511,21 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
     }// </editor-fold>                        
     boolean controlsVisible = false;
 
+    @Override
+    public void setExpanded(boolean expanded) {
+    	super.setExpanded(expanded);
+    	if (parameterContainer != null && this.isExpanded() != parameterContainer.isControlsExpanded())
+    		parameterContainer.setControlsExpanded(this.isExpanded());
+    }
+	
+    @Override
+    public void toggleSelection() {
+    	super.toggleSelection();
+    	if (parameterContainer != null && this.isExpanded() != parameterContainer.isControlsExpanded())
+    		parameterContainer.setControlsExpanded(this.isExpanded());
+    }
+    
+    
     public boolean isControlsVisible() {
         return controlsVisible;
     }

@@ -6,6 +6,7 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion.gui;
 import java.awt.Dimension;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.lang.reflect.InvocationTargetException;
 
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap;
@@ -65,6 +66,17 @@ public class SpikingOutputViewer implements ContinuousOutputViewer, SignalHandle
         display.setSizeX(sizeX);
         display.setSizeY(sizeY);
         display.setPreferredSize(new Dimension(250,250));
+        display.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
+            public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
+                int code = evt.getWheelRotation();
+                if (map != null) {
+                	int currentGrayLevels = map.getGrayLevels();
+                	currentGrayLevels += code;
+                	if (currentGrayLevels < 1) currentGrayLevels = 1;
+                	map.setGrayLevels(currentGrayLevels);
+                }
+            }
+        });
 //        display.setBorderSpacePixels(0);
 //        this.display.setFontSize(14);
     }

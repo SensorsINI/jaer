@@ -40,6 +40,8 @@ public abstract class FiringModelMap extends ParameterContainer {
 	
 	private int mapID = -1;
 	
+	private int grayLevels = 4;
+	
 	int sizeX = -1, sizeY = -1;
 	FiringModelCreator firingModelCreator = null;
 	SignalHandlerSet signalHandlerSet;
@@ -95,7 +97,8 @@ public abstract class FiringModelMap extends ParameterContainer {
 			kernelPanel.setLayout(new GridBagLayout());
 			CollapsablePanel collapsablePanel = new CollapsablePanel("Input kernels",dummyPanel);
             for (SignalTransformationKernel stk : inputKernels) {
-				ParameterBrowserPanel newPanel = new ParameterBrowserPanel(stk); 
+				ParameterBrowserPanel newPanel = new ParameterBrowserPanel(stk);
+				newPanel.toggleSelection();
 				kernelPanel.add(newPanel, gbcKernel);
 				panels.add(newPanel);
 				gbcKernel.gridy++;
@@ -108,10 +111,11 @@ public abstract class FiringModelMap extends ParameterContainer {
 	        if (frame != null)
 	        	frame.pack();
 		}
-		public void kernelAdded() {
+		public void kernelAdded(boolean userAction) {
 			if (panelCounter < inputKernels.size()) {
 				ParameterBrowserPanel newPanel = new ParameterBrowserPanel(inputKernels.get(inputKernels.size()-1));
-				newPanel.toggleSelection();
+				if (userAction)
+					newPanel.toggleSelection();
 				kernelPanel.add(newPanel, gbcKernel);
 				panels.add(newPanel);
 				gbcKernel.gridy++;
@@ -158,6 +162,7 @@ public abstract class FiringModelMap extends ParameterContainer {
 		super("FiringModelMap", prefs);
 		setMapID(Math.abs(mapIDSelector.nextInt()));
 		addExcludedProperty("mapID");
+		addExcludedProperty("grayLevels");
 		this.signalHandlerSet = new SignalHandlerSet()/*spikeHandler*/;
 		changeSize(sizeX, sizeY);
 	}
@@ -199,6 +204,22 @@ public abstract class FiringModelMap extends ParameterContainer {
 	
 	public boolean isMonitored() {
 		return monitored;
+	}
+
+	/**
+	 * @return the grayLevels
+	 */
+	public int getGrayLevels() {
+		return grayLevels;
+	}
+
+	/**
+	 * @param grayLevels the grayLevels to set
+	 */
+	public void setGrayLevels(int grayLevels) {
+		int before = this.grayLevels;
+		this.grayLevels = grayLevels;
+		getSupport().firePropertyChange("grayLevels",before, grayLevels);
 	}
 
 	public void setMonitored(boolean monitored) {
@@ -372,7 +393,7 @@ public abstract class FiringModelMap extends ParameterContainer {
 			kernel.reset();
 	}
 	
-	private void addKernel(SignalTransformationKernel newKernel, int nodeIndex) {
+	private void addKernel(SignalTransformationKernel newKernel, int nodeIndex, boolean userAction) {
 		if (newKernel != null) {
 			newKernel.setOutputMap(this);
 			inputKernels.add(newKernel);
@@ -385,7 +406,7 @@ public abstract class FiringModelMap extends ParameterContainer {
 					indexPosition = index + 1;
 			
 			if (myControls != null) {
-				myControls.kernelAdded();
+				myControls.kernelAdded(userAction);
 			}
 			getPrefs().putInt("kernelCount",inputKernels.size());
 			getPrefs().putInt("indexPosition", indexPosition);
@@ -393,11 +414,17 @@ public abstract class FiringModelMap extends ParameterContainer {
 		}
 	}
 	
+	public SignalTransformationKernel getKernel(int position) {
+		if (position >= 0 && position < inputKernels.size()) 
+			return inputKernels.get(position);
+		else return null;
+	}
+	
 	public void doAdd_Kernel() {
 		SpaceableExpressionBasedSpatialIK newKernel = 
 				new SpaceableExpressionBasedSpatialIK(7, 7, getPrefs().node("inputKernel"+indexPosition));
 		newKernel.setName("kernel"+newKernel.getKernelID());
-		addKernel(newKernel, indexPosition);
+		addKernel(newKernel, indexPosition, true);
 	}
 
 
@@ -407,7 +434,7 @@ public abstract class FiringModelMap extends ParameterContainer {
     		int mapping = getPrefs().getInt("indexMappings"+(indexMappings.size()), i);
     		SpaceableExpressionBasedSpatialIK newKernel = 
     				new SpaceableExpressionBasedSpatialIK(7, 7, getPrefs().node("inputKernel"+mapping));
-    		addKernel(newKernel,mapping);
+    		addKernel(newKernel,mapping, false);
 		}
     	for (SignalTransformationKernel kernel : inputKernels) {
     		kernel.restoreParameters();
