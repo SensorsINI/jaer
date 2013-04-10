@@ -129,16 +129,16 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 				}
 			}
 			
-//			if (evaluateExpressionAsReceptiveField) {
-//				// reflect if in receptive field mode:
-//				for (int x = 0; x < width; x++) {
-//					for (int y = 0; y < height; y++) {
-//						oldConvolutionValues[width-x-1][height-y-1] = newValues[x][y];
-//					}
-//				}
-//				return oldConvolutionValues;
-//			}
-//			else
+			if (evaluateExpressionAsReceptiveField) {
+				// reflect if in receptive field mode:
+				for (int x = 0; x < width; x++) {
+					for (int y = 0; y < height; y++) {
+						oldConvolutionValues[width-x-1][height-y-1] = newValues[x][y];
+					}
+				}
+				return oldConvolutionValues;
+			}
+			else
 				return newValues;
 		}
 		catch (RuntimeException e) {
@@ -423,7 +423,7 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 	        max=absmax;
 	        min=-absmax;
 	
-	                
+	        convolutionViewer.setMinimumSize(new Dimension(200,200));
 	//        disp.setPreferredSize(new Dimension(300,300));
 	        if (!SwingUtilities.isEventDispatchThread()) {
 		        SwingUtilities.invokeLater(new Runnable() {
@@ -436,6 +436,8 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 							for (int y = 0; y < convolutionValues[x].length; y++) {
 								int mx = convolutionValues.length - x - 1;
 								int my = convolutionValues[x].length - y - 1;
+//								int mx = x;
+//								int my = y;
 								float val = convolutionValues[x][y];
 								if (val > absmax)
 									convolutionViewer.setPixmapRGB(mx, my, 1.0f, 0, 0);
@@ -457,6 +459,8 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 					for (int y = 0; y < convolutionValues[x].length; y++) {
 						int mx = convolutionValues.length - x - 1;
 						int my = convolutionValues[x].length - y - 1;
+//						int mx = x;
+//						int my = y;
 						float val = convolutionValues[x][y];
 						if (val > absmax)
 							convolutionViewer.setPixmapRGB(mx, my, 1.0f, 0, 0);

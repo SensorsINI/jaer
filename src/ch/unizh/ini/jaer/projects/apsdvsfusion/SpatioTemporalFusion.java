@@ -84,7 +84,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	
 	int currentSizeX = 128, currentSizeY = 128;
 	
-	int frameUpdateTime = getPrefs().getInt("frameUpdateTime", 30);
+	int frameUpdateTime = getPrefs().getInt("frameUpdateTime", 30000);
 	
 //	InputKernel inputKernel;
 //	FiringModelMap firingModelMap;
