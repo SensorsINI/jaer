@@ -69,6 +69,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
     protected CPLDInt padding = new CPLDInt(chip, 109, 96, "pad", "used to insert necessary unused (but should be zero) bits", 0);
     protected CPLDBit testPixAPSread = new CPLDBit(chip, 110, "testPixAPSread", "enables continuous scanning of testpixel", false);
     protected CPLDBit useC = new CPLDBit(chip, 111, "useC", "enables a second readout for double exposure", false);
+    protected CPLDBit sbret10 = new CPLDBit(chip, 112, "sbret10", "puts TX high (as needed in SBRet10)", true);
     
     // graphic options for rendering
     protected VideoControl videoControl;
@@ -626,7 +627,8 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
                 resetTestpixel = new OnchipConfigBit(chip, "resetTestpixel", 2, "keeps the testpixel in reset", true),
                 hotPixelSuppression = new OnchipConfigBit(chip, "hotPixelSuppression", 3, "turns on the hot pixel suppression", false),
                 nArow = new OnchipConfigBit(chip, "nArow", 4, "use nArow in the AER state machine", false),
-                useAout = new OnchipConfigBit(chip, "useAout", 5, "turn the pads for the analog MUX outputs on", true)
+                useAout = new OnchipConfigBit(chip, "useAout", 5, "turn the pads for the analog MUX outputs on", true),
+                globalShutter = new OnchipConfigBit(chip, "globalShutter", 6, "use the global shutter or not", false)
                 ;
 
         //Muxes
@@ -643,13 +645,14 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
             TOTAL_CONFIG_BITS = 24;
             
             hasPreferenceList.add(this);
-            configBits = new OnchipConfigBit[6];
+            configBits = new OnchipConfigBit[7];
             configBits[0] = resetCalib;
             configBits[1] = typeNCalib;
             configBits[2] = resetTestpixel;
             configBits[3] = hotPixelSuppression;
             configBits[4] = nArow;
             configBits[5] = useAout;
+            configBits[6] = globalShutter;
             for (OnchipConfigBit b : configBits) {
                 b.addObserver(this);
             }
