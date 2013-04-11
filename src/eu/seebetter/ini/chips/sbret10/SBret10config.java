@@ -103,6 +103,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         addConfigValue(padding);
         addConfigValue(testPixAPSread);
         addConfigValue(useC);
+        addConfigValue(sbret10);
 
         // masterbias
         getMasterbias().setKPrimeNFet(55e-3f); // estimated from tox=42A, mu_n=670 cm^2/Vs // TODO fix for UMC18 process
@@ -334,6 +335,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
             frameDelay.addObserver(this);
             testPixAPSread.addObserver(this);
             useC.addObserver(this);
+            sbret10.addObserver(this);
         }
         
         public boolean isAdcEnabled() {
@@ -384,6 +386,14 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
 
         public void setUseC(boolean doUseC) {
             useC.set(doUseC);
+        }
+        
+        public boolean isSbret10() {
+            return sbret10.isSet();
+        }
+
+        public void setSbret10(boolean useSbret10) {
+            sbret10.set(useSbret10);
         }
 
         public int getColSettleCC() {
