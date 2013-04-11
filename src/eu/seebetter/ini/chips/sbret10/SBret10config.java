@@ -67,9 +67,9 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
     protected CPLDInt resSettle = new CPLDInt(chip, 79, 64, "resSettle", "time to settle a reset before readout", 0);
     protected CPLDInt frameDelay = new CPLDInt(chip, 95, 80, "frameDelay", "time between two frames", 0);
     protected CPLDInt padding = new CPLDInt(chip, 109, 96, "pad", "used to insert necessary unused (but should be zero) bits", 0);
-    protected CPLDBit testPixAPSread = new CPLDBit(chip, 110, "testPixAPSread", "enables continuous scanning of testpixel", false);
-    protected CPLDBit useC = new CPLDBit(chip, 111, "useC", "enables a second readout for double exposure", false);
-    protected CPLDBit sbret10 = new CPLDBit(chip, 112, "sbret10", "puts TX high (as needed in SBRet10)", true);
+    protected CPLDBit testPixAPSread = new CPLDBit(chip, 109, "testPixAPSread", "enables continuous scanning of testpixel", false);
+    protected CPLDBit useC = new CPLDBit(chip, 110, "useC", "enables a second readout for double exposure", false);
+    protected CPLDBit sbret10 = new CPLDBit(chip, 111, "sbret10", "puts TX high (as needed in SBRet10)", true);
     
     // graphic options for rendering
     protected VideoControl videoControl;
@@ -370,14 +370,12 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
             exposureC.set(cc);
         }
 
-        public boolean isTestpixelEnabled() {
-            SBRet10ChipConfigChain sbcc = (SBRet10ChipConfigChain) chipConfigChain;
-            return !sbcc.resetTestpixel.isSet();
+        public boolean isTestpixelScanEnabled() {
+            return testPixAPSread.isSet();
         }
 
-        public void setTestpixelEnabled(boolean testpixel) {
-            SBRet10ChipConfigChain sbcc = (SBRet10ChipConfigChain) chipConfigChain;
-            sbcc.resetTestpixel.set(testpixel);
+        public void setTestpixelScanEnabled(boolean testpixel) {
+            testPixAPSread.set(testpixel);
         }
 
         public boolean isUseC() {
