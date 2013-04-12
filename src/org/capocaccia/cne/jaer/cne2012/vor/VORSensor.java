@@ -73,6 +73,8 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
         setPropertyTooltip("sampleIntervalMs", "sensor sample interval in ms, min 4ms, powers of two, e.g. 4,8,16,32...");
         setPropertyTooltip("highpassTauMsTranslation", "highpass filter time constant in ms to relax transform back to zero for translation (pan, tilt) components");
         setPropertyTooltip("highpassTauMsRotation", "highpass filter time constant in ms to relax transform back to zero for rotation (roll) component");
+        setPropertyTooltip("lensFocalLengthMm", "sets lens focal length in mm to adjust the scaling from camera rotation to pixel space");
+        setPropertyTooltip("zeroGyro", "zeros the gyro output. Sensor should be stationary for period of 1-2 seconds during zeroing");
         try {
             spatial = new SpatialPhidget();
         } catch (PhidgetException e) {
@@ -558,4 +560,21 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
         }
         return f;
     }
+    
+       /**
+     * @return the lensFocalLengthMm
+     */
+    public float getLensFocalLengthMm() {
+        return lensFocalLengthMm;
+    }
+
+    /**
+     * @param lensFocalLengthMm the lensFocalLengthMm to set
+     */
+    public void setLensFocalLengthMm(float lensFocalLengthMm) {
+        this.lensFocalLengthMm = lensFocalLengthMm;
+        putFloat("lensFocalLengthMm",lensFocalLengthMm);
+         radPerPixel = (float) Math.asin(getChip().getPixelWidthUm() * 1e-3f /lensFocalLengthMm);
+   }
+    
 }
