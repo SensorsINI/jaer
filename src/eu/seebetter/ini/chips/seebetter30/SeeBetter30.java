@@ -8,6 +8,7 @@ package eu.seebetter.ini.chips.seebetter30;
 
 import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 import eu.seebetter.ini.chips.APSDVSchip;
+import eu.seebetter.ini.chips.seebetter20.SeeBetter20;
 import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -22,7 +23,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
- * Describes  retina and its event extractor and bias generator.
+ * Describes retina and its event extractor and bias generator.
  * Two constructors ara available, the vanilla constructor is used for event playback and the
  *one with a HardwareInterface parameter is useful for live capture.
  * {@link #setHardwareInterface} is used when the hardware interface is constructed after the retina object.
@@ -33,7 +34,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * The output is word serial and includes an intensity neuron which rides onto the other addresses.
  * <p>
  * SeeBetter 10 and 11 are built in UMC18 CIS process and has 14.5u pixels.
- *
+ * SeeBetter 30 is build in UMC18 RF/MM process and has a 31.2u pixel pitch.
  * @author tobi, christian, minhao
  */
 @Description("SeeBetter30 version 1.0")
@@ -47,11 +48,11 @@ public class SeeBetter30 extends AETemporalConstastRetina {
      * bit masks/shifts for cDVS  AE data
      */
     public static final int 
-            YSHIFT = 22,
-            YMASK = 511 << YSHIFT, // 9 bits
-            XSHIFT = 12, 
-            XMASK = 1023 << XSHIFT, // 10 bits
-            POLSHIFT = 11, 
+            YSHIFT = SeeBetter20.YSHIFT,
+            YMASK = SeeBetter20.YMASK, // 9 bits
+            XSHIFT = SeeBetter20.XSHIFT, 
+            XMASK = SeeBetter20.XMASK, // 10 bits
+            POLSHIFT = 0, 
             POLMASK = 1 << POLSHIFT; 
 
     /*
@@ -74,14 +75,14 @@ public class SeeBetter30 extends AETemporalConstastRetina {
     /** Creates a new instance of cDVSTest20.  */
     public SeeBetter30() {
         setName("SeeBetter30");
-        setEventClass(ApsDvsEvent.class);
+        setEventClass(PolarityEvent.class);
         setSizeX(WIDTH);
         setSizeY(HEIGHT);
         setNumCellTypes(3); // two are polarity and last is intensity
         setPixelHeightUm(31.2f);
         setPixelWidthUm(31.2f);
 
-        setEventExtractor(new SBret10Extractor(this));
+        setEventExtractor(new SeeBetter30Extractor(this));
 
         setBiasgen(config = new SeeBetter30config(this));
 
@@ -117,11 +118,11 @@ public class SeeBetter30 extends AETemporalConstastRetina {
      *Bits 10-17 are y address (max value 240) <br>
      *<p>
      */
-    public class SBret10Extractor extends RetinaExtractor {
+    public class SeeBetter30Extractor extends RetinaExtractor {
 
         boolean ignore = false;
         
-        public SBret10Extractor(SeeBetter30 chip) {
+        public SeeBetter30Extractor(SeeBetter30 chip) {
             super(chip);
         }
         
@@ -131,50 +132,41 @@ public class SeeBetter30 extends AETemporalConstastRetina {
          */
         @Override
         synchronized public EventPacket extractPacket(AEPacketRaw in) {
-            if(!(chip instanceof APSDVSchip))return null;
             if (out == null) {
-                out = new ApsDvsEventPacket(chip.getEventClass());
+                out = new EventPacket<PolarityEvent>(chip.getEventClass());
             } else {
                 out.clear();
             }
-            out.setRawPacket(in);
             if (in == null) {
                 return out;
             }
             int n = in.getNumEvents(); //addresses.length;
+            out.systemModificationTimeNs = in.systemModificationTimeNs;
 
-            int[] datas = in.getAddresses();
+            int skipBy = 1;
+            if (isSubSamplingEnabled()) {
+                while (n / skipBy > getSubsampleThresholdEventCount()) {
+                    skipBy++;
+                }
+            }
+            int sxm = sizeX - 1;
+            int[] a = in.getAddresses();
             int[] timestamps = in.getTimestamps();
             OutputEventIterator outItr = out.outputIterator();
-
-            // at this point the raw data from the USB IN packet has already been digested to extract timestamps, including timestamp wrap events and timestamp resets.
-            // The datas array holds the data, which consists of a mixture of AEs and ADC values.
-            // Here we extract the datas and leave the timestamps alone.
-            
-            for (int i = 0; i < n; i++) {  // TODO implement skipBy
-                int data = datas[i];
-
-                if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_DVS) {
-                    //DVS event
-                    if(!ignore){
-                        ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
-                        e.adcSample = -1; // TODO hack to mark as not an ADC sample
-                        e.startOfFrame = false;
-                        e.special = false;
-                        e.address = data;
-                        e.timestamp = (timestamps[i]);
-                        e.polarity = (data & POLMASK) == POLMASK ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
-                        e.x = (short) (chip.getSizeX()-1-((data & XMASK) >>> XSHIFT));
-                        e.y = (short) ((data & YMASK) >>> YSHIFT); 
-                        //System.out.println(data);
-                    } 
-                } else {
-                    log.warning("You got an APS event which should not occur for this chip class");
-                }
+            for (int i = 0; i < n; i += skipBy) { // TODO bug here?
+                int addr = a[i];
+                PolarityEvent e = (PolarityEvent) outItr.nextOutput();
+                e.address = addr;
+                e.timestamp = (timestamps[i]);
+                e.setSpecial(false);
+                e.type = (byte) (1 - addr & 1);
+                e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
+                e.x = (short) (sxm - ((short) ((addr & XMASK) >>> XSHIFT)));
+                e.y = (short) ((addr & YMASK) >>> YSHIFT);
             }
             return out;
         } // extractPacket
-        
+
         @Override
         public AEPacketRaw reconstructRawPacket(EventPacket packet) {
             if(raw==null) raw=new AEPacketRaw();

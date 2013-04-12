@@ -309,6 +309,7 @@ public class DACchannel extends Observable implements PreferenceChangeListener, 
     
     /** the delta voltage to change by in increment and decrement methods */
     public static final float VOLTAGE_CHANGE_VALUE_VOLTS = 0.005f;
+//    public static final float VOLTAGE_CHANGE_VALUE_VOLTS = 0.01f;
     private int dacNumber = 0;
     private int channel = 0;
     private DAC dac = null;

@@ -62,7 +62,7 @@ public class LatticeMachFX2config extends Biasgen implements HasPreference{
             CMD_VDAC = new Fx2ConfigCmd(6, "VDAC"), 
             CMD_INITDAC = new Fx2ConfigCmd(7, "INITDAC"),
             CMD_CPLD_CONFIG = new Fx2ConfigCmd(8, "CPLD");
-    public final String[] CMD_NAMES = {"IPOT", "AIPOT", "SCANNER", "CHIP", "SET_BIT", "CPLD_CONFIG"};
+    public final String[] CMD_NAMES = {"IPOT", "AIPOT", "SCANNER", "CHIP", "SETBIT", "VDAC","INITDAC","CPLD"};
     final byte[] emptyByteArray = new byte[0];
     
         
@@ -309,7 +309,7 @@ public class LatticeMachFX2config extends Biasgen implements HasPreference{
         if(onChipConfigBits == null){
             return false;
         } else {
-            BigInteger bi = new BigInteger(onChipConfigBits);
+//            BigInteger bi = new BigInteger(onChipConfigBits);
             //System.out.println("Send on chip config (length "+onChipConfigBits.length+" bytes): "+String.format("%0"+(onChipConfigBits.length<<1)+"X", bi));
             log.info("Send on chip config: "+onChipConfigBits);
             sendFx2ConfigCommand(CMD_CHIP_CONFIG, 0, onChipConfigBytes);

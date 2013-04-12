@@ -117,21 +117,26 @@ public class SeeBetter30config extends LatticeMachFX2config{
             addAIPot("AEPuXBp,p,normal,AER column pullup");
             addAIPot("AEPdBn,n,normal,Request encoder pulldown static current");
             addAIPot("PadFollBn,n,normal,Follower-pad buffer bias current");
-//            addAIPot("AEPuYBp,p,normal,AER row pullup");
-//            addAIPot("IFThrBn,n,normal,Integrate and fire intensity neuron threshold");
-//            addAIPot("IFRefrBn,n,normal,Integrate and fire intensity neuron refractory period bias current");
-//            addAIPot("PadFollBn,n,normal,Follower-pad buffer bias current");
-//            addAIPot("apsOverflowLevel,n,normal,special overflow level bias ");
-//            addAIPot("biasBuffer,n,normal,special buffer bias ");
+            addAIPot("N/A,n,normal,null");
+            addAIPot("N/A,n,normal,null");
+            addAIPot("N/A,n,normal,null");
+            addAIPot("N/A,n,normal,null");
+            addAIPot("N/A,n,normal,null");
+            addAIPot("biasBuffer,n,normal,special buffer bias ");
         } catch (Exception e) {
             throw new Error(e.toString());
         }
         
         setDACchannelArray(new DACchannelArray(this));
-        setDAC(new DAC_AD5391(0.0f, 3.3f, 3.3f));
+        setDAC(new DAC_AD5391(0.0f, 5.0f, 3.3f));
 
         try {
-            addDACchannel("DACvalue1,very important DAC value");
+            addDACchannel("VFB1,gate voltage for feedback PMOS at the first gain stage");
+            addDACchannel("VREF,reference voltage middle");
+            addDACchannel("VFB0,gate voltage for feedback PMOS at the photoreceptor");
+            addDACchannel("VBN0,gate voltage for cascode NMOS transistor at the photoreceptor");
+            addDACchannel("VREFL,reference voltage low");
+            addDACchannel("VREFH,reference voltage high");
         } catch (Exception e) {
             throw new Error(e.toString());
         }
@@ -144,6 +149,7 @@ public class SeeBetter30config extends LatticeMachFX2config{
         loadPreference();
         setBatchEditOccurring(false);
         try {
+//            this.initDAC();
             sendConfiguration(this);
         } catch (HardwareInterfaceException ex) {
             Logger.getLogger(SeeBetter30.class.getName()).log(Level.SEVERE, null, ex);
@@ -304,17 +310,15 @@ public class SeeBetter30config extends LatticeMachFX2config{
     public class SeeBetter30ChipConfigChain extends ChipConfigChain {
 
         //Config Bits
-        OnchipConfigBit resetCalib = new OnchipConfigBit(chip, "resetCalib", 0, "turn the calibration neuron off", true),
-                typeNCalib = new OnchipConfigBit(chip, "typeNCalib", 1, "make the calibration neuron N type", false),
-                resetTestpixel = new OnchipConfigBit(chip, "resetTestpixel", 2, "keeps the testpixel in reset", true),
-                hotPixelSuppression = new OnchipConfigBit(chip, "hotPixelSuppression", 3, "turns on the hot pixel suppression", false),
-                nArow = new OnchipConfigBit(chip, "nArow", 4, "use nArow in the AER state machine", false),
-                useAout = new OnchipConfigBit(chip, "useAout", 5, "turn the pads for the analog MUX outputs on", true)
+        OnchipConfigBit S1 = new OnchipConfigBit(chip, "S1", 0, "MSB of gain control", false),
+                S2 = new OnchipConfigBit(chip, "S2", 1, "LSB of gain control", false),
+                nPadBiasEnable = new OnchipConfigBit(chip, "nPadBiasEnable", 2, "enable pad bias for analog output buffers", true),
+                nArow = new OnchipConfigBit(chip, "nArow", 3, "use nArow in the AER state machine", false)
                 ;
 
         //Muxes
-        OutputMux[] amuxes = {new AnalogOutputMux(1), new AnalogOutputMux(2), new AnalogOutputMux(3)};
-        OutputMux[] dmuxes = {new DigitalOutputMux(1), new DigitalOutputMux(2), new DigitalOutputMux(3), new DigitalOutputMux(4)};
+        OutputMux[] amuxes = {new AnalogOutputMux(1), new AnalogOutputMux(2), new AnalogOutputMux(3), new AnalogOutputMux(4), new AnalogOutputMux(5)};
+        OutputMux[] dmuxes = {new DigitalOutputMux(1), new DigitalOutputMux(2), new DigitalOutputMux(3), new DigitalOutputMux(4), new DigitalOutputMux(5)};
         OutputMux[] bmuxes = {new DigitalOutputMux(0)};
         ArrayList<OutputMux> muxes = new ArrayList();
         MuxControlPanel controlPanel = null;
@@ -326,21 +330,19 @@ public class SeeBetter30config extends LatticeMachFX2config{
             TOTAL_CONFIG_BITS = 24;
             
             hasPreferenceList.add(this);
-            configBits = new OnchipConfigBit[6];
-            configBits[0] = resetCalib;
-            configBits[1] = typeNCalib;
-            configBits[2] = resetTestpixel;
-            configBits[3] = hotPixelSuppression;
-            configBits[4] = nArow;
-            configBits[5] = useAout;
+            configBits = new OnchipConfigBit[4];
+            configBits[0] = S1;
+            configBits[1] = S2;
+            configBits[2] = nPadBiasEnable;
+            configBits[3] = nArow;
             for (OnchipConfigBit b : configBits) {
                 b.addObserver(this);
             }
             
             
             muxes.addAll(Arrays.asList(bmuxes)); 
-            muxes.addAll(Arrays.asList(dmuxes)); // 4 digital muxes, first in list since at end of chain - bits must be sent first, before any biasgen bits
-            muxes.addAll(Arrays.asList(amuxes)); // finally send the 3 voltage muxes
+            muxes.addAll(Arrays.asList(dmuxes)); // 5 digital muxes, first in list since at end of chain - bits must be sent first, before any biasgen bits
+            muxes.addAll(Arrays.asList(amuxes)); // finally send the 5 voltage muxes
 
             for (OutputMux m : muxes) {
                 m.addObserver(this);
@@ -349,30 +351,31 @@ public class SeeBetter30config extends LatticeMachFX2config{
 
             bmuxes[0].setName("BiasOutMux");
 
-            bmuxes[0].put(0,"IFThrBn");
-            bmuxes[0].put(1,"AEPuYBp");
+            bmuxes[0].put(0,"PadFollBn");
+            bmuxes[0].put(1,"AEPdBn");
             bmuxes[0].put(2,"AEPuXBp");
-            bmuxes[0].put(3,"LColTimeout");
-            bmuxes[0].put(4,"AEPdBn");
-            bmuxes[0].put(5,"RefrBp");
-            bmuxes[0].put(6,"PrSFBp");
-            bmuxes[0].put(7,"PrBp");
-            bmuxes[0].put(8,"PixInvBn");
-            bmuxes[0].put(9,"LocalBufBn");
-            bmuxes[0].put(10,"ApsROSFBn");
-            bmuxes[0].put(11,"DiffCasBnc");
-            bmuxes[0].put(12,"ApsCasBpc");
-            bmuxes[0].put(13,"OffBn");
-            bmuxes[0].put(14,"OnBn");
-            bmuxes[0].put(15,"DiffBn");
+            bmuxes[0].put(3,"AEPuYBp");
+            bmuxes[0].put(4,"LocalBufBn");
+            bmuxes[0].put(5,"LocalTimeoutBn");
+            bmuxes[0].put(6,"PixInvBn");
+            bmuxes[0].put(7,"VBN2");
+            bmuxes[0].put(8,"VBN1");
+            bmuxes[0].put(9,"VBP4");
+            bmuxes[0].put(10,"VBP3");
+            bmuxes[0].put(11,"VBP2");
+            bmuxes[0].put(12,"VBP1");
+            bmuxes[0].put(13,"VBP0");
+            bmuxes[0].put(14,null);
+            bmuxes[0].put(15,null);
 
-            dmuxes[0].setName("DigMux3");
-            dmuxes[1].setName("DigMux2");
-            dmuxes[2].setName("DigMux1");
-            dmuxes[3].setName("DigMux0");
+            dmuxes[0].setName("DigMux4");
+            dmuxes[1].setName("DigMux3");
+            dmuxes[2].setName("DigMux2");
+            dmuxes[3].setName("DigMux1");
+            dmuxes[4].setName("DigMux0");
 
-            for (int i = 0; i < 4; i++) {
-                dmuxes[i].put(0, "AY179right");
+            for (int i = 0; i < 5; i++) {
+                dmuxes[i].put(0, "AY0right");
                 dmuxes[i].put(1, "Acol");
                 dmuxes[i].put(2, "ColArbTopA");
                 dmuxes[i].put(3, "ColArbTopR");
@@ -381,7 +384,7 @@ public class SeeBetter30config extends LatticeMachFX2config{
                 dmuxes[i].put(6, "Rcarb");
                 dmuxes[i].put(7, "Rcol");
                 dmuxes[i].put(8, "Rrow");
-                dmuxes[i].put(9, "RxarbE");
+                dmuxes[i].put(9, "RxArbE");
                 dmuxes[i].put(10, "nAX0");
                 dmuxes[i].put(11, "nArowBottom");
                 dmuxes[i].put(12, "nArowTop");
@@ -389,54 +392,63 @@ public class SeeBetter30config extends LatticeMachFX2config{
 
             }
 
-            dmuxes[3].put(14, "AY179");
-            dmuxes[3].put(15, "RY179");
-            dmuxes[2].put(14, "AY179");
-            dmuxes[2].put(15, "RY179");
-            dmuxes[1].put(14, "biasCalibSpike");
-            dmuxes[1].put(15, "nRY179right");
+            dmuxes[4].put(14,"AY0");
+            dmuxes[4].put(15,"nRY0");
+            dmuxes[3].put(14, "AY0");
+            dmuxes[3].put(15, "nRY0");
+            dmuxes[2].put(14, null);
+            dmuxes[2].put(15, "nRY0right");
+            dmuxes[1].put(14, null);
+            dmuxes[1].put(15, "nRY0right");
             dmuxes[0].put(14, "nResetRxCol");
-            dmuxes[0].put(15, "nRYtestpixel");
+            dmuxes[0].put(15, "AYTestPixel");
 
-            amuxes[0].setName("AnaMux2");
-            amuxes[1].setName("AnaMux1");
-            amuxes[2].setName("AnaMux0");
+            amuxes[0].setName("AnaMux4");
+            amuxes[1].setName("AnaMux3");
+            amuxes[2].setName("AnaMux2");
+            amuxes[3].setName("AnaMux1");
+            amuxes[4].setName("AnaMux0");
 
-            for (int i = 0; i < 3; i++) {
-                amuxes[i].put(0, "on");
-                amuxes[i].put(1, "off");
-                amuxes[i].put(2, "vdiff");
-                amuxes[i].put(3, "nResetPixel");
-                amuxes[i].put(4, "pr");
-                amuxes[i].put(5, "pd");
+            for (int i = 1; i < 5; i++) {
+                amuxes[i].put(0, "VPHO");
+                amuxes[i].put(1, "VIN");
+                amuxes[i].put(2, "VAMP1_UP");
+                amuxes[i].put(3, "VAMP1_DN");
+                amuxes[i].put(4, "VAMP2_UP");
+                amuxes[i].put(5, "VAMP2_DN");
+                amuxes[i].put(6, null);
+                amuxes[i].put(7, null);
+                amuxes[i].put(8, null);
+                amuxes[i].put(9, null);
+                amuxes[i].put(10, null);
+                amuxes[i].put(11, null);
+                amuxes[i].put(12, null);
+                amuxes[i].put(13, "ON");
+                amuxes[i].put(14, "OFF");
             }
 
-            amuxes[0].put(6, "calibNeuron");
-            amuxes[0].put(7, "nTimeout_AI");
-
-            amuxes[1].put(6, "apsgate");
-            amuxes[1].put(7, "apsout");
-
-            amuxes[2].put(6, "apsgate");
-            amuxes[2].put(7, "apsout");
+            for (int i = 2; i < 5; i++) {
+                amuxes[i].put(15, null);
+            }
+            amuxes[1].put(15, "nTimeOut");
+            
+            for (int i = 4; i < 16; i++) {
+                amuxes[0].put(i, null);
+            }
+            
+            amuxes[0].put(0, "IOUTNN");
+            amuxes[0].put(1, "IOUTNC");
+            amuxes[0].put(2, "IOUTPN");
+            amuxes[0].put(3, "IOUTPC");
 
         }
 
         class VoltageOutputMap extends OutputMap {
 
-            final void put(int k, int v) {
-                put(k, v, "Voltage " + k);
-            }
-
             VoltageOutputMap() {
-                put(0, 1);
-                put(1, 3);
-                put(2, 5);
-                put(3, 7);
-                put(4, 9);
-                put(5, 11);
-                put(6, 13);
-                put(7, 15);
+                for (int i = 0; i < 16; i++) {
+                    put(i, i, "Voltage " + i);
+                }
             }
         }
 
@@ -452,7 +464,7 @@ public class SeeBetter30config extends LatticeMachFX2config{
         class AnalogOutputMux extends OutputMux {
 
             AnalogOutputMux(int n) {
-                super(sbChip, 4, 8, (OutputMap)(new VoltageOutputMap()));
+                super(sbChip, 4, 16, (OutputMap)(new VoltageOutputMap()));
                 setName("Voltages" + n);
             }
         }
@@ -467,16 +479,16 @@ public class SeeBetter30config extends LatticeMachFX2config{
 
         @Override
         public String getBitString(){
-            //System.out.print("dig muxes ");
-            String dMuxBits = getMuxBitString(dmuxes);
             //System.out.print("config bits ");
             String configBits = getConfigBitString();
+            //System.out.print("dig muxes ");
+            String dMuxBits = getMuxBitString(dmuxes);
             //System.out.print("analog muxes ");
             String aMuxBits = getMuxBitString(amuxes);
             //System.out.print("bias muxes ");
             String bMuxBits = getMuxBitString(bmuxes);
 
-            String chipConfigChain = (dMuxBits + configBits + aMuxBits + bMuxBits);
+            String chipConfigChain = (configBits + dMuxBits + aMuxBits + bMuxBits);
             //System.out.println("On chip config chain: "+chipConfigChain);
 
             return chipConfigChain; // returns bytes padded at end

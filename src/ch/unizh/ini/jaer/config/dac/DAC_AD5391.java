@@ -11,6 +11,6 @@ package ch.unizh.ini.jaer.config.dac;
 public class DAC_AD5391 extends DAC{
     
     public DAC_AD5391(float refMinVolts, float refMaxVolts, float vdd){
-        super(16,12,refMinVolts,refMaxVolts,vdd);
+        super(32,12,refMinVolts,refMaxVolts,vdd);
     }
 }

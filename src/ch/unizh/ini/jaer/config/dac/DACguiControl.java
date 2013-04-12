@@ -415,7 +415,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     }
     
     
-    static String[] controlNames={"Type","Sex","Slider","BitValue","BitView"};
+    static String[] controlNames={"Slider","BitValue","BitView"};
     public static JMenu viewMenu;
     static {
         viewMenu=new JMenu("View options");
