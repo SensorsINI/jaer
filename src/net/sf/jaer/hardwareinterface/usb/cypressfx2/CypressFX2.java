@@ -2680,7 +2680,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
     public int getFifoSize() {
         if (aeReader == null) {
-            return 0;
+            return -1;
         } else {
             return aeReader.getFifoSize();
         }

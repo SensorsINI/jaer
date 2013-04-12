@@ -853,7 +853,6 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         setAeReader(new MonSeqAEReader(this));
         allocateAEBuffers();
         getAeReader().startThread(3); // arg is number of errors before giving up
-        HardwareInterfaceException.clearException();
     }
 
     /** This reader understands the format of raw USB data and translates to the AEPacketRaw */

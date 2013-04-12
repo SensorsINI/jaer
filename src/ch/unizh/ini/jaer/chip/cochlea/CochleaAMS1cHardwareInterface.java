@@ -14,6 +14,7 @@ import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2Biasgen;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
 
 /**
@@ -21,7 +22,7 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
  * 
  * @author tobi
  */
-public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer implements BiasgenHardwareInterface {
+public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements BiasgenHardwareInterface {
 
     /** The USB product ID of this device */
     static public final short PID = (short) 0x8406;
@@ -123,7 +124,6 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer im
         setAeReader(new AEReader(this));
         allocateAEBuffers();
         getAeReader().startThread(3); // arg is number of errors before giving up
-        HardwareInterfaceException.clearException();
     }
 
     /** Determines if data is AER address
@@ -172,7 +172,7 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2MonitorSequencer im
     }
 
     /** This reader understands the format of raw USB data and translates to the AEPacketRaw */
-    public class AEReader extends CypressFX2MonitorSequencer.MonSeqAEReader {
+    public class AEReader extends CypressFX2Biasgen.AEReader {
 
         /*
          * data type fields
