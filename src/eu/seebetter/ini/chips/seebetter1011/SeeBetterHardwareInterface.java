@@ -234,11 +234,17 @@ public class SeeBetterHardwareInterface extends CypressFX2Biasgen {
      */
     @Override
     public void startAEReader() throws HardwareInterfaceException {  // raphael: changed from private to protected, because i need to access this method
+        
+        
         setAeReader(new RetinaAEReader(this));
         allocateAEBuffers();
 
         getAeReader().startThread(3); // arg is number of errors before giving up
-        HardwareInterfaceException.clearException();
+        int fifoSize;
+        if ((fifoSize=getAeReader().getFifoSize()) < 4096) {
+            log.warning("AEReader FIFO size of "+fifoSize+" bytes is probably too small to handle SeeBetter APS output; frame start events will be lost.\nIncrease size in USB menu");
+        }
+         HardwareInterfaceException.clearException();
     }
     boolean gotY = false; // TODO  hack for debugging state machine
 
