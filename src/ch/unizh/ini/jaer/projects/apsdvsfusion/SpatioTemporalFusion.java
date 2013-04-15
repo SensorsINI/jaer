@@ -1105,15 +1105,17 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 							map.setEnabled(show);
 							map.setMonitored(show);
 							map.setControlsExpanded(show);
-							SignalTransformationKernel onKernel = map.getKernel(0);
-							if (onKernel != null) {
-								onKernel.setEnabled(true);
-								onKernel.setControlsExpanded(false);
-							}
-							SignalTransformationKernel feedbackKernel = map.getKernel(1);
-							if (feedbackKernel != null) {
-								feedbackKernel.setEnabled(false);
-								feedbackKernel.setControlsExpanded(true);
+							if (show) {
+								SignalTransformationKernel onKernel = map.getKernel(0);
+								if (onKernel != null) {
+									onKernel.setEnabled(true);
+									onKernel.setControlsExpanded(false);
+								}
+								SignalTransformationKernel feedbackKernel = map.getKernel(1);
+								if (feedbackKernel != null) {
+									feedbackKernel.setEnabled(false);
+									feedbackKernel.setControlsExpanded(true);
+								}
 							}
 							index++;
 						}
