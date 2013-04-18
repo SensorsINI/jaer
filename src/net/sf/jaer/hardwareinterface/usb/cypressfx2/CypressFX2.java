@@ -1191,7 +1191,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     private int aeReaderFifoSize = prefs.getInt("CypressFX2.AEReader.fifoSize", 8192);
 
     /** sets the buffer size for the aereader thread. optimal size depends on event rate, for high event
-     *  rates, at least 4096 bytes should be chosen, using caviarviewer and low event rates need smaller
+     *  rates, at least 8k or 16k bytes should be chosen, and low event rates need smaller
      *  buffer size to produce suitable frame rates*/
     public void setAEReaderFifoSize(int size) {
         this.aeReaderFifoSize = size;
