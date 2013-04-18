@@ -172,8 +172,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             return;
         }
         this.packet = packet;
-        if (packet.getEventClass() != ApsDvsEvent.class) {
-            log.warning("wrong input event class, got " + packet.getEventClass() + " but we need to have " + ApsDvsEvent.class);
+        if (!(packet.getEventPrototype() instanceof ApsDvsEvent)) {
+            log.warning("wrong input event class, got " + packet.getEventPrototype() + " but we need to have " + ApsDvsEvent.class);
             return;
         }
         if (!accumulateEnabled){
