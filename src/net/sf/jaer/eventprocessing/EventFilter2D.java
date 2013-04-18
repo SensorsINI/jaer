@@ -73,9 +73,9 @@ abstract public class EventFilter2D extends EventFilter {
     /** Checks <code>out</code>  packet to make sure it holds the same type of events as the given class. 
      * This method is used for filters that must pass output
     that has a particular output type.  This method does not ensure that the output packet is of the correct subtype of EventPacket.
-    @param outClass the output packet.
+    @param outClass the output packet event type class.
      @see #out
-     * @see EventPacket#nextPacket
+     * @see EventPacket#getNextPacket
      * @see #checkOutputPacketEventType(java.lang.Class) 
     */
     protected void checkOutputPacketEventType(Class<? extends BasicEvent> outClass) {
