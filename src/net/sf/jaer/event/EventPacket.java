@@ -447,7 +447,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
             capacity = ncapacity;
         } catch (OutOfMemoryError e) {
             log.log(Level.WARNING, "{0}: could not enlarge packet capacity from {1}", new Object[]{e.toString(), capacity});
-            throw new ArrayIndexOutOfBoundsException("could not enlarge capacity from "+capacity);
+            throw new ArrayIndexOutOfBoundsException(e.toString()+ ":could not enlarge capacity from "+capacity);
         }
     }
     
