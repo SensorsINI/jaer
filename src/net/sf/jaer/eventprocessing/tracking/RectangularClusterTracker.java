@@ -2579,7 +2579,9 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         if (in.getSize() == 0) {
             return in; // added so that packets don't use a zero length packet to set last timestamps, etc, which can purge clusters for no reason
         }//        EventPacket out; // TODO check use of out packet here, doesn't quite make sense
-        if (filterEventsEnabled) {
+        if(in instanceof ApsDvsEventPacket){
+            checkOutputPacketEventType(in); // make sure memory is allocated to avoid leak
+        }else  if (filterEventsEnabled) {
             checkOutputPacketEventType(RectangularClusterTrackerEvent.class);
         }
         if (enclosedFilter != null) {
@@ -3386,7 +3388,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
          */
         protected Cluster findClusterNear(BasicEvent e) {
             Cluster c=null;
-            c = grid[(int) (e.x)>>SUBSAMPLE_BY][(int) (e.y )>>SUBSAMPLE_BY];
+            c = grid[(int) (e.x)>>>SUBSAMPLE_BY][(int) (e.y )>>>SUBSAMPLE_BY];
             if (c == null) {
                 if (useNearestCluster) {
                     c = getNearestCluster(e);
