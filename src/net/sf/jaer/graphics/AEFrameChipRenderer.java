@@ -25,7 +25,7 @@ import net.sf.jaer.config.ApsDvsConfig;
 import net.sf.jaer.util.filter.LowpassFilter2d;
 
 /**
- * Class adpated from AEChipRenderer to render not only AE events but also
+ * Class adapted from AEChipRenderer to render not only AE events but also
  * frames.
  * 
  * The frame buffer is RGBA so four bytes per pixel
@@ -378,8 +378,9 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     private float normalizeFramePixel(float value) {
         float v;
-        if (!config.isUseAutoContrast()) {
-            v = (float) (config.getContrast()*value+config.getBrightness()) / (float) maxADC;
+        if (!config.isUseAutoContrast()) { // fixed rendering computed here
+            
+            v = (float) (Math.pow(((config.getContrast()*value+config.getBrightness()) / (float) maxADC),config.getGamma()));
         } else {
             java.awt.geom.Point2D.Float filter2d = lowpassFilter.getValue2d();
             float offset = filter2d.x;

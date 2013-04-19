@@ -5,7 +5,8 @@
 package net.sf.jaer.config;
 
 /**
- *
+ * Configuration interface for apsDVS vision sensor output rendering.
+ * 
  * @author Christian
  */
 public interface ApsDvsConfig {
@@ -29,4 +30,8 @@ public interface ApsDvsConfig {
     public abstract float getBrightness();
     
     public abstract void setBrightness(float brightness);
+    
+    public abstract float getGamma();
+    public abstract void setGamma(float gamma);
+    
 }

@@ -37,7 +37,8 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.ParameterControlPanel;
 
 /**
- *
+ * Video acquisition and rendering controls for the apsDVS vision sensor.
+ * 
  * @author Christian
  */
 public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
@@ -442,6 +443,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         public boolean useAutoContrast = chip.getPrefs().getBoolean("VideoControl.useAutoContrast", false);
         public float contrast = chip.getPrefs().getFloat("VideoControl.contrast", 1.0f);
         public float brightness = chip.getPrefs().getFloat("VideoControl.brightness", 0.0f);
+        private float gamma=chip.getPrefs().getFloat("VideoControl.gamma",1); // gamma control for improving display on crappy beamer output
         
         public VideoControl() {
             hasPreferenceList.add(this);
@@ -527,6 +529,22 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
             chip.getAeViewer().interruptViewloop();
         }
 
+        /**
+         * @return the gamma
+         */
+        public float getGamma() {
+            return gamma;
+        }
+
+        /**
+         * @param gamma the gamma to set
+         */
+        public void setGamma(float gamma) {
+            this.gamma = gamma;
+            chip.getPrefs().putFloat("VideoControl.gamma", gamma);
+            chip.getAeViewer().interruptViewloop();
+        }
+        
         @Override
         public void update(Observable o, Object arg) {
             setChanged();
@@ -550,6 +568,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
             useAutoContrast = chip.getPrefs().getBoolean("VideoControl.useAutoContrast", false);
             contrast = chip.getPrefs().getFloat("VideoControl.contrast", 1.0f);
             brightness = chip.getPrefs().getFloat("VideoControl.brightness", 0.0f);
+            gamma=chip.getPrefs().getFloat("VideoControl.gamma",1f);
         }
 
         @Override
@@ -559,7 +578,10 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
             chip.getPrefs().putBoolean("VideoControl.useAutoContrast", useAutoContrast);
             chip.getPrefs().putFloat("VideoControl.contrast", contrast);
             chip.getPrefs().putFloat("VideoControl.brightness", brightness);
+            chip.getPrefs().putFloat("VideoControl.gamma", gamma);
         }
+
+
     }
     
     @Override
@@ -611,6 +633,18 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
     public void setBrightness(float brightness){
         videoControl.setBrightness(brightness);
     }
+    
+    @Override
+    public float getGamma(){
+        return videoControl.getGamma();
+    }
+    
+    @Override
+    public void setGamma(float gamma){
+        videoControl.setGamma(gamma);
+    }
+    
+    
 
     /**
     * Formats bits represented in a string as '0' or '1' as a byte array to be sent over the interface to the firmware, for loading
