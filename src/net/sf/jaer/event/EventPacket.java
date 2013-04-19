@@ -129,8 +129,11 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         return nextPacket;
     }
     
-   /** Sets the packet to which events are copied in a filter to allow bypassing the filter. Use this method in an EventFilter before iterating over events.
+   /** Sets the packet to which events are copied in a filter to allow these events to bypass a filter. These events may be of the wrong type to process, for instance.
+    * Use this method in an EventFilter before iterating over events.
     * <code>next</code> is the output packet of an EventFilter, obtained from <code>checkOutputPacketEventType</code>.
+    * 
+    * TODO provide concrete example
     * 
     * @param next the output packet of the filter using the iterator of this packet.
     * @see EventFilter2D#checkOutputPacketEventType(net.sf.jaer.event.EventPacket) 
