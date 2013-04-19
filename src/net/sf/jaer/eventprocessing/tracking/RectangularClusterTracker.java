@@ -544,7 +544,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
      * @param ae the event packet.
      * @param t the global timestamp of the update.
      */
-    protected void updateClusterList(EventPacket<BasicEvent> ae, int t) {
+    protected void updateClusterList(int t) {
 //        log.info("updating cluster list at time="+t);
         pruneClusters(t);
         mergeClusters();
@@ -640,12 +640,9 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
      * @param in the event packet.
      * @return a possibly filtered event packet passing only events contained in the tracked and visible Clusters, depending on filterEventsEnabled.
      */
-    synchronized protected EventPacket<? extends BasicEvent> track(EventPacket<BasicEvent> in) {
+    synchronized protected EventPacket<? extends BasicEvent> track(EventPacket<?> in) {
         boolean updatedClusterList = false;
-        OutputEventIterator outItr = null;
-        if (filterEventsEnabled) {
-            outItr = out.outputIterator(); // reset output packet
-        }
+        OutputEventIterator outItr = out.outputIterator();
         int n = in.getSize();
         if (n == 0) {
             return out;
@@ -691,13 +688,13 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //                updatedClusterList = true;
 //            }
             if (logDataEnabled) {
-                logData(ev, in);
+                logData(ev, (EventPacket<BasicEvent>)in);
             }
         }
         // TODO update here again, relying on the fact that lastEventTimestamp was set by possible previous update according to
         // schedule; we have have double update of velocityPPT using same dt otherwise
         if (!updatedClusterList) {
-            updateClusterList(in, lastTimestamp); // at laest once per packet update list
+            updateClusterList(lastTimestamp); // at laest once per packet update list
         }
 //        for (Cluster c : clusters) {
 //            if (!c.isVisible()) {
@@ -708,11 +705,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //            oe.setY((short) c.getLocation().y);
 //            oe.setCluster(c);
 //        }
-        if (filterEventsEnabled) {
-            return out;
-        } else {
-            return in;
-        }
+        return out;
     }
 
     /** Returns total number of clusters, including those that have been
@@ -2576,21 +2569,25 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
      * @return packet of RectangularClusterTrackerEvent.
      */
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+        if (!filterEnabled) {
+            return in;
+        }
         if (in.getSize() == 0) {
             return in; // added so that packets don't use a zero length packet to set last timestamps, etc, which can purge clusters for no reason
         }//        EventPacket out; // TODO check use of out packet here, doesn't quite make sense
+        if (enclosedFilter != null) {
+            in = enclosedFilter.filterPacket(in);
+        }
         if(in instanceof ApsDvsEventPacket){
             checkOutputPacketEventType(in); // make sure memory is allocated to avoid leak
         }else  if (filterEventsEnabled) {
             checkOutputPacketEventType(RectangularClusterTrackerEvent.class);
         }
-        if (enclosedFilter != null) {
-            out = enclosedFilter.filterPacket(in);
-            out = track(out);
+        out = track(in);
+        if (filterEventsEnabled) {
             return out;
         } else {
-            out = track((EventPacket<BasicEvent>) in);
-            return out;
+            return in;
         }
     }
 
@@ -2730,7 +2727,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     public void update(Observable o, Object arg) {
         if (o == this) {
             UpdateMessage msg = (UpdateMessage) arg;
-            updateClusterList(msg.packet, msg.timestamp);
+            updateClusterList(msg.timestamp);
         } else if (o instanceof AEChip) {
             initFilter();
         }

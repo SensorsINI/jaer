@@ -938,7 +938,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
      * @param gl
      */
     private void drawText(GL gl) {
-        if (xLabel == null && yLabel == null && titleLabel == null && xticks == null && yticks == null) {
+        if (xLabel == null && yLabel == null && titleLabel == null && xticks == null && yticks == null && legends.isEmpty()) {
             return;
         }
 
@@ -1078,9 +1078,9 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
                 }
                 Rectangle2D r = textRenderer.getBounds(line);
                 yshift -= r.getHeight(); // shifts down because origin is UL and y increases downwards according to Java 2D convention
-                if (!first) {
-                    line = "  " + line;
-                }
+//                if (!first) { //these indents are not so cool
+//                    line = "  " + line;
+//                }
                 first = false;
                 textRenderer.setColor(legend.color[0], legend.color[1], legend.color[2], 1);
                 textRenderer.draw(line, (int) (legend.x / scale - clipArea.left / scale), Math.round(legend.y / scale - clipArea.bottom / scale + yshift));
