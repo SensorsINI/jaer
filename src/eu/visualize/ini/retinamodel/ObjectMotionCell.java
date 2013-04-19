@@ -16,6 +16,7 @@ import javax.media.opengl.glu.GLU;
 import javax.media.opengl.glu.GLUquadric;
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
@@ -71,6 +72,9 @@ public class ObjectMotionCell extends EventFilter2D implements FrameAnnotater, O
         if (!(in.getEventPrototype() instanceof PolarityEvent)) {
             return in;
         }
+        if(in instanceof ApsDvsEventPacket){
+            checkOutputPacketEventType(in); // make sure memory is allocated to avoid leak. we don't use output packet but it is necesary to iterate over DVS events only
+        }        
         if(subunits==null) resetFilter();
         for (Object o : in) {
             PolarityEvent e = (PolarityEvent) o;
@@ -87,7 +91,6 @@ public class ObjectMotionCell extends EventFilter2D implements FrameAnnotater, O
             }
         }
 //        System.out.println(String.format("spikeRate=%.1g \tonActivity=%.2f \toffActivity=%.1f", approachCellModel.spikeRate, inhibition, offExcitation));
-
         return in;
     }
 
@@ -180,8 +183,10 @@ public class ObjectMotionCell extends EventFilter2D implements FrameAnnotater, O
         synchronized public void update(PolarityEvent e) {
             // subsample retina address to clump retina input pixel blocks.
             int x = e.x >> subunitSubsamplingBits, y = e.y >> subunitSubsamplingBits;
+            if(x<nx&&y<ny) {
             // all subunits are excited by any retina on or off activity
                     subunits[x][y].update(e);
+            }
             maybeDecayAll(e);
         }
 
@@ -247,10 +252,11 @@ public class ObjectMotionCell extends EventFilter2D implements FrameAnnotater, O
             final float alpha = .2f;
             final float scaleRadius = .05f;
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
+            int off=1<<(subunitSubsamplingBits)/2;
             for (int x = 0; x < nx; x++) {
                 for (int y = 0; y < ny; y++) {
                     gl.glPushMatrix();
-                    gl.glTranslatef(x << subunitSubsamplingBits, y << subunitSubsamplingBits, 5);
+                    gl.glTranslatef(x << subunitSubsamplingBits+off, y << subunitSubsamplingBits+off, 5);
                     gl.glColor4f(1, 0, 0, alpha);
                     glu.gluDisk(quad, 0, scaleRadius * subunits[x][y].computeInputToCell(), 16, 1);
                     gl.glPopMatrix();
@@ -258,9 +264,9 @@ public class ObjectMotionCell extends EventFilter2D implements FrameAnnotater, O
             }
             renderer.begin3DRendering();
             renderer.setColor(0, 1, 0, 1);
-            renderer.draw3D("Inhibitory ON subunits", 0, chip.getSizeY(), 0, .5f);
+            renderer.draw3D("Center", 0, chip.getSizeY(), 0, .5f);
             renderer.setColor(1, 0, 0, 1);
-            renderer.draw3D("Excitatory OFF subunits", chip.getSizeX()/2, chip.getSizeY(), 0,.5f);
+            renderer.draw3D("Surround", chip.getSizeX()/2, chip.getSizeY(), 0,.5f);
             renderer.end3DRendering();
 
 
