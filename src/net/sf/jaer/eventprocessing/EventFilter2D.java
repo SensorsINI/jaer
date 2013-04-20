@@ -74,6 +74,7 @@ abstract public class EventFilter2D extends EventFilter {
             return;
         }
         out = in.getNextPacket();
+        resetOut(); // tobi added to make sure output packet is reset even if the subclass never uses the output iterator explicitly.
     }
     
     /** Checks <code>out</code>  packet to make sure it holds the same type of events as the given class. 
