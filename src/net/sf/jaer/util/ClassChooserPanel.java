@@ -53,7 +53,7 @@ import net.sf.jaer.DevelopmentStatus;
  * A panel that finds subclasses of a class, displays them in a left list,
  * displays another list given as a parameter in the right panel, and accepts a
  * list of default class names. The user can choose which classes and these are
- * returned by a call to getList.
+ * returned by a call to getList. The list of available classes is built in the background.
  *
  * @author tobi
  */
@@ -171,6 +171,11 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                             }
                         };
                         addAction(availClassJList, addAction);
+                        if(!availFilterTextField.getText().isEmpty()){
+                            // user started to select a class before list was populated
+                            String s = availFilterTextField.getText();
+                            availClassesListModel.filter(s);
+                        }
                     } catch (Exception ex) {
                         Logger.getLogger(ClassChooserPanel.class.getName()).log(Level.SEVERE, null, ex);
                     } finally {
