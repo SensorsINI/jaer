@@ -110,9 +110,10 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
             E output = (E) elementData[cursor++];
             //bypass APS events
             E nextIn = (E) elementData[cursor];
+            OutputEventIterator outItr=nextPacket.getOutputIterator();
             while(nextIn.isAdcSample() && cursor<size){
                 if (nextPacket != null) {
-                    E nextOut = (E) nextPacket.getOutputIterator().nextOutput();
+                    E nextOut = (E) outItr.nextOutput();
                     nextOut.copyFrom(nextIn);
                 }
                 cursor++;

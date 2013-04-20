@@ -50,6 +50,8 @@ public class ObjectMotionCell extends EventFilter2D implements FrameAnnotater, O
     private SpikeSound spikeSound = new SpikeSound();
     float inhibition = 0, centerExcition=0; // summed subunit input to object motion cell
     private TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 10), true, true);
+    private float subunitActivityBlobRadiusScale=getFloat("subunitActivityBlobRadiusScale",0.1f);
+            
 
     public ObjectMotionCell(AEChip chip) {
         super(chip);
@@ -64,6 +66,7 @@ public class ObjectMotionCell extends EventFilter2D implements FrameAnnotater, O
         setPropertyTooltip("centerExcitationToSurroundInhibitionRatio", "Inhibitory ON subunits are weighted by factor more than excitatory OFF subunit activity to the approach cell");
         setPropertyTooltip("minUpdateIntervalUs", "subunits activities are decayed to zero at least this often in us, even if they receive no input");
         setPropertyTooltip("surroundSuppressionEnabled", "subunits are suppressed by surrounding activity of same type; reduces response to global dimming");
+        setPropertyTooltip("subunitActivityBlobRadiusScale", "The blobs represeting subunit activation are scaled by this factor");
 
     }
     private int lastApproachCellSpikeCheckTimestamp = 0;
@@ -75,7 +78,8 @@ public class ObjectMotionCell extends EventFilter2D implements FrameAnnotater, O
         }
         if(in instanceof ApsDvsEventPacket){
             checkOutputPacketEventType(in); // make sure memory is allocated to avoid leak. we don't use output packet but it is necesary to iterate over DVS events only
-        }        
+        }  
+        resetOut();
         if(subunits==null) resetFilter();
         for (Object o : in) {
             PolarityEvent e = (PolarityEvent) o;
@@ -161,6 +165,21 @@ public class ObjectMotionCell extends EventFilter2D implements FrameAnnotater, O
         if (arg != null && (arg == AEChip.EVENT_SIZEX || arg == AEChip.EVENT_SIZEY) && chip.getNumPixels() > 0) {
             initFilter();
         }
+    }
+
+    /**
+     * @return the subunitActivityBlobRadiusScale
+     */
+    public float getSubunitActivityBlobRadiusScale() {
+        return subunitActivityBlobRadiusScale;
+    }
+
+    /**
+     * @param subunitActivityBlobRadiusScale the subunitActivityBlobRadiusScale to set
+     */
+    public void setSubunitActivityBlobRadiusScale(float subunitActivityBlobRadiusScale) {
+        this.subunitActivityBlobRadiusScale = subunitActivityBlobRadiusScale;
+        putFloat("subunitActivityBlobRadiusScale",subunitActivityBlobRadiusScale);
     }
 
     // handles all subunits on and off
@@ -251,15 +270,14 @@ public class ObjectMotionCell extends EventFilter2D implements FrameAnnotater, O
 
         private void render(GL gl) {
             final float alpha = .2f;
-            final float scaleRadius = .05f;
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
-            int off=1<<(subunitSubsamplingBits)/2;
+            int off=(1<<(subunitSubsamplingBits))/2;
             for (int x = 0; x < nx; x++) {
                 for (int y = 0; y < ny; y++) {
                     gl.glPushMatrix();
-                    gl.glTranslatef(x << subunitSubsamplingBits+off, y << subunitSubsamplingBits+off, 5);
+                    gl.glTranslatef((x << subunitSubsamplingBits)+off, (y << subunitSubsamplingBits)+off, 5);
                     gl.glColor4f(1, 0, 0, alpha);
-                    glu.gluDisk(quad, 0, scaleRadius * subunits[x][y].computeInputToCell(), 16, 1);
+                    glu.gluDisk(quad, 0, subunitActivityBlobRadiusScale * subunits[x][y].computeInputToCell(), 16, 1);
                     gl.glPopMatrix();
                 }
             }

@@ -19,7 +19,13 @@ import net.sf.jaer.event.*;
 import net.sf.jaer.event.EventPacket;
 
 /**
- * A filter that filters or otherwise processes a packet of events.
+ * A filter that filters or otherwise processes a packet of events. <code>EventFilter2D</code> is the base class
+ * for all processing methods in jAER. 
+ * 
+ * <p>
+ * The method <code>filterPacket</code> is called when data is available to be processed.
+ * A subclass implements <code>filterPacket</code> along with <code>resetFilter</code>.
+ * 
  * <p>
  * 
  * @author tobi
@@ -40,7 +46,7 @@ abstract public class EventFilter2D extends EventFilter {
 
     protected float currentUpdateIntervalMs;
 
-    /** Resets the output packet to be a new packet if none has been instanced or clears the packet
+    /** Resets the output packet to be a new packet if none has been constructed or clears the packet
     if it exists
      */
     protected void resetOut() {
