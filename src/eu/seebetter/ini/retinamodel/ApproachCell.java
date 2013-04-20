@@ -366,8 +366,8 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
                 }
             }
             onInhibition /= ntot;
-            ApproachCell.this.onInhibition = onInhibition;
-            return onInhibition;
+            ApproachCell.this.onInhibition = onOffWeightRatio * synapticWeight * onInhibition;
+            return ApproachCell.this.onInhibition;
         }
 
         float computeOffExcitation() {
@@ -378,8 +378,8 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
                 }
             }
             offExcitation /= ntot;
-            ApproachCell.this.offExcitation = offExcitation;
-            return offExcitation;
+            ApproachCell.this.offExcitation = synapticWeight * offExcitation;
+            return ApproachCell.this.offExcitation;
         }
 
         synchronized private void reset() {
@@ -507,11 +507,13 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
 //        float refracPeriodMs;
         Random r = new Random();
 
+        /** Returns true if neuron spikes this time interval */
         synchronized private boolean update(int timestamp) {
             // compute subunit input to us
-            spikeRate = synapticWeight * (subunits.computeOffExcitation() - onOffWeightRatio * subunits.computeOnInhibition());
+            spikeRate = (subunits.computeOffExcitation() - subunits.computeOnInhibition());
             int dtUs = timestamp - lastTimestamp;
             lastTimestamp = timestamp;
+            if(spikeRate<0) return false;
             if (spikeRate > getMaxSpikeRateHz()) {
                 spikeRate = getMaxSpikeRateHz();
             }
