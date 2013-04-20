@@ -214,6 +214,8 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
         if (!(in.getEventPrototype() instanceof PolarityEvent)) {
             return in;
         }
+        checkOutputPacketEventType(in);
+        resetOut();
         if(subunits==null) resetFilter();
         for (Object o : in) {
             PolarityEvent e = (PolarityEvent) o;
@@ -319,6 +321,7 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
         synchronized public void update(PolarityEvent e) {
             // subsample retina address to clump retina input pixel blocks.
             int x = e.x >> subunitSubsamplingBits, y = e.y >> subunitSubsamplingBits;
+            if(x>=nx || y>=ny) return;
             // on subunits are updated by ON events, off by OFF events
             switch (e.polarity) {
                 case Off: // these subunits are excited by OFF events and in turn excite the approach cell
