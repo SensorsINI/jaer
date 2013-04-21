@@ -165,7 +165,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
      * @return a possibly filtered event packet passing only events contained in the tracked and visible Clusters, depending on filterEventsEnabled.
      */
     @Override
-    synchronized protected EventPacket<? extends BasicEvent> track(EventPacket<BasicEvent> in) {
+    synchronized protected EventPacket track(EventPacket in) {
         boolean updatedClusterList = false;
         crashedCar = null; // before possible prune operation that could set this field to non-null
         out = getEnclosedFilterChain().filterPacket(in);
@@ -189,7 +189,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
         // TODO update here again, relying on the fact that lastEventTimestamp was set by possible previous update according to
         // schedule; we have have double update of velocityPPT using same dt otherwise
         if (!updatedClusterList && in.getSize() > 0) { // make sure we have at least one event here to getString a timestamp
-            updateClusterList(in, in.getLastTimestamp()); // at laest once per packet update list
+            updateClusterList(in.getLastTimestamp()); // at laest once per packet update list
         }
 
         if (track == null) {
