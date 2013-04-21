@@ -175,7 +175,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
         return new StereoCluster(ev, itr);
     }
     
-    synchronized protected EventPacket track (EventPacket<BasicEvent> ae){
+    synchronized protected EventPacket track (EventPacket ae){
         super.track(ae);
 
         // iterate over all clusters, updating them for outside values that user may want
