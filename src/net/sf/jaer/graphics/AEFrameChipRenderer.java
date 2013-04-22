@@ -376,6 +376,12 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         return textureHeight;
     }
 
+    /** Computes the normalized gray value from an ADC sample value using brightness (offset), contrast (mulitplier), and gamma (power law).
+     * Takes account of the autoContrast setting which attempts to set value automatically to get image in range of display.
+     * 
+     * @param value the ADC value
+     * @return the gray value
+     */
     private float normalizeFramePixel(float value) {
         float v;
         if (!config.isUseAutoContrast()) { // fixed rendering computed here
