@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.Random;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import javax.media.opengl.GLException;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -47,6 +48,13 @@ public class HotPixelSupressor extends EventFilter2D implements FrameAnnotater{
     
     private Random r = new Random();
     private EventRateEstimator eventRateEstimator;
+    
+    private class HotPixel{
+        int x,y,address,lasttimestamp;
+        HotPixel(BasicEvent e){
+            x=e.x; y=e.y; address=e.timestamp; lasttimestamp=e.timestamp;
+        }
+    }
 
     public HotPixelSupressor(AEChip chip) {
         super(chip);
@@ -63,6 +71,7 @@ public class HotPixelSupressor extends EventFilter2D implements FrameAnnotater{
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         checkOutputPacketEventType(in);
         OutputEventIterator outItr=out.outputIterator();
+        eventRateEstimator.filterPacket(in);
         float rate=eventRateEstimator.getFilteredEventRate();
         for (BasicEvent e : in) {
             if (rate<thresholdEventRate && r.nextFloat() < getBaselineProbability()) {
@@ -147,10 +156,17 @@ public class HotPixelSupressor extends EventFilter2D implements FrameAnnotater{
     public void annotate(GLAutoDrawable drawable) {
         if(!showHotPixels) return;
         GL gl = drawable.getGL();
-        gl.glColor4f(1, 1, 1,0.2f);
+           try{
+                gl.glEnable(GL.GL_BLEND);
+                gl.glBlendFunc(GL.GL_SRC_ALPHA,GL.GL_ONE_MINUS_SRC_ALPHA);
+                gl.glBlendEquation(GL.GL_FUNC_ADD);
+            }catch(GLException e){
+                e.printStackTrace();
+            }
+        gl.glColor4f(.5f, .5f, .5f,.5f);
         gl.glLineWidth(1f);
         for (Point p : hotPixPointMap.values()) {
-            gl.glRectf(p.x - 1, p.y - 1, p.x + 1, p.y + 1);
+            gl.glRectf(p.x - 1, p.y - 1, p.x + 2, p.y + 2);
         }
     }
 
