@@ -27,6 +27,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.ChipRendererDisplayMethod;
 import net.sf.jaer.graphics.DisplayMethod;
+import net.sf.jaer.graphics.DisplayMethod2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.SpikeSound;
@@ -161,10 +162,11 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
 
     @Override
     public EventPacket filterPacket(EventPacket in) {
+        checkOutputPacketEventType(in); // added to prevent memory leak when iterating ApsDVSEventPacket - tobi
         if (!selecting) {
             stats.collectStats(in);
         }
-        return in;
+        return in; // should this be out rather than in for scheme for iterating dvs or apsdvs event packets? - tobi
     }
 
     @Override
@@ -177,9 +179,10 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     public void initFilter() {
     }
 
+    @Override
     public void annotate(GLAutoDrawable drawable) {
-        if (canvas.getDisplayMethod() instanceof ChipRendererDisplayMethod) {
-            chipRendererDisplayMethod = (ChipRendererDisplayMethod) canvas.getDisplayMethod();
+        if (canvas.getDisplayMethod() instanceof DisplayMethod2D ) {
+//            chipRendererDisplayMethod = (ChipRendererDisplayMethod) canvas.getDisplayMethod();
             displayStats(drawable);
         }
     }
@@ -232,6 +235,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     public void mouseWheelMoved(MouseWheelEvent e) {
     }
 
+    @Override
     public void mouseReleased(MouseEvent e) {
         if (startPoint == null) {
             return;
@@ -249,12 +253,14 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         return a > b ? a : b;
     }
 
+    @Override
     public void mousePressed(MouseEvent e) {
         Point p = canvas.getPixelFromMouseEvent(e);
         startPoint = p;
         selecting = true;
     }
 
+    @Override
     public void mouseMoved(MouseEvent e) {
         currentMousePoint = canvas.getPixelFromMouseEvent(e);
         for (int k = 0; k < chip.getNumCellTypes(); k++) {
@@ -263,13 +269,16 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         }
     }
 
+    @Override
     public void mouseExited(MouseEvent e) {
         selecting = false;
     }
 
+    @Override
     public void mouseEntered(MouseEvent e) {
     }
 
+    @Override
     public void mouseDragged(MouseEvent e) {
         if (startPoint == null) {
             return;
@@ -277,6 +286,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         getSelection(e);
     }
 
+    @Override
     public void mouseClicked(MouseEvent e) {
         Point p = canvas.getPixelFromMouseEvent(e);
         clickedPoint = p;
@@ -362,6 +372,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         return stats.isShowIndividualISIHistograms();
     }
 
+    @Override
     synchronized public void update(Observable o, Object arg) {
         currentAddress = new int[chip.getNumCellTypes()];
         Arrays.fill(currentAddress, -1);
