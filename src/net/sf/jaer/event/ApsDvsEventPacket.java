@@ -42,7 +42,7 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
     }
     
     /** 
-     *  This method returns the "next" packet, whatever that is TODO explain please 
+     *  This method constructs and returns the "next" packet, whatever that is TODO explain please 
      * @return 
      */
     @Override
@@ -81,17 +81,22 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
         return fullIterator;
     }
     
-    /** Initializes and returns the iterator */
+    /** Initializes and returns an iterator over events of type <E> consisting of the DVS events.
+     @return an Iterator
+     */
     @Override
     public Iterator<E> iterator() {
         return inputIterator();
     }
     
-    /** This iterator iterates over DVS events by copying only them to a reused temporary buffer "output" packet that is returned and is used for iteration. Remember to call checkOutputPacket or memory will be quickly consumed. See BackgroundActivityFilter for example.
+    /** This iterator iterates over DVS events by copying 
+     * only them to a reused temporary buffer "output" 
+     * packet that is returned and is used for iteration. 
+     * Remember to call checkOutputPacket or memory will be quickly consumed. See BackgroundActivityFilter for example.
      * 
      */
     public class InDvsItr extends InItr{
-        int cursor;
+        int cursorDvs;
         boolean usingTimeout=timeLimitTimer.isEnabled();
 
         public InDvsItr() {
@@ -100,45 +105,46 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
 
         public boolean hasNext() {
             if(usingTimeout) {
-                return cursor<size&&!timeLimitTimer.isTimedOut();
+                return cursorDvs<size&&!timeLimitTimer.isTimedOut();
             } else {
-                return cursor<size;
+                return cursorDvs<size;
             }
         }
 
         public E next() {
-            E output = (E) elementData[cursor++];
+            E output = (E) elementData[cursorDvs++]; // get next element of this packet (guarenteed to be dvs event how?) and advance cursor
             //bypass APS events
-            E nextIn = (E) elementData[cursor];
-            OutputEventIterator outItr=nextPacket.getOutputIterator();
-            while(nextIn.isAdcSample() && cursor<size){
+            E nextIn = (E) elementData[cursorDvs]; // get the next element
+            OutputEventIterator outItr=nextPacket.getOutputIterator(); // and the output iterator for the "nextPacket"
+            while(nextIn.isAdcSample() && cursorDvs<size){ // while the event is an ADC sample and we are not done with packet
                 if (nextPacket != null) {
-                    E nextOut = (E) outItr.nextOutput();
+                    // copy the ADC sample to nextPacket
+                    E nextOut = (E) outItr.nextOutput();  
                     nextOut.copyFrom(nextIn);
                 }
-                cursor++;
-                nextIn = (E) elementData[cursor];
+                cursorDvs++;
+                nextIn = (E) elementData[cursorDvs]; // point to next event
             }
-            return output;
+            return output; // now return the element we obtained at start
         }
 
         public void reset() {
-            cursor=0;
+            cursorDvs=0;
             usingTimeout=timeLimitTimer.isEnabled(); // timelimiter only used if timeLimitTimer is enabled but flag to check it it only set on packet reset
         }
 
         public void remove() {
-            for(int ctr=cursor; ctr<size; ctr++) {
-                elementData[cursor-1]=elementData[cursor];
+            for(int ctr=cursorDvs; ctr<size; ctr++) {
+                elementData[cursorDvs-1]=elementData[cursorDvs];
             }
             //go back as we removed a packet
-            cursor--;
+            cursorDvs--;
             size--;
         //throw new UnsupportedOperationException();
         }
 
         public String toString() {
-            return "InputEventIterator cursor="+cursor+" for packet with size="+size;
+            return "InputEventIterator cursor="+cursorDvs+" for packet with size="+size;
         }
     }
     

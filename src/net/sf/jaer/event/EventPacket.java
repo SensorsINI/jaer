@@ -71,6 +71,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     /** Constructs new events for this packet. */
     protected Constructor eventConstructor=null;
     private E eventPrototype;
+    /** The backing array of element data of type E */
     public transient E[] elementData;
     private AEPacketRaw rawPacket=null;
     
@@ -129,10 +130,12 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         return nextPacket;
     }
     
-   /** Sets the packet to which events are copied in a filter to allow these events to bypass a filter. These events may be of the wrong type to process, for instance.
+   /** Sets the packet to which events are copied in a filter to allow these events to bypass a filter. 
+    * These events may be of the wrong type to process, for instance.
     * Use this method in an EventFilter before iterating over events.
     * <code>next</code> is the output packet of an EventFilter, obtained from <code>checkOutputPacketEventType</code>.
     * 
+    * <p>
     * TODO provide concrete example
     * 
     * @param next the output packet of the filter using the iterator of this packet.
@@ -277,7 +280,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     }
     public InItr inputIterator=null;
 
-    /** Returns after initializing the iterator over input events.
+    /** Returns after initializing the iterator over input events of type <E>.
     @return an iterator that can iterate over the events.
      */
     public Iterator<E> inputIterator() {
@@ -290,9 +293,11 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     }
     private OutItr outputIterator=null;
 
-    /** Returns an iterator that iterates over the output events. This iterator is reset by this call to start at the beginning of the output packet.
+    /** Returns an iterator that iterates over the output events. 
+     * This iterator is reset by this call to start at the beginning of the output packet.
      *
-     * @return the iterator. Use it to obtain new output events which can be then copied from other events or modfified.
+     * @return the iterator. Use it to obtain new output events 
+     * which can be then copied from other events or modified.
      */
     final public OutputEventIterator<E> outputIterator() {
         if(outputIterator==null) {
@@ -303,9 +308,10 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         return outputIterator;
     }
     
-    /** Returns the iterator that iterates over the output events, but does not reset the iterator.
+    /** Returns the iterator of type E that iterates over the output packet <code>out</code>, 
+     * but does not reset the iterator.
      *
-     * @return the actual iterator
+     * @return the iterator
      */
     public OutputEventIterator<E> getOutputIterator() {
         if(outputIterator==null) {
@@ -372,6 +378,10 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
             }
         }
     }
+    
+    /** An iterator of type <E> over the input events.
+     * 
+     */
     public class InItr implements Iterator<E> {
         int cursor;
         boolean usingTimeout=timeLimitTimer.isEnabled();
@@ -653,7 +663,11 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         eventPrototype=e;
     }
 
-    /** Initializes and returns the iterator */
+    /** Initializes and returns an iterator over elements of type <E>
+     *
+     * @return an Iterator.
+    */
+    @Override
     public Iterator<E> iterator() {
         return inputIterator();
     }

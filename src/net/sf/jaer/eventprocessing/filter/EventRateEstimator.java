@@ -59,6 +59,7 @@ public class EventRateEstimator extends EventFilter2D {
 //            return in;
 //        }
         for (BasicEvent e : in) {
+            checkOutputPacketEventType(in);
             int dt = e.timestamp - lastComputeTimestamp;
             if (!initialized || dt < 0) {
                 numEventsSinceLastUpdate = 0;
