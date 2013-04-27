@@ -42,13 +42,14 @@ This lets you access the events in the input packet.
 When you want to write these events to an existing output packet,
 then you need to use the target event's copyFrom(Event e) method
 that copies all the fields in the
-source packet to the target packet. This lets you copy data such as
+source packet event to the target packet event. This lets you copy data such as
 timestamp, x,y location to a target event. You can then fill in the target event's extended
 type information.
 <p>
-When you iterate over an input packet to write to a target packet,
+To obtain these output events, when you iterate over an input packet to write to a target packet,
 you obtain the target event to write your results to by using the target packet's
-output enumeration by using the outputIterator() method. This enumeration has a method nextOutput() that returns the
+output enumeration by using the outputIterator() method. This iterator is obtained before iterating over the input packet.
+* This iterator has a method nextOutput() that returns the
 next output event to write to. This nextOutput() method also expands the packet if they current capacity needs to be enlarged.
 The iterator is initialized by the call to outputIterator().
 <p>
@@ -291,8 +292,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         }
         return inputIterator;
     }
-    private OutItr outputIterator=null;
-
+ 
     /** Returns an iterator that iterates over the output events. 
      * This iterator is reset by this call to start at the beginning of the output packet.
      *
@@ -344,16 +344,18 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         this.rawPacket = rawPacket;
     }
 
+    private OutItr outputIterator=null;
 
     final private class OutItr implements OutputEventIterator<E> {
         OutItr() {
             size=0; // reset size because we are starting off output packet
         }
 
-        /** Obtains the next output event suitable for either generating or copying from input event. 
+        /** Obtains the next output event suitable for either generating a new event from scratch or copying from input event. 
          * Increments the size of the packet, enlarging it if necessary.
          * 
          * @return reference to next output event, which must be copied from a different event.
+         * @see BasicEvent#copyFrom(net.sf.jaer.event.BasicEvent) 
          * 
          */
         final public E nextOutput() {
@@ -365,7 +367,9 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         }
         
         
-
+        /** Sets the packet size to zero, without changing capacity.
+         * 
+         */
         final public void reset() {
             size=0;
         }
@@ -374,6 +378,10 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
             return "OutputEventIterator with size/cursor="+size+" and capacity="+capacity;
         }
 
+        /** Writes event to next output.
+         * 
+         * @param event the event to write out.
+         */
         @Override
         public void writeToNextOutput(E event) {
             {   if(size>=capacity) {
@@ -391,10 +399,17 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         int cursor;
         boolean usingTimeout=timeLimitTimer.isEnabled();
 
+        /** Constructs a new instance of the InItr.
+         * 
+         */
         public InItr() {
             reset();
         }
 
+        /** Returns boolean if the packet has more input events.
+         * 
+         * @return true if there are more events.
+         */
         public boolean hasNext() {
             if(usingTimeout) {
                 return cursor<size&&!timeLimitTimer.isTimedOut();
@@ -403,15 +418,24 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
             }
         }
 
+        /** Obtains the next input event.
+         * 
+         * @return the next event 
+         */
         public E next() {
             return elementData[cursor++];
         }
 
+        /** Sets the size to zero. */
         public void reset() {
             cursor=0;
             usingTimeout=timeLimitTimer.isEnabled(); // timelimiter only used if timeLimitTimer is enabled but flag to check it it only set on packet reset
         }
 
+        /** Implements the optional remove operation to remove the last event returned by next().
+         * 
+         */
+        @Override
         public void remove() {
             for(int ctr=cursor; ctr<size; ctr++) {
                 elementData[cursor-1]=elementData[cursor];
@@ -422,6 +446,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         //throw new UnsupportedOperationException();
         }
 
+        @Override
         public String toString() {
             return "InputEventIterator cursor="+cursor+" for packet with size="+size+" and capacity="+capacity;
         }

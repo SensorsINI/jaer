@@ -4,11 +4,7 @@
  */
 package net.sf.jaer.event;
 
-import net.sf.jaer.event.ApsDvsEvent;
 import java.util.Iterator;
-import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 
 /**
@@ -16,13 +12,18 @@ import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
  * 
  * <p>
  * This subclass of EventPacket allows iteration of just the events disregarding the 
- * image sensor samples. To use this type of packet for processing DVS events, you can just use the default iterator (i.e., for(BasicEvent e:inputPacket) and you will get just the DVS events. However you *must* remember to call checkOutputPacketType or else all your memory will be quickly consumed. TODO explain better.
+ * image sensor samples. To use this type of packet for processing DVS events, 
+ * you can just use the default iterator (i.e., for(BasicEvent e:inputPacket) 
+ * and you will get just the DVS events. However you *must* remember to call 
+ * checkOutputPacketType or else all your memory will be quickly consumed. 
+ * 
+ * TODO explain better.
  * 
  * Call 
  *      <pre>   
  * checkOutputPacketEventType(in); 
  * </pre>
-before your iterator
+ * before your iterator
  * <p>
  * Internally this class overrides the default iterator of EventPacket.
  * 
