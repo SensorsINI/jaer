@@ -350,7 +350,12 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
             size=0; // reset size because we are starting off output packet
         }
 
-        /** obtains the next output event. Increments the size of the packet */
+        /** Obtains the next output event suitable for either generating or copying from input event. 
+         * Increments the size of the packet, enlarging it if necessary.
+         * 
+         * @return reference to next output event, which must be copied from a different event.
+         * 
+         */
         final public E nextOutput() {
             if(size>=capacity) {
                 enlargeCapacity();
@@ -366,7 +371,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         }
 
         public String toString() {
-            return "OutputEventIterator for packet with size="+size+" capacity="+capacity;
+            return "OutputEventIterator with size/cursor="+size+" and capacity="+capacity;
         }
 
         @Override
@@ -418,7 +423,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         }
 
         public String toString() {
-            return "InputEventIterator cursor="+cursor+" for packet with size="+size;
+            return "InputEventIterator cursor="+cursor+" for packet with size="+size+" and capacity="+capacity;
         }
     }
 
