@@ -16,7 +16,6 @@ import com.sun.opengl.util.j2d.TextRenderer;
 import java.awt.Font;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.io.File;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -28,7 +27,6 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEInputStream;
@@ -87,7 +85,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
      * @return the absolute or relative time depending on absoluteTime switch, or the System.currentTimeMillis() if we are in live playback mode
      */
     private long computeDisplayTime(long relativeTimeInFileMs) {
-        long t = 0;
+        long t;
         if (chip.getAeViewer() != null && chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.LIVE) {
             t = System.currentTimeMillis();
         } else {
@@ -375,12 +373,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             }
         }
     }
-    private int lastLogTimestampUs = 0;
-    private boolean logInitialized = false;
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
-        checkOutputPacketEventType(in); // tobi added for apsdvseventpackets
         if (!addedViewerPropertyChangeListener) {
             if (chip.getAeViewer() != null) {
                 chip.getAeViewer().addPropertyChangeListener(this);
