@@ -4,19 +4,13 @@
  */
 package eu.seebetter.ini.chips.sbret10;
 
-import ch.unizh.ini.jaer.hardware.pantilt.PanTiltCalibrationPoint;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Observable;
-import java.util.Observer;
-import java.util.TreeMap;
-import java.util.Vector;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLException;
