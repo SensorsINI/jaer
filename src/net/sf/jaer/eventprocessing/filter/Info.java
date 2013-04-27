@@ -380,9 +380,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
-         if (!isFilterEnabled() || in == null || in.getSize() == 0) {
-            return in;
-        }
+        checkOutputPacketEventType(in); // tobi added for apsdvseventpackets
         if (!addedViewerPropertyChangeListener) {
             if (chip.getAeViewer() != null) {
                 chip.getAeViewer().addPropertyChangeListener(this);
