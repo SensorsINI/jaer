@@ -42,17 +42,47 @@ public class HotPixelSupressor extends EventFilter2D implements FrameAnnotater{
     private int numHotPixels = getInt("numHotPixels", 30);
     private float baselineProbability = getFloat("baselineProbability", 1e-3f);
     private float thresholdEventRate=getFloat("thresholdEventRate",10e3f);
-    private HashSet<Integer> hotPixelSet = new HashSet();
-    private HashMap<Integer,Point> hotPixPointMap=new HashMap();
+    private HotPixelSet hotPixelSet = new HotPixelSet();
     private boolean showHotPixels=getBoolean("showHotPixels", true);
     
     private Random r = new Random();
     private EventRateEstimator eventRateEstimator;
     
     private class HotPixel{
-        int x,y,address,lasttimestamp;
+        int x,y,lasttimestamp,address;
+
         HotPixel(BasicEvent e){
-            x=e.x; y=e.y; address=e.timestamp; lasttimestamp=e.timestamp;
+            address=e.address;
+            x=e.x; y=e.y; lasttimestamp=e.timestamp;
+        }
+        int timeSinceLast(BasicEvent e){
+            return e.timestamp-lasttimestamp;
+        }
+        void updateLastTimestamp(BasicEvent e){
+            lasttimestamp=e.timestamp;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+           if(obj instanceof BasicEvent){
+               return ((BasicEvent)obj).address==address;
+           }else if(obj instanceof HotPixel){
+               return ((HotPixel)obj).address==address;
+           }else return false;
+        }
+        
+        public String toString(){
+            return String.format("(%d,%d)",x,y);
+        }
+
+        public int hashCode() {
+            return new Integer(address).hashCode();
+        }
+    }
+    
+    private class HotPixelSet extends HashSet<HotPixel>{
+        boolean contains(BasicEvent e){
+            return contains(new HotPixel(e));
         }
     }
 
@@ -74,23 +104,27 @@ public class HotPixelSupressor extends EventFilter2D implements FrameAnnotater{
         eventRateEstimator.filterPacket(in);
         float rate=eventRateEstimator.getFilteredEventRate();
         for (BasicEvent e : in) {
-            if (rate<thresholdEventRate && r.nextFloat() < getBaselineProbability()) {
-                hotPixelSet.add(e.address);
-                hotPixPointMap.put(e.address,new Point(e.x,e.y));
-                for (Integer i : hotPixelSet) {
-                    if (i != e.address && hotPixelSet.size() >= numHotPixels) {
-                        hotPixelSet.remove(i); // remove some other element, not known which
-                        hotPixPointMap.remove(i);
-                        break;
+            if (rate<thresholdEventRate) {
+                
+               // find oldest hot pixel and replace
+                int oldestTimestamp=Integer.MAX_VALUE;
+                HotPixel oldest=null;
+                for (HotPixel i : hotPixelSet) {
+                    if(i.lasttimestamp<oldestTimestamp){
+                        oldestTimestamp=i.lasttimestamp;
+                        oldest=i;
                     }
                 }
+                if(hotPixelSet.size()>=numHotPixels){
+                     hotPixelSet.remove(oldest);
+                }
+                hotPixelSet.add(new HotPixel(e));
             }
-            if (hotPixelSet.contains(e.address)) {
-//                log.info("filtered out "+e);
+            if (rate>=thresholdEventRate&& hotPixelSet.contains(e)) {
                 continue;
             }
-                ApsDvsEvent a = (ApsDvsEvent) outItr.nextOutput();
-                a.copyFrom(e);
+            ApsDvsEvent a = (ApsDvsEvent) outItr.nextOutput();
+            a.copyFrom(e);
 
         }
         return out;
@@ -99,7 +133,6 @@ public class HotPixelSupressor extends EventFilter2D implements FrameAnnotater{
     @Override
     synchronized public void resetFilter() {
         hotPixelSet.clear();
-        hotPixPointMap.clear();
         
     }
 
@@ -162,10 +195,11 @@ public class HotPixelSupressor extends EventFilter2D implements FrameAnnotater{
                 gl.glBlendEquation(GL.GL_FUNC_ADD);
             }catch(GLException e){
                 e.printStackTrace();
+                showHotPixels=false;
             }
         gl.glColor4f(.5f, .5f, .5f,.5f);
         gl.glLineWidth(1f);
-        for (Point p : hotPixPointMap.values()) {
+        for (HotPixel p : hotPixelSet) {
             gl.glRectf(p.x - 1, p.y - 1, p.x + 2, p.y + 2);
         }
     }
