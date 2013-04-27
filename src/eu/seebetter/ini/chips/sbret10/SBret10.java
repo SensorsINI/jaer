@@ -20,6 +20,9 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.RetinaExtractor;
 import net.sf.jaer.event.*;
+import net.sf.jaer.eventprocessing.filter.ApsDvsEventFilter;
+import net.sf.jaer.eventprocessing.filter.Info;
+import net.sf.jaer.eventprocessing.filter.RefractoryFilter;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.DisplayMethod;
@@ -65,6 +68,7 @@ public class SBret10 extends APSDVSchip {
     /** Creates a new instance of cDVSTest20.  */
     public SBret10() {
         setName("SBret10");
+        setDefaultPreferencesFile("../../biasgenSettings/sbret10/SBRet10.xml");
         setEventClass(ApsDvsEvent.class);
         setSizeX(WIDTH);
         setSizeY(HEIGHT);
@@ -85,6 +89,11 @@ public class SBret10 extends APSDVSchip {
         sbretDisplayMethod = new SBret10DisplayMethod(this);
         getCanvas().addDisplayMethod(sbretDisplayMethod);
         getCanvas().setDisplayMethod(sbretDisplayMethod);
+        addDefaultEventFilter(ApsDvsEventFilter.class);
+        addDefaultEventFilter(HotPixelSupressor.class);
+        addDefaultEventFilter(RefractoryFilter.class);
+        addDefaultEventFilter(Info.class);
+
 
     }
     
