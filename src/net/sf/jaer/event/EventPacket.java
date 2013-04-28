@@ -76,14 +76,16 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     public transient E[] elementData;
     private AEPacketRaw rawPacket=null;
     
-    /** The outputPacket that gets filled with events from this packet when events are bypassed for processing. 
-     * Used for bypassing a filter e.g. in the case of APS events).
-     This reference is used when the default event iterator needs to preserve events in the packet without processing them.
-     To set this field use <code>setNextPacket</code>.
+    /** A built-in (by default uninitialized) output packet that can be used to write events to for filtering packets.
+     * @see #getOutputPacket() 
+     * @see #setOutputPacket(net.sf.jaer.event.EventPacket) 
+     * @see #checkOutputPacketEventType(net.sf.jaer.event.EventPacket) 
      */
-    protected EventPacket nextPacket=null;
+    protected EventPacket outputPacket=null;
     
-    /** The modification system timestamp of the EventPacket in ns, from System.nanoTime(). Some hardware interfaces set this field 
+
+    
+     /** The modification system timestamp of the EventPacket in ns, from System.nanoTime(). Some hardware interfaces set this field 
      * when the packet is started to be filled with events from hardware.
      * This timestamp is not related to the event times of the events in the packet.
      */
@@ -122,30 +124,6 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         setEventClass(eventClass);
     }
     
-    /** Returns a new EventPacket to fill for next filter stage.
-     * Subclasses must override this method to return the proper subtype of EventPacket.
-     * @return EventPacket filled with this packet's event class
-     */
-    public EventPacket getNextPacket(){
-        setNextPacket(new EventPacket(this.eventClass));
-        return nextPacket;
-    }
-    
-   /** Sets the packet to which events are copied in a filter to allow these events to bypass a filter. 
-    * These events may be of the wrong type to process, for instance.
-    * Use this method in an EventFilter before iterating over events.
-    * <code>next</code> is the output packet of an EventFilter, obtained from <code>checkOutputPacketEventType</code>.
-    * 
-    * <p>
-    * TODO provide concrete example
-    * 
-    * @param next the output packet of the filter using the iterator of this packet.
-    * @see EventFilter2D#checkOutputPacketEventType(net.sf.jaer.event.EventPacket) 
-    * 
-    */
-    public void setNextPacket(EventPacket next){
-        nextPacket = next;
-    }
 
     /** Fills this EventPacket with DEFAULT_INITIAL_CAPACITY of the event class */
     protected void initializeEvents() {
@@ -279,6 +257,61 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         return elementData[k];
 //        return eventList.get(k);
     }
+    
+     /** Constructs a new empty EventPacket containing <code>eventClass</code>.
+     * @see #setEventClass(java.lang.Class) 
+     * @see #setEventClass(java.lang.reflect.Constructor) 
+     */
+    public EventPacket constructNewPacket(){
+        EventPacket packet=new EventPacket(getEventClass());
+        return packet;
+    }
+  
+    /**
+     * Utility method that checks the built-in
+     * <code>outputPacket</code> packet to ensure it holds the given class of
+     * events. This method is used for filters that must pass output that has
+     * some type of event.
+     * <p>
+     * This method also copies fields of this packet to the output packet the ,
+     * e.g.
+     * <code>systemModificationTimeNs</code>.
+     *
+     * @param outClass the output packet event type class.
+     * @see #outputPacket
+     */
+    public void checkOutputPacketEventType(Class<? extends BasicEvent> outClass) {
+        if (outputPacket == null || outputPacket.getEventClass() == null || outputPacket.getEventClass() != outClass  || outputPacket.getClass()!=getClass()) {
+//            Class oldClass=outputPacket.getEventClass();
+            outputPacket = constructNewPacket(); // constructNewPacket is overridden by subtypes of EventPacket
+//           log.info("oldClass="+oldClass+" outClass="+outClass+"; allocated new "+outputPacket);
+        }
+        outputPacket.systemModificationTimeNs=systemModificationTimeNs;
+    }
+    
+      /**
+     * Utility method that checks the built-in
+     * <code>outputPacket</code> packet to ensure it holds the the same type of events as this packet. 
+     * This method is used for filters that must pass output that has
+     * some type of event.
+     * <p>
+     * This method also copies fields of this packet to the output packet the ,
+     * e.g.
+     * <code>systemModificationTimeNs</code>.
+     *
+     * @param outClass the output packet event type class.
+     * @see #outputPacket
+     */
+    public void checkOutputPacketEventType() {
+        if (outputPacket == null || outputPacket.getEventClass() == null || outputPacket.getClass()!=getClass()) {
+//            Class oldClass=outputPacket.getEventClass();
+            outputPacket = constructNewPacket(); // constructNewPacket is overridden by subtypes of EventPacket
+//           log.info("oldClass="+oldClass+" outClass="+outClass+"; allocated new "+outputPacket);
+        }
+        outputPacket.systemModificationTimeNs=systemModificationTimeNs;
+    }
+
+    /** This packet's input iterator. */
     public InItr inputIterator=null;
 
     /** Returns after initializing the iterator over input events of type <E>.
@@ -293,7 +326,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         return inputIterator;
     }
  
-    /** Returns an iterator that iterates over the output events. 
+    /** Returns an output-type iterator that iterates over the output events. 
      * This iterator is reset by this call to start at the beginning of the output packet.
      *
      * @return the iterator. Use it to obtain new output events 
@@ -307,9 +340,27 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         }
         return outputIterator;
     }
+
+    /**
+     * Returns the built-in outputPacket associated with this packet.
+     * 
+     * @return the outputPacket
+     */
+    public EventPacket getOutputPacket() {
+        return outputPacket;
+    }
+
+    /**
+     * 
+     * 
+     * @param outputPacket the outputPacket to set
+     */
+    public void setOutputPacket(EventPacket outputPacket) {
+        this.outputPacket = outputPacket;
+    }
     
-    /** Returns the iterator of type E that iterates over the output packet <code>out</code>, 
-     * but does not reset the iterator.
+    /** Returns the an output-type iterator of type E that iterates over the packet, 
+     * The iterator is constructed if necessary. The iterator is not reset by this call.
      *
      * @return the iterator
      */
@@ -324,7 +375,8 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
      * Returns the raw data packet that this originally came from. These are the raw ints that represent the data from the device.
      * This AEPacketRaw may or may not be set by the <code>EventExtractor2D</code>.
      *
-     * This packet may or may not actually refer to the same data as when the packet was extracted. This raw data packet may in the meantime
+     * This packet may or may not actually refer to the same data as when the 
+     * packet was extracted. This raw data packet may in the meantime
      * have been reused for other purposes.
      *
      * @return the raw packet
@@ -344,9 +396,14 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         this.rawPacket = rawPacket;
     }
 
+    /** This packet's output iterator. */
     private OutItr outputIterator=null;
 
-    final private class OutItr implements OutputEventIterator<E> {
+    /** This iterator is intended for writing events to an output packet.
+     * The {@link #nextOutput() } method returns the next element in the packet, enlarging the packet if necessary. 
+     * The fields in the returned element are copied from an input event or generated in some other manner.
+     */
+    final public class OutItr implements OutputEventIterator<E> {
         OutItr() {
             size=0; // reset size because we are starting off output packet
         }
@@ -397,7 +454,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
      */
     public class InItr implements Iterator<E> {
         int cursor;
-        boolean usingTimeout=timeLimitTimer.isEnabled();
+        boolean usingTimeout;
 
         /** Constructs a new instance of the InItr.
          * 
@@ -665,7 +722,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     @Override
     public String toString() {
         int sz=getSize();
-        String s="EventPacket #"+this.hashCode()+" holding "+getEventClass().getSimpleName()+" with size="+sz+" capacity="+capacity;
+        String s="EventPacket #"+this.hashCode()+" holding "+getEventClass().getSimpleName()+" with size="+sz+" capacity="+capacity+" inputIterator="+inputIterator+" outputIterator="+outputIterator;
         return s;
     }
 

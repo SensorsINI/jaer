@@ -32,18 +32,30 @@ import net.sf.jaer.event.EventPacket;
  */
 abstract public class EventFilter2D extends EventFilter {
 
-    /** The built-in reference to the output packet */
+    /** The built-in reference to the output packet. This packet is uninitialized (to save memory) by default. 
+     To make this packet, use one of the <code>checkOutputPacketEventType</code> methods.
+     * <p>
+     * When processing events in subtypes of EventPacket (like {@link ApsDvsEventPacket}) that may contain
+     * other kinds of events than asynchronous pixel events (like APS image sensor samples), then
+     * it may be necessary to write output events to a different output packet than the built in <code>out</code>
+     * packet. See {@link ApsDvsEventPacket}.
+     * 
+     @see EventFilter2D#checkOutputPacketEventType(net.sf.jaer.event.EventPacket) 
+     @see EventFilter2D#checkOutputPacketEventType(java.lang.Class) 
+     */
     protected EventPacket out = null;
     
     /** Returns reference to the built-in output packet.
      * 
      * @return the out packet. 
+     * @see #out
      */
     protected EventPacket getOutputPacket(){
         return out;
     }
 
 
+    /** This field is used for update callbacks on this packet. */
     protected float currentUpdateIntervalMs;
 
     /** Resets the output packet to be a new packet if none has been constructed or clears the packet
@@ -57,24 +69,24 @@ abstract public class EventFilter2D extends EventFilter {
         }
     }
 
-    /** Checks <code>out</code> packet to make sure it holds the same type as the 
+    /** Checks the built-in <code>out</code> packet to make sure it holds the same type as the 
     input packet. This method is used for filters that must pass output
     that has same event type as input. Unlike the other checkOutputPacketEventType method, this also ensures that 
-    * the output EventPacket is of the correct class, e.g. if it is a subclass of EventPacket, but only if EventPacket.setNextPacket() has been
-    * called. I.e., the user must set EventPacket.nextPacket. 
+    * the output EventPacket is of the correct class, e.g. if it is a subclass of EventPacket, 
+    * but only if {@link EventPacket#setBypassPacket()} has been
+    * called. I.e., the user must set {@link EventPacket#bypassPacket}. 
      * <p>
      * This method also copies fields from the input packet to the output packet, e.g. <code>systemModificationTimeNs</code>.
     @param in the input packet
     @see #out
      */
     protected void checkOutputPacketEventType(EventPacket in) {
-        in.setNextPacket(out);
         if (out != null && out.getEventClass() == in.getEventClass() && out.getClass() == in.getClass()) {
             out.systemModificationTimeNs=in.systemModificationTimeNs;
+            out.clear();
             return;
         }
-        out = in.getNextPacket();
-        resetOut(); // tobi added to make sure output packet is reset even if the subclass never uses the output iterator explicitly.
+        out = in.constructNewPacket();
     }
     
     /** Checks <code>out</code>  packet to make sure it holds the same type of events as the given class. 
@@ -82,7 +94,7 @@ abstract public class EventFilter2D extends EventFilter {
     that has a particular output type.  This method does not ensure that the output packet is of the correct subtype of EventPacket.
     @param outClass the output packet event type class.
      @see #out
-     * @see EventPacket#getNextPacket
+     * @see EventPacket#constructNewPacket
      * @see #checkOutputPacketEventType(java.lang.Class) 
     */
     protected void checkOutputPacketEventType(Class<? extends BasicEvent> outClass) {

@@ -28,16 +28,6 @@ public class SpatialEventPacket<E extends SpatialEvent> extends EventPacket<E> {
         setEventClass(eventClass);
     }
     
-    /** 
-     * Makes sure next event packet is of correct class 
-     * Creates and returns it
-     * When does this get called?
-     */
-    @Override
-    public EventPacket getNextPacket(){
-        setNextPacket(new SpatialEventPacket(getEventClass()));
-        return nextPacket;
-    }
     
     /** 
      * Iterator for only DVS events (not spatial events)
@@ -115,7 +105,7 @@ public class SpatialEventPacket<E extends SpatialEvent> extends EventPacket<E> {
                 if (nextIn.special) {
                     cursor++;
                     // Why do we need this??
-                    //E nextOut = (E) nextPacket.getOutputIterator().nextOutput();
+                    //E nextOut = (E) bypassPacket.getOutputIterator().nextOutput();
                     //nextOut.copyFrom(nextIn);
                 } else {
                     found = true;

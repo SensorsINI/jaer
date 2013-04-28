@@ -47,7 +47,6 @@ public class EventRateEstimator extends EventFilter2D {
         if (in == null || in.getSize() == 0) {
             return in; // if there are no events, don't touch values since we don't have a new update time
         }
-        checkOutputPacketEventType(in);
         for (BasicEvent e : in) {
             int dt = e.timestamp - lastComputeTimestamp;
             if (!initialized || dt < 0) {

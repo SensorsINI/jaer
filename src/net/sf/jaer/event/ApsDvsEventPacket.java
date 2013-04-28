@@ -14,8 +14,9 @@ import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
  * This subclass of EventPacket allows iteration of just the events disregarding the 
  * image sensor samples. To use this type of packet for processing DVS events, 
  * you can just use the default iterator (i.e., for(BasicEvent e:inputPacket) 
- * and you will get just the DVS events. However you *must* remember to call 
- * checkOutputPacketType or else all your memory will be quickly consumed. 
+ * and you will get just the DVS events. However, if you iterate over <code>ApsDvsEventPacket</code>,
+ * then the APS events will be bypassed to an internal output packet of <code>ApsDvsEventPacket</code>
+ * called {@link #outputPacket}. This packet is automatically initialized to contain 
  * 
  * TODO explain better.
  * 
@@ -32,6 +33,7 @@ import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
  */
 public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
     
+    
     /** Constructs a new EventPacket filled with the given event class.
     @see net.sf.jaer.event.BasicEvent
      */
@@ -42,16 +44,20 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
         setEventClass(eventClass);
     }
     
-    /** 
-     *  This method constructs and returns the "next" packet, whatever that is TODO explain please 
-     * @return 
+      /** Constructs a new ApsDvsEventPacket from this one containing {@link #getEventClass()}.
+       * This method overrides {@link EventPacket#constructNewPacket() } to construct <code>ApsDvsEventPacket</code> so
+       * it is a kind of copy constructor. 
+     * @see #setEventClass(java.lang.Class) 
+     * @see #setEventClass(java.lang.reflect.Constructor) 
      */
     @Override
-    public EventPacket getNextPacket(){
-        setNextPacket(new ApsDvsEventPacket(getEventClass()));
-        return nextPacket;
+    public EventPacket constructNewPacket(){
+        ApsDvsEventPacket packet=new ApsDvsEventPacket(getEventClass());
+        return packet;
     }
     
+    
+
     /**This iterator (the default) just iterates over DVS events in the packet.
      * Returns after initializing the iterator over input events.
      * 
@@ -63,6 +69,11 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
             inputIterator=new InDvsItr();
         } else {
             inputIterator.reset();
+        }
+        if(getOutputPacket()==null){
+            setOutputPacket((ApsDvsEventPacket)constructNewPacket());
+        }else{
+            getOutputPacket().clear();
         }
         return (Iterator<E>)inputIterator;
     }
@@ -82,8 +93,9 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
         return fullIterator;
     }
     
-    /** Initializes and returns an iterator over events of type <E> consisting of the DVS events.
-     @return an Iterator
+    /** Initializes and returns the default iterator over events of type <E> consisting of the DVS events.
+     * This is the default iterator obtained by <code>for(BasicEvent e:in)</code>.
+     @return an Iterator only yields DVS events.
      */
     @Override
     public Iterator<E> iterator() {
@@ -98,12 +110,13 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
      */
     public class InDvsItr extends InItr{
         int cursorDvs;
-        boolean usingTimeout=timeLimitTimer.isEnabled();
 
         public InDvsItr() {
             reset();
+            if(getOutputPacket()==null) constructNewPacket();
         }
 
+        @Override
         public boolean hasNext() {
             if(usingTimeout) {
                 return cursorDvs<size&&!timeLimitTimer.isTimedOut();
@@ -112,14 +125,15 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
             }
         }
 
+        @Override
         public E next() {
             E output = (E) elementData[cursorDvs++]; // get next element of this packet (guarenteed to be dvs event how?) and advance cursor
             //bypass APS events
             E nextIn = (E) elementData[cursorDvs]; // get the next element
-            OutputEventIterator outItr=nextPacket.getOutputIterator(); // and the output iterator for the "nextPacket"
+            OutputEventIterator outItr=getOutputPacket().getOutputIterator(); // and the output iterator for the "outputPacket" (without resetting it)
             while(nextIn.isAdcSample() && cursorDvs<size){ // while the event is an ADC sample and we are not done with packet
-                if (nextPacket != null) {
-                    // copy the ADC sample to nextPacket
+                if (getOutputPacket() != null) {
+                    // copy the ADC sample to outputPacket
                     E nextOut = (E) outItr.nextOutput();  
                     nextOut.copyFrom(nextIn);
                 }
@@ -129,6 +143,7 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
             return output; // now return the element we obtained at start
         }
 
+        @Override
         public void reset() {
             cursorDvs=0;
             usingTimeout=timeLimitTimer.isEnabled(); // timelimiter only used if timeLimitTimer is enabled but flag to check it it only set on packet reset
