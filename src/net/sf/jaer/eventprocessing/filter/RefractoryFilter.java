@@ -1,5 +1,3 @@
-
-
 package net.sf.jaer.eventprocessing.filter;
 
 import net.sf.jaer.chip.*;
@@ -11,120 +9,124 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 
 /**
- * Adds a refractory period to pixels so that they events only pass if there is sufficient 
- * time since the last event from that pixel; so it knocks out high firing rates from cells.
- * The option passShortISIsEnabled inverts the logic.
- redundant events.
- 
+ * Adds a refractory period to pixels so that they events only pass if there is
+ * sufficient time since the last event from that pixel; so it knocks out high
+ * firing rates from cells. The option passShortISIsEnabled inverts the logic.
+ * redundant events.
+ *
  * @author tobi
  */
 @Description("Applies a refractory period to pixels so that they events only pass if there is sufficient time since the last event from that pixel")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class RefractoryFilter extends EventFilter2D implements Observer  {
-    final int DEFAULT_TIMESTAMP=Integer.MIN_VALUE;
-    
-    /** the time in timestamp ticks (1us at present) that a spike
-     * needs to be supported by a prior event in the neighborhood by to pass through
+public class RefractoryFilter extends EventFilter2D implements Observer {
+
+    final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
+    /**
+     * the time in timestamp ticks (1us at present) that a spike needs to be
+     * supported by a prior event in the neighborhood by to pass through
      */
-    protected int refractoryPeriodUs=getPrefs().getInt("RefractoryFilter.refractoryPeriodUs",1000);
-    {setPropertyTooltip("refractoryPeriodUs","Events with less than this delta time in us are blocked");}
-  
-    /** the amount to subsample x and y event location by in bit shifts when writing to past event times
-     *map. This effectively increases the range of support. E.g. setting subSamplingShift to 1 quadruples range
-     *because both x and y are shifted right by one bit */
-    private int subsampleBy=getPrefs().getInt("RefractoryFilter.subsampleBy",0);
-    {setPropertyTooltip("subsampleBy","Past event addresses are subsampled by this many bits in x and y");}
-
-    private boolean passShortISIsEnabled=prefs().getBoolean("RefractoryFilter.passShortISIsEnabled", false);
-     {setPropertyTooltip("passShortISIsEnabled","<html>Inverts filtering so that only events with short ISIs are passed through.<br>If refractoryPeriodUs==0, then you can block all events with idential timestamp from the same pixel.");}
-
+    protected int refractoryPeriodUs = getPrefs().getInt("RefractoryFilter.refractoryPeriodUs", 1000);
+    /**
+     * the amount to subsample x and y event location by in bit shifts when
+     * writing to past event times map. This effectively increases the range of
+     * support. E.g. setting subSamplingShift to 1 quadruples range because both
+     * x and y are shifted right by one bit
+     */
+    private int subsampleBy = getPrefs().getInt("RefractoryFilter.subsampleBy", 0);
+    private boolean passShortISIsEnabled = prefs().getBoolean("RefractoryFilter.passShortISIsEnabled", false);
     int[][] lastTimestamps;
-    
-    public RefractoryFilter(AEChip chip){
+
+    public RefractoryFilter(AEChip chip) {
         super(chip);
         chip.addObserver(this);
         initFilter();
         resetFilter();
+        setPropertyTooltip("refractoryPeriodUs", "Events with less than this delta time in us are blocked");
+        setPropertyTooltip("subsampleBy", "Past event addresses are subsampled by this many bits in x and y");
+        setPropertyTooltip("passShortISIsEnabled", "<html>Inverts filtering so that only events with short ISIs are passed through.<br>If refractoryPeriodUs==0, then you can block all events with idential timestamp from the same pixel.");
     }
-    
-    void allocateMaps(AEChip chip){
-        lastTimestamps=new int[chip.getSizeX()][chip.getSizeY()];
+
+    void allocateMaps(AEChip chip) {
+        lastTimestamps = new int[chip.getSizeX()][chip.getSizeY()];
     }
-    
-    int ts=0; // used to reset filter
-    
+    int ts = 0; // used to reset filter
+
     /**
      * filters in to out. if filtering is enabled, the number of out may be less
      * than the number putString in
-     *@param in input events can be null or empty.
-     *@return the processed events, may be fewer in number. filtering may occur in place in the in packet.
+     *
+     * @param in input events can be null or empty.
+     * @return the processed events, may be fewer in number. filtering may occur
+     * in place in the in packet.
      */
     synchronized public EventPacket filterPacket(EventPacket in) {
-        if(!filterEnabled) return in;
-        if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
-        in.checkOutputPacketEventType();
-        if(lastTimestamps==null) allocateMaps(chip);
-            // for each event only write it to the out buffers if it is 
-            // more than refractoryPeriodUs after the last time an event happened in neighborhood
-            OutputEventIterator outItr=in.getOutputPacket().outputIterator();
-            int sx=chip.getSizeX()-1;
-            int sy=chip.getSizeY()-1;
-            for(Object e:in){
-                BasicEvent i=(BasicEvent)e;
-                ts=i.timestamp;
-                short x=(short)(i.x>>>subsampleBy), y=(short)(i.y>>>subsampleBy);
-                int lastt=lastTimestamps[x][y];
-                int deltat=(ts-lastt);
-                boolean longISI=deltat>refractoryPeriodUs && lastt!=DEFAULT_TIMESTAMP; // if refractoryPeriodUs==0, then all events with ISI==0 pass if passShortISIsEnabled
-                if((longISI && !passShortISIsEnabled) || (!longISI && passShortISIsEnabled)){
-                    BasicEvent o=(BasicEvent)outItr.nextOutput();
-                    o.copyFrom(i);
-                }
-                lastTimestamps[x][y]=ts;
+        checkOutputPacketEventType(in);
+        if (lastTimestamps == null) {
+            allocateMaps(chip);
+        }
+        // for each event only write it to the out buffers if it is 
+        // more than refractoryPeriodUs after the last time an event happened in neighborhood
+        OutputEventIterator outItr = getOutputPacket().outputIterator();
+        int sx = chip.getSizeX() - 1;
+        int sy = chip.getSizeY() - 1;
+        for (Object e : in) {
+            BasicEvent i = (BasicEvent) e;
+            ts = i.timestamp;
+            short x = (short) (i.x >>> subsampleBy), y = (short) (i.y >>> subsampleBy);
+            int lastt = lastTimestamps[x][y];
+            int deltat = (ts - lastt);
+            boolean longISI = deltat > refractoryPeriodUs && lastt != DEFAULT_TIMESTAMP; // if refractoryPeriodUs==0, then all events with ISI==0 pass if passShortISIsEnabled
+            if ((longISI && !passShortISIsEnabled) || (!longISI && passShortISIsEnabled)) {
+                BasicEvent o = (BasicEvent) outItr.nextOutput();
+                o.copyFrom(i);
             }
-        return in.getOutputPacket();
+            lastTimestamps[x][y] = ts;
+        }
+        return getOutputPacket();
     }
-    
+
     /**
      * gets the refractory period
+     *
      * @return delay allowed for spike since last in neighborhood to pass (us)
      */
     public int getRefractoryPeriodUs() {
         return this.refractoryPeriodUs;
     }
-    
+
     /**
      * sets the refractory delay in us
-     *     <p>
-     *     Fires a PropertyChangeEvent "refractoryPeriodUs"
-     * 
-     * @param refractoryPeriodUs the address is refractory for this long in us after an event
+     * <p>
+     * Fires a PropertyChangeEvent "refractoryPeriodUs"
+     *
+     * @param refractoryPeriodUs the address is refractory for this long in us
+     * after an event
      */
     public void setRefractoryPeriodUs(final int refractoryPeriodUs) {
-        this.refractoryPeriodUs=refractoryPeriodUs;
-        getPrefs().putInt("RefractoryFilter.refractoryPeriodUs",refractoryPeriodUs);
+        this.refractoryPeriodUs = refractoryPeriodUs;
+        getPrefs().putInt("RefractoryFilter.refractoryPeriodUs", refractoryPeriodUs);
     }
-    
+
     public Object getFilterState() {
         return lastTimestamps;
     }
-    
-    void resetLastTimestamps(){
-        for(int i=0;i<lastTimestamps.length;i++)
-            Arrays.fill(lastTimestamps[i],DEFAULT_TIMESTAMP);
+
+    void resetLastTimestamps() {
+        for (int i = 0; i < lastTimestamps.length; i++) {
+            Arrays.fill(lastTimestamps[i], DEFAULT_TIMESTAMP);
+        }
     }
-    
+
     synchronized public void resetFilter() {
         // set all lastTimestamps to max value so that any event is soon enough, guarenteed to be less than it
         resetLastTimestamps();
     }
-    
-    
+
     public void update(Observable o, Object arg) {
 //        if(!isFilterEnabled()) return;
         initFilter();
     }
-    
+
     public void initFilter() {
         allocateMaps(chip);
     }
@@ -133,15 +135,24 @@ public class RefractoryFilter extends EventFilter2D implements Observer  {
         return subsampleBy;
     }
 
-    /** Sets the number of bits to subsample by when storing events into the map of past events.
-     *Increasing this value will increase the number of events that pass through and will also allow
-     *passing events from small sources that do not stimulate every pixel.
-     *@param subsampleBy the number of bits, 0 means no subsampling, 1 means cut event time map resolution by a factor of two in x and in y
-     **/
+    /**
+     * Sets the number of bits to subsample by when storing events into the map
+     * of past events. Increasing this value will increase the number of events
+     * that pass through and will also allow passing events from small sources
+     * that do not stimulate every pixel.
+     *
+     * @param subsampleBy the number of bits, 0 means no subsampling, 1 means
+     * cut event time map resolution by a factor of two in x and in y
+     *
+     */
     public void setSubsampleBy(int subsampleBy) {
-        if(subsampleBy<0) subsampleBy=0; else if(subsampleBy>4) subsampleBy=4;
+        if (subsampleBy < 0) {
+            subsampleBy = 0;
+        } else if (subsampleBy > 4) {
+            subsampleBy = 4;
+        }
         this.subsampleBy = subsampleBy;
-        getPrefs().putInt("RefractoryFilter.subsampleBy",subsampleBy);
+        getPrefs().putInt("RefractoryFilter.subsampleBy", subsampleBy);
     }
 
     /**
@@ -155,11 +166,9 @@ public class RefractoryFilter extends EventFilter2D implements Observer  {
      * @param passShortISIsEnabled the passShortISIsEnabled to set
      */
     public void setPassShortISIsEnabled(boolean passShortISIsEnabled) {
-        boolean old=this.passShortISIsEnabled;
+        boolean old = this.passShortISIsEnabled;
         this.passShortISIsEnabled = passShortISIsEnabled;
         prefs().putBoolean("RefractoryFilter.passShortISIsEnabled", passShortISIsEnabled);
-        getSupport().firePropertyChange("passShortISIsEnabled",old,passShortISIsEnabled);
+        getSupport().firePropertyChange("passShortISIsEnabled", old, passShortISIsEnabled);
     }
-    
-    
 }

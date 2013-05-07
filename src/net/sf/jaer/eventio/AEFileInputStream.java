@@ -891,7 +891,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         if(++chunksMapped>GC_EVERY_THIS_MANY_CHUNKS){
             chunksMapped=0;
             System.gc();
-            System.runFinalization();
+//            System.runFinalization(); // caused deadlock on rewind where AEViewer.viewLoop was wating for finalization thread to run (which waited for Thread to join), while holding AEFileInputStream, while AWT thread was waiting for same AEFileInputStream
             log.info("ran garbage collection after mapping chunk "+chunkNumber);
         }
 //        log.info("mapped chunk # "+chunkNumber+" of "+numChunks);

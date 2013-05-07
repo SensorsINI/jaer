@@ -27,7 +27,7 @@ public class RecentFiles {
     transient JMenu fileMenu;
     transient ActionListener listener;
     int menuPosition=0;
-    public static final int MAX_FILES=15, MAX_FOLDERS=15;
+    public static final int MAX_FILES=20, MAX_FOLDERS=15;
     ArrayList<JMenuItem> fileMenuList=null, folderMenuList=null;
     private static Logger log=Logger.getLogger("RecentFiles");
     

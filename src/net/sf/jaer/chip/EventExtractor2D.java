@@ -1,9 +1,10 @@
 package net.sf.jaer.chip;
 
 import net.sf.jaer.aemonitor.*;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 /**
- *The interface a 2D event extractor must implmeent. It is parameterized by the primitive int raw event address type.
+ *The interface a 2D event extractor must implement. It is parameterized by the primitive int raw event address type.
  */
 
 public interface EventExtractor2D<E> {
@@ -12,7 +13,7 @@ public interface EventExtractor2D<E> {
     
     /** 
      Extracts raw packet to EventPacket
-     @param events the raw aer events
+     @param events the raw AER events
      @return an EventPacket that holds the digested events. This packet may be reused
      */
     public EventPacket extractPacket(AEPacketRaw events);
@@ -77,6 +78,7 @@ public interface EventExtractor2D<E> {
     public boolean matchesAddress(int addr1, int addr2);
     
     public int getAddressFromCell(int x, int y, int type);
+    
     
     public void setSubsamplingEnabled(boolean subsamplingEnabled);
     

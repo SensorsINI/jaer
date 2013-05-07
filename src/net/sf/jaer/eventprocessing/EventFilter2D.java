@@ -61,7 +61,7 @@ abstract public class EventFilter2D extends EventFilter {
     /** Resets the output packet to be a new packet if none has been constructed or clears the packet
     if it exists
      */
-    protected void resetOut() {
+    protected void clearOutputPacket() {
         if (out == null) {
             out = new EventPacket();
         } else {
@@ -84,9 +84,10 @@ abstract public class EventFilter2D extends EventFilter {
         if (out != null && out.getEventClass() == in.getEventClass() && out.getClass() == in.getClass()) {
             out.systemModificationTimeNs=in.systemModificationTimeNs;
             out.clear();
-            return;
+        }else{
+            out = in.constructNewPacket();
         }
-        out = in.constructNewPacket();
+        in.setOutputPacket(out);
     }
     
     /** Checks <code>out</code>  packet to make sure it holds the same type of events as the given class. 
@@ -103,6 +104,7 @@ abstract public class EventFilter2D extends EventFilter {
             out = new EventPacket(outClass);
 //           log.info("oldClass="+oldClass+" outClass="+outClass+"; allocated new "+out);
         }
+        out.clear();
     }
     
     /** Subclasses implement this method to define custom processing.
@@ -149,7 +151,7 @@ abstract public class EventFilter2D extends EventFilter {
     synchronized public void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
         if (yes) {
-            resetOut();
+            clearOutputPacket();
         } else {
             out = null; // garbage collect
         }

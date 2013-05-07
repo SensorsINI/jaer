@@ -24,6 +24,13 @@ public class ApsDvsEvent extends PolarityEvent {
     public ApsDvsEvent() {
     }
 
+    @Override
+    public String toString() {
+        return super.toString()+" adcSample="+adcSample+" startOfFrame="+startOfFrame+" readoutType="+readoutType.toString(); 
+    }
+    
+    
+
     /**
      * The ADC sample value.
      * @return the adcSample

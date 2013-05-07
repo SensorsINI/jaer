@@ -31,34 +31,30 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
     /** the time in timestamp ticks (1us at present) that a spike
      * needs to be supported by a prior event in the neighborhood by to pass through
      */
-    protected int dt = getPrefs().getInt("BackgroundActivityFilter.dt", 30000);
+    protected int dt = getInt("dt", 30000);
 
-    {
-        setPropertyTooltip("dt", "Events with less than this delta time in us to neighbors pass through");
-    }
-    /** the amount to subsample x and y event location by in bit shifts when writing to past event times
+     /** the amount to subsample x and y event location by in bit shifts when writing to past event times
      *map. This effectively increases the range of support. E.g. setting subSamplingShift to 1 quadruples range
      *because both x and y are shifted right by one bit */
-    private int subsampleBy = getPrefs().getInt("BackgroundActivityFilter.subsampleBy", 0);
+    private int subsampleBy = getInt("subsampleBy", 0);
 
-    {
-        setPropertyTooltip("subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
-    }
-    int[][] lastTimestamps;
+     int[][] lastTimestamps;
 
     public BackgroundActivityFilter(AEChip chip) {
         super(chip);
         chip.addObserver(this);
         initFilter();
         resetFilter();
-    }
+        setPropertyTooltip("dt", "Events with less than this delta time in us to neighbors pass through");
+        setPropertyTooltip("subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
+   }
 
-    void allocateMaps(AEChip chip) {
+    private void allocateMaps(AEChip chip) {
         if (chip != null && chip.getNumCells() > 0) {
             lastTimestamps = new int[chip.getSizeX()][chip.getSizeY()];
         }
     }
-    int ts = 0; // used to reset filter
+    private int ts = 0; // used to reset filter
 
     /**
      * filters in to out. if filtering is enabled, the number of out may be less
@@ -67,18 +63,14 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
      *@return the processed events, may be fewer in number. filtering may occur in place in the in packet.
      */
     synchronized public EventPacket filterPacket(EventPacket in) {
-        if (!filterEnabled) {
-            return in;
-        }
-        if (enclosedFilter != null) {
-            in = enclosedFilter.filterPacket(in);
-        }
-        in.checkOutputPacketEventType();
+        // Make sure that this filter's built-in output packet is of same type as input packet in. 
+        // This also sets up output packet for bypassing input events that should not be processed here.
+        checkOutputPacketEventType(in); 
         if (lastTimestamps == null) {
             allocateMaps(chip);
         }
         // for each event only write it to the out buffers if it is within dt of the last time an event happened in neighborhood
-        OutputEventIterator outItr = in.getOutputPacket().outputIterator();
+        OutputEventIterator outItr = getOutputPacket().outputIterator(); // gets the iterator to write out events we want to keep
         int sx = chip.getSizeX() - 1;
         int sy = chip.getSizeY() - 1;
         for (Object e : in) {
@@ -137,7 +129,7 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
 //        }catch(Exception e){
 //            e.printStackTrace();
 //        }
-        return in.getOutputPacket();
+        return getOutputPacket(); // return the events not filtered away, along with events that have been bypassed by the built-in packet input iterator
     }
 
     /**
@@ -157,7 +149,7 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
      * @param dt delay in us
      */
     public void setDt(final int dt) {
-        getPrefs().putInt("BackgroundActivityFilter.dt", dt);
+        putInt("dt", dt);
         getSupport().firePropertyChange("dt", this.dt, dt);
         this.dt = dt;
     }
@@ -214,6 +206,6 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
             subsampleBy = 4;
         }
         this.subsampleBy = subsampleBy;
-        getPrefs().putInt("BackgroundActivityFilter.subsampleBy", subsampleBy);
+        putInt("subsampleBy", subsampleBy);
     }
 }

@@ -140,8 +140,8 @@ public class HotPixelSupressor extends EventFilter2D implements FrameAnnotater {
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
-        in.checkOutputPacketEventType();
-        OutputEventIterator outItr = in.getOutputPacket().outputIterator();
+        checkOutputPacketEventType(in);
+        OutputEventIterator outItr = getOutputPacket().outputIterator();
         for (BasicEvent e : in) {
             if (learnHotPixels) {
                 if (learningStarted) {
@@ -188,7 +188,7 @@ public class HotPixelSupressor extends EventFilter2D implements FrameAnnotater {
                 a.copyFrom(e);
             }
         }
-        return in.getOutputPacket();
+        return getOutputPacket();
     }
 
     @Override

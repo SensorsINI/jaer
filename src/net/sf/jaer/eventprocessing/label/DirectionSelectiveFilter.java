@@ -25,6 +25,7 @@ import java.util.Observer;
 import java.util.Random;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import javax.media.opengl.GLException;
 import javax.media.opengl.glu.*;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -43,36 +44,38 @@ import net.sf.jaer.DevelopmentStatus;
 public class DirectionSelectiveFilter extends EventFilter2D implements Observer, FrameAnnotater {
     final int NUM_INPUT_TYPES=8; // 4 orientations * 2 polarities
     private int sizex,sizey; // chip sizes
-    private boolean showGlobalEnabled=getPrefs().getBoolean("DirectionSelectiveFilter.showGlobalEnabled",false);
-    private boolean showVectorsEnabled=getPrefs().getBoolean("DirectionSelectiveFilter.showVectorsEnabled",false);
+    private boolean showGlobalEnabled=getBoolean("showGlobalEnabled",false);
+    private boolean showVectorsEnabled=getBoolean("showVectorsEnabled",false);
     
     /** event must occur within this time in us to generate a motion event */
-    private int maxDtThreshold=getPrefs().getInt("DirectionSelectiveFilter.maxDtThreshold",100000); // default 100ms
-    private int minDtThreshold=getPrefs().getInt("DirectionSelectiveFilter.minDtThreshold",100); // min 100us to filter noise or multiple spikes 
+    private int maxDtThreshold=getInt("maxDtThreshold",100000); // default 100ms
+    private int minDtThreshold=getInt("minDtThreshold",100); // min 100us to filter noise or multiple spikes 
     
-    private int searchDistance=getPrefs().getInt("DirectionSelectiveFilter.searchDistance",3);
-    private float ppsScale=getPrefs().getFloat("DirectionSelectiveFilter.ppsScale",.05f);
+    private int searchDistance=getInt("searchDistance",3);
+    private float ppsScale=getFloat("ppsScale",.05f);
     
-//    private float maxSpeedPPS=prefs.getFloat("DirectionSelectiveFilter.maxSpeedPPS",100);
+//    private float maxSpeedPPS=prefs.getFloat("maxSpeedPPS",100);
     
-    private boolean speedControlEnabled=getPrefs().getBoolean("DirectionSelectiveFilter.speedControlEnabled", true);
-    private float speedMixingFactor=getPrefs().getFloat("DirectionSelectiveFilter.speedMixingFactor",.001f);
-    private int excessSpeedRejectFactor=getPrefs().getInt("DirectionSelectiveFilter.excessSpeedRejectFactor",3);
+    private boolean speedControlEnabled=getBoolean("speedControlEnabled", true);
+    private float speedMixingFactor=getFloat("speedMixingFactor",.001f);
+    private int excessSpeedRejectFactor=getInt("excessSpeedRejectFactor",3);
     
-    private boolean showRawInputEnabled=getPrefs().getBoolean("DirectionSelectiveFilter.showRawInputEnabled",false);
+    private boolean showRawInputEnabled=getBoolean("showRawInputEnabled",false);
     
-    private boolean useAvgDtEnabled=getPrefs().getBoolean("DirectionSelectiveFilter.useAvgDtEnabled",false);
+    private boolean useAvgDtEnabled=getBoolean("useAvgDtEnabled",false);
 
     // taulow sets time const of lowpass filter, limiting max frequency
-    private int tauLow=getPrefs().getInt("DirectionSelectiveFilter.tauLow",100);
+    private int tauLow=getInt("tauLow",100);
 
-    private int subSampleShift=getPrefs().getInt("DirectionSelectiveFilter.subSampleShift",0);
+    private int subSampleShift=getInt("subSampleShift",0);
 
     private boolean jitterVectorLocations=getBoolean("jitterVectorLocations", true);
     private float jitterAmountPixels=getFloat("jitterAmountPixels",.5f);
  
     
-    private EventPacket oriPacket=null;
+    private EventPacket oriPacket=null; // holds orientation events
+    private EventPacket dirPacket=null; // the output events, also used for rendering output events
+ 
     
     int[][][] lastTimesMap; // map of input orientation event times, [x][y][type] where type is mixture of orienation and polarity
     
@@ -135,20 +138,45 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     private void allocateMap() {
         if(!isFilterEnabled()) return;
         lastTimesMap=new int[chip.getSizeX()+PADDING][chip.getSizeY()+PADDING][NUM_INPUT_TYPES];
+        log.info(String.format("allocated int[%d][%d][%d] array for last event times",chip.getSizeX(),chip.getSizeY(),NUM_INPUT_TYPES));
     }
     
-    GLU glu=null;
+    GLU glu = null;
     GLUquadric expansionQuad;
-    
+    boolean hasBlendChecked = false;
+    boolean hasBlend = false;
+
+    @Override
     public void annotate(GLAutoDrawable drawable) {
-        if(!isFilterEnabled() ) return;
-        GL gl=drawable.getGL();
-        if(gl==null) return;
-        
-        if(isShowGlobalEnabled()){
+        if (!isFilterEnabled()) {
+            return;
+        }
+        GL gl = drawable.getGL();
+        if (gl == null) {
+            return;
+        }
+        if (!hasBlendChecked) {
+            hasBlendChecked = true;
+            String glExt = gl.glGetString(GL.GL_EXTENSIONS);
+            if (glExt.indexOf("GL_EXT_blend_color") != -1) {
+                hasBlend = true;
+            }
+        }
+        if (hasBlend) {
+            try {
+                gl.glEnable(GL.GL_BLEND);
+                gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+                gl.glBlendEquation(GL.GL_FUNC_ADD);
+            } catch (GLException e) {
+                e.printStackTrace();
+                hasBlend = false;
+            }
+        }
+
+        if (isShowGlobalEnabled()) {
             // draw global translation vector
             gl.glPushMatrix();
-            gl.glColor3f(1,1,1);
+            gl.glColor3f(1, 1, 1);
             gl.glTranslatef(chip.getSizeX()/2,chip.getSizeY()/2,0);
             gl.glLineWidth(6f);
             gl.glBegin(GL.GL_LINES);
@@ -165,9 +193,9 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
             gl.glLineWidth(6f);
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2i(0,0);
-            Rotation r=motionVectors.rotation;
+            Rotation rot=motionVectors.rotation;
             int multr=chip.getMaxSize()*10;
-            gl.glVertex2f(-r.filter.getValue()*multr*ppsScale,0);
+            gl.glVertex2f(-rot.filter.getValue()*multr*ppsScale,0);
             gl.glEnd();
             gl.glPopMatrix();
             
@@ -184,7 +212,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
             glu.gluDisk(expansionQuad,rad,rad+1,16,1);
             gl.glPopMatrix();
             
-//            // draw expansion compass vectors as arrows pointing out from origin
+//            // draw expansion compass vectors as arrows pointing in.getOutputPacket() from origin
 //            gl.glPushMatrix();
 //            gl.glTranslatef(chip.getSizeX()/2, (chip.getSizeY())/2,0);
 //            gl.glLineWidth(6f);
@@ -201,14 +229,14 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
 //            gl.glPopMatrix();
         }
         
-        if(isShowVectorsEnabled()){
+        if(dirPacket!=null && isShowVectorsEnabled()){
             // draw individual motion vectors
             gl.glPushMatrix();
-            gl.glColor3f(1,1,1);
+            gl.glColor4f(1f,1f,1f,0.7f);
             gl.glLineWidth(1f);
             gl.glBegin(GL.GL_LINES);
-            int frameDuration=out.getDurationUs();
-            for(Object o:out){
+            int frameDuration=dirPacket.getDurationUs();
+            for(Object o:dirPacket){
                 MotionOrientationEvent e=(MotionOrientationEvent)o;
                 drawMotionVector(gl,e,frameDuration);
             }
@@ -252,15 +280,15 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     }
     
     synchronized public EventPacket filterPacket(EventPacket in) {
-        if(!filterEnabled || in==null) return in;
-        oriPacket=enclosedFilter.filterPacket(in);
-        checkOutputPacketEventType(MotionOrientationEvent.class);
+        // we use two additional packets: oriPacket which holds the orientation events, and dirPacket that holds the dir vector events
+        oriPacket=oriFilter.filterPacket(in);  // compute orientation events.  oriFilter automatically sends bypassed events to oriPacket
+        if(dirPacket==null) dirPacket=new ApsDvsEventPacket(MotionOrientationEvent.class);
+        oriPacket.setOutputPacket(dirPacket); // so when we iterate over oriPacket we send the bypassed APS events to dirPacket
         checkMap();
         // filter
         lastNumInputCellTypes=in.getNumCellTypes();
         
         int n=oriPacket.getSize();
-        if(n==0) return out;
         
         // if the input is ON/OFF type, then motion detection doesn't make much sense because you are likely to detect
         // the nearest event from along the same edge, not from where the edge moved from.
@@ -278,8 +306,8 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
         try{
 //            long stime=System.nanoTime();
 //            if(timeLimitEnabled) timeLimiter.start(getTimeLimitMs()); // ns from us by *1024
-            OutputEventIterator outItr=out.outputIterator();
-            for(Object ein:oriPacket){
+            OutputEventIterator outItr=dirPacket.outputIterator(); // this initializes the output iterator of dirPacket
+            for(Object ein:oriPacket){ // as we iterate using the built-in next() method we will bypass APS events to the dirPacket outputPacket of oriPacket using its output iterator
 
                 OrientationEvent e=(OrientationEvent)ein;
                 int x=((e.x>>>subSampleShift)+P); // x and y are offset inside our timestamp storage array to avoid array access violations
@@ -438,8 +466,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
         }
         
         if(isShowRawInputEnabled()) return in;
-//        getMotionVectors().compute();
-        return out;
+        return dirPacket; // returns the output packet containing both MotionOrientationEvent and the bypassed APS samples
     }
     
     private boolean pass(int dt){
@@ -452,7 +479,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     public void setMaxDtThreshold(final int maxDtThreshold) {
         this.maxDtThreshold = maxDtThreshold;
-        getPrefs().putInt("DirectionSelectiveFilter.maxDtThreshold",maxDtThreshold);
+        putInt("maxDtThreshold",maxDtThreshold);
     }
     
     public int getMinDtThreshold() {
@@ -461,7 +488,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     public void setMinDtThreshold(final int minDtThreshold) {
         this.minDtThreshold = minDtThreshold;
-        getPrefs().putInt("DirectionSelectiveFilter.minDtThreshold", minDtThreshold);
+        putInt("minDtThreshold", minDtThreshold);
     }
     
     public void initFilter() {
@@ -501,7 +528,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
         this.searchDistance = searchDistance;
         setPadding(searchDistance);
         allocateMap();
-        getPrefs().putInt("DirectionSelectiveFilter.searchDistance",searchDistance);
+        putInt("searchDistance",searchDistance);
     }
     
 //    public VectorHistogram getHist() {
@@ -519,7 +546,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     public void setSpeedControlEnabled(boolean speedControlEnabled) {
         this.speedControlEnabled = speedControlEnabled;
-        getPrefs().putBoolean("DirectionSelectiveFilter.speedControlEnabled",speedControlEnabled);
+        putBoolean("speedControlEnabled",speedControlEnabled);
     }
     
     
@@ -529,7 +556,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     public void setShowGlobalEnabled(boolean showGlobalEnabled) {
         this.showGlobalEnabled = showGlobalEnabled;
-        getPrefs().putBoolean("DirectionSelectiveFilter.showGlobalEnabled",showGlobalEnabled);
+        putBoolean("showGlobalEnabled",showGlobalEnabled);
     }
 
     private void setPadding (int searchDistance){
@@ -639,7 +666,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     public void setShowVectorsEnabled(boolean showVectorsEnabled) {
         this.showVectorsEnabled = showVectorsEnabled;
-        getPrefs().putBoolean("DirectionSelectiveFilter.showVectorsEnabled",showVectorsEnabled);
+        putBoolean("showVectorsEnabled",showVectorsEnabled);
     }
     
     public float getPpsScale() {
@@ -649,7 +676,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     /** scale for drawn motion vectors, pixels per second per pixel */
     public void setPpsScale(float ppsScale) {
         this.ppsScale = ppsScale;
-        getPrefs().putFloat("DirectionSelectiveFilter.ppsScale",ppsScale);
+        putFloat("ppsScale",ppsScale);
     }
     
     public float getSpeedMixingFactor() {
@@ -662,7 +689,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
         else if(speedMixingFactor<Float.MIN_VALUE)
             speedMixingFactor=Float.MIN_VALUE;
         this.speedMixingFactor = speedMixingFactor;
-        getPrefs().putFloat("DirectionSelectiveFilter.speedMixingFactor",speedMixingFactor);
+        putFloat("speedMixingFactor",speedMixingFactor);
         
     }
     
@@ -672,7 +699,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     public void setExcessSpeedRejectFactor(int excessSpeedRejectFactor) {
         this.excessSpeedRejectFactor = excessSpeedRejectFactor;
-        getPrefs().putInt("DirectionSelectiveFilter.excessSpeedRejectFactor",excessSpeedRejectFactor);
+        putInt("excessSpeedRejectFactor",excessSpeedRejectFactor);
     }
     
     public int getTauLow() {
@@ -681,7 +708,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     public void setTauLow(int tauLow) {
         this.tauLow = tauLow;
-        getPrefs().putInt("DirectionSelectiveFilter.tauLow",tauLow);
+        putInt("tauLow",tauLow);
         motionVectors.translation.xFilter.setTauMs(tauLow);
         motionVectors.translation.yFilter.setTauMs(tauLow);
         motionVectors.rotation.filter.setTauMs(tauLow);
@@ -694,7 +721,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     public void setShowRawInputEnabled(boolean showRawInputEnabled) {
         this.showRawInputEnabled = showRawInputEnabled;
-        getPrefs().putBoolean("DirectionSelectiveFilter.showRawInputEnabled",showRawInputEnabled);
+        putBoolean("showRawInputEnabled",showRawInputEnabled);
     }
     
     public boolean isUseAvgDtEnabled() {
@@ -703,7 +730,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     
     public void setUseAvgDtEnabled(boolean useAvgDtEnabled) {
         this.useAvgDtEnabled = useAvgDtEnabled;
-        getPrefs().putBoolean("DirectionSelectiveFilter.useAvgDtEnabled",useAvgDtEnabled);
+        putBoolean("useAvgDtEnabled",useAvgDtEnabled);
     }
     
     public int getSubSampleShift() {
@@ -718,7 +745,7 @@ public class DirectionSelectiveFilter extends EventFilter2D implements Observer,
     synchronized public void setSubSampleShift(int subSampleShift) {
         if(subSampleShift<0) subSampleShift=0; else if(subSampleShift>4) subSampleShift=4;
         this.subSampleShift = subSampleShift;
-        getPrefs().putInt("DirectionSelectiveFilter.subSampleShift",subSampleShift);
+        putInt("subSampleShift",subSampleShift);
     }
 
     /**

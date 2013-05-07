@@ -39,25 +39,25 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
     public boolean isGeneratingFilter (){
         return true;
     }
-    private boolean showGlobalEnabled = getPrefs().getBoolean("SimpleOrientationFilter.showGlobalEnabled",false);
+    private boolean showGlobalEnabled = getPrefs().getBoolean("showGlobalEnabled",false);
     /** events must occur within this time along orientation in us to generate an event */
-    protected int minDtThreshold = getPrefs().getInt("SimpleOrientationFilter.minDtThreshold",100000);
+    protected int minDtThreshold = getInt("minDtThreshold",100000);
     /** We reject delta times that are larger than minDtThreshold by this factor, to rule out very old events */
-    private int dtRejectMultiplier = getPrefs().getInt("SimpleOrientationFilter.dtRejectMultiplier",5);
+    private int dtRejectMultiplier = getInt("dtRejectMultiplier",16);
     private int dtRejectThreshold = minDtThreshold * dtRejectMultiplier;
-    private boolean multiOriOutputEnabled = getPrefs().getBoolean("SimpleOrientationFilter.multiOriOutputEnabled",false);
+    private boolean multiOriOutputEnabled = getBoolean("multiOriOutputEnabled",false);
     /** set true to use min of average time to neighbors. Set false to use max time to neighbors (reduces # events) */
-    private boolean useAverageDtEnabled = getPrefs().getBoolean("SimpleOrientationFilter.useAverageDtEnabled",true);
-    private boolean contouringEnabled = getPrefs().getBoolean("SimpleOrientationFilter.contouringEnabled",false);
-    private boolean passAllEvents = getPrefs().getBoolean("SimpleOrientationFilter.passAllEvents",false);
-    private int subSampleShift = getPrefs().getInt("SimpleOrientationFilter.subSampleShift",0);
+    private boolean useAverageDtEnabled = getBoolean("useAverageDtEnabled",true);
+    private boolean contouringEnabled = getBoolean("contouringEnabled",false);
+    private boolean passAllEvents = getBoolean("passAllEvents",false);
+    private int subSampleShift = getInt("subSampleShift",0);
     private final int SUBSAMPLING_SHIFT = 1;
-    private int length = getPrefs().getInt("SimpleOrientationFilter.searchDistance",3);
-    private int width = getPrefs().getInt("SimpleOrientationFilter.width",0);
-    private boolean oriHistoryEnabled = getPrefs().getBoolean("SimpleOrientationFilter.oriHistoryEnabled",false);
-    private boolean showVectorsEnabled = getPrefs().getBoolean("SimpleOrientationFilter.showVectorsEnabled",false);
-    private float oriHistoryMixingFactor = getPrefs().getFloat("SimpleOrientationFilter.oriHistoryMixingFactor",0.1f);
-    private float oriDiffThreshold = getPrefs().getFloat("SimpleOrientationFilter.oriDiffThreshold",0.5f);
+    private int length = getInt("searchDistance",3);
+    private int width = getInt("width",0);
+    private boolean oriHistoryEnabled = getBoolean("oriHistoryEnabled",false);
+    private boolean showVectorsEnabled = getBoolean("showVectorsEnabled",false);
+    private float oriHistoryMixingFactor = getFloat("oriHistoryMixingFactor",0.1f);
+    private float oriDiffThreshold = getFloat("oriDiffThreshold",0.5f);
     private boolean jitterVectorLocations=getBoolean("jitterVectorLocations", true);
     private float jitterAmountPixels=getFloat("jitterAmountPixels",.5f);
     
@@ -80,7 +80,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
 
         setPropertyTooltip(disp,"showGlobalEnabled","shows line of average orientation");
         setPropertyTooltip(tim,"minDtThreshold","Coincidence time, events that pass this coincidence test are considerd for orientation output");
-        setPropertyTooltip(tim,"dtRejectMultiplier","reject delta times more than this factor times minDtThreshold to reduce noise");
+        setPropertyTooltip(tim,"dtRejectMultiplier","<html>reject delta times more than this factor times <em>minDtThreshold</em> to reduce noise");
         setPropertyTooltip(tim,"dtRejectThreshold","reject delta times more than this time in us to reduce effect of very old events");
         setPropertyTooltip("multiOriOutputEnabled","Enables multiple event output for all events that pass test");
         setPropertyTooltip(tim,"useAverageDtEnabled","Use averarge delta time instead of minimum");
@@ -129,13 +129,13 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
             resetFilter();
         } else{
             lastTimesMap = null;
+            oriHistoryMap=null;
 //            lastOutputTimesMap=null;
-            out = null;
         }
     }
 
-    private void checkMaps (){
-        if ( lastTimesMap == null || lastTimesMap.length != chip.getSizeX() || lastTimesMap[0].length != chip.getSizeY() || lastTimesMap[0][0].length != chip.getNumCellTypes() ){
+    private void checkMaps (EventPacket packet){
+        if ( lastTimesMap == null || lastTimesMap.length != chip.getSizeX() || lastTimesMap[0].length != chip.getSizeY() || lastTimesMap[0][0].length != 2 ){ // changed to 2 for PolarityEvents
             allocateMaps();
         }
     }
@@ -144,11 +144,12 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
         if ( !isFilterEnabled() ){
             return;
         }
-//        log.info("SimpleOrientationFilter.allocateMaps()");
         if ( chip != null ){
-            lastTimesMap = new int[ chip.getSizeX() ][ chip.getSizeY() ][ chip.getNumCellTypes() ];
+            lastTimesMap = new int[ chip.getSizeX() ][ chip.getSizeY() ][ 2 ]; // fixed to 2 for PolarityEvents
             oriHistoryMap = new float[ chip.getSizeX() ][ chip.getSizeY() ];
             //lastOutputTimesMap=new int[chip.getSizeX()][chip.getSizeY()][NUM_TYPES][2];
+            log.info(String.format("allocated int[%d][%d][%d] array for last event times and float[%d][%d] array for orientation history",chip.getSizeX(),chip.getSizeY(),2,chip.getSizeX(),chip.getSizeY()));
+
         }
 
         computeRFOffsets();
@@ -240,7 +241,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
 
     public void setMinDtThreshold (final int minDtThreshold){
         this.minDtThreshold = minDtThreshold;
-        getPrefs().putInt("SimpleOrientationFilter.minDtThreshold",minDtThreshold);
+        putInt("minDtThreshold",minDtThreshold);
         dtRejectThreshold = minDtThreshold * dtRejectMultiplier;
     }
 
@@ -258,7 +259,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
 
     public void setUseAverageDtEnabled (boolean useAverageDtEnabled){
         this.useAverageDtEnabled = useAverageDtEnabled;
-        getPrefs().putBoolean("SimpleOrientationFilter.useAverageDtEnabled",useAverageDtEnabled);
+        putBoolean("useAverageDtEnabled",useAverageDtEnabled);
     }
 
     synchronized public boolean isMultiOriOutputEnabled (){
@@ -292,7 +293,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
         }
         this.length = searchDistance;
         allocateMaps();
-        getPrefs().putInt("SimpleOrientationFilter.searchDistance",searchDistance);
+        putInt("searchDistance",searchDistance);
     }
 
     public int getWidth (){
@@ -310,7 +311,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
         }
         this.width = width;
         allocateMaps();
-        getPrefs().putInt("SimpleOrientationFilter.width",width);
+        putInt("width",width);
     }
 
     public void annotate (GLAutoDrawable drawable){
@@ -334,13 +335,13 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
             gl.glEnd();
             gl.glPopMatrix();
         }
-        if ( isShowVectorsEnabled() ){
+        if ( isShowVectorsEnabled() && outputPacket!=null ){
             // draw individual orientation vectors
             gl.glPushMatrix();
             gl.glColor3f(1,1,1);
             gl.glLineWidth(1f);
             gl.glBegin(GL.GL_LINES);
-            for ( Object o:out ){
+            for ( Object o:outputPacket ){
                 OrientationEvent e = (OrientationEvent)o;
                 drawOrientationVector(gl,e);
             }
@@ -348,8 +349,8 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
             gl.glPopMatrix();
         }
     }
-
-    Random r=new Random();
+    private EventPacket outputPacket=null;
+    private Random r=new Random();
     
     // plots a single motion vector which is the number of pixels per second times scaling
     private void drawOrientationVector (GL gl,OrientationEvent e){
@@ -372,7 +373,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
 
     public void setShowVectorsEnabled (boolean showVectorsEnabled){
         this.showVectorsEnabled = showVectorsEnabled;
-        getPrefs().putBoolean("SimpleOrientationFilter.showVectorsEnabled",showVectorsEnabled);
+        putBoolean("showVectorsEnabled",showVectorsEnabled);
     }
 
     public boolean isShowGlobalEnabled (){
@@ -381,19 +382,16 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
 
     public void setShowGlobalEnabled (boolean showGlobalEnabled){
         this.showGlobalEnabled = showGlobalEnabled;
-        getPrefs().putBoolean("SimpleOrientationFilter.showGlobalEnabled",showGlobalEnabled);
+        putBoolean("showGlobalEnabled",showGlobalEnabled);
     }
 
     /**
-     * filters in to out. if filtering is enabled, the number of out may be less
+     * filters in to in.getOutputPacket(). if filtering is enabled, the number of in.getOutputPacket() may be less
      * than the number putString in
      *@param in input events can be null or empty.
      *@return the processed events, may be fewer in number.
      */
     synchronized public EventPacket<?> filterPacket (EventPacket<?> in){
-        if ( in == null ){
-            return null;
-        }
         if ( enclosedFilter != null ){
             in = enclosedFilter.filterPacket(in);
         }
@@ -403,30 +401,31 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
 //            return in;
 //        }
 
-        Class inputClass = in.getEventClass();
-        if ( !( inputClass == PolarityEvent.class || inputClass == BinocularEvent.class ) ){
-            log.warning("wrong input event class "+in.getEventClass()+" in the input packet" + in + ", disabling filter");
-            setFilterEnabled(false);
-            return in;
-        }
+//        Class inputClass = in.getEventClass();
+//        if ( !( inputClass == PolarityEvent.class || inputClass == BinocularEvent.class ) ){
+//            log.warning("wrong input event class "+in.getEventClass()+" in the input packet" + in + ", disabling filter");
+//            setFilterEnabled(false);
+//            return in;
+//        }
 
         //check for binocular input
         boolean isBinocular;
         if ( in.getEventClass() == BinocularEvent.class ){
             isBinocular = true;
-            checkOutputPacketEventType(BinocularOrientationEvent.class);
+            in.checkOutputPacketEventType(BinocularOrientationEvent.class);
         } else{
             isBinocular = false;
-            checkOutputPacketEventType(OrientationEvent.class);
+            in.checkOutputPacketEventType(OrientationEvent.class);
         }
 
-        OutputEventIterator outItr = out.outputIterator();
+        outputPacket=in.getOutputPacket(); // for rendering orientation vectors
+        OutputEventIterator outItr = in.getOutputPacket().outputIterator();
 
         int sizex = chip.getSizeX() - 1;
         int sizey = chip.getSizeY() - 1;
 
         oriHist.reset();
-        checkMaps();
+        checkMaps(in);
 
         // for each event write out an event of an orientation type if there have also been events within past dt along this type's orientation of the
         // same retina polarity
@@ -495,11 +494,13 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
                     }
                 }
             } else{ // use max dt
-                // now getString maxdt to neighbors in each directoin
+                // now get maxdt to neighbors in each direction
                 for ( int j = 0 ; j < NUM_TYPES ; j++ ){
                     maxdts[j] = Integer.MIN_VALUE;
                     int m = dts[j].length;
-                    for ( int k = 0 ; k < m ; k++ ){
+                    for ( int k = 0 ; k < m ; k++ ){  
+                        // iterate over RF and find maxdt to previous events, final orientation will be that orientation that has minimum maxdt
+                        // this has problem that pixels that do NOT fire an event still contribute a large dt from previous edges
                         maxdts[j] = dts[j][k] > maxdts[j] ? dts[j][k] : maxdts[j]; // max dt to neighbor
                     }
                 }
@@ -589,11 +590,11 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
             }
         }
         final int ORI_SHIFT = 16; // will shift our orientation value this many bits in raw address
-        for (Object o : out) {
+        for (Object o : in.getOutputPacket()) {
             OrientationEvent e = (OrientationEvent) o;
             e.address = e.address | (e.orientation << ORI_SHIFT);
         }
-        return out;
+        return in.getOutputPacket();
     }
 
     public boolean isPassAllEvents (){
@@ -605,7 +606,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
      */
     public void setPassAllEvents (boolean passAllEvents){
         this.passAllEvents = passAllEvents;
-        getPrefs().putBoolean("SimpleOrientationFilter.passAllEvents",passAllEvents);
+        putBoolean("passAllEvents",passAllEvents);
     }
 
     public int getSubSampleShift (){
@@ -624,7 +625,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
             subSampleShift = 4;
         }
         this.subSampleShift = subSampleShift;
-        getPrefs().putInt("SimpleOrientationFilter.subSampleShift",subSampleShift);
+        putInt("subSampleShift",subSampleShift);
     }
 
     public int getDtRejectMultiplier (){
@@ -652,7 +653,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
             oriHistoryMixingFactor = 0;
         }
         this.oriHistoryMixingFactor = oriHistoryMixingFactor;
-        getPrefs().putFloat("SimpleOrientationFilter.oriHistoryMixingFactor",oriHistoryMixingFactor);
+        putFloat("oriHistoryMixingFactor",oriHistoryMixingFactor);
     }
 
     public float getOriDiffThreshold (){
@@ -664,7 +665,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
             oriDiffThreshold = NUM_TYPES;
         }
         this.oriDiffThreshold = oriDiffThreshold;
-        getPrefs().putFloat("SimpleOrientationFilter.oriDiffThreshold",oriDiffThreshold);
+        putFloat("oriDiffThreshold",oriDiffThreshold);
     }
 
     public boolean isOriHistoryEnabled (){
@@ -673,7 +674,7 @@ public class SimpleOrientationFilter extends EventFilter2D implements Observer,F
 
     public void setOriHistoryEnabled (boolean oriHistoryEnabled){
         this.oriHistoryEnabled = oriHistoryEnabled;
-        getPrefs().putBoolean("SimpleOrientationFilter.oriHistoryEnabled",oriHistoryEnabled);
+        putBoolean("oriHistoryEnabled",oriHistoryEnabled);
     }
 
     /**

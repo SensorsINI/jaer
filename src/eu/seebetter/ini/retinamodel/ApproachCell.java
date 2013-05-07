@@ -215,7 +215,7 @@ public class ApproachCell extends EventFilter2D implements FrameAnnotater, Obser
             return in;
         }
         checkOutputPacketEventType(in);
-        resetOut();
+        clearOutputPacket();
         if(subunits==null) resetFilter();
         for (Object o : in) {
             PolarityEvent e = (PolarityEvent) o;

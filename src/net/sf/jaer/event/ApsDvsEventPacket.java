@@ -56,6 +56,17 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
         return packet;
     }
     
+   /** Constructs a new empty ApsDvsEventPacket containing <code>eventClass</code>.
+     * @param eventClass the EventPacket will be initialized holding this class of events.
+     * @see #setEventClass(java.lang.Class) 
+     * @see #setEventClass(java.lang.reflect.Constructor) 
+     */
+    @Override
+    public EventPacket constructNewPacket(Class<? extends BasicEvent> eventClass){
+        EventPacket packet=new ApsDvsEventPacket(eventClass);
+        return packet;
+    }
+
     
 
     /**This iterator (the default) just iterates over DVS events in the packet.
@@ -130,15 +141,15 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
             E output = (E) elementData[cursorDvs++]; // get next element of this packet (guarenteed to be dvs event how?) and advance cursor
             //bypass APS events
             E nextIn = (E) elementData[cursorDvs]; // get the next element
-            OutputEventIterator outItr=getOutputPacket().getOutputIterator(); // and the output iterator for the "outputPacket" (without resetting it)
-            while(nextIn.isAdcSample() && cursorDvs<size){ // while the event is an ADC sample and we are not done with packet
-                if (getOutputPacket() != null) {
+            if (outputPacket != null) {
+                OutputEventIterator outItr = getOutputPacket().getOutputIterator(); // and the output iterator for the "outputPacket" (without resetting it)
+                while (nextIn.isAdcSample() && cursorDvs < size) { // while the event is an ADC sample and we are not done with packet
                     // copy the ADC sample to outputPacket
-                    E nextOut = (E) outItr.nextOutput();  
+                    E nextOut = (E) outItr.nextOutput();
                     nextOut.copyFrom(nextIn);
+                    cursorDvs++;
+                    nextIn = (E) elementData[cursorDvs]; // point to next event
                 }
-                cursorDvs++;
-                nextIn = (E) elementData[cursorDvs]; // point to next event
             }
             return output; // now return the element we obtained at start
         }

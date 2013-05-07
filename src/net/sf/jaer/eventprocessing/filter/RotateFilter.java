@@ -10,6 +10,7 @@
  *Copyright July 7, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 package net.sf.jaer.eventprocessing.filter;
+import java.util.Iterator;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
@@ -28,11 +29,11 @@ because it doesn't need to copy events, only modify them.
 @Description("Rotates the addresses")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class RotateFilter extends EventFilter2D implements Observer{
-    private boolean swapXY = getPrefs().getBoolean("RotateFilter.swapXY",false);
-    private boolean rotate90deg = getPrefs().getBoolean("RotateFilter.rotate90deg",false);
-    private boolean invertY = getPrefs().getBoolean("RotateFilter.invertY",false);
-    private boolean invertX = getPrefs().getBoolean("RotateFilter.invertX",false);
-    private float angleDeg = getPrefs().getFloat("RotateFilter.angleDeg",0f);
+    private boolean swapXY = getBoolean("swapXY",false);
+    private boolean rotate90deg = getBoolean("rotate90deg",false);
+    private boolean invertY = getBoolean("invertY",false);
+    private boolean invertX = getBoolean("invertX",false);
+    private float angleDeg = getFloat("angleDeg",0f);
     private float cosAng = (float)Math.cos(angleDeg * Math.PI / 180);
     private float sinAng = (float)Math.sin(angleDeg * Math.PI / 180);
     private int sx,  sy;
@@ -53,11 +54,15 @@ public class RotateFilter extends EventFilter2D implements Observer{
 
     public EventPacket<?> filterPacket (EventPacket<?> in){
         short tmp;
-        if ( !isFilterEnabled() ){
-            return in;
-        }
         final int sx2=sx/2, sy2=sy/2;
-        for ( Object o:in ){
+        Iterator itr;
+        if(in instanceof ApsDvsEventPacket){
+            itr=((ApsDvsEventPacket)in).fullIterator();
+        }else{
+            itr=in.iterator();
+        }
+        while(itr.hasNext()){
+            Object o=itr.next();
             BasicEvent e = (BasicEvent)o;
             if ( swapXY ){
                 tmp = e.x;
@@ -106,7 +111,7 @@ public class RotateFilter extends EventFilter2D implements Observer{
 
     public void setSwapXY (boolean swapXY){
         this.swapXY = swapXY;
-        getPrefs().putBoolean("RotateFilter.swapXY",swapXY);
+        putBoolean("swapXY",swapXY);
     }
 
     public boolean isRotate90deg (){
@@ -115,7 +120,7 @@ public class RotateFilter extends EventFilter2D implements Observer{
 
     public void setRotate90deg (boolean rotate90deg){
         this.rotate90deg = rotate90deg;
-        getPrefs().putBoolean("RotateFilter.rotate90deg",rotate90deg);
+        putBoolean("rotate90deg",rotate90deg);
     }
 
     public boolean isInvertY (){
@@ -124,7 +129,7 @@ public class RotateFilter extends EventFilter2D implements Observer{
 
     public void setInvertY (boolean invertY){
         this.invertY = invertY;
-        getPrefs().putBoolean("RotateFilter.invertY",invertY);
+        putBoolean("invertY",invertY);
     }
 
     public boolean isInvertX (){
@@ -133,7 +138,7 @@ public class RotateFilter extends EventFilter2D implements Observer{
 
     public void setInvertX (boolean invertX){
         this.invertX = invertX;
-        getPrefs().putBoolean("RotateFilter.invertX",invertX);
+        putBoolean("invertX",invertX);
     }
 
     public void update (Observable o,Object arg){
@@ -155,7 +160,7 @@ public class RotateFilter extends EventFilter2D implements Observer{
         // round to nearest 5 deg
         if(angleDeg>this.angleDeg) this.angleDeg+=1; else if(angleDeg<this.angleDeg)this.angleDeg-=1;
         this.angleDeg = (int)Math.round(this.angleDeg);
-        getPrefs().putFloat("RotateFilter.angleDeg",angleDeg);
+        putFloat("angleDeg",angleDeg);
         cosAng = (float)Math.cos(angleDeg * Math.PI / 180);
         sinAng = (float)Math.sin(angleDeg * Math.PI / 180);
     }

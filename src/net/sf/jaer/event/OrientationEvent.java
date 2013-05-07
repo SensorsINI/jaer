@@ -20,7 +20,7 @@ package net.sf.jaer.event;
  
  * @author tobi
  */
-public class OrientationEvent extends PolarityEvent {
+public class OrientationEvent extends ApsDvsEvent {
     
     /** The orientation value. */
     public byte orientation;

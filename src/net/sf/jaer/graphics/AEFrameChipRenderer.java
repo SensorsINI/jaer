@@ -158,10 +158,16 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
     }
 
+    private int warningCount=0;
+    private static int WARNING_INTERVAL=100;
+    
     @Override
     public synchronized void render(EventPacket pkt) {
 
-        if (!(pkt instanceof ApsDvsEventPacket)) return;
+        if (!(pkt instanceof ApsDvsEventPacket)) {
+            if(warningCount++%WARNING_INTERVAL==0) log.info("I only know how to render ApsDvsEventPacket but got "+pkt);
+            return;
+        }
 
         ApsDvsEventPacket packet = (ApsDvsEventPacket) pkt;
 
@@ -209,7 +215,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     private void updateFrameBuffer(ApsDvsEvent e){
         float[] buf = pixBuffer.array();
         if(e.isA()){
-            int index = getIndex(e.x, e.y);
+            int index = getIndex(e);
             if(index<0 || index >= buf.length)return;
             float val = e.getAdcSample();
             buf[index] = val;
@@ -217,7 +223,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             buf[index+2] = val;
             if(e.isStartOfFrame())startFrame(e.timestamp);
         }else if(e.isB()){
-            int index = getIndex(e.x, e.y);
+            int index = getIndex(e);
             if(index<0 || index >= buf.length)return;
             float val = ((float)buf[index]-(float)e.getAdcSample());
             if (val < minValue) {
@@ -254,7 +260,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      */
     private void updateEventMaps(ApsDvsEvent e){
         float[] map;
-        int index = getIndex(e.x, e.y);
+        int index = getIndex(e);
         if(e.polarity == ApsDvsEvent.Polarity.On){
             map = onMap.array();
         }else{
@@ -293,10 +299,11 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     final int INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS=1000;
     private long lastWarningPrintedTimeMs=Integer.MAX_VALUE;
     
-    private int getIndex(int x, int y){
+    private int getIndex(BasicEvent e){
+        int x=e.x, y=e.y;
         if (x < 0 || y < 0 || x >= sizeX || y >= sizeY) {
             if (System.currentTimeMillis() - lastWarningPrintedTimeMs > INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS) {
-                log.warning(String.format("Event x=%d y=%d out of bounds and cannot be rendered in bounds sizeX=%d sizeY=%d- delaying next warning for %dms", x, y, sizeX, sizeY,INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS));
+                log.warning(String.format("Event %s out of bounds and cannot be rendered in bounds sizeX=%d sizeY=%d- delaying next warning for %dms", e.toString(), sizeX, sizeY,INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS));
                 lastWarningPrintedTimeMs = System.currentTimeMillis();
             }
             return -1;

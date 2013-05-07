@@ -8,6 +8,16 @@ package eu.seebetter.ini.chips.sbret10;
 
 import com.sun.opengl.util.j2d.TextRenderer;
 import eu.seebetter.ini.chips.APSDVSchip;
+import static eu.seebetter.ini.chips.APSDVSchip.ADC_DATA_MASK;
+import static eu.seebetter.ini.chips.APSDVSchip.ADC_READCYCLE_MASK;
+import static eu.seebetter.ini.chips.APSDVSchip.ADDRESS_TYPE_APS;
+import static eu.seebetter.ini.chips.APSDVSchip.ADDRESS_TYPE_DVS;
+import static eu.seebetter.ini.chips.APSDVSchip.ADDRESS_TYPE_MASK;
+import static eu.seebetter.ini.chips.APSDVSchip.POLMASK;
+import static eu.seebetter.ini.chips.APSDVSchip.XMASK;
+import static eu.seebetter.ini.chips.APSDVSchip.XSHIFT;
+import static eu.seebetter.ini.chips.APSDVSchip.YMASK;
+import static eu.seebetter.ini.chips.APSDVSchip.YSHIFT;
 import java.awt.Font;
 import java.util.Iterator;
 import java.util.logging.Level;
@@ -64,6 +74,7 @@ public class SBret10 extends APSDVSchip {
     JFrame controlFrame = null;
     public static short WIDTH = 240;
     public static short HEIGHT = 180;
+    int sx1 = getSizeX()-1, sy1=getSizeY()-1;
 
     /** Creates a new instance of cDVSTest20.  */
     public SBret10() {
@@ -129,13 +140,13 @@ public class SBret10 extends APSDVSchip {
     public class SBret10Extractor extends RetinaExtractor {
 
         private int firstFrameTs = 0;
-        boolean ignore = false;
+        boolean ignore = false; // TODO what does ignore do?
         
         public SBret10Extractor(SBret10 chip) {
             super(chip);
         }
         
-        private void lastADCevent(){
+        private void lastADCevent(){ // TODO what does this method do?
             if (resetOnReadout){
                 config.nChipReset.set(true);
             }
@@ -159,6 +170,8 @@ public class SBret10 extends APSDVSchip {
                 return out;
             }
             int n = in.getNumEvents(); //addresses.length;
+            sx1 = chip.getSizeX()-1;
+            sy1 =chip.getSizeY()-1;
 
             int[] datas = in.getAddresses();
             int[] timestamps = in.getTimestamps();
@@ -181,7 +194,7 @@ public class SBret10 extends APSDVSchip {
                         e.address = data;
                         e.timestamp = (timestamps[i]);
                         e.polarity = (data & POLMASK) == POLMASK ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
-                        e.x = (short) (chip.getSizeX()-1-((data & XMASK) >>> XSHIFT));
+                        e.x = (short) (sx1-((data & XMASK) >>> XSHIFT));
                         e.y = (short) ((data & YMASK) >>> YSHIFT); 
                         //System.out.println(data);
                     } 
@@ -203,17 +216,18 @@ public class SBret10 extends APSDVSchip {
                             //log.info("got C event");
                             break;
                         case 3:
-                            log.warning("Event with cycle null was sent out!");
+                            log.warning("Event with readout cycle null was sent out!");
                             break;
                         default:
-                            log.warning("Event with unknown cycle was sent out!");
+                            log.warning("Event with unknown readout cycle was sent out!");
                     }
                     e.special = false;
                     e.timestamp = (timestamps[i]);
                     e.address = data;
                     e.x = (short) (((data & XMASK) >>> XSHIFT));
                     e.y = (short) ((data & YMASK) >>> YSHIFT); 
-                    e.startOfFrame = (e.readoutType == ApsDvsEvent.ReadoutType.A && e.x == 0 && e.y == 0);
+                    boolean pixZero=e.x == 0 && e.y == 0;
+                    e.startOfFrame = (e.readoutType == ApsDvsEvent.ReadoutType.A && pixZero);
                     if(e.startOfFrame){
                         //if(pixCnt!=129600) System.out.println("New frame, pixCnt was incorrectly "+pixCnt+" instead of 129600 but this could happen at end of file");
                         if(ignoreReadout){
@@ -222,17 +236,19 @@ public class SBret10 extends APSDVSchip {
                         frameTime = e.timestamp - firstFrameTs;
                         firstFrameTs = e.timestamp;
                     }
-                    if(e.isB() && e.x == 0 && e.y == 0){
+                    if(pixZero && e.isB() ){
                         exposureB = e.timestamp-firstFrameTs;
                     }
-                    if(e.isC() && e.x == 0 && e.y == 0){
+                    if(pixZero && e.isC() ){
                         exposureC = e.timestamp-firstFrameTs;
                     }
-                    if(((config.useC.isSet() && e.isC()) || (!config.useC.isSet() && e.isB()))  && e.x == 0 && e.y == (short)(chip.getSizeY()-1)){
-                        lastADCevent();
-                        //insert an "end of frame" event
+                    if(((config.useC.isSet() && e.isC()) || (!config.useC.isSet() && e.isB()))  && e.x == 0 && e.y == sy1){
+                        // if we use A+B+C readout, OR, if we use A-B readout and we are at last APS pixel, then write EOF event
+                        lastADCevent(); // TODO what does this do?
+                        //insert a new "end of frame" event not present in original data
                         ApsDvsEvent a = (ApsDvsEvent) outItr.nextOutput();
-                        a.adcSample = 0;
+                        a.startOfFrame=false;
+                        a.adcSample = 0; // set this effectively as ADC sample even though fake
                         a.timestamp = (timestamps[i]);
                         a.x = -1;
                         a.y = -1;
@@ -260,13 +276,38 @@ public class SBret10 extends APSDVSchip {
             Iterator evItr = apsDVSpacket.fullIterator();
             int k=0;
             while(evItr.hasNext()){
-                TypedEvent e=(ApsDvsEvent)evItr.next();
-                ts[k]=e.timestamp;
-                a[k++]=e.address; 
+                ApsDvsEvent e=(ApsDvsEvent)evItr.next();
+                // not writing out these EOF events (which were synthesized on extraction) results in reconstructed packets with giant time gaps, reason unknown
+                if (e.isEOF()) {
+                    continue;  // these EOF events were synthesized from data in first place
+                }
+                ts[k] = e.timestamp;
+                a[k++]=reconstructRawAddressFromEvent(e); 
             }
-            raw.setNumEvents(n);
+            raw.setNumEvents(k);
             return raw;
         } 
+
+        /** To handle filtered ApsDvsEvents, this method
+         * rewrites the fields of the raw address encoding x and y addresses to reflect the event's x and y fields.
+         * @param e the ApsDvsEvent 
+         * @return the raw address
+         */
+        @Override
+        public int reconstructRawAddressFromEvent(TypedEvent e) {
+            int address=e.address;  
+            // e.x came from  e.x = (short) (chip.getSizeX()-1-((data & XMASK) >>> XSHIFT)); // for DVS event, no x flip if APS event
+            if(((ApsDvsEvent)e).adcSample>=0){
+                address = (address & ~XMASK) | ((e.x) << XSHIFT);
+            } else {
+                address = (address & ~XMASK) | ((sx1 - e.x) << XSHIFT);
+            }
+            // e.y came from e.y = (short) ((data & YMASK) >>> YSHIFT);
+            address = (address & ~YMASK) | (e.y << YSHIFT);
+            return address;
+        }
+        
+        
         
     } // extractor
 
@@ -297,6 +338,7 @@ public class SBret10 extends APSDVSchip {
     /**
      * @return the displayLogIntensity
      */
+    @Override
     public void takeSnapshot() {
         snapshot = true;
         config.apsReadoutControl.setAdcEnabled(true);

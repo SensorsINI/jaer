@@ -1539,6 +1539,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     // if(aeRaw.getNumEvents()>0){ // we should always extract even if the packet is empty to be sure we get a valid packet!
                     
                     packet = extractPacket(aeRaw);
+                    numEvents = packet.getSize();
 
                     //  synchronized(packet.class()){}
 
@@ -1558,6 +1559,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     {   skipTheRest=filterPacket();
                         if (skipTheRest) continue;
                     }
+                    numFilteredEvents = packet.getSize();
                         
                     chip.setLastData(packet);// set the rendered data for use by various methods
 
@@ -1572,8 +1574,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                     
                     singleStepDone();
-                    numEvents = packet.getSize();
-                    numFilteredEvents = packet.getSize();
 //                    if (packet.isEmpty() && !isRenderBlankFramesEnabled()) {
 //                        // log.info("blank frame, not rendering it");
 //                        fpsDelay();
@@ -1872,6 +1872,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return false;
         }
         
+        /** Filters packet through processing chain if ProcessingMode is RENDERING or LIVE.
+         * If any filter throws an exception, all filters are disabled.
+         * 
+         * @return true if packet is null, otherwise false. 
+         */
         boolean filterPacket() {
 
             // filter events, do processing on them in rendering loop here

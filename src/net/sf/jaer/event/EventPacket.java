@@ -266,7 +266,17 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         EventPacket packet=new EventPacket(getEventClass());
         return packet;
     }
-  
+
+    /** Constructs a new empty EventPacket containing <code>eventClass</code>.
+     * @param eventClass the EventPacket will be initialized holding this class of events.
+     * @see #setEventClass(java.lang.Class) 
+     * @see #setEventClass(java.lang.reflect.Constructor) 
+     */
+    public EventPacket constructNewPacket(Class<? extends BasicEvent> eventClass){
+        EventPacket packet=new EventPacket(eventClass);
+        return packet;
+    }
+
     /**
      * Utility method that checks the built-in
      * <code>outputPacket</code> packet to ensure it holds the given class of
@@ -283,7 +293,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     public void checkOutputPacketEventType(Class<? extends BasicEvent> outClass) {
         if (outputPacket == null || outputPacket.getEventClass() == null || outputPacket.getEventClass() != outClass  || outputPacket.getClass()!=getClass()) {
 //            Class oldClass=outputPacket.getEventClass();
-            outputPacket = constructNewPacket(); // constructNewPacket is overridden by subtypes of EventPacket
+            outputPacket = constructNewPacket(outClass); // constructNewPacket is overridden by subtypes of EventPacket
 //           log.info("oldClass="+oldClass+" outClass="+outClass+"; allocated new "+outputPacket);
         }
         outputPacket.systemModificationTimeNs=systemModificationTimeNs;

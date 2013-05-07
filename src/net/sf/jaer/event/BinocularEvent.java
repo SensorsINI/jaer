@@ -16,7 +16,7 @@ package net.sf.jaer.event;
  * Represents an event from a binocular source
  * @author tobi
  */
-public class BinocularEvent extends PolarityEvent {
+public class BinocularEvent extends ApsDvsEvent {
     public static enum Eye {LEFT,RIGHT};
     public Eye eye=Eye.LEFT;
     

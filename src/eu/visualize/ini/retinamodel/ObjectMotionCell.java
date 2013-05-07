@@ -79,7 +79,7 @@ public class ObjectMotionCell extends EventFilter2D implements FrameAnnotater, O
         if(in instanceof ApsDvsEventPacket){
             checkOutputPacketEventType(in); // make sure memory is allocated to avoid leak. we don't use output packet but it is necesary to iterate over DVS events only
         }  
-        resetOut();
+        clearOutputPacket();
         if(subunits==null) resetFilter();
         for (Object o : in) {
             PolarityEvent e = (PolarityEvent) o;

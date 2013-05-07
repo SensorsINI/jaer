@@ -19,7 +19,7 @@ import java.util.logging.Logger;
 
 /**
  * An abstract 2D event extractor for 16 bit raw addresses. It is called with addresses and timestamps and extracts 
- * these to {X, Y, type} arrays based on methods that you define by subclassing and overriding the abstract methods. 
+ * these to {X, Y, type} arrays based on methods that you define by sub-classing and overriding the abstract methods. 
  * 
  * xMask, 
  * yMask, typeMask mask for x, y address and cell type, and xShift, yShift, typeShift say how many bits to shift after
@@ -308,13 +308,14 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
         return (addr1&getUsedBits())==(addr2&getUsedBits());
     }
     
-    /** computes the raw address from an x,y, and type. Useful for searching for events in e.g. matlab, given the raw addresses.
+    /** Computes the raw address from an x,y, and type. Useful for searching for events in e.g. matlab, given the raw addresses.
      *This function does include flipped addresses - it uses flip booleans to pre-adjust x,y,type for chip.
      *@param x the x address
      *@param y the y address
      *@param type the cell type
      *@return the raw address
      */
+    @Override
     public int getAddressFromCell(int x, int y, int type) {
         if(flipx) x=sizexm1-x;
         if(flipy) y=sizeym1-y;
@@ -327,18 +328,75 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
                 );
     }
     
+    /**
+     * Returns the e.address field from the event, which is the address csaptured during hardware acquisition.
+     * If subclasses want to override this functionality they can either override this method to match what their <code>EventExtractor2D</code>
+     * actually does, or perhaps use the {@code #reconstructRawAddressFromEvent} method to provide a default reconstruction (which particular raw address encodings most
+     * likely do not use.
+     *
+     * @param e
+     * @return the raw address.
+     * @see #reconstructDefaultRawAddressFromEvent(net.sf.jaer.event.TypedEvent) 
+     * @see #reconstructRawPacket(net.sf.jaer.event.EventPacket) 
+     */
+    public int reconstructRawAddressFromEvent(TypedEvent e) {
+        return e.address;
+    }
+
+    
+    /**
+     * Computes a default binary representation of the event based on xshift,
+     * yshift, flipx, flipy, fliptype and the array sizes. Subclasses must
+     * override this method if they want to write out data after processing and {@link #reconstructRawPacket(net.sf.jaer.event.EventPacket)
+     * } is used in the packet reconstruction from processed EventPackets.
+     *
+     * @param e
+     * @return the raw address.
+     * @see #reconstructRawAddressFromEvent(net.sf.jaer.event.TypedEvent) 
+     * @see #reconstructRawPacket(net.sf.jaer.event.EventPacket) 
+     */
+    public int reconstructDefaultRawAddressFromEvent(TypedEvent e) {
+        int x = e.x, y = e.y, type = e.type;
+        if (flipx) {
+            x = (sizexm1 - e.x);
+        }
+        if (flipy) {
+            y = (sizeym1 - e.y);
+        }
+        if (fliptype) {
+            type = (sizetypem1 - e.type);
+        }
+
+        return (int) ((x << xshift)
+                | (y << yshift)
+                | (type << typeshift));
+
+    }
+
+    @Override
     public boolean isSubsamplingEnabled() {
         return subsamplingEnabled;
     }
     
+    /**
+     *  Sets whether large packets are sub-sampled to reduce processing time.
+     * @param subsamplingEnabled
+     */
+    @Override
     public void setSubsamplingEnabled(boolean subsamplingEnabled) {
         this.subsamplingEnabled = subsamplingEnabled;
     }
     
+    @Override
     public int getSubsampleThresholdEventCount() {
         return subsampleThresholdEventCount;
     }
     
+    /**
+     * Sets the number of events for th eextractor above which subsamppling may be enabled.
+     * @param subsampleThresholdEventCount
+     */
+    @Override
     public void setSubsampleThresholdEventCount(int subsampleThresholdEventCount) {
         this.subsampleThresholdEventCount = subsampleThresholdEventCount;
     }
@@ -346,12 +404,14 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
     public AEPacketRaw raw=null;
     
     /** 
-     * Returns a raw packet suitable for logging to a data file, from an EventPacket that could be the result of filtering
+     * Returns a raw packet suitable for writing to a data file or network stream from an EventPacket that could be the result of filtering
      * operations.
      * <p>
-     This filtering may not be reflected in the output of the reconstruction because the original raw address is the one that is used (for efficiency).
+     This filtering may not be reflected in the output of the reconstruction because the default implementation of {@code #reconstructRawAddressFromEvent} uses 
+     * the raw address stored in the event for efficiency.
      * @param packet the EventPacket
-     * @return a raw packet holding the device events.  This raw packet is reused for every call to reconstructRawPacket.
+     * @return a raw packet holding the device events.  This raw packet is reused for every call to <code>reconstructRawPacket</code>.
+     * @see #reconstructRawAddressFromEvent(net.sf.jaer.event.TypedEvent) 
      */
     public AEPacketRaw reconstructRawPacket(EventPacket packet) {
         if(raw==null) raw=new AEPacketRaw();
@@ -364,7 +424,7 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
           for(Object o:packet){
             TypedEvent e=(TypedEvent)o;
             ts[k]=e.timestamp;
-            a[k++]=e.address; //getAddressFromCell(e.x,e.y,e.type); // uses the new (May 2010) field for the raw address which is initially captured from hardware
+            a[k++]=reconstructRawAddressFromEvent(e); //getAddressFromCell(e.x,e.y,e.type); // uses the new (May 2010) field for the raw address which is initially captured from hardware
         }
         raw.setNumEvents(n);
 

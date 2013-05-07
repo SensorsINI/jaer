@@ -58,7 +58,7 @@ public class DepressingSynapseFilter extends EventFilter2D implements FrameAnnot
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         checkOutputPacketEventType(in);
         checkNeuronAllocation();
-        OutputEventIterator outItr = out.outputIterator();
+        OutputEventIterator outItr = getOutputPacket().outputIterator();
         for (Object o : in) {
             TypedEvent e = (TypedEvent) o;
             if (neurons.stimulate(e)) {
@@ -66,7 +66,7 @@ public class DepressingSynapseFilter extends EventFilter2D implements FrameAnnot
                 oe.copyFrom(e);
             }
         }
-        return out;
+        return getOutputPacket();
     }
 
     @Override

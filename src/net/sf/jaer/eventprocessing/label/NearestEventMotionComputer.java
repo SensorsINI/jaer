@@ -156,7 +156,7 @@ public class NearestEventMotionComputer extends EventFilter2D implements Observe
     public void annotate(GLAutoDrawable drawable) {
     }
     
-    @Override protected void resetOut(){
+    @Override protected void clearOutputPacket(){
         if(out==null){
             out=new EventPacket(OrientationEvent.class);
         }else{
