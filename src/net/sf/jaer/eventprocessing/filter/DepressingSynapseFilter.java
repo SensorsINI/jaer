@@ -59,12 +59,18 @@ public class DepressingSynapseFilter extends EventFilter2D implements FrameAnnot
         checkOutputPacketEventType(in);
         checkNeuronAllocation();
         OutputEventIterator outItr = getOutputPacket().outputIterator();
-        for (Object o : in) {
-            TypedEvent e = (TypedEvent) o;
-            if (neurons.stimulate(e)) {
-                TypedEvent oe = (TypedEvent) outItr.nextOutput();
-                oe.copyFrom(e);
+        int k = 0;
+        try {
+            for (Object o : in) {
+                TypedEvent e = (TypedEvent) o;
+                if (neurons.stimulate(e)) {
+                    TypedEvent oe = (TypedEvent) outItr.nextOutput();
+                    oe.copyFrom(e);
+                }
+                k++;
             }
+        } catch (ArrayIndexOutOfBoundsException e) {
+            log.warning(e.toString() + " in packet " + in + " on event " + k);
         }
         return getOutputPacket();
     }

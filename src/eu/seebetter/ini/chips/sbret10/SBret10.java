@@ -181,7 +181,10 @@ public class SBret10 extends APSDVSchip {
             // The datas array holds the data, which consists of a mixture of AEs and ADC values.
             // Here we extract the datas and leave the timestamps alone.
             
-            for (int i = 0; i < n; i++) {  // TODO implement skipBy
+            
+            // TODO entire rendering / processing approach is not very efficient now
+            
+            for (int i = 0; i < n; i++) {  // TODO implement skipBy/subsampling, but without missing the frame start/end events and still delivering frames
                 int data = datas[i];
 
                 if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_DVS) {
@@ -227,7 +230,7 @@ public class SBret10 extends APSDVSchip {
                     e.x = (short) (((data & XMASK) >>> XSHIFT));
                     e.y = (short) ((data & YMASK) >>> YSHIFT); 
                     boolean pixZero=e.x == 0 && e.y == 0;
-                    e.startOfFrame = (e.readoutType == ApsDvsEvent.ReadoutType.A && pixZero);
+                    e.startOfFrame = (e.readoutType == ApsDvsEvent.ReadoutType.A) && pixZero;
                     if(e.startOfFrame){
                         //if(pixCnt!=129600) System.out.println("New frame, pixCnt was incorrectly "+pixCnt+" instead of 129600 but this could happen at end of file");
                         if(ignoreReadout){
@@ -296,6 +299,12 @@ public class SBret10 extends APSDVSchip {
         @Override
         public int reconstructRawAddressFromEvent(TypedEvent e) {
             int address=e.address;  
+//            if(e.x==0 && e.y==0){
+//                log.info("start of frame event "+e);
+//            }
+//            if(e.x==-1 && e.y==-1){
+//                log.info("end of frame event "+e);
+//            }
             // e.x came from  e.x = (short) (chip.getSizeX()-1-((data & XMASK) >>> XSHIFT)); // for DVS event, no x flip if APS event
             if(((ApsDvsEvent)e).adcSample>=0){
                 address = (address & ~XMASK) | ((e.x) << XSHIFT);

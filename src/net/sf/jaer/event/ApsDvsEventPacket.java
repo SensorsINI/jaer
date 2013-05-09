@@ -135,21 +135,34 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
                 return cursorDvs<size;
             }
         }
+        
+        ApsDvsEvent lastPacketEvent=null;
 
+        /** Overrides the default iterator <code>next()</code> to skip over ADC samples and write these
+         * to the designated {@link #outputPacket}.
+            * @return the next DVS event, or null if there are none
+            */
         @Override
         public E next() {
-            E output = (E) elementData[cursorDvs++]; // get next element of this packet (guarenteed to be dvs event how?) and advance cursor
-            //bypass APS events
-            E nextIn = (E) elementData[cursorDvs]; // get the next element
+            // after this call, the cursorDVS either points to the next DVS event or we have reached the end of the packet.
+            // Therefore when we enter we need to march forward until we get a DVS event. If there are none we return again the last DVS event, to avoid dealing with null events
+            // in all event filters that do not deal with null events.
+            E output = (E) elementData[cursorDvs++]; // get next element of this packet (TODO guarenteed to be dvs event how?) and advance cursor
             if (outputPacket != null) {
-                OutputEventIterator outItr = getOutputPacket().getOutputIterator(); // and the output iterator for the "outputPacket" (without resetting it)
-                while (nextIn.isAdcSample() && cursorDvs < size) { // while the event is an ADC sample and we are not done with packet
+                OutputEventIterator outItr = outputPacket.getOutputIterator(); // and the output iterator for the "outputPacket" (without resetting it)
+                while (output.isAdcSample() && cursorDvs < size) { // while the event is an ADC sample and we are not done with packet
                     // copy the ADC sample to outputPacket
                     E nextOut = (E) outItr.nextOutput();
-                    nextOut.copyFrom(nextIn);
-                    cursorDvs++;
-                    nextIn = (E) elementData[cursorDvs]; // point to next event
+                    nextOut.copyFrom(output);
+                    output = (E) elementData[cursorDvs++]; // point to next event
                 }
+            }
+            if(!output.isAdcSample()) {
+                lastPacketEvent=output;
+            }else {
+                int lastTs=output.timestamp;
+                output = (E)lastPacketEvent;
+                output.timestamp=lastTs; // to avoid small nonmonotonic timestamp backward jumps due to APS events that came at end of packet
             }
             return output; // now return the element we obtained at start
         }
