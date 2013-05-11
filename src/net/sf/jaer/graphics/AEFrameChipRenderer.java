@@ -186,14 +186,18 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 //            resetFrame(0.5f);
             resetEventMaps();
         }
+        boolean displayEvents=config.isDisplayEvents(), 
+                displayFrames=config.isDisplayFrames(), 
+                paused=chip.getAeViewer().isPaused(), backwards=packet.getDurationUs()<0;
             
         Iterator allItr = packet.fullIterator();
         while(allItr.hasNext()){
             //The iterator only iterates over the DVS events
             ApsDvsEvent e = (ApsDvsEvent) allItr.next();                        
             int type = e.getType();
-            if(!e.isAdcSample()){
-                if(config.isDisplayEvents()){
+            boolean isAdcSampleFlag=e.isAdcSample();
+            if(!isAdcSampleFlag){
+                if(displayEvents){
                     if (xsel >= 0 && ysel >= 0) { // find correct mouse pixel interpretation to make sounds for large pixels
                         int xs = xsel, ys = ysel;
                         if (e.x == xs && e.y == ys) {
@@ -202,7 +206,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                     }
                     updateEventMaps(e);
                 }
-            }else if(e.isAdcSample() && config.isDisplayFrames() && !chip.getAeViewer().isPaused()){ // TODO need to handle single step updates here
+            }else if(!backwards && isAdcSampleFlag && displayFrames && !paused){ // TODO need to handle single step updates here
                 updateFrameBuffer(e);
             }
         }
@@ -214,6 +218,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     
     private void updateFrameBuffer(ApsDvsEvent e){
         float[] buf = pixBuffer.array();
+        // TODO if playing backwards, then frame will come out white because B sample comes before A
         if(e.isA()){
             int index = getIndex(e);
             if(index<0 || index >= buf.length)return;
