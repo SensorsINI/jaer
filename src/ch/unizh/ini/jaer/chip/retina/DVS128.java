@@ -274,6 +274,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         }
         getAeViewer().removeHelpItem(helpMenuItem1);
         getAeViewer().removeHelpItem(helpMenuItem2);
+        getAeViewer().removeHelpItem(helpMenuItem3);
     }
 
     @Override
