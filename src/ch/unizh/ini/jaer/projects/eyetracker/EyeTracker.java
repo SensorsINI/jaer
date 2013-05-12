@@ -358,10 +358,6 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
         initFilter();
     }
     
-    /** does nothing, must be in openGL rendering mode to see results */
-    public void annotate(float[][][] frame) {
-    }
-    
     GLUquadric eyeQuad;
     
     public void annotate(GLAutoDrawable drawable) {
@@ -472,38 +468,6 @@ public class EyeTracker extends EventFilter2D implements Observer, FrameAnnotate
         if(hasBlend) gl.glDisable(GL.GL_BLEND);
     }
     
-    public void annotate(Graphics2D g) {
-//        if(!isFilterEnabled()) return;
-////        System.out.println("annotating eye tracker with Graphics2D");
-//        float rim=getEffectiveRimThickness();
-//        int sizex=chip.getSizeX(), sizey=chip.getSizeY();
-//        g.setColor(Color.blue);
-//        g.setStroke(new BasicStroke(1f));
-//
-//        int x=(int)(position.x-pupilRadius); // this is UL corner of oval in java graphics space
-//        int y=(int)(position.y-pupilRadius);
-//        int w=(int)(2*pupilRadius);
-//        int h=w;
-//        g.drawOval(x,y,w,h);
-//
-//        // draw doughnut
-//        g.setColor(Color.green);
-//        g.setStroke(new BasicStroke(.2f));
-//        x=(int)(position.x-pupilRadius-rim); // this is UL corner of oval in java graphics space
-//        y=(int)(position.y-pupilRadius-rim);
-//        w=(int)(2*(pupilRadius+rim));
-//        h=w;
-//        g.drawOval(x,y,w,h);
-//
-//        g.setColor(Color.cyan);
-//        g.setStroke(new BasicStroke(.2f));
-//        x=(int)(position.x-pupilRadius+rim); // this is UL corner of oval in java graphics space
-//        y=(int)(position.y-pupilRadius+rim);
-//        w=(int)(2*(pupilRadius-rim));
-//        h=w;
-//        g.drawOval(x,y,w,h);
-        
-    }
     
     
     
