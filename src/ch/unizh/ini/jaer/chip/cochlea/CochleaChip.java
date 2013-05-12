@@ -26,7 +26,7 @@ abstract public class CochleaChip extends AEChip {
     public CochleaChip() {
         DisplayMethod m;
         getCanvas().addDisplayMethod(m=new CochleaGramDisplayMethod(getCanvas()));
-        getCanvas().addDisplayMethod(new ShammaMapDisplayMethod(getCanvas()));
+//        getCanvas().addDisplayMethod(new ShammaMapDisplayMethod(getCanvas())); // not used by anyone for several years - tobi
         getCanvas().addDisplayMethod(new RollingCochleaGramDisplayMethod(getCanvas()));
         addDefaultEventFilter(CochleaCrossCorrelator.class);
 //        getCanvas().setDisplayMethod(m); // overrides the mechanism of storing a preferred method in Chip2D
