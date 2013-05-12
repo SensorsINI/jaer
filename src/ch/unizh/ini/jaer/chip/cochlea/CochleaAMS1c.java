@@ -184,16 +184,18 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             }
 
         }
-        adcSamples = new CochleaAMS1cADCSamples(this); // need biasgen / scanner first
 
     }
 
-    private JComponent help1, help2,help3;
+    private JComponent helpsep,help1, help2,help3;
     
     @Override
     public void onDeregistration() {
         super.onDeregistration();
+          adcSamples = null;
+     
         if(getAeViewer()==null) return;
+        getAeViewer().removeHelpItem(helpsep);
         getAeViewer().removeHelpItem(help1);
         getAeViewer().removeHelpItem(help2);
         getAeViewer().removeHelpItem(help3);
@@ -203,7 +205,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
     public void onRegistration() {
         super.onRegistration();
         if(getAeViewer()==null) return;
-        help1=getAeViewer().addHelpItem(new JSeparator());
+          adcSamples = new CochleaAMS1cADCSamples(this); // need biasgen / scanner first
+       helpsep=getAeViewer().addHelpItem(new JSeparator());
         help1=getAeViewer().addHelpURLItem("https://svn.ini.uzh.ch/repos/tobi/cochlea/pcbs/CochleaAMS1c_USB/cochleaams1c.pdf", "CochleaAMS1c PCB design", "Protel design of board");
         help2=getAeViewer().addHelpURLItem("https://svn.ini.uzh.ch/repos/tobi/cochlea/pcbs/CochleaAMS1c_USB/CochleaAMS1c readme.pdf", "CochleaAMS1c README", "README file for CochleaAMS1c");
      }
@@ -1694,20 +1697,26 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
          * <img source="doc-files/equalizerBits.png"/>
          * where the index field of the vendor request has the quality and kill bit information.
          */
-        public class Equalizer extends Observable { // describes the local gain and Q registers and the kill bits
+        public class Equalizer extends Observable implements PreferenceChangeListener, HasPreference{ // describes the local gain and Q registers and the kill bits
 
             public static final int NUM_CHANNELS = 128, MAX_VALUE = 31;
 //            private int globalGain = 15;
 //            private int globalQuality = 15;
             public EqualizerChannel[] channels = new EqualizerChannel[NUM_CHANNELS];
             private boolean rubberBandsEnabled=getPrefs().getBoolean("Equalizer.rubberBandsEnabled", false);
-            public final static int RUBBER_BAND_RANGE=5;
+            public final static int RUBBER_BAND_RANGE = 5;
+            /**
+             * Header for preferences key for EqualizerChannels
+             */
+            public final String CHANNEL_PREFS_HEADER="CochleaAMS1c.Biasgen.Equalizer.EqualizerChannel.";
 
             Equalizer() {
                 for (int i = 0; i < NUM_CHANNELS; i++) {
                     channels[i] = new EqualizerChannel(this,i);
                     channels[i].addObserver(Biasgen.this); // CochleaAMS1c.Biasgen observes each equalizer channel
                 }
+                hasPreferencesList.add(this);
+                getPrefs().addPreferenceChangeListener(this);
             }
 
             /** Resets equalizer channels to default state, and finally does sequence with special bits to ensure hardware latches are all cleared.
@@ -1768,6 +1777,36 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 notifyObservers(this);
             }
 
+            @Override
+            public void preferenceChange(PreferenceChangeEvent e) {
+                     if(!e.getKey().startsWith(CHANNEL_PREFS_HEADER)) return;
+                     
+                    // parse our the channel from the prefs key and then set properties of that channel
+                     String[] s=e.getKey().split("\\.");
+                     int chanNum=Integer.parseInt(s[4]);
+                     EqualizerChannel c=channels[chanNum];
+                     
+                    if (s[5].equals("qsos")) {
+                        c.setQSOS(Integer.parseInt(e.getNewValue()));
+                    } else if (e.getKey().equals("qbpf")) {
+                        c.setQBPF(Integer.parseInt(e.getNewValue()));
+                    } else if (e.getKey().equals("bpfkilled")) {
+                        c.setBpfKilled(Boolean.parseBoolean(e.getNewValue()));
+                    } else if (e.getKey().equals("lpfkilled")) {
+                        c.setLpfKilled(Boolean.parseBoolean(e.getNewValue()));
+                    }           
+            }
+
+            @Override
+            public void loadPreference() {
+                for(EqualizerChannel c:channels) c.loadPreference();
+            }
+
+            @Override
+            public void storePreference() {
+                for(EqualizerChannel c:channels) c.storePreference();
+            }
+
 //            public int getGlobalGain() {
 //                return globalGain;
 //            }
@@ -1789,7 +1828,10 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 //                    c.setQBPF(globalGain);
 //                }
 //            }
-            class EqualizerChannel extends Observable implements ChangeListener, PreferenceChangeListener, HasPreference {
+            /**
+             * One equalizer channel
+             */
+            public class EqualizerChannel extends Observable implements ChangeListener {
 
                 final int max = 31;
                 int channel;
@@ -1802,10 +1844,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 EqualizerChannel(Equalizer e, int n) {
                     equalizer=e;
                     channel = n;
-                    prefsKey = "CochleaAMS1c.Biasgen.Equalizer.EqualizerChannel." + channel + ".";
+                    prefsKey =  CHANNEL_PREFS_HEADER + channel + ".";
                     loadPreference();
-                    getPrefs().addPreferenceChangeListener(this);
-                    hasPreferencesList.add(this);
                 }
 
                 @Override
@@ -1895,20 +1935,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                     }
                 }
 
-                @Override
-                public void preferenceChange(PreferenceChangeEvent e) {
-                    if (e.getKey().equals(prefsKey + "qsos")) {
-                        setQSOS(Integer.parseInt(e.getNewValue()));
-                    } else if (e.getKey().equals(prefsKey + "qbpf")) {
-                        setQBPF(Integer.parseInt(e.getNewValue()));
-                    } else if (e.getKey().equals(prefsKey + "bpfkilled")) {
-                        setBpfKilled(Boolean.parseBoolean(e.getNewValue()));
-                    } else if (e.getKey().equals(prefsKey + "lpfkilled")) {
-                        setLpfKilled(Boolean.parseBoolean(e.getNewValue()));
-                    }
-                }
 
-                @Override
                 public final void loadPreference() {
                     qsos = getPrefs().getInt(prefsKey + "qsos", 15);
                     qbpf = getPrefs().getInt(prefsKey + "qbpf", 15);
@@ -1918,7 +1945,6 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                     notifyObservers();
                 }
 
-                @Override
                 public void storePreference() {
                     putPref(prefsKey + "bpfkilled", bpfkilled);
                     putPref(prefsKey + "lpfkilled", lpfkilled);

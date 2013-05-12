@@ -23,7 +23,7 @@ final public class CochleaAMS1cADCSamples implements Observer {
 
     final static Logger log = Logger.getLogger("CochleaAMS1c");
 //    public static final int WIDTH = 64, HEIGHT = 1;
-    public static final int MAX_NUM_SAMPLES = 200000; // fixed max size now, with sync() call to reset to start of array // WIDTH * HEIGHT;
+    public static final int MAX_NUM_SAMPLES = 20000; // fixed max size now, with sync() call to reset to start of array // WIDTH * HEIGHT;
     public static final int NUM_CHANNELS = 4;
     public static final int MAX_ADC_VALUE = 1023;
     DataBuffer data1 = new DataBuffer(), data2 = new DataBuffer();
