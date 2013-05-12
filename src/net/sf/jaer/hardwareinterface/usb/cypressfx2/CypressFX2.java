@@ -1048,6 +1048,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      *@param inEndpointEnabled true to send vendor request to enable, false to send request to disable
      */
     public void setInEndpointEnabled(final boolean inEndpointEnabled) throws HardwareInterfaceException {
+        log.info("Setting IN endpoint enabled="+inEndpointEnabled);
         if (inEndpointEnabled) {
             enableINEndpoint();
         } else {
