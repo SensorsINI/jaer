@@ -34,7 +34,9 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.config.ApsDvsConfig;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.util.HasPropertyTooltips;
 import net.sf.jaer.util.ParameterControlPanel;
+import net.sf.jaer.util.PropertyTooltipSupport;
 
 /**
  * Video acquisition and rendering controls for the apsDVS vision sensor.
@@ -319,13 +321,14 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
     }
 
     /** Controls the APS intensity readout by wrapping the relevant bits */
-    public class ApsReadoutControl implements Observer {
+    public class ApsReadoutControl implements Observer, HasPropertyTooltips {
 
         int channel = chip.getPrefs().getInt("ADC.channel", 3);
         public final String EVENT_ADC_ENABLED = "adcEnabled", EVENT_ADC_CHANNEL = "adcChannel";
         
         private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
         public final String EVENT_TESTPIXEL = "testpixelEnabled";
+        PropertyTooltipSupport tooltipSupport=new PropertyTooltipSupport();
 
         public ApsReadoutControl() {
             rowSettle.addObserver(this);
@@ -337,6 +340,17 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
             testPixAPSread.addObserver(this);
             useC.addObserver(this);
             sbret10.addObserver(this);
+            // TODO awkward renaming of properties here due to wrongly named delegator methods
+            tooltipSupport.setPropertyTooltip("adcEnabled", runAdc.getDescription());
+            tooltipSupport.setPropertyTooltip("rowSettleCC", rowSettle.getDescription());
+            tooltipSupport.setPropertyTooltip("colSettleCC", colSettle.getDescription());
+            tooltipSupport.setPropertyTooltip("exposureBDelayCC", exposureB.getDescription());
+            tooltipSupport.setPropertyTooltip("exposureCDelayCC", exposureC.getDescription());
+            tooltipSupport.setPropertyTooltip("resSettleCC", resSettle.getDescription());
+            tooltipSupport.setPropertyTooltip("frameDelayCC", frameDelay.getDescription());
+            tooltipSupport.setPropertyTooltip("testPixelScanEnabled", testPixAPSread.getDescription());
+            tooltipSupport.setPropertyTooltip("sbret10", sbret10.getDescription());
+            tooltipSupport.setPropertyTooltip(useC.getName(), useC.getDescription());
         }
         
         public boolean isAdcEnabled() {
@@ -432,9 +446,14 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         public PropertyChangeSupport getPropertyChangeSupport() {
             return propertyChangeSupport;
         }
+
+        @Override
+        public String getPropertyTooltip(String propertyName) {
+            return tooltipSupport.getPropertyTooltip(propertyName);
+        }
     }
     
-    public class VideoControl extends Observable implements Observer, HasPreference {
+    public class VideoControl extends Observable implements Observer, HasPreference, HasPropertyTooltips {
         
         private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
         
@@ -444,9 +463,16 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         public float contrast = chip.getPrefs().getFloat("VideoControl.contrast", 1.0f);
         public float brightness = chip.getPrefs().getFloat("VideoControl.brightness", 0.0f);
         private float gamma=chip.getPrefs().getFloat("VideoControl.gamma",1); // gamma control for improving display on crappy beamer output
+        private PropertyTooltipSupport tooltipSupport=new PropertyTooltipSupport();
         
         public VideoControl() {
             hasPreferenceList.add(this);
+            tooltipSupport.setPropertyTooltip("displayEvents", "display DVS events");
+            tooltipSupport.setPropertyTooltip("displayFrames", "display APS frames");
+            tooltipSupport.setPropertyTooltip("useAutoContrast", "automatically set the display contrast for APS frames");
+            tooltipSupport.setPropertyTooltip("brightness", "sets the brightness for APS frames, which is the lowest level of display intensity. Default is 0.");
+            tooltipSupport.setPropertyTooltip("contrast", "sets the contrast for APS frames, which multiplies sample values by this quantity. Default is 1.");
+            tooltipSupport.setPropertyTooltip("gamma", "sets the display gamma for APS frames, which applies a power law to optimize display for e.g. monitors. Default is 1.");
         }
 
         /**
@@ -579,6 +605,11 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
             chip.getPrefs().putFloat("VideoControl.contrast", contrast);
             chip.getPrefs().putFloat("VideoControl.brightness", brightness);
             chip.getPrefs().putFloat("VideoControl.gamma", gamma);
+        }
+
+        @Override
+        public String getPropertyTooltip(String propertyName) {
+            return tooltipSupport.getPropertyTooltip(propertyName);
         }
 
 

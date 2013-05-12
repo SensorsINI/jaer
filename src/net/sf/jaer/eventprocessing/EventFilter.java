@@ -22,6 +22,8 @@ import java.util.logging.Logger;
 import java.util.prefs.*;
 import net.sf.jaer.Description;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.HasPropertyTooltips;
+import net.sf.jaer.util.PropertyTooltipSupport;
 
 /**
  * An abstract class that all event processing methods should subclass.
@@ -46,7 +48,7 @@ Fires PropertyChangeEvent for the following
  * @author tobi
  */
 @Description("Base event processing class")
-public abstract class EventFilter extends Observable {
+public abstract class EventFilter extends Observable implements HasPropertyTooltips {
 
     /** URL for jAER wiki help page for event filters */
     public static String HELP_FILTER_URL="http://sourceforge.net/apps/trac/jaer/wiki/filt";
@@ -78,6 +80,15 @@ public abstract class EventFilter extends Observable {
 //    protected boolean filterInPlaceEnabled=false;
     /** chip that we are filtering for */
     protected AEChip chip;
+    
+           /** Use this key for global parameters in your filter constructor, as in
+     * <pre>
+    setPropertyTooltip(TOOLTIP_GROUP_GLOBAL, "propertyName", "property tip string");
+    </pre>
+     */
+    public static final String TOOLTIP_GROUP_GLOBAL = PropertyTooltipSupport.TOOLTIP_GROUP_GLOBAL;
+
+    protected PropertyTooltipSupport tooltipSupport=new PropertyTooltipSupport();
 
     /** default constructor
      * @deprecated - all filters need an AEChip object
@@ -281,136 +292,7 @@ public abstract class EventFilter extends Observable {
         this.enclosed = enclosed;
         this.enclosingFilter = enclosingFilter;
     }
-    /** The key,value table of property tooltip strings. */
-    protected HashMap<String, String> propertyTooltipMap = null;
-    /** The key,value table of propery group associations.
-     * The key the property name and the value is the group name.*/
-    protected HashMap<String, String> property2GroupMap = null;
-    /** The keys are the names of property groups, and the values are lists of properties in the key's group.*/
-    protected HashMap<String, ArrayList<String>> group2PropertyListMap = null;
 
-    /** Developers can use setPropertyTooltip to add an optional tooltip for a filter property so that the tip is shown
-     * as the tooltip for the label or checkbox property in the generated GUI.
-     * <p>
-     * In netbeans, you can add this macro to ease entering tooltips for filter parameters:
-     * <pre>
-     * select-word copy-to-clipboard caret-begin-line caret-down "{setPropertyTooltip(\"" paste-from-clipboard "\",\"\");}" insert-break caret-up caret-end-line caret-backward caret-backward caret-backward caret-backward
-     * </pre>
-     *
-     * @param propertyName the name of the property (e.g. an int, float, or boolean, e.g. "dt")
-     * @param tooltip the tooltip String to display
-     */
-    protected void setPropertyTooltip(String propertyName, String tooltip) {
-        if (propertyTooltipMap == null) {
-            propertyTooltipMap = new HashMap<String, String>();
-        }
-        propertyTooltipMap.put(propertyName.toLowerCase(), tooltip);
-    }
-    /** Use this key for global parameters in your filter constructor, as in
-     * <pre>
-    setPropertyTooltip(PARAM_GROUP_GLOBAL, "propertyName", "property tip string");
-    </pre>
-     */
-    public static final String PARAM_GROUP_GLOBAL = "Global";
-
-    /** Convenience method to add properties to groups along with adding a tip for the property.
-     *
-     * @param groupName the property group name.
-     * @param propertyName the property name.
-     * @param tooltip the tip.
-     * @see #PARAM_GROUP_GLOBAL
-     */
-    protected void setPropertyTooltip(String groupName, String propertyName, String tooltip) {
-        setPropertyTooltip(propertyName.toLowerCase(), tooltip);
-        addPropertyToGroup(groupName, propertyName.toLowerCase());
-    }
-
-    /** @return the tooltip for the property */
-    protected String getPropertyTooltip(String propertyName) {
-        if (propertyTooltipMap == null) {
-            return null;
-        }
-        return propertyTooltipMap.get(propertyName.toLowerCase());
-    }
-
-    /** Adds a property to a group, creating the group if needed.
-     * 
-     * @param groupName a named parameter group.
-     * @param propertyName the property name.
-     */
-    protected void addPropertyToGroup(String groupName, String propertyName) {
-        if (property2GroupMap == null) {
-            property2GroupMap = new HashMap();
-        }
-        if (group2PropertyListMap == null) {
-            group2PropertyListMap = new HashMap();
-        }
-        // add the mapping from property to group
-        property2GroupMap.put(propertyName.toLowerCase(), groupName);
-
-        // create the list of properties in the group
-        ArrayList<String> propList;
-        if (!group2PropertyListMap.containsKey(groupName)) {
-            propList = new ArrayList<String>(2);
-            group2PropertyListMap.put(groupName, propList);
-        } else {
-            propList = group2PropertyListMap.get(groupName);
-        }
-        propList.add(propertyName.toLowerCase());
-    }
-
-    /** Returns the name of the property group for a property.
-     *
-     * @param propertyName the property name string.
-     * @return the property group name.
-     */
-    public String getPropertyGroup(String propertyName) {
-        if (property2GroupMap == null) {
-            return null;
-        }
-        return property2GroupMap.get(propertyName.toLowerCase());
-    }
-
-    /** Gets the list of property names in a particular group.
-     *
-     * @param groupName the name of the group.
-     * @return the ArrayList of property names in the group.
-     */
-    protected ArrayList<String> getPropertyGroupList(String groupName) {
-        if (group2PropertyListMap == null) {
-            return null;
-        }
-        return group2PropertyListMap.get(groupName);
-    }
-
-    /** Returns the set of property groups.
-     * 
-     * @return Set view of property groups.
-     */
-    protected Set<String> getPropertyGroupSet() {
-        if (group2PropertyListMap == null) {
-            return null;
-        }
-        return group2PropertyListMap.keySet();
-    }
-
-    /**
-     * Returns the mapping from property name to group name.
-     * If null, no groups have been declared.
-     * 
-     * @return the map, or null if no groups have been declared by adding any properties.
-     * @see #property2GroupMap
-     */
-    public HashMap<String, String> getPropertyGroupMap() {
-        return property2GroupMap;
-    }
-
-    /** Returns true if the filter has property groups.
-     *
-     */
-    public boolean hasPropertyGroups() {
-        return property2GroupMap != null;
-    }
 
     /** Returns the enclosed filter chain
      *@return the chain
@@ -785,4 +667,89 @@ public abstract class EventFilter extends Observable {
     public void showHelpInBrowser(){
         showInBrowser(EventFilter.HELP_FILTER_URL+"/"+getClass().getName());
     }
+
+    /** Adds a property to a group, creating the group if needed.
+     * 
+     * @param groupName a named parameter group.
+     * @param propertyName the property name.
+     */
+    public void addPropertyToGroup(String groupName, String propertyName) {
+        tooltipSupport.addPropertyToGroup(groupName, propertyName);
+    }
+
+      /** Developers can use setPropertyTooltip to add an optional tooltip for a filter property so that the tip is shown
+     * as the tooltip for the label or checkbox property in the generated GUI.
+     * <p>
+     * In netbeans, you can add this macro to ease entering tooltips for filter parameters:
+     * <pre>
+     * select-word copy-to-clipboard caret-begin-line caret-down "{setPropertyTooltip(\"" paste-from-clipboard "\",\"\");}" insert-break caret-up caret-end-line caret-backward caret-backward caret-backward caret-backward
+     * </pre>
+     *
+     * @param propertyName the name of the property (e.g. an int, float, or boolean, e.g. "dt")
+     * @param tooltip the tooltip String to display
+     */
+    public void setPropertyTooltip(String propertyName, String tooltip) {
+        tooltipSupport.setPropertyTooltip(propertyName, tooltip);
+    }
+
+     /** Convenience method to add properties to groups along with adding a tip for the property.
+     *
+     * @param groupName the property group name.
+     * @param propertyName the property name.
+     * @param tooltip the tip.
+     * @see #TOOLTIP_GROUP_GLOBAL
+     */
+    public void setPropertyTooltip(String groupName, String propertyName, String tooltip) {
+        tooltipSupport.setPropertyTooltip(groupName, propertyName, tooltip);
+    }
+
+   /** @return the tooltip for the property */
+    public String getPropertyTooltip(String propertyName) {
+        return tooltipSupport.getPropertyTooltip(propertyName);
+    }
+
+     /** Returns the name of the property group for a property.
+     *
+     * @param propertyName the property name string.
+     * @return the property group name.
+     */
+    public String getPropertyGroup(String propertyName) {
+        return tooltipSupport.getPropertyGroup(propertyName);
+    }
+
+    /** Gets the list of property names in a particular group.
+     *
+     * @param groupName the name of the group.
+     * @return the ArrayList of property names in the group.
+     */
+    public ArrayList<String> getPropertyGroupList(String groupName) {
+        return tooltipSupport.getPropertyGroupList(groupName);
+    }
+
+     /** Returns the set of property groups.
+     * 
+     * @return Set view of property groups.
+     */
+    public Set<String> getPropertyGroupSet() {
+        return tooltipSupport.getPropertyGroupSet();
+    }
+
+     /**
+     * Returns the mapping from property name to group name.
+     * If null, no groups have been declared.
+     * 
+     * @return the map, or null if no groups have been declared by adding any properties.
+     * @see #property2GroupMap
+     */
+    public HashMap<String, String> getPropertyGroupMap() {
+        return tooltipSupport.getPropertyGroupMap();
+    }
+
+     /** Returns true if the filter has property groups.
+     *
+     */
+    public boolean hasPropertyGroups() {
+        return tooltipSupport.hasPropertyGroups();
+    }
+
 }

@@ -4,6 +4,8 @@ import java.util.logging.Logger;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceProxy;
+import net.sf.jaer.util.HasPropertyTooltips;
+import net.sf.jaer.util.PropertyTooltipSupport;
 
 /**
  * A proxy to wrap around the actual hardware interface to expose the ADC controls
@@ -14,7 +16,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceProxy;
  * on this. In the update() method it reads the desired ADC state and sends appropriate messages
  * to the hardware.
  */
-public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy implements ADCHardwareInterface {
+public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy implements ADCHardwareInterface, HasPropertyTooltips {
 
     static final Logger log = Logger.getLogger("HardwareInterfaceProxy");
     private boolean adcEnabled;
@@ -30,6 +32,8 @@ public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy implements
     private int minADCchannel = 0;
     private int maxADCchannel = 3;
     private int adcChannel = 0;
+    
+    private PropertyTooltipSupport tooltipSupport=new PropertyTooltipSupport();
 
     public ADCHardwareInterfaceProxy(Chip chip) {
         super(chip);
@@ -40,6 +44,12 @@ public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy implements
         trackTime = getPrefs().getInt("ADCHardwareInterfaceProxy.trackTime", 50);
         idleTime = getPrefs().getInt("ADCHardwareInterfaceProxy.idleTime", 10);
         sequencingEnabled=getPrefs().getBoolean("ADCHardwareInterfaceProxy.sequencingEnabled",false);
+        
+        tooltipSupport.setPropertyTooltip("adcChannel", "ADC channel number, 0-based");
+        tooltipSupport.setPropertyTooltip("adcEnabled", "check to enable ADC converter operation");
+        tooltipSupport.setPropertyTooltip("trackTime", "ADC track time, before sample hold switch is closed to sample data, in clock cycles");
+        tooltipSupport.setPropertyTooltip("idleTime", "ADC idle time between sample, in clock cycles");
+        tooltipSupport.setPropertyTooltip("sequencingEnabled", "if enabled, then channels are sampled in sequence starting from channel 0 up to adcChannel. If cleared, then only the adcChannel is sampled.");
     }
 
     @Override
@@ -196,6 +206,11 @@ public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy implements
      */
     public void setMaxADCchannelValue(int maxADCchannel) { // named this to avoid javabeans property
         this.maxADCchannel = maxADCchannel;
+    }
+
+    @Override
+    public String getPropertyTooltip(String propertyName) {
+        return tooltipSupport.getPropertyTooltip(propertyName);
     }
     
     

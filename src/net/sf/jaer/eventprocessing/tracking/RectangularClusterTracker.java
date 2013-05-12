@@ -151,7 +151,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         initFilter();
         chip.addObserver(this);
         addObserver(this); // to handle updates during packet
-        final String sizing = "Sizing", movement = "Movement", lifetime = "Lifetime", disp = "Display", global = PARAM_GROUP_GLOBAL, update = "Update", logging = "Logging";
+        final String sizing = "Sizing", movement = "Movement", lifetime = "Lifetime", disp = "Display", global = TOOLTIP_GROUP_GLOBAL, update = "Update", logging = "Logging";
         setPropertyTooltip(lifetime, "enableClusterExitPurging", "enables rapid purging of clusters that hit edge of scene");
         setPropertyTooltip(sizing, "defaultClusterRadius", "default starting size of cluster as fraction of chip size");
         setPropertyTooltip(movement, "mixingFactor", "how much cluster is moved towards an event, as a fraction of the distance from the cluster to the event");

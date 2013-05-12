@@ -125,7 +125,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 
         void set(Object o);
     }
-    private Object clazz = null;
+    private Object classObject = null;
     static final float ALIGNMENT = Component.LEFT_ALIGNMENT;
     private BeanInfo info;
     private PropertyDescriptor[] props;
@@ -143,12 +143,14 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         initComponents();
     }
 
-    /** Builds a new panel around the Object f
+    /** Builds a new panel around the Object f. Any properties of the Object (defined by matching <code>setX/getX</code> methods)
+     * are added to the panel. If the object implements {@link HasPropertyTooltips} then a tooltip is added for the property if the 
+     * {@link HasPropertyTooltips#getPropertyTooltip(java.lang.String) } returns a non-null String property.
      * 
-     * @param f 
+     * @param obj the object
      */
-    public ParameterControlPanel(Object f) {
-        setClazz(f);
+    public ParameterControlPanel(Object obj) {
+        setClazz(obj);
         initComponents();
         String cn = getClazz().getClass().getName();
         int lastdot = cn.lastIndexOf('.');
@@ -164,8 +166,8 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             add(Box.createVerticalGlue()); // to fill space at bottom - not needed
         try {
             // when clazz fires a property change event, propertyChangeEvent is called here and we update all our controls
-            Method m=f.getClass().getMethod("getPropertyChangeSupport", (Class[])null);
-            support=(PropertyChangeSupport)m.invoke(f, (Object[]) null);
+            Method m=obj.getClass().getMethod("getPropertyChangeSupport", (Class[])null);
+            support=(PropertyChangeSupport)m.invoke(obj, (Object[]) null);
             support.addPropertyChangeListener(this);
         } catch (Exception ex) {
             
@@ -197,10 +199,10 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
     private void addIntrospectedControls() {
         JPanel control = null;
         try {
-            info = Introspector.getBeanInfo(clazz.getClass());
+            info = Introspector.getBeanInfo(classObject.getClass());
 
             props = info.getPropertyDescriptors();
-            methods = clazz.getClass().getMethods();
+            methods = classObject.getClass().getMethods();
             control = new JPanel();
             int numDoButtons = 0;
             // first add buttons when the method name starts with "do". These methods are by convention associated with actions.
@@ -214,7 +216,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                     JButton button = new JButton(m.getName().substring(2));
                     button.setMargin(butInsets);
                     button.setFont(button.getFont().deriveFont(9f));
-                    final Object obj = clazz;
+                    final Object obj = classObject;
                     final Method meth = m;
                     button.addActionListener(new ActionListener() {
 
@@ -283,7 +285,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                     if (c == Integer.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
 
                         SliderParams params;
-                        if ((params = isSliderType(p, clazz)) != null) {
+                        if ((params = isSliderType(p, classObject)) != null) {
                             control = new IntSliderControl(getClazz(), p, params);
                         } else {
                             control = new IntControl(getClazz(), p);
@@ -291,7 +293,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                         myadd(control, name, inherited);
                     } else if (c == Float.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
                         SliderParams params;
-                        if ((params = isSliderType(p, clazz)) != null) {
+                        if ((params = isSliderType(p, classObject)) != null) {
                             control = new FloatSliderControl(getClazz(), p, params);
                         } else {
                             control = new FloatControl(getClazz(), p);
@@ -313,13 +315,13 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //                        control.setToolTipText(getClazz().getPropertyTooltip(name));
 //                    }
                 } catch (Exception e) {
-                    log.warning(e + " caught on property " + p.getName() + " from class " + clazz);
+                    log.warning(e + " caught on property " + p.getName() + " from class " + classObject);
                 }
             }
             groupContainerMap = null;
 //             sortedControls=null;
         } catch (Exception e) {
-            log.warning("on adding controls for " + clazz + " caught " + e);
+            log.warning("on adding controls for " + classObject + " caught " + e);
             e.printStackTrace();
         }
 //        add(Box.createHorizontalGlue());
@@ -327,30 +329,30 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //        System.out.println("added glue to "+this);
     }
 
-    void addTip(PropertyDescriptor p, JLabel label) {
-        String s = p.getShortDescription();
-        if (s == null) {
-            return;
+    private String getTip(PropertyDescriptor p) {
+        String tip = null;
+        if (classObject instanceof HasPropertyTooltips) {
+            tip = ((HasPropertyTooltips) classObject).getPropertyTooltip(p.getName());
+        } else {
+            tip = p.getShortDescription();
         }
-        label.setToolTipText(s);
+        return tip;
+    }
+    
+    void addTip(PropertyDescriptor p, JLabel label) {
+
+        
+        label.setToolTipText(getTip(p));
         label.setForeground(Color.BLUE);
     }
 
     void addTip(PropertyDescriptor p, JButton b) {
-        String s = p.getShortDescription();
-        if (s == null) {
-            return;
-        }
-        b.setToolTipText(s);
+        b.setToolTipText(getTip(p));
         b.setForeground(Color.BLUE);
     }
 
     void addTip(PropertyDescriptor p, JCheckBox label) {
-        String s = p.getShortDescription();
-        if (s == null) {
-            return;
-        }
-        label.setToolTipText(s);
+        label.setToolTipText(getTip(p));
         label.setForeground(Color.BLUE);
     }
 
@@ -1210,11 +1212,11 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
     }
 
     public Object getClazz() {
-        return clazz;
+        return classObject;
     }
 
     public void setClazz(Object clazz) {
-        this.clazz = clazz;
+        this.classObject = clazz;
     }
     // Variables declaration - do not modify//GEN-BEGIN:variables
     // End of variables declaration//GEN-END:variables
