@@ -39,7 +39,7 @@ import net.sf.jaer.util.ParameterControlPanel;
 import net.sf.jaer.util.PropertyTooltipSupport;
 
 /**
- * Video acquisition and rendering controls for the apsDVS vision sensor.
+ * Bias generator, On-chip diagnostic readout, video acquisition and rendering controls for the apsDVS vision sensor.
  * 
  * @author Christian
  */
@@ -80,8 +80,8 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
 //        private Scanner scanner; 
     protected ApsReadoutControl apsReadoutControl;
 
-    /** Creates a new instance of SeeBetterConfig for cDVSTest with a given hardware interface
-        *@param chip the chip this biasgen belongs to
+    /** Creates a new instance of chip configuration
+        *@param chip the chip this configuration belongs to
         */
     public SBret10config(Chip chip) {
         super(chip);
