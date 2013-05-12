@@ -851,7 +851,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         try {
                             String name = evt.getActionCommand();
                             Class cl = FastClassFinder.forName(name);
-                            setAeChipClass(cl);
+                            try{
+                                setCursor(new Cursor(Cursor.WAIT_CURSOR));
+                                setAeChipClass(cl);
+                            }finally{
+                                setCursor(Cursor.getDefaultCursor());
+                            }
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
