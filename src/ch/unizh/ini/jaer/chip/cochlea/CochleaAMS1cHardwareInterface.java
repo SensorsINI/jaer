@@ -90,6 +90,16 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements 
     }
 
     @Override
+    public void setInEndpointEnabled(boolean inEndpointEnabled) throws HardwareInterfaceException {
+        super.setInEndpointEnabled(inEndpointEnabled);
+        if(chip!=null && chip.getBiasgen()!=null) {
+            chip.getBiasgen().sendConfiguration(chip.getBiasgen());
+        } // TODO hack to get configuration sent after event acquisition starts data transfer, which messes up configuration on AMS1c
+    }
+    
+    
+
+    @Override
     public void flashConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         throw new HardwareInterfaceException("Flashing configuration not supported yet.");
     }
