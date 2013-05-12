@@ -247,7 +247,7 @@ public class Chip extends Observable {
         this.remoteControl = remoteControl;
     }
     
-    /** Returns some default firmware file for soft-download to device.  Default is null.
+    /** Returns some default firmware file for soft-download to Cypress FX2/3 blank device.  Default is null.
      * 
      * @return full (or relative to start folder "java") path to firmware .bix file for Cypress FX2 based devices.
      */
