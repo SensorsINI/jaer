@@ -540,9 +540,15 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             for (CPLDConfigValue c : cpldConfigValues) {
                 c.addObserver(this);
             }
-
+            setBatchEditOccurring(true);
             loadPreferences();
-//            Pot.setModificationTrackingEnabled(true);
+            setBatchEditOccurring(false);
+//            try {
+//                sendConfiguration(this);
+//            } catch (HardwareInterfaceException ex) {
+//                log.warning(ex.toString());
+//            }
+
         }
 
         void setOnchipGain(OnChipPreampGain gain) {
@@ -677,27 +683,28 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
          */
         void sendConfig(int cmd, int index, byte[] bytes) throws HardwareInterfaceException {
 
-            // debug
-//            System.out.print(String.format("sending config cmd 0x%X, index=0x%X, with %d bytes", cmd, index, bytes.length));
+            boolean debug = false;
+            StringBuilder sb = null;
+            if (debug) {
+                sb = new StringBuilder(String.format("sending command vendor request cmd=0x%x, index=0x%x, with %d bytes ",cmd,index,bytes==null?0:bytes.length));
+            }
             if (bytes == null || bytes.length == 0) {
-//                System.out.println(String.format("send config: cmd=0x%x, index=0x%x; (no bytes to send)",cmd,index));
-            } else {
-                int max = 8;
+            } else if(debug){
+                sb.append(": hex bytes values are ");
+                int max = 100;
                 if (bytes.length < max) {
                     max = bytes.length;
                 }
-//                System.out.print(String.format("%d config bytes = ",max));
-//                for (int i = 0; i < max; i++) {
-//                    System.out.print(String.format("%02X, ", bytes[i]));
-//                }
-//                System.out.println("");
-            } // end debug
-
-
+                for (int i = 0; i < max; i++) {
+                    sb.append(String.format("%02X, ", bytes[i]));
+                }
+            }
             if (bytes == null) {
                 bytes = emptyByteArray;
             }
-//            log.info(String.format("sending command vendor request cmd=0x%x, index=0x%x, with %d bytes", cmd, index, bytes.length));
+            if (debug) {
+                log.info(sb.toString());
+            }
             if (cypress != null) {
                 cypress.sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) (0xffff & cmd), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
             }
@@ -721,12 +728,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
          */
         @Override
         synchronized public void update(Observable observable, Object object) {  // thread safe to ensure gui cannot retrigger this while it is sending something
-//            if (!(observable instanceof CochleaAMS1c.Biasgen.Equalizer.EqualizerChannel)) {
-//                log.info("Observable=" + observable + " Object=" + object);
-//            }
-//            if (cypress == null) { // TODO only really for debugging do we need to do even if no hardware
-//                return;
-//            }
+            if(isBatchEditOccurring()) return;
             // sends a vendor request depending on type of update
             // vendor request is always VR_CONFIG
             // value is the type of update
@@ -793,8 +795,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                     int config = (1 << 8) + (lastChan << 5) + (seq ? 6 : 0);
                     adcConfig.set(config);
                     sendCPLDConfig();
-                    runAdc.setChanged();
-                    runAdc.notifyObservers();
+//                    runAdc.setChanged();
+//                    runAdc.notifyObservers();
                 } else {
                     super.update(observable, object);  // super (Biasgen) handles others, e.g. masterbias
                 }
@@ -803,12 +805,13 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             }
         }
 
-        // sends complex configuration information to multiple shift registers and off chip DACs
+        // sends complete configuration information to multiple shift registers and off chip DACs
         void sendConfiguration() throws HardwareInterfaceException {
             if (!isOpen()) {
                 open();
             }
             log.info("sending complete configuration");
+            sendCPLDConfig();
             update(ipots.getPots().get(0), null); // calls back to update to send all IPot bits
             for (Pot v : vpots.getPots()) {
                 update(v, v);
@@ -826,8 +829,6 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             for (Equalizer.EqualizerChannel c : equalizer.channels) {
                 update(c, null);
             }
-
-            sendCPLDConfig();
 
         }
 
