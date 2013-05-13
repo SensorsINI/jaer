@@ -22,10 +22,11 @@ import javax.media.opengl.*;
  * 
  * @author tobi
  */
-public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMethod2D {
+public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMethod2D, HasSelectedCochleaChannel {
 
     boolean hasBlend=false;
     boolean hasBlendChecked=false;
+    private int selectedChannel; // displays selected channel in Equalizer, for example
 
     /**
      * Creates a new instance of CochleaGramDisplayMethod
@@ -138,6 +139,20 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
             log.warning("caught "+npe.toString()+", need a rendering cycle to create event type colors");
         }
 
+        // draw selected channel
+        if (getSelectedChannel() >= 0) {
+            final float sc = .8f;
+            gl.glColor3f(sc, sc, sc);
+            gl.glLineWidth(1f);
+            len = chip.getSizeX() - 3;
+            gl.glBegin(GL.GL_LINES);
+            {
+                gl.glVertex3f(0, selectedChannel, 0);
+                gl.glVertex3f(1, selectedChannel, 0);
+            }
+            gl.glEnd();
+        }
+
         getChipCanvas().checkGLError(gl, glu, "after CochleaGramDisplayMethod");
 
     }
@@ -163,5 +178,19 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
             default:
                 gl.glColor4f(.5f, .5f, .5f, alpha);
         }
+    }
+        /**
+     * @return the selectedChannel
+     */
+    public int getSelectedChannel() {
+        return selectedChannel;
+    }
+
+    /**
+     * Set this channel >=0 to show a selected channel. Set to negative integer to display display of selected channel.
+     * @param selectedChannel the selectedChannel to set
+     */
+    public void setSelectedChannel(int selectedChannel) {
+        this.selectedChannel = selectedChannel;
     }
 }

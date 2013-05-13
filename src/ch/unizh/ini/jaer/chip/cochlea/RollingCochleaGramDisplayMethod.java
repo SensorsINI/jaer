@@ -21,7 +21,7 @@ import javax.media.opengl.*;
  *can set with the UP/DOWN arrows buttons. It is set so that the entire width of the screen is a certain number of seconds.
  * @author tobi
  */
-public class RollingCochleaGramDisplayMethod extends DisplayMethod implements DisplayMethod2D {
+public class RollingCochleaGramDisplayMethod extends DisplayMethod implements DisplayMethod2D, HasSelectedCochleaChannel {
 
     /**
      * Creates a new instance of CochleaGramDisplayMethod
@@ -41,6 +41,10 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
     boolean hasBlendChecked = false;
     /** Set by rendering to total width in us time of current strip chart */
     protected float timeWidthUs; // set horizontal scale so that we can just use relative timestamp for x
+    /** The selected channel is displayed by a marker line in the display. This feature is used to select channels in the Equalizer. */
+    protected int selectedChannel=-1;
+    
+    private int prevSelectedChannel=-1;
     /** set by rendering so that 1 unit drawing scale draws to right side, 0 to left during rendering, using scaling as in
     <pre>
     drawTimeScale = (drawable.getWidth() / timeWidthUs); // scale horizontal is draw
@@ -131,6 +135,30 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
         gl.glRasterPos3f(timeWidthUs * .9f, 2, 0);
         glut.glutBitmapString(font, timeLabel);
 
+        // draw selected channel, if any
+        if (getSelectedChannel() >= 0) {
+           gl.glLineWidth(1f);
+            final float sc = .8f;
+            gl.glColor4f(sc, sc, sc,1);
+            // erase previous line if possible
+            if (hasBlend && prevSelectedChannel >= 0) {
+                gl.glBlendEquation(GL.GL_FUNC_REVERSE_SUBTRACT);
+                gl.glBegin(GL.GL_LINES);
+                {
+                    gl.glVertex3f(0, prevSelectedChannel, 0);
+                    gl.glVertex3f(timeWidthUs, prevSelectedChannel, 0); // selected channel line
+                }
+                gl.glEnd();
+                gl.glBlendEquation(GL.GL_FUNC_ADD);
+            }
+            gl.glBegin(GL.GL_LINES);
+            {
+                gl.glVertex3f(0, getSelectedChannel(), 0);
+                gl.glVertex3f(timeWidthUs, getSelectedChannel(), 0); // selected channel line
+            }
+            gl.glEnd();
+            prevSelectedChannel=getSelectedChannel();
+        }
 
          // draw channel (vertical) axis
         gl.glColor3f(0, 0, 1);
@@ -164,6 +192,8 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
         } catch (NullPointerException ex) {
             log.warning("caught a null pointer exception while rendering events, probably colors of events not fully instantiated yet");
         }
+        
+ 
 
         gl.glFlush();
 //        log.info("after flush, timeWidthUs="+timeWidthUs+" ");
@@ -172,6 +202,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
         getChipCanvas().checkGLError(gl, glu, "after RollingCochleaGramDisplayMethod");
     }
 
+    // called at end of drawing rasters across screen
     void clearScreen(GL gl) {
         gl.glDrawBuffer(GL.GL_FRONT_AND_BACK);
         gl.glClearColor(0, 0, 0, 0f);
@@ -185,5 +216,20 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
 
     protected float getStartTimeUs() {
         return startTime;
+    }
+
+    /**
+     * @return the selectedChannel
+     */
+    public int getSelectedChannel() {
+        return selectedChannel;
+    }
+
+    /**
+     * Set this channel >=0 to show a selected channel. Set to negative integer to display display of selected channel.
+     * @param selectedChannel the selectedChannel to set
+     */
+    public void setSelectedChannel(int selectedChannel) {
+        this.selectedChannel = selectedChannel;
     }
 }

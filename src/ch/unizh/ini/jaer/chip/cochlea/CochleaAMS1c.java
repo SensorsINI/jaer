@@ -2289,7 +2289,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 //                    if (CochleaAMS1cHardwareInterface.isScannerSyncBit(addr)) {
 //                        getAdcSamples().swapBuffers();  // the hardware interface here swaps the reading and writing buffers so that new data goes into the other buffer and the old data will be displayed by the rendering thread
 //                    }
-                    adcSamples.put(CochleaAMS1cHardwareInterface.adcChannel(addr), timestamps[i], CochleaAMS1cHardwareInterface.adcSample(addr), CochleaAMS1cHardwareInterface.isScannerSyncBit(addr));
+                    if(adcSamples!=null) adcSamples.put(CochleaAMS1cHardwareInterface.adcChannel(addr), timestamps[i], CochleaAMS1cHardwareInterface.adcSample(addr), CochleaAMS1cHardwareInterface.isScannerSyncBit(addr));
 //                    System.out.println("ADC sample: timestamp=" + timestamps[i] + " addr=" + addr
 //                            + " adcChannel=" + CochleaAMS1cHardwareInterface.adcChannel(addr)
 //                            + " adcSample=" + CochleaAMS1cHardwareInterface.adcSample(addr)
@@ -2298,7 +2298,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 }
 //            System.out.println("a="+a[i]+" t="+e.timestamp+" x,y="+e.x+","+e.y);
             }
-            adcSamples.setHasScannerData(getScanner().isScanContinuouslyEnabled());
+            if(adcSamples!=null) adcSamples.setHasScannerData(getScanner().isScanContinuouslyEnabled());
         }
 
         /** Overrides default extractor so that cochlea channels are returned, 

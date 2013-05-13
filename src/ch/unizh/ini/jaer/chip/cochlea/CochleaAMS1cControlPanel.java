@@ -217,6 +217,13 @@ public final class CochleaAMS1cControlPanel extends javax.swing.JPanel implement
         gangcellBut.setSelected(biasgen.getScanner().isScanGangCellVMem());
     }
 
+    // sets the selected channel to be displayed in the DisplayMethod to guide user for Equalizer channel selection
+    private void setSelectedChannel(int channel){
+        if(chip!=null && chip.getCanvas()!=null && chip.getCanvas().getDisplayMethod()!=null && chip.getCanvas().getDisplayMethod() instanceof HasSelectedCochleaChannel){
+            ((HasSelectedCochleaChannel)chip.getCanvas().getDisplayMethod()).setSelectedChannel(channel);
+        }
+    }
+    
     /**
      * @return the biasgen
      */
@@ -277,6 +284,7 @@ public final class CochleaAMS1cControlPanel extends javax.swing.JPanel implement
             this.lPFKillBox = lPFKillBox;
             this.bPFKillBox = bPFKillBox;
         }
+        
     }
     final Dimension sliderDimPref = new Dimension(2, 200),
             sliderDimMin = new Dimension(1, 35),
@@ -478,9 +486,11 @@ public final class CochleaAMS1cControlPanel extends javax.swing.JPanel implement
 
                 @Override
                 public void mouseExited(MouseEvent e) {
+                    setSelectedChannel(-1);
                 }
 
                 void set(MouseEvent e) {
+                    setSelectedChannel(channel.channel);
                     channelLabel.setText(channel.toString());
                     if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
                         setSelected(true);
@@ -537,7 +547,7 @@ public final class CochleaAMS1cControlPanel extends javax.swing.JPanel implement
 
                 @Override
                 public void mouseEntered(MouseEvent e) {
-//                    System.out.println("entered ");
+                    setSelectedChannel(channel.channel);
                     channelLabel.setText(channel.toString());
                     if ((e.getModifiersEx() & MouseEvent.BUTTON3_DOWN_MASK) == MouseEvent.BUTTON3_DOWN_MASK) {
                         int v = (int) (getMaximum() * (float) (getHeight() - e.getY()) / getHeight());
@@ -548,6 +558,7 @@ public final class CochleaAMS1cControlPanel extends javax.swing.JPanel implement
 
                 @Override
                 public void mouseExited(MouseEvent e) {
+                    setSelectedChannel(-1);
                 }
             });
             addMouseMotionListener(new MouseMotionListener() {

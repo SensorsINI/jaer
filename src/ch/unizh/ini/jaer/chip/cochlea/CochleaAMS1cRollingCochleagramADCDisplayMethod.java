@@ -49,7 +49,7 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
     public static final int NUM_ACTIVITY_SAMPLES = CochleaAMS1cADCSamples.MAX_NUM_SAMPLES;
     /** Trace color */
     public static final Color[] colors = {Color.RED, Color.GREEN, Color.BLUE, Color.getHSBColor(60f/360, .5f, .8f)};
-    GLJPanel activityPan;
+    GLJPanel activityPan; // holds ADC chart and controls
     private final int NCHAN = 4;
     private CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI[] gainGuis = new CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI[NCHAN];
     DisplayControl[] displayControl = new DisplayControl[NCHAN];
