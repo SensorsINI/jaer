@@ -150,17 +150,19 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
             log.warning("null event type colors typeColors passed back from renderer, will not render samples");
             return;
         }
-        if (typeColors != null) {
-            for (Object o : ae) {
-                TypedEvent ev = (TypedEvent) o;
-                gl.glColor3fv(typeColors[ev.type], 0);// FIXME depends on these colors having been created by a rendering cycle...
+        try {
+                for (Object o : ae) {
+                    TypedEvent ev = (TypedEvent) o;
+                    gl.glColor3fv(typeColors[ev.type], 0);// FIXME depends on these colors having been created by a rendering cycle...
 //            CochleaGramDisplayMethod.typeColor(gl,ev.type);
-                float t = (float) (ev.timestamp - startTime); // z goes from 0 (oldest) to 1 (youngest)
-                gl.glRectf(t, ev.x, t + w, ev.x + 1);
-                if (t > timeWidthUs || t < 0) {
-                    clearScreenEnabled = true;
+                    float t = (float) (ev.timestamp - startTime); // z goes from 0 (oldest) to 1 (youngest)
+                    gl.glRectf(t, ev.x, t + w, ev.x + 1);
+                    if (t > timeWidthUs || t < 0) {
+                        clearScreenEnabled = true;
+                    }
                 }
-            }
+        } catch (NullPointerException ex) {
+            log.warning("caught a null pointer exception while rendering events, probably colors of events not fully instantiated yet");
         }
 
         gl.glFlush();
