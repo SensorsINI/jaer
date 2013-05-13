@@ -139,22 +139,23 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
         if (getSelectedChannel() >= 0) {
            gl.glLineWidth(1f);
             final float sc = .8f;
-            gl.glColor4f(sc, sc, sc,1);
             // erase previous line if possible
             if (hasBlend && prevSelectedChannel >= 0) {
-                gl.glBlendEquation(GL.GL_FUNC_REVERSE_SUBTRACT);
+             gl.glColor3fv(getSelColor(prevSelectedChannel),0);
+               gl.glBlendEquation(GL.GL_FUNC_REVERSE_SUBTRACT);
                 gl.glBegin(GL.GL_LINES);
                 {
-                    gl.glVertex3f(0, prevSelectedChannel, 0);
-                    gl.glVertex3f(timeWidthUs, prevSelectedChannel, 0); // selected channel line
+                    gl.glVertex3f(0, prevSelectedChannel/2+.5f, 0);
+                    gl.glVertex3f(timeWidthUs, prevSelectedChannel/2+.5f, 0); // selected channel line
                 }
                 gl.glEnd();
                 gl.glBlendEquation(GL.GL_FUNC_ADD);
             }
+            gl.glColor3fv(getSelColor(selectedChannel),0);
             gl.glBegin(GL.GL_LINES);
             {
-                gl.glVertex3f(0, getSelectedChannel(), 0);
-                gl.glVertex3f(timeWidthUs, getSelectedChannel(), 0); // selected channel line
+                gl.glVertex3f(0, selectedChannel/2+.5f, 0);
+                gl.glVertex3f(timeWidthUs, selectedChannel/2+.5f, 0); // selected channel line
             }
             gl.glEnd();
             prevSelectedChannel=getSelectedChannel();
@@ -231,5 +232,11 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
      */
     public void setSelectedChannel(int selectedChannel) {
         this.selectedChannel = selectedChannel;
+    }
+    
+    private float sc=.8f;
+    private float[] redSel={sc,0,0}, greenSel={0,sc,0};
+    private float[] getSelColor(int channel){
+        if(channel%2==1) return redSel; else return greenSel;
     }
 }

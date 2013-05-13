@@ -142,13 +142,13 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
         // draw selected channel
         if (getSelectedChannel() >= 0) {
             final float sc = .8f;
-            gl.glColor3f(sc, sc, sc);
+            gl.glColor3fv(getSelColor(selectedChannel),0);
             gl.glLineWidth(1f);
             len = chip.getSizeX() - 3;
             gl.glBegin(GL.GL_LINES);
             {
-                gl.glVertex3f(0, selectedChannel, 0);
-                gl.glVertex3f(1, selectedChannel, 0);
+                gl.glVertex3f(0, selectedChannel/2+.5f, 0);
+                gl.glVertex3f(1, selectedChannel/2+.5f, 0);
             }
             gl.glEnd();
         }
@@ -156,6 +156,18 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
         getChipCanvas().checkGLError(gl, glu, "after CochleaGramDisplayMethod");
 
     }
+    
+    private float sc = .8f;
+    private float[] redSel = {sc, 0, 0}, greenSel = {0, sc, 0};
+
+    private float[] getSelColor(int channel) {
+        if (channel % 2 == 1) {
+            return redSel;
+        } else {
+            return greenSel;
+        }
+    }
+
 
     /** Sets the gl color depending on cochlea cell type
     @param gl the GL context
