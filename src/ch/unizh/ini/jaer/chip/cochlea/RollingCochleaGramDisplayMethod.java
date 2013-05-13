@@ -146,6 +146,10 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
 
         final float w = (float) timeWidthUs / getChipCanvas().getCanvas().getWidth(); // spike raster as fraction of screen width
         float[][] typeColors = renderer.getTypeColorRGBComponents();
+        if(typeColors==null) {
+            log.warning("null event type colors typeColors passed back from renderer, will not render samples");
+            return;
+        }
         if (typeColors != null) {
             for (Object o : ae) {
                 TypedEvent ev = (TypedEvent) o;

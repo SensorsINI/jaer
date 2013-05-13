@@ -76,7 +76,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         setBiasgen((ams1cbiasgen = new CochleaAMS1c.Biasgen(this)));
         getCanvas().setBorderSpacePixels(40);
         setEventExtractor(new CochleaAMS1c.Extractor(this));
-        getCanvas().addDisplayMethod(new CochleaAMS1cRollingCochleagramADCDisplayMethod(this));
+        getCanvas().addDisplayMethod(new CochleaAMS1cRollingCochleagramADCDisplayMethod(getCanvas()));
         for (DisplayMethod m : getCanvas().getDisplayMethods()) {
             if (m instanceof ChipRendererDisplayMethod || m instanceof SpaceTimeEventDisplayMethod) {
                 // add labels on frame of chip for these xy chip displays

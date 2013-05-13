@@ -6,21 +6,17 @@ package ch.unizh.ini.jaer.chip.cochlea;
 
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.*;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ChannelBuffer;
-import ch.unizh.ini.jaer.chip.dvs320.*;
-import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterface;
-import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterfaceProxy;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.util.prefs.Preferences;
-import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLJPanel;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.util.chart.*;
 import net.sf.jaer.util.chart.XYChart;
 
@@ -42,7 +38,7 @@ import net.sf.jaer.util.chart.XYChart;
 public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochleaGramDisplayMethod {
 
     private static final Preferences prefs = Preferences.userNodeForPackage(CochleaAMS1cRollingCochleagramADCDisplayMethod.class);
-    private CochleaAMS1c chip = null;
+//    private CochleaAMS1c chip = null;
     boolean registeredChart = false;
     private Series[] activitySeries;
     private Axis timeAxis;
@@ -59,13 +55,9 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
     DisplayControl[] displayControl = new DisplayControl[NCHAN];
     int xmin = Integer.MAX_VALUE, xmax = Integer.MIN_VALUE;
 
-    public CochleaAMS1cRollingCochleagramADCDisplayMethod(Chip2D chip) {
-        super(chip.getCanvas());
-        if(chip instanceof CochleaAMS1c){
-            this.chip = (CochleaAMS1c)chip;
-        }else{
-            throw new RuntimeException("tried to construct this display method passing in an AEChip that is not CochleaAMS1c");
-        }
+    public CochleaAMS1cRollingCochleagramADCDisplayMethod(ChipCanvas canvas) { // TODO fix all DisplayMethods so that they can accept the AEChip object and not the canvas, or else fix here so that given canvas with null chip (as is the case during AEChip creation) we can still do a lazy instantiation of necesary objects
+        super(canvas);
+        
         for (int i = 0; i < NCHAN; i++) {
             displayControl[i] = new DisplayControl(i);
             gainGuis[i] = new CochleaAMS1cRollingCochleagramADCDisplayMethodGainGUI(this, displayControl[i]);
@@ -75,10 +67,13 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
     @Override
     public void display(GLAutoDrawable drawable) {
         super.display(drawable); // display the events from cochlea channels as for normal rolling cochleagram display
+        checkAndAddToViewer();
+        if(!addedToViewer){
+            log.warning("cannot display ADC samples because ADC viewer panel not added to AEViewer canvas yet");
+            return;
+        }
 
-
-        int sx = chip.getSizeX();
-        CochleaAMS1cADCSamples adcSamples = chip.getAdcSamples();
+        CochleaAMS1cADCSamples adcSamples = ((CochleaAMS1c)getChipCanvas().getChip()).getAdcSamples();
         boolean scannerRunning = adcSamples.isHasScannerData();
         // branch here depending on whether scanner is running or we are display strip chart
         if (scannerRunning) {
@@ -170,9 +165,6 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
             return;
         }
         try {
-            AEChip chip = (AEChip) getChipCanvas().getChip();
-            AEViewer viewer = chip.getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
-            JPanel imagePanel = viewer.getImagePanel();
 
             timeAxis = new Axis(0, 1000000);
             timeAxis.setTitle("time");
@@ -211,8 +203,7 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
             }
             activityPan.add(gainPan, BorderLayout.SOUTH);
             activityPan.validate();
-            imagePanel.add(activityPan, BorderLayout.SOUTH);
-            imagePanel.validate();
+            checkAndAddToViewer();
             registeredChart = true;
         } catch (Exception e) {
             log.warning("could not register display panel: " + e);
@@ -282,6 +273,21 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
 
     private float clip(int i) {
         if(i<0) return 0; else if(i>CochleaAMS1cADCSamples.MAX_ADC_VALUE) return CochleaAMS1cADCSamples.MAX_ADC_VALUE; else return i;
+    }
+
+    private boolean addedToViewer=false;
+    
+    private void checkAndAddToViewer() {
+        if(addedToViewer) return;
+        AEChip chip = (AEChip) getChipCanvas().getChip();
+        if(chip==null) return;
+        AEViewer viewer = chip.getAeViewer(); // must do lazy install here because viewer hasn't been registered with this chip at this point
+        if(viewer==null) return;
+        JPanel imagePanel = viewer.getImagePanel();
+        if(imagePanel==null) return;
+        imagePanel.add(activityPan, BorderLayout.SOUTH);
+        imagePanel.validate();
+        addedToViewer=true;
     }
 
     public class DisplayControl {
