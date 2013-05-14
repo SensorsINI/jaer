@@ -106,7 +106,7 @@
             http://www.ej-technologies.com/products/exe4j/overview.html
     -->
     <target name="exe4j" depends="checkos" if="isWindows">
-        <echo message="Building exe4j jAERViewer.exe Windows launcher - embedding ico and setting SplashScreen in jAERViewer.exe. Don't worry if this task fails for you unless you have changed the classpath. jAERViewer.exe does not normally need to be rebuilt."/>
+        <echo message="Building exe4j jAERViewer.exe Windows launcher - embedding ico and setting SplashScreen in jAERViewer.exe. ${line.separator} Don't worry if this task fails for you unless you have changed the classpath. ${line.separator}jAERViewer.exe does not normally need to be rebuilt."/>
         <taskdef name="exe4j" classname="com.exe4j.Exe4JTask" classpath="../../exe4j/bin/ant.jar" onerror="report"/>
         <exe4j projectfile="../../jaer.exe4j" requirelicense="true"/>
     </target>
@@ -224,7 +224,7 @@
     <!-- builds a file with the output of svnversion that is used for the About dialogs -->
     <target name="setBuildVersion" depends="init">
         <tstamp/>
-        <echo message="Making build version file ${buildversion.outputfile} - you can ignore any error generated here since it will only affect the Help/About... dialog. To remove this error, you need to install a command line svn client and make svnversion available on the PATH." />
+        <echo message="Making build version file ${buildversion.outputfile} - you can ignore any error ${line.separator}generated here since it will only affect the Help/About... dialog. ${line.separator}To remove this error, you need to install a command line svn client ${line.separator}and make svnversion available on the PATH." />
         <delete file="${buildversion.outputfile}"/>
         <!-- run svnversion (must have svn installed and on PATH) to get revision numnber -->
         <exec executable="svnversion" failifexecutionfails="false" spawn="false" dir="${basedir}" output="${buildversion.outputfile}" searchpath="true">
