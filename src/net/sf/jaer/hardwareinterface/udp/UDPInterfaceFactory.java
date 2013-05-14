@@ -23,6 +23,10 @@ public class UDPInterfaceFactory implements HardwareInterfaceFactoryInterface {
     //TODO Implement a nice way to build the list of available UDPInterfaces
 
     private static final Logger log = Logger.getLogger("USBIOHardwareInterfaceFactory");
+    /**
+     * Each call to {@link #getNumInterfacesAvailable() } waits this long for a data packet.
+     */
+    public static final int TIMEOUT_MS = 50;
 
     private ArrayList<String> availableInterfaces = new ArrayList<String>();
 
@@ -79,7 +83,7 @@ public class UDPInterfaceFactory implements HardwareInterfaceFactoryInterface {
             packet.setData(buf);
             try {
 //                log.info("waiting 100ms for UDP clients to connect");
-                socket.setSoTimeout(100);
+                socket.setSoTimeout(TIMEOUT_MS);
                 socket.receive(packet);
                 if(packet != null && !availableInterfaces.contains("SmartEyeTDS")){
                     availableInterfaces.add("SmartEyeTDS");
