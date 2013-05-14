@@ -122,7 +122,7 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
         });
 
         jaerProjectLinkLabel.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
-        jaerProjectLinkLabel.setText("<html> <em><a href=\"http://jaer.sourceforge.net\">jaer.sourceforge.net</a> </em></html>");
+        jaerProjectLinkLabel.setText("<html> <em><a href=\"http://jaerproject.net\">jaerproject.net</a> </em></html>");
         jaerProjectLinkLabel.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 jaerProjectLinkLabelMouseClicked(evt);
@@ -141,8 +141,8 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
                 .add(77, 77, 77)
-                .add(jaerProjectLinkLabel)
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 225, Short.MAX_VALUE)
+                .add(jaerProjectLinkLabel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 268, Short.MAX_VALUE)
                 .add(okButton)
                 .addContainerGap())
             .add(layout.createSequentialGroup()
@@ -159,13 +159,13 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(layout.createSequentialGroup()
                 .addContainerGap()
-                .add(aboutLabel)
+                .add(aboutLabel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
                 .add(versionLabel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 107, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 49, Short.MAX_VALUE)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                     .add(okButton)
-                    .add(jaerProjectLinkLabel))
+                    .add(jaerProjectLinkLabel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap())
         );
 
