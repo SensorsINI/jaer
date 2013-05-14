@@ -38,10 +38,9 @@ import net.sf.jaer.util.filter.HighpassFilter;
  * This "vestibular-ocular Steadicam" tries to compensate global image motion by
  * using vestibular and global motion metrics to redirect output events and
  * (optionally) also a mechanical pantilt unit, shifting them according to
- * motion of input. Two methods can be used 1) the global translational flow
+ * motion of input. Three methods can be used 1) the global translational flow
  * computed from DirectionSelectiveFilter, or 2) the optical gyro outputs from
- * OpticalGyro. Also, a Phidgets gyro unit (the 9-DOF unit) provide input that
- * is fused with the optical flow information.
+ * OpticalGyro, or 3) (the best method) using a Phidgets gyro unit (the 9-DOF unit).
  *
  * @author tobi
  */

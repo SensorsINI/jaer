@@ -21,6 +21,7 @@ import javax.media.opengl.glu.GLU;
 import javax.media.opengl.glu.GLUquadric;
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
@@ -53,7 +54,7 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
     private float rollDeg = 0;
     private float panDC = 0, tiltDC = 0, rollDC = 0;
 //    public TransformAtTime transformAtTime = new TransformAtTime(timestampUs, new Point2D.Float(), rollDeg);
-    private float lensFocalLengthMm = 8.5f;
+    private float lensFocalLengthMm = getFloat("lensFocalLengthMm",8.5f);
     HighpassFilter panTranslationFilter = new HighpassFilter();
     HighpassFilter tiltTranslationFilter = new HighpassFilter();
     HighpassFilter rollFilter = new HighpassFilter();
@@ -316,7 +317,16 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
             lastAeTimestamp = in.getLastTimestamp();
         }
 //        System.out.println("VORsensor processing " + in);
-        checkOutputPacketEventType(PhidgetsSpatialEvent.class);
+        if(out==null || (out.getEventClass()!=PhidgetsSpatialEvent.class)){
+            if(in instanceof ApsDvsEventPacket){
+                out=new ApsDvsEventPacket(PhidgetsSpatialEvent.class);
+            }else if(in instanceof EventPacket){
+                out=new EventPacket(PhidgetsSpatialEvent.class);
+            }else {
+                throw new RuntimeException("bad input event packet class: "+in.toString());
+            }
+        }
+//        checkOutputPacketEventType(PhidgetsSpatialEvent.class);
         OutputEventIterator outItr = out.outputIterator();
         PhidgetsSpatialEvent spatialEvent = null;
         // tricky
@@ -549,7 +559,7 @@ public class VORSensor extends EventFilter2D implements FrameAnnotater, Observer
 
     @Override
     public void update(Observable o, Object arg) {
-        radPerPixel = (float) Math.asin(getChip().getPixelWidthUm() * 1e-3f / lensFocalLengthMm);
+        radPerPixel = (float) Math.asin(getChip().getPixelWidthUm() * 1e-3f / lensFocalLengthMm); // updated after chip is set for this filter
     }
 
     private float clip(float f, float lim) {

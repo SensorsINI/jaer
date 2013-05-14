@@ -6,6 +6,7 @@ package org.capocaccia.cne.jaer.cne2012.vor;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
+import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.PolarityEvent;
 
@@ -15,7 +16,7 @@ import net.sf.jaer.event.PolarityEvent;
  *
  * @author tobi
  */
-public class PhidgetsSpatialEvent extends PolarityEvent {
+public class PhidgetsSpatialEvent extends ApsDvsEvent {
 
     /** The type of Spatial sensor data. */
     public enum SpatialDataType {RollClockwise, PitchUp, YawRight, AccelUp, AccelRight, AccelTowards, Unknown};
