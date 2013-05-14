@@ -12,11 +12,11 @@ import java.awt.geom.Point2D;
  *
  * @author tobi
  */
-class TransformAtTime {
+public class TransformAtTime {
 
     /** Inn pixel units */
     public Point2D.Float translation;
-    int timestamp;
+    public int timestamp;
     /** In radians, CW from right unit vector. */
     public float rotation;
     public float cosAngle;
