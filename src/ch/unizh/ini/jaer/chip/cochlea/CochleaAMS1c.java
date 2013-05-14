@@ -416,6 +416,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
         public Biasgen(Chip chip) {
             super(chip);
             setName("CochleaAMS1c.Biasgen");
+//            log.info("making biasgen");
             powerDown = new PowerDownBit(getMasterbias(), "e2", "powerDown", "High to power down bias generator", false);
             equalizer.addObserver(this);
             bufferIPot.addObserver(this);
@@ -548,7 +549,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 //            } catch (HardwareInterfaceException ex) {
 //                log.warning(ex.toString());
 //            }
-
+//            log.info("done making biasgen");
         }
 
         void setOnchipGain(OnChipPreampGain gain) {
