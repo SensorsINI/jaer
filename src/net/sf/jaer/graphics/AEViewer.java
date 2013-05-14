@@ -939,8 +939,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
     }
 
-    /** sets the device class, e.g. Tmpdiff128, from the
-     * fully qual classname provided by the menu item itself.
+    /** Sets the device class, e.g. DVS127, from the
+     * fully qualified class name which is provided by the menu item itself.
      * @param deviceClass the Class of the AEChip to add to the AEChip menu
      */
     public void setAeChipClass(Class deviceClass) {
@@ -963,6 +963,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             AEChip oldChip = getChip();
             if (oldChip != null) {
                 oldChip.onDeregistration();
+                if(oldChip.getCanvas()!=null && oldChip.getCanvas().getDisplayMethod()!=null) oldChip.getCanvas().getDisplayMethod().onDeregistration();
             }
             if (getChip() == null) { // handle initial case
                 constructChip(constructor);
