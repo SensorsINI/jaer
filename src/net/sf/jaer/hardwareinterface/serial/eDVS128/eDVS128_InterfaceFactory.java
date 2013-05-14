@@ -450,7 +450,7 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                 getRootPane().setDefaultButton(cancelButton);
             }
         }
-        log.info("focused on " + lastSelected);
+//        log.info("focused on " + lastSelected);
     }
 
     private void doCloseCancel() {
