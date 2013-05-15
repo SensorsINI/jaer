@@ -95,6 +95,7 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements 
         if(chip!=null && chip.getBiasgen()!=null) {
             chip.getBiasgen().sendConfiguration(chip.getBiasgen());
         } // TODO hack to get configuration sent after event acquisition starts data transfer, which messes up configuration on AMS1c
+        // still not clear why the configuration must be sent again after starting event acquisition, because nothing in firmware should reset the CPLD after the configuration has already been sent
     }
     
     

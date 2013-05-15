@@ -812,7 +812,6 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
                 open();
             }
             log.info("sending complete configuration");
-            sendCPLDConfig();
             update(ipots.getPots().get(0), null); // calls back to update to send all IPot bits
             for (Pot v : vpots.getPots()) {
                 update(v, v);
@@ -830,6 +829,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             for (Equalizer.EqualizerChannel c : equalizer.channels) {
                 update(c, null);
             }
+            sendCPLDConfig();
 
         }
 
