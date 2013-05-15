@@ -18,7 +18,9 @@ package net.sf.jaer.event;
  */
 public class PolarityEvent extends TypedEvent{
 
+    /** The polarity types */
     public static enum Polarity {On, Off};
+    /** The event polarity, either <code>On</code> for brighter or <code>Off</code> for darker */
     public Polarity polarity=Polarity.On;
     
     /** Creates a new instance of PolarityEvent */
@@ -37,11 +39,14 @@ public class PolarityEvent extends TypedEvent{
         super.copyFrom(e);
         this.polarity=e.polarity;
     }
-    
+    /** Returns two cell types */
     @Override public int getNumCellTypes() {
         return 2;
     }
-    
+    /** Returns an int for the polarity, 0 for Off and 1 for On.
+     * 
+     * @return 0 for Off and 1 for On
+     */
     @Override public int getType(){
         return polarity==Polarity.Off? 0: 1;
     }

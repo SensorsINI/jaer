@@ -10,6 +10,9 @@ import net.sf.jaer.event.PolarityEvent;
  */
 public class ApsDvsEvent extends PolarityEvent {
 
+    /** The readout type of the multiple readouts: A is the readout of reset level, B is the readout of first sample, C, is the readout of 2nd sample, etc.
+     * Normally only A and B are used and the CDS is done in digital domain by subtracting A-B readings.
+     */
     public enum ReadoutType {A,B,C,EOF};
     
     /** The ADC sample value. Has value -1 by convention for non-sample events. */

@@ -15,6 +15,7 @@ import ch.unizh.ini.jaer.config.fx2.PortBit;
 import ch.unizh.ini.jaer.config.fx2.TriStateablePortBit;
 import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
 import ch.unizh.ini.jaer.config.onchip.OutputMux;
+import com.kitfox.svg.A;
 import com.sun.opengl.util.j2d.TextRenderer;
 import eu.seebetter.ini.chips.*;
 import eu.seebetter.ini.chips.config.*;
@@ -58,7 +59,6 @@ import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceControlsCF;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
-import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEvent.ReadoutType;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.graphics.RetinaRenderer;
@@ -305,7 +305,7 @@ public class SBret10old extends APSDVSchip {
                         e.special = false;
                         e.address = data;
                         e.timestamp = (timestamps[i]);
-                        e.polarity = (data & 1) == 1 ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
+                        e.polarity = (data & 1) == 1 ? PolarityEvent.Polarity.On : PolarityEvent.Polarity.Off;
                         e.x = (short) (chip.getSizeX()-1-((data & XMASK) >>> XSHIFT));
                         e.y = (short) ((data & YMASK) >>> YSHIFT); 
                         //System.out.println(data);
@@ -1919,7 +1919,7 @@ public class SBret10old extends APSDVSchip {
             //update displayFrame
             int idx = getIndex(e.x,e.y);
             if(e.timestamp<timestamps[idx])return;
-            if(e.polarity == Polarity.On){
+            if(e.polarity == PolarityEvent.Polarity.On){
                 if(useMismatchCorrection){
                     displayFrame[idx] += onMismatch[idx]*onStep;
                 }else{

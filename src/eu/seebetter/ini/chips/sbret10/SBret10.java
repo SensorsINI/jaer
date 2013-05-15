@@ -138,6 +138,7 @@ public class SBret10 extends APSDVSchip {
      *<p>
      */
     public class SBret10Extractor extends RetinaExtractor {
+        
 
         private int firstFrameTs = 0;
         boolean ignore = false; // TODO what does ignore do?
