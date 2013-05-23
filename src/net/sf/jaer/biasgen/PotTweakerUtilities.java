@@ -13,7 +13,7 @@ package net.sf.jaer.biasgen;
 public class PotTweakerUtilities {
     private PotTweakerUtilities(){}
 
-        /** Convenience method that computes ratio from slider position and tweakability.
+    /** Convenience method that computes ratio from slider position and tweakability.
      * @param sliderValue -1:1 float value from slider
      * @param maxRatio output ranges from 1/maxRatio to maxRatio
      *

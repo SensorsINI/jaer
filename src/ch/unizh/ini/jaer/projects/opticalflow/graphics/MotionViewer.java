@@ -580,7 +580,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
                 }
             }
             fileChooser = null;
-            chipCanvas.setScale(oldScale); // restore persistent scale so that we don't get tiny size on next startup
+//            chipCanvas.setScale(oldScale); // restore persistent scale so that we don't get tiny size on next startup
             setPaused(false);
         }
 

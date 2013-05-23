@@ -31,8 +31,9 @@ public class EventRateEstimator extends EventFilter2D {
     private float filteredRate = 0, instantaneousRate = 0;
     private float eventRateTauMs = getFloat("eventRateTauMs", 100);
     private int eventRateTauUs = (int) (eventRateTauMs * 1000);
-    private int UPDATE_RATE_TAU_DIVIDER = 1;  // event rate estimates are sent to observers this many times per tau
-    boolean initialized = false;
+    /* Event rate estimates are sent to observers this many times per tau */
+    protected int UPDATE_RATE_TAU_DIVIDER = 1;  
+    private boolean initialized = false;
 
     public EventRateEstimator(AEChip chip) {
         super(chip);

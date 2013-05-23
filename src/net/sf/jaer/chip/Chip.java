@@ -11,9 +11,9 @@
 package net.sf.jaer.chip;
 
 import ch.unizh.ini.jaer.chip.retina.DVS128;
+import java.beans.PropertyChangeSupport;
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.logging.Level;
@@ -105,6 +105,10 @@ public class Chip extends Observable {
      * 
      */
     protected static Logger log=Logger.getLogger("Chip");
+    
+    
+    /** Built-in PropertyChangeSupport to allow this Chip to generate PropertyChangeEvents. */
+    protected PropertyChangeSupport support=new PropertyChangeSupport(this);
     
     /** Can be used to hold a reference to the last data associated with this Chip2D */
     private Object lastData=null;
@@ -301,6 +305,23 @@ public class Chip extends Observable {
      */
     public Logger getLog(){
         return Chip.log;
+    }
+
+    /**
+     *  Returns built-in PropertyChangeSupport to allow this Chip to generate PropertyChangeEvents.
+  
+     * @return the support
+     */
+    public PropertyChangeSupport getSupport() {
+        return support;
+    }
+
+    /**
+     * Sets built-in PropertyChangeSupport that allows this Chip to generate PropertyChangeEvents.
+     * @param support the support to set
+     */
+    public void setSupport(PropertyChangeSupport support) {
+        this.support = support;
     }
 
 }

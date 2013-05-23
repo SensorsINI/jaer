@@ -54,7 +54,6 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
     private JMenuItem arrayResetMenuItem = null, syncEnabledMenuItem = null;
     private JMenuItem setArrayResetMenuItem = null;
     private JMenu ledMenu = null;
-    private PropertyChangeSupport support = new PropertyChangeSupport(this);
     public static final String CMD_TWEAK_THESHOLD = "threshold", CMD_TWEAK_ONOFF_BALANCE = "balance", CMD_TWEAK_BANDWIDTH = "bandwidth", CMD_TWEAK_MAX_FIRING_RATE = "maxfiringrate";
     private Biasgen dvs128Biasgen;
     JComponent helpMenuItem1 = null, helpMenuItem2 = null, helpMenuItem3=null;
@@ -716,12 +715,4 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         }
     } // DVS128Biasgen
 
-    /**
-     * Fires PropertyChangeEvents when biases are tweaked according to {@link ch.unizh.ini.jaer.chip.retina.DVSTweaks}.
-     * 
-     * @return the support
-     */
-    public PropertyChangeSupport getSupport() {
-        return support;
-    }
-}
+  }

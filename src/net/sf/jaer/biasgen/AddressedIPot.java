@@ -186,6 +186,7 @@ public class AddressedIPot extends Pot implements Cloneable, Observer, RemoteCon
     public void changeByRatioFromPreferred(float ratio){
         int v=Math.round(getPreferedBitValue()*ratio);
         v=v+(ratio>=1?1:-1);
+        log.info("changing bit value from "+getBitValue()+" to "+v);
         setBitValue(v);
     }
     

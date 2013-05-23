@@ -4,6 +4,7 @@
  */
 package eu.seebetter.ini.chips.sbret10;
 
+import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
 import ch.unizh.ini.jaer.config.MuxControlPanel;
 import ch.unizh.ini.jaer.config.OutputMap;
 import ch.unizh.ini.jaer.config.boards.LatticeMachFX2config;
@@ -28,6 +29,7 @@ import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import net.sf.jaer.biasgen.*;
 import net.sf.jaer.biasgen.VDAC.VPot;
+import net.sf.jaer.biasgen.coarsefine.AddressedIPotCF;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceControlsCF;
 import net.sf.jaer.chip.AEChip;
@@ -39,17 +41,16 @@ import net.sf.jaer.util.ParameterControlPanel;
 import net.sf.jaer.util.PropertyTooltipSupport;
 
 /**
- * Bias generator, On-chip diagnostic readout, video acquisition and rendering controls for the apsDVS vision sensor.
- * 
+ * Bias generator, On-chip diagnostic readout, video acquisition and rendering
+ * controls for the apsDVS vision sensor.
+ *
  * @author Christian
  */
-public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
-    
+public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig, DVSTweaks {
+
     protected ShiftedSourceBiasCF ssn, ssp;
-    
     JPanel configPanel;
     JTabbedPane configTabbedPane;
-    
     //*********** FX2 *********************
     // portA
     protected PortBit runCpld = new PortBit(chip, "a3", "runCpld", "(A3) Set high to run CPLD which enables event capture, low to hold logic in reset", true);
@@ -57,38 +58,41 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
     // portC
     protected PortBit runAdc = new PortBit(chip, "c0", "runAdc", "(C0) High to run ADC", true);
     // portE
-    /** Bias generator power down bit */
+    /**
+     * Bias generator power down bit
+     */
     protected PortBit powerDown = new PortBit(chip, "e2", "powerDown", "(E2) High to disable master bias and tie biases to default rails", false);
     protected PortBit nChipReset = new PortBit(chip, "e3", "nChipReset", "(E3) Low to reset AER circuits and hold pixels in reset, High to run", true); // shouldn't need to manipulate from host
-    
     //*********** CPLD *********************
     // CPLD shift register contents specified here by CPLDInt and CPLDBit
     protected CPLDInt exposureB = new CPLDInt(chip, 15, 0, "exposureB", "time between reset and readout of a pixel", 0);
     protected CPLDInt exposureC = new CPLDInt(chip, 31, 16, "exposureC", "time between reset and readout of a pixel for a second time (min 240!)", 240);
-    protected CPLDInt colSettle = new CPLDInt(chip, 47, 32, "colSettle", "time to settle a column select before readout", 0);
-    protected CPLDInt rowSettle = new CPLDInt(chip, 63, 48, "rowSettle", "time to settle a row select before readout", 0);
-    protected CPLDInt resSettle = new CPLDInt(chip, 79, 64, "resSettle", "time to settle a reset before readout", 0);
+    protected CPLDInt colSettle = new CPLDInt(chip, 47, 32, "colSettle", "time in 30MHz clock cycles to settle after column select before readout", 0);
+    protected CPLDInt rowSettle = new CPLDInt(chip, 63, 48, "rowSettle", "time in 30MHz clock cycles to settle after row select before readout", 0);
+    protected CPLDInt resSettle = new CPLDInt(chip, 79, 64, "resSettle", "time in 30MHz clock cycles  to settle after column reset before readout", 0);
     protected CPLDInt frameDelay = new CPLDInt(chip, 95, 80, "frameDelay", "time between two frames", 0);
     protected CPLDInt padding = new CPLDInt(chip, 109, 96, "pad", "used to insert necessary unused (but should be zero) bits", 0);
     protected CPLDBit testPixAPSread = new CPLDBit(chip, 109, "testPixAPSread", "enables continuous scanning of testpixel", false);
     protected CPLDBit useC = new CPLDBit(chip, 110, "useC", "enables a second readout for double exposure", false);
     protected CPLDBit sbret10 = new CPLDBit(chip, 111, "sbret10", "puts TX high (as needed in SBRet10)", true);
-    
+    // DVSTweaks
+    private AddressedIPotCF diffOn, diffOff, refr, pr, sf, diff;
     // graphic options for rendering
     protected VideoControl videoControl;
-    
 //        private Scanner scanner; 
     protected ApsReadoutControl apsReadoutControl;
 
-    /** Creates a new instance of chip configuration
-        *@param chip the chip this configuration belongs to
-        */
+    /**
+     * Creates a new instance of chip configuration
+     *
+     * @param chip the chip this configuration belongs to
+     */
     public SBret10config(Chip chip) {
         super(chip);
-        this.chip = (AEChip)chip;
+        this.chip = (AEChip) chip;
         setName("SBret10 Configuration");
 
-        
+
         // port bits
         addConfigValue(nChipReset);
         addConfigValue(powerDown);
@@ -135,17 +139,18 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         setPotArray(new AddressedIPotArray(this));
 
         try {
-            addAIPot("DiffBn,n,normal,differencing amp"); 
-            addAIPot("OnBn,n,normal,DVS brighter threshold");
-            addAIPot("OffBn,n,normal,DVS darker threshold");
-            addAIPot("ApsCasEpc,p,cascode,cascode between APS und DVS"); 
+            //private AddressedIPotCF diffOn, diffOff, refr, pr, sf, diff;
+            diff = addAIPot("DiffBn,n,normal,differencing amp");
+            diffOn = addAIPot("OnBn,n,normal,DVS brighter threshold");
+            diffOff = addAIPot("OffBn,n,normal,DVS darker threshold");
+            addAIPot("ApsCasEpc,p,cascode,cascode between APS und DVS");
             addAIPot("DiffCasBnc,n,cascode,differentiator cascode bias");
             addAIPot("ApsROSFBn,n,normal,APS readout source follower bias");
             addAIPot("LocalBufBn,n,normal,Local buffer bias"); // TODO what's this?
             addAIPot("PixInvBn,n,normal,Pixel request inversion static inverter bias");
-            addAIPot("PrBp,p,normal,Photoreceptor bias current");
-            addAIPot("PrSFBp,p,normal,Photoreceptor follower bias current (when used in pixel type)");
-            addAIPot("RefrBp,p,normal,DVS refractory period current");
+            pr = addAIPot("PrBp,p,normal,Photoreceptor bias current");
+            sf = addAIPot("PrSFBp,p,normal,Photoreceptor follower bias current (when used in pixel type)");
+            refr = addAIPot("RefrBp,p,normal,DVS refractory period current");
             addAIPot("AEPdBn,n,normal,Request encoder pulldown static current");
             addAIPot("LcolTimeoutBn,n,normal,No column request timeout");
             addAIPot("AEPuXBp,p,normal,AER column pullup");
@@ -162,7 +167,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         //graphicOptions
         videoControl = new VideoControl();
         videoControl.addObserver(this);
-        
+
         // on-chip configuration chain
         chipConfigChain = new SBRet10ChipConfigChain(chip);
         chipConfigChain.addObserver(this);
@@ -179,31 +184,40 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
             Logger.getLogger(SBret10.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
-    /** Momentarily puts the pixels and on-chip AER logic in reset and then releases the reset.
-    * 
-    */
+
+    /**
+     * Momentarily puts the pixels and on-chip AER logic in reset and then
+     * releases the reset.
+     *
+     */
     protected void resetChip() {
         log.info("resetting AER communication");
         nChipReset.set(false);
         nChipReset.set(true);
     }
-    
+    private boolean debugControls = false;
+    JPanel userFriendlyControls;
+
     /**
-    *
-    * Overrides the default method to addConfigValue the custom control panel for configuring the SBret10 output muxes
-    * and many other chip and board controls.
-    *
-    * @return a new panel for controlling this chip and board configuration
-    */
+     *
+     * Overrides the default method to addConfigValue the custom control panel
+     * for configuring the SBret10 output muxes and many other chip and board
+     * controls.
+     *
+     * @return a new panel for controlling this chip and board configuration
+     */
     @Override
     public JPanel buildControlPanel() {
 //            if(displayControlPanel!=null) return displayControlPanel;
         configPanel = new JPanel();
         configPanel.setLayout(new BorderLayout());
+        debugControls = chip.getPrefs().getBoolean("debugControls", false);
+
         // add a reset button on top of everything
         final Action resetChipAction = new AbstractAction("Reset chip") {
-            {putValue(Action.SHORT_DESCRIPTION, "Resets the pixels and the AER logic momentarily");}
+            {
+                putValue(Action.SHORT_DESCRIPTION, "Resets the pixels and the AER logic momentarily");
+            }
 
             @Override
             public void actionPerformed(ActionEvent evt) {
@@ -211,20 +225,45 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
             }
         };
 
+        final Action toggleDebugControlsAction = new AbstractAction("Toggle debug controls") {
+            {
+                putValue(Action.SHORT_DESCRIPTION, "Toggles display of user friendly controls next to other tabbed panes for debugging");
+            }
+
+            @Override
+            public void actionPerformed(ActionEvent evt) {
+                toggleDebugControls();
+            }
+        };
+
+
+
         JPanel specialButtons = new JPanel();
         specialButtons.setLayout(new BoxLayout(specialButtons, BoxLayout.X_AXIS));
         specialButtons.add(new JButton(resetChipAction));
-        configPanel.add(specialButtons, BorderLayout.NORTH);
-
+        specialButtons.add(new JButton(toggleDebugControlsAction));
+        
+        
         configTabbedPane = new JTabbedPane();
         setBatchEditOccurring(true); // stop updates on building panel
-        
+
+        configPanel.add(specialButtons, BorderLayout.NORTH);
+
+        userFriendlyControls = new ApsDVSUserControlPanel(chip);
+        if (debugControls) {
+            configPanel.add(userFriendlyControls, BorderLayout.EAST);
+        } else {
+
+            // user friendly control panel
+            configTabbedPane.add("User-Friendly Controls", userFriendlyControls);
+        }
+
         //graphics
         JPanel videoControlPanel = new JPanel();
         videoControlPanel.setLayout(new BoxLayout(videoControlPanel, BoxLayout.Y_AXIS));
         configTabbedPane.add("Video Control", videoControlPanel);
         videoControlPanel.add(new ParameterControlPanel(videoControl));
-        
+
         //biasgen
         JPanel combinedBiasShiftedSourcePanel = new JPanel();
         combinedBiasShiftedSourcePanel.setLayout(new BoxLayout(combinedBiasShiftedSourcePanel, BoxLayout.Y_AXIS));
@@ -232,7 +271,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         combinedBiasShiftedSourcePanel.add(new ShiftedSourceControlsCF(ssn));
         combinedBiasShiftedSourcePanel.add(new ShiftedSourceControlsCF(ssp));
         configTabbedPane.addTab("Bias Current Control", combinedBiasShiftedSourcePanel);
-        
+
         //muxes
         configTabbedPane.addTab("Debug Output MUX control", chipConfigChain.buildMuxControlPanel());
 
@@ -258,22 +297,42 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
 
         configTabbedPane.addMouseListener(
                 new java.awt.event.MouseAdapter() {
-
-                    @Override
-                    public void mouseClicked(java.awt.event.MouseEvent evt) {
-                        tabbedPaneMouseClicked(evt);
-                    }
-                });
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                tabbedPaneMouseClicked(evt);
+            }
+        });
         setBatchEditOccurring(false);
         return configPanel;
     }
-    
-    /** The central point for communication with HW from biasgen. All objects in SeeBetterConfig are Observables
-    * and addConfigValue SeeBetterConfig.this as Observer. They then call notifyObservers when their state changes.
-    * Objects such as ADC store preferences for ADC, and update should update the hardware registers accordingly.
-    * @param observable IPot, Scanner, etc
-    * @param object notifyChange - not used at present
-    */
+
+    private void toggleDebugControls() {
+        if (debugControls) {
+            configPanel.remove(userFriendlyControls);
+        } else {
+            configTabbedPane.remove(userFriendlyControls);
+        }
+        debugControls = !debugControls;
+        chip.getPrefs().putBoolean("debugControls", debugControls);
+        if (debugControls) {
+            configPanel.add(userFriendlyControls, BorderLayout.EAST);
+        } else {
+            // user friendly control panel
+            configTabbedPane.add("User-Friendly Controls", userFriendlyControls);
+        }
+//        configPanel.revalidate();
+    }
+
+    /**
+     * The central point for communication with HW from biasgen. All objects in
+     * SeeBetterConfig are Observables and addConfigValue SeeBetterConfig.this
+     * as Observer. They then call notifyObservers when their state changes.
+     * Objects such as ADC store preferences for ADC, and update should update
+     * the hardware registers accordingly.
+     *
+     * @param observable IPot, Scanner, etc
+     * @param object notifyChange - not used at present
+     */
     @Override
     synchronized public void update(Observable observable, Object object) {  // thread safe to ensure gui cannot retrigger this while it is sending something
         // sends a vendor request depending on type of update
@@ -290,7 +349,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
                 sendOnChipConfig();
             } else if (observable instanceof OutputMux || observable instanceof OnchipConfigBit) {
                 sendOnChipConfigChain();
-            } else if (observable instanceof ShiftedSourceBiasCF ) {
+            } else if (observable instanceof ShiftedSourceBiasCF) {
                 sendOnChipConfig();
             } else if (observable instanceof SBRet10ChipConfigChain) {
                 sendOnChipConfigChain();
@@ -305,9 +364,9 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
                 byte[] bytes = {b.isSet() ? (byte) 1 : (byte) 0};
                 sendFx2ConfigCommand(CMD_SETBIT, b.getPortbit(), bytes); // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]=value (1,0)
             } else if (observable instanceof CPLDConfigValue) {
-                    sendCPLDConfig();
-            } else if (observable instanceof AddressedIPot) { 
-                sendAIPot((AddressedIPot)observable);
+                sendCPLDConfig();
+            } else if (observable instanceof AddressedIPot) {
+                sendAIPot((AddressedIPot) observable);
             } else {
                 super.update(observable, object);  // super (SeeBetterConfig) handles others, e.g. masterbias
             }
@@ -320,15 +379,16 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         chip.getPrefs().putInt("SBret10.bgTabbedPaneSelectedIndex", configTabbedPane.getSelectedIndex());
     }
 
-    /** Controls the APS intensity readout by wrapping the relevant bits */
+    /**
+     * Controls the APS intensity readout by wrapping the relevant bits
+     */
     public class ApsReadoutControl implements Observer, HasPropertyTooltips {
 
         int channel = chip.getPrefs().getInt("ADC.channel", 3);
         public final String EVENT_ADC_ENABLED = "adcEnabled", EVENT_ADC_CHANNEL = "adcChannel";
-        
         private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
         public final String EVENT_TESTPIXEL = "testpixelEnabled";
-        PropertyTooltipSupport tooltipSupport=new PropertyTooltipSupport();
+        PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
 
         public ApsReadoutControl() {
             rowSettle.addObserver(this);
@@ -352,7 +412,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
             tooltipSupport.setPropertyTooltip("sbret10", sbret10.getDescription());
             tooltipSupport.setPropertyTooltip(useC.getName(), useC.getDescription());
         }
-        
+
         public boolean isAdcEnabled() {
             return runAdc.isSet();
         }
@@ -373,15 +433,15 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
             resSettle.set(cc);
         }
 
-        public void setFrameDelayCC(int cc){
+        public void setFrameDelayCC(int cc) {
             frameDelay.set(cc);
         }
 
-        public void setExposureBDelayCC(int cc){
+        public void setExposureBDelayCC(int cc) {
             exposureB.set(cc);
         }
 
-        public void setExposureCDelayCC(int cc){
+        public void setExposureCDelayCC(int cc) {
             exposureC.set(cc);
         }
 
@@ -400,7 +460,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         public void setUseC(boolean doUseC) {
             useC.set(doUseC);
         }
-        
+
         public boolean isSbret10() {
             return sbret10.isSet();
         }
@@ -441,8 +501,8 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         }
 
         /**
-            * @return the propertyChangeSupport
-            */
+         * @return the propertyChangeSupport
+         */
         public PropertyChangeSupport getPropertyChangeSupport() {
             return propertyChangeSupport;
         }
@@ -452,19 +512,18 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
             return tooltipSupport.getPropertyTooltip(propertyName);
         }
     }
-    
+
     public class VideoControl extends Observable implements Observer, HasPreference, HasPropertyTooltips {
-        
+
         private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
-        
         public boolean displayEvents = chip.getPrefs().getBoolean("VideoControl.displayEvents", true);
         public boolean displayFrames = chip.getPrefs().getBoolean("VideoControl.displayFrames", true);
         public boolean useAutoContrast = chip.getPrefs().getBoolean("VideoControl.useAutoContrast", false);
         public float contrast = chip.getPrefs().getFloat("VideoControl.contrast", 1.0f);
         public float brightness = chip.getPrefs().getFloat("VideoControl.brightness", 0.0f);
-        private float gamma=chip.getPrefs().getFloat("VideoControl.gamma",1); // gamma control for improving display on crappy beamer output
-        private PropertyTooltipSupport tooltipSupport=new PropertyTooltipSupport();
-        
+        private float gamma = chip.getPrefs().getFloat("VideoControl.gamma", 1); // gamma control for improving display on crappy beamer output
+        private PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
+
         public VideoControl() {
             hasPreferenceList.add(this);
             tooltipSupport.setPropertyTooltip("displayEvents", "display DVS events");
@@ -476,15 +535,15 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         }
 
         /**
-        * @return the displayFrames
-        */
+         * @return the displayFrames
+         */
         public boolean isDisplayFrames() {
             return displayFrames;
         }
-        
+
         /**
-        * @param displayFrames the displayFrames to set
-        */
+         * @param displayFrames the displayFrames to set
+         */
         public void setDisplayFrames(boolean displayFrames) {
             this.displayFrames = displayFrames;
             chip.getPrefs().putBoolean("VideoControl.displayFrames", displayFrames);
@@ -492,63 +551,63 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         }
 
         /**
-        * @return the displayEvents
-        */
+         * @return the displayEvents
+         */
         public boolean isDisplayEvents() {
             return displayEvents;
         }
 
         /**
-        * @param displayEvents the displayEvents to set
-        */
+         * @param displayEvents the displayEvents to set
+         */
         public void setDisplayEvents(boolean displayEvents) {
             this.displayEvents = displayEvents;
             chip.getPrefs().putBoolean("VideoControl.displayEvents", displayEvents);
             chip.getAeViewer().interruptViewloop();
         }
-        
+
         /**
-        * @return the displayEvents
-        */
+         * @return the displayEvents
+         */
         public boolean isUseAutoContrast() {
             return useAutoContrast;
         }
 
         /**
-        * @param displayEvents the displayEvents to set
-        */
+         * @param displayEvents the displayEvents to set
+         */
         public void setUseAutoContrast(boolean useAutoContrast) {
             this.useAutoContrast = useAutoContrast;
             chip.getPrefs().putBoolean("VideoControl.useAutoContrast", useAutoContrast);
             chip.getAeViewer().interruptViewloop();
         }
-        
+
         /**
-        * @return the contrast
-        */
+         * @return the contrast
+         */
         public float getContrast() {
             return contrast;
         }
 
         /**
-        * @param contrast the contrast to set
-        */
+         * @param contrast the contrast to set
+         */
         public void setContrast(float contrast) {
             this.contrast = contrast;
             chip.getPrefs().putFloat("VideoControl.contrast", contrast);
             chip.getAeViewer().interruptViewloop();
         }
-        
+
         /**
-        * @return the brightness
-        */
+         * @return the brightness
+         */
         public float getBrightness() {
             return brightness;
         }
 
         /**
-        * @param brightness the brightness to set
-        */
+         * @param brightness the brightness to set
+         */
         public void setBrightness(float brightness) {
             this.brightness = brightness;
             chip.getPrefs().putFloat("VideoControl.brightness", brightness);
@@ -570,7 +629,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
             chip.getPrefs().putFloat("VideoControl.gamma", gamma);
             chip.getAeViewer().interruptViewloop();
         }
-        
+
         @Override
         public void update(Observable o, Object arg) {
             setChanged();
@@ -581,8 +640,8 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         }
 
         /**
-            * @return the propertyChangeSupport
-            */
+         * @return the propertyChangeSupport
+         */
         public PropertyChangeSupport getPropertyChangeSupport() {
             return propertyChangeSupport;
         }
@@ -594,7 +653,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
             useAutoContrast = chip.getPrefs().getBoolean("VideoControl.useAutoContrast", false);
             contrast = chip.getPrefs().getFloat("VideoControl.contrast", 1.0f);
             brightness = chip.getPrefs().getFloat("VideoControl.brightness", 0.0f);
-            gamma=chip.getPrefs().getFloat("VideoControl.gamma",1f);
+            gamma = chip.getPrefs().getFloat("VideoControl.gamma", 1f);
         }
 
         @Override
@@ -611,10 +670,8 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         public String getPropertyTooltip(String propertyName) {
             return tooltipSupport.getPropertyTooltip(propertyName);
         }
-
-
     }
-    
+
     @Override
     public boolean isDisplayFrames() {
         return videoControl.isDisplayFrames();
@@ -634,64 +691,65 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
     public void setDisplayEvents(boolean displayEvents) {
         videoControl.setDisplayEvents(displayEvents);
     }
-    
+
     @Override
-    public boolean isUseAutoContrast(){
+    public boolean isUseAutoContrast() {
         return videoControl.isUseAutoContrast();
     }
-    
+
     @Override
-    public void setUseAutoContrast(boolean useAutoContrast){
+    public void setUseAutoContrast(boolean useAutoContrast) {
         videoControl.setUseAutoContrast(useAutoContrast);
     }
-    
+
     @Override
-    public float getContrast(){
+    public float getContrast() {
         return videoControl.getContrast();
     }
-    
+
     @Override
-    public void setContrast(float contrast){
+    public void setContrast(float contrast) {
         videoControl.setContrast(contrast);
     }
-    
+
     @Override
-    public float getBrightness(){
+    public float getBrightness() {
         return videoControl.getBrightness();
     }
-    
+
     @Override
-    public void setBrightness(float brightness){
+    public void setBrightness(float brightness) {
         videoControl.setBrightness(brightness);
     }
-    
+
     @Override
-    public float getGamma(){
+    public float getGamma() {
         return videoControl.getGamma();
     }
-    
+
     @Override
-    public void setGamma(float gamma){
+    public void setGamma(float gamma) {
         videoControl.setGamma(gamma);
     }
-    
-    
 
     /**
-    * Formats bits represented in a string as '0' or '1' as a byte array to be sent over the interface to the firmware, for loading
-    * in big endian bit order, in order of the bytes sent starting with byte 0.
-    * <p>
-    * Because the firmware writes integral bytes it is important that the 
-    * bytes sent to the device are padded with leading bits 
-    * (at msbs of first byte) that are finally shifted out of the on-chip shift register.
-    * 
-    * Therefore <code>bitString2Bytes</code> should only be called ONCE, after the complete bit string has been assembled, unless it is known
-    * the other bits are an integral number of bytes.
-    * 
-    * @param bitString in msb to lsb order from left end, where msb will be in msb of first output byte
-    * @return array of bytes to send
-    */
-
+     * Formats bits represented in a string as '0' or '1' as a byte array to be
+     * sent over the interface to the firmware, for loading in big endian bit
+     * order, in order of the bytes sent starting with byte 0.
+     * <p>
+     * Because the firmware writes integral bytes it is important that the bytes
+     * sent to the device are padded with leading bits (at msbs of first byte)
+     * that are finally shifted out of the on-chip shift register.
+     *
+     * Therefore
+     * <code>bitString2Bytes</code> should only be called ONCE, after the
+     * complete bit string has been assembled, unless it is known the other bits
+     * are an integral number of bytes.
+     *
+     * @param bitString in msb to lsb order from left end, where msb will be in
+     * msb of first output byte
+     * @return array of bytes to send
+     */
     public class SBRet10ChipConfigChain extends ChipConfigChain {
 
         //Config Bits
@@ -701,9 +759,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
                 hotPixelSuppression = new OnchipConfigBit(chip, "hotPixelSuppression", 3, "turns on the hot pixel suppression", false),
                 nArow = new OnchipConfigBit(chip, "nArow", 4, "use nArow in the AER state machine", false),
                 useAout = new OnchipConfigBit(chip, "useAout", 5, "turn the pads for the analog MUX outputs on", true),
-                globalShutter = new OnchipConfigBit(chip, "globalShutter", 6, "use the global shutter or not", false)
-                ;
-
+                globalShutter = new OnchipConfigBit(chip, "globalShutter", 6, "use the global shutter or not", false);
         //Muxes
         OutputMux[] amuxes = {new AnalogOutputMux(1), new AnalogOutputMux(2), new AnalogOutputMux(3)};
         OutputMux[] dmuxes = {new DigitalOutputMux(1), new DigitalOutputMux(2), new DigitalOutputMux(3), new DigitalOutputMux(4)};
@@ -711,12 +767,12 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         ArrayList<OutputMux> muxes = new ArrayList();
         MuxControlPanel controlPanel = null;
 
-        public SBRet10ChipConfigChain(Chip chip){  
+        public SBRet10ChipConfigChain(Chip chip) {
             super(chip);
             this.sbChip = chip;
 
             TOTAL_CONFIG_BITS = 24;
-            
+
             hasPreferenceList.add(this);
             configBits = new OnchipConfigBit[7];
             configBits[0] = resetCalib;
@@ -729,9 +785,9 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
             for (OnchipConfigBit b : configBits) {
                 b.addObserver(this);
             }
-            
-            
-            muxes.addAll(Arrays.asList(bmuxes)); 
+
+
+            muxes.addAll(Arrays.asList(bmuxes));
             muxes.addAll(Arrays.asList(dmuxes)); // 4 digital muxes, first in list since at end of chain - bits must be sent first, before any biasgen bits
             muxes.addAll(Arrays.asList(amuxes)); // finally send the 3 voltage muxes
 
@@ -742,22 +798,22 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
 
             bmuxes[0].setName("BiasOutMux");
 
-            bmuxes[0].put(0,"IFThrBn");
-            bmuxes[0].put(1,"AEPuYBp");
-            bmuxes[0].put(2,"AEPuXBp");
-            bmuxes[0].put(3,"LColTimeout");
-            bmuxes[0].put(4,"AEPdBn");
-            bmuxes[0].put(5,"RefrBp");
-            bmuxes[0].put(6,"PrSFBp");
-            bmuxes[0].put(7,"PrBp");
-            bmuxes[0].put(8,"PixInvBn");
-            bmuxes[0].put(9,"LocalBufBn");
-            bmuxes[0].put(10,"ApsROSFBn");
-            bmuxes[0].put(11,"DiffCasBnc");
-            bmuxes[0].put(12,"ApsCasBpc");
-            bmuxes[0].put(13,"OffBn");
-            bmuxes[0].put(14,"OnBn");
-            bmuxes[0].put(15,"DiffBn");
+            bmuxes[0].put(0, "IFThrBn");
+            bmuxes[0].put(1, "AEPuYBp");
+            bmuxes[0].put(2, "AEPuXBp");
+            bmuxes[0].put(3, "LColTimeout");
+            bmuxes[0].put(4, "AEPdBn");
+            bmuxes[0].put(5, "RefrBp");
+            bmuxes[0].put(6, "PrSFBp");
+            bmuxes[0].put(7, "PrBp");
+            bmuxes[0].put(8, "PixInvBn");
+            bmuxes[0].put(9, "LocalBufBn");
+            bmuxes[0].put(10, "ApsROSFBn");
+            bmuxes[0].put(11, "DiffCasBnc");
+            bmuxes[0].put(12, "ApsCasBpc");
+            bmuxes[0].put(13, "OffBn");
+            bmuxes[0].put(14, "OnBn");
+            bmuxes[0].put(15, "DiffBn");
 
             dmuxes[0].setName("DigMux3");
             dmuxes[1].setName("DigMux2");
@@ -845,7 +901,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         class AnalogOutputMux extends OutputMux {
 
             AnalogOutputMux(int n) {
-                super(sbChip, 4, 8, (OutputMap)(new VoltageOutputMap()));
+                super(sbChip, 4, 8, (OutputMap) (new VoltageOutputMap()));
                 setName("Voltages" + n);
             }
         }
@@ -853,13 +909,13 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         class DigitalOutputMux extends OutputMux {
 
             DigitalOutputMux(int n) {
-                super(sbChip, 4, 16, (OutputMap)(new DigitalOutputMap()));
+                super(sbChip, 4, 16, (OutputMap) (new DigitalOutputMap()));
                 setName("LogicSignals" + n);
             }
         }
 
         @Override
-        public String getBitString(){
+        public String getBitString() {
             //System.out.print("dig muxes ");
             String dMuxBits = getMuxBitString(dmuxes);
             //System.out.print("config bits ");
@@ -875,7 +931,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
             return chipConfigChain; // returns bytes padded at end
         }
 
-        String getMuxBitString(OutputMux[] muxs){
+        String getMuxBitString(OutputMux[] muxs) {
             StringBuilder s = new StringBuilder();
             for (OutputMux m : muxs) {
                 s.append(m.getBitString());
@@ -887,7 +943,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         String getConfigBitString() {
             StringBuilder s = new StringBuilder();
             for (int i = 0; i < TOTAL_CONFIG_BITS - configBits.length; i++) {
-                s.append("0"); 
+                s.append("0");
             }
             for (int i = configBits.length - 1; i >= 0; i--) {
                 s.append(configBits[i].isSet() ? "1" : "0");
@@ -902,7 +958,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
         }
 
         @Override
-        public JPanel getChipConfigPanel(){
+        public JPanel getChipConfigPanel() {
             JPanel chipConfigPanel = new JPanel(new BorderLayout());
 
             //On-Chip config bits
@@ -925,5 +981,107 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig{
 
             return chipConfigPanel;
         }
+    }
+    // DVSTweasks from DVS128
+    private float bandwidth = 1, maxFiringRate = 1, threshold = 1, onOffBalance = 1;
+
+    /**
+     * Tweaks bandwidth around nominal value.
+     *
+     * @param val -1 to 1 range
+     */
+    @Override
+    public void setBandwidthTweak(float val) {
+        log.info("tweak bandwidth by " + val);
+        if (val > 1) {
+            val = 1;
+        } else if (val < -1) {
+            val = -1;
+        }
+        float old = bandwidth;
+        bandwidth = val;
+        final float MAX = 30;
+        pr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
+        sf.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
+        chip.getSupport().firePropertyChange(DVSTweaks.BANDWIDTH, old, val);
+    }
+
+    /**
+     * Tweaks max firing rate (refractory period), larger is shorter refractory
+     * period.
+     *
+     * @param val -1 to 1 range
+     */
+    @Override
+    public void setMaxFiringRateTweak(float val) {
+        if (val > 1) {
+            val = 1;
+        } else if (val < -1) {
+            val = -1;
+        }
+        float old = maxFiringRate;
+        maxFiringRate = val;
+        final float MAX = 300;
+        refr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
+        chip.getSupport().firePropertyChange(DVSTweaks.MAX_FIRING_RATE, old, val);
+    }
+
+    /**
+     * Tweaks threshold, larger is higher threshold.
+     *
+     * @param val -1 to 1 range
+     */
+    public void setThresholdTweak(float val) {
+        if (val > 1) {
+            val = 1;
+        } else if (val < -1) {
+            val = -1;
+        }
+        float old = threshold;
+        final float MAX = 10;
+        threshold = val;
+        diffOn.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
+        diffOff.changeByRatioFromPreferred(1 / PotTweakerUtilities.getRatioTweak(val, MAX));
+        chip.getSupport().firePropertyChange(DVSTweaks.THRESHOLD, old, val);
+
+    }
+
+    /**
+     * Tweaks balance of on/off events. Increase for more ON events.
+     *
+     * @param val -1 to 1 range.
+     */
+    @Override
+    public void setOnOffBalanceTweak(float val) {
+        if (val > 1) {
+            val = 1;
+        } else if (val < -1) {
+            val = -1;
+        }
+        float old = onOffBalance;
+        onOffBalance = val;
+        final float MAX = 10;
+        diff.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
+        chip.getSupport().firePropertyChange(DVSTweaks.ON_OFF_BALANCE, old, val);
+    }
+
+    @Override
+    public float getBandwidthTweak() {
+        return bandwidth;
+    }
+
+    @Override
+    public float getThresholdTweak() {
+        return threshold;
+    }
+
+    @Override
+    public float getMaxFiringRateTweak() {
+        return maxFiringRate;
+    }
+
+    @Override
+    public float getOnOffBalanceTweak() {
+        return onOffBalance;
     }
 }

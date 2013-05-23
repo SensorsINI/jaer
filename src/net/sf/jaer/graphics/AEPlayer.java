@@ -121,7 +121,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             preview.showFile(null);
         }
         fileChooser = null;
-        outer.chipCanvas.setScale(oldScale);
+//        outer.chipCanvas.setScale(oldScale);
         // restore persistent scale so that we don't get tiny size on next startup
         setPaused(false);
     }

@@ -3706,7 +3706,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
             fileChooser = null;
             //     setPaused(false);
-            chipCanvas.setScale(oldScale);
+//            chipCanvas.setScale(oldScale);
         } else if (evt.getActionCommand().equals("stop")) {
             setPlayMode(PlayMode.LIVE);
             stopSequencing();

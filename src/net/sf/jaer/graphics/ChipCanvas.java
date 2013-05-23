@@ -95,8 +95,11 @@ public class ChipCanvas implements GLEventListener, Observer {
     public static final int MIN_DIMENSION = 70;
     /** width and height of pixel array in canvas in screen pixels. these are different than the actual canvas size */
     protected int pwidth = prefs.getInt("ChipCanvas.pwidth", 512);
-    // the number of screen pixels for one retina pixel
-    protected float j2dScale = prefs.getFloat("ChipCanvas.j2dScale", 3f);
+    
+    /** the number of screen pixels for one chip pixel.
+     @see #getScale() 
+     */
+    protected float scaleChipPixels2ScreenPixels = 1;
     protected static final Color selectedPixelColor = Color.blue;
     protected GLUquadric selectedQuad;
     public BufferStrategy strategy;
@@ -189,8 +192,7 @@ OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
         // checkGLError(drawable.getGL(),glu,"after add event listener");
 
 //        Dimension ss=Toolkit.getDefaultToolkit().getScreenSize();
-        j2dScale = prefs.getFloat(scalePrefsKey(), 4); // if j2dScale comes from prefs, then j2dScale gets smaller and smaller with each window that is opened
-        setScale(getScale());
+        scaleChipPixels2ScreenPixels = prefs.getFloat(scalePrefsKey(), 4); // if scaleChipPixels2ScreenPixels comes from prefs, then scaleChipPixels2ScreenPixels gets smaller and smaller with each window that is opened
         drawable.setSize(200, 200);  // set a size explicitly here
         initComponents();
         chip.addObserver(this);
@@ -414,12 +416,14 @@ OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
         return drawable;
     }
 
-    /** Pixel drawing j2dScale. 1 pixel is rendered to getScale screen pixels.
+    /** Pixel drawing scale. 1 pixel is rendered to getScale() screen pixels.
+     * To obtain chip pixel units from screen pixels, divide screen pixels by <code>getScale()</code>.
+     * Conversely, to scale chip pixels to screen pixels, multiply by  <code>getScale()</code>.
      *
-     * @return j2dScale in screen pixels/chip pixel.
+     * @return scale in screen pixels/chip pixel.
      */
     public float getScale() {
-        return this.j2dScale;
+        return scaleChipPixels2ScreenPixels;
     }
 
     /** A utility method that returns an AWT Color from float rgb values */
@@ -682,13 +686,13 @@ OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
             g2.fill(drawable.getBounds());
             // translate to center view; depends on how chip fills display
             if (isFillsHorizontally()) {
-                // translate vertically downwards by (height-sizeY*j2dScale)/2
-                g2.translate(0, (getCanvas().getHeight() - j2dScale * chip.getSizeY()) / 2);
+                // translate vertically downwards by (height-sizeY*scaleChipPixels2ScreenPixels)/2
+                g2.translate(0, (getCanvas().getHeight() - scaleChipPixels2ScreenPixels * chip.getSizeY()) / 2);
             } else {
-                // fills canvas vertically, translate right by (width-sizeX*j2dScale)/2
-                g2.translate((getCanvas().getWidth() - j2dScale * chip.getSizeX()) / 2, 0);
+                // fills canvas vertically, translate right by (width-sizeX*scaleChipPixels2ScreenPixels)/2
+                g2.translate((getCanvas().getWidth() - scaleChipPixels2ScreenPixels * chip.getSizeX()) / 2, 0);
             }
-            g2.scale(j2dScale, j2dScale);// AffineTransform.getScaleInstance(j2dScale,j2dScale));
+            g2.scale(scaleChipPixels2ScreenPixels, scaleChipPixels2ScreenPixels);// AffineTransform.getScaleInstance(scaleChipPixels2ScreenPixels,scaleChipPixels2ScreenPixels));
             g2.setFont(g2.getFont().deriveFont(8f));
 
 
@@ -718,7 +722,7 @@ OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
             int xsel = getRenderer().getXsel(), ysel = getRenderer().getYsel();
             if (xsel != -1 && ysel != -1) {
                 g2.setColor(selectedPixelColor);
-                //                g2.fillRect(j2dScale*renderer.xsel,pheight-j2dScale*(renderer.ysel+1),j2dScale, j2dScale);
+                //                g2.fillRect(scaleChipPixels2ScreenPixels*renderer.xsel,pheight-scaleChipPixels2ScreenPixels*(renderer.ysel+1),scaleChipPixels2ScreenPixels, scaleChipPixels2ScreenPixels);
                 int radius = 1 + getRenderer().getSelectedPixelEventCount();
                 g2.setStroke(new BasicStroke(.2f / getScale()));
 
@@ -771,6 +775,7 @@ OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
     /** Called on reshape of canvas. Determines which way the chip fits into the display area optimally and calls
      * for a new orthographic projection to achieve this filling. Finally sets the viewport to the entire drawable area.
      */
+    @Override
     public synchronized void reshape(GLAutoDrawable drawable, int x, int y, int width, int height) {
         GL gl = drawable.getGL();
         gl.glLoadIdentity();
@@ -779,7 +784,7 @@ OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
         float newscale;
         final float border = 0; // getBorderSpacePixels()*(float)height/width;
         if (chipSizeY > chipSizeX) {
-            // chip is tall and skinny, so set j2dScale by frame height/chip height
+            // chip is tall and skinny, so set scaleChipPixels2ScreenPixels by frame height/chip height
             newscale = (float) (height - border) / chipSizeY;
             fillsVertically = true;
             fillsHorizontally = false;
@@ -789,7 +794,7 @@ OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
                 fillsVertically = false;
             }
         } else {
-            // chip is square or squat, so set j2dScale by frame width / chip width
+            // chip is square or squat, so set scaleChipPixels2ScreenPixels by frame width / chip width
             newscale = (float) (width - border) / chipSizeX;
             fillsHorizontally = true;
             fillsVertically = false;
@@ -799,7 +804,6 @@ OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
                 fillsHorizontally = false;
             }
         }
-        setScale(newscale); // TODO j2dScale meaningless now for opengl but not for java2d rendering
         setDefaultProjection(gl, drawable); // this sets orthographic projection so that chip pixels are scaled to the drawable area
         gl.glViewport(0, 0, width, height);
         repaint();
@@ -835,12 +839,18 @@ OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
         prefs.putBoolean("ChipCanvas.openGLEnabled", openGLEnabled);
     }
 
+ 
 
 
     /** Orthographic projection clipping area. */
-    private class ClipArea {
+    public class ClipArea {
 
-        float left = 0, right = 0, bottom = 0, top = 0;
+        /**
+         * This clipping area is around the chip size by a negative amount for
+         * left and bottom and a quantity larger than the chip size for the
+         * right and top.
+         */
+        public float left = 0, right = 0, bottom = 0, top = 0;
 
         ClipArea(float l, float r, float b, float t) {
             left = l;
@@ -851,15 +861,55 @@ OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
     }
     /** The actual clipping box bounds for the default orthographic projection. */
     private ClipArea clipArea = new ClipArea(0, 0, 0, 0);
+    
+     /**
+     * Returns the actual clipping area in model space (chip pixel) coordinates.
+     * This clipping area is around the chip size by a negative amount for left and bottom and a quantity larger than
+     * the chip size for the right and top.
+     *
+     * This method is not synchronized.
+     *
+     * @return the clip area; only valid after display has been called.
+     * @see #setDefaultProjection(javax.media.opengl.GL,
+     * javax.media.opengl.GLAutoDrawable)
+     */
+    public ClipArea getClipArea() {
+        return clipArea;
+    }
 
-    /** Border around chip in clipping area. */
-    private class Borders {
+    /**
+     * Border around chip in model space coordinate (chip pixels).
+     *
+     * @see #setDefaultProjection(javax.media.opengl.GL,
+     * javax.media.opengl.GLAutoDrawable)
+     * @see #getScale() 
+     */
+    public class Borders {
 
-        float leftRight = 0, bottomTop = 0;
+        /**
+         * Border space in chip pixel units around left/right and bottom/top of
+         * displayed chip pixel array. The total border is twice the individual <code>leftRight</code> or <code>bottomTop</code>.
+         */
+        public float leftRight = 0, bottomTop = 0;
     };
-    /** The actual borders in model space around the chip area. */
+     /**
+     * The actual borders in model space around the chip area.
+     */
     private Borders borders = new Borders();
 
+    /**
+     * Returns the actual borders in model space (chip pixels) around the drawn
+     * pixel array.
+     *
+     * This method is not synchronized.
+     *
+     * @return the borders; only valid after display has been called.
+     * @see #setDefaultProjection(javax.media.opengl.GL, javax.media.opengl.GLAutoDrawable) 
+     */
+    public Borders getBorders() {
+        return borders;
+    }
+    
     /** Sets the projection matrix so that we get an orthographic projection that is the size of the
     canvas with z volume -ZCLIP to ZCLIP padded with extra space around the sides.
 
@@ -919,17 +969,16 @@ OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
             borders.bottomTop = b;
             g.glOrtho(-bb, (sx + bb), -b, sy + b, ZCLIP, -ZCLIP);
         }
+        setScale(glScale);
         g.glMatrixMode(GL.GL_MODELVIEW);
     }
 
-    /** This method sets the pixel drawing j2dScale so that
+    /** This method sets the pixel drawing scale so that
      * e.g. s=2 means a chip pixel occupies 2 screen pixels.
-     * Only used for java2d rendering now.
      * @param s size of chip pixel in screen pixels.
      */
-    public void setScale(float s) {
-        prefs.putFloat(scalePrefsKey(), (float) Math.round(s)); // if we don't round, window gets smaller each time we open a new one...
-        this.j2dScale = s;
+    private void setScale(float s) { 
+        this.scaleChipPixels2ScreenPixels = s;
     }
 
     /** Shows selected pixel spike count by drawn circle */
@@ -983,10 +1032,9 @@ OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
     }
 
     public void update(Observable o, Object arg) {
-        // if observable is a chip object and arg is a string size property then set a new j2dScale
+        // if observable is a chip object and arg is a string size property then set a new scaleChipPixels2ScreenPixels
         if (o == chip && arg instanceof String) {
             if (arg.equals(Chip2D.EVENT_SIZEX) || arg.equals(Chip2D.EVENT_SIZEY)) {
-                setScale(prefs.getFloat(scalePrefsKey(), SCALE_DEFAULT));
                 ZCLIP = chip.getMaxSize();
                 unzoom();
             }
@@ -1036,6 +1084,10 @@ OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
         insets.left = borderSpacePixels;
         insets.right = borderSpacePixels;
     }
+    
+    
+ 
+
 
     /** Clips a Point to within the chip size. The point is modified to fit within the size of the Chip2D.
      *
@@ -1095,7 +1147,7 @@ OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
         private void setProjection(GL gl) {
             float glScale;
             // define a new projection matrix so that the clipping volume is centered on the centerPoint
-            // and the size of the rectangle zooms up by a factor of zoomFactor on the original j2dScale
+            // and the size of the rectangle zooms up by a factor of zoomFactor on the original scaleChipPixels2ScreenPixels
             gl.glMatrixMode(GL.GL_PROJECTION);
             gl.glLoadIdentity();
             final int w = drawable.getWidth(), h = drawable.getHeight(); // w,h of screen

@@ -205,15 +205,15 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
     }
 
     /** Called when preferences are loaded or stored. Resets the slider to middle.
+     * The event is filtered so that only changes to this 
      *
      * @param evt
      */
     public void preferenceChange (PreferenceChangeEvent evt){
-//        log.info(evt.toString());
-//        if ( evt.getKey().equals(prefsKey()) ){
-//            log.info(evt.toString());
+        if (!evt.getKey().endsWith("bgTabbedPaneSelectedIndex")) { // TODO have some way to detect when new preferences are loaded, not resepond to **all** preference changes
+//            log.info(evt.toString() + " key=" + evt.getKey() + " newValue=" + evt.getNewValue());
             reset();
-//        }
+        }
     }
 
     /**

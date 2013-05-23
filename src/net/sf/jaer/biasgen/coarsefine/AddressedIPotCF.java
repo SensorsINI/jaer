@@ -22,6 +22,9 @@ import net.sf.jaer.util.RemoteControlCommand;
  */
 public class AddressedIPotCF extends AddressedIPot {
 
+    /** The nominal (designed for) external resistor on the master bias */
+    public static final float RX=100e3f; 
+    
     /** Estimation of the master bias with 100kOhm external resistor (designed value); 389nA */
     public double fixMasterBias = 0.000000389;
     
@@ -38,6 +41,8 @@ public class AddressedIPotCF extends AddressedIPot {
     public enum BiasEnabled {Enabled, Disabled}
     protected BiasEnabled biasEnabled=BiasEnabled.Enabled;
     
+    /** The nominal ratio of coarse current between each coarse bias step change. */
+    public static final float RATIO_COARSE_CURRENT_STEP=8f;
     
     /** Bit mask for flag bias enabled (normal operation) or disabled (tied weakly to rail) */
     protected static int enabledMask=0x0001;
@@ -187,6 +192,33 @@ public class AddressedIPotCF extends AddressedIPot {
         return new AddressedIPotCFGUIControl(this);
     }
 
+    @Override
+    public void setBitValue(int value) {
+        log.warning("setting the \"bitValue\" of this coarse-fine pot has no effect");
+    }
+    
+    /** Change fine bit value by ratio from preferred value; can be used for a tweak from a nominal value.
+     * If fine bit value is too large, changes coarse bit value as well.
+     @param ratio between new current and old value, e.g. 1.1f or 0.9f
+     */
+    @Override
+    public void changeByRatioFromPreferred(float ratio){
+        int v = Math.round(getPreferedFineBitValue() * ratio);
+        v = v + (ratio >= 1 ? 1 : -1); // ensure at least one step unit of change up or down depending on ratio >1 or <1
+//        log.info("changing bit value from "+getFineBitValue()+" to "+v);
+//        if (v < 1 ) {
+//            setCoarseBitValue(getPreferedCoarseBitValue()+1); // sign inversion on coarse bits means increment bit value here
+//                setFineBitValue(Math.round((getPreferedFineBitValue() * ratio) * RATIO_COARSE_CURRENT_STEP));
+//        } else if (v > getMaxFineBitValue() ) {
+//            setCoarseBitValue(getPreferedCoarseBitValue()-1);
+//                setFineBitValue(Math.round((getPreferedFineBitValue() * ratio) / RATIO_COARSE_CURRENT_STEP));
+//        }else{
+            setFineBitValue(v);
+//        }
+    }
+    
+   
+
     public int getFineBitValue() {
         return fineBitValue;
     }
@@ -221,7 +253,8 @@ public class AddressedIPotCF extends AddressedIPot {
         return coarseBitValue;
     }
     
-    /** Set the buffer bias bit value
+    /** Set the course bias bit value.  Note that because of an initial design error, the value of coarse current *decreases* as the bit value increases.
+     * The current is nominally the master current for a bit value of 2.
      * @param bufferBitValue the value which has maxBuffeBitValue as maximum and specifies fraction of master bias
      */
     public void setCoarseBitValue(int coarseBitValue) {
@@ -284,11 +317,44 @@ public class AddressedIPotCF extends AddressedIPot {
         return getCoarseCurrent();
     }
     
+    /** Returns estimated coarse current based on master bias current and coarse bit setting 
+     * 
+     * @return current in amperes 
+     */
     public float getCoarseCurrent(){
         double im=fixMasterBias; //TODO real MasterBias
-        float i=(float)(im*Math.pow(8, 2-getCoarseBitValue()));
+        float i=(float)(im*Math.pow(RATIO_COARSE_CURRENT_STEP, 2-getCoarseBitValue()));
         return i;
     }
+    
+    /**
+     * Increments coarse current
+     *
+     * @return true if change was possible, false if coarse current is already
+     * maximum value
+     */
+    public boolean incrementCoarseCurrent() {
+        if (getCoarseBitValue() == 0) {
+            return false;
+        }
+        setCoarseBitValue(coarseBitValue - 1);
+        return true;
+    }
+
+    /**
+     * Decrements coarse current
+     *
+     * @return true if change was possible, false if coarse current is already
+     * maximum value
+     */
+    public boolean decrementCoarseCurrent() {
+        if (getCoarseBitValue() == getMaxCoarseBitValue()) {
+            return false;
+        }
+        setCoarseBitValue(coarseBitValue + 1);
+        return true;
+    }
+
     
     /** TODO: real calculations
      */
@@ -471,14 +537,14 @@ public class AddressedIPotCF extends AddressedIPot {
 //            log.info("key="+key+" value="+val);
             if (key.equals(base + KEY_BITVALUE_FINE)) {
                 if(getFineBitValue()!=Integer.parseInt(val)){
-                    log.info("fine bit value change from preferences");
+                    log.info(base+" fine bit value change from "+getFineBitValue()+" to "+ Integer.parseInt(val)+" from preferences");
                 }
                 setFineBitValue(Integer.parseInt(val));
             } else if (key.equals(base + KEY_BITVALUE_COARSE)) {
-                if(getFineBitValue()!=Integer.parseInt(val)){
-                    log.info("fine bit value change from preferences");
+                if(getCoarseBitValue()!=Integer.parseInt(val)){
+                    log.info("coarse bit value change from preferences");
                 }
-                setFineBitValue(Integer.parseInt(val));
+                setCoarseBitValue(Integer.parseInt(val));
             } else if (key.equals(base + KEY_ENABLED)) {
                 setEnabled(Boolean.parseBoolean(val));
             } else if (key.equals(base + KEY_LOWCURRENT_ENABLED)) {

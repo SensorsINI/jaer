@@ -32,10 +32,7 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
         for (PotTweaker tweaker : tweakers) {
             chip.getPrefs().addPreferenceChangeListener(tweaker); // to reset sliders on load/save of biases
         }
-        if (chip instanceof DVS128) {
-            DVS128 dvs = (DVS128) chip;
-            dvs.getSupport().addPropertyChangeListener(this);
-        }
+        chip.getSupport().addPropertyChangeListener(this);
     }
 
     private void setFileModified() {

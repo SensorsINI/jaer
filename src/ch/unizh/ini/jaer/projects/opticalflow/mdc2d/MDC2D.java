@@ -74,7 +74,7 @@ public class MDC2D extends Chip2DMotion  {
 
         getCanvas().addDisplayMethod(new OpticalFlowDisplayMethod(this.getCanvas()));
         getCanvas().setOpenGLEnabled(true);
-        getCanvas().setScale(22f);
+//        getCanvas().setScale(22f);
      }
 
   

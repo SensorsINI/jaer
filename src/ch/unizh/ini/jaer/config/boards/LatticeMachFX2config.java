@@ -223,7 +223,8 @@ public class LatticeMachFX2config extends Biasgen implements HasPreference{
     * @param s , e.g. "Amp,n,normal,DVS ON threshold"; separate tokens for name,sex,type,tooltip\nsex=n|p, type=normal|cascode
     * @throws ParseException Error
     */
-    protected void addAIPot(String s) throws ParseException {
+    protected AddressedIPotCF addAIPot(String s) throws ParseException {
+        AddressedIPotCF ret=null;
         try {
             String d = ",";
             StringTokenizer t = new StringTokenizer(s, d);
@@ -254,12 +255,13 @@ public class LatticeMachFX2config extends Biasgen implements HasPreference{
             String tip = t.nextToken();
 
             int address = getPotArray().getNumPots();
-            getPotArray().addPot(new AddressedIPotCF(this, name, address++,
+            getPotArray().addPot(ret=new AddressedIPotCF(this, name, address++,
                     type, sex, false, true,
                     AddressedIPotCF.maxCoarseBitValue / 2, AddressedIPotCF.maxFineBitValue, address, tip));
         } catch (Exception e) {
             throw new Error(e.toString());
         }
+        return ret;
     }
     
     protected boolean sendAIPot(AddressedIPot pot) throws HardwareInterfaceException{            
@@ -268,7 +270,7 @@ public class LatticeMachFX2config extends Biasgen implements HasPreference{
             return false; // not ready yet, called by super
         }
         String hex = String.format("%02X%02X%02X",bytes[2],bytes[1],bytes[0]);
-        log.info("Send AIPot for "+pot.getName()+" with value "+hex);
+//        log.info("Send AIPot for "+pot.getName()+" with value "+hex);
         sendFx2ConfigCommand(CMD_AIPOT, 0, bytes); // the usual packing of ipots with other such as shifted sources, on-chip voltage dac, and diagnotic mux output and extra configuration
         return true;
     }

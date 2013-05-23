@@ -37,7 +37,7 @@ public class Motion18 extends Chip2DMotion {
         setSizeY(NUM_ROWS);
         getCanvas().addDisplayMethod(new OpticalFlowDisplayMethod(this.getCanvas()));
         getCanvas().setOpenGLEnabled(true);
-        getCanvas().setScale(22f);
+//        getCanvas().setScale(22f);
     }
 
 
