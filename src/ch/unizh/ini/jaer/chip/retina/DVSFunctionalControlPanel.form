@@ -19,6 +19,11 @@
     <Property name="rows" type="int" value="0"/>
   </Layout>
   <SubComponents>
+    <Component class="javax.swing.JLabel" name="jLabel1">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="&lt;html&gt;This panel allows &quot;tweaking&quot; bias values around the nominal ones loaded from the XML file. Change made here are &lt;b&gt;not&lt;/b&gt; permanent until the settings are saved to an XML file. On restart, these new settings will then become the nominal settings."/>
+      </Properties>
+    </Component>
     <Component class="net.sf.jaer.biasgen.PotTweaker" name="bandwidthTweaker">
       <Properties>
         <Property name="lessDescription" type="java.lang.String" value="Slower"/>

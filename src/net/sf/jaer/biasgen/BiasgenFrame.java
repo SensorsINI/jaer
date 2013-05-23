@@ -690,7 +690,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     }//GEN-LAST:event_revertButtonActionPerformed
 
     private void loadMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loadMenuItemActionPerformed
-        biasgen.loadPreferences();
+        biasgen.loadPreferences(); // TODO not quite the right behavior, should be revert action here.
     }//GEN-LAST:event_loadMenuItemActionPerformed
 
     private void saveMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveMenuItemActionPerformed

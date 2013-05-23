@@ -11,6 +11,7 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.hardwareinterface.*;
 import java.awt.Frame;
+import java.beans.PropertyChangeSupport;
 import java.util.*;
 import java.util.logging.*;
 import java.util.prefs.*;
@@ -53,6 +54,11 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
     /** Can be used for subclass logging */
     protected static final Logger log = Logger.getLogger("Biasgen");
     private ArrayList<IPotGroup> iPotGroups = new ArrayList<IPotGroup>(); // groups of pots
+    protected PropertyChangeSupport support=new PropertyChangeSupport(this);
+
+    
+    /** Property change event keys */
+    public static final String PROPERTY_CHANGE_PREFERENCES_LOADED="preferences loaded";
 
     /**
      *  Constructs a new biasgen. A BiasgenHardwareInterface is constructed when needed.
@@ -169,6 +175,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
      *@param is an input stream, typically constructed for a FileInputStream
      *@throws IOException if the output stream cannot be read
      */
+    @Override
     public void importPreferences(java.io.InputStream is) throws java.io.IOException, InvalidPreferencesFormatException, HardwareInterfaceException {
         log.info("importing preferences from InputStream=" + is + " to prefs=" + prefs);
         startBatchEdit();
@@ -196,6 +203,8 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
 
     /** Loads preferences (preferred values) for the potArray and masterbias. Subclasses should override this method
      * to load additional information.
+     * This call fires a PropertyChangeEvent <code>PROPERTY_CHANGE_PREFERENCES_LOADED</code>.
+     * @see #PROPERTY_CHANGE_PREFERENCES_LOADED
      */
     @Override
     public void loadPreferences() {
@@ -211,6 +220,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         } catch (HardwareInterfaceException e) {
             log.warning(e.toString());
         }
+        getSupport().firePropertyChange(PROPERTY_CHANGE_PREFERENCES_LOADED, null, null);
     }
 
     /** Stores preferences to the Preferences node for the potArray and masterbias. Subclasses must override this method
@@ -669,6 +679,13 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
             }
         }
         return byteArray;
+    }
+
+    /**
+     * @return the support
+     */
+    public PropertyChangeSupport getSupport() {
+        return support;
     }
 
     /** Marks a class (for example, some object in a subclass of Biasgen) as having a preference that can be loaded and stored. Classes do *not* store preferences unless

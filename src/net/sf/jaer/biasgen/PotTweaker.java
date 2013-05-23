@@ -10,6 +10,8 @@
  */
 package net.sf.jaer.biasgen;
 import java.awt.Container;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.Hashtable;
 import java.util.Observable;
 import java.util.Observer;
@@ -34,8 +36,8 @@ import javax.swing.undo.UndoableEditSupport;
  * Intended for user-friendly control of Chip bias values.
  * @author tobi
  */
-public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeListener,Observer,ChangeListener,StateEditable{
-    static Logger log = Logger.getLogger("PotTweaker");
+public class PotTweaker extends javax.swing.JPanel implements Observer,ChangeListener,StateEditable, PropertyChangeListener{
+    static final Logger log = Logger.getLogger("PotTweaker");
     protected int maxSlider,  halfMaxSlider;
     private String name = "<name>";
     private String tooltip = null;
@@ -104,6 +106,7 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
      * @param o the pot.
      * @param arg the new value.
      */
+    @Override
     public void update (Observable o,Object arg){
         log.info("Observable=" + o + " Object=" + arg);
     }
@@ -204,17 +207,17 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
         return slider;
     }
 
-    /** Called when preferences are loaded or stored. Resets the slider to middle.
-     * The event is filtered so that only changes to this 
-     *
-     * @param evt
-     */
-    public void preferenceChange (PreferenceChangeEvent evt){
-        if (!evt.getKey().endsWith("bgTabbedPaneSelectedIndex")) { // TODO have some way to detect when new preferences are loaded, not resepond to **all** preference changes
+//    /** Called when preferences are loaded or stored. Resets the slider to middle.
+//     * The event is filtered so that only changes to this 
+//     *
+//     * @param evt
+//     */
+//    public void preferenceChange (PreferenceChangeEvent evt){
+//        if (!evt.getKey().endsWith("bgTabbedPaneSelectedIndex")) { // TODO have some way to detect when new preferences are loaded, not resepond to **all** preference changes
 //            log.info(evt.toString() + " key=" + evt.getKey() + " newValue=" + evt.getNewValue());
-            reset();
-        }
-    }
+//            reset();
+//        }
+//    }
 
     /**
      * @return the name
@@ -401,6 +404,14 @@ public class PotTweaker extends javax.swing.JPanel implements PreferenceChangeLi
     public void storeState (Hashtable<Object,Object> hashtable){
         hashtable.put(STATE_KEY,new Integer(slider.getValue()));
     }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if(evt.getPropertyName().equals(Biasgen.PROPERTY_CHANGE_PREFERENCES_LOADED)){
+            reset();
+        }
+    }
+    
     class MyStateEdit extends StateEdit{
         public MyStateEdit (StateEditable o,String s){
             super(o,s);

@@ -30,7 +30,7 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
         biasgen = (DVSTweaks) chip.getBiasgen();
         PotTweaker[] tweakers = {thresholdTweaker, onOffBalanceTweaker, maxFiringRateTweaker, bandwidthTweaker};
         for (PotTweaker tweaker : tweakers) {
-            chip.getPrefs().addPreferenceChangeListener(tweaker); // to reset sliders on load/save of biases
+            chip.getBiasgen().getSupport().addPropertyChangeListener(tweaker); // to reset sliders on load/save of biases
         }
         chip.getSupport().addPropertyChangeListener(this);
     }
@@ -49,12 +49,16 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        jLabel1 = new javax.swing.JLabel();
         bandwidthTweaker = new net.sf.jaer.biasgen.PotTweaker();
         thresholdTweaker = new net.sf.jaer.biasgen.PotTweaker();
         maxFiringRateTweaker = new net.sf.jaer.biasgen.PotTweaker();
         onOffBalanceTweaker = new net.sf.jaer.biasgen.PotTweaker();
 
         setLayout(new java.awt.GridLayout(0, 1));
+
+        jLabel1.setText("<html>This panel allows \"tweaking\" bias values around the nominal ones loaded from the XML file. Change made here are <b>not</b> permanent until the settings are saved to an XML file. On restart, these new settings will then become the nominal settings.");
+        add(jLabel1);
 
         bandwidthTweaker.setLessDescription("Slower");
         bandwidthTweaker.setMoreDescription("Faster");
@@ -122,6 +126,7 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
     }//GEN-LAST:event_onOffBalanceTweakerStateChanged
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private net.sf.jaer.biasgen.PotTweaker bandwidthTweaker;
+    private javax.swing.JLabel jLabel1;
     private net.sf.jaer.biasgen.PotTweaker maxFiringRateTweaker;
     private net.sf.jaer.biasgen.PotTweaker onOffBalanceTweaker;
     private net.sf.jaer.biasgen.PotTweaker thresholdTweaker;

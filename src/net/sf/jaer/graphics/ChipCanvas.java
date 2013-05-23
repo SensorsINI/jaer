@@ -330,7 +330,7 @@ OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
         setDisplayMethod(getDisplayMethods().get(index));
     }
 
-    /** opengl calls this when it wants to redraw, and we call it when we actively render.
+    /** OpenGL calls this when it wants to redraw, and we call it when we actively render.
      * @param drawable the surface from which we can getString the context with getGL
     @see net.sf.jaer.graphics.DisplayMethod#setupGL which sets up GL context for display methods
      */
@@ -744,6 +744,7 @@ OpenGL Warning: No pincher, please call crStateSetCurrentPointers() in your SPU
      * You call this when you want to actively render the frame.
      * Internally, this calls the display() method of the drawable, which by callback to display(GLAutoDrawable).
      * If openGL is disabled, then it calls paint() directly.
+     * @see #display(javax.media.opengl.GLAutoDrawable) 
      */
     public void paintFrame (){
         if ( isOpenGLEnabled() ){

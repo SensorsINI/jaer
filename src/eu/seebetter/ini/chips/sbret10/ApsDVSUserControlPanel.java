@@ -32,9 +32,9 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         biasgen = (DVSTweaks) chip.getBiasgen();
         PotTweaker[] tweakers = {thresholdTweaker, onOffBalanceTweaker, maxFiringRateTweaker, bandwidthTweaker};
         for (PotTweaker tweaker : tweakers) {
-            chip.getPrefs().addPreferenceChangeListener(tweaker); // to reset sliders on load/save of biases
+            chip.getBiasgen().getSupport().addPropertyChangeListener(tweaker); // to reset sliders on load/save of biases
         }
-            chip.getSupport().addPropertyChangeListener(this);
+        chip.getSupport().addPropertyChangeListener(this);
     }
 
     

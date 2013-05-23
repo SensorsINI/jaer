@@ -44,8 +44,7 @@ import net.sf.jaer.util.RemoteControl;
 public class Chip extends Observable {
     /** Preferences key for blank device filename */
     public static final String DEFAULT_FIRMWARE_BIX_FILE_FOR_BLANK_DEVICE = "CypressFX2Blank.defaultFirmwareBixFileForBlankDevice";
-    
-     
+      
     /** The root preferences for this Chip. 
      * @see Chip#getPrefs()  
      */

@@ -19,8 +19,9 @@ import java.util.logging.*;
 import javax.swing.*;
 
 /**
- * Provides preview of recorded AE data selectedFile
- *
+ * Provides preview of recorded AE data file in file dialogs.  It uses the default renderer, extractor and display method 
+ * for the AEChip to generate a preview and
+ * the 2d histograms of event activity over (by default) 40ms time windows.
  *
  * @author tobi
  */
@@ -34,15 +35,22 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
     AEChip chip;
     volatile boolean indexFileEnabled = false;
     Logger log = Logger.getLogger("AEViewer");
-    private int packetTime = 40000;
+    /** The time in us of packets by default */
+    public int packetTimeUs = 40000;
     private File currentFile;
 
     /**
      * Creates new form ChipDataFilePreview
+     * @param jfc the file chooser
+     * @param chip the AEChip to preview. 
      */
     public ChipDataFilePreview(JFileChooser jfc, AEChip chip) {
         canvas = new ChipCanvas(chip);
-        canvas.setDisplayMethod(new ChipRendererDisplayMethod(canvas)); // needs a default display method
+        if(chip.getCanvas().getDisplayMethod()==null){
+            canvas.setDisplayMethod(new ChipRendererDisplayMethod(canvas)); // needs a default display method
+        }else{
+            canvas.setDisplayMethod(chip.getCanvas().getDisplayMethod());
+        }
         setLayout(new BorderLayout());
         this.chooser = jfc;
         extractor = chip.getEventExtractor();
@@ -54,10 +62,10 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             public void keyReleased(KeyEvent e) {
                 switch (e.getKeyCode()) {
                     case KeyEvent.VK_S:
-                        packetTime /= 2;
+                        packetTimeUs /= 2;
                         break;
                     case KeyEvent.VK_F:
-                        packetTime *= 2;
+                        packetTimeUs *= 2;
                         break;
                 }
             }
@@ -100,8 +108,12 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
     }
     volatile boolean stop = false;
 
-// gets called on property change, possibly with null file
-    public void showFile(File file) {
+    /**
+     * Shows the file.
+     *
+     * @param file the file to show
+     */
+    public void showFile(File file) { //  gets called on property change, possibly with null file
         try {
 //            if(fis!=null){ System.out.println("closing "+fis); fis.close();}
             if (file == null) {
@@ -126,7 +138,6 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                     ais.rewind();
                 } catch (IOException e) {
                 }
-                ;
                 fileSizeString = fmt.format(ais.size()) + " events " + fmt.format(ais.getDurationUs() / 1e6f) + " s";
             } else {
                 indexFileString = getIndexFileCount(file);
@@ -142,6 +153,9 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
     AEPacketRaw aeRaw;
     EventPacket ae;
 
+    /** Paints the file preview using {@link ChipCanvas#paintFrame() }.
+     @param g the graphics context
+     */
     @Override
     public void paintComponent(Graphics g) {
         if (stop || deleteIt) {
@@ -175,7 +189,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
         if (!indexFileEnabled) {
             if (ais != null) {
                 try {
-                    aeRaw = ais.readPacketByTime(packetTime);
+                    aeRaw = ais.readPacketByTime(packetTimeUs);
                 } catch (EOFException e) {
                     try {
                         ais.rewind();
