@@ -50,7 +50,7 @@ import javax.swing.*;
  * Superclass for classes that paint rendered AE data to graphics devices.
  *<p>
  * This is Canvas (AWT component) for rendering retina events.
- * Note this is a heavyweight componnent and doesn't understand Swing layering. Thus care must be
+ * Note this is a heavyweight component and doesn't understand Swing layering. Thus care must be
  *taken to ensure Swing components show over it. This component also
  * uses a page-flipping BufferStrategy to eliminate tearing by flipping pages on
  *monitor refresh.
