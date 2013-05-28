@@ -208,7 +208,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
           adcSamples = new CochleaAMS1cADCSamples(this); // need biasgen / scanner first
        helpsep=getAeViewer().addHelpItem(new JSeparator());
         help1=getAeViewer().addHelpURLItem("https://svn.ini.uzh.ch/repos/tobi/cochlea/pcbs/CochleaAMS1c_USB/cochleaams1c.pdf", "CochleaAMS1c PCB design", "Protel design of board");
-        help2=getAeViewer().addHelpURLItem("https://svn.ini.uzh.ch/repos/tobi/cochlea/pcbs/CochleaAMS1c_USB/CochleaAMS1c readme.pdf", "CochleaAMS1c README", "README file for CochleaAMS1c");
+        help2=getAeViewer().addHelpURLItem("https://svn.ini.uzh.ch/repos/tobi/cochlea/pcbs/CochleaAMS1c_USB/0_README_CochleaAMS1c.pdf", "CochleaAMS1c README", "README file for CochleaAMS1c");
      }
     
     
