@@ -65,7 +65,6 @@ public class SBret10 extends APSDVSchip {
     private AEFrameChipRenderer apsDVSrenderer;
     private int exposure;
     private int frameTime;
-    private boolean ignoreReadout;
     private boolean snapshot = false;
     private boolean resetOnReadout = false;
     SBret10DisplayControlPanelold displayControlPanel = null;
@@ -140,17 +139,16 @@ public class SBret10 extends APSDVSchip {
         
 
         private int firstFrameTs = 0;
-        boolean ignore = false; // TODO what does ignore do?
         
         public SBret10Extractor(SBret10 chip) {
             super(chip);
         }
         
-        private void lastADCevent(){ // TODO what does this method do?
+        private void lastADCevent(){
+            //releases the reset after the readout of a frame if the DVS is suppressed during the DVS readout
             if (resetOnReadout){
                 config.nChipReset.set(true);
             }
-            ignore = false;
         }
         
         /** extracts the meaning of the raw events.
@@ -189,18 +187,16 @@ public class SBret10 extends APSDVSchip {
 
                 if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_DVS) {
                     //DVS event
-                    if(!ignore){
-                        ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
-                        e.adcSample = -1; // TODO hack to mark as not an ADC sample
-                        e.startOfFrame = false;
-                        e.special = false;
-                        e.address = data;
-                        e.timestamp = (timestamps[i]);
-                        e.polarity = (data & POLMASK) == POLMASK ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
-                        e.x = (short) (sx1-((data & XMASK) >>> XSHIFT));
-                        e.y = (short) ((data & YMASK) >>> YSHIFT); 
-                        //System.out.println(data);
-                    } 
+                    ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
+                    e.adcSample = -1; // TODO hack to mark as not an ADC sample
+                    e.startOfFrame = false;
+                    e.special = false;
+                    e.address = data;
+                    e.timestamp = (timestamps[i]);
+                    e.polarity = (data & POLMASK) == POLMASK ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
+                    e.x = (short) (sx1-((data & XMASK) >>> XSHIFT));
+                    e.y = (short) ((data & YMASK) >>> YSHIFT); 
+                    //System.out.println(data);
                 } else if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_APS) {
                     //APS event
                     ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
@@ -229,9 +225,6 @@ public class SBret10 extends APSDVSchip {
                     e.startOfFrame = (e.readoutType == ApsDvsEvent.ReadoutType.ResetRead) && pixZero;
                     if(e.startOfFrame){
                         //if(pixCnt!=129600) System.out.println("New frame, pixCnt was incorrectly "+pixCnt+" instead of 129600 but this could happen at end of file");
-                        if(ignoreReadout){
-                            ignore = true;
-                        }
                         frameTime = e.timestamp - firstFrameTs;
                         firstFrameTs = e.timestamp;
                     }
@@ -344,22 +337,6 @@ public class SBret10 extends APSDVSchip {
     public void takeSnapshot() {
         snapshot = true;
         config.apsReadoutControl.setAdcEnabled(true);
-    }
-    
-    /**
-     * @return the ignoreReadout
-     */
-    public boolean isIgnoreReadout() {
-        return ignoreReadout;
-    }
-
-    /**
-     * @param displayEvents the displayEvents to set
-     */
-    public void setIgnoreReadout(boolean ignoreReadout) {
-        this.ignoreReadout = ignoreReadout;
-        getPrefs().putBoolean("ignoreReadout", ignoreReadout);
-        getAeViewer().interruptViewloop();
     }
 
     /**
