@@ -539,17 +539,17 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		int y = e.getY();
 //		if (x == 100 && y == 100) {
 //			
-//			if (e.isA()) {
+//			if (e.isResetRead()) {
 //				aTime = e.getTimestamp();
 //				System.out.println("A event: time since last B: "+(aTime - bTime));
 //				System.out.println("Total events since last occurrence: "+(adcPlusEventMap[x][y] + adcMinusEventMap[x][y] - lastValuePlus - lastValueMinus));
 //			}
-//			else if (e.isB()) {
+//			else if (e.isSignalRead()) {
 //				bTime = e.getTimestamp();
 //				System.out.println("B event: time since last A: "+(bTime - aTime));
 //				System.out.println("Total events since last occurrence: "+(adcPlusEventMap[x][y] + adcMinusEventMap[x][y] - lastValuePlus - lastValueMinus));
 //			}
-//			if ((e.isA() && selectedOutput == ADCType.A) || (e.isB() && selectedOutput == ADCType.B)) { 
+//			if ((e.isResetRead() && selectedOutput == ADCType.A) || (e.isSignalRead() && selectedOutput == ADCType.B)) { 
 //				lastValuePlus = 0;
 //				lastValueMinus = 0;
 //			}
@@ -561,16 +561,18 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 //		}
 		if (x >= 0	&& x < currentSizeX && y >= 0	&& y < currentSizeY) {
 			int oldValue = 0;
-			if (e.isA())
+			if (e.isResetRead())
 				oldValue = adcAMap[x][y];
-			else if (e.isB()) 
+			else if (e.isSignalRead()) 
 				oldValue = adcBMap[x][y];
-			else if (e.isC())
-				oldValue = adcCMap[x][y];
+//			else if (e.isC())
+//				oldValue = adcCMap[x][y];
 			int adcSample = e.getAdcSample();
-			if ((e.isA() && selectedOutput == ADCType.A) || 
-					(e.isB() && (selectedOutput == ADCType.B || selectedOutput == ADCType.DIFF_B)) || 
-					(e.isC() && selectedOutput == ADCType.C)) {
+                        if ((e.isResetRead() && selectedOutput == ADCType.A) || 
+					(e.isSignalRead() && (selectedOutput == ADCType.B || selectedOutput == ADCType.DIFF_B))) {
+//			if ((e.isResetRead() && selectedOutput == ADCType.A) || 
+//					(e.isSignalRead() && (selectedOutput == ADCType.B || selectedOutput == ADCType.DIFF_B)) || 
+//					(e.isC() && selectedOutput == ADCType.C)) {
 				if (e.isStartOfFrame() && false) {
 					// reduce influence of past measurements by dividing all accumulating values by 2 at the start of a new frame
 					before2sum >>= 1;
@@ -663,14 +665,14 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 				adcPlusEventMap[x][y] = 0;
 				adcMinusEventMap[x][y] = 0;
 			}
-			if (e.isA())
+			if (e.isResetRead())
 				adcAMap[x][y] = e.getAdcSample();
-			else if (e.isB()) {
+			else if (e.isSignalRead()) {
 				adcBMap[x][y] = e.getAdcSample();
 				adcDIFF_BMap[x][y] = adcAMap[x][y] - e.getAdcSample();
 			}
-			else if (e.isC())
-				adcCMap[x][y] = e.getAdcSample();
+//			else if (e.isC())
+//				adcCMap[x][y] = e.getAdcSample();
 		}
 			//			System.out.println(x+"/"+y);
 	}

@@ -317,14 +317,14 @@ public class SBret10old extends APSDVSchip {
                     int sampleType = (data & ADC_READCYCLE_MASK)>>Integer.numberOfTrailingZeros(ADC_READCYCLE_MASK);
                     switch(sampleType){
                         case 0:
-                            e.readoutType = ApsDvsEvent.ReadoutType.A;
+                            e.readoutType = ApsDvsEvent.ReadoutType.ResetRead;
                             break;
                         case 1:
-                            e.readoutType = ApsDvsEvent.ReadoutType.B;
-                            //log.info("got B event");
+                            e.readoutType = ApsDvsEvent.ReadoutType.SignalRead;
+                            //log.info("got SignalRead event");
                             break;
                         case 2:
-                            e.readoutType = ApsDvsEvent.ReadoutType.C;
+//                            e.readoutType = ApsDvsEvent.ReadoutType.C;
                             //log.info("got C event");
                             break;
                         case 3:
@@ -348,12 +348,12 @@ public class SBret10old extends APSDVSchip {
                         frameTime = e.timestamp - firstFrameTs;
                         firstFrameTs = e.timestamp;
                     }
-                    if(e.isB() && countX[1] == 0 && countY[2] == 0){
+                    if(e.isSignalRead() && countX[1] == 0 && countY[2] == 0){
                         exposureB = e.timestamp-firstFrameTs;
                     }
-                    if(e.isC() && countX[2] == 0 && countY[2] == 0){
-                        exposureC = e.timestamp-firstFrameTs;
-                    }
+//                    if(e.isC() && countX[2] == 0 && countY[2] == 0){
+//                        exposureC = e.timestamp-firstFrameTs;
+//                    }
                     if(!(countY[sampleType]<chip.getSizeY())){
                         countY[sampleType] = 0;
                         countX[sampleType]++;
@@ -362,7 +362,8 @@ public class SBret10old extends APSDVSchip {
                     e.y=(short)(chip.getSizeY()-1-countY[sampleType]);
                     countY[sampleType]++;
                     pixCnt++;
-                    if(((config.useC.isSet() && e.isC()) || (!config.useC.isSet() && e.isB()))  && e.x == (short)(chip.getSizeX()-1) && e.y == (short)(chip.getSizeY()-1)){
+                    if(((!config.useC.isSet() && e.isSignalRead()))  && e.x == (short)(chip.getSizeX()-1) && e.y == (short)(chip.getSizeY()-1)){
+//                    if(((config.useC.isSet() && e.isC()) || (!config.useC.isSet() && e.isSignalRead()))  && e.x == (short)(chip.getSizeX()-1) && e.y == (short)(chip.getSizeY()-1)){
                         lastADCevent();
                         //insert and end of frame event
                         ApsDvsEvent a = (ApsDvsEvent) outItr.nextOutput();
@@ -1949,13 +1950,13 @@ public class SBret10old extends APSDVSchip {
         private void putNextSampleValue(int val, ReadoutType type, int x, int y, int ts) {
             int idx = getIndex(x,y);
             switch(type){
-                case C: 
-                    cBuffer[idx] = val;
-                    break;
-                case B: 
+//                case C: 
+//                    cBuffer[idx] = val;
+//                    break;
+                case SignalRead: 
                     bBuffer[idx] = val;
                     break;
-                case A:
+                case ResetRead:
                 default:
                     aBuffer[idx] = val;
                     break;
@@ -1966,29 +1967,29 @@ public class SBret10old extends APSDVSchip {
             switch (displayRead) {
                 case A:
                     displayFrame[idx] = aBuffer[idx];
-                    if(!(pushDisplay && type==ReadoutType.A))pushDisplay=false;
+                    if(!(pushDisplay && type==ReadoutType.ResetRead))pushDisplay=false;
                     break;
                 case B:
                     displayFrame[idx] = bBuffer[idx];
-                    if(!(pushDisplay && type==ReadoutType.B))pushDisplay=false;
+                    if(!(pushDisplay && type==ReadoutType.SignalRead))pushDisplay=false;
                     break;
-                case C:
-                    displayFrame[idx] = cBuffer[idx];
-                    if(!(pushDisplay && type==ReadoutType.C))pushDisplay=false;
-                    break;
+//                case C:
+//                    displayFrame[idx] = cBuffer[idx];
+//                    if(!(pushDisplay && type==ReadoutType.C))pushDisplay=false;
+//                    break;
                 case DIFF_B:
                 default:
                     displayFrame[idx] = aBuffer[idx]-bBuffer[idx];
-                    if(!(pushDisplay && type==ReadoutType.B))pushDisplay=false;
+                    if(!(pushDisplay && type==ReadoutType.SignalRead))pushDisplay=false;
                     break;
-                case DIFF_C:
-                    displayFrame[idx] = aBuffer[idx]-cBuffer[idx];
-                    if(!(pushDisplay && type==ReadoutType.C))pushDisplay=false;
-                    break;
-                case HDR:
-                    displayFrame[idx] = exposureB*Math.max((aBuffer[idx]-bBuffer[idx])/exposureB, (aBuffer[idx]-cBuffer[idx])/exposureC);
-                    if(!(pushDisplay && type==ReadoutType.C))pushDisplay=false;
-                    break;
+//                case DIFF_C:
+//                    displayFrame[idx] = aBuffer[idx]-cBuffer[idx];
+//                    if(!(pushDisplay && type==ReadoutType.C))pushDisplay=false;
+//                    break;
+//                case HDR:
+//                    displayFrame[idx] = exposureB*Math.max((aBuffer[idx]-bBuffer[idx])/exposureB, (aBuffer[idx]-cBuffer[idx])/exposureC);
+//                    if(!(pushDisplay && type==ReadoutType.C))pushDisplay=false;
+//                    break;
             }
             if (invertADCvalues) {
                 displayFrame[idx] = MAX_ADC-displayFrame[idx];

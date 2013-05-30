@@ -282,7 +282,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
                                 e1.timestamp = (timestamps[i]);
                                 //e1.address = pixCnt;
                                 e1.polarity= ApsDvsEvent.Polarity.Off;
-                                //e1.readoutType = ApsDvsEvent.Type.A;
+                                //e1.readoutType = ApsDvsEvent.Type.ResetRead;
                                 e1.x= (short)(128-pixCnt%128); 
                                 e1.y= (short)(128-(pixCnt/256)%128); 
                                 e1.setStartOfFrame(false);
@@ -294,7 +294,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
                                 e1.timestamp = (timestamps[i]);
                                 //e1.address = pixCnt;//((data & 0xFF00)/256)*32; //data_h*16
                                 e1.polarity= ApsDvsEvent.Polarity.On;
-                                //e1..readoutType = ApsDvsEvent.Type.A;
+                                //e1..readoutType = ApsDvsEvent.Type.ResetRead;
                                 e1.x= (short)(128-pixCnt%128); //countX[0];
                                 e1.y= (short)(128-(pixCnt/256)%128); //countY[0];
                                 e1.setStartOfFrame(false);
@@ -914,16 +914,16 @@ public final class NBFG256 extends AETemporalConstastRetina {
             float value = 0;
             float valueB = 0;
             switch(type){
-                case C: 
-                    if (index >= cData.length) {
-                    //log.info("buffer overflowed - missing start frame bit? index "+index);
-                        return;
-                    }
-                    if (index == NUMSAMPLES-1) {
-                        updateDVSintensities();
-                    }
-                    cData[index] = val;
-                    cDiffData[index] = aData[index]-cData[index];
+//                case C: 
+//                    if (index >= cData.length) {
+//                    //log.info("buffer overflowed - missing start frame bit? index "+index);
+//                        return;
+//                    }
+//                    if (index == NUMSAMPLES-1) {
+//                        updateDVSintensities();
+//                    }
+//                    cData[index] = val;
+//                    cDiffData[index] = aData[index]-cData[index];
 //                    if(config.useC.isSet()){
 //                        if(displayRead==Read.LOG_HDR){
 //                            value = (float)Math.log(cDiffData[index]/exposureC);
@@ -950,8 +950,8 @@ public final class NBFG256 extends AETemporalConstastRetina {
 ////                            hdrData[index]=MAX_ADC/(maxB-minC)*(value-minC);
 ////                        }
 //                    }
-                    break;
-                case B: 
+//                    break;
+                case SignalRead: 
                     if (index >= bData.length) {
         //            log.info("buffer overflowed - missing start frame bit?");
                         return;
@@ -975,7 +975,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
 //                        }
 //                    }
                     break;
-                case A:
+                case ResetRead:
                 default:
                     if (index >= aData.length) {
         //            log.info("buffer overflowed - missing start frame bit?");

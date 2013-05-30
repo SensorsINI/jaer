@@ -10,10 +10,10 @@ import net.sf.jaer.event.PolarityEvent;
  */
 public class ApsDvsEvent extends PolarityEvent {
 
-    /** The readout type of the multiple readouts: A is the readout of reset level, B is the readout of first sample, C, is the readout of 2nd sample, etc.
-     * Normally only A and B are used and the CDS is done in digital domain by subtracting A-B readings.
+    /** The readout type of the multiple readouts: ResetRead is the readout of reset level, SignalRead is the readout of first sample, C, is the readout of 2nd sample, etc.
+     * Normally only ResetRead and SignalRead are used and the CDS is done in digital domain by subtracting ResetRead-SignalRead readings.
      */
-    public enum ReadoutType {A,B,C,EOF};
+    public enum ReadoutType {ResetRead,SignalRead,EOF};
     
     /** The ADC sample value. Has value -1 by convention for non-sample events. */
     public int adcSample = 0;
@@ -21,8 +21,8 @@ public class ApsDvsEvent extends PolarityEvent {
     /** Set if this event is a start bit event, e.g. start of frame sample. */
     public boolean startOfFrame=false;
     
-    /** This bit determines whether it is the first read (A) or the second read (B) of a pixel */
-    public ReadoutType readoutType = ReadoutType.A;
+    /** This bit determines whether it is the first read (ResetRead) or the second read (SignalRead) of a pixel */
+    public ReadoutType readoutType = ReadoutType.ResetRead;
 
     public ApsDvsEvent() {
     }
@@ -52,7 +52,7 @@ public class ApsDvsEvent extends PolarityEvent {
     }
     
     /**
-     * The readout type (A,B,C)
+     * The readout type (ResetRead,SignalRead,C)
      * @return the readoutType
      */
     public ReadoutType getReadoutType() {
@@ -60,7 +60,7 @@ public class ApsDvsEvent extends PolarityEvent {
     }
 
     /**
-     * Sets the readout type (A,B,C)
+     * Sets the readout type (ResetRead,SignalRead,C)
      * 
      * @param readoutType the readoutType to set
      */
@@ -102,19 +102,15 @@ public class ApsDvsEvent extends PolarityEvent {
         return adcSample>=0;
     }
     
-    public boolean isA(){
-        return readoutType == ReadoutType.A;
+    public boolean isResetRead(){
+        return readoutType == ReadoutType.ResetRead;
     }
     
-    public boolean isB(){
-        return readoutType == ReadoutType.B;
+    public boolean isSignalRead(){
+        return readoutType == ReadoutType.SignalRead;
     }
     
-    public boolean isC(){
-        return readoutType == ReadoutType.C;
-    }
-    
-    public boolean isEOF(){
+    public boolean isEndOfFrame(){
         return readoutType == ReadoutType.EOF;
     }
 }

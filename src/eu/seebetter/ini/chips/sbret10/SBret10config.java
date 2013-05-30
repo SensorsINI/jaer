@@ -65,16 +65,14 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
     protected PortBit nChipReset = new PortBit(chip, "e3", "nChipReset", "(E3) Low to reset AER circuits and hold pixels in reset, High to run", true); // shouldn't need to manipulate from host
     //*********** CPLD *********************
     // CPLD shift register contents specified here by CPLDInt and CPLDBit
-    protected CPLDInt exposureB = new CPLDInt(chip, 15, 0, "exposureB", "time between reset and readout of a pixel", 0);
-    protected CPLDInt exposureC = new CPLDInt(chip, 31, 16, "exposureC", "time between reset and readout of a pixel for a second time (min 240!)", 240);
-    protected CPLDInt colSettle = new CPLDInt(chip, 47, 32, "colSettle", "time in 30MHz clock cycles to settle after column select before readout", 0);
-    protected CPLDInt rowSettle = new CPLDInt(chip, 63, 48, "rowSettle", "time in 30MHz clock cycles to settle after row select before readout", 0);
-    protected CPLDInt resSettle = new CPLDInt(chip, 79, 64, "resSettle", "time in 30MHz clock cycles  to settle after column reset before readout", 0);
-    protected CPLDInt frameDelay = new CPLDInt(chip, 95, 80, "frameDelay", "time between two frames", 0);
-    protected CPLDInt padding = new CPLDInt(chip, 109, 96, "pad", "used to insert necessary unused (but should be zero) bits", 0);
-    protected CPLDBit testPixAPSread = new CPLDBit(chip, 109, "testPixAPSread", "enables continuous scanning of testpixel", false);
-    protected CPLDBit useC = new CPLDBit(chip, 110, "useC", "enables a second readout for double exposure", false);
-    protected CPLDBit sbret10 = new CPLDBit(chip, 111, "sbret10", "puts TX high (as needed in SBRet10)", true);
+    protected CPLDInt exposure = new CPLDInt(chip, 15, 0, "exposure", "time between reset and readout of a pixel", 0);
+    protected CPLDInt colSettle = new CPLDInt(chip, 31, 16, "colSettle", "time in 30MHz clock cycles to settle after column select before readout", 0);
+    protected CPLDInt rowSettle = new CPLDInt(chip, 47, 32, "rowSettle", "time in 30MHz clock cycles to settle after row select before readout", 0);
+    protected CPLDInt resSettle = new CPLDInt(chip, 63, 48, "resSettle", "time in 30MHz clock cycles  to settle after column reset before readout", 0);
+    protected CPLDInt frameDelay = new CPLDInt(chip, 79, 64, "frameDelay", "time between two frames", 0);
+    protected CPLDInt padding = new CPLDInt(chip, 93, 80, "pad", "used to insert necessary unused (but should be zero) bits", 0);
+    protected CPLDBit testPixAPSread = new CPLDBit(chip, 94, "testPixAPSread", "enables continuous scanning of testpixel", false);
+    protected CPLDBit sbret10 = new CPLDBit(chip, 95, "sbret10", "puts TX high (as needed in SBRet10)", true);
     // DVSTweaks
     private AddressedIPotCF diffOn, diffOff, refr, pr, sf, diff;
     // graphic options for rendering
@@ -101,15 +99,13 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
         addConfigValue(extTrigger);
 
         // cpld shift register stuff
-        addConfigValue(exposureB);
-        addConfigValue(exposureC);
+        addConfigValue(exposure);
         addConfigValue(resSettle);
         addConfigValue(rowSettle);
         addConfigValue(colSettle);
         addConfigValue(frameDelay);
         addConfigValue(padding);
         addConfigValue(testPixAPSread);
-        addConfigValue(useC);
         addConfigValue(sbret10);
 
         // masterbias
@@ -393,24 +389,20 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
         public ApsReadoutControl() {
             rowSettle.addObserver(this);
             colSettle.addObserver(this);
-            exposureB.addObserver(this);
-            exposureC.addObserver(this);
+            exposure.addObserver(this);
             resSettle.addObserver(this);
             frameDelay.addObserver(this);
             testPixAPSread.addObserver(this);
-            useC.addObserver(this);
             sbret10.addObserver(this);
             // TODO awkward renaming of properties here due to wrongly named delegator methods
             tooltipSupport.setPropertyTooltip("adcEnabled", runAdc.getDescription());
             tooltipSupport.setPropertyTooltip("rowSettleCC", rowSettle.getDescription());
             tooltipSupport.setPropertyTooltip("colSettleCC", colSettle.getDescription());
-            tooltipSupport.setPropertyTooltip("exposureBDelayCC", exposureB.getDescription());
-            tooltipSupport.setPropertyTooltip("exposureCDelayCC", exposureC.getDescription());
+            tooltipSupport.setPropertyTooltip("exposureDelayCC", exposure.getDescription());
             tooltipSupport.setPropertyTooltip("resSettleCC", resSettle.getDescription());
             tooltipSupport.setPropertyTooltip("frameDelayCC", frameDelay.getDescription());
             tooltipSupport.setPropertyTooltip("testPixelScanEnabled", testPixAPSread.getDescription());
             tooltipSupport.setPropertyTooltip("sbret10", sbret10.getDescription());
-            tooltipSupport.setPropertyTooltip(useC.getName(), useC.getDescription());
         }
 
         public boolean isAdcEnabled() {
@@ -437,12 +429,8 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
             frameDelay.set(cc);
         }
 
-        public void setExposureBDelayCC(int cc) {
-            exposureB.set(cc);
-        }
-
-        public void setExposureCDelayCC(int cc) {
-            exposureC.set(cc);
+        public void setExposureDelayCC(int cc) {
+            exposure.set(cc);
         }
 
         public boolean isTestpixelScanEnabled() {
@@ -451,14 +439,6 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
 
         public void setTestpixelScanEnabled(boolean testpixel) {
             testPixAPSread.set(testpixel);
-        }
-
-        public boolean isUseC() {
-            return useC.isSet();
-        }
-
-        public void setUseC(boolean doUseC) {
-            useC.set(doUseC);
         }
 
         public boolean isSbret10() {
@@ -485,12 +465,8 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
             return frameDelay.get();
         }
 
-        public int getExposureBDelayCC() {
-            return exposureB.get();
-        }
-
-        public int getExposureCDelayCC() {
-            return exposureC.get();
+        public int getExposureDelayCC() {
+            return exposure.get();
         }
 
         @Override

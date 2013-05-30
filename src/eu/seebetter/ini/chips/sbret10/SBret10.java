@@ -63,8 +63,7 @@ public class SBret10 extends APSDVSchip {
      */
     private SBret10DisplayMethod sbretDisplayMethod = null;
     private AEFrameChipRenderer apsDVSrenderer;
-    private int exposureB;
-    private int exposureC;
+    private int exposure;
     private int frameTime;
     private boolean ignoreReadout;
     private boolean snapshot = false;
@@ -209,15 +208,11 @@ public class SBret10 extends APSDVSchip {
                     int sampleType = (data & ADC_READCYCLE_MASK)>>ADC_NUMBER_OF_TRAILING_ZEROS;
                     switch(sampleType){
                         case 0:
-                            e.readoutType = ApsDvsEvent.ReadoutType.A;
+                            e.readoutType = ApsDvsEvent.ReadoutType.ResetRead;
                             break;
                         case 1:
-                            e.readoutType = ApsDvsEvent.ReadoutType.B;
-                            //log.info("got B event");
-                            break;
-                        case 2:
-                            e.readoutType = ApsDvsEvent.ReadoutType.C;
-                            //log.info("got C event");
+                            e.readoutType = ApsDvsEvent.ReadoutType.SignalRead;
+                            //log.info("got SignalRead event");
                             break;
                         case 3:
                             log.warning("Event with readout cycle null was sent out!");
@@ -231,7 +226,7 @@ public class SBret10 extends APSDVSchip {
                     e.x = (short) (((data & XMASK) >>> XSHIFT));
                     e.y = (short) ((data & YMASK) >>> YSHIFT); 
                     boolean pixZero=e.x == 0 && e.y == 0;
-                    e.startOfFrame = (e.readoutType == ApsDvsEvent.ReadoutType.A) && pixZero;
+                    e.startOfFrame = (e.readoutType == ApsDvsEvent.ReadoutType.ResetRead) && pixZero;
                     if(e.startOfFrame){
                         //if(pixCnt!=129600) System.out.println("New frame, pixCnt was incorrectly "+pixCnt+" instead of 129600 but this could happen at end of file");
                         if(ignoreReadout){
@@ -240,14 +235,11 @@ public class SBret10 extends APSDVSchip {
                         frameTime = e.timestamp - firstFrameTs;
                         firstFrameTs = e.timestamp;
                     }
-                    if(pixZero && e.isB() ){
-                        exposureB = e.timestamp-firstFrameTs;
+                    if(pixZero && e.isSignalRead() ){
+                        exposure = e.timestamp-firstFrameTs;
                     }
-                    if(pixZero && e.isC() ){
-                        exposureC = e.timestamp-firstFrameTs;
-                    }
-                    if(((config.useC.isSet() && e.isC()) || (!config.useC.isSet() && e.isB()))  && e.x == 0 && e.y == sy1){
-                        // if we use A+B+C readout, OR, if we use A-B readout and we are at last APS pixel, then write EOF event
+                    if( e.isSignalRead()  && e.x == 0 && e.y == sy1){
+                        // if we use ResetRead+SignalRead+C readout, OR, if we use ResetRead-SignalRead readout and we are at last APS pixel, then write EOF event
                         lastADCevent(); // TODO what does this do?
                         //insert a new "end of frame" event not present in original data
                         ApsDvsEvent a = (ApsDvsEvent) outItr.nextOutput();
@@ -282,7 +274,7 @@ public class SBret10 extends APSDVSchip {
             while(evItr.hasNext()){
                 ApsDvsEvent e=(ApsDvsEvent)evItr.next();
                 // not writing out these EOF events (which were synthesized on extraction) results in reconstructed packets with giant time gaps, reason unknown
-                if (e.isEOF()) {
+                if (e.isEndOfFrame()) {
                     continue;  // these EOF events were synthesized from data in first place
                 }
                 ts[k] = e.timestamp;
@@ -402,11 +394,7 @@ public class SBret10 extends APSDVSchip {
             if(frameTime>0){
                 frequency = "("+(float)1000000/frameTime+" Hz)";
             }
-            String expC = "";
-            if(config.useC.isSet()){
-                expC = " ms, exposure 2: "+(float)exposureC/1000;
-            }
-            exposureRenderer.draw3D("exposure 1: "+(float)exposureB/1000+expC+" ms, frame period: "+(float)frameTime/1000+" ms "+frequency, 0, HEIGHT+1, 0, .4f); // x,y,z, scale factor 
+            exposureRenderer.draw3D("exposure: "+(float)exposure/1000+" ms, frame period: "+(float)frameTime/1000+" ms "+frequency, 0, HEIGHT+1, 0, .4f); // x,y,z, scale factor 
             exposureRenderer.end3DRendering();
             gl.glPopMatrix();
         }

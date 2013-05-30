@@ -219,7 +219,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     private void updateFrameBuffer(ApsDvsEvent e){
         float[] buf = pixBuffer.array();
         // TODO if playing backwards, then frame will come out white because B sample comes before A
-        if(e.isA()){
+        if(e.isResetRead()){
             int index = getIndex(e);
             if(index<0 || index >= buf.length)return;
             float val = e.getAdcSample();
@@ -227,7 +227,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             buf[index+1] = val;
             buf[index+2] = val;
             if(e.isStartOfFrame())startFrame(e.timestamp);
-        }else if(e.isB()){
+        }else if(e.isSignalRead()){
             int index = getIndex(e);
             if(index<0 || index >= buf.length)return;
             float val = ((float)buf[index]-(float)e.getAdcSample());
@@ -241,7 +241,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             buf[index+1] = val;
             buf[index+2] = val;
         }
-        if(e.isEOF()){
+        if(e.isEndOfFrame()){
             endFrame();
         }
     }
@@ -397,8 +397,12 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     private float normalizeFramePixel(float value) {
         float v;
         if (!config.isUseAutoContrast()) { // fixed rendering computed here
-            
-            v = (float) (Math.pow(((config.getContrast()*value+config.getBrightness()) / (float) maxADC),config.getGamma()));
+            float gamma = config.getGamma();
+            if(gamma == 1.0f){
+                v = (float) ((config.getContrast()*value+config.getBrightness()) / (float) maxADC);
+            }else{
+                v = (float) (Math.pow(((config.getContrast()*value+config.getBrightness()) / (float) maxADC),gamma));
+            }
         } else {
             java.awt.geom.Point2D.Float filter2d = lowpassFilter.getValue2d();
             float offset = filter2d.x;
