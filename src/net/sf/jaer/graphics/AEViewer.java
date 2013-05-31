@@ -4313,7 +4313,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
 
                     biasgenFrame = new BiasgenFrame(chip);
-                    getBiasgenFrame().addWindowListener(new WindowAdapter() {
+                    biasgenFrame.addWindowListener(new WindowAdapter() {
 
                         @Override
                         public void windowClosed(WindowEvent e) {

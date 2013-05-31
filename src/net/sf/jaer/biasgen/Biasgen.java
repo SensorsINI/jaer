@@ -58,7 +58,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
 
     
     /** Property change event keys */
-    public static final String PROPERTY_CHANGE_PREFERENCES_LOADED="preferences loaded";
+    public static final String PROPERTY_CHANGE_PREFERENCES_LOADED="Biasgen.preferencesLoaded", PROPERTY_CHANGE_PREFERENCES_STORED="Biasgen.preferencesStored";
 
     /**
      *  Constructs a new biasgen. A BiasgenHardwareInterface is constructed when needed.
@@ -231,6 +231,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         log.info("storing preferences to preferences tree");
         if(potArray!=null) potArray.storePreferences();
         if(masterbias!=null) masterbias.storePreferences();
+        getSupport().firePropertyChange(PROPERTY_CHANGE_PREFERENCES_STORED, null, null);
     }
 
     /** Use this method to put a value only if the value is different than the stored Preference value.

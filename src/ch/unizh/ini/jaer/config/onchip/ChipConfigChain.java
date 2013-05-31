@@ -13,7 +13,8 @@ import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.Chip;
 
 /**
- *
+ * Describes a chip or FPGA/CPLD level configuration shift register.
+ * 
  * @author Christian
  */
 public abstract class ChipConfigChain extends Observable implements HasPreference, Observer {

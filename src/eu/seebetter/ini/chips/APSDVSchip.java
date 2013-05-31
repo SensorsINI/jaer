@@ -32,11 +32,18 @@ abstract public class APSDVSchip extends AETemporalConstastRetina{
     /** For ADC data, the data is defined by the reading cycle (0:reset read, 1 first read, 2 second read). */
     public static final int ADC_DATA_MASK = MAX_ADC, ADC_READCYCLE_SHIFT = 10, ADC_READCYCLE_MASK = 0xC00; 
     
-    
+    /** Property change events fired when these properties change */
+    public static final String PROPERTY_FRAME_RATE_HZ="SBRet10.FRAME_RATE_HZ", PROPERTY_EXPOSURE_MS="SBRet10.EXPOSURE_MS";
+ 
     abstract public void takeSnapshot() ;
     
     abstract public int getMaxADC();
     
     abstract public void setPowerDown(boolean powerDown);
+    
+    abstract public float getFrameRateHz();
+    abstract public float getExposureMs();
+
+    
     
 }

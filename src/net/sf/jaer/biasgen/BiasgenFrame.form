@@ -171,7 +171,8 @@
     </Menu>
   </NonVisualComponents>
   <Properties>
-    <Property name="title" type="java.lang.String" value="Biasgen"/>
+    <Property name="defaultCloseOperation" type="int" value="2"/>
+    <Property name="title" type="java.lang.String" value="HW Config"/>
     <Property name="name" type="java.lang.String" value="Biasgen" noResource="true"/>
   </Properties>
   <SyntheticProperties>

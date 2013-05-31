@@ -34,4 +34,13 @@ public interface ApsDvsConfig {
     public abstract float getGamma();
     public abstract void setGamma(float gamma);
     
+    abstract public void setFrameDelayMs(int ms);
+    abstract public int getFrameDelayMs();
+    
+    abstract public void setExposureDelayUs(int us);
+    abstract public int getExposureDelayUs();
+    
+    abstract public void setAutoShotEventThreshold(int threshold);
+    abstract public int getAutoShotEventThreshold();
+    
 }

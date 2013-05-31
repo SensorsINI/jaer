@@ -12,6 +12,7 @@ import java.beans.*;
 import java.beans.Introspector;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.text.ParseException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -119,11 +120,33 @@ setPropertyTooltip("multiOriOutputEnabled", "Enables multiple event output for a
  * @see net.sf.jaer.eventprocessing.EventFilter#setPropertyTooltip(java.lang.String, java.lang.String)
  *@see net.sf.jaer.eventprocessing.EventFilter#setPropertyTooltip(java.lang.String, java.lang.String, java.lang.String)
  */
-public class ParameterControlPanel extends javax.swing.JPanel implements PropertyChangeListener {
+public class ParameterControlPanel extends javax.swing.JPanel implements PropertyChangeListener, Observer {
 
-    private interface HasSetter {
+    /** Handles Observable updates from the class we are handling.   If the class is an Observable, we will hear changes here if the class notifies its observers.
+     * These changes will set the introspected controls.
+     * 
+     * If the object has inner classes that generate the events then they will not be seen unless passed on by class.
+     @param o the observed object
+     @param arg any argument passed
+     */
+    @Override
+    public void update(Observable o, Object arg) {
+        log.info("got update from object "+o+" with argument "+arg);
+        // if we refresh any refresh, then refresh all controls displayed because we don't know which one should be updated
+        for(JComponent c:controls){
+            if(c instanceof HasSetGet){
+                HasSetGet gs=(HasSetGet)c;
+                gs.refresh();
+            }
+        }
+        
+    }
+
+    private interface HasSetGet {
 
         void set(Object o);
+        void refresh();
+        
     }
     private Object classObject = null;
     static final float ALIGNMENT = Component.LEFT_ALIGNMENT;
@@ -134,10 +157,10 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
     final float fontSize = 14f;
     private Border normalBorder, redLineBorder;
     private TitledBorder titledBorder;
-    private HashMap<String, HasSetter> setterMap = new HashMap<String, HasSetter>(); // map from class to property, to apply property change events to control
+    private HashMap<String, HasSetGet> setterMap = new HashMap<String, HasSetGet>(); // map from class to property, to apply property change events to control
     private java.util.ArrayList<JComponent> controls = new ArrayList<JComponent>();
-    private HashMap<String, Container> groupContainerMap = new HashMap();
-    private JPanel inheritedPanel = null;
+//    private HashMap<String, Container> groupContainerMap = new HashMap();
+//    private JPanel inheritedPanel = null;
     PropertyChangeSupport support=null;
     public ParameterControlPanel() {
         initComponents();
@@ -165,7 +188,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //            add(new JPanel()); // to fill vertical space in GridLayout
             add(Box.createVerticalGlue()); // to fill space at bottom - not needed
         try {
-            // when clazz fires a property change event, propertyChangeEvent is called here and we update all our controls
+            // when clazz fires a property change event, propertyChangeEvent is called here and we refresh all our controls
             Method m=obj.getClass().getMethod("getPropertyChangeSupport", (Class[])null);
             support=(PropertyChangeSupport)m.invoke(obj, (Object[]) null);
             support.addPropertyChangeListener(this);
@@ -200,8 +223,15 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         JPanel control = null;
         try {
             info = Introspector.getBeanInfo(classObject.getClass());
+            
+            // add refresh observer if the object is an Observable. Inner classes of classObject that generate updates will not be observed.
+            if(classObject instanceof Observable){
+                ((Observable)classObject).addObserver(this);
+            }
 
+            // refresh properties (refresh/set methods for object)
             props = info.getPropertyDescriptors();
+            // refresh all methods
             methods = classObject.getClass().getMethods();
             control = new JPanel();
             int numDoButtons = 0;
@@ -318,7 +348,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                     log.warning(e + " caught on property " + p.getName() + " from class " + classObject);
                 }
             }
-            groupContainerMap = null;
+//            groupContainerMap = null;
 //             sortedControls=null;
         } catch (Exception e) {
             log.warning("on adding controls for " + classObject + " caught " + e);
@@ -356,7 +386,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         label.setForeground(Color.BLUE);
     }
 
-    class EnumControl extends JPanel implements HasSetter {
+    class EnumControl extends JPanel implements HasSetGet {
 
         Method write, read;
         Object clazz;
@@ -368,6 +398,21 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             control.setSelectedItem(o);
         }
 
+        @Override
+        public void refresh() {
+              try {
+                Object x = (Object) read.invoke(clazz);
+                if (x == null) {
+                    log.warning("null Object returned from read method " + read);
+                    return;
+                }
+                control.setSelectedItem(x);
+            } catch (Exception e) {
+                log.warning("cannot access the field; is the class or method not public?");
+                e.printStackTrace();
+            }          
+        }
+        
         public EnumControl(final Class<? extends Enum> c, final Object f, PropertyDescriptor p) {
             super();
             final String name = p.getName();
@@ -392,17 +437,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 
             add(label);
             add(control);
-            try {
-                Object x = (Object) r.invoke(clazz);
-                if (x == null) {
-                    log.warning("null Object returned from read method " + r);
-                    return;
-                }
-                control.setSelectedItem(x);
-            } catch (Exception e) {
-                log.warning("cannot access the field named " + name + " is the class or method not public?");
-                e.printStackTrace();
-            }
+            refresh();
             control.addActionListener(new ActionListener() {
 
                 public void actionPerformed(ActionEvent e) {
@@ -414,15 +449,18 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                 }
             });
         }
+
+
     }
 
-    class StringControl extends JPanel implements HasSetter {
+    class StringControl extends JPanel implements HasSetGet {
 
         Method write, read;
         Object clazz;
         boolean initValue = false, nval;
         final JTextField textField;
 
+        @Override
         public void set(Object o) {
             if (o instanceof String) {
                 String b = (String) o;
@@ -455,18 +493,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 
             add(label);
             add(textField);
-            try {
-                String x = (String) r.invoke(clazz);
-                if (x == null) {
-                    log.warning("null String returned from read method " + r);
-                    return;
-                }
-                textField.setText(x);
-                textField.setToolTipText(x);
-            } catch (Exception e) {
-                log.warning("cannot access the field named " + name + " is the class or method not public?");
-                e.printStackTrace();
-            }
+            refresh();
             textField.addActionListener(new ActionListener() {
 
                 public void actionPerformed(ActionEvent e) {
@@ -478,10 +505,26 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                 }
             });
         }
+
+        @Override
+        public void refresh() {
+             try {
+                String x = (String) read.invoke(clazz);
+                if (x == null) {
+                    log.warning("null String returned from read method " + read);
+                    return;
+                }
+                textField.setText(x);
+                textField.setToolTipText(x);
+            } catch (Exception e) {
+                log.warning("cannot access the field; is the class or method not public?");
+                e.printStackTrace();
+            }
+        }
     }
     final float factor = 2.04f, wheelFactor = 1.05f; // factors to change by with arrow and mouse wheel.  int factor big enough to change at least 1 count from 1
 
-    class BooleanControl extends JPanel implements HasSetter {
+    class BooleanControl extends JPanel implements HasSetGet {
 
         Method write, read;
         Object clazz;
@@ -518,20 +561,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //            insets.left=0;
             addTip(p, checkBox);
             add(checkBox);
-            try {
-                Boolean x = (Boolean) r.invoke(clazz);
-                if (x == null) {
-                    log.warning("null Boolean returned from read method " + r);
-                    return;
-                }
-                initValue = x.booleanValue();
-                checkBox.setSelected(initValue);
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
-            } catch (Exception e) {
-                log.warning("cannot access the field named " + name + " is the class or method not public?");
-                e.printStackTrace();
-            }
+
             checkBox.addActionListener(new ActionListener() {
 
                 public void actionPerformed(ActionEvent e) {
@@ -552,9 +582,27 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                 checkBox.setSelected(b);
             }
         }
+
+        @Override
+        public void refresh() {
+              try {
+                Boolean x = (Boolean) read.invoke(clazz);
+                if (x == null) {
+                    log.warning("null Boolean returned from read method " + read);
+                    return;
+                }
+                initValue = x.booleanValue();
+                checkBox.setSelected(initValue);
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+            } catch (Exception e) {
+                log.warning("cannot access the field; is the class or method not public?");
+                e.printStackTrace();
+            }
+        }
     }
 
-    class IntSliderControl extends JPanel implements HasSetter {
+    class IntSliderControl extends JPanel implements HasSetGet {
 
         Method write, read;
         Object clazz;
@@ -567,6 +615,22 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                 Integer b = (Integer) o;
                 slider.setValue(b);
             }
+        }
+        
+        @Override
+        public void refresh() {
+             try {
+                Integer x = (Integer) read.invoke(clazz); // read int value
+                if (x == null) {
+                    log.warning("null Integer returned from read method " + read);
+                    return;
+                }
+                initValue = x.intValue();
+                slider.setValue(initValue);
+            } catch (Exception e) {
+                log.warning("cannot access the field; is the class or method not public?");
+                e.printStackTrace();
+            }       
         }
 
         public IntSliderControl(final Object f, PropertyDescriptor p, SliderParams params) {
@@ -586,18 +650,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             slider = new JSlider(params.minIntValue, params.maxIntValue);
             slider.setMaximumSize(new Dimension(200, 25));
 
-            try {
-                Integer x = (Integer) r.invoke(clazz); // read int value
-                if (x == null) {
-                    log.warning("null Integer returned from read method " + r);
-                    return;
-                }
-                initValue = x.intValue();
-                slider.setValue(initValue);
-            } catch (Exception e) {
-                log.warning("cannot access the field named " + name + " is the class or method not public?");
-                e.printStackTrace();
-            }
+            refresh();
             add(slider);
 
             slider.addChangeListener(new ChangeListener() {
@@ -619,7 +672,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         }
     }
 
-    class FloatSliderControl extends JPanel implements HasSetter {
+    class FloatSliderControl extends JPanel implements HasSetGet {
 
         Method write, read;
         Object clazz;
@@ -641,6 +694,22 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                 slider.setValue(sv);
             }
         }
+        
+         @Override
+        public void refresh() {
+             try {
+                Float x = (Float) read.invoke(clazz); // read int value
+                if (x == null) {
+                    log.warning("null Float returned from read method " + read);
+                    return;
+                }
+                currentValue = x.floatValue();
+                set(new Float(currentValue));
+            } catch (Exception e) {
+                log.warning("cannot access the field, is the class or method not public?");
+                e.printStackTrace();
+            }
+         }
 
         public FloatSliderControl(final Object f, PropertyDescriptor p, SliderParams params) {
             super();
@@ -663,18 +732,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 
             engFmt = new EngineeringFormat();
 
-            try {
-                Float x = (Float) r.invoke(clazz); // read int value
-                if (x == null) {
-                    log.warning("null Float returned from read method " + r);
-                    return;
-                }
-                currentValue = x.floatValue();
-                set(new Float(currentValue));
-            } catch (Exception e) {
-                log.warning("cannot access the field named " + name + " is the class or method not public?");
-                e.printStackTrace();
-            }
+            refresh();
             add(slider);
 
             slider.addChangeListener(new ChangeListener() {
@@ -696,9 +754,9 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                 }
             });
         }
-    }
+      }
 
-    class IntControl extends JPanel implements HasSetter {
+    class IntControl extends JPanel implements HasSetGet {
 
         Method write, read;
         Object clazz;
@@ -712,6 +770,24 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                 tf.setText(b.toString());
             }
         }
+      
+        @Override
+        public void refresh() {
+             try {
+                Integer x = (Integer) read.invoke(clazz); // read int value
+                if (x == null) {
+                    log.warning("null Integer returned from read method " + read);
+                    return;
+                }
+                initValue = x.intValue();
+                String s = Integer.toString(x);
+//                System.out.println("init value of "+name+" is "+s);
+                tf.setText(s);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        
 
         public IntControl(final Object f, PropertyDescriptor p) {
             super();
@@ -735,19 +811,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             tf = new JTextField("", 8);
             tf.setMaximumSize(new Dimension(100, 25));
             tf.setToolTipText("Integer control: use arrow keys or mouse wheel to change value by factor. Shift constrains to simple inc/dec");
-            try {
-                Integer x = (Integer) r.invoke(clazz); // read int value
-                if (x == null) {
-                    log.warning("null Integer returned from read method " + r);
-                    return;
-                }
-                initValue = x.intValue();
-                String s = Integer.toString(x);
-//                System.out.println("init value of "+name+" is "+s);
-                tf.setText(s);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            refresh();
             add(tf);
             tf.addActionListener(new ActionListener() {
 
@@ -924,7 +988,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         }
     }
 
-    class FloatControl extends JPanel implements HasSetter {
+    class FloatControl extends JPanel implements HasSetGet {
 
         Method write, read;
         Object clazz;
@@ -937,6 +1001,23 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                 tf.setText(b.toString());
             }
         }
+        
+            
+        public void refresh() {
+            try {
+                Float x = (Float) read.invoke(clazz);
+                if (x == null) {
+                    log.warning("null Float returned from read method " + read);
+                    return;
+                }
+                initValue = x.floatValue();
+                String s = String.format("%.4f", initValue);
+                tf.setText(s);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } 
+        }
+        
 
         public FloatControl(final Object f, PropertyDescriptor p) {
             super();
@@ -959,21 +1040,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             tf = new JTextField("", 10);
             tf.setMaximumSize(new Dimension(100, 25));
             tf.setToolTipText("Float control: use arrow keys or mouse wheel to change value by factor. Shift reduces factor.");
-            try {
-                Float x = (Float) r.invoke(clazz);
-                if (x == null) {
-                    log.warning("null Float returned from read method " + r);
-                    return;
-                }
-                initValue = x.floatValue();
-                String s = String.format("%.4f", initValue);
-                tf.setText(s);
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
-            } catch (Exception e) {
-                log.warning("cannot access the field named " + name + " is the class or method not public?");
-                e.printStackTrace();
-            }
+            refresh();
             add(tf);
             tf.addActionListener(new ActionListener() {
 
@@ -1138,7 +1205,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //                            propertyChangeEvent.getSource() + " for property=" +
 //                            propertyChangeEvent.getPropertyName() +
 //                            " newValue=" + propertyChangeEvent.getNewValue());
-                    HasSetter setter = setterMap.get(propertyChangeEvent.getPropertyName());
+                    HasSetGet setter = setterMap.get(propertyChangeEvent.getPropertyName());
                     if (setter == null) {
                         log.warning("null setter for property named " + propertyChangeEvent.getPropertyName());
                     } else {

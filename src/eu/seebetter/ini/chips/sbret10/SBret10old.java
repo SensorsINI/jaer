@@ -18,6 +18,8 @@ import ch.unizh.ini.jaer.config.onchip.OutputMux;
 import com.kitfox.svg.A;
 import com.sun.opengl.util.j2d.TextRenderer;
 import eu.seebetter.ini.chips.*;
+import static eu.seebetter.ini.chips.APSDVSchip.PROPERTY_EXPOSURE_MS;
+import static eu.seebetter.ini.chips.APSDVSchip.PROPERTY_FRAME_RATE_HZ;
 import eu.seebetter.ini.chips.config.*;
 import eu.seebetter.ini.chips.sbret10.SBret10old.SBret10Config.ADC;
 import eu.seebetter.ini.chips.sbret10.SBret10old.SBret10Config.ApsReadoutControl;
@@ -2123,6 +2125,42 @@ public class SBret10old extends APSDVSchip {
     @Override
     public int getMaxADC (){
         return MAX_ADC;
+    }
+    
+    
+    protected float frameRateHz;
+    protected float exposureMs;
+    
+       /**
+        * Sets the measured frame rate. Does not change parameters, only used for recording measured quantity and informing GUI listeners.
+     * 
+     * @param frameRateHz the frameRateHz to set
+     */
+    public void setFrameRateHz(float frameRateHz) {
+        float old=this.frameRateHz;
+        this.frameRateHz = frameRateHz;
+        getSupport().firePropertyChange(PROPERTY_FRAME_RATE_HZ, old, this.frameRateHz);
+    }
+
+    /**
+     * Sets the measured exposure. Does not change parameters, only used for recording measured quantity.
+     * 
+     * @param exposureMs the exposureMs to set
+     */
+    public void setExposureMs(float exposureMs) {
+        float old=this.exposureMs;
+        this.exposureMs = exposureMs;
+        getSupport().firePropertyChange(PROPERTY_EXPOSURE_MS, old, this.exposureMs);
+    }
+
+    @Override
+    public float getFrameRateHz() {
+        return frameRateHz;
+    }
+
+    @Override
+    public float getExposureMs() {
+        return exposureMs;
     }
     
 }

@@ -412,7 +412,8 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         jSeparator4 = new javax.swing.JSeparator();
         suspendCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
 
-        setTitle("Biasgen");
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setTitle("HW Config");
         setName("Biasgen"); // NOI18N
 
         revertButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/net/sf/jaer/biasgen/revert.GIF"))); // NOI18N

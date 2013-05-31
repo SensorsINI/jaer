@@ -6,6 +6,7 @@ created 26 Oct 2008 for new cDVSTest chip
  */
 package eu.seebetter.ini.chips.sbret10;
 
+import ch.unizh.ini.jaer.config.cpld.CPLDInt;
 import com.sun.opengl.util.j2d.TextRenderer;
 import eu.seebetter.ini.chips.APSDVSchip;
 import static eu.seebetter.ini.chips.APSDVSchip.ADC_DATA_MASK;
@@ -63,8 +64,12 @@ public class SBret10 extends APSDVSchip {
      */
     private SBret10DisplayMethod sbretDisplayMethod = null;
     private AEFrameChipRenderer apsDVSrenderer;
-    private int exposure;
-    private int frameTime;
+    private int exposure; // internal measured variable, set during rendering
+    private int frameTime; // internal measured variable, set during rendering
+    protected float frameRateHz; // holds measured variable in Hz for GUI rendering of rate
+    protected float exposureMs; // holds measured variable in ms for GUI rendering
+    CPLDInt exposureCPLDInt;
+ 
     private boolean snapshot = false;
     private boolean resetOnReadout = false;
     SBret10DisplayControlPanelold displayControlPanel = null;
@@ -123,6 +128,9 @@ public class SBret10 extends APSDVSchip {
         this();
         setHardwareInterface(hardwareInterface);
     }
+
+ 
+
 
 //    int pixcnt=0; // TODO debug
     /** The event extractor. Each pixel has two polarities 0 and 1.
@@ -369,9 +377,11 @@ public class SBret10 extends APSDVSchip {
             exposureRenderer.begin3DRendering();  // TODO make string rendering more efficient here using String.format or StringBuilder
             String frequency = "";
             if(frameTime>0){
-                frequency = "("+(float)1000000/frameTime+" Hz)";
+                setFrameRateHz((float)1000000/frameTime);
+                frequency = String.format("(%.2f Hz)",frameRateHz);
             }
-            exposureRenderer.draw3D("exposure: "+(float)exposure/1000+" ms, frame period: "+(float)frameTime/1000+" ms "+frequency, 0, HEIGHT+1, 0, .4f); // x,y,z, scale factor 
+            setExposureMs((float)exposure/1000);
+            exposureRenderer.draw3D("exposure: "+exposureMs+" ms, frame period: "+(float)frameTime/1000+" ms "+frequency, 0, HEIGHT+1, 0, .4f); // x,y,z, scale factor 
             exposureRenderer.end3DRendering();
             gl.glPopMatrix();
         }
@@ -392,5 +402,41 @@ public class SBret10 extends APSDVSchip {
     public int getMaxADC (){
         return MAX_ADC;
     }
+
     
+       /**
+        * Sets the measured frame rate. Does not change parameters, only used for recording measured quantity and informing GUI listeners.
+     * 
+     * @param frameRateHz the frameRateHz to set
+     */
+    private void setFrameRateHz(float frameRateHz) {
+        float old=this.frameRateHz;
+        this.frameRateHz = frameRateHz;
+        getSupport().firePropertyChange(PROPERTY_FRAME_RATE_HZ, old, this.frameRateHz);
+    }
+
+    /**
+     * Sets the measured exposure. Does not change parameters, only used for recording measured quantity.
+     * 
+     * @param exposureMs the exposureMs to set
+     */
+    private void setExposureMs(float exposureMs) {
+        float old=this.exposureMs;
+        this.exposureMs = exposureMs;
+        getSupport().firePropertyChange(PROPERTY_EXPOSURE_MS, old, this.exposureMs);
+    }
+
+    @Override
+    public float getFrameRateHz() {
+        return frameRateHz;
+    }
+
+    @Override
+    public float getExposureMs() {
+        return exposureMs;
+    }
+    
+    
+    
+
 }

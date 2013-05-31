@@ -348,6 +348,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 
                         final int code = (buf[i + 1] & 0xC0) >> 6; // gets two bits at XX00 0000 0000 0000. (val&0xC000)>>>14;
                         //  log.info("code " + code);
+                                        int xmask = (APSDVSchip.XMASK | APSDVSchip.POLMASK) >>> APSDVSchip.POLSHIFT;
                         switch (code) {
                             case 0: // address
                                 // If the data is an address, we write out an address value if we either get an ADC reading or an x address.
@@ -385,13 +386,20 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                         eventCounter++;
                                      } else if ((buf[i + 1] & XBIT) == XBIT) {////  received an X address, write out event to addresses/timestamps output arrays
                                         // x adddress
-                                        int xmask = (APSDVSchip.XMASK | APSDVSchip.POLMASK) >>> APSDVSchip.POLSHIFT;
                                         addresses[eventCounter] = (lasty << APSDVSchip.YSHIFT) | ((dataword & xmask)<<APSDVSchip.POLSHIFT);  // combine current bits with last y address bits and send
                                         timestamps[eventCounter] = currentts; // add in the wrap offset and convert to 1us tick
                                         eventCounter++;
                                         //log.info("X: "+((dataword & APSDVSchip.XMASK)>>1));
                                         gotY = false;
-                                    } else {
+                                    } else { // row address came
+                                        if (gotY) { // no col address, last one was row only event
+                                            // make  row only event
+
+                                            addresses[eventCounter] = (lasty << APSDVSchip.YSHIFT);  // combine current bits with last y address bits and send
+                                            timestamps[eventCounter] = currentts; // add in the wrap offset and convert to 1us tick
+                                            eventCounter++;
+
+                                        }
                                         // y address
                                         int ymask = (APSDVSchip.YMASK >>> APSDVSchip.YSHIFT);
                                         lasty = ymask & dataword; //(0xFF & buf[i]); //

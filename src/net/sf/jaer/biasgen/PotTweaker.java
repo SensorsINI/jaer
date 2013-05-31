@@ -140,10 +140,10 @@ public class PotTweaker extends javax.swing.JPanel implements Observer,ChangeLis
 
         slider.setMajorTickSpacing(50);
         slider.setMinorTickSpacing(10);
-        slider.setPaintLabels(true);
         slider.setPaintTicks(true);
         slider.setToolTipText("slide to tweak pot value around the preference value");
-        slider.setMinimumSize(new java.awt.Dimension(36, 10));
+        slider.setMinimumSize(new java.awt.Dimension(30, 7));
+        slider.setPreferredSize(new java.awt.Dimension(100, 20));
         slider.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mousePressed(java.awt.event.MouseEvent evt) {
                 sliderMousePressed(evt);
@@ -159,7 +159,7 @@ public class PotTweaker extends javax.swing.JPanel implements Observer,ChangeLis
         });
         add(slider, java.awt.BorderLayout.CENTER);
 
-        tweakDescriptionLabel.setFont(new java.awt.Font("Tahoma", 3, 11)); // NOI18N
+        tweakDescriptionLabel.setFont(new java.awt.Font("Tahoma", 3, 10)); // NOI18N
         tweakDescriptionLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         tweakDescriptionLabel.setText("Description of control");
         add(tweakDescriptionLabel, java.awt.BorderLayout.NORTH);
@@ -407,7 +407,7 @@ public class PotTweaker extends javax.swing.JPanel implements Observer,ChangeLis
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if(evt.getPropertyName().equals(Biasgen.PROPERTY_CHANGE_PREFERENCES_LOADED)){
+        if(evt.getPropertyName().equals(Biasgen.PROPERTY_CHANGE_PREFERENCES_LOADED)||evt.getPropertyName().equals(Biasgen.PROPERTY_CHANGE_PREFERENCES_STORED)){
             reset();
         }
     }

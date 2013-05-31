@@ -120,11 +120,11 @@ public class CPLDShiftRegister {
         if (!ok) {
             throw new Error(sb.toString());
         }
-        sb = new StringBuilder((numBits) + " CPLD config bits = ");
-        for (int i = maxBit; i >= 0; i--) {
-            sb.append(bigint.testBit(i) ? "1" : "0");
-        }
-        log.info(sb.toString());
+//        sb = new StringBuilder((numBits) + " CPLD config bits = ");
+//        for (int i = maxBit; i >= 0; i--) {
+//            sb.append(bigint.testBit(i) ? "1" : "0");
+//        }
+//        log.info(sb.toString());
 
         byte[] bytes = bigint.toByteArray();
         this.bytes = bytes;

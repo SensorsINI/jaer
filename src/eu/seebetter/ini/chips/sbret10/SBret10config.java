@@ -44,10 +44,11 @@ import net.sf.jaer.util.PropertyTooltipSupport;
  * Bias generator, On-chip diagnostic readout, video acquisition and rendering
  * controls for the apsDVS vision sensor.
  *
- * @author Christian
+ * @author Christian/Tobi
  */
-public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig, DVSTweaks {
-
+public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig, ApsDvsTweaks {
+    private static final float EXPOSURE_CONTROL_CLOCK_FREQ_HZ=30000000/1024/240; // this is actual clock freq in Hz of clock that controls timing of inter-frame delay and exposure delay
+    
     protected ShiftedSourceBiasCF ssn, ssp;
     JPanel configPanel;
     JTabbedPane configTabbedPane;
@@ -79,6 +80,8 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
     protected VideoControl videoControl;
 //        private Scanner scanner; 
     protected ApsReadoutControl apsReadoutControl;
+    private int autoShotThreshold; // threshold for triggering a new frame snapshot automatically
+ 
 
     /**
      * Creates a new instance of chip configuration
@@ -197,7 +200,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
     /**
      *
      * Overrides the default method to addConfigValue the custom control panel
-     * for configuring the SBret10 output muxes and many other chip and board
+     * for configuring the SBret10 output multiplexers and many other chip, board and display
      * controls.
      *
      * @return a new panel for controlling this chip and board configuration
@@ -221,6 +224,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
             }
         };
 
+        // add action to display user friendly controls toggled either next to expert controls or in another tab
         final Action toggleDebugControlsAction = new AbstractAction("Toggle debug controls") {
             {
                 putValue(Action.SHORT_DESCRIPTION, "Toggles display of user friendly controls next to other tabbed panes for debugging");
@@ -375,6 +379,8 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
         chip.getPrefs().putInt("SBret10.bgTabbedPaneSelectedIndex", configTabbedPane.getSelectedIndex());
     }
 
+
+
     /**
      * Controls the APS intensity readout by wrapping the relevant bits
      */
@@ -521,9 +527,11 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
          * @param displayFrames the displayFrames to set
          */
         public void setDisplayFrames(boolean displayFrames) {
+            if(this.displayFrames!=displayFrames)setChanged();
             this.displayFrames = displayFrames;
             chip.getPrefs().putBoolean("VideoControl.displayFrames", displayFrames);
             chip.getAeViewer().interruptViewloop();
+            notifyObservers();
         }
 
         /**
@@ -537,9 +545,11 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
          * @param displayEvents the displayEvents to set
          */
         public void setDisplayEvents(boolean displayEvents) {
+            if(this.displayEvents!=displayEvents) setChanged();
             this.displayEvents = displayEvents;
             chip.getPrefs().putBoolean("VideoControl.displayEvents", displayEvents);
             chip.getAeViewer().interruptViewloop();
+            notifyObservers();
         }
 
         /**
@@ -553,9 +563,11 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
          * @param displayEvents the displayEvents to set
          */
         public void setUseAutoContrast(boolean useAutoContrast) {
+            if(this.useAutoContrast!=useAutoContrast) setChanged();
             this.useAutoContrast = useAutoContrast;
             chip.getPrefs().putBoolean("VideoControl.useAutoContrast", useAutoContrast);
             chip.getAeViewer().interruptViewloop();
+            notifyObservers();
         }
 
         /**
@@ -569,9 +581,11 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
          * @param contrast the contrast to set
          */
         public void setContrast(float contrast) {
+            if(this.contrast!=contrast) setChanged();
             this.contrast = contrast;
             chip.getPrefs().putFloat("VideoControl.contrast", contrast);
             chip.getAeViewer().interruptViewloop();
+            notifyObservers();
         }
 
         /**
@@ -585,9 +599,11 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
          * @param brightness the brightness to set
          */
         public void setBrightness(float brightness) {
+            if(this.brightness!=brightness)setChanged();
             this.brightness = brightness;
             chip.getPrefs().putFloat("VideoControl.brightness", brightness);
             chip.getAeViewer().interruptViewloop();
+            notifyObservers();
         }
 
         /**
@@ -601,9 +617,11 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
          * @param gamma the gamma to set
          */
         public void setGamma(float gamma) {
+            if(gamma!=this.gamma)setChanged();
             this.gamma = gamma;
             chip.getPrefs().putFloat("VideoControl.gamma", gamma);
             chip.getAeViewer().interruptViewloop();
+            notifyObservers();
         }
 
         @Override
@@ -1059,5 +1077,43 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
     @Override
     public float getOnOffBalanceTweak() {
         return onOffBalance;
+    }
+    
+    
+    @Override
+    public void setFrameDelayMs(int ms) {
+        int fd = (int)(ms*EXPOSURE_CONTROL_CLOCK_FREQ_HZ*1e-3f);
+        // frame delay config register is in clock cycles, to to go from ms to clock cycles do ms*(clockcycles/sec)*(sec/1000ms)
+        frameDelay.set(fd);
+    }
+
+    @Override
+    public int getFrameDelayMs() {
+        int fd = (int)(frameDelay.get()*1e-3/(EXPOSURE_CONTROL_CLOCK_FREQ_HZ/1024/240)); // TODO just a guess at clock freq for frame delay
+        // to get frame delay in ms from register value, multiply frame delay register value frameDelay in cycles by the ms per clock cycle
+        return fd;
+    }
+
+    @Override
+    public void setExposureDelayUs(int us) {
+        int exp = (int)(us*EXPOSURE_CONTROL_CLOCK_FREQ_HZ*1e-6f);
+        if(exp<=0) exp=1;
+        exposure.set(exp);
+    }
+
+    @Override
+    public int getExposureDelayUs() {
+        int ed = (int)(exposure.get()*1e-6/EXPOSURE_CONTROL_CLOCK_FREQ_HZ);
+        return ed;
+    }
+
+    @Override
+    public void setAutoShotEventThreshold(int threshold) {
+        this.autoShotThreshold=threshold;
+    }
+
+    @Override
+    public int getAutoShotEventThreshold() {
+       return autoShotThreshold;
     }
 }

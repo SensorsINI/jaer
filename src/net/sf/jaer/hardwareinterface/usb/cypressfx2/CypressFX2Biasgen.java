@@ -114,6 +114,10 @@ public class CypressFX2Biasgen extends CypressFX2 implements BiasgenHardwareInte
             log.warning("null gUsbIo, device must be opened before sending this vendor request");
             return;
         }
+        if(b==null){
+            log.warning("null byte array passed in, ignoring");
+            return;
+        }
         USBIO_CLASS_OR_VENDOR_REQUEST vendorRequest=new USBIO_CLASS_OR_VENDOR_REQUEST();
         int result;
         if(b==null || b.length==0) {
