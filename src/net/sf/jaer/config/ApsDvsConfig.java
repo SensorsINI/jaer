@@ -37,8 +37,8 @@ public interface ApsDvsConfig {
     abstract public void setFrameDelayMs(int ms);
     abstract public int getFrameDelayMs();
     
-    abstract public void setExposureDelayUs(int us);
-    abstract public int getExposureDelayUs();
+    abstract public void setExposureDelayMs(int us);
+    abstract public int getExposureDelayMs();
     
     abstract public void setAutoShotEventThreshold(int threshold);
     abstract public int getAutoShotEventThreshold();

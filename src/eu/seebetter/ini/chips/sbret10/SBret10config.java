@@ -47,7 +47,7 @@ import net.sf.jaer.util.PropertyTooltipSupport;
  * @author Christian/Tobi
  */
 public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig, ApsDvsTweaks {
-    private static final float EXPOSURE_CONTROL_CLOCK_FREQ_HZ=30000000/1024/240; // this is actual clock freq in Hz of clock that controls timing of inter-frame delay and exposure delay
+    private static final float EXPOSURE_CONTROL_CLOCK_FREQ_HZ=30000000/1025; // this is actual clock freq in Hz of clock that controls timing of inter-frame delay and exposure delay
     
     protected ShiftedSourceBiasCF ssn, ssp;
     JPanel configPanel;
@@ -384,7 +384,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
     /**
      * Controls the APS intensity readout by wrapping the relevant bits
      */
-    public class ApsReadoutControl implements Observer, HasPropertyTooltips {
+    public class ApsReadoutControl extends Observable implements Observer, HasPropertyTooltips {
 
         int channel = chip.getPrefs().getInt("ADC.channel", 3);
         public final String EVENT_ADC_ENABLED = "adcEnabled", EVENT_ADC_CHANNEL = "adcChannel";
@@ -480,6 +480,8 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
             if (o == runAdc) {
                 propertyChangeSupport.firePropertyChange(EVENT_ADC_ENABLED, null, runAdc.isSet());
             } // TODO
+            setChanged();
+            notifyObservers(o);
         }
 
         /**
@@ -1082,28 +1084,29 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
     
     @Override
     public void setFrameDelayMs(int ms) {
-        int fd = (int)(ms*EXPOSURE_CONTROL_CLOCK_FREQ_HZ*1e-3f);
+        int fd = (int)Math.round(ms*EXPOSURE_CONTROL_CLOCK_FREQ_HZ*1e-3f);
         // frame delay config register is in clock cycles, to to go from ms to clock cycles do ms*(clockcycles/sec)*(sec/1000ms)
         frameDelay.set(fd);
     }
 
     @Override
     public int getFrameDelayMs() {
-        int fd = (int)(frameDelay.get()*1e-3/(EXPOSURE_CONTROL_CLOCK_FREQ_HZ/1024/240)); // TODO just a guess at clock freq for frame delay
-        // to get frame delay in ms from register value, multiply frame delay register value frameDelay in cycles by the ms per clock cycle
+        // to get frame delay in ms from register value, 
+        // multiply frame delay register value frameDelay in cycles by the ms per clock cycle
+        int fd = (int)Math.round(frameDelay.get()/(1e-3f*EXPOSURE_CONTROL_CLOCK_FREQ_HZ)); 
         return fd;
     }
 
     @Override
-    public void setExposureDelayUs(int us) {
-        int exp = (int)(us*EXPOSURE_CONTROL_CLOCK_FREQ_HZ*1e-6f);
+    public void setExposureDelayMs(int us) {
+        int exp = (int)Math.round(us*EXPOSURE_CONTROL_CLOCK_FREQ_HZ*1e-3f);
         if(exp<=0) exp=1;
         exposure.set(exp);
     }
 
     @Override
-    public int getExposureDelayUs() {
-        int ed = (int)(exposure.get()*1e-6/EXPOSURE_CONTROL_CLOCK_FREQ_HZ);
+    public int getExposureDelayMs() {
+        int ed = (int)Math.round(exposure.get()/(1e-3f*EXPOSURE_CONTROL_CLOCK_FREQ_HZ));
         return ed;
     }
 

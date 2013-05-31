@@ -59,7 +59,7 @@
                   <Group type="103" groupAlignment="0" attributes="0">
                       <Group type="102" attributes="0">
                           <Group type="103" groupAlignment="0" attributes="0">
-                              <Component id="thresholdTweaker" alignment="1" pref="283" max="32767" attributes="0"/>
+                              <Component id="thresholdTweaker" alignment="1" max="32767" attributes="0"/>
                               <Component id="maxFiringRateTweaker" alignment="1" max="32767" attributes="0"/>
                               <Component id="onOffBalanceTweaker" alignment="0" max="32767" attributes="0"/>
                               <Component id="bandwidthTweaker" max="32767" attributes="0"/>
@@ -305,6 +305,9 @@
         </Component>
         <Component class="javax.swing.JSpinner" name="fdSp">
           <Properties>
+            <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
+              <SpinnerModel initial="0" numberType="java.lang.Integer" stepSize="100" type="number"/>
+            </Property>
             <Property name="toolTipText" type="java.lang.String" value="Delay of starting new frame capture after last frame"/>
           </Properties>
           <Events>
@@ -313,12 +316,15 @@
         </Component>
         <Component class="javax.swing.JLabel" name="jLabel2">
           <Properties>
-            <Property name="text" type="java.lang.String" value="Exposure delay (us)"/>
+            <Property name="text" type="java.lang.String" value="Exposure delay (ms)"/>
           </Properties>
         </Component>
         <Component class="javax.swing.JSpinner" name="edSp">
           <Properties>
-            <Property name="toolTipText" type="java.lang.String" value="The exposure delay; affect actual exposure time"/>
+            <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
+              <SpinnerModel initial="0" numberType="java.lang.Integer" stepSize="1" type="number"/>
+            </Property>
+            <Property name="toolTipText" type="java.lang.String" value="The exposure delay; affects actual exposure time"/>
           </Properties>
           <Events>
             <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="edSpStateChanged"/>
