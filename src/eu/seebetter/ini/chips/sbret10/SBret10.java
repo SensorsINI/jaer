@@ -215,6 +215,8 @@ public class SBret10 extends APSDVSchip {
                     e.x = (short) (sx1 - ((data & XMASK) >>> XSHIFT));
                     e.y = (short) ((data & YMASK) >>> YSHIFT);
                     //System.out.println(data);
+                    // autoshot triggering
+                    autoshotEventsSinceLastShot++; // number DVS events captured here
                 } else if ((data & ADDRESS_TYPE_MASK) == ADDRESS_TYPE_APS) {
                     //APS event
                     ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
@@ -267,8 +269,6 @@ public class SBret10 extends APSDVSchip {
                     }
                 }
             }
-            // autoshot triggering
-            autoshotEventsSinceLastShot+=out.getSize(); // number events captured here
             if(getAutoshotThresholdEvents()>0 && autoshotEventsSinceLastShot>getAutoshotThresholdEvents()){
                 takeSnapshot();
                 autoshotEventsSinceLastShot=0;
