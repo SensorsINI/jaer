@@ -87,6 +87,8 @@ import net.sf.jaer.util.filter.LowpassFilter2d;
 @Description("SBret version 1.0")
 public class SBret10old extends APSDVSchip {
 
+ 
+
     /** Describes size of array of pixels on the chip, in the pixels address space */
     public static class PixelArray extends Rectangle {
 
@@ -2161,6 +2163,15 @@ public class SBret10old extends APSDVSchip {
     @Override
     public float getExposureMs() {
         return exposureMs;
+    }
+    
+       @Override
+    public void setAutoshotThresholdEvents(int thresholdEvents) {
+    }
+
+    @Override
+    public int getAutoshotThresholdEvents() {
+        return 0; // just for default implementation
     }
     
 }
