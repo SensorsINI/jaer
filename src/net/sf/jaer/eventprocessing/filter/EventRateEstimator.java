@@ -34,6 +34,8 @@ public class EventRateEstimator extends EventFilter2D {
     /* Event rate estimates are sent to observers this many times per tau */
     protected int UPDATE_RATE_TAU_DIVIDER = 1;  
     private boolean initialized = false;
+    private int numEventsSinceLastUpdate = 0;
+    private int numEventsInLastPacket=0;
 
     public EventRateEstimator(AEChip chip) {
         super(chip);
@@ -41,14 +43,15 @@ public class EventRateEstimator extends EventFilter2D {
         setPropertyTooltip("eventRateTauMs", "lowpass filter time constant in ms for measuring event rate");
         setPropertyTooltip("maxRate", "maximum estimated rate, which is used for zero ISIs between packets");
     }
-    private int numEventsSinceLastUpdate = 0;
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (in == null || in.getSize() == 0) {
             return in; // if there are no events, don't touch values since we don't have a new update time
         }
+        numEventsInLastPacket=0;
         for (BasicEvent e : in) {
+            numEventsInLastPacket++;
             int dt = e.timestamp - lastComputeTimestamp;
             if (!initialized || dt < 0) {
                 numEventsSinceLastUpdate = 0;
@@ -114,7 +117,8 @@ public class EventRateEstimator extends EventFilter2D {
     public float getInstantaneousEventRate() {
         return instantaneousRate;
     }
-
+    
+    
     /**
      * Returns measured event rate
      *
@@ -139,5 +143,13 @@ public class EventRateEstimator extends EventFilter2D {
     public void setMaxRate(float maxRate) {
         this.maxRate = maxRate;
         putFloat("maxRate", maxRate);
+    }
+
+    /**
+     * Returns the number of events in last input packet.
+     * @return the numEventsInLastPacket
+     */
+    public int getNumEventsInLastPacket() {
+        return numEventsInLastPacket;
     }
 }
