@@ -8,6 +8,7 @@ import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
 import ch.unizh.ini.jaer.config.MuxControlPanel;
 import ch.unizh.ini.jaer.config.OutputMap;
 import ch.unizh.ini.jaer.config.boards.LatticeMachFX2config;
+import static ch.unizh.ini.jaer.config.boards.LatticeMachFX2config.VR_WRITE_CONFIG;
 import ch.unizh.ini.jaer.config.cpld.CPLDBit;
 import ch.unizh.ini.jaer.config.cpld.CPLDConfigValue;
 import ch.unizh.ini.jaer.config.cpld.CPLDInt;
@@ -36,6 +37,8 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.config.ApsDvsConfig;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.ApsDvsHardwareInterface;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.util.HasPropertyTooltips;
 import net.sf.jaer.util.ParameterControlPanel;
 import net.sf.jaer.util.PropertyTooltipSupport;
@@ -47,8 +50,8 @@ import net.sf.jaer.util.PropertyTooltipSupport;
  * @author Christian/Tobi
  */
 public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig, ApsDvsTweaks {
-    private static final float EXPOSURE_CONTROL_CLOCK_FREQ_HZ=30000000/1025; // this is actual clock freq in Hz of clock that controls timing of inter-frame delay and exposure delay
-    
+
+    private static final float EXPOSURE_CONTROL_CLOCK_FREQ_HZ = 30000000 / 1025; // this is actual clock freq in Hz of clock that controls timing of inter-frame delay and exposure delay
     protected ShiftedSourceBiasCF ssn, ssp;
     JPanel configPanel;
     JTabbedPane configTabbedPane;
@@ -81,7 +84,6 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
 //        private Scanner scanner; 
     protected ApsReadoutControl apsReadoutControl;
     private int autoShotThreshold; // threshold for triggering a new frame snapshot automatically
- 
 
     /**
      * Creates a new instance of chip configuration
@@ -199,8 +201,8 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
 
     /**
      *
-     * Overrides the default method to addConfigValue the custom control panel
-     * for configuring the SBret10 output multiplexers and many other chip, board and display
+     * Overrides the default to built the custom control panel for configuring
+     * the SBret10 output multiplexers and many other chip, board and display
      * controls.
      *
      * @return a new panel for controlling this chip and board configuration
@@ -242,8 +244,8 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
         specialButtons.setLayout(new BoxLayout(specialButtons, BoxLayout.X_AXIS));
         specialButtons.add(new JButton(resetChipAction));
         specialButtons.add(new JButton(toggleDebugControlsAction));
-        
-        
+
+
         configTabbedPane = new JTabbedPane();
         setBatchEditOccurring(true); // stop updates on building panel
 
@@ -379,8 +381,6 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
         chip.getPrefs().putInt("SBret10.bgTabbedPaneSelectedIndex", configTabbedPane.getSelectedIndex());
     }
 
-
-
     /**
      * Controls the APS intensity readout by wrapping the relevant bits
      */
@@ -399,6 +399,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
             resSettle.addObserver(this);
             frameDelay.addObserver(this);
             testPixAPSread.addObserver(this);
+            runAdc.addObserver(this);
             sbret10.addObserver(this);
             // TODO awkward renaming of properties here due to wrongly named delegator methods
             tooltipSupport.setPropertyTooltip("adcEnabled", runAdc.getDescription());
@@ -529,7 +530,9 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
          * @param displayFrames the displayFrames to set
          */
         public void setDisplayFrames(boolean displayFrames) {
-            if(this.displayFrames!=displayFrames)setChanged();
+            if (this.displayFrames != displayFrames) {
+                setChanged();
+            }
             this.displayFrames = displayFrames;
             chip.getPrefs().putBoolean("VideoControl.displayFrames", displayFrames);
             chip.getAeViewer().interruptViewloop();
@@ -547,7 +550,9 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
          * @param displayEvents the displayEvents to set
          */
         public void setDisplayEvents(boolean displayEvents) {
-            if(this.displayEvents!=displayEvents) setChanged();
+            if (this.displayEvents != displayEvents) {
+                setChanged();
+            }
             this.displayEvents = displayEvents;
             chip.getPrefs().putBoolean("VideoControl.displayEvents", displayEvents);
             chip.getAeViewer().interruptViewloop();
@@ -565,7 +570,9 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
          * @param displayEvents the displayEvents to set
          */
         public void setUseAutoContrast(boolean useAutoContrast) {
-            if(this.useAutoContrast!=useAutoContrast) setChanged();
+            if (this.useAutoContrast != useAutoContrast) {
+                setChanged();
+            }
             this.useAutoContrast = useAutoContrast;
             chip.getPrefs().putBoolean("VideoControl.useAutoContrast", useAutoContrast);
             chip.getAeViewer().interruptViewloop();
@@ -583,7 +590,9 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
          * @param contrast the contrast to set
          */
         public void setContrast(float contrast) {
-            if(this.contrast!=contrast) setChanged();
+            if (this.contrast != contrast) {
+                setChanged();
+            }
             this.contrast = contrast;
             chip.getPrefs().putFloat("VideoControl.contrast", contrast);
             chip.getAeViewer().interruptViewloop();
@@ -601,7 +610,9 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
          * @param brightness the brightness to set
          */
         public void setBrightness(float brightness) {
-            if(this.brightness!=brightness)setChanged();
+            if (this.brightness != brightness) {
+                setChanged();
+            }
             this.brightness = brightness;
             chip.getPrefs().putFloat("VideoControl.brightness", brightness);
             chip.getAeViewer().interruptViewloop();
@@ -619,7 +630,9 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
          * @param gamma the gamma to set
          */
         public void setGamma(float gamma) {
-            if(gamma!=this.gamma)setChanged();
+            if (gamma != this.gamma) {
+                setChanged();
+            }
             this.gamma = gamma;
             chip.getPrefs().putFloat("VideoControl.gamma", gamma);
             chip.getAeViewer().interruptViewloop();
@@ -955,7 +968,8 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
 
         @Override
         public JPanel getChipConfigPanel() {
-            JPanel chipConfigPanel = new JPanel(new BorderLayout());
+            JPanel chipConfigPanel = new JPanel();
+            chipConfigPanel.setLayout(new BoxLayout(chipConfigPanel, BoxLayout.Y_AXIS));
 
             //On-Chip config bits
             JPanel extraPanel = new JPanel();
@@ -964,7 +978,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
                 extraPanel.add(new JRadioButton(b.getAction()));
             }
             extraPanel.setBorder(new TitledBorder("Extra on-chip bits"));
-            chipConfigPanel.add(extraPanel, BorderLayout.NORTH);
+            chipConfigPanel.add(extraPanel);
 
             //FX2 port bits
             JPanel portBitsPanel = new JPanel();
@@ -973,7 +987,33 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
                 portBitsPanel.add(new JRadioButton(p.getAction()));
             }
             portBitsPanel.setBorder(new TitledBorder("Cypress FX2 port bits"));
-            chipConfigPanel.add(portBitsPanel, BorderLayout.CENTER);
+            chipConfigPanel.add(portBitsPanel);
+
+            // event translation control
+            JPanel eventTranslationControlPanel = new JPanel();
+            eventTranslationControlPanel.setBorder(new TitledBorder("DVS event translation control"));
+            eventTranslationControlPanel.setLayout(new BoxLayout(eventTranslationControlPanel, BoxLayout.Y_AXIS));
+            // add a reset button on top of everything
+            final Action translateRowOnlyEventsAction = new AbstractAction("Translate row-only events") {
+                {
+                    putValue(Action.SHORT_DESCRIPTION,
+                            "<html>Controls whether row-only events (row request but no column request) "
+                            + "<br>are captured from USB data stream in ApsDvsHardwareInterface. "
+                            + "<p>These events are rendered as OFF events at x=239");
+                }
+
+                @Override
+                public void actionPerformed(ActionEvent evt) {
+                    if (getHardwareInterface() != null) {
+
+                        if (getHardwareInterface() != null && getHardwareInterface() instanceof ApsDvsHardwareInterface) {
+                            ((ApsDvsHardwareInterface) getHardwareInterface()).setTranslateRowOnlyEvents(((AbstractButton) evt.getSource()).isSelected());
+                        }
+                    };
+                }
+            };
+            eventTranslationControlPanel.add(new JRadioButton(translateRowOnlyEventsAction));
+            chipConfigPanel.add(eventTranslationControlPanel);
 
             return chipConfigPanel;
         }
@@ -988,13 +1028,16 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
      */
     @Override
     public void setBandwidthTweak(float val) {
-        log.info("tweak bandwidth by " + val);
         if (val > 1) {
             val = 1;
         } else if (val < -1) {
             val = -1;
         }
         float old = bandwidth;
+        if (old == val) {
+            return;
+        }
+//        log.info("tweak bandwidth by " + val);
         bandwidth = val;
         final float MAX = 30;
         pr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
@@ -1016,6 +1059,9 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
             val = -1;
         }
         float old = maxFiringRate;
+        if (old == val) {
+            return;
+        }
         maxFiringRate = val;
         final float MAX = 300;
         refr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
@@ -1034,6 +1080,9 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
             val = -1;
         }
         float old = threshold;
+        if (old == val) {
+            return;
+        }
         final float MAX = 10;
         threshold = val;
         diffOn.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
@@ -1055,6 +1104,9 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
             val = -1;
         }
         float old = onOffBalance;
+        if (old == val) {
+            return;
+        }
         onOffBalance = val;
         final float MAX = 10;
         diff.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
@@ -1080,11 +1132,10 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
     public float getOnOffBalanceTweak() {
         return onOffBalance;
     }
-    
-    
+
     @Override
     public void setFrameDelayMs(int ms) {
-        int fd = (int)Math.round(ms*EXPOSURE_CONTROL_CLOCK_FREQ_HZ*1e-3f);
+        int fd = (int) Math.round(ms * EXPOSURE_CONTROL_CLOCK_FREQ_HZ * 1e-3f);
         // frame delay config register is in clock cycles, to to go from ms to clock cycles do ms*(clockcycles/sec)*(sec/1000ms)
         frameDelay.set(fd);
     }
@@ -1093,30 +1144,32 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
     public int getFrameDelayMs() {
         // to get frame delay in ms from register value, 
         // multiply frame delay register value frameDelay in cycles by the ms per clock cycle
-        int fd = (int)Math.round(frameDelay.get()/(1e-3f*EXPOSURE_CONTROL_CLOCK_FREQ_HZ)); 
+        int fd = (int) Math.round(frameDelay.get() / (1e-3f * EXPOSURE_CONTROL_CLOCK_FREQ_HZ));
         return fd;
     }
 
     @Override
     public void setExposureDelayMs(int us) {
-        int exp = (int)Math.round(us*EXPOSURE_CONTROL_CLOCK_FREQ_HZ*1e-3f);
-        if(exp<=0) exp=1;
+        int exp = (int) Math.round(us * EXPOSURE_CONTROL_CLOCK_FREQ_HZ * 1e-3f);
+        if (exp <= 0) {
+            exp = 1;
+        }
         exposure.set(exp);
     }
 
     @Override
     public int getExposureDelayMs() {
-        int ed = (int)Math.round(exposure.get()/(1e-3f*EXPOSURE_CONTROL_CLOCK_FREQ_HZ));
+        int ed = (int) Math.round(exposure.get() / (1e-3f * EXPOSURE_CONTROL_CLOCK_FREQ_HZ));
         return ed;
     }
 
     @Override
     public void setAutoShotEventThreshold(int threshold) {
-        this.autoShotThreshold=threshold;
+        this.autoShotThreshold = threshold;
     }
 
     @Override
     public int getAutoShotEventThreshold() {
-       return autoShotThreshold;
+        return autoShotThreshold;
     }
 }

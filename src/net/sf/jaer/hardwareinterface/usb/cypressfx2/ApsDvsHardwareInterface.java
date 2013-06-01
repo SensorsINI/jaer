@@ -27,6 +27,8 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
     /** The USB product ID of this device */
     static public final short PID = (short) 0x840D;
     static public final short DID = (short) 0x0002;
+    
+    private boolean translateRowOnlyEvents=prefs.getBoolean("ApsDvsHardwareInterface.translateRowOnlyEvents", false);
 
     /** Creates a new instance of CypressFX2Biasgen */
     public ApsDvsHardwareInterface(int devNumber) {
@@ -244,6 +246,19 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
     }
     boolean gotY = false; // TODO  hack for debugging state machine
 
+    /** If set, then row-only events are transmitted to raw packets from USB interface
+     * 
+     * @param translateRowOnlyEvents true to translate these parasitic events.
+     */
+    public void setTranslateRowOnlyEvents(boolean translateRowOnlyEvents) {
+        this.translateRowOnlyEvents=translateRowOnlyEvents;
+        prefs.putBoolean("ApsDvsHardwareInterface.translateRowOnlyEvents", translateRowOnlyEvents);
+    }
+
+    public boolean isTranslateRowOnlyEvents(){
+        return translateRowOnlyEvents;
+    }
+    
     /** This reader understands the format of raw USB data and translates to the AEPacketRaw */
     public class RetinaAEReader extends CypressFX2.AEReader {
         private static final int NONMONOTONIC_WARNING_COUNT = 30; // how many warnings to print after start or timestamp reset
@@ -393,11 +408,12 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                         gotY = false;
                                     } else { // row address came
                                         if (gotY) { // no col address, last one was row only event
-                                            // make  row only event
+                                            if (translateRowOnlyEvents) {// make  row-only event
 
-                                            addresses[eventCounter] = (lasty << APSDVSchip.YSHIFT);  // combine current bits with last y address bits and send
-                                            timestamps[eventCounter] = currentts; // add in the wrap offset and convert to 1us tick
-                                            eventCounter++;
+                                                addresses[eventCounter] = (lasty << APSDVSchip.YSHIFT);  // combine current bits with last y address bits and send
+                                                timestamps[eventCounter] = currentts; // add in the wrap offset and convert to 1us tick
+                                                eventCounter++;
+                                            }
 
                                         }
                                         // y address

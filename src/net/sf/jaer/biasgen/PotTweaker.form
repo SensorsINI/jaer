@@ -37,6 +37,7 @@
         <Property name="minorTickSpacing" type="int" value="10"/>
         <Property name="paintTicks" type="boolean" value="true"/>
         <Property name="toolTipText" type="java.lang.String" value="slide to tweak pot value around the preference value"/>
+        <Property name="value" type="int" value="50"/>
         <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
           <Dimension value="[30, 7]"/>
         </Property>

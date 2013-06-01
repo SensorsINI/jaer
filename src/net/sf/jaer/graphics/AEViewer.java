@@ -2110,12 +2110,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         private float thisTime=Float.NaN;
         
         private void makeStatisticsLabel(EventPacket packet) {
-            if (renderCount % 20 == 0 || isPaused() || isSingleStep() || getFrameRater().getDesiredFPS() < 20) {  // don't draw stats too fast
+            if (renderCount % 20 == 0 || isPaused() || isSingleStep() || getFrameRater().getDesiredFPS() <=30) {  // don't draw stats too fast
                 if (getAePlayer().isChoosingFile()) {
                     return;
                 } // don't render stats while user is choosing file
                 if (packet == null) {
                     return;
+                }
+                if(packet.getSize()==0){
+                    return; 
                 }
                 float dtMs = getDtMs(packet);
                 String timeSliceString = String.format("%10ss", engFmt.format((float) dtMs / 1000));

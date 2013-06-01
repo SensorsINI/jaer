@@ -131,7 +131,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
      */
     @Override
     public void update(Observable o, Object arg) {
-        log.info("got update from object "+o+" with argument "+arg);
+//        log.info("got update from object "+o+" with argument "+arg);
         // if we refresh any refresh, then refresh all controls displayed because we don't know which one should be updated
         for(JComponent c:controls){
             if(c instanceof HasSetGet){

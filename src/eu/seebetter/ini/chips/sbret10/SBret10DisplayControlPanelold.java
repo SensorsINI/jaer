@@ -22,6 +22,7 @@ import net.sf.jaer.graphics.AEChipRenderer;
  * Controls display of pixel data on SBret10.
  *
  * @author Tobi
+ * @deprecated not used any more, was for original SBRet10old class
  */
 public class SBret10DisplayControlPanelold extends javax.swing.JPanel implements PropertyChangeListener{
 

@@ -632,6 +632,9 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 val = -1;
             }
             float old = bandwidth;
+            if (old == val) {
+                return;
+            }
             bandwidth = val;
             final float MAX = 300;
             pr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
@@ -651,6 +654,9 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 val = -1;
             }
             float old = maxFiringRate;
+            if (old == val) {
+                return;
+            }
             maxFiringRate = val;
             final float MAX = 300;
             refr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
@@ -668,6 +674,9 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 val = -1;
             }
             float old = threshold;
+            if (old == val) {
+                return;
+            }
             final float MAX = 100;
             threshold = val;
             diffOn.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
@@ -688,6 +697,9 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 val = -1;
             }
             float old = onOffBalance;
+            if (old == val) {
+                return;
+            }
             onOffBalance = val;
             final float MAX = 100;
             diff.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
