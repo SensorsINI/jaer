@@ -2173,5 +2173,25 @@ public class SBret10old extends APSDVSchip {
     public int getAutoshotThresholdEvents() {
         return 0; // just for default implementation
     }
+
+    @Override
+    public void setAutoExposureEnabled(boolean yes) {
+//        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public boolean isAutoExposureEnabled() {
+       return false;
+    }
+    
+      private boolean showImageHistogram=getPrefs().getBoolean("SBRet10.showImageHistogram", false);
+    public boolean isShowImageHistogram(){
+        return showImageHistogram;
+    }
+    public void setShowImageHistogram(boolean yes){
+        showImageHistogram=yes;
+        getPrefs().putBoolean("SBRet10.showImageHistogram", yes);
+    }
+    
     
 }

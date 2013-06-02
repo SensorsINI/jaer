@@ -8,21 +8,19 @@
  */
 package net.sf.jaer.graphics;
 
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.histogram.AbstractHistogram;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.histogram.SimpleHistogram;
+import eu.seebetter.ini.chips.APSDVSchip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
-import eu.seebetter.ini.chips.sbret10.SBret10;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.*;
-import net.sf.jaer.util.SpikeSound;
-import java.awt.Color;
-import java.beans.PropertyChangeSupport;
 import java.nio.FloatBuffer;
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.logging.Logger;
-import javax.swing.JButton;
 import net.sf.jaer.config.ApsDvsConfig;
 import net.sf.jaer.util.filter.LowpassFilter2d;
+import eu.seebetter.ini.chips.sbret10.SBret10;
 
 /**
  * Class adapted from AEChipRenderer to render not only AE events but also
@@ -49,7 +47,13 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     protected FloatBuffer pixBuffer;
     protected FloatBuffer onMap, onBuffer;
     protected FloatBuffer offMap, offBuffer;
-    
+    // double buffered histogram so we can accumulate new histogram while old one is still being rendered and returned to caller
+    private final int step=32;
+    private AbstractHistogram adcSampleValueHistogram1 = new SimpleHistogram(0, step, (APSDVSchip.MAX_ADC + 1) / step, 0);
+    private AbstractHistogram adcSampleValueHistogram2 = new SimpleHistogram(0, step, (APSDVSchip.MAX_ADC + 1) / step, 0);
+    private AbstractHistogram currentHist = adcSampleValueHistogram1, nextHist = adcSampleValueHistogram2;
+    private boolean computeHistograms = false;
+
     /** PropertyChange */
     public static final String AGC_VALUES = "AGCValuesChanged";
     
@@ -168,6 +172,10 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             if(warningCount++%WARNING_INTERVAL==0) log.info("I only know how to render ApsDvsEventPacket but got "+pkt);
             return;
         }
+        
+        if(getChip() instanceof SBret10){
+            computeHistograms=((SBret10)chip).isShowImageHistogram();
+        }
 
         ApsDvsEventPacket packet = (ApsDvsEventPacket) pkt;
 
@@ -230,19 +238,30 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }else if(e.isSignalRead()){
             int index = getIndex(e);
             if(index<0 || index >= buf.length)return;
-            float val = ((float)buf[index]-(float)e.getAdcSample());
+            int val = ((int)buf[index]-e.getAdcSample());
             if (val < minValue) {
                 minValue = val;
             } else if (val > maxValue) {
                 maxValue = val;
             }
-            val = normalizeFramePixel(val);
-            buf[index] = val;
-            buf[index+1] = val;
-            buf[index+2] = val;
+            // right here sample-reset value of this pixel is in val
+           
+            if (computeHistograms) {
+                nextHist.add(val);
+            }
+            float fval = normalizeFramePixel(val);
+            buf[index] = fval;
+            buf[index+1] = fval;
+            buf[index+2] = fval;
         }
         if(e.isEndOfFrame()){
             endFrame();
+            AbstractHistogram tmp = currentHist;
+            if (computeHistograms) {
+                currentHist = nextHist;
+                nextHist = tmp;
+                nextHist.reset();
+            }
         }
     }
     
@@ -388,8 +407,10 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         return textureHeight;
     }
 
-    /** Computes the normalized gray value from an ADC sample value using brightness (offset), contrast (mulitplier), and gamma (power law).
-     * Takes account of the autoContrast setting which attempts to set value automatically to get image in range of display.
+    /** Computes the normalized gray value from an ADC sample value using brightness 
+     * (offset), contrast (multiplier), and gamma (power law).
+     * Takes account of the autoContrast setting which attempts to set 
+     * value automatically to get image in range of display.
      * 
      * @param value the ADC value
      * @return the gray value
@@ -488,6 +509,15 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     
     public boolean isDisplayEvents(){
         return config.isDisplayEvents();
+    }
+
+    /**
+     * Returns the current valid histogram of ADC sample values.
+     * New ADC values are accumulated to another histogram and the histograms are swapped when a new frame has finished being captured.
+     * @return the adcSampleValueHistogram
+     */
+    public AbstractHistogram getAdcSampleValueHistogram() {
+        return currentHist;
     }
 
 }

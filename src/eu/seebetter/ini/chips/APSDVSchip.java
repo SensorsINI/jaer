@@ -82,7 +82,30 @@ abstract public class APSDVSchip extends AETemporalConstastRetina {
      * @return threshold. Zero means auto-shot is disabled. 
      */
     abstract public int getAutoshotThresholdEvents();
+  
+    /**
+     * Sets whether automatic exposure control is enabled
+     * @param yes
+     */
+    abstract public void setAutoExposureEnabled(boolean yes);
+
+    /**
+     * Returns if automatic exposure control is enabled.
+     * @return
+     */
+    abstract public boolean isAutoExposureEnabled();
     
-    
-    
+    /**
+     * Returns if the image histogram should be displayed.
+     * @return true if it should be displayed.
+     */
+    abstract public boolean isShowImageHistogram();
+
+    /**
+     * Sets if the image histogram should be displayed.
+     * @param yes true to show histogram
+     */
+    abstract public void setShowImageHistogram(boolean yes);
+
+
 }

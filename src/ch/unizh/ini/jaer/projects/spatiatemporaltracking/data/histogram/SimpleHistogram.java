@@ -36,6 +36,12 @@ public class SimpleHistogram extends AbstractHistogram {
     
     /**
      * Creates a new SimpleHistogram.
+    * @param start The start of the histogram.
+     * @param step The step size of the histogram.
+     * @param nBins The number of bins used by the histogram.
+     * @param window The window specifies how the values are distributed over
+     * the neighboring bins. Set window to zero to simply bin the values ordinarily. To spread over the nearest neighbor bins
+     * in each direction, set window to 1, etc.
      */
     public SimpleHistogram(int start, int step, int nBins, int window) {
         super(start, step, nBins, window);

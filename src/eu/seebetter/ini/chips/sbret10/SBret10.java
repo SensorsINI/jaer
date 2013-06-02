@@ -6,7 +6,7 @@
  */
 package eu.seebetter.ini.chips.sbret10;
 
-import ch.unizh.ini.jaer.config.cpld.CPLDInt;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.histogram.AbstractHistogram;
 import com.sun.opengl.util.j2d.TextRenderer;
 import eu.seebetter.ini.chips.APSDVSchip;
 import static eu.seebetter.ini.chips.APSDVSchip.ADC_DATA_MASK;
@@ -72,14 +72,13 @@ public class SBret10 extends APSDVSchip {
     protected float exposureMs; // holds measured variable in ms for GUI rendering
     private boolean snapshot = false;
     private boolean resetOnReadout = false;
-    SBret10DisplayControlPanelold displayControlPanel = null;
     private SBret10config config;
     JFrame controlFrame = null;
     public static short WIDTH = 240;
     public static short HEIGHT = 180;
     int sx1 = getSizeX() - 1, sy1 = getSizeY() - 1;
     private int autoshotThresholdEvents=getPrefs().getInt("SBRet10.autoshotThresholdEvents",0);
-
+ 
     /**
      * Creates a new instance of cDVSTest20.
      */
@@ -383,6 +382,15 @@ public class SBret10 extends APSDVSchip {
                 GL gl = drawable.getGL();
                 exposureRender(gl);
             }
+            // draw sample histogram
+            if(showImageHistogram && renderer instanceof AEFrameChipRenderer){
+//                System.out.println("drawing hist");
+                final int size=100;
+                AbstractHistogram hist=((AEFrameChipRenderer)renderer).getAdcSampleValueHistogram();
+                hist.draw(drawable, 
+                        exposureRenderer, 
+                        sizeX/2-size/2, sizeY/2+size/2, size, size);
+            }
         }
 
         private void exposureRender(GL gl) {
@@ -480,4 +488,25 @@ public class SBret10 extends APSDVSchip {
     public int getAutoshotThresholdEvents() {
         return autoshotThresholdEvents;
     }
+
+    @Override
+    public void setAutoExposureEnabled(boolean yes) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public boolean isAutoExposureEnabled() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+    
+    private boolean showImageHistogram=getPrefs().getBoolean("SBRet10.showImageHistogram", false);
+    public boolean isShowImageHistogram(){
+        return showImageHistogram;
+    }
+    public void setShowImageHistogram(boolean yes){
+        showImageHistogram=yes;
+        getPrefs().putBoolean("SBRet10.showImageHistogram", yes);
+    }
+    
+    
 }

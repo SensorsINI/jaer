@@ -86,15 +86,29 @@ public interface Histogram {
      */
     public boolean isExpressable();
     
+    
     /**
-     * Draws the histogram.
+     * Sets whether all bins are drawn or just a range that includes 10-90% of the filled bins.
+     * @param yes true to draw all bins.
+     */
+    public void setDrawAllBins(boolean yes);
+   /**
+     * Returns whether all bins are drawn or just a range that includes 10-90% of the filled bins.
+     * @return true when drawing all bins.
+     */
+    public boolean isDrawAllBins();
+    
+    /**
+     * Draws the histogram. The text labels show the sample limits and total count of the normalized histogram.
+     * It also includes the entropy of the histogram.
      * 
      * @param drawable The instance to draw.
-     * @param renderer The instance to write.
-     * @param x The x-position of the drawing.
-     * @param y The y-position of the drawing.
-     * @param height The height of the drawing.
-     * @param resolution Defines the width of the drawing.
+     * @param renderer The instance to write text with.
+     * @param x The x-position of the drawing in GL drawing units, with 0 on left edge of screen.
+     * @param y The y-position of the drawing in GL drawing units, with 0 on bottom edge of screen.
+     * @param height The height of the drawing in GL drawing units.
+     * @param resolution Defines the width of the drawing in GL drawing units. I.e. for chip displays it is in chip pixels when drawing with ChipCanvas using default scaling of chip pixels. The number of drawn bins is determined from this resolution by dividing the number of bins by the resolution; e.g. if there are 1000 bins and the resolution is 100 then 10 bins will be drawn.
+     * @see #setDrawAllBins(boolean) 
      */
     public void draw(GLAutoDrawable drawable, TextRenderer renderer, float x, float y, int height, int resolution);
 }

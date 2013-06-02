@@ -24,6 +24,9 @@ public abstract class AbstractHistogram implements Histogram {
     
     protected float[] gaussian;
     
+    protected boolean drawAllBins=true;
+    
+    
     /**
      * Creates a new AbstractHistogram based on the default values.
      */
@@ -38,7 +41,8 @@ public abstract class AbstractHistogram implements Histogram {
      * @param step The step size of the histogram.
      * @param nBins The number of bins used by the histogram.
      * @param window The window specifies how the values are distributed over
-     * the neighbouring bins.
+     * the neighboring bins. Set window to zero to simply bin the values ordinarily. To spread over the nearest neighbor bins
+     * in each direction, set window to 1, etc.
      */
     public AbstractHistogram(int start, int step, int nBins, int window) {
         this.start = start;
@@ -75,22 +79,25 @@ public abstract class AbstractHistogram implements Histogram {
     @Override
     public void draw(GLAutoDrawable drawable, TextRenderer renderer, float x, float y, int height, int resolution) {
         GL gl = drawable.getGL();
-        
-        int from = 0;
-        float total = 0;
-        while (total < 0.1 && from < this.getSize()) {
-            total += this.getNormalized(from);
-            from++;
+        int from, to;
+        if (drawAllBins) {
+            from = this.start;
+            to = this.getSize();
+        } else {
+            from = 0;
+            float total = 0;
+            while (total < 0.1 && from < this.getSize()) {
+                total += this.getNormalized(from);
+                from++;
+            }
+            to = from;
+            from = Math.max(0, from - 2);
+            while (total < 0.9 && to < this.getSize()) {
+                total += this.getNormalized(to);
+                to++;
+            }
+            to = Math.min(to + 2, this.nBins);
         }
-        int to = from;
-        from = Math.max(0, from - 2);
-        
-        while (total < 0.9 && to < this.getSize()) {
-            total += this.getNormalized(to);
-            to++;
-        }
-        to = Math.min(to + 2, this.nBins);
-        
         int pack = (to - from) / resolution + 1;
         
         float [] sum = new float[resolution + 1];
@@ -123,7 +130,48 @@ public abstract class AbstractHistogram implements Histogram {
         }
         
         renderer.begin3DRendering();
-        renderer.draw3D("histogram [au]: " + (this.start + from * this.step) + ", " + (this.start + to * this.step) + ".", x, y, 0, 0.5f);
+//        renderer.draw3D("histogram [au]: " + (this.start + from * this.step) + ", " + (this.start + to * this.step) + ".", x, y, 0, 0.5f);
+        String s=String.format("range [%d,%d], N=%d, entropy=%.2f",this.start + from * this.step,this.start + to * this.step,this.getN(),computeEntropy());
+        renderer.draw3D(s, x, y, 0, 0.5f);
         renderer.end3DRendering();
     }
+    
+    /**
+     * Sets whether all bins are drawn or just a range that includes 10-90% of
+     * the filled bins. Default value is true.
+     *
+     * @param yes true to draw all bins.
+     */
+    public void setDrawAllBins(boolean yes) {
+        this.drawAllBins = yes;
+    }
+
+    /**
+     * Returns whether all bins are drawn or just a range that includes 10-90%
+     * of the filled bins. Default value is true.
+     *
+     * @return true when drawing all bins.
+     */
+    public boolean isDrawAllBins() {
+        return drawAllBins;
+    }
+    
+    /** Computes entropy measure -sum(p_i*log(p_i)) of the histogram where p_i is the normalized frequency of the bin number i. 
+     * This measure is maximum when histogram is flat and takes the value logN, where N is the number of bins. 
+     * If all values are concentrated in
+     * a few bins then the entropy will be small, e.g., if there is only a single bin filled then the entropy will
+     * be zero.
+     * 
+     * @return the entropy measure 
+     */
+    public float computeEntropy(){
+        int to=getSize();
+        double sum=0;
+        for(int i=0;i<to;i++){
+            float v=getNormalized(i);
+            if(v>0) sum+=v*Math.log(v);
+        }
+        return -(float)sum;
+    }
+
 }
