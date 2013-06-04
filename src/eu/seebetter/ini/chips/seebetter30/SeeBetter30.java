@@ -47,13 +47,19 @@ public class SeeBetter30 extends AETemporalConstastRetina {
     /**
      * bit masks/shifts for cDVS  AE data
      */
-    public static final int 
-            YSHIFT = SeeBetter20.YSHIFT,
-            YMASK = SeeBetter20.YMASK, // 9 bits
-            XSHIFT = SeeBetter20.XSHIFT, 
-            XMASK = SeeBetter20.XMASK, // 10 bits
-            POLSHIFT = 0, 
-            POLMASK = 1 << POLSHIFT; 
+  public static final int POLMASK = 1,
+            XSHIFT = Integer.bitCount(POLMASK),
+            XMASK = 127 << XSHIFT, // 7 bits
+            YSHIFT = 16, // so that y addresses don't overlap ADC bits and cause fake ADC events Integer.bitCount(POLMASK | XMASK),
+            YMASK = 63 << YSHIFT, // 6 bits
+            INTENSITYMASK = 0x40000000;
+//   public static final int 
+//            YSHIFT = SeeBetter20.YSHIFT,
+//            YMASK = SeeBetter20.YMASK, // 9 bits
+//            XSHIFT = SeeBetter20.XSHIFT, 
+//            XMASK = SeeBetter20.XMASK, // 10 bits
+//            POLSHIFT = 0, 
+//            POLMASK = 1 << POLSHIFT; 
 
     /*
      * data type fields
