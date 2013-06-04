@@ -20,11 +20,11 @@ import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;
 import eu.seebetter.ini.chips.seebetter1011.SeeBetterHardwareInterface;
 import eu.seebetter.ini.chips.seebetter20.SeeBetter20HardwareInterface;
+import eu.seebetter.ini.chips.seebetter30.SeeBetter30HardwareInterface;
 import java.util.*;
 import net.sf.jaer.hardwareinterface.*;
 import java.util.logging.*;
 import jp.ac.osakau.eng.eei.IVS128HardwareInterface;
-import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_DVS128;
 
 /**
@@ -221,6 +221,8 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
             case SeeBetterHardwareInterface.PID:
                 if (did == SeeBetter20HardwareInterface.DID) {
                     return new SeeBetter20HardwareInterface(n);
+                } else if (did == SeeBetter30HardwareInterface.DID) {
+                    return new SeeBetter30HardwareInterface(n);
                 } else {
                     return new SeeBetterHardwareInterface(n);
                 }
