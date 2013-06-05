@@ -1149,8 +1149,8 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
     }
 
     @Override
-    public void setExposureDelayMs(int us) {
-        int exp = (int) Math.round(us * EXPOSURE_CONTROL_CLOCK_FREQ_HZ * 1e-3f);
+    public void setExposureDelayMs(int ms) {
+        int exp = (int) Math.round(ms * EXPOSURE_CONTROL_CLOCK_FREQ_HZ * 1e-3f);
         if (exp <= 0) {
             exp = 1;
         }
