@@ -78,12 +78,14 @@ public abstract class AbstractHistogram implements Histogram {
     
     @Override
     public void draw(GLAutoDrawable drawable, TextRenderer renderer, float x, float y, int height, int resolution) {
+        
+        // TODO if resolution is larger than histogram size (e.g. resolution = 100 bins and histogram is only 32 bins) then drawing does not work correctly.
         GL gl = drawable.getGL();
         int from, to;
         if (drawAllBins) {
             from = this.start;
             to = this.getSize();
-        } else {
+        } else {  // show only bins from 10-90% cummulative bin count
             from = 0;
             float total = 0;
             while (total < 0.1 && from < this.getSize()) {
@@ -98,15 +100,15 @@ public abstract class AbstractHistogram implements Histogram {
             }
             to = Math.min(to + 2, this.nBins);
         }
-        int pack = (to - from) / resolution + 1;
+        int pack = (to - from) / resolution + 1; // e.g. for 1024 bins and 100 pixel resolution, pack is 1025/100=102
         
-        float [] sum = new float[resolution + 1];
+        float [] sum = new float[resolution + 1]; // make new histogram that adds up bins from original, e.g. 103 bins
         int counter = 0;
         
         for (int i = from; i < to; i++) {
             sum[counter] += this.getNormalized(i);
             
-            if (i % pack == 0 && i != 0) {
+            if (i % pack == 0 && i != 0) { // every 102 i increment packed histogram bin counter
                 counter++;
             }
         }
@@ -116,7 +118,7 @@ public abstract class AbstractHistogram implements Histogram {
             if (max < sum[i]) max = sum[i];
         }
         
-        for (int i = 0; i < sum.length; i++) {
+        for (int i = 0; i < sum.length; i++) { // draw packed histogram
             float h = sum[i] / max * (height - 4);
             gl.glBegin(GL.GL_LINE_LOOP);
             {
