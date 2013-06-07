@@ -68,8 +68,18 @@ public class SBret10 extends APSDVSchip {
     private AEFrameChipRenderer apsDVSrenderer;
     private int exposure; // internal measured variable, set during rendering
     private int frameTime; // internal measured variable, set during rendering
-    protected float frameRateHz; // holds measured variable in Hz for GUI rendering of rate
-    protected float exposureMs; // holds measured variable in ms for GUI rendering
+    /**
+     *holds measured variable in Hz for GUI rendering of rate
+     */
+    protected float frameRateHz; 
+    /**
+     * holds measured variable in ms for GUI rendering
+     */
+    protected float exposureMs; 
+    /**
+     * Holds count of frames obtained by end of frame events
+     */
+    private int frameCount=0; 
     private boolean snapshot = false;
     private boolean resetOnReadout = false;
     private SBret10config config;
@@ -134,6 +144,8 @@ public class SBret10 extends APSDVSchip {
         this();
         setHardwareInterface(hardwareInterface);
     }
+
+ 
 
 //    int pixcnt=0; // TODO debug
     /**
@@ -265,6 +277,7 @@ public class SBret10 extends APSDVSchip {
                             snapshot = false;
                             config.apsReadoutControl.setAdcEnabled(false);
                         }
+                        setFrameCount(getFrameCount() + 1);
                     }
                 }
             }
@@ -374,7 +387,7 @@ public class SBret10 extends APSDVSchip {
         @Override
         public void display(GLAutoDrawable drawable) {
             if (exposureRenderer == null) {
-                exposureRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 8), true, true);
+                exposureRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 12), true, true);
                 exposureRenderer.setColor(1, 1, 1, 1);
             }
             super.display(drawable);
@@ -402,7 +415,8 @@ public class SBret10 extends APSDVSchip {
                 frequency = String.format("(%.2f Hz)", frameRateHz);
             }
             setExposureMs((float) exposure / 1000);
-            exposureRenderer.draw3D("exposure: " + exposureMs + " ms, frame period: " + (float) frameTime / 1000 + " ms " + frequency, 0, HEIGHT + 1, 0, .4f); // x,y,z, scale factor 
+            String s=String.format("Frame: %d; Exposure %.1f ms; Frame rate: %.1f Hz", getFrameCount(),exposureMs,frameRateHz);
+            exposureRenderer.draw3D(s, 0, HEIGHT + 1, 0, .5f); // x,y,z, scale factor 
             exposureRenderer.end3DRendering();
             gl.glPopMatrix();
         }
@@ -459,6 +473,23 @@ public class SBret10 extends APSDVSchip {
         return exposureMs;
     }
 
+   /**
+    * Returns the frame counter. This value is set on each end-of-frame sample.
+    * 
+     * @return the frameCount
+     */
+    public int getFrameCount() {
+        return frameCount;
+    }
+
+    /**
+     * Sets the frame counter. 
+     * @param frameCount the frameCount to set
+     */
+    public void setFrameCount(int frameCount) {
+        this.frameCount = frameCount;
+    }
+    
     /**
      * Triggers shot of one APS frame
      */
