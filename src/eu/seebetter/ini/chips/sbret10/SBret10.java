@@ -409,10 +409,8 @@ public class SBret10 extends APSDVSchip {
         private void exposureRender(GL gl) {
             gl.glPushMatrix();
             exposureRenderer.begin3DRendering();  // TODO make string rendering more efficient here using String.format or StringBuilder
-            String frequency = "";
             if (frameTime > 0) {
                 setFrameRateHz((float) 1000000 / frameTime);
-                frequency = String.format("(%.2f Hz)", frameRateHz);
             }
             setExposureMs((float) exposure / 1000);
             String s=String.format("Frame: %d; Exposure %.1f ms; Frame rate: %.1f Hz", getFrameCount(),exposureMs,frameRateHz);
