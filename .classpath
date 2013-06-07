@@ -5,16 +5,37 @@
 			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="java/jars"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="src" path="subprojects/JSpikeStack/src">
+		<attributes>
+			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="java/subprojects/JSpikeStack/jars"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="lib" path="dist/jAER.jar"/>
-	<classpathentry kind="lib" path="jars/comm.jar"/>
-	<classpathentry kind="lib" path="jars/gluegen-rt.jar"/>
-	<classpathentry kind="lib" path="jars/jogl.jar"/>
-	<classpathentry kind="lib" path="jars/jsr80_linux-1.0.1.jar"/>
-	<classpathentry kind="lib" path="jars/jsr80_ri-1.0.1.jar"/>
-	<classpathentry kind="lib" path="jars/jsr80-1.0.1.jar"/>
-	<classpathentry kind="lib" path="jars/spread.jar"/>
-	<classpathentry kind="lib" path="jars/swing-layout-0.9.jar"/>
-	<classpathentry kind="lib" path="jars/UsbIoJava.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="jars/javacv/javacpp.jar"/>
+	<classpathentry kind="lib" path="jars/javacv/javacv-windows-x86.jar"/>
+	<classpathentry kind="lib" path="jars/javacv/javacv.jar"/>
+	<classpathentry kind="lib" path="jars/AbsoluteLayout.jar"/>
+	<classpathentry kind="lib" path="jars/beansbinding-1.2.1.jar"/>
+	<classpathentry kind="lib" path="jars/BrowserLauncher2-all-1_3.jar"/>
+	<classpathentry kind="lib" path="jars/comm.jar"/>
+	<classpathentry kind="lib" path="jars/commons-net-2.2.jar"/>
+	<classpathentry kind="lib" path="jars/flanagan.jar"/>
+	<classpathentry kind="lib" path="jars/gluegen-rt.jar"/>
+	<classpathentry kind="lib" path="jars/jinput-test.jar"/>
+	<classpathentry kind="lib" path="jars/jinput.jar"/>
+	<classpathentry kind="lib" path="jars/jlfgr-1_0.jar"/>
+	<classpathentry kind="lib" path="jars/jogl.jar"/>
+	<classpathentry kind="lib" path="jars/mail.jar"/>
+	<classpathentry kind="lib" path="jars/phidget21.jar"/>
+	<classpathentry kind="lib" path="jars/prefs-0.8.jar"/>
+	<classpathentry kind="lib" path="jars/RXTXcomm.jar"/>
+	<classpathentry kind="lib" path="jars/spread.jar"/>
+	<classpathentry kind="lib" path="jars/svgSalamander-tiny.jar"/>
+	<classpathentry kind="lib" path="jars/swing-layout-1.0.4.jar"/>
+	<classpathentry kind="lib" path="jars/UsbIoJava.jar"/>
+	<classpathentry kind="lib" path="subprojects/JSpikeStack/jars/jcommon-1.0.17.jar"/>
+	<classpathentry kind="lib" path="subprojects/JSpikeStack/jars/jfreechart-1.0.14.jar"/>
+	<classpathentry kind="lib" path="subprojects/JSpikeStack/jars/jfreechart-1.0.14-experimental.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
