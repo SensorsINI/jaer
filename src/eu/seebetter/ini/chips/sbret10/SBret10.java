@@ -413,7 +413,7 @@ public class SBret10 extends APSDVSchip {
                 setFrameRateHz((float) 1000000 / frameTime);
             }
             setExposureMs((float) exposure / 1000);
-            String s=String.format("Frame: %d; Exposure %.1f ms; Frame rate: %.1f Hz", getFrameCount(),exposureMs,frameRateHz);
+            String s=String.format("Frame: %d; Exposure %.2f ms; Frame rate: %.2f Hz", getFrameCount(),exposureMs,frameRateHz);
             exposureRenderer.draw3D(s, 0, HEIGHT + 1, 0, .5f); // x,y,z, scale factor 
             exposureRenderer.end3DRendering();
             gl.glPopMatrix();
@@ -537,5 +537,15 @@ public class SBret10 extends APSDVSchip {
         getPrefs().putBoolean("SBRet10.showImageHistogram", yes);
     }
     
+    /** Controls exposure automatically to try to optimize captured gray levels
+     * 
+     */
+    private class AutoExposureController {
+        
+        public void controlExposure(){
+            AbstractHistogram hist=apsDVSrenderer.getAdcSampleValueHistogram();
+            
+        }
+    }
     
 }

@@ -326,7 +326,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         jLabel6.setText("Contrast");
 
         autoshotThresholdSp.setModel(new javax.swing.SpinnerNumberModel(Integer.valueOf(0), Integer.valueOf(0), null, Integer.valueOf(1)));
-        autoshotThresholdSp.setToolTipText("Set non-zero to automatically trigger APS frame captures every this many thousand DVS events");
+        autoshotThresholdSp.setToolTipText("<html>Set non-zero to automatically trigger APS frame captures every this many thousand DVS events. <br>For better control of automatic frame capture,<br> including the use of pre-filtering of the DVS events, use the filter ApsDvsAutoShooter.");
         autoshotThresholdSp.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 autoshotThresholdSpStateChanged(evt);

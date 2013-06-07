@@ -382,7 +382,7 @@
             <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
               <SpinnerModel initial="0" minimum="0" numberType="java.lang.Integer" stepSize="1" type="number"/>
             </Property>
-            <Property name="toolTipText" type="java.lang.String" value="Set non-zero to automatically trigger APS frame captures every this many thousand DVS events"/>
+            <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Set non-zero to automatically trigger APS frame captures every this many thousand DVS events. &lt;br&gt;For better control of automatic frame capture,&lt;br&gt; including the use of pre-filtering of the DVS events, use the filter ApsDvsAutoShooter."/>
           </Properties>
           <Events>
             <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="autoshotThresholdSpStateChanged"/>
