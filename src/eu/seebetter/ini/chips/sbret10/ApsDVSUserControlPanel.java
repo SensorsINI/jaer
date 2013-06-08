@@ -14,6 +14,7 @@ import java.beans.PropertyChangeListener;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Logger;
+import javax.swing.JSpinner;
 import net.sf.jaer.biasgen.PotTweaker;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.config.ApsDvsConfig;
@@ -55,30 +56,10 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         deCB.setSelected(apsDvsConfig.isDisplayEvents());
         diCB.setSelected(apsDvsConfig.isDisplayFrames());
         autoshotThresholdSp.setValue(this.chip.getAutoshotThresholdEvents()>>10);
-        autoshotThresholdSp.addMouseWheelListener(new MouseWheelListener() {
-            public void mouseWheelMoved(MouseWheelEvent mwe) {
-                if (mwe.getScrollType() != MouseWheelEvent.WHEEL_UNIT_SCROLL) {
-                    return;
-                }
-                int value = (Integer) autoshotThresholdSp.getValue();
-                // based on current value change value by certain amount
-                int mult = 1;
-                if (value > 10) {
-                    mult = 5;
-                } else if (value > 50) {
-                    mult = 10;
-                } else if (value > 200) {
-                    mult = 20;
-                } else if (value > 1000) {
-                    mult = 100;
-                }
-                value -= mult * mwe.getUnitsToScroll();
-                if (value < 0) {
-                    value = 0;
-                }
-                autoshotThresholdSp.setValue(value);
-            }
-        });
+        final int[] vals={10,100,1000}, mults={1,10,100};
+        autoshotThresholdSp.addMouseWheelListener(new SpinnerMouseWheelHandler(vals, mults));
+        fdSp.addMouseWheelListener(new SpinnerMouseWheelHandler(vals, mults));
+        edSp.addMouseWheelListener(new SpinnerMouseWheelHandler(vals, mults));
         if (apsDvsConfig instanceof SBret10config) {
             // add us as observer for various property changes 
             SBret10config config=(SBret10config)apsDvsConfig;
@@ -93,7 +74,51 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         }
     }
 
-    
+    private class SpinnerMouseWheelHandler implements MouseWheelListener {
+
+        private final int[] vals, mults;
+
+        /**
+         * Constructs a new instance with defaults of 10,100,1000 and 1,10,100
+         * vals and multipliers
+         */
+        SpinnerMouseWheelHandler() {
+            this(new int[]{10, 100, 1000}, new int[]{1, 10, 100});
+        }
+
+        /**
+         * Constructs a new instance
+         *
+         * @param vals the threshold values
+         * @param mults the multipliers for spinner values less than or equal to
+         * that number
+         */
+        SpinnerMouseWheelHandler(int[] vals, int[] mults){
+            if(vals==null || mults==null) throw new RuntimeException("vals or mults is null");
+            if(vals.length!=mults.length) throw new RuntimeException("vals and mults array must be same length and they are not: vals.length="+vals.length+" mults.length="+mults.length);
+            this.vals=vals;
+            this.mults=mults;
+        }
+        public void mouseWheelMoved(MouseWheelEvent mwe) {
+            JSpinner spinner = (JSpinner) mwe.getSource();
+            if (mwe.getScrollType() != MouseWheelEvent.WHEEL_UNIT_SCROLL) {
+                return;
+            }
+            int value = (Integer) spinner.getValue();
+            int i=0;
+            for(i=0;i<vals.length;i++){
+                if(value<vals[i]) break;
+            }
+            if(i>=vals.length)i=vals.length-1;
+            int mult=mults[i];
+            value -= mult * mwe.getWheelRotation();
+            if (value < 0) {
+                value = 0;
+            }
+            spinner.setValue(value);
+        }
+    }
+
     private void setFileModified() {
         if (getChip() != null && getChip().getAeViewer() != null && getChip().getAeViewer().getBiasgenFrame() != null) {
             getChip().getAeViewer().getBiasgenFrame().setFileModified(true);
@@ -282,7 +307,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
 
         jLabel1.setText("Frame Delay (ms)");
 
-        fdSp.setModel(new javax.swing.SpinnerNumberModel(Integer.valueOf(0), Integer.valueOf(0), null, Integer.valueOf(100)));
+        fdSp.setModel(new javax.swing.SpinnerNumberModel(Integer.valueOf(0), Integer.valueOf(0), null, Integer.valueOf(1)));
         fdSp.setToolTipText("Delay of starting new frame capture after last frame");
         fdSp.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
@@ -292,7 +317,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
 
         jLabel2.setText("Exposure delay (ms)");
 
-        edSp.setModel(new javax.swing.SpinnerNumberModel(Integer.valueOf(0), Integer.valueOf(0), null, Integer.valueOf(1)));
+        edSp.setModel(new javax.swing.SpinnerNumberModel());
         edSp.setToolTipText("The exposure delay; affects actual exposure time");
         edSp.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
@@ -587,6 +612,8 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         }else if(o==videoControl){
             contrastSp.setValue(apsDvsConfig.getContrast());
             autoContrastCB.setSelected(apsDvsConfig.isUseAutoContrast());
+            diCB.setSelected(apsDvsConfig.isDisplayFrames());
+            deCB.setSelected(apsDvsConfig.isDisplayEvents());
         }else if(o==apsReadoutControl){
             edSp.setValue(apsDvsConfig.getExposureDelayMs());
             fdSp.setValue(apsDvsConfig.getFrameDelayMs());
