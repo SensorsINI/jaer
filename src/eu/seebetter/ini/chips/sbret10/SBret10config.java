@@ -321,8 +321,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
         } else {
             // user friendly control panel
             configTabbedPane.add("User-Friendly Controls", userFriendlyControls);
-        }
-//        configPanel.revalidate();
+            configTabbedPane.setSelectedComponent(userFriendlyControls);        }
     }
 
     /**
