@@ -10,7 +10,10 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map.Entry;
+import java.util.Set;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLException;
@@ -125,7 +128,12 @@ public class HotPixelSupressor extends EventFilter2D implements FrameAnnotater {
         }
     }
 
-    private class CollectedAddresses extends HashSet<HotPixel> {
+    private class CollectedAddresses extends HashMap<Integer,HotPixel> {
+
+        public CollectedAddresses(int initialCapacity) {
+            super(initialCapacity);
+        }
+        
     }
 
     public HotPixelSupressor(AEChip chip) {
@@ -147,7 +155,7 @@ public class HotPixelSupressor extends EventFilter2D implements FrameAnnotater {
                 if (learningStarted) {
                     learningStarted = false;
                     learningStartedTimestamp = e.timestamp;
-                    collectedAddresses = new CollectedAddresses();
+                    collectedAddresses = new CollectedAddresses(chip.getNumPixels()/2);
 
                 } else if (e.timestamp - learningStartedTimestamp > (learnTimeMs << 10)) { // ms to us is <<10 approx
                     learnHotPixels = false;
@@ -155,7 +163,10 @@ public class HotPixelSupressor extends EventFilter2D implements FrameAnnotater {
                     for (int i = 0; i < numHotPixels; i++) {
                         int max = 0;
                         HotPixel hp = null;
-                        for (HotPixel p : collectedAddresses) {
+                        Set<Entry<Integer,HotPixel>> hps=collectedAddresses.entrySet();
+                        
+                        for (Entry<Integer,HotPixel> ent : hps) {
+                            HotPixel p=ent.getValue();
                             if (p.count > max) {
                                 max = p.count;
                                 hp = p;
@@ -172,14 +183,10 @@ public class HotPixelSupressor extends EventFilter2D implements FrameAnnotater {
                 } else {
                     // increment count for this address
                     HotPixel thisPixel = new HotPixel(e);
-                    if (collectedAddresses.contains(thisPixel)) {
-                        for (HotPixel p : collectedAddresses) {
-                            if (p.equals(thisPixel)) {
-                                p.incrementCount();
-                            }
-                        }
+                    if (collectedAddresses.get(e.address)!=null) {
+                        collectedAddresses.get(e.address).incrementCount();
                     } else {
-                        collectedAddresses.add(thisPixel);
+                        collectedAddresses.put(e.address,thisPixel);
                     }
                 }
             }
