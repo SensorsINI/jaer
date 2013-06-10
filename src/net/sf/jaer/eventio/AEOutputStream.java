@@ -63,7 +63,11 @@ public class AEOutputStream extends DataOutputStream {
     }
 
     /**
-     *  Writes a packet of events to the stream, using the events contained address and timestamp.
+     *  Writes a packet of events to the stream, using the event's address and timestamp. Each event is written by
+     * <pre>
+           writeInt(e.address);
+            writeInt(e.timestamp);
+            * </pre>
      * 
      * @param packet
      * @throws IOException
