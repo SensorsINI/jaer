@@ -477,7 +477,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         final int n = 3 * array.length;
         System.arraycopy(grayBuffer.array(), 0, array, 0, n);
         pixmap.rewind();
-        pixmap.limit(n);;
+        pixmap.limit(n);
     }
 
     /** Position the pixmap buffer at pixel x,y.
@@ -539,6 +539,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
             log.info("allocating "+n+" floats for pixmap");
             pixmap = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
         }
+        pixmap.rewind();
+        pixmap.limit(n);
     }
 
     /** Indicates that image fills drawable horizontally.
