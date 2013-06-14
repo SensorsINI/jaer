@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
 <Form version="1.5" maxVersion="1.8" type="org.netbeans.modules.form.forminfo.JPanelFormInfo">
+  <NonVisualComponents>
+    <Component class="javax.swing.ButtonGroup" name="dvsColorButGrp">
+    </Component>
+  </NonVisualComponents>
   <AuxValues>
     <AuxValue name="FormSettings_autoResourcing" type="java.lang.Integer" value="0"/>
     <AuxValue name="FormSettings_autoSetComponentName" type="java.lang.Boolean" value="false"/>
@@ -31,7 +35,7 @@
               <Component id="apsPanel" min="-2" max="-2" attributes="0"/>
               <EmptySpace max="-2" attributes="0"/>
               <Component id="dvsPanel" min="-2" max="-2" attributes="0"/>
-              <EmptySpace max="32767" attributes="0"/>
+              <EmptySpace pref="29" max="32767" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -56,28 +60,42 @@
           <Group type="103" groupAlignment="0" attributes="0">
               <Group type="102" attributes="0">
                   <EmptySpace min="-2" max="-2" attributes="0"/>
+                  <Component id="deCB" pref="133" max="32767" attributes="0"/>
+                  <EmptySpace type="separate" max="-2" attributes="0"/>
+                  <Component id="dvsContLabel" min="-2" max="-2" attributes="0"/>
+                  <EmptySpace max="-2" attributes="0"/>
+                  <Component id="dvsContSp" min="-2" max="-2" attributes="0"/>
+                  <EmptySpace max="-2" attributes="0"/>
+                  <Component id="dvsGrayRB" min="-2" max="-2" attributes="0"/>
+                  <EmptySpace max="-2" attributes="0"/>
+                  <Component id="dvsRedGrRB" min="-2" max="-2" attributes="0"/>
+                  <EmptySpace min="-2" pref="46" max="-2" attributes="0"/>
+              </Group>
+              <Group type="102" attributes="0">
+                  <EmptySpace min="10" pref="10" max="-2" attributes="0"/>
                   <Group type="103" groupAlignment="0" attributes="0">
-                      <Group type="102" attributes="0">
-                          <Group type="103" groupAlignment="0" attributes="0">
-                              <Component id="thresholdTweaker" alignment="1" max="32767" attributes="0"/>
-                              <Component id="maxFiringRateTweaker" alignment="1" max="32767" attributes="0"/>
-                              <Component id="onOffBalanceTweaker" alignment="0" max="32767" attributes="0"/>
-                              <Component id="bandwidthTweaker" max="32767" attributes="0"/>
-                          </Group>
-                          <EmptySpace max="-2" attributes="0"/>
-                          <Component id="dvsPixControl" max="32767" attributes="0"/>
-                      </Group>
-                      <Component id="deCB" max="32767" attributes="0"/>
+                      <Component id="thresholdTweaker" alignment="1" max="32767" attributes="0"/>
+                      <Component id="maxFiringRateTweaker" alignment="1" max="32767" attributes="0"/>
+                      <Component id="onOffBalanceTweaker" alignment="0" max="32767" attributes="0"/>
+                      <Component id="bandwidthTweaker" max="32767" attributes="0"/>
                   </Group>
-                  <EmptySpace min="-2" max="-2" attributes="0"/>
+                  <EmptySpace max="-2" attributes="0"/>
+                  <Component id="dvsPixControl" max="32767" attributes="0"/>
+                  <EmptySpace min="10" pref="10" max="-2" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
         <DimensionLayout dim="1">
           <Group type="103" groupAlignment="0" attributes="0">
               <Group type="102" alignment="1" attributes="0">
-                  <Component id="deCB" min="-2" max="-2" attributes="0"/>
-                  <EmptySpace max="32767" attributes="0"/>
+                  <Group type="103" groupAlignment="3" attributes="0">
+                      <Component id="deCB" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="dvsContLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="dvsContSp" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="dvsGrayRB" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="dvsRedGrRB" alignment="3" min="-2" max="-2" attributes="0"/>
+                  </Group>
+                  <EmptySpace pref="6" max="32767" attributes="0"/>
                   <Group type="103" groupAlignment="0" attributes="0">
                       <Component id="dvsPixControl" min="-2" max="-2" attributes="0"/>
                       <Group type="102" attributes="0">
@@ -188,6 +206,46 @@
           </Properties>
           <Events>
             <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="onOffBalanceTweakerStateChanged"/>
+          </Events>
+        </Component>
+        <Component class="javax.swing.JRadioButton" name="dvsRedGrRB">
+          <Properties>
+            <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
+              <ComponentRef name="dvsColorButGrp"/>
+            </Property>
+            <Property name="text" type="java.lang.String" value="Red/Green"/>
+            <Property name="toolTipText" type="java.lang.String" value="Show DVS events rendered as green (ON) and red (OFF) 2d histogram"/>
+          </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="dvsRedGrRBActionPerformed"/>
+          </Events>
+        </Component>
+        <Component class="javax.swing.JRadioButton" name="dvsGrayRB">
+          <Properties>
+            <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
+              <ComponentRef name="dvsColorButGrp"/>
+            </Property>
+            <Property name="text" type="java.lang.String" value="Gray"/>
+            <Property name="toolTipText" type="java.lang.String" value="Show DVS events rendered as gray scale 2d histogram"/>
+          </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="dvsGrayRBActionPerformed"/>
+          </Events>
+        </Component>
+        <Component class="javax.swing.JLabel" name="dvsContLabel">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="Contrast"/>
+          </Properties>
+        </Component>
+        <Component class="javax.swing.JSpinner" name="dvsContSp">
+          <Properties>
+            <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
+              <SpinnerModel initial="1" minimum="1" numberType="java.lang.Integer" stepSize="1" type="number"/>
+            </Property>
+            <Property name="toolTipText" type="java.lang.String" value="Rendering contrast  of DVS events (1 is default). This many events makes full scale color, either black/white or red/green."/>
+          </Properties>
+          <Events>
+            <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="dvsContSpStateChanged"/>
           </Events>
         </Component>
       </SubComponents>

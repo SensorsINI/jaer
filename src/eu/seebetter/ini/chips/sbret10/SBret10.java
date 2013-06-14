@@ -163,6 +163,8 @@ public class SBret10 extends APSDVSchip {
 
         private int firstFrameTs = 0;
         private int autoshotEventsSinceLastShot=0; // autoshot counter
+        private int warningCount=0;
+        private static final int  WARNING_COUNT_DIVIDER=10000;
 
         public SBret10Extractor(SBret10 chip) {
             super(chip);
@@ -245,7 +247,10 @@ public class SBret10 extends APSDVSchip {
                             log.warning("Event with readout cycle null was sent out!");
                             break;
                         default:
-                            log.warning("Event with unknown readout cycle was sent out!");
+                            if (warningCount < 10 || warningCount % WARNING_COUNT_DIVIDER == 0) {
+                                log.warning("Event with unknown readout cycle was sent out! You might be reading a file that had the deprecated C readout mode enabled.");
+                            }
+                            warningCount++;
                     }
                     e.special = false;
                     e.timestamp = (timestamps[i]);

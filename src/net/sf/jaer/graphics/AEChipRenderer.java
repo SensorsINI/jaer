@@ -37,7 +37,7 @@ public class AEChipRenderer extends Chip2DRenderer {
         return support;
     }
     /** PropertyChange events */
-    public static final String COLOR_SCALE = "colorScale", COLOR_MODE = "colorMode";
+    public static final String PROPERTY_COLOR_SCALE = "colorScale", PROPERTY_COLOR_MODE = "colorMode";
 
     /**
      * @return the specialCount
@@ -173,7 +173,7 @@ public class AEChipRenderer extends Chip2DRenderer {
                 log.warning("colorMode " + colorMode + " unknown, reset to default value 0");
                 setColorMode(ColorMode.GrayLevel);
         }
-        getSupport().firePropertyChange(COLOR_SCALE, old, colorScale);
+        getSupport().firePropertyChange(PROPERTY_COLOR_SCALE, old, colorScale);
     }
 
     /**
@@ -624,11 +624,11 @@ public class AEChipRenderer extends Chip2DRenderer {
     /**@param colorMode the rendering method, e.g. gray, red/green opponency, time encoded.
      */
     public synchronized void setColorMode(ColorMode colorMode) {
-        ColorMode old = colorMode;
+        ColorMode old = this.colorMode;
         this.colorMode = colorMode;
         prefs.put("ChipRenderer.colorMode", colorMode.toString());
         log.info("set colorMode=" + colorMode);
-        getSupport().firePropertyChange(COLOR_MODE, old, colorMode);
+        getSupport().firePropertyChange(PROPERTY_COLOR_MODE, old, colorMode);
 //        if (method<0 || method >NUM_METHODS-1)            throw new RuntimeException("no such rendering method "+method);
 //        this.method = method;
 //        prefs.putInt("ChipRenderer.method",method);

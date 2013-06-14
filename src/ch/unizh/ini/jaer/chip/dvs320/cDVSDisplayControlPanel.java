@@ -34,7 +34,7 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
         this.displayMethod=(cDVSTest20DisplayMethod)chip.getCanvas().getDisplayMethod();
         this.renderer=(cDVSTest20Renderer)chip.getRenderer();
         initComponents();
-        renderer.getSupport().addPropertyChangeListener(AEChipRenderer.COLOR_SCALE, this);
+        renderer.getSupport().addPropertyChangeListener(AEChipRenderer.PROPERTY_COLOR_SCALE, this);
         renderer.getSupport().addPropertyChangeListener(cDVSTest20Renderer.AGC_VALUES, this);
         renderer.getSupport().addPropertyChangeListener(cDVSTest20Renderer.LOG_INTENSITY_GAIN, this);
         renderer.getSupport().addPropertyChangeListener(cDVSTest20Renderer.LOG_INTENSITY_OFFSET, this);
@@ -618,7 +618,7 @@ public class cDVSDisplayControlPanel extends javax.swing.JPanel implements Prope
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if(evt.getPropertyName()==AEChipRenderer.COLOR_SCALE){
+        if(evt.getPropertyName()==AEChipRenderer.PROPERTY_COLOR_SCALE){
             colorScaleSpinner.setValue((Integer)evt.getNewValue());
         }else if(evt.getPropertyName()==cDVSTest20Renderer.AGC_VALUES){
             Point2D.Float f=(Point2D.Float)evt.getNewValue();

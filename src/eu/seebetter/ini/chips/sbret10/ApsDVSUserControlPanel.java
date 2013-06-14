@@ -18,6 +18,7 @@ import javax.swing.JSpinner;
 import net.sf.jaer.biasgen.PotTweaker;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.config.ApsDvsConfig;
+import net.sf.jaer.graphics.AEChipRenderer;
 
 /**
  * Wraps some key apsDVS sensor control in more user-friendly control panel.
@@ -31,7 +32,8 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
     protected ApsDvsConfig apsDvsConfig;
     SBret10config.VideoControl videoControl;
     SBret10config.ApsReadoutControl apsReadoutControl;
-    
+         AEChipRenderer renderer=null;
+   
     private static final Logger log = Logger.getLogger("DVSFunctionalControlPanel");
     CPLDInt exposureCPLDInt, frameDelayCPLDInt;
     
@@ -40,7 +42,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
      */
     public ApsDVSUserControlPanel(AEChip chip) {
         this.chip=(APSDVSchip)chip; // will throw ClassCastException if not right kind of chip.
-        
+        renderer=this.chip.getRenderer();
         apsDvsTweaks = (ApsDvsTweaks) chip.getBiasgen();
         apsDvsConfig = (ApsDvsConfig) chip.getBiasgen();
          initComponents();
@@ -60,6 +62,10 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         autoshotThresholdSp.addMouseWheelListener(new SpinnerMouseWheelHandler(vals, mults));
         fdSp.addMouseWheelListener(new SpinnerMouseWheelHandler(vals, mults));
         edSp.addMouseWheelListener(new SpinnerMouseWheelHandler(vals, mults));
+        dvsContSp.addMouseWheelListener(new SpinnerMouseWheelHandler(new int[]{10,20},new int[]{1,2}));
+        dvsContSp.setValue(renderer.getColorScale());
+        setDvsColorModeRadioButtons();
+        renderer.getSupport().addPropertyChangeListener(this);
         if (apsDvsConfig instanceof SBret10config) {
             // add us as observer for various property changes 
             SBret10config config=(SBret10config)apsDvsConfig;
@@ -69,8 +75,21 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
             videoControl.addObserver(this); // contrast and useAutoContrast updates come here
             apsReadoutControl=config.apsReadoutControl;
             apsReadoutControl.addObserver(this);
-//            config.exposure.addObserver(this);
+ //            config.exposure.addObserver(this);
 //            config.frameDelay.addObserver(this); // TODO generates loop that resets the spinner if the new spinner value does not change the exposure in ms according to new register value
+        }
+    }
+
+    private void setDvsColorModeRadioButtons() {
+        switch(renderer.getColorMode()){
+            case RedGreen:
+                dvsRedGrRB.setSelected(true);
+                break;
+            case GrayLevel:
+                dvsGrayRB.setSelected(true);
+                break;
+            default:
+                dvsColorButGrp.clearSelection();
         }
     }
 
@@ -154,6 +173,10 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
                 exposMsTF.setText(String.format("%.3f",(Float)evt.getNewValue()));
             }else if (name==APSDVSchip.PROPERTY_FRAME_RATE_HZ){
                 fpsTF.setText(String.format("%.3f",(Float)evt.getNewValue()));
+            }else if (name==AEChipRenderer.PROPERTY_COLOR_MODE){
+                setDvsColorModeRadioButtons();
+            }else if(name==AEChipRenderer.PROPERTY_COLOR_SCALE){
+                dvsContSp.setValue(renderer.getColorScale());
             }
         } catch (Exception e) {
             log.warning("responding to property change, caught " + e.toString());
@@ -172,6 +195,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
     private void initComponents() {
         bindingGroup = new org.jdesktop.beansbinding.BindingGroup();
 
+        dvsColorButGrp = new javax.swing.ButtonGroup();
         dvsPanel = new javax.swing.JPanel();
         deCB = new javax.swing.JCheckBox();
         dvsPixControl = new javax.swing.JPanel();
@@ -179,6 +203,10 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         thresholdTweaker = new net.sf.jaer.biasgen.PotTweaker();
         maxFiringRateTweaker = new net.sf.jaer.biasgen.PotTweaker();
         onOffBalanceTweaker = new net.sf.jaer.biasgen.PotTweaker();
+        dvsRedGrRB = new javax.swing.JRadioButton();
+        dvsGrayRB = new javax.swing.JRadioButton();
+        dvsContLabel = new javax.swing.JLabel();
+        dvsContSp = new javax.swing.JSpinner();
         apsPanel = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
         fdSp = new javax.swing.JSpinner();
@@ -266,29 +294,71 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
             }
         });
 
+        dvsColorButGrp.add(dvsRedGrRB);
+        dvsRedGrRB.setText("Red/Green");
+        dvsRedGrRB.setToolTipText("Show DVS events rendered as green (ON) and red (OFF) 2d histogram");
+        dvsRedGrRB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                dvsRedGrRBActionPerformed(evt);
+            }
+        });
+
+        dvsColorButGrp.add(dvsGrayRB);
+        dvsGrayRB.setText("Gray");
+        dvsGrayRB.setToolTipText("Show DVS events rendered as gray scale 2d histogram");
+        dvsGrayRB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                dvsGrayRBActionPerformed(evt);
+            }
+        });
+
+        dvsContLabel.setText("Contrast");
+
+        dvsContSp.setModel(new javax.swing.SpinnerNumberModel(Integer.valueOf(1), Integer.valueOf(1), null, Integer.valueOf(1)));
+        dvsContSp.setToolTipText("Rendering contrast  of DVS events (1 is default). This many events makes full scale color, either black/white or red/green.");
+        dvsContSp.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                dvsContSpStateChanged(evt);
+            }
+        });
+
         javax.swing.GroupLayout dvsPanelLayout = new javax.swing.GroupLayout(dvsPanel);
         dvsPanel.setLayout(dvsPanelLayout);
         dvsPanelLayout.setHorizontalGroup(
             dvsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(dvsPanelLayout.createSequentialGroup()
                 .addContainerGap()
+                .addComponent(deCB, javax.swing.GroupLayout.DEFAULT_SIZE, 133, Short.MAX_VALUE)
+                .addGap(18, 18, 18)
+                .addComponent(dvsContLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(dvsContSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(dvsGrayRB)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(dvsRedGrRB)
+                .addGap(46, 46, 46))
+            .addGroup(dvsPanelLayout.createSequentialGroup()
+                .addGap(10, 10, 10)
                 .addGroup(dvsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(dvsPanelLayout.createSequentialGroup()
-                        .addGroup(dvsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(thresholdTweaker, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(maxFiringRateTweaker, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(onOffBalanceTweaker, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(bandwidthTweaker, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(dvsPixControl, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addComponent(deCB, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addContainerGap())
+                    .addComponent(thresholdTweaker, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(maxFiringRateTweaker, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(onOffBalanceTweaker, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(bandwidthTweaker, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(dvsPixControl, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGap(10, 10, 10))
         );
         dvsPanelLayout.setVerticalGroup(
             dvsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, dvsPanelLayout.createSequentialGroup()
-                .addComponent(deCB)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(dvsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(deCB)
+                    .addComponent(dvsContLabel)
+                    .addComponent(dvsContSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(dvsGrayRB)
+                    .addComponent(dvsRedGrRB))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 6, Short.MAX_VALUE)
                 .addGroup(dvsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(dvsPixControl, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addGroup(dvsPanelLayout.createSequentialGroup()
@@ -482,7 +552,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
                 .addComponent(apsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(dvsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(29, Short.MAX_VALUE))
         );
 
         bindingGroup.bind();
@@ -548,6 +618,18 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
        chip.setShowImageHistogram(histCB.isSelected());
     }//GEN-LAST:event_histCBActionPerformed
 
+    private void dvsGrayRBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dvsGrayRBActionPerformed
+        renderer.setColorMode(AEChipRenderer.ColorMode.GrayLevel);
+    }//GEN-LAST:event_dvsGrayRBActionPerformed
+
+    private void dvsRedGrRBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dvsRedGrRBActionPerformed
+        renderer.setColorMode(AEChipRenderer.ColorMode.RedGreen);
+    }//GEN-LAST:event_dvsRedGrRBActionPerformed
+
+    private void dvsContSpStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_dvsContSpStateChanged
+        renderer.setColorScale((Integer)dvsContSp.getValue());
+    }//GEN-LAST:event_dvsContSpStateChanged
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel apsPanel;
     private javax.swing.JCheckBox autoContrastCB;
@@ -557,8 +639,13 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
     private javax.swing.JSpinner contrastSp;
     private javax.swing.JCheckBox deCB;
     private javax.swing.JCheckBox diCB;
+    private javax.swing.ButtonGroup dvsColorButGrp;
+    private javax.swing.JLabel dvsContLabel;
+    private javax.swing.JSpinner dvsContSp;
+    private javax.swing.JRadioButton dvsGrayRB;
     private javax.swing.JPanel dvsPanel;
     private javax.swing.JPanel dvsPixControl;
+    private javax.swing.JRadioButton dvsRedGrRB;
     private javax.swing.JSpinner edSp;
     private javax.swing.JTextField exposMsTF;
     private javax.swing.JSpinner fdSp;
