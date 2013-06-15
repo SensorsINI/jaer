@@ -31,12 +31,7 @@ import javax.swing.JButton;
  */
 public class AEChipRenderer extends Chip2DRenderer {
 
-    PropertyChangeSupport support = new PropertyChangeSupport(this);
-
-    public PropertyChangeSupport getSupport() {
-        return support;
-    }
-    /** PropertyChange events */
+     /** PropertyChange events */
     public static final String PROPERTY_COLOR_SCALE = "colorScale", PROPERTY_COLOR_MODE = "colorMode";
 
     /**

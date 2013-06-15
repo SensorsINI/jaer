@@ -1,5 +1,6 @@
 package net.sf.jaer.graphics;
 
+import java.beans.PropertyChangeSupport;
 import java.nio.FloatBuffer;
 import java.util.Observable;
 import java.util.Observer;
@@ -18,6 +19,11 @@ A general class for rendering chip output to a 2d array of float values for draw
  */
 public class Chip2DRenderer implements Observer {
 
+   PropertyChangeSupport support = new PropertyChangeSupport(this);
+
+    public PropertyChangeSupport getSupport() {
+        return support;
+    }
     protected static Logger log=Logger.getLogger(Chip2DRenderer.class.getSimpleName());
     private int sizeX,  sizeY;
     protected Preferences prefs = Preferences.userNodeForPackage(Chip2DRenderer.class);
