@@ -24,6 +24,8 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
@@ -41,11 +43,17 @@ import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ContinuousOutputViewerManager
 import eu.seebetter.ini.chips.APSDVSchip;
 
 /**
- * Filter class that uses a defined kernel function to compute not spatially filtered output spikes.
+ * Filter class for applying convolution kernels to the output of the DVS (tested on DVS128 and APS-DVS).
+ * The user can create multiple response fields and connect these through convolution kernels. The 
+ * units in the response fields can have various response properties (for example  LIF), which can be modified by implementing 
+ * new child-classes of {@link FiringModel}.
+ * 
  * 
  * @author Dennis Goehlsdorf
  *
  */
+@Description("Allows to apply user-defined series of convolution filters")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SpatioTemporalFusion extends EventFilter2D { //implements ActionListener {
 
 	static ArrayList<SpatioTemporalFusion> runningInstances = new ArrayList<SpatioTemporalFusion>();
