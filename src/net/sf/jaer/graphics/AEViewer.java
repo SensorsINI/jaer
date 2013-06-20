@@ -12,7 +12,6 @@ import java.net.SocketException;
 import java.net.URI;
 import java.net.URL;
 import javax.swing.Timer;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2FirmwareFilennameChooserOkCancelDialog;

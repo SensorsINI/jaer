@@ -5,9 +5,6 @@
  */
 package net.sf.jaer.biasgen;
 
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
-import net.sf.jaer.hardwareinterface.udp.*;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.hardwareinterface.*;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;

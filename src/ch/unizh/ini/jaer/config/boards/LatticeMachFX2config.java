@@ -105,6 +105,10 @@ public class LatticeMachFX2config extends Biasgen implements HasPreference{
         if (getHardwareInterface() != null && getHardwareInterface() instanceof CypressFX2) {
             ((CypressFX2) getHardwareInterface()).sendVendorRequest(VR_WRITE_CONFIG, (short) (0xffff & cmd.code), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
         }
+        
+        if (getHardwareInterface() != null && getHardwareInterface() instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2) {
+            ((net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2) getHardwareInterface()).sendVendorRequest(VR_WRITE_CONFIG, (short) (0xffff & cmd.code), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
+        }
     }
     
     protected void sendFx2Config(){

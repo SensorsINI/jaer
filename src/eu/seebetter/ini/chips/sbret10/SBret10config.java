@@ -38,7 +38,6 @@ import net.sf.jaer.chip.Chip;
 import net.sf.jaer.config.ApsDvsConfig;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.ApsDvsHardwareInterface;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.util.HasPropertyTooltips;
 import net.sf.jaer.util.ParameterControlPanel;
 import net.sf.jaer.util.PropertyTooltipSupport;
@@ -1004,9 +1003,12 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
                 @Override
                 public void actionPerformed(ActionEvent evt) {
                     if (getHardwareInterface() != null) {
-
-                        if (getHardwareInterface() != null && getHardwareInterface() instanceof ApsDvsHardwareInterface) {
+                        if (getHardwareInterface() instanceof ApsDvsHardwareInterface) {
                             ((ApsDvsHardwareInterface) getHardwareInterface()).setTranslateRowOnlyEvents(((AbstractButton) evt.getSource()).isSelected());
+                        }
+                        
+                        if (getHardwareInterface() instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.ApsDvsHardwareInterface) {
+                            ((net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.ApsDvsHardwareInterface) getHardwareInterface()).setTranslateRowOnlyEvents(((AbstractButton) evt.getSource()).isSelected());
                         }
                     };
                 }
