@@ -37,5 +37,9 @@
 	<classpathentry kind="lib" path="subprojects/JSpikeStack/jars/jcommon-1.0.17.jar"/>
 	<classpathentry kind="lib" path="subprojects/JSpikeStack/jars/jfreechart-1.0.14.jar"/>
 	<classpathentry kind="lib" path="subprojects/JSpikeStack/jars/jfreechart-1.0.14-experimental.jar"/>
+	<classpathentry kind="lib" path="jars/commons-lang3-3.1.jar"/>
+	<classpathentry kind="lib" path="jars/usb-api-1.0.2.jar"/>
+	<classpathentry kind="lib" path="jars/usb4java-1.1.0.jar"/>
+	<classpathentry kind="lib" path="jars/USBTransferThread-0.7.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
