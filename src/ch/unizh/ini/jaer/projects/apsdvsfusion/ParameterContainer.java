@@ -27,7 +27,9 @@ import javax.swing.JComponent;
 
 
 /**
- * 
+ * Class for providing editing abilities to the GUI. An instance of ParameterContainer will self-inspect itself and discover Getter- and Setter-Functions as well 
+ * as functions starting with 'do'. These functions are used by  
+ * These are 
  * @author Dennis Goehlsdorf, derived from Peter OConnor's Controllable, which was derived from Tobi Delbruck's EventFilter
  */
 public abstract class ParameterContainer implements /*Serializable,*/ PropertyChangeListener {

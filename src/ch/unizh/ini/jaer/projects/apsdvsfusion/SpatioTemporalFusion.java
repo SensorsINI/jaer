@@ -41,7 +41,6 @@ import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterBrowserPanel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ContinuousOutputViewerManager;
 //import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
 import eu.seebetter.ini.chips.APSDVSchip;
-
 /**
  * Filter class for applying convolution kernels to the output of the DVS (tested on DVS128 and APS-DVS).
  * The user can create multiple response fields and connect these through convolution kernels. The 
@@ -52,12 +51,24 @@ import eu.seebetter.ini.chips.APSDVSchip;
  * @author Dennis Goehlsdorf
  *
  */
+/**
+ * @author Dennis
+ *
+ */
 @Description("Allows to apply user-defined series of convolution filters")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SpatioTemporalFusion extends EventFilter2D { //implements ActionListener {
 
 	static ArrayList<SpatioTemporalFusion> runningInstances = new ArrayList<SpatioTemporalFusion>();
 	
+	/**
+	 * Returns the filter instance that manages the SignalHandler requestingKernel	
+	 * 
+	 * Attention: Currently, only one running instance of SpatioTemporalFusion is supported. This function will always return the first created instance
+	 * of SpatioTemporalFusion!
+	 * @param requestingKernel The SignalHandler that searches for its managing filter instance.
+	 * @return An instance of SpatioTemporalFusion
+	 */
 	static SpatioTemporalFusion getInstance(SignalHandler requestingKernel) {
 		if (runningInstances.size() == 0)
 			return null;
@@ -66,6 +77,14 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		}
 	}
 	
+	/**
+	 * Returns the filter instance that manages the FiringModelMap requestingMap	
+	 * 
+	 * Attention: Currently, only one running instance of SpatioTemporalFusion is supported. This function will always return the first created instance
+	 * of SpatioTemporalFusion!
+	 * @param requestingMap The FiringModelMap that searches for its managing filter instance.
+	 * @return An instance of SpatioTemporalFusion
+	 */
 	static SpatioTemporalFusion getInstance(FiringModelMap requestingMap) {
 		if (runningInstances.size() == 0)
 			return null;
@@ -74,12 +93,27 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		}
 	}
 	
+	/**
+	 * Returns a lock object that is used to make sure changes to the data structure are only executed when the filter is inactive.
+	 * 
+	 * Attention: Currently, only one running instance of SpatioTemporalFusion is supported. getInstance needs to be modified for a support of more instances.
+	 * @param requestingKernel An instance of SignalHandler that wants to perform a change to the data structure.
+	 * @return A lock object.
+	 */
 	static Object getFilteringLock(SignalHandler requestingKernel) {
 		SpatioTemporalFusion stf = getInstance(requestingKernel);
 		if (stf != null) 
 			return stf.getFilteringLock();
 		else return new Object();
 	}
+
+	/**
+	 * Returns a lock object that is used to make sure changes to the data structure are only executed when the filter is inactive.
+	 * 
+	 * Attention: Currently, only one running instance of SpatioTemporalFusion is supported. getInstance needs to be modified for a support of more instances.
+	 * @param requestingMap An instance of FiringModelMap that wants to perform a change to the data structure.
+	 * @return A lock object.
+	 */
 	static Object getFilteringLock(FiringModelMap requestingMap) {
 		SpatioTemporalFusion stf = getInstance(requestingMap);
 		if (stf != null) 
