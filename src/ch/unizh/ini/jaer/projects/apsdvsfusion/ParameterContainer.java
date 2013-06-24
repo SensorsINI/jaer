@@ -28,9 +28,13 @@ import javax.swing.JComponent;
 
 /**
  * Class for providing editing abilities to the GUI. An instance of ParameterContainer will self-inspect itself and discover Getter- and Setter-Functions as well 
- * as functions starting with 'do'. These functions are used by  
- * These are 
+ * as functions starting with 'do'. These functions are used by instances of {@link ParameterBrowserPanel} to provide basic editing abilities to the object. 
+ * In addition, Getter- and Setter-functions are used to store parameters in the settings. 
  * @author Dennis Goehlsdorf, derived from Peter OConnor's Controllable, which was derived from Tobi Delbruck's EventFilter
+ */
+/**
+ * @author Dennis
+ *
  */
 public abstract class ParameterContainer implements /*Serializable,*/ PropertyChangeListener {
 
@@ -191,12 +195,22 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 	}
 
 	private JComponent myControls = null;
+	
+	
+	/** 
+	 * @return A JComponent containing object-specific custom controls.
+	 */
 	public final JComponent getCustomControls() {
 		if (myControls == null) 
 			myControls = createCustomControls();
-		return createCustomControls();
+		return myControls;//createCustomControls();
 	}
 
+	/** 
+	 * Allows the definition of custom controls for child classes of ParameterContainer.
+	 * Overwrite this function to define additional control elements for child classes!
+	 * @return A newly created instance of JComponent containing custom controls.
+	 */
 	protected JComponent createCustomControls() {
 		return null;
 	}
@@ -377,12 +391,19 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 		return property2GroupMap != null;
 	}
 
+    /**
+     * Restores all editable parameters from the settings file.
+     */
     public void restoreParameters() {
     	for (SingleParameter<?> sp : setterMethods.values()) {
     		sp.restore();
     	}
     }
     
+	/**
+	 * Uses self-reflection to discover editable parameters. These parameters will be monitored and changes will be saved in a Settings-file, which allows automatic
+	 * restoration of parameters. 
+	 */
 	private void discoverParameters() {
         BeanInfo info;
 		try {
@@ -507,10 +528,23 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 		}
 	}
 
+	/**
+	 * Defines a property as not requiring any editing abilities.
+	 * ParameterBrowserPanel will not create any GUI elements for properties
+	 * excluded with this function.
+	 * 
+	 * @param propertyName The name of the property which should be excluded from automatic GUI creation.
+	 */
 	public void addExcludedProperty(String propertyName) {
 		excludedProperties.add(propertyName);
 	}
 	
+	
+	/**
+	 * Returns whether a certain property should be excluded from automatic GUI creation. 
+	 * @param propertyName The name of the property.
+	 * @return True, if the property should not automatically be editable.
+	 */
 	public boolean isPropertyExcluded(String propertyName) {
 		return excludedProperties.contains(propertyName);
 	}
