@@ -26,6 +26,8 @@ import java.util.prefs.Preferences;
 import javax.swing.ProgressMonitor;
 
 import jp.ac.osakau.eng.eei.IVS128HardwareInterface;
+import li.longi.USBTransferThread.RestrictedTransfer;
+import li.longi.USBTransferThread.RestrictedTransferCallback;
 import li.longi.USBTransferThread.USBTransferThread;
 import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
@@ -46,8 +48,6 @@ import de.ailis.usb4java.libusb.Device;
 import de.ailis.usb4java.libusb.DeviceDescriptor;
 import de.ailis.usb4java.libusb.DeviceHandle;
 import de.ailis.usb4java.libusb.LibUsb;
-import de.ailis.usb4java.libusb.Transfer;
-import de.ailis.usb4java.libusb.TransferCallback;
 import de.ailis.usb4java.utils.BufferUtils;
 
 /**
@@ -1128,9 +1128,14 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 			usbTransfer.start();
 		}
 
-		private class ProcessStatusMessages implements TransferCallback {
+		private class ProcessStatusMessages implements RestrictedTransferCallback {
 			@Override
-			public void processTransfer(final Transfer transfer) {
+			public void prepareTransfer(final RestrictedTransfer transfer) {
+				// Nothing to do here.
+			}
+
+			@Override
+			public void processTransfer(final RestrictedTransfer transfer) {
 				if (transfer.status() != LibUsb.TRANSFER_COMPLETED) {
 					if (transfer.status() != LibUsb.TRANSFER_CANCELLED) {
 						CypressFX2.log.warning("Error waiting for completion of read on status pipe: "
@@ -1281,7 +1286,12 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 			timestampsReset = true; // will inform reader thread that timestamps are reset
 		}
 
-		class ProcessAEData implements TransferCallback {
+		class ProcessAEData implements RestrictedTransferCallback {
+			@Override
+			public void prepareTransfer(final RestrictedTransfer transfer) {
+				// Nothing to do here.
+			}
+
 			/**
 			 * Called on completion of read on a data buffer is received from USBIO driver.
 			 * 
@@ -1289,7 +1299,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 			 *            the data buffer with raw data
 			 */
 			@Override
-			public void processTransfer(final Transfer transfer) {
+			public void processTransfer(final RestrictedTransfer transfer) {
 				cycleCounter++;
 
 				synchronized (aePacketRawPool) {
