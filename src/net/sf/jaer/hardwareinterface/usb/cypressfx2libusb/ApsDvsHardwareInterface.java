@@ -11,6 +11,8 @@ import java.io.LineNumberReader;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import javax.swing.ProgressMonitor;
+
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import de.ailis.usb4java.libusb.Device;
@@ -103,9 +105,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 
 	@Override
 	synchronized public void writeCPLDfirmware(final String svfFile) throws HardwareInterfaceException {
-		/*byte[] bytearray;
-		int status;
-		USBIO_DATA_BUFFER dataBuffer = null;
+		byte[] bytearray;
 
 		try {
 			bytearray = parseHexData(svfFile);
@@ -114,136 +114,60 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 			e.printStackTrace();
 			return;
 		}
+
 		ProgressMonitor progressMonitor = makeProgressMonitor("Writing CPLD configuration - do not unplug", 0,
 			bytearray.length);
 
-		int result;
-		USBIO_CLASS_OR_VENDOR_REQUEST vendorRequest = new USBIO_CLASS_OR_VENDOR_REQUEST();
+		final int numChunks = bytearray.length / MAX_CONTROL_XFER_SIZE; // this is number of full chunks to send
+		int addr = 0;
 
-		int numChunks;
-
-		vendorRequest.Flags = UsbIoInterface.USBIO_SHORT_TRANSFER_OK;
-		vendorRequest.Type = UsbIoInterface.RequestTypeVendor; // this is a vendor, not generic USB, request
-		vendorRequest.Recipient = UsbIoInterface.RecipientDevice; // device (not endpoint, interface, etc) receives it
-		vendorRequest.RequestTypeReservedBits = 0; // set these bits to zero for Cypress-specific 'vendor request'
-		// rather that user defined
-		vendorRequest.Request = CypressFX2.VR_DOWNLOAD_FIRMWARE; // this is download/upload firmware request. really it
-		// is just a
-		// 'fill RAM request'
-		vendorRequest.Index = 0;
-
-		// 2) send the firmware to Control Endpoint 0
-		// when sending firmware, we need to break up the loaded fimware
-		// into MAX_CONTROL_XFER_SIZE blocks
-		//
-		// this means:
-		// a) the address to load it to needs to be changed (VendorRequest.Value)
-		// b) need a pointer that moves through FWbuffer (pBuffer)
-		// c) keep track of remaining bytes to transfer (FWsize_left);
-
-		// send all but last chunk
-		vendorRequest.Value = 0; // address of firmware location
-		dataBuffer = new USBIO_DATA_BUFFER(MAX_CONTROL_XFER_SIZE);
-		dataBuffer.setNumberOfBytesToTransfer(dataBuffer.Buffer().length);
-
-		numChunks = bytearray.length / MAX_CONTROL_XFER_SIZE; // this is number of full chunks to send
 		for (int i = 0; i < numChunks; i++) {
-			System.arraycopy(bytearray, i * MAX_CONTROL_XFER_SIZE, dataBuffer.Buffer(), 0, MAX_CONTROL_XFER_SIZE);
-			result = gUsbIo.classOrVendorOutRequest(dataBuffer, vendorRequest);
-			if (result != UsbIoErrorCodes.USBIO_ERR_SUCCESS) {
-				close();
-				throw new HardwareInterfaceException("Error on downloading segment number " + i + " of CPLD firmware: "
-					+ UsbIo.errorText(result));
-			}
-			progressMonitor.setProgress(vendorRequest.Value);
-			progressMonitor.setNote(String.format("sent %d of %d bytes of CPLD configuration", vendorRequest.Value,
-				bytearray.length));
-			vendorRequest.Value += MAX_CONTROL_XFER_SIZE; // change address of firmware location
+			sendVendorRequest(CypressFX2.VR_DOWNLOAD_FIRMWARE, (short) addr, (short) 0, bytearray, i
+				* MAX_CONTROL_XFER_SIZE, MAX_CONTROL_XFER_SIZE);
+
+			addr += MAX_CONTROL_XFER_SIZE; // change address of firmware location
+
 			if (progressMonitor.isCanceled()) {
 				progressMonitor = makeProgressMonitor("Writing CPLD configuration - do not unplug", 0, bytearray.length);
 			}
+
+			progressMonitor.setProgress(addr);
+			progressMonitor.setNote(String.format("sent %d of %d bytes of CPLD configuration", addr, bytearray.length));
 		}
 
 		// now send final (short) chunk
 		final int numBytesLeft = bytearray.length % MAX_CONTROL_XFER_SIZE; // remainder
-		if (numBytesLeft > 0) {
-			dataBuffer = new USBIO_DATA_BUFFER(numBytesLeft);
-			dataBuffer.setNumberOfBytesToTransfer(dataBuffer.Buffer().length);
-			// vendorRequest.Index = 1; // indicate that this is the last chuck, now program CPLD
-			System.arraycopy(bytearray, numChunks * MAX_CONTROL_XFER_SIZE, dataBuffer.Buffer(), 0, numBytesLeft);
 
+		if (numBytesLeft > 0) {
 			// send remaining part of firmware
-			result = gUsbIo.classOrVendorOutRequest(dataBuffer, vendorRequest);
-			if (result != UsbIoErrorCodes.USBIO_ERR_SUCCESS) {
-				close();
-				throw new HardwareInterfaceException("Error on downloading final segment of CPLD firmware: "
-					+ UsbIo.errorText(result));
-			}
+			sendVendorRequest(VR_EEPROM, (short) addr, (short) 0, bytearray, numChunks * MAX_CONTROL_XFER_SIZE,
+				numBytesLeft);
 		}
 
-		vendorRequest = new USBIO_CLASS_OR_VENDOR_REQUEST();
-		dataBuffer = new USBIO_DATA_BUFFER(1);
-
-		vendorRequest.Flags = UsbIoInterface.USBIO_SHORT_TRANSFER_OK;
-		vendorRequest.Type = UsbIoInterface.RequestTypeVendor;
-		vendorRequest.Recipient = UsbIoInterface.RecipientDevice;
-		vendorRequest.RequestTypeReservedBits = 0;
-		vendorRequest.Request = CypressFX2.VR_DOWNLOAD_FIRMWARE;
-		vendorRequest.Index = 1;
-		vendorRequest.Value = 0;
-
-		dataBuffer.setNumberOfBytesToTransfer(1);
-		status = gUsbIo.classOrVendorOutRequest(dataBuffer, vendorRequest);
-
-		if (status != UsbIoErrorCodes.USBIO_ERR_SUCCESS) {
-			CypressFX2.log.info(UsbIo.errorText(status));
+		try {
+			sendVendorRequest(CypressFX2.VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 1);
+		}
+		catch (final HardwareInterfaceException e) {
 			try {
 				Thread.sleep(2000);
 				open();
 			}
-			catch (final Exception e) {
+			catch (final Exception ee) {
 			}
 		}
 
-		vendorRequest = new USBIO_CLASS_OR_VENDOR_REQUEST();
-		dataBuffer = new USBIO_DATA_BUFFER(10);
+		final ByteBuffer dataBuffer = sendVendorRequestIN(CypressFX2.VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0, 10);
 
-		vendorRequest.Flags = UsbIoInterface.USBIO_SHORT_TRANSFER_OK;
-		vendorRequest.Type = UsbIoInterface.RequestTypeVendor;
-		vendorRequest.Recipient = UsbIoInterface.RecipientDevice;
-		vendorRequest.RequestTypeReservedBits = 0;
-		vendorRequest.Request = CypressFX2.VR_DOWNLOAD_FIRMWARE;
-		vendorRequest.Index = 0;
-		vendorRequest.Value = 0;
-
-		dataBuffer.setNumberOfBytesToTransfer(10);
-		status = gUsbIo.classOrVendorInRequest(dataBuffer, vendorRequest);
-
-		if (status != UsbIoErrorCodes.USBIO_ERR_SUCCESS) {
-			throw new HardwareInterfaceException("Unable to receive error code: " + UsbIo.errorText(status));
-		}
-
-		HardwareInterfaceException.clearException();
-
-		// log.info("bytes transferred" + dataBuffer.getBytesTransferred());
-		if (dataBuffer.getBytesTransferred() == 0) {
-			// this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
-			throw new HardwareInterfaceException("Unable to program CPLD, could not get xsvf Error code");
-		}
-		progressMonitor.close();
-
-		if (dataBuffer.Buffer()[1] != 0) {
-			// this.sendVendorRequest(VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
-			final int dataindex = (dataBuffer.Buffer()[6] << 24) | (dataBuffer.Buffer()[7] << 16)
-				| (dataBuffer.Buffer()[8] << 8) | (dataBuffer.Buffer()[9]);
-			final int algoindex = (dataBuffer.Buffer()[2] << 24) | (dataBuffer.Buffer()[3] << 16)
-				| (dataBuffer.Buffer()[4] << 8) | (dataBuffer.Buffer()[5]);
-			throw new HardwareInterfaceException("Unable to program CPLD, error code: " + dataBuffer.Buffer()[1]
+		if (dataBuffer.get(1) != 0) {
+			final int dataindex = (dataBuffer.get(6) << 24) | (dataBuffer.get(7) << 16) | (dataBuffer.get(8) << 8)
+				| (dataBuffer.get(9));
+			final int algoindex = (dataBuffer.get(2) << 24) | (dataBuffer.get(3) << 16) | (dataBuffer.get(4) << 8)
+				| (dataBuffer.get(5));
+			throw new HardwareInterfaceException("Unable to program CPLD, error code: " + dataBuffer.get(1)
 				+ " algo index: " + algoindex + " data index " + dataindex);
-			// System.out.println("Unable to program CPLD, unable to program CPLD, error code: " +
-			// dataBuffer.Buffer()[1] + ", at command: " + command + " index: " + index + " commandlength " +
-			// commandlength);
-		}*/
+		}
+
+		progressMonitor.close();
 	}
 
 	/**
@@ -280,6 +204,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 	/** This reader understands the format of raw USB data and translates to the AEPacketRaw */
 	public class RetinaAEReader extends CypressFX2.AEReader {
 		private static final int NONMONOTONIC_WARNING_COUNT = 30; // how many warnings to print after start or timestamp
+
 		// reset
 
 		public RetinaAEReader(final CypressFX2 cypress) throws HardwareInterfaceException {
@@ -356,120 +281,122 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 					for (int i = 0; i < bytesSent; i += 2) {
 						// tobiLogger.log(String.format("%d %x %x",eventCounter,buf[i],buf[i+1])); // DEBUG
 						// int val=(buf[i+1] << 8) + buf[i]; // 16 bit value of data
-						final int dataword = (0xff & b.get(i)) | (0xff00 & (b.get(i + 1) << 8)); // data sent little endian
+						final int dataword = (0xff & b.get(i)) | (0xff00 & (b.get(i + 1) << 8)); // data sent little
+						// endian
 
 						final int code = (b.get(i + 1) & 0xC0) >> 6; // gets two bits at XX00 0000 0000 0000.
 						// (val&0xC000)>>>14;
 						// log.info("code " + code);
 						final int xmask = (APSDVSchip.XMASK | APSDVSchip.POLMASK) >>> APSDVSchip.POLSHIFT;
-				switch (code) {
-					case 0: // address
-						// If the data is an address, we write out an address value if we either get an ADC
-						// reading or an x address.
-						// We also write a (fake) address if
-						// we get two y addresses in a row, which occurs when the on-chip AE state machine
-						// doesn't properly function.
-						// Here we also read y addresses but do not write out any output address until we get
-						// either 1) an x-address, or 2)
-						// another y address without intervening x-address.
-						// NOTE that because ADC events do not have a timestamp, the size of the addresses and
-						// timestamps data are not the same.
-						// To simplify data structure handling in AEPacketRaw and AEPacketRawPool,
-						// ADC events are timestamped just like address-events. ADC events get the timestamp of
-						// the most recently preceeding address-event.
-						// NOTE2: unmasked bits are read as 1's from the hardware. Therefore it is crucial to
-						// properly mask bits.
-						if ((eventCounter >= aeBufferSize) || (buffer.overrunOccuredFlag)) {
-							buffer.overrunOccuredFlag = true; // throw away events if we have overrun the output
-							// arrays
+			switch (code) {
+				case 0: // address
+					// If the data is an address, we write out an address value if we either get an ADC
+					// reading or an x address.
+					// We also write a (fake) address if
+					// we get two y addresses in a row, which occurs when the on-chip AE state machine
+					// doesn't properly function.
+					// Here we also read y addresses but do not write out any output address until we get
+					// either 1) an x-address, or 2)
+					// another y address without intervening x-address.
+					// NOTE that because ADC events do not have a timestamp, the size of the addresses and
+					// timestamps data are not the same.
+					// To simplify data structure handling in AEPacketRaw and AEPacketRawPool,
+					// ADC events are timestamped just like address-events. ADC events get the timestamp of
+					// the most recently preceeding address-event.
+					// NOTE2: unmasked bits are read as 1's from the hardware. Therefore it is crucial to
+					// properly mask bits.
+					if ((eventCounter >= aeBufferSize) || (buffer.overrunOccuredFlag)) {
+						buffer.overrunOccuredFlag = true; // throw away events if we have overrun the output
+						// arrays
+					}
+					else {
+						if ((dataword & RetinaAEReader.TYPE_WORD_BIT) == RetinaAEReader.TYPE_WORD_BIT) {
+							if ((dataword & RetinaAEReader.FRAME_START_BIT) == RetinaAEReader.FRAME_START_BIT) {
+								resetFrameAddressCounters();
+							}
+							final int readcycle = (dataword & APSDVSchip.ADC_READCYCLE_MASK) >> APSDVSchip.ADC_READCYCLE_SHIFT;
+			if (countY[readcycle] >= chip.getSizeY()) {
+				countY[readcycle] = 0;
+				countX[readcycle]++;
+			}
+			final int xAddr = (short) (chip.getSizeX() - 1 - countX[readcycle]);
+			final int yAddr = (short) (chip.getSizeY() - 1 - countY[readcycle]);
+			countY[readcycle]++;
+			addresses[eventCounter] = APSDVSchip.ADDRESS_TYPE_APS
+				| (yAddr << APSDVSchip.YSHIFT) | (xAddr << APSDVSchip.XSHIFT)
+				| (dataword & (APSDVSchip.ADC_READCYCLE_MASK | APSDVSchip.ADC_DATA_MASK));
+			timestamps[eventCounter] = currentts; // ADC event gets last timestamp
+			eventCounter++;
+			// System.out.println("ADC word: " + (dataword&SeeBetter20.ADC_DATA_MASK));
 						}
-						else {
-							if ((dataword & RetinaAEReader.TYPE_WORD_BIT) == RetinaAEReader.TYPE_WORD_BIT) {
-								if ((dataword & RetinaAEReader.FRAME_START_BIT) == RetinaAEReader.FRAME_START_BIT) {
-									resetFrameAddressCounters();
-								}
-								final int readcycle = (dataword & APSDVSchip.ADC_READCYCLE_MASK) >> APSDVSchip.ADC_READCYCLE_SHIFT;
-								if (countY[readcycle] >= chip.getSizeY()) {
-									countY[readcycle] = 0;
-									countX[readcycle]++;
-								}
-								final int xAddr = (short) (chip.getSizeX() - 1 - countX[readcycle]);
-								final int yAddr = (short) (chip.getSizeY() - 1 - countY[readcycle]);
-								countY[readcycle]++;
-								addresses[eventCounter] = APSDVSchip.ADDRESS_TYPE_APS
-									| (yAddr << APSDVSchip.YSHIFT) | (xAddr << APSDVSchip.XSHIFT)
-									| (dataword & (APSDVSchip.ADC_READCYCLE_MASK | APSDVSchip.ADC_DATA_MASK));
-								timestamps[eventCounter] = currentts; // ADC event gets last timestamp
-								eventCounter++;
-								// System.out.println("ADC word: " + (dataword&SeeBetter20.ADC_DATA_MASK));
-							}
-							else if ((b.get(i + 1) & RetinaAEReader.TRIGGER_BIT) == RetinaAEReader.TRIGGER_BIT) {
-								addresses[eventCounter] = 256; // combine current bits with last y address bits
-								// and send
-								timestamps[eventCounter] = currentts;
-								eventCounter++;
-							}
-							else if ((b.get(i + 1) & RetinaAEReader.XBIT) == RetinaAEReader.XBIT) {// // received
-								// an X
-								// address,
-								// write out
-								// event
-								// to addresses/timestamps output arrays
-								// x adddress
-								addresses[eventCounter] = (lasty << APSDVSchip.YSHIFT)
-									| ((dataword & xmask) << APSDVSchip.POLSHIFT); // combine current bits with
-								// last y address bits and
-								// send
-								timestamps[eventCounter] = currentts; // add in the wrap offset and convert to
-								// 1us tick
-								eventCounter++;
-								// log.info("X: "+((dataword & APSDVSchip.XMASK)>>1));
-								gotY = false;
-							}
-							else { // row address came
-								if (gotY) { // no col address, last one was row only event
-									if (translateRowOnlyEvents) {// make row-only event
+						else if ((b.get(i + 1) & RetinaAEReader.TRIGGER_BIT) == RetinaAEReader.TRIGGER_BIT) {
+							addresses[eventCounter] = 256; // combine current bits with last y address bits
+							// and send
+							timestamps[eventCounter] = currentts;
+							eventCounter++;
+						}
+						else if ((b.get(i + 1) & RetinaAEReader.XBIT) == RetinaAEReader.XBIT) {// //
+							// received
+							// an X
+							// address,
+							// write out
+							// event
+							// to addresses/timestamps output arrays
+							// x adddress
+							addresses[eventCounter] = (lasty << APSDVSchip.YSHIFT)
+								| ((dataword & xmask) << APSDVSchip.POLSHIFT); // combine current bits with
+							// last y address bits and
+							// send
+							timestamps[eventCounter] = currentts; // add in the wrap offset and convert to
+							// 1us tick
+							eventCounter++;
+							// log.info("X: "+((dataword & APSDVSchip.XMASK)>>1));
+							gotY = false;
+						}
+						else { // row address came
+							if (gotY) { // no col address, last one was row only event
+								if (translateRowOnlyEvents) {// make row-only event
 
-										addresses[eventCounter] = (lasty << APSDVSchip.YSHIFT); // combine
-										// current bits
-										// with last y
-										// address bits
-										// and send
-										timestamps[eventCounter] = currentts; // add in the wrap offset and
-										// convert to 1us tick
-										eventCounter++;
-									}
-
+									addresses[eventCounter] = (lasty << APSDVSchip.YSHIFT); // combine
+									// current bits
+									// with last y
+									// address bits
+									// and send
+									timestamps[eventCounter] = currentts; // add in the wrap offset and
+									// convert to 1us tick
+									eventCounter++;
 								}
-								// y address
-								final int ymask = (APSDVSchip.YMASK >>> APSDVSchip.YSHIFT);
-								lasty = ymask & dataword; // (0xFF & buf[i]); //
-								gotY = true;
-								// log.info("Y: "+lasty+" - data "+dataword+" - mask: "+(APSDVSchip.YMASK >>>
-								// APSDVSchip.YSHIFT));
+
 							}
+							// y address
+							final int ymask = (APSDVSchip.YMASK >>> APSDVSchip.YSHIFT);
+							lasty = ymask & dataword; // (0xFF & buf[i]); //
+							gotY = true;
+							// log.info("Y: "+lasty+" - data "+dataword+" - mask: "+(APSDVSchip.YMASK >>>
+							// APSDVSchip.YSHIFT));
 						}
-						break;
-					case 1: // timestamp
-						lastts = currentts;
-						currentts = ((0x3f & b.get(i + 1)) << 8) | (b.get(i) & 0xff);
-						currentts = (TICK_US * (currentts + wrapAdd));
-						if ((lastts > currentts) && (nonmonotonicTimestampWarningCount-- > 0)) {
-							CypressFX2.log.warning("non-monotonic timestamp: currentts=" + currentts
-								+ " lastts=" + lastts + " currentts-lastts=" + (currentts - lastts));
-						}
-						// log.info("received timestamp");
-						break;
-					case 2: // wrap
-						wrapAdd += 0x4000L;
-						// log.info("wrap");
-						break;
-					case 3: // ts reset event
-						nonmonotonicTimestampWarningCount = RetinaAEReader.NONMONOTONIC_WARNING_COUNT;
-						resetTimestamps();
-						// log.info("timestamp reset");
-						break;
-				}
+					}
+					break;
+				case 1: // timestamp
+					lastts = currentts;
+					currentts = ((0x3f & b.get(i + 1)) << 8) | (b.get(i) & 0xff);
+					currentts = (TICK_US * (currentts + wrapAdd));
+					if ((lastts > currentts) && (nonmonotonicTimestampWarningCount-- > 0)) {
+						CypressFX2.log.warning("non-monotonic timestamp: currentts=" + currentts
+							+ " lastts=" + lastts + " currentts-lastts=" + (currentts - lastts));
+					}
+					// log.info("received timestamp");
+					break;
+				case 2: // wrap
+					wrapAdd += 0x4000L;
+					// log.info("wrap");
+					break;
+				case 3: // ts reset event
+					nonmonotonicTimestampWarningCount = RetinaAEReader.NONMONOTONIC_WARNING_COUNT;
+					resetTimestamps();
+					// log.info("timestamp reset");
+					break;
+			}
 					} // end for
 
 					buffer.setNumEvents(eventCounter);

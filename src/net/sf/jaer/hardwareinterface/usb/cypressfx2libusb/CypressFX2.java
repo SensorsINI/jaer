@@ -1114,7 +1114,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 			try {
 				usbTransfer.join();
 			}
-			catch (InterruptedException e) {
+			catch (final InterruptedException e) {
 				CypressFX2.log.severe("Failed to join AsyncStatusThread");
 			}
 		}
@@ -1241,7 +1241,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 			try {
 				usbTransfer.join();
 			}
-			catch (InterruptedException e) {
+			catch (final InterruptedException e) {
 				CypressFX2.log.severe("Failed to join AEReaderThread");
 			}
 		}
@@ -2261,23 +2261,6 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	}
 
 	/**
-	 * Sends a vendor request with data. This is a blocking method.
-	 * 
-	 * @param request
-	 *            the vendor request byte, identifies the request on the device
-	 * @param value
-	 *            the value of the request (bValue USB field)
-	 * @param index
-	 *            the "index" of the request (bIndex USB field)
-	 * @param dataBuffer
-	 *            the data which is to be transmitted to the device (null means no data)
-	 */
-	synchronized public void sendVendorRequest(final byte request, final short value, final short index,
-		final ByteBuffer dataBuffer) throws HardwareInterfaceException {
-		sendVendorRequest((byte) 0, request, value, index, dataBuffer);
-	}
-
-	/**
 	 * Sends a vendor request with a given byte[] as data. This is a blocking method.
 	 * 
 	 * @param request
@@ -2291,7 +2274,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 */
 	synchronized public void sendVendorRequest(final byte request, final short value, final short index,
 		final byte[] bytes) throws HardwareInterfaceException {
-		sendVendorRequest((byte) 0, request, value, index, bytes);
+		sendVendorRequest(request, value, index, bytes, 0, bytes.length);
 	}
 
 	/**
@@ -2312,53 +2295,11 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 */
 	synchronized public void sendVendorRequest(final byte request, final short value, final short index,
 		final byte[] bytes, final int pos, final int length) throws HardwareInterfaceException {
-		sendVendorRequest((byte) 0, request, value, index, bytes, pos, length);
-	}
-
-	/**
-	 * Sends a vendor request with data (including special bits). This is a blocking method.
-	 * 
-	 * @param requestType
-	 *            the vendor requestType byte (used for special cases, usually 0)
-	 * @param request
-	 *            the vendor request byte, identifies the request on the device
-	 * @param value
-	 *            the value of the request (bValue USB field)
-	 * @param index
-	 *            the "index" of the request (bIndex USB field)
-	 * @param bytes
-	 *            the data which is to be transmitted to the device
-	 */
-	synchronized public void sendVendorRequest(final byte requestType, final byte request, final short value,
-		final short index, final byte[] bytes) throws HardwareInterfaceException {
-		sendVendorRequest(requestType, request, value, index, bytes, 0, bytes.length);
-	}
-
-	/**
-	 * Sends a vendor request with data (including special bits). This is a blocking method.
-	 * 
-	 * @param requestType
-	 *            the vendor requestType byte (used for special cases, usually 0)
-	 * @param request
-	 *            the vendor request byte, identifies the request on the device
-	 * @param value
-	 *            the value of the request (bValue USB field)
-	 * @param index
-	 *            the "index" of the request (bIndex USB field)
-	 * @param bytes
-	 *            the data which is to be transmitted to the device
-	 * @param pos
-	 *            position at which to start consuming the bytes array
-	 * @param length
-	 *            number of bytes to copy, starting at position pos
-	 */
-	synchronized public void sendVendorRequest(final byte requestType, final byte request, final short value,
-		final short index, final byte[] bytes, final int pos, final int length) throws HardwareInterfaceException {
 		final ByteBuffer dataBuffer = BufferUtils.allocateByteBuffer(length);
 
 		dataBuffer.put(bytes, pos, length);
 
-		sendVendorRequest(requestType, request, value, index, dataBuffer);
+		sendVendorRequest(request, value, index, dataBuffer);
 	}
 
 	/**
@@ -2375,8 +2316,8 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * @param dataBuffer
 	 *            the data which is to be transmitted to the device (null means no data)
 	 */
-	synchronized public void sendVendorRequest(final byte requestType, final byte request, final short value,
-		final short index, ByteBuffer dataBuffer) throws HardwareInterfaceException {
+	synchronized public void sendVendorRequest(final byte request, final short value, final short index,
+		ByteBuffer dataBuffer) throws HardwareInterfaceException {
 		if (!isOpen()) {
 			open();
 		}
@@ -2385,7 +2326,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 			dataBuffer = BufferUtils.allocateByteBuffer(0);
 		}
 
-		final byte bmRequestType = (byte) (LibUsb.ENDPOINT_OUT | LibUsb.REQUEST_TYPE_VENDOR | LibUsb.RECIPIENT_DEVICE | requestType);
+		final byte bmRequestType = (byte) (LibUsb.ENDPOINT_OUT | LibUsb.REQUEST_TYPE_VENDOR | LibUsb.RECIPIENT_DEVICE);
 
 		final int status = LibUsb.controlTransfer(deviceHandle, bmRequestType, request, value, index, dataBuffer, 0);
 		if (status < LibUsb.SUCCESS) {
@@ -2414,26 +2355,6 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 */
 	synchronized public ByteBuffer sendVendorRequestIN(final byte request, final short value, final short index,
 		final int dataLength) throws HardwareInterfaceException {
-		return (sendVendorRequestIN((byte) 0, request, value, index, dataLength));
-	}
-
-	/**
-	 * Sends a vendor request to receive (IN direction) data (including special bits). This is a blocking method.
-	 * 
-	 * @param requestType
-	 *            the vendor requestType byte (used for special cases, usually 0)
-	 * @param request
-	 *            the vendor request byte, identifies the request on the device
-	 * @param value
-	 *            the value of the request (bValue USB field)
-	 * @param index
-	 *            the "index" of the request (bIndex USB field)
-	 * @param dataLength
-	 *            amount of data to receive, determines size of returned buffer (must be greater than 0)
-	 * @return a buffer containing the data requested from the device
-	 */
-	synchronized public ByteBuffer sendVendorRequestIN(final byte requestType, final byte request, final short value,
-		final short index, final int dataLength) throws HardwareInterfaceException {
 		if (dataLength == 0) {
 			throw new HardwareInterfaceException("Unable to send vendor IN request with dataLength of zero!");
 		}
@@ -2444,7 +2365,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		final ByteBuffer dataBuffer = BufferUtils.allocateByteBuffer(dataLength);
 
-		final byte bmRequestType = (byte) (LibUsb.ENDPOINT_IN | LibUsb.REQUEST_TYPE_VENDOR | LibUsb.RECIPIENT_DEVICE | requestType);
+		final byte bmRequestType = (byte) (LibUsb.ENDPOINT_IN | LibUsb.REQUEST_TYPE_VENDOR | LibUsb.RECIPIENT_DEVICE);
 
 		final int status = LibUsb.controlTransfer(deviceHandle, bmRequestType, request, value, index, dataBuffer, 0);
 		if (status < LibUsb.SUCCESS) {
