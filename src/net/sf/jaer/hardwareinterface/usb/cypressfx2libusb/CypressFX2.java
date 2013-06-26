@@ -2597,9 +2597,8 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		if (aeReader == null) {
 			return;
 		}
-		aeReader.shutdownThread();
+
 		aeReader.setFifoSize(fifoSize);
-		aeReader.startThread();
 	}
 
 	@Override
@@ -2617,9 +2616,8 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		if (aeReader == null) {
 			return;
 		}
-		aeReader.shutdownThread();
+
 		aeReader.setNumBuffers(numBuffers);
-		aeReader.startThread();
 	}
 
 	@Override
