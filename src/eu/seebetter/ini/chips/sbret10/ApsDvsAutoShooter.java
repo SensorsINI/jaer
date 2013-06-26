@@ -32,6 +32,7 @@ public class ApsDvsAutoShooter extends EventFilter2D implements FrameAnnotater {
     private int eventCountThresholdKEvents = getInt("eventCountThresholdKEvents", 100);
     private int eventsSinceLastShot = 0;
     private boolean snapshotTriggered = false;
+    private boolean uninitialized=true;
 
     public ApsDvsAutoShooter(AEChip chip) {
         super(chip);
@@ -60,11 +61,12 @@ public class ApsDvsAutoShooter extends EventFilter2D implements FrameAnnotater {
         checkOutputPacketEventType(in);
         eventRateEstimator.filterPacket(in);
         eventsSinceLastShot += eventRateEstimator.getNumEventsInLastPacket();
-        if (eventRateEstimator.getFilteredEventRate() > eventRateThresholdHz || eventsSinceLastShot > eventCountThresholdKEvents << 10) {
+        if (uninitialized || eventRateEstimator.getFilteredEventRate() > eventRateThresholdHz || eventsSinceLastShot > eventCountThresholdKEvents << 10) {
             // trigger shot
             eventsSinceLastShot = 0;
             snapshotTriggered = true;
             ((APSDVSchip) chip).takeSnapshot();
+            uninitialized=false;
         } else {
             snapshotTriggered = false;
         }
@@ -75,10 +77,12 @@ public class ApsDvsAutoShooter extends EventFilter2D implements FrameAnnotater {
     public void resetFilter() {
         eventRateEstimator.resetFilter();
         eventsSinceLastShot = 0;
+        uninitialized=true;
     }
 
     @Override
     public void initFilter() {
+        resetFilter();
     }
 
     /**
