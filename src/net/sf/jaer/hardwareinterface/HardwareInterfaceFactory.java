@@ -18,7 +18,7 @@ import java.util.logging.Logger;
 import net.sf.jaer.hardwareinterface.serial.eDVS128.eDVS128_InterfaceFactory;
 import net.sf.jaer.hardwareinterface.udp.UDPInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.USBIOHardwareInterfaceFactory;
-//import net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.LibUsbHardwareInterfaceFactory;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.LibUsbHardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.linux.HardwareInterfaceFactoryLinux;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabs_USBIO_C8051F3xxFactory;
 import net.sf.jaer.hardwareinterface.usb.usbaermapper.USBAERatcFactory;
@@ -48,7 +48,7 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 	final public static Class[] factories = {
 		SiLabs_USBIO_C8051F3xxFactory.class,
 		USBIOHardwareInterfaceFactory.class,
-		//LibUsbHardwareInterfaceFactory.class,
+		LibUsbHardwareInterfaceFactory.class,
 		HardwareInterfaceFactoryLinux.class,
 		USBAERatcFactory.class,
 		UDPInterfaceFactory.class,

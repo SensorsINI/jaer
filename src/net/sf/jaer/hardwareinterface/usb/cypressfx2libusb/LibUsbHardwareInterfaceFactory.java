@@ -43,10 +43,10 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 		addDeviceToMap(VID_Thesycon, ApsDvsHardwareInterface.PID, ApsDvsHardwareInterface.class);
 
 		// Initialize LibUsb.
-		//LibUsb.init(null);
+		LibUsb.init(null);
 
 		// Build up first list of compatible devices.
-		//buildCompatibleDevicesList();
+		buildCompatibleDevicesList();
 	}
 
 	private void addDeviceToMap(final short VID, final short PID, final Class<?> cls) {
