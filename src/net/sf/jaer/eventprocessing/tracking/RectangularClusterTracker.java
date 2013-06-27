@@ -17,6 +17,8 @@ import net.sf.jaer.event.*;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.graphics.*;
 import java.awt.*;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 //import ch.unizh.ini.caviar.util.PreferencesEditor;
 import java.awt.geom.*;
 import java.io.*;
@@ -26,6 +28,7 @@ import java.util.*;
 import java.util.logging.Level;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;
+import javax.media.opengl.GLCanvas;
 import net.sf.jaer.Description;
 import net.sf.jaer.util.filter.LowpassFilter;
 
@@ -37,7 +40,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
  * @author tobi
  */
 @Description("Tracks multiple moving compact (not linear) objects")
-public class RectangularClusterTracker extends EventFilter2D implements Observer, ClusterTrackerInterface, FrameAnnotater /*, PreferenceChangeListener*/ {
+public class RectangularClusterTracker extends EventFilter2D implements Observer, ClusterTrackerInterface, FrameAnnotater, MouseListener/*, PreferenceChangeListener*/ {
     // TODO split out the Cluster object as it's own class.
     // TODO delegate worker object to update the clusters (RectangularClusterTrackerDelegate)
 
@@ -125,14 +128,42 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     private float smoothIntegral=getFloat("smoothIntegral",.001f);
     
     
+    
     private float surroundInhibitionCost = getFloat("surroundInhibitionCost",1);
     
-    
-     private  KalmanFilter kalmanFilter;
-  
-     
+    // for mouse selection of vanishing point
+    private GLCanvas glCanvas;
+    private ChipCanvas canvas;
+
     public boolean smoothMove=getBoolean("smoothMove",false);
 
+    /** The vanishing point for perspective object sizing */
+    protected Point vanishingPoint=null;
+
+    @Override
+    public void mouseClicked(MouseEvent e) {
+        vanishingPoint = canvas.getPixelFromMouseEvent(e);
+        if(glCanvas!=null){
+            glCanvas.removeMouseListener(this);
+        }
+    }
+
+    @Override
+    public void mousePressed(MouseEvent e) {
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+    }
+
+    @Override
+    public void mouseEntered(MouseEvent e) {
+    }
+
+    @Override
+    public void mouseExited(MouseEvent e) {
+    }
+    
     public enum ClusterLoggingMethod {
 
         LogFrames, LogClusters
@@ -208,8 +239,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         setPropertyTooltip(pi, "smoothPosition","Position Coefficient");
         setPropertyTooltip(pi, "smoothIntegral","Integral Coefficient");
         
-        
-        
+        setPropertyTooltip("selectVanishingPoint", "Select using a mouse click a particular location in the scene as the vanishing point on the horizon");
         
         //        setPropertyTooltip("sizeClassificationEnabled", "Enables coloring cluster by size threshold");
 //        setPropertyTooltip("opticalGyroTauHighpassMs", "highpass filter time constant in ms for optical gyro position, increase to forget DC value more slowly");
@@ -1444,6 +1474,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 chip.getCanvas().getGlut().glutBitmapString(font, String.format("m=%.1f ", getMassNow(lastUpdateTime)));
             }
         }
+        
 
         /**
          * Computes a geometrical updateShape factor based on location of a point relative to the vanishing point.
@@ -1457,7 +1488,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 return 1;
             }
             final float MIN_SCALE = 0.1f; // to prevent microclusters that hold only a single pixel
-            if (!renderer.isPixelSelected()) {
+            if (vanishingPoint==null) {
                 float scale = 1f - (p.y / chip.getSizeY()); // yfrac grows to 1 at bottom of image
                 if (scale < MIN_SCALE) {
                     scale = MIN_SCALE;
@@ -1466,7 +1497,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             } else {
                 // updateShape is MIN_SCALE at vanishing point or above and grows linearly to 1 at max size of chip
                 int size = chip.getMaxSize();
-                float d = (float) p.distance(renderer.getXsel(), renderer.getYsel());
+                float d = (float) p.distance(vanishingPoint.x, vanishingPoint.y);
                 float scale = d / size;
                 if (scale < MIN_SCALE) {
                     scale = MIN_SCALE;
@@ -2819,7 +2850,19 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             log.warning("null GL in RectangularClusterTracker.annotate");
             return;
         }
-        float[] rgb = new float[4];
+        // mouse selection later on
+        canvas = chip.getCanvas();
+        glCanvas = (GLCanvas) canvas.getCanvas();
+        
+        // vanishing point if non-null
+        if(vanishingPoint!=null){
+            gl.glColor3f(0,0,1);
+            gl.glPointSize(10);
+            gl.glBegin(GL.GL_POINTS);
+            gl.glVertex2f(vanishingPoint.x, vanishingPoint.y);
+            gl.glEnd();
+        }
+        // clusters
         try {
             gl.glPushMatrix();
             {
@@ -3437,5 +3480,12 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         }
     }
     
+    public void doSelectVanishingPoint() {
+            if (glCanvas == null) {
+                return;
+            }
+            glCanvas.addMouseListener(this);
+        }
+
     
 }
