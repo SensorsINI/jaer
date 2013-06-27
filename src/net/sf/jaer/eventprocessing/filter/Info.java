@@ -153,7 +153,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         setLogStatistics(false);
     }
     private long lastUpdateTime = 0;
-
+    private final int MAX_WARNINGS_AND_UPDATE_INTERVAL=100;
+    private int warningCount=0;
     /**
      * make event rate statistics be computed throughout a large package which
      * could span many seconds....
@@ -175,9 +176,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 //            log.warning("not adding this RateHistory point because dt is too big, indicating a big wrap came too soon");
 //            return;
 //        }
-        if (updateTimeMs < lastUpdateTime) {
-
-            log.warning("dt=" + dt);
+        if (updateTimeMs < lastUpdateTime && warningCount<MAX_WARNINGS_AND_UPDATE_INTERVAL || warningCount%MAX_WARNINGS_AND_UPDATE_INTERVAL==0) {
+            warningCount++;
+            log.warning("Negative delta time detected; dt=" + dt);
         }
         lastUpdateTime = updateTimeMs;
 
