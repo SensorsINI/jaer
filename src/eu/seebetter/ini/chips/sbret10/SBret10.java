@@ -382,6 +382,8 @@ public class SBret10 extends APSDVSchip {
      * @author Tobi
      */
     public class SBret10DisplayMethod extends ChipRendererDisplayMethodRGBA {
+        private static final int FONTSIZE = 10;
+        private static final int FRAME_COUNTER_BAR_LENGTH_FRAMES=10;
 
         private TextRenderer exposureRenderer = null;
 
@@ -392,7 +394,7 @@ public class SBret10 extends APSDVSchip {
         @Override
         public void display(GLAutoDrawable drawable) {
             if (exposureRenderer == null) {
-                exposureRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 12), true, true);
+                exposureRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, FONTSIZE), true, true);
                 exposureRenderer.setColor(1, 1, 1, 1);
             }
             super.display(drawable);
@@ -419,8 +421,14 @@ public class SBret10 extends APSDVSchip {
             }
             setExposureMs((float) exposure / 1000);
             String s=String.format("Frame: %d; Exposure %.2f ms; Frame rate: %.2f Hz", getFrameCount(),exposureMs,frameRateHz);
-            exposureRenderer.draw3D(s, 0, HEIGHT + 1, 0, .5f); // x,y,z, scale factor 
+            exposureRenderer.draw3D(s, 0, HEIGHT + FONTSIZE/2, 0, .5f); // x,y,z, scale factor 
             exposureRenderer.end3DRendering();
+            int nframes=frameCount%FRAME_COUNTER_BAR_LENGTH_FRAMES;
+            int rectw=WIDTH/FRAME_COUNTER_BAR_LENGTH_FRAMES;
+            gl.glColor4f(1,1,1,.5f);
+            for(int i=0;i<nframes;i++){
+                gl.glRectf(nframes*rectw, HEIGHT+1, (nframes+1)*rectw-3, HEIGHT+FONTSIZE/2-1);
+            }
             gl.glPopMatrix();
         }
     }
