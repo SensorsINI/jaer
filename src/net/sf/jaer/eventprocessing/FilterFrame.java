@@ -49,6 +49,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         setName("FilterFrame");
         initComponents();
         rebuildContents();
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16); // from http://stackoverflow.com/questions/5583495/how-do-i-speed-up-the-scroll-speed-in-a-jscrollpane-when-using-the-mouse-wheel
         setRestoreFilterEnabledStateEnabled(prefs.getBoolean("FilterFrame.restoreFilterEnabledStateEnabled", true)); // sets the menu item state
         if (chip != null) {
             setTitle(chip.getName() + " - filters");
