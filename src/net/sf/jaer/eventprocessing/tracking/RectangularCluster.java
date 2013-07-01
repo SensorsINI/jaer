@@ -31,7 +31,7 @@
 // * @author tobi
 // *
 // * This is part of jAER
-//<a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
+//<a href="http://jaerproject.net/">jaerproject.net</a>,
 //licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
 // */
 ///** The basic object that is tracked, which is a rectangular cluster with (optionally) variable size, aspect ratio, and angle.

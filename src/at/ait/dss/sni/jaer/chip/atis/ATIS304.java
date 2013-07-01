@@ -3,7 +3,7 @@ package at.ait.dss.sni.jaer.chip.atis;
 created 8.5.2009 for ARC ATIS chip in sardinia at capo caccio workshop on cognitive neuromorphic engineering.
 
  * This is part of jAER
-<a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
+<a href="http://jaerproject.net/">jaerproject.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
 
  */

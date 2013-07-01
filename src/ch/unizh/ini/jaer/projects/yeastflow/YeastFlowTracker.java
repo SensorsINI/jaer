@@ -15,7 +15,7 @@ import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
  * @author tobi
  *
  * This is part of jAER
-<a href="http://jaer.wiki.sourceforge.net">jaer.wiki.sourceforge.net</a>,
+<a href="http://jaerproject.net/">jaerproject.net</a>,
 licensed under the LGPL.
  */
 @Description("Customized RectangularClusterTracker for tracking yeast cells")
