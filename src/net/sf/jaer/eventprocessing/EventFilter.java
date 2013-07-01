@@ -51,7 +51,7 @@ Fires PropertyChangeEvent for the following
 public abstract class EventFilter extends Observable implements HasPropertyTooltips {
 
     /** URL for jAER wiki help page for event filters */
-    public static String HELP_FILTER_URL="http://sourceforge.net/apps/trac/jaer/wiki/filt";
+    public static String HELP_FILTER_URL="http://sourceforge.net/p/jaer/wiki/FilterIndex";
     
     public EventProcessingPerformanceMeter perf;
     /** The preferences for this filter, by default in the EventFilter package node
