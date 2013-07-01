@@ -1230,12 +1230,6 @@ public class CUDAObjectTrackerControl extends EventFilter2D implements FrameAnno
         }
     }
 
-    public void annotate(float[][][] frame) {
-    }
-
-    public void annotate(Graphics2D g) {
-    }
-
     public void annotate(GLAutoDrawable drawable) {
         if (!isFilterEnabled()) {
             return;

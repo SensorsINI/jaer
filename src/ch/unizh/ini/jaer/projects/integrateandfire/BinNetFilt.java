@@ -226,7 +226,7 @@ public class BinNetFilt extends EventFilter2D implements FrameAnnotater {
         C.setSmoothIntegral(0.01f);
         C.setSmoothPosition(0.01f);
         C.setSurroundInhibitionEnabled(true);
-        C.setClusterLifetimeWithoutSupportUs(500000);
+        C.setClusterMassDecayTauUs(500000);
         C.setDesiredScale(40);
         C.setShowPaths(false);
         
@@ -400,7 +400,7 @@ public class BinNetFilt extends EventFilter2D implements FrameAnnotater {
         C.setSmoothIntegral(.025f);
         C.setSmoothWeight(2);
         C.setSmoothMove(true);
-        C.setClusterLifetimeWithoutSupportUs(100000);
+        C.setClusterMassDecayTauUs(100000);
                 
         dickChainy.add(new PreProcess(chip));
         //dickChainy.add(N);

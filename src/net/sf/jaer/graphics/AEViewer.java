@@ -1276,6 +1276,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     return;
                 }
                 if (chip.getBiasgen() == null) {
+                    log.info("setting hardware config / biasgen buttons false");
                     biasesToggleButton.setEnabled(false);
                     biasesToggleButton.setVisible(false);
                     viewBiasesMenuItem.setEnabled(false);
@@ -4430,7 +4431,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         try {
             loggingFile = new File(filename);
 
-            loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile), 100000));
+            loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile), 4000000));
             loggingEnabled = true;
             
             if(playMode==PlayMode.PLAYBACK){ // add change listener for rewind to stop logging

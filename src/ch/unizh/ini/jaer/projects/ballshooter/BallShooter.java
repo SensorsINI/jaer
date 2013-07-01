@@ -425,8 +425,8 @@ public void initFilter() {
     ballTracker.setClusterSize(0.058f);
     ballTracker.setMaxNumClusters(1);
     ballTracker.setPathsEnabled(true);
-    ballTracker.setClusterLifetimeWithoutSupportUs(3000);
-    ballTracker.setThresholdEventsForVisibleCluster(45);
+    ballTracker.setClusterMassDecayTauUs(3000);
+    ballTracker.setThresholdMassForVisibleCluster(45);
 }
 
 public EventPacket<?> filterPacket(EventPacket<?> in) {

@@ -158,7 +158,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
             glu.gluQuadricDrawStyle(quad, GLU.GLU_LINE);
             gl.glLineWidth(2f);
 //            glu.gluDisk(quad, 0, ball.getAverageEventDistance(), 16, 1);
-            float rad = ball.getMass() / tracker.getThresholdEventsForVisibleCluster();
+            float rad = ball.getMass() / tracker.getThresholdMassForVisibleCluster();
             if (rad > ball.getRadius()) {
                 rad = ball.getRadius();
             }

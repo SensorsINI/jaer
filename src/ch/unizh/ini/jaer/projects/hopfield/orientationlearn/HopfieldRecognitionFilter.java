@@ -227,7 +227,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 			firstClusterFinder = new RectangularClusterTracker(chip);
 			firstClusterFinder.setMaxNumClusters(1);
 			firstClusterFinder.setClusterSize(0.47f);
-			firstClusterFinder.setClusterLifetimeWithoutSupportUs(5);
+			firstClusterFinder.setThresholdMassForVisibleCluster(5);
 			firstClusterFinder.setPathsEnabled(false);
 			filterchain = new FilterChain(chip);
 
