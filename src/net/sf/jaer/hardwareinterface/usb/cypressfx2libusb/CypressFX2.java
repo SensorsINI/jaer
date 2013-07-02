@@ -194,7 +194,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	// first filter in the
 	// realTimeFilterChain to a reused EventPacket.
 	AEPacketRaw realTimeRawPacket = null; // used to hold raw events that are extracted for real time procesing
-	EventPacket realTimePacket = null; // used to hold extracted real time events for processing
+	EventPacket<?> realTimePacket = null; // used to hold extracted real time events for processing
 	/** start of events that have been captured but not yet processed by the realTimeFilters */
 	private int realTimeEventCounterStart = 0;
 	/**
@@ -767,14 +767,9 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * start their own customized reader
 	 * with their own translateEvents method.
 	 */
-	public void startAEReader() throws HardwareInterfaceException { // raphael: changed from private to protected,
-		// because i need to access this method
+	public void startAEReader() throws HardwareInterfaceException {
 		throw new HardwareInterfaceException(
 			"This method should not be called - the CypressFX2 subclass should override startAEReader. Probably this is a blank device that requires programming.");
-		// setAeReader(new AEReader(this));
-		// allocateAEBuffers();
-		// getAeReader().startThread(3); // arg is number of errors before giving up
-		// HardwareInterfaceException.clearException();
 	}
 
 	long lastTimeEventCaptured = System.currentTimeMillis(); // used for timer to restart IN transfers, in case another
@@ -1017,7 +1012,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		final AEReader reader = getAeReader();
 
 		if (reader != null) {
-			reader.shutdownThread();
+			reader.stopThread();
 
 			setAeReader(null);
 		}
@@ -1108,6 +1103,23 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 			this.monitor = monitor;
 		}
 
+		public void startThread() {
+			if (!isOpen()) {
+				try {
+					open();
+				}
+				catch (final HardwareInterfaceException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+
+			usbTransfer = new USBTransferThread(monitor.deviceHandle, CypressFX2.STATUS_ENDPOINT_ADDRESS,
+				LibUsb.TRANSFER_TYPE_BULK, new ProcessStatusMessages(), 2, 128);
+			usbTransfer.setName("AsyncStatusThread");
+			usbTransfer.start();
+		}
+
 		public void stopThread() {
 			usbTransfer.interrupt();
 
@@ -1117,15 +1129,6 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 			catch (final InterruptedException e) {
 				CypressFX2.log.severe("Failed to join AsyncStatusThread");
 			}
-		}
-
-		public void start() {
-			// TODO: assume Device is open and we can talk to it.
-
-			usbTransfer = new USBTransferThread(monitor.deviceHandle, CypressFX2.STATUS_ENDPOINT_ADDRESS,
-				LibUsb.TRANSFER_TYPE_BULK, new ProcessStatusMessages(), 1, 64);
-			usbTransfer.setName("AsyncStatusThread");
-			usbTransfer.start();
 		}
 
 		private class ProcessStatusMessages implements RestrictedTransferCallback {
@@ -1232,15 +1235,29 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 			monitor = m;
 			fifoSize = monitor.aeReaderFifoSize;
 			numBuffers = monitor.aeReaderNumBuffers;
-
-			// TODO: assume Device is open and we can talk to it.
-
-			usbTransfer = new USBTransferThread(monitor.deviceHandle, (byte) 0x86, LibUsb.TRANSFER_TYPE_BULK,
-				new ProcessAEData());
-			usbTransfer.setName("AEReaderThread");
 		}
 
-		public void shutdownThread() {
+		public void startThread() {
+			if (!isOpen()) {
+				try {
+					open();
+				}
+				catch (final HardwareInterfaceException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+
+			usbTransfer = new USBTransferThread(monitor.deviceHandle, (byte) 0x86, LibUsb.TRANSFER_TYPE_BULK,
+				new ProcessAEData(), getNumBuffers(), getFifoSize());
+			usbTransfer.setPriority(AEReader.MONITOR_PRIORITY);
+			usbTransfer.setName("AEReaderThread");
+			usbTransfer.start();
+
+			getSupport().firePropertyChange("readerStarted", false, true);
+		}
+
+		public void stopThread() {
 			usbTransfer.interrupt();
 
 			try {
@@ -1343,18 +1360,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		protected int lastWrapAdd = 0;
 		/** used to indicate a 32 bit timestamp wrap */
 		protected boolean wrappedBig = false;
-
 		// indicates that wrapAdd has just wrapped itself, so that we should allow overridden to change priority
-
-		public void startThread() {
-			usbTransfer.setBufferSize(getFifoSize());
-			usbTransfer.setBufferNumber(getNumBuffers());
-
-			usbTransfer.setPriority(AEReader.MONITOR_PRIORITY);
-			usbTransfer.start();
-
-			getSupport().firePropertyChange("readerStarted", false, true);
-		}
 
 		/** size of CypressFX2 USB fifo's in bytes. */
 		public static final int CYPRESS_FIFO_SIZE = 512;
@@ -1725,6 +1731,10 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		populateDescriptors();
 
+		isOpened = true;
+
+		CypressFX2.log.info("openLibUsb(): device opened");
+
 		if (LibUsb.getDeviceSpeed(device) != LibUsb.SPEED_HIGH) {
 			CypressFX2.log
 			.warning("Device is not operating at USB 2.0 High Speed, performance will be limited to about 300 keps");
@@ -1732,11 +1742,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		// start the thread that listens for device status information (e.g. timestamp reset)
 		asyncStatusThread = new AsyncStatusThread(this);
-		asyncStatusThread.start();
-
-		isOpened = true;
-
-		CypressFX2.log.info("openLibUsb(): device opened");
+		asyncStatusThread.startThread();
 	}
 
 	/**
