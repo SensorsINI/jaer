@@ -11,7 +11,7 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="lib" path="dist/jAER.jar"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/jdk1.7.0_25"/>
 	<classpathentry kind="lib" path="jars/javacv/javacpp.jar"/>
 	<classpathentry kind="lib" path="jars/javacv/javacv-windows-x86.jar"/>
 	<classpathentry kind="lib" path="jars/javacv/javacv.jar"/>
@@ -21,11 +21,9 @@
 	<classpathentry kind="lib" path="jars/comm.jar"/>
 	<classpathentry kind="lib" path="jars/commons-net-2.2.jar"/>
 	<classpathentry kind="lib" path="jars/flanagan.jar"/>
-	<classpathentry kind="lib" path="jars/gluegen-rt.jar"/>
 	<classpathentry kind="lib" path="jars/jinput-test.jar"/>
 	<classpathentry kind="lib" path="jars/jinput.jar"/>
 	<classpathentry kind="lib" path="jars/jlfgr-1_0.jar"/>
-	<classpathentry kind="lib" path="jars/jogl.jar"/>
 	<classpathentry kind="lib" path="jars/mail.jar"/>
 	<classpathentry kind="lib" path="jars/phidget21.jar"/>
 	<classpathentry kind="lib" path="jars/prefs-0.8.jar"/>
@@ -41,5 +39,16 @@
 	<classpathentry kind="lib" path="jars/usb-api-1.0.2.jar"/>
 	<classpathentry kind="lib" path="jars/usb4java-1.1.0.jar"/>
 	<classpathentry kind="lib" path="jars/USBTransferThread-0.7.jar"/>
+	<classpathentry kind="lib" path="jars/jogl/gluegen-rt.jar"/>
+	<classpathentry kind="lib" path="jars/jogl/jogl-all.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="http://jogamp.org/deployment/jogamp-next/javadoc/jogl/javadoc/"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="jars/jfxrt.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="http://docs.oracle.com/javafx/2/api/"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
