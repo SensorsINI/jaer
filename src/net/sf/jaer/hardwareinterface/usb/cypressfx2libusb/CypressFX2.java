@@ -984,7 +984,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 */
 	@Override
 	public void close() {
-		if (!isOpened) {
+		if (!isOpen()) {
 			return;
 		}
 
@@ -1001,6 +1001,12 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		LibUsb.releaseInterface(deviceHandle, 0);
 		LibUsb.close(deviceHandle);
+
+		deviceHandle = null;
+
+		LibUsb.freeDeviceDescriptor(deviceDescriptor);
+
+		deviceDescriptor = null;
 
 		inEndpointEnabled = false;
 		isOpened = false;
@@ -1667,7 +1673,10 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		// Open device.
 		if (deviceHandle == null) {
 			deviceHandle = new DeviceHandle();
-			LibUsb.open(device, deviceHandle);
+			status = LibUsb.open(device, deviceHandle);
+			if (status != LibUsb.SUCCESS) {
+				throw new HardwareInterfaceException("openLibUsb(): failed to open device: " + LibUsb.errorName(status));
+			}
 		}
 
 		// Check for blank devices (must first get device descriptor).
@@ -1773,7 +1782,10 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		// Open device.
 		if (deviceHandle == null) {
 			deviceHandle = new DeviceHandle();
-			LibUsb.open(device, deviceHandle);
+			status = LibUsb.open(device, deviceHandle);
+			if (status != LibUsb.SUCCESS) {
+				throw new HardwareInterfaceException("openLibUsb(): failed to open device: " + LibUsb.errorName(status));
+			}
 		}
 
 		// Check for blank devices (must first get device descriptor).
