@@ -34,19 +34,19 @@ import net.sf.jaer2.viewer.BufferWorks.BUFFER_FORMATS;
 import com.jogamp.common.nio.Buffers;
 import com.jogamp.opengl.util.Animator;
 
-public class jAER2joglpxfx extends Application implements GLEventListener {
+public class jAER2joglpxfxcanvas extends Application implements GLEventListener {
 	private static long FPS = 0;
 	private static long FPS_FX = 0;
 	private static final int RSIZE = 2;
 	private static final int XLEN = 640;
 	private static final int YLEN = 480;
 
-	private static final BufferWorks buffer = new BufferWorks(jAER2joglpxfx.XLEN, jAER2joglpxfx.YLEN,
+	private static final BufferWorks buffer = new BufferWorks(jAER2joglpxfxcanvas.XLEN, jAER2joglpxfxcanvas.YLEN,
 		BUFFER_FORMATS.BYTE_NOALPHA);
 
 	private static final int imageBufferRGB8Number = 2;
-	private static final Semaphore syncImageBufferRGB8Swap[] = new Semaphore[jAER2joglpxfx.imageBufferRGB8Number];
-	private static final ByteBuffer imageBufferRGB8[] = new ByteBuffer[jAER2joglpxfx.imageBufferRGB8Number];
+	private static final Semaphore syncImageBufferRGB8Swap[] = new Semaphore[jAER2joglpxfxcanvas.imageBufferRGB8Number];
+	private static final ByteBuffer imageBufferRGB8[] = new ByteBuffer[jAER2joglpxfxcanvas.imageBufferRGB8Number];
 	private static final PixelFormat<ByteBuffer> pxFormat = PixelFormat.getByteBgraInstance();
 	private final GraphicsContext gc;
 	private final PixelWriter pxWriter;
@@ -56,19 +56,20 @@ public class jAER2joglpxfx extends Application implements GLEventListener {
 		Application.launch(args);
 	}
 
-	public jAER2joglpxfx() {
+	public jAER2joglpxfxcanvas() {
 		gc = null;
 		pxWriter = null;
 	}
 
-	public jAER2joglpxfx(final GraphicsContext gctx) {
+	public jAER2joglpxfxcanvas(final GraphicsContext gctx) {
 		gc = gctx;
 		pxWriter = gc.getPixelWriter();
 
 		// Init image buffers when drawing.
-		for (int i = 0; i < jAER2joglpxfx.imageBufferRGB8Number; i++) {
-			jAER2joglpxfx.syncImageBufferRGB8Swap[i] = new Semaphore(1);
-			jAER2joglpxfx.imageBufferRGB8[i] = Buffers.newDirectByteBuffer(4 * jAER2joglpxfx.XLEN * jAER2joglpxfx.YLEN);
+		for (int i = 0; i < jAER2joglpxfxcanvas.imageBufferRGB8Number; i++) {
+			jAER2joglpxfxcanvas.syncImageBufferRGB8Swap[i] = new Semaphore(1);
+			jAER2joglpxfxcanvas.imageBufferRGB8[i] = Buffers.newDirectByteBuffer(4 * jAER2joglpxfxcanvas.XLEN
+				* jAER2joglpxfxcanvas.YLEN);
 		}
 	}
 
@@ -88,7 +89,7 @@ public class jAER2joglpxfx extends Application implements GLEventListener {
 		System.out.println("Expected  GL Caps: " + expCaps);
 
 		final GLOffscreenAutoDrawable glDrawBuffer = factory.createOffscreenAutoDrawable(null, caps, null,
-			jAER2joglpxfx.XLEN, jAER2joglpxfx.YLEN, null);
+			jAER2joglpxfxcanvas.XLEN, jAER2joglpxfxcanvas.YLEN, null);
 		glDrawBuffer.setAutoSwapBufferMode(true);
 
 		glDrawBuffer.display();
@@ -100,14 +101,14 @@ public class jAER2joglpxfx extends Application implements GLEventListener {
 
 		final StackPane root = new StackPane();
 
-		final Canvas canvas = new Canvas(jAER2joglpxfx.XLEN, jAER2joglpxfx.YLEN);
+		final Canvas canvas = new Canvas(jAER2joglpxfxcanvas.XLEN, jAER2joglpxfxcanvas.YLEN);
 		final GraphicsContext gctx = canvas.getGraphicsContext2D();
 		root.getChildren().add(canvas);
 
-		canvas.setScaleX(jAER2joglpxfx.RSIZE);
-		canvas.setScaleY(jAER2joglpxfx.RSIZE);
+		canvas.setScaleX(jAER2joglpxfxcanvas.RSIZE);
+		canvas.setScaleY(jAER2joglpxfxcanvas.RSIZE);
 
-		glDrawBuffer.addGLEventListener(new jAER2joglpxfx(gctx));
+		glDrawBuffer.addGLEventListener(new jAER2joglpxfxcanvas(gctx));
 
 		// Write out the FPS on the screen.
 		final VBox texts = new VBox();
@@ -167,10 +168,10 @@ public class jAER2joglpxfx extends Application implements GLEventListener {
 						e.printStackTrace();
 					}
 
-					final long fpsPrint = jAER2joglpxfx.FPS / ((System.currentTimeMillis() - start) / 1000);
+					final long fpsPrint = jAER2joglpxfxcanvas.FPS / ((System.currentTimeMillis() - start) / 1000);
 					fpsTxt.setText("FPS are: " + fpsPrint);
 
-					final long fpsFXPrint = jAER2joglpxfx.FPS_FX / ((System.currentTimeMillis() - start) / 1000);
+					final long fpsFXPrint = jAER2joglpxfxcanvas.FPS_FX / ((System.currentTimeMillis() - start) / 1000);
 					fpsFXTxt.setText("JavaFX FPS are: " + fpsFXPrint);
 
 					final Runtime rt = Runtime.getRuntime();
@@ -195,9 +196,9 @@ public class jAER2joglpxfx extends Application implements GLEventListener {
 
 	@Override
 	public void display(final GLAutoDrawable drawable) {
-		jAER2joglpxfx.FPS++;
+		jAER2joglpxfxcanvas.FPS++;
 
-		jAER2joglpxfx.buffer.update();
+		jAER2joglpxfxcanvas.buffer.update();
 
 		render(drawable);
 	}
@@ -229,21 +230,22 @@ public class jAER2joglpxfx extends Application implements GLEventListener {
 
 		gl.glClear(GL.GL_COLOR_BUFFER_BIT);
 
-		gl.glDrawPixels(jAER2joglpxfx.XLEN, jAER2joglpxfx.YLEN, jAER2joglpxfx.buffer.getGLColorFormat(),
-			jAER2joglpxfx.buffer.getGLFormat(), jAER2joglpxfx.buffer.getBuffer());
+		gl.glDrawPixels(jAER2joglpxfxcanvas.XLEN, jAER2joglpxfxcanvas.YLEN,
+			jAER2joglpxfxcanvas.buffer.getGLColorFormat(), jAER2joglpxfxcanvas.buffer.getGLFormat(),
+			jAER2joglpxfxcanvas.buffer.getBuffer());
 
 		gl.glFlush();
 
 		// Read back final result.
 		int selectedImageBuffer = 0;
 
-		while (!jAER2joglpxfx.syncImageBufferRGB8Swap[selectedImageBuffer].tryAcquire()) {
-			selectedImageBuffer = (selectedImageBuffer + 1) % jAER2joglpxfx.imageBufferRGB8Number;
+		while (!jAER2joglpxfxcanvas.syncImageBufferRGB8Swap[selectedImageBuffer].tryAcquire()) {
+			selectedImageBuffer = (selectedImageBuffer + 1) % jAER2joglpxfxcanvas.imageBufferRGB8Number;
 		}
 
 		gl.glReadBuffer(GL.GL_FRONT);
-		gl.glReadPixels(0, 0, jAER2joglpxfx.XLEN, jAER2joglpxfx.YLEN, GL.GL_BGRA, GL.GL_UNSIGNED_BYTE,
-			jAER2joglpxfx.imageBufferRGB8[selectedImageBuffer]);
+		gl.glReadPixels(0, 0, jAER2joglpxfxcanvas.XLEN, jAER2joglpxfxcanvas.YLEN, GL.GL_BGRA, GL.GL_UNSIGNED_BYTE,
+			jAER2joglpxfxcanvas.imageBufferRGB8[selectedImageBuffer]);
 
 		final int releaseSelectedImageBuffer = selectedImageBuffer;
 
@@ -251,12 +253,13 @@ public class jAER2joglpxfx extends Application implements GLEventListener {
 			@Override
 			public void run() {
 				// Write current buffer out.
-				pxWriter.setPixels(0, 0, jAER2joglpxfx.XLEN, jAER2joglpxfx.YLEN, jAER2joglpxfx.pxFormat,
-					jAER2joglpxfx.imageBufferRGB8[releaseSelectedImageBuffer], jAER2joglpxfx.XLEN * 4);
+				pxWriter.setPixels(0, 0, jAER2joglpxfxcanvas.XLEN, jAER2joglpxfxcanvas.YLEN,
+					jAER2joglpxfxcanvas.pxFormat, jAER2joglpxfxcanvas.imageBufferRGB8[releaseSelectedImageBuffer],
+					jAER2joglpxfxcanvas.XLEN * 4);
 
-				jAER2joglpxfx.syncImageBufferRGB8Swap[releaseSelectedImageBuffer].release();
+				jAER2joglpxfxcanvas.syncImageBufferRGB8Swap[releaseSelectedImageBuffer].release();
 
-				jAER2joglpxfx.FPS_FX++;
+				jAER2joglpxfxcanvas.FPS_FX++;
 			}
 		});
 	}

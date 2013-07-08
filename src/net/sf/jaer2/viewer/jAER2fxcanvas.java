@@ -9,6 +9,7 @@ import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.PixelFormat;
+import javafx.scene.image.PixelWriter;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
@@ -37,6 +38,7 @@ public class jAER2fxcanvas extends Application {
 
 		final Canvas canvas = new Canvas(jAER2fxcanvas.XLEN, jAER2fxcanvas.YLEN);
 		final GraphicsContext gc = canvas.getGraphicsContext2D();
+		final PixelWriter pxWriter = gc.getPixelWriter();
 		root.getChildren().add(canvas);
 
 		canvas.setScaleX(jAER2fxcanvas.RSIZE);
@@ -49,7 +51,7 @@ public class jAER2fxcanvas extends Application {
 
 				jAER2fxcanvas.buffer.update();
 
-				render(gc);
+				render(gc, pxWriter);
 			}
 		}.start();
 
@@ -80,7 +82,7 @@ public class jAER2fxcanvas extends Application {
 		primaryStage.show();
 	}
 
-	private void render(final GraphicsContext gc) {
+	private void render(final GraphicsContext gc, final PixelWriter pxWriter) {
 		final BUFFER_FORMATS format = jAER2fxcanvas.buffer.getFormat();
 
 		if ((format == BUFFER_FORMATS.BYTE) || (format == BUFFER_FORMATS.FLOAT)) {
@@ -104,7 +106,7 @@ public class jAER2fxcanvas extends Application {
 			}
 		}
 		else if (jAER2fxcanvas.USE_PIXELWRITER && (format == BUFFER_FORMATS.BYTE_NOALPHA)) {
-			gc.getPixelWriter().setPixels(0, 0, jAER2fxcanvas.XLEN, jAER2fxcanvas.YLEN, jAER2fxcanvas.pxFormat,
+			pxWriter.setPixels(0, 0, jAER2fxcanvas.XLEN, jAER2fxcanvas.YLEN, jAER2fxcanvas.pxFormat,
 				(ByteBuffer) jAER2fxcanvas.buffer.getBuffer(), jAER2fxcanvas.XLEN * 3);
 		}
 		else {
