@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
+import javafx.event.EventHandler;
 import javafx.scene.Scene;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.PixelFormat;
@@ -12,6 +13,7 @@ import javafx.scene.image.WritableImage;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 import net.sf.jaer2.viewer.BufferWorks.BUFFER_FORMATS;
 
 public class jAER2fximg extends Application {
@@ -42,7 +44,7 @@ public class jAER2fximg extends Application {
 		imgView.setScaleX(jAER2fximg.RSIZE);
 		imgView.setScaleY(jAER2fximg.RSIZE);
 
-		new AnimationTimer() {
+		final AnimationTimer animator = new AnimationTimer() {
 			@Override
 			public void handle(final long time) {
 				jAER2fximg.FPS++;
@@ -51,31 +53,41 @@ public class jAER2fximg extends Application {
 
 				render();
 			}
-		}.start();
+		};
+		animator.start();
 
 		final Scene rootScene = new Scene(root, 1920, 1080, Color.BLACK);
 
 		primaryStage.setTitle("jAER2 Viewer");
 		primaryStage.setScene(rootScene);
 
-		new Thread(new Runnable() {
+		final Thread t = new Thread(new Runnable() {
 			@Override
 			public void run() {
 				final long start = System.currentTimeMillis();
 
-				while (true) {
+				while (!Thread.currentThread().isInterrupted()) {
 					try {
 						Thread.sleep(1000);
 					}
 					catch (final InterruptedException e) {
-						e.printStackTrace();
+						return;
 					}
 
 					final long fpsPrint = jAER2fximg.FPS / ((System.currentTimeMillis() - start) / 1000);
 					System.out.println("FPS are: " + fpsPrint);
 				}
 			}
-		}).start();
+		});
+		t.start();
+
+		primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
+			@Override
+			public void handle(final WindowEvent event) {
+				t.interrupt();
+				animator.stop();
+			}
+		});
 
 		primaryStage.show();
 	}

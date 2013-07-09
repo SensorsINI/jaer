@@ -38,14 +38,6 @@ public class jAER2joglpx implements GLEventListener {
 		jframe.setSize(1920, 1080);
 		jframe.setVisible(true);
 
-		jframe.addWindowListener(new WindowAdapter() {
-			@Override
-			public void windowClosing(final WindowEvent windowevent) {
-				jframe.dispose();
-				System.exit(0);
-			}
-		});
-
 		canvas.addGLEventListener(new jAER2joglpx());
 
 		final Animator animator = new Animator();
@@ -53,24 +45,35 @@ public class jAER2joglpx implements GLEventListener {
 		animator.setRunAsFastAsPossible(true);
 		animator.start();
 
-		new Thread(new Runnable() {
+		final Thread t = new Thread(new Runnable() {
 			@Override
 			public void run() {
 				final long start = System.currentTimeMillis();
 
-				while (true) {
+				while (!Thread.currentThread().isInterrupted()) {
 					try {
 						Thread.sleep(1000);
 					}
 					catch (final InterruptedException e) {
-						e.printStackTrace();
+						return;
 					}
 
 					final long fpsPrint = jAER2joglpx.FPS / ((System.currentTimeMillis() - start) / 1000);
 					System.out.println("FPS are: " + fpsPrint);
 				}
 			}
-		}).start();
+		});
+		t.start();
+
+		jframe.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(final WindowEvent windowevent) {
+				t.interrupt();
+				animator.stop();
+				jframe.dispose();
+				System.exit(0);
+			}
+		});
 	}
 
 	@Override
@@ -89,7 +92,7 @@ public class jAER2joglpx implements GLEventListener {
 	@Override
 	public void init(final GLAutoDrawable drawable) {
 		final GL2 gl = drawable.getGL().getGL2();
-		
+
 		gl.setSwapInterval(0);
 
 		gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
