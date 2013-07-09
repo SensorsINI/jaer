@@ -5,6 +5,7 @@ import java.util.concurrent.Semaphore;
 
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.event.EventHandler;
 import javafx.scene.Scene;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.PixelFormat;
@@ -16,6 +17,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 
 import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
@@ -146,17 +148,17 @@ public class jAER2joglpxfximg extends Application implements GLEventListener {
 		primaryStage.setTitle("jAER2 Viewer");
 		primaryStage.setScene(rootScene);
 
-		new Thread(new Runnable() {
+		final Thread t = new Thread(new Runnable() {
 			@Override
 			public void run() {
 				final long start = System.currentTimeMillis();
 
-				while (true) {
+				while (!Thread.currentThread().isInterrupted()) {
 					try {
 						Thread.sleep(1000);
 					}
 					catch (final InterruptedException e) {
-						e.printStackTrace();
+						return;
 					}
 
 					final long fpsPrint = jAER2joglpxfximg.FPS / ((System.currentTimeMillis() - start) / 1000);
@@ -180,7 +182,18 @@ public class jAER2joglpxfximg extends Application implements GLEventListener {
 					maxMemTxt.setText("Maximum memory (bytes): " + rt.maxMemory());
 				}
 			}
-		}).start();
+		});
+		t.start();
+
+		primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
+			@Override
+			public void handle(final WindowEvent event) {
+				t.interrupt();
+				animator.getThread().interrupt();
+				animator.stop();
+				glDrawBuffer.destroy();
+			}
+		});
 
 		primaryStage.show();
 	}
@@ -201,6 +214,8 @@ public class jAER2joglpxfximg extends Application implements GLEventListener {
 	@Override
 	public void init(final GLAutoDrawable drawable) {
 		final GL2 gl = drawable.getGL().getGL2();
+
+		gl.setSwapInterval(0);
 
 		gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
 		gl.glLoadIdentity();
@@ -230,6 +245,10 @@ public class jAER2joglpxfximg extends Application implements GLEventListener {
 		int selectedImageBuffer = 0;
 
 		while (!jAER2joglpxfximg.syncImageBufferRGB8Swap[selectedImageBuffer].tryAcquire()) {
+			if (Thread.currentThread().isInterrupted()) {
+				return;
+			}
+
 			selectedImageBuffer = (selectedImageBuffer + 1) % jAER2joglpxfximg.imageBufferRGB8Number;
 		}
 

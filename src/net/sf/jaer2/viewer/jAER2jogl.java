@@ -93,6 +93,8 @@ public class jAER2jogl implements GLEventListener {
 	@Override
 	public void init(final GLAutoDrawable drawable) {
 		final GL2 gl = drawable.getGL().getGL2();
+		
+		gl.setSwapInterval(0);
 
 		gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
 		gl.glLoadIdentity();
