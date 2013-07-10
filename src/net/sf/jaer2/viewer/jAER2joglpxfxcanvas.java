@@ -35,6 +35,7 @@ import net.sf.jaer2.viewer.BufferWorks.BUFFER_FORMATS;
 
 import com.jogamp.common.nio.Buffers;
 import com.jogamp.opengl.util.Animator;
+import com.sun.javafx.perf.PerformanceTracker;
 
 public class jAER2joglpxfxcanvas extends Application implements GLEventListener {
 	private static long FPS = 0;
@@ -128,6 +129,12 @@ public class jAER2joglpxfxcanvas extends Application implements GLEventListener 
 		fpsFXTxt.setFill(Color.WHITE);
 		fpsFXTxt.setFont(new Font(36));
 
+		final Text fpsFXpftTxt = new Text();
+		texts.getChildren().add(fpsFXpftTxt);
+
+		fpsFXpftTxt.setFill(Color.WHITE);
+		fpsFXpftTxt.setFont(new Font(36));
+
 		final Text usedMemTxt = new Text();
 		texts.getChildren().add(usedMemTxt);
 
@@ -157,6 +164,8 @@ public class jAER2joglpxfxcanvas extends Application implements GLEventListener 
 		primaryStage.setTitle("jAER2 Viewer");
 		primaryStage.setScene(rootScene);
 
+		final PerformanceTracker perfTracker = PerformanceTracker.getSceneTracker(rootScene);
+
 		final Thread t = new Thread(new Runnable() {
 			@Override
 			public void run() {
@@ -171,10 +180,15 @@ public class jAER2joglpxfxcanvas extends Application implements GLEventListener 
 					}
 
 					final long fpsPrint = jAER2joglpxfxcanvas.FPS / ((System.currentTimeMillis() - start) / 1000);
-					fpsTxt.setText("FPS are: " + fpsPrint);
+					fpsTxt.setText("JOGL FPS: " + fpsPrint);
 
 					final long fpsFXPrint = jAER2joglpxfxcanvas.FPS_FX / ((System.currentTimeMillis() - start) / 1000);
-					fpsFXTxt.setText("JavaFX FPS are: " + fpsFXPrint);
+					fpsFXTxt.setText("JOGL -> JavaFX FPS: " + fpsFXPrint);
+
+					fpsFXpftTxt.setText(String.format(
+						"JavaFX (perfTracker):\n\tavgFPS %f, instaFPS %f\n\tavgPulse %f, instaPulse %f",
+						perfTracker.getAverageFPS(), perfTracker.getInstantFPS(), perfTracker.getAveragePulses(),
+						perfTracker.getInstantPulses()));
 
 					final Runtime rt = Runtime.getRuntime();
 
