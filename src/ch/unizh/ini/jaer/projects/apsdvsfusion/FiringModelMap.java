@@ -27,6 +27,8 @@ import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.CollapsablePanel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterBrowserPanel;
 
 /**
+ * Abstract class to provide the basic functionality of a receptive field, composed of a set of firing units.
+ * 
  * @author Dennis Goehlsdorf
  *
  */
@@ -62,6 +64,11 @@ public abstract class FiringModelMap extends ParameterContainer {
 	boolean filterOutput = false;
 	boolean enabled = true;
 	
+	/**
+	 * Creates a panel showing custom controls for a FiringModelMap
+	 * @author Dennis Goehlsdorf
+	 *
+	 */
 	public class FiringModelMapCustomControls extends JPanel {
 		/**
 		 * 
@@ -167,27 +174,12 @@ public abstract class FiringModelMap extends ParameterContainer {
 		changeSize(sizeX, sizeY);
 	}
 
-//	@Deprecated
-//	public FiringModelMap(int sizeX, int sizeY, Preferences parentPrefs, String nodeName) {
-//		super("FiringModelMap", parentPrefs, nodeName);
-//		setMapID(Math.abs(mapIDSelector.nextInt()));
-//		addExcludedProperty("mapID");
-//		this.signalHandlerSet = new SignalHandlerSet()/*spikeHandler*/;
-//		changeSize(sizeX, sizeY);
-//	}
-	
 	public FiringModelMap(int sizeX, int sizeY, SignalHandler spikeHandler, Preferences prefs) {
 		this(sizeX, sizeY, prefs);
 		if (spikeHandler != null)
 			this.signalHandlerSet.addSpikeHandler(spikeHandler);
 	}
 
-//	@Deprecated
-//	public FiringModelMap(int sizeX, int sizeY, SignalHandler spikeHandler, Preferences parentPrefs, String nodeName) {
-//		this(sizeX, sizeY, parentPrefs, nodeName);
-//		if (spikeHandler != null)
-//			this.signalHandlerSet.addSpikeHandler(spikeHandler);
-//	}
 
 	public int getMapID() {
 		return mapID;
@@ -197,31 +189,18 @@ public abstract class FiringModelMap extends ParameterContainer {
 		getSupport().firePropertyChange("mapID", this.mapID, mapID);
 		this.mapID = mapID;
 	}
-//	protected FiringModelMapParameterContainer createParameterContainer() {
-//		return new FiringModelMapParameterContainer("FiringModelMap");
-//	}
+
 	
-	
+	/**
+	 * @return Whether this FiringModelMap is being monitored by the user interface.
+	 */
 	public boolean isMonitored() {
 		return monitored;
 	}
 
 	/**
-	 * @return the grayLevels
+	 * @param monitored Specifies whether this FiringModelMap should be monitored by the GUI. 
 	 */
-	public int getGrayLevels() {
-		return grayLevels;
-	}
-
-	/**
-	 * @param grayLevels the grayLevels to set
-	 */
-	public void setGrayLevels(int grayLevels) {
-		int before = this.grayLevels;
-		this.grayLevels = grayLevels;
-		getSupport().firePropertyChange("grayLevels",before, grayLevels);
-	}
-
 	public void setMonitored(boolean monitored) {
 		if (monitored != this.monitored) {
 			getSupport().firePropertyChange("monitored", this.monitored, monitored);
@@ -235,11 +214,35 @@ public abstract class FiringModelMap extends ParameterContainer {
 	}
 
 	
-	
+	/**
+	 * @return The number of different gray levels used to display the output of this FiringModelMap.
+	 */
+	public int getGrayLevels() {
+		return grayLevels;
+	}
+
+	/**
+	 * Allows to adjust the contrast when displaying this FiringModelMap
+	 * @param grayLevels The number of different gray levels used to display the output of this FiringModelMap.
+	 */
+	public void setGrayLevels(int grayLevels) {
+		int before = this.grayLevels;
+		this.grayLevels = grayLevels;
+		getSupport().firePropertyChange("grayLevels",before, grayLevels);
+	}
+
+
+	/**
+	 * @return Returns whether or not the output of this map is used as an output of the Filter {@link SpatioTemporalFusion}
+	 */
 	public boolean isFilterOutput() {
 		return filterOutput;
 	}
 
+	/**
+	 * Defines whether or not the output of this map is used as an output of the Filter {@link SpatioTemporalFusion}.
+	 * @param filterOutput
+	 */
 	public void setFilterOutput(boolean filterOutput) {
 		if (filterOutput != this.filterOutput) {
 			getSupport().firePropertyChange("filterOutput", this.filterOutput, filterOutput);
@@ -248,6 +251,10 @@ public abstract class FiringModelMap extends ParameterContainer {
 		}
 	}
 
+	/**
+	 * Allows to remove an input kernel from this Map.
+	 * @param kernel The kernel that should be removed. 
+	 */
 	public void removeKernel(SignalTransformationKernel kernel) {
 		if (inputKernels.contains(kernel)) {
 			int position = inputKernels.indexOf(kernel);

@@ -149,6 +149,10 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 		discoverParameters();
 	}
 
+	/**
+	 * Changes the Preference Node for this instance of ParameterContainer
+	 * @param prefs The new preference node.
+	 */
 	public void setPreferences(Preferences prefs) {
 		if (!prefs.absolutePath().equals(this.prefs.absolutePath())) {
 			try {

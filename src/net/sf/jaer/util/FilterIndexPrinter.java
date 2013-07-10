@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -30,8 +31,16 @@ import net.sf.jaer.Description;
  * @author Peter
  */
 public class FilterIndexPrinter {
+	private static final int DIVIDE_INTO_NUM_FILES = 4;
+	private static final int MAX_DESC_LENGTH = 120;
+
 	public static void main(final String[] args) throws IOException {
 		final List<String> classList = SubclassFinder.findSubclassesOf("net.sf.jaer.eventprocessing.EventFilter2D");
+
+		// Remove duplicates.
+		final HashSet<String> h = new HashSet<String>(classList);
+		classList.clear();
+		classList.addAll(h);
 
 		class Filter implements Comparable<Filter> {
 			final String fullName;
@@ -41,12 +50,11 @@ public class FilterIndexPrinter {
 				fullName = longName;
 				final int point = longName.lastIndexOf(".");
 				shortName = longName.substring(point + 1, longName.length());
-
 			}
 
 			@Override
 			public int compareTo(final Filter o) {
-				return shortName.compareTo(o.shortName);
+				return shortName.compareToIgnoreCase(o.shortName);
 			}
 		}
 
@@ -76,8 +84,14 @@ public class FilterIndexPrinter {
 		}
 
 		FileOutputStream fout = null;
+		final FileOutputStream foutAlpha[] = new FileOutputStream[FilterIndexPrinter.DIVIDE_INTO_NUM_FILES];
+
 		try {
-			fout = new FileOutputStream(selectedFile);
+			fout = new FileOutputStream(selectedFile.getAbsolutePath());
+
+			for (int i = 0; i < foutAlpha.length; i++) {
+				foutAlpha[i] = new FileOutputStream(selectedFile.getAbsolutePath() + "_" + (i + 1));
+			}
 		}
 		catch (final FileNotFoundException ex) {
 			Logger.getLogger(FilterIndexPrinter.class.getName()).log(Level.SEVERE, null, ex);
@@ -86,16 +100,53 @@ public class FilterIndexPrinter {
 
 		// Print the file.
 		System.out.println("Printing file ...");
+
 		final PrintStream ps = new PrintStream(fout);
+
+		final PrintStream psAlpha[] = new PrintStream[FilterIndexPrinter.DIVIDE_INTO_NUM_FILES];
+		for (int i = 0; i < foutAlpha.length; i++) {
+			psAlpha[i] = new PrintStream(foutAlpha[i]);
+		}
+
 		ps.println("# List of Event-Processing Filters");
 		ps.println();
-		ps.println("Click on a filter for more info.");
+		ps.println("Click on a sub-list for more info on the contained filters.");
+		ps.println("The various lists are sorted alphabetically by filter name.");
 		ps.println();
 
-		ps.println("|Filter Name|Description|Package|");
-		ps.println("|-----------|-----------|-------|");
+		final int printPerFile = filterList.size() / FilterIndexPrinter.DIVIDE_INTO_NUM_FILES;
+		PrintStream psCurrentFile = null;
+		String firstInList = null;
+		String lastInList = null;
 
-		for (final Filter f : filterList) {
+		for (int i = 0, j = 0; i < filterList.size(); i++) {
+			final Filter f = filterList.get(i);
+
+			if (((i % printPerFile) == 0) && (j < (FilterIndexPrinter.DIVIDE_INTO_NUM_FILES))) {
+				// Switch to next file.
+				psCurrentFile = psAlpha[j++];
+
+				// Add new list link to main index.
+				firstInList = f.shortName;
+				if (j == FilterIndexPrinter.DIVIDE_INTO_NUM_FILES) {
+					lastInList = filterList.get(filterList.size() - 1).shortName;
+				}
+				else {
+					lastInList = filterList.get((i + printPerFile) - 1).shortName;
+				}
+
+				ps.println("[List of Filters from " + firstInList + " to " + lastInList + "](" + "FilterIndex_" + j
+					+ ")");
+
+				// Print header.
+				psCurrentFile.println("# List of Event-Processing Filters " + j);
+				psCurrentFile.println();
+				psCurrentFile.println("Click on a filter for more info.");
+				psCurrentFile.println();
+				psCurrentFile.println("|Filter Name|Description|Package|");
+				psCurrentFile.println("|-----------|-----------|-------|");
+			}
+
 			Description des = null;
 
 			try {
@@ -118,17 +169,36 @@ public class FilterIndexPrinter {
 			}
 			else {
 				description = des.value();
+				final int descriptionLength = description.length();
+
+				description = description.substring(0,
+					(descriptionLength > FilterIndexPrinter.MAX_DESC_LENGTH) ? (FilterIndexPrinter.MAX_DESC_LENGTH - 1)
+						: (descriptionLength - 1));
+
+				// Add open continuation marker.
+				if (descriptionLength > FilterIndexPrinter.MAX_DESC_LENGTH) {
+					description = description + " ...";
+				}
 			}
 
-			ps.println("|[" + f.shortName + "](filt." + f.fullName + ")|" + description + "|"
+			psCurrentFile.println("|[" + f.shortName + "](filt." + f.fullName + ")|" + description + "|"
 				+ f.fullName.substring(0, f.fullName.length() - f.shortName.length() - 1) + "|");
 		}
 
 		ps.println();
-		ps.println("Run the class net.sf.jaer.util.FilterIndexPrinter to regenerate this list.");
+		ps.println("Run the class net.sf.jaer.util.FilterIndexPrinter to regenerate the lists.");
 
 		ps.close();
+		for (final PrintStream p : psAlpha) {
+			p.close();
+		}
+
 		fout.close();
+		for (final FileOutputStream f : foutAlpha) {
+			f.close();
+		}
+
 		System.out.println("Done");
+		System.exit(0);
 	}
 }

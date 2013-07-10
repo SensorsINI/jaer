@@ -19,6 +19,10 @@ import javax.swing.JPanel;
 
  
 /**
+ * Abstract class defining the properties of a signal processing kernel. This kernel could be for example a convolution kernel which would then transform an incoming 
+ * spike into a set of signals which are transmitted to another {@link FiringModelMap}.
+ * @see ExpressionBasedSpatialInputKernel
+ * 
  * @author Dennis Goehlsdorf
  *
  */
@@ -84,13 +88,32 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 		return outputHeight;
 	}
 
+	/**
+	 * Overwrite this function if your kernel needs to respond to size changes in the inputs.
+	 * @param oldWidth
+	 * @param oldHeight
+	 * @param newWidth
+	 * @param newHeight
+	 */
 	protected void inputSizeChanged(int oldWidth, int oldHeight, int newWidth, int newHeight) {
 	}
 	
+	/**
+	 * Overwrite this function if your kernel needs to respond to size changes in the outputs.
+	 * @param oldWidth
+	 * @param oldHeight
+	 * @param newWidth
+	 * @param newHeight
+	 */
 	protected void outputSizeChanged(int oldWidth, int oldHeight, int newWidth, int newHeight) {
 	}
 	
-	public void setOutputSize(int width, int height) {
+	/**
+	 * Called to change the size of the output map.
+	 * @param width
+	 * @param height
+	 */
+	void setOutputSize(int width, int height) {
 		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
 			if (width != outputWidth || height != outputHeight) {
 				int dw = this.outputWidth;
@@ -103,7 +126,12 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 	}
 
 	
-	public void setInputSize(int width, int height) {
+	/**
+	 * Called to change the size of the input map.
+	 * @param width
+	 * @param height
+	 */
+	void setInputSize(int width, int height) {
 		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
 			if (width != inputWidth || height != inputHeight) {
 				int dw = this.inputWidth;
@@ -182,6 +210,10 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 	JComboBox myComboBox = new JComboBox();
 	Object currentSelection = null;
 	
+	/* (non-Javadoc)
+	 * creates the special GUI elements required to control instances of SignalTransformationKernel 
+	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.ParameterContainer#createCustomControls()
+	 */
 	@Override
 	public JComponent createCustomControls() {
 		JPanel myPanel = new JPanel();
@@ -258,6 +290,10 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 		}
 	}
 	
+	/* (non-Javadoc)
+	 * used to monitor changes in elements that are part of the GUI.
+	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.ParameterContainer#propertyChange(java.beans.PropertyChangeEvent)
+	 */
 	@SuppressWarnings("unchecked")
 	public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
 		super.propertyChange(propertyChangeEvent);
@@ -283,6 +319,11 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 		}
 	}
 
+	/* (non-Javadoc)
+	 * Extends ch.unizh.ini.jaer.projects.apsdvsfusion.ParameterContainer#restoreParameters() such that the input input map of this kernel
+	 * is correctly restored after loading a configuration.
+	 * @see ch.unizh.ini.jaer.projects.apsdvsfusion.ParameterContainer#restoreParameters()
+	 */
 	@Override
 	public void restoreParameters() {
     	super.restoreParameters();
@@ -298,15 +339,27 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
     	}
     }
 	
+	/**
+	 * Returns whether this transformation kernel is enabled.
+	 * @return
+	 */
 	public boolean isEnabled() {
 		return enabled;
 	}
 
+	/**
+	 * Allows to activate or deactivate this kernel without deleting it.
+	 * @param enabled
+	 */
 	public void setEnabled(boolean enabled) {
 		getSupport().firePropertyChange("enabled", this.enabled, enabled);
 		this.enabled = enabled;
 	}
 	
+	/**
+	 * Removes all ties of this kernel to make sure it can safely be deleted. For example, the input map and the output map are 
+	 * disconnected.
+	 */
 	protected void disconnectKernel() {
 		SpatioTemporalFusion stf = SpatioTemporalFusion.getInstance(this);
 		ArrayList<FiringModelMap> contents;
@@ -331,6 +384,10 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 		}
 	}
 	
+	/**
+	 * Special "do"-function which will cause the create of an extra button in the GUI. 
+	 * Works by telling the owning output map that this kernel requests its deletion.
+	 */
 	public void doDelete() {
 		FiringModelMap map = getOutputMap();
 		if (map != null)

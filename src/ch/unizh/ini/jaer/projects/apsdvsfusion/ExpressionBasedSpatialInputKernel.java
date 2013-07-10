@@ -31,6 +31,9 @@ import ch.unizh.ini.jaer.projects.apsdvsfusion.mathexpression.ExpressionTreeNode
 import ch.unizh.ini.jaer.projects.apsdvsfusion.mathexpression.IllegalExpressionException;
 
 /**
+ * A {@link SignalTransformationKernel} that applies a convolution filter to incoming inputs.
+ * Convolution filter can be designed using an expression editor.
+ * 
  * @author Dennis
  *
  */
@@ -40,13 +43,10 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 	int centerX, centerY;
 	int offsetX, offsetY;
 
-//	String onExpressionString = "0.01";
 	String expressionString = "0";
 	
 	Object convolutionValuesLock = new Object();
 	
-//	ExpressionTreeNode onExpressionTree = null;
-//	ExpressionTreeNode offExpressionTree = null;
 	
 	boolean evaluateExpressionAsReceptiveField = true;
 	float[][] convolutionValues = null;
@@ -56,14 +56,11 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 		return convolutionValues;
 	}
 
-//	public synchronized float[][] getOffConvolutionValues() {
-//		return offConvolutionValues;
-//	}
-//
-//	float[][] offConvolutionValues = null;
-
 	/**
-	 * 
+	 * Creates a new kernel.
+	 * @param width The width of the new kernel.
+	 * @param height The height of the new kernel.
+	 * @param prefs A preference node that should be used to store properties of this object.
 	 */
 	public ExpressionBasedSpatialInputKernel(int width, int height, Preferences prefs) {
 		super("ExpressionBasedSpatialInputKernel",prefs);
@@ -74,17 +71,18 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 		
 	}
 	
-//	@Deprecated
-//	public ExpressionBasedSpatialInputKernel(int width, int height, Preferences parentPrefs,	String nodeName) {
-//		super("ExpressionBasedSpatialInputKernel",parentPrefs, nodeName);
-//		changeSize(width, height);
-//	}
-	
+	/**
+	 * @return The string defining the expression of this Kernel.
+	 */
 	public String getExpressionString() {
 		return expressionString;
 	}
 
 
+	/**
+	 * Changes the expression defining the shape of this convolution kernel.
+	 * @param expressionString
+	 */
 	public void setExpressionString(String expressionString) {
 		if (expressionString != null && !expressionString.equals("")) {
 		try {
@@ -102,18 +100,14 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 		}
 	}
 
-//	public String getOffExpressionString() {
-//		return offExpressionString;
-//	}
-//
-//	public void setOffExpressionString(String offExpressionString) {
-//		try {
-//			this.offConvolutionValues = evaluateExpression(offExpressionString, offConvolutionValues, this.offExpressionString);
-//			this.offExpressionString = offExpressionString;
-//		} catch (IllegalExpressionException e) {
-//		}
-//	}
-	
+	/**
+	 * Evaluates a new expression.
+	 * @param expressionString
+	 * @param oldConvolutionValues
+	 * @param oldString
+	 * @return
+	 * @throws IllegalExpressionException
+	 */
 	protected synchronized float[][] evaluateExpression(String expressionString, float[][] oldConvolutionValues, String oldString) throws IllegalExpressionException {
 		ExpressionTreeNode et = ExpressionTreeBuilder.parseString(expressionString);
 		float[][] newValues = new float[oldConvolutionValues.length][oldConvolutionValues[0].length];

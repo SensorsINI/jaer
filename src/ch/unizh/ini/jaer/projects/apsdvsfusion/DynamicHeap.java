@@ -6,6 +6,8 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
 import java.util.ArrayList;
 
 /**
+ * Creates a Heap as also implemented by java.util.PriorityQueue, but allows direct access to the elements of the 
+ * heap. Thereby, it becomes possible to change the weight of an element of the heap.
  * @author Dennis
  *
  */
