@@ -180,29 +180,36 @@ public class jAER2joglpxfxcanvas extends Application implements GLEventListener 
 					}
 
 					final long fpsPrint = jAER2joglpxfxcanvas.FPS / ((System.currentTimeMillis() - start) / 1000);
-					fpsTxt.setText("JOGL FPS: " + fpsPrint);
 
 					final long fpsFXPrint = jAER2joglpxfxcanvas.FPS_FX / ((System.currentTimeMillis() - start) / 1000);
-					fpsFXTxt.setText("JOGL -> JavaFX FPS: " + fpsFXPrint);
-
-					fpsFXpftTxt.setText(String.format(
-						"JavaFX (perfTracker):\n\tavgFPS %d, instaFPS %d\n\tavgPulse %d, instaPulse %d",
-						(int) perfTracker.getAverageFPS(), (int) perfTracker.getInstantFPS(),
-						(int) perfTracker.getAveragePulses(), (int) perfTracker.getInstantPulses()));
 
 					final Runtime rt = Runtime.getRuntime();
 
-					/* Current amount of memory the JVM is using */
-					usedMemTxt.setText("Used memory (bytes): " + (rt.totalMemory() - rt.freeMemory()));
+					Platform.runLater(new Runnable() {
+						@Override
+						public void run() {
+							fpsTxt.setText("JOGL FPS: " + fpsPrint);
 
-					/* Total amount of free memory available to the JVM */
-					freeMemTxt.setText("Free memory (bytes): " + rt.freeMemory());
+							fpsFXTxt.setText("JOGL -> JavaFX FPS: " + fpsFXPrint);
 
-					/* Total memory currently in use by the JVM */
-					totMemTxt.setText("Total memory (bytes): " + rt.totalMemory());
+							fpsFXpftTxt.setText(String.format(
+								"JavaFX (perfTracker):\n\tavgFPS %d, instaFPS %d\n\tavgPulse %d, instaPulse %d",
+								(int) perfTracker.getAverageFPS(), (int) perfTracker.getInstantFPS(),
+								(int) perfTracker.getAveragePulses(), (int) perfTracker.getInstantPulses()));
 
-					/* Maximum amount of memory the JVM will attempt to use */
-					maxMemTxt.setText("Maximum memory (bytes): " + rt.maxMemory());
+							/* Current amount of memory the JVM is using */
+							usedMemTxt.setText("Used memory (bytes): " + (rt.totalMemory() - rt.freeMemory()));
+
+							/* Total amount of free memory available to the JVM */
+							freeMemTxt.setText("Free memory (bytes): " + rt.freeMemory());
+
+							/* Total memory currently in use by the JVM */
+							totMemTxt.setText("Total memory (bytes): " + rt.totalMemory());
+
+							/* Maximum amount of memory the JVM will attempt to use */
+							maxMemTxt.setText("Maximum memory (bytes): " + rt.maxMemory());
+						}
+					});
 				}
 			}
 		});
