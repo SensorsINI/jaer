@@ -177,9 +177,9 @@ public class jAER2joglpxfximg extends Application implements GLEventListener {
 					fpsFXTxt.setText("JOGL -> JavaFX FPS: " + fpsFXPrint);
 
 					fpsFXpftTxt.setText(String.format(
-						"JavaFX (perfTracker):\n\tavgFPS %f, instaFPS %f\n\tavgPulse %f, instaPulse %f",
-						perfTracker.getAverageFPS(), perfTracker.getInstantFPS(), perfTracker.getAveragePulses(),
-						perfTracker.getInstantPulses()));
+						"JavaFX (perfTracker):\n\tavgFPS %d, instaFPS %d\n\tavgPulse %d, instaPulse %d",
+						(int) perfTracker.getAverageFPS(), (int) perfTracker.getInstantFPS(),
+						(int) perfTracker.getAveragePulses(), (int) perfTracker.getInstantPulses()));
 
 					final Runtime rt = Runtime.getRuntime();
 
