@@ -83,7 +83,7 @@ public class SingleLineTracker extends EventFilter2D implements FrameAnnotater,O
     public void annotate (GLAutoDrawable drawable){
         updateCurrentEstimateH();
         updateCurrentEstimateV();
-        GL gl = drawable.getGL();    // when we getString this we are already set up with scale 1=1 pixel, at LL corner
+        GL2 gl = drawable.getGL().getGL2();    // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         float loX, hiX, loY, hiY;
 
         if ( true ){ // draw vertical line model
@@ -95,18 +95,18 @@ public class SingleLineTracker extends EventFilter2D implements FrameAnnotater,O
 
             gl.glLineWidth(5.0f);
             gl.glColor3f(1,0,0);
-            gl.glBegin(GL.GL_LINES);
+            gl.glBegin(GL2.GL_LINES);
             gl.glVertex2d(loX,0);
             gl.glVertex2d(hiX,maxY);
             gl.glEnd();
 
             gl.glColor3f(.5f,0,0);
             gl.glLineWidth(1.0f);
-            gl.glBegin(GL.GL_LINES);
+            gl.glBegin(GL2.GL_LINES);
             gl.glVertex2d(loX + polyStddev,0);
             gl.glVertex2d(hiX + polyStddev,maxY);
             gl.glEnd();
-            gl.glBegin(GL.GL_LINES);
+            gl.glBegin(GL2.GL_LINES);
             gl.glVertex2d(loX - polyStddev,0);
             gl.glVertex2d(hiX - polyStddev,maxY);
             gl.glEnd();
@@ -119,18 +119,18 @@ public class SingleLineTracker extends EventFilter2D implements FrameAnnotater,O
 
             gl.glLineWidth(5.0f);
             gl.glColor3f(0,1,0); // green
-            gl.glBegin(GL.GL_LINES);
+            gl.glBegin(GL2.GL_LINES);
             gl.glVertex2d(0,loY);
             gl.glVertex2d(maxX,hiY);
             gl.glEnd();
 
             gl.glColor3f(0,0.5f,0);
             gl.glLineWidth(1.0f);
-            gl.glBegin(GL.GL_LINES);
+            gl.glBegin(GL2.GL_LINES);
             gl.glVertex2d(0,loY + polyStddev);
             gl.glVertex2d(maxX,hiY + polyStddev);
             gl.glEnd();
-            gl.glBegin(GL.GL_LINES);
+            gl.glBegin(GL2.GL_LINES);
             gl.glVertex2d(0,loY - polyStddev);
             gl.glVertex2d(maxX,hiY - polyStddev);
             gl.glEnd();

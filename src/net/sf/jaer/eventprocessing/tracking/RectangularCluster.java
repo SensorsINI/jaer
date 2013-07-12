@@ -3,7 +3,7 @@
 // * and open the template in the editor.
 // */
 //package net.sf.jaer.eventprocessing.tracking;
-//import com.sun.opengl.util.GLUT;
+//
 //import java.util.List;
 //import java.util.Observable;
 //import net.sf.jaer.aemonitor.AEConstants;
@@ -446,7 +446,7 @@
 //        final float BOX_LINE_WIDTH = 2f; // in chip
 //        final float PATH_POINT_SIZE = 4f;
 //        final float VEL_LINE_WIDTH = 4f;
-//        GL gl = drawable.getGL();
+//        GL2 gl = drawable.getGL().getGL2();
 //        int x = (int)getLocation().x;
 //        int y = (int)getLocation().y;
 //
@@ -481,7 +481,7 @@
 //        // now draw velocityPPT vector
 //        if ( showClusterVelocity ){
 //            gl.glLineWidth(VEL_LINE_WIDTH);
-//            gl.glBegin(GL.GL_LINES);
+//            gl.glBegin(GL2.GL_LINES);
 //            {
 //                gl.glVertex2i(x,y);
 //                gl.glVertex2f(x + getVelocityPPT().x * VELOCITY_VECTOR_SCALING * velocityVectorScaling,y + getVelocityPPT().y * VELOCITY_VECTOR_SCALING * velocityVectorScaling);
@@ -520,12 +520,12 @@
 //            glut.glutBitmapString(font,String.format("m=%.1f ",getMassNow(lastUpdateTime)));
 //        }
 //    }
-//    protected void drawBox(GL gl, int x, int y, int sx, int sy, float angle) {
+//    protected void drawBox(GL2 gl, int x, int y, int sx, int sy, float angle) {
 //        final float r2d = (float) (180 / Math.PI);
 //        gl.glPushMatrix();
 //        gl.glTranslatef(x, y, 0);
 //        gl.glRotatef(angle * r2d, 0, 0, 1);
-//        gl.glBegin(GL.GL_LINE_LOOP);
+//        gl.glBegin(GL2.GL_LINE_LOOP);
 //        {
 //            gl.glVertex2i(-sx, -sy);
 //            gl.glVertex2i(+sx, -sy);
@@ -534,7 +534,7 @@
 //        }
 //        gl.glEnd();
 //        if (dynamicAngleEnabled) {
-//            gl.glBegin(GL.GL_LINES);
+//            gl.glBegin(GL2.GL_LINES);
 //            {
 //                gl.glVertex2i(0, 0);
 //                gl.glVertex2i(sx, 0);

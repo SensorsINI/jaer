@@ -19,7 +19,6 @@
 	<classpathentry kind="lib" path="jars/beansbinding-1.2.1.jar"/>
 	<classpathentry kind="lib" path="jars/BrowserLauncher2-all-1_3.jar"/>
 	<classpathentry kind="lib" path="jars/comm.jar"/>
-	<classpathentry kind="lib" path="jars/commons-net-2.2.jar"/>
 	<classpathentry kind="lib" path="jars/flanagan.jar"/>
 	<classpathentry kind="lib" path="jars/jinput-test.jar"/>
 	<classpathentry kind="lib" path="jars/jinput.jar"/>
@@ -39,6 +38,7 @@
 	<classpathentry kind="lib" path="jars/usb4java-1.1.0.jar"/>
 	<classpathentry kind="lib" path="jars/USBTransferThread-0.7.jar"/>
 	<classpathentry kind="lib" path="jars/nrjavaserial-3.8.8.jar"/>
+	<classpathentry kind="lib" path="jars/commons-net-3.3.jar"/>
 	<classpathentry kind="lib" path="jars/jogl/gluegen-rt.jar"/>
 	<classpathentry kind="lib" path="jars/jogl/jogl-all.jar">
 		<attributes>

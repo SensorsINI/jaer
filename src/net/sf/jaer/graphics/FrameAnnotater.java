@@ -52,8 +52,8 @@ public interface FrameAnnotater {
      * The FrameAnnotater then can use JOGL calls to render to the screen by getting the GL context, e.g. the following
      * code, used in the context of an AEChip object, draws a golden lines from LL to UR of the pixel array.
      * <pre>
-        GL gl = drawable.getGL();
-        gl.glBegin(GL.GL_LINES);
+        GL2 gl = drawable.getGL().getGL2();
+        gl.glBegin(GL2.GL_LINES);
         gl.glColor3f(.5f, .5f, 0);
         gl.glVertex2f(0, 0);
         gl.glVertex2f(getSizeX() - 1, getSizeY() - 1);

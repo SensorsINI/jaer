@@ -10,7 +10,7 @@ import java.awt.geom.Point2D;
 import java.util.Observable;
 import java.util.Observer;
 import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.GLCanvas;
+import javax.media.opengl.awt.GLCanvas;
 import javax.media.opengl.glu.*;
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;

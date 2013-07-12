@@ -6,26 +6,31 @@
  */
 package ch.unizh.ini.jaer.chip.retina;
 
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.event.*;
-import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.util.*;
-import net.sf.jaer.util.filter.*;
-import com.sun.opengl.util.*;
-import java.io.*;
-import java.text.*;
-import java.util.*;
-import javax.media.opengl.*;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.Writer;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
+
 import net.sf.jaer.Description;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
+import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.EngineeringFormat;
+
+import com.jogamp.opengl.util.gl2.GLUT;
 
 /**
  * Controls the rate of events from the retina by controlling retina biases.
 The event threshold is increased if rate exceeds rateHigh until rate drops below rateHigh.
-The threshold is decreased if rate is lower than rateLow. 
+The threshold is decreased if rate is lower than rateLow.
 Hysterisis limits crossing noise.
 A lowpass filter smooths the rate measurements.
  *
@@ -34,278 +39,282 @@ A lowpass filter smooths the rate measurements.
 @Description("Adaptively controls biases on DVS128 to control event rate")
 public class DVS128BiasController extends EventFilter2D implements FrameAnnotater {
 
-    protected int rateHigh = getInt("rateHigh", 400);
+	protected int rateHigh = getInt("rateHigh", 400);
 
-//    private int rateMid=getInt("rateMid",300);
-    private int rateLow = getInt("rateLow", 100);
-    private int rateHysteresis = getInt("rateHysteresis", 50);
-    private float hysteresisFactor = getFloat("hysteresisFactor", 1.3f);
-    private int minCommandIntervalMs = getInt("minCommandIntervalMs",300);
-    private long lastCommandTime = 0; // limits use of status messages that control biases
-    private float tweakStepAmount = getFloat("tweakStepAmount", .001f);
-    private EventRateEstimator rateEstimator;
- 
-    enum State {
+	//    private int rateMid=getInt("rateMid",300);
+	private int rateLow = getInt("rateLow", 100);
+	private int rateHysteresis = getInt("rateHysteresis", 50);
+	private float hysteresisFactor = getFloat("hysteresisFactor", 1.3f);
+	private int minCommandIntervalMs = getInt("minCommandIntervalMs",300);
+	private long lastCommandTime = 0; // limits use of status messages that control biases
+	private float tweakStepAmount = getFloat("tweakStepAmount", .001f);
+	private EventRateEstimator rateEstimator;
 
-        INITIAL, LOW, MEDIUM, HIGH;
-        private long timeChanged = 0;
+	enum State {
 
-        long getTimeChanged() {
-            return timeChanged;
-        }
+		INITIAL, LOW, MEDIUM, HIGH;
+		private long timeChanged = 0;
 
-        void setTimeChanged(long t) {
-            timeChanged = t;
-        }
-    };
-    State state = State.INITIAL, lastState = State.INITIAL;
-    Writer logWriter;
-    private boolean writeLogEnabled = false;
-    long timeNowMs = 0;
+		long getTimeChanged() {
+			return timeChanged;
+		}
 
-    /**
-     * Creates a new instance of DVS128BiasController
-     */
-    public DVS128BiasController(AEChip chip) {
-        super(chip);
-        if (!(chip instanceof DVS128)) {
-            log.warning(chip + " is not of type DVS128");
-        }
-        rateEstimator=new EventRateEstimator(chip);
-        FilterChain chain=new FilterChain(chip);
-        chain.add(rateEstimator);
-        setEnclosedFilterChain(chain);
-        
-        setPropertyTooltip("rateLow", "event rate in keps for LOW state");
-        setPropertyTooltip("rateHigh", "event rate in keps for HIGH state");
-        setPropertyTooltip("rateHysteresis", "hysteresis for state change; after state entry, state exited only when avg rate changes by this factor from threshold");
-        setPropertyTooltip("hysteresisFactor", "hysteresis for state change; after state entry, state exited only when avg rate changes by this factor from threshold");
-        setPropertyTooltip("tweakStepAmount", "amount to tweak bias by each step");
-        setPropertyTooltip("minCommandIntervalMs", "min time in ms between changing biases");
-    }
+		void setTimeChanged(long t) {
+			timeChanged = t;
+		}
+	};
+	State state = State.INITIAL, lastState = State.INITIAL;
+	Writer logWriter;
+	private boolean writeLogEnabled = false;
+	long timeNowMs = 0;
 
-    public Object getFilterState() {
-        return null;
-    }
+	/**
+	 * Creates a new instance of DVS128BiasController
+	 */
+	 public DVS128BiasController(AEChip chip) {
+		 super(chip);
+		 if (!(chip instanceof DVS128)) {
+			 log.warning(chip + " is not of type DVS128");
+		 }
+		 rateEstimator=new EventRateEstimator(chip);
+		 FilterChain chain=new FilterChain(chip);
+		 chain.add(rateEstimator);
+		 setEnclosedFilterChain(chain);
 
-    synchronized public void resetFilter() {
-        if (chip.getHardwareInterface() == null) {
-            return;  // avoid sending hardware commands unless the hardware is there and we are active
-        }
-        if (chip.getBiasgen() == null) {
-            setFilterEnabled(false);
-            log.warning("null biasgen object to operate on, disabled filter");
-            return;
-        }
-        if (!(chip.getBiasgen() instanceof DVS128.Biasgen)) {
-            setFilterEnabled(false);
-            log.warning("Wrong type of biasgen object; should be DVS128.Biasgen but object is " + chip.getBiasgen() + "; disabled filter");
-            return;
-        }
-        DVS128.Biasgen biasgen = (DVS128.Biasgen) getChip().getBiasgen();
-        if (biasgen == null) {
-//            log.warning("null biasgen, not doing anything");
-            return;
-        }
-        biasgen.loadPreferences();
-        state = State.INITIAL;
-    }
+		 setPropertyTooltip("rateLow", "event rate in keps for LOW state");
+		 setPropertyTooltip("rateHigh", "event rate in keps for HIGH state");
+		 setPropertyTooltip("rateHysteresis", "hysteresis for state change; after state entry, state exited only when avg rate changes by this factor from threshold");
+		 setPropertyTooltip("hysteresisFactor", "hysteresis for state change; after state entry, state exited only when avg rate changes by this factor from threshold");
+		 setPropertyTooltip("tweakStepAmount", "amount to tweak bias by each step");
+		 setPropertyTooltip("minCommandIntervalMs", "min time in ms between changing biases");
+	 }
 
-    public int getRateHigh() {
-        return rateHigh;
-    }
+	 public Object getFilterState() {
+		 return null;
+	 }
 
-    synchronized public void setRateHigh(int upperThreshKEPS) {
-        this.rateHigh = upperThreshKEPS;
-        putInt("rateHigh", upperThreshKEPS);
-    }
+	 @Override
+	 synchronized public void resetFilter() {
+		 if (chip.getHardwareInterface() == null) {
+			 return;  // avoid sending hardware commands unless the hardware is there and we are active
+		 }
+		 if (chip.getBiasgen() == null) {
+			 setFilterEnabled(false);
+			 log.warning("null biasgen object to operate on, disabled filter");
+			 return;
+		 }
+		 if (!(chip.getBiasgen() instanceof DVS128.Biasgen)) {
+			 setFilterEnabled(false);
+			 log.warning("Wrong type of biasgen object; should be DVS128.Biasgen but object is " + chip.getBiasgen() + "; disabled filter");
+			 return;
+		 }
+		 DVS128.Biasgen biasgen = (DVS128.Biasgen) getChip().getBiasgen();
+		 if (biasgen == null) {
+			 //            log.warning("null biasgen, not doing anything");
+			 return;
+		 }
+		 biasgen.loadPreferences();
+		 state = State.INITIAL;
+	 }
 
-    public int getRateLow() {
-        return rateLow;
-    }
+	 public int getRateHigh() {
+		 return rateHigh;
+	 }
 
-    synchronized public void setRateLow(int lowerThreshKEPS) {
-        this.rateLow = lowerThreshKEPS;
-        putInt("rateLow", lowerThreshKEPS);
-    }
+	 synchronized public void setRateHigh(int upperThreshKEPS) {
+		 rateHigh = upperThreshKEPS;
+		 putInt("rateHigh", upperThreshKEPS);
+	 }
 
-    synchronized public EventPacket filterPacket(EventPacket in) {
-        // TODO reenable check for LIVE mode here
-//        if (chip.getAeViewer().getPlayMode() != AEViewer.PlayMode.LIVE) {
-//            return in;  // don't servo on recorded data!
-//        }
-        getEnclosedFilterChain().filterPacket(in);
-        
-        float r = rateEstimator.getFilteredEventRate() * 1e-3f;
+	 public int getRateLow() {
+		 return rateLow;
+	 }
 
- 
-        setState(r);
-        setBiases();
-        if (writeLogEnabled) {
-            if (logWriter == null) {
-                logWriter = openLoggingOutputFile();
-            }
-            try {
-                logWriter.write(in.getLastTimestamp() + " " + r + " " + state.ordinal() + "\n");
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        return in;
-    }
+	 synchronized public void setRateLow(int lowerThreshKEPS) {
+		 rateLow = lowerThreshKEPS;
+		 putInt("rateLow", lowerThreshKEPS);
+	 }
 
-    void setState(float r) {
-        lastState = state;
-        switch (state) {
-            case LOW:
-                if (r > rateLow * hysteresisFactor) {
-                    state = State.MEDIUM;
-                }
-                break;
-            case MEDIUM:
-                if (r < rateLow / hysteresisFactor) {
-                    state = State.LOW;
-                } else if (r > rateHigh * hysteresisFactor) {
-                    state = State.HIGH;
-                }
-                break;
-            case HIGH:
-                if (r < rateHigh / hysteresisFactor) {
-                    state = State.MEDIUM;
-                }
-                break;
-            default:
-                state = State.MEDIUM;
-        }
-    }
+	 @Override
+	 synchronized public EventPacket filterPacket(EventPacket in) {
+		 // TODO reenable check for LIVE mode here
+		 //        if (chip.getAeViewer().getPlayMode() != AEViewer.PlayMode.LIVE) {
+		 //            return in;  // don't servo on recorded data!
+		 //        }
+		 getEnclosedFilterChain().filterPacket(in);
 
-    void setBiases() {
-        timeNowMs = System.currentTimeMillis();
-       long dt=timeNowMs - lastCommandTime;
-        if (dt>0 && dt < getMinCommandIntervalMs()) {
-            return; // don't saturate setup packet bandwidth and stall on blocking USB writes
-        }
-        lastCommandTime=timeNowMs;
-        DVS128.Biasgen biasgen = (DVS128.Biasgen) getChip().getBiasgen();
-        if (biasgen == null) {
-            log.warning("null biasgen, not doing anything");
-            return;
-        }
-        float bw = biasgen.getThresholdTweak();
-        switch (state) {
-            case LOW:
-                biasgen.setThresholdTweak(bw - getTweakStepAmount());
-//                biasgen.decreaseThreshold();
-                break;
-            case HIGH:
-                biasgen.setThresholdTweak(bw + getTweakStepAmount());
-//               biasgen.increaseThreshold();
-                break;
-            default:
-        }
-        System.out.println("bw="+bw);
-
-    }
-
-    public void initFilter() {
-    }
-
-    public float getHysteresisFactor() {
-        return hysteresisFactor;
-    }
-
-    synchronized public void setHysteresisFactor(float h) {
-        if (h < 1) {
-            h = 1;
-        } else if (h > 5) {
-            h = 5;
-        }
-        this.hysteresisFactor = h;
-        putFloat("hysteresisFactor", hysteresisFactor);
-    }
-
-   /**
-     * @return the tweakStepAmount
-     */
-    public float getTweakStepAmount() {
-        return tweakStepAmount;
-    }
-
-    /**
-     * @param tweakStepAmount the tweakStepAmount to set
-     */
-    public void setTweakStepAmount(float tweakStepAmount) {
-        this.tweakStepAmount = tweakStepAmount;
-        putFloat("tweakStepAmount", tweakStepAmount);
-    }
+		 float r = rateEstimator.getFilteredEventRate() * 1e-3f;
 
 
-    Writer openLoggingOutputFile() {
-        DateFormat loggingFilenameDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ssZ");
-        String dateString = loggingFilenameDateFormat.format(new Date());
-        String className = "DVS128BiasController";
-        int suffixNumber = 0;
-        boolean suceeded = false;
-        String filename;
-        Writer writer = null;
-        File loggingFile;
-        do {
-            filename = className + "-" + dateString + "-" + suffixNumber + ".txt";
-            loggingFile = new File(filename);
-            if (!loggingFile.isFile()) {
-                suceeded = true;
-            }
-        } while (suceeded == false && suffixNumber++ <= 5);
-        if (suceeded == false) {
-            log.warning("could not open a unigue new file for logging after trying up to " + filename);
-            return null;
-        }
-        try {
-            writer = new FileWriter(loggingFile);
-            log.info("starting logging bias control at " + dateString);
-            writer.write("# time rate lpRate state\n");
-            writer.write(String.format("# rateLow=%f rateHigh=%f hysteresisFactor=%f\n", rateLow, rateHigh, hysteresisFactor));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return writer;
-    }
+		 setState(r);
+		 setBiases();
+		 if (writeLogEnabled) {
+			 if (logWriter == null) {
+				 logWriter = openLoggingOutputFile();
+			 }
+			 try {
+				 logWriter.write(in.getLastTimestamp() + " " + r + " " + state.ordinal() + "\n");
+			 } catch (Exception e) {
+				 e.printStackTrace();
+			 }
+		 }
+		 return in;
+	 }
 
-    EngineeringFormat fmt = new EngineeringFormat();
+	 void setState(float r) {
+		 lastState = state;
+		 switch (state) {
+			 case LOW:
+				 if (r > (rateLow * hysteresisFactor)) {
+					 state = State.MEDIUM;
+				 }
+				 break;
+			 case MEDIUM:
+				 if (r < (rateLow / hysteresisFactor)) {
+					 state = State.LOW;
+				 } else if (r > (rateHigh * hysteresisFactor)) {
+					 state = State.HIGH;
+				 }
+				 break;
+			 case HIGH:
+				 if (r < (rateHigh / hysteresisFactor)) {
+					 state = State.MEDIUM;
+				 }
+				 break;
+			 default:
+				 state = State.MEDIUM;
+		 }
+	 }
 
-    public void annotate(GLAutoDrawable drawable) {
-        if (!isFilterEnabled()) {
-            return;
-        }
-        GL gl = drawable.getGL();
-        gl.glPushMatrix();
-        final GLUT glut = new GLUT();
-        gl.glColor3f(1, 1, 1); // must set color before raster position (raster position is like glVertex)
-        gl.glRasterPos3f(0, 0, 0);
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("lpRate=%s, state=%s", fmt.format(rateEstimator.getFilteredEventRate()), state.toString()));
-        gl.glPopMatrix();
-    }
+	 void setBiases() {
+		 timeNowMs = System.currentTimeMillis();
+		 long dt=timeNowMs - lastCommandTime;
+		 if ((dt>0) && (dt < getMinCommandIntervalMs())) {
+			 return; // don't saturate setup packet bandwidth and stall on blocking USB writes
+		 }
+		 lastCommandTime=timeNowMs;
+		 DVS128.Biasgen biasgen = (DVS128.Biasgen) getChip().getBiasgen();
+		 if (biasgen == null) {
+			 log.warning("null biasgen, not doing anything");
+			 return;
+		 }
+		 float bw = biasgen.getThresholdTweak();
+		 switch (state) {
+			 case LOW:
+				 biasgen.setThresholdTweak(bw - getTweakStepAmount());
+				 //                biasgen.decreaseThreshold();
+				 break;
+			 case HIGH:
+				 biasgen.setThresholdTweak(bw + getTweakStepAmount());
+				 //               biasgen.increaseThreshold();
+				 break;
+			 default:
+		 }
+		 System.out.println("bw="+bw);
 
-    public boolean isWriteLogEnabled() {
-        return writeLogEnabled;
-    }
+	 }
 
-    public void setWriteLogEnabled(boolean writeLogEnabled) {
-        this.writeLogEnabled = writeLogEnabled;
-    }
+	 @Override
+	 public void initFilter() {
+	 }
 
-    /**
-     * @return the minCommandIntervalMs
-     */
-    public int getMinCommandIntervalMs() {
-        return minCommandIntervalMs;
-    }
+	 public float getHysteresisFactor() {
+		 return hysteresisFactor;
+	 }
 
-    /**
-     * @param minCommandIntervalMs the minCommandIntervalMs to set
-     */
-    public void setMinCommandIntervalMs(int minCommandIntervalMs) {
-        this.minCommandIntervalMs = minCommandIntervalMs;
-        putInt("minCommandIntervalMs",minCommandIntervalMs);
-    }
+	 synchronized public void setHysteresisFactor(float h) {
+		 if (h < 1) {
+			 h = 1;
+		 } else if (h > 5) {
+			 h = 5;
+		 }
+		 hysteresisFactor = h;
+		 putFloat("hysteresisFactor", hysteresisFactor);
+	 }
+
+	 /**
+	  * @return the tweakStepAmount
+	  */
+	 public float getTweakStepAmount() {
+		 return tweakStepAmount;
+	 }
+
+	 /**
+	  * @param tweakStepAmount the tweakStepAmount to set
+	  */
+	 public void setTweakStepAmount(float tweakStepAmount) {
+		 this.tweakStepAmount = tweakStepAmount;
+		 putFloat("tweakStepAmount", tweakStepAmount);
+	 }
+
+
+	 Writer openLoggingOutputFile() {
+		 DateFormat loggingFilenameDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ssZ");
+		 String dateString = loggingFilenameDateFormat.format(new Date());
+		 String className = "DVS128BiasController";
+		 int suffixNumber = 0;
+		 boolean suceeded = false;
+		 String filename;
+		 Writer writer = null;
+		 File loggingFile;
+		 do {
+			 filename = className + "-" + dateString + "-" + suffixNumber + ".txt";
+			 loggingFile = new File(filename);
+			 if (!loggingFile.isFile()) {
+				 suceeded = true;
+			 }
+		 } while ((suceeded == false) && (suffixNumber++ <= 5));
+		 if (suceeded == false) {
+			 log.warning("could not open a unigue new file for logging after trying up to " + filename);
+			 return null;
+		 }
+		 try {
+			 writer = new FileWriter(loggingFile);
+			 log.info("starting logging bias control at " + dateString);
+			 writer.write("# time rate lpRate state\n");
+			 writer.write(String.format("# rateLow=%f rateHigh=%f hysteresisFactor=%f\n", rateLow, rateHigh, hysteresisFactor));
+		 } catch (Exception e) {
+			 e.printStackTrace();
+		 }
+		 return writer;
+	 }
+
+	 EngineeringFormat fmt = new EngineeringFormat();
+
+	 @Override
+	 public void annotate(GLAutoDrawable drawable) {
+		 if (!isFilterEnabled()) {
+			 return;
+		 }
+		 GL2 gl = drawable.getGL().getGL2();
+		 gl.glPushMatrix();
+		 final GLUT glut = new GLUT();
+		 gl.glColor3f(1, 1, 1); // must set color before raster position (raster position is like glVertex)
+		 gl.glRasterPos3f(0, 0, 0);
+		 glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("lpRate=%s, state=%s", fmt.format(rateEstimator.getFilteredEventRate()), state.toString()));
+		 gl.glPopMatrix();
+	 }
+
+	 public boolean isWriteLogEnabled() {
+		 return writeLogEnabled;
+	 }
+
+	 public void setWriteLogEnabled(boolean writeLogEnabled) {
+		 this.writeLogEnabled = writeLogEnabled;
+	 }
+
+	 /**
+	  * @return the minCommandIntervalMs
+	  */
+	 public int getMinCommandIntervalMs() {
+		 return minCommandIntervalMs;
+	 }
+
+	 /**
+	  * @param minCommandIntervalMs the minCommandIntervalMs to set
+	  */
+	 public void setMinCommandIntervalMs(int minCommandIntervalMs) {
+		 this.minCommandIntervalMs = minCommandIntervalMs;
+		 putInt("minCommandIntervalMs",minCommandIntervalMs);
+	 }
 }

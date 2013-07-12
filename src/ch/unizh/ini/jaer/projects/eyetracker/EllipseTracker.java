@@ -451,7 +451,7 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
     
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
-        GL gl=drawable.getGL();
+        GL2 gl=drawable.getGL().getGL2();
         // already in chip pixel context with LL corner =0,0
         
         gl.glPushMatrix();
@@ -459,12 +459,12 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
         gl.glLineWidth(1);
         
         // draw the elliptic iris
-        gl.glBegin(GL.GL_LINE_LOOP);
+        gl.glBegin(GL2.GL_LINE_LOOP);
         for (int i = 0;i<angleListLength;i++){
             gl.glVertex2d(irisEllipse[i].x, irisEllipse[i].y);
         }
         gl.glEnd();
-//        gl.glBegin(GL.GL_LINE_LOOP);
+//        gl.glBegin(GL2.GL_LINE_LOOP);
 //        for (int i = 0;i<angleListLength;i++){
 //            gl.glVertex2d(irisCircle[i].x, irisCircle[i].y);
 //        }
@@ -472,21 +472,21 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
 //        
         
         // draw the elliptic pupil        
-        gl.glBegin(GL.GL_LINE_LOOP);
+        gl.glBegin(GL2.GL_LINE_LOOP);
         for (int i = 0;i<angleListLength;i++){
             gl.glVertex2d(pupilEllipse[i].x, pupilEllipse[i].y);
         }
         gl.glEnd();
         
         //draw eyeMask
-        gl.glBegin(GL.GL_LINE_LOOP);
+        gl.glBegin(GL2.GL_LINE_LOOP);
         for (int i = 0;i<6;i++){
             gl.glVertex2d(eyeMaskFrame[i].x, eyeMaskFrame[i].y);
         }
         gl.glEnd();
         
         //eyeball frame       
-        gl.glBegin(GL.GL_LINE_LOOP);
+        gl.glBegin(GL2.GL_LINE_LOOP);
         for (int i = 0;i<angleListLength;i++){
             gl.glVertex2d(eyeBall[i].x, eyeBall[i].y);
         }
@@ -494,7 +494,7 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
         
         //inverse Ellipse
 //        gl.glColor3f(0,1,0);
-//        gl.glBegin(GL.GL_LINE_LOOP);
+//        gl.glBegin(GL2.GL_LINE_LOOP);
 //        for (int i = 0;i<invEllipseLength;i++){
 //            gl.glVertex2d(invEllipse[i].x, invEllipse[i].y);
 //        }
@@ -504,7 +504,7 @@ public class EllipseTracker extends EventFilter2D implements FrameAnnotater, Obs
         //draw statistics
         gl.glLineWidth(5);
         gl.glColor3f(0,0,1);
-        gl.glBegin(GL.GL_LINES);
+        gl.glBegin(GL2.GL_LINES);
         gl.glVertex2f(0,1);
         gl.glVertex2f(maxConv,1);
         gl.glVertex2f(0,5);

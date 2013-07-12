@@ -319,7 +319,7 @@ public class ServoReaction extends EventFilter2D implements FrameAnnotater{
     
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled() || !goalieMode) return;
-        GL gl=drawable.getGL();
+        GL2 gl=drawable.getGL().getGL2();
         gl.glPushMatrix();
         gl.glColor3f(0,0,1);
         float f=chip.getSizeX()*goaliePosition;

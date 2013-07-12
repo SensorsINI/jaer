@@ -49,7 +49,7 @@ public class Slotcar implements Runnable, ThrottleBrakeInterface {
 
 
     // Open GL context
-    GL gl;
+    GL2 gl;
 
 
     /**
@@ -143,8 +143,8 @@ public class Slotcar implements Runnable, ThrottleBrakeInterface {
 
 
     /** Draws the car as a rectangle */
-    private void drawCar(GL g, Point2D p, Point2D orient) {
-        //gl.glEnable(GL.GL_COLOR_LOGIC_OP);
+    private void drawCar(GL2 g, Point2D p, Point2D orient) {
+        //gl.glEnable(GL2.GL_COLOR_LOGIC_OP);
         //gl.glLogicOp(GL.GL_XOR);
         gl.glLineWidth(1.0f);
         gl.glColor3f(carColorR,carColorG,carColorB);
@@ -170,14 +170,14 @@ public class Slotcar implements Runnable, ThrottleBrakeInterface {
         gl.glEnd();
          */
         //gl.glFlush();
-        //gl.glDisable(GL.GL_COLOR_LOGIC_OP);
+        //gl.glDisable(GL2.GL_COLOR_LOGIC_OP);
 
         gl.glLoadIdentity();
 
     }
 
     /** Draws the osculating circle of the track at the current car position */
-    private void drawOsculatingCircle(GL g, Point2D p, double radius, Point2D center) {
+    private void drawOsculatingCircle(GL2 g, Point2D p, double radius, Point2D center) {
         radius = Math.abs(radius);
 
         gl.glLineWidth(1.0f);
@@ -185,14 +185,14 @@ public class Slotcar implements Runnable, ThrottleBrakeInterface {
         // Draw line to connect center of circle and car
         gl.glColor3f(1.0f, 1.0f, 1.0f);
 
-        gl.glBegin(GL.GL_LINES);
+        gl.glBegin(GL2.GL_LINES);
         gl.glVertex2d(2*(p.getX())-1, 2*(p.getY())-1);
         gl.glVertex2d(2*(center.getX())-1, 2*(center.getY())-1);
         gl.glEnd();
 
         // Draw circle
         gl.glColor3f(1.0f, 0.0f, 1.0f);
-        gl.glBegin(GL.GL_LINE_LOOP);
+        gl.glBegin(GL2.GL_LINE_LOOP);
         for (int i=0; i<90; i++) {
             gl.glVertex2d(2*(center.getX()+radius*Math.cos(4.0*i*Math.PI/180.0))-1,
                     2*(center.getY()+radius*Math.sin(4.0*i*Math.PI/180.0))-1);
@@ -205,7 +205,7 @@ public class Slotcar implements Runnable, ThrottleBrakeInterface {
 
 
     // Paints the car on the drawable surface
-    public void displayCar(GL gl)  {
+    public void displayCar(GL2 gl)  {
         // System.out.println("Displaying Car!");
 
         // System.out.println("CurPos: " + p);
@@ -259,7 +259,7 @@ public class Slotcar implements Runnable, ThrottleBrakeInterface {
      * Sets the Open GL device on which to draw
      * @param gl The new OpenGL device
      */
-    public void setGL(GL gl) {
+    public void setGL(GL2 gl) {
         this.gl = gl;
     }
 

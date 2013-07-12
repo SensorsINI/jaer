@@ -668,11 +668,11 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
         if ((lastMedianX >= 0) || (lastMedianY >= 0)) {
-            GL gl=drawable.getGL();
+            GL2 gl=drawable.getGL().getGL2();
             gl.glPushMatrix();
             gl.glColor3f(1,0,1);
             gl.glLineWidth(3);
-            gl.glBegin(GL.GL_LINE_LOOP);
+            gl.glBegin(GL2.GL_LINE_LOOP);
             int left = Math.max(0, lastMedianX-2);
             int right = Math.min(127, lastMedianX+2);
             int up = Math.max(0, lastMedianY-2);

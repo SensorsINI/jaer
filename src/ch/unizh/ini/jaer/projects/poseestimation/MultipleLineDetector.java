@@ -143,7 +143,7 @@
 //    synchronized public void annotate(GLAutoDrawable drawable) {
 //        if (!isAnnotationEnabled()) 
 //            return;
-//        GL gl = drawable.getGL();
+//        GL2 gl = drawable.getGL().getGL2();
 //        if (gl == null) 
 //            return;
 //
@@ -159,7 +159,7 @@
 //        // Draw line 
 //        gl.glPushMatrix();
 //        gl.glLineWidth(6f);
-//        gl.glBegin(GL.GL_LINES);
+//        gl.glBegin(GL2.GL_LINES);
 //        gl.glColor3f(1f,1f,1f);
 //        gl.glVertex2f(ptVar.x, ptVar.y);
 //        gl.glVertex2f(ptVar.x * 2, ptVar.y * 2);

@@ -176,10 +176,10 @@ public class ProbFPNCorrectionFilter extends EventFilter2D implements FrameAnnot
             return;
         }
         if(isi==null) return; // don't annoate until this map of isi's exists
-        GL gl = drawable.getGL();
+        GL2 gl = drawable.getGL().getGL2();
         gl.glPushMatrix();
         gl.glClearColor(0,0,0,0);
-        gl.glClear(GL.GL_COLOR_BUFFER_BIT);
+        gl.glClear(GL2.GL_COLOR_BUFFER_BIT);
         int sx = chip.getSizeX();
         int sy = chip.getSizeY();
         int st = chip.getNumCellTypes();

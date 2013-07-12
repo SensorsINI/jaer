@@ -618,7 +618,7 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
         }
         
         public void draw(GLAutoDrawable drawable){
-            GL gl=drawable.getGL();
+            GL2 gl=drawable.getGL().getGL2();
             gl.glLineWidth(2.0f);
             if(type == 1){
                 gl.glColor3f(0.9f,0.9f,0.9f);  
@@ -626,7 +626,7 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
                 gl.glColor3f(0.1f,0.1f,0.1f);
             }
             //gl.glColor3f(clusterColors[idx][0],clusterColors[idx][1],clusterColors[idx][2]);
-            gl.glBegin(GL.GL_LINES);
+            gl.glBegin(GL2.GL_LINES);
             //System.out.println("Frag "+idx+", Distance: "+getDistance(p1, p2)+", Max: "+minDist);
             gl.glVertex2f(line.x1,line.y1);
             gl.glVertex2f(line.x2,line.y2);
@@ -667,7 +667,7 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
         if(drawAssocPixels){
-            GL gl=drawable.getGL();
+            GL2 gl=drawable.getGL().getGL2();
             gl.glPointSize(4);
             int i = 0;
             if(elementMethod == ElementMethod.SnakeletsA || elementMethod == ElementMethod.SnakeletsB){
@@ -719,7 +719,7 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
     }
     
     public void drawClusters(GLAutoDrawable drawable){
-        GL gl=drawable.getGL();
+        GL2 gl=drawable.getGL().getGL2();
         for(int i = 0; i<maxElements;i++){
             if(!elementPixels[i].isEmpty()){
                 //System.out.println("CLUSTER: "+i);
@@ -740,14 +740,14 @@ public class EdgeFragments extends EventFilter2D implements Observer, FrameAnnot
     }
     
     public void drawLineSegments(GLAutoDrawable drawable){
-        GL gl=drawable.getGL();
+        GL2 gl=drawable.getGL().getGL2();
         gl.glLineWidth(2.0f);
         for(int i = 0; i<maxElements;i++){
             if(!elementPixels[i].isEmpty()){
                 // System.out.println("CLUSTER: "+i);
                 Iterator it = elementPixels[i].iterator();
                 gl.glColor3f(colors[i][0],colors[i][1],colors[i][2]);
-                gl.glBegin(GL.GL_LINES);
+                gl.glBegin(GL2.GL_LINES);
                 while(it.hasNext()){
                     int idx = (Integer)it.next();                   
                     gl.glVertex2i(frameBuffer[idx][1],frameBuffer[idx][2]);

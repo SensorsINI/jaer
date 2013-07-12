@@ -1089,13 +1089,13 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
 
         //These are points to make the pip_hist_bins
 
-        GL gl=drawable.getGL();
+        GL2 gl=drawable.getGL().getGL2();
         // already in chip pixel context with LL corner =0,0
         gl.glPushMatrix();
 
         gl.glColor3f(0,1,0);
         gl.glLineWidth(4);
-        gl.glBegin(GL.GL_LINES);
+        gl.glBegin(GL2.GL_LINES);
 
         //Draw the eigenvectors
         gl.glVertex2d(p.getX(), p.getY());      //Origen
@@ -1115,7 +1115,7 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
         /*
         gl.glColor3f(0,1,1);
         gl.glLineWidth(2);
-        gl.glBegin(GL.GL_LINES);
+        gl.glBegin(GL2.GL_LINES);
         //Draw the current point
         gl.glVertex2d(10, 10);      //Origen
         gl.glVertex2d(sxx.getX(), sxx.getY());      //Origen
@@ -1128,7 +1128,7 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
 
         gl.glColor3f(1,0,0);
         gl.glLineWidth(4);
-        gl.glBegin(GL.GL_LINES);
+        gl.glBegin(GL2.GL_LINES);
 
         //Draw the bounding square
         gl.glVertex2d(t.getX(), t.getY());      //Origen
@@ -1151,7 +1151,7 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
 
         gl.glColor3f(1,0,0);
         gl.glLineWidth(4);
-        gl.glBegin(GL.GL_LINES);
+        gl.glBegin(GL2.GL_LINES);
 
         //bin0
         gl.glVertex2d(pipdisplayscale * 3,(pipdisplayscale + 1)*4);
@@ -1205,7 +1205,7 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
         /*
         gl.glColor3f(1,0,0);
         gl.glLineWidth(1);
-        gl.glBegin(GL.GL_LINES);
+        gl.glBegin(GL2.GL_LINES);
 
         //Draw the pip bin hist
         
@@ -1264,7 +1264,7 @@ public class FastCardID extends EventFilter2D implements FrameAnnotater {
 
         gl.glColor3f(0,0,1);
         gl.glLineWidth(2);
-        gl.glBegin(GL.GL_LINES);
+        gl.glBegin(GL2.GL_LINES);
 
         //Top horizontal bar
         gl.glVertex2d(pipbinx5tlPoint.getX(), pipbinx5tlPoint.getY());

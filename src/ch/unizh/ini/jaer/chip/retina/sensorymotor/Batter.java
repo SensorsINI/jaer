@@ -273,7 +273,7 @@ public class Batter extends EventFilter2D implements FrameAnnotater {
     
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
-        GL gl=drawable.getGL();
+        GL2 gl=drawable.getGL().getGL2();
     }
     
     class BallTracker extends StereoClusterTracker{

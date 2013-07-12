@@ -344,7 +344,7 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
         double a_maximum = max_audio();
         double c_maximum = max_coherence();
         double threshold = maximum*0.5;
-        GL gl=drawable.getGL();
+        GL2 gl=drawable.getGL().getGL2();
 
         gl.glLineWidth(1);
         gl.glPushMatrix();

@@ -17,7 +17,7 @@ import net.sf.jaer.Description;
 import org.ine.telluride.jaer.wowwee.RoboQuadCommands;
 import org.ine.telluride.jaer.wowwee.WowWeeRSHardwareInterface;
 
-/*import com.sun.opengl.util.GLUT;
+/*
 import java.awt.Graphics2D;
 import javax.media.opengl.GL;
 import javax.media.opengl.GLAutoDrawable;

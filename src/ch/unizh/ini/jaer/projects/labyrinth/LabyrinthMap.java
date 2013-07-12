@@ -457,7 +457,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
         if (!isDisplayMap()) {
             return;
         }
-        GL gl = drawable.getGL();
+        GL2 gl = drawable.getGL().getGL2();
         if (recomputeDisplayList) {
             if (listnum > 0) {
                 gl.glDeleteLists(listnum, 1);
@@ -467,13 +467,13 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
                 log.warning("cannot create display list to show the map, glGenLists returned 0");
                 return;
             }
-            gl.glNewList(listnum, GL.GL_COMPILE_AND_EXECUTE);
+            gl.glNewList(listnum, GL2.GL_COMPILE_AND_EXECUTE);
             {
                 gl.glColor4f(0, 0, .2f, 0.3f);
                 gl.glLineWidth(4);
                 {
                     // draw outline
-                    gl.glBegin(GL.GL_LINE_STRIP);
+                    gl.glBegin(GL2.GL_LINE_STRIP);
                     for (Point2D.Float p : outline) {
                         gl.glVertex2f(p.x, p.y);
                     }
@@ -482,7 +482,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
                     // draw maze walls
                     for (ArrayList<Point2D.Float> p : walls) {
 
-                        gl.glBegin(GL.GL_LINE_STRIP);
+                        gl.glBegin(GL2.GL_LINE_STRIP);
                         for (Point2D.Float v : p) {
                             gl.glVertex2f(v.x, v.y);
                         }
@@ -506,7 +506,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
                     // render ball path using retina coordinates
                     gl.glColor4f(.1f, .4f, .1f, .3f);
                     gl.glLineWidth(3);
-                    gl.glBegin(GL.GL_LINE_STRIP);
+                    gl.glBegin(GL2.GL_LINE_STRIP);
                     for (Point2D.Float l : ballPath) {
                         gl.glVertex2f(l.x, l.y);
                     }
@@ -687,11 +687,11 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
 //                                    }
 //                                }
 //                            }
-////                            GL gl=drawable.getGL();
+////                            GL2 gl=drawable.getGL().getGL2();
 ////                            gl.glPushMatrix();
 ////                            gl.glLineWidth(.5f);
 ////                            gl.glColor3f(0,0,1);
-////                            gl.glBegin(GL.GL_LINE_LOOP);
+////                            gl.glBegin(GL2.GL_LINE_LOOP);
 ////                            for(Point2D.Float p:trackPoints){
 ////                                gl.glVertex2f(p.x, p.y);
 ////                            }

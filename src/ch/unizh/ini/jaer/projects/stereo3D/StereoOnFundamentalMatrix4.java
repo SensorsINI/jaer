@@ -16,7 +16,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.event.*;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.graphics.*;
-import com.sun.opengl.util.*;
+
 //import com.sun.org.apache.xerces.internal.impl.xpath.regex.Match;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -809,8 +809,8 @@ public class StereoOnFundamentalMatrix4 extends EventFilter2D implements FrameAn
     public void annotate(Graphics2D g) {
     }
     
-    protected void drawBoxCentered(GL gl, int x, int y, int sx, int sy){
-        gl.glBegin(GL.GL_LINE_LOOP);
+    protected void drawBoxCentered(GL2 gl, int x, int y, int sx, int sy){
+        gl.glBegin(GL2.GL_LINE_LOOP);
         {
             gl.glVertex2i(x-sx,y-sy);
             gl.glVertex2i(x+sx+1,y-sy);
@@ -820,8 +820,8 @@ public class StereoOnFundamentalMatrix4 extends EventFilter2D implements FrameAn
         gl.glEnd();
     }
     
-    protected void drawBox(GL gl, int x, int x2, int y, int y2){
-        gl.glBegin(GL.GL_LINE_LOOP);
+    protected void drawBox(GL2 gl, int x, int x2, int y, int y2){
+        gl.glBegin(GL2.GL_LINE_LOOP);
         {
             gl.glVertex2i(x,y);
             gl.glVertex2i(x2,y);
@@ -831,8 +831,8 @@ public class StereoOnFundamentalMatrix4 extends EventFilter2D implements FrameAn
         gl.glEnd();
     }
 
-       protected void drawLine(GL gl, int x1, int y1, int x2, int y2){
-        gl.glBegin(GL.GL_LINE_LOOP);
+       protected void drawLine(GL2 gl, int x1, int y1, int x2, int y2){
+        gl.glBegin(GL2.GL_LINE_LOOP);
         {
             gl.glVertex2i(x1,y1);
             gl.glVertex2i(x2,y2);
@@ -846,7 +846,7 @@ public class StereoOnFundamentalMatrix4 extends EventFilter2D implements FrameAn
         if(!isFilterEnabled()) return;
         
         
-        GL gl=drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL2 gl=drawable.getGL().getGL2(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
         if(gl==null){
             log.warning("null GL in GravityCentersImageDumper.annotate");
             return;

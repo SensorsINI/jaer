@@ -221,7 +221,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater,Obse
             return;
         }
 
-        GL gl = drawable.getGL();    // when we getString this we are already set up with scale 1=1 pixel, at LL corner
+        GL2 gl = drawable.getGL().getGL2();    // when we getString this we are already set up with scale 1=1 pixel, at LL corner
 
         float lowX, highX;
 
@@ -235,18 +235,18 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater,Obse
 
             gl.glLineWidth(5.0f);
             gl.glColor3f(1,0,0);
-            gl.glBegin(GL.GL_LINES);
+            gl.glBegin(GL2.GL_LINES);
             gl.glVertex2d(lowX,0);
             gl.glVertex2d(highX,127);
             gl.glEnd();
 
             gl.glColor3f(.5f,0,0);
             gl.glLineWidth(1.0f);
-            gl.glBegin(GL.GL_LINES);
+            gl.glBegin(GL2.GL_LINES);
             gl.glVertex2d(lowX + polyStddev,0);
             gl.glVertex2d(highX + polyStddev,127);
             gl.glEnd();
-            gl.glBegin(GL.GL_LINES);
+            gl.glBegin(GL2.GL_LINES);
             gl.glVertex2d(lowX - polyStddev,0);
             gl.glVertex2d(highX - polyStddev,127);
             gl.glEnd();
@@ -259,18 +259,18 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater,Obse
 
             gl.glLineWidth(5.0f);
             gl.glColor3f(0,1,0);
-            gl.glBegin(GL.GL_LINES);
+            gl.glBegin(GL2.GL_LINES);
             gl.glVertex2d(lowX,0);
             gl.glVertex2d(highX,127);
             gl.glEnd();
 
             gl.glColor3f(0,0.5f,0);
             gl.glLineWidth(1.0f);
-            gl.glBegin(GL.GL_LINES);
+            gl.glBegin(GL2.GL_LINES);
             gl.glVertex2d(lowX + polyStddev,0);
             gl.glVertex2d(highX + polyStddev,127);
             gl.glEnd();
-            gl.glBegin(GL.GL_LINES);
+            gl.glBegin(GL2.GL_LINES);
             gl.glVertex2d(lowX - polyStddev,0);
             gl.glVertex2d(highX - polyStddev,127);
             gl.glEnd();

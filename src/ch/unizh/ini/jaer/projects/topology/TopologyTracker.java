@@ -992,7 +992,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
 //    public void annotate(GLAutoDrawable drawable) {
 //        if(!isFilterEnabled()) return;
 //        // blend may not be available depending on graphics mode or opengl version.
-////        GL gl=drawable.getGL();
+////        GL2 gl=drawable.getGL().getGL2();
 ////        if(!hasBlendChecked){
 ////            hasBlendChecked=true;
 ////            String glExt=gl.glGetString(GL.GL_EXTENSIONS);
@@ -1053,7 +1053,7 @@ public class TopologyTracker extends EventFilter2D implements Observer {
 ////        // show quality as bar that shows event-averaged fraction of events inside the model.
 ////        // the red part shows eventInsideRatio is less than threshold, green shows good tracking
 ////        gl.glLineWidth(5);
-////        gl.glBegin(GL.GL_LINES);
+////        gl.glBegin(GL2.GL_LINES);
 ////        {
 ////            final float SCREEN_FRAC_THRESHOLD_QUALITY=0.1f;
 ////            if(!trackingQualityDetector.isTrackingOK()){

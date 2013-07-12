@@ -80,7 +80,7 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
     public void display(GLAutoDrawable drawable) {
         float gx=0, gy=0, gx2=0, gy2=0;
         super.setupGL(drawable);
-        GL gl=drawable.getGL();
+        GL2 gl=drawable.getGL().getGL2();
         float x=0,y=0,p=0; // drawn motion and photo values
         int nRows=chip.getSizeY();
         int nCols=chip.getSizeX();
@@ -101,7 +101,7 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
             ((Chip2DMotion) chip).integrator.glTransform(drawable,gl);
         
         gl.glClearColor(0,0,0,0);
-        gl.glClear(GL.GL_COLOR_BUFFER_BIT);
+        gl.glClear(GL2.GL_COLOR_BUFFER_BIT);
         gl.glLineWidth(1f);
         MotionData motionData;
         motionData=(MotionData)chip.getLastData(); // relies on capture or file input in MotionViewer or elsewhere to fill this field
@@ -169,7 +169,7 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
             // border current frame
             gl.glColor3f(0f,0f,1f);
             gl.glLineWidth(2f);
-            gl.glBegin(GL.GL_LINE_LOOP);
+            gl.glBegin(GL2.GL_LINE_LOOP);
                 gl.glVertex3f(0f,0f,0f);
                 gl.glVertex3f(chip.getSizeX(),0f,0f);
                 gl.glVertex3f(chip.getSizeX(),chip.getSizeY(),0f);
@@ -207,7 +207,7 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
         if(hasGlobal){
             gl.glColor3f(1,1,1);
             gl.glLineWidth(4f);
-            gl.glBegin(GL.GL_LINES);
+            gl.glBegin(GL2.GL_LINES);
             gl.glVertex3f(nCols/2, nRows/2, 1); // put at z=1 to draw above pixels
             gl.glVertex3f(nCols/2*(1+gx), nRows/2*(1+gy), 1);
             gl.glEnd();
@@ -216,7 +216,7 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
         if(hasGlobal2){
             gl.glColor3f(1,0,0);
             gl.glLineWidth(2f);
-            gl.glBegin(GL.GL_LINES);
+            gl.glBegin(GL2.GL_LINES);
             gl.glVertex3f(nCols/2, nRows/2, 1); // put at z=1 to draw above pixels
             gl.glVertex3f(nCols/2*(1+gx2), nRows/2*(1+gy2), 1);
             gl.glEnd();
@@ -225,7 +225,7 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
         if(angularRateEnabled){
             gl.glColor3f(0,0,1);
             gl.glLineWidth(2f);
-            gl.glBegin(GL.GL_LINES);
+            gl.glBegin(GL2.GL_LINES);
             gl.glVertex3f(nCols/2, nRows/2, 1); // put at z=1 to draw above pixels
             gl.glVertex3f(nCols/2*(1+ang1*angularVectorScale), nRows/2*(1-ang2*angularVectorScale), 1);
             gl.glEnd();
@@ -237,13 +237,13 @@ public class OpticalFlowDisplayMethod extends DisplayMethod {
     }
     
 // draws motion vector arrow from point x,y with magnitude ux, uy
-    private void arrow(GL gl, float x,float y,float ux, float uy){
+    private void arrow(GL2 gl, float x,float y,float ux, float uy){
         gl.glColor3f(1,1,1);
         gl.glPointSize(5);
         gl.glBegin(GL.GL_POINTS);
             gl.glVertex3f(x,y,0);
         gl.glEnd();
-        gl.glBegin(GL.GL_LINES);
+        gl.glBegin(GL2.GL_LINES);
             float ex=x+vectorLengthScale*MOTION_VECTOR_FACTOR*ux, ey=y+vectorLengthScale*MOTION_VECTOR_FACTOR*uy;
             gl.glVertex2f(x,y);
             gl.glVertex2f(ex,ey);

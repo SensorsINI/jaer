@@ -73,7 +73,7 @@ public class Gabor extends AEChip implements Serializable {
         @Override
         public void display(GLAutoDrawable drawable) {
             super.display(drawable);
-            GL gl = drawable.getGL();
+            GL2 gl = drawable.getGL().getGL2();
             // draw boxes around gabor filters
             final int s = 64;
             for (int r = 0; r < 3; r++) {
@@ -83,10 +83,10 @@ public class Gabor extends AEChip implements Serializable {
             }
         }
 
-        private void rect(GL gl, float x, float y, float w, float h) {
+        private void rect(GL2 gl, float x, float y, float w, float h) {
             gl.glLineWidth(1f);
             gl.glColor3f(1, 1, 1);
-            gl.glBegin(GL.GL_LINE_LOOP);
+            gl.glBegin(GL2.GL_LINE_LOOP);
             gl.glVertex2f(x, y);
             gl.glVertex2f(x + w, y);
             gl.glVertex2f(x + w, y + h);

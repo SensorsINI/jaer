@@ -7,7 +7,7 @@ package net.sf.jaer.eventprocessing;
 import java.awt.Point;
 import java.awt.event.*;
 import javax.media.opengl.*;
-import javax.media.opengl.GLCanvas;
+import javax.media.opengl.awt.GLCanvas;
 import javax.media.opengl.glu.*;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.graphics.ChipCanvas;
@@ -39,7 +39,7 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
      * @param drawable 
      */
     public void annotate(GLAutoDrawable drawable) {
-        GL gl = drawable.getGL();
+        GL2 gl = drawable.getGL().getGL2();
         canvas = chip.getCanvas();
         if (canvas == null) {
             return;
@@ -75,7 +75,7 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
             gl.glLineWidth(3f);
             gl.glPushMatrix();
             gl.glTranslatef(p.x, p.y, 0);
-            gl.glBegin(GL.GL_LINES);
+            gl.glBegin(GL2.GL_LINES);
             gl.glVertex2f(0, -CURSOR_SIZE_CHIP_PIXELS / 2);
             gl.glVertex2f(0, +CURSOR_SIZE_CHIP_PIXELS / 2);
             gl.glVertex2f(-CURSOR_SIZE_CHIP_PIXELS / 2, 0);
@@ -83,7 +83,7 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
             gl.glEnd();
             gl.glTranslatef(.5f, -.5f, 0);
             gl.glColor4f(0, 0, 0, 1);
-            gl.glBegin(GL.GL_LINES);
+            gl.glBegin(GL2.GL_LINES);
             gl.glVertex2f(0, -CURSOR_SIZE_CHIP_PIXELS / 2);
             gl.glVertex2f(0, +CURSOR_SIZE_CHIP_PIXELS / 2);
             gl.glVertex2f(-CURSOR_SIZE_CHIP_PIXELS / 2, 0);

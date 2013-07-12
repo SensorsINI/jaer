@@ -238,7 +238,7 @@ public class PerspecTransform extends EventFilter2D implements FrameAnnotater, O
     public void annotate(GLAutoDrawable drawable) {
         if(!isAnnotationEnabled() || !isFilterEnabled()) return;
         if(!isFilterEnabled()) return;
-        GL gl=drawable.getGL();
+        GL2 gl=drawable.getGL().getGL2();
         gl.glPushMatrix();
         {
             

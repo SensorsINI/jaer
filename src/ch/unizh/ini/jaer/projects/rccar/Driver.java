@@ -401,7 +401,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
 
 //        ((FrameAnnotater)lineTracker).annotate(drawable);
 
-        GL gl = drawable.getGL();
+        GL2 gl = drawable.getGL().getGL2();
         if (gl == null) {
             return;
         }
@@ -430,7 +430,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
             gl.glColor3f(1, 1, 1);
             gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
             gl.glLineWidth(6f);
-            gl.glBegin(GL.GL_LINES);
+            gl.glBegin(GL2.GL_LINES);
             {
                 gl.glVertex2f(0, 0);
                 double a = 2 * (getSteerCommand() - 0.5f); // -1 to 1
@@ -459,7 +459,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
                 gl.glColor3f(1, 1, 1);
                 gl.glTranslatef(1, chip.getSizeY() / 2, 0);
                 gl.glLineWidth(15f);
-                gl.glBegin(GL.GL_LINES);
+                gl.glBegin(GL2.GL_LINES);
                 {
                     gl.glVertex2f(0, 0);
                     gl.glVertex2f(0, chip.getSizeY() * (radioSpeed - 0.5f));

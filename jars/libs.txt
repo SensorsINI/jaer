@@ -1,0 +1,9 @@
+List of employed external libraries
+
+commons-lang - 3.1 - http://commons.apache.org/proper/commons-lang/
+commons-net - 3.3 - http://commons.apache.org/proper/commons-net/
+JOGL - 2.0.2-rc12 - https://jogamp.org/jogl/
+nrjavaserial - 3.8.8 - http://code.google.com/p/nrjavaserial/
+javax.usb (usb-api) - 1.0.2 - https://sourceforge.net/projects/javax-usb/
+usb4java - 1.1.0-llongi - https://github.com/llongi/usb4java/
+USBTransferThread - 0.7 - https://github.com/llongi/USBTransferThread/

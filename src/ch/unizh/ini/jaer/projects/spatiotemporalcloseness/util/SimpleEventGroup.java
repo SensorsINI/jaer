@@ -7,8 +7,11 @@ package ch.unizh.ini.jaer.projects.spatiotemporalcloseness.util;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
+
 import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
+
 import net.sf.jaer.event.TypedEvent;
 
 /**
@@ -17,90 +20,92 @@ import net.sf.jaer.event.TypedEvent;
  */
 public class SimpleEventGroup implements EventGroup {
 
-    /** The timestamp of the group. */
-    private double timestamp;
-            
-    /** The maximal timestamp of the group. */
-    private int maxTimestamp;
-    
-    /** Stores the type of the group. */
-    private int type;
-    
-    /** Stores all events belonging to this group. */
-    private List<TypedEvent> events;
-    
-    /**
-     * Creates a new instance of the class SimpleEventGroup.
-     * 
-     * @param e The first event of the group.
-     */
-    public SimpleEventGroup(TypedEvent e) {
-        this.events = new ArrayList<TypedEvent>();
-        
-        this.type = e.type;
-        this.timestamp = 0;
-        this.maxTimestamp = 0;
-        this.add(e);
-    }
-    
-    @Override
-    public void add(TypedEvent e) {
-        this.timestamp = (this.timestamp * this.events.size() + e.timestamp) / (this.events.size() + 1);
-        this.events.add(e);
-        
-        this.maxTimestamp = Math.max(this.maxTimestamp, e.timestamp);
-    }
-    
-    @Override
-    public void add(EventGroup group) {
-        this.timestamp = (this.timestamp * this.events.size() + group.getTimestamp() * group.getSize()) / (this.events.size() + group.getSize());
-        this.events.addAll(group.getEvents());
-        
-        for (TypedEvent e : group.getEvents()) this.maxTimestamp = Math.max(this.maxTimestamp, e.timestamp);
-    }
-    
-    @Override
-    public int getType() {
-        return this.type;
-    }
-    
-    @Override
-    public double getTimestamp() {
-        return this.timestamp;
-    }
-    
-    @Override
-    public int getMaxTimestamp() {
-        return this.maxTimestamp;
-    }
+	/** The timestamp of the group. */
+	private double timestamp;
 
-    @Override
-    public int getSize() {
-        return this.events.size();
-    }
-    
-    @Override
-    public List<TypedEvent> getEvents() {
-        return this.events;
-    }
+	/** The maximal timestamp of the group. */
+	private int maxTimestamp;
 
-    @Override
-    public void draw(GLAutoDrawable drawable, int current, int resolution) {
-        GL gl = drawable.getGL();
-        
-        float hue = Math.max(0, 0.7f - (this.events.size()) / 10.0f);
-        Color c = new Color(Color.HSBtoRGB(hue, 1.0f, 1.0f));                
-        gl.glColor3f(c.getRed() / 255f, c.getGreen() / 255f, c.getBlue() / 255f);
-        
-        TypedEvent[] es = this.events.toArray(new TypedEvent[0]);
-        
-        gl.glPointSize(3);
-        gl.glBegin(GL.GL_POINTS);
-        {
-            for (int i = 0; i < es.length; i++) {
-                gl.glVertex3f(es[i].x, es[i].y, (current - es[i].timestamp) / resolution);
-            }
-        }
-        gl.glEnd();
-    }
+	/** Stores the type of the group. */
+	private int type;
+
+	/** Stores all events belonging to this group. */
+	private List<TypedEvent> events;
+
+	/**
+	 * Creates a new instance of the class SimpleEventGroup.
+	 * 
+	 * @param e The first event of the group.
+	 */
+	public SimpleEventGroup(TypedEvent e) {
+		events = new ArrayList<TypedEvent>();
+
+		type = e.type;
+		timestamp = 0;
+		maxTimestamp = 0;
+		this.add(e);
+	}
+
+	@Override
+	public void add(TypedEvent e) {
+		timestamp = ((timestamp * events.size()) + e.timestamp) / (events.size() + 1);
+		events.add(e);
+
+		maxTimestamp = Math.max(maxTimestamp, e.timestamp);
+	}
+
+	@Override
+	public void add(EventGroup group) {
+		timestamp = ((timestamp * events.size()) + (group.getTimestamp() * group.getSize())) / (events.size() + group.getSize());
+		events.addAll(group.getEvents());
+
+		for (TypedEvent e : group.getEvents()) {
+			maxTimestamp = Math.max(maxTimestamp, e.timestamp);
+		}
+	}
+
+	@Override
+	public int getType() {
+		return type;
+	}
+
+	@Override
+	public double getTimestamp() {
+		return timestamp;
+	}
+
+	@Override
+	public int getMaxTimestamp() {
+		return maxTimestamp;
+	}
+
+	@Override
+	public int getSize() {
+		return events.size();
+	}
+
+	@Override
+	public List<TypedEvent> getEvents() {
+		return events;
+	}
+
+	@Override
+	public void draw(GLAutoDrawable drawable, int current, int resolution) {
+		GL2 gl = drawable.getGL().getGL2();
+
+		float hue = Math.max(0, 0.7f - ((events.size()) / 10.0f));
+		Color c = new Color(Color.HSBtoRGB(hue, 1.0f, 1.0f));
+		gl.glColor3f(c.getRed() / 255f, c.getGreen() / 255f, c.getBlue() / 255f);
+
+		TypedEvent[] es = events.toArray(new TypedEvent[0]);
+
+		gl.glPointSize(3);
+		gl.glBegin(GL.GL_POINTS);
+		{
+			for (TypedEvent element : es) {
+				gl.glVertex3f(element.x, element.y, (current - element.timestamp) / resolution);
+			}
+		}
+		gl.glEnd();
+	}
 }

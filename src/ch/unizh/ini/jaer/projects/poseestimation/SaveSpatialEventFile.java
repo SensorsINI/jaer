@@ -4,7 +4,7 @@ import ch.unizh.ini.jaer.chip.retina.DVS128;
 import com.phidgets.PhidgetException;
 import com.phidgets.SpatialPhidget;
 import com.phidgets.event.*;
-import com.sun.opengl.util.GLUT;
+
 import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;

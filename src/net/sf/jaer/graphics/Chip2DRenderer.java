@@ -113,7 +113,7 @@ public class Chip2DRenderer implements Observer {
         final int n = 3 * chip.getNumPixels();
         boolean madebuffer = false;
         if (grayBuffer == null || grayBuffer.capacity() != n) {
-            grayBuffer = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
+            grayBuffer = FloatBuffer.allocate(n); // Buffers.newDirectFloatBuffer(n);
             madebuffer = true;
         }
         if (madebuffer || value != grayValue) {
@@ -135,7 +135,7 @@ public class Chip2DRenderer implements Observer {
     protected void checkPixmapAllocation() {
         final int n = 3 * chip.getNumPixels();
         if (pixmap == null || pixmap.capacity() < n) {
-            pixmap = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
+            pixmap = FloatBuffer.allocate(n); // Buffers.newDirectFloatBuffer(n);
         }
     }
     /** The gray value. */

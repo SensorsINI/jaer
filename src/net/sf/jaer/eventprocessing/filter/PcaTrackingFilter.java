@@ -414,13 +414,13 @@ public class PcaTrackingFilter extends EventFilter2D implements FrameAnnotater {
         //THese are points to make a square
 
 
-        GL gl=drawable.getGL();
+        GL2 gl=drawable.getGL().getGL2();
         // already in chip pixel context with LL corner =0,0
         gl.glPushMatrix();
 
         gl.glColor3f(0,1,0);
         gl.glLineWidth(4);
-        gl.glBegin(GL.GL_LINES);
+        gl.glBegin(GL2.GL_LINES);
 
         //Draw the eigenvectors
         gl.glVertex2d(p.getX(), p.getY());      //Origen
@@ -440,7 +440,7 @@ public class PcaTrackingFilter extends EventFilter2D implements FrameAnnotater {
         /*
         gl.glColor3f(0,1,1);
         gl.glLineWidth(2);
-        gl.glBegin(GL.GL_LINES);
+        gl.glBegin(GL2.GL_LINES);
         //Draw the current point
         gl.glVertex2d(10, 10);      //Origen
         gl.glVertex2d(sxx.getX(), sxx.getY());      //Origen
@@ -453,7 +453,7 @@ public class PcaTrackingFilter extends EventFilter2D implements FrameAnnotater {
 
         gl.glColor3f(1,0,0);
         gl.glLineWidth(4);
-        gl.glBegin(GL.GL_LINES);
+        gl.glBegin(GL2.GL_LINES);
 
         //Draw the bounding square
         gl.glVertex2d(t.getX(), t.getY());      //Origen

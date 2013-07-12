@@ -5,7 +5,7 @@
 
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
-import com.sun.opengl.util.j2d.TextRenderer;
+
 import java.awt.Font;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;

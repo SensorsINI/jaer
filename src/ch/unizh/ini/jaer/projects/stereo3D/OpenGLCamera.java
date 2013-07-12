@@ -20,7 +20,7 @@ import java.io.*;
 //import javax.media.opengl.GLAutoDrawable;
 //import javax.swing.*;
 import javax.media.opengl.glu.GLU;
-//import com.sun.opengl.util.*;
+//
 
 //import java.lang.Math;
 

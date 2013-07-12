@@ -77,7 +77,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         final int n = 4 * textureWidth * textureHeight;
         boolean madebuffer = false;
         if (grayBuffer == null || grayBuffer.capacity() != n) {
-            grayBuffer = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
+            grayBuffer = FloatBuffer.allocate(n); // Buffers.newDirectFloatBuffer(n);
             madebuffer = true;
         }
         if (madebuffer || value != grayValue) {
@@ -114,7 +114,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         checkPixmapAllocation();
         final int n = 4 * textureWidth * textureHeight;
         if (grayBuffer == null || grayBuffer.capacity() != n) {
-            grayBuffer = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
+            grayBuffer = FloatBuffer.allocate(n); // Buffers.newDirectFloatBuffer(n);
         }
         
         grayBuffer.rewind();
@@ -350,7 +350,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
         final int n = 4 * textureWidth * textureHeight;
         if (pixmap == null || pixmap.capacity() < n || pixBuffer.capacity() < n || onMap.capacity() < n || offMap.capacity() < n) {
-            pixmap = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
+            pixmap = FloatBuffer.allocate(n); // Buffers.newDirectFloatBuffer(n);
             pixBuffer = FloatBuffer.allocate(n);
             onMap = FloatBuffer.allocate(n);
             offMap = FloatBuffer.allocate(n);

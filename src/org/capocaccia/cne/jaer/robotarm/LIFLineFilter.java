@@ -282,13 +282,13 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
     public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
         if ((lastHorizLine >= 0) || (lastVertLine >= 0)) {
-            GL gl=drawable.getGL();
+            GL2 gl=drawable.getGL().getGL2();
         if (lastHorizLine >= 0) {
             // At least one horizontal line detected
             gl.glPushMatrix();
             gl.glColor3f(1,1,0);
             gl.glLineWidth(3);
-            gl.glBegin(GL.GL_LINE_LOOP);
+            gl.glBegin(GL2.GL_LINE_LOOP);
             gl.glVertex2d(0, lastHorizLine);
             gl.glVertex2d(dim_pixels, lastHorizLine);
             gl.glEnd();
@@ -300,7 +300,7 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
             gl.glPushMatrix();
             gl.glColor3f(0,1,1);
             gl.glLineWidth(3);
-            gl.glBegin(GL.GL_LINE_LOOP);
+            gl.glBegin(GL2.GL_LINE_LOOP);
             gl.glVertex2d(lastVertLine, 0);
             gl.glVertex2d(lastVertLine, dim_pixels);
             gl.glEnd();

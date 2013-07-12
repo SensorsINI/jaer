@@ -139,7 +139,7 @@ public class FlickerSuppressorStatistical extends EventFilter2D implements Frame
      */
     @Override
     public void annotate(GLAutoDrawable drawable) { // called after events are rendered
-      /*  GL gl = drawable.getGL(); // get the openGL context
+      /*  GL2 gl = drawable.getGL().getGL2(); // get the openGL context
         gl.glColor4f(1, 0, 0, .3f); // choose RGB color and alpha<1 so we can see through the square
         for (int cptx=0; cptx< Nb_xblocks; cptx++) {
             for (int cpty=0; cpty< Nb_yblocks; cpty++) {
