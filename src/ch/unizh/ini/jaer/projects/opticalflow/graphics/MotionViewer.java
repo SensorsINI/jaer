@@ -19,7 +19,7 @@ import ch.unizh.ini.jaer.projects.opticalflow.io.*;
 import ch.unizh.ini.jaer.projects.opticalflow.io.MotionOutputStream;
 import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.MotionChipInterface;
 import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.OpticalFlowHardwareInterfaceFactory;
-import com.sun.java.swing.plaf.windows.*;
+//import com.sun.java.swing.plaf.windows.*;
 import java.awt.*;
 import java.awt.datatransfer.*;
 import java.awt.dnd.*;
@@ -115,11 +115,7 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
      */
     public MotionViewer(Chip2DMotion chip) {
         motionData = chip.getEmptyMotionData();
-        try {
-            UIManager.setLookAndFeel(new WindowsLookAndFeel());
-        } catch (Exception e) {
-            log.warning(e.getMessage());
-        }
+        
         setName("MotionViewer");
         log.setLevel(Level.INFO);
         initComponents();
