@@ -15,6 +15,7 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import de.ailis.usb4java.libusb.Device;
 import de.ailis.usb4java.libusb.DeviceDescriptor;
+import de.ailis.usb4java.libusb.DeviceHandle;
 import de.ailis.usb4java.libusb.DeviceList;
 import de.ailis.usb4java.libusb.LibUsb;
 
@@ -77,7 +78,18 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 
 			LibUsb.freeDeviceDescriptor(devDesc);
 
-			if (vidPidToClassMap.containsKey(vidPid)) {
+			// Check that the device is not already bound to any other driver.
+			final DeviceHandle devHandle = new DeviceHandle();
+			int status = LibUsb.open(dev, devHandle);
+			if (status != LibUsb.SUCCESS) {
+				continue; // Skip device.
+			}
+
+			status = LibUsb.kernelDriverActive(devHandle, 0);
+
+			LibUsb.close(devHandle);
+
+			if ((status == LibUsb.SUCCESS) && vidPidToClassMap.containsKey(vidPid)) {
 				// This is a VID/PID combination we support, so let's add the device to the compatible
 				// devices list and increase its reference count.
 				compatibleDevicesList.add(LibUsb.refDevice(dev));
