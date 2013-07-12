@@ -89,7 +89,8 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 
 			LibUsb.close(devHandle);
 
-			if ((status == LibUsb.SUCCESS) && vidPidToClassMap.containsKey(vidPid)) {
+			if (((status == LibUsb.ERROR_NOT_SUPPORTED) || (status == LibUsb.SUCCESS))
+				&& vidPidToClassMap.containsKey(vidPid)) {
 				// This is a VID/PID combination we support, so let's add the device to the compatible
 				// devices list and increase its reference count.
 				compatibleDevicesList.add(LibUsb.refDevice(dev));

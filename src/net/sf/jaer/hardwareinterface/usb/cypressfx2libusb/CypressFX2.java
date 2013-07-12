@@ -245,7 +245,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 				deviceDescriptor = new DeviceDescriptor();
 				status = LibUsb.getDeviceDescriptor(device, deviceDescriptor);
 				if (status != LibUsb.SUCCESS) {
-					throw new HardwareInterfaceException("CypressFX2.openLibUsb(): getDeviceDescriptor: "
+					throw new HardwareInterfaceException("populateDescriptors(): getDeviceDescriptor: "
 						+ LibUsb.errorName(status));
 				}
 			}
@@ -259,18 +259,18 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 			stringDescriptor1 = LibUsb.getStringDescriptor(deviceHandle, (byte) 1);
 			if (stringDescriptor1 == null) {
-				throw new HardwareInterfaceException("CypressFX2.openLibUsb(): getStringDescriptor1");
+				throw new HardwareInterfaceException("populateDescriptors(): getStringDescriptor1");
 			}
 
 			stringDescriptor2 = LibUsb.getStringDescriptor(deviceHandle, (byte) 2);
 			if (stringDescriptor2 == null) {
-				throw new HardwareInterfaceException("CypressFX2.openLibUsb(): getStringDescriptor2");
+				throw new HardwareInterfaceException("populateDescriptors(): getStringDescriptor2");
 			}
 
 			if (numberOfStringDescriptors == 3) {
 				stringDescriptor3 = LibUsb.getStringDescriptor(deviceHandle, (byte) 3);
 				if (stringDescriptor3 == null) {
-					throw new HardwareInterfaceException("CypressFX2.openLibUsb(): getStringDescriptor3");
+					throw new HardwareInterfaceException("populateDescriptors(): getStringDescriptor3");
 				}
 			}
 
@@ -297,7 +297,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	protected boolean inEndpointEnabled = false; // raphael: changed from private to protected, because i need to access
 	// this member
 	/** device open status */
-	protected boolean isOpened = false;
+	private boolean isOpened = false;
 	/** the device number, out of all potential compatible devices that could be opened */
 	protected Device device = null;
 	protected DeviceHandle deviceHandle = null;
@@ -354,7 +354,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	public String toString() {
 		if (numberOfStringDescriptors == 0) {
 			try {
-				openLibUsb_minimal(); // populates stringDescription and sets numberOfStringDescriptors!=0
+				open_minimal_close(); // populates stringDescription and sets numberOfStringDescriptors!=0
 			}
 			catch (final HardwareInterfaceException e) {
 			}
@@ -794,7 +794,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 */
 	@Override
 	public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
-		if (!isOpened) {
+		if (!isOpen()) {
 			open();
 		}
 
@@ -983,7 +983,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * Closes the device. Never throws an exception.
 	 */
 	@Override
-	public void close() {
+	synchronized public void close() {
 		if (!isOpen()) {
 			return;
 		}
@@ -1616,7 +1616,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * 
 	 * @return false if not, true if there is one
 	 */
-	protected boolean hasStringIdentifier() {
+	private boolean hasStringIdentifier() {
 		// getString string descriptor
 		final String stringDescriptor1 = LibUsb.getStringDescriptor(deviceHandle, (byte) 1);
 
@@ -1636,26 +1636,10 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * @see #setEventAcquisitionEnabled
 	 * @throws HardwareInterfaceException
 	 *             if there is an error opening device
-	 * @see #openLibUsb_minimal()
+	 * @see #open_minimal_close()
 	 */
 	@Override
-	public void open() throws HardwareInterfaceException {
-		openLibUsb();
-	}
-
-	/**
-	 * This method does the hard work of opening the device, downloading the firmware, making sure everything is OK.
-	 * <p>
-	 * This method is synchronized to prevent multiple threads from trying to open at the same time, e.g. a GUI thread
-	 * and the main thread.
-	 * <p>
-	 * Opening the device after it has already been opened has no effect.
-	 * 
-	 * @see #close
-	 * @throws HardwareInterfaceException
-	 *             if there is a problem. Diagnostics are printed to stderr.
-	 */
-	synchronized protected void openLibUsb() throws HardwareInterfaceException {
+	synchronized public void open() throws HardwareInterfaceException {
 		// device has already been UsbIo Opened by now, in factory
 
 		// opens the USBIOInterface device, configures it, binds a reader thread with buffer pool to read from the
@@ -1675,7 +1659,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 			deviceHandle = new DeviceHandle();
 			status = LibUsb.open(device, deviceHandle);
 			if (status != LibUsb.SUCCESS) {
-				throw new HardwareInterfaceException("openLibUsb(): failed to open device: " + LibUsb.errorName(status));
+				throw new HardwareInterfaceException("open(): failed to open device: " + LibUsb.errorName(status));
 			}
 		}
 
@@ -1686,7 +1670,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 
 		if (isBlankDevice()) {
-			CypressFX2.log.warning("openLibUsb(): blank device detected, downloading preferred firmware");
+			CypressFX2.log.warning("open(): blank device detected, downloading preferred firmware");
 
 			downloadFirmwareBinaryToBlankDevice();
 
@@ -1714,12 +1698,12 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 			if (!success) {
 				throw new HardwareInterfaceException(
-					"openLibUsb(): couldn't reopen device after firmware download and re-enumeration: "
+					"open(): couldn't reopen device after firmware download and re-enumeration: "
 						+ LibUsb.errorName(status));
 			}
 			else {
 				throw new HardwareInterfaceException(
-					"openLibUsb(): device firmware downloaded successfully, a new instance must be constructed by the factory using the new VID/PID settings");
+					"open(): device firmware downloaded successfully, a new instance must be constructed by the factory using the new VID/PID settings");
 			}
 		}
 
@@ -1742,7 +1726,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		isOpened = true;
 
-		CypressFX2.log.info("openLibUsb(): device opened");
+		CypressFX2.log.info("open(): device opened");
 
 		if (LibUsb.getDeviceSpeed(device) != LibUsb.SPEED_HIGH) {
 			CypressFX2.log
@@ -1764,7 +1748,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException
 	 * @see #open()
 	 */
-	synchronized protected void openLibUsb_minimal() throws HardwareInterfaceException {
+	synchronized protected void open_minimal_close() throws HardwareInterfaceException {
 		// device has already been UsbIo Opened by now, in factory
 
 		// opens the USBIOInterface device, configures it, binds a reader thread with buffer pool to read from the
@@ -1784,7 +1768,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 			deviceHandle = new DeviceHandle();
 			status = LibUsb.open(device, deviceHandle);
 			if (status != LibUsb.SUCCESS) {
-				throw new HardwareInterfaceException("openLibUsb(): failed to open device: " + LibUsb.errorName(status));
+				throw new HardwareInterfaceException("open_minimal_close(): failed to open device: " + LibUsb.errorName(status));
 			}
 		}
 
@@ -1799,7 +1783,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 
 		if (!hasStringIdentifier()) { // TODO: does this really ever happen, a non-blank device with invalid fw?
-			CypressFX2.log.warning("openLibUsb(): blank device detected, downloading preferred firmware");
+			CypressFX2.log.warning("open_minimal_close(): blank device detected, downloading preferred firmware");
 
 			downloadFirmwareBinaryToBlankDevice();
 
@@ -1827,16 +1811,25 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 			if (!success) {
 				throw new HardwareInterfaceException(
-					"openLibUsb(): couldn't reopen device after firmware download and re-enumeration: "
+					"open_minimal_close(): couldn't reopen device after firmware download and re-enumeration: "
 						+ LibUsb.errorName(status));
 			}
 			else {
 				throw new HardwareInterfaceException(
-					"openLibUsb(): device firmware downloaded successfully, a new instance must be constructed by the factory using the new VID/PID settings");
+					"open_minimal_close(): device firmware downloaded successfully, a new instance must be constructed by the factory using the new VID/PID settings");
 			}
 		}
 
 		populateDescriptors();
+		
+		// And close opened resources again.
+		LibUsb.close(deviceHandle);
+
+		deviceHandle = null;
+
+		LibUsb.freeDeviceDescriptor(deviceDescriptor);
+
+		deviceDescriptor = null;
 	}
 
 	/**
@@ -1918,7 +1911,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * @return true if already open
 	 */
 	@Override
-	public boolean isOpen() {
+	synchronized public boolean isOpen() {
 		return isOpened;
 	}
 
