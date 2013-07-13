@@ -223,14 +223,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 			@Override
 			public void actionPerformed(java.awt.event.ActionEvent evt) {
 				showInBrowser(url);
-				//                try {
-					//                    BrowserLauncher launcher=new BrowserLauncher();
-				//                    launcher.openURLinBrowser(url);
-				////                    BrowserLauncher.openURL(url);
-				//                } catch (Exception e) {
-				//                    log.warning(e.toString());
-				//                    setStatusMessage(e.getMessage());
-				//                }
 			}
 		});
 		addHelpItem(menuItem);
@@ -1751,7 +1743,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
 			// <editor-fold desc="Some Vestigal Organs.">
 			//            if(windowSaver!=null)
-				//                try {
+			//                try {
 			//                    windowSaver.saveSettings();
 			//                } catch (IOException e) {
 			//                    e.printStackTrace();
@@ -5054,45 +5046,45 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
 				if ((getAeChipClass() == ch.unizh.ini.jaer.chip.retina.DVS128andCochleaAMS1b.class) && (getJaerViewer().getNumViewers() < 2)) {
 					//Start the cochlea viewer:
-						AEViewer cochleaViewer = new AEViewer(jaerViewer);
-						cochleaViewer.setAeChipClass(ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.class);
-						AEChip cochleaChip = cochleaViewer.getChip();
+					AEViewer cochleaViewer = new AEViewer(jaerViewer);
+					cochleaViewer.setAeChipClass(ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.class);
+					AEChip cochleaChip = cochleaViewer.getChip();
 
-						//start the retina viewer:
-						AEViewer retinaViewer = new AEViewer(jaerViewer);
-						retinaViewer.setAeChipClass(ch.unizh.ini.jaer.chip.retina.DVS128.class);
-						AEChip retinaChip = retinaViewer.getChip();
+					//start the retina viewer:
+					AEViewer retinaViewer = new AEViewer(jaerViewer);
+					retinaViewer.setAeChipClass(ch.unizh.ini.jaer.chip.retina.DVS128.class);
+					AEChip retinaChip = retinaViewer.getChip();
 
-						int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
-						for (int i = 0; i < n; i++) {
-							HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(i);
-							if (hw == null) {
-								continue;
-							} // in case it disappeared
-							if (hw.toString().startsWith("CypressFX2")) {
-								cochleaChip.setHardwareInterface(hw);
-							} else if (hw.toString().startsWith("DVS128")) {
-								retinaChip.setHardwareInterface(hw);
-								retinaChip.addDefaultEventFilter(ch.unizh.ini.jaer.projects.cochsoundloc.multichipviewer.MultichipRetinaEventProducer.class);
-								ch.unizh.ini.jaer.projects.cochsoundloc.multichipviewer.MultichipRetinaEventProducer retinaFilter = (ch.unizh.ini.jaer.projects.cochsoundloc.multichipviewer.MultichipRetinaEventProducer) retinaChip.getFilterChain().findFilter(ch.unizh.ini.jaer.projects.cochsoundloc.multichipviewer.MultichipRetinaEventProducer.class);
-								retinaFilter.initFilter();
-								retinaFilter.setFilterEnabled(true);
-								retinaFilter.doFindAEViewerConsumer();
-								retinaViewer.showFilters(true);
-							} else if (hw.toString().startsWith("CochleaAMS1b")) {
-								cochleaChip.setHardwareInterface(hw);
-								cochleaChip.addDefaultEventFilter(ch.unizh.ini.jaer.projects.cochsoundloc.multichipviewer.MultichipAMS1bEventProducer.class);
-								ch.unizh.ini.jaer.projects.cochsoundloc.multichipviewer.MultichipAMS1bEventProducer cochleaFilter = (ch.unizh.ini.jaer.projects.cochsoundloc.multichipviewer.MultichipAMS1bEventProducer) cochleaChip.getFilterChain().findFilter(ch.unizh.ini.jaer.projects.cochsoundloc.multichipviewer.MultichipAMS1bEventProducer.class);
-								cochleaFilter.initFilter();
-								cochleaFilter.setFilterEnabled(true);
-								cochleaFilter.doFindAEViewerConsumer();
-								cochleaViewer.showFilters(true);
-							}
+					int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
+					for (int i = 0; i < n; i++) {
+						HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(i);
+						if (hw == null) {
+							continue;
+						} // in case it disappeared
+						if (hw.toString().startsWith("CypressFX2")) {
+							cochleaChip.setHardwareInterface(hw);
+						} else if (hw.toString().startsWith("DVS128")) {
+							retinaChip.setHardwareInterface(hw);
+							retinaChip.addDefaultEventFilter(ch.unizh.ini.jaer.projects.cochsoundloc.multichipviewer.MultichipRetinaEventProducer.class);
+							ch.unizh.ini.jaer.projects.cochsoundloc.multichipviewer.MultichipRetinaEventProducer retinaFilter = (ch.unizh.ini.jaer.projects.cochsoundloc.multichipviewer.MultichipRetinaEventProducer) retinaChip.getFilterChain().findFilter(ch.unizh.ini.jaer.projects.cochsoundloc.multichipviewer.MultichipRetinaEventProducer.class);
+							retinaFilter.initFilter();
+							retinaFilter.setFilterEnabled(true);
+							retinaFilter.doFindAEViewerConsumer();
+							retinaViewer.showFilters(true);
+						} else if (hw.toString().startsWith("CochleaAMS1b")) {
+							cochleaChip.setHardwareInterface(hw);
+							cochleaChip.addDefaultEventFilter(ch.unizh.ini.jaer.projects.cochsoundloc.multichipviewer.MultichipAMS1bEventProducer.class);
+							ch.unizh.ini.jaer.projects.cochsoundloc.multichipviewer.MultichipAMS1bEventProducer cochleaFilter = (ch.unizh.ini.jaer.projects.cochsoundloc.multichipviewer.MultichipAMS1bEventProducer) cochleaChip.getFilterChain().findFilter(ch.unizh.ini.jaer.projects.cochsoundloc.multichipviewer.MultichipAMS1bEventProducer.class);
+							cochleaFilter.initFilter();
+							cochleaFilter.setFilterEnabled(true);
+							cochleaFilter.doFindAEViewerConsumer();
+							cochleaViewer.showFilters(true);
 						}
-						retinaViewer.setState(Frame.ICONIFIED);
-						retinaViewer.setVisible(true);
-						cochleaViewer.setState(Frame.ICONIFIED);
-						cochleaViewer.setVisible(true);
+					}
+					retinaViewer.setState(Frame.ICONIFIED);
+					retinaViewer.setVisible(true);
+					cochleaViewer.setState(Frame.ICONIFIED);
+					cochleaViewer.setVisible(true);
 				}
 			} catch (Exception e) {
 				log.warning(e.getMessage());
@@ -5620,7 +5612,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 			interruptViewloop();
 		}
 		//        if(this.playMode==PlayMode.WAITING){
-			//            log.info("went to waiting state");
+		//            log.info("went to waiting state");
 		//        }
 		setTitleAccordingToState();
 		fixLoggingControls();

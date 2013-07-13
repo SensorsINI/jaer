@@ -468,7 +468,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 				CochleaAMSEvent camsevent = ((CochleaAMSEvent) i);
 				ganglionCellThreshold = camsevent.getThreshold();
 				//                if (useGanglionCellType != camsevent.getFilterType()) {
-					//                    continue;
+				//                    continue;
 				//                }
 			} else {
 				ganglionCellThreshold = 0;
@@ -503,64 +503,64 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
 							lastWeight = 1f;
 							//Compute weight:
-								if (useLaterSpikeForWeight == true) {
-									int weightTimeThisSide = i.timestamp - lastTs[i.x][ganglionCellThreshold][ear][lastTsCursor[i.x][ganglionCellThreshold][ear]];
-									if (weightTimeThisSide > maxWeightTime) {
-										weightTimeThisSide = maxWeightTime;
-									}
-									lastWeight *= ((weightTimeThisSide * (maxWeight - 1f)) / maxWeightTime) + 1f;
-									if (weightTimeThisSide < 0) {
-										//log.warning("weightTimeThisSide < 0");
-										lastWeight = 0;
-									}
+							if (useLaterSpikeForWeight == true) {
+								int weightTimeThisSide = i.timestamp - lastTs[i.x][ganglionCellThreshold][ear][lastTsCursor[i.x][ganglionCellThreshold][ear]];
+								if (weightTimeThisSide > maxWeightTime) {
+									weightTimeThisSide = maxWeightTime;
 								}
-								if (usePriorSpikeForWeight == true) {
-									int weightTimeOtherSide = lastTs[i.x][ganglionCellThreshold][1 - ear][cursor] - lastTs[i.x][ganglionCellThreshold][1 - ear][(cursor + 1) % dimLastTs];
-									if (weightTimeOtherSide > maxWeightTime) {
-										weightTimeOtherSide = maxWeightTime;
-									}
-									lastWeight *= ((weightTimeOtherSide * (maxWeight - 1f)) / maxWeightTime) + 1f;
-									if (weightTimeOtherSide < 0) {
-										//log.warning("weightTimeOtherSide < 0");
-										lastWeight = 0;
-									}
+								lastWeight *= ((weightTimeThisSide * (maxWeight - 1f)) / maxWeightTime) + 1f;
+								if (weightTimeThisSide < 0) {
+									//log.warning("weightTimeThisSide < 0");
+									lastWeight = 0;
 								}
-								if (weightFrequencies && (frequencyWeights != null)) {
-									lastWeight *= frequencyWeights[i.x];
+							}
+							if (usePriorSpikeForWeight == true) {
+								int weightTimeOtherSide = lastTs[i.x][ganglionCellThreshold][1 - ear][cursor] - lastTs[i.x][ganglionCellThreshold][1 - ear][(cursor + 1) % dimLastTs];
+								if (weightTimeOtherSide > maxWeightTime) {
+									weightTimeOtherSide = maxWeightTime;
 								}
-								if (normToConfThresh == true) {
-									myBins.addITD(diff, i.timestamp, i.x, lastWeight, confidenceThreshold);
+								lastWeight *= ((weightTimeOtherSide * (maxWeight - 1f)) / maxWeightTime) + 1f;
+								if (weightTimeOtherSide < 0) {
+									//log.warning("weightTimeOtherSide < 0");
+									lastWeight = 0;
+								}
+							}
+							if (weightFrequencies && (frequencyWeights != null)) {
+								lastWeight *= frequencyWeights[i.x];
+							}
+							if (normToConfThresh == true) {
+								myBins.addITD(diff, i.timestamp, i.x, lastWeight, confidenceThreshold);
+							} else {
+								myBins.addITD(diff, i.timestamp, i.x, lastWeight, 0);
+							}
+							if (freqBins != null) {
+								freqBins[i.x].addITD(diff, i.timestamp, i.x, lastWeight, 0);
+							}
+							if ((writeITD2File == true) && (ITDFile != null)) {
+								ITDFile.write(i.timestamp + "\t" + diff + "\t" + i.x + "\t" + lastWeight + "\n");
+							}
+							if (sendITDsToOtherThread) {
+								if (ITDEventQueue == null) {
+									ITDEventQueue = new ArrayBlockingQueue(itdEventQueueSize);
+								}
+								ITDEvent itdEvent = new ITDEvent(diff, i.timestamp, i.x, lastWeight);
+								boolean success = ITDEventQueue.offer(itdEvent);
+								if (success == false) {
+									ITDEventQueueFull = true;
+									log.warning("Could not add ITD-Event to the ITDEventQueue. Probably itdEventQueueSize is too small!!!");
 								} else {
-									myBins.addITD(diff, i.timestamp, i.x, lastWeight, 0);
+									ITDEventQueueFull = false;
 								}
-								if (freqBins != null) {
-									freqBins[i.x].addITD(diff, i.timestamp, i.x, lastWeight, 0);
-								}
-								if ((writeITD2File == true) && (ITDFile != null)) {
-									ITDFile.write(i.timestamp + "\t" + diff + "\t" + i.x + "\t" + lastWeight + "\n");
-								}
-								if (sendITDsToOtherThread) {
-									if (ITDEventQueue == null) {
-										ITDEventQueue = new ArrayBlockingQueue(itdEventQueueSize);
-									}
-									ITDEvent itdEvent = new ITDEvent(diff, i.timestamp, i.x, lastWeight);
-									boolean success = ITDEventQueue.offer(itdEvent);
-									if (success == false) {
-										ITDEventQueueFull = true;
-										log.warning("Could not add ITD-Event to the ITDEventQueue. Probably itdEventQueueSize is too small!!!");
-									} else {
-										ITDEventQueueFull = false;
-									}
-								}
+							}
 
-								if (isBeamFormingEnabled()) {
-									// if
-									int bestITD = Float.isNaN(beamFormingITDUs) ? (int) beamFormingITDUs : getBestITD();
-									if (Math.abs(diff - bestITD) < beamFormingRangeUs) {
-										BinauralCochleaEvent oe = (BinauralCochleaEvent) outItr.nextOutput();
-										oe.copyFrom(i);
-									}
+							if (isBeamFormingEnabled()) {
+								// if
+								int bestITD = Float.isNaN(beamFormingITDUs) ? (int) beamFormingITDUs : getBestITD();
+								if (Math.abs(diff - bestITD) < beamFormingRangeUs) {
+									BinauralCochleaEvent oe = (BinauralCochleaEvent) outItr.nextOutput();
+									oe.copyFrom(i);
 								}
+							}
 						} else {
 							break;
 						}
@@ -666,54 +666,54 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 			} else {
 				if ((ConfidenceRecentMaxTime + timeLocalExtremaDetection) < myBins.getTimestamp()) {
 					//if (myBins.getBin((int) myBins.convertITD2BIN(avgITDtemp)) > activityThreshold) {
-						if (avgITDConfidence > confidenceThreshold) {
-							//Speech Detected!
-							if (frame != null) {
-								frame.binsPanel.setLocalisedPos(avgITDtemp);
-							}
-							ConfidenceRising = false;
+					if (avgITDConfidence > confidenceThreshold) {
+						//Speech Detected!
+						if (frame != null) {
+							frame.binsPanel.setLocalisedPos(avgITDtemp);
+						}
+						ConfidenceRising = false;
 
-							bestITD = avgITDtemp;
+						bestITD = avgITDtemp;
 
-							if (saveFrequenciesSeperately) {
-								for (int i = 0; i < 64; i++) {
-									freqBins[i].updateTime(0, myBins.getTimestamp());
-									if (freqBinFile != null) {
-										try {
-											freqBinFile.write(myBins.getTimestamp() + "\t" + i + "\t" + freqBins[i].toString() + "\n");
-										} catch (IOException ex) {
-											Logger.getLogger(ITDFilter.class.getName()).log(Level.SEVERE, null, ex);
-										}
+						if (saveFrequenciesSeperately) {
+							for (int i = 0; i < 64; i++) {
+								freqBins[i].updateTime(0, myBins.getTimestamp());
+								if (freqBinFile != null) {
+									try {
+										freqBinFile.write(myBins.getTimestamp() + "\t" + i + "\t" + freqBins[i].toString() + "\n");
+									} catch (IOException ex) {
+										Logger.getLogger(ITDFilter.class.getName()).log(Level.SEVERE, null, ex);
 									}
 								}
 							}
-
-							if (connectToPanTiltThread == true) {
-
-								CommObjForPanTilt filterOutput = new CommObjForPanTilt();
-								filterOutput.setFromCochlea(true);
-								if (useRidgeRegression) {
-									double servopos = ridgeWeights[0];
-									for (int i = 0; i < 64; i++) {
-										freqBins[i].updateTime(0, myBins.getTimestamp());
-										servopos += (freqBins[i].getITDMaxIndex() + 1) * ridgeWeights[i + 1];
-									}
-									filterOutput.setPanOffset(((float) servopos * 2f) - 1f);
-								} else if (use1DRegression) {
-									double servopos = ridgeWeights[0] + ((myBins.getITDMaxIndex() + 1) * ridgeWeights[1]);
-									filterOutput.setPanOffset(((float) servopos * 2f) - 1f);
-								} else {
-									filterOutput.setPanOffset((float) bestITD / (float) maxITD);
-								}
-								filterOutput.setConfidence(avgITDConfidence);
-								panTilt.offerBlockingQ(filterOutput);
-							}
-
-							ConfidenceRecentMin = 100000000;
-							ConfidenceRecentMax = 0;
 						}
 
-						//}
+						if (connectToPanTiltThread == true) {
+
+							CommObjForPanTilt filterOutput = new CommObjForPanTilt();
+							filterOutput.setFromCochlea(true);
+							if (useRidgeRegression) {
+								double servopos = ridgeWeights[0];
+								for (int i = 0; i < 64; i++) {
+									freqBins[i].updateTime(0, myBins.getTimestamp());
+									servopos += (freqBins[i].getITDMaxIndex() + 1) * ridgeWeights[i + 1];
+								}
+								filterOutput.setPanOffset(((float) servopos * 2f) - 1f);
+							} else if (use1DRegression) {
+								double servopos = ridgeWeights[0] + ((myBins.getITDMaxIndex() + 1) * ridgeWeights[1]);
+								filterOutput.setPanOffset(((float) servopos * 2f) - 1f);
+							} else {
+								filterOutput.setPanOffset((float) bestITD / (float) maxITD);
+							}
+							filterOutput.setConfidence(avgITDConfidence);
+							panTilt.offerBlockingQ(filterOutput);
+						}
+
+						ConfidenceRecentMin = 100000000;
+						ConfidenceRecentMax = 0;
+					}
+
+					//}
 				}
 			}
 		} else {
@@ -1006,11 +1006,6 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 		for (int i = 0; i < numOfBins; i++) {
 			yData[i] = myBins.getBin(i);
 		}
-		//double yData[] = {4,6,5.6,3,2,1,0.1,1,1.4,1,0.6,1,1,0,0.5,0};
-		flanagan.analysis.Regression reg = new flanagan.analysis.Regression(xData, yData);
-		reg.gaussian();
-		double[] regResult = reg.getBestEstimates();
-		log.info("mean=" + regResult[0] + " standardDeviation=" + regResult[1] + " scale=" + regResult[2]);
 	}
 
 	public boolean isDisplay() {
