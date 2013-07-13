@@ -2,227 +2,962 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
+
 package org.ine.telluride.jaer.tell2013.ThreeDTracker;
 
 import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 
-import net.sf.jaer.Description;
-import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.MultiCameraEvent;
+import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
+
 /**
- * 
- * @author danny
+ * Low-level Tracker for small Gaussians with full covariance matrix.
+ * @author Michael Pfeiffer, modified by Dan Neil
  */
-@Description("Fit a gaussian for each camera") // this annotation is used for tooltip to this class in the chooser.
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class MultiCameraGaussianTracker extends EventFilter2D implements FrameAnnotater {
+public class MultiCameraGaussianTracker extends EventFilter2D implements FrameAnnotater{
 
-	private float[] xmeans, ymeans;
-	private float[] xstds, ystds;
-	private float mixingRate = getFloat("mixingRate", 0.01f); // how much we mix the new value into the running means
-	private int numCameras = getInt("numCameras", 2); // how many cameras we have
+	// Number of regions per camera
+	private int numRegions = getInt("numRegions", 1);
 
-	private final int SEGMENTS = 40;
+	// Learning rate for online updates
+	private float alpha = getFloat("alpha", 0.001f);
+
+	// Initial radius of regions
+	private float initRadius = getFloat("initRadius", 5.0f);
+
+	private float noiseThreshold = getFloat("noiseThreshold",0.001f);
+
+	// Drawing radius for the Gaussians
+	private float gaussRadius = getFloat("gaussRadius", 2.0f);
+
+	// Repell constant for Gaussians
+	private float repellConst = getFloat("repellConst", 1e-5f);
+
+	// Length of event queue for random movements
+	private int queueLength = getInt("queueLength",50);
+
+	// Maximum age before movement
+	private float maxAge = getFloat("maxAge", 1000000.0f);
+
+	// Learning rate for sigma
+	private float sigmaAlpha = getFloat("sigmaAlpha", alpha*0.1f);
+
+	// Pass all spikes to next level or just centers
+	private boolean passAllSpikes = getBoolean("passAllSpikes",true);
+
+	// Minimum and maximum covariance
+	private float minSigma = getFloat("minSigma", 0.01f);
+	private float maxSigma = getFloat("maxSigma", 500.0f);
+
+	// Maximum area for Gaussian (computed as product of eigenvalues
+	private float maxEigenProduct = getFloat("maxEigenProduct", 1000f);
+
+	// Draw individual regions
+	private boolean drawEllipses = getBoolean("drawEllipses", true);
+
+	// Draw only main axes of Gaussians
+	private boolean drawOnlyMain = getBoolean("drawOnlyMain", false);
+
+	// Enable reset of regions
+	private boolean enableReset = getBoolean("enableReset", true);
+
+	// Check the number of cameras
+	private final int NUMCAMS = 2;
+
+	// Centers and covariances of the regions
+	// Three dimensions: cameras * clusters * dimensionality
+	// Centers and covariances of the regions
+	private float[][] centerX, centerY;
+	private float[][][] Sigma;
+	private float[][] detSigma;
+	private float[][][] invSigma;
+	private float[][] color;
+	private float[][][] cholSigma;
+	private float[][][] eigenValueSigma;
+	private float[][][] eigenVectorSigma;
+	private float[][][] eigenValueInvSigma;
+	private float[][][] eigenVectorInvSigma;
+
+	// Last movements of each cluster
+	private float[][] lastMovement;
+
+	// Storing the coordinates of a circle for drawing
+	final int N = 20;
 	private float[] circleX;
 	private float[] circleY;
-	private float[][] color;
+
+	// Queue of random positions
+	float[][] queueX;
+	float[][] queueY;
+	int[] queuePointer;
+
+	// Age of each cluster
+	float[][] age;
+
+	// Geometry of tracked object
+	private float objWidth = 10.0f, objHeight = 10.0f, objDepth = 10.0f;
+
+	//
+	private boolean geometryLocked = false;
+	private int geoWeight = 0;
+	private int geoThresh = 100000;
 
 	public MultiCameraGaussianTracker(AEChip chip) {
 		super(chip);
-		setPropertyTooltip("mixingRate", "rate that mean location is updated in events. 1 means instantaneous and 0 freezes values");
-		xmeans = new float[numCameras];
-		ymeans = new float[numCameras];
-		xstds = new float[numCameras];
-		ystds = new float[numCameras];
-		for (int i=0; i<numCameras; i++){
-			xmeans[i] = chip.getSizeX() / 2;
-			ymeans[i] = chip.getSizeY() / 2;
-			xstds[i] = 10;
-			ystds[i] = 10;
+
+		final String draw = "Drawing", clust = "Clustering Parameters";
+
+		setPropertyTooltip(clust,"numRegions", "Number of high level regions");
+		setPropertyTooltip(clust,"alpha","Learning rate for cluster updates");
+		setPropertyTooltip(clust, "noiseThreshold","Threshold for Gaussians below which an"
+			+ "event is considered to be noise");
+		setPropertyTooltip(draw, "initRadius", "Radius of the Gaussian to draw");
+		setPropertyTooltip(draw, "passAllSpikes", "Draw all spikes, not just filter results");
+		setPropertyTooltip(draw, "drawEllipses", "Draw ellipses pf Gaussians");
+		setPropertyTooltip(draw, "drawOnlyMain", "Draw only main axes of Gaussians");
+		setPropertyTooltip(clust, "repellConst", "Competition-constant for repelling other Gaussians");
+
+		setPropertyTooltip(clust, "queueLength", "Length of queue for random positions");
+		setPropertyTooltip(clust, "maxAge", "Maximum age of cluster before random movement");
+		setPropertyTooltip(clust, "sigmaAlpha", "Learning rate for sigma");
+
+		setPropertyTooltip(clust, "minSigma", "Minimum tolerated covariance");
+		setPropertyTooltip(clust, "maxSigma", "Maximum tolerated covariance");
+		setPropertyTooltip(clust, "maxEigenProduct", "Maximum area for Gaussians before random movement");
+		setPropertyTooltip(clust, "enableReset", "Enable reset of regions");
+
+		createRegions();
+
+		queueX = new float[2][];
+		queueY = new float[2][];
+		queuePointer = new int[NUMCAMS];
+		for (int c=0; c<NUMCAMS; c++){
+			queueX[c] = new float[queueLength];
+			queueY[c] = new float[queueLength];
+			queuePointer[c] = 0;
+		}
+	}
+
+	// Computes the determinant and inverse of a matrix
+	private void compute_det_inv(int k, int camera) {
+		if ((k>=0) && (k<numRegions)  && (camera < NUMCAMS)) {
+			detSigma[camera][k] = (Sigma[camera][k][0]*Sigma[camera][k][3])-(Sigma[camera][k][1]*Sigma[camera][k][2]);
+			invSigma[camera][k][0] = Sigma[camera][k][3] / detSigma[camera][k];
+			invSigma[camera][k][1] = -Sigma[camera][k][1] / detSigma[camera][k];
+			invSigma[camera][k][2] = -Sigma[camera][k][2] / detSigma[camera][k];
+			invSigma[camera][k][3] = Sigma[camera][k][0] / detSigma[camera][k];
+		}
+	}
+
+	// Computes the Cholesky Matrix of Sigma
+	private void cholesky(int k, int camera) {
+		if ((k>=0) && (k<numRegions) && (camera < NUMCAMS)) {
+			cholSigma[camera][k][0] = (float) Math.sqrt(Sigma[camera][k][0]);
+			cholSigma[camera][k][1] = 0.0f;
+			cholSigma[camera][k][2] = Sigma[camera][k][2] / cholSigma[camera][k][0];
+			cholSigma[camera][k][3] = (float) Math.sqrt(Sigma[camera][k][3] - ((Sigma[camera][k][1]*Sigma[camera][k][1])/Sigma[camera][k][0]));
+		}
+	}
+
+	// Computes the eigenvalues and eigenvectors of Sigma
+	private void eigen(int k, int camera) {
+		if ((k>=0) && (k<numRegions) && (camera < NUMCAMS)) {
+			float T = Sigma[camera][k][0]+Sigma[camera][k][3];
+			float D = ((T*T)/4.0f)-detSigma[camera][k];
+			if (D<0) {
+				D = 0f;
+			}
+			eigenValueSigma[camera][k][0] = (T/2.0f) + (float)Math.sqrt(D);
+			eigenValueSigma[camera][k][1] = (T/2.0f) - (float)Math.sqrt(D);
+
+			if (Math.abs(Sigma[camera][k][2])>0) {
+				eigenVectorSigma[camera][k][0] = eigenValueSigma[camera][k][0]-Sigma[camera][k][3];
+				eigenVectorSigma[camera][k][1] = eigenValueSigma[camera][k][1]-Sigma[camera][k][3];
+				eigenVectorSigma[camera][k][2] = Sigma[camera][k][2];
+				eigenVectorSigma[camera][k][3] = Sigma[camera][k][2];
+			} else if (Math.abs(Sigma[camera][k][1])>0) {
+				eigenVectorSigma[camera][k][0] = Sigma[camera][k][1];
+				eigenVectorSigma[camera][k][1] = Sigma[camera][k][1];
+				eigenVectorSigma[camera][k][2] = eigenValueSigma[camera][k][0]-Sigma[camera][k][0];
+				eigenVectorSigma[camera][k][3] = eigenValueSigma[camera][k][1]-Sigma[camera][k][0];
+			} else {
+				eigenVectorSigma[camera][k][0] = eigenVectorSigma[camera][k][3] = 1.0f;
+				eigenVectorSigma[camera][k][1] = eigenVectorSigma[camera][k][2] = 0.0f;
+			}
+			// Normalize the vector
+			float d1 = (float) Math.sqrt(Math.pow(eigenVectorSigma[camera][k][0],2)+
+				Math.pow(eigenVectorSigma[camera][k][2],2));
+			float d2 = (float) Math.sqrt(Math.pow(eigenVectorSigma[camera][k][1],2)+
+				Math.pow(eigenVectorSigma[camera][k][3],2));
+			eigenVectorSigma[camera][k][0] /= d1;
+			eigenVectorSigma[camera][k][2] /= d1;
+			eigenVectorSigma[camera][k][1] /= d2;
+			eigenVectorSigma[camera][k][3] /= d2;
+		}
+	}
+
+	// Computes the eigenvalues and eigenvectors of the inverse of Sigma
+	private void invEigen(int k, int camera) {
+		if ((k>=0) && (k<numRegions) && (camera < NUMCAMS)) {
+			float T = invSigma[camera][k][0]+invSigma[camera][k][3];
+			float D = (invSigma[camera][k][0]*invSigma[camera][k][3])-(invSigma[camera][k][1]*invSigma[camera][k][2]);
+			eigenValueInvSigma[camera][k][0] = 1.0f / eigenValueSigma[camera][k][0];
+			eigenValueInvSigma[camera][k][1] = 1.0f / eigenValueSigma[camera][k][1];
+
+			if (Math.abs(invSigma[camera][k][2])>0) {
+				eigenVectorInvSigma[camera][k][0] = eigenValueInvSigma[camera][k][0]-invSigma[camera][k][3];
+				eigenVectorInvSigma[camera][k][1] = eigenValueInvSigma[camera][k][1]-invSigma[camera][k][3];
+				eigenVectorInvSigma[camera][k][2] = invSigma[camera][k][2];
+				eigenVectorInvSigma[camera][k][3] = invSigma[camera][k][2];
+			} else if (Math.abs(invSigma[camera][k][1])>0) {
+				eigenVectorInvSigma[camera][k][0] = invSigma[camera][k][1];
+				eigenVectorInvSigma[camera][k][1] = invSigma[camera][k][1];
+				eigenVectorInvSigma[camera][k][2] = eigenValueInvSigma[camera][k][0]-invSigma[camera][k][0];
+				eigenVectorInvSigma[camera][k][3] = eigenValueInvSigma[camera][k][1]-invSigma[camera][k][0];
+			} else {
+				eigenVectorInvSigma[camera][k][0] = eigenVectorInvSigma[camera][k][3] = 1.0f;
+				eigenVectorInvSigma[camera][k][1] = eigenVectorInvSigma[camera][k][2] = 0.0f;
+			}
+			// Normalize the vector
+			float d1 = (float) Math.sqrt(Math.pow(eigenVectorInvSigma[camera][k][0],2)+
+				Math.pow(eigenVectorInvSigma[camera][k][2],2));
+			float d2 = (float) Math.sqrt(Math.pow(eigenVectorInvSigma[camera][k][1],2)+
+				Math.pow(eigenVectorInvSigma[camera][k][3],2));
+			eigenVectorInvSigma[camera][k][0] /= d1;
+			eigenVectorInvSigma[camera][k][2] /= d1;
+			eigenVectorInvSigma[camera][k][1] /= d2;
+			eigenVectorInvSigma[camera][k][3] /= d2;
+		}
+	}
+
+
+	// Creates the variables defining the regions
+	private void createRegions() {
+
+		centerX = new float[NUMCAMS][numRegions];
+		centerY = new float[NUMCAMS][numRegions];
+		Sigma = new float[NUMCAMS][numRegions][4];
+		detSigma = new float[NUMCAMS][numRegions];
+		invSigma = new float[NUMCAMS][numRegions][4];
+		cholSigma = new float[NUMCAMS][numRegions][4];
+		eigenValueSigma = new float[NUMCAMS][numRegions][2];
+		eigenVectorSigma = new float[NUMCAMS][numRegions][4];
+		eigenValueInvSigma = new float[NUMCAMS][numRegions][2];
+		eigenVectorInvSigma = new float[NUMCAMS][numRegions][4];
+
+		lastMovement = new float[numRegions][2];
+
+		age = new float[NUMCAMS][numRegions];
+
+		// Initialize Region positions
+
+		// Compute the number of Gaussians (regular grid)
+		int numPerRow = (int) Math.ceil(numRegions / Math.sqrt(numRegions));
+		int numRows = (int) Math.ceil(numRegions / (float) numPerRow);
+
+		// Initialize Gaussian positions
+		float xpos = 2.0f*gaussRadius;
+		float ypos = 2.0f*gaussRadius;
+
+		float xdiff = (128.0f - (4.0f*gaussRadius)) / numPerRow;
+		float ydiff = (128.0f - (4.0f*gaussRadius)) / numRows;
+
+		for (int c=0; c<NUMCAMS; c++){
+
+			int idx = 0;
+
+			for (int i=0; i<numRows; i++) {
+				for (int j=0; j<numPerRow; j++) {
+					centerX[c][idx] = xpos;
+					centerY[c][idx] = ypos;
+
+					age[c][idx] = 0;
+
+					xpos += xdiff;
+
+					Sigma[c][idx] = new float[4];
+					Sigma[c][idx][0] = initRadius;
+					Sigma[c][idx][1] = 0.1f;
+					Sigma[c][idx][2] = 0.1f;
+					Sigma[c][idx][3] = initRadius;
+
+					// Compute determinant and inverse of the matrix
+					compute_det_inv(idx, c);
+
+					// Compute Cholesky decomposition
+					cholesky(idx, c);
+
+					// Compute eigenvalues and eigenvectors
+					eigen(idx, c);
+
+					idx++;
+					if (idx >= numRegions) {
+						break;
+					}
+				}
+				xpos = 2.0f*gaussRadius;
+				ypos += ydiff;
+				if (idx >= numRegions) {
+					break;
+				}
+
+
+			}
 		}
 
-		circleX = new float[SEGMENTS+1];
-		circleY = new float[SEGMENTS+1];
-		for (int i=0; i<=SEGMENTS; i++) {
-			circleX[i] = (float) (Math.cos((i*2.0*Math.PI)/SEGMENTS));
-			circleY[i] = (float) (Math.sin((i*2.0*Math.PI)/SEGMENTS));
+		// Create colors for each Gaussian
+		color = new float[numRegions][3];
+		for (int i=0; i<numRegions;i++) {
+			float H = (i * 360.0f) / (numRegions);
+			float[] tmp = AdaptiveGaussianTracker.HSV2RGB(H, 1.0f, 1.0f);
+			System.arraycopy(tmp, 0, color[i], 0, 3);
 		}
+
+		// Initialize last movement
+		for (int i=0; i<numRegions; i++) {
+			lastMovement[i][0] = (float) ((0.2 * Math.random()) - 0.1);
+			lastMovement[i][1] = (float) ((0.2 * Math.random()) - 0.1);
+		}
+
+		circleX = new float[N+1];
+		circleY = new float[N+1];
+		for (int i=0; i<=N; i++) {
+			circleX[i] = gaussRadius * (float) (Math.cos((i*2.0*Math.PI)/N));
+			circleY[i] = gaussRadius * (float) (Math.sin((i*2.0*Math.PI)/N));
+		}
+	}
+
+	final float norm_const = (float) (1.0 / Math.sqrt(2*Math.PI));
+
+	// Compute Gaussian probability
+	public double gaussProb(int k, float X, float Y, int camera) {
+		float dX = X - centerX[camera][k];
+		float dY = Y - centerY[camera][k];
+
+		float distX = (invSigma[camera][k][0]*dX) + (invSigma[camera][k][1]*dY);
+		float distY = (invSigma[camera][k][2]*dX) + (invSigma[camera][k][3]*dY);
+
+		double dist = (dX*distX) + (dY*distY);
+		double G = (norm_const / Math.sqrt(detSigma[camera][k])) *
+			Math.exp(-0.5*dist);
+
+		return G;
+	}
+
+	// Computes Mahalanobis distance between Gaussian and a point
+	public double mahalanobisDist(int k, float X, float Y, int camera) {
+		float dX = X - centerX[camera][k];
+		float dY = Y - centerY[camera][k];
+
+		float distX = (invSigma[camera][k][0]*dX) + (invSigma[camera][k][1]*dY);
+		float distY = (invSigma[camera][k][2]*dX) + (invSigma[camera][k][3]*dY);
+
+		double dist = (dX*distX) + (dY*distY);
+		return dist;
 
 	}
 
-	/** The main filtering method. It computes the mean location using an event-driven update of location and then
-	 * filters out events that are outside this location by more than the radius.
-	 * @param in input packet
-	 * @return output packet
-	 */
+
+	// Rotates a Gaussian abround a pivot point
+	private void rotateGauss(int k, float X, float Y, float theta, float rate, int camera) {
+		if ((k>=0) && (k<numRegions) && (camera < NUMCAMS)) {
+			double dX = centerX[camera][k] - X;
+			double dY = centerY[camera][k] - Y;
+			double cosTheta = Math.cos(theta*rate);
+			double sinTheta = Math.sqrt(1-(cosTheta*cosTheta));
+			double[] R = {cosTheta, -sinTheta, sinTheta, cosTheta};
+
+
+			// Rotate center
+			float nX = (float) ((R[0]*dX) + (R[1]*dY));
+			float nY = (float) ((R[2]*dX) + (R[3]*dY));
+
+			centerX[camera][k] = X+nX;
+			centerY[camera][k] = Y+nY;
+
+			// Rotate covariance matrix: R^-1 * Sigma * R
+			Sigma[camera][k][0] = (float)((Sigma[camera][k][0]*R[0]) + (Sigma[camera][k][1]*R[2]));
+			Sigma[camera][k][1] = (float)((Sigma[camera][k][0]*R[1]) + (Sigma[camera][k][1]*R[3]));
+			Sigma[camera][k][2] = (float)((Sigma[camera][k][2]*R[0]) + (Sigma[camera][k][3]*R[2]));
+			Sigma[camera][k][3] = (float)((Sigma[camera][k][2]*R[1]) + (Sigma[camera][k][3]*R[3]));
+
+			Sigma[camera][k][0] = (float)((R[0]*Sigma[camera][k][0]) + (R[2]*Sigma[camera][k][2]));
+			Sigma[camera][k][1] = (float)((R[0]*Sigma[camera][k][1]) + (R[2]*Sigma[camera][k][3]));
+			Sigma[camera][k][2] = (float)((R[1]*Sigma[camera][k][0]) + (R[3]*Sigma[camera][k][2]));
+			Sigma[camera][k][3] = (float)((R[1]*Sigma[camera][k][1]) + (R[3]*Sigma[camera][k][3]));
+		}
+	}
+
+
 	@Override
 	public EventPacket<?> filterPacket(EventPacket<?> in) {
-		for (BasicEvent o : in) { // iterate over all events in input packet
-			int camera = ((MultiCameraEvent) o).getCamera();
-
-			xmeans[camera] = ((1 - mixingRate) * xmeans[camera]) + (o.x * mixingRate);
-			ymeans[camera] = ((1 - mixingRate) * ymeans[camera]) + (o.y * mixingRate);
-
-			xstds[camera] = ((1 - mixingRate) * xstds[camera]) + (Math.abs(o.x - xmeans[camera]) * mixingRate);
-			ystds[camera] = ((1 - mixingRate) * ystds[camera]) + (Math.abs(o.y - ymeans[camera]) * mixingRate);
-
-			if (xstds[camera] >= 30) {
-				xstds[camera] = 30;
-			}
-			if (ystds[camera] >= 30) {
-				ystds[camera] = 30;
-			}
+		if(!filterEnabled) {
+			return in;
 		}
-		return in; // return the output packet
+
+		if ( in == null ){
+			return null;
+		}
+		checkOutputPacketEventType(MultiCameraEvent.class);
+
+		OutputEventIterator outItr=out.outputIterator();
+
+		float max_time = Float.MIN_VALUE;
+
+		int k, kk;
+
+		float[] mahalanobisD = new float[numRegions];
+
+		for (Object ein : in) { // iterate over all input events
+			BasicEvent e = (BasicEvent) ein;
+
+			if(!(e instanceof MultiCameraEvent)) {
+				continue;
+			}
+
+			// First, pass through all spikes as required
+			if (passAllSpikes) {
+				BasicEvent o=outItr.nextOutput();
+				o.copyFrom(e);
+			}
+
+			float ts = e.timestamp;
+			if (ts > max_time) {
+				max_time = ts;
+			}
+
+			// Compute distance to all Gaussians
+			double max_dist = Double.MIN_VALUE;
+
+			// FIX K SWEEP
+			int min_k = 0;
+			float sum_dist = 0.0f;
+
+			int camera = ((MultiCameraEvent) e).getCamera();
+
+			if(!geometryLocked){
+				geoWeight = geoWeight + 1;
+
+				if(geoWeight > geoThresh){
+					geometryLocked = true;
+					objWidth  = 2 * gaussRadius * (float)Math.sqrt(eigenValueSigma[0][0][0])*eigenVectorSigma[0][0][0];
+					objHeight = 2 * gaussRadius * (float)Math.sqrt(eigenValueSigma[0][0][1])*eigenVectorSigma[0][0][1];
+					objDepth  = 2 * gaussRadius * (float)Math.sqrt(eigenValueSigma[1][0][0])*eigenVectorSigma[0][0][0];
+				}
+			}
+
+			// Update Gaussians
+			float dX = e.x - centerX[camera][min_k];
+			float dY = e.y - centerY[camera][min_k];
+
+			age[camera][min_k] = e.timestamp;
+
+			float newCenterX = (alpha*e.x) + ((1-alpha)*centerX[camera][min_k]);
+			float newCenterY = (alpha*e.y) + ((1-alpha)*centerY[camera][min_k]);
+
+			// Store last movement
+			lastMovement[min_k][0] += alpha*dX;
+			lastMovement[min_k][1] += alpha*dY;
+
+			float[] newSigma = new float[4];
+
+			newSigma[0] = (sigmaAlpha*(dX*dX)) + ((1-sigmaAlpha) * Sigma[camera][min_k][0]);
+			newSigma[3] = (sigmaAlpha*(dY*dY)) + ((1-sigmaAlpha) * Sigma[camera][min_k][3]);
+			newSigma[1] = (sigmaAlpha*(dX*dY)) + ((1-sigmaAlpha) * Sigma[camera][min_k][1]);
+			newSigma[2] = newSigma[1];
+
+			// Move center of the Gaussian if it is not too close
+			// to another Gaussian
+			centerX[camera][min_k] = newCenterX;
+			centerY[camera][min_k] = newCenterY;
+			for (kk=0; kk<4; kk++) {
+				Sigma[camera][min_k][kk] = newSigma[kk];
+			}
+
+			compute_det_inv(min_k, camera);
+			cholesky(min_k, camera);
+			eigen(min_k, camera);
+
+			// Check if region becomes too large, then move randomly
+			if (detSigma[camera][min_k] > maxEigenProduct) {
+				moveRandom(min_k, max_time, camera);
+			}
+
+		}
+
+		return out;
 	}
 
-	/** called when filter is reset
-	 * 
-	 */
+	// Sets a cluster to a new random position
+	public void moveRandom(int k, float max_time, int camera) {
+		// Move to position in the target queue
+		int targetIdx = (int) (queueLength * Math.random());
+		if (targetIdx >= queueLength) {
+			targetIdx = queueLength-1;
+		}
+		centerX[camera][k] = queueX[camera][targetIdx];
+		centerY[camera][k] = queueY[camera][targetIdx];
+
+		age[camera][k] = max_time;
+
+		Sigma[camera][k][0] = initRadius;
+		Sigma[camera][k][1] = 0.1f;
+		Sigma[camera][k][2] = 0.1f;
+		Sigma[camera][k][3] = initRadius;
+
+		compute_det_inv(k, camera);
+		cholesky(k, camera);
+		eigen(k, camera);
+
+		lastMovement[k][0] = (float) ((0.2 * Math.random()) - 0.1);
+		lastMovement[k][1] = (float) ((0.2 * Math.random()) - 0.1);
+
+	}
+
+
 	@Override
 	public void resetFilter() {
-		for (int i=0; i<numCameras; i++){
-			xmeans[i] = chip.getSizeX() / 2;
-			ymeans[i] = chip.getSizeY() / 2;
+		if (enableReset) {
+			createRegions();
+
+			for (int c=0; c < NUMCAMS; c++){
+				for (int i=0; i<queueLength; i++) {
+					queueX[c][i] = (float) (Math.random() * 128.0);
+					queueY[c][i] = (float) (Math.random() * 128.0);
+				}
+				queuePointer[c] = 0;
+			}
 		}
 	}
 
 	@Override
 	public void initFilter() {
+		resetFilter();
 	}
 
-	/** Called after events are rendered. Here we just render something to show the mean location.
-	 * 
-	 * @param drawable the open GL surface.
-	 */
 	@Override
-	public void annotate(GLAutoDrawable drawable) { // called after events are rendered
-		GL2 gl = drawable.getGL().getGL2(); // get the openGL context
+	public void annotate(GLAutoDrawable drawable) {
+		// Plot the Gaussians
+		GL2 gl = drawable.getGL().getGL2(); // gets the OpenGL GL context. Coordinates are in chip pixels, 0,0 is LL
 		Chip2D chip = getChip();
 		gl.glPushMatrix();
+		if (drawEllipses) {
+			// rotate and align viewpoint for filters
+			gl.glRotatef(chip.getCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the upvector
+			gl.glRotatef(chip.getCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the upvector
+			gl.glTranslatef(chip.getCanvas().getOrigin3dx(), chip.getCanvas().getOrigin3dy(), 0);
 
-		// rotate and align viewpoint for filters
-		gl.glRotatef(chip.getCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the upvector
-		gl.glRotatef(chip.getCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the upvector
-		gl.glTranslatef(chip.getCanvas().getOrigin3dx(), chip.getCanvas().getOrigin3dy(), 0);
+			int i,k,kk;
 
-		for (int k=0; k<numCameras; k++){
-			gl.glPushMatrix();
+			gl.glLineWidth(3); // set line width in screen pixels (not chip pixels)
 
-			gl.glColor4f(1.0f, 1.0f, 0.0f, 0.5f);
+			float x,y,z;
+			for (int camera=0; camera<2; camera++){
+				k = 0;
+				gl.glPushMatrix();
 
-			if(k == 0) {
-				gl.glTranslatef(xmeans[k], ymeans[k], 0.0f);
-			}
-			else {
-				gl.glTranslatef(0.0f, ymeans[k], xmeans[k]);
-			}
-
-			gl.glBegin(GL.GL_LINE_LOOP); // start drawing a line loop
-			for (int i=0; i<=SEGMENTS; i++) {
-				if(k == 0){
-					gl.glVertex3f((xstds[k]*2)*circleX[i],
-						(ystds[k]*2)*circleY[i],
-						0.0f);
+				// Orient Properly for this camera
+				gl.glColor4f(1.0f, 1.0f, 0.0f, 0.5f);
+				if(camera == 0) {
+					gl.glTranslatef(centerX[camera][k], centerY[camera][k], 0.0f);
 				}
 				else {
-					gl.glVertex3f( 0.0f,
-						(ystds[k]*2)*circleY[i],
-						(xstds[k]*2)*circleX[i]);
+					gl.glTranslatef(0.0f, centerY[camera][k], centerX[camera][k]);
 				}
+
+				// Draw Ellipse
+				gl.glColor4f(1.0f, 1.0f, 0.0f,.5f);
+				gl.glBegin(GL.GL_LINE_LOOP); // start drawing a line loop
+				for (i=0; i<=N; i++) {
+					x = (cholSigma[camera][k][0]*circleX[i]) + (cholSigma[camera][k][1]*circleY[i]);
+					y = (cholSigma[camera][k][2]*circleX[i]) + (cholSigma[camera][k][3]*circleY[i]);
+
+					if (camera == 0) {
+						gl.glVertex3f(x, y, 0.0f);
+					}
+					else {
+						gl.glVertex3f(0.0f, y, x);
+					}
+				}
+				gl.glEnd();
+
+				// Draw axes of ellipse
+				// Major Axis
+				gl.glBegin(GL.GL_LINES);
+				float x1 = gaussRadius * (float)Math.sqrt(eigenValueSigma[camera][k][0])*eigenVectorSigma[camera][k][0];
+				float y1 = gaussRadius * (float)Math.sqrt(eigenValueSigma[camera][k][0])*eigenVectorSigma[camera][k][2];
+				x = (camera==0) ?   x1 : 0.0f;
+				y = (camera==0) ?   y1 : y1;
+				z = (camera==0) ? 0.0f : x1;
+				gl.glVertex3f(x, y, z);
+				gl.glVertex3f(-x, -y, -z);
+				gl.glEnd();
+
+				// Minor Axis
+				gl.glBegin(GL.GL_LINES);
+				float x2 = gaussRadius * (float)Math.sqrt(eigenValueSigma[camera][k][1])*eigenVectorSigma[camera][k][1];
+				float y2 = gaussRadius * (float)Math.sqrt(eigenValueSigma[camera][k][1])*eigenVectorSigma[camera][k][3];
+				x = (camera==0) ?   x2 : 0.0f;
+				y = (camera==0) ?   y2 : y2;
+				z = (camera==0) ? 0.0f : x2;
+				gl.glVertex3f(x, y, z);
+				gl.glVertex3f(-x, -y, -z);
+				gl.glEnd();
+
+				gl.glPopMatrix();
 			}
-			gl.glEnd();
+			k = 0;
+			x = centerX[0][k];
+			y = (centerY[1][k]+centerY[0][k])/2;
+			z = centerX[1][k];
 
-			gl.glPopMatrix();
+			int uniquevec = findUnique(eigenValueSigma);
 
-			/*
-			 * 
-			 */
+			drawPrism(x, y, z,
+				objWidth, objHeight, objDepth,
+				(float) Math.toDegrees(Math.atan(eigenVectorSigma[1][k][2] / eigenVectorSigma[1][k][0])),
+				0.0f,
+				(float) Math.toDegrees(Math.atan(eigenVectorSigma[0][k][2] / eigenVectorSigma[0][k][0])),
+				gl);
+		}
+		gl.glPopMatrix();
+	}
+
+	// Match the sizes and find something new
+	public int findUnique(float [][][] eigenValues){
+		float diffAA, diffAB, diffBA, diffBB;
+		diffAA = Math.abs(eigenValues[0][0][0] - eigenValues[1][0][0]);// / eigenValues[0][0][0];
+		diffAB = Math.abs(eigenValues[0][0][0] - eigenValues[1][0][1]);// / eigenValues[0][0][1];
+		diffBA = Math.abs(eigenValues[0][0][1] - eigenValues[1][0][0]);// / eigenValues[0][0][0];
+		diffBB = Math.abs(eigenValues[0][0][1] - eigenValues[1][0][1]);// / eigenValues[0][0][0];
+
+		// Match on the first vectors; second one is unique in second cam
+		if((diffAA < diffAB) && (diffAA < diffBA) && (diffAA < diffBB)) {
+			return 1;
 		}
 
-		drawPrism(xmeans[0],(ymeans[1]+ymeans[0])/2, xmeans[1], (ystds[1]+ystds[0]), (xstds[1]+xstds[0]),gl);
+		// Match on the first vector and the second; first one is unique in second cam
+		if((diffAB < diffAA) && (diffAB < diffBA) && (diffAB < diffBB)) {
+			return 0;
+		}
 
-		gl.glPopMatrix();
 
+		// Match on the second vector and the first; second one is unique in second cam
+		if((diffBA < diffAA) && (diffBA < diffAB) && (diffBA < diffBB)) {
+			return 1;
+		}
+		// Match on the second vectors; second one is unique in second cam
+		if((diffBB < diffAA) && (diffBB < diffAB) && (diffBB < diffBA)) {
+			return 0;
+		}
+
+		return -1;
 	}
 
-	/**
-	 * @return the mixingRate
-	 */
-	public float getMixingRate() { // the getter and setter beans pattern allows introspection to build the filter GUI
-		return mixingRate;
+	public float getAlpha() {
+		return alpha;
 	}
 
-	/**
-	 * @param mixingRate the mixingRate to set
-	 */
-	public void setMixingRate(float mixingRate) {
-		float old=this.mixingRate;
-		this.mixingRate = mixingRate;
-		putFloat("mixingRate", mixingRate); // stores the last chosen value in java preferences
-		getSupport().firePropertyChange("mixingRate", old, mixingRate);
-	}
-	/**
-	 * @return the mixingRate
-	 */
-	public float getNumCameras() { // the getter and setter beans pattern allows introspection to build the filter GUI
-		return numCameras;
+	synchronized public void setAlpha(float alpha) {
+		this.alpha = alpha;
+		putFloat("alpha", alpha);
 	}
 
-	/**
-	 * @param mixingRate the mixingRate to set
-	 */
-	public void setNumCameras(int numCameras) {
-		int old=this.numCameras;
-		this.numCameras = numCameras;
-		putFloat("numCameras", numCameras); // stores the last chosen value in java preferences
-		getSupport().firePropertyChange("numCameras", old, numCameras);
+	public float getInitRadius() {
+		return initRadius;
+	}
+
+	synchronized public void setInitRadius(float initRadius) {
+		this.initRadius = initRadius;
+		putFloat("initRadius", initRadius);
+	}
+
+	public int getNumRegions() {
+		return numRegions;
+	}
+
+	synchronized public void setNumRegions(int numRegions) {
+		this.numRegions = numRegions;
+		putInt("numRegions",numRegions);
+		createRegions();
+	}
+
+	public float getNoiseThreshold() {
+		return noiseThreshold;
+	}
+
+	public void setNoiseThreshold(float noiseThreshold) {
+		this.noiseThreshold = noiseThreshold;
+		putFloat("noiseThreshold", noiseThreshold);
+	}
+
+	public float getGaussRadius() {
+		return gaussRadius;
+	}
+
+	synchronized public void setGaussRadius(float gaussRadius) {
+		this.gaussRadius = gaussRadius;
+		putFloat("gaussRadius", gaussRadius);
+
+		if ((circleX != null) && (circleY != null)) {
+			for (int i=0; i<=N; i++) {
+				circleX[i] = gaussRadius * (float) (Math.cos((i*2.0*Math.PI)/N));
+				circleY[i] = gaussRadius * (float) (Math.sin((i*2.0*Math.PI)/N));
+			}
+		}
+	}
+
+	public float getRepellConst() {
+		return repellConst;
+	}
+
+	synchronized public void setRepellConst(float repellConst) {
+		this.repellConst = repellConst;
+		putFloat("repellConst", repellConst);
 	}
 
 
-	void drawPrism(float x, float y, float z, float height, float width, GL2 gl)
+	public int getQueueLength() {
+		return queueLength;
+	}
+
+	synchronized public void setQueueLength(int queueLength, int camera) {
+		this.queueLength = queueLength;
+		putInt("queueLength", queueLength);
+
+		queueX[camera] = new float[queueLength];
+		queueY[camera] = new float[queueLength];
+
+		for (int i=0; i<queueLength; i++) {
+			queueX[camera][i] = (float) (Math.random() * 128.0);
+			queueY[camera][i] = (float) (Math.random() * 128.0);
+		}
+		queuePointer[camera] = 0;
+	}
+
+	public float getMaxAge() {
+		return maxAge;
+	}
+
+	synchronized public void setMaxAge(float maxAge) {
+		this.maxAge = maxAge;
+		putFloat("maxAge",maxAge);
+	}
+
+
+	public float getSigmaAlpha() {
+		return sigmaAlpha;
+	}
+
+	synchronized public void setSigmaAlpha(float sigmaAlpha) {
+		this.sigmaAlpha = sigmaAlpha;
+		putFloat("sigmaAlpha",sigmaAlpha);
+	}
+
+
+	public boolean isPassAllSpikes() {
+		return passAllSpikes;
+	}
+
+	synchronized public void setPassAllSpikes(boolean passAllSpikes) {
+		this.passAllSpikes = passAllSpikes;
+		putBoolean("passAllSpikes",passAllSpikes);
+	}
+
+	public float getMaxSigma() {
+		return maxSigma;
+	}
+
+	synchronized public void setMaxSigma(float maxSigma) {
+		this.maxSigma = maxSigma;
+		putFloat("maxSigma",maxSigma);
+	}
+
+	public float getMinSigma() {
+		return minSigma;
+	}
+
+	synchronized public void setMinSigma(float minSigma) {
+		this.minSigma = minSigma;
+		putFloat("minSigma",minSigma);
+	}
+
+	public float getMaxEigenProduct() {
+		return maxEigenProduct;
+	}
+
+	synchronized public void setMaxEigenProduct(float maxEigenProduct) {
+		this.maxEigenProduct = maxEigenProduct;
+		putFloat("maxEigenProduct",maxEigenProduct);
+	}
+
+	public boolean isDrawEllipses() {
+		return drawEllipses;
+	}
+
+	synchronized public void setDrawEllipses(boolean drawEllipses) {
+		this.drawEllipses = drawEllipses;
+		putBoolean("drawEllipses",drawEllipses);
+	}
+
+	// Returns the center x-coordinate for a cluster
+	synchronized public float getCenterX(int k, int camera) {
+		if ((k>=0) && (k<numRegions)) {
+			return centerX[camera][k];
+		}
+		else {
+			return -1.0f;
+		}
+	}
+
+	// Returns the center y-coordinate for a cluster
+	synchronized public float getCenterY(int k, int camera) {
+		if ((k>=0) && (k<numRegions)) {
+			return centerY[camera][k];
+		}
+		else {
+			return -1.0f;
+		}
+	}
+
+	// Moves a center in the direction of a target point
+	synchronized public int moveTo(int k, float targetX, float targetY, float rate, int camera) {
+		if ((k>=0) && (k<numRegions) && (camera < NUMCAMS)) {
+			float diffX = targetX - centerX[camera][k];
+			float diffY = targetY - centerY[camera][k];
+			centerX[camera][k] += rate * diffX;
+			centerY[camera][k] += rate * diffY;
+
+			lastMovement[k][0] += alpha * rate * diffX;
+			lastMovement[k][1] += alpha * rate * diffY;
+			return 1;
+		} else {
+			return 0;
+		}
+	}
+
+	// Sets the age of a cluster
+	synchronized public void setAge(int k, float newAge, int camera) {
+		if ((k>=0) && (k<numRegions)) {
+			age[camera][k] = newAge;
+		}
+	}
+
+	// Makes the colors of two clusters more similar
+	public void updateColors(int k, int target, float rate) {
+		if ((k>=0) && (k<numRegions) && (target>=0) && (target<numRegions)) {
+			for (int j=0; j<3; j++) {
+				float randRate = 0.01f;
+				color[k][j] += rate * (((color[target][j]-color[k][j])+
+					(randRate*Math.random()))-(0.5*randRate));
+				if (color[k][j] < 0) {
+					color[k][j]=0.0f;
+				}
+				if (color[k][j] > 1) {
+					color[k][j]=1.0f;
+				}
+			}
+		}
+	}
+
+	public boolean isDrawOnlyMain() {
+		return drawOnlyMain;
+	}
+
+	synchronized public void setDrawOnlyMain(boolean drawOnlyMain) {
+		this.drawOnlyMain = drawOnlyMain;
+		putBoolean("drawOnlyMain",drawOnlyMain);
+	}
+
+	public float getLastMovementX(int k) {
+		if ((k>=0) && (k<numRegions)) {
+			return lastMovement[k][0];
+		}
+		else {
+			return 0.0f;
+		}
+	}
+
+	public float getLastMovementY(int k) {
+		if ((k>=0) && (k<numRegions)) {
+			return lastMovement[k][1];
+		}
+		else {
+			return 0.0f;
+		}
+	}
+
+	public void setColor(int k, float r, float g, float b) {
+		if ((k>=0) && (k<numRegions)) {
+			color[k][0] = r;
+			color[k][1] = g;
+			color[k][2] = b;
+		}
+	}
+
+	public boolean isEnableReset() {
+		return enableReset;
+	}
+
+	synchronized public void setEnableReset(boolean enableReset) {
+		this.enableReset = enableReset;
+		putBoolean("enableReset", enableReset);
+	}
+
+	void drawPrism(float x, float y, float z,
+		float width, float height, float depth,
+		float xang, float yang, float zang,
+		GL2 gl)
 	{
+		width  = width/2;
+		height = height/2;
+		depth  = depth/2;
+		gl.glPushMatrix();
+		gl.glTranslatef(x,y,z);
+		gl.glRotatef(xang, 1, 0, 0); // rotate viewpoint by angle deg around the upvector
+		gl.glRotatef(yang, 0, 1, 0); // rotate viewpoint by angle deg around the upvector
+		gl.glRotatef(zang, 0, 0, 1); // rotate viewpoint by angle deg around the upvector
 		gl.glBegin(GL2.GL_QUADS);
 
 		gl.glColor4f(0.5f, 0.5f, 0.5f, 1.0f);
-		gl.glVertex3f(x, y, z);
-		gl.glVertex3f(x, y, z + width);
-		gl.glVertex3f(x, y+height, z + width);
-		gl.glVertex3f(x, y+height, z);
+		gl.glVertex3f(-width, -height, -depth);
+		gl.glVertex3f(-width, -height, depth);
+		gl.glVertex3f(-width, height, depth);
+		gl.glVertex3f(-width, height, -depth);
 
 		gl.glColor4f(0.5f, 0.5f, 0.5f, 1.0f);
-		gl.glVertex3f(x, y, z + width);
-		gl.glVertex3f(x + width, y, z + width);
-		gl.glVertex3f(x + width, y+height, z + width);
-		gl.glVertex3f(x, y+height, z + width);
+		gl.glVertex3f(-width, -height, depth);
+		gl.glVertex3f(width, -height, depth);
+		gl.glVertex3f(width, height, depth);
+		gl.glVertex3f(-width, height, depth);
 
 		gl.glColor4f(0.5f, 0.5f, 0.5f, 1.0f);
-		gl.glVertex3f(x + width, y, z + width);
-		gl.glVertex3f(x + width, y, z);
-		gl.glVertex3f(x + width, y+height, z);
-		gl.glVertex3f(x + width, y+height, z + width);
+		gl.glVertex3f(width, -height, depth);
+		gl.glVertex3f(width, -height, -depth);
+		gl.glVertex3f(width, height, -depth);
+		gl.glVertex3f(width, height, depth);
 
 		gl.glColor4f(0.5f, 0.5f, 0.5f, 1.0f);
-		gl.glVertex3f(x + width, y, z);
-		gl.glVertex3f(x, y, z);
-		gl.glVertex3f(x, y+height, z);
-		gl.glVertex3f(x + width, y+height, z);
+		gl.glVertex3f(width, -height, -depth);
+		gl.glVertex3f(-width, -height, -depth);
+		gl.glVertex3f(-width, height, -depth);
+		gl.glVertex3f(width, height, -depth);
 
 		gl.glColor4f(0.5f, 0.5f, 0.5f, 1.0f);
-		gl.glVertex3f(x, y+height, z);
-		gl.glVertex3f(x, y+height, z + width);
-		gl.glVertex3f(x + width, y+height, z + width);
-		gl.glVertex3f(x + width, y+height, z);
+		gl.glVertex3f(-width, height, -depth);
+		gl.glVertex3f(-width, height, depth);
+		gl.glVertex3f(width, height, depth);
+		gl.glVertex3f(width, height, -depth);
 
 		gl.glEnd();
+		gl.glPopMatrix();
 	}
-
 }
