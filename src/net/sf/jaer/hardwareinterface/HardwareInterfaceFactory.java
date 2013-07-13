@@ -21,7 +21,6 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.USBIOHardwareInterfaceFactor
 import net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.LibUsbHardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.linux.HardwareInterfaceFactoryLinux;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabs_USBIO_C8051F3xxFactory;
-import net.sf.jaer.hardwareinterface.usb.usbaermapper.USBAERatcFactory;
 import cl.eye.CLEyeHardwareInterfaceFactory;
 import de.thesycon.usbio.PnPNotifyInterface;
 
@@ -50,7 +49,6 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 		USBIOHardwareInterfaceFactory.class,
 		LibUsbHardwareInterfaceFactory.class,
 		HardwareInterfaceFactoryLinux.class,
-		USBAERatcFactory.class,
 		UDPInterfaceFactory.class,
 		CLEyeHardwareInterfaceFactory.class,
 		eDVS128_InterfaceFactory.class,
