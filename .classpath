@@ -10,29 +10,13 @@
 			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="java/subprojects/JSpikeStack/jars"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="dist/jAER.jar"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/jdk1.7.0_25"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/oracle-jdk-bin-1.7.0.25"/>
 	<classpathentry kind="lib" path="jars/javacv/javacpp.jar"/>
-	<classpathentry kind="lib" path="jars/javacv/javacv-windows-x86.jar"/>
 	<classpathentry kind="lib" path="jars/javacv/javacv.jar"/>
-	<classpathentry kind="lib" path="jars/AbsoluteLayout.jar"/>
-	<classpathentry kind="lib" path="jars/beansbinding-1.2.1.jar"/>
-	<classpathentry kind="lib" path="jars/BrowserLauncher2-all-1_3.jar"/>
-	<classpathentry kind="lib" path="jars/comm.jar"/>
-	<classpathentry kind="lib" path="jars/flanagan.jar"/>
-	<classpathentry kind="lib" path="jars/jinput-test.jar"/>
-	<classpathentry kind="lib" path="jars/jinput.jar"/>
-	<classpathentry kind="lib" path="jars/jlfgr-1_0.jar"/>
-	<classpathentry kind="lib" path="jars/mail.jar"/>
-	<classpathentry kind="lib" path="jars/phidget21.jar"/>
 	<classpathentry kind="lib" path="jars/prefs-0.8.jar"/>
 	<classpathentry kind="lib" path="jars/spread.jar"/>
-	<classpathentry kind="lib" path="jars/svgSalamander-tiny.jar"/>
 	<classpathentry kind="lib" path="jars/swing-layout-1.0.4.jar"/>
 	<classpathentry kind="lib" path="jars/UsbIoJava.jar"/>
-	<classpathentry kind="lib" path="subprojects/JSpikeStack/jars/jcommon-1.0.17.jar"/>
-	<classpathentry kind="lib" path="subprojects/JSpikeStack/jars/jfreechart-1.0.14.jar"/>
-	<classpathentry kind="lib" path="subprojects/JSpikeStack/jars/jfreechart-1.0.14-experimental.jar"/>
 	<classpathentry kind="lib" path="jars/commons-lang3-3.1.jar"/>
 	<classpathentry kind="lib" path="jars/usb-api-1.0.2.jar"/>
 	<classpathentry kind="lib" path="jars/usb4java-1.1.0.jar"/>
@@ -45,10 +29,19 @@
 			<attribute name="javadoc_location" value="http://jogamp.org/deployment/jogamp-next/javadoc/jogl/javadoc/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="jars/jfxrt.jar">
+	<classpathentry kind="lib" path="jars/svgSalamander-tiny-2013-07-13.jar"/>
+	<classpathentry kind="lib" path="jars/phidget21-2.1.8.20130618.jar"/>
+	<classpathentry kind="lib" path="jars/javax.mail-1.5.0.jar"/>
+	<classpathentry kind="lib" path="jars/jlfgr-1.0.jar"/>
+	<classpathentry kind="lib" path="jars/jfxrt-1.7.0.25.jar">
 		<attributes>
 			<attribute name="javadoc_location" value="http://docs.oracle.com/javafx/2/api/"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="lib" path="subprojects/JSpikeStack/jars/jcommon-1.0.18.jar"/>
+	<classpathentry kind="lib" path="subprojects/JSpikeStack/jars/jfreechart-1.0.15-experimental.jar"/>
+	<classpathentry kind="lib" path="subprojects/JSpikeStack/jars/jfreechart-1.0.15.jar"/>
+	<classpathentry kind="lib" path="jars/comm.jar"/>
+	<classpathentry kind="lib" path="jars/betterbeansbinding-1.3.0-all.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
