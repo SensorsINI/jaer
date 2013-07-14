@@ -424,7 +424,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 		exportPreferencesMenuItem = new javax.swing.JMenuItem();
 		loadMenuItem = new javax.swing.JMenuItem();
 		importPreferencesMenuItem = new javax.swing.JMenuItem();
-		prefsEditorMenuItem = new javax.swing.JMenuItem();
 		jSeparator1 = new javax.swing.JSeparator();
 		exitMenuItem = new javax.swing.JMenuItem();
 		editMenu = new javax.swing.JMenu();
@@ -559,14 +558,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 		});
 		fileMenu.add(importPreferencesMenuItem);
 
-		prefsEditorMenuItem.setText("Run Java preferences editor");
-		prefsEditorMenuItem.addActionListener(new java.awt.event.ActionListener() {
-			@Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
-				prefsEditorMenuItemActionPerformed(evt);
-			}
-		});
-		fileMenu.add(prefsEditorMenuItem);
 		fileMenu.add(jSeparator1);
 
 		exitMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_X, java.awt.event.InputEvent.CTRL_MASK));
@@ -780,9 +771,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 		}
 	}//GEN-LAST:event_exitMenuItemActionPerformed
 
-	private void prefsEditorMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_prefsEditorMenuItemActionPerformed
-		org.bbg.prefs.Main.main(new String[2]); // run the http://javaprefs.googlepages.com/ preferences editor
-	}//GEN-LAST:event_prefsEditorMenuItemActionPerformed
 	// Variables declaration - do not modify//GEN-BEGIN:variables
 	private javax.swing.JMenu biasMenu;
 	private javax.swing.JMenu editMenu;
@@ -798,7 +786,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 	private javax.swing.JMenuItem loadMenuItem;
 	private javax.swing.JMenuBar mainMenuBar;
 	private javax.swing.JToolBar mainToolBar;
-	private javax.swing.JMenuItem prefsEditorMenuItem;
 	private javax.swing.JButton redoButton;
 	private javax.swing.JMenuItem redoEditMenuItem;
 	private javax.swing.JButton resendButton;

@@ -102,7 +102,6 @@ import net.sf.jaer.eventio.AEServerSocket;
 import net.sf.jaer.eventio.AEServerSocketOptionsDialog;
 import net.sf.jaer.eventio.AESocket;
 import net.sf.jaer.eventio.AESocketDialog;
-import net.sf.jaer.eventio.AESpreadInterface;
 import net.sf.jaer.eventio.AEUnicastDialog;
 import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.eventio.AEUnicastOutput;
@@ -137,7 +136,6 @@ import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.SubclassFinder;
 import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
-import spread.SpreadException;
 import ch.unizh.ini.jaer.chip.retina.DVS128;
 
 /**
@@ -529,9 +527,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	private volatile AESocket aeSocketClient = null; // this socket is used send events to a TCP server
 	private boolean socketInputEnabled = false; // flags that we are using socket input stream
 	private boolean socketOutputEnabled = false; // flags that we are using socket input stream
-	// Spread connections
-	private volatile AESpreadInterface spreadInterface = null;
-	private boolean spreadOutputEnabled = false, spreadInputEnabled = false;
 	private boolean blankDeviceMessageShown = false; // flags that we have warned about blank device, don't show message again
 	AEViewerLoggingHandler loggingHandler;
 	private RemoteControl remoteControl = null; // TODO move to JAERViewer
@@ -1897,15 +1892,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 						}
 					}
 
-
-
-					if (spreadInputEnabled) {
-						try {
-							aeRaw = spreadInterface.readPacket();
-						} catch (SpreadException e) {
-							log.warning(e.toString());
-						}
-					}
 					if (multicastInputEnabled) {
 						if (aeMulticastInput == null) {
 							log.warning("null aeMulticastInput, going to WAITING state");
@@ -2102,21 +2088,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 							}
 						}
 					}
-				}
-			}
-
-			// spread is a network system used by projects like the caltech darpa urban challange alice vehicle
-			if (spreadOutputEnabled) {
-				try {
-					if (!isLogFilteredEventsEnabled()) {
-						spreadInterface.writePacket(aeRaw);
-					} else {
-						// log the reconstructed packet after filtering
-						AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(packet);
-						spreadInterface.writePacket(aeRawRecon);
-					}
-				} catch (SpreadException e) {
-					e.printStackTrace();
 				}
 			}
 
@@ -2606,10 +2577,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 				if (blockingQueueInputEnabled) {
 					blockingQueueInput = null;
 					blockingQueueInputEnabled = false;
-				}
-				if (spreadInputEnabled) {
-					spreadInterface.disconnect();
-					spreadInputEnabled = false;
 				}
 				if (socketInputEnabled) {
 					closeAESocket();
@@ -5238,41 +5205,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 		}
 	}//GEN-LAST:event_openSocketOutputStreamMenuItemActionPerformed
 
-	//        private void spreadInputCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {
-	//        if(spreadInputCheckBoxMenuItem.isSelected()){
-	//            if(spreadInterface==null){
-	//                spreadInterface=new AESpreadInterface();
-	//            }
-	//            try{
-	//                spreadInterface.connect();
-	//                spreadInputEnabled=true;
-	//                setPlayMode(PlayMode.REMOTE);
-	//            }catch(Exception e){
-	//                log.warning(e.getMessage());
-	//                spreadInputCheckBoxMenuItem.setSelected(false);
-	//                return;
-	//            }
-	//        }else{
-	//            setPlayMode(PlayMode.WAITING);
-	//            spreadInputEnabled=false;
-	//        }
-	//    }
-	//        private void spreadServerCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {
-	//        if(spreadServerCheckBoxMenuItem.isSelected()){
-	//            try{
-	//                spreadInterface=new AESpreadInterface();
-	//                spreadInterface.connect();
-	//                spreadOutputEnabled=true;
-	//            }catch(Exception e){
-	//                log.warning(e.getMessage());
-	//                spreadServerCheckBoxMenuItem.setSelected(false);
-	//                return;
-	//            }
-	//        }else{
-	//            spreadInterface.disconnect();
-	//            spreadOutputEnabled=false;
-	//        }
-	//    }
 	private void openSocketInputStreamMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openSocketInputStreamMenuItemActionPerformed
 		if (socketInputEnabled) {
 			closeAESocket();

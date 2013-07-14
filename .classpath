@@ -13,8 +13,6 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/oracle-jdk-bin-1.7.0.25"/>
 	<classpathentry kind="lib" path="jars/javacv/javacpp.jar"/>
 	<classpathentry kind="lib" path="jars/javacv/javacv.jar"/>
-	<classpathentry kind="lib" path="jars/prefs-0.8.jar"/>
-	<classpathentry kind="lib" path="jars/spread.jar"/>
 	<classpathentry kind="lib" path="jars/swing-layout-1.0.4.jar"/>
 	<classpathentry kind="lib" path="jars/UsbIoJava.jar"/>
 	<classpathentry kind="lib" path="jars/commons-lang3-3.1.jar"/>
