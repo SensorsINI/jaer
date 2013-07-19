@@ -1,16 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="src" path="src">
-		<attributes>
-			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="java/jars"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry kind="src" path="subprojects/JSpikeStack/src">
-		<attributes>
-			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="java/subprojects/JSpikeStack/jars"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/oracle-jdk-bin-1.7.0.25"/>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" path="subprojects/JSpikeStack/src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
 	<classpathentry kind="lib" path="jars/javacv/javacpp.jar"/>
 	<classpathentry kind="lib" path="jars/javacv/javacv.jar"/>
 	<classpathentry kind="lib" path="jars/swing-layout-1.0.4.jar"/>

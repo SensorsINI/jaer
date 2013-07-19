@@ -7,9 +7,9 @@
     <import file="nbproject/build-impl.xml"/>
      <!--
 
-    There exist several targets which are by default empty and which can be 
-    used for execution of your tasks. These targets are usually executed 
-    before and after some main targets. They are: 
+    There exist several targets which are by default empty and which can be
+    used for execution of your tasks. These targets are usually executed
+    before and after some main targets. They are:
 
       -pre-init:                 called before initialization of project properties
       -post-init:                called after initialization of project properties
@@ -35,12 +35,12 @@
             </obfuscate>
         </target>
 
-    For list of available properties check the imported 
-    nbproject/build-impl.xml file. 
+    For list of available properties check the imported
+    nbproject/build-impl.xml file.
 
 
     Another way to customize the build is by overriding existing main targets.
-    The targets of interest are: 
+    The targets of interest are:
 
       -init-macrodef-javac:     defines macro for javac compilation
       -init-macrodef-junit:     defines macro for junit execution
@@ -48,7 +48,7 @@
       -init-macrodef-java:      defines macro for class execution
       -do-jar-with-manifest:    JAR building (if you are using a manifest)
       -do-jar-without-manifest: JAR building (if you are not using a manifest)
-      run:                      execution of project 
+      run:                      execution of project
       -javadoc-build:           Javadoc generation
       test-report:              JUnit report generation
 
@@ -60,17 +60,17 @@
             </exec>
         </target>
 
-    Notice that the overridden target depends on the jar target and not only on 
-    the compile target as the regular run target does. Again, for a list of available 
+    Notice that the overridden target depends on the jar target and not only on
+    the compile target as the regular run target does. Again, for a list of available
     properties which you can use, check the target you are overriding in the
-    nbproject/build-impl.xml file. 
+    nbproject/build-impl.xml file.
 
     -->
     <!-- override clean to not delete dist dir, because this messes up svn -->
     <target name="-do-clean" depends="init">
         <delete dir="${build.dir}"/>
     </target>
-    
+
    <target name="-pre-init">
         <!-- Empty placeholder for easier customization. -->
         <!-- You can override this target in the ../build.xml file. -->
@@ -80,19 +80,15 @@
     <!-- makes sure that the build version is written to the jar -->
     <target name="-pre-jar" depends="setBuildVersion,copySplashImage" >
         <echo message="build.xml project opened"/>
-        <echo> Having trouble building or running?  
-            See the Help Forum for jAER at https://sourceforge.net/projects/jaer/forums/forum/631958
-            or the jAER wiki at https://sourceforge.net/apps/trac/jaer/wiki
+        <echo> Having trouble building or running?
+            See the Help Forum for jAER at https://sourceforge.net/p/jaer/discussion/631958/
+            or the jAER wiki at https://sourceforge.net/p/jaer/
         </echo>
     </target>
-    
+
     <target name="checkos">
         <condition property="isWindows" value="true">
             <os family="windows" />
-        </condition>
-
-        <condition property="isLinux" value="true">
-            <os family="unix" />
         </condition>
     </target>
 
@@ -101,8 +97,8 @@
     <target name="copySplashImage">
         <copy file="SplashScreen.gif" todir="build/classes"/>
     </target>
-    
-    <!--    The exe4j launcher target to build jAERViewer.exe with integrated java 6 splash screen. 
+
+    <!--    The exe4j launcher target to build jAERViewer.exe with integrated java 6 splash screen.
             http://www.ej-technologies.com/products/exe4j/overview.html
     -->
     <target name="exe4j" depends="checkos" if="isWindows">
@@ -110,7 +106,7 @@
         <taskdef name="exe4j" classname="com.exe4j.Exe4JTask" classpath="../../exe4j/bin/ant.jar" onerror="report"/>
         <exe4j projectfile="../../jaer.exe4j" requirelicense="true"/>
     </target>
-    
+
     <target name="winrun4j">
          <echo message="If running Windows 7, building WinRun4J launcher - embedding jaer.ini in jAERViewer.exe"/>
         <property name="executable-full-path" location="../../WinRun4J/RCEDIT.exe"/>
@@ -126,11 +122,11 @@
             <arg value="WinRun4J/jaer.ico"/>
         </exec>
     </target>
-    
+
     <!-- builds the windows executable .exe launcher files -->
 <!--     or use winrun4j as depends to build with winrun4j-->
 <!--uncomment following line and comment second line to run exe4j to rebuild the exe. Not normally needed unless classpath is changed.-->
-    <target name="-post-jar" depends="exe4j"> 
+    <target name="-post-jar" depends="exe4j">
 <!--    <target name="-post-jar" > -->
         <!-- can use to pack swing layout libs into jar
         <jar update="true" destfile="${dist.jar}">
@@ -142,45 +138,44 @@
 <!--        <taskdef name="jsmoothgen"
                  classname="net.charabia.jsmoothgen.ant.JSmoothGen"
                  classpath="../../jSmoothExeLauncher/jsmoothgen-ant.jar"/>
-         build the exe in the jar build. 
+         build the exe in the jar build.
         <jsmoothgen project="../../jSmoothExeLauncher/jAERViewer" skeletonroot="../../jSmoothExeLauncher/skeletons" />
         <jsmoothgen project="../../jSmoothExeLauncher/jAERTrayLauncher" skeletonroot="../../jSmoothExeLauncher/skeletons" />-->
- 
     </target>
-    
+
     <!-- builds a zip of all the javadoc -->
     <target name="archive-javadoc" depends="javadoc">
         <tstamp/>
         <delete file="../../jaer-javadoc-*.zip" />
       <property name="javadocZipFileName" value="../../jaer-javadoc-${DSTAMP}.zip" />
-        <zip destfile="${javadocZipFileName}" comment="jAER javadoc ${DSTAMP} - see http://jaer.wiki.sourceforge.net">
+        <zip destfile="${javadocZipFileName}" comment="jAER javadoc ${DSTAMP} - see https://sourceforge.net/p/jaer/wiki/">
             <zipfileset prefix="jAER-javadoc" dir="${dist.javadoc.dir}" />
         </zip>
     </target>
-    
+
     <!-- builds a runtime archive for end users who don't want to develop -->
     <target name="runtime-archive" depends="jar">
         <tstamp/>
        <delete file="../../jaer-runtime-*.zip" />
         <property name="runtimeZipFileName" value="../../jaer-runtime-${DSTAMP}.zip"/>
         <zip destfile="${runtimeZipFileName}" level="9"
-            comment="jAER runtime release ${DSTAMP}- see http://jaer.wiki.sourceforge.net">
-            <zipfileset prefix="jAER-runtime" 
+            comment="jAER runtime release ${DSTAMP}- see hhttps://sourceforge.net/p/jaer/wiki/">
+            <zipfileset prefix="jAER-runtime"
                         dir="../../"
-                        excludes="blender/**, 
-                         **/*.zip, 
-                         deviceFirmwarePCBLayout/**, 
-                        jSmoothExeLauncher/**, 
+                        excludes="blender/**,
+                         **/*.zip,
+                         deviceFirmwarePCBLayout/**,
+                        jSmoothExeLauncher/**,
                         **/*.private, **/*.hprof, **/*.log, **/*.ncb"
             />
         </zip>
     </target>
-   
+
     <!--depends="runtime-archive"-->
     <target name="runtime-release-upload"   >
         <tstamp/>
-            <ftp 
-            server="upload.sourceforge.net" 
+            <ftp
+            server="upload.sourceforge.net"
             userid="anonymous"
             password="project-jaer"
             remotedir="incoming"
@@ -189,8 +184,8 @@
             <fileset file="../../jaer-runtime-${DSTAMP}.zip"/>
         </ftp>
     </target>
-    
-    <!-- 
+
+    <!--
     <target name="javadoc-ftp" depends="javadoc">
         <ftp server="upload.sourceforge.net" remotedir="upload" binary="true" userid="anonymous" password="jaer-project">
             <fileset dir="${dist.dir}">
@@ -199,8 +194,8 @@
         </ftp>
     </target>
     -->
-    
-    <!-- scp the javadoc to the project web pages at sourceforge. 
+
+    <!-- scp the javadoc to the project web pages at sourceforge.
     This uses a private key file and trusts the host explicitly. The SF username is prompted for and then all javadoc is uploaded.
     The link to the generated javadoc is http://jaer.sourceforge.net/javadoc
     The key can be generated under linux with ssh-keygen -t dsa -Cusername@shell.sf.net
@@ -212,7 +207,7 @@
         <!--        <input message="SourceForge password?" addproperty="javadoc.upload.password"/> -->
         <scp
             todir="${javadoc.upload.username},jaer@web.sourceforge.net:/home/groups/j/ja/jaer/htdocs/javadoc"
-            verbose="true" 
+            verbose="true"
             keyfile="${basedir}/shell.sf.net.key.dsa.private"
             passphrase=""
             trust="true"
@@ -220,7 +215,7 @@
             <fileset dir="${dist.dir}/javadoc" />
         </scp>
     </target>
-    
+
     <!-- builds a file with the output of svnversion that is used for the About dialogs -->
     <target name="setBuildVersion" depends="init">
         <tstamp/>
