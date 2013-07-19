@@ -10,11 +10,15 @@
 
 package net.sf.jaer.eventprocessing.filter;
 
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
-import net.sf.jaer.eventprocessing.EventFilter2D;
-import java.util.*;
+import java.util.Observable;
+import java.util.Observer;
+
 import net.sf.jaer.Description;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.TypedEvent;
+import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**
  * An AE filter that filters out high firing-rate repetitive events.

@@ -5,10 +5,18 @@
 package net.sf.jaer.eventprocessing;
 
 import java.awt.Point;
-import java.awt.event.*;
-import javax.media.opengl.*;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
+
+import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
+import javax.media.opengl.GLAutoDrawable;
+import javax.media.opengl.GLException;
 import javax.media.opengl.awt.GLCanvas;
-import javax.media.opengl.glu.*;
+import javax.media.opengl.glu.GLU;
+import javax.media.opengl.glu.GLUquadric;
+
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.FrameAnnotater;

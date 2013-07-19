@@ -1,12 +1,13 @@
 package net.sf.jaer.chip;
 
 import java.lang.reflect.Constructor;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+
 import net.sf.jaer.eventprocessing.FilterFrame;
-import net.sf.jaer.graphics.*;
+import net.sf.jaer.graphics.Chip2DRenderer;
 import net.sf.jaer.graphics.ChipCanvas;
+import net.sf.jaer.graphics.ChipRendererDisplayMethod;
+import net.sf.jaer.graphics.DisplayMethod;
 
 /**
  * A Chip with a 2D (or 1D) array of pixels.

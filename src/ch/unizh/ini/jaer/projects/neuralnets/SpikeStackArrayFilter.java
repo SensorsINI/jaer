@@ -7,18 +7,17 @@ package ch.unizh.ini.jaer.projects.neuralnets;
 //import ch.unizh.ini.jaer.projects.integrateandfire.ClusterEvent;
 //import ch.unizh.ini.jaer.projects.integrateandfire.ClusterSet;
 //import ch.unizh.ini.jaer.projects.integrateandfire.Remapper;
-import ch.unizh.ini.jaer.projects.integrateandfire.ClusterEvent;
-import ch.unizh.ini.jaer.projects.integrateandfire.ClusterSet;
-import java.awt.GridBagLayout;
 import java.io.File;
-import jspikestack.UnitLIF;
+
 import jspikestack.AxonSTP;
 import jspikestack.Network;
-import jspikestack.Unit;
+import jspikestack.UnitLIF;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import ch.unizh.ini.jaer.projects.integrateandfire.ClusterEvent;
+import ch.unizh.ini.jaer.projects.integrateandfire.ClusterSet;
 
 /**
  * This filter contains one or more networks and routes events to them.  

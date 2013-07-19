@@ -5,20 +5,26 @@
  */
 package net.sf.jaer.hardwareinterface.usb.cypressfx2;
 
-import net.sf.jaer.chip.*;
-import net.sf.jaer.hardwareinterface.*;
-import net.sf.jaer.util.HexString;
-import de.thesycon.usbio.*;
+import java.awt.Cursor;
 import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
-import java.awt.*;
-import java.util.prefs.*;
+import java.util.logging.Logger;
+import java.util.prefs.Preferences;
+
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
-import java.util.logging.*;
 import javax.swing.filechooser.FileFilter;
+
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.hardwareinterface.BlankDeviceException;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
+import net.sf.jaer.util.HexString;
+import de.thesycon.usbio.PnPNotify;
+import de.thesycon.usbio.PnPNotifyInterface;
+import de.thesycon.usbio.UsbIoErrorCodes;
 
 /**
  * Utility GUI for dealing with CypressFX2 EEPROM stuff. Using this rudimentary tool, you can scan for USBIO devices. If the device is virgin (not had

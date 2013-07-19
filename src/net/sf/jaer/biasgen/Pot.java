@@ -1,16 +1,16 @@
 package net.sf.jaer.biasgen;
 
-import net.sf.jaer.chip.*;
-import java.util.*;
 import java.util.Observable;
+import java.util.Observer;
 import java.util.logging.Logger;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
 import java.util.prefs.Preferences;
-import javax.swing.*;
+
+import javax.swing.JComponent;
+
 import net.sf.jaer.biasgen.VDAC.VPot;
-import net.sf.jaer.hardwareinterface.serial.eDVS128.eDVS128_HardwareInterface;
-import net.sf.jaer.util.RemoteControlled;
+import net.sf.jaer.chip.Chip;
 
 /**
  * Describes an general bias (pot=potentiometer),  This Pot can either be on or off chip. 

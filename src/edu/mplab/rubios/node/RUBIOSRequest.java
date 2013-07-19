@@ -1,6 +1,6 @@
 package edu.mplab.rubios.node;
 
-import java.util.*;
+import java.util.StringTokenizer;
 
 /**
  * RUBIOSRequest 

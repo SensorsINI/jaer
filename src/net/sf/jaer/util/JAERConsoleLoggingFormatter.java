@@ -12,7 +12,9 @@
 
 package net.sf.jaer.util;
 
-import java.util.logging.*;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.SimpleFormatter;
 
 /**
  * Defines logging format for console messages in jAER. Use of this logger is defined in the logging

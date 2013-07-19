@@ -4,10 +4,10 @@
  */
 package ch.unizh.ini.jaer.projects.laser3d.plothistogram;
 
-import ch.unizh.ini.jaer.projects.laser3d.HistogramData;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import ch.unizh.ini.jaer.projects.laser3d.HistogramData;
 
 /**
  *

@@ -5,13 +5,15 @@
 
 package net.sf.jaer.hardwareinterface.udp;
 
-import java.io.*;
-import java.net.*;
-import java.util.*;
-import java.util.logging.*;
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.SocketException;
+import java.util.ArrayList;
+import java.util.logging.Logger;
 
-import net.sf.jaer.eventio.*;
-import net.sf.jaer.hardwareinterface.*;
+import net.sf.jaer.eventio.AENetworkInterfaceConstants;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import net.sf.jaer.hardwareinterface.udp.smartEyeTDS.SmartEyeTDS;
 
 /**

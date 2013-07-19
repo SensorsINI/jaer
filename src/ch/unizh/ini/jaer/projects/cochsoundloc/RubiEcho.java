@@ -4,13 +4,15 @@
  */
 package ch.unizh.ini.jaer.projects.cochsoundloc;
 
-import edu.mplab.rubios.node.*;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.swing.JFileChooser;
+
+import edu.mplab.rubios.node.RUBIOSNode;
 
 public class RubiEcho extends Thread {
 

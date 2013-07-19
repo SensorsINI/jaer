@@ -10,8 +10,10 @@ package no.uio.ifi.jaer.chip.staticbiovis;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.TypedEventExtractor;
-import net.sf.jaer.event.*;
-import net.sf.jaer.graphics.*;
+import net.sf.jaer.event.TypedEvent;
+import net.sf.jaer.graphics.AdaptiveIntensityRenderer;
+import net.sf.jaer.graphics.ChipRendererDisplayMethod;
+import net.sf.jaer.graphics.DisplayMethod;
 
 /**
  * The chip is a 92x92 pixels imager which converts illumination into a 

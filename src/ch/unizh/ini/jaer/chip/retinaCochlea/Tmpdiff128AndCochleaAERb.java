@@ -9,14 +9,14 @@
 
 package ch.unizh.ini.jaer.chip.retinaCochlea;
 
+import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAERb;
-import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
+import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.chip.TypedEventExtractor;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.TypedEvent;
-import net.sf.jaer.chip.EventExtractor2D;
-import net.sf.jaer.aemonitor.AEPacketRaw;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAERb;
+import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
  /*
   * @author Vaibhav Garg
   *This class just creates two chip objects in another super chip class so that it can be passed

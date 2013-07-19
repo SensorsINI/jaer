@@ -6,24 +6,31 @@ package ch.unizh.ini.jaer.projects.einsteintunnel.multicamera;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
-import java.io.*;
-import java.net.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.util.Iterator;
+
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
-import java.util.Iterator;
 
 import net.sf.jaer.aemonitor.AENetworkRawPacket;
 import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.chip.*;
+import net.sf.jaer.chip.MultiChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.hardwareinterface.udp.NetworkChip;
-
 import ch.unizh.ini.jaer.chip.retina.DVS128;
 
 

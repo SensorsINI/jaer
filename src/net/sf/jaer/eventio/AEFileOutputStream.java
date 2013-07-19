@@ -7,9 +7,11 @@
  * and open the template in the editor.
  */
 package net.sf.jaer.eventio;
-import net.sf.jaer.aemonitor.*;
-import java.io.*;
-import java.util.*;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.Date;
+
+import net.sf.jaer.aemonitor.AEConstants;
 /**
  * Streams out packets of events in binary. The only difference to AEOuputStream is the addition of a file header in text format.
  * 

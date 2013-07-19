@@ -14,7 +14,9 @@ package ch.unizh.ini.jaer.chip.dvs320;
 import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+
 import net.sf.jaer.graphics.AEChipRenderer;
+
 import org.jdesktop.beansbinding.Validator;
 
 /**

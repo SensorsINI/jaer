@@ -12,8 +12,9 @@
 
 package net.sf.jaer.eventio;
 
-import net.sf.jaer.aemonitor.*;
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
@@ -21,7 +22,9 @@ import java.net.UnknownHostException;
 import java.nio.channels.DatagramChannel;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.logging.*;
+import java.util.logging.Logger;
+
+import net.sf.jaer.aemonitor.AEPacketRaw;
 
 /**
  * Streams AE packets to network socket using DatagramPacket's that are multicast. 

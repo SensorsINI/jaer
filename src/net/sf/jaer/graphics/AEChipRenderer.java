@@ -8,13 +8,16 @@
  */
 package net.sf.jaer.graphics;
 
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.*;
-import net.sf.jaer.util.SpikeSound;
 import java.awt.Color;
-import java.beans.PropertyChangeSupport;
 import java.util.logging.Logger;
+
 import javax.swing.JButton;
+
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OrientationEvent;
+import net.sf.jaer.util.SpikeSound;
 
 /**
  * Superclass for classes that render AEs to a memory buffer so that they can be painted on the screen.

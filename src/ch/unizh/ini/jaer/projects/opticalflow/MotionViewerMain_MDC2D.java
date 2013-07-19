@@ -12,10 +12,12 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow;
 
-import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.*;
-import ch.unizh.ini.jaer.projects.opticalflow.graphics.*;
 import java.util.logging.Logger;
+
 import javax.swing.SwingUtilities;
+
+import ch.unizh.ini.jaer.projects.opticalflow.graphics.MotionViewer;
+import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MDC2D;
 
 /**
  * The starter for the optical flow chip demo of Andreas Steiner and Shih-Chii Liu using the MDC2D chip.

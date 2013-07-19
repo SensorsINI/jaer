@@ -5,7 +5,6 @@
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.signal.kernel;
 
 import java.util.Arrays;
-import java.util.List;
 
 /**
  *

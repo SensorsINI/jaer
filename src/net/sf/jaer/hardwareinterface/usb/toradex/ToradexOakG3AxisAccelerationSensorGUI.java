@@ -5,7 +5,6 @@
  */
 package net.sf.jaer.hardwareinterface.usb.toradex;
 
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -14,8 +13,11 @@ import java.awt.Graphics2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.logging.Logger;
+
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
  * Tests the acceleration sensor

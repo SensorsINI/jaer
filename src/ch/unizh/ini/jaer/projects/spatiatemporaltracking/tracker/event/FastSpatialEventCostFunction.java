@@ -4,10 +4,9 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.event;
 
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.event.EventAssignable;
+import net.sf.jaer.event.TypedEvent;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.position.PositionExtractor;
-import net.sf.jaer.event.TypedEvent;
 
 /**
  *

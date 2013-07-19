@@ -11,9 +11,10 @@
  */
 package net.sf.jaer.biasgen.VDAC;
 
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.chip.*;
-import javax.swing.*;
+import javax.swing.JComponent;
+
+import net.sf.jaer.biasgen.Pot;
+import net.sf.jaer.chip.Chip;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 

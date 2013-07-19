@@ -19,7 +19,9 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.util.logging.Logger;
+
 import javax.swing.JPanel;
+
 import net.sf.jaer.util.chart.Axis;
 import net.sf.jaer.util.chart.Category;
 import net.sf.jaer.util.chart.Series;

@@ -12,8 +12,8 @@
 
 package net.sf.jaer.util;
 
-import java.awt.geom.*;
-import java.util.*;
+import java.awt.geom.Point2D;
+import java.util.LinkedList;
 
 /**
  * Does a moving or rolling linear regression (a linear fit) on updated data.

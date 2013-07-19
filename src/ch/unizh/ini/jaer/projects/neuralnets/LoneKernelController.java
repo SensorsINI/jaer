@@ -5,6 +5,7 @@
 package ch.unizh.ini.jaer.projects.neuralnets;
 
 import java.util.ArrayList;
+
 import jspikestack.ControlPanel;
 import jspikestack.Controllable;
 import jspikestack.KernelMaker2D;

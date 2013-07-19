@@ -6,6 +6,7 @@ package net.sf.jaer.eventprocessing.freme;
 
 import java.awt.Color;
 import java.util.Arrays;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;

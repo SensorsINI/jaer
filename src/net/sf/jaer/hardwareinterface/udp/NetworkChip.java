@@ -5,7 +5,7 @@
 
 package net.sf.jaer.hardwareinterface.udp;
 
-import java.net.*;
+import java.net.InetSocketAddress;
 
 /**
  *This interface builds a collections for all classes that need a network hardware interface.

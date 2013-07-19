@@ -6,8 +6,9 @@ package net.sf.jaer.eventprocessing;
 
 import java.awt.Container;
 import java.awt.Window;
+
 import javax.swing.JPanel;
-import javax.swing.JRootPane;
+
 import net.sf.jaer.chip.AEChip;
 
 /**

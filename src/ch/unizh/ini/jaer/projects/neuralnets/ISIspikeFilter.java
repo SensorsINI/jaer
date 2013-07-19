@@ -5,9 +5,10 @@
 package ch.unizh.ini.jaer.projects.neuralnets;
 
 
-import jspikestack.*;
+import jspikestack.NetController;
+import jspikestack.Network;
+import jspikestack.UnitLIF;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.PolarityEvent;
 
 /**
  *

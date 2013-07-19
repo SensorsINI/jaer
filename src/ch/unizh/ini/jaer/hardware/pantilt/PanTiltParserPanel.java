@@ -7,10 +7,11 @@ package ch.unizh.ini.jaer.hardware.pantilt;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
+
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.ServoInterface;
 import net.sf.jaer.hardwareinterface.usb.ServoInterfaceFactory;

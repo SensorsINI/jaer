@@ -6,12 +6,12 @@
  */
 package ch.unizh.ini.jaer.chip.dvs320;
 
-import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import de.thesycon.usbio.UsbIoBuf;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2Biasgen;
+import de.thesycon.usbio.UsbIoBuf;
 
 /**
  * Adds functionality of DVS320 retina to base classes for Cypress FX2 interface.

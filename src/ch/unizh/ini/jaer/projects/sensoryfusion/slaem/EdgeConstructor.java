@@ -4,16 +4,12 @@
  */
 package ch.unizh.ini.jaer.projects.sensoryfusion.slaem;
 
-import ch.unizh.ini.jaer.projects.sensoryfusion.slaem.EdgeFragments.Snakelet;
-import ch.unizh.ini.jaer.projects.util.TrailingRingBuffer;
-import java.awt.Point;
-import java.awt.geom.Line2D;
-import java.awt.geom.Point2D;
-import java.lang.reflect.Array;
-import java.util.*;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.concurrent.CopyOnWriteArrayList;
-import javax.media.opengl.GL;
+
 import javax.media.opengl.GLAutoDrawable;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -22,6 +18,8 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.graphics.FrameAnnotater;
+import ch.unizh.ini.jaer.projects.sensoryfusion.slaem.EdgeFragments.Snakelet;
+import ch.unizh.ini.jaer.projects.util.TrailingRingBuffer;
 
 /**
  *

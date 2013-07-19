@@ -4,7 +4,6 @@
  */
 package ch.unizh.ini.jaer.projects.eventbasedfeatures;
 
-import java.awt.Point;
 import net.sf.jaer.chip.AEChip;
 
 /**

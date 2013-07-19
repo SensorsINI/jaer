@@ -8,8 +8,7 @@ package ch.unizh.ini.jaer.chip.retina;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.logging.Logger;
-import java.util.prefs.PreferenceChangeEvent;
-import java.util.prefs.PreferenceChangeListener;
+
 import net.sf.jaer.biasgen.PotTweaker;
 
 /**

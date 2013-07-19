@@ -5,8 +5,6 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion.mathexpression;
 
 import java.util.HashMap;
 
-import ch.unizh.ini.jaer.projects.apsdvsfusion.mathexpression.BinaryOperationETNode.SimpleBinaryOperationCreator;
-
 /**
  * @author Dennis
  *

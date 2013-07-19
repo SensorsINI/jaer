@@ -5,7 +5,7 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.beans.PropertyChangeEvent; 
+import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.prefs.BackingStoreException;

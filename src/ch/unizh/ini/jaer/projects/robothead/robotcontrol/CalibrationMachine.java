@@ -9,7 +9,7 @@
 
 package ch.unizh.ini.jaer.projects.robothead.robotcontrol;
 
-import net.sf.jaer.eventprocessing.tracking.*;
+import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 
 
 //import ch.unizh.ini.caviar.util.StateMachineStates;

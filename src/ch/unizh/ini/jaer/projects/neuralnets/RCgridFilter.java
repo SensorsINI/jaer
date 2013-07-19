@@ -4,21 +4,23 @@
  */
 package ch.unizh.ini.jaer.projects.neuralnets;
 
-import java.io.*;
-import java.text.DecimalFormat;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.swing.JFileChooser;
-import javax.swing.JFrame;
 import javax.swing.JPanel;
+
 import jspikestack.EngineeringFormat;
 import jspikestack.KernelMaker2D;
 import jspikestack.KernelMaker2D.FloatConnection;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.MultiSourceProcessor;
 import net.sf.jaer.graphics.ImageDisplay;
 

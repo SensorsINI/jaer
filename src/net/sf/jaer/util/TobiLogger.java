@@ -9,10 +9,14 @@
 
 package net.sf.jaer.util;
 
-import net.sf.jaer.eventio.AEDataFile;
-import java.io.*;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.util.Date;
-import java.util.logging.*;
+import java.util.logging.Logger;
+
+import net.sf.jaer.eventio.AEDataFile;
 
 /**
  * Eases writing log files for any purpose. 

@@ -10,12 +10,21 @@
 
 package net.sf.jaer.util;
 
-import java.awt.event.*;
-import java.io.*;
-import java.util.*;
-import java.util.logging.*;
-import java.util.prefs.*;
-import javax.swing.*;
+import java.awt.event.ActionListener;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import java.util.ArrayList;
+import java.util.logging.Logger;
+import java.util.prefs.Preferences;
+
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
+import javax.swing.JSeparator;
 
 /**
  * Keeps track of recent files used (e.g. in BiasgenFrame)

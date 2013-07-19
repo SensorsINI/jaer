@@ -11,8 +11,6 @@ import java.awt.GridBagLayout;
 import java.awt.HeadlessException;
 import java.awt.Insets;
 import java.awt.Rectangle;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.WindowAdapter;
@@ -20,30 +18,17 @@ import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
-import java.util.Random;
 import java.util.prefs.Preferences;
 
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
-import net.sf.jaer.event.PolarityEvent;
-import ch.unizh.ini.jaer.projects.apsdvsfusion.ExpressionBasedIKUserInterface;
-import ch.unizh.ini.jaer.projects.apsdvsfusion.ExpressionBasedKernelEditDialog;
-import ch.unizh.ini.jaer.projects.apsdvsfusion.ExpressionBasedSpatialInputKernel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap;
-import ch.unizh.ini.jaer.projects.apsdvsfusion.SimpleKernelProcessor;
-import ch.unizh.ini.jaer.projects.apsdvsfusion.SpaceableExpressionBasedSpatialIK;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SpatioTemporalFusion;
-import ch.unizh.ini.jaer.projects.apsdvsfusion.ExpressionBasedIKUserInterface.ExpressionBasedSpatialIKPanel;
 
 /**
  * @author Dennis

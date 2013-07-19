@@ -8,9 +8,6 @@
  */
 package net.sf.jaer.eventprocessing;
 
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.*;
-import net.sf.jaer.util.*;
 import java.beans.PropertyChangeSupport;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -19,9 +16,16 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.lang.reflect.Constructor;
-import java.util.*;
-import java.util.logging.*;
-import java.util.prefs.*;
+import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
+import java.util.LinkedList;
+import java.util.logging.Logger;
+import java.util.prefs.BackingStoreException;
+import java.util.prefs.Preferences;
+
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.util.ClassChooserDialog;
 
 /**
  * A chain of EventFilter that serially filters or processes packets of AEPacket2D. An instance of

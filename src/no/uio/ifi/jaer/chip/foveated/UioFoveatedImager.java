@@ -9,12 +9,15 @@
 
 package no.uio.ifi.jaer.chip.foveated;
 
+import java.io.Serializable;
+
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.TypedEventExtractor;
-import ch.unizh.ini.jaer.chip.retina.*;
-import net.sf.jaer.event.*;
-import net.sf.jaer.graphics.*;
-import java.io.*;
+import net.sf.jaer.event.TypedEvent;
+import net.sf.jaer.graphics.AdaptiveIntensityRenderer;
+import net.sf.jaer.graphics.DisplayMethod;
+import net.sf.jaer.graphics.RetinaCanvas;
+import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 
 /**
  * To describe Mehdi Azadmehrs Foveated Imager Chip

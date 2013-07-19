@@ -4,18 +4,18 @@
  */
 package ch.unizh.ini.jaer.projects.neuralnets;
 
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAERb;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAERb.Extractor;
 import java.io.File;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileNameExtensionFilter;
+
 import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEFileInputStream;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAERb;
 
 /**
  *

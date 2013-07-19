@@ -10,17 +10,18 @@
  */
 package net.sf.jaer.jaerappletviewer;
 
-import ch.unizh.ini.jaer.chip.retina.*;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.event.MouseEvent;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+
 import javax.swing.JApplet;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.border.TitledBorder;
+
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
@@ -29,12 +30,14 @@ import net.sf.jaer.eventio.AEUnicastSettings;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.FilterFrame;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
-import net.sf.jaer.graphics.*;
+import net.sf.jaer.graphics.AEChipRenderer;
+import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.util.chart.Axis;
 import net.sf.jaer.util.chart.Category;
 import net.sf.jaer.util.chart.Series;
 import net.sf.jaer.util.chart.XYChart;
 import net.sf.jaer.util.filter.LowpassFilter;
+import ch.unizh.ini.jaer.chip.retina.DVS128;
 
 /**
  * Shows a stream of AE events from a retina and plots the recent activitySeries over msTime as a rolling chart.

@@ -10,6 +10,7 @@
 package ch.unizh.ini.jaer.projects.stereo3D;
 
 import java.io.File;
+import java.io.IOException;
 /**
  * A general interface for 3D data files player
  

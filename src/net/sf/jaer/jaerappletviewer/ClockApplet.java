@@ -14,6 +14,7 @@ package net.sf.jaer.jaerappletviewer;
 import java.awt.Graphics;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+
 import javax.swing.JApplet;
 import javax.swing.JFrame;
 

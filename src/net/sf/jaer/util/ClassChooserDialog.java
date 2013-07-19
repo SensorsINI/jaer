@@ -6,17 +6,20 @@
 
 package net.sf.jaer.util;
 
-import net.sf.jaer.chip.AEChip;
 import java.awt.BorderLayout;
 import java.awt.Frame;
-import java.awt.event.*;
+import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
-import javax.swing.*;
+
 import javax.swing.AbstractAction;
 import javax.swing.Action;
+import javax.swing.JComponent;
+import javax.swing.JPanel;
 import javax.swing.KeyStroke;
+
+import net.sf.jaer.chip.AEChip;
 
 /**
  * A modal dialog that shows a list of source classes (found from the classpath) and a list of String names of classes and lets

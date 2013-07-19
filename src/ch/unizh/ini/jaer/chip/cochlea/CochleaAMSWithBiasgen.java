@@ -12,9 +12,11 @@
 
 package ch.unizh.ini.jaer.chip.cochlea;
 
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.hardwareinterface.*;
+import net.sf.jaer.biasgen.BiasgenHardwareInterface;
+import net.sf.jaer.biasgen.IPot;
+import net.sf.jaer.biasgen.IPotArray;
+import net.sf.jaer.chip.Chip;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
 
 /**
  * Extends Shih-Chii's AMS cochlea AER chip to 

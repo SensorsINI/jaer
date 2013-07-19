@@ -6,13 +6,10 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel;
 import java.util.LinkedList;
 import java.util.prefs.Preferences;
 
-import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModel;
-import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelCreator;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SchedulableFiringModel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SchedulableFiringModelCreator;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SchedulableFiringModelMap;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SignalHandler;
-import ch.unizh.ini.jaer.projects.apsdvsfusion.SignalHandlerSet;
 
 /**
  * @author Dennis

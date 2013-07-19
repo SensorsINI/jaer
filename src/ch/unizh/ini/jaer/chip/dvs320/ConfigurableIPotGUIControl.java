@@ -5,25 +5,38 @@ package ch.unizh.ini.jaer.chip.dvs320;
  *
  * Created on September 21, 2005, 12:23 PM
  */
-import ch.unizh.ini.jaer.chip.dvs320.ConfigurableIPotRev0.CurrentLevel;
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.biasgen.Pot.Sex;
-import net.sf.jaer.biasgen.Pot.Type;
-import net.sf.jaer.util.*;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Toolkit;
-import java.awt.event.*;
-import java.lang.reflect.*;
-import java.util.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
-import javax.swing.*;
+
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JMenu;
 import javax.swing.JSlider;
-import javax.swing.border.*;
-import javax.swing.border.EtchedBorder;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.event.UndoableEditListener;
-import javax.swing.undo.*;
+import javax.swing.undo.StateEdit;
+import javax.swing.undo.StateEditable;
+import javax.swing.undo.UndoableEditSupport;
+
+import net.sf.jaer.biasgen.BiasgenFrame;
+import net.sf.jaer.biasgen.IPotSliderTextControl;
+import net.sf.jaer.biasgen.Pot;
+import net.sf.jaer.biasgen.Pot.Sex;
+import net.sf.jaer.biasgen.Pot.Type;
+import net.sf.jaer.util.EngineeringFormat;
+import ch.unizh.ini.jaer.chip.dvs320.ConfigurableIPotRev0.CurrentLevel;
 
 /**
  * A GUI control component for controlling a Pot.

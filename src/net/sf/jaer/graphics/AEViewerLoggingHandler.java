@@ -13,8 +13,6 @@ import java.util.logging.ErrorManager;
 import java.util.logging.Formatter;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
-import java.util.logging.SimpleFormatter;
-import net.sf.jaer.graphics.AEViewerConsoleOutputFrame;
 
 /**
  * Handles logging messages for AEViewer status line.

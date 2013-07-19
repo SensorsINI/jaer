@@ -10,11 +10,11 @@
  */
 package ch.unizh.ini.jaer.projects.einsteintunnel.multicamera;
 
-import ch.unizh.ini.jaer.projects.einsteintunnel.multicamera.CameraMap;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.net.InetSocketAddress;
 import java.util.Map;
+
 import javax.swing.JTable;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;

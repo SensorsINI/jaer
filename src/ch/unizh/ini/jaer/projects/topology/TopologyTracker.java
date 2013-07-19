@@ -10,19 +10,6 @@
  */
 package ch.unizh.ini.jaer.projects.topology;
 
-import net.sf.jaer.event.PolarityEvent;
-import net.sf.jaer.util.chart.Axis;
-import net.sf.jaer.util.chart.Category;
-import net.sf.jaer.util.chart.VectorFieldChart;
-import net.sf.jaer.util.chart.VectorSeries;
-import net.sf.jaer.util.chart.XYChart;
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
-import net.sf.jaer.event.TypedEvent;
-import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.util.chart.Series;
 import java.awt.BorderLayout;
 import java.awt.GridLayout;
 import java.awt.HeadlessException;
@@ -35,10 +22,25 @@ import java.util.Observable;
 import java.util.Observer;
 import java.util.Random;
 import java.util.Vector;
+
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+
 import net.sf.jaer.Description;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.event.TypedEvent;
+import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.util.chart.Axis;
+import net.sf.jaer.util.chart.Category;
+import net.sf.jaer.util.chart.Series;
+import net.sf.jaer.util.chart.VectorFieldChart;
+import net.sf.jaer.util.chart.VectorSeries;
+import net.sf.jaer.util.chart.XYChart;
 
 /**
  * Learns neighborhood pixel topology based on event timing. When this filter runs, it starts with random

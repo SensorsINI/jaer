@@ -4,16 +4,17 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.signal.transition;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import net.sf.jaer.chip.AEChip;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.MaxCircularList;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.signal.Transition;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.Parameters;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.signal.kernel.KernelExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.FeatureManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.Parameters;
-import java.util.ArrayList;
-import java.util.List;
-import net.sf.jaer.chip.AEChip;
 
 /**
  *

@@ -4,9 +4,10 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.temporalpattern;
 
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.util.Color;
 import java.util.ArrayList;
 import java.util.List;
+
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.util.Color;
 
 /**
  *

@@ -8,9 +8,12 @@ package ch.unizh.ini.jaer.chip.dvs320;
 
 
 import java.util.prefs.PreferenceChangeEvent;
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.biasgen.IPot;
+
 import javax.swing.JComponent;
+
+import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.biasgen.IPot;
+import net.sf.jaer.biasgen.Pot;
 import net.sf.jaer.util.RemoteControlCommand;
 
 /**

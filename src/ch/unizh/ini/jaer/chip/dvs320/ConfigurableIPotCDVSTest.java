@@ -3,7 +3,7 @@ package ch.unizh.ini.jaer.chip.dvs320;
 /*
  * Part of jAER.
  */
-import net.sf.jaer.biasgen.*;
+import net.sf.jaer.biasgen.Biasgen;
 
 /**
  * Second generation IPot with full configurability, sharing a pair of global shifted voltage sources near the ground and power rails.

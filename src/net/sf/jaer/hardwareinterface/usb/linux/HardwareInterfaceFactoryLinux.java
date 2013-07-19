@@ -13,16 +13,15 @@
  */
 package net.sf.jaer.hardwareinterface.usb.linux;
 
-import java.util.prefs.Preferences;
-import javax.swing.SwingUtilities;
-import net.sf.jaer.hardwareinterface.HardwareInterface;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.logging.Logger;
-import javax.swing.JDialog;
-import net.sf.jaer.JAERViewer;
+import java.util.prefs.Preferences;
+
+import javax.swing.SwingUtilities;
+
+import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 //import javax.usb.UsbDevice;
 //import javax.usb.UsbException;

@@ -6,21 +6,26 @@ created 26 Oct 2008 for new cDVSTest chip
  */
 package eu.seebetter.ini.chips.seebetter30;
 
-import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
-import eu.seebetter.ini.chips.ApsDvsChip;
-import eu.seebetter.ini.chips.seebetter20.SeeBetter20;
 import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.swing.JFrame;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.RetinaExtractor;
-import net.sf.jaer.event.*;
+import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.graphics.RetinaRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 
 /**
  * Describes retina and its event extractor and bias generator.

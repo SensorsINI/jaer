@@ -6,7 +6,8 @@
 
 package net.sf.jaer.util;
 
-import java.io.*;
+import java.io.File;
+
 import net.sf.jaer.eventio.AEDataFile;
 
 /**

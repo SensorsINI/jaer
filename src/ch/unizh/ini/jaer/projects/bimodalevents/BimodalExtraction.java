@@ -9,23 +9,29 @@
 package ch.unizh.ini.jaer.projects.bimodalevents;
 
 
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
-import net.sf.jaer.eventprocessing.EventFilter2D;
-import java.util.*;
-
 import java.awt.Graphics2D;
-import javax.media.opengl.*;
-
-import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.util.EngineeringFormat;
-import java.io.*;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.Observable;
+import java.util.Observer;
+import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
+
+import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
+import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
 
-import java.util.LinkedList;
-import java.util.Queue;
 import net.sf.jaer.Description;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.EngineeringFormat;
 
 
 /**

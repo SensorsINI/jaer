@@ -1,26 +1,19 @@
     package ch.unizh.ini.jaer.projects.cochsoundloc;
 
-import gnu.io.CommPort;
 import gnu.io.CommPortIdentifier;
-import gnu.io.SerialPort;
-//import gnu.io.SerialPortEvent;
-//import gnu.io.SerialPortEventListener;
 
-import de.thesycon.usbio.PnPNotify;
-import de.thesycon.usbio.PnPNotifyInterface;
-
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.Timer;
 
-import net.sf.jaer.hardwareinterface.usb.*;
-import net.sf.jaer.hardwareinterface.*;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.ServoInterface;
+import net.sf.jaer.hardwareinterface.usb.ServoInterfaceFactory;
+import de.thesycon.usbio.PnPNotifyInterface;
+//import gnu.io.SerialPortEvent;
+//import gnu.io.SerialPortEventListener;
 
 
 /**

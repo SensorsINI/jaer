@@ -1,11 +1,24 @@
 package net.sf.jaer.util;
-import java.io.*;
+import java.awt.AWTEvent;
+import java.awt.Dimension;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.IllegalComponentStateException;
+import java.awt.Insets;
+import java.awt.Point;
+import java.awt.Toolkit;
+import java.awt.Window;
+import java.awt.event.AWTEventListener;
+import java.awt.event.ComponentEvent;
+import java.awt.event.WindowEvent;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.logging.Logger;
-import java.util.prefs.*;
-import javax.swing.*;
-import java.awt.event.*;
-import java.awt.*;
-import java.util.*;
+import java.util.prefs.Preferences;
+
+import javax.swing.JFrame;
 /** adapted from O'Reilly book Swing Hacks by Marinacci and Adamson ISBN 0-596-00907-0.
  * Used to save and restore window positions.
 Static methods allow explicit saving and restoring, or the user can do the

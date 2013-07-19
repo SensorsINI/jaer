@@ -22,6 +22,7 @@ package ch.unizh.ini.jaer.projects.dspic.serial;
 
 import java.awt.Color;
 import java.awt.Graphics;
+
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 

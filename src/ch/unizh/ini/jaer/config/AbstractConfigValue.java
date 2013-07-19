@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Observable;
 import java.util.prefs.PreferenceChangeListener;
 import java.util.prefs.Preferences;
+
 import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.Chip;
 

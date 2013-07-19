@@ -8,7 +8,6 @@ import java.util.prefs.Preferences;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.IntegrateAndFire;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.LeakyIntegrateAndFire;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.LinearThresholdIF;
-import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.SimplePoissonModel;
 
 /**
  * @author Dennis Goehlsdorf

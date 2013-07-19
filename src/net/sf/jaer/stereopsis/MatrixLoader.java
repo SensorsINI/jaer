@@ -10,10 +10,8 @@
 package net.sf.jaer.stereopsis;
 
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.logging.Logger;
 
 /**
  * A conveniance function which loads a matrix into a 2D array.

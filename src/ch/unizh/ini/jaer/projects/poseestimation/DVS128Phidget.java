@@ -4,19 +4,28 @@
  */
 package ch.unizh.ini.jaer.projects.poseestimation;
 
-import ch.unizh.ini.jaer.chip.retina.DVS128;
-import com.phidgets.PhidgetException;
-import com.phidgets.SpatialPhidget;
-import com.phidgets.event.*;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.logging.Level;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
+import ch.unizh.ini.jaer.chip.retina.DVS128;
+
+import com.phidgets.PhidgetException;
+import com.phidgets.SpatialPhidget;
+import com.phidgets.event.AttachEvent;
+import com.phidgets.event.AttachListener;
+import com.phidgets.event.DetachEvent;
+import com.phidgets.event.DetachListener;
+import com.phidgets.event.ErrorEvent;
+import com.phidgets.event.ErrorListener;
+import com.phidgets.event.SpatialDataEvent;
+import com.phidgets.event.SpatialDataListener;
 
 /**
  * DVS128 with Phidget Sensor (Accelerometer, Gyroscope, and Compass) attached to it

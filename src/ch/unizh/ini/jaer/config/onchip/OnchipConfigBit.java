@@ -1,9 +1,9 @@
 package ch.unizh.ini.jaer.config.onchip;
 
 
-import ch.unizh.ini.jaer.config.AbstractConfigBit;
 import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.Chip;
+import ch.unizh.ini.jaer.config.AbstractConfigBit;
 
 
 /** One bit of extra configuration */

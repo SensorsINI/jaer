@@ -12,10 +12,14 @@ package ch.unizh.ini.jaer.projects.opticalflow;
  *Copyright November 24, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 
-import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MotionDataMDC2D;
-import com.phidgets.SpatialEventData;
-import java.io.*;
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
 import java.util.Random;
+
+import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MotionDataMDC2D;
+
+import com.phidgets.SpatialEventData;
 
 /**
  * Packs data returned from optical flow sensor.

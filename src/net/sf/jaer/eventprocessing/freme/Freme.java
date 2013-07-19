@@ -4,7 +4,10 @@
  */
 package net.sf.jaer.eventprocessing.freme;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.ConcurrentModificationException;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 /**
  * A freme is the event driven equivalent to a frame. It is a 2D set of values

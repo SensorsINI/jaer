@@ -4,9 +4,10 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.math;
 
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.Vector;
 import java.util.List;
+
 import net.sf.jaer.event.TypedEvent;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.Vector;
 
 /**
  *

@@ -10,7 +10,7 @@
 
 package net.sf.jaer.aemonitor;
 
-import java.util.logging.*;
+import java.util.logging.Logger;
 
 /**
  * The superclass for raw event packets, as captured from an AEMonitorInterface. These packets are not used for processed events.

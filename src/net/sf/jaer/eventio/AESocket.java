@@ -7,14 +7,22 @@
  * and open the template in the editor.
  */
 package net.sf.jaer.eventio;
-import net.sf.jaer.aemonitor.*;
-import java.beans.PropertyChangeSupport;
-import java.io.*;
-import java.net.*;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.EOFException;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.aemonitor.EventRaw;
 
 /**
  * Streams in or out packets of events from or to a stream socket

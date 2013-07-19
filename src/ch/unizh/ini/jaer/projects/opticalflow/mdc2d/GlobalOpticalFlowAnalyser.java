@@ -5,9 +5,6 @@ Copyright June 13, 2011 Andreas Steiner, Inst. of Neuroinformatics, UNI-ETH Zuri
 
 package ch.unizh.ini.jaer.projects.opticalflow.mdc2d;
 
-import ch.unizh.ini.jaer.projects.opticalflow.MotionData;
-import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.dsPIC33F_COM_OpticalFlowHardwareInterface;
-import com.phidgets.SpatialEventData;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -16,8 +13,12 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import ch.unizh.ini.jaer.projects.opticalflow.MotionData;
+import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.dsPIC33F_COM_OpticalFlowHardwareInterface;
+
+import com.phidgets.SpatialEventData;
 
 /**
  * When streaming frames containing global motion vectors, use this class

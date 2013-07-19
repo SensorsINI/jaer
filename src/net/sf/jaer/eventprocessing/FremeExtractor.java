@@ -7,9 +7,9 @@ package net.sf.jaer.eventprocessing;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.geom.Point2D;
-import java.util.ArrayList;
-import java.util.Arrays;
+
 import javax.swing.JFrame;
+
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.freme.Freme;

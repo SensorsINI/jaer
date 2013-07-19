@@ -173,10 +173,9 @@ package net.sf.jaer.eventprocessing.control;
 *----------------------------------------------------------------------------*/
 
 // Import required classes and packages
-import java.util.Date;
-import java.text.SimpleDateFormat;
 import java.text.ParseException;
-import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.TimeZone;
 
 

@@ -10,10 +10,12 @@
 
 package net.sf.jaer.eventprocessing.filter;
 
-import net.sf.jaer.aemonitor.*;
+import java.beans.PropertyChangeSupport;
+import java.util.prefs.Preferences;
+
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.eventprocessing.EventFilter;
-import java.beans.*;
-import java.util.prefs.*;
 
 /**
  * A class that filters raw event packets (not EventPacket) and only outputs events whose bits are set as in address.

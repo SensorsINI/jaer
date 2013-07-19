@@ -6,20 +6,10 @@ package ch.unizh.ini.jaer.projects.integrateandfire;
 
 // Java  Stuff
 import java.io.File;
-import java.io.FileFilter;
 import java.io.FileNotFoundException;
-
-
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Scanner;
 import java.util.NoSuchElementException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.swing.*;
-import javax.swing.filechooser.FileSystemView;
-import net.sf.jaer.event.BasicEvent;
+import java.util.Scanner;
+
 import net.sf.jaer.event.OutputEventIterator;
 
 /**

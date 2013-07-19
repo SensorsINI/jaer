@@ -9,9 +9,6 @@
  * Created on Mar 27, 2009, 9:46:12 PM
  */
 package net.sf.jaer.biasgen;
-import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
-import eu.seebetter.ini.chips.ApsDvsChip;
-import eu.seebetter.ini.chips.sbret10.ApsDvsTweaks;
 import java.awt.Container;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -19,8 +16,7 @@ import java.util.Hashtable;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Logger;
-import java.util.prefs.PreferenceChangeEvent;
-import java.util.prefs.PreferenceChangeListener;
+
 import javax.swing.BorderFactory;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -32,8 +28,6 @@ import javax.swing.event.UndoableEditListener;
 import javax.swing.undo.StateEdit;
 import javax.swing.undo.StateEditable;
 import javax.swing.undo.UndoableEditSupport;
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.config.ApsDvsConfig;
 /**
  * This visual component bean allows control of biases or parameters around their nominal
  * values to adjust them according to some customized method.

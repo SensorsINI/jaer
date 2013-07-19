@@ -10,8 +10,10 @@
 
 package ch.unizh.ini.jaer.projects.stereo3D;
 
-import java.io.*;
-import java.util.*;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 
 /**
  * logs positions of trackers

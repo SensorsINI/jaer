@@ -4,12 +4,14 @@ Copyright June 13, 2011 Andreas Steiner, Inst. of Neuroinformatics, UNI-ETH Zuri
 
 package ch.unizh.ini.jaer.projects.opticalflow.usbinterface;
 
-import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MotionDataMDC2D;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
+
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MotionDataMDC2D;
 
 /**
  *

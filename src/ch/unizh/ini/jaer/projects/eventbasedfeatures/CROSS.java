@@ -4,12 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.eventbasedfeatures;
 
-import java.awt.*;
-import java.awt.image.LookupTable;
-import java.util.ArrayList;
 import net.sf.jaer.chip.AEChip;
-import java.util.Arrays;
-import net.sf.jaer.event.EventPacket;
 
 /** 
  *

@@ -4,7 +4,6 @@
  */
 package ch.unizh.ini.jaer.projects.thresholdlearner;
 
-import ch.unizh.ini.jaer.projects.robothead.WordCount;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -15,7 +14,9 @@ import java.util.Observer;
 import java.util.Random;
 import java.util.StringTokenizer;
 import java.util.logging.Logger;
+
 import net.sf.jaer.chip.AEChip;
+import ch.unizh.ini.jaer.projects.robothead.WordCount;
 
 /**
  * A 2d+ values of pixel thresholds. In the case of the temporal contrast DVS silicon retina, this values holds the learned pixel temporal contrast thresholds.

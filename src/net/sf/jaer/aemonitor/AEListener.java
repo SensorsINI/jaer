@@ -10,7 +10,7 @@
 
 package net.sf.jaer.aemonitor;
 
-import java.beans.*;
+import java.beans.PropertyChangeListener;
 
 /**
  * A listener for AEs

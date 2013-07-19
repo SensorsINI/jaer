@@ -8,8 +8,10 @@
 
 package net.sf.jaer.graphics;
 
-import java.io.*;
-import java.text.*;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.logging.Formatter;
 import java.util.logging.LogRecord;

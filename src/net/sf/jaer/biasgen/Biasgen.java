@@ -5,18 +5,24 @@
  */
 package net.sf.jaer.biasgen;
 
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cHardwareInterface;
-import java.io.IOException;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.graphics.AEViewer;
-import net.sf.jaer.hardwareinterface.*;
-import java.awt.Frame;
 import java.beans.PropertyChangeSupport;
-import java.util.*;
-import java.util.logging.*;
-import java.util.prefs.*;
-import javax.swing.*;
-import net.sf.jaer.util.RemoteControl;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Observable;
+import java.util.Observer;
+import java.util.logging.Logger;
+import java.util.prefs.BackingStoreException;
+import java.util.prefs.InvalidPreferencesFormatException;
+import java.util.prefs.Preferences;
+
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.chip.Chip;
+import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 
 /**

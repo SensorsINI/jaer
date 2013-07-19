@@ -4,11 +4,14 @@
  */
 package ch.unizh.ini.jaer.projects.labyrinth;
 
-import com.kitfox.svg.*;
-import com.kitfox.svg.SVGUniverse;
 import java.awt.Shape;
-import java.awt.geom.*;
-import java.io.*;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.GeneralPath;
+import java.awt.geom.Line2D;
+import java.awt.geom.PathIterator;
+import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
+import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -18,18 +21,34 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Observable;
 import java.util.Observer;
-import javax.media.opengl.*;
+
+import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
 import javax.media.opengl.glu.GLUquadric;
-import javax.swing.*;
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileFilter;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.*;
+import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.Matrix;
+
+import com.kitfox.svg.Circle;
+import com.kitfox.svg.Group;
+import com.kitfox.svg.Line;
+import com.kitfox.svg.Path;
+import com.kitfox.svg.Polygon;
+import com.kitfox.svg.Polyline;
+import com.kitfox.svg.Rect;
+import com.kitfox.svg.SVGDiagram;
+import com.kitfox.svg.SVGRoot;
+import com.kitfox.svg.SVGUniverse;
 
 /**
  *  Loads SVG file describing a board and displays it in the annotate method and provides methods for finding nearest path points

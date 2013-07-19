@@ -6,18 +6,25 @@
  */
 package ch.unizh.ini.jaer.chip.dvs320;
 
-import ch.unizh.ini.jaer.chip.util.scanner.ScannerHardwareInterface;
-import net.sf.jaer.biasgen.Biasgen;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.LineNumberReader;
+import java.math.BigInteger;
+import java.util.prefs.Preferences;
+
+import javax.swing.ProgressMonitor;
+
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2Biasgen;
-import de.thesycon.usbio.*;
-import de.thesycon.usbio.structs.*;
-import javax.swing.ProgressMonitor;
-import java.io.*;
-import java.math.BigInteger;
-import java.util.prefs.Preferences;
+import ch.unizh.ini.jaer.chip.util.scanner.ScannerHardwareInterface;
+import de.thesycon.usbio.UsbIo;
+import de.thesycon.usbio.UsbIoBuf;
+import de.thesycon.usbio.UsbIoInterface;
+import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
+import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
 
 /**
  * Adds functionality of cDVSTest retina test chips to base classes for Cypress FX2 interface.

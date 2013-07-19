@@ -10,10 +10,11 @@
 
 package es.cnm.imse.jaer.chip.retina;
 
-import java.io.*;
-import net.sf.jaer.chip.*;
+import java.io.Serializable;
+
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.*;
+import net.sf.jaer.chip.TypedEventExtractor;
+import net.sf.jaer.event.TypedEvent;
 
 
 /**

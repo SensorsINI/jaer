@@ -4,8 +4,11 @@
  */
 package es.us.atc.jaer.chips.NodeBoard;
 
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**

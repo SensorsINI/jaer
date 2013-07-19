@@ -10,7 +10,7 @@
 
 package net.sf.jaer.eventprocessing;
 
-import net.sf.jaer.aemonitor.*;
+import net.sf.jaer.aemonitor.AEPacketRaw;
 
 /**
  * A filter that operates on raw AE packets.

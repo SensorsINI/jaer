@@ -10,13 +10,15 @@
  */
 package cl.eye;
 
-import cl.eye.CLCamera.CameraMode;
-import cl.eye.PSEyeCLModelRetina.RetinaModel;
 import java.awt.BorderLayout;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Logger;
+
 import javax.swing.DefaultComboBoxModel;
+
+import cl.eye.CLCamera.CameraMode;
+import cl.eye.PSEyeCLModelRetina.RetinaModel;
 
 /**
  * Controls camera and event generation parameters.

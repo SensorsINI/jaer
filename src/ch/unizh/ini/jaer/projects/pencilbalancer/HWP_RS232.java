@@ -3,10 +3,13 @@
 
 package ch.unizh.ini.jaer.projects.pencilbalancer;
 
-import java.io.*;
-import java.util.*;
+import gnu.io.CommPortIdentifier;
+import gnu.io.SerialPort;
 
-import gnu.io.*;
+import java.io.IOException;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Vector;
 
 public class HWP_RS232 extends HWPort {
 

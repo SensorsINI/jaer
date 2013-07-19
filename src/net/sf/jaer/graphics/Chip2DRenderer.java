@@ -2,12 +2,13 @@ package net.sf.jaer.graphics;
 
 import java.beans.PropertyChangeSupport;
 import java.nio.FloatBuffer;
+import java.util.ArrayList;
 import java.util.Observable;
 import java.util.Observer;
-import net.sf.jaer.chip.Chip2D;
-import java.util.ArrayList;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+
+import net.sf.jaer.chip.Chip2D;
 
 /**
 A general class for rendering chip output to a 2d array of float values for drawing.

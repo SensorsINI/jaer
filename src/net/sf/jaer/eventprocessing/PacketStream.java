@@ -5,7 +5,7 @@
 package net.sf.jaer.eventprocessing;
 
 import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.Semaphore;
+
 import net.sf.jaer.event.EventPacket;
 
 /**

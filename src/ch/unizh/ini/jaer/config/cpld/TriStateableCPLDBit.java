@@ -4,14 +4,10 @@
  */
 package ch.unizh.ini.jaer.config.cpld;
 
-import ch.unizh.ini.jaer.config.cpld.CPLDBit;
-import ch.unizh.ini.jaer.config.cpld.CPLDBit;
-import ch.unizh.ini.jaer.config.ConfigTristate;
-import ch.unizh.ini.jaer.config.ConfigTristate;
-import ch.unizh.ini.jaer.config.Tristate;
-import ch.unizh.ini.jaer.config.Tristate;
 import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.Chip;
+import ch.unizh.ini.jaer.config.ConfigTristate;
+import ch.unizh.ini.jaer.config.Tristate;
 
 /**
  *

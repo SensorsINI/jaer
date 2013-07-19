@@ -4,12 +4,13 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.notifier;
 
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.listener.FeatureListener;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.listener.FeatureListener;
 
 /**
  *

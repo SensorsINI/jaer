@@ -14,19 +14,25 @@
 
 package net.sf.jaer.hardwareinterface.usb.linux;
 
-import net.sf.jaer.aemonitor.*;
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeSupport;
-import java.util.Iterator;
-import java.util.logging.Logger;
-import java.util.prefs.Preferences;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.logging.Logger;
+import java.util.prefs.Preferences;
+
+import net.sf.jaer.aemonitor.AEListener;
+import net.sf.jaer.aemonitor.AEMonitorInterface;
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.biasgen.BiasgenHardwareInterface;
+import net.sf.jaer.biasgen.IPot;
+import net.sf.jaer.biasgen.IPotArray;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 //import javax.usb.UsbConst;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
 

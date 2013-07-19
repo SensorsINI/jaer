@@ -5,12 +5,16 @@
 
 package ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing;
 
-import ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing.BlurringTunnelTracker.Cluster;
-import ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing.OSCutils.*;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Date;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-import java.net.*;
-import java.util.*;
-import java.util.logging.*;
+import ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing.BlurringTunnelTracker.Cluster;
+import ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing.OSCutils.OSCBundle;
+import ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing.OSCutils.OSCMessage;
+import ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing.OSCutils.OSCPacket;
 
 /**
  *

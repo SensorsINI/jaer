@@ -10,7 +10,7 @@
 
 package ch.unizh.ini.jaer.projects.stereo3D;
 
-import net.sf.jaer.aemonitor.*;
+import net.sf.jaer.aemonitor.Event;
 
 /**
  * A raw address-event, having a timestamp and raw address

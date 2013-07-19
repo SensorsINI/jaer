@@ -1,8 +1,8 @@
 package ch.unizh.ini.jaer.chip.util.externaladc;
 
 import java.util.logging.Logger;
+
 import net.sf.jaer.chip.Chip;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceProxy;
 import net.sf.jaer.util.HasPropertyTooltips;
 import net.sf.jaer.util.PropertyTooltipSupport;

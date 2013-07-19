@@ -7,6 +7,7 @@
 package net.sf.jaer.biasgen;
 
 import java.util.ArrayList;
+
 import javax.swing.JComponent;
 
 /**

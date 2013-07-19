@@ -1,5 +1,7 @@
 package net.sf.jaer.util;
-import java.util.logging.*;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /** A thread group that implements uncaughtException to log uncaught exceptions */
 public class LoggingThreadGroup extends ThreadGroup {

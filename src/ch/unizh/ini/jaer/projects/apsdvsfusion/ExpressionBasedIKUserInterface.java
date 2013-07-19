@@ -18,7 +18,6 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
-import java.util.Random;
 import java.util.prefs.Preferences;
 
 import javax.swing.BorderFactory;
@@ -30,12 +29,9 @@ import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
-import net.sf.jaer.event.PolarityEvent;
-import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.SpikingOutputViewer;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ContinuousOutputViewerManager;
 //import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.SpikingOutputViewer;
 
 /**
  * @author Dennis

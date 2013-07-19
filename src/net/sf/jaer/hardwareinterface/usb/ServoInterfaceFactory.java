@@ -12,13 +12,18 @@
 
 package net.sf.jaer.hardwareinterface.usb;
 
-import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController;
-import net.sf.jaer.hardwareinterface.*;
+import java.util.ArrayList;
+import java.util.logging.Logger;
+
+import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
-import de.thesycon.usbio.*;
-import de.thesycon.usbio.structs.*;
-import java.util.*;
-import java.util.logging.*;
+import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController;
+import de.thesycon.usbio.PnPNotify;
+import de.thesycon.usbio.PnPNotifyInterface;
+import de.thesycon.usbio.UsbIo;
+import de.thesycon.usbio.UsbIoErrorCodes;
+import de.thesycon.usbio.structs.USB_DEVICE_DESCRIPTOR;
 
 /**
  * The factory for ServoInterface's. You use the singleton instance to find devices and construct

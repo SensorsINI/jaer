@@ -9,12 +9,12 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow.usbinterface;
 
-import net.sf.jaer.biasgen.BiasgenHardwareInterface;
-import ch.unizh.ini.jaer.projects.opticalflow.*;
 import javax.swing.JPanel;
-import net.sf.jaer.biasgen.IPot;
-import net.sf.jaer.biasgen.VDAC.VPot;
+
+import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
+import ch.unizh.ini.jaer.projects.opticalflow.MotionData;
 
 /**
  * The hardware interface to the motion chip.

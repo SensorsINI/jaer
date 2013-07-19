@@ -10,10 +10,12 @@
  */
 package ch.unizh.ini.jaer.chip.cochlea;
 
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cRollingCochleagramADCDisplayMethod.DisplayControl;
 import java.awt.Color;
+
 import javax.swing.JOptionPane;
 import javax.swing.border.TitledBorder;
+
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cRollingCochleagramADCDisplayMethod.DisplayControl;
 
 /**
  *  Gain and offset control for trace plotting for CochleaAMS1c ADC sample traces.

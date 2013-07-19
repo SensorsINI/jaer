@@ -12,16 +12,28 @@
 package net.sf.jaer.hardwareinterface.usb.silabs;
 
 import java.util.Arrays;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.logging.Level;
-import net.sf.jaer.hardwareinterface.usb.*;
-import net.sf.jaer.hardwareinterface.*;
-import net.sf.jaer.util.*;
-import de.thesycon.usbio.*;
-import de.thesycon.usbio.PnPNotifyInterface;
-import de.thesycon.usbio.UsbIoErrorCodes;
-import de.thesycon.usbio.structs.*;
-import java.util.concurrent.*;
 import java.util.logging.Logger;
+
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.ServoInterface;
+import net.sf.jaer.hardwareinterface.usb.ServoTest;
+import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
+import net.sf.jaer.util.HexString;
+import de.thesycon.usbio.PnPNotify;
+import de.thesycon.usbio.PnPNotifyInterface;
+import de.thesycon.usbio.UsbIo;
+import de.thesycon.usbio.UsbIoBuf;
+import de.thesycon.usbio.UsbIoErrorCodes;
+import de.thesycon.usbio.UsbIoInterface;
+import de.thesycon.usbio.UsbIoPipe;
+import de.thesycon.usbio.UsbIoWriter;
+import de.thesycon.usbio.structs.USBIO_CONFIGURATION_INFO;
+import de.thesycon.usbio.structs.USBIO_PIPE_PARAMETERS;
+import de.thesycon.usbio.structs.USBIO_SET_CONFIGURATION;
+import de.thesycon.usbio.structs.USB_DEVICE_DESCRIPTOR;
+import de.thesycon.usbio.structs.USB_STRING_DESCRIPTOR;
 
 /**
  * The USB servo controller board is controlled by this class. Use this class by

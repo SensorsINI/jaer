@@ -1,7 +1,13 @@
 package net.sf.jaer.util;
 import java.awt.HeadlessException;
-import java.awt.event.*;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.logging.Logger;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
@@ -9,9 +15,6 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.util.logging.Logger;
 import javax.swing.JFrame;
 /**
  * Plays a spike sound on the speaker. Use it by constructing a new {@link SpikeSound}, then calling the {@link #play} method.

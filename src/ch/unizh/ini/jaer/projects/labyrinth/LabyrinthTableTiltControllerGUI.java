@@ -5,21 +5,23 @@
  */
 package ch.unizh.ini.jaer.projects.labyrinth;
 
-import ch.unizh.ini.jaer.hardware.pantilt.*;
-import ch.unizh.ini.jaer.hardware.pantilt.PanTiltAimer.Message;
 import java.awt.Color;
-import java.awt.Toolkit;
-import java.util.ArrayList;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.util.ExceptionListener;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
-import java.awt.event.*;
-import java.awt.geom.*;
-import java.beans.*;
+import java.awt.Toolkit;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.awt.geom.Point2D;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
+import java.util.ArrayList;
 import java.util.logging.Logger;
+
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import ch.unizh.ini.jaer.hardware.pantilt.PanTiltAimer.Message;
 
 /**
  * Tests ball controller by displaying a GUI that allows manual control of ball position under feedback control.

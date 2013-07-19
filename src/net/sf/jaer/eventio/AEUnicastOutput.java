@@ -10,19 +10,20 @@
  *Copyright June 30, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 package net.sf.jaer.eventio;
+import java.io.IOException;
+//import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.concurrent.Exchanger;
-import net.sf.jaer.aemonitor.*;
+import java.util.logging.Logger;
+import java.util.prefs.Preferences;
+
+import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.util.ByteSwapper;
-import java.io.*;
-//import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.nio.BufferOverflowException;
-import java.util.logging.*;
-import java.util.prefs.*;
 /**
  * Streams AE packets to network using UDP DatagramPacket's that are unicast.
  * AEViewers or external clients can receive these packets to render them.

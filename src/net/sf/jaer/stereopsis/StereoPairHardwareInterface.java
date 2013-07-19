@@ -13,15 +13,16 @@ package net.sf.jaer.stereopsis;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
-import net.sf.jaer.aemonitor.*;
+import java.util.logging.Logger;
+
 import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.chip.*;
+import net.sf.jaer.aemonitor.EventRaw;
+import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
-import java.util.logging.Logger;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 /**
  * A hardware interface to two stereo pair sensors.
 This class merges the data from two streams to a single

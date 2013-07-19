@@ -6,7 +6,10 @@
 
 package net.sf.jaer.biasgen;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
 
 /**
  * Describes a linear array of IPot's on a chip. This ArrayList is just an ordered list of IPot (hopefully) that maintains the order

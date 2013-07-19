@@ -6,6 +6,7 @@ package ch.unizh.ini.jaer.projects.laser3d.plothistogram;
 
 import java.awt.Color;
 import java.awt.Dimension;
+
 import javax.swing.JFrame;
 
 /**

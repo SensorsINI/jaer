@@ -12,9 +12,12 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow.io;
 
-import ch.unizh.ini.jaer.projects.opticalflow.*;
-import java.io.*;
-import java.util.logging.*;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.logging.Logger;
+
+import ch.unizh.ini.jaer.projects.opticalflow.MotionData;
 
 /**
  * An output stream for motion data. Can be used to output motion data to a file or network socket using serilization.

@@ -5,6 +5,7 @@
 package ch.unizh.ini.jaer.projects.poseestimation;
 
 import java.util.Iterator;
+
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 

@@ -2,9 +2,8 @@ package ch.unizh.ini.jaer.projects.gesture.virtualdrummer.microphone;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
-
-
 import java.util.logging.Logger;
+
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;

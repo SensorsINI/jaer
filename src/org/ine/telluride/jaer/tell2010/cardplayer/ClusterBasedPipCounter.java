@@ -7,15 +7,18 @@ package org.ine.telluride.jaer.tell2010.cardplayer;
 import java.io.IOException;
 import java.util.Observable;
 import java.util.Observer;
+
 import javax.media.opengl.GLAutoDrawable;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.*;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+
 import org.ine.telluride.jaer.tell2010.spinningcardclassifier.CardNamePlayer;
 
 /**

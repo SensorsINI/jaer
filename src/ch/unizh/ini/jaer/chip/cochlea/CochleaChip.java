@@ -10,7 +10,7 @@
 package ch.unizh.ini.jaer.chip.cochlea;
 
 import javax.swing.JComponent;
-import javax.swing.JMenuItem;
+
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.graphics.DisplayMethod;
 

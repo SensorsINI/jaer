@@ -6,15 +6,21 @@
  */
 package eu.seebetter.ini.chips.seebetter30;
 
-import eu.seebetter.ini.chips.seebetter20.*;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.LineNumberReader;
+
+import javax.swing.ProgressMonitor;
+
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2Biasgen;
-import de.thesycon.usbio.*;
-import de.thesycon.usbio.structs.*;
-import javax.swing.ProgressMonitor;
-import java.io.*;
+import de.thesycon.usbio.UsbIo;
+import de.thesycon.usbio.UsbIoBuf;
+import de.thesycon.usbio.UsbIoInterface;
+import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
+import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
 
 /**
  * Hardware interface for SeeBetter30, Minhao Yang's sensitive and accurate DVS pixel test chip first version.

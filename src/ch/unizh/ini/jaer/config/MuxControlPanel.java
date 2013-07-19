@@ -4,14 +4,20 @@
  */
 package ch.unizh.ini.jaer.config;
 
-import ch.unizh.ini.jaer.config.onchip.OutputMux;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.util.ArrayList;
 import java.util.Observable;
 import java.util.Observer;
-import javax.swing.*;
+
+import javax.swing.AbstractAction;
+import javax.swing.BoxLayout;
+import javax.swing.ButtonGroup;
+import javax.swing.JPanel;
+import javax.swing.JRadioButton;
 import javax.swing.border.TitledBorder;
+
+import ch.unizh.ini.jaer.config.onchip.OutputMux;
 
 /**
     * Control panel for SBret10 diagnostic output configuration.

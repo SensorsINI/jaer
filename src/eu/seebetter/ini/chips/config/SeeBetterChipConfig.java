@@ -4,14 +4,14 @@
  */
 package eu.seebetter.ini.chips.config;
 
+import java.util.ArrayList;
+
+import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.chip.Chip;
 import ch.unizh.ini.jaer.config.AbstractConfigValue;
 import ch.unizh.ini.jaer.config.cpld.CPLDConfigValue;
 import ch.unizh.ini.jaer.config.cpld.CPLDShiftRegister;
 import ch.unizh.ini.jaer.config.fx2.PortBit;
-import java.util.ArrayList;
-import net.sf.jaer.biasgen.Biasgen;
-import net.sf.jaer.biasgen.IPotGroup;
-import net.sf.jaer.chip.Chip;
 
 /**
  * Extends the base Biasgen to addConfigValue storage for AbstractConfigValues which form part of the chip configuration.

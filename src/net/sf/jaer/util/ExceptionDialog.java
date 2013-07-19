@@ -1,8 +1,11 @@
 
 package net.sf.jaer.util;
 
-import java.io.*;
-import javax.swing.*;
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
+
+import javax.swing.JFrame;
 
 /**
  * Shows an Exception in a dialog.  No longer used.

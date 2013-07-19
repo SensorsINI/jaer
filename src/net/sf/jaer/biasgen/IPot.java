@@ -6,8 +6,11 @@
 
 package net.sf.jaer.biasgen;
 
-import java.util.*;
+import java.util.Observable;
+import java.util.Observer;
+
 import javax.swing.JComponent;
+
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 

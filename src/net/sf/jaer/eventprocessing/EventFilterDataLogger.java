@@ -12,8 +12,11 @@
 
 package net.sf.jaer.eventprocessing;
 
-import java.io.*;
-import java.util.logging.*;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
+import java.util.logging.Logger;
 
 /**
  * Eases writing data log files for a filter.

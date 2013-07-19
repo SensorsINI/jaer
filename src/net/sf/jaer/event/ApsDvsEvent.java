@@ -1,8 +1,6 @@
 package net.sf.jaer.event;
 
 
-import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.event.PolarityEvent;
 
 /** This event class is used in the extractor to hold data from the sensor 
  * so that it can be logged to files and played back here. It adds the ADC sample value.

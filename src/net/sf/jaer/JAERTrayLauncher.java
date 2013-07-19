@@ -12,14 +12,26 @@
 
 package net.sf.jaer;
 
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2TmpdiffRetinaHardwareInterface;
-import de.thesycon.usbio.*;
-import java.awt.*;
-import java.awt.event.*;
-import java.io.*;
+import java.awt.AWTException;
+import java.awt.Image;
+import java.awt.MenuItem;
+import java.awt.PopupMenu;
+import java.awt.SystemTray;
+import java.awt.Toolkit;
+import java.awt.TrayIcon;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.io.File;
+import java.io.IOException;
 import java.net.URL;
-import java.util.logging.*;
+import java.util.logging.Logger;
+
 import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2TmpdiffRetinaHardwareInterface;
+import de.thesycon.usbio.PnPNotify;
+import de.thesycon.usbio.PnPNotifyInterface;
 
 /**
  * Launches JAEViewer when an AE device is plugged in or on menu actions.

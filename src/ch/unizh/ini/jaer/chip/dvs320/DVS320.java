@@ -3,25 +3,34 @@ created 26 Oct 2008 for new DVS320 chip
  */
 package ch.unizh.ini.jaer.chip.dvs320;
 
-import ch.unizh.ini.jaer.chip.retina.*;
-import net.sf.jaer.aemonitor.*;
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
-import net.sf.jaer.hardwareinterface.*;
 import java.awt.BorderLayout;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Observable;
+
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
+
 import net.sf.jaer.Description;
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.biasgen.BiasgenHardwareInterface;
+import net.sf.jaer.biasgen.IPot;
+import net.sf.jaer.biasgen.IPotArray;
+import net.sf.jaer.chip.Chip;
+import net.sf.jaer.chip.RetinaExtractor;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.graphics.DisplayMethod;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.RemoteControl;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
+import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 
 /**
  * Describes DVS320 retina and its event extractor and bias generator.

@@ -5,19 +5,20 @@
  */
 package ch.unizh.ini.jaer.hardware.pantilt;
 
-import ch.unizh.ini.jaer.hardware.pantilt.PanTiltAimer.Message;
-import java.awt.Toolkit;
-import java.util.ArrayList;
-import java.util.logging.Level;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.util.ExceptionListener;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Point;
-import java.awt.event.*;
-import java.awt.geom.*;
-import java.beans.*;
+import java.awt.Toolkit;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.awt.geom.Point2D;
+import java.beans.PropertyChangeSupport;
+import java.util.ArrayList;
 import java.util.logging.Logger;
+
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.util.ExceptionListener;
+import ch.unizh.ini.jaer.hardware.pantilt.PanTiltAimer.Message;
 
 /**
  * Tests pantilt by mimicing mouse movements. Also can serve as calibration

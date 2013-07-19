@@ -4,8 +4,8 @@
  */
 package ch.unizh.ini.jaer.projects.integrateandfire;
 
-import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.TypedEvent;
 
 /**
  *

@@ -5,20 +5,29 @@
  */
 package net.sf.jaer.biasgen.VDAC;
 
-import java.util.logging.Logger;
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.util.*;
 import java.awt.Container;
 import java.awt.Toolkit;
-import java.awt.event.*;
-import java.util.*;
-import java.util.prefs.*;
-import javax.swing.*;
+import java.awt.event.KeyEvent;
+import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.Observable;
+import java.util.Observer;
+import java.util.logging.Logger;
+import java.util.prefs.Preferences;
+
+import javax.swing.JPanel;
 import javax.swing.JSlider;
-import javax.swing.border.*;
+import javax.swing.JTextField;
+import javax.swing.border.Border;
+import javax.swing.border.EmptyBorder;
 import javax.swing.border.EtchedBorder;
 import javax.swing.event.UndoableEditListener;
-import javax.swing.undo.*;
+import javax.swing.undo.StateEdit;
+import javax.swing.undo.StateEditable;
+import javax.swing.undo.UndoableEditSupport;
+
+import net.sf.jaer.biasgen.Pot;
+import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * A GUI control component for controlling an IPot.

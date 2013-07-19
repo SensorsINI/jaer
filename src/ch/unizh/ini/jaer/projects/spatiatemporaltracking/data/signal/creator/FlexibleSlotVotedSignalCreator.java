@@ -4,10 +4,11 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.signal.creator;
 
+import java.util.Arrays;
+
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.signal.Signal;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.signal.SimpleSignal;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.signal.Transition;
-import java.util.Arrays;
 
 /**
  *

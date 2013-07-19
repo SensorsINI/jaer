@@ -4,9 +4,9 @@
  */
 package ch.unizh.ini.jaer.config.fx2;
 
+import net.sf.jaer.chip.Chip;
 import ch.unizh.ini.jaer.config.AbstractConfigBit;
 import ch.unizh.ini.jaer.config.ConfigBit;
-import net.sf.jaer.chip.Chip;
 
 /**
  * A direct port bit output from CypressFX2 port.

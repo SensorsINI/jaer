@@ -11,7 +11,6 @@
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
 
 import javax.swing.DefaultComboBoxModel;
-import javax.swing.JSpinner;
 import javax.swing.border.TitledBorder;
 
 /**

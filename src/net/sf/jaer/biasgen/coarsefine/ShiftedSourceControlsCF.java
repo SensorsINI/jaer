@@ -6,20 +6,36 @@ package net.sf.jaer.biasgen.coarsefine;
  * Created on September 21, 2005, 12:23 PM
  */
 
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.util.*;
 import java.awt.Container;
 import java.awt.Toolkit;
-import java.awt.event.*;
-import java.lang.reflect.*;
-import java.util.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
-import javax.swing.*;
+
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JMenu;
 import javax.swing.JSlider;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.event.UndoableEditListener;
-import javax.swing.undo.*;
-import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF.*;
+import javax.swing.undo.StateEdit;
+import javax.swing.undo.StateEditable;
+import javax.swing.undo.UndoableEditSupport;
+
+import net.sf.jaer.biasgen.BiasgenFrame;
+import net.sf.jaer.biasgen.IPotSliderTextControl;
+import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF.OperatingMode;
+import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF.VoltageLevel;
+import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * A GUI control component for controlling a Pot.

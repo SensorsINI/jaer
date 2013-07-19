@@ -5,22 +5,28 @@
  */
 package net.sf.jaer.hardwareinterface.usb;
 import java.net.SocketException;
-import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController;
-import net.sf.jaer.hardwareinterface.*;
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.TimerTask;
+import java.util.logging.Logger;
+
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.JOptionPane;
+import javax.swing.JSlider;
+import javax.swing.event.ChangeEvent;
+
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.ServoInterface;
+import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController;
 import net.sf.jaer.util.HexString;
+import net.sf.jaer.util.RemoteControl;
+import net.sf.jaer.util.RemoteControlCommand;
+import net.sf.jaer.util.RemoteControlled;
 import ch.unizh.ini.jaer.projects.rccar.CarServoInterfaceFactory;
 import ch.unizh.ini.jaer.projects.rccar.SiLabsC8051F320_USBIO_CarServoController;
 import de.thesycon.usbio.PnPNotify;
 import de.thesycon.usbio.PnPNotifyInterface;
-import java.text.ParseException;
-import java.util.*;
-import java.util.logging.*;
-import javax.swing.*;
-import javax.swing.event.*;
-import net.sf.jaer.util.RemoteControl;
-import net.sf.jaer.util.RemoteControlCommand;
-import net.sf.jaer.util.RemoteControlled;
 /**
  * Tests the hardware USB  servo interface.  Allows remote control of servos over UDP interface.
  * 

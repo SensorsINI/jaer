@@ -1,10 +1,27 @@
 package ch.unizh.ini.jaer.projects.apsdvsfusion.gui;
 
-import java.awt.*;  
-import java.awt.event.*;  
-import java.awt.font.*;  
-import java.awt.image.BufferedImage;  
-import javax.swing.*;  
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.Polygon;
+import java.awt.RenderingHints;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.font.FontRenderContext;
+import java.awt.font.LineMetrics;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.SwingUtilities;
 
   
 public class CollapsablePanel extends JPanel {  

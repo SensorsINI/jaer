@@ -5,6 +5,7 @@
 package ch.unizh.ini.jaer.projects.labyrinth;
 
 import java.beans.PropertyChangeSupport;
+
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**

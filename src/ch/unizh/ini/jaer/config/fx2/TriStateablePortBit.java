@@ -4,11 +4,10 @@
  */
 package ch.unizh.ini.jaer.config.fx2;
 
-import ch.unizh.ini.jaer.config.fx2.PortBit;
-import ch.unizh.ini.jaer.config.ConfigTristate;
-import ch.unizh.ini.jaer.config.Tristate;
 import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.Chip;
+import ch.unizh.ini.jaer.config.ConfigTristate;
+import ch.unizh.ini.jaer.config.Tristate;
 
 /** 
  * Adds a hiZ state to the PortBit. A PortBit is a direct port output from the controller, as opposed to a CPLD bit.

@@ -4,7 +4,6 @@
 package ch.unizh.ini.jaer.projects.apsdvsfusion.mathexpression;
 
 import java.util.HashMap;
-import java.util.LinkedList;
 
 import ch.unizh.ini.jaer.projects.apsdvsfusion.mathexpression.BinaryOperationETNode.SimpleBinaryOperationCreator;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.mathexpression.FunctionETNode.SimpleFunctionETNodeCreator;

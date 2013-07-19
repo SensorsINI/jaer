@@ -5,7 +5,7 @@
 
 package net.sf.jaer.hardwareinterface.udp;
 
-import net.sf.jaer.hardwareinterface.*;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
 
 /**
  * Interface to a UDP device

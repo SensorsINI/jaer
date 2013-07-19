@@ -8,19 +8,18 @@ package ch.unizh.ini.jaer.projects.integrateandfire;
 
 // JAER Stuff
 import java.io.File;
-import javax.media.opengl.GLAutoDrawable;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
-
 // Java  Stuff
 //import java.io.File;
 import java.io.FileNotFoundException;
-
 // Swingers
 import java.util.Arrays;
+
+import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
-import javax.xml.stream.EventFilter;
+
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 

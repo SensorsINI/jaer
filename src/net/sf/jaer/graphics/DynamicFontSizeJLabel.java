@@ -12,8 +12,9 @@
 
 package net.sf.jaer.graphics;
 
-import java.awt.*;
+import java.awt.Container;
 import java.awt.Font;
+
 import javax.swing.JLabel;
 
 /**

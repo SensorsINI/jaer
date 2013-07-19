@@ -6,9 +6,11 @@
 
 package net.sf.jaer.biasgen;
 
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import java.io.*;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.prefs.InvalidPreferencesFormatException;
+
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 
 /**

@@ -9,9 +9,12 @@
 
 package net.sf.jaer.hardwareinterface;
 
-import de.thesycon.usbio.*;
-import java.util.logging.*;
-import javax.swing.*;
+import java.util.logging.Logger;
+
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
+
+import de.thesycon.usbio.PnPNotifyInterface;
 
 /**
  * A menu that allows selection of a particular HardwareInterface. This menu is automatically constructed on instance creation and updates itself whenever asked or when new

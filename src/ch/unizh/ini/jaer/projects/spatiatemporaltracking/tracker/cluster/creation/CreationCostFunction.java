@@ -4,9 +4,8 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.creation;
 
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.FeatureCluster;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.FeatureExtractable;
 import net.sf.jaer.event.TypedEvent;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.FeatureCluster;
 
 /**
  *

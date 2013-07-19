@@ -18,9 +18,18 @@ package net.sf.jaer.util;
  * GNU General Public License for more details. It is available at
  * http://www.gnu.org/licenses/gpl.html
  */
-import java.util.*;
-import java.io.*;
-import java.util.logging.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 /*
 Intel Hex File Format. this description is taken from www.8052.com.
 Pos Description

@@ -8,7 +8,8 @@
 
 package net.sf.jaer.aemapper;
 
-import net.sf.jaer.aemonitor.*;
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.aemonitor.EventRaw;
 
 /**
  * An abstract AEMapper that only needs implementation of getMapping method.

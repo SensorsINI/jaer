@@ -6,18 +6,14 @@ package ch.unizh.ini.jaer.projects.eventbasedfeatures;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.Point;
-import java.util.*;
-import java.util.Arrays;
-import java.util.AbstractCollection;
-import javax.media.opengl.GLAutoDrawable;
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.*;
-import net.sf.jaer.eventprocessing.EventFilter2D;
-import java.util.Iterator;
-import javax.swing.*;
+
+import javax.swing.JFrame;
+
 import net.sf.jaer.Description;
-import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.ImageDisplay;
 
 /** This class develops an intensity map representation of the incoming AE events. A ring buffer 

@@ -4,16 +4,17 @@
  */
 package at.ait.dss.sni.jaer.chip.tds;
 
-import ch.unizh.ini.jaer.chip.retina.DVS128;
 import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.eventio.AENetworkInterfaceConstants;
 import net.sf.jaer.eventio.AEUnicastOutput;
+import ch.unizh.ini.jaer.chip.retina.DVS128;
 
 /**
  * Allows remote control of ARC (AIT) TDS (Traffic Data Sensor) biases and other operating parameters from jAER.

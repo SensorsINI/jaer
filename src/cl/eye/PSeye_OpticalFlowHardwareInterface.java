@@ -1,15 +1,16 @@
 package cl.eye;
 
+import java.util.concurrent.TimeoutException;
+import java.util.logging.Logger;
+
+import javax.swing.JPanel;
+
+import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
 import ch.unizh.ini.jaer.projects.opticalflow.MotionData;
 import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MDC2D;
-import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MotionDataMDC2D;
 import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.MotionChipInterface;
-import java.util.concurrent.TimeoutException;
-import java.util.logging.Logger;
-import javax.swing.JPanel;
-import net.sf.jaer.biasgen.Biasgen;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
  * OpticalFlowHardwareInterface for the playstation3 psEYE camera built on

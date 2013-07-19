@@ -4,9 +4,8 @@
  */
 package ch.unizh.ini.jaer.projects.neuralnets;
 
-import jspikestack.KernelMaker2D;
-import jspikestack.NetController;
 import jspikestack.AxonSparse;
+import jspikestack.NetController;
 import jspikestack.Network;
 import jspikestack.UnitLIF;
 import net.sf.jaer.chip.AEChip;

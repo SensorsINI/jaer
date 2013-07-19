@@ -1,13 +1,13 @@
 package eu.seebetter.ini.chips.sbret10;
 /* This class created in Telluride 2013 to encapsulate Invensense IMU MPU-6150 used on SeeBetter cammeras for gyro/accelometer */
 
-import de.thesycon.usbio.UsbIoBuf;
-import eu.seebetter.ini.chips.ApsDvsChip;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.logging.Logger;
+
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.util.filter.LowpassFilter;
+import de.thesycon.usbio.UsbIoBuf;
+import eu.seebetter.ini.chips.ApsDvsChip;
 
 /**
  * Data sent from device IMU: // accel x/y/z, temp, gyro x/y/z => 7 x 2 bytes =

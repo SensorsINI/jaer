@@ -5,6 +5,7 @@
 package net.sf.jaer.event;
 
 import java.util.Iterator;
+
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 
 /**

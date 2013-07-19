@@ -5,16 +5,6 @@
  */
 package net.sf.jaer.jaerappletviewer;
 
-import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.chip.AEChip;
-import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventio.AEInputStream;
-import net.sf.jaer.eventio.AEUnicastInput;
-import net.sf.jaer.eventio.AEUnicastSettings;
-import net.sf.jaer.graphics.AEChipRenderer;
-import net.sf.jaer.graphics.ChipCanvas;
-import net.sf.jaer.util.EngineeringFormat;
 import java.awt.BorderLayout;
 import java.awt.Graphics;
 import java.io.BufferedInputStream;
@@ -25,8 +15,20 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.util.Random;
-import java.util.logging.*;
+import java.util.logging.Logger;
+
 import javax.swing.border.TitledBorder;
+
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventio.AEInputStream;
+import net.sf.jaer.eventio.AEUnicastInput;
+import net.sf.jaer.eventio.AEUnicastSettings;
+import net.sf.jaer.graphics.AEChipRenderer;
+import net.sf.jaer.graphics.ChipCanvas;
+import net.sf.jaer.util.EngineeringFormat;
+import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
 
 /**
  * Applet that plays events in a web browser from

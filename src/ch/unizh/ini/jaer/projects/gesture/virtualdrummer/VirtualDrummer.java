@@ -9,8 +9,10 @@ import java.awt.geom.Point2D;
 import java.util.Hashtable;
 import java.util.Observable;
 import java.util.Observer;
+
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JFrame;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;

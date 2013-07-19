@@ -4,12 +4,11 @@
  */
 package jp.ac.osakau.eng.eei;
 
-import de.thesycon.usbio.UsbIo;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.*;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
+import de.thesycon.usbio.UsbIo;
 import de.thesycon.usbio.UsbIoBuf;
-import de.thesycon.usbio.UsbIoErrorCodes;
 import de.thesycon.usbio.UsbIoInterface;
 import de.thesycon.usbio.UsbIoPipe;
 import de.thesycon.usbio.structs.USBIO_CONFIGURATION_INFO;

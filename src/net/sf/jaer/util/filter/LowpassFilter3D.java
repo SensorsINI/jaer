@@ -1,5 +1,4 @@
 package net.sf.jaer.util.filter;
-import java.awt.geom.Point2D;
 /**
  * A lowpass filter that operates on 3 scalar inputs with common time constant and time.
  *

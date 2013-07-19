@@ -4,9 +4,6 @@
  */
 package ch.unizh.ini.jaer.projects.eventbasedfeatures;
 
-import java.awt.Point;
-import java.util.ArrayList;
-import java.util.Arrays;
 import net.sf.jaer.chip.AEChip;
 
 //  NON MAXIMAL SUPPRESSION???

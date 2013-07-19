@@ -10,21 +10,27 @@
  *Copyright March 18, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 package ch.unizh.ini.jaer.chip.stereopsis;
-import net.sf.jaer.stereopsis.*;
-import net.sf.jaer.aemonitor.*;
+import java.util.ArrayList;
+
+import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.chip.AEChip;
-import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
-import java.util.ArrayList;
-import net.sf.jaer.Description;
+import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
-import net.sf.jaer.event.*;
-import net.sf.jaer.graphics.*;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BinocularEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.BinocularRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.stereopsis.StereoBiasgenHardwareInterface;
+import net.sf.jaer.stereopsis.StereoChipInterface;
+import net.sf.jaer.stereopsis.Stereopsis;
+import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
 /**
  * A stereo pair of Tmpdiff128 retinas each with its own separate but time-sychronized hardware interface. 
  * Differs from the usual AEChip object in that it also overrides #getHardwareInterface and #setHardwareInterface

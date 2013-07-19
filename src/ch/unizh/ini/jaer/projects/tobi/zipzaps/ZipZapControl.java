@@ -4,11 +4,12 @@
  */
     package ch.unizh.ini.jaer.projects.tobi.zipzaps;
 
+import java.util.logging.Logger;
+
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.ServoInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController;
-import java.util.logging.Logger;
 
 /**
  * Controls the Radio Shack ZipZaps micro RC Transformers car via the ServoController port 2, which pulls down on appropriate port 2 bits

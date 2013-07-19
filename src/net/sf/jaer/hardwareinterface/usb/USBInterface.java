@@ -6,7 +6,7 @@
 
 package net.sf.jaer.hardwareinterface.usb;
 
-import net.sf.jaer.hardwareinterface.*;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
 
 
 /**

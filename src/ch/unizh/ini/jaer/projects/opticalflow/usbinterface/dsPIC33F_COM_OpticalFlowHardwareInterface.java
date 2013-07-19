@@ -4,38 +4,50 @@ Copyright June 13, 2011 Andreas Steiner, Inst. of Neuroinformatics, UNI-ETH Zuri
 
 package ch.unizh.ini.jaer.projects.opticalflow.usbinterface;
 
-import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
-import ch.unizh.ini.jaer.projects.opticalflow.MotionData;
-import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MDC2D;
-import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MotionDataMDC2D;
+import gnu.io.PortInUseException;
+
+import java.net.SocketException;
+import java.util.Calendar;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
+import java.util.prefs.Preferences;
+
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.IPot;
 import net.sf.jaer.biasgen.VDAC.VPot;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-
-import ch.unizh.ini.jaer.projects.dspic.serial.*;
-import ch.unizh.ini.jaer.projects.opticalflow.graphics.MotionViewer;
-import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.GlobalOpticalFlowAnalyser;
-import com.phidgets.PhidgetException;
-import com.phidgets.SpatialEventData;
-import com.phidgets.SpatialPhidget;
-import com.phidgets.event.*;
-
-import gnu.io.PortInUseException;
-import java.io.File;
-import java.net.SocketException;
-import java.util.*;
-import java.util.prefs.Preferences;
-import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
 import net.sf.jaer.util.RemoteControl;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
+import ch.unizh.ini.jaer.projects.dspic.serial.StreamCommand;
+import ch.unizh.ini.jaer.projects.dspic.serial.StreamCommandListener;
+import ch.unizh.ini.jaer.projects.dspic.serial.StreamCommandMessage;
+import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
+import ch.unizh.ini.jaer.projects.opticalflow.MotionData;
+import ch.unizh.ini.jaer.projects.opticalflow.graphics.MotionViewer;
+import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.GlobalOpticalFlowAnalyser;
+import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MDC2D;
+import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MotionDataMDC2D;
+
+import com.phidgets.PhidgetException;
+import com.phidgets.SpatialEventData;
+import com.phidgets.SpatialPhidget;
+import com.phidgets.event.AttachEvent;
+import com.phidgets.event.AttachListener;
+import com.phidgets.event.DetachEvent;
+import com.phidgets.event.DetachListener;
+import com.phidgets.event.ErrorEvent;
+import com.phidgets.event.ErrorListener;
+import com.phidgets.event.SpatialDataEvent;
+import com.phidgets.event.SpatialDataListener;
 
 
 /**

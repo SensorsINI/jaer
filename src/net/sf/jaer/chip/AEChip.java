@@ -11,17 +11,24 @@ package net.sf.jaer.chip;
 
 import java.io.File;
 import java.io.IOException;
-import net.sf.jaer.eventprocessing.*;
+import java.util.ArrayList;
+
+import net.sf.jaer.Description;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.AEFileOutputStream;
+import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.FilterFrame;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.eventprocessing.filter.RotateFilter;
 import net.sf.jaer.eventprocessing.filter.XYTypeFilter;
-import net.sf.jaer.event.*;
-import net.sf.jaer.eventio.*;
-import net.sf.jaer.graphics.*;
-import java.util.ArrayList;
-import net.sf.jaer.Description;
+import net.sf.jaer.graphics.AEChipRenderer;
+import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.graphics.ChipCanvas;
+import net.sf.jaer.graphics.ChipRendererDisplayMethod;
+import net.sf.jaer.graphics.DisplayMethod;
+import net.sf.jaer.graphics.SpaceTimeEventDisplayMethod;
 
 /**
  * Describes a generic address-event chip, and includes fields for associated classes like its renderer,

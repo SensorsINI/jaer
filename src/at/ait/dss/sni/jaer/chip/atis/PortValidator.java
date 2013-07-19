@@ -3,8 +3,6 @@
  * and open the template in the editor.
  */
 package at.ait.dss.sni.jaer.chip.atis;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.util.logging.Logger;
 /**
  * Validates client properties for ATIS connection

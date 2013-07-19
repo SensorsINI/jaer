@@ -6,20 +6,23 @@
  *Copyright July 7, 2006 Jorg Conradt, Matt Cook, Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 package ch.unizh.ini.jaer.projects.pencilbalancer;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
+import java.awt.Graphics2D;
+import java.util.Observable;
+import java.util.Observer;
+
+import javax.media.opengl.GL2;
+import javax.media.opengl.GLAutoDrawable;
+
+import net.sf.jaer.Description;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BinocularEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
 import net.sf.jaer.util.TobiLogger;
-import java.awt.Graphics2D;
-import java.util.Observable;
-import java.util.Observer;
-import javax.media.opengl.*;
-import javax.media.opengl.GLAutoDrawable;
-import net.sf.jaer.Description;
 /**
  * Uses a pair of DVS cameras to control an XY table to balance a pencil.
  * 

@@ -4,12 +4,13 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.signal.creator;
 
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.signal.Signal;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.signal.SimpleSignal;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.signal.Transition;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.signal.Signal;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.signal.SimpleSignal;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.signal.Transition;
 
 /**
  *

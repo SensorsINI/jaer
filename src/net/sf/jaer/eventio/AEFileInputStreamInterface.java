@@ -9,8 +9,9 @@
 
 package net.sf.jaer.eventio;
 
-import net.sf.jaer.aemonitor.AEPacketRaw;
 import java.io.IOException;
+
+import net.sf.jaer.aemonitor.AEPacketRaw;
 
 /**
  * The capabilities of the AEFileInputStream. Used in players that use these input streams.

@@ -12,11 +12,11 @@
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
 import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
 import java.awt.geom.Point2D;
 import java.util.LinkedList;
 import java.util.ListIterator;
-import java.awt.Graphics;
-import java.awt.Dimension;
 
 /**
  *

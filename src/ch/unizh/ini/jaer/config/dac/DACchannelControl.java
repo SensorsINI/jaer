@@ -12,7 +12,8 @@
 
 package ch.unizh.ini.jaer.config.dac;
 
-import javax.swing.*;
+import javax.swing.BoxLayout;
+import javax.swing.JPanel;
 
 /**
  * A complete GUI conrol for an VPot.

@@ -9,7 +9,7 @@
 
 package net.sf.jaer.graphics;
 
-import java.util.*;
+import java.util.Arrays;
 
 /**
  * Encapsulates the rendered retina image  - used to store and retrieve rendered RGB pixel values and to efficiently iterate over them for clipping or normalization.

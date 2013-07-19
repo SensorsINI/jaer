@@ -4,7 +4,6 @@
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
 import java.awt.BorderLayout;
-import java.awt.Component;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.beans.PropertyChangeEvent;
@@ -14,15 +13,12 @@ import java.util.Random;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
-import javax.swing.BoxLayout;
-import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
-import ch.unizh.ini.jaer.projects.apsdvsfusion.ParameterContainer.SingleParameter;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.CollapsablePanel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterBrowserPanel;
 

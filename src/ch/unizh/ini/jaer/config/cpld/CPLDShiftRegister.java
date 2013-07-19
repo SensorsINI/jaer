@@ -4,13 +4,11 @@
  */
 package ch.unizh.ini.jaer.config.cpld;
 
-import ch.unizh.ini.jaer.config.cpld.CPLDConfigValue;
-import ch.unizh.ini.jaer.config.cpld.CPLDBit;
-import ch.unizh.ini.jaer.config.ConfigInt;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.logging.Logger;
+
+import ch.unizh.ini.jaer.config.ConfigInt;
 
 /**
  * Container for CPLD configuration values that can generate the appropriate bits to send to the CPLD shift register.

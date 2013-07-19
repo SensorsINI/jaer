@@ -7,19 +7,23 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow.graphics;
 
+import java.awt.FlowLayout;
+import java.awt.event.ActionEvent;
+import java.util.logging.Logger;
+
+import javax.swing.AbstractAction;
+import javax.swing.JComponent;
+import javax.swing.JPanel;
+import javax.swing.JSlider;
+import javax.swing.KeyStroke;
+
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTiltParserPanel;
 import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
 import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MDC2D;
 import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MotionDataMDC2D;
 import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.OpticalFlowHardwareInterfaceFactory;
 import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.dsPIC33F_COM_ConfigurationPanel;
-import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.dsPIC33F_COM_OpticalFlowHardwareInterface;
-import java.awt.FlowLayout;
-import java.awt.event.ActionEvent;
-import java.util.logging.Logger;
-import javax.swing.*;
-import net.sf.jaer.hardwareinterface.HardwareInterface;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
  *

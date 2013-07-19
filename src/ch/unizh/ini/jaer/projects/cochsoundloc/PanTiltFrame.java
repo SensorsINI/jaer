@@ -10,6 +10,8 @@
  */
 package ch.unizh.ini.jaer.projects.cochsoundloc;
 
+import gnu.io.CommPortIdentifier;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -17,14 +19,22 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.text.DecimalFormat;
 import java.util.Enumeration;
-import javax.sound.sampled.*;
+import java.util.logging.Logger;
+
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.LineEvent;
+import javax.sound.sampled.LineListener;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileFilter;
-import java.util.logging.Logger;
-import gnu.io.CommPortIdentifier;
-import java.text.DecimalFormat;
 
 /**
  * Shows options for the pan tilt and the sensory fusion

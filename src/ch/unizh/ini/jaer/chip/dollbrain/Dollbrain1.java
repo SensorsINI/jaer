@@ -10,13 +10,21 @@
 
 package ch.unizh.ini.jaer.chip.dollbrain;
 
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.aemonitor.*;
-import net.sf.jaer.biasgen.VDAC.*;
-import net.sf.jaer.chip.*;
+import java.io.Serializable;
+
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.biasgen.Pot;
+import net.sf.jaer.biasgen.PotArray;
+import net.sf.jaer.biasgen.VDAC.DAC;
+import net.sf.jaer.biasgen.VDAC.VPot;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.chip.Chip;
 import net.sf.jaer.chip.TypedEventExtractor;
-import net.sf.jaer.event.*;
-import java.io.*;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.TypedEvent;
 
 
 /**

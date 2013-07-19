@@ -1,6 +1,5 @@
 package org.ine.telluride.jaer.tell2010.pigtracker;
 
-import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.TypedEvent;
 
 /** Output event from the PigTracker object tracker.

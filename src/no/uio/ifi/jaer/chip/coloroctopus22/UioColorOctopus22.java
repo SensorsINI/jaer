@@ -11,11 +11,12 @@
 
 package no.uio.ifi.jaer.chip.coloroctopus22;
 
-import no.uio.ifi.jaer.chip.staticbiovis.*;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.TypedEventExtractor;
-import net.sf.jaer.event.*;
-import net.sf.jaer.graphics.*;
+import net.sf.jaer.event.TypedEvent;
+import net.sf.jaer.graphics.AdaptiveIntensityRendererColor;
+import net.sf.jaer.graphics.ChipRendererDisplayMethod;
+import net.sf.jaer.graphics.DisplayMethod;
 
 
 

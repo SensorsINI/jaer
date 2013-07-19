@@ -11,34 +11,30 @@
 
 
 package ch.unizh.ini.jaer.projects.stereo3D;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.event.*;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.graphics.*;
-
 //import com.sun.org.apache.xerces.internal.impl.xpath.regex.Match;
-import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.Graphics2D;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.util.Observable;
+import java.util.Observer;
+import java.util.Vector;
 
-import java.awt.event.KeyListener;
-import java.awt.event.KeyEvent;
-
-import javax.imageio.*;
-import java.awt.image.*;
-import java.nio.ByteBuffer;
-
-import java.io.*;
-import java.util.*;
-import javax.media.opengl.*;
-import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
-import javax.swing.*;
-import javax.media.opengl.glu.GLU;
 
-
-import java.text.*;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BinocularDisparityEvent;
+import net.sf.jaer.event.BinocularEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.graphics.AEChipRenderer;
+import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
  * StereoMatcherOnTime:

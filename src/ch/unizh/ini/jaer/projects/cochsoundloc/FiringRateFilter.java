@@ -4,14 +4,16 @@
  */
 package ch.unizh.ini.jaer.projects.cochsoundloc;
 
-import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent;
-import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent.Ear;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMSEvent;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.Graphics;
 import java.util.Observable;
 import java.util.Observer;
+
 import javax.swing.JFrame;
+
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.BasicEvent;
@@ -21,6 +23,9 @@ import net.sf.jaer.util.chart.Axis;
 import net.sf.jaer.util.chart.Category;
 import net.sf.jaer.util.chart.Series;
 import net.sf.jaer.util.chart.XYChart;
+import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent;
+import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent.Ear;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMSEvent;
 
 /**
  *  ???? what does it do? TODO

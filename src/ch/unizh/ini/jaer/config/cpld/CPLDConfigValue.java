@@ -4,10 +4,11 @@
  */
 package ch.unizh.ini.jaer.config.cpld;
 
-import ch.unizh.ini.jaer.config.AbstractConfigValue;
 import java.util.logging.Logger;
 import java.util.prefs.PreferenceChangeEvent;
+
 import net.sf.jaer.chip.Chip;
+import ch.unizh.ini.jaer.config.AbstractConfigValue;
 
 /**
  * Base class for configuration value on the CPLD. Values are stored on a shift register on the CPLD and are

@@ -4,11 +4,10 @@
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
-import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController;
 
 /**
  * Encapsulates the physical hardware interface to the slot car. To use it create a SlotCarHardwareInterface and call setThrottle(float value).

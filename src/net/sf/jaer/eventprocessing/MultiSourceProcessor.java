@@ -4,24 +4,19 @@
  */
 package net.sf.jaer.eventprocessing;
 
-import java.awt.BorderLayout;
-import java.awt.Component;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.JPanel;
+
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.InputEventIterator;
 import net.sf.jaer.event.OutputEventIterator;
-import net.sf.jaer.graphics.DisplayWriter;
 
 /**
  * This is an extension of EventFilter2D that can deal with multiple streams of 

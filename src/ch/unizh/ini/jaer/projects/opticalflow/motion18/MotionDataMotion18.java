@@ -12,7 +12,8 @@ package ch.unizh.ini.jaer.projects.opticalflow.motion18;
  *Copyright November 24, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 
-import ch.unizh.ini.jaer.projects.opticalflow.*;
+import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
+import ch.unizh.ini.jaer.projects.opticalflow.MotionData;
 
 /**
  * Packs data returned from optical flow sensor.

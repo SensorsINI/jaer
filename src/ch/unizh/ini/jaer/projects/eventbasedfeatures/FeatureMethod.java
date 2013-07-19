@@ -4,7 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.eventbasedfeatures;
 
-import java.awt.*;
+import java.awt.Point;
 
 /** This class contains classes and methods which are common to all detectors and descriptors.
  *

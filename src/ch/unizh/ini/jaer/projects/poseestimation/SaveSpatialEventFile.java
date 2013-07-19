@@ -1,16 +1,9 @@
 package ch.unizh.ini.jaer.projects.poseestimation;
 
-import ch.unizh.ini.jaer.chip.retina.DVS128;
-import com.phidgets.PhidgetException;
-import com.phidgets.SpatialPhidget;
-import com.phidgets.event.*;
-
 import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
-import java.util.logging.Level;
-import javax.media.opengl.GL;
-import javax.media.opengl.GLAutoDrawable;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -18,7 +11,6 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.graphics.FrameAnnotater;
 
 @Description("Class that outputs SpatialEvents when saved from VOR sensor (Phidgets). Used to record retina events and spatial data together for playback later")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)

@@ -10,7 +10,6 @@
 
 package net.sf.jaer.graphics;
 
-import java.awt.Graphics2D;
 import javax.media.opengl.GLAutoDrawable;
 
 /**

@@ -7,16 +7,17 @@
  * Open. You can then make changes to the template in the Source Editor.
  */
 package net.sf.jaer.event;
-import java.util.logging.Level;
-import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.eventprocessing.*;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
-import java.util.Iterator;
-import java.util.Comparator;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import net.sf.jaer.aemonitor.AEConstants;
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.eventprocessing.TimeLimiter;
 /**
  * A packet of events that is used for rendering and event processing.
 For efficiency, these packets are designed to be re-used;

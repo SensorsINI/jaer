@@ -4,18 +4,19 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.information;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+import net.sf.jaer.chip.AEChip;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.signal.Signal;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.boundary.BoundaryExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.lifetime.LifetimeExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.signal.signal.SignalExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.FeatureManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.util.FileHandler;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import net.sf.jaer.chip.AEChip;
 
 /**
  *

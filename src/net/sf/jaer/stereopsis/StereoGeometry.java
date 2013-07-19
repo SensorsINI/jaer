@@ -12,9 +12,11 @@
 
 package net.sf.jaer.stereopsis;
 
-import net.sf.jaer.chip.*;
-import java.util.*;
-import java.util.prefs.*;
+import java.util.Observable;
+import java.util.Observer;
+import java.util.prefs.Preferences;
+
+import net.sf.jaer.chip.AEChip;
 
 /**
  * Encapsulates stereo geometry. The basic geometry for parallel camera (infinite vergence) is shown in the following image.

@@ -9,10 +9,16 @@
 
 package net.sf.jaer.hardwareinterface.usb.cypressfx2;
 
-import de.thesycon.usbio.*;
-import de.thesycon.usbio.structs.*;
-import net.sf.jaer.hardwareinterface.*;
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import de.thesycon.usbio.UsbIo;
+import de.thesycon.usbio.UsbIoInterface;
+import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
+import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
 
 /**
  * class for USB2AERmapper, extends functionality to download the FPGA code to the device

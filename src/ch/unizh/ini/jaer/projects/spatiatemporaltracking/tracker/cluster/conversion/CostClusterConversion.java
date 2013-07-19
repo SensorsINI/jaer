@@ -4,10 +4,10 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.conversion;
 
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.CandidateCluster;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.FeatureClusterStorage;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.Parameters;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.CandidateCluster;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.FeatureClusterStorage;
 
 /**
  *

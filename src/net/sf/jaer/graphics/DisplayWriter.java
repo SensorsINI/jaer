@@ -5,8 +5,6 @@
 package net.sf.jaer.graphics;
 
 import java.awt.Component;
-import java.awt.Container;
-import javax.swing.JPanel;
 
 /**
  * A class implementing this interface has some means to display its state to the screen.

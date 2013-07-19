@@ -9,9 +9,11 @@
 
 package net.sf.jaer.stereopsis;
 
-import net.sf.jaer.chip.*;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BinocularEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.event.*;
 
 
 /**

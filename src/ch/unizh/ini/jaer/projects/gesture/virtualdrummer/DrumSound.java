@@ -1,11 +1,15 @@
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
-import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
-import javax.sound.midi.*;
+
 import javax.sound.midi.MidiChannel;
+import javax.sound.midi.MidiDevice;
+import javax.sound.midi.MidiMessage;
+import javax.sound.midi.MidiSystem;
+import javax.sound.midi.MidiUnavailableException;
+import javax.sound.midi.Receiver;
 import javax.sound.midi.Synthesizer;
 /**
  * A particular drum sound.

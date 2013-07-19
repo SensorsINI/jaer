@@ -6,6 +6,7 @@ package ch.unizh.ini.jaer.projects.sensoryfusion.slaem;
 
 import java.lang.reflect.Array;
 import java.util.Arrays;
+
 import javax.media.opengl.GLAutoDrawable;
 
 /**

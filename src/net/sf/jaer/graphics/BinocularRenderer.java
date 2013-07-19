@@ -8,8 +8,10 @@
  * Open. You can then make changes to the template in the Source Editor.
  */
 package net.sf.jaer.graphics;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BinocularDisparityEvent;
+import net.sf.jaer.event.BinocularEvent;
+import net.sf.jaer.event.EventPacket;
 /**
  * Renders a stereo pair of retinas. 
  * Each eye is rendered in a different color, 

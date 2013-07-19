@@ -7,7 +7,6 @@ package ch.unizh.ini.jaer.projects.integrateandfire;
 
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**
  *

@@ -10,7 +10,7 @@
 package net.sf.jaer.graphics;
 
 //import ch.unizh.ini.caviar.aemonitor.EventXYType;
-import net.sf.jaer.chip.*;
+import net.sf.jaer.chip.AEChip;
 
 /**
  * A subclass of ChipCanvas just for retinas. At present this is just a 'marker' class.

@@ -6,6 +6,7 @@ package ch.unizh.ini.jaer.chip.retina;
 
 import java.util.Timer;
 import java.util.TimerTask;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.AEChip;

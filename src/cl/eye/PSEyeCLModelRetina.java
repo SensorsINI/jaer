@@ -4,18 +4,17 @@
  */
 package cl.eye;
 
-import ch.unizh.ini.jaer.chip.dvs320.cDVSEvent;
-import ch.unizh.ini.jaer.projects.thresholdlearner.TemporalContrastEvent;
-import cl.eye.CLCamera.CameraMode;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Random;
-import java.util.ArrayList;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
+
 import javax.swing.JPanel;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.biasgen.Biasgen;
@@ -29,7 +28,12 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+
 import org.jdesktop.beansbinding.Validator;
+
+import ch.unizh.ini.jaer.chip.dvs320.cDVSEvent;
+import ch.unizh.ini.jaer.projects.thresholdlearner.TemporalContrastEvent;
+import cl.eye.CLCamera.CameraMode;
 
 /**
  * A behavioral model of several AE retina models using the code laboratories interface to a PS3-Eye camera.

@@ -43,10 +43,15 @@ From java developer connection <a href="http://developer.java.sun.com/developer/
 @author Manoj Agarwala manoj@ysoftware.com
 
  */
-import java.awt.*;
-import java.applet.*;
+import java.applet.Applet;
+import java.awt.Dimension;
+import java.awt.Frame;
 import java.awt.Image;
-import javax.swing.*;
+import java.awt.Toolkit;
+import java.awt.Window;
+
+import javax.swing.ImageIcon;
+import javax.swing.JLabel;
 
 public class GifViewerWindow {
 

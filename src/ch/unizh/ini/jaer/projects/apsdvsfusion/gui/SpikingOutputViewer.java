@@ -6,9 +6,7 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion.gui;
 import java.awt.Dimension;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.lang.reflect.InvocationTargetException;
 
-import net.sf.jaer.event.PolarityEvent.Polarity;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SignalHandler;
 //import net.sf.jaer.graphics.ImageDisplay;

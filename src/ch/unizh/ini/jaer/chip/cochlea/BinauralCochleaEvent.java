@@ -1,6 +1,5 @@
 package ch.unizh.ini.jaer.chip.cochlea;
 /** Created Oct 2008 by tobi */
-import net.sf.jaer.event.TypedEvent;
 
 
 /** 

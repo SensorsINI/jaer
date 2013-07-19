@@ -4,8 +4,8 @@
  */
 package net.sf.jaer.hardwareinterface;
 
-import de.thesycon.usbio.UsbIoBuf;
 import net.sf.jaer.aemonitor.AEPacketRawPool;
+import de.thesycon.usbio.UsbIoBuf;
 
 /**
  * This class can translate events from UsbIo data buffers to AEPacketRaw data.

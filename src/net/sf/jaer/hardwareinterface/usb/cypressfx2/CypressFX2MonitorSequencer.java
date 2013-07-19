@@ -9,15 +9,24 @@
  */
 package net.sf.jaer.hardwareinterface.usb.cypressfx2;
 
-import net.sf.jaer.aemapper.*;
-import net.sf.jaer.aesequencer.*;
-import net.sf.jaer.aemonitor.*;
-import net.sf.jaer.hardwareinterface.*;
-import de.thesycon.usbio.*;
-import de.thesycon.usbio.structs.*;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.logging.*;
+import java.util.Collection;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.logging.Logger;
+
+import net.sf.jaer.aemapper.AEMapper;
+import net.sf.jaer.aemapper.AESoftMapper;
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.aesequencer.AEMonitorSequencerInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.HasUpdatableFirmware;
+import de.thesycon.usbio.UsbIo;
+import de.thesycon.usbio.UsbIoBuf;
+import de.thesycon.usbio.UsbIoInterface;
+import de.thesycon.usbio.UsbIoWriter;
+import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
+import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
+import de.thesycon.usbio.structs.USBIO_PIPE_PARAMETERS;
 //import java.io.*;
 /**
  * Extends CypressFX2 to add functionality for sequencing and monitoring events.

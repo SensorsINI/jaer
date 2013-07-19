@@ -13,10 +13,10 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.chip.TypedEventExtractor;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAERb;
-import ch.unizh.ini.jaer.chip.retina.Tmpdiff64;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.TypedEvent;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAERb;
+import ch.unizh.ini.jaer.chip.retina.Tmpdiff64;
 
 /**
  * Simultaneously displays Tmpdiff64 and CochleaAERb in one ChipCanvas. A real hack.

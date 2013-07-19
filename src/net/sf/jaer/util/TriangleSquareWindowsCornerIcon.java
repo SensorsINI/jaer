@@ -1,6 +1,9 @@
 package net.sf.jaer.util;
-import javax.swing.*;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Graphics;
+
+import javax.swing.Icon;
 
 /**
  Makes a triangle grab resize handle for use in corner of a window to mimic Windows resize behavior.

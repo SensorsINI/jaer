@@ -6,8 +6,11 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow.graphics;
 
+import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.biasgen.BiasgenFrame;
+import net.sf.jaer.biasgen.MasterbiasPanel;
+import net.sf.jaer.biasgen.PotPanel;
 import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MDC2D.MDC2DBiasgen;
-import net.sf.jaer.biasgen.*;
 
 /**
  * A panel for controlling a bias generator, 

@@ -8,10 +8,14 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow.motion18;
 
-import ch.unizh.ini.jaer.projects.opticalflow.*;
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.biasgen.VDAC.*;
-import net.sf.jaer.chip.*;
+import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.biasgen.Pot;
+import net.sf.jaer.biasgen.PotArray;
+import net.sf.jaer.biasgen.VDAC.DAC;
+import net.sf.jaer.biasgen.VDAC.VPot;
+import net.sf.jaer.chip.Chip;
+import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
+import ch.unizh.ini.jaer.projects.opticalflow.MotionData;
 import ch.unizh.ini.jaer.projects.opticalflow.graphics.OpticalFlowDisplayMethod;
 
 /**

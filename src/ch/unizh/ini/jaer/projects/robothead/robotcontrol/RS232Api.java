@@ -1,10 +1,17 @@
 package ch.unizh.ini.jaer.projects.robothead.robotcontrol;
-import java.io.*;
-import java.util.*;
-import javax.comm.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Enumeration;
+import java.util.Vector;
+
+import javax.comm.CommPortIdentifier;
 /// TO DO
 ///  Forget about Message class... read string length with length() function
 ///  and only return/pass String
+import javax.comm.PortInUseException;
+import javax.comm.SerialPort;
+import javax.comm.UnsupportedCommOperationException;
 
 
 /*

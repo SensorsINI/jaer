@@ -3,13 +3,9 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
-import java.util.Random;
 import java.util.prefs.Preferences;
 
-import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.LeakyIntegrateAndFire;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.SimplePoissonModel;
-
-import net.sf.jaer.event.PolarityEvent;
 
 /**
  * @author Dennis

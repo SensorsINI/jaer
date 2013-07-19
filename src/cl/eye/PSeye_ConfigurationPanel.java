@@ -1,11 +1,12 @@
 package cl.eye;
 
-import cl.eye.PSeye_OpticalFlowHardwareInterface;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.prefs.Preferences;
+
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**

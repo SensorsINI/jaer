@@ -3,6 +3,7 @@ package ch.unizh.ini.jaer.projects.cochsoundloc;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.logging.Logger;
+
 import javax.swing.Timer;
 
 /**

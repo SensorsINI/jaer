@@ -9,25 +9,38 @@
  */
 package ch.unizh.ini.jaer.chip.retina.r10y;
 
-import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
-import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
-import ch.unizh.ini.jaer.chip.retina.r10y.R10Y.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.beans.PropertyChangeSupport;
-import java.util.Observable;
-import net.sf.jaer.aemonitor.*;
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
-import net.sf.jaer.graphics.*;
-import net.sf.jaer.hardwareinterface.*;
-import java.awt.event.*;
-import java.io.*;
+import java.io.Serializable;
 import java.util.Iterator;
+import java.util.Observable;
 import java.util.Observer;
-import javax.swing.*;
+
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JComponent;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
+
 import net.sf.jaer.Description;
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.biasgen.BiasgenHardwareInterface;
+import net.sf.jaer.biasgen.ChipControlPanel;
+import net.sf.jaer.biasgen.IPot;
+import net.sf.jaer.biasgen.IPotArray;
+import net.sf.jaer.biasgen.Pot;
+import net.sf.jaer.chip.Chip;
+import net.sf.jaer.chip.RetinaExtractor;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2DVS128HardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
+import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 
 /**
  * Describes R10Y retina and its event extractor and bias generator.

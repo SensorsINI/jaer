@@ -8,29 +8,33 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow.mdc2d;
 
-import ch.unizh.ini.jaer.projects.opticalflow.*;
-import ch.unizh.ini.jaer.projects.opticalflow.graphics.BiasgenPanelMDC2D;
-import ch.unizh.ini.jaer.projects.opticalflow.graphics.OpticalFlowDisplayMethod;
-import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.SiLabsC8051F320_OpticalFlowHardwareInterface;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Observable;
-import java.util.prefs.InvalidPreferencesFormatException;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
+
 import javax.swing.JPanel;
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.biasgen.VDAC.*;
-import net.sf.jaer.chip.*;
+
+import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.biasgen.BiasgenFrame;
+import net.sf.jaer.biasgen.ChipControlPanel;
+import net.sf.jaer.biasgen.IPot;
+import net.sf.jaer.biasgen.IPotArray;
+import net.sf.jaer.biasgen.Pot;
+import net.sf.jaer.biasgen.PotArray;
+import net.sf.jaer.biasgen.VDAC.DAC;
+import net.sf.jaer.biasgen.VDAC.VPot;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.chip.Chip;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.util.RemoteControl;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
+import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
+import ch.unizh.ini.jaer.projects.opticalflow.MotionData;
+import ch.unizh.ini.jaer.projects.opticalflow.graphics.BiasgenPanelMDC2D;
+import ch.unizh.ini.jaer.projects.opticalflow.graphics.OpticalFlowDisplayMethod;
 
 /**
  * Describes the MDC2D chip from Shih-Chii Liu and Alan Stocker

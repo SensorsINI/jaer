@@ -12,13 +12,16 @@
 
 package net.sf.jaer.eventprocessing.filter;
 
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.*;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.ArrayList;
 import java.util.Observable;
 import java.util.Observer;
+
 import net.sf.jaer.Description;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**
  * Does an event-based spatial highpass filter, so that only small objects pass through.

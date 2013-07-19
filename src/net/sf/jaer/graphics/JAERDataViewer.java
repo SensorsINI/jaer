@@ -15,17 +15,15 @@ import java.awt.LayoutManager;
 import java.awt.Rectangle;
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Timer;
 import java.util.TimerTask;
+
 import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
-import java.util.Timer;
 import javax.swing.table.AbstractTableModel;
 
 /**

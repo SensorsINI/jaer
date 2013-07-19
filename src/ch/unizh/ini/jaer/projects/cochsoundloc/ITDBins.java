@@ -4,7 +4,6 @@
  */
 package ch.unizh.ini.jaer.projects.cochsoundloc;
 
-import java.lang.Math.*;
 import java.util.logging.Logger;
 
 /**

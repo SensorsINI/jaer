@@ -13,8 +13,8 @@ package ch.unizh.ini.jaer.projects.opticalflow.mdc2d;
  */
 
 import net.sf.jaer.util.jama.Matrix;
-import ch.unizh.ini.jaer.projects.opticalflow.*;
-import java.lang.Math.*;
+import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
+import ch.unizh.ini.jaer.projects.opticalflow.MotionData;
 
 /**
  * Packs data returned from optical flow sensor.

@@ -13,7 +13,8 @@ import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Image;
-import net.sf.jaer.chip.*;
+
+import net.sf.jaer.chip.AEChip;
 
 /**
  * Visualizes a 2D matching matrix as a grayscale image. The colors are scaled s.t. the maximal values are white and the minimal

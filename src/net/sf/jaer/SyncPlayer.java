@@ -15,8 +15,10 @@ import java.util.Map.Entry;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 import java.util.prefs.Preferences;
+
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;

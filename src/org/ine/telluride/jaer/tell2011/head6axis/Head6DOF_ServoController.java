@@ -4,19 +4,24 @@
  */
 package org.ine.telluride.jaer.tell2011.head6axis;
 
-import gnu.io.UnsupportedCommOperationException;
 import java.awt.geom.Point2D;
-import java.awt.geom.Point2D.Float;
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.hardwareinterface.*;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.serial.HWP_UART;
 
 /**

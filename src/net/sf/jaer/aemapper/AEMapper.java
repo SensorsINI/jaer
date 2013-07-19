@@ -9,7 +9,7 @@
 
 package net.sf.jaer.aemapper;
 
-import net.sf.jaer.aemonitor.*;
+import net.sf.jaer.aemonitor.AEPacketRaw;
 
 /**
  * Interface for an event mapper - a device that maps packets of events from input to output.

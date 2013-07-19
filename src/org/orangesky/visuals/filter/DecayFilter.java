@@ -4,14 +4,14 @@
  */
 
 package org.orangesky.visuals.filter;
+import java.util.Random;
+
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import java.util.Random;
-import java.lang.Math.*;
 /**
  * This filter does something - not clear what. No comments.
  * TODO fix javadoc, move this class to proper package

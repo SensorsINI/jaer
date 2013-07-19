@@ -6,11 +6,9 @@ package ch.unizh.ini.jaer.projects.opticalflow.usbinterface;
 
 import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
 import java.util.ArrayList;
+
 import javax.swing.JFrame;
-import javax.swing.WindowConstants;
 
 /**
  * a very simple GUI window that can be used to directly send commands over a

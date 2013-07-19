@@ -4,12 +4,13 @@
  * Created on July 16, 2007, 4:26 PM
  */
 package org.ine.telluride.jaer.wowwee;
-import net.sf.jaer.hardwareinterface.*;
-import net.sf.jaer.util.HexString;
 import java.lang.reflect.Field;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.logging.Logger;
+
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.util.HexString;
 /**
  * Tests WowWeee codes by sending the 12 bit numbers to the WowWeeRSHardwareInterface.
 Telluride 2007.

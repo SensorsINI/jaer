@@ -8,14 +8,12 @@ import java.io.IOException;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
-import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.concurrent.Exchanger;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
-import net.sf.jaer.eventio.AENetworkInterfaceConstants;
 
 /**
  *  Utility class for sending UDP string messages to a port at a different IP address. The messages are Strings

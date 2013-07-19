@@ -9,9 +9,9 @@ package net.sf.jaer.graphics;
  * Not sure yet about how to do the adaption best
  * @authors: juanle, hafliger
  */
-import net.sf.jaer.chip.Calibratible;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.*;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.TypedEvent;
 
 
  public class AdaptiveIntensityRendererColor extends AEChipRenderer  //implements Calibratible

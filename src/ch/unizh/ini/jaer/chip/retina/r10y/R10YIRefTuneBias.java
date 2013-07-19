@@ -5,8 +5,6 @@
 package ch.unizh.ini.jaer.chip.retina.r10y;
 
 import net.sf.jaer.biasgen.Biasgen;
-import net.sf.jaer.biasgen.IPot;
-import net.sf.jaer.chip.Chip;
 
 /**
  * The master tuning current source that all biases share.

@@ -6,8 +6,8 @@
 
 package net.sf.jaer.biasgen;
 
-import java.util.*;
-import java.util.prefs.*;
+import java.util.Observable;
+import java.util.prefs.Preferences;
 
 /**
  * Describes the master bias circuit and its configuration, and supplies methods for estimating parameters.

@@ -12,8 +12,9 @@
 
 package net.sf.jaer.biasgen;
 
-import net.sf.jaer.chip.*;
-import java.util.*;
+import java.util.ArrayList;
+
+import net.sf.jaer.chip.Chip;
 
 /**
  * A class to hold a group of pots; can be used to indicate related functionality.

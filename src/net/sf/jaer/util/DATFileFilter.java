@@ -6,8 +6,9 @@
 
 package net.sf.jaer.util;
 
+import java.io.File;
+
 import net.sf.jaer.eventio.AEDataFile;
-import java.io.*;
 
 /**
  * filter for AE event data files.

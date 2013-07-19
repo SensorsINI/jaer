@@ -8,16 +8,16 @@
  */
 package ch.unizh.ini.jaer.chip.cochlea;
 
-import ch.unizh.ini.jaer.projects.cochsoundloc.ITDFilter;
+import java.awt.Color;
+
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.TypedEventExtractor;
-import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
-import net.sf.jaer.graphics.AEChipRenderer;
-import java.awt.Color;
 import net.sf.jaer.eventprocessing.filter.RefractoryFilter;
+import net.sf.jaer.graphics.AEChipRenderer;
+import ch.unizh.ini.jaer.projects.cochsoundloc.ITDFilter;
 
 /**
  * For Shih-Chii's AMS cochlea with binaraul 64 stage cochlea each tap with 8 ganglion cells, 4 of LPF type and 4 of BPF type.

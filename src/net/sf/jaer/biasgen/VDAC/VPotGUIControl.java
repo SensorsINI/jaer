@@ -12,8 +12,10 @@
 
 package net.sf.jaer.biasgen.VDAC;
 
-import net.sf.jaer.biasgen.*;
-import javax.swing.*;
+import javax.swing.BoxLayout;
+import javax.swing.JPanel;
+
+import net.sf.jaer.biasgen.PotGUIControl;
 
 /**
  * A complete GUI conrol for an VPot.

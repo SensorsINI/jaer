@@ -11,6 +11,7 @@
 
 package net.sf.jaer.biasgen;
 import java.util.prefs.Preferences;
+
 import net.sf.jaer.graphics.AEViewer;
 /**
  *

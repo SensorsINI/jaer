@@ -3,7 +3,6 @@
  * and open the template in the editor.
  */
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
-import java.util.ArrayList;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 /**

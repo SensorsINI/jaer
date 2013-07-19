@@ -7,15 +7,26 @@
  * and open the template in the editor.
  */
 package net.sf.jaer.eventio;
-import java.util.logging.Level;
-import net.sf.jaer.aemonitor.*;
-import net.sf.jaer.util.EngineeringFormat;
 import java.beans.PropertyChangeSupport;
-import java.io.*;
-import java.nio.*;
-import java.nio.channels.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.EOFException;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.BufferUnderflowException;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.aemonitor.EventRaw;
+import net.sf.jaer.util.EngineeringFormat;
 /**
  * Class to stream in packets of events from binary input stream from a file recorded by AEViewer.
  *<p>

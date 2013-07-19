@@ -4,12 +4,12 @@
  */
 package ch.unizh.ini.jaer.chip.cochlea;
 
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ChannelBuffer;
-import ch.unizh.ini.jaer.chip.util.scanner.ScannerHardwareInterfaceProxy;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Logger;
+
+import ch.unizh.ini.jaer.chip.util.scanner.ScannerHardwareInterfaceProxy;
 
 /**
  * 

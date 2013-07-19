@@ -4,22 +4,26 @@
  */
 package ch.unizh.ini.jaer.projects.labyrinthkalman;
 
-import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap;
-import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap.PathPoint;
 import java.awt.geom.Point2D;
 import java.util.Observable;
 import java.util.Observer;
+
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.awt.GLCanvas;
-import javax.media.opengl.glu.*;
+import javax.media.opengl.glu.GLU;
+import javax.media.opengl.glu.GLUquadric;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.*;
+import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.HoughCircleTracker;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.FrameAnnotater;
+import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap;
+import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap.PathPoint;
 
 /**
  * Specialized tracker for ball location.

@@ -4,7 +4,6 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.event;
 
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.event.EventAssignable;
 import net.sf.jaer.event.TypedEvent;
 
 /**

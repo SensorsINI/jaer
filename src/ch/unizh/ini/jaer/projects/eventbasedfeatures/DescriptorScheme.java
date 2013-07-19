@@ -4,9 +4,6 @@
  */
 package ch.unizh.ini.jaer.projects.eventbasedfeatures;
 
-import ch.unizh.ini.jaer.projects.eventbasedfeatures.ConvolutionKernelMethod.*;
-import java.awt.*;
-import java.util.ArrayList;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;

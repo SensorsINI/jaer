@@ -6,11 +6,9 @@ package ch.unizh.ini.jaer.projects.eventbasedfeatures;
 
 import java.awt.Point;
 import java.util.ArrayList;
-import java.util.Arrays;
-import javax.swing.JFrame;
+
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.graphics.ImageDisplay;
 
 /** Super class containing all required methods for implementing binary feature detection schemes
  *  viz. FAST, FREAK etc.

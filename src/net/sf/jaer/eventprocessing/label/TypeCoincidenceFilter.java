@@ -7,11 +7,16 @@
 
 package net.sf.jaer.eventprocessing.label;
 
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
-import net.sf.jaer.eventprocessing.EventFilter2D;
-import java.util.*;
+import java.util.Observable;
+import java.util.Observer;
+
 import net.sf.jaer.Description;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OrientationEvent;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**
  * Computes coincidences betweeen different types of events at the same location in its input. Intended for e.g., a corner detector that works by

@@ -5,6 +5,7 @@
 package net.sf.jaer.hardwareinterface;
 
 import javax.swing.JDialog;
+
 import net.sf.jaer.chip.AEChip;
 
 /**

@@ -5,13 +5,13 @@
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.assignment;
 
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.signal.Signal;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.math.Correlation;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.FeatureExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.signal.signal.SignalExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.temporalpattern.SignalBasedTemporalPattern;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.temporalpattern.TemporalPattern;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.temporalpattern.TemporalPatternStorage;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.math.Correlation;
 
 /**
  *

@@ -5,9 +5,9 @@
 package ch.unizh.ini.jaer.chip.dvs320;
 
 import java.awt.BorderLayout;
-import java.util.ArrayList;
-import java.util.Arrays;
+
 import javax.swing.JPanel;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.graphics.AEViewer;

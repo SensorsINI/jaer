@@ -1,14 +1,19 @@
 package ch.unizh.ini.jaer.projects.rccar;
 
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
-import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.eventprocessing.FilterChain;
 import java.awt.Graphics2D;
-import java.util.*;
+import java.util.Observable;
+import java.util.Observer;
+
+import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.*;
+
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.TypedEvent;
+import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
  * @author chbraen

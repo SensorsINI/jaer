@@ -5,6 +5,7 @@
 package eu.seebetter.ini.chips.seebetter1011;
 
 import javax.swing.JComponent;
+
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.IPot;
 import net.sf.jaer.util.RemoteControlCommand;

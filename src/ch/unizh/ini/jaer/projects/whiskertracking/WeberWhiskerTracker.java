@@ -7,6 +7,7 @@ package ch.unizh.ini.jaer.projects.whiskertracking;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
+
 import org.ine.telluride.jaer.tell2010.pigtracker.PigTracker;
 
 /**

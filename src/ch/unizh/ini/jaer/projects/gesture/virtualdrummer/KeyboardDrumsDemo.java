@@ -1,7 +1,14 @@
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
-import javax.sound.midi.*;
-import java.awt.event.*;
-import javax.swing.*;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+
+import javax.sound.midi.MidiChannel;
+import javax.sound.midi.MidiSystem;
+import javax.sound.midi.MidiUnavailableException;
+import javax.sound.midi.Synthesizer;
+import javax.swing.JFrame;
 
 /**
  * This program the MIDI percussion channel with a Swing window.  It monitors

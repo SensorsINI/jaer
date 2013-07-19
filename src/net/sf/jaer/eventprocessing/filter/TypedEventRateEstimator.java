@@ -4,8 +4,6 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
-import java.util.Observable;
-import java.util.Observer;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;

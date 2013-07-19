@@ -1,10 +1,19 @@
 package ch.unizh.ini.jaer.projects.hopfield.orientationlearn;
 
-import java.applet.*;
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.lang.*;
-import java.util.*;
+import java.applet.Applet;
+import java.awt.Button;
+import java.awt.Canvas;
+import java.awt.Choice;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Event;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.GridLayout;
+import java.awt.Image;
+import java.awt.Label;
+import java.awt.Panel;
+import java.util.Random;
 
 
 public class Kohonen extends Applet

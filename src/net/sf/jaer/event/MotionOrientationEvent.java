@@ -12,7 +12,7 @@
 
 package net.sf.jaer.event;
 
-import java.awt.geom.*;
+import java.awt.geom.Point2D;
 
 /**
  * Represents an event with direction of motion and delay

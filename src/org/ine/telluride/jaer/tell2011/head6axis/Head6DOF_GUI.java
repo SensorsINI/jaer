@@ -17,10 +17,9 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.swing.JPanel;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
  * Allows mouse control of head.

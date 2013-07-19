@@ -9,7 +9,7 @@
 
 package net.sf.jaer.aemapper;
 
-import java.util.*;
+import java.util.Collection;
 
 /**
  * A monitor sequencer device signals it's willingness to remap events from input to output by implementing these methods.

@@ -4,6 +4,11 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.factory;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import net.sf.jaer.chip.AEChip;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.FeatureExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.activity.SimpleActivityExtractor;
@@ -12,7 +17,6 @@ import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.impleme
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.lifetime.SimpleLifetimeExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.moment.SimpleMomentExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.path.ConstantTimeDistancePathExtractor;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.path.ConstantTimePathExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.position.MomentPositionExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.velocity.SimpleVelocityExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.event.packet.SimplePacketEventExtractor;
@@ -26,7 +30,6 @@ import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.impleme
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.prediction.acceleration.LowPassAngularAccelerationPredictor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.prediction.occurance.TemporalPatternOccurancePredictor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.prediction.position.DiscreteHeunPositionPredictor;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.prediction.velocity.LowPassVelocityPredictor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.prediction.velocity.SyntheticVelocityPredictor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.signal.autocorrelation.SimpleAutoCorrelationExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.signal.correlation.SimpleSignalCorrelationExtractor;
@@ -37,10 +40,6 @@ import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.impleme
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.signal.signal.TransitionBasedSignalExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.signal.transition.PeakKernelTransitionHistory;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.FeatureManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
-import java.util.HashMap;
-import java.util.Map;
-import net.sf.jaer.chip.AEChip;
 
 /**
  *

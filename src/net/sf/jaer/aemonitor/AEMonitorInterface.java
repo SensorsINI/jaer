@@ -6,8 +6,9 @@
 
 package net.sf.jaer.aemonitor;
 
-import net.sf.jaer.chip.*;
-import net.sf.jaer.hardwareinterface.*;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
  * Defines interface for an AE monitor.

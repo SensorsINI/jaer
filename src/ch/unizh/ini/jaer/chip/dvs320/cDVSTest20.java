@@ -4,14 +4,6 @@ created 26 Oct 2008 for new cDVSTest chip
 package ch.unizh.ini.jaer.chip.dvs320;
 
 //import ch.unizh.ini.jaer.chip.util.externaladc.cDVSTestHardwareInterfaceProxy;
-import ch.unizh.ini.jaer.chip.dvs320.cDVSTestHardwareInterface;
-import ch.unizh.ini.jaer.chip.retina.*;
-import net.sf.jaer.aemonitor.*;
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.biasgen.VDAC.VPot;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
-import net.sf.jaer.hardwareinterface.*;
 import java.awt.BorderLayout;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -22,17 +14,32 @@ import java.util.HashMap;
 import java.util.Observable;
 import java.util.Random;
 import java.util.StringTokenizer;
+
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
+
 import net.sf.jaer.Description;
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.biasgen.BiasgenHardwareInterface;
+import net.sf.jaer.biasgen.IPotArray;
+import net.sf.jaer.biasgen.Pot;
 import net.sf.jaer.biasgen.Pot.Sex;
 import net.sf.jaer.biasgen.Pot.Type;
 import net.sf.jaer.biasgen.VDAC.DAC;
+import net.sf.jaer.biasgen.VDAC.VPot;
 import net.sf.jaer.biasgen.VDAC.VPotGUIControl;
+import net.sf.jaer.chip.Chip;
+import net.sf.jaer.chip.RetinaExtractor;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.ParameterControlPanel;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
+import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 
 /**
  * Describes  retina and its event extractor and bias generator.

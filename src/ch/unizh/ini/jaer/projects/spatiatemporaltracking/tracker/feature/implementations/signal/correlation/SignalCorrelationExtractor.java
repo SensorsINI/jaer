@@ -4,8 +4,9 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.signal.correlation;
 
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.correlation.CorrelationItem;
 import java.util.List;
+
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.correlation.CorrelationItem;
 
 /**
  *

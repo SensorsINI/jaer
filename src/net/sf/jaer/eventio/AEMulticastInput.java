@@ -1,10 +1,18 @@
 package net.sf.jaer.eventio;
 
-import net.sf.jaer.aemonitor.*;
-import java.io.*;
-import java.net.*;
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.InetAddress;
+import java.net.MulticastSocket;
+import java.net.SocketAddress;
+import java.net.UnknownHostException;
 import java.util.concurrent.Exchanger;
-import java.util.logging.*;
+import java.util.logging.Logger;
+
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.aemonitor.EventRaw;
 
 /** 
  * Receives input via multicast datagram packets from a server. This input is a Thread that reads the MulticastSocket in the background and

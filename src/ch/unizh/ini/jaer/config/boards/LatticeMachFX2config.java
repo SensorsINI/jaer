@@ -4,36 +4,32 @@
  */
 package ch.unizh.ini.jaer.config.boards;
 
-import ch.unizh.ini.jaer.config.AbstractConfigValue;
-import ch.unizh.ini.jaer.config.cpld.CPLDConfigValue;
-import ch.unizh.ini.jaer.config.cpld.CPLDShiftRegister;
-import ch.unizh.ini.jaer.config.dac.DAC;
-import ch.unizh.ini.jaer.config.dac.DAC_AD5391_channel;
-import ch.unizh.ini.jaer.config.dac.DACchannel;
-import ch.unizh.ini.jaer.config.dac.DACchannelArray;
-import ch.unizh.ini.jaer.config.fx2.PortBit;
-import ch.unizh.ini.jaer.config.fx2.TriStateablePortBit;
-import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
-import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
-import ch.unizh.ini.jaer.config.onchip.OutputMux;
-import java.math.BigInteger;
 import java.text.ParseException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import net.sf.jaer.biasgen.AddressedIPot;
 import net.sf.jaer.biasgen.AddressedIPotArray;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.biasgen.Pot;
-import net.sf.jaer.biasgen.PotArray;
-import net.sf.jaer.biasgen.VDAC.VPot;
 import net.sf.jaer.biasgen.coarsefine.AddressedIPotCF;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
+import ch.unizh.ini.jaer.config.AbstractConfigValue;
+import ch.unizh.ini.jaer.config.cpld.CPLDConfigValue;
+import ch.unizh.ini.jaer.config.cpld.CPLDShiftRegister;
+import ch.unizh.ini.jaer.config.dac.DAC;
+import ch.unizh.ini.jaer.config.dac.DACchannel;
+import ch.unizh.ini.jaer.config.dac.DACchannelArray;
+import ch.unizh.ini.jaer.config.fx2.PortBit;
+import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
 
 /**
  *

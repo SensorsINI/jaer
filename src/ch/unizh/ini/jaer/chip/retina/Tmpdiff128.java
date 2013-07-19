@@ -9,19 +9,31 @@
  */
 package ch.unizh.ini.jaer.chip.retina;
 
-import net.sf.jaer.aemonitor.*;
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
-import net.sf.jaer.graphics.*;
-import net.sf.jaer.hardwareinterface.*;
-import net.sf.jaer.hardwareinterface.usb.linux.CypressFX2RetinaLinux;
 import java.awt.BorderLayout;
-import java.awt.event.*;
-import java.io.*;
-import javax.swing.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.Serializable;
+
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JTabbedPane;
+
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.biasgen.BiasgenHardwareInterface;
+import net.sf.jaer.biasgen.ChipControlPanel;
+import net.sf.jaer.biasgen.IPot;
+import net.sf.jaer.biasgen.IPotArray;
+import net.sf.jaer.chip.Chip;
+import net.sf.jaer.chip.RetinaExtractor;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2TmpdiffRetinaHardwareInterface;
+import net.sf.jaer.hardwareinterface.usb.linux.CypressFX2RetinaLinux;
 
 /**
  * Describes tmpdiff128 retina and its event extractor and bias generator.

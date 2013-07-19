@@ -8,12 +8,19 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow.graphics;
 
-import ch.unizh.ini.jaer.projects.opticalflow.*;
-import com.phidgets.SpatialEventData;
-import net.sf.jaer.graphics.*;
-import java.util.prefs.*;
-import javax.media.opengl.*;
+import java.util.prefs.Preferences;
+
+import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
+
+import net.sf.jaer.graphics.ChipCanvas;
+import net.sf.jaer.graphics.DisplayMethod;
+import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
+import ch.unizh.ini.jaer.projects.opticalflow.MotionData;
+import ch.unizh.ini.jaer.projects.opticalflow.OpticalFlowIntegrator;
+
+import com.phidgets.SpatialEventData;
 
 /**
  * Displays output from an OpticalFlowChip. Optionally displays the photoreceptor 

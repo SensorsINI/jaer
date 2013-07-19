@@ -11,7 +11,6 @@ import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.event.TypedEvent;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**
  * @Description This filter serves as a user-interface to a map of integrate and

@@ -6,6 +6,7 @@ package ch.unizh.ini.jaer.projects.laser3d.plothistogram;
 
 import java.util.Observable;
 import java.util.Observer;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;

@@ -5,23 +5,6 @@
  */
 package ch.unizh.ini.jaer.chip.cochlea;
 
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.Biasgen.BufferIPot;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.Biasgen.AbstractConfigValue;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.Biasgen.Equalizer;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.Biasgen.Scanner;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.ConfigBit;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.ConfigInt;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.ConfigTristate;
-import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterfaceProxy;
-import java.util.HashMap;
-import java.util.Observable;
-import java.util.Observer;
-import javax.swing.JComponent;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JTextField;
-import net.sf.jaer.biasgen.BiasgenPanel;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -32,16 +15,35 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.util.HashMap;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+
 import javax.swing.AbstractButton;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JSlider;
+import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
+
+import net.sf.jaer.biasgen.BiasgenPanel;
 import net.sf.jaer.biasgen.VDAC.VPotGUIControl;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.ParameterControlPanel;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.Biasgen.AbstractConfigValue;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.Biasgen.BufferIPot;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.Biasgen.Equalizer;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.Biasgen.Scanner;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.ConfigBit;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.ConfigInt;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.ConfigTristate;
+import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterfaceProxy;
 
 /**
  * The custom control panel for CochleaAMS1c which includes IPots, VPots, local

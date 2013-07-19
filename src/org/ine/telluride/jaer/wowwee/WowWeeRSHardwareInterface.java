@@ -12,9 +12,10 @@
 
 package org.ine.telluride.jaer.wowwee;
 
+import java.util.logging.Logger;
+
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController;
 import net.sf.jaer.util.HexString;
-import java.util.logging.Logger;
 
 /**
  * For controlling WowWee RS (Robosapien type) toys (specifically the WowWee RoboQuad toy) 

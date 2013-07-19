@@ -5,20 +5,14 @@
 
 package ch.unizh.ini.jaer.projects.labyrinthkalman;
 
-import javax.media.opengl.GLAutoDrawable;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
+import java.util.Observable;
+import java.util.Observer;
+
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import java.util.*;
-import net.sf.jaer.eventprocessing.EventFilterDataLogger;
-import net.sf.jaer.graphics.FrameAnnotater;
-
-import javax.media.opengl.GL;
-import javax.media.opengl.GLAutoDrawable;
-import java.awt.*;
-import java.awt.event.*;
-
-import javax.swing.*;
 
 
 /**

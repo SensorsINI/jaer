@@ -4,15 +4,14 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.signal.period;
 
+import java.util.Arrays;
+
+import net.sf.jaer.chip.AEChip;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.correlation.CorrelationStorage;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.signal.autocorrelation.AutoCorrelationExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.FeatureManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import net.sf.jaer.chip.AEChip;
 
 /**
  *

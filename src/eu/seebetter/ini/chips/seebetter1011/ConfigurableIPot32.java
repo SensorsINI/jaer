@@ -3,7 +3,7 @@ package eu.seebetter.ini.chips.seebetter1011;
 /*
  * Part of jAER.
  */
-import net.sf.jaer.biasgen.*;
+import net.sf.jaer.biasgen.Biasgen;
 
 /**
  * Second generation IPot with full configurability and 32 bits of configuration, sharing a pair of global shifted voltage sources near the ground and power rails.

@@ -9,10 +9,13 @@
 
 package ch.unizh.ini.jaer.projects.stereo3D;
 
-import net.sf.jaer.aemonitor.*;
-import java.io.*;
-import java.util.*;
-import java.util.logging.*;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.Date;
+import java.util.logging.Logger;
+
+import net.sf.jaer.aemonitor.AEConstants;
 
 /**
  * Class to stream out packets of 3D reconstructed events in binary. The file format is

@@ -6,8 +6,6 @@
 
 package ch.unizh.ini.jaer.projects.topology;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 
 /**

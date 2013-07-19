@@ -3,7 +3,6 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
-import java.awt.Component;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
@@ -21,9 +20,8 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
-import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterBrowserPanel;
-
 import net.sf.jaer.util.SpikeSound;
+import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterBrowserPanel;
 
 /**
  * @author Dennis

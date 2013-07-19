@@ -10,9 +10,10 @@
 
 package ch.unizh.ini.jaer.chip.retina;
 
+import java.io.Serializable;
+
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.RetinaExtractor;
-import java.io.*;
 
 
 /**

@@ -4,6 +4,9 @@
  */
 package net.sf.jaer.hardwareinterface.usb.toradex;
 
+import java.beans.PropertyChangeSupport;
+import java.util.logging.Logger;
+
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
@@ -11,8 +14,6 @@ import de.thesycon.usbio.UsbIoBuf;
 import de.thesycon.usbio.UsbIoErrorCodes;
 import de.thesycon.usbio.UsbIoReader;
 import de.thesycon.usbio.structs.USBIO_SET_CONFIGURATION;
-import java.beans.PropertyChangeSupport;
-import java.util.logging.Logger;
 
 /**
  * Interfaces to the <a href="http://www.toradex.com">Toradex</a> Oak G 3 axis acceleration sensor.

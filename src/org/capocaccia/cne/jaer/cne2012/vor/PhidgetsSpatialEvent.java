@@ -6,9 +6,9 @@ package org.capocaccia.cne.jaer.cne2012.vor;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
+
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.event.PolarityEvent;
 
 /**
  * Special events that allow including the Phidgets Spatial sensor events in a

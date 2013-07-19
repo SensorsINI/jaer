@@ -13,7 +13,9 @@
 package net.sf.jaer.eventprocessing.filter;
 
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.*;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**

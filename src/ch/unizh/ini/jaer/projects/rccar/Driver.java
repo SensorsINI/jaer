@@ -11,30 +11,40 @@
  */
 package ch.unizh.ini.jaer.projects.rccar;
 
-import net.sf.jaer.chip.*;
+import java.awt.Graphics2D;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.io.BufferedOutputStream;
+import java.io.DataOutputStream;
+import java.net.Socket;
+import java.util.logging.Logger;
+
+import javax.media.opengl.GL2;
+import javax.media.opengl.GLAutoDrawable;
+import javax.media.opengl.glu.GLU;
+import javax.media.opengl.glu.GLUquadric;
+
+import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventio.*;
-import net.sf.jaer.eventprocessing.*;
-import net.sf.jaer.eventprocessing.filter.*;
+import net.sf.jaer.eventio.AESocket;
+import net.sf.jaer.eventprocessing.EventFilter;
+import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
+import net.sf.jaer.eventprocessing.filter.OnOffProximityLineFilter;
+import net.sf.jaer.eventprocessing.filter.RotateFilter;
+import net.sf.jaer.eventprocessing.filter.XYTypeFilter;
 import net.sf.jaer.eventprocessing.label.SimpleOrientationFilter;
-import net.sf.jaer.eventprocessing.tracking.*;
 import net.sf.jaer.eventprocessing.tracking.HoughLineTracker;
+import net.sf.jaer.eventprocessing.tracking.LineDetector;
 import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.hardwareinterface.*;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.toradex.ToradexOakG3AxisAccelerationSensor;
 import net.sf.jaer.hardwareinterface.usb.toradex.ToradexOakG3AxisAccelerationSensor.Acceleration;
 import net.sf.jaer.hardwareinterface.usb.toradex.ToradexOakG3AxisAccelerationSensorGUI;
 import net.sf.jaer.util.TobiLogger;
 import net.sf.jaer.util.filter.LowpassFilter;
-import java.awt.Graphics2D;
-import java.beans.*;
-import java.io.BufferedOutputStream;
-import java.io.DataOutputStream;
-import java.net.Socket;
-import java.util.logging.*;
-import javax.media.opengl.*;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.glu.*;
+
 import org.capocaccia.cne.jaer.multilinetracking.PairedEventLinearEdgeClusterTracker;
 
 /**

@@ -6,8 +6,9 @@
 
 package ch.unizh.ini.jaer.chip.retina;
 
+import java.io.Serializable;
+
 import net.sf.jaer.chip.EventExtractorInterface;
-import java.io.*;
 
 
 /**

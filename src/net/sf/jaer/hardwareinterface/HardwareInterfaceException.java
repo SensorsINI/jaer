@@ -6,7 +6,11 @@
 
 package net.sf.jaer.hardwareinterface;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
+
 import net.sf.jaer.util.ExceptionListener;
 
 /**

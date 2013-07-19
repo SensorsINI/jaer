@@ -12,6 +12,7 @@
 package net.sf.jaer.jaerappletviewer;
 
 import java.awt.BorderLayout;
+
 import javax.swing.JApplet;
 import javax.swing.JFrame;
 

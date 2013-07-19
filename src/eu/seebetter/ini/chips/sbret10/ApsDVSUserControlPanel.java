@@ -4,9 +4,6 @@
  */
 package eu.seebetter.ini.chips.sbret10;
 
-import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
-import ch.unizh.ini.jaer.config.cpld.CPLDInt;
-import eu.seebetter.ini.chips.ApsDvsChip;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.beans.PropertyChangeEvent;
@@ -14,11 +11,16 @@ import java.beans.PropertyChangeListener;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Logger;
+
 import javax.swing.JSpinner;
+
 import net.sf.jaer.biasgen.PotTweaker;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.config.ApsDvsConfig;
 import net.sf.jaer.graphics.AEChipRenderer;
+import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
+import ch.unizh.ini.jaer.config.cpld.CPLDInt;
+import eu.seebetter.ini.chips.ApsDvsChip;
 
 /**
  * Wraps some key apsDVS sensor control in more user-friendly control panel.

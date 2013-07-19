@@ -7,10 +7,10 @@ package ch.unizh.ini.jaer.chip.dvs320;
 
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
-import java.util.HashMap;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Logger;
+
 import javax.swing.AbstractAction;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;

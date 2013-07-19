@@ -4,27 +4,13 @@
  */
 package net.sf.jaer.hardwareinterface.usb.silabs;
 
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1bHardwareInterface.AEReader;
-import de.thesycon.usbio.PnPNotify;
-import de.thesycon.usbio.PnPNotifyInterface;
-import de.thesycon.usbio.UsbIo;
-import de.thesycon.usbio.UsbIoBuf;
-import de.thesycon.usbio.UsbIoErrorCodes;
-import de.thesycon.usbio.UsbIoInterface;
-import de.thesycon.usbio.UsbIoPipe;
-import de.thesycon.usbio.UsbIoReader;
-import de.thesycon.usbio.structs.USBIO_CONFIGURATION_INFO;
-import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
-import de.thesycon.usbio.structs.USBIO_PIPE_PARAMETERS;
-import de.thesycon.usbio.structs.USBIO_SET_CONFIGURATION;
-import de.thesycon.usbio.structs.USB_DEVICE_DESCRIPTOR;
-import de.thesycon.usbio.structs.USB_STRING_DESCRIPTOR;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+
 import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -43,6 +29,20 @@ import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.util.HexString;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1bHardwareInterface.AEReader;
+import de.thesycon.usbio.PnPNotify;
+import de.thesycon.usbio.UsbIo;
+import de.thesycon.usbio.UsbIoBuf;
+import de.thesycon.usbio.UsbIoErrorCodes;
+import de.thesycon.usbio.UsbIoInterface;
+import de.thesycon.usbio.UsbIoPipe;
+import de.thesycon.usbio.UsbIoReader;
+import de.thesycon.usbio.structs.USBIO_CONFIGURATION_INFO;
+import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
+import de.thesycon.usbio.structs.USBIO_PIPE_PARAMETERS;
+import de.thesycon.usbio.structs.USBIO_SET_CONFIGURATION;
+import de.thesycon.usbio.structs.USB_DEVICE_DESCRIPTOR;
+import de.thesycon.usbio.structs.USB_STRING_DESCRIPTOR;
 
 /**
  * USBIO interface to SiLabs C8051F3x based AE monitor and DVS128 chip; used for DVS128_PAER board.

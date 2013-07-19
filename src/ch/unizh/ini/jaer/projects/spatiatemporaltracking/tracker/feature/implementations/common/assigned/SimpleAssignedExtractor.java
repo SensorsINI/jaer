@@ -4,12 +4,13 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.assigned;
 
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.FeatureManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
 import java.util.Arrays;
+
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.TypedEvent;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.FeatureManager;
 
 /**
  *

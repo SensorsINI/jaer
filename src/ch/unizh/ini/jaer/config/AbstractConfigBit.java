@@ -6,8 +6,10 @@ package ch.unizh.ini.jaer.config;
 
 import java.awt.event.ActionEvent;
 import java.util.prefs.PreferenceChangeEvent;
+
 import javax.swing.AbstractAction;
 import javax.swing.Action;
+
 import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.Chip;
 

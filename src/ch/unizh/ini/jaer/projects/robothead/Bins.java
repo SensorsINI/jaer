@@ -10,7 +10,6 @@
 package ch.unizh.ini.jaer.projects.robothead;
 
 import java.util.Vector;
-import java.lang.Math.*;
 
 /**
  *

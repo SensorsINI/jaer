@@ -7,10 +7,10 @@ package jp.ac.osakau.eng.eei;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.chip.*;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.chip.RetinaExtractor;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
-import net.sf.jaer.event.PolarityEvent;
 
 /**
  * The intelligent vision sensor from the Yagi lab at Osaka University.

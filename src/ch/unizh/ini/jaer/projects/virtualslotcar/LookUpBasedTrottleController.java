@@ -4,13 +4,15 @@
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
-import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import java.awt.geom.Point2D;
+
 import javax.media.opengl.GLAutoDrawable;
+
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /**
  * Learns the throttle at different part of the track.

@@ -6,9 +6,10 @@
 
 package net.sf.jaer.biasgen;
 
-import net.sf.jaer.util.EngineeringFormat;
-import java.awt.*;
+import java.awt.Toolkit;
 import java.util.Observer;
+
+import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * A penel for displaying and controlling the masterbias.

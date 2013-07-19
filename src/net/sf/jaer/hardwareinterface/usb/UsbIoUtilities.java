@@ -11,15 +11,15 @@
  */
 package net.sf.jaer.hardwareinterface.usb;
 
+import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
+import java.util.HashMap;
+import java.util.logging.Logger;
+
 import de.thesycon.usbio.PnPNotify;
 import de.thesycon.usbio.PnPNotifyInterface;
 import de.thesycon.usbio.UsbIo;
 import de.thesycon.usbio.UsbIoErrorCodes;
-import java.util.ArrayList;
-import java.util.ConcurrentModificationException;
-import java.util.HashMap;
-import java.util.logging.*;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.USBIOHardwareInterfaceFactory;
 
 /**
  * Static methods and flags for USBIO to help build code that will run on non-windows platforms even though Thesycon USBIO

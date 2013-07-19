@@ -6,7 +6,6 @@ ClusterEvent *
 
 package ch.unizh.ini.jaer.projects.integrateandfire;
 
-import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTrackerEvent;
 
 /**

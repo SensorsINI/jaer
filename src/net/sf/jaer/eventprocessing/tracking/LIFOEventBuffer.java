@@ -1,7 +1,8 @@
 package net.sf.jaer.eventprocessing.tracking;
 
-import net.sf.jaer.event.*;
 import java.util.Iterator;
+
+import net.sf.jaer.event.BasicEvent;
 
 
 /** A circular buffer of events with methods for adding new events and getting

@@ -10,21 +10,21 @@
 
 package net.sf.jaer.chip;
 
-import ch.unizh.ini.jaer.chip.retina.DVS128;
 import java.beans.PropertyChangeSupport;
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Observable;
 import java.util.logging.Level;
-import net.sf.jaer.aemonitor.*;
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.biasgen.Biasgen;
-import net.sf.jaer.hardwareinterface.*;
-import java.util.*;
 import java.util.logging.Logger;
-import java.util.prefs.*;
+import java.util.prefs.Preferences;
+
 import net.sf.jaer.Description;
+import net.sf.jaer.aemonitor.AEMonitorInterface;
+import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.biasgen.BiasgenHardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.util.RemoteControl;
 
 /**

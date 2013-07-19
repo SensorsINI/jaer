@@ -6,7 +6,8 @@
 package ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing;
 
 //import java.io.*;
-import java.util.*;
+import java.util.TimerTask;
+
 import net.sf.jaer.eventprocessing.FilterFrame;
 
 /**

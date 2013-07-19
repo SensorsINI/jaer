@@ -5,14 +5,13 @@
 package ch.unizh.ini.jaer.projects.integrateandfire;
 
 import java.io.File;
-import java.io.FileFilter;
 import java.io.FileNotFoundException;
-import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.swing.JFileChooser;
 import javax.swing.SwingUtilities;
+
 import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.event.OutputEventIterator;
 
 /**
  * // This exists to provide a common interface for all all networks containing 

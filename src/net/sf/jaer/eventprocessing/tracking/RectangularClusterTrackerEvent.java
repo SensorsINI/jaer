@@ -6,9 +6,8 @@
 package net.sf.jaer.eventprocessing.tracking;
 
 import javax.media.opengl.GLAutoDrawable;
-import net.sf.jaer.event.BasicEvent;
+
 import net.sf.jaer.event.TypedEvent;
-import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 
 /**
  * Extends an event of a named type to include a reference to a RectangularClusterTracker.Cluster.

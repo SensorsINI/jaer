@@ -4,9 +4,10 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.event;
 
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.FeatureExtractable;
 import java.util.Collection;
+
 import net.sf.jaer.event.TypedEvent;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.FeatureExtractable;
 
 /**
  *

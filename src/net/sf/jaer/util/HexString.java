@@ -6,7 +6,7 @@
 
 package net.sf.jaer.util;
 
-import java.text.*;
+import java.text.ParseException;
 
 /**
  * Provides static methods for converting from integer types to Hex string representations.

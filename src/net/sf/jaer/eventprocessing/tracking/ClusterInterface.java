@@ -6,8 +6,6 @@
 package net.sf.jaer.eventprocessing.tracking;
 
 import java.awt.geom.Point2D;
-import java.util.ArrayList;
-import net.sf.jaer.eventprocessing.tracking.ClusterPathPoint;
 
 /**
  *  A mimimal interface to cluster tracker clusters, exposing commonly used features.

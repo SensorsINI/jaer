@@ -4,10 +4,8 @@
  */
 package ch.unizh.ini.jaer.chip.util.scanner;
 
-import java.util.logging.Logger;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceProxy;
-import java.util.prefs.Preferences;
 import net.sf.jaer.chip.Chip;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceProxy;
 
 /**
  * Represents the hardware scanner interface as a host-side software object that stores

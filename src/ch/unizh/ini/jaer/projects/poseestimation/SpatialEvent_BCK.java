@@ -2,6 +2,7 @@ package ch.unizh.ini.jaer.projects.poseestimation;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
+
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.PolarityEvent;
 

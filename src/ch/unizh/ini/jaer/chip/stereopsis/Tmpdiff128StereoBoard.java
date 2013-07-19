@@ -9,17 +9,19 @@
 
 package ch.unizh.ini.jaer.chip.stereopsis;
 
-import net.sf.jaer.stereopsis.*;
+import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.chip.AEChip;
-import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
-import net.sf.jaer.Description;
-import net.sf.jaer.event.*;
 import net.sf.jaer.event.BinocularEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.BinocularRenderer;
+import net.sf.jaer.stereopsis.StereoChipInterface;
+import net.sf.jaer.stereopsis.Stereopsis;
+import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
 
 /**
  * The AEChip object representing the Tmpdiff128 Stereo Board. This board holds two Tmpdiff128 chips and uses the CypressFX2LP with the Xilinx Coolrunner

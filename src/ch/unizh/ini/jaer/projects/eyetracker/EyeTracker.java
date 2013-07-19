@@ -12,20 +12,25 @@
 
 package ch.unizh.ini.jaer.projects.eyetracker;
 
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.event.*;
-import net.sf.jaer.eventprocessing.EventFilterDataLogger;
-import net.sf.jaer.graphics.*;
-import net.sf.jaer.graphics.FrameAnnotater;
-import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
 import java.util.Observable;
 import java.util.Observer;
-import javax.media.opengl.*;
+
+import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.glu.*;
-import javax.swing.*;
+import javax.media.opengl.GLException;
+import javax.media.opengl.glu.GLU;
+import javax.media.opengl.glu.GLUquadric;
+import javax.swing.JFrame;
+
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.EventFilterDataLogger;
+import net.sf.jaer.graphics.EyeTarget;
+import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
  * A filter whose underlying model rims (pupil and iris) with a position and radius and rimThickness, which is pushed around by events.

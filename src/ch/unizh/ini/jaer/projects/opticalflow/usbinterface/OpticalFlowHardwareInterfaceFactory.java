@@ -12,14 +12,20 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow.usbinterface;
 
-import cl.eye.PSeye_OpticalFlowHardwareInterface;
-import cl.eye.CLCamera;
-import cl.eye.CLRetinaHardwareInterface;
-import net.sf.jaer.hardwareinterface.*;
-import de.thesycon.usbio.*;
-import de.thesycon.usbio.structs.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+
+import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
+import cl.eye.CLCamera;
+import cl.eye.PSeye_OpticalFlowHardwareInterface;
+import de.thesycon.usbio.PnPNotify;
+import de.thesycon.usbio.PnPNotifyInterface;
+import de.thesycon.usbio.UsbIo;
+import de.thesycon.usbio.UsbIoErrorCodes;
+import de.thesycon.usbio.structs.USB_DEVICE_DESCRIPTOR;
 
 /**
  * Makes OpticalFlowHardwareInterface's.

@@ -4,15 +4,14 @@
  */
 package ch.unizh.ini.jaer.projects.cochsoundloc;
 
-import javax.swing.JFrame;
 import java.awt.FlowLayout;
-import java.awt.Toolkit;
-
-import javax.swing.JLabel;
-import javax.swing.ImageIcon;
-
 import java.awt.Font;
+import java.awt.Toolkit;
 import java.net.URL;
+
+import javax.swing.ImageIcon;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
 
 /**
  *

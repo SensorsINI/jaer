@@ -5,16 +5,21 @@
 
 package ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing;
 
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
+
+import net.sf.jaer.Description;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import java.io.*;
-import java.net.*;
-import java.util.*;
-import net.sf.jaer.Description;
 
 
 /**

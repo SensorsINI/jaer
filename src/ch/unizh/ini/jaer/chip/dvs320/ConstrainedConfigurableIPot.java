@@ -5,8 +5,9 @@
 
 package ch.unizh.ini.jaer.chip.dvs320;
 
-import net.sf.jaer.biasgen.Biasgen;
 import java.util.ArrayList;
+
+import net.sf.jaer.biasgen.Biasgen;
 
 /**
  * A ConfigurableIPotRev0 constrained to share a buffer current in common with other ConstrainedConfigurableIPots.

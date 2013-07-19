@@ -5,8 +5,9 @@
 
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
-import javax.media.opengl.*;
 import java.awt.geom.Point2D;
+
+import javax.media.opengl.GL2;
 
 /**
  * Implements the movement and drawing of a slotcar

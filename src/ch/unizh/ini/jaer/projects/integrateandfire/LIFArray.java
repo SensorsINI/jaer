@@ -7,13 +7,6 @@ package ch.unizh.ini.jaer.projects.integrateandfire;
 
 
 // Java  Stuff
-import java.io.File;
-import java.io.FileNotFoundException;
-
-
-import java.util.Scanner;
-import java.util.NoSuchElementException;
-import javax.swing.*;
 import net.sf.jaer.event.OutputEventIterator;
 
 /**

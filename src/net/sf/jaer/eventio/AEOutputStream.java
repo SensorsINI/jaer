@@ -5,10 +5,11 @@
 package net.sf.jaer.eventio;
 
 import java.io.DataOutputStream;
-import java.io.OutputStream;
-import net.sf.jaer.aemonitor.AEPacketRaw;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.logging.Logger;
+
+import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 

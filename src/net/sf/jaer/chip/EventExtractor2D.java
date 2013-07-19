@@ -1,7 +1,6 @@
 package net.sf.jaer.chip;
 
-import net.sf.jaer.aemonitor.*;
-import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.event.EventPacket;
 /**
  *The interface a 2D event extractor must implement. It is parameterized by the primitive int raw event address type.

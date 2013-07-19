@@ -4,12 +4,12 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations;
 
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.FeatureManager;
+import net.sf.jaer.chip.AEChip;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.Parameters;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.FeatureManager;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.util.Color;
-import net.sf.jaer.chip.AEChip;
 
 /**
  *

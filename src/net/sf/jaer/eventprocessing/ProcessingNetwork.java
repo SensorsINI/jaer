@@ -5,11 +5,11 @@
 package net.sf.jaer.eventprocessing;
 
 import java.awt.Component;
-import java.awt.Container;
 import java.util.ArrayList;
 import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.Semaphore;
+
 import javax.swing.JPanel;
+
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.graphics.DisplayWriter;
 

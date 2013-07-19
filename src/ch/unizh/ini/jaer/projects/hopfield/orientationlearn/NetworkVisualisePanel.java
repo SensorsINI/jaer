@@ -1,10 +1,9 @@
 package ch.unizh.ini.jaer.projects.hopfield.orientationlearn;
 
-import java.awt.*;
+import java.awt.Graphics;
 import java.awt.image.BufferedImage;
-import java.io.*;
-import javax.imageio.ImageIO;
-import javax.swing.*;
+
+import javax.swing.JPanel;
 
 public class NetworkVisualisePanel extends JPanel {
     /**

@@ -4,19 +4,6 @@
  */
 package eu.seebetter.ini.chips.sbret10;
 
-import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
-import ch.unizh.ini.jaer.config.MuxControlPanel;
-import ch.unizh.ini.jaer.config.OutputMap;
-import ch.unizh.ini.jaer.config.boards.LatticeMachFX2config;
-import static ch.unizh.ini.jaer.config.boards.LatticeMachFX2config.VR_WRITE_CONFIG;
-import ch.unizh.ini.jaer.config.cpld.CPLDBit;
-import ch.unizh.ini.jaer.config.cpld.CPLDConfigValue;
-import ch.unizh.ini.jaer.config.cpld.CPLDInt;
-import ch.unizh.ini.jaer.config.fx2.PortBit;
-import ch.unizh.ini.jaer.config.fx2.TriStateablePortBit;
-import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
-import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
-import ch.unizh.ini.jaer.config.onchip.OutputMux;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.beans.PropertyChangeSupport;
@@ -26,9 +13,23 @@ import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.*;
+
+import javax.swing.AbstractAction;
+import javax.swing.AbstractButton;
+import javax.swing.Action;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JPanel;
+import javax.swing.JRadioButton;
+import javax.swing.JTabbedPane;
 import javax.swing.border.TitledBorder;
-import net.sf.jaer.biasgen.*;
+
+import net.sf.jaer.biasgen.AddressedIPot;
+import net.sf.jaer.biasgen.AddressedIPotArray;
+import net.sf.jaer.biasgen.IPot;
+import net.sf.jaer.biasgen.Masterbias;
+import net.sf.jaer.biasgen.Pot;
+import net.sf.jaer.biasgen.PotTweakerUtilities;
 import net.sf.jaer.biasgen.VDAC.VPot;
 import net.sf.jaer.biasgen.coarsefine.AddressedIPotCF;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
@@ -41,6 +42,18 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.ApsDvsHardwareInterface;
 import net.sf.jaer.util.HasPropertyTooltips;
 import net.sf.jaer.util.ParameterControlPanel;
 import net.sf.jaer.util.PropertyTooltipSupport;
+import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
+import ch.unizh.ini.jaer.config.MuxControlPanel;
+import ch.unizh.ini.jaer.config.OutputMap;
+import ch.unizh.ini.jaer.config.boards.LatticeMachFX2config;
+import ch.unizh.ini.jaer.config.cpld.CPLDBit;
+import ch.unizh.ini.jaer.config.cpld.CPLDConfigValue;
+import ch.unizh.ini.jaer.config.cpld.CPLDInt;
+import ch.unizh.ini.jaer.config.fx2.PortBit;
+import ch.unizh.ini.jaer.config.fx2.TriStateablePortBit;
+import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
+import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
+import ch.unizh.ini.jaer.config.onchip.OutputMux;
 
 /**
  * Bias generator, On-chip diagnostic readout, video acquisition and rendering

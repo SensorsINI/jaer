@@ -5,13 +5,11 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow;
 
-import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.MotionChipInterface;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import net.sf.jaer.biasgen.VDAC.DAC;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.MotionChipInterface;
 
 /**
  * Abstract class for motion chips. Provides some static variables methods for 

@@ -5,8 +5,6 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
 import java.util.ArrayList;
 
-import net.sf.jaer.event.PolarityEvent.Polarity;
-
 /**
  * @author Dennis
  *

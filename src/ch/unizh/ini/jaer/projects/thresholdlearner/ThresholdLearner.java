@@ -4,18 +4,19 @@
  */
 package ch.unizh.ini.jaer.projects.thresholdlearner;
 
-import ch.unizh.ini.jaer.projects.robothead.ArrayReader;
 import java.io.File;
 import java.io.IOException;
 import java.util.Observable;
 import java.util.Observer;
+
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileFilter;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.*;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;

@@ -5,14 +5,26 @@
 
 package ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing;
 
-import ch.unizh.ini.jaer.projects.einsteintunnel.multicamera.PowerSettingsDialog;
-import java.io.*;
-import java.net.*;
-import java.util.*;
-import java.util.logging.*;
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+import java.util.Properties;
+import java.util.TimerTask;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-import javax.mail.*;
-import javax.mail.internet.*;
+import javax.mail.Message;
+import javax.mail.MessagingException;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
+
+import ch.unizh.ini.jaer.projects.einsteintunnel.multicamera.PowerSettingsDialog;
 
 /**
  *

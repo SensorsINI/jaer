@@ -5,12 +5,10 @@
  */
 package net.sf.jaer.util;
 
-import java.awt.Component;
-import java.awt.HeadlessException;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+
 import javax.swing.ImageIcon;
-import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 

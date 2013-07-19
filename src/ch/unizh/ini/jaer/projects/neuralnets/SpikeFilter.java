@@ -5,13 +5,18 @@
 package ch.unizh.ini.jaer.projects.neuralnets;
 
 import java.awt.Component;
+
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import jspikestack.*;
+
+import jspikestack.Axon;
+import jspikestack.NetController;
+import jspikestack.Network;
+import jspikestack.Unit;
+import jspikestack.UnitLIF;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.MultiSourceProcessor;
 import net.sf.jaer.graphics.DisplayWriter;
 //import sun.nio.cs.ext.GB18030;

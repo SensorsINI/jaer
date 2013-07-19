@@ -7,7 +7,9 @@ package ch.unizh.ini.jaer.projects.cochsoundloc;
 import java.awt.Graphics2D;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
+
 import javax.media.opengl.GLAutoDrawable;
+
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;

@@ -3,7 +3,6 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion.mathexpression;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.StringTokenizer;

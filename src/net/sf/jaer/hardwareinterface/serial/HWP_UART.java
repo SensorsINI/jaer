@@ -1,10 +1,16 @@
 package net.sf.jaer.hardwareinterface.serial;
 
-import java.io.*;
-import java.util.*;
+import gnu.io.CommPortIdentifier;
+import gnu.io.SerialPort;
+import gnu.io.UnsupportedCommOperationException;
 
-import gnu.io.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
+import java.util.Enumeration;
 import java.util.logging.Logger;
+
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 

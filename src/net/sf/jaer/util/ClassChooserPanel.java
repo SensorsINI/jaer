@@ -5,21 +5,9 @@
  */
 package net.sf.jaer.util;
 
-import java.awt.Cursor;
-import java.beans.PropertyChangeEvent;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-import java.util.logging.Level;
-import javax.swing.JDialog;
-import javax.swing.JProgressBar;
-import javax.swing.JTextArea;
-import javax.swing.JTextPane;
-import javax.swing.ProgressMonitor;
-import net.sf.jaer.Description;
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Font;
+import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
@@ -28,13 +16,18 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.font.FontRenderContext;
 import java.awt.geom.Rectangle2D;
+import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.lang.reflect.*;
-import java.util.*;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Vector;
-import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.DefaultListModel;
@@ -42,11 +35,14 @@ import javax.swing.InputMap;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
+import javax.swing.JTextPane;
 import javax.swing.KeyStroke;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListModel;
 import javax.swing.SwingWorker;
 import javax.swing.event.ListSelectionEvent;
+
+import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 
 /**

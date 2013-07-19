@@ -4,13 +4,14 @@
  */
 package ch.unizh.ini.jaer.hardware.pantilt;
 
+import java.util.Random;
+import java.util.TimerTask;
 import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.ServoInterface;
 import net.sf.jaer.hardwareinterface.usb.ServoInterfaceFactory;
-import java.util.Random;
-import java.util.TimerTask;
-import java.util.logging.Logger;
 
 /**
  * Encapsulates a pan tilt controller based on using SiLabsC8051F320_USBIO_ServoController.

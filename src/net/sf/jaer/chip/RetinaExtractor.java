@@ -12,8 +12,9 @@
 
 package net.sf.jaer.chip;
 
-import net.sf.jaer.aemonitor.*;
-import net.sf.jaer.event.*;
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PolarityEvent;
 
 /**
  * Extracts polarity of cells from the type of event. Built on top of legacy extractor.

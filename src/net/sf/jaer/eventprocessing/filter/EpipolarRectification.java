@@ -14,14 +14,20 @@
 
 package net.sf.jaer.eventprocessing.filter;
 
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.EventFilter2D;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.util.Hashtable;
+import java.util.Observable;
+import java.util.Observer;
+import java.util.Vector;
 
-import java.io.*;
-import java.util.*;
 import net.sf.jaer.Description;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BinocularEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**
  * This filter apply the epipolar correction (loading pixel correspondance tables 

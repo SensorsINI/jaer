@@ -5,6 +5,7 @@
 package net.sf.jaer.eventprocessing.filter;
 import java.util.Observable;
 import java.util.Observer;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;

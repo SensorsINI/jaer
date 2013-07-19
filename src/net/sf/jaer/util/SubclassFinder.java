@@ -11,12 +11,13 @@
  */
 package net.sf.jaer.util;
 
-import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
-import java.util.*;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.logging.Logger;
+
 import javax.swing.ProgressMonitor;
-import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 
 /**

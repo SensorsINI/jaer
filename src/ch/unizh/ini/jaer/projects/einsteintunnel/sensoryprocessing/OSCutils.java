@@ -5,10 +5,16 @@
 
 package ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing;
 
-import java.net.*;
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigInteger;
-import java.util.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.util.Date;
+import java.util.Enumeration;
+import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 

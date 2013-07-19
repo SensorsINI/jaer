@@ -4,10 +4,11 @@
  */
 package ch.unizh.ini.jaer.config.cpld;
 
-import ch.unizh.ini.jaer.config.ConfigInt;
 import java.util.prefs.PreferenceChangeEvent;
+
 import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.Chip;
+import ch.unizh.ini.jaer.config.ConfigInt;
 
 /** A integer configuration value on CPLD shift register.
  * @author tobi

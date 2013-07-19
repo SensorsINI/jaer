@@ -4,13 +4,12 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.event;
 
+import net.sf.jaer.event.TypedEvent;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.Parameters;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.FeatureCluster;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.FeatureClusterStorage;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.creation.ClusterCreation;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.Parameters;
-
-import net.sf.jaer.event.TypedEvent;
 
 /**
  *

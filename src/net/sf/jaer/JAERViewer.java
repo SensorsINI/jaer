@@ -8,39 +8,49 @@
  */
 package net.sf.jaer;
 
+import java.awt.AWTEvent;
 import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
-import java.awt.Image;
-import java.awt.MediaTracker;
 import java.awt.SplashScreen;
-import java.net.URL;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
-import java.util.logging.MemoryHandler;
-import net.sf.jaer.JAERViewer.ToggleLoggingAction;
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.eventio.*;
-import net.sf.jaer.graphics.*;
-import net.sf.jaer.util.*;
-import java.awt.AWTEvent;
-import java.awt.Font;
 import java.awt.Toolkit;
-import java.awt.event.*;
-import java.awt.image.ImageObserver;
-import java.io.*;
-import java.text.*;
-import java.util.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
+import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-import java.util.prefs.*;
-import javax.swing.*;
-import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.InputEventIterator;
-import net.sf.jaer.event.OutputEventIterator;
+import java.util.prefs.Preferences;
+
+import javax.swing.AbstractAction;
+import javax.swing.AbstractButton;
+import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JOptionPane;
+import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
+
+import net.sf.jaer.eventio.AEDataFile;
+import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.graphics.AbstractAEPlayer;
+import net.sf.jaer.graphics.GlobalViewer;
+import net.sf.jaer.graphics.JAERDataViewer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
+import net.sf.jaer.util.LoggingThreadGroup;
+import net.sf.jaer.util.WindowSaver;
 
 /**
  * Used to show multiple chips simultaneously in separate instances of {@link net.sf.jaer.graphics.AEViewer}, each running

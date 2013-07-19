@@ -10,7 +10,7 @@
 
 package net.sf.jaer.graphics;
 
-import net.sf.jaer.chip.*;
+import net.sf.jaer.chip.AEChip;
 
 /**
  * Renders retina events into different RGB views. You pass it an AEPacket2D, and it returns a frame that can be rendered in matlab using image or using

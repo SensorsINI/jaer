@@ -5,7 +5,6 @@
 
 package net.sf.jaer.event;
 
-import net.sf.jaer.event.PolarityEvent;
 
 /**
  * This event can signal an external special.

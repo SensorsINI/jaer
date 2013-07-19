@@ -7,6 +7,7 @@ package net.sf.jaer.hardwareinterface;
 
 import java.util.Observable;
 import java.util.prefs.Preferences;
+
 import net.sf.jaer.chip.Chip;
 
 /**

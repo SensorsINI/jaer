@@ -12,8 +12,16 @@
 
 package net.sf.jaer.util;
 
-import java.awt.*;
-import java.util.logging.*;
+import java.awt.Dimension;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.IllegalComponentStateException;
+import java.awt.Insets;
+import java.awt.Point;
+import java.awt.Toolkit;
+import java.util.logging.Logger;
+
 import javax.swing.JFrame;
 
 /**

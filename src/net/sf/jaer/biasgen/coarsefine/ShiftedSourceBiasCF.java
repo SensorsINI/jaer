@@ -5,8 +5,11 @@
 package net.sf.jaer.biasgen.coarsefine;
 
 import java.util.prefs.PreferenceChangeEvent;
+
 import javax.swing.JComponent;
-import net.sf.jaer.biasgen.*;
+
+import net.sf.jaer.biasgen.AddressedIPot;
+import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.util.RemoteControlCommand;
 
 /**

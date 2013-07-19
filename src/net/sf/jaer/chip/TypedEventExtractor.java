@@ -10,12 +10,13 @@
 
 package net.sf.jaer.chip;
 
-import net.sf.jaer.aemonitor.*;
-import net.sf.jaer.event.*;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.event.OutputEventIterator;
 import java.util.logging.Logger;
+
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.TypedEvent;
 
 /**
  * An abstract 2D event extractor for 16 bit raw addresses. It is called with addresses and timestamps and extracts 

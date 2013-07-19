@@ -4,8 +4,6 @@
  */
 package net.sf.jaer.eventio;
 
-import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.aemonitor.EventRaw;
 import java.io.Closeable;
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -13,6 +11,9 @@ import java.io.InputStream;
 import java.io.PushbackInputStream;
 import java.util.ArrayList;
 import java.util.logging.Logger;
+
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.aemonitor.EventRaw;
 
 /**
  * An AE input stream that uses a generic InputStream such as a

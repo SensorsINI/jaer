@@ -10,8 +10,9 @@
 
 package net.sf.jaer.aesequencer;
 
-import net.sf.jaer.aemonitor.*;
-import net.sf.jaer.hardwareinterface.*;
+import net.sf.jaer.aemonitor.AEMonitorInterface;
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
  *  Inteface for monitoring and sequencing for devices that support both.

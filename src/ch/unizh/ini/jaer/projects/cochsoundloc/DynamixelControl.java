@@ -7,6 +7,7 @@ package ch.unizh.ini.jaer.projects.cochsoundloc;
 import gnu.io.CommPort;
 import gnu.io.CommPortIdentifier;
 import gnu.io.SerialPort;
+
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.logging.Logger;

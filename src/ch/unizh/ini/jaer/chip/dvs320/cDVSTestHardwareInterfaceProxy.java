@@ -1,6 +1,7 @@
 package ch.unizh.ini.jaer.chip.dvs320;
 
 import java.util.logging.Logger;
+
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceProxy;

@@ -10,9 +10,10 @@
 
 package no.uio.ifi.jaer.chip.learning;
 
+import java.io.Serializable;
+
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.TypedEventExtractor;
-import java.io.*;
 
 
 /**

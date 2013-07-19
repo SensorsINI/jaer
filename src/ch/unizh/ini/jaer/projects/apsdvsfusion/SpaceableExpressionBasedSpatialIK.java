@@ -3,10 +3,7 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
-import java.awt.geom.Point2D;
 import java.util.prefs.Preferences;
-
-import net.sf.jaer.event.PolarityEvent.Polarity;
 
 /**
  * @author Dennis

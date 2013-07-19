@@ -1,16 +1,13 @@
 package net.sf.jaer.hardwareinterface.usb.cypressfx2;
 
+import javax.swing.JOptionPane;
+
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
-import net.sf.jaer.biasgen.IPot;
-import net.sf.jaer.biasgen.IPotArray;
-import net.sf.jaer.biasgen.PotArray;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import de.thesycon.usbio.UsbIoInterface;
 import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
 import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
-import java.util.Iterator;
-import javax.swing.JOptionPane;
 
 /** Adds biasgen functionality to base interface via Cypress FX2.
  *@author tobi

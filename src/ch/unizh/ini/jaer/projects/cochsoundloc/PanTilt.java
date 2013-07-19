@@ -7,6 +7,7 @@ package ch.unizh.ini.jaer.projects.cochsoundloc;
 
 import java.util.ArrayList;
 import java.util.concurrent.ArrayBlockingQueue;
+
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;

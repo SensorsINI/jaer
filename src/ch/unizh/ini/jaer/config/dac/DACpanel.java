@@ -5,15 +5,29 @@
  */
 package ch.unizh.ini.jaer.config.dac;
 
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.logging.Logger;
-import javax.swing.*;
+
+import javax.swing.AbstractButton;
+import javax.swing.BoxLayout;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSlider;
+import javax.swing.JTable;
+import javax.swing.JTextField;
 import javax.swing.border.Border;
 import javax.swing.border.LineBorder;
-import javax.swing.table.*;
+import javax.swing.table.TableCellRenderer;
 /**
  * Panel for controlling a chip's set of DACchannels over a HardwareInterface.
  * @author  tobi

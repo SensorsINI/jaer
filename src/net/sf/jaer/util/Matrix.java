@@ -9,7 +9,7 @@
 
 package net.sf.jaer.util;
 
-import java.util.logging.*;
+import java.util.logging.Logger;
 
 /**
  * 

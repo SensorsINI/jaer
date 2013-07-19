@@ -4,12 +4,12 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.merge;
 
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.Parameters;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.FeatureCluster;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.FeatureClusterStorage;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.lifetime.LifetimeExtractor;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.Parameters;
 
 /**
  *

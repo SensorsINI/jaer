@@ -10,9 +10,11 @@
 
 package ch.unizh.ini.jaer.chip.retina;
 
-import net.sf.jaer.chip.*;
-import ch.unizh.ini.jaer.chip.cochlea.*;
-import java.io.*;
+import java.io.Serializable;
+
+import net.sf.jaer.chip.RetinaExtractor;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaGramDisplayMethod;
+import ch.unizh.ini.jaer.chip.cochlea.RollingCochleaGramDisplayMethod;
 
 
 /**

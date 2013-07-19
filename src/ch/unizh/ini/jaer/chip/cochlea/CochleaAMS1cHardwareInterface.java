@@ -4,18 +4,17 @@
  */
 package ch.unizh.ini.jaer.chip.cochlea;
 
-import de.thesycon.usbio.UsbIo;
-import de.thesycon.usbio.UsbIoBuf;
-import de.thesycon.usbio.UsbIoInterface;
-import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
-import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2Biasgen;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
+import de.thesycon.usbio.UsbIo;
+import de.thesycon.usbio.UsbIoBuf;
+import de.thesycon.usbio.UsbIoInterface;
+import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
+import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
 
 /**
  * The hardware interface to CochleaAMS1c.

@@ -11,13 +11,13 @@
 
 package eu.seebetter.ini.chips.seebetter1011;
 
-import eu.seebetter.ini.chips.seebetter1011.SeeBetter1011.SeeBetter1011DisplayMethod;
-import eu.seebetter.ini.chips.seebetter1011.SeeBetter1011.SeeBetter1011Renderer;
 import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+
 import net.sf.jaer.graphics.AEChipRenderer;
-import org.jdesktop.beansbinding.Validator;
+import eu.seebetter.ini.chips.seebetter1011.SeeBetter1011.SeeBetter1011DisplayMethod;
+import eu.seebetter.ini.chips.seebetter1011.SeeBetter1011.SeeBetter1011Renderer;
 
 /**
  * Controls display of pixel data on SeeBetter1011.

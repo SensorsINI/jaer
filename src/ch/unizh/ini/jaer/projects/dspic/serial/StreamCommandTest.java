@@ -22,13 +22,15 @@ package ch.unizh.ini.jaer.projects.dspic.serial;
 
 import gnu.io.PortInUseException;
 import gnu.io.UnsupportedCommOperationException;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+
 import java.awt.BorderLayout;
 import java.awt.Rectangle;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.Calendar;
 import java.util.Timer;
 import java.util.TimerTask;
+
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 

@@ -5,6 +5,7 @@
 package net.sf.jaer.eventprocessing.label;
 
 import java.util.Random;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;

@@ -6,28 +6,52 @@
 package net.sf.jaer.hardwareinterface.usb.cypressfx2;
 
 import java.awt.Component;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeSupport;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.logging.Level;
-import net.sf.jaer.hardwareinterface.usb.*;
-import net.sf.jaer.aemonitor.*;
+import java.util.logging.Logger;
+import java.util.prefs.Preferences;
+
+import javax.swing.ProgressMonitor;
+
+import jp.ac.osakau.eng.eei.IVS128HardwareInterface;
+import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
-import net.sf.jaer.chip.*;
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.aemonitor.AEPacketRawPool;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.EventPacket;
 //import ch.unizh.ini.caviar.chip.EventExtractor2D;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.hardwareinterface.*;
+import net.sf.jaer.hardwareinterface.BlankDeviceException;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
+import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
-import net.sf.jaer.util.*;
-import java.beans.*;
-import java.io.*;
-import de.thesycon.usbio.*;
-import de.thesycon.usbio.structs.*;
-import java.util.*;
-import java.util.logging.Logger;
-import java.util.prefs.*;
-import javax.swing.ProgressMonitor;
-import jp.ac.osakau.eng.eei.IVS128;
-import jp.ac.osakau.eng.eei.IVS128HardwareInterface;
+import net.sf.jaer.util.HexFileParser;
+import net.sf.jaer.util.HexString;
+import de.thesycon.usbio.PnPNotify;
+import de.thesycon.usbio.PnPNotifyInterface;
+import de.thesycon.usbio.UsbIo;
+import de.thesycon.usbio.UsbIoBuf;
+import de.thesycon.usbio.UsbIoErrorCodes;
+import de.thesycon.usbio.UsbIoInterface;
+import de.thesycon.usbio.UsbIoPipe;
+import de.thesycon.usbio.UsbIoReader;
+import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
+import de.thesycon.usbio.structs.USBIO_CONFIGURATION_INFO;
+import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
+import de.thesycon.usbio.structs.USBIO_PIPE_PARAMETERS;
+import de.thesycon.usbio.structs.USBIO_SET_CONFIGURATION;
+import de.thesycon.usbio.structs.USB_DEVICE_DESCRIPTOR;
+import de.thesycon.usbio.structs.USB_STRING_DESCRIPTOR;
 
 /**
  *  Devices that use the CypressFX2 and the USBIO driver, e.g. the DVS retinas, the USBAERmini2. This class should not normally be constructed but rather a subclass that overrides

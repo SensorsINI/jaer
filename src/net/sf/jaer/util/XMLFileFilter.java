@@ -6,7 +6,7 @@
 
 package net.sf.jaer.util;
 
-import java.io.*;
+import java.io.File;
 
 /**
  * filter for XML (preferences) files.

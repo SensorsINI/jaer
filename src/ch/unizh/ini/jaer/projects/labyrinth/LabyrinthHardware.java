@@ -4,18 +4,19 @@
  */
 package ch.unizh.ini.jaer.projects.labyrinth;
 
-import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
 import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Random;
 import java.util.TimerTask;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.ServoInterface;
+import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
 
 /**
  * The labyrinth hardware abstraction enables controlling the labyrinth table.

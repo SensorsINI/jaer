@@ -1,9 +1,12 @@
 package ch.unizh.ini.jaer.chip.dollbrain;
 
-import net.sf.jaer.chip.*;
+import java.util.Arrays;
+import java.util.Observable;
+import java.util.Observer;
+
+import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import java.util.*;
 
 /**
  * Reduces fixed pattern noise in the dollbrain AER vision sensor.

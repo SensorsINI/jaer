@@ -1,26 +1,30 @@
 
 package ch.unizh.ini.jaer.projects.rccar;
 
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventio.*;
-import net.sf.jaer.hardwareinterface.*;
-import net.sf.jaer.hardwareinterface.usb.toradex.ToradexOakG3AxisAccelerationSensor;
-import net.sf.jaer.hardwareinterface.usb.toradex.ToradexOakG3AxisAccelerationSensorGUI;
-//import ch.unizh.ini.caviar.eventio.AEServerSocket;
-import net.sf.jaer.eventprocessing.*;
-//import ch.unizh.ini.caviar.eventprocessing.label.SimpleOrientationFilter;
-import net.sf.jaer.graphics.FrameAnnotater;
 //import ch.unizh.ini.caviar.util.filter.LowpassFilter;
 import java.awt.Graphics2D;
-import java.io.*;
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
 import java.net.Socket;
-import javax.media.opengl.*;
+
+import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.glu.*;
+import javax.media.opengl.glu.GLU;
+import javax.media.opengl.glu.GLUquadric;
+
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventio.AESocket;
+//import ch.unizh.ini.caviar.eventio.AEServerSocket;
+import net.sf.jaer.eventprocessing.EventFilter2D;
+//import ch.unizh.ini.caviar.eventprocessing.label.SimpleOrientationFilter;
+import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.toradex.ToradexOakG3AxisAccelerationSensor;
+import net.sf.jaer.hardwareinterface.usb.toradex.ToradexOakG3AxisAccelerationSensorGUI;
 import net.sf.jaer.util.TobiLogger;
 
 /**

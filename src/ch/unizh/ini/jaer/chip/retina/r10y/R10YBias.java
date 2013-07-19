@@ -6,7 +6,6 @@ package ch.unizh.ini.jaer.chip.retina.r10y;
 
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.IPot;
-import net.sf.jaer.chip.Chip;
 
 /**
  * Bias on R10Y chip. Each bias has only 3 bits of control. They share a 4 bit master current which they individually scale by 3 bits.

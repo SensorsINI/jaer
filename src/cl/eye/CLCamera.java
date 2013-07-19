@@ -16,13 +16,8 @@ package cl.eye;
 
 import java.util.Arrays;
 import java.util.Observable;
-import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.prefs.Preferences;
-import net.sf.jaer.aemonitor.AEListener;
-import net.sf.jaer.aemonitor.AEMonitorInterface;
-import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.chip.AEChip;
+
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 

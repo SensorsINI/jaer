@@ -4,12 +4,10 @@
  */
 package cl.eye;
 
-import ch.unizh.ini.jaer.chip.dvs320.*;
-import java.awt.geom.Point2D.Float;
-import java.beans.PropertyChangeSupport;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.graphics.RetinaRenderer;
-import net.sf.jaer.util.filter.LowpassFilter2d;
+import ch.unizh.ini.jaer.chip.dvs320.cDVSEvent;
+import ch.unizh.ini.jaer.chip.dvs320.cDVSTest20;
 
 /**
  * Renders complex data from PSEyeModelRetina chip.

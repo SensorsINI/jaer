@@ -4,24 +4,20 @@
  */
 package ch.unizh.ini.jaer.projects.cochsoundloc.multichipviewer;
 
-import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent;
-import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent.Ear;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAERb.Extractor;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMSEvent;
-import ch.unizh.ini.jaer.chip.retina.DVS128;
 import java.awt.Graphics2D;
 import java.util.ArrayList;
 import java.util.concurrent.ArrayBlockingQueue;
+
 import javax.media.opengl.GLAutoDrawable;
+
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
-import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
+import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent.Ear;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMSEvent;
 
 /**
  * This is a filter for the retina with enclosed cluster tracker. It can send the tracking information to the panTiltThread

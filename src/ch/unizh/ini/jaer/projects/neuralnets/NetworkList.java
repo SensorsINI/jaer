@@ -4,11 +4,12 @@
  */
 package ch.unizh.ini.jaer.projects.neuralnets;
 
-import ch.unizh.ini.jaer.projects.integrateandfire.ClusterEvent;
 import java.util.ArrayList;
+
 import jspikestack.NetController;
 import jspikestack.Network;
 import net.sf.jaer.event.BasicEvent;
+import ch.unizh.ini.jaer.projects.integrateandfire.ClusterEvent;
 
 /**
  * This class contains an array of spiking networks and enables events to be

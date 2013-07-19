@@ -5,25 +5,29 @@
 
 package net.sf.jaer.hardwareinterface.udp.smartEyeTDS;
 
-import java.io.*;
-import java.net.*;
-import java.beans.*;
-import java.util.Map;
+import java.beans.PropertyChangeSupport;
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetSocketAddress;
 import java.util.logging.Logger;
-import java.util.prefs.*;
-import java.nio.channels.DatagramChannel;
+import java.util.prefs.Preferences;
 
-import net.sf.jaer.aemonitor.*;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.eventio.*;
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.hardwareinterface.*;
-import net.sf.jaer.hardwareinterface.udp.*;
-import ch.unizh.ini.jaer.projects.einsteintunnel.multicamera.*;
+import net.sf.jaer.aemonitor.AEListener;
+import net.sf.jaer.aemonitor.AEMonitorInterface;
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.biasgen.BiasgenHardwareInterface;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.eventio.AEUnicastInput;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.udp.UDPInterface;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2.AEReader;
 
 /**
  * The SmartEyeTDS is a hardware interface class for the AIT SmartEye Traffic Sensor which sends information
- * over UDP. 
+ * over UDP.
  * It can also be used for multiple cameras i.e. classes that implement MultiChip.
  *
  * @author braendch
@@ -106,7 +110,9 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
     @Override
     public void close(){
         isOpen=false;
-        if(input != null)input.close();
+        if(input != null) {
+			input.close();
+		}
     }
 
     @Override
@@ -212,7 +218,7 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
      */
     @Override
     public void setAEBufferSize(int size) {
-        if (size < 1000 || size > 1000000) {
+        if ((size < 1000) || (size > 1000000)) {
             log.warning("ignoring unreasonable aeBufferSize of " + size + ", choose a more reasonable size between 1000 and 1000000");
             return;
         }
@@ -271,7 +277,7 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
      */
     @Override
     public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
-        if (!isOpen || socket == null || input == null) {
+        if (!isOpen || (socket == null) || (input == null)) {
             open();
         }
 

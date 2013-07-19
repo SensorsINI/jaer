@@ -8,9 +8,7 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
 //~--- JDK imports ------------------------------------------------------------
 
 import java.awt.geom.Point2D;
-
 import java.util.LinkedList;
-import java.util.ListIterator;
 
 /**
  * A class for computing periodic cubic splines from a set of 2D points.

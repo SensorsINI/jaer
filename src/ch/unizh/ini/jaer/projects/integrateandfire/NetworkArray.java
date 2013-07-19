@@ -9,7 +9,6 @@ import java.io.FileNotFoundException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import net.sf.jaer.event.OutputEventIterator;
 
 /**
  *

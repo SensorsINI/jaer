@@ -8,20 +8,22 @@
  */
 package net.sf.jaer.graphics;
 
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.histogram.AbstractHistogram;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.histogram.SimpleHistogram;
-import eu.seebetter.ini.chips.ApsDvsChip;
-import net.sf.jaer.event.ApsDvsEvent;
-import net.sf.jaer.event.ApsDvsEventPacket;
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.*;
 import java.nio.FloatBuffer;
 import java.util.Arrays;
 import java.util.Iterator;
+
+import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.config.ApsDvsConfig;
+import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.util.filter.LowpassFilter2d;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.histogram.AbstractHistogram;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.histogram.SimpleHistogram;
+import eu.seebetter.ini.chips.ApsDvsChip;
 import eu.seebetter.ini.chips.sbret10.SBret10;
-import static net.sf.jaer.graphics.AEChipRenderer.PROPERTY_COLOR_SCALE;
 
 /**
  * Class adapted from AEChipRenderer to render not only AE events but also

@@ -12,13 +12,17 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow.io;
 
-import ch.unizh.ini.jaer.projects.opticalflow.*;
-import ch.unizh.ini.jaer.projects.opticalflow.graphics.MotionViewer;
+import java.beans.PropertyChangeSupport;
+import java.io.DataInputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
+import java.util.logging.Logger;
+
 import net.sf.jaer.eventio.InputDataFileInterface;
-import java.beans.*;
-import java.io.*;
-import java.nio.channels.*;
-import java.util.logging.*;
+import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
+import ch.unizh.ini.jaer.projects.opticalflow.MotionData;
 
 /**
  * An input stream of motion data. This class deserializes MotionData from the input stream.

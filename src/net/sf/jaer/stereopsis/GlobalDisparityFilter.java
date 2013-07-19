@@ -9,13 +9,20 @@
 
 package net.sf.jaer.stereopsis;
 
-import net.sf.jaer.chip.*;
+import java.util.Arrays;
+import java.util.Observable;
+import java.util.Observer;
+
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BinocularDisparityEvent;
+import net.sf.jaer.event.BinocularEvent;
+import net.sf.jaer.event.BinocularOrientationEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.label.SimpleOrientationFilter;
-import net.sf.jaer.event.*;
 import net.sf.jaer.util.filter.LowpassFilter;
-
-import java.util.*;
 
 /**
  * The filter assumes a single frontal object and calculates the global x-coordinate disparity. The global disparity is found by correlating

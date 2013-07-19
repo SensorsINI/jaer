@@ -10,9 +10,12 @@
  */
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer.microphone;
 
-import java.awt.*;
+import java.awt.Color;
 import java.awt.Insets;
-import net.sf.jaer.util.chart.*;
+
+import net.sf.jaer.util.chart.Axis;
+import net.sf.jaer.util.chart.Category;
+import net.sf.jaer.util.chart.Series;
 
 /**
  *

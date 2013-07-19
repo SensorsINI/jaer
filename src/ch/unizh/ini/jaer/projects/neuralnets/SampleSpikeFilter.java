@@ -4,7 +4,6 @@
  */
 package ch.unizh.ini.jaer.projects.neuralnets;
 
-import jspikestack.NetController;
 import jspikestack.AxonSTP;
 import jspikestack.Network;
 import jspikestack.UnitLIF;

@@ -10,10 +10,13 @@
 
 package es.cnm.imse.jaer.chip.convolution;
 
+import java.io.Serializable;
+
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.*;
-import java.io.*;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.TypedEvent;
 
 
 /**

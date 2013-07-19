@@ -7,7 +7,6 @@ created 8.5.2009 for ARC ATIS chip in sardinia at capo caccio workshop on cognit
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
 
  */
-import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -17,7 +16,9 @@ import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
 import java.util.Observable;
+
 import javax.swing.JPanel;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
@@ -37,6 +38,7 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 /**
  * ARC ATIS 304x240
  * @author tobi delbruck, martin lizzenberger, chr posch

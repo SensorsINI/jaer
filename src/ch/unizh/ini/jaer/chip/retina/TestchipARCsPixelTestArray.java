@@ -10,10 +10,14 @@
 
 package ch.unizh.ini.jaer.chip.retina;
 
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.hardwareinterface.*;
-import java.io.*;
+import java.io.Serializable;
+
+import net.sf.jaer.biasgen.BiasgenHardwareInterface;
+import net.sf.jaer.biasgen.IPot;
+import net.sf.jaer.biasgen.IPotArray;
+import net.sf.jaer.chip.Chip;
+import net.sf.jaer.chip.RetinaExtractor;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
 
 
 /**

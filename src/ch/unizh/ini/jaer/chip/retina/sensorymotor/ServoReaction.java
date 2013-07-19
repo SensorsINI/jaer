@@ -12,19 +12,22 @@
 
 package ch.unizh.ini.jaer.chip.retina.sensorymotor;
 
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
-import net.sf.jaer.eventprocessing.tracking.MedianTracker;
-import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.hardwareinterface.*;
-import net.sf.jaer.hardwareinterface.ServoInterface;
-import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController;
 import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
-import javax.media.opengl.*;
+
+import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
+
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.tracking.MedianTracker;
+import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
+import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.ServoInterface;
+import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController;
 
 /**
  * Controls a servo motor to servo to some measuure of location computed from events. Used in Telluride to make a two-arm mimic that waves

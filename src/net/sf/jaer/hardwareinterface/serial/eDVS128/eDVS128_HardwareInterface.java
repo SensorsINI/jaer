@@ -4,32 +4,34 @@
  */
 package net.sf.jaer.hardwareinterface.serial.eDVS128;
 
-import java.beans.*;
-import java.util.Observable;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.prefs.*;
-
-import net.sf.jaer.aemonitor.*;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.hardwareinterface.*;
-
 import gnu.io.SerialPort;
 
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeSupport;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-
-import java.lang.Math.*;
-import java.util.ArrayList;
-import java.util.Observer;
-
-import ch.unizh.ini.jaer.chip.retina.DVS128;
-import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.CharBuffer;
+import java.util.ArrayList;
+import java.util.Observable;
+import java.util.Observer;
+import java.util.logging.Logger;
+import java.util.prefs.Preferences;
+
+import net.sf.jaer.aemonitor.AEListener;
+import net.sf.jaer.aemonitor.AEMonitorInterface;
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.biasgen.BiasgenHardwareInterface;
+import net.sf.jaer.biasgen.IPot;
+import net.sf.jaer.biasgen.Pot;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import ch.unizh.ini.jaer.chip.retina.DVS128;
 
 /**
  * Interface to eDVS128 cameras via FTDI serial port or wifi TCP socket.

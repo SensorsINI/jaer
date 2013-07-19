@@ -12,22 +12,37 @@
 
 package ch.unizh.ini.jaer.projects.opticalflow.usbinterface;
 
+import java.util.concurrent.Exchanger;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.logging.Logger;
+
 import javax.swing.JPanel;
-import net.sf.jaer.biasgen.*;
+
 import net.sf.jaer.biasgen.Biasgen;
-import net.sf.jaer.biasgen.VDAC.*;
-import net.sf.jaer.hardwareinterface.*;
-import net.sf.jaer.util.*;
-import ch.unizh.ini.jaer.projects.opticalflow.*;
+import net.sf.jaer.biasgen.IPot;
+import net.sf.jaer.biasgen.PotArray;
+import net.sf.jaer.biasgen.VDAC.VPot;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.util.HexString;
+import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
+import ch.unizh.ini.jaer.projects.opticalflow.MotionData;
 import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MDC2D;
 import ch.unizh.ini.jaer.projects.opticalflow.mdc2d.MotionDataMDC2D;
-import ch.unizh.ini.jaer.projects.opticalflow.motion18.Motion18;
-import de.thesycon.usbio.*;
+import de.thesycon.usbio.PnPNotify;
 import de.thesycon.usbio.PnPNotifyInterface;
+import de.thesycon.usbio.UsbIo;
+import de.thesycon.usbio.UsbIoBuf;
 import de.thesycon.usbio.UsbIoErrorCodes;
-import de.thesycon.usbio.structs.*;
-import java.util.concurrent.*;
-import java.util.logging.Logger;
+import de.thesycon.usbio.UsbIoInterface;
+import de.thesycon.usbio.UsbIoPipe;
+import de.thesycon.usbio.UsbIoReader;
+import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
+import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
+import de.thesycon.usbio.structs.USBIO_PIPE_PARAMETERS;
+import de.thesycon.usbio.structs.USBIO_SET_CONFIGURATION;
+import de.thesycon.usbio.structs.USB_DEVICE_DESCRIPTOR;
+import de.thesycon.usbio.structs.USB_STRING_DESCRIPTOR;
 
 /**
  * Servo motor controller using USBIO driver access to SiLabsC8051F320 device.

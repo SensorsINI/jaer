@@ -4,7 +4,6 @@
  */
 package ch.unizh.ini.jaer.projects.integrateandfire;
 
-import net.sf.jaer.event.BasicEvent;
 
 /**
  *

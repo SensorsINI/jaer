@@ -9,23 +9,29 @@
  */
 package net.sf.jaer.hardwareinterface.usb.cypressfx2;
 
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cHardwareInterface;
+import java.util.ArrayList;
+import java.util.logging.Logger;
+
+import jp.ac.osakau.eng.eei.IVS128HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
+import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_AeSequencer;
-import net.sf.jaer.hardwareinterface.usb.*;
+import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_DVS128;
+import net.sf.jaer.util.HexString;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1bHardwareInterface;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cHardwareInterface;
 import ch.unizh.ini.jaer.chip.dvs320.DVS320HardwareInterface;
 import ch.unizh.ini.jaer.chip.dvs320.cDVSTestHardwareInterface;
-import net.sf.jaer.util.HexString;
-import de.thesycon.usbio.*;
-import de.thesycon.usbio.structs.*;
+import de.thesycon.usbio.PnPNotify;
+import de.thesycon.usbio.PnPNotifyInterface;
+import de.thesycon.usbio.UsbIo;
+import de.thesycon.usbio.UsbIoErrorCodes;
+import de.thesycon.usbio.structs.USB_DEVICE_DESCRIPTOR;
 import eu.seebetter.ini.chips.seebetter1011.SeeBetterHardwareInterface;
 import eu.seebetter.ini.chips.seebetter20.SeeBetter20HardwareInterface;
 import eu.seebetter.ini.chips.seebetter30.SeeBetter30HardwareInterface;
-import java.util.*;
-import net.sf.jaer.hardwareinterface.*;
-import java.util.logging.*;
-import jp.ac.osakau.eng.eei.IVS128HardwareInterface;
-import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_DVS128;
 
 /**
  * Manufactures USBIO-driver-based hardware interface; these are mostly CypressFX2-based but also include

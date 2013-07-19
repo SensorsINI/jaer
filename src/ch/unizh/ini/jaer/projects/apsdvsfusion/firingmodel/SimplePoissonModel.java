@@ -9,7 +9,6 @@ import java.util.prefs.Preferences;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SchedulableFiringModel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SchedulableFiringModelCreator;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SchedulableFiringModelMap;
-import ch.unizh.ini.jaer.projects.apsdvsfusion.SchedulableWrapperMap;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SignalHandler;
 
 /**

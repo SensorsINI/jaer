@@ -3,10 +3,10 @@
  * and open the template in the editor.
  */
 package org.ine.telluride.jaer.cuda;
-import ch.unizh.ini.jaer.chip.retina.DVS128;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
+import ch.unizh.ini.jaer.chip.retina.DVS128;
 
 
 /** 

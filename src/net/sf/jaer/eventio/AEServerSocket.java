@@ -12,10 +12,13 @@
 package net.sf.jaer.eventio;
 
 import java.beans.PropertyChangeSupport;
-import java.io.*;
-import java.net.*;
-import java.util.logging.*;
-import java.util.prefs.*;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketException;
+import java.util.logging.Logger;
+import java.util.prefs.Preferences;
 
 /**
  * Following is target functionality (right now this class only opens a single socket to most recent client connecting to it

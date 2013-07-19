@@ -9,9 +9,9 @@
  * Created on Apr 22, 2010, 3:54:35 PM
  */
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
-import java.io.File;
 import java.util.ArrayList;
 import java.util.logging.Logger;
+
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.border.TitledBorder;
 /**

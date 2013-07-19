@@ -5,18 +5,32 @@
  */
 package net.sf.jaer.graphics;
 
-import net.sf.jaer.aemonitor.*;
-import net.sf.jaer.chip.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.io.BufferedReader;
+import java.io.EOFException;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.logging.Logger;
+
+import javax.swing.JFileChooser;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.EventExtractor2D;
-import net.sf.jaer.event.*;
-import net.sf.jaer.eventio.*;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventio.AEDataFile;
+import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.util.EngineeringFormat;
-import java.awt.*;
-import java.awt.event.*;
-import java.beans.*;
-import java.io.*;
-import java.util.logging.*;
-import javax.swing.*;
 
 /**
  * Provides preview of recorded AE data file in file dialogs.  It uses the default renderer, extractor and display method 

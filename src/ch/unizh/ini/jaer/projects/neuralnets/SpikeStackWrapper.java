@@ -5,9 +5,13 @@
 package ch.unizh.ini.jaer.projects.neuralnets;
 
 import java.io.File;
-import jspikestack.*;
+
+import jspikestack.NetController;
+import jspikestack.Network;
+import jspikestack.PSP;
+import jspikestack.PSPInput;
+import jspikestack.PSPNull;
 import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.event.PolarityEvent;
 
 /**
  * Wrapper Class for the SpikeStack package.  

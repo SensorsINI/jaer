@@ -12,10 +12,13 @@ package net.sf.jaer.eventprocessing;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.util.ArrayList;
+
 import javax.swing.JPanel;
+
 import net.sf.jaer.aemonitor.AEConstants;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 
 /**

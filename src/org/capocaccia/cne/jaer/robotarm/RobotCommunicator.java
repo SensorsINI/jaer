@@ -1,8 +1,6 @@
 package org.capocaccia.cne.jaer.robotarm;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.net.DatagramSocket;
 
 /**
  * @author Dennis Göhlsdorf

@@ -9,24 +9,25 @@
  * Created on Jul 15, 2009, 11:50:33 PM
  */
 package org.ine.telluride.jaer.tell2009.drummer;
-import de.thesycon.usbio.*;
 import java.net.SocketException;
 import java.util.ArrayList;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+
 import javax.swing.JSlider;
 import javax.swing.event.ChangeEvent;
+
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.ServoInterface;
 import net.sf.jaer.hardwareinterface.usb.ServoInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
-import net.sf.jaer.hardwareinterface.usb.silabs.*;
+import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController;
 import net.sf.jaer.util.RemoteControl;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
+import de.thesycon.usbio.PnPNotify;
+import de.thesycon.usbio.PnPNotifyInterface;
 /**
  * Remotely allows control of servo to drum at some beat and tempo.
  *

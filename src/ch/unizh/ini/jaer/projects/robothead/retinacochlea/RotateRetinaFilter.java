@@ -12,12 +12,13 @@
 
 package ch.unizh.ini.jaer.projects.robothead.retinacochlea;
 
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 import java.util.Observable;
 import java.util.Observer;
+
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**
  * Rotates the Retina events 90 degree, to show nicely RobotHead data. Put this Filter at the beginning of ControlFilter..

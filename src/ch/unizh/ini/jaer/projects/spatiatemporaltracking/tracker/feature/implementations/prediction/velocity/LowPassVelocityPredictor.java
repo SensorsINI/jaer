@@ -4,14 +4,13 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.prediction.velocity;
 
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.util.filter.LowpassFilter;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.Vector;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.Features;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.implementations.common.velocity.VelocityExtractor;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.feature.manager.FeatureManager;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterManager;
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.TypedEvent;
-import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
  *

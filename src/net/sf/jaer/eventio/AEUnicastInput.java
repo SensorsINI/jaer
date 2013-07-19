@@ -6,19 +6,25 @@
 package net.sf.jaer.eventio;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.IOException;
+import java.net.DatagramSocket;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
-import net.sf.jaer.aemonitor.*;
-import java.io.*;
-import java.net.*;
 import java.nio.ByteOrder;
 import java.nio.channels.DatagramChannel;
 import java.util.concurrent.Exchanger;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.logging.*;
-import java.util.prefs.*;
-import net.sf.jaer.graphics.AEViewer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.prefs.Preferences;
+
+import net.sf.jaer.aemonitor.AENetworkRawPacket;
+import net.sf.jaer.aemonitor.AEPacket;
+import net.sf.jaer.aemonitor.EventRaw;
 /** Receives input via datagram (connectionless, UDP) packets from a server.
  * <p>
  * The socket binds to the port which comes initially from the Preferences for AEUnicastInput. The port

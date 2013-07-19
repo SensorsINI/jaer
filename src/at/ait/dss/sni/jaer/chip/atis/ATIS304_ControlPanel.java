@@ -11,9 +11,10 @@
 package at.ait.dss.sni.jaer.chip.atis;
 import java.awt.Dimension;
 import java.io.IOException;
-import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.swing.JPanel;
+
 import net.sf.jaer.biasgen.Pot;
 import net.sf.jaer.biasgen.VDAC.VPot;
 /**

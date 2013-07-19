@@ -4,11 +4,14 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker;
 
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.TypedEvent;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.Parameters;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.CandidateCluster;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.FeatureCluster;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.assignment.ClusterAssignment;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.assignment.LearnableClusterCostAssignment;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.assignment.ClusterCorrelationCostFunction;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.assignment.LearnableClusterCostAssignment;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.conversion.ClusterConversion;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.conversion.CostClusterConversion;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.conversion.LifetimeConversionCostFunction;
@@ -18,19 +21,16 @@ import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.deletio
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.deletion.CostClusterDeletion;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.deletion.LifetimeDeletionCostFunction;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.merge.ClusterMerge;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.merge.LifeTimeCandidateClusterMerge;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.merge.DistanceMergeCostFunction;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.event.EventAssignable;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.merge.LifeTimeCandidateClusterMerge;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.event.BoltzmanEventAssignment;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.event.EventAssignment;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.event.BoundaryEventCostFunction;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.event.EventAssignable;
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.event.EventAssignment;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.event.EventCostFunction;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.event.FastSpatialEventCostFunction;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.event.OccuranceEventCostFunction;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.event.PredictedBoundaryEventCostFunction;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.Parameters;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.TypedEvent;
 
 /**
  *

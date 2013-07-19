@@ -4,18 +4,26 @@
  */
 package ch.unizh.ini.jaer.projects.sensoryfusion.slaem;
 
-import java.awt.Point;
 import java.awt.geom.Line2D;
-    import net.sf.jaer.chip.*;
-    import net.sf.jaer.event.*;
-    import net.sf.jaer.eventprocessing.EventFilter2D;
-    import java.util.*;
-    import java.util.concurrent.CopyOnWriteArrayList;
-    import javax.media.opengl.*;
-    import net.sf.jaer.*;
-import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
-    import net.sf.jaer.graphics.FrameAnnotater;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.Observable;
+import java.util.Observer;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
+import javax.media.opengl.GLAutoDrawable;
+
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
  * This filter extracts edges by inferring points and connecting lines into a scene

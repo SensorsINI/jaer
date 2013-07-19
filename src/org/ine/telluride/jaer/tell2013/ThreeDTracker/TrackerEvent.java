@@ -11,7 +11,6 @@
 
 package org.ine.telluride.jaer.tell2013.ThreeDTracker;
 
-import org.ine.telluride.jaer.tell2011.GaussianTracker.*;
 import net.sf.jaer.event.BasicEvent;
 
 /**

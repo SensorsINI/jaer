@@ -7,8 +7,14 @@ package ch.unizh.ini.jaer.projects.hopfield.orientationlearn;
  */
 
 import java.awt.image.BufferedImage;
-import java.io.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Random;
+import java.util.StringTokenizer;
+import java.util.Vector;
  
  
  

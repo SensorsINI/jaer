@@ -10,17 +10,15 @@
 
 package ch.unizh.ini.jaer.projects.stereo3D;
 
-import java.io.*;
-//import java.lang.*;
-//import java.awt.*;
-//import java.util.*;
-
 //import javax.media.opengl.*;
 //import javax.media.opengl.GL;
 //import javax.media.opengl.GLAutoDrawable;
 //import javax.swing.*;
 import javax.media.opengl.glu.GLU;
 //
+//import java.lang.*;
+//import java.awt.*;
+//import java.util.*;
 
 //import java.lang.Math;
 

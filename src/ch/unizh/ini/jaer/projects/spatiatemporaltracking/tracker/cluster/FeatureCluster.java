@@ -4,10 +4,11 @@
  */
 package ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster;
 
+import javax.media.opengl.GLAutoDrawable;
+
+import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterListener;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.cluster.assignment.AssignableCluster;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.tracker.event.EventAssignable;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.parameter.ParameterListener;
-import javax.media.opengl.GLAutoDrawable;
 
 /**
  *

@@ -7,20 +7,25 @@
 
 package ch.unizh.ini.jaer.projects.eyetracker;
 
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
-import net.sf.jaer.eventprocessing.EventFilter2D;
-import java.util.*;
-import net.sf.jaer.eventprocessing.EventFilterDataLogger;
-
-import net.sf.jaer.graphics.FrameAnnotater;
+import java.awt.Graphics;
 import java.awt.Graphics2D;
-import javax.media.opengl.*;
-import java.awt.*;
-import java.awt.event.*;
-        
+import java.awt.Toolkit;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.util.Observable;
+import java.util.Observer;
 
-import javax.swing.*;
+import javax.media.opengl.GL2;
+import javax.media.opengl.GLAutoDrawable;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.EventFilterDataLogger;
+import net.sf.jaer.graphics.FrameAnnotater;
 
 
 

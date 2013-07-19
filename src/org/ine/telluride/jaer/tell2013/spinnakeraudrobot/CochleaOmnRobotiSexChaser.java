@@ -4,28 +4,20 @@
  */
 package org.ine.telluride.jaer.tell2013.spinnakeraudrobot;
 
-import ch.unizh.ini.jaer.projects.cochsoundloc.ISIFilter;
-import ch.unizh.ini.jaer.projects.cochsoundloc.ITDFilter;
-import java.io.IOException;
-import java.net.DatagramSocket;
-import java.net.InetSocketAddress;
-import java.net.SocketException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.channels.DatagramChannel;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.media.opengl.GLAutoDrawable;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.graphics.AePlayerAdvancedControlsPanel;
 import net.sf.jaer.graphics.FrameAnnotater;
+
 import org.ine.telluride.jaer.tell2009.CochleaGenderClassifier;
 import org.ine.telluride.jaer.tell2009.CochleaGenderClassifier.Gender;
 import org.ine.telluride.jaer.tell2013.spinnakeraudrobot.OmniRobotControl.MotorCommand;
+
+import ch.unizh.ini.jaer.projects.cochsoundloc.ITDFilter;
 
 /**
  * Uses ITDFilter and CochleaGenderClassifier to to control OmniRobot to steer towards sound sound for Telluride 2013 UNS project

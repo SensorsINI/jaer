@@ -9,8 +9,12 @@
 
 package ch.unizh.ini.jaer.projects.robothead;
 
-import java.io.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.StringTokenizer;
 
 /**
  * Reads an array of doubles from a file.

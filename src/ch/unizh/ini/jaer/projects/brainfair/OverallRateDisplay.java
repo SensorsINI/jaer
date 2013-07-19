@@ -8,7 +8,6 @@ import java.awt.geom.Point2D;
 import java.util.LinkedList;
 import java.util.ListIterator;
 
-import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLCapabilities;

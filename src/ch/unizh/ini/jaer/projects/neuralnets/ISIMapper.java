@@ -4,7 +4,6 @@
  */
 package ch.unizh.ini.jaer.projects.neuralnets;
 
-import ch.unizh.ini.jaer.chip.cochlea.CochleaEvent;
 import net.sf.jaer.event.BasicEvent;
 
 /**

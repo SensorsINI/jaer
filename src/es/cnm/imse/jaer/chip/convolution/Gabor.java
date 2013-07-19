@@ -9,15 +9,14 @@
  */
 package es.cnm.imse.jaer.chip.convolution;
 
-import javax.media.opengl.*;
-import net.sf.jaer.aemonitor.AEPacketRaw;
+import java.io.Serializable;
+
+import javax.media.opengl.GL2;
+import javax.media.opengl.GLAutoDrawable;
+
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.chip.TypedEventExtractor;
-import net.sf.jaer.event.*;
-import java.io.*;
-import net.sf.jaer.graphics.*;
-import net.sf.jaer.graphics.ChipCanvas;
+import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.graphics.ChipRendererDisplayMethod;
 import net.sf.jaer.graphics.DisplayMethod;
 

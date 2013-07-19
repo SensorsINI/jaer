@@ -7,6 +7,7 @@ package ch.unizh.ini.jaer.projects.pencilbalancer;
 //import java.util.LinkedList;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.logging.Logger;
+
 import net.sf.jaer.util.TobiLogger;
 
 /**

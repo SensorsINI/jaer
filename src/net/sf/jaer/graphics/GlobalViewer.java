@@ -10,19 +10,38 @@
  */
 package net.sf.jaer.graphics;
 
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.Point;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.concurrent.CyclicBarrier;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.swing.*;
-import javax.swing.UIManager.LookAndFeelInfo;
+
+import javax.swing.JButton;
+import javax.swing.JDesktopPane;
+import javax.swing.JFrame;
+import javax.swing.JInternalFrame;
+import javax.swing.JMenuBar;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JToggleButton;
+import javax.swing.JToolBar;
 import javax.swing.event.InternalFrameEvent;
 import javax.swing.event.InternalFrameListener;
+
 import net.sf.jaer.JAERViewer;
-import net.sf.jaer.eventprocessing.*;
+import net.sf.jaer.eventprocessing.MultiInputFrame;
+import net.sf.jaer.eventprocessing.PacketStream;
+import net.sf.jaer.eventprocessing.ProcessingNetwork;
+import net.sf.jaer.eventprocessing.SourceSynchronizer;
 
 /**
  *

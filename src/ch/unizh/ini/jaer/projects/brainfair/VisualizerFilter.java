@@ -4,19 +4,13 @@
  */
 package ch.unizh.ini.jaer.projects.brainfair;
 
-import java.util.Observable;
-import javax.media.opengl.GL;
-import net.sf.jaer.event.OrientationEvent;
 import javax.media.opengl.GLAutoDrawable;
-import javax.swing.JFrame;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.eventprocessing.label.SimpleOrientationFilter;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**

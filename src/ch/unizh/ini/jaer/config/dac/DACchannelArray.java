@@ -1,9 +1,11 @@
 package ch.unizh.ini.jaer.config.dac;
 
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import java.util.ArrayList;
 import java.util.Iterator;
+
+import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.biasgen.BiasgenPreferences;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**  A collection of channel's that belong to a common device, e.g. a chip or a board. 
  This class allows common operations on the channels and groups the channels together. 

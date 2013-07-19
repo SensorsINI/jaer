@@ -6,7 +6,8 @@
 
 package net.sf.jaer.biasgen;
 
-import net.sf.jaer.hardwareinterface.*;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
  * Interfaces via USB to the on- or off-chip biases and other configuration information on a chip or system.

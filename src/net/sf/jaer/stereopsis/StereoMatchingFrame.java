@@ -6,13 +6,13 @@
 
 package net.sf.jaer.stereopsis;
 
-import net.sf.jaer.chip.*;
-
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Label;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+
+import net.sf.jaer.chip.AEChip;
 
 /**
  * Frame for visualizing matching matrix and disparites.

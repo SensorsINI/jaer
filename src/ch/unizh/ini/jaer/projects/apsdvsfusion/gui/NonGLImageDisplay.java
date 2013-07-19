@@ -2,7 +2,6 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion.gui;
 
 import java.awt.Color;
 import java.awt.Graphics;
-import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;

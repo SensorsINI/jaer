@@ -15,7 +15,6 @@ import org.LiveGraph.dataFile.write.DataStreamWriterFactory;
 import org.LiveGraph.settings.*;
 import org.LiveGraph.LiveGraph;
 */
-import java.io.File;
 
 public class LivePlotter extends Plotter {
 

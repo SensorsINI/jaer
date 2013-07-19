@@ -1,7 +1,8 @@
 package net.sf.jaer.biasgen;
 
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import java.util.ArrayList;
+
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**  A collection of Pot's that belong to a common device, e.g. a chip or a board. 
  This class allows common operations on the Pots and groups the Pots together. 

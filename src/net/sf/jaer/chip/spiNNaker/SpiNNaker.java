@@ -9,30 +9,36 @@
  */
 package net.sf.jaer.chip.spiNNaker;
 
-import ch.unizh.ini.jaer.chip.retina.*;
-import java.beans.PropertyChangeSupport;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.Serializable;
 import java.util.Observable;
-import net.sf.jaer.aemonitor.*;
-import net.sf.jaer.biasgen.*;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
-import net.sf.jaer.graphics.*;
-import net.sf.jaer.hardwareinterface.*;
-import java.awt.BorderLayout;
-import java.awt.event.*;
-import java.io.*;
 import java.util.Observer;
-import javax.swing.*;
-import javax.swing.JPanel;
+
+import javax.swing.AbstractButton;
+import javax.swing.ButtonGroup;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JComponent;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
+import javax.swing.JRadioButtonMenuItem;
+
 import net.sf.jaer.Description;
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.chip.RetinaExtractor;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasLEDControl;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasLEDControl.LEDState;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
-import net.sf.jaer.util.HexString;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
+import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 
 /**
  * Describes SpiNNaker and its event extractor and bias generator.

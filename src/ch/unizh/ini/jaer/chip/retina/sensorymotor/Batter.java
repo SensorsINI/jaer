@@ -12,20 +12,22 @@
 
 package ch.unizh.ini.jaer.chip.retina.sensorymotor;
 
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
+import java.awt.Graphics2D;
+import java.util.logging.Logger;
+
+import javax.media.opengl.GL2;
+import javax.media.opengl.GLAutoDrawable;
+
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BinocularEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.hardwareinterface.*;
-import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.ServoInterface;
-import net.sf.jaer.stereopsis.*;
+import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController;
+import net.sf.jaer.stereopsis.StereoClusterTracker;
 import ch.unizh.ini.jaer.chip.stereopsis.Tmpdiff128StereoPair;
-import java.awt.Graphics2D;
-import java.util.logging.*;
-import javax.media.opengl.*;
-import javax.media.opengl.GLAutoDrawable;
 
 /**
  * Controls a batting robot that uses two servo motors and two retinas in stereo vision to hit a ball.

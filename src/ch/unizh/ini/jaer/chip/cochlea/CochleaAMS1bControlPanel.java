@@ -5,18 +5,6 @@
  */
 package ch.unizh.ini.jaer.chip.cochlea;
 
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.Biasgen.BufferIPot;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.Biasgen.ConfigBit;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.Biasgen.Equalizer;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.Biasgen.Scanner;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.Biasgen.TriStateableConfigBit;
-import java.util.HashMap;
-import java.util.Observable;
-import java.util.Observer;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import net.sf.jaer.biasgen.BiasgenPanel;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -27,16 +15,28 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.util.HashMap;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+
 import javax.swing.AbstractButton;
 import javax.swing.BoxLayout;
-import javax.swing.ButtonGroup;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JSlider;
 import javax.swing.SpinnerNumberModel;
+
+import net.sf.jaer.biasgen.BiasgenPanel;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.Biasgen.BufferIPot;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.Biasgen.ConfigBit;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.Biasgen.Equalizer;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.Biasgen.Scanner;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.Biasgen.TriStateableConfigBit;
 
 /**
  * The custom control panel for CochleaAMS1b which includes IPots, VPots, local IPots, scanner, and digital control.

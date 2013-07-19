@@ -12,8 +12,9 @@
 
 package net.sf.jaer.eventprocessing;
 
-import java.util.*;
-import java.util.logging.*;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.logging.Logger;
 
 /**
  * This utility class allows setting a limiting time and 

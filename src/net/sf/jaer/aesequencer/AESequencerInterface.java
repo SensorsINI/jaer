@@ -10,9 +10,9 @@
 
 package net.sf.jaer.aesequencer;
 
+import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.aemonitor.AEPacketRaw;
 
 /**
  *

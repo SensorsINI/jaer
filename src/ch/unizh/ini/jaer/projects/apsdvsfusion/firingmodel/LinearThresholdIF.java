@@ -9,7 +9,6 @@ import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelCreator;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SignalHandler;
-import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.IntegrateAndFire.Creator;
 
 /**
  * @author Dennis

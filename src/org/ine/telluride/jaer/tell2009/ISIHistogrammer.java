@@ -3,12 +3,17 @@
  * and open the template in the editor.
  */
 package org.ine.telluride.jaer.tell2009;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.Graphics;
 import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
+
 import javax.swing.JFrame;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;

@@ -12,7 +12,7 @@
 
 package net.sf.jaer.eventprocessing;
 
-import net.sf.jaer.event.*;
+import net.sf.jaer.event.EventPacket;
 
 /**
  * Measures cost of event processing.

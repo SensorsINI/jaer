@@ -5,9 +5,10 @@
  */
 package ch.unizh.ini.jaer.projects.tobi.zipzaps;
 
+import java.awt.event.KeyEvent;
+
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.ExceptionListener;
-import java.awt.event.KeyEvent;
 
 /**
  *  GUI to control ZipZap car.
