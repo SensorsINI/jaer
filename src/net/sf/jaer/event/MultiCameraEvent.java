@@ -18,7 +18,7 @@ package net.sf.jaer.event;
  */
 public class MultiCameraEvent extends PolarityEvent {
 
-    public static final int NUM_CAMERAS=4;  // TODO need to be able to change this
+    public static final int NUM_CAMERAS=2;  // TODO need to be able to change this
 
     /** Static method to extract the camera number from the 32 bit raw address.
      * It is stored as a byte in the MSB of the 32 bits.

@@ -10,7 +10,7 @@
  */
 package net.sf.jaer.biasgen;
 import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
-import eu.seebetter.ini.chips.APSDVSchip;
+import eu.seebetter.ini.chips.ApsDvsChip;
 import eu.seebetter.ini.chips.sbret10.ApsDvsTweaks;
 import java.awt.Container;
 import java.beans.PropertyChangeEvent;
@@ -44,7 +44,7 @@ import net.sf.jaer.config.ApsDvsConfig;
  * <pre>
  
     public ApsDVSUserControlPanel(AEChip chip) {
-        this.chip=(APSDVSchip)chip; // will throw ClassCastException if not right kind of chip.
+        this.chip=(ApsDvsChip)chip; // will throw ClassCastException if not right kind of chip.
         
         apsDvsTweaks = (ApsDvsTweaks) chip.getBiasgen();
         apsDvsConfig = (ApsDvsConfig) chip.getBiasgen();

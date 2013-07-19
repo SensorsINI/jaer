@@ -105,6 +105,17 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      */
     public final PropertyChangeEvent NEW_EVENTS_PROPERTY_CHANGE = new PropertyChangeEvent(this, "NewEvents", null, null);
     
+    /** Property change fired when new events are received. The new object in the event is AEPacketRaw just received. */
+    public static final String PROPERTY_CHANGE_NEW_EVENTS="NewEvents";
+    
+    /** Property change fired when a new message is received on the asynchronous status endpoint.
+     * @see AsyncStatusThread
+     */
+    public static final String PROPERTY_CHANGE_ASYNC_STATUS_MSG="AsyncStatusMessage";
+    
+    /** Status messages sent by device. This header byte identifies the message type. */
+    public static final byte STATUS_MSG_TIMESTAMPS_RESET=(byte)1, STATUS_MSG_OTHER=(byte)0xff;
+    
     /** This support can be used to register this interface for property change events */
     public PropertyChangeSupport support = new PropertyChangeSupport(this);    // consts
     final static byte AE_MONITOR_ENDPOINT_ADDRESS = (byte) 0x86;  // this is endpoint of AE fifo on Cypress FX2, 0x86 means IN endpoint EP6.
@@ -293,6 +304,12 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         }
     }
 
+    /** Returns the PropertyChangeSupport.
+     * 
+     * @return the support.
+     * @see #PROPERTY_CHANGE_ASYNC_STATUS_MSG
+     * @see #PROPERTY_CHANGE_NEW_EVENTS
+     */
     public PropertyChangeSupport getSupport() {
         return this.support;
     }
@@ -771,7 +788,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
         computeEstimatedEventRate(lastEventsAcquired);
         if (nEvents != 0) {
-            support.firePropertyChange(NEW_EVENTS_PROPERTY_CHANGE); // call listeners
+            support.firePropertyChange(PROPERTY_CHANGE_NEW_EVENTS,null,lastEventsAcquired); // call listeners
 //        }
         }
         return lastEventsAcquired;
@@ -1121,6 +1138,12 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         return support;
     }
 
+    /** This threads reads asynchronous status or other data from the device.
+     * It handles timestamp reset messages from the device and possibly other types of data.
+     It fires PropertyChangeEvent {@link #PROPERTY_CHANGE_ASYNC_STATUS_MSG} on receiving a message
+     @author tobi delbruck
+     * @see #getSupport() 
+     */
     protected class AsyncStatusThread extends Thread {
 
         UsbIoPipe pipe;
@@ -1159,10 +1182,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             while (!stop && !isInterrupted()) {
                 buffer.NumberOfBytesToTransfer = 64;
                 status = pipe.read(buffer);
-                if (status == 0) {
-                    if (stop) {
+                if (status != 0) {
+//                    if (stop) {
                         log.info("Error submitting read on status pipe: " + UsbIo.errorText(buffer.Status));
-                    }
+//                    }
                     break;
                 }
                 status = pipe.waitForCompletion(buffer);
@@ -1174,14 +1197,19 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 }
                 if (buffer.BytesTransferred > 0) {
                     msg = buffer.BufferMem[0];
-                    if (msg == 1) {
-                        AEReader rd = getAeReader();
-                        if (rd != null) {
-                            log.info("*********************************** CypressFX2.AsyncStatusThread.run(): timestamps externally reset");
-                            rd.resetTimestamps();
-                        } else {
-                            log.info("Received timestamp external reset message, but monitor is not running");
-                        }
+                    switch (msg) {
+                        case STATUS_MSG_TIMESTAMPS_RESET:
+                            AEReader rd = getAeReader();
+                            if (rd != null) {
+                                log.info("*********************************** CypressFX2.AsyncStatusThread.run(): timestamps externally reset");
+                                rd.resetTimestamps();
+                            } else {
+                                log.info("Received timestamp external reset message, but monitor is not running");
+                            }
+                            break;
+                        case STATUS_MSG_OTHER:
+                        default:
+                            support.firePropertyChange(PROPERTY_CHANGE_ASYNC_STATUS_MSG, null, buffer); // tobi - send message to listeners
                     }
                 } // we getString 0 byte read on stopping device
             }
@@ -1217,7 +1245,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         private int numNonMonotonicTimeExceptionsPrinted = 0;
         private int resetTimestampWarningCount=0;
         int cycleCounter = 0;
-        volatile boolean timestampsReset = false; // used to tell processData that another thread has reset timestamps
+        /** This flag can be set asynchronously. In the AEReader, this flag may be used to process this reset. */
+        protected volatile boolean timestampsReset = false; // used to tell processData that another thread has reset timestamps
         final int BAD_WRAP_PRINT_INTERVAL = 100; // only print a warning every this many to avoid slowing down critical process
         /** the priority for this monitor acquisition thread. This should be set high (e.g. Thread.MAX_PRIORITY) so that the thread can
          * start new buffer reads in a timely manner so that the sender does not getString blocked
@@ -1280,7 +1309,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         //            System.out.println("ProcessBuffer (before read)");
         }
 
-        /** Resets the timestamp unwrap value, resets the USBIO pipe, and resets the AEPacketRawPool.
+        /** Resets the timestamp unwrap value and sets flag timestampsReset.
          */
         synchronized public void resetTimestamps() {
             if (resetTimestampWarningCount < RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT || resetTimestampWarningCount % RESET_TIMESTAMPS_WARNING_INTERVAL == 0) {

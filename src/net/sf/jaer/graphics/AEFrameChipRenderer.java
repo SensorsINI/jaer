@@ -10,7 +10,7 @@ package net.sf.jaer.graphics;
 
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.histogram.AbstractHistogram;
 import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.histogram.SimpleHistogram;
-import eu.seebetter.ini.chips.APSDVSchip;
+import eu.seebetter.ini.chips.ApsDvsChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.chip.AEChip;
@@ -50,8 +50,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     protected FloatBuffer offMap, offBuffer;
     // double buffered histogram so we can accumulate new histogram while old one is still being rendered and returned to caller
     private final int histStep=4;
-    private AbstractHistogram adcSampleValueHistogram1 = new SimpleHistogram(0, histStep, (APSDVSchip.MAX_ADC + 1) / histStep, 0);
-    private AbstractHistogram adcSampleValueHistogram2 = new SimpleHistogram(0, histStep, (APSDVSchip.MAX_ADC + 1) / histStep, 0);
+    private AbstractHistogram adcSampleValueHistogram1 = new SimpleHistogram(0, histStep, (ApsDvsChip.MAX_ADC + 1) / histStep, 0);
+    private AbstractHistogram adcSampleValueHistogram2 = new SimpleHistogram(0, histStep, (ApsDvsChip.MAX_ADC + 1) / histStep, 0);
     private AbstractHistogram currentHist = adcSampleValueHistogram1, nextHist = adcSampleValueHistogram2;
     private boolean computeHistograms = false;
 
@@ -328,7 +328,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         int x=e.x, y=e.y;
         if (x < 0 || y < 0 || x >= sizeX || y >= sizeY) {
             if (System.currentTimeMillis() - lastWarningPrintedTimeMs > INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS) {
-                log.warning(String.format("Event %s out of bounds and cannot be rendered in bounds sizeX=%d sizeY=%d- delaying next warning for %dms", e.toString(), sizeX, sizeY,INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS));
+                log.warning(String.format("Event %s out of bounds and cannot be rendered in bounds sizeX=%d sizeY=%d - delaying next warning for %dms", e.toString(), sizeX, sizeY,INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS));
                 lastWarningPrintedTimeMs = System.currentTimeMillis();
             }
             return -1;

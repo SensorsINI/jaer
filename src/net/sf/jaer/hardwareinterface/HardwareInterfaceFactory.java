@@ -1,8 +1,8 @@
 /*
  * HardwareInterfaceFactory.java
- * 
+ *
  * Created on October 2, 2005, 5:38 PM
- * 
+ *
  * To change this template, choose Tools | Options and locate the template under
  * the Source Creation and Management node. Right-click the template and choose
  * Open. You can then make changes to the template in the Source Editor.
@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.logging.Logger;
 
+import net.sf.jaer.hardwareinterface.serial.SpiNNaker.SpiNNaker_InterfaceFactory;
 import net.sf.jaer.hardwareinterface.serial.eDVS128.eDVS128_InterfaceFactory;
 import net.sf.jaer.hardwareinterface.udp.UDPInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.USBIOHardwareInterfaceFactory;
@@ -29,7 +30,7 @@ import de.thesycon.usbio.PnPNotifyInterface;
  * It is a singleton: get the instance() and ask it to make an interface for you.
  * You need to first call the expensive {@link #buildInterfaceList() } to enumerate all devices available.
  * Afterwards the list is stored and may be cheaply accessed.
- * 
+ *
  * @author tobi
  */
 public class HardwareInterfaceFactory extends HashSet<Class> implements
@@ -52,6 +53,7 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 		UDPInterfaceFactory.class,
 		CLEyeHardwareInterfaceFactory.class,
 		eDVS128_InterfaceFactory.class,
+		SpiNNaker_InterfaceFactory.class,
 	};
 	private static HardwareInterfaceFactory instance = new HardwareInterfaceFactory();
 
@@ -65,7 +67,7 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 	/**
 	 * Use this instance to access the methods, e.g.
 	 * <code>HardwareInterfaceFactory.instance().getNumInterfacesAvailable()</code>.
-	 * 
+	 *
 	 * @return the singleton instance.
 	 */
 	public static HardwareInterfaceFactory instance() {
@@ -75,7 +77,7 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 	/**
 	 * Explicitly searches all interface types to build a list of available hardware interfaces. This method is
 	 * expensive.
-	 * 
+	 *
 	 * @see #getNumInterfacesAvailable()
 	 */
 	synchronized public void buildInterfaceList() {
@@ -121,7 +123,7 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 	/**
 	 * Says how many total of all types of hardware are available, assuming that {@link #buildInterfaceList() } has been
 	 * called earlier.
-	 * 
+	 *
 	 * @return number of devices
 	 * @see #buildInterfaceList()
 	 */

@@ -13,9 +13,18 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2Biasgen;
 import de.thesycon.usbio.*;
 import de.thesycon.usbio.structs.*;
+import eu.seebetter.ini.chips.sbret10.IMUSample;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import javax.swing.ProgressMonitor;
 import java.io.*;
 import java.util.Arrays;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import static net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2.log;
+import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController;
+import static net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController.SERVO_QUEUE_LENGTH;
 
 /**
  * Adds functionality of apsDVS sensors to based CypressFX2Biasgen class. The key method is translateEvents that parses the data from the sensor to construct jAER raw events.
@@ -29,11 +38,16 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
     static public final short DID = (short) 0x0002;
     
     private boolean translateRowOnlyEvents=prefs.getBoolean("ApsDvsHardwareInterface.translateRowOnlyEvents", false);
+   
+     private volatile ArrayBlockingQueue<IMUSample> imuSampleQueue; // this queue is used for holding imu samples sent to aeReader
 
-    /** Creates a new instance of CypressFX2Biasgen */
+    /**
+     * Creates a new instance of CypressFX2Biasgen
+     */
     public ApsDvsHardwareInterface(int devNumber) {
         super(devNumber);
-        
+        imuSampleQueue = new ArrayBlockingQueue<IMUSample>(1);
+
     }
 
     /** Overridden to use PortBit powerDown in biasgen
@@ -43,8 +57,8 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
      */
     @Override
     synchronized public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
-        if(chip!=null && chip instanceof APSDVSchip){
-            APSDVSchip apsDVSchip = (APSDVSchip) chip;
+        if(chip!=null && chip instanceof ApsDvsChip){
+            ApsDvsChip apsDVSchip = (ApsDvsChip) chip;
             apsDVSchip.setPowerDown(powerDown);
         }
     }
@@ -260,12 +274,14 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
     }
     
     /** This reader understands the format of raw USB data and translates to the AEPacketRaw */
-    public class RetinaAEReader extends CypressFX2.AEReader {
+    public class RetinaAEReader extends CypressFX2.AEReader implements PropertyChangeListener{
         private static final int NONMONOTONIC_WARNING_COUNT = 30; // how many warnings to print after start or timestamp reset
+        public static final int IMU_POLLING_INTERVAL_EVENTS = 1000;
 
         public RetinaAEReader(CypressFX2 cypress) throws HardwareInterfaceException {
             super(cypress);
             resetFrameAddressCounters();
+            getSupport().addPropertyChangeListener(CypressFX2.PROPERTY_CHANGE_ASYNC_STATUS_MSG,this);
         }
         /** Method to translate the UsbIoBuffer for the DVS320 sensor which uses the 32 bit address space.
          *<p>
@@ -332,6 +348,9 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
         
         @Override
         protected void translateEvents(UsbIoBuf b) {
+            // TODO debug
+//            if(imuSample!=null) System.out.println(imuSample);
+            
             try {
                 // data from cDVS is stateful. 2 bytes sent for each word of data can consist of either timestamp, y address, x address, or ADC value.
                 // The type of data is determined from bits in these two bytes.
@@ -350,12 +369,14 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                         bytesSent = (bytesSent / 2) * 2; // truncate off any extra part-event
                     }
 
-                    int[] addresses = buffer.getAddresses();
+                      int[] addresses = buffer.getAddresses();
                     int[] timestamps = buffer.getTimestamps();
                     //log.info("received " + bytesSent + " bytes");
                     // write the start of the packet
                     buffer.lastCaptureIndex = eventCounter;
 //                     tobiLogger.log("#packet");
+                    
+ 
                     for (int i = 0; i < bytesSent; i += 2) {
                         //   tobiLogger.log(String.format("%d %x %x",eventCounter,buf[i],buf[i+1])); // DEBUG
                         //   int val=(buf[i+1] << 8) + buf[i]; // 16 bit value of data
@@ -363,7 +384,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 
                         final int code = (buf[i + 1] & 0xC0) >> 6; // gets two bits at XX00 0000 0000 0000. (val&0xC000)>>>14;
                         //  log.info("code " + code);
-                                        int xmask = (APSDVSchip.XMASK | APSDVSchip.POLMASK) >>> APSDVSchip.POLSHIFT;
+                                        int xmask = (ApsDvsChip.XMASK | ApsDvsChip.POLMASK) >>> ApsDvsChip.POLSHIFT;
                         switch (code) {
                             case 0: // address
                                 // If the data is an address, we write out an address value if we either get an ADC reading or an x address.
@@ -380,18 +401,19 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                 } else {
                                     if ((dataword & TYPE_WORD_BIT) == TYPE_WORD_BIT) {
                                         if((dataword & FRAME_START_BIT) == FRAME_START_BIT)resetFrameAddressCounters();
-                                        int readcycle = (dataword & APSDVSchip.ADC_READCYCLE_MASK)>>APSDVSchip.ADC_READCYCLE_SHIFT;
+                                        int readcycle = (dataword & ApsDvsChip.ADC_READCYCLE_MASK)>>ApsDvsChip.ADC_READCYCLE_SHIFT;
                                         if(countY[readcycle]>=chip.getSizeY()){
                                             countY[readcycle] = 0;
                                             countX[readcycle]++;
                                         }
                                         int xAddr=(short)(chip.getSizeX()-1-countX[readcycle]);
                                         int yAddr=(short)(chip.getSizeY()-1-countY[readcycle]);
+//                                        if(xAddr >= chip.getSizeX() || xAddr<0 || yAddr >= chip.getSizeY() || yAddr<0)System.out.println("out of bounds event: x = "+xAddr+", y = "+yAddr+", read = "+readcycle);
                                         countY[readcycle]++;
-                                        addresses[eventCounter] = APSDVSchip.ADDRESS_TYPE_APS | 
-                                                (yAddr<<APSDVSchip.YSHIFT)|
-                                                (xAddr<<APSDVSchip.XSHIFT)|
-                                                (dataword & (APSDVSchip.ADC_READCYCLE_MASK | APSDVSchip.ADC_DATA_MASK));
+                                        addresses[eventCounter] = ApsDvsChip.ADDRESS_TYPE_APS | 
+                                                (yAddr<<ApsDvsChip.YSHIFT)|
+                                                (xAddr<<ApsDvsChip.XSHIFT)|
+                                                (dataword & (ApsDvsChip.ADC_READCYCLE_MASK | ApsDvsChip.ADC_DATA_MASK));
                                         timestamps[eventCounter] = currentts;  // ADC event gets last timestamp
                                         eventCounter++;
 //                                              System.out.println("ADC word: " + (dataword&SeeBetter20.ADC_DATA_MASK));
@@ -401,26 +423,26 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                         eventCounter++;
                                      } else if ((buf[i + 1] & XBIT) == XBIT) {////  received an X address, write out event to addresses/timestamps output arrays
                                         // x adddress
-                                        addresses[eventCounter] = (lasty << APSDVSchip.YSHIFT) | ((dataword & xmask)<<APSDVSchip.POLSHIFT);  // combine current bits with last y address bits and send
+                                        addresses[eventCounter] = (lasty << ApsDvsChip.YSHIFT) | ((dataword & xmask)<<ApsDvsChip.POLSHIFT);  // combine current bits with last y address bits and send
                                         timestamps[eventCounter] = currentts; // add in the wrap offset and convert to 1us tick
                                         eventCounter++;
-                                        //log.info("X: "+((dataword & APSDVSchip.XMASK)>>1));
+                                        //log.info("X: "+((dataword & ApsDvsChip.XMASK)>>1));
                                         gotY = false;
                                     } else { // row address came
                                         if (gotY) { // no col address, last one was row only event
                                             if (translateRowOnlyEvents) {// make  row-only event
 
-                                                addresses[eventCounter] = (lasty << APSDVSchip.YSHIFT);  // combine current bits with last y address bits and send
+                                                addresses[eventCounter] = (lasty << ApsDvsChip.YSHIFT);  // combine current bits with last y address bits and send
                                                 timestamps[eventCounter] = currentts; // add in the wrap offset and convert to 1us tick
                                                 eventCounter++;
                                             }
 
                                         }
                                         // y address
-                                        int ymask = (APSDVSchip.YMASK >>> APSDVSchip.YSHIFT);
+                                        int ymask = (ApsDvsChip.YMASK >>> ApsDvsChip.YSHIFT);
                                         lasty = ymask & dataword; //(0xFF & buf[i]); //
                                         gotY = true;
-                                        //log.info("Y: "+lasty+" - data "+dataword+" - mask: "+(APSDVSchip.YMASK >>> APSDVSchip.YSHIFT));
+                                        //log.info("Y: "+lasty+" - data "+dataword+" - mask: "+(ApsDvsChip.YMASK >>> ApsDvsChip.YSHIFT));
                                     }
                                 }
                                 break;
@@ -443,6 +465,13 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                 this.resetTimestamps();
                                 //   log.info("timestamp reset");
                                 break;
+                        }
+                        if (eventCounter % IMU_POLLING_INTERVAL_EVENTS == 0) {                       // write IMUSample to AEPacketRaw if we have one
+                            IMUSample imuSample = imuSampleQueue.poll();
+                            if (imuSample != null) {
+                                imuSample.setTimestamp(currentts);
+                                eventCounter += imuSample.writeToPacket(buffer, eventCounter);
+                            }
                         }
                     } // end for
 
@@ -468,6 +497,28 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
             }
             Arrays.fill(countX, 0, numReadoutTypes, (short)0);
             Arrays.fill(countY, 0, numReadoutTypes, (short)0);
+//            log.info("Start of new frame");
+        }
+
+        @Override
+        public void propertyChange(PropertyChangeEvent evt) {
+            try{
+                UsbIoBuf buf=(UsbIoBuf)evt.getNewValue();
+                try {
+                    IMUSample sample=new IMUSample(buf,currentts);
+                    imuSampleQueue.put(sample);
+                } catch (InterruptedException ex) {
+                    log.warning("putting IMUSample to queue was interrupted");
+                }
+                
+            }catch(ClassCastException e){
+                log.warning("receieved wrong type of data for the IMU: "+e.toString());
+            }
         }
     }
+    
+ 
+    
+ 
+ 
 }

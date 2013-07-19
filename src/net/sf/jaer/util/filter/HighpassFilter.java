@@ -29,6 +29,14 @@ public  class HighpassFilter extends Filter{
         this.value=value;
         lpFilter.setInternalValue(value);
     }
+    
+    /** Returns internal lowpass filter value, i.e. offset or average DC of input.
+     * 
+     * @return the value of the lowpass filter.
+     */
+    public float getInternalValue(){
+        return lpFilter.getValue();
+    }
 
     @Override
     public float getValue() {

@@ -36,6 +36,7 @@ to supply MultiCameraInterface which are multiple DVS128 hardware interfaces.
  * @see net.sf.jaer.stereopsis.MultiCameraInterface
  * @see net.sf.jaer.stereopsis.MultiCameraHardwareInterface
  */
+import org.ine.telluride.jaer.tell2013.ThreeDTracker.TwoCamera3DDisplayMethod;
 @Description("A multi DVS128 retina (DVS128) each on it's own USB interface with merged and presumably aligned fields of view")
 public class MultiDVS128CameraChip extends DVS128 implements MultiCameraInterface {
 
@@ -44,7 +45,7 @@ public class MultiDVS128CameraChip extends DVS128 implements MultiCameraInterfac
     /** Creates a new instance of MultiDVS128CameraChip */
     public MultiDVS128CameraChip() {
         super();
-
+        getCanvas().addDisplayMethod(new TwoCamera3DDisplayMethod(getCanvas()));
 
         for (AEChip c : cameras) {
             c = new DVS128();

@@ -7,7 +7,7 @@ created 26 Oct 2008 for new cDVSTest chip
 package eu.seebetter.ini.chips.seebetter30;
 
 import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
-import eu.seebetter.ini.chips.APSDVSchip;
+import eu.seebetter.ini.chips.ApsDvsChip;
 import eu.seebetter.ini.chips.seebetter20.SeeBetter20;
 import java.util.Iterator;
 import java.util.logging.Level;

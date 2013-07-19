@@ -277,7 +277,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame {
 
 		writeVIDPIDDIDButton.setText("Write C0 load VIDPIDDID to EEPROM");
 		writeVIDPIDDIDButton
-		.setToolTipText("writes only VID/PID/DID to flash memory EEPROM for CypressFX2 C0 load (ram download of code from host)");
+			.setToolTipText("writes only VID/PID/DID to flash memory EEPROM for CypressFX2 C0 load (ram download of code from host)");
 		writeVIDPIDDIDButton.addActionListener(new java.awt.event.ActionListener() {
 			@Override
 			public void actionPerformed(final java.awt.event.ActionEvent evt) {
@@ -304,52 +304,52 @@ public class CypressFX2EEPROM extends javax.swing.JFrame {
 		jPanel2.setPreferredSize(new java.awt.Dimension(0, 10));
 
 		jLabel2
-		.setText("<html>This panel will write a VID/PID/DID to the device EEPROM. The device must have firmware loaded already that can write the EEPROM. </html>");
+			.setText("<html>This panel will write a VID/PID/DID to the device EEPROM. The device must have firmware loaded already that can write the EEPROM. </html>");
 
 		final org.jdesktop.layout.GroupLayout vidpiddidPanelLayout = new org.jdesktop.layout.GroupLayout(vidpiddidPanel);
 		vidpiddidPanel.setLayout(vidpiddidPanelLayout);
 		vidpiddidPanelLayout.setHorizontalGroup(vidpiddidPanelLayout.createParallelGroup(
 			org.jdesktop.layout.GroupLayout.LEADING).add(
-				vidpiddidPanelLayout
+			vidpiddidPanelLayout
 				.createSequentialGroup()
 				.add(
 					vidpiddidPanelLayout
-					.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-					.add(vidpiddidPanelLayout.createSequentialGroup().addContainerGap().add(jLabel2))
-					.add(
-						vidpiddidPanelLayout
-						.createSequentialGroup()
-						.add(writeVIDPIDDIDButton)
-						.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-						.add(VIDtextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 179,
-							org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-							.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-							.add(PIDtextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 179,
-								org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+						.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+						.add(vidpiddidPanelLayout.createSequentialGroup().addContainerGap().add(jLabel2))
+						.add(
+							vidpiddidPanelLayout
+								.createSequentialGroup()
+								.add(writeVIDPIDDIDButton)
+								.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+								.add(VIDtextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 179,
+									org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+								.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+								.add(PIDtextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 179,
+									org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
 								.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
 								.add(DIDtextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 179,
 									org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
-									.addContainerGap(269, Short.MAX_VALUE)));
+				.addContainerGap(269, Short.MAX_VALUE)));
 		vidpiddidPanelLayout.setVerticalGroup(vidpiddidPanelLayout.createParallelGroup(
 			org.jdesktop.layout.GroupLayout.LEADING).add(
-				org.jdesktop.layout.GroupLayout.TRAILING,
-				vidpiddidPanelLayout
+			org.jdesktop.layout.GroupLayout.TRAILING,
+			vidpiddidPanelLayout
 				.createSequentialGroup()
 				.addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
 				.add(jLabel2)
 				.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
 				.add(
 					vidpiddidPanelLayout
-					.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
-					.add(writeVIDPIDDIDButton)
-					.add(VIDtextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 23,
-						org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+						.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+						.add(writeVIDPIDDIDButton)
+						.add(VIDtextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 23,
+							org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
 						.add(PIDtextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
 							org.jdesktop.layout.GroupLayout.DEFAULT_SIZE,
 							org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-							.add(DIDtextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
-								org.jdesktop.layout.GroupLayout.DEFAULT_SIZE,
-								org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)).add(12, 12, 12)));
+						.add(DIDtextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
+							org.jdesktop.layout.GroupLayout.DEFAULT_SIZE,
+							org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)).add(12, 12, 12)));
 
 		firmwareDownloadPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("EEPROM firmware (C2 load)"));
 		firmwareDownloadPanel.setAlignmentX(1.0F);
@@ -386,7 +386,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame {
 
 		eraseButton.setText("Erase EEPROM");
 		eraseButton
-		.setToolTipText("Erases the EEPROM to blank state (device must first have firmware that can write the EEPROM)");
+			.setToolTipText("Erases the EEPROM to blank state (device must first have firmware that can write the EEPROM)");
 		eraseButton.addActionListener(new java.awt.event.ActionListener() {
 			@Override
 			public void actionPerformed(final java.awt.event.ActionEvent evt) {
@@ -409,83 +409,83 @@ public class CypressFX2EEPROM extends javax.swing.JFrame {
 			.add(
 				org.jdesktop.layout.GroupLayout.TRAILING,
 				jPanel1Layout.createSequentialGroup().addContainerGap().add(writeEEPROMRadioButton)
-				.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 293, Short.MAX_VALUE)
-				.add(writeRAMRadioButton).add(69, 69, 69).add(eraseButton).add(18, 18, 18)
-				.add(downloadFirmwareButton).add(91, 91, 91)));
+					.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 293, Short.MAX_VALUE)
+					.add(writeRAMRadioButton).add(69, 69, 69).add(eraseButton).add(18, 18, 18)
+					.add(downloadFirmwareButton).add(91, 91, 91)));
 		jPanel1Layout.setVerticalGroup(jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING).add(
 			jPanel1Layout
-			.createSequentialGroup()
-			.addContainerGap()
-			.add(
-				jPanel1Layout
-				.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+				.createSequentialGroup()
+				.addContainerGap()
 				.add(
-					jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
-					.add(writeEEPROMRadioButton).add(writeRAMRadioButton))
-					.add(
-						jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
-						.add(eraseButton).add(downloadFirmwareButton)))
-						.addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)));
+					jPanel1Layout
+						.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+						.add(
+							jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+								.add(writeEEPROMRadioButton).add(writeRAMRadioButton))
+						.add(
+							jPanel1Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+								.add(eraseButton).add(downloadFirmwareButton)))
+				.addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)));
 
 		jLabel1
-		.setText("<html>Select a firmware file here. <p><strong>For EEPROM programming, the device must already be running firmware that can program the EEPROM.</strong><p> iic files are for writing to the EEPROM but require that the device have some firmware loaded that can write the EEPROM.<p>bix (binary) and hex (intel format) files are for writing to RAM.</html>");
+			.setText("<html>Select a firmware file here. <p><strong>For EEPROM programming, the device must already be running firmware that can program the EEPROM.</strong><p> iic files are for writing to the EEPROM but require that the device have some firmware loaded that can write the EEPROM.<p>bix (binary) and hex (intel format) files are for writing to RAM.</html>");
 
 		final org.jdesktop.layout.GroupLayout jPanel6Layout = new org.jdesktop.layout.GroupLayout(jPanel6);
 		jPanel6.setLayout(jPanel6Layout);
 		jPanel6Layout
-		.setHorizontalGroup(jPanel6Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING).add(
-			jPanel6Layout
-			.createSequentialGroup()
-			.addContainerGap()
-			.add(
+			.setHorizontalGroup(jPanel6Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING).add(
 				jPanel6Layout
-				.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-				.add(
-					jPanel6Layout
-					.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING, false)
-					.add(org.jdesktop.layout.GroupLayout.LEADING, jPanel1,
-						org.jdesktop.layout.GroupLayout.DEFAULT_SIZE,
-						org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-						.add(
-							org.jdesktop.layout.GroupLayout.LEADING,
-							jPanel6Layout
-							.createSequentialGroup()
-							.add(filenameTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
-								792, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE).add(18, 18, 18)
-								.add(chooseFileButton))).add(jLabel1)).addContainerGap(7, Short.MAX_VALUE)));
+					.createSequentialGroup()
+					.addContainerGap()
+					.add(
+						jPanel6Layout
+							.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+							.add(
+								jPanel6Layout
+									.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING, false)
+									.add(org.jdesktop.layout.GroupLayout.LEADING, jPanel1,
+										org.jdesktop.layout.GroupLayout.DEFAULT_SIZE,
+										org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+									.add(
+										org.jdesktop.layout.GroupLayout.LEADING,
+										jPanel6Layout
+											.createSequentialGroup()
+											.add(filenameTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
+												792, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE).add(18, 18, 18)
+											.add(chooseFileButton))).add(jLabel1)).addContainerGap(7, Short.MAX_VALUE)));
 		jPanel6Layout.setVerticalGroup(jPanel6Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING).add(
 			jPanel6Layout
-			.createSequentialGroup()
-			.addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-			.add(jLabel1)
-			.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-			.add(
-				jPanel6Layout
-				.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
-				.add(filenameTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
-					org.jdesktop.layout.GroupLayout.DEFAULT_SIZE,
-					org.jdesktop.layout.GroupLayout.PREFERRED_SIZE).add(chooseFileButton))
-					.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-					.add(jPanel1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
-						org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)));
+				.createSequentialGroup()
+				.addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+				.add(jLabel1)
+				.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+				.add(
+					jPanel6Layout
+						.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+						.add(filenameTextField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
+							org.jdesktop.layout.GroupLayout.DEFAULT_SIZE,
+							org.jdesktop.layout.GroupLayout.PREFERRED_SIZE).add(chooseFileButton))
+				.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+				.add(jPanel1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
+					org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)));
 
 		final org.jdesktop.layout.GroupLayout firmwareDownloadPanelLayout = new org.jdesktop.layout.GroupLayout(
 			firmwareDownloadPanel);
 		firmwareDownloadPanel.setLayout(firmwareDownloadPanelLayout);
 		firmwareDownloadPanelLayout.setHorizontalGroup(firmwareDownloadPanelLayout.createParallelGroup(
 			org.jdesktop.layout.GroupLayout.LEADING).add(
-				firmwareDownloadPanelLayout
+			firmwareDownloadPanelLayout
 				.createSequentialGroup()
 				.addContainerGap()
 				.add(jPanel6, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 908,
 					org.jdesktop.layout.GroupLayout.PREFERRED_SIZE).addContainerGap(115, Short.MAX_VALUE)));
 		firmwareDownloadPanelLayout.setVerticalGroup(firmwareDownloadPanelLayout.createParallelGroup(
 			org.jdesktop.layout.GroupLayout.LEADING).add(
-				firmwareDownloadPanelLayout
+			firmwareDownloadPanelLayout
 				.createSequentialGroup()
 				.add(jPanel6, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
 					org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-					.addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)));
+				.addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)));
 
 		deviceIDPanel.setBorder(javax.swing.BorderFactory
 			.createTitledBorder("Serial Number String (4 characters for DVS128, 8 characters for USBAERmini2)"));
@@ -513,7 +513,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame {
 		USBAERmini2panel.setLayout(USBAERmini2panelLayout);
 		USBAERmini2panelLayout.setHorizontalGroup(USBAERmini2panelLayout.createParallelGroup(
 			org.jdesktop.layout.GroupLayout.LEADING).add(
-				USBAERmini2panelLayout
+			USBAERmini2panelLayout
 				.createSequentialGroup()
 				.add(monSeqCPLDFirmwareButton)
 				.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
@@ -527,10 +527,10 @@ public class CypressFX2EEPROM extends javax.swing.JFrame {
 			.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
 			.add(
 				USBAERmini2panelLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
-				.add(monSeqFX2FirmwareButton)
-				.add(monSeqCPLDFirmwareButton, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 26, Short.MAX_VALUE)
-				.add(monSeqFX2FirmwareButtonJTAG))
-				.add(jPanel4, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 45, Short.MAX_VALUE));
+					.add(monSeqFX2FirmwareButton)
+					.add(monSeqCPLDFirmwareButton, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 26, Short.MAX_VALUE)
+					.add(monSeqFX2FirmwareButtonJTAG))
+			.add(jPanel4, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 45, Short.MAX_VALUE));
 
 		CPLDDownloadPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("CPLD firmware download"));
 		CPLDDownloadPanel.setAlignmentX(1.0F);
@@ -548,22 +548,22 @@ public class CypressFX2EEPROM extends javax.swing.JFrame {
 		jPanel7Layout.setHorizontalGroup(jPanel7Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
 			.add(
 				jPanel7Layout
-				.createSequentialGroup()
-				.addContainerGap()
-				.add(CPLDfilenameField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 791,
-					org.jdesktop.layout.GroupLayout.PREFERRED_SIZE).add(18, 18, 18).add(chooseCPLDFileButton)
+					.createSequentialGroup()
+					.addContainerGap()
+					.add(CPLDfilenameField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 791,
+						org.jdesktop.layout.GroupLayout.PREFERRED_SIZE).add(18, 18, 18).add(chooseCPLDFileButton)
 					.addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)));
 		jPanel7Layout
-		.setVerticalGroup(jPanel7Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING).add(
-			jPanel7Layout
-			.createSequentialGroup()
-			.addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-			.add(
+			.setVerticalGroup(jPanel7Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING).add(
 				jPanel7Layout
-				.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
-				.add(CPLDfilenameField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
-					org.jdesktop.layout.GroupLayout.DEFAULT_SIZE,
-					org.jdesktop.layout.GroupLayout.PREFERRED_SIZE).add(chooseCPLDFileButton))
+					.createSequentialGroup()
+					.addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+					.add(
+						jPanel7Layout
+							.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+							.add(CPLDfilenameField, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
+								org.jdesktop.layout.GroupLayout.DEFAULT_SIZE,
+								org.jdesktop.layout.GroupLayout.PREFERRED_SIZE).add(chooseCPLDFileButton))
 					.add(51, 51, 51)));
 
 		downloadCPLDFirmwareButton.setText("Download firmware");
@@ -579,30 +579,30 @@ public class CypressFX2EEPROM extends javax.swing.JFrame {
 		CPLDDownloadPanel.setLayout(CPLDDownloadPanelLayout);
 		CPLDDownloadPanelLayout.setHorizontalGroup(CPLDDownloadPanelLayout.createParallelGroup(
 			org.jdesktop.layout.GroupLayout.LEADING).add(
-				CPLDDownloadPanelLayout
+			CPLDDownloadPanelLayout
 				.createSequentialGroup()
 				.add(
 					CPLDDownloadPanelLayout
-					.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-					.add(
-						CPLDDownloadPanelLayout.createSequentialGroup().add(328, 328, 328)
-						.add(downloadCPLDFirmwareButton))
+						.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+						.add(
+							CPLDDownloadPanelLayout.createSequentialGroup().add(328, 328, 328)
+								.add(downloadCPLDFirmwareButton))
 						.add(
 							CPLDDownloadPanelLayout
-							.createSequentialGroup()
-							.addContainerGap()
-							.add(jPanel7, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
-								org.jdesktop.layout.GroupLayout.DEFAULT_SIZE,
-								org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
-								.addContainerGap(113, Short.MAX_VALUE)));
+								.createSequentialGroup()
+								.addContainerGap()
+								.add(jPanel7, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
+									org.jdesktop.layout.GroupLayout.DEFAULT_SIZE,
+									org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
+				.addContainerGap(113, Short.MAX_VALUE)));
 		CPLDDownloadPanelLayout.setVerticalGroup(CPLDDownloadPanelLayout.createParallelGroup(
 			org.jdesktop.layout.GroupLayout.LEADING).add(
-				CPLDDownloadPanelLayout
+			CPLDDownloadPanelLayout
 				.createSequentialGroup()
 				.add(jPanel7, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 40,
 					org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-					.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED).add(downloadCPLDFirmwareButton)
-					.addContainerGap(12, Short.MAX_VALUE)));
+				.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED).add(downloadCPLDFirmwareButton)
+				.addContainerGap(12, Short.MAX_VALUE)));
 
 		fileMenu.setText("File");
 
@@ -623,42 +623,42 @@ public class CypressFX2EEPROM extends javax.swing.JFrame {
 		getContentPane().setLayout(layout);
 		layout.setHorizontalGroup(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING).add(
 			layout
-			.createSequentialGroup()
-			.add(
-				layout
-				.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING, false)
-				.add(scanPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 664,
-					org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-					.add(CPLDDownloadPanel, 0, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-					.add(firmwareDownloadPanel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE,
-						org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+				.createSequentialGroup()
+				.add(
+					layout
+						.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING, false)
+						.add(scanPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 664,
+							org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+						.add(CPLDDownloadPanel, 0, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+						.add(firmwareDownloadPanel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE,
+							org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
 						.add(USBAERmini2panel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE,
 							org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-							.add(deviceIDPanel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 943, Short.MAX_VALUE)
-							.add(vidpiddidPanel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE,
-								org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-								.addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)));
+						.add(deviceIDPanel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 943, Short.MAX_VALUE)
+						.add(vidpiddidPanel, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE,
+							org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+				.addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)));
 		layout.setVerticalGroup(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING).add(
 			layout
-			.createSequentialGroup()
-			.add(scanPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
-				org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+				.createSequentialGroup()
+				.add(scanPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
+					org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
 				.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
 				.add(vidpiddidPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
 					org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-					.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-					.add(firmwareDownloadPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
-						org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-						.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-						.add(deviceIDPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
-							org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-							.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-							.add(USBAERmini2panel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
-								org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-								.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-								.add(CPLDDownloadPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
-									org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-									.addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)));
+				.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+				.add(firmwareDownloadPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
+					org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+				.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+				.add(deviceIDPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
+					org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+				.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+				.add(USBAERmini2panel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
+					org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+				.addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+				.add(CPLDDownloadPanel, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE,
+					org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+				.addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)));
 
 		pack();
 	}// </editor-fold>//GEN-END:initComponents
@@ -759,8 +759,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame {
 				// f.isDirectory())
 				if (f.getName().toLowerCase().endsWith(".iic") || f.getName().toLowerCase().endsWith(".bix")
 					|| f.getName().toLowerCase().endsWith(".hex") || f.isDirectory()) // hex download stopped working,
-					// only accept iic for the
-					// moment
+				// only accept iic for the
+				// moment
 				{
 					return true;
 				}
@@ -777,7 +777,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame {
 		chooser.setFileFilter(filter);
 		chooser.setApproveButtonText("Choose");
 		chooser
-		.setToolTipText("Choose a binary download file (they are in the source path, e.g. ch/unizh/ini/caviar/hardwareinterface/usb)");
+			.setToolTipText("Choose a binary download file (they are in the source path, e.g. ch/unizh/ini/caviar/hardwareinterface/usb)");
 		final int returnVal = chooser.showOpenDialog(this);
 		if (returnVal == JFileChooser.APPROVE_OPTION) {
 			final File file = chooser.getSelectedFile();
@@ -817,7 +817,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame {
 		try {
 			cypress.setSerialNumber(writeDeviceIDTextField.getText());
 			JOptionPane
-			.showMessageDialog(this, "New serial number set, close and reopen the device to see the change.");
+				.showMessageDialog(this, "New serial number set, close and reopen the device to see the change.");
 		}
 		catch (final HardwareInterfaceException e) {
 			e.printStackTrace();
@@ -929,8 +929,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame {
 							}
 							cypress.writeEEPROM(0, cypress.loadBinaryFirmwareFile(filenameTextField.getText()));
 							JOptionPane
-							.showMessageDialog(CypressFX2EEPROM.this,
-								"Firmware written to EEPROM, unplug and replug the device to run it with the new firmware.");
+								.showMessageDialog(CypressFX2EEPROM.this,
+									"Firmware written to EEPROM, unplug and replug the device to run it with the new firmware.");
 						}
 					}
 					else if (fIsHexFile) {
@@ -947,8 +947,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame {
 					}
 					else {
 						JOptionPane
-						.showMessageDialog(CypressFX2EEPROM.this,
-							"File extension not recognized. Please choose a firmware file for downloading to EEPROM or RAM.");
+							.showMessageDialog(CypressFX2EEPROM.this,
+								"File extension not recognized. Please choose a firmware file for downloading to EEPROM or RAM.");
 					}
 				}
 				catch (final Exception e) {

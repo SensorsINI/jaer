@@ -62,6 +62,7 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
     JFrame isiFrame = null;
     int nextDecayTimestamp = 0, lastDecayTimestamp = 0;
     private float tauDecayMs = getPrefs().getFloat("ISIHistogrammer.tauDecayMs",40);
+    private int lastts=0; // to catch nonmonotonic ts that prevent decay of histogram
 
     public ISIHistogrammer (AEChip chip){
         super(chip);
@@ -80,6 +81,10 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
 
         for ( BasicEvent e:in ){
             int ts = e.timestamp;
+            if(ts-lastts<0){
+               nextDecayTimestamp=ts; 
+            }
+            lastts=ts;
             int ch;
             switch ( direction ){
                 case XDirection:
@@ -304,7 +309,7 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
     }
 
     public void decayHistogram (int timestamp){
-        if ( tauDecayMs > 0 && timestamp > nextDecayTimestamp ){
+        if ( tauDecayMs > 0 && timestamp >= nextDecayTimestamp ){
             float decayconstant = (float)java.lang.Math.exp(-( timestamp - lastDecayTimestamp ) / ( tauDecayMs * 1000 ));
             for ( int i = 0 ; i < bins.length ; i++ ){
                 bins[i] = (int)( bins[i] * decayconstant );

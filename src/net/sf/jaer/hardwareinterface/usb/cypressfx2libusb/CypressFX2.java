@@ -1090,7 +1090,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 		catch (final HardwareInterfaceException e) {
 			CypressFX2.log
-			.info("disableINEndpoint: couldn't send vendor request to disable IN transfers--it could be that device is gone or sendor is OFF and and completing GPIF cycle");
+				.info("disableINEndpoint: couldn't send vendor request to disable IN transfers--it could be that device is gone or sendor is OFF and and completing GPIF cycle");
 		}
 
 		inEndpointEnabled = false;
@@ -1166,7 +1166,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 						}
 						else {
 							CypressFX2.log
-							.info("Received timestamp external reset message, but monitor is not running");
+								.info("Received timestamp external reset message, but monitor is not running");
 						}
 					}
 				}
@@ -1299,9 +1299,9 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 			}
 			if (resetTimestampWarningCount == RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT) {
 				CypressFX2.log
-				.warning("will only print reset timestamps message every "
-					+ RESET_TIMESTAMPS_WARNING_INTERVAL
-					+ " times now\nCould it be that you are trying to inject sync events using the DVS128 IN pin?\nIf so, select the  \"Enable sync events output\"  option in the DVS128 menu");
+					.warning("will only print reset timestamps message every "
+						+ RESET_TIMESTAMPS_WARNING_INTERVAL
+						+ " times now\nCould it be that you are trying to inject sync events using the DVS128 IN pin?\nIf so, select the  \"Enable sync events output\"  option in the DVS128 menu");
 			}
 			resetTimestampWarningCount++;
 
@@ -1382,7 +1382,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		public void setFifoSize(int fifoSize) {
 			if (fifoSize < AEReader.CYPRESS_FIFO_SIZE) {
 				CypressFX2.log
-				.warning("CypressFX2 fifo size clipped to device FIFO size " + AEReader.CYPRESS_FIFO_SIZE);
+					.warning("CypressFX2 fifo size clipped to device FIFO size " + AEReader.CYPRESS_FIFO_SIZE);
 				fifoSize = AEReader.CYPRESS_FIFO_SIZE;
 			}
 
@@ -1730,7 +1730,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		if (LibUsb.getDeviceSpeed(device) != LibUsb.SPEED_HIGH) {
 			CypressFX2.log
-			.warning("Device is not operating at USB 2.0 High Speed, performance will be limited to about 300 keps");
+				.warning("Device is not operating at USB 2.0 High Speed, performance will be limited to about 300 keps");
 		}
 
 		// start the thread that listens for device status information (e.g. timestamp reset)
@@ -1768,7 +1768,8 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 			deviceHandle = new DeviceHandle();
 			status = LibUsb.open(device, deviceHandle);
 			if (status != LibUsb.SUCCESS) {
-				throw new HardwareInterfaceException("open_minimal_close(): failed to open device: " + LibUsb.errorName(status));
+				throw new HardwareInterfaceException("open_minimal_close(): failed to open device: "
+					+ LibUsb.errorName(status));
 			}
 		}
 
@@ -1821,7 +1822,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 
 		populateDescriptors();
-		
+
 		// And close opened resources again.
 		LibUsb.close(deviceHandle);
 
@@ -2558,7 +2559,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 				this.sendVendorRequest(CypressFX2.VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
 				throw new HardwareInterfaceException(
 					"Unable to program CPLD, command too long, please report to raphael@ini.ch, command: " + command
-					+ " index: " + index + " commandlength " + commandlength);
+						+ " index: " + index + " commandlength " + commandlength);
 			}
 			else if (dataBuffer.get(1) > 0) {
 				this.sendVendorRequest(CypressFX2.VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0);
@@ -2576,7 +2577,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 			progressMonitor.setProgress(index);
 			progressMonitor
-			.setNote(String.format("sent %d of %d bytes of CPLD configuration", index, bytearray.length));
+				.setNote(String.format("sent %d of %d bytes of CPLD configuration", index, bytearray.length));
 		}
 
 		// complete

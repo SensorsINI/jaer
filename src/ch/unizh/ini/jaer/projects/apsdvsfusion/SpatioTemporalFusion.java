@@ -40,7 +40,7 @@ import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.NonGLImageDisplay;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterBrowserPanel;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ContinuousOutputViewerManager;
 //import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
-import eu.seebetter.ini.chips.APSDVSchip;
+import eu.seebetter.ini.chips.ApsDvsChip;
 /**
  * Filter class for applying convolution kernels to the output of the DVS (tested on DVS128 and APS-DVS).
  * The user can create multiple response fields and connect these through convolution kernels. The 
