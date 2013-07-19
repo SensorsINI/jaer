@@ -9,7 +9,7 @@
 
 package net.sf.jaer.graphics;
 
-//import ch.unizh.ini.caviar.aemonitor.EventXYType;
+
 import net.sf.jaer.chip.AEChip;
 
 /**

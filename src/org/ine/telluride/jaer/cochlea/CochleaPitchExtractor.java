@@ -4,7 +4,7 @@
  */
 
 package org.ine.telluride.jaer.cochlea;
-//import ch.unizh.ini.caviar.graphics.FrameAnnotater;
+
 import java.util.logging.Logger;
 
 import net.sf.jaer.Description;

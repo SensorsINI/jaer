@@ -9,7 +9,7 @@
 
 package ch.unizh.ini.jaer.chip.cochlea;
 
-//import ch.unizh.ini.caviar.aemonitor.EventXYType;
+
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Observable;

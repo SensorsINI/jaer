@@ -11,7 +11,7 @@ package ch.unizh.ini.jaer.projects.robothead;
 
 
 import java.util.Observable;
-//import com.sun.org.apache.xpath.internal.operations.Mod;
+
 import java.util.Observer;
 import java.util.Vector;
 
@@ -21,7 +21,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-//import experiment1.PanTilt;
+
 
 /**
  *

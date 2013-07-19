@@ -11,7 +11,7 @@
  */
 package net.sf.jaer.graphics;
 
-//import ch.unizh.ini.caviar.aemonitor.EventXYType;
+
 import java.util.Iterator;
 
 import javax.media.opengl.GL;

@@ -11,7 +11,7 @@ package ch.unizh.ini.jaer.projects.robothead;
 
 
 import java.util.Observable;
-//import com.sun.org.apache.xpath.internal.operations.Mod;
+
 import java.util.Observer;
 
 import net.sf.jaer.chip.AEChip;

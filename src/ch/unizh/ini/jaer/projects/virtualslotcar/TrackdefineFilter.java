@@ -50,7 +50,7 @@ import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
-// import java.lang.reflect.InvocationTargetException;
+
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.FrameAnnotater;
 

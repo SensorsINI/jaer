@@ -30,7 +30,7 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ContinuousOutputViewerManager;
-//import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
+
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.SpikingOutputViewer;
 
 /**

@@ -19,7 +19,7 @@ message to RUBIOS. Useful for debugging.
 
 */
 
-//import edu.mplab.rubios.node.*;
+
 
 
 public class RubiSend extends RUBIOSNode {

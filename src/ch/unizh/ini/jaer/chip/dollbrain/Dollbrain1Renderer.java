@@ -9,7 +9,7 @@
 package ch.unizh.ini.jaer.chip.dollbrain;
 
 import net.sf.jaer.chip.AEChip;
-//import ch.unizh.ini.caviar.aemonitor.AEPacket2D;
+
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.graphics.AEChipRenderer;
 

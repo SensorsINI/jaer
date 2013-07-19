@@ -7,7 +7,7 @@ package org.ine.telluride.jaer.tell2010;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.util.Observable;
-//import net.sf.jaer.eventprocessing.EventFilter2D;
+
 import java.util.Observer;
 
 import javax.media.opengl.GLAutoDrawable;

@@ -20,7 +20,7 @@ import javax.swing.BoxLayout;
 import javax.swing.border.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-//import EngineeringFormat;
+
 
 /**
  * A panel for a filter that has Integer/Float/Boolean/String/enum getter/setter methods (bound properties).

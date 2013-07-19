@@ -10,7 +10,7 @@ package ch.unizh.ini.jaer.projects.integrateandfire;
 
 
 // JAER Stuff
-//import com.sun.xml.internal.bind.v2.runtime.unmarshaller.XsiNilLoader;
+
 
 import java.awt.geom.Point2D;
 

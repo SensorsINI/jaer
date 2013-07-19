@@ -3,7 +3,7 @@ created 26 Oct 2008 for new cDVSTest chip
  */
 package ch.unizh.ini.jaer.chip.dvs320;
 
-//import ch.unizh.ini.jaer.chip.util.externaladc.cDVSTestHardwareInterfaceProxy;
+
 import java.awt.BorderLayout;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;

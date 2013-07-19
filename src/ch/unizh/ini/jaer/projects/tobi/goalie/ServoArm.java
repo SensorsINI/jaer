@@ -11,7 +11,7 @@ import java.awt.Color;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-//import de.thesycon.usbio.PnPNotify;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;

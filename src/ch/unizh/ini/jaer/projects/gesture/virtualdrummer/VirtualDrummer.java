@@ -4,7 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
 import java.awt.Graphics2D;
-//import java.util.ArrayList;
+
 import java.awt.geom.Point2D;
 import java.util.Hashtable;
 import java.util.Observable;
@@ -19,8 +19,8 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
-//import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
-//import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
+
+
 import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
 import net.sf.jaer.eventprocessing.tracking.ClusterTracker.Cluster;
 import net.sf.jaer.eventprocessing.tracking.ClusterTrackerInterface;

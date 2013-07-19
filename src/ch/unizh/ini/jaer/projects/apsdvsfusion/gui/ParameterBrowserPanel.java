@@ -51,7 +51,7 @@ import javax.swing.event.ChangeListener;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.util.EngineeringFormat;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.ParameterContainer;
-//import EngineeringFormat;
+
 
 /**
  * A panel for a filter that has Integer/Float/Boolean/String/enum getter/setter methods (bound properties).

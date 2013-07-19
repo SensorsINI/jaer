@@ -11,7 +11,7 @@
 package net.sf.jaer.eventprocessing.tracking;
 import java.awt.Color;
 import java.awt.Graphics2D;
-//import ch.unizh.ini.caviar.util.PreferencesEditor;
+
 import java.awt.geom.Point2D;
 import java.io.BufferedOutputStream;
 import java.io.File;

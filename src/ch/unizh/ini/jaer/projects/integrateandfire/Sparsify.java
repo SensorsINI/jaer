@@ -30,9 +30,9 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-//import ch.unizh.ini.caviar.eventio.AEServerSocket;
-//import ch.unizh.ini.caviar.eventprocessing.label.SimpleOrientationFilter;
-//import ch.unizh.ini.caviar.util.filter.LowpassFilter;
+
+
+
 
 
 

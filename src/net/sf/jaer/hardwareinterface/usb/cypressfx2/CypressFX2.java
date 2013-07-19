@@ -27,7 +27,7 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.AEPacketRawPool;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-//import ch.unizh.ini.caviar.chip.EventExtractor2D;
+
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.hardwareinterface.BlankDeviceException;

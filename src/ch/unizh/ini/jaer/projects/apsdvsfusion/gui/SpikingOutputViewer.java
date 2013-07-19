@@ -9,7 +9,7 @@ import java.beans.PropertyChangeListener;
 
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SignalHandler;
-//import net.sf.jaer.graphics.ImageDisplay;
+
 
 /**
  * @author Dennis

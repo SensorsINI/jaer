@@ -10,17 +10,17 @@
 
 package ch.unizh.ini.jaer.projects.stereo3D;
 
-//import javax.media.opengl.*;
-//import javax.media.opengl.GL;
-//import javax.media.opengl.GLAutoDrawable;
-//import javax.swing.*;
+
+
+
+
 import javax.media.opengl.glu.GLU;
 //
-//import java.lang.*;
-//import java.awt.*;
-//import java.util.*;
 
-//import java.lang.Math;
+
+
+
+
 
 /**
  * to move camera view in 3D open gl environment

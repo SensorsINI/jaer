@@ -10,7 +10,7 @@ import java.awt.Canvas;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Cursor;
-//import com.sun.java.swing.plaf.windows.*;
+
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.DisplayMode;
@@ -89,7 +89,7 @@ import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.TobiLogger;
 import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
 import net.sf.jaer.util.WindowSaver;
-//import ch.unizh.ini.caviar.chip.convolution.Conv64NoNegativeEvents;
+
 import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
 import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
 import ch.unizh.ini.jaer.projects.opticalflow.MotionData;

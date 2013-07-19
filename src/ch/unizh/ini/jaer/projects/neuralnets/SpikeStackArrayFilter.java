@@ -4,9 +4,9 @@
  */
 package ch.unizh.ini.jaer.projects.neuralnets;
 
-//import ch.unizh.ini.jaer.projects.integrateandfire.ClusterEvent;
-//import ch.unizh.ini.jaer.projects.integrateandfire.ClusterSet;
-//import ch.unizh.ini.jaer.projects.integrateandfire.Remapper;
+
+
+
 import java.io.File;
 
 import jspikestack.AxonSTP;

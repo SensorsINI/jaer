@@ -13,7 +13,7 @@
 
 
 package ch.unizh.ini.jaer.projects.stereo3D;
-//import com.sun.org.apache.xerces.internal.impl.xpath.regex.Match;
+
 import java.awt.Graphics2D;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;

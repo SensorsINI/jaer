@@ -16,7 +16,7 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.Observable;
-//import com.sun.org.apache.xpath.internal.operations.Mod;
+
 import java.util.Observer;
 
 import javax.media.opengl.GL2;

@@ -1,7 +1,7 @@
 
 package ch.unizh.ini.jaer.projects.rccar;
 
-//import ch.unizh.ini.caviar.util.filter.LowpassFilter;
+
 import java.awt.Graphics2D;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -18,9 +18,9 @@ import javax.media.opengl.glu.GLUquadric;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AESocket;
-//import ch.unizh.ini.caviar.eventio.AEServerSocket;
+
 import net.sf.jaer.eventprocessing.EventFilter2D;
-//import ch.unizh.ini.caviar.eventprocessing.label.SimpleOrientationFilter;
+
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.toradex.ToradexOakG3AxisAccelerationSensor;

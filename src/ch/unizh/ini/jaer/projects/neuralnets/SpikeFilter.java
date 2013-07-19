@@ -19,7 +19,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.MultiSourceProcessor;
 import net.sf.jaer.graphics.DisplayWriter;
-//import sun.nio.cs.ext.GB18030;
+
 
 /**
  * This should be a superclass for all SpikeStack-based filters.  If you'd like 

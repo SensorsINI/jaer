@@ -4,19 +4,19 @@
  */
 package es.us.atc.jaer.chips.EMD;
 
-//import net.sf.jaer.chip.AEChip;
-//import net.sf.jaer.event.BasicEvent;
-//import net.sf.jaer.event.EventPacket;
-//import net.sf.jaer.event.OutputEventIterator;
+
+
+
+
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-//import java.util.*;
-//import net.sf.jaer.Description;
-//import net.sf.jaer.DevelopmentStatus;
+
+
+
 
 /**
  * Correlates input events to each pixel cell to compute Reichardt type correlation. Depends on delayed input mapped to cell.

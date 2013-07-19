@@ -8,7 +8,7 @@
  */
 package no.uio.ifi.jaer.chip.foveated;
 
-// import ch.unizh.ini.caviar.graphics.*;
+
 import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;

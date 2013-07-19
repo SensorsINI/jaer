@@ -3,8 +3,8 @@
  * and open the template in the editor.
  */
 package jspikestack;
-//import org.ejml.simple.SimpleMatrix;
-//import org.ejml.data.DenseMatrix64F;
+
+
 
 
 import java.awt.Container;

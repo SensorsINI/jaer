@@ -9,7 +9,7 @@ package ch.unizh.ini.jaer.projects.integrateandfire;
 // JAER Stuff
 import java.io.File;
 // Java  Stuff
-//import java.io.File;
+
 import java.io.FileNotFoundException;
 // Swingers
 import java.util.Arrays;

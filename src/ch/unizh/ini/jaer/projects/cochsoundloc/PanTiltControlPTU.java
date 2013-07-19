@@ -3,8 +3,8 @@ package ch.unizh.ini.jaer.projects.cochsoundloc;
 import gnu.io.CommPort;
 import gnu.io.CommPortIdentifier;
 import gnu.io.SerialPort;
-//import gnu.io.SerialPortEvent;
-//import gnu.io.SerialPortEventListener;
+
+
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;

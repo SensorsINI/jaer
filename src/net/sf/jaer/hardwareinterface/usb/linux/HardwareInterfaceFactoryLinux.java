@@ -23,11 +23,11 @@ import javax.swing.SwingUtilities;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
-//import javax.usb.UsbDevice;
-//import javax.usb.UsbException;
-//import javax.usb.UsbHostManager;
-//import javax.usb.UsbHub;
-//import javax.usb.UsbServices;
+
+
+
+
+
 
 /**
  * Makes hardware interfaces under linux.

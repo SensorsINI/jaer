@@ -11,7 +11,7 @@
  */
 package org.ine.telluride.jaer.tell2013.ThreeDTracker;
 
-//import ch.unizh.ini.caviar.aemonitor.EventXYType;
+
 import java.util.Iterator;
 
 import javax.media.opengl.GL;

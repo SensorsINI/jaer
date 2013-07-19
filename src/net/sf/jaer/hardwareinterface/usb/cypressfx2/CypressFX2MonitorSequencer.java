@@ -27,7 +27,7 @@ import de.thesycon.usbio.UsbIoWriter;
 import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
 import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
 import de.thesycon.usbio.structs.USBIO_PIPE_PARAMETERS;
-//import java.io.*;
+
 /**
  * Extends CypressFX2 to add functionality for sequencing and monitoring events.
  *

@@ -8,7 +8,7 @@
 
 
 package net.sf.jaer.eventprocessing.tracking;
-//import com.sun.org.apache.xerces.internal.impl.xpath.regex.Match;
+
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.event.KeyEvent;

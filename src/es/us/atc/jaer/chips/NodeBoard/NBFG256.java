@@ -25,12 +25,12 @@ import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.RetinaExtractor;
-//import es.us.atc.jaer.chips.NodeBoard.ApsDvsEvent;
-//import eu.seebetter.ini.chips.sbret10.SBret10.SBret10Config.*;
+
+
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
-//import net.sf.jaer.graphics.AEViewer;
+
 import net.sf.jaer.graphics.RetinaRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.util.filter.LowpassFilter2d;

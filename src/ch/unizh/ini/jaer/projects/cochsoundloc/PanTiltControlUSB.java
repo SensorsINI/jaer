@@ -12,8 +12,8 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.ServoInterface;
 import net.sf.jaer.hardwareinterface.usb.ServoInterfaceFactory;
 import de.thesycon.usbio.PnPNotifyInterface;
-//import gnu.io.SerialPortEvent;
-//import gnu.io.SerialPortEventListener;
+
+
 
 
 /**

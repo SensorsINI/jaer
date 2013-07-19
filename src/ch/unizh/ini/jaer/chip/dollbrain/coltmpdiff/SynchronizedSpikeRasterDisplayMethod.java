@@ -8,7 +8,7 @@
  */
 package ch.unizh.ini.jaer.chip.dollbrain.coltmpdiff;
 
-//import ch.unizh.ini.caviar.aemonitor.EventXYType;
+
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;

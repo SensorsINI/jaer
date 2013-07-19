@@ -6,7 +6,7 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion.gui;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-//import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
+
 
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap;
 

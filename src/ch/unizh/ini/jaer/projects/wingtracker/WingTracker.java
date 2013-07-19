@@ -17,7 +17,7 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-//import ch.unizh.ini.caviar.util.PreferencesEditor;
+
 import java.awt.geom.Point2D;
 import java.io.BufferedWriter;
 import java.io.File;

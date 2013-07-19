@@ -33,7 +33,7 @@ import net.sf.jaer.biasgen.IPot;
 import net.sf.jaer.biasgen.IPotArray;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-//import javax.usb.UsbConst;
+
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
 
 /**
