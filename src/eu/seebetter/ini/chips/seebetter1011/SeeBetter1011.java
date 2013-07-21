@@ -819,6 +819,9 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 			if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX2)) {
 				((CypressFX2) getHardwareInterface()).sendVendorRequest(VR_WRITE_CONFIG, (short) (0xffff & cmd.code), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
 			}
+			if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2)) {
+				((net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2) getHardwareInterface()).sendVendorRequest(VR_WRITE_CONFIG, cmd.code, (short) index, bytes); // & to prevent sign extension for negative shorts
+			}
 		}
 
 		/**
@@ -1119,7 +1122,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 			/**
 			 * @return the propertyChangeSupport
 			 */
-			 public PropertyChangeSupport getPropertyChangeSupport() {
+			public PropertyChangeSupport getPropertyChangeSupport() {
 				return propertyChangeSupport;
 			}
 		}
@@ -2079,8 +2082,8 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
 					}
 					if (agcEnabled && ((minADC > 0) && (maxADC > 0))) { // don't adapt to first frame which is all zeros
 						Float filter2d = agcFilter.filter2d(minADC, maxADC, frameData.getTimestamp());
-					//                        System.out.println("agc minmax=" + filter2d + " minADC=" + minADC + " maxADC=" + maxADC);
-					getSupport().firePropertyChange(AGC_VALUES, null, filter2d); // inform listeners (GUI) of new AGC min/max filterd log intensity values
+						//                        System.out.println("agc minmax=" + filter2d + " minADC=" + minADC + " maxADC=" + maxADC);
+						getSupport().firePropertyChange(AGC_VALUES, null, filter2d); // inform listeners (GUI) of new AGC min/max filterd log intensity values
 					}
 
 				}

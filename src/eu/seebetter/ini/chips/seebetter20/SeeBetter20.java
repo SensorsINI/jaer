@@ -945,6 +945,9 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
 			if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX2)) {
 				((CypressFX2) getHardwareInterface()).sendVendorRequest(VR_WRITE_CONFIG, (short) (0xffff & cmd.code), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
 			}
+			if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2)) {
+				((net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2) getHardwareInterface()).sendVendorRequest(VR_WRITE_CONFIG, cmd.code, (short) index, bytes); // & to prevent sign extension for negative shorts
+			}
 		}
 
 		/**
@@ -973,8 +976,8 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
 				}
 			}
 			//            if (thermometerDAC != null) {
-				//                thermometerDAC.loadPreferences();
-				//            }
+			//                thermometerDAC.loadPreferences();
+			//            }
 			setAutoResetEnabled(getPrefs().getBoolean("autoResetEnabled", false));
 		}
 
@@ -990,7 +993,7 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
 				}
 			}
 			//            if (thermometerDAC != null) {
-				//                thermometerDAC.storePreferences();
+			//                thermometerDAC.storePreferences();
 			//            }
 			getPrefs().putBoolean("autoResetEnabled", autoResetEnabled);
 		}
@@ -1225,11 +1228,11 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
 			}
 
 			//            public void setColSettleTime(int timeUs) {
-				//                colSettle.set(timeUs * ADC_CLK_CYCLES_PER_US);
-				//            }
+			//                colSettle.set(timeUs * ADC_CLK_CYCLES_PER_US);
+			//            }
 			//
 			//            public void setRowSettleTime(int timeUs) {
-				//                rowSettle.set(timeUs * ADC_CLK_CYCLES_PER_US);
+			//                rowSettle.set(timeUs * ADC_CLK_CYCLES_PER_US);
 			//            }
 			//
 			//            public void setResSettleTime(int timeUs) {
@@ -1285,12 +1288,12 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
 			}
 
 			//            public void setExposureTime(int timeUs) {
-				//                int desiredCC = timeUs * ADC_CLK_CYCLES_PER_US;
-				//                int actualCC = getColCCwoB();
-				//                if(desiredCC < actualCC){
-					//                    exposureB.set(0);
-					//                } else {
-						//                    int diff = desiredCC-actualCC;
+			//                int desiredCC = timeUs * ADC_CLK_CYCLES_PER_US;
+			//                int actualCC = getColCCwoB();
+			//                if(desiredCC < actualCC){
+			//                    exposureB.set(0);
+			//                } else {
+			//                    int diff = desiredCC-actualCC;
 			//                    exposureB.set((int)diff/(actualCC));
 			//                }
 			//            }
@@ -1356,12 +1359,12 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
 			}
 
 			//            public int getExposureTime() {
-				//                return exposureB.get()*getColCCwoB() / ADC_CLK_CYCLES_PER_US;
-				//            }
+			//                return exposureB.get()*getColCCwoB() / ADC_CLK_CYCLES_PER_US;
+			//            }
 
 
 			//            public int getFrameTime() {
-				//                return (frameTime.get()+getFrameCC()) / ADC_CLK_CYCLES_PER_US;
+			//                return (frameTime.get()+getFrameCC()) / ADC_CLK_CYCLES_PER_US;
 			//            }
 
 			//            public int getFrameRefreshFrequency() {
@@ -1448,9 +1451,9 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
 			/**
 			 * @return the propertyChangeSupport
 			 */
-			 public PropertyChangeSupport getPropertyChangeSupport() {
-				 return propertyChangeSupport;
-			 }
+			public PropertyChangeSupport getPropertyChangeSupport() {
+				return propertyChangeSupport;
+			}
 		}
 
 		/**
@@ -2592,295 +2595,295 @@ public class SeeBetter20 extends AETemporalConstastRetina implements HasIntensit
 		 * @param y pixel y from top of array on chip
 		 * @return  value from ADC
 		 */
-		 private int outputData;
+		private int outputData;
 
-		 public int get(int x, int y) {
-			 final int idx = index(x,y); // values are written by row for each column (row parallel readout in this chip, with columns addressed one by one)
-			 switch (displayRead) {
-				 case A:
-					 outputData = aData[idx];
-					 break;
-				 case B:
-					 outputData = bData[idx];
-					 break;
-				 case C:
-					 outputData = cData[idx];
-					 break;
-				 case DIFF_B:
-				 default:
-					 if(useDVSExtrapolation){
-						 outputData = (int)displayData[idx];
-					 }else{
-						 outputData = (int)bDiffData[idx];
-					 }
-					 break;
-				 case DIFF_C:
-					 if(useDVSExtrapolation){
-						 outputData = (int)displayData[idx];
-					 }else{
-						 outputData = (int)cDiffData[idx];
-					 }
-					 break;
-				 case HDR:
-				 case LOG_HDR:
-					 if(useDVSExtrapolation){
-						 outputData = (int)displayData[idx];
-					 }else{
-						 outputData = (int)hdrData[idx];
-					 }
-					 break;
-			 }
-			 if (invertADCvalues) {
-				 return MAX_ADC - outputData;
-			 } else {
-				 return outputData;
-			 }
-		 }
+		public int get(int x, int y) {
+			final int idx = index(x,y); // values are written by row for each column (row parallel readout in this chip, with columns addressed one by one)
+			switch (displayRead) {
+				case A:
+					outputData = aData[idx];
+					break;
+				case B:
+					outputData = bData[idx];
+					break;
+				case C:
+					outputData = cData[idx];
+					break;
+				case DIFF_B:
+				default:
+					if(useDVSExtrapolation){
+						outputData = (int)displayData[idx];
+					}else{
+						outputData = (int)bDiffData[idx];
+					}
+					break;
+				case DIFF_C:
+					if(useDVSExtrapolation){
+						outputData = (int)displayData[idx];
+					}else{
+						outputData = (int)cDiffData[idx];
+					}
+					break;
+				case HDR:
+				case LOG_HDR:
+					if(useDVSExtrapolation){
+						outputData = (int)displayData[idx];
+					}else{
+						outputData = (int)hdrData[idx];
+					}
+					break;
+			}
+			if (invertADCvalues) {
+				return MAX_ADC - outputData;
+			} else {
+				return outputData;
+			}
+		}
 
-		 private void putEvent(PolarityADCSampleEvent e) {
-			 if(!e.isAdcSample() || (e.timestamp==lasttimestamp)) {
-				 return;
-			 }
-			 if(e.startOfFrame) {
-				 resetWriteCounter();
-				 setTimestamp(e.timestamp);
-			 }
-			 putNextSampleValue(e.adcSample, e.readoutType, index(e.x, e.y));
-			 lasttimestamp=e.timestamp; // so we don't put the same sample over and over again
-		 }
+		private void putEvent(PolarityADCSampleEvent e) {
+			if(!e.isAdcSample() || (e.timestamp==lasttimestamp)) {
+				return;
+			}
+			if(e.startOfFrame) {
+				resetWriteCounter();
+				setTimestamp(e.timestamp);
+			}
+			putNextSampleValue(e.adcSample, e.readoutType, index(e.x, e.y));
+			lasttimestamp=e.timestamp; // so we don't put the same sample over and over again
+		}
 
-		 private void putNextSampleValue(int val, PolarityADCSampleEvent.Type type, int index) {
-			 float value = 0;
-			 float valueB = 0;
-			 switch(type){
-				 case C:
-					 if (index >= cData.length) {
-						 //            log.info("buffer overflowed - missing start frame bit?");
-						 return;
-					 }
-					 if (index == (NUMSAMPLES-1)) {
-						 updateDVSintensities();
-					 }
-					 cData[index] = val;
-					 cDiffData[index] = aData[index]-cData[index];
-					 if(config.useC.isSet()){
-						 if(displayRead==Read.LOG_HDR){
-							 value = (float)Math.log(cDiffData[index]/exposureC);
-							 valueB = (float)Math.log(bDiffData[index]/exposureB);
-						 }else{
-							 value = cDiffData[index]/exposureC;
-							 valueB = bDiffData[index]/exposureB;
-						 }
-						 if(value<minC){
-							 minC = value;
-						 }
-						 if(value>maxC){
-							 maxC = value;
-						 }
-						 if(valueB > value){
-							 value = valueB;
-						 }
-						 //                       value = value + bDiffData[index]/(2*exposureB);
-						 hdrData[index]=(MAX_ADC/(maxB-minC))*(value-minC);
-						 //                        if(maxC-(1000/exposureB) > value){
-							 //                            hdrData[index]=MAX_ADC/(maxB-minC)*(value-minC);
-							 //                        }else{
-						 //                            value = bDiffData[index]/exposureB;
-						 //                            hdrData[index]=MAX_ADC/(maxB-minC)*(value-minC);
-						 //                        }
-					 }
-					 break;
-				 case B:
-					 if (index >= bData.length) {
-						 //            log.info("buffer overflowed - missing start frame bit?");
-						 return;
-					 }
-					 if (index == (NUMSAMPLES-1)) {
-						 updateDVSintensities();
-					 }
-					 bData[index] = val;
-					 bDiffData[index] = aData[index]-bData[index];
-					 if(!config.useC.isSet()){
-						 data[index] = bDiffData[index];
-					 }
-					 if(config.useC.isSet()){
-						 if(displayRead==Read.LOG_HDR){
-							 value = (float)Math.log(bDiffData[index]/exposureB);
-						 }else{
-							 value = bDiffData[index]/exposureB;
-						 }
-						 if(value>maxB){
-							 maxB = value;
-						 }
-					 }
-					 break;
-				 case A:
-				 default:
-					 if (index >= aData.length) {
-						 //            log.info("buffer overflowed - missing start frame bit?");
-						 return;
-					 }
-					 aData[index] = val;
-					 break;
-			 }
-		 }
+		private void putNextSampleValue(int val, PolarityADCSampleEvent.Type type, int index) {
+			float value = 0;
+			float valueB = 0;
+			switch(type){
+				case C:
+					if (index >= cData.length) {
+						//            log.info("buffer overflowed - missing start frame bit?");
+						return;
+					}
+					if (index == (NUMSAMPLES-1)) {
+						updateDVSintensities();
+					}
+					cData[index] = val;
+					cDiffData[index] = aData[index]-cData[index];
+					if(config.useC.isSet()){
+						if(displayRead==Read.LOG_HDR){
+							value = (float)Math.log(cDiffData[index]/exposureC);
+							valueB = (float)Math.log(bDiffData[index]/exposureB);
+						}else{
+							value = cDiffData[index]/exposureC;
+							valueB = bDiffData[index]/exposureB;
+						}
+						if(value<minC){
+							minC = value;
+						}
+						if(value>maxC){
+							maxC = value;
+						}
+						if(valueB > value){
+							value = valueB;
+						}
+						//                       value = value + bDiffData[index]/(2*exposureB);
+						hdrData[index]=(MAX_ADC/(maxB-minC))*(value-minC);
+						//                        if(maxC-(1000/exposureB) > value){
+						//                            hdrData[index]=MAX_ADC/(maxB-minC)*(value-minC);
+						//                        }else{
+						//                            value = bDiffData[index]/exposureB;
+						//                            hdrData[index]=MAX_ADC/(maxB-minC)*(value-minC);
+						//                        }
+					}
+					break;
+				case B:
+					if (index >= bData.length) {
+						//            log.info("buffer overflowed - missing start frame bit?");
+						return;
+					}
+					if (index == (NUMSAMPLES-1)) {
+						updateDVSintensities();
+					}
+					bData[index] = val;
+					bDiffData[index] = aData[index]-bData[index];
+					if(!config.useC.isSet()){
+						data[index] = bDiffData[index];
+					}
+					if(config.useC.isSet()){
+						if(displayRead==Read.LOG_HDR){
+							value = (float)Math.log(bDiffData[index]/exposureB);
+						}else{
+							value = bDiffData[index]/exposureB;
+						}
+						if(value>maxB){
+							maxB = value;
+						}
+					}
+					break;
+				case A:
+				default:
+					if (index >= aData.length) {
+						//            log.info("buffer overflowed - missing start frame bit?");
+						return;
+					}
+					aData[index] = val;
+					break;
+			}
+		}
 
-		 private void updateDVSintensities(){
-			 float difference = 1;
-			 for(int i = 0; i < NUMSAMPLES; i++){
-				 difference = data[i]-oldData[i];
-				 if(difference != 0){
-					 if((onCount[i] > 0) && (oldData[i] > 0)){
-						 onGain = (float)((99*onGain)+((difference-(Math.log(oldData[i])*offGain*offCount[i]))/onCount[i]))/100;
-					 } else if((offCount[i] > 0) && (oldData[i] > 0)){
-						 offGain = (float)((99*offGain)+((difference+(Math.log(oldData[i])*onGain*onCount[i]))/offCount[i]))/100;
-					 }
-				 }
-			 }
-			 System.arraycopy(data, 0, displayData, 0, NUMSAMPLES);
-			 System.arraycopy(data, 0, oldData, 0, NUMSAMPLES);
-			 Arrays.fill(onCount, 0);
-			 Arrays.fill(offCount, 0);
-		 }
+		private void updateDVSintensities(){
+			float difference = 1;
+			for(int i = 0; i < NUMSAMPLES; i++){
+				difference = data[i]-oldData[i];
+				if(difference != 0){
+					if((onCount[i] > 0) && (oldData[i] > 0)){
+						onGain = (float)((99*onGain)+((difference-(Math.log(oldData[i])*offGain*offCount[i]))/onCount[i]))/100;
+					} else if((offCount[i] > 0) && (oldData[i] > 0)){
+						offGain = (float)((99*offGain)+((difference+(Math.log(oldData[i])*onGain*onCount[i]))/offCount[i]))/100;
+					}
+				}
+			}
+			System.arraycopy(data, 0, displayData, 0, NUMSAMPLES);
+			System.arraycopy(data, 0, oldData, 0, NUMSAMPLES);
+			Arrays.fill(onCount, 0);
+			Arrays.fill(offCount, 0);
+		}
 
-		 public void updateDVScalib(int x, int y, boolean isOn){
-			 final int idx = index(x,y);
-			 if(isOn){
-				 onCount[idx]++;
-				 //System.out.println("On event - data: "+displayData[idx]+" + calib: "+onGain+" => "+onGain*Math.log(displayData[idx]));
-				 displayData[idx] = (float)(displayData[idx]+(onGain*Math.log(displayData[idx])));
-				 //System.out.println("displayData: "+displayData[idx]);
-			 } else {
-				 offCount[idx]++;
-				 //System.out.println("Off event - data: "+displayData[idx]+" + calib: "+offGain+" => "+onGain*Math.log(displayData[idx]));
-				 displayData[idx] = (float)(displayData[idx]+(offGain*Math.log(displayData[idx])));
-				 //System.out.println("displayData: "+displayData[idx]);
-			 }
-		 }
+		public void updateDVScalib(int x, int y, boolean isOn){
+			final int idx = index(x,y);
+			if(isOn){
+				onCount[idx]++;
+				//System.out.println("On event - data: "+displayData[idx]+" + calib: "+onGain+" => "+onGain*Math.log(displayData[idx]));
+				displayData[idx] = (float)(displayData[idx]+(onGain*Math.log(displayData[idx])));
+				//System.out.println("displayData: "+displayData[idx]);
+			} else {
+				offCount[idx]++;
+				//System.out.println("Off event - data: "+displayData[idx]+" + calib: "+offGain+" => "+onGain*Math.log(displayData[idx]));
+				displayData[idx] = (float)(displayData[idx]+(offGain*Math.log(displayData[idx])));
+				//System.out.println("displayData: "+displayData[idx]);
+			}
+		}
 
-		 /**
-		  * @return the timestamp
-		  */
-		 public int getTimestamp() {
-			 return timestamp;
-		 }
+		/**
+		 * @return the timestamp
+		 */
+		public int getTimestamp() {
+			return timestamp;
+		}
 
-		 /**
-		  * Sets the buffer timestamp.
-		  * @param timestamp the timestamp to set
-		  */
-		 public void setTimestamp(int timestamp) {
-			 this.timestamp = timestamp;
-		 }
+		/**
+		 * Sets the buffer timestamp.
+		 * @param timestamp the timestamp to set
+		 */
+		public void setTimestamp(int timestamp) {
+			this.timestamp = timestamp;
+		}
 
-		 /**
-		  * @return the useDVSExtrapolation
-		  */
-		 public boolean isUseDVSExtrapolation() {
-			 return useDVSExtrapolation;
-		 }
+		/**
+		 * @return the useDVSExtrapolation
+		 */
+		public boolean isUseDVSExtrapolation() {
+			return useDVSExtrapolation;
+		}
 
-		 /**
-		  * @param useDVSExtrapolation the useOffChipCalibration to set
-		  */
-		 public void setUseDVSExtrapolation(boolean useDVSExtrapolation) {
-			 this.useDVSExtrapolation = useDVSExtrapolation;
-			 getPrefs().putBoolean("useDVSExtrapolation", useDVSExtrapolation);
-		 }
+		/**
+		 * @param useDVSExtrapolation the useOffChipCalibration to set
+		 */
+		public void setUseDVSExtrapolation(boolean useDVSExtrapolation) {
+			this.useDVSExtrapolation = useDVSExtrapolation;
+			getPrefs().putBoolean("useDVSExtrapolation", useDVSExtrapolation);
+		}
 
-		 private int getMean(int[] dataIn) {
-			 int mean = 0;
-			 for (int element : dataIn) {
-				 mean += element;
-			 }
-			 mean = mean / dataIn.length;
-			 return mean;
-		 }
+		private int getMean(int[] dataIn) {
+			int mean = 0;
+			for (int element : dataIn) {
+				mean += element;
+			}
+			mean = mean / dataIn.length;
+			return mean;
+		}
 
-		 private void subtractMean(int[] dataIn, int[] dataOut) {
-			 int mean = getMean(dataIn);
+		private void subtractMean(int[] dataIn, int[] dataOut) {
+			int mean = getMean(dataIn);
 
-			 for (int i = 0; i < dataOut.length; i++) {
-				 dataOut[i] = dataIn[i] - mean;
-			 }
-		 }
+			for (int i = 0; i < dataOut.length; i++) {
+				dataOut[i] = dataIn[i] - mean;
+			}
+		}
 
-		 public void setDisplayRead(Read displayRead){
-			 this.displayRead = displayRead;
-		 }
+		public void setDisplayRead(Read displayRead){
+			this.displayRead = displayRead;
+		}
 
-		 public Read getDisplayRead(){
-			 return displayRead;
-		 }
+		public Read getDisplayRead(){
+			return displayRead;
+		}
 
-		 /**
-		  * @return the invertADCvalues
-		  */
-		  public boolean isInvertADCvalues() {
-			  return invertADCvalues;
-		  }
+		/**
+		 * @return the invertADCvalues
+		 */
+		public boolean isInvertADCvalues() {
+			return invertADCvalues;
+		}
 
-		  /**
-		   * @param invertADCvalues the invertADCvalues to set
-		   */
-		  public void setInvertADCvalues(boolean invertADCvalues) {
-			  this.invertADCvalues = invertADCvalues;
-			  getPrefs().putBoolean("invertADCvalues", invertADCvalues);
-		  }
+		/**
+		 * @param invertADCvalues the invertADCvalues to set
+		 */
+		public void setInvertADCvalues(boolean invertADCvalues) {
+			this.invertADCvalues = invertADCvalues;
+			getPrefs().putBoolean("invertADCvalues", invertADCvalues);
+		}
 
-		  public boolean isNewData() {
-			  return true; // dataWrittenSinceLastSwap; // TODO not working yet
-		  }
+		public boolean isNewData() {
+			return true; // dataWrittenSinceLastSwap; // TODO not working yet
+		}
 
-		  @Override
-		  public String toString() {
-			  return "IntensityFrameData{" + "WIDTH=" + WIDTH + ", HEIGHT=" + HEIGHT + ", NUMSAMPLES=" + NUMSAMPLES + ", timestamp=" + timestamp + ", writeCounter=" + writeCounterA + '}';
-		  }
+		@Override
+		public String toString() {
+			return "IntensityFrameData{" + "WIDTH=" + WIDTH + ", HEIGHT=" + HEIGHT + ", NUMSAMPLES=" + NUMSAMPLES + ", timestamp=" + timestamp + ", writeCounter=" + writeCounterA + '}';
+		}
 
-		  public void resetWriteCounter() {
-			  minC = Integer.MAX_VALUE;
-			  maxC = 0;
-			  maxB = 0;
-			  writeCounterA = 0;
-			  writeCounterB = 0;
-		  }
-		  final String CALIB1_KEY = "IntensityFrameData.calibData1", CALIB2_KEY = "IntensityFrameData.calibData2";
+		public void resetWriteCounter() {
+			minC = Integer.MAX_VALUE;
+			maxC = 0;
+			maxB = 0;
+			writeCounterA = 0;
+			writeCounterB = 0;
+		}
+		final String CALIB1_KEY = "IntensityFrameData.calibData1", CALIB2_KEY = "IntensityFrameData.calibData2";
 
-		  private void putArray(int[] array, String key) {
-			  if ((array == null) || (key == null)) {
-				  log.warning("null array or key");
-				  return;
-			  }
-			  try {
-				  // Serialize to a byte array
-				  ByteArrayOutputStream bos = new ByteArrayOutputStream();
-				  ObjectOutput out = new ObjectOutputStream(bos);
-				  out.writeObject(array);
-				  out.close();
+		private void putArray(int[] array, String key) {
+			if ((array == null) || (key == null)) {
+				log.warning("null array or key");
+				return;
+			}
+			try {
+				// Serialize to a byte array
+				ByteArrayOutputStream bos = new ByteArrayOutputStream();
+				ObjectOutput out = new ObjectOutputStream(bos);
+				out.writeObject(array);
+				out.close();
 
-				  // Get the bytes of the serialized object
-				  byte[] buf = bos.toByteArray();
-				  getPrefs().putByteArray(key, buf);
-			  } catch (Exception e) {
-				  log.warning(e.toString());
-			  }
+				// Get the bytes of the serialized object
+				byte[] buf = bos.toByteArray();
+				getPrefs().putByteArray(key, buf);
+			} catch (Exception e) {
+				log.warning(e.toString());
+			}
 
-		  }
+		}
 
-		  private int[] getArray(String key) {
-			  int[] ret = null;
-			  try {
-				  byte[] bytes = getPrefs().getByteArray(key, null);
-				  if (bytes != null) {
-					  ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
-					  ret = (int[]) in.readObject();
-					  in.close();
-				  }
-			  } catch (Exception e) {
-				  log.warning(e.toString());
-			  }
-			  return ret;
-		  }
+		private int[] getArray(String key) {
+			int[] ret = null;
+			try {
+				byte[] bytes = getPrefs().getByteArray(key, null);
+				if (bytes != null) {
+					ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
+					ret = (int[]) in.readObject();
+					in.close();
+				}
+			} catch (Exception e) {
+				log.warning(e.toString());
+			}
+			return ret;
+		}
 
 	}
 }
