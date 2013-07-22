@@ -62,9 +62,14 @@ public class JavaFXJOGLIntegrationTest extends Application {
 				final AnimationTimer animator = new AnimationTimer() {
 					@Override
 					public void handle(final long time) {
-						fxJogl.display();
+						fxJogl.getGLDrawable().display();
 					}
 				};
+				/*
+				 * final Animator animator = new Animator();
+				 * animator.add(fxJogl.getGLDrawable());
+				 * animator.setRunAsFastAsPossible(true);
+				 */
 				animator.start();
 			}
 		}

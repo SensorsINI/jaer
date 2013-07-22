@@ -105,8 +105,8 @@ public class JavaFXImgJOGLConnector extends ImageView {
 		return null;
 	}
 
-	public void display() {
-		glOffscreenDrawable.display();
+	public GLAutoDrawable getGLDrawable() {
+		return glOffscreenDrawable;
 	}
 
 	private class GLReadOutToImage implements GLEventListener {
