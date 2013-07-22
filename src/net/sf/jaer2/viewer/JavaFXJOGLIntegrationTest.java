@@ -27,7 +27,7 @@ import net.sf.jaer2.viewer.BufferWorks.BUFFER_FORMATS;
 import com.sun.javafx.perf.PerformanceTracker;
 
 public class JavaFXJOGLIntegrationTest extends Application {
-	private static final int RSIZE = 2;
+	private static final double RSIZE = 2.5;
 	private static final int XLEN = 240;
 	private static final int YLEN = 180;
 	private static final int COLS = 2;
@@ -62,14 +62,9 @@ public class JavaFXJOGLIntegrationTest extends Application {
 				final AnimationTimer animator = new AnimationTimer() {
 					@Override
 					public void handle(final long time) {
-						fxJogl.getGLDrawable().display();
+						fxJogl.display();
 					}
 				};
-				/*
-				 * final Animator animator = new Animator();
-				 * animator.add(fxJogl.getGLDrawable());
-				 * animator.setRunAsFastAsPossible(true);
-				 */
 				animator.start();
 			}
 		}

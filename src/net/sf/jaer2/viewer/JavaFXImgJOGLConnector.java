@@ -17,6 +17,7 @@ import javax.media.opengl.GLDrawableFactory;
 import javax.media.opengl.GLEventListener;
 import javax.media.opengl.GLOffscreenAutoDrawable;
 import javax.media.opengl.GLProfile;
+import javax.media.opengl.GLRunnable;
 import javax.media.opengl.fixedfunc.GLMatrixFunc;
 
 import com.jogamp.common.nio.Buffers;
@@ -105,8 +106,16 @@ public class JavaFXImgJOGLConnector extends ImageView {
 		return null;
 	}
 
-	public GLAutoDrawable getGLDrawable() {
-		return glOffscreenDrawable;
+	public synchronized void display() {
+		glOffscreenDrawable.display();
+	}
+
+	public synchronized boolean invoke(final GLRunnable glRunnable) {
+		return glOffscreenDrawable.invoke(false, glRunnable);
+	}
+
+	public synchronized void destroy() {
+		glOffscreenDrawable.destroy();
 	}
 
 	private class GLReadOutToImage implements GLEventListener {
