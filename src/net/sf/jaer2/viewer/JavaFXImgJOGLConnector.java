@@ -27,7 +27,7 @@ public class JavaFXImgJOGLConnector extends ImageView {
 	private final GLOffscreenAutoDrawable glOffscreenDrawable;
 	private final GLEventListener readOutListener = new GLReadOutToImage();
 
-	private static final int imageBufferBGRA8Number = 2;
+	private static final int imageBufferBGRA8Number = 3;
 	private final Semaphore syncImageBufferBGRA8Swap[] = new Semaphore[JavaFXImgJOGLConnector.imageBufferBGRA8Number];
 	private final ByteBuffer imageBufferBGRA8[] = new ByteBuffer[JavaFXImgJOGLConnector.imageBufferBGRA8Number];
 	private static final PixelFormat<ByteBuffer> pxFormat = PixelFormat.getByteBgraInstance();
@@ -105,7 +105,7 @@ public class JavaFXImgJOGLConnector extends ImageView {
 		return null;
 	}
 
-	public synchronized void display() {
+	public void display() {
 		glOffscreenDrawable.display();
 	}
 

@@ -4,7 +4,7 @@ import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.event.EventHandler;
-import javafx.geometry.Insets;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.StackPane;
@@ -12,6 +12,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 
@@ -44,20 +45,19 @@ public class JavaFXJOGLIntegrationTest extends Application {
 		final GridPane displayGrid = new GridPane();
 		root.getChildren().add(displayGrid);
 
+		displayGrid.setHgap(20);
+		displayGrid.setVgap(20);
+
 		for (int r = 0; r < JavaFXJOGLIntegrationTest.ROWS; r++) {
 			for (int c = 0; c < JavaFXJOGLIntegrationTest.COLS; c++) {
 				final JavaFXImgJOGLConnector fxJogl = new JavaFXImgJOGLConnector(JavaFXJOGLIntegrationTest.XLEN,
 					JavaFXJOGLIntegrationTest.YLEN);
-				GridPane.setMargin(fxJogl, new Insets(20));
 				displayGrid.add(fxJogl, c, r);
 
 				fxJogl.setFitWidth((JavaFXJOGLIntegrationTest.XLEN * JavaFXJOGLIntegrationTest.RSIZE));
 				fxJogl.setFitHeight((JavaFXJOGLIntegrationTest.YLEN * JavaFXJOGLIntegrationTest.RSIZE));
 
-				// fxJogl.setScaleX(1);
-				// fxJogl.setScaleY(1);
-
-				fxJogl.addGLEventListener(new WriteRandom());
+				fxJogl.addGLEventListener(new WriteRandom(((r + 1) * (c + 1)) % 4));
 
 				final AnimationTimer animator = new AnimationTimer() {
 					@Override
@@ -103,7 +103,8 @@ public class JavaFXJOGLIntegrationTest extends Application {
 		maxMemTxt.setFill(Color.WHITE);
 		maxMemTxt.setFont(new Font(36));
 
-		final Scene rootScene = new Scene(root, 1920, 1080, Color.BLACK);
+		final Rectangle2D screen = Screen.getPrimary().getVisualBounds();
+		final Scene rootScene = new Scene(root, screen.getWidth(), screen.getHeight(), Color.GRAY);
 
 		primaryStage.setTitle("jAER2 Viewer");
 		primaryStage.setScene(rootScene);
@@ -153,7 +154,6 @@ public class JavaFXJOGLIntegrationTest extends Application {
 			@Override
 			public void handle(final WindowEvent event) {
 				t.interrupt();
-				// animator.stop();
 			}
 		});
 
@@ -161,8 +161,12 @@ public class JavaFXJOGLIntegrationTest extends Application {
 	}
 
 	private class WriteRandom implements GLEventListener {
-		private final BufferWorks buffer = new BufferWorks(JavaFXJOGLIntegrationTest.XLEN,
-			JavaFXJOGLIntegrationTest.YLEN, BUFFER_FORMATS.BYTE_NOALPHA);
+		private final BufferWorks buffer;
+
+		public WriteRandom(final int c) {
+			buffer = new BufferWorks(JavaFXJOGLIntegrationTest.XLEN, JavaFXJOGLIntegrationTest.YLEN,
+				BUFFER_FORMATS.BYTE_NOALPHA, c);
+		}
 
 		@Override
 		public void display(final GLAutoDrawable drawable) {

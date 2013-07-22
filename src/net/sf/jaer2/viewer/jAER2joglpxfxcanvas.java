@@ -45,7 +45,7 @@ public class jAER2joglpxfxcanvas extends Application implements GLEventListener 
 	private static final int YLEN = 480;
 
 	private static final BufferWorks buffer = new BufferWorks(jAER2joglpxfxcanvas.XLEN, jAER2joglpxfxcanvas.YLEN,
-		BUFFER_FORMATS.BYTE_NOALPHA);
+		BUFFER_FORMATS.BYTE_NOALPHA, 0);
 
 	private static final int imageBufferRGB8Number = 2;
 	private static final Semaphore syncImageBufferRGB8Swap[] = new Semaphore[jAER2joglpxfxcanvas.imageBufferRGB8Number];

@@ -23,7 +23,7 @@ public class jAER2fximg extends Application {
 	private static final int YLEN = 480;
 
 	private static final BufferWorks buffer = new BufferWorks(jAER2fximg.XLEN, jAER2fximg.YLEN,
-		BUFFER_FORMATS.BYTE_NOALPHA);
+		BUFFER_FORMATS.BYTE_NOALPHA, 0);
 
 	private static final PixelFormat<ByteBuffer> pxFormat = PixelFormat.getByteRgbInstance();
 	private static final WritableImage img = new WritableImage(jAER2fximg.XLEN, jAER2fximg.YLEN);

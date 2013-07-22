@@ -21,7 +21,8 @@ public class jAER2fx extends Application {
 	private static final int XLEN = 640;
 	private static final int YLEN = 480;
 
-	private static final BufferWorks buffer = new BufferWorks(jAER2fx.XLEN, jAER2fx.YLEN, BUFFER_FORMATS.BYTE_NOALPHA);
+	private static final BufferWorks buffer = new BufferWorks(jAER2fx.XLEN, jAER2fx.YLEN, BUFFER_FORMATS.BYTE_NOALPHA,
+		0);
 
 	public static void main(final String[] args) {
 		// Launch the JavaFX application: do initialization and call start() when ready.
@@ -99,7 +100,7 @@ public class jAER2fx extends Application {
 	private void render(final Rectangle[] rects) {
 		final BUFFER_FORMATS format = jAER2fx.buffer.getFormat();
 
-		if ((format == BUFFER_FORMATS.BYTE) || (format == BUFFER_FORMATS.FLOAT)) {
+		if (format == BUFFER_FORMATS.BYTE) {
 			for (int y = 0, point = 0; y < jAER2fx.YLEN; y++) {
 				for (int x = 0; x < jAER2fx.XLEN; x++, point++) {
 					if (format == BUFFER_FORMATS.BYTE) {

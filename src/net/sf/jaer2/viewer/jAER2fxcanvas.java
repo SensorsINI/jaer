@@ -24,7 +24,7 @@ public class jAER2fxcanvas extends Application {
 	private static final int YLEN = 480;
 
 	private static final BufferWorks buffer = new BufferWorks(jAER2fxcanvas.XLEN, jAER2fxcanvas.YLEN,
-		BUFFER_FORMATS.BYTE_NOALPHA);
+		BUFFER_FORMATS.BYTE_NOALPHA, 0);
 
 	private static final boolean USE_PIXELWRITER = true;
 	private static final PixelFormat<ByteBuffer> pxFormat = PixelFormat.getByteRgbInstance();
@@ -97,7 +97,7 @@ public class jAER2fxcanvas extends Application {
 	private void render(final GraphicsContext gc, final PixelWriter pxWriter) {
 		final BUFFER_FORMATS format = jAER2fxcanvas.buffer.getFormat();
 
-		if ((format == BUFFER_FORMATS.BYTE) || (format == BUFFER_FORMATS.FLOAT)) {
+		if (format == BUFFER_FORMATS.BYTE) {
 			for (int y = 0; y < jAER2fxcanvas.YLEN; y++) {
 				for (int x = 0; x < jAER2fxcanvas.XLEN; x++) {
 					if (format == BUFFER_FORMATS.BYTE) {

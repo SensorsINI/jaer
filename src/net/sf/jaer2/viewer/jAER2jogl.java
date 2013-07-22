@@ -4,10 +4,10 @@ import java.awt.BorderLayout;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.nio.ByteBuffer;
-import java.nio.FloatBuffer;
 
 import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
+import javax.media.opengl.GL2GL3;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLCapabilities;
 import javax.media.opengl.GLEventListener;
@@ -27,7 +27,7 @@ public class jAER2jogl implements GLEventListener {
 	private static final int YLEN = 480;
 
 	private static final BufferWorks buffer = new BufferWorks(jAER2jogl.XLEN, jAER2jogl.YLEN,
-		BUFFER_FORMATS.BYTE_NOALPHA);
+		BUFFER_FORMATS.BYTE_NOALPHA, 0);
 
 	private static final boolean USE_QUADS = false;
 
@@ -115,7 +115,7 @@ public class jAER2jogl implements GLEventListener {
 
 	private void render(final GLAutoDrawable drawable) {
 		final BUFFER_FORMATS format = jAER2jogl.buffer.getFormat();
-		final int positionJump = ((format == BUFFER_FORMATS.BYTE) || (format == BUFFER_FORMATS.FLOAT)) ? (4) : (3);
+		final int positionJump = (format == BUFFER_FORMATS.BYTE) ? (4) : (3);
 		final GL2 gl = drawable.getGL().getGL2();
 
 		gl.glClear(GL.GL_COLOR_BUFFER_BIT);
@@ -128,19 +128,13 @@ public class jAER2jogl implements GLEventListener {
 
 					gl.glTranslatef(x * jAER2jogl.RSIZE, y * jAER2jogl.RSIZE, 0);
 
-					gl.glBegin(GL2.GL_QUADS);
+					gl.glBegin(GL2GL3.GL_QUADS);
 
 					if (format == BUFFER_FORMATS.BYTE) {
 						gl.glColor4ubv((ByteBuffer) jAER2jogl.buffer.getBuffer());
 					}
-					else if (format == BUFFER_FORMATS.BYTE_NOALPHA) {
-						gl.glColor3ubv((ByteBuffer) jAER2jogl.buffer.getBuffer());
-					}
-					else if (format == BUFFER_FORMATS.FLOAT) {
-						gl.glColor4fv((FloatBuffer) jAER2jogl.buffer.getBuffer());
-					}
 					else {
-						gl.glColor3fv((FloatBuffer) jAER2jogl.buffer.getBuffer());
+						gl.glColor3ubv((ByteBuffer) jAER2jogl.buffer.getBuffer());
 					}
 
 					// Advance color buffer on each iteration
@@ -163,14 +157,8 @@ public class jAER2jogl implements GLEventListener {
 					if (format == BUFFER_FORMATS.BYTE) {
 						gl.glColor4ubv((ByteBuffer) jAER2jogl.buffer.getBuffer());
 					}
-					else if (format == BUFFER_FORMATS.BYTE_NOALPHA) {
-						gl.glColor3ubv((ByteBuffer) jAER2jogl.buffer.getBuffer());
-					}
-					else if (format == BUFFER_FORMATS.FLOAT) {
-						gl.glColor4fv((FloatBuffer) jAER2jogl.buffer.getBuffer());
-					}
 					else {
-						gl.glColor3fv((FloatBuffer) jAER2jogl.buffer.getBuffer());
+						gl.glColor3ubv((ByteBuffer) jAER2jogl.buffer.getBuffer());
 					}
 
 					// Advance color buffer on each iteration

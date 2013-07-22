@@ -25,7 +25,7 @@ public class jAER2joglpx implements GLEventListener {
 	private static final int YLEN = 480;
 
 	private static final BufferWorks buffer = new BufferWorks(jAER2joglpx.XLEN, jAER2joglpx.YLEN,
-		BUFFER_FORMATS.BYTE_NOALPHA);
+		BUFFER_FORMATS.BYTE_NOALPHA, 0);
 
 	public static void main(final String[] args) {
 		GLProfile.initSingleton();
