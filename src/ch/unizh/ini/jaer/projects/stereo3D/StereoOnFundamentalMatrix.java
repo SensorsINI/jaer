@@ -24,6 +24,7 @@ import java.util.Observable;
 import java.util.Observer;
 import java.util.Vector;
 
+import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 
@@ -43,8 +44,8 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * @author rogister
  */
 public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnnotater, Observer /*, PreferenceChangeListener*/ {
-    
-    
+
+
     protected final int RIGHT = 1;
     protected final int LEFT = 0;
 //    protected final int NODISPARITY = -999;
@@ -52,10 +53,10 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
   //  int minDiff = 14; // miniumpossible synchrony is 15 us
     protected AEChip chip;
     private AEChipRenderer renderer;
-    
+
     private boolean logDataEnabled=false;
     private PrintStream logStream=null;
-    
+
     // Parameters appearing in the GUI
  //   private int brightness=getPrefs().getInt("StereoOnFundamentalMatrix.brightness",2);
 
@@ -97,24 +98,24 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
 
      private float maxDistance=getPrefs().getFloat("StereoOnFundamentalMatrix.maxDistance",4f);
 
-    
+
      //private boolean scaleAcc = getPrefs().getBoolean("StereoOnFundamentalMatrix.scaleAcc",false);
   //  {setPropertyTooltip("scaleAcc","when true: accumulated value cannot go below zero");}
-   
-      
+
+
 
     private double[] fmatrix = new double[9];
 
 
 
     // do not forget to add a set and a getString/is method for each new parameter, at the end of this .java file
-    
-    
+
+
     // global variables
-    
+
    private int retinaSize=128;//getPrefs().getInt("GravityCentersImageDumper.retinaSize",128);
-    
-   
+
+
  //  DPoint accLeftPoints[][] = new DPoint[retinaSize][retinaSize];
  //  DPoint accRightPoints[][] = new DPoint[retinaSize][retinaSize];
 
@@ -122,9 +123,9 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
    long start;
   // float step = event_strength / (colorScale + 1);
 //   float step = 0.33334f;
-   
+
    boolean firstRun = true;
-   
+
 //   protected int colorScale = 2;
 //   protected float grayValue = 0.5f;
 //   protected int currentTime;
@@ -135,27 +136,30 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
 
    Vector<BinocularEvent> rightEventList = new Vector<BinocularEvent>();
    Vector<BinocularEvent> leftEventList = new Vector<BinocularEvent>();
-    
+
     /** Creates a new instance of GravityCentersImageDumper */
     public StereoOnFundamentalMatrix(AEChip chip) {
         super(chip);
         this.chip=chip;
-        renderer=(AEChipRenderer)chip.getRenderer();
-       
+        renderer=chip.getRenderer();
+
         initFilter();
-       
+
         chip.addObserver(this);
-               
+
     }
-    
-    public void initFilter() {
-        
+
+    @Override
+	public void initFilter() {
+
     }
-            
+
     private void initDefault(String key, String value){
-        if(getPrefs().get(key,null)==null) getPrefs().put(key,value);
+        if(getPrefs().get(key,null)==null) {
+			getPrefs().put(key,value);
+		}
     }
-     
+
      // the method that actually does the tracking
     synchronized private void track(EventPacket<BinocularEvent> ae){
 
@@ -165,8 +169,10 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
         }
 
         int n=ae.getSize();
-        if(n==0) return;
-                            
+        if(n==0) {
+			return;
+		}
+
 //        int tempcurrentTime = ae.getLastTimestamp();
 //        if(tempcurrentTime!=0){
 //            currentTime = tempcurrentTime; // for avoid wrong timing to corrupt data
@@ -180,7 +186,7 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
 
 
         for(BinocularEvent e:ae){
-            
+
 
            int eye = e.eye == BinocularEvent.Eye.LEFT ? 0 : 1;
 
@@ -197,7 +203,7 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
 
           } else {
                leftEventList.add(e);
-                
+
           }
 
         }
@@ -205,7 +211,7 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
         for(BinocularEvent e:leftEventList){
 
             now = System.currentTimeMillis();
-            if(now-start<realTimeBin){
+            if((now-start)<realTimeBin){
                 processEvent(e,rightEventList);
             }
         }
@@ -216,30 +222,32 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
 //           generateEvent(e);
 //
 //        }
-   
-                
+
+
     }
-    
-    
-    public String toString(){
+
+
+    @Override
+	public String toString(){
         String s="StereoMatcherOnTime";
         return s;
     }
-    
-    
+
+
     public Object getFilterState() {
         return null;
     }
-    
+
     private boolean isGeneratingFilter() {
         return false;
     }
 
-    synchronized public void resetFilter() {
+    @Override
+	synchronized public void resetFilter() {
         if(!firstRun){
             // resetArrays();
-    
-        
+
+
         }
     }
 
@@ -255,10 +263,17 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
 
 
 
-    public EventPacket filterPacket(EventPacket in) {
-        if(in==null) return null;
-        if(!filterEnabled) return in;
-        if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
+    @Override
+	public EventPacket filterPacket(EventPacket in) {
+        if(in==null) {
+			return null;
+		}
+        if(!filterEnabled) {
+			return in;
+		}
+        if(enclosedFilter!=null) {
+			in=enclosedFilter.filterPacket(in);
+		}
         if(!(in.getEventPrototype() instanceof BinocularEvent)) {
             // System.out.println("not a binocular event!");
             return in;
@@ -277,23 +292,24 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
 
     //    if (showWindow) leftdisplayCanvas.repaint();
     //    if (showWindow) rightdisplayCanvas.repaint();
-    
+
        // System.out.println("nbevents: "+nbevents+" in.size: "+in.getSize());
         return out;
-        
-    }
-    
-   
-    
-  
-     
 
-    public void update(Observable o, Object arg) {
+    }
+
+
+
+
+
+
+    @Override
+	public void update(Observable o, Object arg) {
         initFilter();
     }
-    
+
     protected void processEvent(BinocularEvent e, Vector<BinocularEvent> righte){
-    
+
            //   int eye = e.eye == BinocularEvent.Eye.LEFT ? 0 : 1; //be sure if left is same as here
            int sign = e.polarity == BinocularEvent.Polarity.Off ? 0 : 1;
 
@@ -303,14 +319,14 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
 
            BinocularEvent me = findClosestEvent(righte, sign, e.timestamp, deltaTime, epipolarLine);
 
-           if (me != null && e.x < me.x && nbEventsRight[me.x][me.y] > 1) {
+           if ((me != null) && (e.x < me.x) && (nbEventsRight[me.x][me.y] > 1)) {
                // accLeftPoints[e.x][e.y].d = me.x - e.x;
                generateEvent(e, me.x - e.x);
            }
     }
 
 
- 
+
 
 
   protected BinocularEvent findClosestEvent( Vector<BinocularEvent> recentEvents, int sign, int time, int delta, double[] d){
@@ -327,7 +343,7 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
           if (type == sign) { //with polarity check //eye==side&& useless here as only right events checked
 
             //  if (Math.abs(time - e.timestamp) < delta) {
-                  dist = Math.abs(d[0] * e.x + d[1] * e.y + d[2]) / Math.sqrt(d[0] * d[0] + d[1] * d[1]);
+                  dist = Math.abs((d[0] * e.x) + (d[1] * e.y) + d[2]) / Math.sqrt((d[0] * d[0]) + (d[1] * d[1]));
                   if (dist < mindist) {
 
                       // add ordering and disparity coherence here
@@ -336,7 +352,7 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
                   }
             //  }
 
-          }     
+          }
 
       }
 
@@ -350,11 +366,11 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
     protected double[] computeEpipolarLine( int x, int y ){
         double line[] = new double[3];
 
-        line[0] = fmatrix[0]*x + fmatrix[1]*y + fmatrix[2];
-        line[1] = fmatrix[3]*x + fmatrix[4]*y + fmatrix[5];
-        line[2] = fmatrix[6]*x + fmatrix[7]*y + fmatrix[8];
+        line[0] = (fmatrix[0]*x) + (fmatrix[1]*y) + fmatrix[2];
+        line[1] = (fmatrix[3]*x) + (fmatrix[4]*y) + fmatrix[5];
+        line[2] = (fmatrix[6]*x) + (fmatrix[7]*y) + fmatrix[8];
 
-      
+
 
         return line;
     }
@@ -368,9 +384,9 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
 
         // maybe transpose
 
-        line[0] = fmatrix[0]*x + fmatrix[3]*y + fmatrix[6];
-        line[1] = fmatrix[1]*x + fmatrix[4]*y + fmatrix[7];
-        line[2] = fmatrix[2]*x + fmatrix[5]*y + fmatrix[8];
+        line[0] = (fmatrix[0]*x) + (fmatrix[3]*y) + fmatrix[6];
+        line[1] = (fmatrix[1]*x) + (fmatrix[4]*y) + fmatrix[7];
+        line[2] = (fmatrix[2]*x) + (fmatrix[5]*y) + fmatrix[8];
 
 
         return line;
@@ -400,7 +416,7 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
                         if(accLeftPoints[i][j]!=null){
                             // maybe add decay later to remove old values
 
-                            if(accLeftPoints[i][j].d!=NODISPARITY) { 
+                            if(accLeftPoints[i][j].d!=NODISPARITY) {
 
                                 totalD += accLeftPoints[i][j].d;
                                 n++;
@@ -420,11 +436,11 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
     }
 
 */
-  
+
 
 
      protected void forceGenerateEvent(BinocularEvent e){
-   
+
 
        generateEvent(e,0);
 
@@ -432,7 +448,7 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
     }
 
 
-  
+
 
     // load fundamental matrix
 
@@ -451,10 +467,10 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
                 while((line = input.readLine()) != null) {
                     String[] result = line.split("\\s");
                     //System.out.println("parsing  = "+line);
-                    for (int i = 0; i < result.length; i++) {
+                    for (String element : result) {
                         // store variables
                       //  System.out.println("parsing input: "+i+" = "+result[i]);
-                        data[d] = Double.parseDouble(result[i]);
+                        data[d] = Double.parseDouble(element);
                         d++;
                     }
                 }
@@ -488,7 +504,7 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
 
 
     protected void generateEvent(BinocularEvent e, int d){
-        
+
        // System.out.println("incoming event "+e.x+" "+e.y+" "+e.polarity+" "+e.timestamp+" "+e.eye+" "+e.type);
 
         BinocularDisparityEvent oe=(BinocularDisparityEvent) outItr.nextOutput();
@@ -497,15 +513,15 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
 
        // System.out.println("incoming event "+oe.x+" "+oe.y+" "+oe.polarity+" "+oe.timestamp+" "+oe.eye+" "+oe.type+" "+oe.d);
 
-             
+
     }
 
- 
-
-  
 
 
-   
+
+
+
+
 
     protected float decayedEvent( int time ){
         float res=1;
@@ -515,7 +531,9 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
         }
 
         float dt = (float)time/(float)decayTimeLimit;
-        if(dt<0)dt = 0;
+        if(dt<0) {
+			dt = 0;
+		}
         //if(dt<1){
             res = 1 - (0.1f * dt);
        // }
@@ -534,7 +552,9 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
             return 0;
         }
         float dt = (float)time/(float)decayTimeLimit;
-        if(dt<0)dt = 0;
+        if(dt<0) {
+			dt = 0;
+		}
         //if(dt<1){
             res = value - (0.1f * dt);
        // }
@@ -551,36 +571,46 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
         }
 
         float dt = (float)time/(float)decayTimeLimit;
-        if(dt<0)dt = 0;
+        if(dt<0) {
+			dt = 0;
+		}
 
 
 
         //if(dt<1){
         if(value>reference){ // converge toward reference
             res = value - (0.1f * dt);
-            if(res<0.5f) res = 0.5f;
-            if(res>value) res = value;
+            if(res<0.5f) {
+				res = 0.5f;
+			}
+            if(res>value) {
+				res = value;
+			}
 
         } else if(value<reference){
             res = value + (0.1f * dt);
-            if(res>0.5f) res = 0.5f;
-            if(res<value) res = value;
+            if(res>0.5f) {
+				res = 0.5f;
+			}
+            if(res<value) {
+				res = value;
+			}
         }
        // }
         return res;
     }
 
- 
-    
+
+
     /***********************************************************************************
      * // drawing on player window
      ********************************************************************************/
-    
+
     public void annotate(Graphics2D g) {
     }
-    
+
     protected void drawBoxCentered(GL2 gl, int x, int y, int sx, int sy){
-        gl.glBegin(GL2.GL_LINE_LOOP);
+        gl.glBegin(GL.GL_LINE_LOOP);
         {
             gl.glVertex2i(x-sx,y-sy);
             gl.glVertex2i(x+sx+1,y-sy);
@@ -589,9 +619,9 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
         }
         gl.glEnd();
     }
-    
+
     protected void drawBox(GL2 gl, int x, int x2, int y, int y2){
-        gl.glBegin(GL2.GL_LINE_LOOP);
+        gl.glBegin(GL.GL_LINE_LOOP);
         {
             gl.glVertex2i(x,y);
             gl.glVertex2i(x2,y);
@@ -602,7 +632,7 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
     }
 
        protected void drawLine(GL2 gl, int x1, int y1, int x2, int y2){
-        gl.glBegin(GL2.GL_LINE_LOOP);
+        gl.glBegin(GL.GL_LINE_LOOP);
         {
             gl.glVertex2i(x1,y1);
             gl.glVertex2i(x2,y2);
@@ -610,12 +640,15 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
         }
         gl.glEnd();
     }
-    
-    synchronized public void annotate(GLAutoDrawable drawable) {
+
+    @Override
+	synchronized public void annotate(GLAutoDrawable drawable) {
         final float LINE_WIDTH=5f; // in pixels
-        if(!isFilterEnabled()) return;
-        
-        
+        if(!isFilterEnabled()) {
+			return;
+		}
+
+
         GL2 gl=drawable.getGL().getGL2(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if(gl==null){
             log.warning("null GL in GravityCentersImageDumper.annotate");
@@ -626,29 +659,19 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
                   double[] line = computeEpipolarLineTranspose(45,27);
                     // line = computeEpipolarLineTranspose(63,63);
                    int iy1 = (int)Math.round(- (line[2])/line[1]);
-                   int iy2 = (int)Math.round(- (line[0]*127 + line[2])/line[1]);
+                   int iy2 = (int)Math.round(- ((line[0]*127) + line[2])/line[1]);
                    drawLine(gl,0,iy1,127,iy2);
 
-     
+
         gl.glPushMatrix();
-     
+
         gl.glPopMatrix();
     }
-    
-//    void drawGLCluster(int x1, int y1, int x2, int y2)
-    
-    /** annotate the rendered retina frame to show locations of clusters */
-    synchronized public void annotate(float[][][] frame) {
-        if(!isFilterEnabled()) return;
-        // disable for now TODO
-        if(chip.getCanvas().isOpenGLEnabled()) return; // done by open gl annotator
-        
-    }
-    
+
     public synchronized boolean isLogDataEnabled() {
         return logDataEnabled;
     }
-    
+
     public synchronized void setLogDataEnabled(boolean logDataEnabled) {
         this.logDataEnabled = logDataEnabled;
         if(!logDataEnabled) {
@@ -664,8 +687,8 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
             }
         }
     }
-    
-    
+
+
 
 
 
@@ -677,7 +700,7 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
     public int getRealTimeBin() {
         return realTimeBin;
     }
- 
+
     public void setDeltaTime(int deltaTime) {
         this.deltaTime = deltaTime;
 
@@ -686,8 +709,8 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
     public int getDeltaTime() {
         return deltaTime;
     }
-    
-  
+
+
 //    public float getThreshold() {
 //        return threshold;
 //    }
@@ -698,7 +721,7 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
 //        getPrefs().putFloat("StereoOnFundamentalMatrix.threshold",threshold);
 //    }
 
-    
+
 
 
 
@@ -734,7 +757,7 @@ public class StereoOnFundamentalMatrix extends EventFilter2D implements FrameAnn
 //    public int getMinDiff() {
 //        return minDiff;
 //    }
-    
+
 //      public void setCoherenceRadius(int coherenceRadius) {
 //        this.coherenceRadius = coherenceRadius;
 //

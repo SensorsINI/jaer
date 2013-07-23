@@ -10,7 +10,6 @@
 package ch.unizh.ini.jaer.projects.gesture;
 import java.awt.Color;
 import java.awt.Graphics2D;
-
 import java.awt.geom.Point2D;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -1387,34 +1386,6 @@ public class QuadrantGestureTracker extends EventFilter2D implements FrameAnnota
 		}
 		gl.glPopMatrix();
 	}
-
-	//    void drawGLCluster(int x1, int y1, int x2, int y2)
-
-	/** annotate the rendered retina frame to show locations of clusters */
-	synchronized public void annotate(float[][][] frame) {
-		if(!isFilterEnabled()) {
-			return;
-		}
-		// disable for now TODO
-		if(chip.getCanvas().isOpenGLEnabled())
-		{
-			return; // done by open gl annotator
-		}
-		for(Cluster c:clusters){
-			if(c.isVisible()){
-				drawCluster(c, frame);
-			}
-		}
-	}
-
-	//    public void preferenceChange(PreferenceChangeEvent evt) {
-	//        mixingFactor=prefs.getFloat("QuadrantGestureTracker.mixingFactor",0.1f); // amount each event moves COM of cluster towards itself
-	//        pathsEnabled=prefs.getBoolean("QuadrantGestureTracker.pathsEnabled", true);
-	//        colorClustersDifferentlyEnabled=prefs.getBoolean("QuadrantGestureTracker.colorClustersDifferentlyEnabled",false);
-	//        useOnePolarityOnlyEnabled=prefs.getBoolean("QuadrantGestureTracker.useOnePolarityOnlyEnabled",false);
-	//        useOffPolarityOnlyEnabled=prefs.getBoolean("QuadrantGestureTracker.useOffPolarityOnlyEnabled",false);
-	//        aspectRatio=prefs.getFloat("QuadrantGestureTracker.aspectRatio",1f);
-	//    }
 
 	public boolean isGrowMergedSizeEnabled() {
 		return growMergedSizeEnabled;

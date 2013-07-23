@@ -10,7 +10,6 @@ import java.awt.Canvas;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Cursor;
-
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.DisplayMode;
@@ -89,7 +88,6 @@ import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.TobiLogger;
 import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
 import net.sf.jaer.util.WindowSaver;
-
 import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
 import ch.unizh.ini.jaer.projects.opticalflow.Chip2DMotion;
 import ch.unizh.ini.jaer.projects.opticalflow.MotionData;
@@ -453,7 +451,8 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
 					synchronized (container) {
 						container.paintComponents(g);
 						g.translate(0, statisticsPanel.getHeight());
-						chip.getCanvas().paint(g);
+						// TODO: this will need porting to OpenGL it seems.
+						//chip.getCanvas().paint(g);
 						//                    ImageIO.write((RenderedImage)imageOpenGL, "png", new File(snapshotName+snapshotNumber+".png"));
 						log.info("writing image to file");
 						ImageIO.write((RenderedImage) image, "png", new File(lastImageFile.getPath() + suffix));

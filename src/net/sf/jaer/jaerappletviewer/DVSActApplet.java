@@ -108,7 +108,7 @@ public class DVSActApplet extends javax.swing.JApplet {
 
             timeAxis = new Axis(0, ACTVITY_SECONDS_TO_SHOW);
             timeAxis.setTitle("time");
-            timeAxis.setUnit(ACTVITY_SECONDS_TO_SHOW / 60 + " minutes");
+            timeAxis.setUnit((ACTVITY_SECONDS_TO_SHOW / 60) + " minutes");
 
             activityAxis = new Axis(0, 1); // will be normalized
             activityAxis.setTitle("activity");
@@ -134,7 +134,6 @@ public class DVSActApplet extends javax.swing.JApplet {
                 liveChip.setName("Live DVS");
 
                 liveCanvas = liveChip.getCanvas();
-                liveCanvas.setOpenGLEnabled(true);
                 liveCanvas.setBorderSpacePixels(1);
 
                 liveChip.getRenderer().setColorScale(2);
@@ -176,7 +175,8 @@ public class DVSActApplet extends javax.swing.JApplet {
         stopflag = false;
         repaintThread = new Thread() {
 
-            public void run() {
+            @Override
+			public void run() {
                 frameRater.takeAfter();
                 while (!stopflag) {
                     frameRater.delayForDesiredFPS();
@@ -276,7 +276,7 @@ public class DVSActApplet extends javax.swing.JApplet {
                             log.warning("caught while painting canvas " + pf);
                         }
                         int nevents = ae.getSize();
-                        if (isVisible() && sampleCount % TITLE_UPDATE_INTERVAL == 0) {
+                        if (isVisible() && ((sampleCount % TITLE_UPDATE_INTERVAL) == 0)) {
                             ((TitledBorder) livePanel.getBorder()).setTitle("Kitchen: " + nevents + " events" + ", FPS=" + String.format("%.1f", frameRater.getAverageFPS()));
                         }
 //                    activityCategory.getDataTransformation()[12] = -msTime;  // hack: shift progress curve back
@@ -330,7 +330,8 @@ public class DVSActApplet extends javax.swing.JApplet {
 
         fpsMenuItem.setText("Choose target FPS rendering rate...");
         fpsMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 fpsMenuItemActionPerformed(evt);
             }
         });
@@ -339,7 +340,8 @@ public class DVSActApplet extends javax.swing.JApplet {
         ffMenuItem.setText("Show filter parameter controls");
         ffMenuItem.setToolTipText("Allows control of processing of data");
         ffMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 ffMenuItemActionPerformed(evt);
             }
         });
@@ -347,7 +349,8 @@ public class DVSActApplet extends javax.swing.JApplet {
 
         setBackground(new java.awt.Color(0, 0, 0));
         addComponentListener(new java.awt.event.ComponentAdapter() {
-            public void componentResized(java.awt.event.ComponentEvent evt) {
+            @Override
+			public void componentResized(java.awt.event.ComponentEvent evt) {
                 formComponentResized(evt);
             }
         });
@@ -355,10 +358,12 @@ public class DVSActApplet extends javax.swing.JApplet {
         livePanel.setBackground(new java.awt.Color(0, 0, 0));
         livePanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Live view", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 0, 11), new java.awt.Color(255, 255, 255))); // NOI18N
         livePanel.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mousePressed(java.awt.event.MouseEvent evt) {
+            @Override
+			public void mousePressed(java.awt.event.MouseEvent evt) {
                 livePanelMousePressed(evt);
             }
-            public void mouseReleased(java.awt.event.MouseEvent evt) {
+            @Override
+			public void mouseReleased(java.awt.event.MouseEvent evt) {
                 livePanelMouseReleased(evt);
             }
         });
@@ -386,7 +391,7 @@ public class DVSActApplet extends javax.swing.JApplet {
 
     private void fpsMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_fpsMenuItemActionPerformed
         String fpsString = JOptionPane.showInputDialog("<html>Desired frames per second? (Currently " + getFps() + ")");
-        if (fpsString == null || fpsString.equals("")) {
+        if ((fpsString == null) || fpsString.equals("")) {
             log.info("canceled fps");
             return;
         }
@@ -450,14 +455,14 @@ public class DVSActApplet extends javax.swing.JApplet {
         activitySeries.add(msTime, activity);
 //                    activitySeries.add(msTime, random.nextFloat()); // debug
         timeAxis.setMaximum(msTime);
-        timeAxis.setMinimum(msTime - 1000 * ACTVITY_SECONDS_TO_SHOW);
+        timeAxis.setMinimum(msTime - (1000 * ACTVITY_SECONDS_TO_SHOW));
         sampleCount++;
         // startup
         if (sampleCount == RESET_FILTER_STARTUP_COUNT) {
             activityChartLowpassFilter.setInternalValue(activity);
             maxActivity = 0;
         }
-        if (sampleCount % RESET_SCALE_COUNT == 0) {
+        if ((sampleCount % RESET_SCALE_COUNT) == 0) {
             maxActivity = 0;
         }
         if (activity > maxActivity) {
@@ -535,7 +540,7 @@ public class DVSActApplet extends javax.swing.JApplet {
          */
         public final void delayForDesiredFPS() {
             synchronized (this) {
-                delayMs = (int) Math.round(desiredPeriodMs - (float) lastdt / 1000000);
+                delayMs = Math.round(desiredPeriodMs - ((float) lastdt / 1000000));
             }
             if (delayMs <= 0) {
                 delayMs = 1; // don't hog all cycles

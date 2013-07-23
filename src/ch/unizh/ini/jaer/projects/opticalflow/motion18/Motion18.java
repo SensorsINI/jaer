@@ -25,8 +25,8 @@ import ch.unizh.ini.jaer.projects.opticalflow.graphics.OpticalFlowDisplayMethod;
  */
 public class Motion18 extends Chip2DMotion {
 
-     
-    
+
+
     /** Creates a new instance of Motion18 */
     public Motion18() {
         CHIPNAME="Motion18";
@@ -40,19 +40,18 @@ public class Motion18 extends Chip2DMotion {
         setSizeX(NUM_COLUMNS);
         setSizeY(NUM_ROWS);
         getCanvas().addDisplayMethod(new OpticalFlowDisplayMethod(this.getCanvas()));
-        getCanvas().setOpenGLEnabled(true);
-//        getCanvas().setScale(22f);
     }
 
 
-   public MotionData getEmptyMotionData(){
+   @Override
+public MotionData getEmptyMotionData(){
         return new MotionDataMotion18(this);
     }
 
-    
+
     /** describes the biases on the chip */
     public class Motion18Biasgen extends Biasgen{
-        
+
         public Motion18Biasgen(Chip chip, DAC dac){
             super(chip);
         /* from firmware
@@ -92,9 +91,9 @@ public class Motion18 extends Chip2DMotion {
              */
 //    public VPot(String name, DAC dac, int channel, final Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
 //    public VPot(Chip chip, String name, DAC dac, int channel, Type type, Sex sex, int bitValue, int displayPosition, String tooltipString) {
-            
+
             potArray = new PotArray(this);  // create the appropriate PotArray
-            
+
             getPotArray().addPot(new VPot(Motion18.this,"FollBias",dac,       0,Pot.Type.NORMAL,Pot.Sex.N,881,      99,"Chip pad follower bias"));
             getPotArray().addPot(new VPot(Motion18.this,"HD+tweak",dac,       1,Pot.Type.NORMAL,Pot.Sex.N,22,      4,"current gain knob (sources) of the temporal differentiator."));
             getPotArray().addPot(new VPot(Motion18.this,"HD-tweak",dac,       2,Pot.Type.NORMAL,Pot.Sex.N,132,      5,"current gain knob (sources) of the temporal differentiator."));
@@ -112,5 +111,5 @@ public class Motion18 extends Chip2DMotion {
             getPotArray().addPot(new VPot(Motion18.this,"PD",dac,             0xf,Pot.Type.NORMAL,Pot.Sex.N,1255,    22,"scanner wired OR static pulldown"));
         }
     }
-    
+
 }

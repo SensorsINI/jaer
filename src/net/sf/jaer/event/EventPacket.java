@@ -9,8 +9,6 @@
 package net.sf.jaer.event;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -76,21 +74,21 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     /** The backing array of element data of type E */
     public transient E[] elementData;
     private AEPacketRaw rawPacket=null;
-    
+
     /** A built-in (by default uninitialized) output packet that can be used to write events to for filtering packets.
-     * @see #getOutputPacket() 
-     * @see #setOutputPacket(net.sf.jaer.event.EventPacket) 
-     * @see #checkOutputPacketEventType(net.sf.jaer.event.EventPacket) 
+     * @see #getOutputPacket()
+     * @see #setOutputPacket(net.sf.jaer.event.EventPacket)
+     * @see #checkOutputPacketEventType(net.sf.jaer.event.EventPacket)
      */
     protected EventPacket outputPacket=null;
-    
 
-    
-     /** The modification system timestamp of the EventPacket in ns, from System.nanoTime(). Some hardware interfaces set this field 
+
+
+     /** The modification system timestamp of the EventPacket in ns, from System.nanoTime(). Some hardware interfaces set this field
      * when the packet is started to be filled with events from hardware.
      * This timestamp is not related to the event times of the events in the packet.
      */
-    public long systemModificationTimeNs=0; 
+    public long systemModificationTimeNs=0;
 
 
     /** Resets the time limiter for input iteration. After the timer times out
@@ -108,7 +106,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         restartTimeLimiter();
     }
 
-    /** Constructs a new EventPacket filled with BasicEvent. 
+    /** Constructs a new EventPacket filled with BasicEvent.
     @see net.sf.jaer.event.BasicEvent
      */
     public EventPacket() {
@@ -124,7 +122,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         }
         setEventClass(eventClass);
     }
-    
+
 
     /** Fills this EventPacket with DEFAULT_INITIAL_CAPACITY of the event class */
     protected void initializeEvents() {
@@ -137,9 +135,9 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     }
 
     /** Populates the packet with default events from the eventConstructor.
-     * 
-     * @param startIndex 
-     * @param endIndex 
+     *
+     * @param startIndex
+     * @param endIndex
      * @see #eventConstructor
      */
     private void fillWithDefaultEvents(int startIndex, int endIndex) {
@@ -194,7 +192,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         if(getDurationUs()==0) {
             return 0;
         }
-        return (float) getSize()/((float)getDurationUs()*AEConstants.TICK_DEFAULT_US*1e-6f);
+        return getSize()/((float)getDurationUs()*AEConstants.TICK_DEFAULT_US*1e-6f);
     }
 
 //    public void copyTo(EventPacket packet) {
@@ -211,8 +209,8 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 //        return eventList.get(0);
     }
 
-    /** Returns last event, or null if there are no events. 
-     * 
+    /** Returns last event, or null if there are no events.
+     *
      * @return the event or null if there are no events.
      */
     public E getLastEvent() {
@@ -233,7 +231,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 //        return eventList.get(0).timestamp;
     }
 
-    /** @return last timestamp in packet. 
+    /** @return last timestamp in packet.
     If packet is empty, returns zero - which could be important if this time is used for e.g. filtering operations!
      */
     public int getLastTimestamp() {
@@ -258,10 +256,10 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         return elementData[k];
 //        return eventList.get(k);
     }
-    
+
      /** Constructs a new empty EventPacket containing <code>eventClass</code>.
-     * @see #setEventClass(java.lang.Class) 
-     * @see #setEventClass(java.lang.reflect.Constructor) 
+     * @see #setEventClass(java.lang.Class)
+     * @see #setEventClass(java.lang.reflect.Constructor)
      */
     public EventPacket constructNewPacket(){
         EventPacket packet=new EventPacket(getEventClass());
@@ -270,8 +268,8 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 
     /** Constructs a new empty EventPacket containing <code>eventClass</code>.
      * @param eventClass the EventPacket will be initialized holding this class of events.
-     * @see #setEventClass(java.lang.Class) 
-     * @see #setEventClass(java.lang.reflect.Constructor) 
+     * @see #setEventClass(java.lang.Class)
+     * @see #setEventClass(java.lang.reflect.Constructor)
      */
     public EventPacket constructNewPacket(Class<? extends BasicEvent> eventClass){
         EventPacket packet=new EventPacket(eventClass);
@@ -292,17 +290,17 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
      * @see #outputPacket
      */
     public void checkOutputPacketEventType(Class<? extends BasicEvent> outClass) {
-        if (outputPacket == null || outputPacket.getEventClass() == null || outputPacket.getEventClass() != outClass  || outputPacket.getClass()!=getClass()) {
+        if ((outputPacket == null) || (outputPacket.getEventClass() == null) || (outputPacket.getEventClass() != outClass)  || (outputPacket.getClass()!=getClass())) {
 //            Class oldClass=outputPacket.getEventClass();
             outputPacket = constructNewPacket(outClass); // constructNewPacket is overridden by subtypes of EventPacket
 //           log.info("oldClass="+oldClass+" outClass="+outClass+"; allocated new "+outputPacket);
         }
         outputPacket.systemModificationTimeNs=systemModificationTimeNs;
     }
-    
+
       /**
      * Utility method that checks the built-in
-     * <code>outputPacket</code> packet to ensure it holds the the same type of events as this packet. 
+     * <code>outputPacket</code> packet to ensure it holds the the same type of events as this packet.
      * This method is used for filters that must pass output that has
      * some type of event.
      * <p>
@@ -314,7 +312,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
      * @see #outputPacket
      */
     public void checkOutputPacketEventType() {
-        if (outputPacket == null || outputPacket.getEventClass() == null || outputPacket.getClass()!=getClass()) {
+        if ((outputPacket == null) || (outputPacket.getEventClass() == null) || (outputPacket.getClass()!=getClass())) {
 //            Class oldClass=outputPacket.getEventClass();
             outputPacket = constructNewPacket(); // constructNewPacket is overridden by subtypes of EventPacket
 //           log.info("oldClass="+oldClass+" outClass="+outClass+"; allocated new "+outputPacket);
@@ -336,11 +334,11 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         }
         return inputIterator;
     }
- 
-    /** Returns an output-type iterator that iterates over the output events. 
+
+    /** Returns an output-type iterator that iterates over the output events.
      * This iterator is reset by this call to start at the beginning of the output packet.
      *
-     * @return the iterator. Use it to obtain new output events 
+     * @return the iterator. Use it to obtain new output events
      * which can be then copied from other events or modified.
      */
     final public OutputEventIterator<E> outputIterator() {
@@ -354,7 +352,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 
     /**
      * Returns the built-in outputPacket associated with this packet.
-     * 
+     *
      * @return the outputPacket
      */
     public EventPacket getOutputPacket() {
@@ -362,15 +360,15 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     }
 
     /**
-     * 
-     * 
+     *
+     *
      * @param outputPacket the outputPacket to set
      */
     public void setOutputPacket(EventPacket outputPacket) {
         this.outputPacket = outputPacket;
     }
-    
-    /** Returns the an output-type iterator of type E that iterates over the packet, 
+
+    /** Returns the an output-type iterator of type E that iterates over the packet,
      * The iterator is constructed if necessary. The iterator is not reset by this call.
      *
      * @return the iterator
@@ -378,15 +376,15 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     public OutputEventIterator<E> getOutputIterator() {
         if(outputIterator==null) {
             outputIterator=new OutItr();
-        } 
+        }
         return outputIterator;
     }
-    
+
     /**
      * Returns the raw data packet that this originally came from. These are the raw ints that represent the data from the device.
      * This AEPacketRaw may or may not be set by the <code>EventExtractor2D</code>.
      *
-     * This packet may or may not actually refer to the same data as when the 
+     * This packet may or may not actually refer to the same data as when the
      * packet was extracted. This raw data packet may in the meantime
      * have been reused for other purposes.
      *
@@ -411,7 +409,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     private OutItr outputIterator=null;
 
     /** This iterator is intended for writing events to an output packet.
-     * The {@link #nextOutput() } method returns the next element in the packet, enlarging the packet if necessary. 
+     * The {@link #nextOutput() } method returns the next element in the packet, enlarging the packet if necessary.
      * The fields in the returned element are copied from an input event or generated in some other manner.
      */
     final public class OutItr implements OutputEventIterator<E> {
@@ -419,35 +417,37 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
             size=0; // reset size because we are starting off output packet
         }
 
-        /** Obtains the next output event suitable for either generating a new event from scratch or copying from input event. 
+        /** Obtains the next output event suitable for either generating a new event from scratch or copying from input event.
          * Increments the size of the packet, enlarging it if necessary.
-         * 
+         *
          * @return reference to next output event, which must be copied from a different event.
-         * @see BasicEvent#copyFrom(net.sf.jaer.event.BasicEvent) 
-         * 
+         * @see BasicEvent#copyFrom(net.sf.jaer.event.BasicEvent)
+         *
          */
-        final public E nextOutput() {
+        @Override
+		final public E nextOutput() {
             if(size>=capacity) {
                 enlargeCapacity();
 //                System.out.println("enlarged "+EventPacket.this);
             }
             return elementData[size++];
         }
-        
-        
+
+
         /** Sets the packet size to zero, without changing capacity.
-         * 
+         *
          */
         final public void reset() {
             size=0;
         }
 
-        public String toString() {
+        @Override
+		public String toString() {
             return "OutputEventIterator with size/cursor="+size+" and capacity="+capacity;
         }
 
         /** Writes event to next output.
-         * 
+         *
          * @param event the event to write out.
          */
         @Override
@@ -459,38 +459,40 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
             }
         }
     }
-    
+
     /** An iterator of type <E> over the input events.
-     * 
+     *
      */
     public class InItr implements Iterator<E> {
         int cursor;
         boolean usingTimeout;
 
         /** Constructs a new instance of the InItr.
-         * 
+         *
          */
         public InItr() {
             reset();
         }
 
         /** Returns boolean if the packet has more input events.
-         * 
+         *
          * @return true if there are more events.
          */
-        public boolean hasNext() {
+        @Override
+		public boolean hasNext() {
             if(usingTimeout) {
-                return cursor<size&&!timeLimitTimer.isTimedOut();
+                return (cursor<size)&&!timeLimitTimer.isTimedOut();
             } else {
                 return cursor<size;
             }
         }
 
         /** Obtains the next input event.
-         * 
-         * @return the next event 
+         *
+         * @return the next event
          */
-        public E next() {
+        @Override
+		public E next() {
             return elementData[cursor++];
         }
 
@@ -501,7 +503,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         }
 
         /** Implements the optional remove operation to remove the last event returned by next().
-         * 
+         *
          */
         @Override
         public void remove() {
@@ -520,29 +522,6 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         }
     }
 
-    /* 
-     * Comparator for ordering events by their timestamp
-     * Order is oldest to newest.
-     * Note: this comparator imposes orderings that are inconsistent with equals.
-     */
-    final private class TimeStampComparator implements Comparator<E> {
-        public int compare(E e1, E e2) {
-            return e1.timestamp - e2.timestamp;
-        }
-    }
-    
-    final public Comparator<E> TIMESTAMP_COMPARATOR = new TimeStampComparator();
-    
-    /*
-     * Method for ordering events by ascending timestamp, i.e. oldest to newest
-     */
-    public void sortByTimeStamp() {
-        if (size == 0) {
-            return;
-        }
-        Arrays.sort(elementData, 0, size, TIMESTAMP_COMPARATOR);
-    }
-    
     /** Enlarges capacity by some factor, then copies all event references to the new packet */
     private void enlargeCapacity() {
         try {
@@ -561,15 +540,17 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
             throw new ArrayIndexOutOfBoundsException(e.toString()+ ":could not enlarge capacity from "+capacity);
         }
     }
-    
+
     /** Ensures packet has room for n events. The original events are retained and the new capacity is filled with default
      * events.
-     * 
+     *
      * @param n capacity
-     * @see #fillWithDefaultEvents(int, int) 
+     * @see #fillWithDefaultEvents(int, int)
      */
     public void allocate(int n) {
-        if(n<=capacity) return;
+        if(n<=capacity) {
+			return;
+		}
         log.info("enlarging capacity of "+this+" to "+n+" events");
         int ncapacity=n; // (capacity*3)/2+1;
         Object oldData[]=elementData;
@@ -581,9 +562,9 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         fillWithDefaultEvents(size, ncapacity);
         capacity=ncapacity;
     }
-    
+
     /** Adds the events from another packet to the events of this packet
-     * 
+     *
      * @param packet EventPacket to be added
      */
     public void add(EventPacket packet) {
@@ -602,7 +583,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 //        EventPacket p=new EventPacket();
 //        p.test();
 //    }
-//    
+//
     /**
     0.32913625s for 300 n allocations, 1097.1208 us/packet
     0.3350817s for 300 n allocations, 1116.939 us/packet
@@ -618,7 +599,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 //        EventPacket<BasicEvent> p,pout;
 //        OutputEventIterator outItr;
 //        Iterator<BasicEvent> inItr;
-//        
+//
 //        System.out.println("make new packets");
 //        for(int k=0;k<nreps;k++){
 //            stime=System.nanoTime();
@@ -626,16 +607,16 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 //                p=new EventPacket();
 //            }
 //            etime=System.nanoTime();
-//            
+//
 //            float timeSec=(etime-stime)/1e9f;
-//            
+//
 //            System.out.println(timeSec+ "s"+" for "+nreps+" n allocations, "+1e6f*timeSec/nreps+" us/packet ");
 //            System.out.flush();
 //            try{
 //                Thread.currentThread().sleep(10);
 //            }catch(Exception e){}
 //        }
-//        
+//
 //        System.out.println("make a new packet and fill with events");
 //        p=new EventPacket<BasicEvent>();
 //        for(int k=0;k<nreps;k++){
@@ -648,43 +629,43 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 //                e.y=(e.x);
 //            }
 //            etime=System.nanoTime();
-//            
+//
 //            float timeSec=(etime-stime)/1e9f;
-//            
+//
 //            System.out.println(timeSec+ "s"+" for "+size+" fill, "+1e6f*timeSec/size+" us/event ");
 //            System.out.flush();
 //            try{
 //                Thread.currentThread().sleep(10);
 //            }catch(Exception e){}
 //        }
-//        
-//        
+//
+//
 //        System.out.println("iterate over packet, changing all values");
 ////        p=new EventPacket();
 //        pout=new EventPacket<BasicEvent>();
-//        
+//
 //        for(int k=0;k<nreps;k++){
 //            stime=System.nanoTime();
 //            inItr=p.inputIterator();
 //            outItr=pout.outputIterator();
 //            for(BasicEvent ein:p){
-//                
+//
 ////                while(inItr.hasNext()){
 ////                BasicEvent ein=inItr.next();
 //                BasicEvent eout=outItr.nextOutput();
 //                eout.copyFrom(ein);
 //            }
 //            etime=System.nanoTime();
-//            
+//
 //            float timeSec=(etime-stime)/1e9f;
-//            
+//
 //            System.out.println(timeSec+ "s"+" for iteration over packet with size="+p.getSize()+", "+timeSec/p.getSize()+" s per event");
 //            System.out.flush();
 //            try{
 //                Thread.currentThread().sleep(10);
 //            }catch(Exception e){}
 //        }
-//        
+//
 //        System.out.println("\nmake packet with OrientationEvent and assign polarity and orientation");
 //        pout=new EventPacket(OrientationEvent.class);
 //        OrientationEvent ori=null;
@@ -700,7 +681,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 //            }
 //            etime=System.nanoTime();
 //            float timeSec=(etime-stime)/1e9f;
-//            
+//
 //            System.out.println(timeSec+ "s"+" for iteration over packet with size="+p.getSize()+", "+timeSec/p.getSize()+" s per event");
 //            System.out.flush();
 //            try{
@@ -709,7 +690,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
 //        }
 //        System.out.println("ori event ="+pout.getEvent(0)+" with type="+ori.getType());
 //        System.out.println(pout.toString());
-//        
+//
 //    }
 //
     /** Returns the number of events in the packet.
@@ -777,8 +758,8 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         return eventClass;
     }
 
-    /** Sets the constructor for new (empty) events and initializes the packet. 
-     * 
+    /** Sets the constructor for new (empty) events and initializes the packet.
+     *
      * @param constructor - a zero argument constructor for the new events.
      */
     public final void setEventClass(Constructor constructor){
@@ -786,7 +767,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         this.eventClass=eventConstructor.getDeclaringClass();
         initializeEvents();
     }
-    
+
     /** Sets the event class for this packet and fills the packet with these events.
      *
      * @param eventClass which much extend BasicEvent

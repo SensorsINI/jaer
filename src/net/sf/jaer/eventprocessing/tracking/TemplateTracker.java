@@ -10,7 +10,6 @@
 package net.sf.jaer.eventprocessing.tracking;
 
 import java.awt.Dimension;
-import java.awt.Graphics2D;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
@@ -515,14 +514,6 @@ public class TemplateTracker extends EventFilter2D implements FrameAnnotater, Ob
 		displayFrame.setVisible(true);
 	}
 
-
-	/***********************************************************************************
-	 * // drawing on player window
-	 ********************************************************************************/
-
-	public void annotate(Graphics2D g) {
-	}
-
 	protected void drawBoxCentered(GL2 gl, int x, int y, int sx, int sy){
 		gl.glBegin(GL.GL_LINE_LOOP);
 		{
@@ -572,21 +563,6 @@ public class TemplateTracker extends EventFilter2D implements FrameAnnotater, Ob
 			log.warning(e.getMessage());
 		}
 		gl.glPopMatrix();
-	}
-
-	//    void drawGLCluster(int x1, int y1, int x2, int y2)
-
-	/** annotate the rendered retina frame to show locations of clusters */
-	synchronized public void annotate(float[][][] frame) {
-		if(!isFilterEnabled()) {
-			return;
-		}
-		// disable for now TODO
-		if(chip.getCanvas().isOpenGLEnabled())
-		{
-			return; // done by open gl annotator
-		}
-
 	}
 
 	public synchronized boolean isLogDataEnabled() {

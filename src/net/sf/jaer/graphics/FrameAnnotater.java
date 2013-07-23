@@ -16,13 +16,12 @@ import javax.media.opengl.GLAutoDrawable;
  An EventFilter2D should implement FrameAnnotator in order to render annotations onto the ChipCanvas during processing.
  <p>
  * A class implements this interface in order to graphically annotate rendered frames. The class can directly set RGB pixel values for the rendered
- *image. (This does not allow drawing e.g. with Java2D, however.)
+ *image.
  *<p>
- *A second method of annotation was added later to allow direct Graphics2D annotation. A class adds itself to the RetinaCanvasInterface to be called to render itself after
+ * A class adds itself to the RetinaCanvasInterface to be called to render itself after
  *the events have been rendered.
  *<p>
- *A third method was added for OpenGL rendering of annotations. If rendering is done with Java2D in the OpenGL drawable, it is not always done synchronously, and so
- *this method was added that is called just after all other OpenGL frame buffer rendering.
+ *A third method was added for OpenGL rendering of annotations.
  *
  * @author tobi
  */
@@ -33,7 +32,7 @@ public interface FrameAnnotater {
     public boolean isAnnotationEnabled();
 
     /** Each annotator enters annotate with graphics context current, in coordinates with pixel 0,0 in
-     *LL corner  (note opposite from Java2D) and pixel spacing 1 unit after the scaling transform (which is already active).
+     *LL corner and pixel spacing 1 unit after the scaling transform (which is already active).
      * The FrameAnnotater then can use JOGL calls to render to the screen by getting the GL context, e.g. the following
      * code, used in the context of an AEChip object, draws a golden lines from LL to UR of the pixel array.
      * <pre>

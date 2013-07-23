@@ -10,8 +10,6 @@
 package net.sf.jaer.eventprocessing.tracking;
 
 import java.awt.Color;
-import java.awt.Graphics2D;
-
 import java.awt.geom.Point2D;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -375,7 +373,7 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
 	}
 
 	/** Returns number of "visible" clusters; those that have received sufficient support.
-	 * 
+	 *
 	 * @return number
 	 */
 	synchronized public int getNumVisibleClusters() {
@@ -523,7 +521,7 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
 		}
 
 		/** Sets count of events.
-		 * 
+		 *
 		 * @param numEvents the numEvents to set
 		 */
 		public void setNumEvents(int numEvents) {
@@ -966,7 +964,7 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
 		}
 
 		/** Measures distance in y direction, accounting for instantaneousAngle of cluster, where y is measured along instantaneousAngle=Pi/2.
-		 * 
+		 *
 		 * @return distance in y direction of this cluster to the event
 		 */
 		private float distanceToY(BasicEvent event) {
@@ -1155,7 +1153,7 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
 		}
 
 		/** Returns velocity of cluster.
-		 * 
+		 *
 		 * @return averaged velocity of cluster in pixels per second.
 		 * <p>
 		 * The method of measuring velocity is based on a linear regression of a number of previous cluter locations.
@@ -1824,9 +1822,6 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
 		getPrefs().putBoolean("RectangularClusterTracker.useOffPolarityOnlyEnabled", useOffPolarityOnlyEnabled);
 	}
 
-	public void annotate(Graphics2D g) {
-	}
-
 	protected void drawBox(GL2 gl, int x, int y, int sx, int sy, float angle) {
 		final float r2d = (float) (180 / Math.PI);
 		gl.glPushMatrix();
@@ -1939,25 +1934,6 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
 		}
 		gl.glPopMatrix();
 	}
-
-	//    void drawGLCluster(int x1, int y1, int x2, int y2)
-	/** annotate the rendered retina frame to show locations of clusters */
-	synchronized public void annotate(float[][][] frame) {
-		if (!isFilterEnabled()) {
-			return;
-		}
-		// disable for now TODO
-		if (chip.getCanvas().isOpenGLEnabled()) {
-			return; // done by open gl annotator
-		}
-		for (Cluster c : clusters) {
-			if (c.isVisible()) {
-				drawCluster(c, frame);
-			}
-		}
-	}
-
-
 
 	public boolean isGrowMergedSizeEnabled() {
 		return growMergedSizeEnabled;

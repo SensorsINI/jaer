@@ -40,7 +40,7 @@ import ch.unizh.ini.jaer.projects.opticalflow.graphics.OpticalFlowDisplayMethod;
  * Describes the MDC2D chip from Shih-Chii Liu and Alan Stocker
  *
  * @author reto
- * 
+ *
  * changes by andstein for compatability with new hardware interfaces
  * <ul>
  * <li>removed some hardware specific method calls into the respective
@@ -57,11 +57,11 @@ public class MDC2D extends Chip2DMotion  {
     public static final int     SRINIVASAN=2;
     public static final int     LOCAL_SRINIVASAN=3;
     public static final int     TIME_OF_TRAVEL=4;
- 
+
     private static int selectedMotionMethodIndex; // only provides a number. To set and interpret the number has to be done in the MotionData class
     private static int rawChannelUsedByMotionMethod;
 
-    
+
     /** Creates a new instance of MDC2D */
     public MDC2D() {
         CHIPNAME="MDC2D";
@@ -77,11 +77,9 @@ public class MDC2D extends Chip2DMotion  {
         setName(CHIPNAME); // for biasgen window title
 
         getCanvas().addDisplayMethod(new OpticalFlowDisplayMethod(this.getCanvas()));
-        getCanvas().setOpenGLEnabled(true);
-//        getCanvas().setScale(22f);
      }
 
-  
+
     // Returns a empty MotionData MDC2D Object
     @Override
     public MotionData getEmptyMotionData(){
@@ -114,14 +112,14 @@ public class MDC2D extends Chip2DMotion  {
     public float convert10bitToFloat(int value) {
         return (float)value/1023;
     }
-    
- 
+
+
     /** describes the biases on the chip */
     public class MDC2DBiasgen extends Biasgen implements ChipControlPanel{
 
-  
 
- 
+
+
         public PotArray ipots = new IPotArray(this);
         public PotArray vpots = new PotArray(this);
         public int[] potValues;
@@ -230,7 +228,7 @@ public class MDC2D extends Chip2DMotion  {
             }
             return panel;
         }
-        
+
 
         @Override
         public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
@@ -260,7 +258,7 @@ public class MDC2D extends Chip2DMotion  {
             }
 
             // "economised" BufferIPot (what's that for anyway??)
-            if (observable instanceof VPot || observable instanceof IPot) {
+            if ((observable instanceof VPot) || (observable instanceof IPot)) {
                 try {
                     hardwareInterface.sendConfiguration(this);
                 } catch (HardwareInterfaceException ex) {
@@ -315,7 +313,8 @@ public class MDC2D extends Chip2DMotion  {
                 return String.format("BufferIPot with max=%d, value=%d", max, value);
             }
 
-            public String processRemoteControlCommand(RemoteControlCommand command, String input) {
+            @Override
+			public String processRemoteControlCommand(RemoteControlCommand command, String input) {
                 String[] tok = input.split("\\s");
                 if (tok.length < 2) {
                     return "bufferbias " + getValue() + "\n";
@@ -331,17 +330,20 @@ public class MDC2D extends Chip2DMotion  {
                 return "bufferbias " + getValue() + "\n";
             }
 
-            public void preferenceChange(PreferenceChangeEvent e) {
+            @Override
+			public void preferenceChange(PreferenceChangeEvent e) {
                 if (e.getKey().equals(key)) {
                     setValue(Integer.parseInt(e.getNewValue()));
                 }
             }
 
-            public void loadPreference() {
+            @Override
+			public void loadPreference() {
                 setValue(getPrefs().getInt(key, max / 2));
             }
 
-            public void storePreference() {
+            @Override
+			public void storePreference() {
                 putPref(key, value);
             }
         }
@@ -400,7 +402,8 @@ public class MDC2D extends Chip2DMotion  {
                 notifyObservers();
             }
 
-            public void preferenceChange(PreferenceChangeEvent e) {
+            @Override
+			public void preferenceChange(PreferenceChangeEvent e) {
                 if (e.getKey().equals("CochleaAMS1b.Biasgen.Scanner.currentStage")) {
                     setCurrentStage(Integer.parseInt(e.getNewValue()));
                 } else if (e.getKey().equals("CochleaAMS1b.Biasgen.Scanner.currentStage")) {
@@ -408,13 +411,15 @@ public class MDC2D extends Chip2DMotion  {
                 }
             }
 
-            public void loadPreference() {
+            @Override
+			public void loadPreference() {
                 setCurrentStage(getPrefs().getInt("CochleaAMS1b.Biasgen.Scanner.currentStage", 0));
                 setContinuousScanningEnabled(getPrefs().getBoolean("CochleaAMS1b.Biasgen.Scanner.continuousScanningEnabled", false));
                 setPeriod(getPrefs().getInt("CochleaAMS1b.Biasgen.Scanner.period", 50)); // 50 gives about 80kHz
             }
 
-            public void storePreference() {
+            @Override
+			public void storePreference() {
                 putPref("CochleaAMS1b.Biasgen.Scanner.period", period);
                 putPref("CochleaAMS1b.Biasgen.Scanner.continuousScanningEnabled", continuousScanningEnabled);
                 putPref("CochleaAMS1b.Biasgen.Scanner.currentStage", currentStage);
@@ -423,7 +428,7 @@ public class MDC2D extends Chip2DMotion  {
 
 
     }
-     
 
- 
+
+
 }

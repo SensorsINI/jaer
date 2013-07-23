@@ -672,21 +672,6 @@ public class StereoEpilolarLineMonitor extends EventFilter2D implements FrameAnn
 		gl.glPopMatrix();
 	}
 
-	//    void drawGLCluster(int x1, int y1, int x2, int y2)
-
-	/** annotate the rendered retina frame to show locations of clusters */
-	synchronized public void annotate(float[][][] frame) {
-		if(!isFilterEnabled()) {
-			return;
-		}
-		// disable for now TODO
-		if(chip.getCanvas().isOpenGLEnabled())
-		{
-			return; // done by open gl annotator
-		}
-
-	}
-
 	public synchronized boolean isLogDataEnabled() {
 		return logDataEnabled;
 	}

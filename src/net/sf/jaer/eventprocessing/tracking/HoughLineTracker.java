@@ -12,7 +12,6 @@
 package net.sf.jaer.eventprocessing.tracking;
 
 import java.awt.Dimension;
-import java.awt.Graphics2D;
 import java.util.Observable;
 import java.util.Observer;
 
@@ -375,12 +374,6 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
 	@Override
 	public void initFilter() {
 		resetFilter();
-	}
-
-	public void annotate(float[][][] frame) {
-	}
-
-	public void annotate(Graphics2D g) {
 	}
 
 	public float getThetaResDeg() {

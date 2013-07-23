@@ -12,8 +12,6 @@
 
 package net.sf.jaer.graphics;
 
-import java.awt.Graphics2D;
-
 import javax.media.opengl.GLAutoDrawable;
 
 /**
@@ -22,30 +20,26 @@ import javax.media.opengl.GLAutoDrawable;
  * @author tobi
  */
 public class FrameAnnotatorAdapter implements FrameAnnotater {
-    
+
     /** Creates a new instance of FrameAnnotatorAdapter */
     public FrameAnnotatorAdapter() {
     }
-    
-    public void annotate(Graphics2D g) {
-    }
-    
-    public void annotate(GLAutoDrawable drawable) {
-    }
-    
-    public void annotate(float[][][] frame) {
-//        if(!isAnnotationEnabled()) return;
+
+    @Override
+	public void annotate(GLAutoDrawable drawable) {
     }
 
     private boolean annotationEnabled=true;
-    
-    public void setAnnotationEnabled(boolean yes) {
+
+    @Override
+	public void setAnnotationEnabled(boolean yes) {
         annotationEnabled=yes;
     }
 
-    public boolean isAnnotationEnabled() {
+    @Override
+	public boolean isAnnotationEnabled() {
         return annotationEnabled;
     }
 
-    
+
 }

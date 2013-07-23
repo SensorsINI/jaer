@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Observable;
 import java.util.Observer;
 
+import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 
@@ -49,8 +50,8 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * @author rogister
  */
 public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAnnotater, Observer /*, PreferenceChangeListener*/ {
-    
-    
+
+
     protected final int RIGHT = 1;
     protected final int LEFT = 0;
 //    protected final int NODISPARITY = -999;
@@ -58,22 +59,22 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
   //  int minDiff = 14; // miniumpossible synchrony is 15 us
     protected AEChip chip;
     private AEChipRenderer renderer;
-    
+
     private boolean logDataEnabled=false;
     private PrintStream logStream=null;
-    
-   
+
+
 
     private int avgTimeBin=getPrefs().getInt("StereoOnFundamentalMatrix8.avgTimeBin",20);
     {setPropertyTooltip("avgTimeBin","time window size for averaging disparities");}
 
 
-   
+
      private int deltaTime=getPrefs().getInt("StereoOnFundamentalMatrix8.deltaTime",1000);
     {setPropertyTooltip("deltaTime","[microsec (us)] max allowed difference between matching events");}
 
 
- 
+
     //private boolean checkOrdering = getPrefs().getBoolean("StereoOnFundamentalMatrix8.checkOrdering",false);
 
 
@@ -92,31 +93,31 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
 
      //private boolean scaleAcc = getPrefs().getBoolean("StereoOnFundamentalMatrix8.scaleAcc",false);
   //  {setPropertyTooltip("scaleAcc","when true: accumulated value cannot go below zero");}
-   
-      
+
+
 
     private float[] fmatrix = new float[9];
 
 
 
     // do not forget to add a set and a get/is method for each new parameter, at the end of this .java file
-    
-    
+
+
     // global variables
-    
+
    private int retinaSize=128;//getPrefs().getInt("GravityCentersImageDumper.retinaSize",128);
-    
-   
+
+
  //  DPoint accLeftPoints[][] = new DPoint[retinaSize][retinaSize];
  //  DPoint accRightPoints[][] = new DPoint[retinaSize][retinaSize];
 
-  
+
    long start;
   // float step = event_strength / (colorScale + 1);
 //   float step = 0.33334f;
-   
+
    boolean firstRun = true;
-   
+
 //   protected int colorScale = 2;
 //   protected float grayValue = 0.5f;
 //   protected int currentTime;
@@ -137,7 +138,7 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
     int nbRights;
     int nbLefts;
 
-    
+
     boolean debug = false;
     int xdebug = 103;
     int ydebug = 77;
@@ -146,22 +147,25 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
     public StereoOnFundamentalMatrix8(AEChip chip) {
         super(chip);
         this.chip=chip;
-        renderer=(AEChipRenderer)chip.getRenderer();
-       
+        renderer=chip.getRenderer();
+
         initFilter();
-       
+
         chip.addObserver(this);
-               
+
     }
-    
-    public void initFilter() {
-        
+
+    @Override
+	public void initFilter() {
+
     }
-            
+
     private void initDefault(String key, String value){
-        if(getPrefs().get(key,null)==null) getPrefs().put(key,value);
+        if(getPrefs().get(key,null)==null) {
+			getPrefs().put(key,value);
+		}
     }
-     
+
      // the method that actually does the tracking
     synchronized private void track(EventPacket<BinocularEvent> ae){
 
@@ -171,8 +175,10 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
         }
 
         int packetSize = ae.getSize();
-        if(packetSize==0) return;
-                            
+        if(packetSize==0) {
+			return;
+		}
+
 //        int tempcurrentTime = ae.getLastTimestamp();
 //        if(tempcurrentTime!=0){
 //            currentTime = tempcurrentTime; // for avoid wrong timing to corrupt data
@@ -181,7 +187,7 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
       //  System.out.println("ae.size= "+ae.getSize());
    //     Vector<BinocularEvent> rightEventList = new Vector<BinocularEvent>();
    //     Vector<BinocularEvent> leftEventList = new Vector<BinocularEvent>();
-       
+
         nbEventsRight = new int[retinaSize][retinaSize];
         rightEventList = new BinocularXYDisparityEvent[packetSize];
         leftEventList = new BinocularXYDisparityEvent[packetSize];
@@ -193,7 +199,7 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
           BinocularEvent e = ae.getEvent(index);
           int eye = e.eye == BinocularEvent.Eye.LEFT ? 0 : 1;
           int type = e.polarity == BinocularEvent.Polarity.Off ? -1 : 1;
-          if(eye==RIGHT){                       
+          if(eye==RIGHT){
                // pass all right events
                BinocularXYDisparityEvent oe=(BinocularXYDisparityEvent) outItr.nextOutput();
                oe.copyFrom(e);
@@ -203,28 +209,34 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
                rightEventList[nbRights] = oe;
                nbRights++;
                nbEventsRight[e.x][e.y]++;
-            } else {                            
+            } else {
                // store events in array
                BinocularXYDisparityEvent le= new BinocularXYDisparityEvent();
-              if(debug) System.out.println("     >>>>   store e"+e);
+              if(debug) {
+				System.out.println("     >>>>   store e"+e);
+			}
                le.copyFrom(e);
                le.disparity = 0;
                leftEventList[nbLefts] = le;
-               if(debug) System.out.println("    <<<<<   stored in "+nbLefts+" as le"+le);
+               if(debug) {
+				System.out.println("    <<<<<   stored in "+nbLefts+" as le"+le);
+			}
 
                nbLefts++;
 
             }
         }
 
-        if(debug) System.out.println("total nbLefts = "+nbLefts);
+        if(debug) {
+			System.out.println("total nbLefts = "+nbLefts);
+		}
 
-        
+
         long avgEndTime = ae.getFirstTimestamp()+avgTimeBin;
         // process all left events (main camera events)
         for(int index=0;index<nbLefts;index++){
 
-                
+
                 if (leftEventList[index].timestamp > avgEndTime) {
                    // end computation of max
                    // generate events based on max
@@ -239,9 +251,11 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
                    avgEndTime = leftEventList[index].timestamp+avgTimeBin;
                 }
 
-                if(debug)System.out.println("processing nbLefts["+index+"]");
+                if(debug) {
+					System.out.println("processing nbLefts["+index+"]");
+				}
                 processEvent(leftEventList[index], rightEventList);
-            
+
 
         }
 
@@ -256,25 +270,27 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
 //           generateEvent(e);
 //
 //        }
-   
-                
+
+
     }
 
    void createMaps(){
-        for (int i=0;i<retinaSize*retinaSize;i++){
+        for (int i=0;i<(retinaSize*retinaSize);i++){
             disparityCount[i] = new HashMap();
         }
     }
 
     void resetMaps(){
-        for (int i=0;i<retinaSize*retinaSize;i++){
+        for (int i=0;i<(retinaSize*retinaSize);i++){
             disparityCount[i].clear();
         }
         nbEventsLeft = new int[retinaSize][retinaSize];
       //  nbEventsRight = new int[retinaSize][retinaSize];
 
-        //debug 
-        if(debug)System.out.println("------------------------------------------ resetMaps");
+        //debug
+        if(debug) {
+			System.out.println("------------------------------------------ resetMaps");
+		}
 
     }
 
@@ -282,13 +298,17 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
         int i,j=0;
         // heavy
         // for all pixels of left, find most often corresponding right pixel
-        for (i=0;i<retinaSize*retinaSize;i++){
-            
+        for (i=0;i<(retinaSize*retinaSize);i++){
+
             // debug
             int y = i/128;
             int x= i - (y*128);
-            
-           if(debug)if(nbEventsLeft[x][y]>0) System.out.println(" nbEventsLeft["+x+"]["+y+"] "+nbEventsLeft[x][y]);
+
+           if(debug) {
+			if(nbEventsLeft[x][y]>0) {
+				System.out.println(" nbEventsLeft["+x+"]["+y+"] "+nbEventsLeft[x][y]);
+			}
+		}
 
             generateEventsFrom(x,y,disparityCount[i]);
         }
@@ -303,7 +323,7 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
 
         if(imax!=-1){
           //  int y1 = (int)Math.floor((float)index/(float)sizex);
-            
+
 
 
           //  int y2 = (int)Math.floor((float)imax/(float)sizex);
@@ -312,13 +332,15 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
 
             //System.out.println("index="+index+" x1="+x1+" y1="+y1);
             // if(debug)
-                 if(x1==xdebug&&y1==ydebug) System.out.println("evenement ["+x1+","+y1+"] matches  ["+x2+","+y2+"]");
+                 if((x1==xdebug)&&(y1==ydebug)) {
+					System.out.println("evenement ["+x1+","+y1+"] matches  ["+x2+","+y2+"]");
+				}
 
 
             // generate events for pair x1,y1 <-> x2,y2
             for(int i=0;i<nbLefts;i++){
 
-                if(leftEventList[i].x==x1&&leftEventList[i].y==y1){
+                if((leftEventList[i].x==x1)&&(leftEventList[i].y==y1)){
                     generateEvent(leftEventList[i], 1, x2-x1, y2-y1);
                 }
             }
@@ -350,33 +372,41 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
 //        }
 
        //if(debug)
-           if(x==xdebug&&y==ydebug)if(max>0)System.out.println("findIndexOfMax ["+x+"]["+y+"] max = "+max);
-        if(max<threshold)imax=-1;
+           if((x==xdebug)&&(y==ydebug)) {
+			if(max>0) {
+				System.out.println("findIndexOfMax ["+x+"]["+y+"] max = "+max);
+			}
+		}
+        if(max<threshold) {
+			imax=-1;
+		}
 
 
 
         return imax;
     }
-    
-    public String toString(){
+
+    @Override
+	public String toString(){
         String s="StereoMatcherOnTime";
         return s;
     }
-    
-    
+
+
     public Object getFilterState() {
         return null;
     }
-    
+
     private boolean isGeneratingFilter() {
         return false;
     }
 
-    synchronized public void resetFilter() {
+    @Override
+	synchronized public void resetFilter() {
         if(!firstRun){
             // resetArrays();
-    
-        
+
+
         }
     }
 
@@ -395,10 +425,17 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
 
 
 
-    public EventPacket filterPacket(EventPacket in) {
-        if(in==null) return null;
-        if(!filterEnabled) return in;
-        if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
+    @Override
+	public EventPacket filterPacket(EventPacket in) {
+        if(in==null) {
+			return null;
+		}
+        if(!filterEnabled) {
+			return in;
+		}
+        if(enclosedFilter!=null) {
+			in=enclosedFilter.filterPacket(in);
+		}
         if(!(in.getEventPrototype() instanceof BinocularEvent)) {
             // System.out.println("not a binocular event!");
             return in;
@@ -413,22 +450,25 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
         track(in);
 
         return out;
-        
-    }
-    
-   
-    
-  
-     
 
-    public void update(Observable o, Object arg) {
+    }
+
+
+
+
+
+
+    @Override
+	public void update(Observable o, Object arg) {
         initFilter();
     }
-    
+
     protected void processEvent(BinocularXYDisparityEvent e, BinocularXYDisparityEvent[] in){
 
            //if(debug)
-               if(e.x==xdebug&&e.y==ydebug) System.out.println("processEvent "+e);
+               if((e.x==xdebug)&&(e.y==ydebug)) {
+				System.out.println("processEvent "+e);
+			}
 
            //   int eye = e.eye == BinocularEvent.Eye.LEFT ? 0 : 1; //be sure if left is same as here
            int sign = e.polarity == BinocularEvent.Polarity.Off ? 0 : 1;
@@ -438,7 +478,7 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
            // find closest point to epipolar line
            int ori = 0;
            if (e instanceof BinocularOrientationEvent){
-                BinocularOrientationEvent oe = (BinocularOrientationEvent)e;
+                BinocularOrientationEvent oe = e;
                 ori = oe.orientation;
 
            }
@@ -457,30 +497,32 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
                 // Integer key = new Integer(me.y*retinaSize+me.x);
 
                 //if(debug)
-                    if(e.x==xdebug&&e.y==ydebug)System.out.println("left["+e.x+","+e.y+"]("+e.timestamp+") all closest["+k+"] = ["+allme[k].x+","+allme[k].y+"]("+allme[k].timestamp+")");
+                    if((e.x==xdebug)&&(e.y==ydebug)) {
+						System.out.println("left["+e.x+","+e.y+"]("+e.timestamp+") all closest["+k+"] = ["+allme[k].x+","+allme[k].y+"]("+allme[k].timestamp+")");
+					}
 
-                Integer key = new Integer(allme[k].y * retinaSize + allme[k].x);
-                Integer prevValue = (Integer) disparityCount[e.y * retinaSize + e.x].get(key);
+                Integer key = new Integer((allme[k].y * retinaSize) + allme[k].x);
+                Integer prevValue = (Integer) disparityCount[(e.y * retinaSize) + e.x].get(key);
                 Integer newValue = 1;
                 if (prevValue != null) {
                     newValue += prevValue;
                 }
-                disparityCount[e.y * retinaSize + e.x].put(key, newValue);
+                disparityCount[(e.y * retinaSize) + e.x].put(key, newValue);
 
             } else { // end it
                 k = allme.length;
             }
         }
-           
+
     }
 
 
- 
+
 
 
   protected BinocularXYDisparityEvent findClosestEvent( BinocularXYDisparityEvent[] in, int x, int y,  int sign, int time, int delta, float[] d, int orientation){
       BinocularXYDisparityEvent closest = null;
-                
+
       float mindist = maxDistance;
       float dist = 0;
 
@@ -489,14 +531,14 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
           int type = e.polarity == BinocularEvent.Polarity.Off ? 0 : 1;
      //     int eye = e.eye == BinocularEvent.Eye.LEFT ? 0 : 1;
           int eye = e.eye == BinocularEvent.Eye.LEFT ? 0 : 1;
-          
+
             //    eye = e.eye == BinocularEvent.Eye.LEFT ? 0 : 1;
           boolean sameOrientation = false;
 
           if (eye == RIGHT) {
 
               if (e instanceof BinocularOrientationEvent){
-                BinocularOrientationEvent oe = (BinocularOrientationEvent)e;
+                BinocularOrientationEvent oe = e;
                 if(oe.orientation==orientation){
                     sameOrientation = true;
                 }
@@ -508,16 +550,16 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
 
                  if (Math.abs(time - e.timestamp) < delta) {
 
-                   dist = (float)Math.abs(d[0] * e.x + d[1] * e.y + d[2]) / (float)Math.sqrt(d[0] * d[0] + d[1] * d[1]);
+                   dist = Math.abs((d[0] * e.x) + (d[1] * e.y) + d[2]) / (float)Math.sqrt((d[0] * d[0]) + (d[1] * d[1]));
                    if (dist < mindist) {
                       if( e.disparity!=-1){ //&& e.x > x   // use d==-1 to tell if an event is already matched
-                          
+
                                // add ordering and disparity coherence here
                                mindist = dist;
 
                                closest = e;
 
-                              
+
                        }
 
                     }
@@ -527,8 +569,8 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
           }
 
       } // end for
-      
-   
+
+
 
       if(closest!=null){
             closest.disparity = -1;
@@ -560,7 +602,7 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
 
           if (eye == RIGHT) {
               if (e instanceof BinocularOrientationEvent){
-                BinocularOrientationEvent oe = (BinocularOrientationEvent)e;
+                BinocularOrientationEvent oe = e;
                 if(oe.orientation==orientation){
                     sameOrientation = true;
                 }
@@ -571,10 +613,10 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
 
                  if (Math.abs(time - e.timestamp) < delta) {
 
-                   dist = (float)Math.abs(d[0] * e.x + d[1] * e.y + d[2]) / (float)Math.sqrt(d[0] * d[0] + d[1] * d[1]);
+                   dist = Math.abs((d[0] * e.x) + (d[1] * e.y) + d[2]) / (float)Math.sqrt((d[0] * d[0]) + (d[1] * d[1]));
                    if (dist < mindist) {
                       if( e.disparity!=-1){ // use d==-1 to tell if an event is already matched
-                            if(x==xdebug&&y==ydebug){
+                            if((x==xdebug)&&(y==ydebug)){
                                 int timediff = Math.abs(time - e.timestamp);
                                 int disp = e.x-x;
                                 System.out.println("candidate is ["+e.x+","+e.y+"], dist="+dist+" timediff="+timediff+" disp="+disp);
@@ -612,10 +654,12 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
           while(continuing){
               if(dist < allClosestDists[i]){
                   // shift
-                  if(i+1<max){
+                  if((i+1)<max){
                       allClosestDists[i + 1] = allClosestDists[i];
                       allClosests[i + 1] = allClosests[i];
-                      if(i+1==ic) added = true;
+                      if((i+1)==ic) {
+						added = true;
+					}
                   }
                   i--;
                   if(i<0){
@@ -624,17 +668,21 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
                       allClosests[0] = e;
                   }
               } else {
-                  if (i + 1 < max) {
+                  if ((i + 1) < max) {
                       allClosestDists[i + 1] = dist;
                       allClosests[i + 1] = e;
-                      if(i+1==ic) added = true;
+                      if((i+1)==ic) {
+						added = true;
+					}
                   }
                   continuing = false;
               }
           }
       }
 
-      if(added) nic++;
+      if(added) {
+		nic++;
+	}
 
       return nic;
 
@@ -647,11 +695,11 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
     protected float[] computeEpipolarLine( int x, int y ){
         float line[] = new float[3];
 
-        line[0] = fmatrix[0]*x + fmatrix[1]*y + fmatrix[2];
-        line[1] = fmatrix[3]*x + fmatrix[4]*y + fmatrix[5];
-        line[2] = fmatrix[6]*x + fmatrix[7]*y + fmatrix[8];
+        line[0] = (fmatrix[0]*x) + (fmatrix[1]*y) + fmatrix[2];
+        line[1] = (fmatrix[3]*x) + (fmatrix[4]*y) + fmatrix[5];
+        line[2] = (fmatrix[6]*x) + (fmatrix[7]*y) + fmatrix[8];
 
-      
+
 
         return line;
     }
@@ -665,9 +713,9 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
 
         // maybe transpose
 
-        line[0] = fmatrix[0]*x + fmatrix[3]*y + fmatrix[6];
-        line[1] = fmatrix[1]*x + fmatrix[4]*y + fmatrix[7];
-        line[2] = fmatrix[2]*x + fmatrix[5]*y + fmatrix[8];
+        line[0] = (fmatrix[0]*x) + (fmatrix[3]*y) + fmatrix[6];
+        line[1] = (fmatrix[1]*x) + (fmatrix[4]*y) + fmatrix[7];
+        line[2] = (fmatrix[2]*x) + (fmatrix[5]*y) + fmatrix[8];
 
 
         return line;
@@ -697,7 +745,7 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
                         if(accLeftPoints[i][j]!=null){
                             // maybe add decay later to remove old values
 
-                            if(accLeftPoints[i][j].d!=NODISPARITY) { 
+                            if(accLeftPoints[i][j].d!=NODISPARITY) {
 
                                 totalD += accLeftPoints[i][j].d;
                                 n++;
@@ -717,12 +765,12 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
     }
 
 */
-  
 
 
-    
 
-  
+
+
+
 
     // load fundamental matrix
 
@@ -741,10 +789,10 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
                 while((line = input.readLine()) != null) {
                     String[] result = line.split("\\s");
                     //System.out.println("parsing  = "+line);
-                    for (int i = 0; i < result.length; i++) {
+                    for (String element : result) {
                         // store variables
                       //  System.out.println("parsing input: "+i+" = "+result[i]);
-                        data[d] = Float.parseFloat(result[i]);
+                        data[d] = Float.parseFloat(element);
                         d++;
                     }
                 }
@@ -778,7 +826,7 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
 
 
     protected void generateEvent(BinocularEvent e, int valid, int dx, int dy){
-        
+
        // System.out.println("incoming event "+e.x+" "+e.y+" "+e.polarity+" "+e.timestamp+" "+e.eye+" "+e.type);
 
         BinocularXYDisparityEvent oe=(BinocularXYDisparityEvent) outItr.nextOutput();
@@ -791,25 +839,25 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
 
        // System.out.println("incoming event "+oe.x+" "+oe.y+" "+oe.polarity+" "+oe.timestamp+" "+oe.eye+" "+oe.type+" "+oe.d);
 
-             
+
     }
 
- 
-
-  
 
 
- 
-    
+
+
+
+
+
     /***********************************************************************************
      * // drawing on player window
      ********************************************************************************/
-    
+
     public void annotate(Graphics2D g) {
     }
-    
+
     protected void drawBoxCentered(GL2 gl, int x, int y, int sx, int sy){
-        gl.glBegin(GL2.GL_LINE_LOOP);
+        gl.glBegin(GL.GL_LINE_LOOP);
         {
             gl.glVertex2i(x-sx,y-sy);
             gl.glVertex2i(x+sx+1,y-sy);
@@ -818,9 +866,9 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
         }
         gl.glEnd();
     }
-    
+
     protected void drawBox(GL2 gl, int x, int x2, int y, int y2){
-        gl.glBegin(GL2.GL_LINE_LOOP);
+        gl.glBegin(GL.GL_LINE_LOOP);
         {
             gl.glVertex2i(x,y);
             gl.glVertex2i(x2,y);
@@ -831,7 +879,7 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
     }
 
        protected void drawLine(GL2 gl, int x1, int y1, int x2, int y2){
-        gl.glBegin(GL2.GL_LINE_LOOP);
+        gl.glBegin(GL.GL_LINE_LOOP);
         {
             gl.glVertex2i(x1,y1);
             gl.glVertex2i(x2,y2);
@@ -839,12 +887,15 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
         }
         gl.glEnd();
     }
-    
-    synchronized public void annotate(GLAutoDrawable drawable) {
+
+    @Override
+	synchronized public void annotate(GLAutoDrawable drawable) {
         final float LINE_WIDTH=5f; // in pixels
-        if(!isFilterEnabled()) return;
-        
-        
+        if(!isFilterEnabled()) {
+			return;
+		}
+
+
         GL2 gl=drawable.getGL().getGL2(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
         if(gl==null){
             log.warning("null GL in GravityCentersImageDumper.annotate");
@@ -858,26 +909,16 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
                  //  int iy2 = (int)Math.round(- (line[0]*127 + line[2])/line[1]);
                  //  drawLine(gl,0,iy1,127,iy2);
 
-     
+
         gl.glPushMatrix();
-     
+
         gl.glPopMatrix();
     }
-    
-//    void drawGLCluster(int x1, int y1, int x2, int y2)
-    
-    /** annotate the rendered retina frame to show locations of clusters */
-    synchronized public void annotate(float[][][] frame) {
-        if(!isFilterEnabled()) return;
-        // disable for now TODO
-        if(chip.getCanvas().isOpenGLEnabled()) return; // done by open gl annotator
-        
-    }
-    
+
     public synchronized boolean isLogDataEnabled() {
         return logDataEnabled;
     }
-    
+
     public synchronized void setLogDataEnabled(boolean logDataEnabled) {
         this.logDataEnabled = logDataEnabled;
         if(!logDataEnabled) {
@@ -893,8 +934,8 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
             }
         }
     }
-    
-    
+
+
 
 
 
@@ -906,7 +947,7 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
     public int getavgTimeBin() {
         return avgTimeBin;
     }
- 
+
     public void setDeltaTime(int deltaTime) {
         this.deltaTime = deltaTime;
 
@@ -924,7 +965,7 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
     public int getThreshold() {
         return threshold;
     }
-  
+
 
     public float getMaxDistance() {
         return maxDistance;
@@ -936,7 +977,7 @@ public class StereoOnFundamentalMatrix8 extends EventFilter2D implements FrameAn
         getPrefs().putDouble("StereoOnFundamentalMatrix8.maxDistance",maxDistance);
     }
 
-   
+
 
 //    public void setCheckOrdering(boolean checkOrdering){
 //        this.checkOrdering = checkOrdering;

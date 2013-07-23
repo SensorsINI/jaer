@@ -928,7 +928,7 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
 				gl.glLoadIdentity();
 				//gl.glScalef(drawable.getWidth()/2000,drawable.getHeight()/180,1);//dist to gc, orientation?
 				gl.glClearColor(0,0,0,0);
-				gl.glClear(GL2.GL_COLOR_BUFFER_BIT);
+				gl.glClear(GL.GL_COLOR_BUFFER_BIT);
 				int font = GLUT.BITMAP_HELVETICA_12;
 
 
@@ -1154,7 +1154,7 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
 
 					gl.glColor3f(r, g, b);
 					gl.glLineWidth( intensityZoom2 );
-					gl.glBegin(GL2.GL_LINE_LOOP);
+					gl.glBegin(GL.GL_LINE_LOOP);
 					{
 						gl.glVertex2f((x1+xL) * intensityZoom2, (y1+yL) * intensityZoom2);
 						gl.glVertex2f((x2+xL) * intensityZoom2, (y2+yL) * intensityZoom2);
@@ -1323,7 +1323,7 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
 				gl.glLoadIdentity();
 				//gl.glScalef(drawable.getWidth()/2000,drawable.getHeight()/180,1);//dist to gc, orientation?
 				gl.glClearColor(0,0,0,0);
-				gl.glClear(GL2.GL_COLOR_BUFFER_BIT);
+				gl.glClear(GL.GL_COLOR_BUFFER_BIT);
 				int font = GLUT.BITMAP_HELVETICA_12;
 
 				synchronized (pixColumns) {
@@ -1542,7 +1542,7 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
 
 					gl.glColor3f(r, g, b);
 
-					gl.glBegin(GL2.GL_LINE_LOOP);
+					gl.glBegin(GL.GL_LINE_LOOP);
 					{
 						gl.glVertex2f((x1+xL) * intensityZoom2, (y1+yL) * intensityZoom2);
 						gl.glVertex2f((x2+xL) * intensityZoom2, (y2+yL) * intensityZoom2);
@@ -1798,7 +1798,7 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
 				gl.glLoadIdentity();
 				//gl.glScalef(drawable.getWidth()/2000,drawable.getHeight()/180,1);//dist to gc, orientation?
 				gl.glClearColor(0,0,0,0);
-				gl.glClear(GL2.GL_COLOR_BUFFER_BIT);
+				gl.glClear(GL.GL_COLOR_BUFFER_BIT);
 				int font = GLUT.BITMAP_HELVETICA_12;
 
 				synchronized (pixColumns) {
@@ -1855,7 +1855,7 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
 	}
 
 	protected void drawBoxCentered(GL2 gl, int x, int y, int sx, int sy){
-		gl.glBegin(GL2.GL_LINE_LOOP);
+		gl.glBegin(GL.GL_LINE_LOOP);
 		{
 			gl.glVertex2i(x-sx,y-sy);
 			gl.glVertex2i(x+sx,y-sy);
@@ -1866,7 +1866,7 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
 	}
 
 	protected void drawBox(GL2 gl, int x, int x2, int y, int y2){
-		gl.glBegin(GL2.GL_LINE_LOOP);
+		gl.glBegin(GL.GL_LINE_LOOP);
 		{
 			gl.glVertex2i(x,y);
 			gl.glVertex2i(x2,y);
@@ -1919,21 +1919,6 @@ public class OnlineCalibration4 extends EventFilter2D implements FrameAnnotater,
 			log.warning(e.getMessage());
 		}
 		gl.glPopMatrix();
-	}
-
-	//    void drawGLCluster(int x1, int y1, int x2, int y2)
-
-	/** annotate the rendered retina frame to show locations of clusters */
-	synchronized public void annotate(float[][][] frame) {
-		if(!isFilterEnabled()) {
-			return;
-		}
-		// disable for now TODO
-		if(chip.getCanvas().isOpenGLEnabled())
-		{
-			return; // done by open gl annotator
-		}
-
 	}
 
 	public synchronized boolean isLogDataEnabled() {

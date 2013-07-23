@@ -11,8 +11,6 @@
 
 package net.sf.jaer.eventprocessing.tracking;
 import java.awt.Color;
-import java.awt.Graphics2D;
-
 import java.awt.geom.Point2D;
 import java.io.BufferedWriter;
 import java.util.HashMap;
@@ -644,9 +642,6 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
 		initFilter();
 	}
 
-	public void annotate(Graphics2D g) {
-	}
-
 	@Override
 	synchronized public void annotate(GLAutoDrawable drawable) {
 		if(kalmans==null) {
@@ -723,27 +718,6 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater, Obser
 		}
 		gl.glPopMatrix();
 	}
-
-	//    void drawGLCluster(int x1, int y1, int x2, int y2)
-
-	/** annotate the rendered retina frame to show locations of clusters */
-	synchronized public void annotate(float[][][] frame) {
-		if(!isFilterEnabled()) {
-			return;
-		}
-		// disable for now TODO
-		if(chip.getCanvas().isOpenGLEnabled())
-		{
-			return; // done by open gl annotator
-		}
-		for(Cluster c: kalmans.keySet()){
-			drawFilter(kalmans.get(c), frame,c.getColor() );
-		}
-	}
-
-	//public void preferenceChange(PreferenceChangeEvent evt) {
-	// distToVanishingPoint=prefs.getfloat("KalmanFilter.distToVanishingPoint",300);
-	//}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//setter and getter methods

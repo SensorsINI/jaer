@@ -36,11 +36,11 @@ import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
  * <p>
  * Note that applets have limited permissions and certain permissions
  * must be granted on the server for this applet to be run.
- * Either the applet jar must be signed and have permission granted to run the code 
+ * Either the applet jar must be signed and have permission granted to run the code
  * by the browser, or the java.policy file in java/lib/security can be edited on
  * the server to have the following permissions granted for jAER.jar
- * 
- * 
+ *
+ *
 <pre>
 grant codeBase "http://localhost:8080/jaer/dist/jAER.jar" {
 permission java.io.FilePermission "<<ALL FILES>>", "read";
@@ -52,9 +52,9 @@ permission java.net.SocketPermission "www.ini.uzh.ch:80", "resolve";
  * };
 
 </pre>
- * 
- * 
- * 
+ *
+ *
+ *
  * @author  tobi delbruck/mert yentur
  */
 public class JAERAppletViewer extends javax.swing.JApplet {
@@ -93,23 +93,9 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         return "jAERAppletViewer";
     }
 
-//    @Override
-//    public String[][] getParameterInfo() {
-//        String pinfo[][] = {
-//            {"fps", "1-100", "frames per second"},
-//            {"port", "8991", "recieve port for network AE UDP packets"},
-//            {"datafolder", "url", "data directory for jAER data files"}
-//        };
-//
-//        return pinfo;
-//    }
-    private void setCanvasDefaults(ChipCanvas canvas) {
-//        canvas.setScale(2);
-        canvas.setOpenGLEnabled(true);
-    }
-
     /** Initializes the applet JAERAppletViewer */
-    synchronized public void init() {
+    @Override
+	synchronized public void init() {
         log.info("applet init");
         liveChip = new Tmpdiff128();
         liveChip.setName("Live DVS");
@@ -125,69 +111,8 @@ public class JAERAppletViewer extends javax.swing.JApplet {
 
         initComponents();
 
-
-//        livePanel.setSize(getWidth(), getHeight() / 2);
-//        recordedPanel.setSize(getWidth(), getHeight() / 2);
-//        liveCanvas.getCanvas().setSize(livePanel.getSize());
-//        recordedCanvas.getCanvas().setSize(recordedPanel.getSize());
-//        liveCanvas.setScale(4);
-//        recordedCanvas.setScale(4);
-
         livePanel.add(liveCanvas.getCanvas(), BorderLayout.CENTER);
         recordedPanel.add(recordedCanvas.getCanvas(), BorderLayout.CENTER);
-
-        setCanvasDefaults(liveCanvas);
-        setCanvasDefaults(recordedCanvas);
-
-
-//        try {
-//            URL base = getDocumentBase(); // e.g. http://lcdctrl.ini.uzh.ch/propaganda/retina/jAERAppletViewer.html or throws null ref exception if run in appletviewer or from jnlp...
-//            int i = base.toExternalForm().lastIndexOf('/');
-//            dataFileListURL = base.toExternalForm().substring(0, i + 1) + dataFileListURL;
-//            log.info("fetching data files URLs from dataFileListURL=" + dataFileListURL);
-//        } catch (NullPointerException e) {
-//            log.warning("applet has no document base, will use default relative path for data files of " + defaultDataFileListURL);
-//            dataFileListURL = defaultDataFileListURL;
-//        }
-
-    // it looks like JNLPAppletLauncher doesn't actually pass parameters to this applet from the HTML applet
-//        try {
-//            port = Integer.parseInt(getParameter("port"));
-//        } catch (Exception e) {
-//            log.warning("while parsing applet port parameter: " + e);
-//        }
-//        try {
-//            frameDelayMs = 1000 / Integer.parseInt(getParameter("fps"));
-//        } catch (Exception e) {
-//            log.warning("while parsing applet fps parameter: " + e);
-//        }
-//        try {
-//            dataFileFolder = getParameter("datafolder");
-//        } catch (Exception e) {
-//            log.warning("while parsing applet data file folder parameter: " + e);
-//        }
-
-    //        try {
-////        log.info("user.path="+System.getProperty("user.path"));  // print null in applet...
-//            log.info("cwd=" + new File(".").getCanonicalPath()); // shows browser home, e.g. c:\mozilla.... if permissions in java.policy allow it
-//        } catch (IOException ex) {
-//            log.warning(ex.toString());
-//        }
-//        canvas.getCanvas().addKeyListener(new KeyAdapter() {
-//
-//            public void keyReleased(KeyEvent e) {
-////                System.out.println(e+"\n");
-//                switch (e.getKeyCode()) {
-//                    case KeyEvent.VK_S:
-//                        packetTime /= 2;
-//                        break;
-//                    case KeyEvent.VK_F:
-//                        packetTime *= 2;
-//                        break;
-//                }
-//            }
-//        });
-
     }
 
     @Override
@@ -235,7 +160,9 @@ public class JAERAppletViewer extends javax.swing.JApplet {
                 try {
                     fileName = dataFileListReader.readLine();
                     log.info("read next data file line " + fileName);
-                    if(fileName==null) throw new EOFException("null filename");
+                    if(fileName==null) {
+						throw new EOFException("null filename");
+					}
                 } catch (EOFException eof) {
                     dataFileListReader.reset();
                 }
@@ -328,7 +255,8 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     }
     EventPacket emptyPacket = new EventPacket();
 
-    synchronized public void paint(Graphics g) {
+    @Override
+	synchronized public void paint(Graphics g) {
         super.paint(g);
         if (stopflag) {
             log.info("stop set, not painting again or calling repaint");
@@ -370,7 +298,8 @@ public class JAERAppletViewer extends javax.swing.JApplet {
             recordedChip.getCanvas().paintFrame();
         }
         try {
-            Thread.currentThread().sleep(frameDelayMs);
+            Thread.currentThread();
+			Thread.sleep(frameDelayMs);
         } catch (InterruptedException e) {
         }
         repaint(); // recurse
@@ -406,7 +335,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     recordedChip.getRenderer().render(emptyPacket);
     recordedChip.getCanvas().paintFrame();
     }
-    
+
      */
 
     /** This method is called from within the init() method to
@@ -428,7 +357,8 @@ public class JAERAppletViewer extends javax.swing.JApplet {
         setName("jAERAppletViewer"); // NOI18N
         setStub(null);
         addComponentListener(new java.awt.event.ComponentAdapter() {
-            public void componentResized(java.awt.event.ComponentEvent evt) {
+            @Override
+			public void componentResized(java.awt.event.ComponentEvent evt) {
                 formComponentResized(evt);
             }
         });

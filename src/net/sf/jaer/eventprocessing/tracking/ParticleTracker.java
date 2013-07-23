@@ -8,7 +8,6 @@ package net.sf.jaer.eventprocessing.tracking;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
-
 import java.awt.geom.Point2D;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -876,24 +875,6 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
 			gl.glEnd();
 		}
 		gl.glPopMatrix();
-	}
-
-	/** annotate the rendered retina frame to show locations of clusters */
-	synchronized public void annotate (float[][][] frame){
-		//System.out.println("******drawing ouooo yeah!");
-		if ( !isFilterEnabled() ){
-			return;
-		}
-		// disable for now TODO
-		if ( chip.getCanvas().isOpenGLEnabled() ){
-			return; // done by open gl annotator
-		}        //System.out.println("******really ouooo yeah!");
-		for ( Cluster c:clusters ){
-			//    if(c.isVisible()){
-			//System.out.println("******really true!");
-			drawCluster(c,frame);
-			//            }
-		}
 	}
 
 	/**
