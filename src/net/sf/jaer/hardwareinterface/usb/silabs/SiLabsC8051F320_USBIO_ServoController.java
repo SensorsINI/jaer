@@ -283,12 +283,12 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         } else {
             log.log(Level.INFO, "getDeviceDescriptor: Vendor ID (VID) {0} Product ID (PID) {1}", new Object[]{HexString.toString((short) deviceDescriptor.idVendor), HexString.toString((short) deviceDescriptor.idProduct)});
         }
-        
+
         status=gUsbIo.unconfigureDevice();
          if (status != USBIO_ERR_SUCCESS) {
             log.log(Level.WARNING, "unconfiguring device: {0}", UsbIo.errorText(status));
         }
-       
+
 
         // set configuration -- must do this BEFORE downloading firmware!
         USBIO_SET_CONFIGURATION Conf = new USBIO_SET_CONFIGURATION();
@@ -405,23 +405,6 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         return s;
     }
 
-    /**
-     * return the USB VID/PID of the interface
-     *
-     * @return int[] of length 2 containing the Vendor ID (VID) and Product ID
-     * (PID) of the device. First element is VID, second element is PID.
-     */
-    public int[] getVIDPID() {
-        if (deviceDescriptor == null) {
-            log.warning("USBAEMonitor: getVIDPID called but device has not been opened");
-            return new int[2];
-        }
-        int[] n = new int[2];
-        n[0] = deviceDescriptor.idVendor;
-        n[1] = deviceDescriptor.idProduct;
-        return n;
-    }
-
     public short getVID() {
         if (deviceDescriptor == null) {
             log.warning("USBAEMonitor: getVIDPID called but device has not been opened");
@@ -517,7 +500,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             servoQueue.clear();
             servoQueue.offer(cmd);
             submittedCmdAfterOpen = true;
-            if (clearedQueueWarningCount++ % PRINT_QUEUE_CLEARED_INTERVAL == 0) {
+            if ((clearedQueueWarningCount++ % PRINT_QUEUE_CLEARED_INTERVAL) == 0) {
                 log.warning("cleared queue to submit latest command (only logging this warning every " + PRINT_QUEUE_CLEARED_INTERVAL + " times)"); // TODO add limited number of warnings here
             }
         }
@@ -632,7 +615,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
             // PCA clock runs at pcaClockFreqMHz
 
             // count to load to PCA registers is low count
-            float f = 65536 - pcaClockFreqMHz * (((2100 - 900) * value) + 900);
+            float f = 65536 - (pcaClockFreqMHz * (((2100 - 900) * value) + 900));
 
             int v = (int) (f);
 
@@ -668,7 +651,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         ServoCommand cmd = new ServoCommand();
         cmd.bytes = new byte[4];
         cmd.bytes[0] = CMD_SET_SERVO;
-        cmd.bytes[1] = (byte) getServo(servo);
+        cmd.bytes[1] = getServo(servo);
         cmd.bytes[2] = (byte) ((pwmValue >>> 8) & 0xff);
         cmd.bytes[3] = (byte) (pwmValue & 0xff);
         submitCommand(cmd);
@@ -689,18 +672,19 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      * @param freq the desired frequency in Hz. The actual value is returned.
      * @return the actual value or 0 if there is an error.
      */
-    public float setServoPWMFrequencyHz(float freq) {
+    @Override
+	public float setServoPWMFrequencyHz(float freq) {
         checkServoCommandThread();
         if (freq <= 0) {
             log.log(Level.WARNING, "freq={0} is not a valid value", freq);
             return 0;
         }
-        int n = Math.round(SYSCLK_MHZ * 1e6f / 65536f / freq); // we get about 2 here with freq=90Hz
+        int n = Math.round((SYSCLK_MHZ * 1e6f) / 65536f / freq); // we get about 2 here with freq=90Hz
         if (n == 0) {
             log.log(Level.WARNING, "freq={0} too high, setting max possible of 183Hz", freq);
             n = 1;
         }
-        float freqActual = SYSCLK_MHZ * 1e6f / 65536 / n; // n=1, we get 183Hz
+        float freqActual = (SYSCLK_MHZ * 1e6f) / 65536 / n; // n=1, we get 183Hz
         ServoCommand cmd = new ServoCommand();
         cmd.bytes = new byte[2];
         cmd.bytes[0] = CMD_SET_TIMER0_RELOAD_VALUE;
@@ -742,7 +726,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         ServoCommand cmd = new ServoCommand();
         cmd.bytes = new byte[4];
         cmd.bytes[0] = CMD_SET_SERVO;
-        cmd.bytes[1] = (byte) getServo(servo);
+        cmd.bytes[1] = getServo(servo);
         byte[] b = pwmValue(value);
         cmd.bytes[2] = b[0];
         cmd.bytes[3] = b[1];
@@ -770,7 +754,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         ServoCommand cmd = new ServoCommand();
         cmd.bytes = new byte[2];
         cmd.bytes[0] = CMD_DISABLE_SERVO;
-        cmd.bytes[1] = (byte) getServo(servo);
+        cmd.bytes[1] = getServo(servo);
         submitCommand(cmd);
     }
 
@@ -783,12 +767,12 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
      */
     @Override
     public void setAllServoValues(float[] values) {
-        if (values == null || values.length != getNumServos()) {
+        if ((values == null) || (values.length != getNumServos())) {
             throw new IllegalArgumentException("wrong number of servo values, need " + getNumServos());
         }
         checkServoCommandThread();
         ServoCommand cmd = new ServoCommand();
-        cmd.bytes = new byte[1 + getNumServos() * 2];
+        cmd.bytes = new byte[1 + (getNumServos() * 2)];
         cmd.bytes[0] = CMD_SET_ALL_SERVOS;
         int index = 1;
         for (int i = 0; i < getNumServos(); i++) {
@@ -892,7 +876,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
 
         @Override
         public boolean equals(Object obj) {
-            if (obj == null || !(obj instanceof ServoCommand)) {
+            if ((obj == null) || !(obj instanceof ServoCommand)) {
                 return false;
             }
             byte[] otherBytes = ((ServoCommand) obj).bytes;
@@ -910,7 +894,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
         @Override
         public int hashCode() {
             int hash = 3;
-            hash = 29 * hash + Arrays.hashCode(this.bytes);
+            hash = (29 * hash) + Arrays.hashCode(this.bytes);
             return hash;
         }
     }
@@ -961,7 +945,7 @@ public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, P
                     break;
                 }
                 status = inPipe.waitForCompletion(buffer);
-                if (status != 0 && buffer.Status != UsbIoErrorCodes.USBIO_ERR_CANCELED) {
+                if ((status != 0) && (buffer.Status != UsbIoErrorCodes.USBIO_ERR_CANCELED)) {
                     log.warning("Stopping status thread: error waiting for completion of read on status pipe: " + UsbIo.errorText(buffer.Status));
                     break;
                 }

@@ -29,7 +29,7 @@ import net.sf.jaer.util.PropertyTooltipSupport;
  * An abstract class that all event processing methods should subclass.
  * Subclasses are introspected to build a GUI to control the filter in {@link FilterPanel} - see this class to see how to
  * add these introspected controls to an EventFilter GUI control panel.
- * 
+ *
  * <p>
  * Filters that are enclosed inside another filter are given a
  * preferences node that is derived from
@@ -90,17 +90,6 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
 
 	protected PropertyTooltipSupport tooltipSupport=new PropertyTooltipSupport();
 
-	/** default constructor
-	 * @deprecated - all filters need an AEChip object
-	 */
-	@Deprecated
-	public EventFilter() {
-		//        perf=new EventProcessingPerformanceMeter(this);
-		//        setFilterEnabled(prefs.getBoolean(prefsKey(),false)); // this cannot easily be called here because it will be called during init of subclasses which have
-		// not constructed themselves fully yet, e.g. field objects will not have been constructed. therefore, we set initial active states of all filters in FilterFrame after they are
-		// all constructed with a Chip object.
-	}
-
 	/** Creates a new instance of AbstractEventFilter but does not enable it.
 	 *@param chip the chip to filter for
 	 * @see #setPreferredEnabledState
@@ -123,18 +112,6 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
 		return key;
 	}
 
-	////    /**
-	////     * filters in to out. if filtering is enabled, the number of out may be less
-	////     * than the number putString in
-	////     *@param in input events can be null or empty.
-	////     *@return the processed events, may be fewer in number. filtering may occur in place in the in packet.
-	////     */
-	////    abstract public AEPacket filter(AEPacket in) ;
-	////    abstract public ch.unizh.ini.caviar.aemonitor.AEPacket2D filter(ch.unizh.ini.caviar.aemonitor.AEPacket2D in);
-	//    /** should return the filter state in some useful form
-	//     * @deprecated - no one uses this
-	//     */
-	//    abstract public Object getFilterState();
 	/** should reset the filter to initial state */
 	abstract public void resetFilter();
 
@@ -207,16 +184,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
 	public PropertyChangeSupport getPropertyChangeSupport() {
 		return support;
 	}
-	//    /** @deprecated - no one uses this */
-	//    public boolean isFilterInPlaceEnabled() {
-	//        return this.filterInPlaceEnabled;
-	//    }
-	//
-	//    /** @deprecated - not used */
-	//    public void setFilterInPlaceEnabled(final boolean filterInPlaceEnabled) {
-	//        support.firePropertyChange("filterInPlaceEnabled",new Boolean(this.filterInPlaceEnabled),new Boolean(filterInPlaceEnabled));
-	//        this.filterInPlaceEnabled = filterInPlaceEnabled;
-	//    }
+
 	/** The enclosed single filter. This object is used for GUI building - any processing must be handled in filterPacket */
 	protected EventFilter enclosedFilter;
 	/** An enclosed filterChain - these filters must be manually applied (coded) in the filterPacket method but
@@ -400,7 +368,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
 	}
 
 	/**
-	 * 
+	 *
 	 *
 	 * If the filter is enclosed, it's prefs node is the enclosing
 	 * node plus the enclosing filter class node
@@ -457,7 +425,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
 </pre>
 	 * EventFilters can also use support for informing each other about changes in state.  An EventFilter declares itself to be a PropertyChangeListener
 	 * and then adds itself to another EventFilters support as a PropertyChangeListener.
-	 * 
+	 *
 	 * @return the support
 	 */
 	public PropertyChangeSupport getSupport() {
@@ -677,7 +645,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
 	}
 
 	/** Adds a property to a group, creating the group if needed.
-	 * 
+	 *
 	 * @param groupName a named parameter group.
 	 * @param propertyName the property name.
 	 */
@@ -736,7 +704,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
 	}
 
 	/** Returns the set of property groups.
-	 * 
+	 *
 	 * @return Set view of property groups.
 	 */
 	public Set<String> getPropertyGroupSet() {
@@ -746,7 +714,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
 	/**
 	 * Returns the mapping from property name to group name.
 	 * If null, no groups have been declared.
-	 * 
+	 *
 	 * @return the map, or null if no groups have been declared by adding any properties.
 	 * @see #property2GroupMap
 	 */

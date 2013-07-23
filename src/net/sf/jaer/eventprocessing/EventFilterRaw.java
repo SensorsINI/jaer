@@ -18,16 +18,17 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
  * @author tobi
  */
 abstract public class EventFilterRaw extends EventFilter {
-    
+
        protected EventFilterRaw enclosedFilter;
 
-    
+
     abstract AEPacketRaw filter(AEPacketRaw in);
-    
+
    /** Creates a new instance of AbstractEventFilter
-       @param inFilter a filter to call before the this.filter is called. 
+       @param inFilter a filter to call before the this.filter is called.
     */
     public EventFilterRaw(EventFilterRaw inFilter) {
+    	super(null);
         this.enclosedFilter=inFilter;
     }
 

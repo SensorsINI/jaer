@@ -151,7 +151,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
 //                }
 //            }
 
-        if (Buf.Status == USBIO_ERR_SUCCESS || Buf.Status == USBIO_ERR_CANCELED) {
+        if ((Buf.Status == USBIO_ERR_SUCCESS) || (Buf.Status == USBIO_ERR_CANCELED)) {
             translateEvents(Buf);
         } else {
             log.warning("ProcessData: Bytes transferred: " + Buf.BytesTransferred + "  Status: " + UsbIo.errorText(Buf.Status));
@@ -190,7 +190,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
             byte[] aeBuffer = b.BufferMem;
             //            byte lsb,msb;
             int bytesSent = b.BytesTransferred;
-            if (bytesSent % 4 != 0) {
+            if ((bytesSent % 4) != 0) {
                 log.warning("warning: " + bytesSent + " bytes sent, which is not multiple of 4");
                 bytesSent = (bytesSent / 4) * 4; // truncate off any extra part-event
                 }
@@ -202,26 +202,28 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
             gotEvent=false;
 
             for (int i = 0; i < bytesSent; i += 4) {
-                if (eventCounter > aeBufferSize - 1) {
+                if (eventCounter > (aeBufferSize - 1)) {
                     buffer.overrunOccuredFlag = true;
 //                                        log.warning("overrun");
                     return; // return, output event buffer is full and we cannot add any more events to it.
                     //no more events will be translated until the existing events have been consumed by acquireAvailableEventsFromDriver
                 }
 
-                addresses[eventCounter] = (int) ((aeBuffer[i + 1] & 0xFF) | ((aeBuffer[i] & 0xFF) << 8));
-                shortts = (aeBuffer[i + 3] & 0xff | ((aeBuffer[i + 2] & 0xff) << 8));
+                addresses[eventCounter] = (aeBuffer[i + 1] & 0xFF) | ((aeBuffer[i] & 0xFF) << 8);
+                shortts = ((aeBuffer[i + 3] & 0xff) | ((aeBuffer[i + 2] & 0xff) << 8));
 
                 if (addresses[eventCounter] == 0xFFFF) { // changed to handle this address as special wrap event
                     wrapAdd += 0x10000;	// if we wrapped then increment wrap value by 2^16
-                    if(!gotEvent) wrapsSinceLastEvent++;
+                    if(!gotEvent) {
+						wrapsSinceLastEvent++;
+					}
                     if(wrapsSinceLastEvent>=WRAPS_TO_PRINT_NO_EVENT){
                         log.warning("got "+wrapsSinceLastEvent+" timestamp wraps without any events");
                         wrapsSinceLastEvent=0;
                     }
                     continue; // skip timestamp and continue to next address without incrementing eventCounter
                     }
-                timestamps[eventCounter] = (int) (TICK_US * (shortts + wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
+                timestamps[eventCounter] = TICK_US * (shortts + wrapAdd); //*TICK_US; //add in the wrap offset and convert to 1us tick
                 eventCounter++;
                 buffer.setNumEvents(eventCounter);
                 gotEvent=true;
@@ -241,7 +243,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
 
     @Override
     public void bufErrorHandler(UsbIoBuf buf) {
-        if (buf.Status != USBIO_ERR_CANCELED && buf.Status != USBIO_ERR_SUCCESS) {
+        if ((buf.Status != USBIO_ERR_CANCELED) && (buf.Status != USBIO_ERR_SUCCESS)) {
             log.warning(UsbIo.errorText(buf.Status));
         }
     }
@@ -256,7 +258,8 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
     /** return the string USB descriptors for the device
      *@return String[] of length 2 or 3 of USB descriptor strings.
      */
-    public String[] getStringDescriptors() {
+    @Override
+	public String[] getStringDescriptors() {
         if (stringDescriptor1 == null) {
             log.warning("USBAEMonitor: getStringDescriptors called but device has not been opened");
             String[] s = new String[numberOfStringDescriptors];
@@ -274,24 +277,24 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
         return s;
     }
 
-    public int[] getVIDPID() {
-        return new int[]{VID, PID};
-    }
-
-    public short getVID() {
+    @Override
+	public short getVID() {
         return VID;
     }
 
-    public short getPID() {
+    @Override
+	public short getPID() {
         return PID;
     }
 
     /** @return always 0 */
-    public short getDID() {
+    @Override
+	public short getDID() {
         return 0;
     }
 
-    public String getTypeName() {
+    @Override
+	public String getTypeName() {
         return "SiLabsC8051F320";
     }
 
@@ -314,7 +317,8 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
 
     }
 
-    public void open() throws HardwareInterfaceException {
+    @Override
+	public void open() throws HardwareInterfaceException {
         if (!UsbIoUtilities.isLibraryLoaded()) {
             return;        //device has already been UsbIo Opened by now, in factory
             // opens the USBIOInterface device, configures it, binds a reader thread with buffer pool to read from the device and starts the thread reading events.
@@ -426,7 +430,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
             throw new HardwareInterfaceException("can't set IN pipe parameters: " + UsbIo.errorText(status));
         }
 
-        startThread(3);  // start the reader thread of this 
+        startThread(3);  // start the reader thread of this
 
         outPipe = new UsbIoPipe();  // make just a basic pipe for sync io for the biases/configuration
         status = outPipe.bind(interfaceNumber, (byte) ENDPOINT_OUT, gDevList, GUID);
@@ -453,7 +457,8 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
         }
     }
 
-    public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
+    @Override
+	public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         if (biasgen.getPotArray() == null) {
             log.info("BiasgenUSBInterface.send(): iPotArray=null, no biases to send");
             return; // may not have been constructed yet.
@@ -547,11 +552,13 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
      */
     private int fifoSize = prefs.getInt("SiLabsC8051F320_USBIO_DVS128.fifoSize", FIFO_SIZE); // 64;
 
-    public int getFifoSize() {
+    @Override
+	public int getFifoSize() {
         return fifoSize;
     }
 
-    public void setFifoSize(int fifoSize) {
+    @Override
+	public void setFifoSize(int fifoSize) {
         if (fifoSize < FIFO_SIZE) {
             log.warning("SiLabsC8051F320_USBIO_DVS128 fifo size clipped to device FIFO size " + FIFO_SIZE);
             fifoSize = FIFO_SIZE;
@@ -565,11 +572,13 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
         prefs.putInt("SiLabsC8051F320_USBIO_DVS128.fifoSize", fifoSize);
     }
 
-    public int getNumBuffers() {
+    @Override
+	public int getNumBuffers() {
         return numBuffers;
     }
 
-    public void setNumBuffers(int numBuffers) {
+    @Override
+	public void setNumBuffers(int numBuffers) {
         this.numBuffers = numBuffers;
         freeBuffers();
         boolean wasNotAllocatedAlready = allocateBuffers(getFifoSize(), getNumBuffers());
@@ -579,7 +588,8 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
         prefs.putInt("SiLabsC8051F320_USBIO_DVS128.numBuffers", numBuffers);
     }
 
-    public void flashConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
+    @Override
+	public void flashConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         if (biasgen.getPotArray() == null) {
             log.info("iPotArray=null, no biases to send");
             return; // may not have been constructed yet.
@@ -599,9 +609,10 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
      * @param biasgen the source of configuration information.
      * @return the bytes to send
      */
-    public byte[] formatConfigurationBytes(Biasgen biasgen) {
+    @Override
+	public byte[] formatConfigurationBytes(Biasgen biasgen) {
         // we need to cast from PotArray to IPotArray, because we need the shift register stuff
-        PotArray potArray = (PotArray) biasgen.getPotArray();
+        PotArray potArray = biasgen.getPotArray();
 
         // we make an array of bytes to hold the values sent, then we fill the array, copy it to a
         // new array of the proper size, and pass it to the routine that actually sends a vendor request
@@ -629,7 +640,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
         return null;
     }
 
- 
+
 
     /** Allocates internal memory for transferring data from reader to consumer, e.g. rendering. */
     protected void allocateAEBuffers() {
@@ -656,7 +667,8 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
      *@see #addAEListener
      * .
      */
-    public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
+    @Override
+	public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
         if (!isOpened) {
             open();
         }
@@ -680,18 +692,21 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
      * #acquireAvailableEventsFromDriver }
      * @return number of events acquired
      */
-    public int getNumEventsAcquired() {
+    @Override
+	public int getNumEventsAcquired() {
         return aePacketRawPool.readBuffer().getNumEvents();
     }
 
     /** returns last events from {@link #acquireAvailableEventsFromDriver}
      *@return the event packet
      */
-    public AEPacketRaw getEvents() {
+    @Override
+	public AEPacketRaw getEvents() {
         return this.lastEventsAcquired;
     }
 
-    public void resetTimestamps() {
+    @Override
+	public void resetTimestamps() {
         try {
             sendBooleanCommand(CMD_RESETTIMESTAMPS, true);
         } catch (HardwareInterfaceException ex) {
@@ -708,12 +723,14 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
      *probably be lagged behind what they should be.
      * @return true if there was an overrun.
      */
-    public boolean overrunOccurred() {
+    @Override
+	public boolean overrunOccurred() {
         return aePacketRawPool.readBuffer().overrunOccuredFlag;
     }
 
     /** @return the size of the double buffer raw packet for AEs */
-    public int getAEBufferSize() {
+    @Override
+	public int getAEBufferSize() {
         return aeBufferSize; // aePacketRawPool.writeBuffer().getCapacity();
     }
 
@@ -723,8 +740,9 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
      *This call discards collected events.
      * @param size of buffer in events
      */
-    public void setAEBufferSize(int size) {
-        if (size < 1000 || size > 1000000) {
+    @Override
+	public void setAEBufferSize(int size) {
+        if ((size < 1000) || (size > 1000000)) {
             log.warning("ignoring unreasonable aeBufferSize of " + size + ", choose a more reasonable size between 1000 and 1000000");
             return;
         }
@@ -749,7 +767,8 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
         }
     }
 
-    public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
+    @Override
+	public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
         if (!isOpen()) {
             log.info("SiLabsC8051F320.setPowerDown(): device not open, opening it");
             open();
@@ -757,7 +776,8 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
         sendBooleanCommand(BIAS_SETPOWER, powerDown);
     }
 
-    public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
+    @Override
+	public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
         if (!isOpen()) {
             log.info("SiLabsC8051F320.setEventAcquisitionEnabled(): device not open, opening it");
             open();
@@ -766,7 +786,8 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
         this.eventAcquisitionEnabled = enable;
     }
 
-    public boolean isEventAcquisitionEnabled() {
+    @Override
+	public boolean isEventAcquisitionEnabled() {
         return eventAcquisitionEnabled;
     }
     /** This support can be used to register this interface for property change events */
@@ -781,17 +802,20 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
      * are received by a call to {@link #acquireAvailableEventsFromDriver}.
      * These events may be accessed by calling {@link #getEvents}.
      */
-    public void addAEListener(AEListener listener) {
+    @Override
+	public void addAEListener(AEListener listener) {
         support.addPropertyChangeListener(listener);
     }
 
-    public void removeAEListener(AEListener listener) {
+    @Override
+	public void removeAEListener(AEListener listener) {
         support.removePropertyChangeListener(listener);
     }
 
     /** the max capacity of this USB2 full (not high) speed bus interface is about 100keps.
      */
-    public int getMaxCapacity() {
+    @Override
+	public int getMaxCapacity() {
         return 100000;
     }
     private int estimatedEventRate = 0;
@@ -799,33 +823,37 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
     /** @return event rate in events/sec as computed from last acquisition.
      *
      */
-    public int getEstimatedEventRate() {
+    @Override
+	public int getEstimatedEventRate() {
         return estimatedEventRate;
     }
 
     /** computes the estimated event rate for a packet of events */
     void computeEstimatedEventRate(AEPacketRaw events) {
-        if (events == null || events.getNumEvents() < 2) {
+        if ((events == null) || (events.getNumEvents() < 2)) {
             estimatedEventRate = 0;
         } else {
             int[] ts = events.getTimestamps();
             int n = events.getNumEvents();
             int dt = ts[n - 1] - ts[0];
-            estimatedEventRate = (int) (1e6f * (float) n / (float) dt);
+            estimatedEventRate = (int) ((1e6f * n) / dt);
         }
     }
 
-    public int getTimestampTickUs() {
+    @Override
+	public int getTimestampTickUs() {
         return 1;
     }
     /** The AEChip we're talking to */
     protected AEChip chip;
 
-    public void setChip(AEChip chip) {
+    @Override
+	public void setChip(AEChip chip) {
         this.chip = chip;
     }
 
-    public AEChip getChip() {
+    @Override
+	public AEChip getChip() {
         return chip;
     }
     public static final int MAX_BYTES_PER_BIAS = 4;
@@ -843,7 +871,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
             // we get the bitValue and from MSB ro LSB stuff these values into the byte array
 
             for (int k = iPot.getNumBytes() - 1; k >= 0; k--) { // for k=2..0
-                bytes[byteIndex++] = (byte) ((iPot.getBitValue() >>> k * 8) & 0xff);
+                bytes[byteIndex++] = (byte) ((iPot.getBitValue() >>> (k * 8)) & 0xff);
             }
         }
         toSend = new byte[byteIndex];
@@ -852,7 +880,8 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
         return toSend;
     }
 
-    public PropertyChangeSupport getReaderSupport() {
+    @Override
+	public PropertyChangeSupport getReaderSupport() {
         return support;
     }
 }

@@ -8,9 +8,6 @@ package ch.unizh.ini.jaer.chip.retina;
 
 import java.io.Serializable;
 
-import net.sf.jaer.chip.EventExtractorInterface;
-
-
 /**
  * Extracts x,y,pol from testchipARCs double line sensor retina. You pass in a raw address array, then internally, arrays are new'ed and
  *the events are extracted to them. Results are accessed by referenc to fields like x, y that have been extracted.
@@ -18,9 +15,9 @@ import net.sf.jaer.chip.EventExtractorInterface;
  *
  * @author tobi
  */
-public class TestchipARCSLineSensorEventExtractor implements EventExtractorInterface, Serializable {
+public class TestchipARCSLineSensorEventExtractor implements Serializable {
     final int xmax=63, ymax=1;
-    
+
     /** these fields reference the extracted events after
      * <@link #extract} is called on a raw address buffer
      * x,y 0-127, pol=-1,1
@@ -29,15 +26,20 @@ public class TestchipARCSLineSensorEventExtractor implements EventExtractorInter
      */
     public double[] x,y,pol;
     int[] addresses;
-    
+
     /** Creates a new instance of RetinaEventExtractor */
     public TestchipARCSLineSensorEventExtractor() {
     }
-    
+
     public void extract(int[] addresses, int[] timestamps){
         int n;
         int tmp;
-        if(addresses==null) n=0; else n=addresses.length;
+        if(addresses==null) {
+			n=0;
+		}
+		else {
+			n=addresses.length;
+		}
         x=new double[n];
         y=new double[n];
         pol=new double[n];
@@ -48,10 +50,10 @@ public class TestchipARCSLineSensorEventExtractor implements EventExtractorInter
                 x[i]=tmp;
                 tmp=(a&0x40)>>6; tmp=Math.max(tmp,0); tmp=Math.min(tmp,ymax);
                 y[i]=tmp;
-                pol[i]=(double)((a&0x80)!=0?1:-11);
+                pol[i]=(a&0x80)!=0?1:-11;
             }
         }
     }
-    
+
 }
 

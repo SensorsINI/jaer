@@ -4,7 +4,6 @@
  */
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
 import java.awt.Graphics2D;
-
 import java.awt.geom.Point2D;
 import java.util.Hashtable;
 import java.util.Observable;
@@ -19,10 +18,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
-
-
 import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
-import net.sf.jaer.eventprocessing.tracking.ClusterTracker.Cluster;
 import net.sf.jaer.eventprocessing.tracking.ClusterTrackerInterface;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -43,7 +39,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater,Obse
 //    private int subPacketRatio = getPrefs().getInt("VirtualDrummer.subPacketRatio", 1);
     private int numVelocityToCheck = getPrefs().getInt("VirtualDrummer.numVelocityToCheck",5);
     // vars
-    private Hashtable<Cluster,BeatStats> playedBeatClusters = new Hashtable();
+    private Hashtable<RectangularClusterTracker,BeatStats> playedBeatClusters = new Hashtable();
 //    private RectangularClusterTracker tracker;
     private ClusterTrackerInterface tracker;
     private DrumSounds drumSounds = new DrumSounds(DrumSounds.Type.Sampled);
@@ -121,7 +117,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater,Obse
         float mass2 = Float.NEGATIVE_INFINITY;
         ClusterInterface two = null;
         for ( ClusterInterface c:tracker.getClusters() ){
-            if ( c == one || !c.isVisible() ){
+            if ( (c == one) || !c.isVisible() ){
                 continue;
             }
             if ( c.getMass() > mass2 ){
@@ -129,12 +125,12 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater,Obse
                 two = c;
             }
         }
-        if ( one == null && two == null ){
+        if ( (one == null) && (two == null) ){
             return;
         }
         // assign hands. either we have no clusters, or just one, or one and two
-        if ( one != null && two == null ){
-            if ( one.getLocation().x < chip.getSizeX() / 2 ){
+        if ( (one != null) && (two == null) ){
+            if ( one.getLocation().x < (chip.getSizeX() / 2) ){
                 handClusters.left = one;
             } else{
                 handClusters.right = one;
@@ -168,7 +164,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater,Obse
         int numValidNegativeVelocity = numVelocityToCheck - 1; // start with all test points previous to last one assumed good
         boolean ret = false;
 
-        if ( c.getPath() != null && c.getPath().size() >= numVelocityToCheck ){ // have enough samples
+        if ( (c.getPath() != null) && (c.getPath().size() >= numVelocityToCheck) ){ // have enough samples
             int nPoints = c.getPath().size();
 //           System.out.print("Cluster_"+((BlurringFilter2DTracker.Cluster)c).getClusterNumber()+": ");
             // check latest five y-axis velocities
@@ -204,7 +200,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater,Obse
                             break;
                         }
                     } else{ // filter out very small movements
-                        if ( Math.abs(vely) < beatClusterVelocityPPS * 1e-6f * AEConstants.TICK_DEFAULT_US || Math.abs(velx) > Math.abs(vely) ){
+                        if ( (Math.abs(vely) < (beatClusterVelocityPPS * 1e-6f * AEConstants.TICK_DEFAULT_US)) || (Math.abs(velx) > Math.abs(vely)) ){
                             // if vely is very small or velx > vely, then reduce count of valid velocities
                             numValidNegativeVelocity--;
                         }
@@ -216,7 +212,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater,Obse
             }
         }
 
-        if ( ret && numValidNegativeVelocity == 0 ){
+        if ( ret && (numValidNegativeVelocity == 0) ){
             // if still true but prior velocities were all bad, then still don't report beat
             if ( debug ){
                 sb.append(String.format(" numValidNegativeVelocity=%d",numValidNegativeVelocity));
@@ -252,12 +248,13 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater,Obse
     public void annotate (Graphics2D g){
         log.warning("cannot annotate in Graphic2D - switch to OpenGL");
     }
+
     // statistics of last drum beat
     private class BeatStats{
-        Cluster cluster;
+        RectangularClusterTracker cluster;
         long timePlayedBeat;
 
-        public BeatStats (Cluster cluster,long timePlayedBeat){
+        public BeatStats (RectangularClusterTracker cluster,long timePlayedBeat){
             this.cluster = cluster;
             this.timePlayedBeat = timePlayedBeat;
         }
@@ -325,7 +322,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater,Obse
 
     /**
      * Also contructs the appropriate tracker.
-     * 
+     *
      * @param trackerToUse the trackerToUse to set
      */
     public synchronized void setTrackerToUse (TrackerToUse trackerToUse){
@@ -357,22 +354,23 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater,Obse
      * @param o the tracker
      * @param arg the update message
      */
-    public void update (Observable o,Object arg){
+    @Override
+	public void update (Observable o,Object arg){
         UpdateMessage msg = (UpdateMessage)arg;
 //        System.out.println("update from tracker");
 
-        if ( msg.timestamp < lastPlayedTime[0] || msg.timestamp < lastPlayedTime[1] ){
+        if ( (msg.timestamp < lastPlayedTime[0]) || (msg.timestamp < lastPlayedTime[1]) ){
             resetFilter();
             return;
         }
 
         findHandClusters();
-        if ( msg.timestamp - lastPlayedTime[0] > minBeatRepeatIntervalMs << 10 && testGenerateBeat(handClusters.left) ){
+        if ( ((msg.timestamp - lastPlayedTime[0]) > (minBeatRepeatIntervalMs << 10)) && testGenerateBeat(handClusters.left) ){
             drumSounds.play(0,127);
             detectedBeats[0] = new DetectedBeat(handClusters.left,"LEFT"); // create the detected beat. Rendering will remove this eventually.
             lastPlayedTime[0] = msg.timestamp;
         }
-        if ( msg.timestamp - lastPlayedTime[1] > minBeatRepeatIntervalMs << 10 && testGenerateBeat(handClusters.right) ){
+        if ( ((msg.timestamp - lastPlayedTime[1]) > (minBeatRepeatIntervalMs << 10)) && testGenerateBeat(handClusters.right) ){
             drumSounds.play(1,127);
             detectedBeats[1] = new DetectedBeat(handClusters.right,"RIGHT"); // create the detected beat. Rendering will remove this eventually.
             lastPlayedTime[1] = msg.timestamp;

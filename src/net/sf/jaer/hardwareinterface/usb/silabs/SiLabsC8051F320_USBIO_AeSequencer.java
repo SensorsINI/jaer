@@ -27,7 +27,7 @@ import de.thesycon.usbio.structs.USB_STRING_DESCRIPTOR;
 
 /**
  * The USB simplemonitor board is used to sequence out events using this class and appropriate firmware on the board.
- * 
+ *
  * <p>
  * Servo motor controller using USBIO driver access to SiLabsC8051F320 device. To prevent blocking on the thread controlling the
  *servo, this class starts a consumer thread that communicates with the USB interface. The producer (the user) communicates with the
@@ -81,7 +81,8 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
         UsbIoUtilities.enablePnPNotification(this, GUID);
         Runtime.getRuntime().addShutdownHook(new Thread() {
 
-            public void run() {
+            @Override
+			public void run() {
                 if (isOpen()) {
                     close();
                 }
@@ -99,18 +100,21 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
         this.interfaceNumber = devNumber;
     }
 
-    public void onAdd() {
+    @Override
+	public void onAdd() {
         log.info("SiLabsC8051F320_USBIO_ServoController: device added");
     }
 
-    public void onRemove() {
+    @Override
+	public void onRemove() {
         log.info("SiLabsC8051F320_USBIO_ServoController: device removed");
         close();
     }
 
     /** Closes the device. Never throws an exception.
      */
-    public void close() {
+    @Override
+	public void close() {
         if (!isOpened) {
             log.warning("close(): not open");
             return;
@@ -118,7 +122,8 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
 
         if (aePacketWriter != null) {
             try {
-                Thread.currentThread().sleep(10);
+                Thread.currentThread();
+				Thread.sleep(10);
             } catch (InterruptedException e) {
             }
             aePacketWriter.shutdownThread();
@@ -179,7 +184,8 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
      * @see #close
      *@throws HardwareInterfaceException if there is a problem. Diagnostics are printed to stderr.
      */
-    public void open() throws HardwareInterfaceException {
+    @Override
+	public void open() throws HardwareInterfaceException {
         if (!UsbIoUtilities.isLibraryLoaded()) {
             return;        //device has already been UsbIo Opened by now, in factory
             // opens the USBIOInterface device, configures it, binds a reader thread with buffer pool to read from the device and starts the thread reading events.
@@ -287,7 +293,7 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
         pipeParams.Flags = UsbIoInterface.USBIO_SHORT_TRANSFER_OK;
         status = aePacketWriter.setPipeParameters(pipeParams);
         if (status != USBIO_ERR_SUCCESS) {
-            gUsbIo.destroyDeviceList(gDevList);
+            UsbIo.destroyDeviceList(gDevList);
             throw new HardwareInterfaceException("startAEWriter: can't set pipe parameters: " + UsbIo.errorText(status));
         }
 
@@ -298,7 +304,8 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
     /** return the string USB descriptors for the device
      *@return String[] of length 2 of USB descriptor strings.
      */
-    public String[] getStringDescriptors() {
+    @Override
+	public String[] getStringDescriptors() {
         if (stringDescriptor1 == null) {
             log.warning("USBAEMonitor: getStringDescriptors called but device has not been opened");
             String[] s = new String[numberOfStringDescriptors];
@@ -316,21 +323,8 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
         return s;
     }
 
-    /** return the USB VID/PID of the interface
-     *@return int[] of length 2 containing the Vendor ID (VID) and Product ID (PID) of the device. First element is VID, second element is PID.
-     */
-    public int[] getVIDPID() {
-        if (deviceDescriptor == null) {
-            log.warning("USBAEMonitor: getVIDPID called but device has not been opened");
-            return new int[2];
-        }
-        int[] n = new int[2];
-        n[0] = deviceDescriptor.idVendor;
-        n[1] = deviceDescriptor.idProduct;
-        return n;
-    }
-
-    public short getVID() {
+    @Override
+	public short getVID() {
         if (deviceDescriptor == null) {
             log.warning("USBAEMonitor: getVIDPID called but device has not been opened");
             return 0;
@@ -339,7 +333,8 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
         return (short) deviceDescriptor.idVendor;
     }
 
-    public short getPID() {
+    @Override
+	public short getPID() {
         if (deviceDescriptor == null) {
             log.warning("USBAEMonitor: getVIDPID called but device has not been opened");
             return 0;
@@ -348,18 +343,21 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
     }
 
     /** @return bcdDevice (the binary coded decimel device version */
-    public short getDID() { // this is not part of USB spec in device descriptor.
+    @Override
+	public short getDID() { // this is not part of USB spec in device descriptor.
         return (short) deviceDescriptor.bcdDevice;
     }
 
     /** reports if interface is {@link #open}.
      * @return true if already open
      */
-    public boolean isOpen() {
+    @Override
+	public boolean isOpen() {
         return isOpened;
     }
 
-    public String getTypeName() {
+    @Override
+	public String getTypeName() {
         return "AESequencer";
     }
 
@@ -377,7 +375,8 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
                 return;
             }
             numEventsToSend += packet.getNumEvents();
-            Thread.currentThread().sleep(20); //yield(); // let writer thread get it and submit a write
+            Thread.currentThread();
+			Thread.sleep(20); //yield(); // let writer thread get it and submit a write
         } catch (InterruptedException e) {
         }
     }
@@ -393,7 +392,8 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
         private int numOutEvents;
 
         // overridden to change priority
-        public void startThread(int MaxIoErrorCount) {
+        @Override
+		public void startThread(int MaxIoErrorCount) {
             allocateBuffers(ENDPOINT_OUT_LENGTH, 2);
             if (T == null) {
                 MaxErrorCount = MaxIoErrorCount;
@@ -404,19 +404,20 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
             }
         }
 
-        /** 
+        /**
          * waits and takes commands from the queue and submits them to the device. Called automatically by the writer.
          */
-        public void processBuffer(UsbIoBuf buf) {
+        @Override
+		public void processBuffer(UsbIoBuf buf) {
             // we may be called here while we are still writing a previous packet that was submitted.
             // in that case we simply continue with the existing packet.
             // once we finish a packet, we get a new one from the queue.
-            // if the data left from a packet is too large for the UsbIoBuf we only 
+            // if the data left from a packet is too large for the UsbIoBuf we only
             // write the buffer full and next time around we continue with the same packet.
             // or we can get a small packet or a small number of events - in that case we write a short packet.
 
 
-            if (packet == null || index >= packet.getNumEvents()) {
+            if ((packet == null) || (index >= packet.getNumEvents())) {
                 // either starting or done with previous packet
                 try {
                     packet = packetQueue.take();  // wait forever until there is some data
@@ -433,7 +434,7 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
                 }
             }
 
-            // we have a packet and we 
+            // we have a packet and we
             buf.NumberOfBytesToTransfer = packet.getNumEvents() * 8; // TODO must send full buffer because that is what controller expects for interrupt transfers
             buf.OperationFinished = false; // setting true will finish all transfers and end writer thread
             buf.BytesTransferred = 0;
@@ -453,11 +454,11 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
 //            // log.info("Processing Buffer, current index: " + index);
 //
             // set the number of bytes to transfer
-            if ((numOutEvents - index) * 4 < buf.Size) // the buffer size is bigger than needed for the events to send;
+            if (((numOutEvents - index) * 4) < buf.Size) // the buffer size is bigger than needed for the events to send;
             {
                 buf.NumberOfBytesToTransfer = (numOutEvents - index) * 4;
             } else {
-                if (buf.Size % 4 != 0) // the buffer size is not a multiplicative of four, but we only send multiplicatives of four
+                if ((buf.Size % 4) != 0) // the buffer size is not a multiplicative of four, but we only send multiplicatives of four
                 {
                     buf.NumberOfBytesToTransfer = (buf.Size / 4) * 4;
                 } else {
@@ -469,7 +470,7 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
 
             buf.BytesTransferred = 0;
             buf.OperationFinished = false;
-            if (addresses == null || timestamps == null) {
+            if ((addresses == null) || (timestamps == null)) {
                 log.warning("null addresses or timestamps, not sequencing");
                 return;
             }
@@ -490,11 +491,13 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
 
         }
 
-        public void bufErrorHandler(UsbIoBuf usbIoBuf) {
+        @Override
+		public void bufErrorHandler(UsbIoBuf usbIoBuf) {
             log.warning(UsbIo.errorText(usbIoBuf.Status));
         }
 
-        public void onThreadExit() {
+        @Override
+		public void onThreadExit() {
             log.info("sequencer writer done");
         }
     }
@@ -509,54 +512,66 @@ public class SiLabsC8051F320_USBIO_AeSequencer implements UsbIoErrorCodes, PnPNo
         }
     }
 
-    public int getNumEventsSent() {
+    @Override
+	public int getNumEventsSent() {
         return numEventsSent;
     }
 
-    public int getNumEventsToSend() {
+    @Override
+	public int getNumEventsToSend() {
         return numEventsToSend;
     }
 
-    public void resetTimestamps() {
+    @Override
+	public void resetTimestamps() {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    public boolean isEventSequencingEnabled() {
+    @Override
+	public boolean isEventSequencingEnabled() {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    public int getMaxCapacity() {
+    @Override
+	public int getMaxCapacity() {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    public int getEstimatedOutEventRate() {
+    @Override
+	public int getEstimatedOutEventRate() {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    public int getTimestampTickUs() {
+    @Override
+	public int getTimestampTickUs() {
         return AEConstants.TICK_DEFAULT_US;
     }
 
-    public void offerPacketToSequencer(AEPacketRaw packet) {
+    @Override
+	public void offerPacketToSequencer(AEPacketRaw packet) {
         checkWtiterThread();
         submitPacket(packet);
     }
 
-    public void setLoopedSequencingEnabled(boolean set) {
+    @Override
+	public void setLoopedSequencingEnabled(boolean set) {
         log.warning("not supported yet"); // TODO
     }
 
-    public boolean isLoopedSequencingEnabled() {
+    @Override
+	public boolean isLoopedSequencingEnabled() {
         return false;
     }
 
-    public void startSequencing(AEPacketRaw eventsToSend) throws HardwareInterfaceException {
+    @Override
+	public void startSequencing(AEPacketRaw eventsToSend) throws HardwareInterfaceException {
         log.info("Starting sequencing of " + eventsToSend + " on interface " + this);
         offerPacketToSequencer(eventsToSend);
 
     }
 
-    public void stopSequencing() throws HardwareInterfaceException {
+    @Override
+	public void stopSequencing() throws HardwareInterfaceException {
         log.info("stopping sequencing");
         if (aePacketWriter != null) {
             aePacketWriter.shutdownThread();

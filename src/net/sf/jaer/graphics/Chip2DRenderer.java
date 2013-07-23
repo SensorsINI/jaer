@@ -38,15 +38,10 @@ public class Chip2DRenderer implements Observer {
     protected boolean autoscaleEnabled = prefs.getBoolean("Chip2DRenderer.autoscaleEnabled", false);
     /** the number of events for full scale saturated color */
     protected int colorScale; // set in constructor to preference value so that eventContrast also gets set
-    /** the contrast attributed to an event, 
-     * either level is multiplied or divided by this value depending on polarity of event. 
+    /** the contrast attributed to an event,
+     * either level is multiplied or divided by this value depending on polarity of event.
      * Gets set by setColorScale */
     protected float eventContrast = 1.1f;
-    /** the rendered frame, RGB matrix of pixel values in 0-1 range.
-    In Matlab convention, the first dimension is y, the second dimension is x, the third dimension is a 3 vector of RGB values.
-     * @deprecated replaced by pixmap direct float buffer.
-     */
-    protected float[][][] fr;
     /** The rendered pixel map, ordered by RGB/row/col. The first 3 elements are the RBB float values of the LL pixel (x=0,y=0). The next 3 are
      * the RGB of the second pixel from the left in the bottom row (x=1,y=0). Pixel (0,1) is at position starting at 3*(chip.getSizeX()).
      */
@@ -84,7 +79,7 @@ public class Chip2DRenderer implements Observer {
      * @see #getPixmapArray()
      */
     public int getPixMapIndex(int x, int y) {
-        return 3 * (x + y * sizeX);
+        return 3 * (x + (y * sizeX));
     }
 
     /** Returns the pixmap 1-d array of pixel RGB values.
@@ -105,19 +100,19 @@ public class Chip2DRenderer implements Observer {
      * the RGB of the second pixel from the left in the bottom row (x=1,y=0). Pixel (0,1) is at position starting at 3*(chip.getSizeX()). */
     protected FloatBuffer grayBuffer;
 
-    /** Resets the pixmap values to a gray level 
-     * 
+    /** Resets the pixmap values to a gray level
+     *
      * @param value 0-1 gray value.
      */
     protected void resetPixmapGrayLevel(float value) {
         checkPixmapAllocation();
         final int n = 3 * chip.getNumPixels();
         boolean madebuffer = false;
-        if (grayBuffer == null || grayBuffer.capacity() != n) {
+        if ((grayBuffer == null) || (grayBuffer.capacity() != n)) {
             grayBuffer = FloatBuffer.allocate(n); // Buffers.newDirectFloatBuffer(n);
             madebuffer = true;
         }
-        if (madebuffer || value != grayValue) {
+        if (madebuffer || (value != grayValue)) {
             grayBuffer.rewind();
             for (int i = 0; i < n; i++) {
                 grayBuffer.put(value);
@@ -135,7 +130,7 @@ public class Chip2DRenderer implements Observer {
      */
     protected void checkPixmapAllocation() {
         final int n = 3 * chip.getNumPixels();
-        if (pixmap == null || pixmap.capacity() < n) {
+        if ((pixmap == null) || (pixmap.capacity() < n)) {
             pixmap = FloatBuffer.allocate(n); // Buffers.newDirectFloatBuffer(n);
         }
     }
@@ -222,7 +217,7 @@ public class Chip2DRenderer implements Observer {
     }
 
     public boolean isPixelSelected() {
-        return xsel != -1 && ysel != -1;
+        return (xsel != -1) && (ysel != -1);
     }
 
     public synchronized void removeAllAnnotators() {
@@ -238,27 +233,6 @@ public class Chip2DRenderer implements Observer {
 //        }
 //    }
 
-    /** Checks the frame buffer for the correct sizes;
-    when constructed in superclass of a chip, sizes may not yet be set for chip. we can check every time
-     * @deprecated replaced by pixmap
-     */
-    synchronized public void checkFr() {
-        if (fr == null || fr.length == 0) {
-            reallocateFr();
-        }
-    }
-
-    /** reallocates the fr buffer using the current chip size
-     @deprecated replaced by pixmap
-     */
-    private void reallocateFr() {
-        if (chip == null) {
-            return;
-        }
-        fr = new float[chip.getSizeY()][chip.getSizeX()][3];
-        checkPixmapAllocation();
-    }
-
     /** Resets the pixmap frame buffer to a given gray level.
      *
      * @param value gray level, 0-1 range.
@@ -267,7 +241,7 @@ public class Chip2DRenderer implements Observer {
         resetPixmapGrayLevel(value);
         grayValue = value;
     }
-    
+
     /** @param accumulateEnabled true to accumulate data to frame (don't reset to start value each cycle) */
     public void setAccumulateEnabled(final boolean accumulateEnabled) {
         this.accumulateEnabled = accumulateEnabled;
@@ -298,11 +272,11 @@ public class Chip2DRenderer implements Observer {
     public int getWidth(){
         return sizeX;
     }
-    
+
     public int getHeight(){
         return sizeY;
     }
-    
+
     /** Sets the x of the selected pixel.
      *
      * @param xsel
@@ -319,26 +293,18 @@ public class Chip2DRenderer implements Observer {
         this.ysel = ysel;
     }
 
-//    /** @return frame data.
-//     * fr is the rendered event data that we draw. Y is the first dimension, X is the second dimension, RGB 3 vector is the last dimension.
-//    @see #fr
-//     * @deprecated replaced by pixmap
-//     */
-//    public float[][][] getFr() {
-//        return fr;
-//    }
-
     /** Returns the number of spikes in the selected pixel in the last rendered packet */
     public int getSelectedPixelEventCount() {
         return selectedPixelEventCount;
     }
-    
+
     /** Sets the selected pixel event count to zero. */
     protected void resetSelectedPixelEventCount(){
         selectedPixelEventCount=0;
     }
 
-    public void update(Observable o, Object arg) {
+    @Override
+	public void update(Observable o, Object arg) {
         if (o instanceof Chip2D) {
             if (arg instanceof String) {
                 String s = (String) arg;

@@ -134,7 +134,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
             readingThread.maxSizeExceeded=false;
             // changed to remove timeout to explore effect on speed
             //currentEmptyingBuffer = exchanger.exchange(currentEmptyingBuffer, TIMEOUT_MS, TimeUnit.MILLISECONDS);
-            if ( debugInput && currentEmptyingBuffer.getNumEvents() > 0 ){
+            if ( debugInput && (currentEmptyingBuffer.getNumEvents() > 0) ){
                 log.info("exchanged and returning readPacket=" + currentEmptyingBuffer);
             }
             return currentEmptyingBuffer;
@@ -216,7 +216,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
         }
 //        log.info("received buffer="+buffer);
         buffer.flip();
-        if ( buffer.limit() < Integer.SIZE / 8 ){
+        if ( buffer.limit() < (Integer.SIZE / 8) ){
             log.warning(String.format("DatagramPacket only has %d bytes, and thus doesn't even have sequence number, returning empty packet",buffer.limit()));
             packet.clear();
             buffer.clear();
@@ -292,7 +292,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
 //                        int v3 = 0xffff & v2; // TODO hack for TDS sensor which uses all 32 bits causing overflow after multiplication by multiplier and int cast
                         float floatFinalTime = timestampMultiplier * zeroedRawTime;
                         int finalTime;
-                        if ( floatFinalTime >= Integer.MAX_VALUE || floatFinalTime<=Integer.MIN_VALUE ){
+                        if ( (floatFinalTime >= Integer.MAX_VALUE) || (floatFinalTime<=Integer.MIN_VALUE) ){
                             timeZero = rawTime; // after overflow reset timezero
                             finalTime = Integer.MIN_VALUE+(int)(floatFinalTime-Integer.MAX_VALUE); // Change to -2k seconds now - was: wrap around at 2k seconds, back to 0 seconds. TODO different than hardware which wraps back to -2k seconds
                         } else{
@@ -310,7 +310,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
                     eventRaw.address = buffer.getShort()&0xffff; // swab(buffer.getShort()); // swapInt is switched to handle big endian event sources (like ARC camera)
 //                    eventRaw.timestamp=(int) (timestampMultiplier*(int) swab(buffer.getShort()));
                     if ( !localTimestampsEnabled && timestampsEnabled ){
-                        eventRaw.timestamp = (int)( timestampMultiplier * (int)buffer.getShort() );
+                        eventRaw.timestamp = (int)( timestampMultiplier * buffer.getShort() );
                     } else{
                         eventRaw.timestamp = ts;
                     }
@@ -320,7 +320,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
 //                    eventRaw.timestamp=(int) (swab(buffer.getInt()));
 //                    eventRaw.address=swab(buffer.getInt());
                     if ( !localTimestampsEnabled && timestampsEnabled ){
-                        eventRaw.timestamp = (int)( ( buffer.getInt() ) );
+                        eventRaw.timestamp = ( ( buffer.getInt() ) );
                     } else{
                         eventRaw.timestamp = ts;
                     }
@@ -329,7 +329,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
 //                    eventRaw.timestamp=(int) (swab(buffer.getShort()));
 //                    eventRaw.address=(int) (timestampMultiplier*(int) swab(buffer.getShort()));
                     if ( !localTimestampsEnabled && timestampsEnabled ){
-                        eventRaw.timestamp = (int)( ( buffer.getShort() ) );  // TODO check if need AND with 0xffff to avoid negative timestamps
+                        eventRaw.timestamp = ( ( buffer.getShort() ) );  // TODO check if need AND with 0xffff to avoid negative timestamps
                     } else{
                         eventRaw.timestamp = ts;
                     }
@@ -357,8 +357,9 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
     /** Interrupts the thread which is acquiring data and closes the underlying DatagramSocket.
      *
      */
-    public void close (){
-        if ( channel != null && channel.isOpen() ){
+    @Override
+	public void close (){
+        if ( (channel != null) && channel.isOpen() ){
             try{
                 stopme = true;
                 channel.close();
@@ -375,7 +376,8 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
     }
 
     /**@return "localhost". */
-    public String getHost (){
+    @Override
+	public String getHost (){
         return "localhost";
     }
 
@@ -389,7 +391,7 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
 
     /** resolves host, builds socket, returns true if it succeeds */
     private boolean checkSocket (){
-        if ( channel != null && channel.isOpen() ){ //if(datagramSocket!=null && datagramSocket.isBound()) {
+        if ( (channel != null) && channel.isOpen() ){ //if(datagramSocket!=null && datagramSocket.isBound()) {
             return true;
         }
         try{
@@ -416,7 +418,8 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
      *
      * @throws java.io.IOException
      */
-    public void open () throws IOException{  // TODO cannot really throw exception because socket is opened in Reader
+    @Override
+	public void open () throws IOException{  // TODO cannot really throw exception because socket is opened in Reader
         close();
         readingThread = new Reader();
         readingThread.start();
@@ -426,14 +429,15 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
     @param host the hostname
      * @deprecated doesn't do anything here because we only set local port
      */
-    public void setHost (String host){ // TODO all wrong, doesn't need host since receiver
+    @Deprecated
+	@Override
+	public void setHost (String host){
+    	// TODO all wrong, doesn't need host since receiver
         log.log(Level.WARNING, "setHost({0}) ignored for AEUnicastInput", host);
-        // TODO should make new socket here too since we may have changed the host since we connected the socket
-//        this.host=host;
-//        prefs.put("AEUnicastInput.host", host);
     }
 
-    public int getPort (){
+    @Override
+	public int getPort (){
         return port;
     }
 
@@ -441,7 +445,8 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
      *
      * @param port
      */
-    public void setPort (int port){ // TODO all wrong
+    @Override
+	public void setPort (int port){ // TODO all wrong
         this.port = port;
         prefs.putInt("AEUnicastInput.port",port);
         if ( port == this.port ){
@@ -451,7 +456,8 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
         readTimeZeroAlready = false;
     }
 
-    public boolean isSequenceNumberEnabled (){
+    @Override
+	public boolean isSequenceNumberEnabled (){
         return sequenceNumberEnabled;
     }
 
@@ -460,13 +466,15 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
      *
      * @param sequenceNumberEnabled default true
      */
-    public void setSequenceNumberEnabled (boolean sequenceNumberEnabled){
+    @Override
+	public void setSequenceNumberEnabled (boolean sequenceNumberEnabled){
         this.sequenceNumberEnabled = sequenceNumberEnabled;
         prefs.putBoolean("AEUnicastInput.sequenceNumberEnabled",sequenceNumberEnabled);
     }
 
     /** @see #setAddressFirstEnabled */
-    public boolean isAddressFirstEnabled (){
+    @Override
+	public boolean isAddressFirstEnabled (){
         return addressFirstEnabled;
     }
 
@@ -475,7 +483,8 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
      * This parameter is stored as a preference.
      * @param addressFirstEnabled default true.
      */
-    public void setAddressFirstEnabled (boolean addressFirstEnabled){
+    @Override
+	public void setAddressFirstEnabled (boolean addressFirstEnabled){
         this.addressFirstEnabled = addressFirstEnabled;
         prefs.putBoolean("AEUnicastInput.addressFirstEnabled",addressFirstEnabled);
     }
@@ -485,7 +494,8 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
      * where the native side does not swap the data.
      * @param yes true to swap big/little endian address and timestamp data.
      */
-    public void setSwapBytesEnabled (boolean yes){
+    @Override
+	public void setSwapBytesEnabled (boolean yes){
         swapBytesEnabled = yes;
         prefs.putBoolean("AEUnicastInput.swapBytesEnabled",swapBytesEnabled);
         if ( buffer != null ){
@@ -493,11 +503,13 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
         }
     }
 
-    public boolean isSwapBytesEnabled (){
+    @Override
+	public boolean isSwapBytesEnabled (){
         return swapBytesEnabled;
     }
 
-    public float getTimestampMultiplier (){
+    @Override
+	public float getTimestampMultiplier (){
         return timestampMultiplier;
     }
 
@@ -505,27 +517,32 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
      * If the remote host uses 1 ms timestamps, set timestamp multiplier to 1000.
      * @param timestampMultiplier
      */
-    public void setTimestampMultiplier (float timestampMultiplier){
+    @Override
+	public void setTimestampMultiplier (float timestampMultiplier){
         this.timestampMultiplier = timestampMultiplier;
         prefs.putFloat("AEUnicastInput.timestampMultiplier",timestampMultiplier);
     }
 
     // TODO javadoc
-    public void set4ByteAddrTimestampEnabled (boolean yes){
+    @Override
+	public void set4ByteAddrTimestampEnabled (boolean yes){
         use4ByteAddrTs = yes;
         prefs.putBoolean("AEUnicastInput.use4ByteAddrTs",yes);
     }
 
-    public boolean is4ByteAddrTimestampEnabled (){
+    @Override
+	public boolean is4ByteAddrTimestampEnabled (){
         return use4ByteAddrTs;
     }
 
-   public void setLocalTimestampEnabled(boolean yes) {
+   @Override
+public void setLocalTimestampEnabled(boolean yes) {
         localTimestampsEnabled=yes;
         prefs.putBoolean("AEUnicastOutput.localTimestampsEnabled",localTimestampsEnabled);
     }
 
-    public boolean isLocalTimestampEnabled() {
+    @Override
+	public boolean isLocalTimestampEnabled() {
         return localTimestampsEnabled;
     }
 
@@ -533,7 +550,8 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
      * Returns the desired buffer size for datagrams in bytes.
      * @return the bufferSize in bytes.
      */
-    public int getBufferSize (){
+    @Override
+	public int getBufferSize (){
         return bufferSize;
     }
 
@@ -542,13 +560,15 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
      * ones to minimize CPU usage.
      * @param bufferSize the bufferSize to set in bytes.
      */
-    synchronized public void setBufferSize (int bufferSize){
+    @Override
+	synchronized public void setBufferSize (int bufferSize){
         this.bufferSize = bufferSize;
         prefs.putInt("AEUnicastInput.bufferSize",bufferSize);
         allocateBuffers();
     }
 
-    public boolean isTimestampsEnabled (){
+    @Override
+	public boolean isTimestampsEnabled (){
         return timestampsEnabled;
     }
 
@@ -556,12 +576,14 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
      * using the System.nanoTime()/1000 system clock for all events in the packet.
      * @param yes true to enable parsing of timestamps.
      */
-    public void setTimestampsEnabled (boolean yes){
+    @Override
+	public void setTimestampsEnabled (boolean yes){
         timestampsEnabled = yes;
         prefs.putBoolean("AEUnicastInput.timestampsEnabled",yes);
     }
 
-    public void setPaused (boolean yes){
+    @Override
+	public void setPaused (boolean yes){
         paused = yes;
         readingThread.interrupt();
         // following deadlocks with exchanger
@@ -576,12 +598,14 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
 //        }
     }
 
-    public boolean isPaused (){
+    @Override
+	public boolean isPaused (){
         return paused;
 //        return pauseSemaphore.availablePermits() == 0;
     }
 
-    public void propertyChange (PropertyChangeEvent evt){
+    @Override
+	public void propertyChange (PropertyChangeEvent evt){
 //        log.info(evt.toString());
 //        if ( evt.getPropertyName().equals("paused") ){
 //            setPaused((Boolean)evt.getNewValue());

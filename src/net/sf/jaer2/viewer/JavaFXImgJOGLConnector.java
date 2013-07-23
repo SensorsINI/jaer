@@ -11,6 +11,7 @@ import javafx.scene.image.WritableImage;
 
 import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
+import javax.media.opengl.GL2GL3;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLCapabilities;
 import javax.media.opengl.GLDrawableFactory;
@@ -31,7 +32,7 @@ public class JavaFXImgJOGLConnector extends ImageView {
 	private static final int imageBufferBGRA8Number = 3;
 	private final Semaphore syncImageBufferBGRA8Swap[] = new Semaphore[JavaFXImgJOGLConnector.imageBufferBGRA8Number];
 	private final ByteBuffer imageBufferBGRA8[] = new ByteBuffer[JavaFXImgJOGLConnector.imageBufferBGRA8Number];
-	private static final PixelFormat<ByteBuffer> pxFormat = PixelFormat.getByteBgraInstance();
+	private static final PixelFormat<ByteBuffer> pxFormat = PixelFormat.getByteBgraPreInstance();
 
 	public JavaFXImgJOGLConnector(final int width, final int height) {
 		super();
@@ -135,7 +136,7 @@ public class JavaFXImgJOGLConnector extends ImageView {
 			}
 
 			gl.glReadBuffer(GL.GL_FRONT);
-			gl.glReadPixels(0, 0, (int) image.getWidth(), (int) image.getHeight(), GL.GL_BGRA, GL.GL_UNSIGNED_BYTE,
+			gl.glReadPixels(0, 0, (int) image.getWidth(), (int) image.getHeight(), GL.GL_BGRA, GL2GL3.GL_UNSIGNED_INT_8_8_8_8_REV,
 				imageBufferBGRA8[selectedImageBuffer]);
 
 			final int releaseSelectedImageBuffer = selectedImageBuffer;
