@@ -12,27 +12,33 @@ package net.sf.jaer.aemonitor;
 
 /**
  * A raw address-event, having an int (32 bit) timestamp and int (32 bit) raw address
+ *
  * @author tobi
  */
-public class EventRaw extends Event{
-    public int address;
+public class EventRaw {
+	public int address;
+	public int timestamp;
 
-    /** Creates a new instance of EventRaw */
-    public EventRaw() {
-        super();
-    }
-     
-    /** Creates a new instance of EventRaw 
-     @param a the address
-     @param t the timestamp
-     */
-    public EventRaw(int a, int t) {
-        super(t);
-        address=a;
-    }
-    
-    public String toString(){
-        return "EventRaw with address "+address+" and timestamp "+timestamp;
-    }
-    
+	/** Creates a new instance of EventRaw */
+	public EventRaw() {
+	}
+
+	/**
+	 * Creates a new instance of EventRaw
+	 *
+	 * @param a
+	 *            the address
+	 * @param t
+	 *            the timestamp
+	 */
+	public EventRaw(int a, int t) {
+		address = a;
+		timestamp = t;
+
+	}
+
+	@Override
+	public String toString() {
+		return "EventRaw with address " + address + " and timestamp " + timestamp;
+	}
 }
