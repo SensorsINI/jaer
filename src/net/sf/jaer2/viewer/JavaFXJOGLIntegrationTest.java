@@ -20,10 +20,10 @@ import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLEventListener;
-import javax.media.opengl.fixedfunc.GLMatrixFunc;
 
 import net.sf.jaer2.viewer.BufferWorks.BUFFER_FORMATS;
 
+import com.jogamp.opengl.util.awt.TextRenderer;
 import com.sun.javafx.perf.PerformanceTracker;
 
 public class JavaFXJOGLIntegrationTest extends Application {
@@ -162,10 +162,12 @@ public class JavaFXJOGLIntegrationTest extends Application {
 
 	private class WriteRandom implements GLEventListener {
 		private final BufferWorks buffer;
+		private final TextRenderer renderer;
 
 		public WriteRandom(final int c) {
 			buffer = new BufferWorks(JavaFXJOGLIntegrationTest.XLEN, JavaFXJOGLIntegrationTest.YLEN,
 				BUFFER_FORMATS.BYTE_NOALPHA, c);
+			renderer = new TextRenderer(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 24), true, true);
 		}
 
 		@Override
@@ -181,18 +183,6 @@ public class JavaFXJOGLIntegrationTest extends Application {
 
 		@Override
 		public void init(final GLAutoDrawable drawable) {
-			final GL2 gl = drawable.getGL().getGL2();
-
-			gl.setSwapInterval(0);
-
-			gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
-			gl.glLoadIdentity();
-			gl.glOrthof(0, JavaFXJOGLIntegrationTest.XLEN, 0, JavaFXJOGLIntegrationTest.YLEN, -1, 1);
-
-			gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
-			gl.glLoadIdentity();
-
-			gl.glViewport(0, 0, JavaFXJOGLIntegrationTest.XLEN, JavaFXJOGLIntegrationTest.YLEN);
 		}
 
 		@Override
@@ -207,6 +197,15 @@ public class JavaFXJOGLIntegrationTest extends Application {
 
 			gl.glDrawPixels(JavaFXJOGLIntegrationTest.XLEN, JavaFXJOGLIntegrationTest.YLEN, buffer.getGLColorFormat(),
 				buffer.getGLFormat(), buffer.getBuffer());
+
+			renderer.begin3DRendering();
+			renderer.setColor(java.awt.Color.BLACK);
+			final String str = "TEST";
+			final java.awt.geom.Rectangle2D r = renderer.getBounds(str);
+			final float scaleFactor = (float) ((JavaFXJOGLIntegrationTest.XLEN / 2) / r.getWidth());
+			renderer.draw3D(str, 5, JavaFXJOGLIntegrationTest.YLEN - (int) (r.getHeight() * scaleFactor), 0,
+				scaleFactor);
+			renderer.end3DRendering();
 
 			gl.glFlush();
 		}

@@ -136,8 +136,8 @@ public class JavaFXImgJOGLConnector extends ImageView {
 			}
 
 			gl.glReadBuffer(GL.GL_FRONT);
-			gl.glReadPixels(0, 0, (int) image.getWidth(), (int) image.getHeight(), GL.GL_BGRA, GL2GL3.GL_UNSIGNED_INT_8_8_8_8_REV,
-				imageBufferBGRA8[selectedImageBuffer]);
+			gl.glReadPixels(0, 0, (int) image.getWidth(), (int) image.getHeight(), GL.GL_BGRA,
+				GL2GL3.GL_UNSIGNED_INT_8_8_8_8_REV, imageBufferBGRA8[selectedImageBuffer]);
 
 			final int releaseSelectedImageBuffer = selectedImageBuffer;
 
@@ -166,12 +166,10 @@ public class JavaFXImgJOGLConnector extends ImageView {
 
 			gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
 			gl.glLoadIdentity();
-			gl.glOrthof(0, (int) image.getWidth(), 0, (int) image.getHeight(), -1, 1);
+			gl.glOrthof(0, (int) image.getWidth(), (int) image.getHeight(), 0, 1, -1);
 
 			gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
 			gl.glLoadIdentity();
-
-			gl.glViewport(0, 0, (int) image.getWidth(), (int) image.getHeight());
 		}
 
 		@Override

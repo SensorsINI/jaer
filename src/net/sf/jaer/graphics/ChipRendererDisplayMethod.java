@@ -11,7 +11,6 @@
  */
 package net.sf.jaer.graphics;
 
-import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 
 import javax.media.opengl.GL;
@@ -53,16 +52,6 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
 		gl.glClear(GL.GL_COLOR_BUFFER_BIT);
 
 		return gray;
-	}
-
-	private boolean isValidRasterPosition(GL2 gl) {
-		boolean validRaster;
-		ByteBuffer buf = ByteBuffer.allocate(1);
-		gl.glGetBooleanv(GL2.GL_CURRENT_RASTER_POSITION_VALID, buf);
-		buf.rewind();
-		byte b = buf.get();
-		validRaster = b != 0;
-		return validRaster;
 	}
 
 	private void displayPixmap(GLAutoDrawable drawable) {
