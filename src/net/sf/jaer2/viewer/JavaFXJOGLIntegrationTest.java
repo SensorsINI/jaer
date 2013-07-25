@@ -3,9 +3,12 @@ package net.sf.jaer2.viewer;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.SimpleIntegerProperty;
 import javafx.event.EventHandler;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -27,7 +30,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 import com.sun.javafx.perf.PerformanceTracker;
 
 public class JavaFXJOGLIntegrationTest extends Application {
-	private static final double RSIZE = 2.5;
+	private static final double RSIZE = 3;
 	private static final int XLEN = 240;
 	private static final int YLEN = 180;
 	private static final int COLS = 2;
@@ -48,6 +51,9 @@ public class JavaFXJOGLIntegrationTest extends Application {
 		displayGrid.setHgap(20);
 		displayGrid.setVgap(20);
 
+		final IntegerProperty currentX = new SimpleIntegerProperty();
+		final IntegerProperty currentY = new SimpleIntegerProperty();
+
 		for (int r = 0; r < JavaFXJOGLIntegrationTest.ROWS; r++) {
 			for (int c = 0; c < JavaFXJOGLIntegrationTest.COLS; c++) {
 				final JavaFXImgJOGLConnector fxJogl = new JavaFXImgJOGLConnector(JavaFXJOGLIntegrationTest.XLEN,
@@ -58,6 +64,14 @@ public class JavaFXJOGLIntegrationTest extends Application {
 				fxJogl.setFitHeight((JavaFXJOGLIntegrationTest.YLEN * JavaFXJOGLIntegrationTest.RSIZE));
 
 				fxJogl.addGLEventListener(new WriteRandom(((r + 1) * (c + 1)) % 4));
+
+				fxJogl.setOnMouseClicked(new EventHandler<MouseEvent>() {
+					@Override
+					public void handle(final MouseEvent event) {
+						currentX.setValue(event.getX() / JavaFXJOGLIntegrationTest.RSIZE);
+						currentY.setValue(event.getY() / JavaFXJOGLIntegrationTest.RSIZE);
+					}
+				});
 
 				final AnimationTimer animator = new AnimationTimer() {
 					@Override
@@ -71,6 +85,7 @@ public class JavaFXJOGLIntegrationTest extends Application {
 
 		// Write out the FPS on the screen.
 		final VBox texts = new VBox();
+		texts.setPickOnBounds(false);
 		root.getChildren().add(texts);
 
 		final Text fpsFXpftTxt = new Text();
@@ -102,6 +117,22 @@ public class JavaFXJOGLIntegrationTest extends Application {
 
 		maxMemTxt.setFill(Color.WHITE);
 		maxMemTxt.setFont(new Font(36));
+
+		final Text currXclicked = new Text();
+		texts.getChildren().add(currXclicked);
+
+		currXclicked.setFill(Color.WHITE);
+		currXclicked.setFont(new Font(48));
+
+		final Text currYclicked = new Text();
+		texts.getChildren().add(currYclicked);
+
+		currYclicked.setFill(Color.WHITE);
+		currYclicked.setFont(new Font(48));
+
+		// Bind text to X, Y values (from MouseEvent).
+		currXclicked.textProperty().bind(currentX.asString());
+		currYclicked.textProperty().bind(currentY.asString());
 
 		final Rectangle2D screen = Screen.getPrimary().getVisualBounds();
 		final Scene rootScene = new Scene(root, screen.getWidth(), screen.getHeight(), Color.GRAY);
