@@ -28,13 +28,13 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.util.RemoteControl;
 
 /**
- * A chip, having possibly a hardware interface and a bias generator. 
- This class extends Observable and signals changes in 
+ * A chip, having possibly a hardware interface and a bias generator.
+ This class extends Observable and signals changes in
  its parameters via notifyObservers.
  * <p>
- A Chip also has Preferences; the Preferences node is based on the package of the 
+ A Chip also has Preferences; the Preferences node is based on the package of the
  actual chip class.
- * 
+ *
  *<p>
  * A Chip may be remote-controllable via its remote control, see getRemoteControl().
  * <p>
@@ -44,34 +44,34 @@ import net.sf.jaer.util.RemoteControl;
 public class Chip extends Observable {
     /** Preferences key for blank device filename */
     public static final String DEFAULT_FIRMWARE_BIX_FILE_FOR_BLANK_DEVICE = "CypressFX2Blank.defaultFirmwareBixFileForBlankDevice";
-      
-    /** The root preferences for this Chip. 
-     * @see Chip#getPrefs()  
+
+    /** The root preferences for this Chip.
+     * @see Chip#getPrefs()
      */
-    private Preferences prefs=Preferences.userNodeForPackage(Chip.class);  
-    
+    private Preferences prefs=Preferences.userNodeForPackage(Chip.class);
+
     /** Preferences key which is used to store the preferences boolean that preferred values have been loaded at least
      * once for this Chip.
      */
     public static final String PREFERENCES_LOADED_ONCE_KEY="defaultPreferencesWereLoaded";
-    
+
     /** The default preferences file location for initial import of preferred values. By default it is null. */
     private String defaultPreferencesFile=null;
 
-    /** The bias generator for this chip or object that holds any other kind of configuration information. (Originally this was just the 
+    /** The bias generator for this chip or object that holds any other kind of configuration information. (Originally this was just the
      actual digital bias values, but since this original definition it has grealy expanded to include board-level configuration such
      as scanner control, external ADC control, and control of off-chip DACs.
      */
     protected Biasgen biasgen=null;
-    
+
     /** A String name */
     protected String name="unnamed chip";
-    
+
     /** The Chip's HardwareInterface */
     protected HardwareInterface hardwareInterface=null;
-    
+
     private static Class<? extends HardwareInterface> preferredHardwareInterface=null;
-    
+
 //    /** Should be overridden by a subclass of Chip to specify the preferred HardwareInterface. In the case of chips
 //     * that use a variety of generic interfaces the factory will construct a default interface if getPreferredHardwareInterface
 //     * return null.
@@ -80,38 +80,38 @@ public class Chip extends Observable {
 //    static public Class<? extends HardwareInterface> getPreferredHardwareInterface(){
 //        return Chip.preferredHardwareInterface;
 //    }
-//    
+//
 //    /** Sets the preferred HardwareInterface class. Warning: this can call static initializers of a class, which can cause problems
 //     * especially in non-standard classloader contexts, e.g. applets.
-//     * 
+//     *
 //     * @param clazz the class that must extend HardwareInterface.
 //     */
 //    static public void setPreferredHardwareInterface(Class<? extends HardwareInterface> clazz){
 //        Chip.preferredHardwareInterface=clazz;
 //    }
-    
-     /** Default firmware file for blank devices. 
+
+     /** Default firmware file for blank devices.
      * For CypressFX2-based USB devices, this file must be a bix (raw binary) firmware file, not an iic or hex file */
     protected  String defaultFirmwareBixFileForBlankDevice=null;
 
-    
+
     /** The remote control allows control of this Chip via a UDP connection
-     * 
+     *
      */
-    protected RemoteControl remoteControl;
+    private RemoteControl remoteControl;
 
     /** This built in Logger should be used for logging, e.g. via log.info or log.warn
-     * 
+     *
      */
     protected static Logger log=Logger.getLogger("Chip");
-    
-    
+
+
     /** Built-in PropertyChangeSupport to allow this Chip to generate PropertyChangeEvents. */
     protected PropertyChangeSupport support=new PropertyChangeSupport(this);
-    
+
     /** Can be used to hold a reference to the last data associated with this Chip2D */
     private Object lastData=null;
-    
+
     /** Creates a new instance of Chip */
     public Chip() {
 //        try {
@@ -132,21 +132,21 @@ public class Chip extends Observable {
     }
 
     /** Check if this Chip has default preferences, and if so and they have not yet been loaded, loads them into the Preferences node
-     * for this Chip. 
+     * for this Chip.
      * <p>
-     * Warning: If this method is called in a Chip's constructor and previous preferences exist from before 
+     * Warning: If this method is called in a Chip's constructor and previous preferences exist from before
      * the use of this method, they could be deleted because the key PREFERENCES_LOADED_ONCE_KEY has not yet been written to signal that
      * preferences were loaded at least once. To use this method for existing Chip classes, the Chip's constructor can also call
      * the Biasgen isInitalized method to check if any Pot has been set to a non-zero value.
      * @see ch.unizh.ini.jaer.chip.retina.DVS128 for an example of use
-     * @see #getDefaultPreferencesFile() 
+     * @see #getDefaultPreferencesFile()
      */
     protected void maybeLoadDefaultPreferences() {
-        if(getDefaultPreferencesFile()!=null && !isDefaultPreferencesLoadedOnce()){
+        if((getDefaultPreferencesFile()!=null) && !isDefaultPreferencesLoadedOnce()){
              InputStream is = null;
              try {
                  log.warning("no default preferences were loaded so far - importing from "+getDefaultPreferencesFile()+" to Preferences node "+getPrefs());
-                 
+
                  is = new BufferedInputStream(new FileInputStream(getDefaultPreferencesFile()));
                  Preferences.importPreferences(is);  // this uses the Preferences object to load all preferences from the input stream which an xml file
                  getPrefs().putBoolean(PREFERENCES_LOADED_ONCE_KEY, true);
@@ -154,68 +154,70 @@ public class Chip extends Observable {
                  Logger.getLogger(Chip.class.getName()).log(Level.SEVERE, null, ex);
              } finally {
                  try {
-                     if(is!=null) is.close();
+                     if(is!=null) {
+						is.close();
+					}
                  } catch (IOException ex) {
                      Logger.getLogger(Chip.class.getName()).log(Level.SEVERE, null, ex);
                  }
              }
          }
     }
-    
 
-    /** This empty method can be called to clean up if the Chip is no longer 
+
+    /** This empty method can be called to clean up if the Chip is no longer
      * used or need to un-install some registered GUI elements or clean up memory. */
     public void cleanup(){
 
     }
-    
+
     public Biasgen getBiasgen() {
         return biasgen;
     }
-    
+
     public void setBiasgen(Biasgen biasgen) {
         this.biasgen = biasgen;
     }
-    
+
     public String getName() {
         return name;
     }
-    
+
     public void setName(String name) {
         this.name = name;
     }
-    
+
     /** gets the hardware interface for this Chip
      @return the hardware interface
      */
     public HardwareInterface getHardwareInterface() {
         return this.hardwareInterface;
     }
-    
-    /** Sets the hardware interface and the bias generators hardware interface 
+
+    /** Sets the hardware interface and the bias generators hardware interface
      * (if the interface supports the bias generator). Notifies Observers with the new HardwareInterface.
      *@param hardwareInterface the interface
      */
     public void setHardwareInterface(final HardwareInterface hardwareInterface) {
 //        System.out.println(Thread.currentThread()+" : Chip.setHardwareInterface("+hardwareInterface+")");
         this.hardwareInterface = hardwareInterface;
-        if(getBiasgen()!=null && hardwareInterface instanceof BiasgenHardwareInterface) {
+        if((getBiasgen()!=null) && (hardwareInterface instanceof BiasgenHardwareInterface)) {
             biasgen.setHardwareInterface((BiasgenHardwareInterface)hardwareInterface);
         }
         setChanged();
         notifyObservers(hardwareInterface);
-        if(hardwareInterface instanceof AEMonitorInterface && this instanceof AEChip){
+        if((hardwareInterface instanceof AEMonitorInterface) && (this instanceof AEChip)){
             ((AEMonitorInterface)hardwareInterface).setChip((AEChip)this);
         }
     }
-    
+
     /** Gets the last data associated with this Chip object. Whatever method obtains this data is responsible for setting this reference.
      @return the last data object.
      */
     public Object getLastData() {
         return lastData;
     }
-    
+
     /** Sets the last data captured or rendered by this Chip. Can be used to reference this data through the Chip instance.
      @param lastData the data. Usually but not always (e.g. MotionData) this object is of type EventPacket.
      * @see net.sf.jaer.event.EventPacket
@@ -249,17 +251,17 @@ public class Chip extends Observable {
     public void setRemoteControl(RemoteControl remoteControl) {
         this.remoteControl = remoteControl;
     }
-    
+
     /** Returns some default firmware file for soft-download to Cypress FX2/3 blank device.  Default is null.
-     * 
+     *
      * @return full (or relative to start folder "java") path to firmware .bix file for Cypress FX2 based devices.
      */
     public  String getDefaultFirmwareBixFileForBlankDevice() {
         return defaultFirmwareBixFileForBlankDevice;
     }
 
-   /** Sets some default firmware file for soft-download to device.  
-     * 
+   /** Sets some default firmware file for soft-download to device.
+     *
      * @return full (or relative to start folder "java") path to firmware .bix file for Cypress FX2 based devices.
      */
    public  void setDefaultFirmwareBixFileForBlankDevice(String aDefaultFirmwareBixFileForBlankDevice) {
@@ -269,9 +271,9 @@ public class Chip extends Observable {
 
     /**
     * This file, if not null, is used to import preferences if they have not been initialized.
-    * A Chip can set this path relative to the startup folder (in jAER the startup folder is host/java) to 
+    * A Chip can set this path relative to the startup folder (in jAER the startup folder is host/java) to
     * automatically have preferences imported on first use. For example set the file path to "../../biasgenSettings/dvs128/DVS128Fast.xml".
-    * 
+    *
      * @return the defaultPreferencesFile
      */
     public String getDefaultPreferencesFile() {
@@ -280,26 +282,26 @@ public class Chip extends Observable {
 
     /**
      * This file, if not null, is used to import preferences if they have not been initialized.
-    * A Chip can set this path relative to the startup folder (in jAER the startup folder is host/java) to 
+    * A Chip can set this path relative to the startup folder (in jAER the startup folder is host/java) to
     * automatically have preferences imported on first use.
-    * 
+    *
      * @param defaultPreferencesFile the defaultPreferencesFile to set
      */
     public void setDefaultPreferencesFile(String defaultPreferencesFile) {
         this.defaultPreferencesFile = defaultPreferencesFile;
     }
-    
+
     /** Returns true if default preferences were loaded at least once.
-     * 
+     *
      * @return true if preferences were loaded.
      */
     public boolean isDefaultPreferencesLoadedOnce(){
         return getPrefs().getBoolean(PREFERENCES_LOADED_ONCE_KEY, false);
     }
-    
-    
+
+
     /** Returns the logger used to log info
-     * 
+     *
      * @return logger of the chip
      */
     public Logger getLog(){
@@ -308,7 +310,7 @@ public class Chip extends Observable {
 
     /**
      *  Returns built-in PropertyChangeSupport to allow this Chip to generate PropertyChangeEvents.
-  
+
      * @return the support
      */
     public PropertyChangeSupport getSupport() {

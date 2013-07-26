@@ -11,7 +11,6 @@
  */
 package net.sf.jaer.graphics;
 
-import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 
 import javax.media.opengl.GL;
@@ -27,12 +26,9 @@ import javax.media.opengl.GLAutoDrawable;
  * @see net.sf.jaer.graphics.AEChipRenderer
  */
 public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements DisplayMethod2D {
-
-
 	public final float SPECIAL_BAR_LOCATION_X=-5;
 	public final float SPECIAL_BAR_LOCATION_Y=0;
 	public final float SPECIAL_BAR_LINE_WIDTH=8;
-
 
 	/**
 	 * Creates a new instance of ChipRendererDisplayMethod
@@ -53,18 +49,8 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 	private float clearDisplay(Chip2DRenderer renderer, GL2 gl) {
 		float gray = renderer.getGrayValue();
 		gl.glClearColor(gray, gray, gray, 0f);
-		gl.glClear(GL2.GL_COLOR_BUFFER_BIT);
+		gl.glClear(GL.GL_COLOR_BUFFER_BIT);
 		return gray;
-	}
-
-	private boolean isValidRasterPosition(GL2 gl) {
-		boolean validRaster;
-		ByteBuffer buf = ByteBuffer.allocate(1);
-		gl.glGetBooleanv(GL2.GL_CURRENT_RASTER_POSITION_VALID, buf);
-		buf.rewind();
-		byte b = buf.get();
-		validRaster = b != 0;
-		return validRaster;
 	}
 
 	private void displayQuad(GLAutoDrawable drawable){
@@ -101,8 +87,8 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 			gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP);
 			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL2.GL_LINEAR);
-			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL2.GL_LINEAR);
+			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR);
+			gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR);
 			gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2ES1.GL_TEXTURE_ENV_MODE, GL.GL_REPLACE);
 			gl.glTexImage2D (GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA,
 				GL.GL_FLOAT, pixmap);
@@ -156,7 +142,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 		gl.glColor3f(0, 0, 1f);
 		gl.glLineWidth(1f);
 		{
-			gl.glBegin(GL2.GL_LINE_LOOP);
+			gl.glBegin(GL.GL_LINE_LOOP);
 			final float o = 0f;
 			final float w = chip.getSizeX();
 			final float h = chip.getSizeY();
@@ -174,7 +160,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 			if (n > 0) {
 				gl.glColor3f(1, 1, 1);
 				gl.glLineWidth(SPECIAL_BAR_LINE_WIDTH);
-				gl.glBegin(GL2.GL_LINE_STRIP);
+				gl.glBegin(GL.GL_LINE_STRIP);
 				gl.glVertex2f(SPECIAL_BAR_LOCATION_X, SPECIAL_BAR_LOCATION_Y);
 				gl.glVertex2f(SPECIAL_BAR_LOCATION_X, SPECIAL_BAR_LOCATION_Y + n);
 				gl.glEnd();
@@ -262,7 +248,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 		gl.glColor3f(0, 0, 1f);
 		gl.glLineWidth(1f);
 		{
-			gl.glBegin(GL2.GL_LINE_LOOP);
+			gl.glBegin(GL.GL_LINE_LOOP);
 			final float o = .5f;
 			final float w = chip.getSizeX() - 1;
 			final float h = chip.getSizeY() - 1;
@@ -280,7 +266,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 			if (n > 0) {
 				gl.glColor3f(1, 1, 1);
 				gl.glLineWidth(SPECIAL_BAR_LINE_WIDTH);
-				gl.glBegin(GL2.GL_LINE_STRIP);
+				gl.glBegin(GL.GL_LINE_STRIP);
 				gl.glVertex2f(SPECIAL_BAR_LOCATION_X, SPECIAL_BAR_LOCATION_Y);
 				gl.glVertex2f(SPECIAL_BAR_LOCATION_X, SPECIAL_BAR_LOCATION_Y + n);
 				gl.glEnd();
