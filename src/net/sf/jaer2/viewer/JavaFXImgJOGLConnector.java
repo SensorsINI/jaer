@@ -18,7 +18,6 @@ import javax.media.opengl.GLDrawableFactory;
 import javax.media.opengl.GLEventListener;
 import javax.media.opengl.GLOffscreenAutoDrawable;
 import javax.media.opengl.GLProfile;
-import javax.media.opengl.GLRunnable;
 import javax.media.opengl.fixedfunc.GLMatrixFunc;
 
 import com.jogamp.common.nio.Buffers;
@@ -26,13 +25,17 @@ import com.jogamp.common.nio.Buffers;
 public class JavaFXImgJOGLConnector extends ImageView {
 	private final WritableImage image;
 	private final PixelWriter pxWriter;
-	private final GLOffscreenAutoDrawable glOffscreenDrawable;
-	private final GLEventListener readOutListener = new GLReadOutToImage();
 
-	private static final int imageBufferBGRA8Number = 3;
-	private final Semaphore syncImageBufferBGRA8Swap[] = new Semaphore[JavaFXImgJOGLConnector.imageBufferBGRA8Number];
-	private final ByteBuffer imageBufferBGRA8[] = new ByteBuffer[JavaFXImgJOGLConnector.imageBufferBGRA8Number];
 	private static final PixelFormat<ByteBuffer> pxFormat = PixelFormat.getByteBgraPreInstance();
+
+	private static final int glOffscreenDrawableNumber = 8;
+	private final Semaphore syncGLOffscreenDrawable[] = new Semaphore[JavaFXImgJOGLConnector.glOffscreenDrawableNumber];
+	private final GLOffscreenAutoDrawable glOffscreenDrawable[] = new GLOffscreenAutoDrawable[JavaFXImgJOGLConnector.glOffscreenDrawableNumber];
+	private final GLReadOutToImage glReadOutToImage[] = new GLReadOutToImage[JavaFXImgJOGLConnector.glOffscreenDrawableNumber];
+
+	private static final int imageBufferNumber = 4;
+	private final Semaphore syncImageBuffer[] = new Semaphore[JavaFXImgJOGLConnector.imageBufferNumber];
+	private final ByteBuffer imageBuffer[] = new ByteBuffer[JavaFXImgJOGLConnector.imageBufferNumber];
 
 	public JavaFXImgJOGLConnector(final int width, final int height) {
 		super();
@@ -43,9 +46,9 @@ public class JavaFXImgJOGLConnector extends ImageView {
 		setImage(image);
 
 		// Initialize image buffers for pixel data transfer.
-		for (int i = 0; i < JavaFXImgJOGLConnector.imageBufferBGRA8Number; i++) {
-			syncImageBufferBGRA8Swap[i] = new Semaphore(1);
-			imageBufferBGRA8[i] = Buffers.newDirectByteBuffer(4 * width * height);
+		for (int i = 0; i < JavaFXImgJOGLConnector.imageBufferNumber; i++) {
+			syncImageBuffer[i] = new Semaphore(1);
+			imageBuffer[i] = Buffers.newDirectByteBuffer(4 * width * height);
 		}
 
 		GLProfile.initSingleton();
@@ -58,86 +61,66 @@ public class JavaFXImgJOGLConnector extends ImageView {
 
 		final GLDrawableFactory factory = GLDrawableFactory.getFactory(caps.getGLProfile());
 
-		glOffscreenDrawable = factory.createOffscreenAutoDrawable(null, caps, null, width, height, null);
-		glOffscreenDrawable.setAutoSwapBufferMode(true);
+		for (int i = 0; i < JavaFXImgJOGLConnector.glOffscreenDrawableNumber; i++) {
+			syncGLOffscreenDrawable[i] = new Semaphore(1);
+			glOffscreenDrawable[i] = factory.createOffscreenAutoDrawable(null, caps, null, width, height, null);
+			glReadOutToImage[i] = new GLReadOutToImage();
 
-		glOffscreenDrawable.display();
-
-		glOffscreenDrawable.addGLEventListener(readOutListener);
+			glOffscreenDrawable[i].setAutoSwapBufferMode(true);
+			glOffscreenDrawable[i].display();
+			glOffscreenDrawable[i].addGLEventListener(glReadOutToImage[i]);
+		}
 	}
 
-	public synchronized void addGLEventListener(final GLEventListener listener) {
-		// Add the new listener at the end of the queue, but before the readOutListener.
-		glOffscreenDrawable.addGLEventListener(getGLEventListenerCount(), listener);
-	}
+	public synchronized GLAutoDrawable getDrawable() {
+		int selectedGLOffscreenDrawable = 0;
 
-	public synchronized void addGLEventListener(final int index, final GLEventListener listener)
-		throws IndexOutOfBoundsException {
-		// Index can never be negative or bigger than the count (minus the readOutListener).
-		if ((index < 0) || (index > getGLEventListenerCount())) {
-			throw new IndexOutOfBoundsException();
+		while (!syncGLOffscreenDrawable[selectedGLOffscreenDrawable].tryAcquire()) {
+			if (Thread.currentThread().isInterrupted()) {
+				return null;
+			}
+
+			selectedGLOffscreenDrawable++;
+
+			if (selectedGLOffscreenDrawable >= JavaFXImgJOGLConnector.glOffscreenDrawableNumber) {
+				return null;
+			}
 		}
 
-		// Add new listener at specified index.
-		glOffscreenDrawable.addGLEventListener(index, listener);
-	}
+		glReadOutToImage[selectedGLOffscreenDrawable].releaseSelectedGLOffscreenDrawable = selectedGLOffscreenDrawable;
+		glOffscreenDrawable[selectedGLOffscreenDrawable].getContext().makeCurrent();
 
-	public synchronized GLEventListener getGLEventListener(final int index) throws IndexOutOfBoundsException {
-		// Index can never be negative or bigger than the count (minus the readOutListener).
-		if ((index < 0) || (index > getGLEventListenerCount())) {
-			throw new IndexOutOfBoundsException();
-		}
-
-		// Get new listener from specified index.
-		return glOffscreenDrawable.getGLEventListener(index);
-	}
-
-	public synchronized int getGLEventListenerCount() {
-		// Transparently remove the readout listener.
-		return (glOffscreenDrawable.getGLEventListenerCount() - 1);
-
-	}
-
-	public synchronized GLEventListener removeGLEventListener(final GLEventListener listener) {
-		// Never remove the readOutListener.
-		if (listener != readOutListener) {
-			return glOffscreenDrawable.removeGLEventListener(listener);
-		}
-
-		return null;
-	}
-
-	public synchronized void display() {
-		glOffscreenDrawable.display();
-	}
-
-	public synchronized boolean invoke(final GLRunnable glRunnable) {
-		return glOffscreenDrawable.invoke(false, glRunnable);
-	}
-
-	public synchronized void destroy() {
-		glOffscreenDrawable.destroy();
+		return glOffscreenDrawable[selectedGLOffscreenDrawable];
 	}
 
 	private class GLReadOutToImage implements GLEventListener {
+		public int releaseSelectedGLOffscreenDrawable = 0;
+
 		@Override
 		public void display(final GLAutoDrawable drawable) {
+			drawable.getContext().makeCurrent();
+
 			final GL2 gl = drawable.getGL().getGL2();
 
 			// Read back final result.
 			int selectedImageBuffer = 0;
 
-			while (!syncImageBufferBGRA8Swap[selectedImageBuffer].tryAcquire()) {
+			while (!syncImageBuffer[selectedImageBuffer].tryAcquire()) {
 				if (Thread.currentThread().isInterrupted()) {
 					return;
 				}
 
-				selectedImageBuffer = (selectedImageBuffer + 1) % JavaFXImgJOGLConnector.imageBufferBGRA8Number;
+				selectedImageBuffer = (selectedImageBuffer + 1) % JavaFXImgJOGLConnector.imageBufferNumber;
 			}
 
 			gl.glReadBuffer(GL.GL_FRONT);
 			gl.glReadPixels(0, 0, (int) image.getWidth(), (int) image.getHeight(), GL.GL_BGRA,
-				GL2GL3.GL_UNSIGNED_INT_8_8_8_8_REV, imageBufferBGRA8[selectedImageBuffer]);
+				GL2GL3.GL_UNSIGNED_INT_8_8_8_8_REV, imageBuffer[selectedImageBuffer]);
+
+			drawable.getContext().release();
+
+			glOffscreenDrawable[releaseSelectedGLOffscreenDrawable].getContext().release();
+			syncGLOffscreenDrawable[releaseSelectedGLOffscreenDrawable].release();
 
 			final int releaseSelectedImageBuffer = selectedImageBuffer;
 
@@ -146,10 +129,10 @@ public class JavaFXImgJOGLConnector extends ImageView {
 				public void run() {
 					// Write current buffer out.
 					pxWriter.setPixels(0, 0, (int) image.getWidth(), (int) image.getHeight(),
-						JavaFXImgJOGLConnector.pxFormat, imageBufferBGRA8[releaseSelectedImageBuffer],
+						JavaFXImgJOGLConnector.pxFormat, imageBuffer[releaseSelectedImageBuffer],
 						((int) image.getWidth()) * 4);
 
-					syncImageBufferBGRA8Swap[releaseSelectedImageBuffer].release();
+					syncImageBuffer[releaseSelectedImageBuffer].release();
 				}
 			});
 		}

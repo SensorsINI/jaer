@@ -29,9 +29,9 @@ public interface Chip {
 	 */
 	public int getNumPixels();
 
-	public List<Class<Event>> getEventTypes();
+	public List<Class<? extends Event>> getEventTypes();
 
-	public EventPacket<Event> extractEventPacket(RawEventPacket rawEventPacket);
+	public <E extends Event> EventPacket<E> extractEventPacket(RawEventPacket rawEventPacket);
 
-	public RawEventPacket reconstructRawEventPacket(EventPacket<Event> eventPacket);
+	public <E extends Event> RawEventPacket reconstructRawEventPacket(EventPacket<E> eventPacket);
 }
