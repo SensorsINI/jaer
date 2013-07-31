@@ -187,9 +187,6 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         checkPixmapAllocation();
         resetSelectedPixelEventCount(); // TODO fix locating pixel with xsel ysel
 
-        if (packet == null) {
-            return;
-        }
         this.packet = packet;
         if (!(packet.getEventPrototype() instanceof ApsDvsEvent)) {
             log.warning("wrong input event class, got " + packet.getEventPrototype() + " but we need to have " + ApsDvsEvent.class);

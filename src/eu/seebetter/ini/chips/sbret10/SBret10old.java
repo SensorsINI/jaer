@@ -1634,9 +1634,6 @@ public class SBret10old extends ApsDvsChip {
 			checkPixmapAllocation();
 			resetSelectedPixelEventCount(); // TODO fix locating pixel with xsel ysel
 
-			if (packet == null) {
-				return;
-			}
 			//packet.sortByTimeStamp();
 			this.packet = packet;
 			if (packet.getEventClass() != ApsDvsEvent.class) {

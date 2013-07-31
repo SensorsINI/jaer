@@ -27,7 +27,7 @@ public class Nodeboard_Framegrabber extends EventFilter2D {
         private int pixCnt=65535; // TODO debug
         boolean ignore = true;
     private int frameTime;
-    
+
 
     {
         //setPropertyTooltip("corrTimeMax", "Max time in us that events are correlated in the pixel");
@@ -53,7 +53,7 @@ public class Nodeboard_Framegrabber extends EventFilter2D {
             int lastts=0;
             int tsz=0,kk=0,t=0;
             int sz=in.getSize();
-            
+
         for (Object o : in) {
             BasicEvent ei = (BasicEvent) o;
             kk++;
@@ -76,9 +76,9 @@ public class Nodeboard_Framegrabber extends EventFilter2D {
                         e.x=0;
                         e.y=0;
                         pixCnt=0;
-                    } else if (!ignore) { 
-                        if ((data%256)>0 && (data%256<64)) {
-                            for (t=0;t<data%128;t++){
+                    } else if (!ignore) {
+                        if (((data%256)>0) && ((data%256)<64)) {
+                            for (t=0;t<(data%128);t++){
                                 PolarityEvent e = (PolarityEvent) outItr.nextOutput();
                                 //e.startOfFrame=false;
                                 //e.setAdcSample(-1);//(short)data);//(data & 0xFF)*32); //data_l*16
@@ -86,10 +86,10 @@ public class Nodeboard_Framegrabber extends EventFilter2D {
                                 e.address = pixCnt; //(data & 0xFF)*32; //data_l*16
                                 //e.polarity= PolarityADCSampleEvent.Polarity.On;
                                 e.x= (short)(pixCnt/256); //countX[0];
-                                e.y= (short)(pixCnt%256); //countY[0];                                
+                                e.y= (short)(pixCnt%256); //countY[0];
                             }
-                        } else if ((data%256)>127 && (data%256<192)) {
-                            for (t=0;t<data%128;t++){
+                        } else if (((data%256)>127) && ((data%256)<192)) {
+                            for (t=0;t<(data%128);t++){
                                 PolarityEvent e = (PolarityEvent) outItr.nextOutput();
                                 //e.startOfFrame=false;
                                 //e.setAdcSample(-1);//(short)data);//(data & 0xFF)*32); //data_l*16
@@ -97,12 +97,12 @@ public class Nodeboard_Framegrabber extends EventFilter2D {
                                 e.address = pixCnt; //(data & 0xFF)*32; //data_l*16
                                 //e.polarity= PolarityADCSampleEvent.Polarity.Off;
                                 e.x= (short)(pixCnt/256); //countX[0];
-                                e.y= (short)(pixCnt%256); //countY[0];                                
+                                e.y= (short)(pixCnt%256); //countY[0];
                             }
                         }
                         pixCnt++;
-                        if ((data/256)>0 && (data/256)<64) {
-                            for (t=0;t<(data/256)%128;t++) {
+                        if (((data/256)>0) && ((data/256)<64)) {
+                            for (t=0;t<((data/256)%128);t++) {
                                 PolarityEvent e1 = (PolarityEvent) outItr.nextOutput();
                                 //e1.setAdcSample(-1); //(short)(data/256)); //((data & 0xFF00)/256)*32); //data_h*16
                                 e1.timestamp = (ei.timestamp);
@@ -113,8 +113,8 @@ public class Nodeboard_Framegrabber extends EventFilter2D {
                                 e1.y= (short)(pixCnt%256); //countY[0];
                                 //e1.startOfFrame=false;
                             }
-                        } else if ((data/256)>127 && (data/256)<192) {
-                            for (t=0;t<(data/256)%128;t++) {
+                        } else if (((data/256)>127) && ((data/256)<192)) {
+                            for (t=0;t<((data/256)%128);t++) {
                                 PolarityEvent e1 = (PolarityEvent) outItr.nextOutput();
                                 //e1.setAdcSample(-1); //(short)(data/256)); //((data & 0xFF00)/256)*32); //data_h*16
                                 e1.timestamp = (ei.timestamp);
@@ -129,7 +129,7 @@ public class Nodeboard_Framegrabber extends EventFilter2D {
 
                         //System.out.println("New ADC event: type "+sampleType+", x "+e.x+", y "+e.y);
                         pixCnt++;
-                        if (pixCnt>=65535) {    
+                        if (pixCnt>=65535) {
                             ignore=true;
                             tsz=in.getSize();
                             return out;
@@ -138,15 +138,15 @@ public class Nodeboard_Framegrabber extends EventFilter2D {
                     diffts=ei.timestamp-lastts;
                     lastts=ei.timestamp;
 
-                }        
+                }
         return out;
     }
 
-    @Override 
-    public boolean isFilterEnabled(){
+    @Override
+    public synchronized boolean isFilterEnabled(){
             return this.filterEnabled; // force active
         }
-    
+
     //@Override
     public Object getFilterState() {
         return null;
@@ -169,5 +169,5 @@ public class Nodeboard_Framegrabber extends EventFilter2D {
 
     private void resetCounters() {
             pixCnt=0;
-        }    
+        }
 }

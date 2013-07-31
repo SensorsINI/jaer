@@ -43,7 +43,7 @@ public class OnsetFilter extends RepetitiousFilter implements FrameAnnotater{
 	}
 
 	@Override
-	public void resetFilter (){
+	public synchronized void resetFilter (){
 		super.resetFilter();
 	}
 

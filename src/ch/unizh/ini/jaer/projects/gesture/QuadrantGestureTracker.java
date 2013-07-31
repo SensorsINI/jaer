@@ -997,50 +997,25 @@ public class QuadrantGestureTracker extends EventFilter2D implements FrameAnnota
 		c.setColorAccordingToQuadrant(x,y);   //added PW
 
 		Color color=c.getColor();
-		if(true){ // draw boxes
-			iy=y-sy;    // line under center
-			mn=x-sx;
-			mx=x+sx;
-			for(ix=mn;ix<=mx;ix++){
-				colorPixel(ix,iy,fr,clusterColorChannel,color);
-			}
-			iy=y+sy;    // line over center
-			for(ix=mn;ix<=mx;ix++){
-				colorPixel(ix,iy,fr,clusterColorChannel,color);
-			}
-			ix=x-sx;        // line to left
-			mn=y-sy;
-			mx=y+sy;
-			for(iy=mn;iy<=mx;iy++){
-				colorPixel(ix,iy,fr,clusterColorChannel,color);
-			}
-			ix=x+sx;    // to right
-			for(iy=mn;iy<=mx;iy++){
-				colorPixel(ix,iy,fr,clusterColorChannel,color);
-			}
-		}else{ // draw diamond reflecting manhatten distance measure doesn't look very nice because not antialiased at all
-			iy=y-sy;    // line up right from bot
-			ix=x;
-			mx=x+sx;
-			while(ix<mx){
-				colorPixel(ix++,iy++,fr,clusterColorChannel,color);
-			}
-			mx=x+sx;
-			ix=x;
-			iy=y+sy;    // line down right from top
-			while(ix<mx){
-				colorPixel(ix++,iy--,fr,clusterColorChannel,color);
-			}
-			ix=x;        // line from top down left
-			iy=y+sy;
-			while(iy>=y){
-				colorPixel(ix--,iy--,fr,clusterColorChannel,color);
-			}
-			ix=x;
-			iy=y-sy;
-			while(iy<y){
-				colorPixel(ix--,iy++,fr,clusterColorChannel,color);
-			}
+		iy=y-sy;    // line under center
+		mn=x-sx;
+		mx=x+sx;
+		for(ix=mn;ix<=mx;ix++){
+			colorPixel(ix,iy,fr,clusterColorChannel,color);
+		}
+		iy=y+sy;    // line over center
+		for(ix=mn;ix<=mx;ix++){
+			colorPixel(ix,iy,fr,clusterColorChannel,color);
+		}
+		ix=x-sx;        // line to left
+		mn=y-sy;
+		mx=y+sy;
+		for(iy=mn;iy<=mx;iy++){
+			colorPixel(ix,iy,fr,clusterColorChannel,color);
+		}
+		ix=x+sx;    // to right
+		for(iy=mn;iy<=mx;iy++){
+			colorPixel(ix,iy,fr,clusterColorChannel,color);
 		}
 
 		ArrayList<Point2D.Float> points=c.getPath();

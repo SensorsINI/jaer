@@ -28,11 +28,11 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 @Description("Subsamples x and y addresses")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SubSampler extends EventFilter2D {
-    
+
     private int bits;
     private boolean shiftToCenterEnabled=getBoolean("shiftToCenterEnabled", false);
     short shiftx, shifty;
-        
+
     /** Creates a new instance of SubSampler */
     public SubSampler(AEChip chip) {
         super(chip);
@@ -41,36 +41,43 @@ public class SubSampler extends EventFilter2D {
         setPropertyTooltip("bits","Subsample by this many bits, by masking these off X and Y addreses");
         setPropertyTooltip("shiftToCenterEnabled","Shifts output addresses to be centered. Disable to leave at lower left corner of scene");
     }
-    
+
     public Object getFilterState() {
         return null;
     }
-    
-    public void resetFilter() {
+
+    @Override
+	public void resetFilter() {
     }
-    
-    public void initFilter() {
+
+    @Override
+	public void initFilter() {
     }
-    
+
     public int getBits() {
         return bits;
     }
-    
-    @Override public void setFilterEnabled(boolean yes){
+
+    @Override public synchronized void setFilterEnabled(boolean yes){
         super.setFilterEnabled(yes);
         computeShifts();
     }
-    
+
     /** Sets the subsampler subsampling shift.
      @param bits the number of bits to subsample by, e.g. bits=1 divides by two
      */
     synchronized public void setBits(int bits) {
-        if(bits<0) bits=0; else if(bits>8) bits=8;
+        if(bits<0) {
+			bits=0;
+		}
+		else if(bits>8) {
+			bits=8;
+		}
         this.bits = bits;
         putInt("bits",bits);
         computeShifts();
     }
-    
+
     private void computeShifts() {
         if(bits==0){
             shiftx=0; shifty=0; return;
@@ -82,11 +89,18 @@ public class SubSampler extends EventFilter2D {
         s2=s1>>>bits;
         shifty=(short)((s1-s2)/2);
     }
-    
-    synchronized public EventPacket filterPacket(EventPacket in) {
-        if(in==null) return null;
-        if(!filterEnabled) return in;
-        if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
+
+    @Override
+	synchronized public EventPacket filterPacket(EventPacket in) {
+        if(in==null) {
+			return null;
+		}
+        if(!filterEnabled) {
+			return in;
+		}
+        if(enclosedFilter!=null) {
+			in=enclosedFilter.filterPacket(in);
+		}
         checkOutputPacketEventType(in);
         OutputEventIterator oi=out.outputIterator();
         int sx=shiftToCenterEnabled?shiftx:0;
@@ -115,5 +129,5 @@ public class SubSampler extends EventFilter2D {
         this.shiftToCenterEnabled = shiftToCenterEnabled;
         putBoolean("shiftToCenterEnabled", shiftToCenterEnabled);
     }
-    
+
 }

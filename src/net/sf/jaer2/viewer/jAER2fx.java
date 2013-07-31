@@ -25,7 +25,8 @@ public class jAER2fx extends Application {
 		0);
 
 	public static void main(final String[] args) {
-		// Launch the JavaFX application: do initialization and call start() when ready.
+		// Launch the JavaFX application: do initialization and call start()
+		// when ready.
 		Application.launch(args);
 	}
 

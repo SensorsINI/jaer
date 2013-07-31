@@ -5,19 +5,45 @@
  */
 package jspikestack;
 
-import java.awt.*;
-import java.awt.event.*;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.GridLayout;
+import java.awt.Insets;
+import java.awt.SystemColor;
+import java.awt.Window;
+import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
+import java.awt.event.KeyEvent;
 import java.awt.geom.Point2D;
-import java.beans.*;
+import java.beans.BeanInfo;
 import java.beans.Introspector;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyDescriptor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.logging.Logger;
-import javax.swing.*;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.border.*;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JSlider;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
+import javax.swing.border.Border;
+import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -33,7 +59,7 @@ filter chains have panels built for them that are enlosed inside the filter pane
  * <li> enum properties construct a JComboBox control, which all the possible enum constant values.
  * </ul>
  * <p>
- * If a filter wants to automatically have the GUI controls reflect what the property state is, then it should 
+ * If a filter wants to automatically have the GUI controls reflect what the property state is, then it should
  * fire PropertyChangeEvent when the property changes. For example, an {@link EventFilter} can implement a setter like this:
  * <pre>
 public void setMapEventsToLearnedTopologyEnabled(boolean mapEventsToLearnedTopologyEnabled) {
@@ -42,7 +68,7 @@ this.mapEventsToLearnedTopologyEnabled = mapEventsToLearnedTopologyEnabled;
 getPrefs().putBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled);
 }
 </pre>
- * Here, <code>support</code> is a protected field of EventFilter. The change event comes here to FilterPanel and the appropriate automatically 
+ * Here, <code>support</code> is a protected field of EventFilter. The change event comes here to FilterPanel and the appropriate automatically
  * generated control is modified.
  * <p>
  * Note that calling firePropertyChange as shown above will inform listeners <em>before</em> the property has actually been
@@ -55,7 +81,7 @@ getPrefs().putBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", mapEv
  * will install a tip for the property sizeClassificationEnabled.
  * <p>
  * <strong>Slider controls.</strong>
- * 
+ *
  * If you want a slider for an int or float property, then create getMin and getMax methods for the property, e.g., for
  * the property <code>dt</code>:
  * <pre>
@@ -143,8 +169,8 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
     private float DEFAULT_REAL_VALUE=0.01f; // value jumped to from zero on key or wheel up
 
     Controllable controllable;
-    
-    
+
+
     /** Creates new form FilterPanel */
     public ControlPanel(Controllable topLevel) {
 //        titledBorder = new TitledBorder("Network Controls");
@@ -154,7 +180,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
 //        redLineBorder = BorderFactory.createLineBorder(Color.blue);
 //        setBorder(titledBorder);
         initComponents();
-        
+
         addController(topLevel,this);
     }
 
@@ -178,11 +204,11 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
 //        ToolTipManager.sharedInstance().setDismissDelay(10000); // to show tips
 //        setToolTipText(f.getDescription());
 //    }
-    
-    
-    
-    
-    
+
+
+
+
+
 
     // checks for group container and adds to that if needed.
  // checks for group container and adds to that if needed.
@@ -190,7 +216,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
 //        JPanel pan = new JPanel();
 //        pan.setLayout(new BoxLayout(pan, BoxLayout.X_AXIS));
 //        controls.add(pan);
-//        
+//
 //        if (!getControllable().hasPropertyGroups()) {
 //            pan.add(comp);
 ////        if(inherited){
@@ -222,26 +248,26 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
 //        add(pan); // to fix horizontal all left alignment
 //        controls.add(comp);
 //    }
-    
-    
+
+
     /** Adds a top-level control */
 //    void addController(Controllable filter)
 //    {
 //        addController(filter,this);
-//        
+//
 //    }
-    
-    
+
+
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
     void addController(final Controllable controllable,final JPanel hostPanel) {
 //        JPanel control = null;
 //        NetController filter = getControllable();
-        
+
         hostPanel.setLayout(new javax.swing.BoxLayout(hostPanel, javax.swing.BoxLayout.Y_AXIS));
-        
+
         boolean topLevel=hostPanel==this;
-        
-        
+
+
         if (topLevel) // Top-Level control
         {   titledBorder = new TitledBorder(controllable.getName());
             titledBorder.getBorderInsets(this).set(1, 1, 1, 1);
@@ -249,30 +275,30 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
     //        normalBorder = BorderFactory.createLineBorder(Color.blue);
             redLineBorder = BorderFactory.createLineBorder(Color.blue);
             setBorder(titledBorder);
-        
+
         }
-        
+
         setControllable(controllable);
         try {
             info = Introspector.getBeanInfo(controllable.getClass());
             // TODO check if class is public, otherwise we can't access methods usually
             props = info.getPropertyDescriptors();
             methods = controllable.getClass().getMethods();
-            
-            
+
+
             JPanel controla=new JPanel();
-            
+
 //            if (controla==null)
-//                controla = 
-            
+//                controla =
+
             int numDoButtons = 0;
             // first add buttons when the method name starts with "do". These methods are by convention associated with actions.
             // these methods, e.g. "void doDisableServo()" do an action.
             Insets butInsets = new Insets(0, 0, 0, 0);
             for (Method m : methods) {
                 if (m.getName().startsWith("do")
-                        && m.getParameterTypes().length == 0
-                        && m.getReturnType() == void.class) {
+                        && (m.getParameterTypes().length == 0)
+                        && (m.getReturnType() == void.class)) {
                     numDoButtons++;
                     JButton button = new JButton(m.getName().substring(2).replace('_', ' '));
                     button.setMargin(butInsets);
@@ -281,7 +307,8 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
                     final Method meth = m;
                     button.addActionListener(new ActionListener() {
 
-                        public void actionPerformed(ActionEvent e) {
+                        @Override
+						public void actionPerformed(ActionEvent e) {
                             try {
                                 meth.invoke(f);
                             } catch (IllegalArgumentException ex) {
@@ -372,8 +399,8 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
 
             final JPanel groupPanel;
             if (topLevel)
-            {   groupPanel=this;                
-            }  
+            {   groupPanel=this;
+            }
             else
             {
                 String s=controllable.getName();
@@ -388,7 +415,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
                 groupPanel.add(controla);
                 controls.add(groupPanel); // visibility list
             }
-            
+
 
 //            if (getControllable().hasPropertyGroups()) {
 //                Set<String> groupSet = getControllable().getPropertyGroupSet();
@@ -417,24 +444,16 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
 //                }
                 JPanel control=null;
                 try {
-                    
-                    
-                    
+
+
+
                     boolean inherited = false;
 
-                    // TODO handle indexed properties 
+                    // TODO handle indexed properties
                     Class c = p.getPropertyType();
                     String name = p.getName();
 
-                    // check if method comes from a superclass of this EventFilter
-                    if (control != null && p.getReadMethod() != null && p.getWriteMethod() != null) {
-                        Method m = p.getReadMethod();
-                        if (m.getDeclaringClass() != getControllable().getClass()) {
-                            inherited = true;
-                        }
-                    }
-
-                    if (c == Integer.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                    if ((c == Integer.TYPE) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
 
                         SliderParams params;
                         if ((params = isSliderType(p, controllable)) != null) {
@@ -443,7 +462,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
                             control = new IntControl(getControllable(), p.getName(), p.getWriteMethod(), p.getReadMethod());
                         }
 //                        myadd(control, name, inherited);
-                    } else if (c == Float.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                    } else if ((c == Float.TYPE) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
                         SliderParams params;
                         if ((params = isSliderType(p, controllable)) != null) {
                             control = new FloatSliderControl(getControllable(), p.getName(), p.getWriteMethod(), p.getReadMethod(), params);
@@ -452,7 +471,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
 
                         }
 //                        myadd(control, name, inherited);
-                    } else if (c == Boolean.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                    } else if ((c == Boolean.TYPE) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
 //                        if (p.getName().equals("filterEnabled")) { // built in, skip
 //                            continue;
 //                        }
@@ -466,7 +485,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
 
                         control = new BooleanControl(getControllable(), p.getName(), p.getWriteMethod(), p.getReadMethod());
 //                        myadd(control, name, inherited);
-                    } else if (c == String.class && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                    } else if ((c == String.class) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
 //                        if (p.getName().equals("filterEnabled")) {
 //                            continue;
 //                        }
@@ -475,10 +494,10 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
 //                        }
                         control = new StringControl(getControllable(), p.getName(), p.getWriteMethod(), p.getReadMethod());
 //                        myadd(control, name, inherited);
-                    } else if (c != null && c.isEnum() && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                    } else if ((c != null) && c.isEnum() && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
                         control = new EnumControl(c, getControllable(), p.getName(), p.getWriteMethod(), p.getReadMethod());
 //                        myadd(control, name, inherited);
-                    }else if (c != null && c==Point2D.Float.class && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                    }else if ((c != null) && (c==Point2D.Float.class) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
                         control = new Point2DControl(getControllable(), p.getName(), p.getWriteMethod(), p.getReadMethod());
 //                        myadd(control, name, inherited);
                     } else {
@@ -491,22 +510,24 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
                 } catch (Exception e) {
                     log.warning(e + " caught on property " + p.getName() + " from EventFilter " + controllable);
                 }
-                if (control!=null)
-                    groupPanel.add(control);
-                
+                if (control!=null) {
+					groupPanel.add(control);
+				}
+
             }
-            
-            
-            
-            final ArrayList<JPanel> subcontrols=new ArrayList();            
+
+
+
+            final ArrayList<JPanel> subcontrols=new ArrayList();
             ActionListener subrebuilder=new ActionListener(){
 
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    
-                    for(JPanel s:subcontrols)
-                        groupPanel.remove(s);
-                    
+
+                    for(JPanel s:subcontrols) {
+						groupPanel.remove(s);
+					}
+
                     for (Controllable c:controllable.getSubControllers())
                     {
                         JPanel jp=new JPanel();
@@ -514,36 +535,36 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
                         addController(c,jp);
                         subcontrols.add(jp);
                     }
-                    
-                    
+
+
                 }
 
 
             };
-            
-                        
+
+
             controllable.addActionListener(subrebuilder);
-            
+
             subrebuilder.actionPerformed(null);
-            
+
 //            filter.updateControl();
-            
-            
-            
+
+
+
 //            groupContainerMap = null;
 //             sortedControls=null;
         } catch (Exception e) {
             log.warning("on adding controls for EventFilter " + controllable + " caught " + e);
             e.printStackTrace();
         }
-        
-        
+
+
         add(Box.createHorizontalGlue());
-        
-        
-       
-        
-        
+
+
+
+
+
         setControlsVisible(true);
 //        System.out.println("added glue to "+this);
     }
@@ -582,7 +603,8 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
         boolean initValue = false, nval;
         final JComboBox control;
 
-        public void set(Object o) {
+        @Override
+		public void set(Object o) {
             control.setSelectedItem(o);
         }
 
@@ -607,7 +629,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
             add(label);
             add(control);
             try {
-                Object x = (Object) r.invoke(filter);
+                Object x = r.invoke(filter);
                 if (x == null) {
                     log.warning("null Object returned from read method " + r);
                     return;
@@ -619,7 +641,8 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
             }
             control.addActionListener(new ActionListener() {
 
-                public void actionPerformed(ActionEvent e) {
+                @Override
+				public void actionPerformed(ActionEvent e) {
                     try {
                         w.invoke(filter, control.getSelectedItem());
                     } catch (Exception e2) {
@@ -637,7 +660,8 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
         boolean initValue = false, nval;
         final JTextField textField;
 
-        public void set(Object o) {
+        @Override
+		public void set(Object o) {
             if (o instanceof String) {
                 String b = (String) o;
                 textField.setText(b);
@@ -679,7 +703,8 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
             }
             textField.addActionListener(new ActionListener() {
 
-                public void actionPerformed(ActionEvent e) {
+                @Override
+				public void actionPerformed(ActionEvent e) {
                     try {
                         w.invoke(filter, textField.getText());
                     } catch (Exception e2) {
@@ -729,7 +754,8 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
             }
             checkBox.addActionListener(new ActionListener() {
 
-                public void actionPerformed(ActionEvent e) {
+                @Override
+				public void actionPerformed(ActionEvent e) {
                     try {
                         w.invoke(filter, checkBox.isSelected());
                     } catch (InvocationTargetException ite) {
@@ -741,7 +767,8 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
             });
         }
 
-        public void set(Object o) {
+        @Override
+		public void set(Object o) {
             if (o instanceof Boolean) {
                 Boolean b = (Boolean) o;
                 checkBox.setSelected(b);
@@ -757,7 +784,8 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
         JSlider slider;
         JTextField tf;
 
-        public void set(Object o) {
+        @Override
+		public void set(Object o) {
             if (o instanceof Integer) {
                 Integer b = (Integer) o;
                 slider.setValue(b);
@@ -794,7 +822,8 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
 
             slider.addChangeListener(new ChangeListener() {
 
-                public void stateChanged(ChangeEvent e) {
+                @Override
+				public void stateChanged(ChangeEvent e) {
                     try {
                         w.invoke(filter, new Integer(slider.getValue())); // write int value
                         ic.set(slider.getValue());
@@ -821,14 +850,15 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
         boolean dontProcessEvent = false; // to avoid slider callback loops
         float minValue, maxValue, currentValue;
 
-        public void set(Object o) {
+        @Override
+		public void set(Object o) {
             if (o instanceof Integer) {
                 Integer b = (Integer) o;
                 slider.setValue(b);
                 fc.set(b);
             } else if (o instanceof Float) {
                 float f = (Float) o;
-                int sv = Math.round((f - minValue) / (maxValue - minValue) * (slider.getMaximum() - slider.getMinimum()));
+                int sv = Math.round(((f - minValue) / (maxValue - minValue)) * (slider.getMaximum() - slider.getMinimum()));
                 slider.setValue(sv);
             }
         }
@@ -867,10 +897,11 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
 
             slider.addChangeListener(new ChangeListener() {
 
-                public void stateChanged(ChangeEvent e) {
+                @Override
+				public void stateChanged(ChangeEvent e) {
                     try {
                         int v = slider.getValue();
-                        currentValue = minValue + (maxValue - minValue) * ((float) slider.getValue() / (slider.getMaximum() - slider.getMinimum()));
+                        currentValue = minValue + ((maxValue - minValue) * ((float) slider.getValue() / (slider.getMaximum() - slider.getMinimum())));
                         w.invoke(filter, new Float(currentValue)); // write int value
                         fc.set(new Float(currentValue));
 
@@ -892,7 +923,8 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
         int initValue = 0, nval;
         final JTextField tf;
 
-        public void set(Object o) {
+        @Override
+		public void set(Object o) {
             if (o instanceof Integer) {
                 Integer b = (Integer) o;
                 tf.setText(b.toString());
@@ -933,7 +965,8 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
             add(tf);
             tf.addActionListener(new ActionListener() {
 
-                public void actionPerformed(ActionEvent e) {
+                @Override
+				public void actionPerformed(ActionEvent e) {
                     try {
                         int y = Integer.parseInt(
                                 tf.getText());
@@ -949,7 +982,8 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
             });
             tf.addKeyListener(new java.awt.event.KeyAdapter() {
 
-                public void keyPressed(java.awt.event.KeyEvent evt) {
+                @Override
+				public void keyPressed(java.awt.event.KeyEvent evt) {
                     try {
                         Integer x = (Integer) r.invoke(filter);
                         initValue = x.intValue();
@@ -969,7 +1003,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
                                 if (nval == 0) {
                                     nval = 1;
                                 } else {
-                                    nval = (int) Math.round(initValue * factor);
+                                    nval = Math.round(initValue * factor);
                                 }
                                 w.invoke(filter, new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
@@ -985,7 +1019,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
                                 if (nval == 0) {
                                     nval = 0;
                                 } else {
-                                    nval = (int) Math.round(initValue / factor);
+                                    nval = Math.round(initValue / factor);
                                 }
                                 w.invoke(filter, new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
@@ -1028,7 +1062,8 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
             });
             tf.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
 
-                public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
+                @Override
+				public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
                     try {
                         Integer x = (Integer) r.invoke(filter);
                         initValue = x.intValue();
@@ -1048,7 +1083,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
                                 if (Math.round(initValue * wheelFactor) == initValue) {
                                     nval++;
                                 } else {
-                                    nval = (int) Math.round(initValue * wheelFactor);
+                                    nval = Math.round(initValue * wheelFactor);
                                 }
                                 w.invoke(filter, new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
@@ -1063,7 +1098,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
                                 if (Math.round(initValue / wheelFactor) == initValue) {
                                     nval--;
                                 } else {
-                                    nval = (int) Math.round(initValue / wheelFactor);
+                                    nval = Math.round(initValue / wheelFactor);
                                 }
                                 if (nval < 0) {
                                     nval = 0;
@@ -1081,12 +1116,14 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
             });
             tf.addFocusListener(new FocusListener() {
 
-                public void focusGained(FocusEvent e) {
+                @Override
+				public void focusGained(FocusEvent e) {
                     tf.setSelectionStart(0);
                     tf.setSelectionEnd(tf.getText().length());
                 }
 
-                public void focusLost(FocusEvent e) {
+                @Override
+				public void focusLost(FocusEvent e) {
                 }
             });
         }
@@ -1111,7 +1148,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
     }
 
     class FloatControl extends JPanel implements HasSetter {
-        
+
         EngineeringFormat engFmt=new EngineeringFormat();
 //        final String format="%.6f";
 
@@ -1120,7 +1157,8 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
         float initValue = 0, nval;
         final JTextField tf;
 
-        public void set(Object o) {
+        @Override
+		public void set(Object o) {
             if (o instanceof Float) {
                 Float b = (Float) o;
                 tf.setText(b.toString());
@@ -1161,7 +1199,8 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
             add(tf);
             tf.addActionListener(new ActionListener() {
 
-                public void actionPerformed(ActionEvent e) {
+                @Override
+				public void actionPerformed(ActionEvent e) {
 //                    System.out.println(e);
                     try {
                         float y = engFmt.parseFloat(tf.getText());
@@ -1183,7 +1222,8 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
                 {
                 }
 
-                public void keyPressed(java.awt.event.KeyEvent evt) {
+                @Override
+				public void keyPressed(java.awt.event.KeyEvent evt) {
                     try {
                         Float x = (Float) r.invoke(filter); // getString the value from the getter method
                         initValue = x.floatValue();
@@ -1239,7 +1279,8 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
             });
             tf.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
 
-                public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
+                @Override
+				public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
                     try {
                         Float x = (Float) r.invoke(filter); // getString the value from the getter method
                         initValue = x.floatValue();
@@ -1293,26 +1334,29 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
             });
             tf.addFocusListener(new FocusListener() {
 
-                public void focusGained(FocusEvent e) {
+                @Override
+				public void focusGained(FocusEvent e) {
                     tf.setSelectionStart(0);
                     tf.setSelectionEnd(tf.getText().length());
                 }
 
-                public void focusLost(FocusEvent e) {
+                @Override
+				public void focusLost(FocusEvent e) {
                 }
             });
         }
     }
 
     private boolean printedSetterWarning=false;
-    
+
     /** Called when a filter calls firePropertyChange. The PropertyChangeEvent should send the bound property name and the old and new values.
     The GUI control is then updated by this method.
-    @param propertyChangeEvent contains the property that has changed, e.g. it would be called from an EventFilter 
-     * with 
+    @param propertyChangeEvent contains the property that has changed, e.g. it would be called from an EventFilter
+     * with
      * <code>support.firePropertyChange("mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled, this.mapEventsToLearnedTopologyEnabled);</code>
      */
-    public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
+    @Override
+	public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
         if (propertyChangeEvent.getSource() == getControllable()) {
             if (propertyChangeEvent.getPropertyName().equals("selected")) {
                 return; // ignore changes to "selected" for filter because these are masked out from GUI building
@@ -1361,20 +1405,20 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
      * WARNING: Do NOT modify this code. The content of this method is
      * always regenerated by the Form Editor.
      */
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">                          
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">
     private void initComponents() {
 //        bindingGroup = new org.jdesktop.beansbinding.BindingGroup();
 
-        
-        
+
+
         jPanel1 = new javax.swing.JPanel();
         enabledCheckBox = new javax.swing.JCheckBox();
         resetButton = new javax.swing.JButton();
         showControlsToggleButton = new javax.swing.JToggleButton();
 
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
-        
-    }// </editor-fold>                        
+
+    }// </editor-fold>
     boolean controlsVisible = false;
 
     public boolean isControlsVisible() {
@@ -1454,7 +1498,7 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
         this.controllable = filter;
     }
 
-//    private void enabledCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {                                                
+//    private void enabledCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {
 //        boolean yes = enabledCheckBox.isSelected();
 //        if (getControllable() != null) {
 //            getControllable().setFilterEnabled(yes);
@@ -1470,26 +1514,26 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
 //
 //        repaint();
 //        getControllable().setSelected(yes);
-//    }                                               
+//    }
 
-//    private void resetButtonActionPerformed(java.awt.event.ActionEvent evt) {                                            
+//    private void resetButtonActionPerformed(java.awt.event.ActionEvent evt) {
 //        if (getControllable() != null) {
 //            getControllable().resetFilter();
 //        }
 //        getControllable().setSelected(true);
-//    }                                           
+//    }
 
-//    private void showControlsToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                         
+//    private void showControlsToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {
 //        // TODO add your handling code here:
-//    }                                                        
+//    }
 
-    // Variables declaration - do not modify                     
+    // Variables declaration - do not modify
     protected javax.swing.JCheckBox enabledCheckBox;
     protected javax.swing.JPanel jPanel1;
     private javax.swing.JButton resetButton;
     private javax.swing.JToggleButton showControlsToggleButton;
 //    private org.jdesktop.beansbinding.BindingGroup bindingGroup;
-    // End of variables declaration                   
+    // End of variables declaration
 
     private class SliderParams {
 
@@ -1544,7 +1588,8 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
         final JTextField tfx, tfy;
         final String format = "%.1f";
 
-        final public void set(Object o) {
+        @Override
+		final public void set(Object o) {
             if (o instanceof Point2D.Float) {
                 Point2D.Float b = (Point2D.Float) o;
                 tfx.setText(String.format(format, b.x));
@@ -1629,42 +1674,46 @@ public class ControlPanel extends javax.swing.JPanel implements PropertyChangeLi
 
             tfx.addFocusListener(new FocusListener() {
 
-                public void focusGained(FocusEvent e) {
+                @Override
+				public void focusGained(FocusEvent e) {
                     tfx.setSelectionStart(0);
                     tfx.setSelectionEnd(tfx.getText().length());
                 }
 
-                public void focusLost(FocusEvent e) {
+                @Override
+				public void focusLost(FocusEvent e) {
                 }
             });
             tfy.addFocusListener(new FocusListener() {
 
-                public void focusGained(FocusEvent e) {
+                @Override
+				public void focusGained(FocusEvent e) {
                     tfy.setSelectionStart(0);
                     tfy.setSelectionEnd(tfy.getText().length());
                 }
 
-                public void focusLost(FocusEvent e) {
+                @Override
+				public void focusLost(FocusEvent e) {
                 }
             });
 
 
         }
     }
-    
+
 //    public class ShowControlsAction extends AbstractAction{
 //
 //        public ShowControlsAction() {
 //            super("Show controls");
 //            putValue(SELECTED_KEY, "Hide controls");
 //            putValue(SHORT_DESCRIPTION,"Toggles visibility of controls of this EventFilter");
-//            
+//
 //        }
 //
 //        @Override
 //        public void actionPerformed(ActionEvent e) {
 //            setControlsVisible(enabled);
 //        }
-//        
+//
 //    }
 }

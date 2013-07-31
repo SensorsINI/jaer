@@ -17,7 +17,6 @@ import gnu.io.PortInUseException;
 import gnu.io.SerialPort;
 import gnu.io.UnsupportedCommOperationException;
 
-import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
@@ -112,7 +111,8 @@ public class DynamixelDirect extends javax.swing.JFrame {
 
         btnConnect.setText("Connect");
         btnConnect.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnConnectActionPerformed(evt);
             }
         });
@@ -120,7 +120,8 @@ public class DynamixelDirect extends javax.swing.JFrame {
         sld3.setMaximum(871);
         sld3.setMinimum(493);
         sld3.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseReleased(java.awt.event.MouseEvent evt) {
+            @Override
+			public void mouseReleased(java.awt.event.MouseEvent evt) {
                 sld3MouseReleased(evt);
             }
         });
@@ -128,21 +129,24 @@ public class DynamixelDirect extends javax.swing.JFrame {
         sld2.setMaximum(714);
         sld2.setMinimum(373);
         sld2.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseReleased(java.awt.event.MouseEvent evt) {
+            @Override
+			public void mouseReleased(java.awt.event.MouseEvent evt) {
                 sld2MouseReleased(evt);
             }
         });
 
         sld1.setMaximum(1023);
         sld1.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseReleased(java.awt.event.MouseEvent evt) {
+            @Override
+			public void mouseReleased(java.awt.event.MouseEvent evt) {
                 sld1MouseReleased(evt);
             }
         });
 
         btnCheckMoving.setText("Is Moving?");
         btnCheckMoving.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnCheckMovingActionPerformed(evt);
             }
         });
@@ -153,14 +157,16 @@ public class DynamixelDirect extends javax.swing.JFrame {
 
         btnRandomPos.setText("Random Positions");
         btnRandomPos.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnRandomPosActionPerformed(evt);
             }
         });
 
         sldSpeed.setMaximum(1023);
         sldSpeed.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseReleased(java.awt.event.MouseEvent evt) {
+            @Override
+			public void mouseReleased(java.awt.event.MouseEvent evt) {
                 sldSpeedMouseReleased(evt);
             }
         });
@@ -169,56 +175,64 @@ public class DynamixelDirect extends javax.swing.JFrame {
 
         btnGetCurrentPos.setText("Get Current Positions");
         btnGetCurrentPos.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnGetCurrentPosActionPerformed(evt);
             }
         });
 
         btnMax1.setText("set Max");
         btnMax1.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnMax1ActionPerformed(evt);
             }
         });
 
         btnMin1.setText("set Min");
         btnMin1.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnMin1ActionPerformed(evt);
             }
         });
 
         btnMax2.setText("set Max");
         btnMax2.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnMax2ActionPerformed(evt);
             }
         });
 
         btnMax3.setText("set Max");
         btnMax3.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnMax3ActionPerformed(evt);
             }
         });
 
         btnMin2.setText("set Min");
         btnMin2.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnMin2ActionPerformed(evt);
             }
         });
 
         btnMin3.setText("set Min");
         btnMin3.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnMin3ActionPerformed(evt);
             }
         });
 
         btnRun.setText("Run");
         btnRun.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnRunActionPerformed(evt);
             }
         });
@@ -401,13 +415,13 @@ public class DynamixelDirect extends javax.swing.JFrame {
         parameter[1] = 2; //length of data to write to each servo
 
         for (int i = 0; i < 3; i++) {
-            parameter[i * 3 + 2] = (byte) (i + 1);
+            parameter[(i * 3) + 2] = (byte) (i + 1);
             short pos = (short) servoPos[i];
             ByteBuffer bbPos = ByteBuffer.allocate(2);
             bbPos.order(ByteOrder.LITTLE_ENDIAN);
             bbPos.putShort(pos);
-            parameter[i * 3 + 3] = bbPos.get(0);
-            parameter[i * 3 + 4] = bbPos.get(1);
+            parameter[(i * 3) + 3] = bbPos.get(0);
+            parameter[(i * 3) + 4] = bbPos.get(1);
         }
         command((byte) 254, (byte) 131, parameter, false);
     }
@@ -418,13 +432,13 @@ public class DynamixelDirect extends javax.swing.JFrame {
         parameter[1] = 2; //length of data to write to each servo
 
         for (int i = 0; i < 3; i++) {
-            parameter[i * 3 + 2] = (byte) (i + 1);
+            parameter[(i * 3) + 2] = (byte) (i + 1);
             short speed = (short) sldSpeed.getValue();
             ByteBuffer bbSpeed = ByteBuffer.allocate(2);
             bbSpeed.order(ByteOrder.LITTLE_ENDIAN);
             bbSpeed.putShort(speed);
-            parameter[i * 3 + 3] = bbSpeed.get(0);
-            parameter[i * 3 + 4] = bbSpeed.get(1);
+            parameter[(i * 3) + 3] = bbSpeed.get(0);
+            parameter[(i * 3) + 4] = bbSpeed.get(1);
         }
         command((byte) 254, (byte) 131, parameter, false);
     }
@@ -476,7 +490,8 @@ public class DynamixelDirect extends javax.swing.JFrame {
                 //log.info("starting time for timeout of status packet.");
                 timeoutTimer = new Timer(1000, new ActionListener() {
 
-                    public void actionPerformed(ActionEvent evt) {
+                    @Override
+					public void actionPerformed(ActionEvent evt) {
                         log.warning("Error: Timeout while waiting for Status packet from Servos!!!");
                         waitingForStatusPacket = false;
                         timeoutTimer.stop();
@@ -492,8 +507,8 @@ public class DynamixelDirect extends javax.swing.JFrame {
             this.out.write(packet);
 
             String test3 = "command: ";
-            for (int i = 0; i < packet.length; i++) {
-                test3 += " " + (packet[i] & 0xFF);
+            for (byte element : packet) {
+                test3 += " " + (element & 0xFF);
             }
             log.info("Send to RS232: " + test3);
 
@@ -603,7 +618,8 @@ public class DynamixelDirect extends javax.swing.JFrame {
     public static void main(String args[]) {
         java.awt.EventQueue.invokeLater(new Runnable() {
 
-            public void run() {
+            @Override
+			public void run() {
                 new DynamixelDirect().setVisible(true);
             }
         });
@@ -667,7 +683,8 @@ public class DynamixelDirect extends javax.swing.JFrame {
          *
          * @param arg0
          */
-        public void serialEvent(gnu.io.SerialPortEvent arg0) {
+        @Override
+		public void serialEvent(gnu.io.SerialPortEvent arg0) {
             try {
                 int data;
                 while ((data = in.read()) > -1) {
@@ -707,10 +724,10 @@ public class DynamixelDirect extends javax.swing.JFrame {
                             break;
                         default:
                             try {
-                                if (PositionInPacket > 5 && PositionInPacket < currentPacket.LENGTH + 4) {
+                                if ((PositionInPacket > 5) && (PositionInPacket < (currentPacket.LENGTH + 4))) {
                                     currentPacket.PARAMETER[PositionInPacket - 6] = data;
                                     PositionInPacket++;
-                                } else if (PositionInPacket == currentPacket.LENGTH + 4) {
+                                } else if (PositionInPacket == (currentPacket.LENGTH + 4)) {
                                     currentPacket.CHECKSUM = data;
                                     log.info("full packet received. Now evaluate.");
                                     evaluateStatusPacket(currentPacket);
@@ -748,7 +765,8 @@ public class DynamixelDirect extends javax.swing.JFrame {
 
                                 ActionListener whenWaitDone = new ActionListener() {
 
-                                    public void actionPerformed(ActionEvent evt) {
+                                    @Override
+									public void actionPerformed(ActionEvent evt) {
                                         timerBetweenMovements.stop();
                                         log.info("Wait Done!");
                                         if (btnRun.isSelected()) {
@@ -760,25 +778,6 @@ public class DynamixelDirect extends javax.swing.JFrame {
                                 if (repetitionsLeft <= 1) {
                                     repetitionsLeft = Integer.parseInt(txtRepetitions.getText());
                                     timerBetweenMovements = new Timer(1000 * Integer.parseInt(txtPauseLong.getText()), whenWaitDone);
-                                    //Signal
-                                    
-                                    if (true) {
-                                        
-                                        // Open an input stream  to the audio file.
-//InputStream inAudio = new FileInputStream("/Users/hfinger/NetBeansProjects/Dynamixel/media/beep.au");
-// Create an AudioStream object from the input stream.
-//AudioStream as = new AudioStream(inAudio);
-// Use the static class member "player" from class AudioPlayer to play
-// clip.
-//AudioPlayer.player.start(as);
-// Similarly, to stop the audio.
-//AudioPlayer.player.stop(as);
-
-
-                                    }
-                                    else {
-                                        Toolkit.getDefaultToolkit().beep();
-                                    }
                                 } else {
                                     repetitionsLeft--;
                                     timerBetweenMovements = new Timer(1000 * Integer.parseInt(txtPause.getText()), whenWaitDone);

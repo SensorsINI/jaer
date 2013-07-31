@@ -15,25 +15,23 @@ import net.sf.jaer.eventio.AEDataFile;
  * @author tobi
  */
 public class IndexFileFilter extends javax.swing.filechooser.FileFilter {
-    
+
     /** Creates a new instance of IndexFileFilter */
     public IndexFileFilter() {
     }
-    
-    public boolean accept(File f) {
+
+    @Override
+	public boolean accept(File f) {
         if (f.isDirectory()) {
             return true;
         }
-        
+
         String extension = "."+getExtension(f);
-        if (extension != null) {
-            if (extension.equals(EXTENSION) || extension.equals(OLDEXTENSION)){
-                return true;
-            } else {
-                return false;
-            }
+        if (extension.equals(EXTENSION) || extension.equals(OLDEXTENSION)){
+            return true;
         }
-        return true;
+
+        return false;
     }
 
     /** Returns extension, without leading ".".
@@ -45,14 +43,15 @@ public class IndexFileFilter extends javax.swing.filechooser.FileFilter {
         String ext = null;
         String s = f.getName();
         int i = s.lastIndexOf('.');
-        
-        if (i > 0 &&  i < s.length() - 1) {
+
+        if ((i > 0) &&  (i < (s.length() - 1))) {
             ext = s.substring(i+1).toLowerCase();
         }
         return ext;
     }
 
-    public String getDescription() {
+    @Override
+	public String getDescription() {
         return "aeidx (or index) file (set of AE data files)";
     }
 

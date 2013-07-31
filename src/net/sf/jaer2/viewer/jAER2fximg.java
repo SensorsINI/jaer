@@ -30,7 +30,8 @@ public class jAER2fximg extends Application {
 	private static final PixelWriter pxWriter = jAER2fximg.img.getPixelWriter();
 
 	public static void main(final String[] args) {
-		// Launch the JavaFX application: do initialization and call start() when ready.
+		// Launch the JavaFX application: do initialization and call start()
+		// when ready.
 		Application.launch(args);
 	}
 

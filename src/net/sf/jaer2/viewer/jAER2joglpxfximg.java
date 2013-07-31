@@ -55,7 +55,8 @@ public class jAER2joglpxfximg extends Application implements GLEventListener {
 	private static final PixelWriter pxWriter = jAER2joglpxfximg.img.getPixelWriter();
 
 	public static void main(final String[] args) {
-		// Launch the JavaFX application: do initialization and call start() when ready.
+		// Launch the JavaFX application: do initialization and call start()
+		// when ready.
 		Application.launch(args);
 	}
 
@@ -197,7 +198,10 @@ public class jAER2joglpxfximg extends Application implements GLEventListener {
 							/* Total memory currently in use by the JVM */
 							totMemTxt.setText("Total memory (bytes): " + rt.totalMemory());
 
-							/* Maximum amount of memory the JVM will attempt to use */
+							/*
+							 * Maximum amount of memory the JVM will attempt to
+							 * use
+							 */
 							maxMemTxt.setText("Maximum memory (bytes): " + rt.maxMemory());
 						}
 					});

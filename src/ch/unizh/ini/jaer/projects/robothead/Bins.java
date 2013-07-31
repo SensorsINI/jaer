@@ -16,60 +16,58 @@ import java.util.Vector;
  * @author Administrator
  */
 public class Bins {
-    
+
     static int shiftSize;
     static int binSize;
     static int numberOfPairs;    // sets the number of correlated Spike Pairs used to determine Correlation
     static int numOfBins;
-    
+
     static Vector usedPairs;
     static public int[] bins; // here is where the corrs are saved
     static public int[] lags; // corresponding lags for bins
     static public int[] lower; // limits of the bins
     static public int[] upper;
-    
-    
+
+
     /** Creates a new instance of Bins */
     //public Bins(int shiftSize, int binSize, int numberOfPairs) {
-        
+
       //  genBins(int shiftSize, int binSize, int numberOfPairs);
-        
+
     //}
-    
+
     public void genBins(int shiftSize, int binSize, int numberOfPairs){
-        int numOfBins = (2*shiftSize/binSize);
-        bins = new int[numOfBins]; 
-        lags = new int[numOfBins]; 
+        int numOfBins = ((2*shiftSize)/binSize);
+        bins = new int[numOfBins];
+        lags = new int[numOfBins];
         lower = new int[numOfBins];
-        upper = new int[numOfBins]; 
+        upper = new int[numOfBins];
         for (int i = 0; i<numOfBins; i++ ){
-            lags[i]=i*binSize-shiftSize;
-            
+            lags[i]=(i*binSize)-shiftSize;
+
             //System.out.println(lags[i]);
-            
-            lower[i]=lags[i]-binSize/2;
-            upper[i]=lags[i]+binSize/2;
+
+            lower[i]=lags[i]-(binSize/2);
+            upper[i]=lags[i]+(binSize/2);
         }
-        this.bins=bins;
-        this.lags=lags;
-        this.lower=lower;
-        this.upper=upper;
-        this.binSize=binSize;
-        this.shiftSize=shiftSize;
-        this.numberOfPairs=numberOfPairs;
-        this.numOfBins=numOfBins;
-        this.usedPairs = new Vector(numberOfPairs,10);
+
+        Bins.binSize=binSize;
+        Bins.shiftSize=shiftSize;
+        Bins.numberOfPairs=numberOfPairs;
+        Bins.numOfBins=numOfBins;
+        Bins.usedPairs = new Vector(numberOfPairs,10);
     }
-    
+
     public void addToBin(int diff){
         //System.out.println(diff);
         int diffIndex=0;            // find in which Bin it belongs
         for (int i=0;i<lower.length;i++){
-            if (lower[i]<=diff & upper[i]>diff)
-                 diffIndex= i;
+            if ((lower[i]<=diff) & (upper[i]>diff)) {
+				diffIndex= i;
+			}
         }
         bins[diffIndex]=bins[diffIndex]+1;  // add Value to Bins
-        
+
         usedPairs.add(new Integer(diffIndex));
         int overload=usedPairs.size()-numberOfPairs;
         if (overload>0){
@@ -79,10 +77,10 @@ public class Bins {
                 usedPairs.remove(1);
             }
         }
-       
+
     }
     public void resetBins(){
-        
+
     }
     /**public int getBinSize(){
         return this.binSize;
@@ -103,17 +101,17 @@ public class Bins {
     }
     public static int getSumOfBins(){
         int sum=0;
-        for (int j=0;j<bins.length;j++){
-            sum=sum+bins[j];
+        for (int bin : bins) {
+            sum=sum+bin;
         }
         return sum;
     }
     public static void dispBins(){
-        for (int i=0; i<bins.length; i++){
-            System.out.print(bins[i]+" ");
+        for (int bin : bins) {
+            System.out.print(bin+" ");
         }
         System.out.print("  ==>  "+getSumOfBins()+"\n");
     }
-    
-    
+
+
 }

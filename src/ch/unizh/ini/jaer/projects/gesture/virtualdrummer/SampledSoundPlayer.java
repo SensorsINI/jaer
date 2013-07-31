@@ -60,7 +60,9 @@ public class SampledSoundPlayer implements SoundPlayerInterface{
     public SampledSoundPlayer(int i)throws IOException, UnsupportedAudioFileException, LineUnavailableException{
         drumNumber=i;
         soundNumber=prefs.getInt(prefsKey(),0);
-        if(soundNumber>=SampledSoundPlayer.getSoundFilePaths().size()) throw new IOException("There is no sound number "+soundNumber+" available");
+        if(soundNumber>=SampledSoundPlayer.getSoundFilePaths().size()) {
+			throw new IOException("There is no sound number "+soundNumber+" available");
+		}
         setFile(soundNumber);
         open();
     }
@@ -69,7 +71,7 @@ public class SampledSoundPlayer implements SoundPlayerInterface{
         return "SampledSoundPlayer.soundNumber." + drumNumber;
     }
 
-   
+
 
     private void open() throws LineUnavailableException{
                 // get info on possible SourceDataLine's
@@ -99,7 +101,8 @@ public class SampledSoundPlayer implements SoundPlayerInterface{
         T.start();
     }
     /** plays the spike sound once, by notifying the player thread to send the data to the line. */
-    synchronized public void play (){
+    @Override
+	synchronized public void play (){
         if ( T == null ){
             return;
         }
@@ -109,7 +112,8 @@ public class SampledSoundPlayer implements SoundPlayerInterface{
         }
     }
 
-    public void close (){
+    @Override
+	public void close (){
         if ( T == null ){
             return;
         }
@@ -121,7 +125,9 @@ public class SampledSoundPlayer implements SoundPlayerInterface{
     private static ArrayList<String> nameList=null;
 
     public static ArrayList<String> getSoundFilePaths (){
-        if(nameList!=null) return nameList;
+        if(nameList!=null) {
+			return nameList;
+		}
         nameList=new ArrayList<String>();
         try{
             String pathHeader = "ch/unizh/ini/jaer/projects/gesture/virtualdrummer/resources/";
@@ -137,8 +143,9 @@ public class SampledSoundPlayer implements SoundPlayerInterface{
             BufferedReader reader=new BufferedReader(new InputStreamReader(inputStream));
             String line=null;
             while((line=reader.readLine())!=null){
-                if(line==null) continue;
-                if(line.length()==0 || line.startsWith("#")) continue;
+                if((line.length()==0) || line.startsWith("#")) {
+					continue;
+				}
                 log.info("added \""+line+"\"");
                 nameList.add(pathHeader+line);
             }
@@ -155,7 +162,9 @@ public class SampledSoundPlayer implements SoundPlayerInterface{
      *@param i the file number of the available files
      **/
    synchronized public boolean setFile (int i) throws UnsupportedAudioFileException,FileNotFoundException,IOException{
-        if(i>=getSoundFilePaths().size()) throw new FileNotFoundException("invalid file index");
+        if(i>=getSoundFilePaths().size()) {
+			throw new FileNotFoundException("invalid file index");
+		}
         soundNumber=i;
         this.filename = getSoundFilePaths().get(soundNumber);
         InputStream inputStream;
@@ -183,7 +192,7 @@ public class SampledSoundPlayer implements SoundPlayerInterface{
             return;
         }
         float max = volumeControl.getMaximum(), min = volumeControl.getMinimum();
-        volumeControl.setValue(f * ( max - min ) + min);
+        volumeControl.setValue((f * ( max - min )) + min);
     }
 
     public void setPan (float f){
@@ -191,7 +200,7 @@ public class SampledSoundPlayer implements SoundPlayerInterface{
             return;
         }
         float max = panControl.getMaximum(), min = panControl.getMinimum();
-        panControl.setValue(f * ( max - min ) + min);
+        panControl.setValue((f * ( max - min )) + min);
     }
 
     /**
@@ -269,7 +278,7 @@ public class SampledSoundPlayer implements SoundPlayerInterface{
             addKeyListener(new KeyAdapter(){
                 @Override
                 public void keyPressed (KeyEvent e){
-                    if ( e.getKeyCode() == KeyEvent.VK_X || e.getKeyCode() == KeyEvent.VK_ESCAPE ){
+                    if ( (e.getKeyCode() == KeyEvent.VK_X) || (e.getKeyCode() == KeyEvent.VK_ESCAPE) ){
                         ss.close();
                         dispose();
                         System.exit(0);
@@ -286,7 +295,7 @@ public class SampledSoundPlayer implements SoundPlayerInterface{
                 @Override
                 public void mouseMoved (MouseEvent e){
                     pan = (float)e.getX() / getWidth();
-                    vol = 1 - (float)e.getY() / getHeight(); // java y increases downwards
+                    vol = 1 - ((float)e.getY() / getHeight()); // java y increases downwards
                     ss.setPan(pan);
                     ss.setVolume(vol);
                 }

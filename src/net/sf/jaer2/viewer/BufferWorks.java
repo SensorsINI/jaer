@@ -128,6 +128,7 @@ public class BufferWorks {
 		return format;
 	}
 
+	@SuppressWarnings("static-method")
 	public int getGLFormat() {
 		return GL.GL_UNSIGNED_BYTE;
 

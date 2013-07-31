@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
@@ -25,7 +25,7 @@ import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterBrowserPanel;
 
 /**
  * @author Dennis
- * 
+ *
  */
 public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 																	 * implements
@@ -33,7 +33,7 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 																	 */{
 
 	/**
-	 * 
+	 *
 	 */
 	@SuppressWarnings("unused")
 	private static final long serialVersionUID = 3135959582771085761L;
@@ -48,12 +48,12 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 			}
 		}
 	};
-	
-	
+
+
 	public class SchedulableWrapperMapCustomControls extends
 			FiringModelMapCustomControls {
 		/**
-		 * 
+		 *
 		 */
 		private static final long serialVersionUID = -3732732764361496540L;
 
@@ -74,24 +74,28 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 				c = sfmc.getClass();
 			}
 			else {
-				if (fmc == null)
+				if (fmc == null) {
 					return 0;
+				}
 				c = fmc.getClass();
 			}
 			int ret = 1;
 			for (FiringModelCreator.FiringModelType type : FiringModelCreator.FiringModelType.values()) {
-				if (FiringModelCreator.getCreator(type, getPrefs()).getClass().equals(c))
+				if (FiringModelCreator.getCreator(type, getPrefs()).getClass().equals(c)) {
 					return ret;
+				}
 				ret++;
 			}
 			for (SchedulableFiringModelCreator.FiringModelType type : SchedulableFiringModelCreator.FiringModelType.values()) {
-				if (SchedulableFiringModelCreator.getCreator(type, getPrefs()).getClass().equals(c))
+				if (SchedulableFiringModelCreator.getCreator(type, getPrefs()).getClass().equals(c)) {
 					return ret;
+				}
 				ret++;
 			}
 			return 0;
 		}
-		
+
+		@Override
 		protected void fillPanel() {
 			JPanel creatorPanel = new JPanel();
             creatorPanel.setLayout(new BoxLayout(creatorPanel, BoxLayout.X_AXIS));
@@ -109,15 +113,17 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 					int index = 0;
 					int i = 0;
 					for (Object o : creatorList) {
-						if (o.toString().equals(evt.getNewValue().toString()))
+						if (o.toString().equals(evt.getNewValue().toString())) {
 							index = i;
+						}
 						i++;
 					}
-					if (index != creatorComboBox.getSelectedIndex())
+					if (index != creatorComboBox.getSelectedIndex()) {
 						creatorComboBox.setSelectedIndex(index);
+					}
 				}
 			});
-			
+
 			creatorComboBox.setFont(creatorComboBox.getFont().deriveFont(10f));
 			creatorPanel.add(creatorComboBox);
 			creatorComboBox.setSelectedIndex(getCreatorIndex());
@@ -147,10 +153,10 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 					creatorChanged();
 				}
 			});
-			
+
 			add(creatorPanel,gbc);
 			gbc.gridy++;
-			
+
 			creatorConstraints = new GridBagConstraints();
 			creatorConstraints.weightx = gbc.weightx;
 			creatorConstraints.weighty = gbc.weighty;
@@ -158,9 +164,9 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 			creatorConstraints.gridy = gbc.gridy;
 			creatorConstraints.fill = gbc.fill;
 			gbc.gridy++;
-			
+
 			creatorChanged();
-			
+
 			super.fillPanel();
 		}
 
@@ -174,8 +180,10 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 					firingModelCreator2.setName("Unit parameters");
 					creatorPanel = new ParameterBrowserPanel(
 							firingModelCreator2, false);
-				} else
+				}
+				else {
 					creatorPanel = null;
+				}
 			} else {
 				schedulableFiringModelCreator.setName("Unit parameters");
 				creatorPanel = new ParameterBrowserPanel(
@@ -185,8 +193,9 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 				add(creatorPanel, creatorConstraints);
 			}
 			JFrame frame = (JFrame) SwingUtilities.getRoot(this);
-			if (frame != null)
+			if (frame != null) {
 				frame.pack();
+			}
 		}
 		// public void kernelAdded() {
 		// if (panelCounter < inputKernels.size()) {
@@ -208,7 +217,7 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 			FiringModelCreator {
 
 		/**
-		 * 
+		 *
 		 */
 		@SuppressWarnings("unused")
 		private static final long serialVersionUID = -3674544035563757031L;
@@ -221,13 +230,16 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 
 		@Override
 		public FiringModel createUnit(int x, int y, FiringModelMap map) {
-			if (schedulableFiringModelCreator != null)
+			if (schedulableFiringModelCreator != null) {
 				return schedulableFiringModelCreator.createUnit(x, y,
 						SchedulableWrapperMap.this);
-			else if (getFiringModelCreator() != null)
+			}
+			else if (getFiringModelCreator() != null) {
 				return getFiringModelCreator().createUnit(x, y, map);
-			else
+			}
+			else {
 				return null;
+			}
 		}
 
 	}
@@ -256,8 +268,9 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 		super(sizeX, sizeY, signalHandler, prefs);
 		setFiringModelMap(internalMap);
 		init();
-		if (internalMap != null)
+		if (internalMap != null) {
 			internalMap.setSignalHandlerSet(getSignalHandler());
+		}
 	}
 
 	public SchedulableWrapperMap(int sizeX, int sizeY,
@@ -274,12 +287,12 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 	@SuppressWarnings("unused")
 	public void setFiringModelCreator(Object descriptor) {
 		getSupport().firePropertyChange("firingModelCreator", "unknown", descriptor.toString());
-		if (descriptor == null || (descriptor.equals("none") || descriptor.equals("null"))) {
+		if ((descriptor == null) || (descriptor.equals("none") || descriptor.equals("null"))) {
 			setFiringModelCreator((FiringModelCreator) null);
 			setFiringModelCreator((SchedulableFiringModelCreator) null);
 		} else if (descriptor instanceof FiringModelCreator.FiringModelType) {
 			setFiringModelCreator(FiringModelCreator.getCreator(
-					(FiringModelCreator.FiringModelType) descriptor, 
+					(FiringModelCreator.FiringModelType) descriptor,
 					getPrefs().node("creator")));
 		} else if (descriptor instanceof SchedulableFiringModelCreator.FiringModelType) {
 			setFiringModelCreator(SchedulableFiringModelCreator.getCreator(
@@ -294,10 +307,9 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 				}
 			}
 		}
-		if (descriptor != null)
-			getPrefs().put("creator-type", descriptor.toString());
-		else 
-			getPrefs().put("creator-type", "none");
+
+		getPrefs().put("creator-type", descriptor.toString());
+
 	}
 
 	private void init() {
@@ -316,8 +328,9 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
 			this.setFiringModelCreator((SchedulableFiringModelCreator)null);
 			super.setFiringModelCreator(creator);
-			if (myControls != null)
+			if (myControls != null) {
 				((SchedulableWrapperMapCustomControls)myControls).creatorChanged();
+			}
 			buildUnits();
 		}
 	}
@@ -325,14 +338,17 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 	public void setFiringModelCreator(
 			SchedulableFiringModelCreator creator) {
 		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
-			if (this.schedulableFiringModelCreator != null)
+			if (this.schedulableFiringModelCreator != null) {
 				this.schedulableFiringModelCreator.getSupport().removePropertyChangeListener(creatorChangeListener);
+			}
 			this.schedulableFiringModelCreator = creator;
 			super.setFiringModelCreator(null);
-			if (myControls != null)
+			if (myControls != null) {
 				((SchedulableWrapperMapCustomControls)myControls).creatorChanged();
-			if (this.schedulableFiringModelCreator != null)
+			}
+			if (this.schedulableFiringModelCreator != null) {
 				this.schedulableFiringModelCreator.getSupport().addPropertyChangeListener(creatorChangeListener);
+			}
 			buildUnits();
 		}
 	}
@@ -357,17 +373,19 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see
 	 * ch.unizh.ini.jaer.projects.apsdvsfusion.SchedulableFiringModelMap#get
 	 * (int, int)
 	 */
 	@Override
 	public FiringModel get(int x, int y) {
-		if (map != null && enabled) {
+		if ((map != null) && enabled) {
 			return map.get(x, y);
-		} else
+		}
+		else {
 			return null;
+		}
 	}
 
 //	@Override
@@ -383,18 +401,19 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 //			map.setSizeY(sizeY);
 //		super.setSizeY(sizeY);
 //	}
-	
-	
+
+
 	@Override
 	public void changeSize(int sizeX, int sizeY) {
 		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
-			if (sizeX != this.sizeX || sizeY != this.sizeY) {
+			if ((sizeX != this.sizeX) || (sizeY != this.sizeY)) {
 				clearHeap();
 				super.changeSize(sizeX, sizeY);
 	//			this.sizeX = sizeX;
 	//			this.sizeY = sizeY;
-				if (map != null)
+				if (map != null) {
 					map.changeSize(sizeX, sizeY);
+				}
 			}
 		}
 	}
@@ -402,16 +421,18 @@ public class SchedulableWrapperMap extends SchedulableFiringModelMap /*
 	@Override
 	public void buildUnits() {
 		clearHeap();
-		if (map != null)
+		if (map != null) {
 			map.buildUnits();
+		}
 	}
 
 	@Override
 	public void reset() {
 		super.reset();
 		clearHeap();
-		if (map != null)
+		if (map != null) {
 			map.reset();
+		}
 
 	}
 

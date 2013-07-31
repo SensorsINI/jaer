@@ -18,7 +18,7 @@ import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
 
 /**
  * The hardware interface to CochleaAMS1c.
- * 
+ *
  * @author tobi
  */
 public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements BiasgenHardwareInterface {
@@ -54,7 +54,7 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements 
      * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException
      */
     @Override
-    public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
+    public synchronized void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
         if (gUsbIo == null) {
             throw new RuntimeException("device must be opened before sending this vendor request");
         }
@@ -80,7 +80,7 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements 
     }
 
     @Override
-    public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
+    public synchronized void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         if (!(biasgen instanceof CochleaAMS1c.Biasgen)) {
             log.warning("biasgen is not instanceof CochleaAMS1c.Biasgen");
             return;
@@ -91,16 +91,16 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements 
     @Override
     public void setInEndpointEnabled(boolean inEndpointEnabled) throws HardwareInterfaceException {
         super.setInEndpointEnabled(inEndpointEnabled);
-        if(chip!=null && chip.getBiasgen()!=null) {
+        if((chip!=null) && (chip.getBiasgen()!=null)) {
             chip.getBiasgen().sendConfiguration(chip.getBiasgen());
         } // TODO hack to get configuration sent after event acquisition starts data transfer, which messes up configuration on AMS1c
         // still not clear why the configuration must be sent again after starting event acquisition, because nothing in firmware should reset the CPLD after the configuration has already been sent
     }
-    
-    
+
+
 
     @Override
-    public void flashConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
+    public synchronized void flashConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
         throw new HardwareInterfaceException("Flashing configuration not supported yet.");
     }
 
@@ -125,7 +125,7 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements 
         }
     }
 
-    /** 
+    /**
      * Starts reader buffer pool thread and enables in endpoints for AEs. This method is overridden to construct
     our own reader with its translateEvents method
      */
@@ -137,7 +137,7 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements 
     }
 
     /** Determines if data is AER address
-     * 
+     *
      * @param dataword 16 bit 'address' data
      * @return true if AER address
      */
@@ -146,7 +146,7 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements 
     }
 
     /** Determines is data is ADC sample.
-     * 
+     *
      * @param dataword 16 bit 'address' data
      * @return true if ADC sample
      */
@@ -155,7 +155,7 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements 
     }
 
     /** Parses the ADC channel number from the ADC sample word
-     * 
+     *
      * @param adcData
      * @return channel number, 0-3
      */
@@ -164,7 +164,7 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements 
     }
 
     /** Parses the ADC sample value from the ADC sample word
-     * 
+     *
      * @param adcData
      * @return sample value, 10 bits
      */
@@ -173,7 +173,7 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements 
     }
 
     /** Is the ADC sample associated with the sync input high at the time of sampling.
-     * 
+     *
      * @param adcData
      * @return true if sync input (from cochlea) is active (it is active low during sync period when no channel is selected)
      */
@@ -187,22 +187,22 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements 
         /*
          * data type fields
          */
-        public static final int MAX_ADC = (int) ((1 << 12) - 1);
+        public static final int MAX_ADC = (1 << 12) - 1;
         private int currentts = 0;
 
         public AEReader(CypressFX2 cypress) throws HardwareInterfaceException {
             super(cypress);
         }
 
-        /** Translates data to internal raw form, taking account of wrap events and ADC events. 
+        /** Translates data to internal raw form, taking account of wrap events and ADC events.
          * The CochleaAMS1c firmware sends events in word parallel format
          * (as opposed to burst mode), so each event is sent in its entirety of full address and timestamp.
-         *     
+         *
          * <p>
          * Raw data from the Cypress FX2 comes in 16 bit words consisting of data (AER addresses, ADC samples, or timestamps of these data),
          * or special words signaling timestamp wraps, timestamp reset.
          * <p>
-         * This data is either an AE address or ADC reading. CochleaAMS uses 10 AER address bits. 
+         * This data is either an AE address or ADC reading. CochleaAMS uses 10 AER address bits.
         An extra bit signals that the data is from the on-board ADC.
         <p>
         Bits are as follows:
@@ -214,25 +214,25 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements 
          *  <li> 3 wrap event
          *  <li> 4 timestamp reset on board
          * </ul>
-         * <li> 13:0 data (mask 0x3ff). This data can be data or timestamp. 
-         * If the data is a timestamp (code from 15:14=1) then all 14 bits are used. 
+         * <li> 13:0 data (mask 0x3ff). This data can be data or timestamp.
+         * If the data is a timestamp (code from 15:14=1) then all 14 bits are used.
          * If the data is AER or ADC data (code from 15:14=0), then bit 13 determines type of data
          * <ul>
          *  <li> 13 is the data type (mask 0x2000). 0=AER data, 1=ADC data
          * </ul>
          * </ul>
-         * 
+         *
          * The bits are shown below:<br>
          * <img src="doc-files/CochleaAMS1cDataBits.png" />
          *
-         * 
-         * @param b the raw byte buffer 
+         *
+         * @param b the raw byte buffer
          * @see CochleaAMS1c
          */
         @Override
         protected void translateEvents(UsbIoBuf b) {
             try {
-                // data from cochleaams is not stateful. 
+                // data from cochleaams is not stateful.
 
 //            if(tobiLogger.isEnabled()==false) tobiLogger.setEnabled(true); //debug
                 synchronized (aePacketRawPool) {
@@ -243,7 +243,7 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements 
 
                     byte[] buf = b.BufferMem;
                     int bytesSent = b.BytesTransferred;
-                    if (bytesSent % 2 != 0) {
+                    if ((bytesSent % 2) != 0) {
                         log.warning("warning: " + bytesSent + " bytes sent, which is not multiple of 2");
                         bytesSent = (bytesSent / 2) * 2; // truncate off any extra part-event
                     }
@@ -265,7 +265,7 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements 
                             case 0: // data, either AER address or ADC sample
                                 // If the data is an address, we write out an address value if we either get an ADC reading or an x address.
                                 // To simplify data structure handling in AEPacketRaw and AEPacketRawPool,
-                                // ADC events are timestamped just like address-events. 
+                                // ADC events are timestamped just like address-events.
                                 // NOTE2: unmasked bits are read as 1's from the hardware. Therefore it is crucial to properly mask bits.
                                 if ((eventCounter >= aeBufferSize) || (buffer.overrunOccuredFlag)) {
                                     buffer.overrunOccuredFlag = true; // throw away events if we have overrun the output arrays

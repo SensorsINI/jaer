@@ -28,7 +28,7 @@ public class CypressFX2TmpdiffRetinaHardwareInterface extends CypressFX2Biasgen 
         super(devNumber);
     }
 
-    /** 
+    /**
      * Starts reader buffer pool thread and enables in endpoints for AEs. This method is overridden to construct
     our own reader with its translateEvents method
      */
@@ -46,7 +46,7 @@ public class CypressFX2TmpdiffRetinaHardwareInterface extends CypressFX2Biasgen 
         private int numNonMonotonicTimeExceptionsPrinted = 0;
         // note timestamps are multiplied by 10 so that they are in us, because the cypress fx2 retina board uses the
         // timer1 interrupt with period 10us to clock the timestamps counters
-        final int REAL_WRAP_TIME_MS = TICK_US_BOARD * ((1 << 16) - 1) / 1000; // this is wrap time in ms on device timestamp counter, e.g. 650ms
+        final int REAL_WRAP_TIME_MS = (TICK_US_BOARD * ((1 << 16) - 1)) / 1000; // this is wrap time in ms on device timestamp counter, e.g. 650ms
         // it is used below to check for bogus timetamp wraps due to glitches in sampling timestamp counter output
         long lastWrapTimeMs = System.currentTimeMillis();
         volatile int lastshortts = 0,  tsinccounter = 0;
@@ -56,13 +56,14 @@ public class CypressFX2TmpdiffRetinaHardwareInterface extends CypressFX2Biasgen 
             super(cypress);
         }
 
-        public void resetTimestamps() {
+        @Override
+		public synchronized void resetTimestamps() {
             super.resetTimestamps();
             lasttimestamp = 0;
             lastshortts = 0;
         }
 
-        /** Does the translation, timestamp unwrapping and reset 
+        /** Does the translation, timestamp unwrapping and reset
          * @param b the raw buffer
          */
         @Override
@@ -101,7 +102,7 @@ public class CypressFX2TmpdiffRetinaHardwareInterface extends CypressFX2Biasgen 
             byte[] aeBuffer = b.BufferMem;
             //            byte lsb,msb;
             int bytesSent = b.BytesTransferred;
-            if (bytesSent % 4 != 0) {
+            if ((bytesSent % 4) != 0) {
 //                System.err.println("CypressFX2.AEReader.translateEvents(): warning: "+bytesSent+" bytes sent, which is not multiple of 4");
                 bytesSent = (bytesSent / 4) * 4; // truncate off any extra part-event
             }
@@ -118,7 +119,7 @@ public class CypressFX2TmpdiffRetinaHardwareInterface extends CypressFX2Biasgen 
             activeBuffer.lastCaptureIndex = eventCounter;
 
             for (int i = 0; i < bytesSent; i += 4) {
-                if (eventCounter > aeBufferSize - 1) {
+                if (eventCounter > (aeBufferSize - 1)) {
                     activeBuffer.overrunOccuredFlag = true;
 //                                        log.warning("overrun");
                     return; // return, output event buffer is full and we cannot add any more events to it.
@@ -128,10 +129,10 @@ public class CypressFX2TmpdiffRetinaHardwareInterface extends CypressFX2Biasgen 
                 // therefore AE07 come first, then AE8-15, then TS0-7, then TS8-15
                 // see this useful URL: http://www.rgagnon.com/javadetails/java-0026.html about converting singed bytes to int as unsigned
                 // address is LSB MSB
-                addresses[eventCounter] = (short) (0xffff & ((short) aeBuffer[i] & 0xff | ((short) aeBuffer[i + 1] & 0xff) << 8));
+                addresses[eventCounter] = (short) (0xffff & ((aeBuffer[i] & 0xff) | ((aeBuffer[i + 1] & 0xff) << 8)));
 
                 // same for timestamp, LSB MSB
-                shortts = (aeBuffer[i + 2] & 0xff | ((aeBuffer[i + 3] & 0xff) << 8)); // this is 16 bit value of timestamp in TICK_US tick
+                shortts = ((aeBuffer[i + 2] & 0xff) | ((aeBuffer[i + 3] & 0xff) << 8)); // this is 16 bit value of timestamp in TICK_US tick
 
                 // shortts could be a negative short value, but each ts should be greater than the last one until 16 bit rollover
                 // tobi added following heuristic 12/05 to help deal with problem bit in timestamp counter that apparently gets read incorrectly
@@ -182,7 +183,7 @@ public class CypressFX2TmpdiffRetinaHardwareInterface extends CypressFX2Biasgen 
                 }
 
                 // compute tentative value of new timestamp
-                int thistimestamp = (int) (TICK_US_BOARD * shortts + wrapAdd); //*TICK_US; //add in the wrap offset and convert to 1us tick
+                int thistimestamp = (TICK_US_BOARD * shortts) + wrapAdd; //*TICK_US; //add in the wrap offset and convert to 1us tick
 
 //                    // if shortts is the same as last value, inc the timestamp by 1us to retain some order, at least for first 10 events
 //                    if(shortts==lastshortts){
@@ -192,7 +193,7 @@ public class CypressFX2TmpdiffRetinaHardwareInterface extends CypressFX2Biasgen 
 //                    }
 
                 // don't let timestamps go backwards in time, UNLESS the wrapAdd has wrapped (this happens every 20 minutes)
-                if (thistimestamp < lasttimestamp && !((wrapAdd & 0x80000000) != 0)) {
+                if ((thistimestamp < lasttimestamp) && !((wrapAdd & 0x80000000) != 0)) {
                     if (numNonMonotonicTimeExceptionsPrinted++ < MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT) {
                         log.warning("NonMonotonicTime event: dt=" + (thistimestamp - lasttimestamp));
                         if (numNonMonotonicTimeExceptionsPrinted == MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT) {
@@ -228,7 +229,8 @@ public class CypressFX2TmpdiffRetinaHardwareInterface extends CypressFX2Biasgen 
     /** set the pixel array reset.
      * @param value true to reset the pixels (hold them from spiking), false to let them run normally.
      */
-    synchronized public void setArrayReset(boolean value) {
+    @Override
+	synchronized public void setArrayReset(boolean value) {
         arrayResetEnabled = value;
         // send vendor request for device to reset array
         if (gUsbIo == null) {

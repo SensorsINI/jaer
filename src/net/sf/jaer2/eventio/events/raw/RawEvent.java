@@ -1,7 +1,8 @@
 package net.sf.jaer2.eventio.events.raw;
 
 /**
- * A raw AER event, having an int (32 bit) timestamp and int (32 bit) raw address.
+ * A raw AER event, having an int (32 bit) timestamp and int (32 bit) raw
+ * address.
  *
  * @author llongi
  */
@@ -11,7 +12,8 @@ public final class RawEvent {
 	public int timestamp;
 
 	/**
-	 * Creates a new instance of EventRaw, with address and timestamp initialized to zero.
+	 * Creates a new instance of EventRaw, with address and timestamp
+	 * initialized to zero.
 	 */
 	public RawEvent() {
 	}
@@ -24,7 +26,7 @@ public final class RawEvent {
 	 * @param ts
 	 *            the timestamp
 	 */
-	public RawEvent(int addr, int ts) {
+	public RawEvent(final int addr, final int ts) {
 		address = addr;
 		timestamp = ts;
 	}

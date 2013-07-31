@@ -104,7 +104,8 @@ public class SlotcarSoundEffects implements SoundPlayerInterface {
     }
 
     /** plays the spike sound once, by notifying the player thread to send the data to the line. */
-    synchronized public void play() {
+    @Override
+	synchronized public void play() {
         if (T == null) {
             return;
         }
@@ -114,7 +115,8 @@ public class SlotcarSoundEffects implements SoundPlayerInterface {
         }
     }
 
-    public void close() {
+    @Override
+	public void close() {
         if (T == null) {
             return;
         }
@@ -140,10 +142,7 @@ public class SlotcarSoundEffects implements SoundPlayerInterface {
             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
             String line = null;
             while ((line = reader.readLine()) != null) {
-                if (line == null) {
-                    continue;
-                }
-                if (line.length() == 0 || line.startsWith("#")) {
+                if ((line.length() == 0) || line.startsWith("#")) {
                     continue;
                 }
                 log.info("added sound \"" + line + "\"");
@@ -190,7 +189,7 @@ public class SlotcarSoundEffects implements SoundPlayerInterface {
             return;
         }
         float max = volumeControl.getMaximum(), min = volumeControl.getMinimum();
-        volumeControl.setValue(f * (max - min) + min);
+        volumeControl.setValue((f * (max - min)) + min);
     }
 
     public void setPan(float f) {
@@ -198,7 +197,7 @@ public class SlotcarSoundEffects implements SoundPlayerInterface {
             return;
         }
         float max = panControl.getMaximum(), min = panControl.getMinimum();
-        panControl.setValue(f * (max - min) + min);
+        panControl.setValue((f * (max - min)) + min);
     }
 
     /**
@@ -273,7 +272,7 @@ public class SlotcarSoundEffects implements SoundPlayerInterface {
 
                 @Override
                 public void keyPressed(KeyEvent e) {
-                    if (e.getKeyCode() == KeyEvent.VK_X || e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                    if ((e.getKeyCode() == KeyEvent.VK_X) || (e.getKeyCode() == KeyEvent.VK_ESCAPE)) {
                         ss.close();
                         dispose();
                         System.exit(0);
@@ -291,7 +290,7 @@ public class SlotcarSoundEffects implements SoundPlayerInterface {
                 @Override
                 public void mouseMoved(MouseEvent e) {
                     pan = (float) e.getX() / getWidth();
-                    vol = 1 - (float) e.getY() / getHeight(); // java y increases downwards
+                    vol = 1 - ((float) e.getY() / getHeight()); // java y increases downwards
                     ss.setPan(pan);
                     ss.setVolume(vol);
                 }

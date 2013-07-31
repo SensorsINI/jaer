@@ -37,7 +37,8 @@ public class JavaFXJOGLIntegrationTest extends Application {
 	private static final int ROWS = 1;
 
 	public static void main(final String[] args) {
-		// Launch the JavaFX application: do initialization and call start() when ready.
+		// Launch the JavaFX application: do initialization and call start()
+		// when ready.
 		Application.launch(args);
 	}
 
@@ -75,7 +76,7 @@ public class JavaFXJOGLIntegrationTest extends Application {
 
 				final AnimationTimer animator = new AnimationTimer() {
 					@Override
-					public void handle(final long time) {
+					public void handle(@SuppressWarnings("unused") final long time) {
 						final GLAutoDrawable draw = fxJogl.getDrawable();
 
 						if (draw != null) {
@@ -178,7 +179,10 @@ public class JavaFXJOGLIntegrationTest extends Application {
 							/* Total memory currently in use by the JVM */
 							totMemTxt.setText("Total memory (bytes): " + rt.totalMemory());
 
-							/* Maximum amount of memory the JVM will attempt to use */
+							/*
+							 * Maximum amount of memory the JVM will attempt to
+							 * use
+							 */
 							maxMemTxt.setText("Maximum memory (bytes): " + rt.maxMemory());
 						}
 					});
@@ -189,7 +193,7 @@ public class JavaFXJOGLIntegrationTest extends Application {
 
 		primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
 			@Override
-			public void handle(final WindowEvent event) {
+			public void handle(@SuppressWarnings("unused") final WindowEvent event) {
 				t.interrupt();
 			}
 		});
@@ -214,17 +218,23 @@ public class JavaFXJOGLIntegrationTest extends Application {
 			render(drawable);
 		}
 
+		@SuppressWarnings("unused")
 		@Override
 		public void dispose(final GLAutoDrawable drawable) {
+			// Empty, no implementation yet.
 		}
 
+		@SuppressWarnings("unused")
 		@Override
 		public void init(final GLAutoDrawable drawable) {
+			// Empty, no implementation yet.
 		}
 
+		@SuppressWarnings("unused")
 		@Override
 		public void reshape(final GLAutoDrawable drawable, final int arg1, final int arg2, final int arg3,
 			final int arg4) {
+			// Empty, no implementation yet.
 		}
 
 		private void render(final GLAutoDrawable drawable) {

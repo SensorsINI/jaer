@@ -61,7 +61,9 @@ public class CardNamePlayer implements SoundPlayerInterface{
      */
     public CardNamePlayer(int cardNumber)throws IOException, UnsupportedAudioFileException, LineUnavailableException{
         this.cardNumber=cardNumber;
-        if(cardNumber>=CardNamePlayer.getSoundFilePaths().size()) throw new IOException("There is no card number "+cardNumber+" available");
+        if(cardNumber>=CardNamePlayer.getSoundFilePaths().size()) {
+			throw new IOException("There is no card number "+cardNumber+" available");
+		}
         setFile(cardNumber);
         open();
     }
@@ -94,7 +96,8 @@ public class CardNamePlayer implements SoundPlayerInterface{
         T.start();
     }
     /** plays the spike sound once, by notifying the player thread to send the data to the line. */
-    synchronized public void play (){
+    @Override
+	synchronized public void play (){
         if ( T == null ){
             return;
         }
@@ -104,7 +107,8 @@ public class CardNamePlayer implements SoundPlayerInterface{
         }
     }
 
-    public void close (){
+    @Override
+	public void close (){
         if ( T == null ){
             return;
         }
@@ -116,7 +120,9 @@ public class CardNamePlayer implements SoundPlayerInterface{
     private static ArrayList<String> nameList=null;
 
     public static ArrayList<String> getSoundFilePaths (){
-        if(nameList!=null) return nameList;
+        if(nameList!=null) {
+			return nameList;
+		}
         nameList=new ArrayList<String>();
         try{
             String pathHeader = "org/ine/telluride/jaer/tell2010/spinningcardclassifier/resources/";
@@ -131,8 +137,9 @@ public class CardNamePlayer implements SoundPlayerInterface{
             BufferedReader reader=new BufferedReader(new InputStreamReader(inputStream));
             String line=null;
             while((line=reader.readLine())!=null){
-                if(line==null) continue;
-                if(line.length()==0 || line.startsWith("#")) continue;
+                if((line.length()==0) || line.startsWith("#")) {
+					continue;
+				}
                 log.info("added sound \""+line+"\"");
                 nameList.add(pathHeader+line);
             }
@@ -149,7 +156,9 @@ public class CardNamePlayer implements SoundPlayerInterface{
      *@param soundNumber the file number of the available files
      **/
    public final synchronized boolean setFile (int soundNumber) throws UnsupportedAudioFileException,FileNotFoundException,IOException{
-        if(soundNumber>=getSoundFilePaths().size()) throw new FileNotFoundException("invalid file index");
+        if(soundNumber>=getSoundFilePaths().size()) {
+			throw new FileNotFoundException("invalid file index");
+		}
         this.filename = getSoundFilePaths().get(soundNumber);
         InputStream inputStream;
         // load firmware file (this is binary file of 8051 firmware)
@@ -175,7 +184,7 @@ public class CardNamePlayer implements SoundPlayerInterface{
             return;
         }
         float max = volumeControl.getMaximum(), min = volumeControl.getMinimum();
-        volumeControl.setValue(f * ( max - min ) + min);
+        volumeControl.setValue((f * ( max - min )) + min);
     }
 
     public void setPan (float f){
@@ -183,7 +192,7 @@ public class CardNamePlayer implements SoundPlayerInterface{
             return;
         }
         float max = panControl.getMaximum(), min = panControl.getMinimum();
-        panControl.setValue(f * ( max - min ) + min);
+        panControl.setValue((f * ( max - min )) + min);
     }
 
     /**
@@ -254,7 +263,7 @@ public class CardNamePlayer implements SoundPlayerInterface{
             addKeyListener(new KeyAdapter(){
                 @Override
                 public void keyPressed (KeyEvent e){
-                    if ( e.getKeyCode() == KeyEvent.VK_X || e.getKeyCode() == KeyEvent.VK_ESCAPE ){
+                    if ( (e.getKeyCode() == KeyEvent.VK_X) || (e.getKeyCode() == KeyEvent.VK_ESCAPE) ){
                         ss.close();
                         dispose();
                         System.exit(0);
@@ -271,7 +280,7 @@ public class CardNamePlayer implements SoundPlayerInterface{
                 @Override
                 public void mouseMoved (MouseEvent e){
                     pan = (float)e.getX() / getWidth();
-                    vol = 1 - (float)e.getY() / getHeight(); // java y increases downwards
+                    vol = 1 - ((float)e.getY() / getHeight()); // java y increases downwards
                     ss.setPan(pan);
                     ss.setVolume(vol);
                 }

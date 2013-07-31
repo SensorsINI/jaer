@@ -323,13 +323,13 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 
 		/** Overrides to avoid setting preferences for the enclosed filters */
 		@Override
-		public void setFilterEnabled(boolean yes) {
+		public synchronized void setFilterEnabled(boolean yes) {
 			filterEnabled = yes;
 			getPrefs().putBoolean("filterEnabled", yes);
 		}
 
 		@Override
-		public boolean isFilterEnabled() {
+		public synchronized boolean isFilterEnabled() {
 			return filterEnabled; // force active
 		}
 
@@ -758,7 +758,7 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 	/**
 	 * filters in to out. if filtering is enabled, the number of out may be less
 	 * than the number putString in
-	 * 
+	 *
 	 * @param in
 	 *            input events can be null or empty.
 	 *@return the processed events, may be fewer in number.
@@ -871,10 +871,10 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 				// int yPos = ((insideRegionY >> (int)
 				// log2(Math.ceil((double) (mainHeight /
 				// hopfieldGridY))) * hopfieldGridX));
-				int ratioX = (int) mainWidth
+				int ratioX = mainWidth
 					/ hopfieldGridX;
 
-				int ratioY = (int) mainHeight
+				int ratioY = mainHeight
 					/ hopfieldGridY;
 
 				int xPos = insideRegionX / ratioX;
@@ -1541,28 +1541,6 @@ public class HopfieldRecognitionFilter extends EventFilter2D implements Observer
 			double likelihood = classifyResults[i];
 			Date now = new Date();
 
-			if(isLogDataEnabled && false){
-				try {
-
-					logWriter.write("\n"+classifyCounter+ "\t"+likelihood+"\t"+i+"\t"+classNames[i]+"\t"+ now.getTime());
-					//if more than a certain confidence level, take a screenshot and print it out!
-					if(likelihood > 0.6){
-						if(bTrainingImageDigital!=null){
-							File file = new File("/tmp/images/my_image_"+classifyCounter+".png");
-							ImageIO.write(bTrainingImageDigital, "png", file);
-
-						}
-
-					}
-
-
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-
-
-			}
 			if(likelihood > maxLikelihood){
 				maxLikelihood = likelihood;
 				classifiedClass = i;

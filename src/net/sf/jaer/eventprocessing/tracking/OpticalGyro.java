@@ -21,7 +21,7 @@ import net.sf.jaer.util.filter.LowpassFilter2d;
 
 /**
  * Computes camera pose changes based on tracking many clusters of local activity.
- * 
+ *
  * @author tobi
  */
 @Description("Computes camera pose changes based on tracking many clusters of local activity")
@@ -92,7 +92,7 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
 	}
 
 	@Override
-	public EventPacket<?> filterPacket(EventPacket<?> in) {
+	public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
 		super.filterPacket(in);  // run cluster tracker
 		if(!in.isEmpty())
 		{

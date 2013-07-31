@@ -43,7 +43,7 @@ public class BallShooterCochlea extends EventFilter2D implements FrameAnnotater
         ITDsent=false;
         filterchain.add(itd);
         filterchain.add(rate);
-        
+
         //itd.setEnclosed(true, this);
         itd.setFilterEnabled(false); //false when starting
         rate.setFilterEnabled(false);
@@ -53,9 +53,12 @@ public class BallShooterCochlea extends EventFilter2D implements FrameAnnotater
         initFilter();
         //setEnclosedFilter(itd);
     }
-    public EventPacket<?> filterPacket(EventPacket<?> in)
+    @Override
+	public EventPacket<?> filterPacket(EventPacket<?> in)
     {
-        if(!isFilterEnabled()) return in;
+        if(!isFilterEnabled()) {
+			return in;
+		}
         EventPacket out=null;
         //log.info("Box info "+xyfilter.getStartX()+" "+xyfilter.getStartY()+" "+xyfilter.getEndX()+" "+xyfilter.getEndY()+"\n ");
         if(!isITDFilterEnabled) //if the itd filter was not enabled
@@ -71,17 +74,19 @@ public class BallShooterCochlea extends EventFilter2D implements FrameAnnotater
         out=filterchain.filterPacket(in);
         if(in.getSize()>0)
         { pacsum++;
-          
+
           if(pacsum>packetBufferSize)//if pacsum has hundred packets
-          { if(!ITDsent)//if ITD is not sent already
-                sendITD();
+          { if(!ITDsent) {
+			sendITD();
+		}
           }
-          else
-              calcITD+=itd.getITD();
+		else {
+			calcITD+=itd.getITD();
           //calcITD+=-1;
+		}
         }
         return out;
-        
+
         //}
     }
     void sendITD()
@@ -89,7 +94,7 @@ public class BallShooterCochlea extends EventFilter2D implements FrameAnnotater
         ArrayBlockingQueue Q=Tmpdiff128CochleaCommunication.getBlockingQ();
         if(Q==null)
         {
-            
+
             Tmpdiff128CochleaCommunication.initBlockingQ();
             log.info("q was null in cochlea wantign to send ITD. should not happen!");
         }
@@ -118,14 +123,14 @@ public class BallShooterCochlea extends EventFilter2D implements FrameAnnotater
         ArrayBlockingQueue Q=Tmpdiff128CochleaCommunication.getBlockingQ();
         if(Q==null)
         {
-            
+
             Tmpdiff128CochleaCommunication.initBlockingQ();
             log.info("q was null in cochlea");
         }
         if(Tmpdiff128CochleaCommunication.sizeBlockingQ()>0)//if something there in queue
         {
             log.finest("Got info from retina");
-            CommunicationObject co=(CommunicationObject)Tmpdiff128CochleaCommunication.peekBlockingQ();
+            CommunicationObject co=Tmpdiff128CochleaCommunication.peekBlockingQ();
             if(co.isForCochlea())//if packet is for cochlea
             {
                 try
@@ -152,7 +157,8 @@ public class BallShooterCochlea extends EventFilter2D implements FrameAnnotater
         // else
         //   log.info("Queue Empty!");
     }
-    public void initFilter()
+    @Override
+	public void initFilter()
     {
         isITDFilterEnabled=false;
         ITDsent=false;
@@ -164,20 +170,22 @@ public class BallShooterCochlea extends EventFilter2D implements FrameAnnotater
     {
         return null;
     }
-    
+
     /** Overrides to avoid setting preferences for the enclosed filters */
-    @Override public void setFilterEnabled(boolean yes)
+    @Override public synchronized void setFilterEnabled(boolean yes)
     {
         this.filterEnabled=yes;
         getPrefs().putBoolean("filterEnabled",yes);
     }
-    
-    public void resetFilter()
+
+    @Override
+	public void resetFilter()
     {
         initFilter();
         //setFilterEnabled(false);
     }
-    public void annotate(GLAutoDrawable drawable)
+    @Override
+	public void annotate(GLAutoDrawable drawable)
     {
         //((FrameAnnotater)clusterFinder).annotate(drawable);
     }
@@ -187,12 +195,12 @@ public class BallShooterCochlea extends EventFilter2D implements FrameAnnotater
     public void annotate(float[][][] frame)
     {
     }
-    
+
     public int getPacketBufferSize()
     {
         return packetBufferSize;
     }
-    
+
     public void setPacketBufferSize(int packetBufferSize)
     {
         this.packetBufferSize = packetBufferSize;

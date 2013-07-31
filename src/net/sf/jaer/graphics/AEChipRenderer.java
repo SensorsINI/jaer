@@ -114,24 +114,17 @@ public class AEChipRenderer extends Chip2DRenderer {
         timeColors = new float[NUM_TIME_COLORS][3];
         float s = 1f / NUM_TIME_COLORS;
         for (int i = 0; i < NUM_TIME_COLORS; i++) {
-            if (true) {
-                int rgb = Color.HSBtoRGB((float) 0.66f * (NUM_TIME_COLORS - i) / NUM_TIME_COLORS, 1f, 1f);
+                int rgb = Color.HSBtoRGB((0.66f * (NUM_TIME_COLORS - i)) / NUM_TIME_COLORS, 1f, 1f);
                 Color c = new Color(rgb);
                 float[] comp = c.getRGBColorComponents(null);
                 timeColors[i][0] = comp[0];
                 timeColors[i][2] = comp[2];
                 timeColors[i][1] = comp[1];
-//                System.out.println(String.format("%.2f %.2f %.2f",comp[0],comp[1],comp[2]));
-            } else {
-                timeColors[i][0] = s * i;
-                timeColors[i][2] = s * (NUM_TIME_COLORS - 1 - i);
-                timeColors[i][1] = 2 * Math.min(s * i, s * (NUM_TIME_COLORS - 1 - i));
-            }
         }
     }
 
     /** Overrides color scale setting to update the stored accumulated pixmap when the color scale is changed.
-    
+
      * */
     @Override
     synchronized public void setColorScale(int colorScale) {
@@ -188,7 +181,7 @@ public class AEChipRenderer extends Chip2DRenderer {
         int numEvents = packet.getSize();
         int skipBy = 1;
         if (isSubsamplingEnabled()) {
-            while (numEvents / skipBy > getSubsampleThresholdEventCount()) {
+            while ((numEvents / skipBy) > getSubsampleThresholdEventCount()) {
                 skipBy++;
             }
         }
@@ -212,14 +205,14 @@ public class AEChipRenderer extends Chip2DRenderer {
                         continue;
                     }
                     int type = e.getType();
-                    if (e.x == xsel && e.y == ysel) {
+                    if ((e.x == xsel) && (e.y == ysel)) {
                         playSpike(type);
                     }
                     int ind = getPixMapIndex(e.x, e.y);
 //                    float[] f = fr[e.y][e.x];
 //                    setPixmapPosition(e.x, e.y);
                     float[] c = typeColorRGBComponents[type];
-                    if (obj instanceof OrientationEvent && ((OrientationEvent) obj).hasOrientation == false) {
+                    if ((obj instanceof OrientationEvent) && (((OrientationEvent) obj).hasOrientation == false)) {
                         // if event is orientation event but orientation was not set, just draw as gray level
                         f[ind] += step; //if(f[0]>1f) f[0]=1f;
                         f[ind + 1] += step; //if(f[1]>1f) f[1]=1f;
@@ -252,7 +245,7 @@ public class AEChipRenderer extends Chip2DRenderer {
                                 setSpecialCount(specialCount + 1); // TODO optimate special count increment
                                 continue;
                             }
-                            if (e.x == xsel && e.y == ysel) {
+                            if ((e.x == xsel) && (e.y == ysel)) {
                                 playSpike(type);
                             }
                             int ind = getPixMapIndex(e.x, e.y);
@@ -280,7 +273,7 @@ public class AEChipRenderer extends Chip2DRenderer {
                                 setSpecialCount(specialCount + 1); // TODO optimate special count increment
                                 continue;
                             }
-                            if (e.x == xsel && e.y == ysel) {
+                            if ((e.x == xsel) && (e.y == ysel)) {
                                 playSpike(type);
                             }
                             int ind = getPixMapIndex(e.x, e.y);
@@ -311,7 +304,7 @@ public class AEChipRenderer extends Chip2DRenderer {
                                 continue;
                             }
                             //System.out.println("x: " + e.x + "   y:" + e.y);
-                            if (e.x == xsel && e.y == ysel) {
+                            if ((e.x == xsel) && (e.y == ysel)) {
                                 playSpike(type);
                             }
                             int ind = getPixMapIndex(e.x, e.y);
@@ -336,11 +329,11 @@ public class AEChipRenderer extends Chip2DRenderer {
                                 setSpecialCount(getSpecialCount() + 1); // TODO optimate special count increment
                                 continue;
                             }
-                            if (e.x == xsel && e.y == ysel) {
+                            if ((e.x == xsel) && (e.y == ysel)) {
                                 playSpike(type);
                             }
                             int index = getPixMapIndex(e.x, e.y);
-                            int ind = (int) Math.floor((NUM_TIME_COLORS - 1) * (e.timestamp - ts0) / dt);
+                            int ind = (int) Math.floor(((NUM_TIME_COLORS - 1) * (e.timestamp - ts0)) / dt);
                             if (ind < 0) {
                                 ind = 0;
                             } else if (ind >= timeColors.length) {
@@ -367,7 +360,7 @@ public class AEChipRenderer extends Chip2DRenderer {
             }
             autoScaleFrame(f);
         } catch (ArrayIndexOutOfBoundsException e) {
-            if (chip.getFilterChain() != null && (chip.getFilterChain().getProcessingMode() != net.sf.jaer.eventprocessing.FilterChain.ProcessingMode.ACQUISITION)) { // only print if real-time mode has not invalidated the packet we are trying render
+            if ((chip.getFilterChain() != null) && (chip.getFilterChain().getProcessingMode() != net.sf.jaer.eventprocessing.FilterChain.ProcessingMode.ACQUISITION)) { // only print if real-time mode has not invalidated the packet we are trying render
                 e.printStackTrace();
                 log.warning(e.toString() + ": ChipRenderer.render(), some event out of bounds for this chip type?");
             }
@@ -393,21 +386,20 @@ public class AEChipRenderer extends Chip2DRenderer {
             float max = Float.NEGATIVE_INFINITY, min = Float.POSITIVE_INFINITY;
             //               max=max-.5f; // distance of max from gray
             //            min=.5f-min; // distance of min from gray
-            for (int i = 0; i
-                    < fr.length; i++) {
-                for (int j = 0; j
-                        < fr[i].length; j++) {
-                    for (int k = 0; k
-                            < 3; k++) {
-                        float f = fr[i][j][k] - gray;
-                        if (f > max) {
-                            max = f;
-                        } else if (f < min) {
-                            min = f;
-                        }
-                    }
-                }
+            for (float[][] element : fr) {
+            for (int j = 0; j
+			    < element.length; j++) {
+			for (int k = 0; k
+			        < 3; k++) {
+			    float f = element[j][k] - gray;
+			    if (f > max) {
+			        max = f;
+			    } else if (f < min) {
+			        min = f;
+			    }
+			}
             }
+         }
             // global normalizer here
             // this is tricky because we want to map max value to 1 OR min value to 0, whichever is greater magnitude, max or min
             // ALSO, max and min are distances from gray level in positive and negative directions
@@ -417,14 +409,14 @@ public class AEChipRenderer extends Chip2DRenderer {
             }
             if (max > -min) { // map max to 1, gray to gray
                 m = (1 - gray) / (max);
-                b = gray - gray * m;
+                b = gray - (gray * m);
             } else { // map min to 0, gray to gray
                 m = gray / (-min);
-                b = gray - gray * m;
+                b = gray - (gray * m);
             } //            float norm=(float)Math.max(Math.abs(max),Math.abs(min)); // norm is max distance from gray level
             //            System.out.println("norm="+norm);
             if (colorMode != ColorMode.Contrast) {
-                autoScaleValue = (int) Math.round(Math.max(max, -min) / step);  // this is value shown to user, step was computed during rendering to be (usually) 1/colorScale
+                autoScaleValue = Math.round(Math.max(max, -min) / step);  // this is value shown to user, step was computed during rendering to be (usually) 1/colorScale
             } else {
                 if (max > -min) {
                     autoScaleValue = 1;  // this is value shown to user, step was computed during rendering to be (usually) 1/colorScale
@@ -440,7 +432,7 @@ public class AEChipRenderer extends Chip2DRenderer {
                     for (int k = 0; k
                             < 3; k++) {
                         float f = fr[i][j][k];
-                        float f2 = m * f + b;
+                        float f2 = (m * f) + b;
                         if (f2 < 0) {
                             f2 = 0;
                         } else if (f2 > 1) {
@@ -469,15 +461,14 @@ public class AEChipRenderer extends Chip2DRenderer {
         float max = Float.NEGATIVE_INFINITY, min = Float.POSITIVE_INFINITY;
         //               max=max-.5f; // distance of max from gray
         //            min=.5f-min; // distance of min from gray
-        for (int i = 0; i
-                < fr.length; i++) {
-            float f = fr[i] - grayValue;
-            if (f > max) {
-                max = f;
-            } else if (f < min) {
-                min = f;
-            }
-        }
+        for (float element : fr) {
+         float f = element - grayValue;
+         if (f > max) {
+		max = f;
+         } else if (f < min) {
+		min = f;
+         }
+      }
         // global normalizer here
         // this is tricky because we want to map max value to 1 OR min value to 0, whichever is greater magnitude, max or min
         // ALSO, max and min are distances from gray level in positive and negative directions
@@ -487,13 +478,13 @@ public class AEChipRenderer extends Chip2DRenderer {
         }
         if (max > -min) { // map max to 1, gray to gray
             m = (1 - grayValue) / (max);
-            b = grayValue - grayValue * m;
+            b = grayValue - (grayValue * m);
         } else { // map min to 0, gray to gray
             m = grayValue / (-min);
-            b = grayValue - grayValue * m;
+            b = grayValue - (grayValue * m);
         }
         if (colorMode != ColorMode.Contrast) {
-            autoScaleValue = (int) Math.round(Math.max(max, -min) / step);  // this is value shown to user, step was computed during rendering to be (usually) 1/colorScale
+            autoScaleValue = Math.round(Math.max(max, -min) / step);  // this is value shown to user, step was computed during rendering to be (usually) 1/colorScale
         } else {
             if (max > -min) {
                 autoScaleValue = 1;  // this is value shown to user, step was computed during rendering to be (usually) 1/colorScale
@@ -504,16 +495,16 @@ public class AEChipRenderer extends Chip2DRenderer {
         // normalize all channels
         for (int i = 0; i
                 < fr.length; i++) {
-            fr[i] = m * fr[i] + b;
+            fr[i] = (m * fr[i]) + b;
         }
     }
 
     /** Creates colors for each cell type (e.g. orientation)
     so that they are spread over hue space in a manner to attempt to be maximally different in hue.
-     * 
+     *
      * <p>
      * Subclasses can override this method to customize the colors drawn but the subclasses should check if the color have been created since checkTypeColors is called on every
-     * rendering cycle. This method should first check if typeColorRGBComponents already exists and has the correct number of elements. If not, 
+     * rendering cycle. This method should first check if typeColorRGBComponents already exists and has the correct number of elements. If not,
      * allocate and populate typeColorRGBComponents so that type t corresponds to typeColorRGBComponents[t][0] for red, typeColorRGBComponents[t][1] for green, and
      * typeColorRGBComponents[t][3] for blue. It should also populate the Color[] typeColors.
      * @param numCellTypes the number of colors to generate
@@ -521,16 +512,16 @@ public class AEChipRenderer extends Chip2DRenderer {
      * @see #typeColorRGBComponents
      */
     protected void checkTypeColors(int numCellTypes) {
-        if (typeColorRGBComponents == null || typeColorRGBComponents.length != numCellTypes) {
+        if ((typeColorRGBComponents == null) || (typeColorRGBComponents.length != numCellTypes)) {
             typeColorRGBComponents = new float[numCellTypes][3];
             setTypeColors(
                     new Color[numCellTypes]);
             StringBuffer b = new StringBuffer("cell type rendering colors (type: rgb):\n");
             for (int i = 0; i
                     < typeColorRGBComponents.length; i++) {
-                int hueIndex = (int) Math.floor((float) i / typeColorRGBComponents.length * HUES.length);
+                int hueIndex = (int) Math.floor(((float) i / typeColorRGBComponents.length) * HUES.length);
                 //                float hue=(float)(numCellTypes-i)/(numCellTypes);
-                float hue = (float) HUES[hueIndex] / 255f;
+                float hue = HUES[hueIndex] / 255f;
                 //                hue=hue*hue;
                 //                Color c=space.fromCIEXYZ(comp);
                 Color c = Color.getHSBColor(hue, 1, 1);
@@ -602,8 +593,8 @@ public class AEChipRenderer extends Chip2DRenderer {
         return subsamplingEnabled;
     }
 
-    /** Plays a single spike click and increments the selectedPixelEventCount counter 
-     * 
+    /** Plays a single spike click and increments the selectedPixelEventCount counter
+     *
      * @param type 0 to play left, 1 to play right
      */
     protected void playSpike(int type) {
@@ -612,7 +603,7 @@ public class AEChipRenderer extends Chip2DRenderer {
     }
 
     /** Sets whether to ignore event polarity when rendering so that all event types increase brightness
-     * 
+     *
      * @param ignorePolarityEnabled true to ignore
      */
     public void setIgnorePolarityEnabled(boolean ignorePolarityEnabled) {

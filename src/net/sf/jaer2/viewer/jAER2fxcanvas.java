@@ -30,7 +30,8 @@ public class jAER2fxcanvas extends Application {
 	private static final PixelFormat<ByteBuffer> pxFormat = PixelFormat.getByteRgbInstance();
 
 	public static void main(final String[] args) {
-		// Launch the JavaFX application: do initialization and call start() when ready.
+		// Launch the JavaFX application: do initialization and call start()
+		// when ready.
 		Application.launch(args);
 	}
 

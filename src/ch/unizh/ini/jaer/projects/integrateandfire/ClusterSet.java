@@ -27,7 +27,7 @@ import com.jogamp.opengl.util.gl2.GLUT;
 /**
  * @description An extension of RectangularClusterTracker for generating typed
  * events, with new coordinates, based on cluster membership.
- * 
+ *
  *
  * @author Peter
  */
@@ -129,7 +129,7 @@ public class ClusterSet extends RectangularClusterTracker {
 	}
 
 	@Override
-	public EventPacket<?> filterPacket(EventPacket<?> in) {
+	public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
 		if ((in.getSize() == 0) || !filterEnabled) {
 			return in; // added so that packets don't use a zero length packet to set last timestamps, etc, which can purge clusters for no reason
 		}
@@ -230,7 +230,7 @@ public class ClusterSet extends RectangularClusterTracker {
 	}
 
 	// Read the Network File on filter Reset
-	@Override public void resetFilter(){
+	@Override public synchronized void resetFilter(){
 		super.resetFilter();
 		// Gimme some default properties
 		initIndexOccupied();

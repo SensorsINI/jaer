@@ -11,7 +11,6 @@ import java.awt.Color;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -264,7 +263,7 @@ public class ServoArm extends EventFilter2D implements Observer,FrameAnnotater/*
 		//        armTracker.setAspectRatio(1.2f);
 		//        armTracker.setClusterSize(0.2f);
 	}
-	@Override public void setFilterEnabled(boolean yes){
+	@Override public synchronized void setFilterEnabled(boolean yes){
 		super.setFilterEnabled(yes);
 		if(yes){
 			if(realtimeLoggingEnabled){

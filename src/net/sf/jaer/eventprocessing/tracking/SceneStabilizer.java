@@ -460,7 +460,7 @@ public class SceneStabilizer extends EventFilter2D implements FrameAnnotater, Ap
 	}
 
 	@Override
-	public void setFilterEnabled(boolean yes) {
+	public synchronized void setFilterEnabled(boolean yes) {
 		super.setFilterEnabled(yes);
 		setPositionComputer(positionComputer); // reflag enabled/disabled state of motion computation
 		if(!yes){

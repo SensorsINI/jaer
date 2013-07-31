@@ -13,7 +13,7 @@ import net.sf.jaer.biasgen.VDAC.VPot;
 import net.sf.jaer.chip.Chip;
 
 /**
- * Describes an general bias (pot=potentiometer),  This Pot can either be on or off chip. 
+ * Describes an general bias (pot=potentiometer),  This Pot can either be on or off chip.
  * <ul>
  * <li>
  * On chip pots are current DACs from Tobi's bias
@@ -70,7 +70,7 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
         this.modified = modified;
     }
 
- 
+
     /** an enum for the type of bias, NORMAL or CASCODE or REFERENCE */
     public static enum Type {
 
@@ -183,7 +183,7 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
      *For an on-chip bias current generator the minimum current is about 0, and the maximum is the master current. For an
      *off-chip voltage DAC, the limits are set the by the DAC references.
      *@return the binary value of the bias
-     *@see #getBinaryRepresentation 
+     *@see #getBinaryRepresentation
      **/
     public int getBitValue() {
         return this.bitValue;
@@ -204,10 +204,10 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     }
 
     /** Overrides Observable.setChanged() to setModified(true).
-     * 
+     *
      */
     @Override
-    public void setChanged() {
+    public synchronized void setChanged() {
         setModified(true);
         super.setChanged();
     }
@@ -215,7 +215,7 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     public int getChipNumber() {
         return this.chipNumber;
     }
-    
+
     public Chip getChip(){
         return chip;
     }
@@ -254,7 +254,8 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
         setBitValue(bitValue - 1);
     }
 
-    public String toString() {
+    @Override
+	public String toString() {
         return "Pot " + getName() + " with bitValue=" + getBitValue();
     }
 
@@ -355,7 +356,7 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
         this.tooltipString = tooltipString;
     }
 
-    /** Contructs the UI control for this Pot. 
+    /** Contructs the UI control for this Pot.
     @return the UI component that user uses to control the Pot
      */
     abstract public JComponent makeGUIPotControl();
@@ -396,18 +397,18 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     abstract public String getPhysicalValueUnits();
 
     @Override
-    public void addObserver(Observer o) {
+    public synchronized void addObserver(Observer o) {
 //        log.info(this+ " added observer "+o);
         super.addObserver(o);
     }
-    
+
     /** Computes and returns a new array of bytes representing the bias to be sent over hardware interface to the device.
     @return array of bytes to be sent, by convention values are ordered in big endian format so that byte 0 is the most significant byte and is sent first to the hardware
      */
     abstract public byte[] getBinaryRepresentation();
 
     /** Checks name, sex, type, chipNumber and bitValue for equality.
-     * 
+     *
      * @param obj another Pot - if not a Pot or null, returns false.
      * @return true if equal.
      */
@@ -421,9 +422,9 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
         }
         Pot pot = (Pot) obj;
         return pot.getName().equals(getName())
-                && pot.getSex() == getSex()
-                && pot.getType() == getType()
-                && pot.getChipNumber() == getChipNumber()
-                && pot.getBitValue() == getBitValue();
+                && (pot.getSex() == getSex())
+                && (pot.getType() == getType())
+                && (pot.getChipNumber() == getChipNumber())
+                && (pot.getBitValue() == getBitValue());
     }
 }

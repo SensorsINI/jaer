@@ -1,8 +1,8 @@
 /*
  * CypressFX2Biasgen.java
- * 
+ *
  * Created on December 1, 2005, 2:00 PM
- * 
+ *
  * To change this template, choose Tools | Options and locate the template under
  * the Source Creation and Management node. Right-click the template and choose
  * Open. You can then make changes to the template in the Source Editor.
@@ -21,7 +21,7 @@ import de.ailis.usb4java.libusb.Device;
 
 /**
  * The hardware interface for the DVS128 (second Tmpdiff128 board, with CPLD) retina boards.
- * 
+ *
  * @author tobi/rapha
  */
 public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen implements HasUpdatableFirmware,
@@ -53,7 +53,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 	private LEDState ledState = LEDState.UNKNOWN; // efferent copy, since we can't read it
 	/**
 	 * SYNC events are detected when this bit mask is detected in the input event stream.
-	 * 
+	 *
 	 * @see HasSyncEventOutput
 	 */
 	public static final int SYNC_EVENT_BITMASK = 0x8000;
@@ -65,7 +65,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 
 	/** Overrides open() to also set sync event mode. */
 	@Override
-	public void open() throws HardwareInterfaceException {
+	public synchronized void open() throws HardwareInterfaceException {
 		super.open();
 		setSyncEventEnabled(syncEventEnabled);
 	}
@@ -122,7 +122,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 
 	/**
 	 * Returns 1
-	 * 
+	 *
 	 * @return 1
 	 */
 	@Override
@@ -132,7 +132,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 
 	/**
 	 * Sets the LED state. Throws no exception, just prints warning on hardware exceptions.
-	 * 
+	 *
 	 * @param led
 	 *            only 0 in this case
 	 * @param state
@@ -174,7 +174,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 
 	/**
 	 * Returns the last set LED state
-	 * 
+	 *
 	 * @param led
 	 *            ignored
 	 * @return the last set state, or UNKNOWN if never set from host.
@@ -194,7 +194,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 
 		/**
 		 * Constructs a new reader for the interface.
-		 * 
+		 *
 		 * @param cypress
 		 *            The CypressFX2 interface.
 		 * @throws HardwareInterfaceException
@@ -206,7 +206,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 
 		/**
 		 * Does the translation, timestamp unwrapping and reset. Prints a message when a SYNC event is detected.
-		 * 
+		 *
 		 * @param b
 		 *            the raw buffer
 		 */
@@ -316,7 +316,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 
 	/**
 	 * set the pixel array reset
-	 * 
+	 *
 	 * @param value
 	 *            true to reset the pixels, false to let them run normally
 	 */
@@ -345,7 +345,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 	 * The firmware filename is hardcoded. TODO fix this hardcoding.
 	 * This method starts a background thread which pauses acquisition of data
 	 * and pops up progress monitors.
-	 * 
+	 *
 	 * @throws doesn
 	 *             't actually throw anything, so there's no way for the caller to know if the update succeeded.
 	 */

@@ -55,12 +55,12 @@ java.util.logging.FileHandler.formatter = java.util.logging.SimpleFormatter
  * @author tobi
  */
 public class JAERConsoleLoggingFormatter extends SimpleFormatter{
-    
+
     /** Creates a new instance of JAERConsoleLoggingFormatter */
     public JAERConsoleLoggingFormatter() {
     }
-    
-    @Override public String format(LogRecord record){
+
+    @Override public synchronized String format(LogRecord record){
         StringBuilder sb=new StringBuilder();
        Level l=record.getLevel();
        boolean warning=false;  // we indent warning to make them stand out
@@ -82,11 +82,11 @@ public class JAERConsoleLoggingFormatter extends SimpleFormatter{
 //        s=s.replace("\n",": ");
         return s;
     }
-    
+
 //    public static void main(String[] args){
 //        Logger log=Logger.getLogger("test");
 //        log.info("info log jjjjjjjjjjjjjjjjjjjjj jjjaaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbcccccccccccccccccccccccccccccccccccc");
 //        log.warning("warning log jjjjjjjjjjjjjjjjjjjjj jjjaaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbcccccccccccccccccccccccccccccccccccc");
 //    }
-    
+
 }

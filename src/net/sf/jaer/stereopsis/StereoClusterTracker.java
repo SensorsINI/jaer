@@ -73,7 +73,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 	}
 
 	@Override
-	public EventPacket filterPacket (EventPacket in){
+	public synchronized EventPacket filterPacket (EventPacket in){
 		if ( in == null ){
 			return null;
 		}
@@ -93,8 +93,8 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 	 * returns the physically nearest (to observer) visible cluster based on maximum disparity. Not to be confused with method
 	 *     getNearestCluster(BasicEvent ev) that returns the closest cluster to an event in the image plane.
 	 *     A cluster is only returned if has received enough support to become visible.
-	 * 
-	 * 
+	 *
+	 *
 	 * @return closest cluster, or null if there are no clusters
 	 */
 	public StereoCluster getNearestCluster (){
@@ -175,7 +175,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 	}
 
 	/** Factory method to create a new Cluster; override when subclassing Cluster.
-	 * 
+	 *
 	 * @param ev the spawning event.
 	 * @param itr the output iterator to write events to when they fall in this cluster.
 	 * @return a new empty Cluster

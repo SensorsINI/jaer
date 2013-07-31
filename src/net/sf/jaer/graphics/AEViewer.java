@@ -636,7 +636,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 			if (java.lang.reflect.Modifier.isAbstract(aeChipClass.getModifiers())) {
 				log.warning(aeChipClass + " is abstract, setting chip class to default " + AEViewer.DEFAULT_CHIP_CLASS);
 				setAeChipClassName(AEViewer.DEFAULT_CHIP_CLASS);
-				aeChipClass = aeChipClass = FastClassFinder.forName(getAeChipClassName());
+				aeChipClass = FastClassFinder.forName(getAeChipClassName());
 			}
 		}
 		catch (final ClassNotFoundException e) {
@@ -4553,9 +4553,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 																									// control menu
 					}
 
-					if (readerControl == null) {
-						return;
-					}
 					final int n = readerControl.getNumBuffers();
 					final int f = readerControl.getFifoSize();
 					decreaseNumBuffersMenuItem.setText("Decrease num buffers to " + (n - 1));

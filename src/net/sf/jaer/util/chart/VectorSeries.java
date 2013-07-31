@@ -112,7 +112,7 @@ public class VectorSeries extends Series {
 	 * <code>method</code> is ignored - the vectors are always drawn as lines.
 	 */
 	@Override
-	public void draw(GL2 gl, int method) {
+	public synchronized void draw(GL2 gl, int method) {
 		gl.glEnableClientState(GLPointerFunc.GL_VERTEX_ARRAY);
 		/* draw data series */
 		cache.position(0);

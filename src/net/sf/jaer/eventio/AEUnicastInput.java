@@ -134,9 +134,11 @@ public class AEUnicastInput implements AEUnicastSettings,PropertyChangeListener{
             readingThread.maxSizeExceeded=false;
             // changed to remove timeout to explore effect on speed
             //currentEmptyingBuffer = exchanger.exchange(currentEmptyingBuffer, TIMEOUT_MS, TimeUnit.MILLISECONDS);
-            if ( debugInput && (currentEmptyingBuffer.getNumEvents() > 0) ){
-                log.info("exchanged and returning readPacket=" + currentEmptyingBuffer);
-            }
+            if ( debugInput ) {
+				if (currentEmptyingBuffer.getNumEvents() > 0) {
+				    log.info("exchanged and returning readPacket=" + currentEmptyingBuffer);
+				}
+			}
             return currentEmptyingBuffer;
         } catch ( InterruptedException e ){
             log.info("Interrupted exchange of buffers in AEUnicastInput: " + e.toString());

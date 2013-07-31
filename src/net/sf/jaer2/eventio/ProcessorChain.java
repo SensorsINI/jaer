@@ -8,10 +8,10 @@ import net.sf.jaer2.eventio.processors.InputProcessor;
 import net.sf.jaer2.eventio.processors.OutputProcessor;
 import net.sf.jaer2.eventio.processors.Processor;
 
-public class ProcessorChain {
-	private List<InputProcessor> inputProcessors = new LinkedList<>();
-	private List<OutputProcessor> outputProcessors = new LinkedList<>();
-	private List<EventProcessor> eventProcessors = new LinkedList<>();
-	private List<Processor> processors = new LinkedList<>();
+public final class ProcessorChain {
+	private final List<InputProcessor> inputProcessors = new LinkedList<>();
+	private final List<OutputProcessor> outputProcessors = new LinkedList<>();
+	private final List<EventProcessor> eventProcessors = new LinkedList<>();
+	private final List<Processor> processors = new LinkedList<>();
 
 }

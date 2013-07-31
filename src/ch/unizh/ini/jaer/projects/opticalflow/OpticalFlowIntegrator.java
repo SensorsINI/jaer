@@ -4,7 +4,6 @@ import java.awt.geom.Point2D;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
@@ -14,23 +13,22 @@ import javax.media.opengl.GLAutoDrawable;
 
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.ServoInterface;
-import net.sf.jaer.hardwareinterface.usb.ServoInterfaceFactory;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTiltParserPanel;
 
 /** Integrates consecutive MotionData objects to track total displacement
- * 
+ *
  * This class keeps track of all received frame data containing measured
  * optical flow. It can then be used to extract the total offset since the
  * last <code>reset()</code>. Besides filtering and processing the received
  * global motion data for an optimal result, this class also keeps track of
  * all "off screen" pixels that should be drawn by
  * {@link ch.unizh.ini.jaer.projects.opticalflow.graphics.OpticalFlowDisplayMethod}
- * 
+ *
  * <br /><br />
- * 
+ *
  * Remarks about coordinates (in pixel <code>buffer</code> as well as <code>currentX/Y()</code>
  * and <code>x1,y1,x2,y2</code>)
- * 
+ *
  * <ul>
  * <li> rounded to the next integer using the internal method
  *  <code>round</code>. The only place where <code>float</code> coordinates are
@@ -111,7 +109,7 @@ public class OpticalFlowIntegrator
 
 		/**
 		 * adds one value to the end of the buffer
-		 * 
+		 *
 		 * @param f
 		 */
 		public void addValue(float f) {
@@ -133,7 +131,7 @@ public class OpticalFlowIntegrator
 		 * for efficiency, drawing directly performed in this method; make
 		 * sure an appropriate matrix was defined before (will draw onto
 		 * <code>(0,0)-(SIZE,max(data))</code>
-		 * 
+		 *
 		 * @param GL JOGL drawable
 		 */
 		public void glDraw(GL2 gl) {
@@ -197,7 +195,7 @@ public class OpticalFlowIntegrator
 
 	/**
 	 * rounding a <code>float</code> coordinate to an <code>int</code>
-	 * 
+	 *
 	 * @param f
 	 * @return
 	 */
@@ -208,7 +206,7 @@ public class OpticalFlowIntegrator
 	/**
 	 * reference to <code>Chip2DMotion</code> is used to calculate pixel array
 	 * size etc
-	 * 
+	 *
 	 * @param chip
 	 */
 	public OpticalFlowIntegrator(Chip2DMotion chip) {
@@ -221,25 +219,6 @@ public class OpticalFlowIntegrator
 		traces[1]= new GraphTrace("dx filtered", 0f, 1f, 0f);
 		traces[2]= new GraphTrace("ax", 0f, 0f, 1f);
 		traces[3]= new GraphTrace("a_max", 1f, 1f, 1f);
-
-		// NK111122
-		if (false) {
-			try {
-				hwInterface = (ServoInterface)ServoInterfaceFactory.instance().getFirstAvailableInterface(); //new SiLabsC8051F320_USBIO_ServoController();
-			} catch (HardwareInterfaceException ex) {
-				Logger.getLogger(OpticalFlowIntegrator.class.getName()).log(Level.SEVERE, null, ex);
-			}
-			if ( hwInterface == null ){
-				System.out.println("No ServoInterface found");
-			}
-			else {
-				try {
-					hwInterface.open();
-				} catch (HardwareInterfaceException ex) {
-					Logger.getLogger(OpticalFlowIntegrator.class.getName()).log(Level.SEVERE, null, ex);
-				}
-			}
-		}
 
 		reset();
 	}
@@ -270,7 +249,7 @@ public class OpticalFlowIntegrator
 	/**
 	 * updates pixel <code>buffer</code> after a new <code>ppos</code>
 	 * has been added
-	 * 
+	 *
 	 * @param frame pixel data will be saved temporarily
 	 */
 	protected void updateBuffers(MotionData frame) {
@@ -348,7 +327,7 @@ public class OpticalFlowIntegrator
 	/**
 	 * adds the <code>.getGlobal{X|Y}[2]</code> to the internal integrated
 	 * x/y values
-	 * 
+	 *
 	 * @param frame
 	 */
 	int n=0;
@@ -440,34 +419,8 @@ public class OpticalFlowIntegrator
 			//            dx= ldx + (dx-ldx)/2;
 			//            dy= ldy + (dy-ldy)/2;
 		}
-		if (false) { // was checkBox3... not used anymore
-			// acceleration limiter (no distortion as long as acceleration is within [-a_max, a_max]
-			// see MATLAB-file 'Hstar.m'
-
-			// Compute vectors differential (which is [°/s^2])
-			float ldx= getX(-1) - getX(-2);
-			float ldy= getY(-1) - getY(-2);
-			float ax= dx - ldx; // acceleration in x direction [pxl/frate^2] (?)
-			float ay= dy - ldy;
-
-			float sax, say;
-			if (Math.abs(ax) > a_max) {
-				sax= Math.signum(ax) * a_max;
-				ax= sax + (g * (float)Math.atan((ax - sax)/g));
-				dx= ax + ldx;
-			}
-			if (Math.abs(ay) > a_max) {
-				say= Math.signum(ay) * a_max;
-				ay= say + (g * (float)Math.atan((ay - say)/g));
-				dy= ay + ldy;
-			}
-
-			traces[2].addValue((float)Math.sqrt((ay*ay) +(ax*ax))*debugParam1);
-			traces[3].addValue(a_max*debugParam1);
-		} else {
-			traces[2].addValue(0);
-			traces[3].addValue(0);
-		}
+		traces[2].addValue(0);
+		traces[3].addValue(0);
 
 
 		//traces[1].addValue((float) (Math.sqrt(dx*dx+dy*dy)));
@@ -498,11 +451,11 @@ public class OpticalFlowIntegrator
 
 	/**
 	 * transforms the GL coordinates
-	 * 
+	 *
 	 * in the new coordinate system, the whole viewport (from
 	 * <code>x1,y1</code> to <code>x2,y2</code>) will be visible in the same
 	 * space that only contained the chip's pixel before
-	 * 
+	 *
 	 * @param gl to apply transformation matrices
 	 */
 	protected int drawableWidth,drawableHeight;
@@ -579,16 +532,16 @@ public class OpticalFlowIntegrator
 
 	/**
 	 * draws the buffered pixels onto GL canvas
-	 * 
+	 *
 	 * pixels still visible in the viewport but not part of the current frame
 	 * are buffered internally and can be drawn onto the viewport (after a
 	 * <code>glTransform</code> was performed) using this method. the value
 	 * is scaled according to
-	 * 
+	 *
 	 * <pre>
 	 *   value = (pixel_value - offset) * gain
 	 * </pre>
-	 * 
+	 *
 	 * @param gl drawable
 	 * @param offset
 	 * @param gain

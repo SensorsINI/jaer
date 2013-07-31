@@ -226,7 +226,7 @@ public class CochleaCrossCorrelator extends EventFilter2D implements FrameAnnota
 		}
 	}
 
-	@Override public void setFilterEnabled(boolean yes){
+	@Override public synchronized void setFilterEnabled(boolean yes){
 		super.setFilterEnabled(yes);
 		if(!yes && (servo!=null)){
 			ServoInterface s=(ServoInterface)servo;

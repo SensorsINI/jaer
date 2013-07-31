@@ -35,7 +35,7 @@ public class HandDetector extends EventRateEstimator implements FrameAnnotater {
 	}
 
 	@Override
-	public EventPacket<?> filterPacket(EventPacket<?> in) {
+	public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
 		super.filterPacket(in);
 		boolean detectedNow = ((getFilteredEventRate() * 1e-3f) > handEventRateThresholdKEPS);
 		if (detectedNow) {

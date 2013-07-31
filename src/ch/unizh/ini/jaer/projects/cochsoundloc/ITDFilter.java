@@ -46,7 +46,7 @@ import com.jogamp.opengl.util.gl2.GLUT;
 
 /**
  * Extracts interaural time difference (ITD) from a binaural cochlea input.
- * 
+ *
  * @author Holger
  */
 @Description("Measures ITD (Interaural time difference) using a variety of methods")
@@ -301,7 +301,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 	/**
 	 * Returns the overall best ITD. See {@link #getITDBins()} to access the histogram data and statistics.
 	 * Filled in with measured best ITD according to selected method (max, median, mean)
-	 * 
+	 *
 	 * @return the avgITD in us
 	 * @see #getNumOfBins()
 	 * @see #getMaxITD()
@@ -312,7 +312,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 
 	/**
 	 * Returns the overall confidence measure of the average ITD.
-	 * 
+	 *
 	 * @return the avgITDConfidence
 	 */
 	public float getAvgITDConfidence() {
@@ -785,7 +785,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 	}
 
 	@Override
-	public void setFilterEnabled(boolean yes) {
+	public synchronized void setFilterEnabled(boolean yes) {
 		//        log.info("ITDFilter.setFilterEnabled() is called");
 		super.setFilterEnabled(yes);
 		if (yes) {

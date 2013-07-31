@@ -43,7 +43,7 @@ import net.sf.jaer.util.EngineeringFormat;
 public class BimodalExtraction extends EventFilter2D implements Observer, FrameAnnotater {
 
 	// initializations & declarations
-    
+
     private int[][][][] lastTs;
     private int[][][] lastTsCursor;
 
@@ -63,10 +63,10 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
     private float a_decay = getPrefs().getFloat("Cochlea Decaying Factor", 0.3f);
     private float v_decay = getPrefs().getFloat("Retina Decaying Factor", 0.9f);
     private float c_decay = getPrefs().getFloat("Coherent Spikes Decaying Factor", 0.95f);;
-    
+
     private double prev_timestamp = 0;
     private int LastAudioSpike = 0;
-    
+
     Iterator iterator;
     private float lastWeight = 1f;
     private int avgITD;
@@ -124,19 +124,20 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
  /*        if (chip.getRemoteControl() != null) {
             chip.getRemoteControl().addCommandListener(this, "itdfilter", "Testing remotecontrol of itdfilter.");
         }
- 
+
  */
     }
 
 	// function executed when spike packet arrives
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    @Override
+	public EventPacket<?> filterPacket(EventPacket<?> in) {
 
         if (!filterEnabled) {
             return in;
         }
 
         for (Object e : in) {
-            
+
             BasicEvent ev = (BasicEvent)e;
             try {
 
@@ -163,12 +164,12 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
                             LastQueueTimestamp = ev.timestamp;
                             BasicEvent CoItem = (BasicEvent)CoherenceQueue.peek();
                             // clear visual spikes later than 2*CoherenceWindow from queue
-                            while (CoItem.timestamp+2*CoherenceWindow<LastQueueTimestamp){
+                            while ((CoItem.timestamp+(2*CoherenceWindow))<LastQueueTimestamp){
                                 CoherenceQueue.remove();
                                 CoItem = (BasicEvent)CoherenceQueue.peek();
                             }
                         }
-                        
+
 	            }
 	            	/*
 	            	/ decaying only executed every 100000 (according to timestamp differences approx 0.1 sec
@@ -177,7 +178,7 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
                     if (prev_timestamp > ev.timestamp){
                         prev_timestamp = 0;
                     }
-                    if (ev.timestamp - prev_timestamp > 100000){
+                    if ((ev.timestamp - prev_timestamp) > 100000){
                         double time_diff = ev.timestamp - prev_timestamp;
                         prev_timestamp = ev.timestamp;
                         double decay = 0.9;
@@ -207,16 +208,16 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
     public void process_coherent_spike(BasicEvent ev){
 
         double max = max_video();
-        
+
         // linear weightening depending on timediff
         //  x = timediff/CoherenceWindow
         // -1/2 * abs(x) + 3/2
-        float increase = 1.5f-0.5f*Math.abs(ev.timestamp-LastAudioSpike)/CoherenceWindow;
+        float increase = 1.5f-((0.5f*Math.abs(ev.timestamp-LastAudioSpike))/CoherenceWindow);
 
-        if (ev.x>2 && ev.x<126 && ev.y>2 && ev.y<126){
-            for (int i=ev.x-1; i<=ev.x+1; i++){
-                for (int j=ev.y-1; j<=ev.y+1; j++){
-                    if (visualArray[i][j][0]>0.5*max){
+        if ((ev.x>2) && (ev.x<126) && (ev.y>2) && (ev.y<126)){
+            for (int i=ev.x-1; i<=(ev.x+1); i++){
+                for (int j=ev.y-1; j<=(ev.y+1); j++){
+                    if (visualArray[i][j][0]>(0.5*max)){
                     	// increase coherenceMap according to the timediff
                         coherenceMap[i][j]=coherenceMap[i][j]+increase;
                     }
@@ -228,12 +229,12 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
 	/*
 	/	decaying functions, multiply all values by the corresponding decaying factor
 	*/
-	
+
     public void decay_audio(double decay_factor){
         audioHistogram = audioHistogram * decay_factor;
         for (int i=0; i<128; i++){
             for (int j=0; j<128; j++) {
-                audioArray[i][j][1]=(double)audioArray[i][j][1]*decay_factor;
+                audioArray[i][j][1]=audioArray[i][j][1]*decay_factor;
             }
         }
 
@@ -241,7 +242,7 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
     public void decay_video(double decay_factor){
         for (int i=0; i<128; i++){
             for (int j=0; j<128; j++) {
-                visualArray[i][j][1]=(double)visualArray[i][j][1]*decay_factor;
+                visualArray[i][j][1]=visualArray[i][j][1]*decay_factor;
             }
         }
 
@@ -250,7 +251,7 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
     public void decay_coherence(double decay_factor){
         for (int i=0; i<128; i++){
             for (int j=0; j<128; j++) {
-                coherenceMap[i][j]=(double)coherenceMap[i][j]*decay_factor;
+                coherenceMap[i][j]=coherenceMap[i][j]*decay_factor;
             }
         }
 
@@ -261,7 +262,7 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
 	*/
     public void median_filter(int win_size){
         double[] frame = new double[win_size*win_size];
-        int half_win = (int)(win_size/2);
+        int half_win = win_size/2;
         // clear border
 /*        for (int i=0; i<128; i++){
             for (int j=0; j<128; j++){
@@ -272,18 +273,18 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
             }
         }
 */
-        for (int i=half_win; i<128-half_win; i++){
-            for (int j=half_win; j<128-half_win; j++) {
+        for (int i=half_win; i<(128-half_win); i++){
+            for (int j=half_win; j<(128-half_win); j++) {
                 int a=0;
-                for (int k=i-half_win; k<=i+half_win; k++){
-                    for (int l=j-half_win; l<=j+half_win; l++) {
+                for (int k=i-half_win; k<=(i+half_win); k++){
+                    for (int l=j-half_win; l<=(j+half_win); l++) {
                         frame[a] = visualArray[k][l][1];
                         a = a + 1;
                     }
                 }
                 // sort array to figure out median value of frame
                 Arrays.sort(frame);
-                visualArray[i][j][0] = frame[(int)((win_size*win_size)/2)];
+                visualArray[i][j][0] = frame[(win_size*win_size)/2];
             }
         }
         //flip_zeronone();
@@ -343,7 +344,8 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
     /**
 	*	Drawing routine
 	*/
-    public void annotate(GLAutoDrawable drawable) {
+    @Override
+	public void annotate(GLAutoDrawable drawable) {
 
 
         double maximum = max_video();
@@ -357,7 +359,7 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
 
         gl.glBegin(GL.GL_POINTS);
         gl.glColor4f(0,0,1,.3f);
-        
+
         // visual histogram (lower right) with color gradients
         for (int i=0; i<128; i++){
             for (int j=0; j<128; j++) {
@@ -366,14 +368,14 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
                 if (ratio<0.25){
                     gl.glColor4f(0,ratio*4,1,.8f);
                 }
-                if (ratio<0.5 && ratio>=0.25){
-                    gl.glColor4f(0,1,1/(2*ratio)-1,.8f);
+                if ((ratio<0.5) && (ratio>=0.25)){
+                    gl.glColor4f(0,1,(1/(2*ratio))-1,.8f);
                 }
-                if (ratio<0.75 && ratio>=0.5){
-                    gl.glColor4f(4*ratio-2,1,0,.8f);
+                if ((ratio<0.75) && (ratio>=0.5)){
+                    gl.glColor4f((4*ratio)-2,1,0,.8f);
                 }
                 if (ratio>=0.65){
-                    gl.glColor4f(1,3/ratio-3,0,.8f);
+                    gl.glColor4f(1,(3/ratio)-3,0,.8f);
                 }
                 gl.glVertex2d(130+i, j);
             }
@@ -386,11 +388,11 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
                 }
             }
         }*/
-        
+
         // Clusters (thresholded histogram), upper left
         for (int i=0; i<128; i++){
             for (int j=0; j<128; j++) {
-                if (visualArray[i][j][0]>maximum*ClusterThresh){
+                if (visualArray[i][j][0]>(maximum*ClusterThresh)){
                     gl.glVertex2d(-130+i, 130+j);
                 }
             }
@@ -403,10 +405,10 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
                     float c_ratio = (float)(coherenceMap[i][j]/c_maximum);
                     //gl.glColor4f(c_ratio,0,0,1f);
                    if (c_ratio >0.2){
-                        gl.glColor4f((float)(c_ratio/2)+0.5f,0,0,1f);
+                        gl.glColor4f(c_ratio/2+0.5f,0,0,1f);
                         gl.glVertex2d(130+i, 130+j);
                    }
-                    
+
                 }
 
             }
@@ -432,7 +434,8 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
         return null;
     }
 
-    public void resetFilter() {
+    @Override
+	public void resetFilter() {
         initFilter();
     }
 
@@ -444,7 +447,7 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
     }
 
     @Override
-    public void setFilterEnabled(boolean yes) {
+    public synchronized void setFilterEnabled(boolean yes) {
 //        log.info("ITDFilter.setFilterEnabled() is called");
         super.setFilterEnabled(yes);
         if (yes) {
@@ -452,7 +455,8 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
         }
     }
 
-    public void update(Observable o, Object arg) {
+    @Override
+	public void update(Observable o, Object arg) {
         if (arg != null) {
 //            log.info("ITDFilter.update() is called from " + o + " with arg=" + arg);
 /*            if (arg.equals("eventClass")) {
@@ -467,7 +471,7 @@ public class BimodalExtraction extends EventFilter2D implements Observer, FrameA
             }*/
         }
     }
-    
+
     /*
     *	methods are needed to adjust variables in property dialog
     */

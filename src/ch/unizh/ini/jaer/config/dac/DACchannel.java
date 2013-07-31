@@ -22,7 +22,7 @@ import net.sf.jaer.util.RemoteControlled;
  * @author Minhao
  */
 public class DACchannel extends Observable implements PreferenceChangeListener, RemoteControlled{
-    
+
     protected static Logger log = Logger.getLogger("DACchannel");
     /** The Chip for this Pot */
     protected Chip chip;
@@ -81,7 +81,7 @@ public class DACchannel extends Observable implements PreferenceChangeListener, 
         loadPreferences();
        if(chip.getRemoteControl()!=null){
             chip.getRemoteControl().addCommandListener(this, String.format("setv%s bitvalue",getName()), "Set the bitValue of VPot "+getName());
-       } 
+       }
     }
 
     /** called when there is a preference change for this Preferences node (the Biasgen package node).
@@ -141,7 +141,7 @@ public class DACchannel extends Observable implements PreferenceChangeListener, 
      *For an on-chip bias current generator the minimum current is about 0, and the maximum is the master current. For an
      *off-chip voltage DAC, the limits are set the by the DAC references.
      *@return the binary value of the bias
-     *@see #getBinaryRepresentation 
+     *@see #getBinaryRepresentation
      **/
     public int getBitValue() {
         return this.bitValue;
@@ -162,14 +162,14 @@ public class DACchannel extends Observable implements PreferenceChangeListener, 
     }
 
     /** Overrides Observable.setChanged() to setModified(true).
-     * 
+     *
      */
     @Override
-    public void setChanged() {
+    public synchronized void setChanged() {
         setModified(true);
         super.setChanged();
     }
-    
+
     public Chip getChip(){
         return chip;
     }
@@ -208,7 +208,8 @@ public class DACchannel extends Observable implements PreferenceChangeListener, 
         setBitValue(bitValue - 1);
     }
 
-    public String toString() {
+    @Override
+	public String toString() {
         return "Pot " + getName() + " with bitValue=" + getBitValue();
     }
 
@@ -286,13 +287,13 @@ public class DACchannel extends Observable implements PreferenceChangeListener, 
     }
 
     @Override
-    public void addObserver(Observer o) {
+    public synchronized void addObserver(Observer o) {
 //        log.info(this+ " added observer "+o);
         super.addObserver(o);
     }
 
     /** Checks name, sex, type, chipNumber and bitValue for equality.
-     * 
+     *
      * @param obj another Pot - if not a Pot or null, returns false.
      * @return true if equal.
      */
@@ -306,9 +307,9 @@ public class DACchannel extends Observable implements PreferenceChangeListener, 
         }
         DACchannel pot = (DACchannel) obj;
         return pot.getName().equals(getName())
-                && pot.getBitValue() == getBitValue();
+                && (pot.getBitValue() == getBitValue());
     }
-    
+
     /** the delta voltage to change by in increment and decrement methods */
     public static final float VOLTAGE_CHANGE_VALUE_VOLTS = 0.005f;
 //    public static final float VOLTAGE_CHANGE_VALUE_VOLTS = 0.01f;
@@ -321,7 +322,9 @@ public class DACchannel extends Observable implements PreferenceChangeListener, 
      *@return actual float value of voltage after resolution rounding and vdd clipping.
      */
     public float setVoltage(float voltage) {
-        if(voltage>dac.getVdd()) voltage=dac.getVdd();
+        if(voltage>dac.getVdd()) {
+			voltage=dac.getVdd();
+		}
         setBitValue(Math.round(voltage * getMaxBitValue()));
         return getVoltage();
     }
@@ -335,8 +338,10 @@ public class DACchannel extends Observable implements PreferenceChangeListener, 
      * @return voltage in volts.
      */
     public float getVoltage() {
-        float v=getMinVoltage() + getVoltageResolution() * getBitValue();
-        if(v>dac.getVdd()) v=dac.getVdd();
+        float v=getMinVoltage() + (getVoltageResolution() * getBitValue());
+        if(v>dac.getVdd()) {
+			v=dac.getVdd();
+		}
         return v;
     }
 
@@ -380,7 +385,7 @@ public class DACchannel extends Observable implements PreferenceChangeListener, 
     }
 
     public void setChannel(int channel) {
-        if (channel > dac.getNumChannels() - 1) {
+        if (channel > (dac.getNumChannels() - 1)) {
             throw new RuntimeException("VPot channel " + channel + " higher than number of channels in DAC (" + dac.getNumChannels() + ")");
         }
         this.channel = channel;

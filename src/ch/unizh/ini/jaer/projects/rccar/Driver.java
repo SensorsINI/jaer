@@ -19,6 +19,7 @@ import java.io.DataOutputStream;
 import java.net.Socket;
 import java.util.logging.Logger;
 
+import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
@@ -120,7 +121,8 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
             setEnclosedFilterChain(filterChain);
         }
 
-        public void propertyChange(PropertyChangeEvent evt) {
+        @Override
+		public void propertyChange(PropertyChangeEvent evt) {
             if (!evt.getPropertyName().equals("filterEnabled")) {
                 return;
             }
@@ -150,7 +152,8 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
             }
         }
 
-        public EventPacket<?> filterPacket(EventPacket<?> in) {
+        @Override
+		public EventPacket<?> filterPacket(EventPacket<?> in) {
             if (!isFilterEnabled()) {
                 return in;
             }
@@ -161,23 +164,25 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
             return null;
         }
 
-        public void resetFilter() {
+        @Override
+		public void resetFilter() {
             filterChain.reset();
         }
 
-        public void initFilter() {
+        @Override
+		public void initFilter() {
             filterChain.reset();
         }
 
         /** Overrides to avoid setting preferences for the enclosed filters */
         @Override
-        public void setFilterEnabled(boolean yes) {
+        public synchronized void setFilterEnabled(boolean yes) {
             this.filterEnabled = yes;
             getPrefs().putBoolean("filterEnabled", yes);
         }
 
         @Override
-        public boolean isFilterEnabled() {
+        public synchronized boolean isFilterEnabled() {
             return true; // force active
         }
     }
@@ -247,7 +252,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
     DrivingController controller;
     private ToradexOakG3AxisAccelerationSensor accelerometer;
     private ToradexOakG3AxisAccelerationSensorGUI acceleromterGUI=null;
-    
+
     TobiLogger tobiLogger = new TobiLogger("driverLog", "#data from Driver\n#timems radioSpeed radioSteering accelTime xAccel yAccel zAccel");
 
     /** Creates a new instance of Driver */
@@ -277,7 +282,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
             }
             sizex = getChip().getSizeX();// must do this here in case chip has changed
             // compute instantaneous position of line according to hough line tracker (which has its own lowpass filter)
-            double rhoPixels = (float) ((LineDetector) lineTracker).getRhoPixelsFiltered();
+            double rhoPixels = ((LineDetector) lineTracker).getRhoPixelsFiltered();
             // distance of line from center of image, could be negative for example for line of 30 deg running up to lower right of origin
 
             double thetaRad = (float) (Math.toRadians(((LineDetector) lineTracker).getThetaDegFiltered()));
@@ -285,7 +290,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
             // we want to control to theta=0, rho=0
             // we change the cut to -pi/2 to pi/2 instead of 0,pi for better control around atractor now at theta=0.
             // after this theta>0 for line angled to left, theta=0 for vertical line (not normal to line), theta<0 for line to right
-            if (thetaRad > Math.PI / 2) {
+            if (thetaRad > (Math.PI / 2)) {
                 thetaRad -= Math.PI;
             }
             // same thing with rho, we want to control rho=0 so now rho>0 for line to right of centerline and rho<0 to left, instead
@@ -298,7 +303,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
             lastt = in.getLastTimestamp();
 
             // attractor set on line
-            steerInstantaneous = steerInstantaneous + (float) (deltaTMs / tauDynMs * (-steerInstantaneous + 0.5f - offsetGain * rhoPixels + angleGain * thetaRad));
+            steerInstantaneous = steerInstantaneous + (float) ((deltaTMs / tauDynMs) * (((-steerInstantaneous + 0.5f) - (offsetGain * rhoPixels)) + (angleGain * thetaRad)));
             if (steerInstantaneous < 0) {
 //                log.info("steerInstantaneous was reset from "+steerInstantaneous+" to 0");
                 steerInstantaneous = 0;
@@ -316,7 +321,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
 //            }else
 //                speedFactor=1/speedFactor; // faster, then reduce steering more
             steerCommand = steerInstantaneous;
-            if (servo != null && servo.isOpen()) {
+            if ((servo != null) && servo.isOpen()) {
                 servo.setSteering(getSteerCommand()); // 1 steer right, 0 steer left
                 servo.setSpeed(getDefaultSpeed() + 0.5f); // set fwd speed
             }
@@ -335,7 +340,8 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
     @param in the input packet
     @return the output packet, which is the output of the enclosed filter chain.
      */
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    @Override
+	public EventPacket<?> filterPacket(EventPacket<?> in) {
         // debug, for state estimation
         tobiLogger.log(radioSpeed + " " + radioSteer + " " + accelerometer.getAcceleration());
         if (!isFilterEnabled()) {
@@ -366,7 +372,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
             try {
                 servo.open();
             } catch (HardwareInterfaceException e) {
-                if (System.currentTimeMillis() > lastWarningMessageTime + 20000) {
+                if (System.currentTimeMillis() > (lastWarningMessageTime + 20000)) {
                     log.warning(e.getMessage());
                     lastWarningMessageTime = System.currentTimeMillis();
                 }
@@ -378,12 +384,14 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
         return null;
     }
 
-    public void resetFilter() {
+    @Override
+	public void resetFilter() {
         getEnclosedFilter().resetFilter();
         steerInstantaneous = 0.5f; // reset steering to middle
     }
 
-    synchronized public void initFilter() {
+    @Override
+	synchronized public void initFilter() {
 //        steeringFilter.set3dBFreqHz(lpCornerFreqHz);
         lineTracker = null;
         if (useMultiLineTracker) {
@@ -404,7 +412,8 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
     GLU glu = null;
     GLUquadric wheelQuad;
 
-    public void annotate(GLAutoDrawable drawable) {
+    @Override
+	public void annotate(GLAutoDrawable drawable) {
         if (!isAnnotationEnabled()) {
             return;
         }
@@ -440,7 +449,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
             gl.glColor3f(1, 1, 1);
             gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
             gl.glLineWidth(6f);
-            gl.glBegin(GL2.GL_LINES);
+            gl.glBegin(GL.GL_LINES);
             {
                 gl.glVertex2f(0, 0);
                 double a = 2 * (getSteerCommand() - 0.5f); // -1 to 1
@@ -448,7 +457,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
                 float x = radius * (float) Math.sin(a);
                 float y = radius * (float) Math.cos(a);
                 gl.glVertex2f(x, y);
-                if (servo != null && servo.isOpen()) {
+                if ((servo != null) && servo.isOpen()) {
                     gl.glColor3f(1, 0, 0);
                     gl.glVertex2f(0, 0);
                     a = 2 * (radioSteer - 0.5f); // -1 to 1
@@ -463,13 +472,13 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
         gl.glPopMatrix();
 
         // draw external speed value
-        if (servo != null && servo.isOpen()) {
+        if ((servo != null) && servo.isOpen()) {
             gl.glPushMatrix();
             {
                 gl.glColor3f(1, 1, 1);
                 gl.glTranslatef(1, chip.getSizeY() / 2, 0);
                 gl.glLineWidth(15f);
-                gl.glBegin(GL2.GL_LINES);
+                gl.glBegin(GL.GL_LINES);
                 {
                     gl.glVertex2f(0, 0);
                     gl.glVertex2f(0, chip.getSizeY() * (radioSpeed - 0.5f));
@@ -672,7 +681,9 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
             }
             acceleromterGUI.setVisible(true);
         }else{
-            if(acceleromterGUI!=null) acceleromterGUI.setVisible(false);
+            if(acceleromterGUI!=null) {
+				acceleromterGUI.setVisible(false);
+			}
         }
     }
     }

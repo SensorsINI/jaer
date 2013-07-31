@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
@@ -12,21 +12,21 @@ import java.util.prefs.Preferences;
 public class SpaceableExpressionBasedSpatialIK extends
 		ExpressionBasedSpatialInputKernel {
 	boolean outWidthBiggerThanInWidth = true, outHeightBiggerThanInHeight = true;
-	
+
 	boolean spacingAutomatic = true;
 	int spacingX = 1, spacingY = 1;
 	int kernelOffsetX = 0, kernelOffsetY = 0;
-	
+
 	int projectingToZeroX = 0;
 	int projectingToZeroY = 0;
-	
+
 	int scaledCenterX = 0;
 	int scaledCenterY = 0;
 
 	float[][] scaledConvolutionValues = null;
-	
+
 	//	int inputWidth = 1, inputHeight = 1, outputHeight = 1, outputWidth = 1;
-	
+
 //	private int zeroKernelOffsetX = 0, zeroKernelOffsetY = 0;
 	/**
 	 * @param width
@@ -45,24 +45,26 @@ public class SpaceableExpressionBasedSpatialIK extends
 //		super(width, height, parentPrefs, nodeName);
 //		setName("SpaceableExpressionBasedSpatialIK");
 //	}
-	
-	
-	
+
+
+
 	protected void updateScaledConvolutionValues() {
 		int xSize = width, ySize = height;
-		if (outWidthBiggerThanInWidth)
+		if (outWidthBiggerThanInWidth) {
 			xSize *= spacingX;
-		if (outHeightBiggerThanInHeight)
+		}
+		if (outHeightBiggerThanInHeight) {
 			ySize *= spacingY;
-		this.scaledCenterX = (xSize-1) / 2 + (centerX - (width-1)/2) * spacingX;
-		this.scaledCenterY = (ySize-1) / 2 + (centerY - (height-1)/2) * spacingY;
+		}
+		this.scaledCenterX = ((xSize-1) / 2) + ((centerX - ((width-1)/2)) * spacingX);
+		this.scaledCenterY = ((ySize-1) / 2) + ((centerY - ((height-1)/2)) * spacingY);
 		float[][] newScaledConvolutionValues = new float[xSize][ySize];
 //		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
 		synchronized (convolutionValuesLock) {
 			for (int xc = 0; xc < convolutionValues.length; xc++) {
 				int minX = (outWidthBiggerThanInWidth?xc*spacingX:xc);
 				int maxX = (outWidthBiggerThanInWidth?minX+spacingX:minX+1);
-				for (int x = minX; x < maxX; x++) { 
+				for (int x = minX; x < maxX; x++) {
 					for (int yc = 0; yc < convolutionValues[xc].length; yc++) {
 						int minY = (outHeightBiggerThanInHeight?yc*spacingY:yc);
 						int maxY = (outHeightBiggerThanInHeight?minY+spacingY:minY+1);
@@ -75,18 +77,20 @@ public class SpaceableExpressionBasedSpatialIK extends
 		}
 
 //		float[][][][] newSCV = new float[][][xSize][ySize];
-		
+
 		this.scaledConvolutionValues = newScaledConvolutionValues;
-		
+
 	}
-	
+
+	@Override
 	protected void convolutionValuesChanged() {
 		updateScaledConvolutionValues();
 		super.convolutionValuesChanged();
 	}
-	
-	
-	public void setInputOutputSizes(int inputWidth, int inputHeight, int outputWidth, int outputHeight) {
+
+
+	@Override
+	public synchronized void setInputOutputSizes(int inputWidth, int inputHeight, int outputWidth, int outputHeight) {
 		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
 			super.setInputSize(inputWidth, inputHeight);
 			super.setOutputSize(outputWidth, outputHeight);
@@ -98,15 +102,17 @@ public class SpaceableExpressionBasedSpatialIK extends
 	}
 
 
+	@Override
 	protected void inputSizeChanged(int oldWidth, int oldHeight, int newWidth, int newHeight) {
 		recomputeMappings();
 	}
-	
+
+	@Override
 	protected void outputSizeChanged(int oldWidth, int oldHeight, int newWidth, int newHeight) {
 		recomputeMappings();
 	}
-	
-	
+
+
 	/**
 	 * @return the spacingAutomatic
 	 */
@@ -121,11 +127,12 @@ public class SpaceableExpressionBasedSpatialIK extends
 		if (spacingAutomatic != this.spacingAutomatic) {
 			this.spacingAutomatic = spacingAutomatic;
 			getSupport().firePropertyChange("spacingAutomatic", !spacingAutomatic, spacingAutomatic);
-			if (spacingAutomatic) 
+			if (spacingAutomatic) {
 				recomputeMappings();
+			}
 		}
 	}
-	
+
 	/**
 	 * @return the spacingX
 	 */
@@ -165,39 +172,51 @@ public class SpaceableExpressionBasedSpatialIK extends
 			int before = spacingX;
 			spacingX = Math.max(1,inputWidth / outputWidth);
 			// make sure the input space is covered nicely, non-covered input should be smaller than non-covered output
-			if (inputWidth - outputWidth * spacingX > outputWidth * (spacingX+1) - inputWidth)
+			if ((inputWidth - (outputWidth * spacingX)) > ((outputWidth * (spacingX+1)) - inputWidth)) {
 				spacingX++;
-			if (spacingX != before)
+			}
+			if (spacingX != before) {
 				getSupport().firePropertyChange("spacingX", before, spacingX);
+			}
 
 			// same for y:
 			before = spacingY;
 			spacingY = Math.max(1,inputHeight / outputHeight);
 			// make sure the input space is covered nicely, non-covered input should be smaller than non-covered output
-			if (inputHeight - outputHeight * spacingY > outputHeight * (spacingY+1) - inputHeight)
+			if ((inputHeight - (outputHeight * spacingY)) > ((outputHeight * (spacingY+1)) - inputHeight)) {
 				spacingX++;
-			if (spacingY != before)
+			}
+			if (spacingY != before) {
 				getSupport().firePropertyChange("spacingY", before, spacingY);
-		
+			}
+
 		}
 		updateScaledConvolutionValues();
 	}
-	
+
 	@Override
 	protected void recomputeMappings() {
 		synchronized (SpatioTemporalFusion.getFilteringLock(this)) {
 			int outputWidth = getOutputWidth();
 			int outputHeight = getOutputHeight();
-			if (outputWidth <= 0) outputWidth = 1;
-			if (outputHeight <= 0) outputHeight = 1;
+			if (outputWidth <= 0) {
+				outputWidth = 1;
+			}
+			if (outputHeight <= 0) {
+				outputHeight = 1;
+			}
 			int inputWidth = getInputWidth();
 			int inputHeight = getInputHeight();
-			if (inputWidth <= 0) inputWidth = 1;
-			if (inputHeight <= 0) inputHeight = 1;
-			
+			if (inputWidth <= 0) {
+				inputWidth = 1;
+			}
+			if (inputHeight <= 0) {
+				inputHeight = 1;
+			}
+
 			outWidthBiggerThanInWidth = outputWidth >= inputWidth;
 			outHeightBiggerThanInHeight = outputHeight >= inputHeight;
-			
+
 			// flip input and output sizes if output is bigger than input:
 			if (outWidthBiggerThanInWidth) {
 				int dummy = outputWidth;
@@ -209,19 +228,21 @@ public class SpaceableExpressionBasedSpatialIK extends
 				outputHeight = inputHeight;
 				inputHeight = dummy;
 			}
-			
+
 			computeSpacing(inputWidth, inputHeight, outputWidth, outputHeight);
-	
-			int restX = inputWidth - ((outputWidth-1) * spacingX + 1);
+
+			int restX = inputWidth - (((outputWidth-1) * spacingX) + 1);
 			int startX = restX / 2;
-	
+
 			// the input pixel that maps to the output pixel with index 0 through the first position of the kernel:
-			if (scaledConvolutionValues != null)
+			if (scaledConvolutionValues != null) {
 				projectingToZeroX = startX + (scaledConvolutionValues.length - scaledCenterX - 1);
-			else 
+			}
+			else {
 				projectingToZeroX = 0;
-			
-			
+			}
+
+
 			// which position of the input would be centered on the position -1 in
 			// the output?
 			int centeredOnMinusOne = -spacingX + startX;
@@ -229,32 +250,34 @@ public class SpaceableExpressionBasedSpatialIK extends
 			// (outputWidth +2)) to avoid problems with negative numbers
 			kernelOffsetX = scaledCenterX + centeredOnMinusOne
 					+ (spacingX * (outputWidth + 2));
-			
+
 			// now the same for y:
-			int restY = inputHeight - ((outputHeight-1) * spacingY + 1);
+			int restY = inputHeight - (((outputHeight-1) * spacingY) + 1);
 			int startY = restY / 2;
-			
-			if (scaledConvolutionValues != null && scaledConvolutionValues.length > 0)
+
+			if ((scaledConvolutionValues != null) && (scaledConvolutionValues.length > 0)) {
 				projectingToZeroY = startY + (scaledConvolutionValues[0].length - scaledCenterY - 1);
-			else
+			}
+			else {
 				projectingToZeroY = 0;
-			
+			}
+
 			centeredOnMinusOne = -spacingY + startY;
 			kernelOffsetY = scaledCenterY + centeredOnMinusOne
 					+ (spacingY * (outputHeight + 2));
-			
+
 			fillPrecomputedProjectionBounds();
 		}
 	}
-	
+
 
 	class ProjectionBounds {
 		int spacingX, spacingY;
 		int ox, oy;
 		int kx, ky;
-		boolean nothingToDo = false; 
+		boolean nothingToDo = false;
 	}
-	
+
 	protected ProjectionBounds computeProjectionBounds(int tx, int ty, int width, int height, int outputWidth, int outputHeight) {
 		ProjectionBounds ret = new ProjectionBounds();
 		if (!outWidthBiggerThanInWidth) {
@@ -263,7 +286,7 @@ public class SpaceableExpressionBasedSpatialIK extends
 			tx -= projectingToZeroX;
 			if (tx >=0) {
 				ret.ox = (tx / this.spacingX);//(-offsetX/spacingX);
-				ret.kx = ret.ox*this.spacingX - tx;
+				ret.kx = (ret.ox*this.spacingX) - tx;
 				if (ret.kx < 0) {
 					ret.ox++;
 					ret.kx += this.spacingX;
@@ -276,7 +299,7 @@ public class SpaceableExpressionBasedSpatialIK extends
 		}
 		else {
 			ret.spacingX = 1;
-			ret.ox = (projectingToZeroX - width + 1) + this.spacingX * tx;
+			ret.ox = ((projectingToZeroX - width) + 1) + (this.spacingX * tx);
 			ret.kx = 0;
 			if (ret.ox < 0) {
 				ret.kx = -ret.ox;
@@ -290,7 +313,7 @@ public class SpaceableExpressionBasedSpatialIK extends
 			ty -= projectingToZeroY;
 			if (ty>=0) {
 				ret.oy = (ty / this.spacingY);//(-offsetX/spacingX);
-				ret.ky = ret.oy*this.spacingY - ty;
+				ret.ky = (ret.oy*this.spacingY) - ty;
 				if (ret.ky < 0) {
 					ret.oy++;
 					ret.ky += this.spacingY;
@@ -303,23 +326,23 @@ public class SpaceableExpressionBasedSpatialIK extends
 		}
 		else {
 			ret.spacingY = 1;
-			ret.oy = (projectingToZeroY - height + 1) + this.spacingY * ty;
+			ret.oy = ((projectingToZeroY - height) + 1) + (this.spacingY * ty);
 			ret.ky = 0;
 			if (ret.oy < 0) {
 				ret.ky = -ret.oy;
 				ret.oy = 0;
 			}
 		}
-		ret.nothingToDo = !(ret.ox < outputWidth && ret.kx < width && ret.ky < height && ret.oy < outputHeight);
+		ret.nothingToDo = !((ret.ox < outputWidth) && (ret.kx < width) && (ret.ky < height) && (ret.oy < outputHeight));
 		return ret;
 	}
-	
+
 	private ProjectionBounds[][] precomputedProjectionBounds = new ProjectionBounds[0][0];
 	private int assumedKernelWidth = 0, assumedKernelHeight = 0;
-	private int assumedOutputWidth = 0, assumedOutputHeight = 0; 
-	private int assumedInputWidth = 0, assumedInputHeight = 0; 
-	
-	
+	private int assumedOutputWidth = 0, assumedOutputHeight = 0;
+	private int assumedInputWidth = 0, assumedInputHeight = 0;
+
+
 	protected void fillPrecomputedProjectionBounds() {
 		int inputWidth = getInputWidth();
 		int inputHeight = getInputHeight();
@@ -342,13 +365,13 @@ public class SpaceableExpressionBasedSpatialIK extends
 			this.assumedKernelHeight = assumedKernelHeight;
 			this.precomputedProjectionBounds = precomputedProjectionBounds;
 		}
-		
+
 	}
-	
+
 	@Override
 	public void signalAt(int tx, int ty, int time, double value) {
 		if (isEnabled()) {
-			if (tx >= 0 && ty >= 0 && tx < assumedInputWidth && ty < assumedInputHeight) {
+			if ((tx >= 0) && (ty >= 0) && (tx < assumedInputWidth) && (ty < assumedInputHeight)) {
 				ProjectionBounds bounds = precomputedProjectionBounds[tx][ty];
 				// copy link to make sure the convolutionValues don't change in the meantime...
 				float[][] convolutionValues = scaledConvolutionValues;
@@ -356,10 +379,12 @@ public class SpaceableExpressionBasedSpatialIK extends
 				int kernelHeight = (kernelWidth > 0)?convolutionValues[0].length:0;
 				int outputWidth = getOutputWidth();
 				int outputHeight = getOutputHeight();
-				if (outputWidth == assumedOutputWidth && outputHeight == assumedOutputHeight && kernelWidth == assumedKernelWidth && kernelHeight == assumedKernelHeight)
+				if ((outputWidth == assumedOutputWidth) && (outputHeight == assumedOutputHeight) && (kernelWidth == assumedKernelWidth) && (kernelHeight == assumedKernelHeight)) {
 					bounds = precomputedProjectionBounds[tx][ty];
-				else 
+				}
+				else {
 					bounds = computeProjectionBounds(tx, ty, kernelWidth, kernelHeight, outputWidth, outputHeight);
+				}
 				int spacingX = bounds.spacingX;
 				int spacingY = bounds.spacingY;
 				int ox = bounds.ox;
@@ -371,26 +396,33 @@ public class SpaceableExpressionBasedSpatialIK extends
 					final FiringModelMap map = getOutputMap();
 //					synchronized (map) {
 						if (value == 1.0) {
-							for (; ox < outputWidth && kx < kernelWidth; ox++, kx+= spacingX) 
-								for (int ky = bounds.ky, oy = bounds.oy; oy < outputHeight && ky < kernelHeight; oy++, ky+= spacingY) 
+							for (; (ox < outputWidth) && (kx < kernelWidth); ox++, kx+= spacingX) {
+								for (int ky = bounds.ky, oy = bounds.oy; (oy < outputHeight) && (ky < kernelHeight); oy++, ky+= spacingY) {
 									map.signalAt(ox, oy, convolutionValues[kx][ky], time);
+								}
+							}
 						} else if (value == -1.0) {
-							for (; ox < outputWidth && kx < kernelWidth; ox++, kx+= spacingX) 
-								for (int ky = bounds.ky, oy = bounds.oy; oy < outputHeight && ky < kernelHeight; oy++, ky+= spacingY) 
+							for (; (ox < outputWidth) && (kx < kernelWidth); ox++, kx+= spacingX) {
+								for (int ky = bounds.ky, oy = bounds.oy; (oy < outputHeight) && (ky < kernelHeight); oy++, ky+= spacingY) {
 									map.signalAt(ox, oy, -convolutionValues[kx][ky], time);
+								}
+							}
 						} else if (value != 0.0) {
-							for (; ox < outputWidth && kx < kernelWidth; ox++, kx+= spacingX) 
-								for (int ky = bounds.ky, oy = bounds.oy; oy < outputHeight && ky < kernelHeight; oy++, ky+= spacingY) 
+							for (; (ox < outputWidth) && (kx < kernelWidth); ox++, kx+= spacingX) {
+								for (int ky = bounds.ky, oy = bounds.oy; (oy < outputHeight) && (ky < kernelHeight); oy++, ky+= spacingY) {
 									map.signalAt(ox, oy, value * convolutionValues[kx][ky], time);
+								}
+							}
 						}
 //					}
 				}
-			
+
 			}
 		}
 	}
-	
-	
+
+
+	@Override
 	public synchronized void savePrefs(Preferences prefs, String prefString) {
 		super.savePrefs(prefs, prefString);
 		prefs.putInt(prefString+"spacingX",spacingX);
@@ -399,7 +431,8 @@ public class SpaceableExpressionBasedSpatialIK extends
 		prefs.putInt(prefString+"kernelOffsetX",kernelOffsetY);
 	}
 
-	
+
+	@Override
 	public synchronized void loadPrefs(Preferences prefs, String prefString) {
 		spacingX = prefs.getInt(prefString+"spacingX",spacingX);
 		spacingY = prefs.getInt(prefString+"spacingY",spacingY);
@@ -418,12 +451,12 @@ public class SpaceableExpressionBasedSpatialIK extends
 			@Override
 			public void reset() {
 			}
-			
+
 			@Override
 			public void receiveSpike(double value, int timeInUs) {
 				System.out.println("Signal "+value+" at ("+pos[0]+"/"+pos[1]+")");
 			}
-			
+
 		};
 		int inX = 20, inY = 19, outX = 8, outY = 8;
 		k.setOutputMap(new ArrayFiringModelMap(outX,outY,null,null) {
@@ -439,8 +472,8 @@ public class SpaceableExpressionBasedSpatialIK extends
 			}
 		});
 		k.setInputOutputSizes(inX, inY, outX, outY);
-		k.setExpressionString("x + "+(((float)(k.getWidth()-1))/2.0f));
-		
+		k.setExpressionString("x + "+((k.getWidth()-1)/2.0f));
+
 		for (int i = 0; i < inX; i++) {
 			System.out.println("Injecting Signal at "+i+":");
 			k.signalAt(i, 1, 0, 1.0);

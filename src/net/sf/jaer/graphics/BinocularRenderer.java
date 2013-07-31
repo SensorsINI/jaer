@@ -13,8 +13,8 @@ import net.sf.jaer.event.BinocularDisparityEvent;
 import net.sf.jaer.event.BinocularEvent;
 import net.sf.jaer.event.EventPacket;
 /**
- * Renders a stereo pair of retinas. 
- * Each eye is rendered in a different color, 
+ * Renders a stereo pair of retinas.
+ * Each eye is rendered in a different color,
  * and each eye uses a monochrome scale like the one for normal single eye input.
  * There is only one rendering method which is contrast based, and it uses one common contrast scale.
  *
@@ -42,7 +42,7 @@ public class BinocularRenderer extends AEChipRenderer{
 
     /**
      * Creates a new instance of BinocularRenderer.
-     * 
+     *
      * @param chip the chip we're rendering for
      */
     public BinocularRenderer (AEChip chip){
@@ -51,7 +51,7 @@ public class BinocularRenderer extends AEChipRenderer{
     }
 
     @Override
-    public void render (EventPacket packet){
+    public synchronized void render (EventPacket packet){
         if ( packet == null ){
             return;
         }
@@ -62,7 +62,7 @@ public class BinocularRenderer extends AEChipRenderer{
         int n = packet.getSize();
         int skipBy = 1;
         if ( isSubsamplingEnabled() ){
-            while ( n / skipBy > getSubsampleThresholdEventCount() ){
+            while ( (n / skipBy) > getSubsampleThresholdEventCount() ){
                 skipBy++;
             }
         }
@@ -75,7 +75,7 @@ public class BinocularRenderer extends AEChipRenderer{
             float sc = 1f / getColorScale();
             int rgbChan = 0;
             // leave disparity mode if input is not instanceof BinocularDisparityEvent
-            if ( stereoColorMode == StereoColorMode.Disparity && !( packet.getEventPrototype() instanceof BinocularDisparityEvent ) ){
+            if ( (stereoColorMode == StereoColorMode.Disparity) && !( packet.getEventPrototype() instanceof BinocularDisparityEvent ) ){
                 setColorMode(StereoColorMode.RedGreen);
             }
             // reset the min/max values for disparity rendering every time you leave the disparity rendering mode
@@ -102,7 +102,7 @@ public class BinocularRenderer extends AEChipRenderer{
                         } else{
                             rgbChan = 1; // red right
                         }
-                        if ( e.x == xsel && e.y == ysel ){
+                        if ( (e.x == xsel) && (e.y == ysel) ){
                             playSpike(e.getType());
                         }
                         int ind = getPixMapIndex(e.x,e.y) + rgbChan;
@@ -126,7 +126,7 @@ public class BinocularRenderer extends AEChipRenderer{
                     resetFrame(0f);
                     for ( int i = 0 ; i < n ; i += skipBy ){
                         BinocularDisparityEvent e = (BinocularDisparityEvent)packet.getEvent(i);
-                        if ( e.x == xsel && e.y == ysel ){
+                        if ( (e.x == xsel) && (e.y == ysel) ){
                             playSpike(e.getType());
                         }
                         if ( e.disparity < minValue ){
@@ -170,7 +170,7 @@ public class BinocularRenderer extends AEChipRenderer{
                         } else{
                             rgbChan = 1; // red right
                         }
-                        if ( e.x == xsel && e.y == ysel ){
+                        if ( (e.x == xsel) && (e.y == ysel) ){
                             playSpike(e.getType());
                         }
                         int ind = getPixMapIndex(e.x,e.y) + rgbChan;
@@ -191,14 +191,14 @@ public class BinocularRenderer extends AEChipRenderer{
     protected void createDisparityColors (){
         disparityColors = new float[ NOF_DISPARITY_COLORS ][ 3 ];
         int i = 0;
-        for ( ; i < NOF_DISPARITY_COLORS / 2 ; i++ ){
+        for ( ; i < (NOF_DISPARITY_COLORS / 2) ; i++ ){
             disparityColors[i][0] = 0f;
-            disparityColors[i][1] = (float)i / ( NOF_DISPARITY_COLORS / 2f );
-            disparityColors[i][2] = 1f - (float)i / ( NOF_DISPARITY_COLORS / 2f );
+            disparityColors[i][1] = i / ( NOF_DISPARITY_COLORS / 2f );
+            disparityColors[i][2] = 1f - (i / ( NOF_DISPARITY_COLORS / 2f ));
         }
         for ( ; i < NOF_DISPARITY_COLORS ; i++ ){
-            disparityColors[i][0] = ( (float)i - NOF_DISPARITY_COLORS / 2f ) / ( NOF_DISPARITY_COLORS / 2f );
-            disparityColors[i][1] = 1f - ( (float)i - NOF_DISPARITY_COLORS / 2f ) / ( NOF_DISPARITY_COLORS / 2f );
+            disparityColors[i][0] = ( i - (NOF_DISPARITY_COLORS / 2f) ) / ( NOF_DISPARITY_COLORS / 2f );
+            disparityColors[i][1] = 1f - (( i - (NOF_DISPARITY_COLORS / 2f) ) / ( NOF_DISPARITY_COLORS / 2f ));
             disparityColors[i][2] = 0f;
         }
     }

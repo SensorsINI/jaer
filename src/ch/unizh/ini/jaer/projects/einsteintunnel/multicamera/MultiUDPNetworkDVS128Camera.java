@@ -98,7 +98,7 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
             log.warning(ex.toString());
         }
         log.info("sending activation commands to cameras");
-        for(int i=cameraDomainOffset; i<=cameraDomainOffset+MAX_NUM_CAMERAS; i++){
+        for(int i=cameraDomainOffset; i<=(cameraDomainOffset+MAX_NUM_CAMERAS); i++){
             String s = "t+\r\n";
             byte[] b = s.getBytes();
             try{
@@ -192,7 +192,7 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
          * and should only be used by a single thread of execution or for a single input stream, or mysterious results may occur!
          */
         @Override
-        public EventPacket extractPacket(AEPacketRaw in) {
+        public synchronized EventPacket extractPacket(AEPacketRaw in) {
             if (out == null) {
                 out = new EventPacket<PolarityEvent>(chip.getEventClass());
             } else {
@@ -225,7 +225,7 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
 
             int skipBy = 1;
             if (isSubSamplingEnabled()) {
-                while (n / skipBy > getSubsampleThresholdEventCount()) {
+                while ((n / skipBy) > getSubsampleThresholdEventCount()) {
                     skipBy++;
                 }
             }
@@ -237,9 +237,9 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
                 int addr = a[i]; // TODO handle special events from hardware correctly
                 PolarityEvent e = (PolarityEvent) outItr.nextOutput();
                 e.timestamp = (timestamps[i]);
-                e.type = (byte) (1 - addr & 1);
+                e.type = (byte) ((1 - addr) & 1);
                 e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
-                e.x = (short) (((short) (((addr & XMASK_DEST) >>> XSHIFT_DEST))));
+                e.x = (((short) (((addr & XMASK_DEST) >>> XSHIFT_DEST))));
                 e.y = (short) ((addr & YMASK_DEST) >>> YSHIFT_DEST);
                 e.address = addr ; // new raw address is now suitable for logging and later playback
             }
@@ -260,13 +260,13 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
             int n = in.getNumEvents(); //addresses.length;
 
             AENetworkRawPacket.EventSourceList eventSourceList = in.getEventSourceList(); // list of clients in this raw packet
-            if (eventSourceList == null || eventSourceList.isEmpty()) {
+            if ((eventSourceList == null) || eventSourceList.isEmpty()) {
                 log.warning("AENetworkRawPacket  has no client info");
                 out.clear();
             }
             AENetworkRawPacket.EventSourceInfo thisSourceInfo = null, nextSourceInfo = null; // current and next event sources
 
-            // we get this client and next client from list. As long as index is 
+            // we get this client and next client from list. As long as index is
             // less than next client's starting index (or next client is null) we use this clients position.
             // When the index gets >= to next client's starting index, we set this client to next client and get next client.
             Iterator<AENetworkRawPacket.EventSourceInfo> eventSourceItr = eventSourceList.iterator();
@@ -285,7 +285,7 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
 
             int skipBy = 1;
             if (isSubSamplingEnabled()) {
-                while (n / skipBy > getSubsampleThresholdEventCount()) {
+                while ((n / skipBy) > getSubsampleThresholdEventCount()) {
                     skipBy++;
                 }
             }
@@ -311,7 +311,7 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
                 PolarityEvent e = (PolarityEvent) outItr.nextOutput();
                 int cameraShift = (MAX_NUM_CAMERAS-1-cameraLocation) * CAM_WIDTH;
                 e.timestamp = (timestamps[i]);
-                e.type = (byte) (1 - addr & 1);
+                e.type = (byte) ((1 - addr) & 1);
                 e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
                 if(useTunnelRotaion){
                     e.x = (short) (sxm - ((short) (cameraShift + ((addr & YMASK_SRC) >>> YSHIFT_SRC))));
@@ -380,7 +380,8 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
             putValue(SELECTED_KEY,displayMethod.isDisplayInfo());
         }
 
-        public void actionPerformed(ActionEvent e) {
+        @Override
+		public void actionPerformed(ActionEvent e) {
             if (e.getSource() instanceof AbstractButton) {
                 AbstractButton b = (AbstractButton) e.getSource();
                 setDisplayCameraInfo(b.isSelected());
@@ -396,7 +397,8 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
             putValue(SHORT_DESCRIPTION, "Shows a dialog to configure mapping from source IP:port to camera position");
         }
 
-        public void actionPerformed(ActionEvent e) {
+        @Override
+		public void actionPerformed(ActionEvent e) {
             showCameraMapperDialog();
         }
     }
@@ -409,7 +411,8 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
             putValue(SHORT_DESCRIPTION, "Allows to switch the power of ");
         }
 
-        public void actionPerformed(ActionEvent e) {
+        @Override
+		public void actionPerformed(ActionEvent e) {
             showPowerSettingsDialog();
         }
     }

@@ -25,43 +25,50 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  * @author tobi
  */
 public class OverlappingSubSampler extends EventFilter2D {
-    
+
     private int bits=1;
     short shiftx=0, shifty=0;
-        
+
     /** Creates a new instance of SubSampler */
     public OverlappingSubSampler(AEChip chip) {
         super(chip);
         setBits(getPrefs().getInt("OverlappingSubSampler.bits",1));
 //        computeShifts();
     }
-    
+
     public Object getFilterState() {
         return null;
     }
-    
-    public void resetFilter() {
+
+    @Override
+	public void resetFilter() {
     }
-    
-    public void initFilter() {
+
+    @Override
+	public void initFilter() {
     }
-    
+
     public int getBits() {
         return bits;
     }
-    
-    @Override public void setFilterEnabled(boolean yes){
+
+    @Override public synchronized void setFilterEnabled(boolean yes){
         super.setFilterEnabled(yes);
 //        computeShifts();
     }
-    
+
     synchronized public void setBits(int bits) {
-        if(bits<0) bits=0; else if(bits>8) bits=8;
+        if(bits<0) {
+			bits=0;
+		}
+		else if(bits>8) {
+			bits=8;
+		}
         this.bits = bits;
         getPrefs().putInt("OverlappingSubSampler.bits",bits);
 //        computeShifts();
     }
-    
+
     private void computeShifts() {
         if(bits==0){
             shiftx=0; shifty=0; return;
@@ -73,25 +80,32 @@ public class OverlappingSubSampler extends EventFilter2D {
         s2=s1>>>bits;
         shifty=(short)((s1-s2)/2);
     }
-    
-    synchronized public EventPacket filterPacket(EventPacket in) {
-        if(in==null) return null;
-        if(!filterEnabled) return in;
-        if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
+
+    @Override
+	synchronized public EventPacket filterPacket(EventPacket in) {
+        if(in==null) {
+			return null;
+		}
+        if(!filterEnabled) {
+			return in;
+		}
+        if(enclosedFilter!=null) {
+			in=enclosedFilter.filterPacket(in);
+		}
         checkOutputPacketEventType(in);
         OutputEventIterator oi=out.outputIterator();
         for(Object obj:in){
             TypedEvent e=(TypedEvent)obj;
             TypedEvent o=(TypedEvent)oi.nextOutput();
             o.copyFrom(e);
-            o.setX((short) ((e.x >>> bits)<<bits + shiftx));
-            o.setY((short) ((e.y >>> bits)<<bits + shifty));
+            o.setX((short) ((e.x >>> bits)<<(bits + shiftx)));
+            o.setY((short) ((e.y >>> bits)<<(bits + shifty)));
             TypedEvent o2=(TypedEvent)oi.nextOutput();
             o2.copyFrom(e);
-            o2.setX((short) (((e.x+1) >>> bits)<<bits + shiftx));
-            o2.setY((short) (((e.y+1) >>> bits)<<bits + shifty));
+            o2.setX((short) (((e.x+1) >>> bits)<<(bits + shiftx)));
+            o2.setY((short) (((e.y+1) >>> bits)<<(bits + shifty)));
         }
         return out;
     }
-    
+
 }

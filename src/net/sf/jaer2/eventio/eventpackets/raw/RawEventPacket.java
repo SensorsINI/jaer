@@ -1,8 +1,8 @@
 package net.sf.jaer2.eventio.eventpackets.raw;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 import net.sf.jaer2.eventio.events.raw.RawEvent;
 
@@ -10,15 +10,15 @@ public final class RawEventPacket implements Iterable<RawEvent> {
 	private static final int DEFAULT_EVENT_CAPACITY = 4096;
 
 	// RawEvents array and index into it for adding new elements.
-	private int lastRawEvent;
-	private RawEvent[] rawEvents;
+	protected final RawEvent[] rawEvents;
+	protected int lastRawEvent;
 
 	public RawEventPacket() {
 		// Use default capacity.
-		rawEvents = new RawEvent[DEFAULT_EVENT_CAPACITY];
+		rawEvents = new RawEvent[RawEventPacket.DEFAULT_EVENT_CAPACITY];
 	}
 
-	public RawEventPacket(int capacity) {
+	public RawEventPacket(final int capacity) {
 		// Use user-supplied capacity.
 		rawEvents = new RawEvent[capacity];
 	}
@@ -27,15 +27,19 @@ public final class RawEventPacket implements Iterable<RawEvent> {
 		lastRawEvent = 0;
 	}
 
-	public int getCapacity() {
+	public int capacity() {
 		return rawEvents.length;
 	}
 
-	public int getSize() {
+	public int size() {
 		return lastRawEvent;
 	}
 
-	public int addRawEvent(RawEvent event) {
+	public boolean isEmpty() {
+		return (lastRawEvent == 0);
+	}
+
+	public int addRawEvent(final RawEvent event) {
 		// If no more space to add event, exit and report.
 		if (lastRawEvent >= rawEvents.length) {
 			// Return number of added events: zero on failure.
@@ -49,16 +53,17 @@ public final class RawEventPacket implements Iterable<RawEvent> {
 		return 1;
 	}
 
-	public int addRawEvents(RawEvent[] events) {
-		// Efficiently convert array to array-list and use the collections method.
+	public int addRawEvents(final RawEvent[] events) {
+		// Efficiently convert array to array-list and use the collections
+		// method.
 		return addRawEvents(Arrays.asList(events));
 	}
 
-	public int addRawEvents(Collection<RawEvent> events) {
-		int tmpLastRawEvent = lastRawEvent;
+	public int addRawEvents(final Iterable<RawEvent> events) {
+		final int origLastRawEvent = lastRawEvent;
 
 		// Copy all events over.
-		for (RawEvent event : events) {
+		for (final RawEvent event : events) {
 			// Exit loop if no more space in current array.
 			if (lastRawEvent >= rawEvents.length) {
 				break;
@@ -69,12 +74,41 @@ public final class RawEventPacket implements Iterable<RawEvent> {
 		}
 
 		// Return number of added events.
-		return lastRawEvent - tmpLastRawEvent;
+		return lastRawEvent - origLastRawEvent;
 	}
 
 	@Override
 	public Iterator<RawEvent> iterator() {
-		// TODO Auto-generated method stub
-		return null;
+		return new RawEventPacketIterator();
+	}
+
+	private final class RawEventPacketIterator implements Iterator<RawEvent> {
+		private int position = 0;
+
+		public RawEventPacketIterator() {
+		}
+
+		@Override
+		public boolean hasNext() {
+			if (position < lastRawEvent) {
+				return true;
+			}
+
+			return false;
+		}
+
+		@Override
+		public RawEvent next() {
+			if (!hasNext()) {
+				throw new NoSuchElementException();
+			}
+
+			return rawEvents[position++];
+		}
+
+		@Override
+		public void remove() {
+			throw new UnsupportedOperationException();
+		}
 	}
 }

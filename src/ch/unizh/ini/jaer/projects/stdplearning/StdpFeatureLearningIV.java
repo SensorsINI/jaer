@@ -1,11 +1,11 @@
 /*
  * StdpFeatureLearningIV.java
- * 
+ *
  * Created on March 6, 2013
- * 
+ *
  * Implements 'Extraction of Temporally correlated features from dynamic vision
  * sensors with spike-timing-dependent-plasticity' Paper in DVS
- * 
+ *
  * @author Haza
  *
  */
@@ -772,7 +772,7 @@ public class StdpFeatureLearningIV extends RectangularClusterTracker implements 
 	 * @param drawable OpenGL Rendering Object
 	 */
 	@Override
-	public void annotate (GLAutoDrawable drawable) {
+	public synchronized void annotate (GLAutoDrawable drawable) {
 		super.annotate(drawable);
 
 		if (!isAnnotationEnabled()) {

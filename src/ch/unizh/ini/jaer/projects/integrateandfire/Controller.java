@@ -51,7 +51,8 @@ public class Controller extends Plotter /*javax.swing.JFrame*/  {
 
         editUnitFrom.setText("0");
         editUnitFrom.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 editUnitFromActionPerformed(evt);
             }
         });
@@ -62,7 +63,8 @@ public class Controller extends Plotter /*javax.swing.JFrame*/  {
 
         butThresh.setText("set");
         butThresh.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 butThreshActionPerformed(evt);
             }
         });
@@ -71,21 +73,24 @@ public class Controller extends Plotter /*javax.swing.JFrame*/  {
 
         butTC.setText("set");
         butTC.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 butTCActionPerformed(evt);
             }
         });
 
         butFire.setText("FIRE");
         butFire.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 butFireActionPerformed(evt);
             }
         });
 
         editUnitTo.setText("0");
         editUnitTo.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 editUnitToActionPerformed(evt);
             }
         });
@@ -164,11 +169,12 @@ public class Controller extends Plotter /*javax.swing.JFrame*/  {
     }// </editor-fold>//GEN-END:initComponents
 
     private void butThreshActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_butThreshActionPerformed
-        
+
         float thresh=Float.parseFloat(this.editThresh.getText());
-        
-        for (int i=minU; i<=maxU; i++)
-            NN.N[i].thresh=thresh;
+
+        for (int i=minU; i<=maxU; i++) {
+			NN.N[i].thresh=thresh;
+		}
 
     }//GEN-LAST:event_butThreshActionPerformed
 
@@ -176,9 +182,10 @@ public class Controller extends Plotter /*javax.swing.JFrame*/  {
 
         float TC=Float.parseFloat(this.editTC.getText());
 
-        for (int i=minU; i<=maxU; i++)
-            NN.N[i].tau=TC;
-        
+        for (int i=minU; i<=maxU; i++) {
+			NN.N[i].tau=TC;
+		}
+
     }//GEN-LAST:event_butTCActionPerformed
 
     private void editUnitFromActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_editUnitFromActionPerformed
@@ -206,7 +213,8 @@ public class Controller extends Plotter /*javax.swing.JFrame*/  {
     */
     public static void main(String args[]) {
         java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
+            @Override
+			public void run() {
                 new Controller().setVisible(true);
             }
         });
@@ -239,8 +247,6 @@ public class Controller extends Plotter /*javax.swing.JFrame*/  {
     public int maxU;
     public LIFNet NN;
 
-    void Controller(LIFNet NN_){load(NN_);}
-
     @Override
     public void update(int timestamp) {
         throw new UnsupportedOperationException("Not supported yet.");
@@ -248,7 +254,7 @@ public class Controller extends Plotter /*javax.swing.JFrame*/  {
 
     @Override
     public void init() {
-        
+
         setrange(0,NN.N.length-1);
         this.labTotal.setText("("+NN.N.length+" units in total)");
 
@@ -258,8 +264,12 @@ public class Controller extends Plotter /*javax.swing.JFrame*/  {
 
     public void setrange(int min, int max)
     {
-        if (min < 0) min=0;
-        if (max >= NN.N.length) max=NN.N.length-1;
+        if (min < 0) {
+			min=0;
+		}
+        if (max >= NN.N.length) {
+			max=NN.N.length-1;
+		}
 
         minU=min;
         maxU=max;
