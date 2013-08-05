@@ -16,13 +16,10 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 	protected int validEvents;
 
 	private final Class<E> eventType;
+	private EventPacketContainer parentContainer;
 
 	private boolean timeOrdered;
 	private boolean timeOrderingEnforced;
-
-	public Class<? extends Event> getEventType() {
-		return eventType;
-	}
 
 	public EventPacket(final Class<E> type) {
 		this(type, false);
@@ -42,6 +39,22 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 
 		// Use user-supplied capacity.
 		events = net.sf.jaer2.util.Arrays.newArrayFromType(type, capacity);
+	}
+
+	public Class<E> getEventType() {
+		return eventType;
+	}
+
+	public EventPacketContainer getParentContainer() {
+		return parentContainer;
+	}
+
+	public void setParentContainer(final EventPacketContainer container) {
+		parentContainer = container;
+
+		if ((parentContainer != null) && parentContainer.isTimeOrderingEnforced()) {
+			setTimeOrderingEnforced(true);
+		}
 	}
 
 	public void clear() {
@@ -154,7 +167,7 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 	}
 
 	/**
-	 * Add one event to the EventPacket, after all other events.
+	 * Append one event to the EventPacket, after all other events.
 	 * If needed, take care to manually ensure time ordering, either by adding
 	 * the packets in such an order that you know follows time ordering and then
 	 * calling setTimeOrdered(true) yourself, or by calling
@@ -164,13 +177,16 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 	 * @param evt
 	 *            event to add to the end of the EventPacket
 	 */
-	public void addEventAfterAll(final E evt) {
+	public void appendEvent(final E evt) {
 		ensureCapacity(1);
 
 		// Add event.
 		events[lastEvent++] = evt;
 
 		validEvents++;
+
+		// Not able to guarantee time ordering after appending!
+		timeOrdered = false;
 	}
 
 	/**
@@ -181,7 +197,7 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 	 *            event to add to the EventPacket
 	 */
 	public void addEvent(final E evt) {
-		addEventAfterAll(evt);
+		appendEvent(evt);
 
 		// Make sure time ordering is still present, if requested.
 		if (timeOrderingEnforced) {
@@ -212,7 +228,7 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 	public void addEvents(final Iterable<E> evts) {
 		// Copy all events over.
 		for (final E evt : evts) {
-			addEventAfterAll(evt);
+			appendEvent(evt);
 		}
 
 		// Make sure time ordering is still present, if requested.
@@ -221,8 +237,21 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 		}
 	}
 
+	public void appendEventPacket(final EventPacket<E> evtPacket) {
+		ensureCapacity(evtPacket.sizeFull());
+
+		for (final Iterator<E> iter = evtPacket.iteratorFull(); iter.hasNext();) {
+			appendEvent(iter.next());
+		}
+	}
+
 	public void addEventPacket(final EventPacket<E> evtPacket) {
-		// TODO: implement
+		appendEventPacket(evtPacket);
+
+		// Make sure time ordering is still present, if requested.
+		if (timeOrderingEnforced) {
+			timeOrder();
+		}
 	}
 
 	public void addEventPackets(final EventPacket<E>[] evtPackets) {
@@ -230,7 +259,15 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 	}
 
 	public void addEventPackets(final Iterable<EventPacket<E>> evtPackets) {
-		// TODO: implement
+		// Add all EventPackets.
+		for (final EventPacket<E> evtPacket : evtPackets) {
+			appendEventPacket(evtPacket);
+		}
+
+		// Make sure time ordering is still present, if requested.
+		if (timeOrderingEnforced) {
+			timeOrder();
+		}
 	}
 
 	public boolean isTimeOrdered() {
@@ -251,8 +288,22 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 		return timeOrderingEnforced;
 	}
 
-	public void setTimeOrderingEnforced(final boolean timeOrderEnforced) {
+	/**
+	 * @param timeOrderEnforced
+	 *            enable or disable time-order enforcing
+	 *
+	 * @throws IllegalStateException
+	 *             if trying to disable time-order enforcing while the parent
+	 *             container still requires it
+	 */
+	public void setTimeOrderingEnforced(final boolean timeOrderEnforced) throws IllegalStateException {
 		timeOrderingEnforced = timeOrderEnforced;
+
+		// Reset time order enforcing back to enabled if a parent container
+		// exists and requires it.
+		if ((timeOrderingEnforced == false) && (parentContainer != null) && parentContainer.isTimeOrderingEnforced()) {
+			throw new IllegalStateException();
+		}
 
 		// If time ordering enforced, but not yet time ordered, do so.
 		if (timeOrderingEnforced && !timeOrdered) {
