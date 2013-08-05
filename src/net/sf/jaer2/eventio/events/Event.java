@@ -8,4 +8,6 @@ public interface Event {
 	public void setValid(boolean valid);
 
 	public boolean isValid();
+
+	public int getTimestamp();
 }

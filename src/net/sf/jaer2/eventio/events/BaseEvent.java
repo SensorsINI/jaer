@@ -1,7 +1,12 @@
 package net.sf.jaer2.eventio.events;
 
 public class BaseEvent implements Event {
-	private boolean validEvent = true;
+	private boolean valid = true;
+
+	public int timestamp;
+
+	public int x;
+	public int y;
 
 	@Override
 	public Class<? extends Event> getEventType() {
@@ -10,16 +15,21 @@ public class BaseEvent implements Event {
 
 	@Override
 	public void invalidate() {
-		validEvent = false;
+		setValid(false);
 	}
 
 	@Override
-	public void setValid(final boolean valid) {
-		validEvent = valid;
+	public void setValid(final boolean validEvent) {
+		valid = validEvent;
 	}
 
 	@Override
 	public boolean isValid() {
-		return validEvent;
+		return valid;
+	}
+
+	@Override
+	public int getTimestamp() {
+		return timestamp;
 	}
 }
