@@ -356,8 +356,10 @@ public final class EventPacket<E extends Event> extends AbstractCollection<E> {
 		}
 
 		// In all other cases, enforce either the requirement or the will of the
-		// user.
-		timeOrder();
+		// user. Only sort locally if needed, but always update the global
+		// time-ordered list if the container needs it.
+		timeOrderInternal();
+		rebuildGlobalTimeOrder();
 	}
 
 	public boolean isTimeOrderingEnforced() {
@@ -553,6 +555,22 @@ public final class EventPacket<E extends Event> extends AbstractCollection<E> {
 				validEvents--;
 			}
 		}
+	}
+
+	public Iterator<E> iteratorTimeOrder() throws UnsupportedOperationException {
+		if (!timeOrdered) {
+			throw new UnsupportedOperationException("EventPacket doesn't support time-ordering (not time-ordered).");
+		}
+
+		return new EventPacketIterator();
+	}
+
+	public Iterator<E> iteratorTimeOrderFull() throws UnsupportedOperationException {
+		if (!timeOrdered) {
+			throw new UnsupportedOperationException("EventPacket doesn't support time-ordering (not time-ordered).");
+		}
+
+		return new EventPacketIteratorFull();
 	}
 
 	@Override

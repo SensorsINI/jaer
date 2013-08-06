@@ -299,12 +299,20 @@ public final class EventPacketContainer implements Iterable<Event> {
 		return null;
 	}
 
-	public Iterator<Event> iteratorTimeOrder() {
+	public Iterator<Event> iteratorTimeOrder() throws UnsupportedOperationException {
+		if (!timeOrderingEnforced) {
+			throw new UnsupportedOperationException("EventPacketContainer doesn't support global time-ordering.");
+		}
+
 		// TODO Auto-generated method stub
 		return null;
 	}
 
-	public Iterator<Event> iteratorTimeOrderFull() {
+	public Iterator<Event> iteratorTimeOrderFull() throws UnsupportedOperationException {
+		if (!timeOrderingEnforced) {
+			throw new UnsupportedOperationException("EventPacketContainer doesn't support global time-ordering.");
+		}
+
 		// TODO Auto-generated method stub
 		return null;
 	}
