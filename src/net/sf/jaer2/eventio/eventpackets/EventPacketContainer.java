@@ -2,9 +2,10 @@ package net.sf.jaer2.eventio.eventpackets;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
 import net.sf.jaer2.eventio.events.Event;
@@ -12,7 +13,7 @@ import net.sf.jaer2.eventio.events.Event;
 public final class EventPacketContainer implements Iterable<Event> {
 	private final Map<Class<? extends Event>, EventPacket<? extends Event>> eventPackets = new HashMap<>();
 
-	private final List<Event> eventsTimeOrdered = new ArrayList<>();
+	private ArrayList<Event> eventsTimeOrdered;
 	private boolean timeOrderingEnforced;
 
 	public EventPacketContainer() {
@@ -21,11 +22,20 @@ public final class EventPacketContainer implements Iterable<Event> {
 
 	public EventPacketContainer(final boolean timeOrder) {
 		timeOrderingEnforced = timeOrder;
+
+		if (timeOrderingEnforced) {
+			eventsTimeOrdered = new ArrayList<>();
+		}
 	}
 
 	public void clear() {
 		for (final EventPacket<? extends Event> evtPkt : eventPackets.values()) {
-			evtPkt.clear();
+			evtPkt.clearInternal();
+		}
+
+		if (timeOrderingEnforced) {
+			// Rebuild global time-ordering list only once.
+			rebuildGlobalTimeOrder();
 		}
 	}
 
@@ -60,29 +70,23 @@ public final class EventPacketContainer implements Iterable<Event> {
 	}
 
 	public boolean isEmptyFull() {
-		boolean isEmptyFull = true;
-
 		for (final EventPacket<? extends Event> evtPkt : eventPackets.values()) {
 			if (!evtPkt.isEmptyFull()) {
-				isEmptyFull = false;
-				break;
+				return false;
 			}
 		}
 
-		return isEmptyFull;
+		return true;
 	}
 
 	public boolean isEmpty() {
-		boolean isEmpty = true;
-
 		for (final EventPacket<? extends Event> evtPkt : eventPackets.values()) {
 			if (!evtPkt.isEmpty()) {
-				isEmpty = false;
-				break;
+				return false;
 			}
 		}
 
-		return isEmpty;
+		return true;
 	}
 
 	public int compactGain() {
@@ -96,28 +100,41 @@ public final class EventPacketContainer implements Iterable<Event> {
 	}
 
 	public void compact() {
+		if (compactGain() == 0) {
+			// Nothing to gain across all packets.
+			return;
+		}
+
 		for (final EventPacket<? extends Event> evtPkt : eventPackets.values()) {
-			evtPkt.compact();
+			evtPkt.compactInternal();
+		}
+
+		if (timeOrderingEnforced) {
+			// Rebuild global time-ordering list only once.
+			rebuildGlobalTimeOrder();
 		}
 	}
 
-	public <E extends Event> void appendEventPacket(final EventPacket<E> evtPacket) {
+	public <E extends Event> void appendPacket(final EventPacket<E> evtPacket) {
+		final Class<E> type = evtPacket.getEventType();
+
 		@SuppressWarnings("unchecked")
-		final EventPacket<E> eventPacket = (EventPacket<E>) eventPackets.get(evtPacket.getEventType());
+		EventPacket<E> internalEventPacket = (EventPacket<E>) eventPackets.get(type);
 
-		if (eventPacket == null) {
-			// Packet of this type not found, add it to map.
-			evtPacket.setParentContainer(this);
-			eventPackets.put(evtPacket.getEventType(), evtPacket);
+		if (internalEventPacket == null) {
+			// Packet of this type not found, create it and add it to map.
+			internalEventPacket = new EventPacket<>(type);
+			internalEventPacket.setParentContainer(this);
+
+			eventPackets.put(type, internalEventPacket);
 		}
-		else {
-			// Found packet of this type already, adding packet to it.
-			eventPacket.appendEventPacket(evtPacket);
-		}
+
+		// Add packet content to packet inside container.
+		internalEventPacket.appendPacket(evtPacket);
 	}
 
-	public <E extends Event> void addEventPacket(final EventPacket<E> evtPacket) {
-		appendEventPacket(evtPacket);
+	public <E extends Event> void addPacket(final EventPacket<E> evtPacket) {
+		appendPacket(evtPacket);
 
 		// Make sure time ordering is still present, if requested.
 		if (eventPackets.get(evtPacket.getEventType()).isTimeOrderingEnforced()) {
@@ -125,41 +142,55 @@ public final class EventPacketContainer implements Iterable<Event> {
 		}
 	}
 
-	public <E extends Event> void addEventPackets(final EventPacket<E>[] evtPackets) {
-		addEventPackets(Arrays.asList(evtPackets));
+	public <E extends Event> void addAllPackets(final EventPacket<E>[] evtPackets) {
+		addAllPackets(Arrays.asList(evtPackets));
 	}
 
-	public <E extends Event> void addEventPackets(final Iterable<EventPacket<E>> evtPackets) {
-		Class<E> type = null;
-
+	public <E extends Event> void addAllPackets(final Iterable<EventPacket<E>> evtPackets) {
 		// Add all EventPackets.
 		for (final EventPacket<E> evtPacket : evtPackets) {
-			appendEventPacket(evtPacket);
-			type = evtPacket.getEventType();
+			appendPacket(evtPacket);
 		}
 
 		// Make sure time ordering is still present, if requested.
-		if (eventPackets.get(type).isTimeOrderingEnforced()) {
-			eventPackets.get(type).timeOrder();
+		// Check all packets, since we can't know exactly which types were
+		// manipulated above due to possible inheritance effects.
+		for (final EventPacket<? extends Event> evtPkt : eventPackets.values()) {
+			if (evtPkt.isTimeOrderingEnforced()) {
+				evtPkt.timeOrderInternal();
+			}
+		}
+
+		// Rebuild global time-ordering list only once.
+		if (timeOrderingEnforced) {
+			rebuildGlobalTimeOrder();
 		}
 	}
 
 	@SuppressWarnings("unchecked")
-	public <E extends Event> EventPacket<E> getEventPacket(final Class<E> type) {
+	public <E extends Event> EventPacket<E> getPacket(final Class<E> type) {
 		return (EventPacket<E>) eventPackets.get(type);
 	}
 
-	public boolean isTimeOrdered() {
-		boolean isTimeOrdered = true;
+	public <E extends Event> EventPacket<E> removePacket(final Class<E> type) {
+		@SuppressWarnings("unchecked")
+		final EventPacket<E> internalEventPacket = (EventPacket<E>) eventPackets.remove(type);
 
+		if (internalEventPacket != null) {
+			internalEventPacket.setParentContainer(null);
+		}
+
+		return internalEventPacket;
+	}
+
+	public boolean isTimeOrdered() {
 		for (final EventPacket<? extends Event> evtPkt : eventPackets.values()) {
 			if (!evtPkt.isTimeOrdered()) {
-				isTimeOrdered = false;
-				break;
+				return false;
 			}
 		}
 
-		return isTimeOrdered;
+		return true;
 	}
 
 	public void setTimeOrdered(final boolean timeOrder) {
@@ -179,20 +210,81 @@ public final class EventPacketContainer implements Iterable<Event> {
 	}
 
 	public void setTimeOrderingEnforced(final boolean timeOrderEnforced) {
+		if (timeOrderingEnforced == timeOrderEnforced) {
+			// Return right away if setting to previous value (no change).
+			return;
+		}
+
 		timeOrderingEnforced = timeOrderEnforced;
+
+		// Ensure main time ordering list is available or cleared.
+		if (timeOrderingEnforced && (eventsTimeOrdered == null)) {
+			eventsTimeOrdered = new ArrayList<>();
+		}
+		else if (!timeOrderingEnforced && (eventsTimeOrdered != null)) {
+			eventsTimeOrdered.clear();
+			eventsTimeOrdered = null;
+		}
 
 		// If enabled, make sure all contained packets are enforcing too, which
 		// will automatically order them if they aren't already so.
 		if (timeOrderingEnforced) {
 			for (final EventPacket<? extends Event> evtPkt : eventPackets.values()) {
-				evtPkt.setTimeOrderingEnforced(timeOrderingEnforced);
+				evtPkt.setTimeOrderingEnforced(true);
 			}
+
+			// Rebuild global time-ordering list only once.
+			rebuildGlobalTimeOrder();
 		}
 	}
 
 	public void timeOrder() {
 		for (final EventPacket<? extends Event> evtPkt : eventPackets.values()) {
-			evtPkt.timeOrder();
+			evtPkt.timeOrderInternal();
+		}
+
+		if (timeOrderingEnforced) {
+			// Rebuild global time-ordering list only once.
+			rebuildGlobalTimeOrder();
+		}
+	}
+
+	void rebuildGlobalTimeOrder() {
+		// Don't do anything if global time-ordering is disabled.
+		if (!timeOrderingEnforced) {
+			return;
+		}
+
+		// Clear current global time-order list.
+		eventsTimeOrdered.clear();
+		eventsTimeOrdered.ensureCapacity(sizeFull());
+
+		// Regenerate it by adding all events from all packets.
+		for (final EventPacket<? extends Event> evtPkt : eventPackets.values()) {
+			for (final Iterator<? extends Event> iter = evtPkt.iteratorFull(); iter.hasNext();) {
+				eventsTimeOrdered.add(iter.next());
+			}
+		}
+
+		// Sort global time-order list by timestamp.
+		Collections.sort(eventsTimeOrdered, new EventTimestampComparator());
+	}
+
+	private final class EventTimestampComparator implements Comparator<Event> {
+		public EventTimestampComparator() {
+		}
+
+		@Override
+		public int compare(final Event evt1, final Event evt2) {
+			if (evt1.getTimestamp() > evt2.getTimestamp()) {
+				return 1;
+			}
+
+			if (evt1.getTimestamp() < evt2.getTimestamp()) {
+				return -1;
+			}
+
+			return 0;
 		}
 	}
 

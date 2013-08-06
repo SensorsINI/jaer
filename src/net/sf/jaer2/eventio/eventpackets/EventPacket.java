@@ -1,14 +1,16 @@
 package net.sf.jaer2.eventio.eventpackets;
 
+import java.util.AbstractCollection;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 import net.sf.jaer2.eventio.events.Event;
 
-public final class EventPacket<E extends Event> implements Iterable<E> {
-	private static final int DEFAULT_EVENT_CAPACITY = 4096;
+public final class EventPacket<E extends Event> extends AbstractCollection<E> {
+	private static final int DEFAULT_EVENT_CAPACITY = 2048;
 
 	// RawEvents array and index into it for adding new elements.
 	protected E[] events;
@@ -34,6 +36,8 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 	}
 
 	public EventPacket(final Class<E> type, final int capacity, final boolean timeOrder) {
+		super();
+
 		eventType = type;
 		timeOrderingEnforced = timeOrder;
 
@@ -49,7 +53,12 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 		return parentContainer;
 	}
 
-	public void setParentContainer(final EventPacketContainer container) {
+	void setParentContainer(final EventPacketContainer container) {
+		if (parentContainer == container) {
+			// Return right away if setting to previous value (no change).
+			return;
+		}
+
 		parentContainer = container;
 
 		if ((parentContainer != null) && parentContainer.isTimeOrderingEnforced()) {
@@ -57,9 +66,35 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 		}
 	}
 
+	private void rebuildGlobalTimeOrder() {
+		// Rebuild global time-order list.
+		if ((parentContainer != null) && parentContainer.isTimeOrderingEnforced()) {
+			parentContainer.rebuildGlobalTimeOrder();
+		}
+	}
+
+	@Override
 	public void clear() {
+		if (clearInternal()) {
+			rebuildGlobalTimeOrder();
+		}
+	}
+
+	boolean clearInternal() {
+		if (lastEvent == 0) {
+			// Nothing to clear if lastEvent was never increased.
+			return false;
+		}
+
+		// Ensure freeing by GC.
+		for (int i = 0; i < lastEvent; i++) {
+			events[i] = null;
+		}
+
 		lastEvent = 0;
 		validEvents = 0;
+
+		return true;
 	}
 
 	public int capacity() {
@@ -70,6 +105,7 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 		return lastEvent;
 	}
 
+	@Override
 	public int size() {
 		return validEvents;
 	}
@@ -78,6 +114,7 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 		return (lastEvent == 0);
 	}
 
+	@Override
 	public boolean isEmpty() {
 		return (validEvents == 0);
 	}
@@ -142,14 +179,21 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 	 * Compact EventPacket by removing all invalid events.
 	 */
 	public void compact() {
+		if (compactInternal()) {
+			rebuildGlobalTimeOrder();
+		}
+	}
+
+	boolean compactInternal() {
 		// Compact only if there actually is anything to compact.
 		if (compactGain() == 0) {
-			return;
+			return false;
 		}
 
 		int copyOffset = 0;
+		int position = 0;
 
-		for (int position = 0; position < lastEvent; position++) {
+		for (; position < lastEvent; position++) {
 			if (events[position].isValid()) {
 				if (copyOffset == 0) {
 					continue;
@@ -164,6 +208,13 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 
 		// Reset array length.
 		lastEvent -= copyOffset;
+
+		// Ensure freeing by GC.
+		for (int i = lastEvent; i < position; i++) {
+			events[i] = null;
+		}
+
+		return true;
 	}
 
 	/**
@@ -176,14 +227,23 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 	 *
 	 * @param evt
 	 *            event to add to the end of the EventPacket
+	 *
+	 * @throws NullPointerException
+	 *             evt cannot be null
 	 */
-	public void appendEvent(final E evt) {
+	public void append(final E evt) throws NullPointerException {
+		if (evt == null) {
+			throw new NullPointerException();
+		}
+
 		ensureCapacity(1);
 
 		// Add event.
 		events[lastEvent++] = evt;
 
-		validEvents++;
+		if (evt.isValid()) {
+			validEvents++;
+		}
 
 		// Not able to guarantee time ordering after appending!
 		timeOrdered = false;
@@ -196,13 +256,16 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 	 * @param evt
 	 *            event to add to the EventPacket
 	 */
-	public void addEvent(final E evt) {
-		appendEvent(evt);
+	@Override
+	public boolean add(final E evt) {
+		append(evt);
 
 		// Make sure time ordering is still present, if requested.
 		if (timeOrderingEnforced) {
 			timeOrder();
 		}
+
+		return true;
 	}
 
 	/**
@@ -212,10 +275,10 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 	 * @param evts
 	 *            events to add to the EventPacket
 	 */
-	public void addEvents(final E[] evts) {
+	public boolean addAll(final E[] evts) {
 		// Efficiently convert array to array-list, so that the Iterable-based
 		// method can be used.
-		addEvents(Arrays.asList(evts));
+		return addAll(Arrays.asList(evts));
 	}
 
 	/**
@@ -225,49 +288,58 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 	 * @param evts
 	 *            events to add to the EventPacket
 	 */
-	public void addEvents(final Iterable<E> evts) {
+	@Override
+	public boolean addAll(final Collection<? extends E> evts) {
+		ensureCapacity(evts.size());
+
 		// Copy all events over.
 		for (final E evt : evts) {
-			appendEvent(evt);
+			append(evt);
 		}
 
 		// Make sure time ordering is still present, if requested.
 		if (timeOrderingEnforced) {
 			timeOrder();
 		}
+
+		return true;
 	}
 
-	public void appendEventPacket(final EventPacket<E> evtPacket) {
+	public void appendPacket(final EventPacket<E> evtPacket) {
 		ensureCapacity(evtPacket.sizeFull());
 
 		for (final Iterator<E> iter = evtPacket.iteratorFull(); iter.hasNext();) {
-			appendEvent(iter.next());
+			append(iter.next());
 		}
 	}
 
-	public void addEventPacket(final EventPacket<E> evtPacket) {
-		appendEventPacket(evtPacket);
+	public boolean addPacket(final EventPacket<E> evtPacket) {
+		appendPacket(evtPacket);
 
 		// Make sure time ordering is still present, if requested.
 		if (timeOrderingEnforced) {
 			timeOrder();
 		}
+
+		return true;
 	}
 
-	public void addEventPackets(final EventPacket<E>[] evtPackets) {
-		addEventPackets(Arrays.asList(evtPackets));
+	public boolean addAllPackets(final EventPacket<E>[] evtPackets) {
+		return addAllPackets(Arrays.asList(evtPackets));
 	}
 
-	public void addEventPackets(final Iterable<EventPacket<E>> evtPackets) {
+	public boolean addAllPackets(final Collection<EventPacket<E>> evtPackets) {
 		// Add all EventPackets.
 		for (final EventPacket<E> evtPacket : evtPackets) {
-			appendEventPacket(evtPacket);
+			appendPacket(evtPacket);
 		}
 
 		// Make sure time ordering is still present, if requested.
 		if (timeOrderingEnforced) {
 			timeOrder();
 		}
+
+		return true;
 	}
 
 	public boolean isTimeOrdered() {
@@ -277,11 +349,15 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 	public void setTimeOrdered(final boolean timeOrder) {
 		timeOrdered = timeOrder;
 
-		// If time ordering enforced, setting time order manually to false leads
-		// to explicit call to reorder and resets this to true.
-		if (timeOrderingEnforced && !timeOrdered) {
-			timeOrder();
+		if (!timeOrdered && !timeOrderingEnforced) {
+			// In the case explicit time ordering is not wanted, nor required,
+			// simply return without doing anything.
+			return;
 		}
+
+		// In all other cases, enforce either the requirement or the will of the
+		// user.
+		timeOrder();
 	}
 
 	public boolean isTimeOrderingEnforced() {
@@ -297,6 +373,11 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 	 *             container still requires it
 	 */
 	public void setTimeOrderingEnforced(final boolean timeOrderEnforced) throws IllegalStateException {
+		if (timeOrderingEnforced == timeOrderEnforced) {
+			// Return right away if setting to previous value (no change).
+			return;
+		}
+
 		timeOrderingEnforced = timeOrderEnforced;
 
 		// Reset time order enforcing back to enabled if a parent container
@@ -307,20 +388,28 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 
 		// If time ordering enforced, but not yet time ordered, do so.
 		if (timeOrderingEnforced && !timeOrdered) {
-			timeOrder();
+			timeOrderInternal();
 		}
 	}
 
 	public void timeOrder() {
+		if (timeOrderInternal()) {
+			rebuildGlobalTimeOrder();
+		}
+	}
+
+	boolean timeOrderInternal() {
 		// Nothing to do if already timeOrdered.
 		if (timeOrdered) {
-			return;
+			return false;
 		}
 
 		timeOrdered = true;
 
 		// Sort by timestamp.
 		Arrays.sort(events, 0, lastEvent, new EventTimestampComparator());
+
+		return true;
 	}
 
 	private final class EventTimestampComparator implements Comparator<E> {
@@ -464,5 +553,88 @@ public final class EventPacket<E extends Event> implements Iterable<E> {
 				validEvents--;
 			}
 		}
+	}
+
+	@Override
+	public boolean contains(final Object obj) {
+		if (obj == null) {
+			throw new NullPointerException();
+		}
+
+		if (!(obj instanceof Event)) {
+			throw new ClassCastException();
+		}
+
+		return super.contains(obj);
+	}
+
+	@Override
+	public boolean containsAll(final Collection<?> coll) {
+		if (coll == null) {
+			throw new NullPointerException();
+		}
+
+		for (final Object obj : coll) {
+			if (obj == null) {
+				throw new NullPointerException();
+			}
+
+			if (!(obj instanceof Event)) {
+				throw new ClassCastException();
+			}
+		}
+
+		return super.containsAll(coll);
+	}
+
+	@Override
+	public boolean remove(final Object obj) {
+		if (obj == null) {
+			throw new NullPointerException();
+		}
+
+		if (!(obj instanceof Event)) {
+			throw new ClassCastException();
+		}
+
+		return super.remove(obj);
+	}
+
+	@Override
+	public boolean removeAll(final Collection<?> coll) {
+		if (coll == null) {
+			throw new NullPointerException();
+		}
+
+		for (final Object obj : coll) {
+			if (obj == null) {
+				throw new NullPointerException();
+			}
+
+			if (!(obj instanceof Event)) {
+				throw new ClassCastException();
+			}
+		}
+
+		return super.removeAll(coll);
+	}
+
+	@Override
+	public boolean retainAll(final Collection<?> coll) {
+		if (coll == null) {
+			throw new NullPointerException();
+		}
+
+		for (final Object obj : coll) {
+			if (obj == null) {
+				throw new NullPointerException();
+			}
+
+			if (!(obj instanceof Event)) {
+				throw new ClassCastException();
+			}
+		}
+
+		return super.retainAll(coll);
 	}
 }
