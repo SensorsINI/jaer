@@ -7,8 +7,11 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import net.sf.jaer2.eventio.events.Event;
+
+import com.google.common.collect.Iterators;
 
 public final class EventPacketContainer implements Iterable<Event> {
 	private final Map<Class<? extends Event>, EventPacket<? extends Event>> eventPackets = new HashMap<>();
@@ -115,9 +118,7 @@ public final class EventPacketContainer implements Iterable<Event> {
 		}
 	}
 
-	public <E extends Event> void appendPacket(final EventPacket<E> evtPacket) {
-		final Class<E> type = evtPacket.getEventType();
-
+	public <E extends Event> EventPacket<E> createPacket(final Class<E> type) {
 		@SuppressWarnings("unchecked")
 		EventPacket<E> internalEventPacket = (EventPacket<E>) eventPackets.get(type);
 
@@ -129,17 +130,17 @@ public final class EventPacketContainer implements Iterable<Event> {
 			eventPackets.put(type, internalEventPacket);
 		}
 
-		// Add packet content to packet inside container.
-		internalEventPacket.appendPacket(evtPacket);
+		return internalEventPacket;
+	}
+
+	public <E extends Event> void appendPacket(final EventPacket<E> evtPacket) {
+		createPacket(evtPacket.getEventType()).appendPacket(evtPacket);
 	}
 
 	public <E extends Event> void addPacket(final EventPacket<E> evtPacket) {
-		appendPacket(evtPacket);
-
-		// Make sure time ordering is still present, if requested.
-		if (eventPackets.get(evtPacket.getEventType()).isTimeOrderingEnforced()) {
-			eventPackets.get(evtPacket.getEventType()).timeOrder();
-		}
+		// Use EventPacket.addPacket() directly here, which takes care of both
+		// local and global time-ordering itself.
+		createPacket(evtPacket.getEventType()).addPacket(evtPacket);
 	}
 
 	public <E extends Event> void addAllPackets(final EventPacket<E>[] evtPackets) {
@@ -147,7 +148,8 @@ public final class EventPacketContainer implements Iterable<Event> {
 	}
 
 	public <E extends Event> void addAllPackets(final Iterable<EventPacket<E>> evtPackets) {
-		// Add all EventPackets.
+		// Add all EventPackets. Use EventPacketContainer.appendPacket() because
+		// of the possibility of different types due to inheritance effects.
 		for (final EventPacket<E> evtPacket : evtPackets) {
 			appendPacket(evtPacket);
 		}
@@ -290,13 +292,23 @@ public final class EventPacketContainer implements Iterable<Event> {
 
 	@Override
 	public Iterator<Event> iterator() {
-		// TODO Auto-generated method stub
-		return null;
+		final ArrayList<Iterator<? extends Event>> iters = new ArrayList<>(eventPackets.size());
+
+		for (final EventPacket<? extends Event> evtPkt : eventPackets.values()) {
+			iters.add(evtPkt.iterator());
+		}
+
+		return Iterators.concat(iters.iterator());
 	}
 
 	public Iterator<Event> iteratorFull() {
-		// TODO Auto-generated method stub
-		return null;
+		final ArrayList<Iterator<? extends Event>> iters = new ArrayList<>(eventPackets.size());
+
+		for (final EventPacket<? extends Event> evtPkt : eventPackets.values()) {
+			iters.add(evtPkt.iteratorFull());
+		}
+
+		return Iterators.concat(iters.iterator());
 	}
 
 	public Iterator<Event> iteratorTimeOrder() throws UnsupportedOperationException {
@@ -304,8 +316,49 @@ public final class EventPacketContainer implements Iterable<Event> {
 			throw new UnsupportedOperationException("EventPacketContainer doesn't support global time-ordering.");
 		}
 
-		// TODO Auto-generated method stub
-		return null;
+		return new TimeOrderIterator();
+	}
+
+	private final class TimeOrderIterator implements Iterator<Event> {
+		private Iterator<Event> iterator = null;
+		private Event currentEvent = null;
+
+		public TimeOrderIterator() {
+			iterator = iteratorTimeOrderFull();
+		}
+
+		@Override
+		public boolean hasNext() {
+			if (currentEvent != null) {
+				return true;
+			}
+
+			while (iterator.hasNext()) {
+				currentEvent = iterator.next();
+
+				if (currentEvent.isValid()) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		@Override
+		public Event next() {
+			if (!hasNext()) {
+				throw new NoSuchElementException();
+			}
+
+			final Event evt = currentEvent;
+			currentEvent = null;
+			return evt;
+		}
+
+		@Override
+		public void remove() {
+			iterator.remove();
+		}
 	}
 
 	public Iterator<Event> iteratorTimeOrderFull() throws UnsupportedOperationException {
@@ -313,7 +366,6 @@ public final class EventPacketContainer implements Iterable<Event> {
 			throw new UnsupportedOperationException("EventPacketContainer doesn't support global time-ordering.");
 		}
 
-		// TODO Auto-generated method stub
-		return null;
+		return eventsTimeOrdered.iterator();
 	}
 }

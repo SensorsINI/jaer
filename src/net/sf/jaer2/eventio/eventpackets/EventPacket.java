@@ -328,7 +328,7 @@ public final class EventPacket<E extends Event> extends AbstractCollection<E> {
 		return addAllPackets(Arrays.asList(evtPackets));
 	}
 
-	public boolean addAllPackets(final Collection<EventPacket<E>> evtPackets) {
+	public boolean addAllPackets(final Iterable<EventPacket<E>> evtPackets) {
 		// Add all EventPackets.
 		for (final EventPacket<E> evtPacket : evtPackets) {
 			appendPacket(evtPacket);
@@ -438,73 +438,44 @@ public final class EventPacket<E extends Event> extends AbstractCollection<E> {
 	}
 
 	private final class EventPacketIterator implements Iterator<E> {
-		private int position = 0;
-		private boolean nextCalled = false;
+		private Iterator<E> iterator = null;
+		private E currentEvent = null;
 
 		public EventPacketIterator() {
-		}
-
-		/**
-		 * Check if a valid event is available on next iteration, but do so
-		 * without any side effects or global state changes (pure function).
-		 *
-		 * @return offset from current position of next valid element, or -1
-		 *         if none exists
-		 */
-		private int hasNextPure() {
-			// Fail fast if there are no valid events at all.
-			if (validEvents <= 0) {
-				return -1;
-			}
-
-			int offset = 0;
-
-			while ((position + offset) < lastEvent) {
-				// Check for event validity.
-				if (events[(position + offset)].isValid()) {
-					return offset;
-				}
-
-				// Advance offset to next event.
-				offset++;
-			}
-
-			// Nothing found.
-			return -1;
+			iterator = iteratorFull();
 		}
 
 		@Override
 		public boolean hasNext() {
-			return (hasNextPure() >= 0);
+			if (currentEvent != null) {
+				return true;
+			}
+
+			while (iterator.hasNext()) {
+				currentEvent = iterator.next();
+
+				if (currentEvent.isValid()) {
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		@Override
 		public E next() {
-			final int offset = hasNextPure();
-
-			if (offset < 0) {
+			if (!hasNext()) {
 				throw new NoSuchElementException();
 			}
 
-			position += offset;
-			nextCalled = true;
-
-			return events[position++];
+			final E evt = currentEvent;
+			currentEvent = null;
+			return evt;
 		}
 
 		@Override
 		public void remove() {
-			if (!nextCalled) {
-				throw new IllegalStateException();
-			}
-
-			// Support remove() correctly.
-			nextCalled = false;
-
-			// Remove by invalidating the current element (-1 because next()
-			// always does +1 internally).
-			events[(position - 1)].invalidate();
-			validEvents--;
+			iterator.remove();
 		}
 	}
 
