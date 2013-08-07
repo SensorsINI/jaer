@@ -5,6 +5,8 @@ public class BaseEvent implements Event {
 
 	public int timestamp;
 
+	public int type;
+
 	public int x;
 	public int y;
 

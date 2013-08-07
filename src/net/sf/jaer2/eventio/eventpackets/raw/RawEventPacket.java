@@ -7,7 +7,7 @@ import java.util.NoSuchElementException;
 import net.sf.jaer2.eventio.events.raw.RawEvent;
 
 public final class RawEventPacket implements Iterable<RawEvent> {
-	private static final int DEFAULT_EVENT_CAPACITY = 4096;
+	private static final int DEFAULT_EVENT_CAPACITY = 2048;
 
 	// RawEvents array and index into it for adding new elements.
 	protected final RawEvent[] rawEvents;
