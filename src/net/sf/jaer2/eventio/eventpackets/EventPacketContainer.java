@@ -7,28 +7,40 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.NoSuchElementException;
 
 import net.sf.jaer2.eventio.events.Event;
+import net.sf.jaer2.eventio.processors.Processor;
+import net.sf.jaer2.util.PredicateIterator;
+
+import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import com.google.common.collect.Iterators;
 
 public final class EventPacketContainer implements Iterable<Event> {
-	private final Map<Class<? extends Event>, EventPacket<? extends Event>> eventPackets = new HashMap<>();
+	// Lookup map: a Pair consisting of the Event type and the Event source
+	// determine the returned EventPacket<Type>.
+	private final Map<ImmutablePair<Class<? extends Event>, Integer>, EventPacket<? extends Event>> eventPackets = new HashMap<>();
+	private final int sourceID;
 
 	private ArrayList<Event> eventsTimeOrdered;
 	private boolean timeOrderingEnforced;
 
-	public EventPacketContainer() {
-		this(false);
+	public EventPacketContainer(final Processor parentProcessor) {
+		this(parentProcessor, false);
 	}
 
-	public EventPacketContainer(final boolean timeOrder) {
+	public EventPacketContainer(final Processor parentProcessor, final boolean timeOrder) {
+		sourceID = parentProcessor.getProcessorId();
+
 		timeOrderingEnforced = timeOrder;
 
 		if (timeOrderingEnforced) {
 			eventsTimeOrdered = new ArrayList<>();
 		}
+	}
+
+	public int getSourceID() {
+		return sourceID;
 	}
 
 	public void clear() {
@@ -118,29 +130,29 @@ public final class EventPacketContainer implements Iterable<Event> {
 		}
 	}
 
-	public <E extends Event> EventPacket<E> createPacket(final Class<E> type) {
+	public <E extends Event> EventPacket<E> createPacket(final Class<E> type, final int source) {
 		@SuppressWarnings("unchecked")
-		EventPacket<E> internalEventPacket = (EventPacket<E>) eventPackets.get(type);
+		EventPacket<E> internalEventPacket = (EventPacket<E>) eventPackets.get(new ImmutablePair<>(type, source));
 
 		if (internalEventPacket == null) {
 			// Packet of this type not found, create it and add it to map.
-			internalEventPacket = new EventPacket<>(type);
+			internalEventPacket = new EventPacket<>(type, source);
 			internalEventPacket.setParentContainer(this);
 
-			eventPackets.put(type, internalEventPacket);
+			eventPackets.put(new ImmutablePair<Class<? extends Event>, Integer>(type, source), internalEventPacket);
 		}
 
 		return internalEventPacket;
 	}
 
 	public <E extends Event> void appendPacket(final EventPacket<E> evtPacket) {
-		createPacket(evtPacket.getEventType()).appendPacket(evtPacket);
+		createPacket(evtPacket.getEventType(), evtPacket.getEventSource()).appendPacket(evtPacket);
 	}
 
 	public <E extends Event> void addPacket(final EventPacket<E> evtPacket) {
 		// Use EventPacket.addPacket() directly here, which takes care of both
 		// local and global time-ordering itself.
-		createPacket(evtPacket.getEventType()).addPacket(evtPacket);
+		createPacket(evtPacket.getEventType(), evtPacket.getEventSource()).addPacket(evtPacket);
 	}
 
 	public <E extends Event> void addAllPackets(final EventPacket<E>[] evtPackets) {
@@ -170,13 +182,14 @@ public final class EventPacketContainer implements Iterable<Event> {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <E extends Event> EventPacket<E> getPacket(final Class<E> type) {
-		return (EventPacket<E>) eventPackets.get(type);
+	public <E extends Event> EventPacket<E> getPacket(final Class<E> type, final int source) {
+		return (EventPacket<E>) eventPackets.get(new ImmutablePair<>(type, source));
 	}
 
-	public <E extends Event> EventPacket<E> removePacket(final Class<E> type) {
+	public <E extends Event> EventPacket<E> removePacket(final Class<E> type, final int source) {
 		@SuppressWarnings("unchecked")
-		final EventPacket<E> internalEventPacket = (EventPacket<E>) eventPackets.remove(type);
+		final EventPacket<E> internalEventPacket = (EventPacket<E>) eventPackets.remove(new ImmutablePair<>(type,
+			source));
 
 		if (internalEventPacket != null) {
 			internalEventPacket.setParentContainer(null);
@@ -292,13 +305,30 @@ public final class EventPacketContainer implements Iterable<Event> {
 
 	@Override
 	public Iterator<Event> iterator() {
-		final ArrayList<Iterator<? extends Event>> iters = new ArrayList<>(eventPackets.size());
+		return new PredicateIterator<Event>(iteratorFull()) {
+			@Override
+			public boolean verifyPredicate(final Event element) {
+				return element.isValid();
+			}
+		};
+	}
 
-		for (final EventPacket<? extends Event> evtPkt : eventPackets.values()) {
-			iters.add(evtPkt.iterator());
-		}
+	public Iterator<Event> iteratorType(final Class<? extends Event> type) {
+		return new PredicateIterator<Event>(iteratorFull()) {
+			@Override
+			public boolean verifyPredicate(final Event element) {
+				return (element.isValid() && element.getEventType().equals(type));
+			}
+		};
+	}
 
-		return Iterators.concat(iters.iterator());
+	public Iterator<Event> iteratorSource(final int source) {
+		return new PredicateIterator<Event>(iteratorFull()) {
+			@Override
+			public boolean verifyPredicate(final Event element) {
+				return (element.isValid() && (element.getEventSource() == source));
+			}
+		};
 	}
 
 	public Iterator<Event> iteratorFull() {
@@ -316,49 +346,12 @@ public final class EventPacketContainer implements Iterable<Event> {
 			throw new UnsupportedOperationException("EventPacketContainer doesn't support global time-ordering.");
 		}
 
-		return new TimeOrderIterator();
-	}
-
-	private final class TimeOrderIterator implements Iterator<Event> {
-		private Iterator<Event> iterator = null;
-		private Event currentEvent = null;
-
-		public TimeOrderIterator() {
-			iterator = iteratorTimeOrderFull();
-		}
-
-		@Override
-		public boolean hasNext() {
-			if (currentEvent != null) {
-				return true;
+		return new PredicateIterator<Event>(iteratorTimeOrderFull()) {
+			@Override
+			public boolean verifyPredicate(final Event element) {
+				return element.isValid();
 			}
-
-			while (iterator.hasNext()) {
-				currentEvent = iterator.next();
-
-				if (currentEvent.isValid()) {
-					return true;
-				}
-			}
-
-			return false;
-		}
-
-		@Override
-		public Event next() {
-			if (!hasNext()) {
-				throw new NoSuchElementException();
-			}
-
-			final Event evt = currentEvent;
-			currentEvent = null;
-			return evt;
-		}
-
-		@Override
-		public void remove() {
-			iterator.remove();
-		}
+		};
 	}
 
 	public Iterator<Event> iteratorTimeOrderFull() throws UnsupportedOperationException {

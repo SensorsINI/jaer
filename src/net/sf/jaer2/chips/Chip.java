@@ -29,6 +29,8 @@ public interface Chip {
 	 */
 	public int getNumPixels();
 
+	public boolean compatibleWith(Chip chip);
+
 	public List<Class<? extends Event>> getEventTypes();
 
 	public <E extends Event> EventPacket<E> extractEventPacket(RawEventPacket rawEventPacket);

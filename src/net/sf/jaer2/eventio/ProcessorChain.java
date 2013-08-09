@@ -14,4 +14,7 @@ public final class ProcessorChain {
 	private final List<EventProcessor> eventProcessors = new LinkedList<>();
 	private final List<Processor> processors = new LinkedList<>();
 
+	public int getNextAvailableSourceID() {
+		return 0;
+	}
 }

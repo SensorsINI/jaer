@@ -1,6 +1,7 @@
 package net.sf.jaer2.eventio.events;
 
 public class BaseEvent implements Event {
+	private int sourceID = 0;
 	private boolean valid = true;
 
 	public int timestamp;
@@ -13,6 +14,16 @@ public class BaseEvent implements Event {
 	@Override
 	public Class<? extends Event> getEventType() {
 		return this.getClass();
+	}
+
+	@Override
+	public int getEventSource() {
+		return sourceID;
+	}
+
+	@Override
+	public void setEventSource(final int source) {
+		sourceID = source;
 	}
 
 	@Override

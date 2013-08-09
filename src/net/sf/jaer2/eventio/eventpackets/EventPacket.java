@@ -1,5 +1,6 @@
 package net.sf.jaer2.eventio.eventpackets;
 
+import java.security.InvalidParameterException;
 import java.util.AbstractCollection;
 import java.util.Arrays;
 import java.util.Collection;
@@ -8,6 +9,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 import net.sf.jaer2.eventio.events.Event;
+import net.sf.jaer2.util.PredicateIterator;
 
 public final class EventPacket<E extends Event> extends AbstractCollection<E> {
 	private static final int DEFAULT_EVENT_CAPACITY = 2048;
@@ -18,27 +20,40 @@ public final class EventPacket<E extends Event> extends AbstractCollection<E> {
 	protected int validEvents;
 
 	private final Class<E> eventType;
+	private final int eventSource;
 	private EventPacketContainer parentContainer;
 
 	private boolean timeOrdered;
 	private boolean timeOrderingEnforced;
 
-	public EventPacket(final Class<E> type) {
-		this(type, false);
+	public EventPacket(final Class<E> type, final int source) {
+		this(type, source, false);
 	}
 
-	public EventPacket(final Class<E> type, final boolean timeOrder) {
-		this(type, EventPacket.DEFAULT_EVENT_CAPACITY, timeOrder);
+	public EventPacket(final Class<E> type, final int source, final boolean timeOrder) {
+		this(type, source, EventPacket.DEFAULT_EVENT_CAPACITY, timeOrder);
 	}
 
-	public EventPacket(final Class<E> type, final int capacity) {
-		this(type, capacity, false);
+	public EventPacket(final Class<E> type, final int source, final int capacity) {
+		this(type, source, capacity, false);
 	}
 
-	public EventPacket(final Class<E> type, final int capacity, final boolean timeOrder) {
+	public EventPacket(final Class<E> type, final int source, final int capacity, final boolean timeOrder) {
 		super();
 
+		// Check passed parameters before assigning.
+		if (type == null) {
+			throw new InvalidParameterException("type cannot be null!");
+		}
+		if (source <= 0) {
+			throw new InvalidParameterException("source cannot be zero or smaller, must be defined clearly!");
+		}
+		if (capacity <= 0) {
+			throw new InvalidParameterException("capacity cannot be zero or smaller!");
+		}
+
 		eventType = type;
+		eventSource = source;
 		timeOrderingEnforced = timeOrder;
 
 		// Use user-supplied capacity.
@@ -47,6 +62,10 @@ public final class EventPacket<E extends Event> extends AbstractCollection<E> {
 
 	public Class<E> getEventType() {
 		return eventType;
+	}
+
+	public int getEventSource() {
+		return eventSource;
 	}
 
 	public EventPacketContainer getParentContainer() {
@@ -232,8 +251,20 @@ public final class EventPacket<E extends Event> extends AbstractCollection<E> {
 	 *             evt cannot be null
 	 */
 	public void append(final E evt) throws NullPointerException {
+		// Disallow adding NULL events.
 		if (evt == null) {
 			throw new NullPointerException();
+		}
+
+		// Disallow adding events from other sources.
+		// <= 0 are accepted and converted to this source implicitly.
+		final int source = evt.getEventSource();
+
+		if (source <= 0) {
+			evt.setEventSource(eventSource);
+		}
+		else if (source != eventSource) {
+			throw new InvalidParameterException("Event from incompatible source!");
 		}
 
 		ensureCapacity(1);
@@ -306,6 +337,16 @@ public final class EventPacket<E extends Event> extends AbstractCollection<E> {
 	}
 
 	public void appendPacket(final EventPacket<E> evtPacket) {
+		// Disallow adding NULL EventPackets (fail!).
+		if (evtPacket == null) {
+			throw new NullPointerException();
+		}
+
+		// Disallow adding EventPackets from other sources.
+		if (evtPacket.getEventSource() != eventSource) {
+			throw new InvalidParameterException("EventPacket from incompatible source!");
+		}
+
 		ensureCapacity(evtPacket.sizeFull());
 
 		for (final Iterator<E> iter = evtPacket.iteratorFull(); iter.hasNext();) {
@@ -434,49 +475,12 @@ public final class EventPacket<E extends Event> extends AbstractCollection<E> {
 
 	@Override
 	public Iterator<E> iterator() {
-		return new EventPacketIterator();
-	}
-
-	private final class EventPacketIterator implements Iterator<E> {
-		private Iterator<E> iterator = null;
-		private E currentEvent = null;
-
-		public EventPacketIterator() {
-			iterator = iteratorFull();
-		}
-
-		@Override
-		public boolean hasNext() {
-			if (currentEvent != null) {
-				return true;
+		return new PredicateIterator<E>(iteratorFull()) {
+			@Override
+			public boolean verifyPredicate(final E element) {
+				return element.isValid();
 			}
-
-			while (iterator.hasNext()) {
-				currentEvent = iterator.next();
-
-				if (currentEvent.isValid()) {
-					return true;
-				}
-			}
-
-			return false;
-		}
-
-		@Override
-		public E next() {
-			if (!hasNext()) {
-				throw new NoSuchElementException();
-			}
-
-			final E evt = currentEvent;
-			currentEvent = null;
-			return evt;
-		}
-
-		@Override
-		public void remove() {
-			iterator.remove();
-		}
+		};
 	}
 
 	public Iterator<E> iteratorFull() {
@@ -533,7 +537,7 @@ public final class EventPacket<E extends Event> extends AbstractCollection<E> {
 			throw new UnsupportedOperationException("EventPacket doesn't support time-ordering (not time-ordered).");
 		}
 
-		return new EventPacketIterator();
+		return iterator();
 	}
 
 	public Iterator<E> iteratorTimeOrderFull() throws UnsupportedOperationException {
@@ -541,7 +545,7 @@ public final class EventPacket<E extends Event> extends AbstractCollection<E> {
 			throw new UnsupportedOperationException("EventPacket doesn't support time-ordering (not time-ordered).");
 		}
 
-		return new EventPacketIteratorFull();
+		return iteratorFull();
 	}
 
 	@Override
