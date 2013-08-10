@@ -331,6 +331,15 @@ public final class EventPacketContainer implements Iterable<Event> {
 		};
 	}
 
+	public Iterator<Event> iteratorTypeSource(final Class<? extends Event> type, final int source) {
+		return new PredicateIterator<Event>(iteratorFull()) {
+			@Override
+			public boolean verifyPredicate(final Event element) {
+				return (element.isValid() && element.getEventType().equals(type) && (element.getEventSource() == source));
+			}
+		};
+	}
+
 	public Iterator<Event> iteratorFull() {
 		final ArrayList<Iterator<? extends Event>> iters = new ArrayList<>(eventPackets.size());
 
@@ -339,6 +348,33 @@ public final class EventPacketContainer implements Iterable<Event> {
 		}
 
 		return Iterators.concat(iters.iterator());
+	}
+
+	public Iterator<Event> iteratorFullType(final Class<? extends Event> type) {
+		return new PredicateIterator<Event>(iteratorFull()) {
+			@Override
+			public boolean verifyPredicate(final Event element) {
+				return (element.getEventType().equals(type));
+			}
+		};
+	}
+
+	public Iterator<Event> iteratorFullSource(final int source) {
+		return new PredicateIterator<Event>(iteratorFull()) {
+			@Override
+			public boolean verifyPredicate(final Event element) {
+				return (element.getEventSource() == source);
+			}
+		};
+	}
+
+	public Iterator<Event> iteratorFullTypeSource(final Class<? extends Event> type, final int source) {
+		return new PredicateIterator<Event>(iteratorFull()) {
+			@Override
+			public boolean verifyPredicate(final Event element) {
+				return (element.getEventType().equals(type) && (element.getEventSource() == source));
+			}
+		};
 	}
 
 	public Iterator<Event> iteratorTimeOrder() throws UnsupportedOperationException {
@@ -354,11 +390,93 @@ public final class EventPacketContainer implements Iterable<Event> {
 		};
 	}
 
+	public Iterator<Event> iteratorTimeOrderType(final Class<? extends Event> type)
+		throws UnsupportedOperationException {
+		if (!timeOrderingEnforced) {
+			throw new UnsupportedOperationException("EventPacketContainer doesn't support global time-ordering.");
+		}
+
+		return new PredicateIterator<Event>(iteratorTimeOrderFull()) {
+			@Override
+			public boolean verifyPredicate(final Event element) {
+				return (element.isValid() && element.getEventType().equals(type));
+			}
+		};
+	}
+
+	public Iterator<Event> iteratorTimeOrderSource(final int source) throws UnsupportedOperationException {
+		if (!timeOrderingEnforced) {
+			throw new UnsupportedOperationException("EventPacketContainer doesn't support global time-ordering.");
+		}
+
+		return new PredicateIterator<Event>(iteratorTimeOrderFull()) {
+			@Override
+			public boolean verifyPredicate(final Event element) {
+				return (element.isValid() && (element.getEventSource() == source));
+			}
+		};
+	}
+
+	public Iterator<Event> iteratorTimeOrderTypeSource(final Class<? extends Event> type, final int source)
+		throws UnsupportedOperationException {
+		if (!timeOrderingEnforced) {
+			throw new UnsupportedOperationException("EventPacketContainer doesn't support global time-ordering.");
+		}
+
+		return new PredicateIterator<Event>(iteratorTimeOrderFull()) {
+			@Override
+			public boolean verifyPredicate(final Event element) {
+				return (element.isValid() && element.getEventType().equals(type) && (element.getEventSource() == source));
+			}
+		};
+	}
+
 	public Iterator<Event> iteratorTimeOrderFull() throws UnsupportedOperationException {
 		if (!timeOrderingEnforced) {
 			throw new UnsupportedOperationException("EventPacketContainer doesn't support global time-ordering.");
 		}
 
 		return eventsTimeOrdered.iterator();
+	}
+
+	public Iterator<Event> iteratorTimeOrderFullType(final Class<? extends Event> type)
+		throws UnsupportedOperationException {
+		if (!timeOrderingEnforced) {
+			throw new UnsupportedOperationException("EventPacketContainer doesn't support global time-ordering.");
+		}
+
+		return new PredicateIterator<Event>(iteratorTimeOrderFull()) {
+			@Override
+			public boolean verifyPredicate(final Event element) {
+				return (element.getEventType().equals(type));
+			}
+		};
+	}
+
+	public Iterator<Event> iteratorTimeOrderFullSource(final int source) throws UnsupportedOperationException {
+		if (!timeOrderingEnforced) {
+			throw new UnsupportedOperationException("EventPacketContainer doesn't support global time-ordering.");
+		}
+
+		return new PredicateIterator<Event>(iteratorTimeOrderFull()) {
+			@Override
+			public boolean verifyPredicate(final Event element) {
+				return (element.getEventSource() == source);
+			}
+		};
+	}
+
+	public Iterator<Event> iteratorTimeOrderFullTypeSource(final Class<? extends Event> type, final int source)
+		throws UnsupportedOperationException {
+		if (!timeOrderingEnforced) {
+			throw new UnsupportedOperationException("EventPacketContainer doesn't support global time-ordering.");
+		}
+
+		return new PredicateIterator<Event>(iteratorTimeOrderFull()) {
+			@Override
+			public boolean verifyPredicate(final Event element) {
+				return (element.getEventType().equals(type) && (element.getEventSource() == source));
+			}
+		};
 	}
 }
