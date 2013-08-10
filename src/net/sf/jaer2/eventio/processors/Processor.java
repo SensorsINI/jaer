@@ -12,7 +12,7 @@ public abstract class Processor implements Runnable {
 	protected final int processorId;
 	protected final String processorName;
 
-	protected final BlockingQueue<EventPacketContainer> inputQueue = new ArrayBlockingQueue<>(16);
+	protected final BlockingQueue<EventPacketContainer> workQueue = new ArrayBlockingQueue<>(16);
 
 	public Processor(final ProcessorChain chain) {
 		parentChain = chain;
@@ -29,11 +29,11 @@ public abstract class Processor implements Runnable {
 	}
 
 	public final void add(final EventPacketContainer container) {
-		inputQueue.add(container);
+		workQueue.add(container);
 	}
 
 	public final void addAll(final Collection<EventPacketContainer> containers) {
-		inputQueue.addAll(containers);
+		workQueue.addAll(containers);
 	}
 
 	@Override

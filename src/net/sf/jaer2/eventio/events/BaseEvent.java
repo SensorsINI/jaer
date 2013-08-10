@@ -13,7 +13,7 @@ public class BaseEvent implements Event {
 
 	@Override
 	public Class<? extends Event> getEventType() {
-		return this.getClass();
+		return getClass();
 	}
 
 	@Override

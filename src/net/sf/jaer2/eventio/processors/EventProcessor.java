@@ -19,7 +19,7 @@ public abstract class EventProcessor extends Processor {
 	@Override
 	public final void run() {
 		while (!Thread.currentThread().isInterrupted()) {
-			if (inputQueue.drainTo(toProcess) == 0) {
+			if (workQueue.drainTo(toProcess) == 0) {
 				// No elements, retry.
 				continue;
 			}
