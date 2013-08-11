@@ -1,18 +1,21 @@
 package net.sf.jaer2.eventio.processors;
 
-import java.util.ArrayList;
+import javafx.scene.layout.Pane;
+
+import javax.media.opengl.GLAutoDrawable;
 
 import net.sf.jaer2.eventio.ProcessorChain;
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 
-public abstract class EventProcessor extends Processor {
-	protected final ArrayList<EventPacketContainer> toProcess = new ArrayList<>(32);
-
-	public EventProcessor(final ProcessorChain chain) {
+public abstract class EventProcessorAnnotated extends EventProcessor {
+	public EventProcessorAnnotated(final ProcessorChain chain) {
 		super(chain);
 	}
 
-	public abstract void processEvents(EventPacketContainer container);
+	public abstract Object prepareAnnotateEvents(EventPacketContainer container);
+
+	public abstract void annotateEvents(EventPacketContainer container, Object annotateData, GLAutoDrawable glDrawable,
+		Pane fxPane);
 
 	@Override
 	public void run() {
@@ -24,6 +27,9 @@ public abstract class EventProcessor extends Processor {
 
 			for (final EventPacketContainer container : toProcess) {
 				processEvents(container);
+
+				// Annotation support.
+				container.annotateDataSetsAdd(prepareAnnotateEvents(container));
 
 				// TODO: add to next processor's queue.
 			}

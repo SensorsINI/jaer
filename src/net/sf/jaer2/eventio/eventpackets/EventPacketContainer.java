@@ -20,6 +20,7 @@ public final class EventPacketContainer implements Iterable<Event> {
 	// Lookup map: a Pair consisting of the Event type and the Event source
 	// determine the returned EventPacket<Type>.
 	private final Map<ImmutablePair<Class<? extends Event>, Integer>, EventPacket<? extends Event>> eventPackets = new HashMap<>();
+	private final ArrayList<Object> annotateDataSets = new ArrayList<>(8);
 	private final int sourceID;
 
 	private ArrayList<Event> eventsTimeOrdered;
@@ -37,6 +38,14 @@ public final class EventPacketContainer implements Iterable<Event> {
 		if (timeOrderingEnforced) {
 			eventsTimeOrdered = new ArrayList<>();
 		}
+	}
+
+	public void annotateDataSetsAdd(final Object annotateData) {
+		annotateDataSets.add(annotateData);
+	}
+
+	public Object annotateDataSetsRemove() {
+		return annotateDataSets.remove(0);
 	}
 
 	public int getSourceID() {
@@ -275,10 +284,8 @@ public final class EventPacketContainer implements Iterable<Event> {
 		eventsTimeOrdered.ensureCapacity(sizeFull());
 
 		// Regenerate it by adding all events from all packets.
-		for (final EventPacket<? extends Event> evtPkt : eventPackets.values()) {
-			for (final Iterator<? extends Event> iter = evtPkt.iteratorFull(); iter.hasNext();) {
-				eventsTimeOrdered.add(iter.next());
-			}
+		for (final Iterator<Event> iter = iteratorFull(); iter.hasNext();) {
+			eventsTimeOrdered.add(iter.next());
 		}
 
 		// Sort global time-order list by timestamp.
@@ -314,28 +321,28 @@ public final class EventPacketContainer implements Iterable<Event> {
 	}
 
 	public Iterator<Event> iteratorType(final Class<? extends Event> type) {
-		return new PredicateIterator<Event>(iteratorFull()) {
+		return new PredicateIterator<Event>(iteratorFullType(type)) {
 			@Override
 			public boolean verifyPredicate(final Event element) {
-				return (element.isValid() && element.getEventType().equals(type));
+				return element.isValid();
 			}
 		};
 	}
 
 	public Iterator<Event> iteratorSource(final int source) {
-		return new PredicateIterator<Event>(iteratorFull()) {
+		return new PredicateIterator<Event>(iteratorFullSource(source)) {
 			@Override
 			public boolean verifyPredicate(final Event element) {
-				return (element.isValid() && (element.getEventSource() == source));
+				return element.isValid();
 			}
 		};
 	}
 
 	public Iterator<Event> iteratorTypeSource(final Class<? extends Event> type, final int source) {
-		return new PredicateIterator<Event>(iteratorFull()) {
+		return new PredicateIterator<Event>(iteratorFullTypeSource(type, source)) {
 			@Override
 			public boolean verifyPredicate(final Event element) {
-				return (element.isValid() && element.getEventType().equals(type) && (element.getEventSource() == source));
+				return element.isValid();
 			}
 		};
 	}
@@ -351,30 +358,39 @@ public final class EventPacketContainer implements Iterable<Event> {
 	}
 
 	public Iterator<Event> iteratorFullType(final Class<? extends Event> type) {
-		return new PredicateIterator<Event>(iteratorFull()) {
-			@Override
-			public boolean verifyPredicate(final Event element) {
-				return (element.getEventType().equals(type));
+		final ArrayList<Iterator<? extends Event>> iters = new ArrayList<>(eventPackets.size());
+
+		for (final EventPacket<? extends Event> evtPkt : eventPackets.values()) {
+			if (evtPkt.getEventType().equals(type)) {
+				iters.add(evtPkt.iteratorFull());
 			}
-		};
+		}
+
+		return Iterators.concat(iters.iterator());
 	}
 
 	public Iterator<Event> iteratorFullSource(final int source) {
-		return new PredicateIterator<Event>(iteratorFull()) {
-			@Override
-			public boolean verifyPredicate(final Event element) {
-				return (element.getEventSource() == source);
+		final ArrayList<Iterator<? extends Event>> iters = new ArrayList<>(eventPackets.size());
+
+		for (final EventPacket<? extends Event> evtPkt : eventPackets.values()) {
+			if (evtPkt.getEventSource() == source) {
+				iters.add(evtPkt.iteratorFull());
 			}
-		};
+		}
+
+		return Iterators.concat(iters.iterator());
 	}
 
 	public Iterator<Event> iteratorFullTypeSource(final Class<? extends Event> type, final int source) {
-		return new PredicateIterator<Event>(iteratorFull()) {
-			@Override
-			public boolean verifyPredicate(final Event element) {
-				return (element.getEventType().equals(type) && (element.getEventSource() == source));
+		final ArrayList<Iterator<? extends Event>> iters = new ArrayList<>(eventPackets.size());
+
+		for (final EventPacket<? extends Event> evtPkt : eventPackets.values()) {
+			if (evtPkt.getEventType().equals(type) && (evtPkt.getEventSource() == source)) {
+				iters.add(evtPkt.iteratorFull());
 			}
-		};
+		}
+
+		return Iterators.concat(iters.iterator());
 	}
 
 	public Iterator<Event> iteratorTimeOrder() throws UnsupportedOperationException {
