@@ -34,8 +34,14 @@ public final class OutputProcessor extends Processor {
 				continue;
 			}
 
-			nextProcessor.addAll(toProcess);
-			outputQueue.addAll(toProcess);
+			for (final EventPacketContainer container : toProcess) {
+				// Check that this container is interesting for this processor.
+				if (processContainer(container)) {
+					outputQueue.add(container);
+				}
+
+				nextProcessor.add(container);
+			}
 
 			toProcess.clear();
 		}
