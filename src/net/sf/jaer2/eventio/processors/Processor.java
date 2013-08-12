@@ -2,6 +2,7 @@ package net.sf.jaer2.eventio.processors;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -12,8 +13,12 @@ import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 import net.sf.jaer2.eventio.events.Event;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class Processor implements Runnable {
+	protected final static Logger logger = LoggerFactory.getLogger(Processor.class);
+
 	protected final int processorId;
 	protected final String processorName;
 
@@ -28,7 +33,7 @@ public abstract class Processor implements Runnable {
 	 * work on.
 	 * inputTypes defines which types of events this Processor will work on,
 	 * based on user configuration.
-	 * outputTypes defines which types of events this Processor will output,
+	 * outputTypes defines which types of events this Processor can output,
 	 * based upon the Processor itself and all previous inputs before it.
 	 */
 	private final Set<Class<? extends Event>> compatibleInputTypes = new HashSet<>(4);
@@ -110,19 +115,6 @@ public abstract class Processor implements Runnable {
 		return inputStreams;
 	}
 
-	public void addToSelectedInputStreams(final ImmutablePair<Class<? extends Event>, Integer> stream) {
-		selectedInputStreams.add(stream);
-	}
-
-	public Set<ImmutablePair<Class<? extends Event>, Integer>> getAllSelectedInputStreams() {
-		// This is strictly a subset of inputStreams.
-		return selectedInputStreams;
-	}
-
-	public void clearSelectedInputStreams() {
-		selectedInputStreams.clear();
-	}
-
 	private void rebuildOutputStreams() {
 		outputStreams.clear();
 
@@ -142,6 +134,23 @@ public abstract class Processor implements Runnable {
 	public void rebuildStreamSets() {
 		rebuildInputStreams();
 		rebuildOutputStreams();
+	}
+
+	public void addToSelectedInputStreams(final ImmutablePair<Class<? extends Event>, Integer> stream) {
+		selectedInputStreams.add(stream);
+	}
+
+	public void removeFromSelectedInputStreams(final ImmutablePair<Class<? extends Event>, Integer> stream) {
+		selectedInputStreams.remove(stream);
+	}
+
+	public Set<ImmutablePair<Class<? extends Event>, Integer>> getAllSelectedInputStreams() {
+		// This is strictly a subset of inputStreams.
+		return Collections.unmodifiableSet(selectedInputStreams);
+	}
+
+	public void clearSelectedInputStreams() {
+		selectedInputStreams.clear();
 	}
 
 	public boolean processContainer(final EventPacketContainer container) {

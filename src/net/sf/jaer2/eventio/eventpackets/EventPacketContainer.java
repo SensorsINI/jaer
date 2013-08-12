@@ -21,7 +21,7 @@ public final class EventPacketContainer implements Iterable<Event> {
 	// determine the returned EventPacket<Type>.
 	private final Map<ImmutablePair<Class<? extends Event>, Integer>, EventPacket<? extends Event>> eventPackets = new HashMap<>();
 	private final ArrayList<Object> annotateDataSets = new ArrayList<>(8);
-	private final int sourceID;
+	private final int sourceId;
 
 	private ArrayList<Event> eventsTimeOrdered;
 	private boolean timeOrderingEnforced;
@@ -31,7 +31,7 @@ public final class EventPacketContainer implements Iterable<Event> {
 	}
 
 	public EventPacketContainer(final Processor parentProcessor, final boolean timeOrder) {
-		sourceID = parentProcessor.getProcessorId();
+		sourceId = parentProcessor.getProcessorId();
 
 		timeOrderingEnforced = timeOrder;
 
@@ -40,16 +40,16 @@ public final class EventPacketContainer implements Iterable<Event> {
 		}
 	}
 
-	public void annotateDataSetsAdd(final Object annotateData) {
+	public void addToAnnotateDataSets(final Object annotateData) {
 		annotateDataSets.add(annotateData);
 	}
 
-	public Object annotateDataSetsRemove() {
+	public Object removeFromAnnotateDataSets() {
 		return annotateDataSets.remove(0);
 	}
 
-	public int getSourceID() {
-		return sourceID;
+	public int getSourceId() {
+		return sourceId;
 	}
 
 	public void clear() {

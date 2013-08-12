@@ -30,7 +30,7 @@ public abstract class EventProcessorAnnotated extends EventProcessor {
 					processEvents(container);
 
 					// Annotation support.
-					container.annotateDataSetsAdd(prepareAnnotateEvents(container));
+					container.addToAnnotateDataSets(prepareAnnotateEvents(container));
 				}
 
 				nextProcessor.add(container);

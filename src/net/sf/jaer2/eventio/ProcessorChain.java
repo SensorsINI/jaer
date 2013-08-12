@@ -9,9 +9,6 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
-import net.sf.jaer2.eventio.processors.EventProcessor;
-import net.sf.jaer2.eventio.processors.InputProcessor;
-import net.sf.jaer2.eventio.processors.OutputProcessor;
 import net.sf.jaer2.eventio.processors.Processor;
 import net.sf.jaer2.util.GUISupport;
 
@@ -26,9 +23,6 @@ public final class ProcessorChain {
 
 	protected final ProcessorNetwork parentNetwork;
 
-	private final List<InputProcessor> inputProcessors = new LinkedList<>();
-	private final List<OutputProcessor> outputProcessors = new LinkedList<>();
-	private final List<EventProcessor> eventProcessors = new LinkedList<>();
 	private final List<Processor> processors = new LinkedList<>();
 
 	private int processorIdCounter = 1;
@@ -66,7 +60,7 @@ public final class ProcessorChain {
 		rootLayout.getChildren().add(controlBox);
 
 		// First, add the buttons to manage ProcessorChains and new Processors.
-		final Label chainDescription = new Label(this.toString());
+		final Label chainDescription = new Label(toString());
 		controlBox.getChildren().add(chainDescription);
 
 		GUISupport.addButtonWithMouseClickedHandler(controlBox, "Delete Chain", "/icons/Remove.png",
@@ -78,6 +72,18 @@ public final class ProcessorChain {
 			});
 
 		GUISupport.addButtonWithMouseClickedHandler(controlBox, "New Processor", "/icons/Add.png", null);
+	}
+
+	public int getChainId() {
+		return chainId;
+	}
+
+	public String getChainName() {
+		return chainName;
+	}
+
+	public ProcessorNetwork getParentNetwork() {
+		return parentNetwork;
 	}
 
 	@Override

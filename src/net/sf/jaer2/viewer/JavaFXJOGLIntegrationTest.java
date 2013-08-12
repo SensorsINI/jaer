@@ -6,6 +6,7 @@ import javafx.application.Platform;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.event.EventHandler;
+import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
 import javafx.scene.input.MouseEvent;
@@ -13,6 +14,7 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Line;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.stage.Screen;
@@ -57,9 +59,14 @@ public class JavaFXJOGLIntegrationTest extends Application {
 
 		for (int r = 0; r < JavaFXJOGLIntegrationTest.ROWS; r++) {
 			for (int c = 0; c < JavaFXJOGLIntegrationTest.COLS; c++) {
+				final StackPane stack = new StackPane();
+				displayGrid.add(stack, c, r);
+
+				stack.setAlignment(Pos.TOP_LEFT);
+
 				final JavaFXImgJOGLConnector fxJogl = new JavaFXImgJOGLConnector(JavaFXJOGLIntegrationTest.XLEN,
 					JavaFXJOGLIntegrationTest.YLEN);
-				displayGrid.add(fxJogl, c, r);
+				stack.getChildren().add(fxJogl);
 
 				fxJogl.setFitWidth((JavaFXJOGLIntegrationTest.XLEN * JavaFXJOGLIntegrationTest.RSIZE));
 				fxJogl.setFitHeight((JavaFXJOGLIntegrationTest.YLEN * JavaFXJOGLIntegrationTest.RSIZE));
@@ -73,6 +80,17 @@ public class JavaFXJOGLIntegrationTest extends Application {
 						currentY.setValue(event.getY() / JavaFXJOGLIntegrationTest.RSIZE);
 					}
 				});
+
+				// Add text showing col-row.
+				final Text colRowTxt = new Text(String.format("Col: %d - Row: %d", c, r));
+				stack.getChildren().add(colRowTxt);
+
+				colRowTxt.setFill(Color.GREY);
+				colRowTxt.setFont(new Font(24));
+
+				// Add random line.
+				final Line line = new Line(5, 5, 100, 100);
+				stack.getChildren().add(line);
 
 				final AnimationTimer animator = new AnimationTimer() {
 					@Override
