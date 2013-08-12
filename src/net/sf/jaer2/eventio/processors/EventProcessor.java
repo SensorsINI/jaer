@@ -1,15 +1,11 @@
 package net.sf.jaer2.eventio.processors;
 
-import java.util.ArrayList;
-
 import net.sf.jaer2.eventio.ProcessorChain;
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 
 public abstract class EventProcessor extends Processor {
-	protected final ArrayList<EventPacketContainer> toProcess = new ArrayList<>(32);
-
-	public EventProcessor(final ProcessorChain chain) {
-		super(chain);
+	public EventProcessor(final ProcessorChain chain, final Processor prev, final Processor next) {
+		super(chain, next, prev);
 	}
 
 	public abstract void processEvents(EventPacketContainer container);
@@ -23,9 +19,12 @@ public abstract class EventProcessor extends Processor {
 			}
 
 			for (final EventPacketContainer container : toProcess) {
-				processEvents(container);
+				// Check that this container is interesting for this processor.
+				if (processContainer(container)) {
+					processEvents(container);
+				}
 
-				// TODO: add to next processor's queue.
+				nextProcessor.add(container);
 			}
 
 			toProcess.clear();

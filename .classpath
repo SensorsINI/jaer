@@ -37,5 +37,6 @@
 	<classpathentry kind="lib" path="jars/javassist-3.18.0.jar"/>
 	<classpathentry kind="lib" path="jars/reflections-0.9.9-RC1.jar"/>
 	<classpathentry kind="lib" path="jars/slf4j-api-1.7.5.jar"/>
+	<classpathentry kind="lib" path="jars/fst-1.17.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
