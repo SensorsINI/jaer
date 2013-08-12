@@ -64,6 +64,8 @@ public class JavaFXJOGLIntegrationTest extends Application {
 				fxJogl.setFitWidth((JavaFXJOGLIntegrationTest.XLEN * JavaFXJOGLIntegrationTest.RSIZE));
 				fxJogl.setFitHeight((JavaFXJOGLIntegrationTest.YLEN * JavaFXJOGLIntegrationTest.RSIZE));
 
+				fxJogl.addGLEventListener(new WriteRandom(((r + 1) * (c + 1)) % 4));
+
 				fxJogl.setOnMouseClicked(new EventHandler<MouseEvent>() {
 					@Override
 					public void handle(final MouseEvent event) {
@@ -72,18 +74,10 @@ public class JavaFXJOGLIntegrationTest extends Application {
 					}
 				});
 
-				final GLEventListener randomUpdate = new WriteRandom(((r + 1) * (c + 1)) % 4);
-
 				final AnimationTimer animator = new AnimationTimer() {
 					@Override
 					public void handle(@SuppressWarnings("unused") final long time) {
-						final GLAutoDrawable draw = fxJogl.getDrawable();
-
-						if (draw != null) {
-							randomUpdate.display(draw);
-
-							draw.display();
-						}
+						fxJogl.display();
 					}
 				};
 				animator.start();
@@ -179,10 +173,7 @@ public class JavaFXJOGLIntegrationTest extends Application {
 							/* Total memory currently in use by the JVM */
 							totMemTxt.setText("Total memory (bytes): " + rt.totalMemory());
 
-							/*
-							 * Maximum amount of memory the JVM will attempt to
-							 * use
-							 */
+							/* Maximum amount of memory the JVM will use */
 							maxMemTxt.setText("Maximum memory (bytes): " + rt.maxMemory());
 						}
 					});
@@ -238,8 +229,6 @@ public class JavaFXJOGLIntegrationTest extends Application {
 		}
 
 		private void render(final GLAutoDrawable drawable) {
-			drawable.getContext().makeCurrent();
-
 			final GL2 gl = drawable.getGL().getGL2();
 
 			gl.glClear(GL.GL_COLOR_BUFFER_BIT);
@@ -257,8 +246,6 @@ public class JavaFXJOGLIntegrationTest extends Application {
 			renderer.end3DRendering();
 
 			gl.glFlush();
-
-			drawable.getContext().release();
 		}
 	}
 }
