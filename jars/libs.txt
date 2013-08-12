@@ -5,6 +5,7 @@ commons-net - 3.3 - http://commons.apache.org/proper/commons-net/
 FST - 1.17 - http://code.google.com/p/fast-serialization/
 guava - 14.0.1 - http://code.google.com/p/guava-libraries/
 JavaCV - 0.5 - https://code.google.com/p/javacv/
+javafx-dialogs - 0.0.3 - http://edu.makery.ch/blog/2012/10/30/javafx-2-dialogs/
 javassist - 3.18.0 - http://www.jboss.org/javassist
 javax.comm (comm) - ??? - http://www.oracle.com/technetwork/java/index-jsp-141752.html
 javax.mail - 1.5.0 - https://java.net/projects/javamail/

@@ -46,7 +46,7 @@ public abstract class Processor implements Runnable {
 		prevProcessor = prev;
 		nextProcessor = next;
 
-		processorId = parentChain.getNextAvailableSourceID();
+		processorId = parentChain.getNextAvailableProcessorID();
 		processorName = getClass().getSimpleName();
 
 		// Fill in the type information from the inheriting classes.

@@ -2,6 +2,7 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="src" path="subprojects/JSpikeStack/src"/>
+	<classpathentry kind="src" path="images"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
 	<classpathentry kind="lib" path="jars/javacv/javacpp.jar"/>
 	<classpathentry kind="lib" path="jars/javacv/javacv.jar"/>
@@ -38,5 +39,7 @@
 	<classpathentry kind="lib" path="jars/reflections-0.9.9-RC1.jar"/>
 	<classpathentry kind="lib" path="jars/slf4j-api-1.7.5.jar"/>
 	<classpathentry kind="lib" path="jars/fst-1.17.jar"/>
+	<classpathentry kind="lib" path="jars/javafx-dialogs-0.0.3.jar"/>
+	<classpathentry kind="lib" path="jars/slf4j-jdk14-1.7.5.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
