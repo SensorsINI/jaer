@@ -1,5 +1,7 @@
 package net.sf.jaer2.eventio;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -22,8 +24,10 @@ import net.sf.jaer2.eventio.processors.Processor.ProcessorTypes;
 import net.sf.jaer2.util.GUISupport;
 import net.sf.jaer2.util.Reflections;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.controlsfx.control.action.Action;
 import org.controlsfx.dialog.Dialog;
+import org.controlsfx.dialog.Dialogs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,13 +115,15 @@ public final class ProcessorChain {
 		final Set<Class<? extends EventProcessor>> eventProcessorTypes = Reflections.getSubTypes(EventProcessor.class);
 
 		// Create EventProcessor type chooser box. It will be added later on.
-		final ComboBox<Class<? extends EventProcessor>> eventProcessorTypeChooser = GUISupport.addComboBox(null,
-			eventProcessorTypes, 0);
+		final ImmutablePair<HBox, ComboBox<Class<? extends EventProcessor>>> eventProcessorTypeChooser = GUISupport
+			.addLabelWithComboBoxHorizontal(null, "Event Processor: ", "Select the Event Processor you want to use.",
+				eventProcessorTypes, 0);
 
-		final ComboBox<ProcessorTypes> processorTypeChooser = GUISupport.addComboBox(box,
-			EnumSet.allOf(ProcessorTypes.class), 0);
+		final ImmutablePair<HBox, ComboBox<ProcessorTypes>> processorTypeChooser = GUISupport
+			.addLabelWithComboBoxHorizontal(box, "Processor Type: ", "Select the processor type you want to create.",
+				EnumSet.allOf(ProcessorTypes.class), 0);
 
-		processorTypeChooser.valueProperty().addListener(new ChangeListener<ProcessorTypes>() {
+		processorTypeChooser.right.valueProperty().addListener(new ChangeListener<ProcessorTypes>() {
 			private boolean eventProcessorTypeChooserVisible = false;
 
 			@SuppressWarnings("unused")
@@ -127,17 +133,19 @@ public final class ProcessorChain {
 				// Add or remove EventProcessor type chooser box, based on what
 				// the user selected as a Processor type.
 				if ((newValue == ProcessorTypes.EVENT_PROCESSOR) && (!eventProcessorTypeChooserVisible)) {
-					box.getChildren().add(eventProcessorTypeChooser);
+					box.getChildren().add(eventProcessorTypeChooser.left);
 					eventProcessorTypeChooserVisible = true;
 				}
 				else if ((newValue != ProcessorTypes.EVENT_PROCESSOR) && (eventProcessorTypeChooserVisible)) {
-					box.getChildren().remove(eventProcessorTypeChooser);
+					box.getChildren().remove(eventProcessorTypeChooser.left);
 					eventProcessorTypeChooserVisible = false;
 				}
 			}
 		});
 
-		final ComboBox<Processor> processorPositionChooser = GUISupport.addComboBox(box, processors, -1);
+		final ImmutablePair<HBox, ComboBox<Processor>> processorPositionChooser = GUISupport
+			.addLabelWithComboBoxHorizontal(box, "After Processor: ",
+				"Place this new Processor right after the selected one.", processors, -1);
 
 		final Dialog dialog = new Dialog(null, "New Processor Configuration", true, false);
 		dialog.setContent(box);
@@ -147,9 +155,9 @@ public final class ProcessorChain {
 		if (response == Dialog.Actions.OK) {
 			// Add 1 to shift indexOf return value (-1 to size()-1) into valid
 			// range (0 to size()).
-			final int position = processors.indexOf(processorPositionChooser.getValue()) + 1;
+			final int position = processors.indexOf(processorPositionChooser.right.getValue()) + 1;
 
-			switch (processorTypeChooser.getValue()) {
+			switch (processorTypeChooser.right.getValue()) {
 				case INPUT_PROCESSOR:
 					addInputProcessor(position);
 					break;
@@ -159,7 +167,7 @@ public final class ProcessorChain {
 					break;
 
 				case EVENT_PROCESSOR:
-					addEventProcessor(position, eventProcessorTypeChooser.getValue());
+					addEventProcessor(position, eventProcessorTypeChooser.right.getValue());
 					break;
 
 				default:
@@ -194,6 +202,38 @@ public final class ProcessorChain {
 		processor.setNextProcessor(nextProcessor);
 	}
 
+	private void unlinkProcessor(final Processor processor) {
+		final int position = processors.indexOf(processor);
+
+		// Unset all internal processor links.
+		Processor prevProcessor, nextProcessor;
+
+		try {
+			prevProcessor = processors.get(position - 1);
+		}
+		catch (final IndexOutOfBoundsException e) {
+			prevProcessor = null;
+		}
+
+		try {
+			nextProcessor = processors.get(position + 1);
+		}
+		catch (final IndexOutOfBoundsException e) {
+			nextProcessor = null;
+		}
+
+		if (prevProcessor != null) {
+			prevProcessor.setNextProcessor(nextProcessor);
+		}
+
+		if (nextProcessor != null) {
+			nextProcessor.setPrevProcessor(prevProcessor);
+		}
+
+		processor.setPrevProcessor(null);
+		processor.setNextProcessor(null);
+	}
+
 	public InputProcessor addInputProcessor(final int position) {
 		final InputProcessor processor = new InputProcessor(this);
 
@@ -209,6 +249,8 @@ public final class ProcessorChain {
 	}
 
 	public void removeInputProcessor(final InputProcessor processor) {
+		unlinkProcessor(processor);
+
 		rootLayout.getChildren().remove(processor.getGUI());
 		processors.remove(processor);
 
@@ -230,6 +272,8 @@ public final class ProcessorChain {
 	}
 
 	public void removeOutputProcessor(final OutputProcessor processor) {
+		unlinkProcessor(processor);
+
 		rootLayout.getChildren().remove(processor.getGUI());
 		processors.remove(processor);
 
@@ -237,10 +281,53 @@ public final class ProcessorChain {
 	}
 
 	public EventProcessor addEventProcessor(final int position, final Class<? extends EventProcessor> clazz) {
-		return null;
+		Constructor<? extends EventProcessor> constr = null;
+
+		try {
+			constr = clazz.getConstructor(ProcessorChain.class);
+
+			if (constr == null) {
+				throw new NullPointerException("constr is null in addEventProcessor()");
+			}
+		}
+		catch (NoSuchMethodException | SecurityException | NullPointerException e) {
+			Dialogs.create().lightweight().title("Exception detected").showException(e);
+			return null;
+		}
+
+		EventProcessor processor = null;
+
+		try {
+			processor = constr.newInstance(this);
+
+			if (processor == null) {
+				throw new NullPointerException("processor is null in addEventProcessor()");
+			}
+		}
+		catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException
+			| NullPointerException e) {
+			Dialogs.create().lightweight().title("Exception detected").showException(e);
+			return null;
+		}
+
+		processors.add(position, processor);
+		// Add 1 to position to compensate for Control Box at index 0.
+		rootLayout.getChildren().add(position + 1, processor.getGUI());
+
+		linkProcessor(processor, position);
+
+		ProcessorChain.logger.debug("Added EventProcessor {}.", processor);
+
+		return processor;
 	}
 
 	public void removeEventProcessor(final EventProcessor processor) {
+		unlinkProcessor(processor);
+
+		rootLayout.getChildren().remove(processor.getGUI());
+		processors.remove(processor);
+
+		ProcessorChain.logger.debug("Removed EventProcessor {}.", processor);
 	}
 
 	@Override

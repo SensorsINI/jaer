@@ -8,17 +8,13 @@ import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
-import javafx.scene.control.Label;
-import javafx.scene.layout.Border;
-import javafx.scene.layout.BorderStroke;
-import javafx.scene.layout.BorderStrokeStyle;
-import javafx.scene.layout.BorderWidths;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import net.sf.jaer2.eventio.ProcessorChain;
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 import net.sf.jaer2.eventio.events.Event;
+import net.sf.jaer2.util.GUISupport;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.slf4j.Logger;
@@ -212,16 +208,13 @@ public abstract class Processor implements Runnable {
 
 	protected void buildGUI() {
 		final VBox box = new VBox();
-		box.setBorder(new Border(new BorderStroke(null, BorderStrokeStyle.SOLID, null, BorderWidths.FULL)));
+		box.setStyle("-fx-border-style: solid; -fx-border-width: 2; -fx-border-color: black");
 		rootLayout.getChildren().add(box);
 
-		final Label name = new Label(toString());
-		box.getChildren().add(name);
-
+		GUISupport.addLabel(box, toString(), null, null, null);
 	}
 
 	protected void buildConfigGUI() {
-
 	}
 
 	@Override
