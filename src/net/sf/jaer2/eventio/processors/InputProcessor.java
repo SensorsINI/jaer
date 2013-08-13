@@ -16,8 +16,8 @@ public final class InputProcessor extends Processor {
 	private Source connectedSource;
 	private Chip interpreterChip;
 
-	public InputProcessor(final ProcessorChain chain, final Processor prev, final Processor next) {
-		super(chain, next, prev);
+	public InputProcessor(final ProcessorChain chain) {
+		super(chain);
 	}
 
 	public Source getConnectedSource() {
@@ -28,6 +28,14 @@ public final class InputProcessor extends Processor {
 		connectedSource = source;
 	}
 
+	public Chip getInterpreterChip() {
+		return interpreterChip;
+	}
+
+	public void setInterpreterChip(final Chip chip) {
+		interpreterChip = chip;
+	}
+
 	@Override
 	public void run() {
 		while (!Thread.currentThread().isInterrupted()) {
@@ -36,7 +44,9 @@ public final class InputProcessor extends Processor {
 				continue;
 			}
 
-			nextProcessor.addAll(toProcess);
+			if (nextProcessor != null) {
+				nextProcessor.addAll(toProcess);
+			}
 
 			toProcess.clear();
 		}
@@ -50,6 +60,8 @@ public final class InputProcessor extends Processor {
 
 	@Override
 	protected void setAdditionalOutputTypes(final Set<Class<? extends Event>> outputs) {
-		outputs.addAll(interpreterChip.getEventTypes());
+		if (interpreterChip != null) {
+			outputs.addAll(interpreterChip.getEventTypes());
+		}
 	}
 }

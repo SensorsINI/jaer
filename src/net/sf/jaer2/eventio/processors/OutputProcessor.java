@@ -14,8 +14,8 @@ public final class OutputProcessor extends Processor {
 
 	private Sink connectedSink;
 
-	public OutputProcessor(final ProcessorChain chain, final Processor prev, final Processor next) {
-		super(chain, next, prev);
+	public OutputProcessor(final ProcessorChain chain) {
+		super(chain);
 	}
 
 	public Sink getConnectedSink() {
@@ -40,7 +40,9 @@ public final class OutputProcessor extends Processor {
 					outputQueue.add(container);
 				}
 
-				nextProcessor.add(container);
+				if (nextProcessor != null) {
+					nextProcessor.add(container);
+				}
 			}
 
 			toProcess.clear();

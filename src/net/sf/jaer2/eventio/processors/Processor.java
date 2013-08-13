@@ -8,6 +8,14 @@ import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
+import javafx.scene.control.Label;
+import javafx.scene.layout.Border;
+import javafx.scene.layout.BorderStroke;
+import javafx.scene.layout.BorderStrokeStyle;
+import javafx.scene.layout.BorderWidths;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
 import net.sf.jaer2.eventio.ProcessorChain;
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 import net.sf.jaer2.eventio.events.Event;
@@ -17,6 +25,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public abstract class Processor implements Runnable {
+	public enum ProcessorTypes {
+		INPUT_PROCESSOR("Input"),
+		OUTPUT_PROCESSOR("Output"),
+		EVENT_PROCESSOR("Event");
+
+		private final String str;
+
+		private ProcessorTypes(final String s) {
+			str = s;
+		}
+
+		@Override
+		public String toString() {
+			return str;
+		}
+	}
+
 	protected final static Logger logger = LoggerFactory.getLogger(Processor.class);
 
 	protected final int processorId;
@@ -46,10 +71,11 @@ public abstract class Processor implements Runnable {
 	protected final BlockingQueue<EventPacketContainer> workQueue = new ArrayBlockingQueue<>(16);
 	protected final ArrayList<EventPacketContainer> toProcess = new ArrayList<>(32);
 
-	public Processor(final ProcessorChain chain, final Processor prev, final Processor next) {
+	protected final HBox rootLayout = new HBox(20);
+	protected final HBox rootConfigLayout = new HBox(20);
+
+	public Processor(final ProcessorChain chain) {
 		parentChain = chain;
-		prevProcessor = prev;
-		nextProcessor = next;
 
 		processorId = parentChain.getNextAvailableProcessorID();
 		processorName = getClass().getSimpleName();
@@ -58,8 +84,9 @@ public abstract class Processor implements Runnable {
 		setCompatibleInputTypes(compatibleInputTypes);
 		setAdditionalOutputTypes(additionalOutputTypes);
 
-		// Rebuild the stream sets now that the information is available.
-		rebuildStreamSets();
+		// Build GUIs for this processor.
+		buildGUI();
+		buildConfigGUI();
 	}
 
 	public int getProcessorId() {
@@ -101,9 +128,11 @@ public abstract class Processor implements Runnable {
 
 		// Add all outputs from previous Processor, filtering incompatible
 		// types out.
-		for (final ImmutablePair<Class<? extends Event>, Integer> stream : prevProcessor.getAllOutputStreams()) {
-			if (compatibleInputTypes.contains(stream.left)) {
-				inputStreams.add(stream);
+		if (prevProcessor != null) {
+			for (final ImmutablePair<Class<? extends Event>, Integer> stream : prevProcessor.getAllOutputStreams()) {
+				if (compatibleInputTypes.contains(stream.left)) {
+					inputStreams.add(stream);
+				}
 			}
 		}
 
@@ -120,7 +149,9 @@ public abstract class Processor implements Runnable {
 
 		// Add all outputs from previous Processor, as well as outputs produced
 		// by the current Processor.
-		outputStreams.addAll(prevProcessor.getAllOutputStreams());
+		if (prevProcessor != null) {
+			outputStreams.addAll(prevProcessor.getAllOutputStreams());
+		}
 
 		for (final Class<? extends Event> outputType : additionalOutputTypes) {
 			outputStreams.add(new ImmutablePair<Class<? extends Event>, Integer>(outputType, processorId));
@@ -169,6 +200,28 @@ public abstract class Processor implements Runnable {
 
 	public final void addAll(final Collection<EventPacketContainer> containers) {
 		workQueue.addAll(containers);
+	}
+
+	public Pane getGUI() {
+		return rootLayout;
+	}
+
+	public Pane getConfigGUI() {
+		return rootConfigLayout;
+	}
+
+	protected void buildGUI() {
+		final VBox box = new VBox();
+		box.setBorder(new Border(new BorderStroke(null, BorderStrokeStyle.SOLID, null, BorderWidths.FULL)));
+		rootLayout.getChildren().add(box);
+
+		final Label name = new Label(toString());
+		box.getChildren().add(name);
+
+	}
+
+	protected void buildConfigGUI() {
+
 	}
 
 	@Override

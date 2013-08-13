@@ -7,8 +7,8 @@ import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 import net.sf.jaer2.eventio.events.Event;
 
 public class SynchronizationProcessor extends EventProcessor {
-	public SynchronizationProcessor(final ProcessorChain chain, final Processor prev, final Processor next) {
-		super(chain, next, prev);
+	public SynchronizationProcessor(final ProcessorChain chain) {
+		super(chain);
 	}
 
 	@Override

@@ -18,7 +18,7 @@ public class JAER2 extends Application {
 	@SuppressWarnings("unused")
 	@Override
 	public void start(final Stage primaryStage) throws Exception {
-		ProcessorNetwork net = new ProcessorNetwork();
+		final ProcessorNetwork net = new ProcessorNetwork();
 
 		final Rectangle2D screen = Screen.getPrimary().getVisualBounds();
 		final Scene rootScene = new Scene(net.getGUI(), screen.getWidth(), screen.getHeight(), Color.GRAY);

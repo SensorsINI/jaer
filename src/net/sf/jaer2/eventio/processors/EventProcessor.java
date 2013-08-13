@@ -4,8 +4,8 @@ import net.sf.jaer2.eventio.ProcessorChain;
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 
 public abstract class EventProcessor extends Processor {
-	public EventProcessor(final ProcessorChain chain, final Processor prev, final Processor next) {
-		super(chain, next, prev);
+	public EventProcessor(final ProcessorChain chain) {
+		super(chain);
 	}
 
 	public abstract void processEvents(EventPacketContainer container);
@@ -24,7 +24,9 @@ public abstract class EventProcessor extends Processor {
 					processEvents(container);
 				}
 
-				nextProcessor.add(container);
+				if (nextProcessor != null) {
+					nextProcessor.add(container);
+				}
 			}
 
 			toProcess.clear();

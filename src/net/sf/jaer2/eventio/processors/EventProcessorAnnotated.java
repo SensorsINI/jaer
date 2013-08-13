@@ -8,8 +8,8 @@ import net.sf.jaer2.eventio.ProcessorChain;
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 
 public abstract class EventProcessorAnnotated extends EventProcessor {
-	public EventProcessorAnnotated(final ProcessorChain chain, final Processor prev, final Processor next) {
-		super(chain, next, prev);
+	public EventProcessorAnnotated(final ProcessorChain chain) {
+		super(chain);
 	}
 
 	public abstract Object prepareAnnotateEvents(EventPacketContainer container);
@@ -33,7 +33,9 @@ public abstract class EventProcessorAnnotated extends EventProcessor {
 					container.addToAnnotateDataSets(prepareAnnotateEvents(container));
 				}
 
-				nextProcessor.add(container);
+				if (nextProcessor != null) {
+					nextProcessor.add(container);
+				}
 			}
 
 			toProcess.clear();
