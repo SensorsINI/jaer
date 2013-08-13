@@ -382,15 +382,15 @@ public final class EventPacketContainer implements Iterable<Event> {
 	}
 
 	public Iterator<Event> iteratorFullTypeSource(final Class<? extends Event> type, final int source) {
-		final ArrayList<Iterator<? extends Event>> iters = new ArrayList<>(eventPackets.size());
+		@SuppressWarnings("unchecked")
+		final EventPacket<Event> evtPkt = (EventPacket<Event>) getPacket(type, source);
 
-		for (final EventPacket<? extends Event> evtPkt : eventPackets.values()) {
-			if (evtPkt.getEventType().equals(type) && (evtPkt.getEventSource() == source)) {
-				iters.add(evtPkt.iteratorFull());
-			}
+		if (evtPkt == null) {
+			return Iterators.emptyIterator();
+
 		}
 
-		return Iterators.concat(iters.iterator());
+		return evtPkt.iteratorFull();
 	}
 
 	public Iterator<Event> iteratorTimeOrder() throws UnsupportedOperationException {
@@ -439,12 +439,15 @@ public final class EventPacketContainer implements Iterable<Event> {
 			throw new UnsupportedOperationException("EventPacketContainer doesn't support global time-ordering.");
 		}
 
-		return new PredicateIterator<Event>(iteratorTimeOrderFull()) {
-			@Override
-			public boolean verifyPredicate(final Event element) {
-				return (element.isValid() && element.getEventType().equals(type) && (element.getEventSource() == source));
-			}
-		};
+		@SuppressWarnings("unchecked")
+		final EventPacket<Event> evtPkt = (EventPacket<Event>) getPacket(type, source);
+
+		if (evtPkt == null) {
+			return Iterators.emptyIterator();
+
+		}
+
+		return evtPkt.iteratorTimeOrder();
 	}
 
 	public Iterator<Event> iteratorTimeOrderFull() throws UnsupportedOperationException {
@@ -488,11 +491,14 @@ public final class EventPacketContainer implements Iterable<Event> {
 			throw new UnsupportedOperationException("EventPacketContainer doesn't support global time-ordering.");
 		}
 
-		return new PredicateIterator<Event>(iteratorTimeOrderFull()) {
-			@Override
-			public boolean verifyPredicate(final Event element) {
-				return (element.getEventType().equals(type) && (element.getEventSource() == source));
-			}
-		};
+		@SuppressWarnings("unchecked")
+		final EventPacket<Event> evtPkt = (EventPacket<Event>) getPacket(type, source);
+
+		if (evtPkt == null) {
+			return Iterators.emptyIterator();
+
+		}
+
+		return evtPkt.iteratorTimeOrderFull();
 	}
 }
