@@ -92,10 +92,10 @@ public abstract class Processor implements Runnable {
 	/** List containing all containers that are currently being worked on. */
 	protected final List<EventPacketContainer> toProcess = new ArrayList<>(32);
 
-	/** Main GUI layout. */
+	/** Main GUI layout - Horizontal Box. */
 	protected final HBox rootLayout = new HBox(10);
 
-	/** Configuration GUI layout. */
+	/** Configuration GUI layout - Vertical Box. */
 	protected final VBox rootConfigLayout = new VBox(10);
 	/** Configuration GUI: tasks to execute on success. */
 	protected final List<Runnable> rootConfigTasks = new ArrayList<>(2);

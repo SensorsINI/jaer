@@ -48,16 +48,20 @@ public final class ProcessorChain {
 	/** Network this chain belongs to. */
 	private final ProcessorNetwork parentNetwork;
 
-	/** List of all processors in this chain. */
-	private final ObservableList<Processor> processors = FXCollections.observableArrayList();
+	/**
+	 * List of all processors in this chain. Index 0 contains a null element as
+	 * place-holder to enable the insertion of new Processors at the head of the
+	 * list (selection in ComboBox) and link it correctly.
+	 */
+	private final ObservableList<Processor> processors = FXCollections.observableArrayList((Processor) null);
 
 	/** Unique ID counter for processor identification. */
 	private int processorIdCounter = 1;
 
-	/** Main GUI layout. */
+	/** Main GUI layout - Horizontal Box. */
 	private final HBox rootLayout = new HBox(10);
 
-	/** Configuration GUI layout. */
+	/** Configuration GUI layout - Vertical Box. */
 	private final VBox rootConfigLayout = new VBox(10);
 	/** Configuration GUI: tasks to execute on success. */
 	private final List<Runnable> rootConfigTasks = new ArrayList<>(2);
@@ -207,7 +211,7 @@ public final class ProcessorChain {
 
 		// Create Processor position chooser box, based on the currently
 		// existing processors.
-		final ComboBox<Processor> processorPositionChooser = GUISupport.addComboBox(null, processors, -1);
+		final ComboBox<Processor> processorPositionChooser = GUISupport.addComboBox(null, processors, 0);
 		GUISupport.addLabelWithControlHorizontal(rootConfigLayout, "After Processor: ",
 			"Place this new Processor right after the selected one.", processorPositionChooser);
 
@@ -255,8 +259,6 @@ public final class ProcessorChain {
 
 		try {
 			prevProcessor = processors.get(position - 1);
-
-			prevProcessor.setNextProcessor(processor);
 		}
 		catch (final IndexOutOfBoundsException e) {
 			prevProcessor = null;
@@ -264,11 +266,17 @@ public final class ProcessorChain {
 
 		try {
 			nextProcessor = processors.get(position + 1);
-
-			nextProcessor.setPrevProcessor(processor);
 		}
 		catch (final IndexOutOfBoundsException e) {
 			nextProcessor = null;
+		}
+
+		if (prevProcessor != null) {
+			prevProcessor.setNextProcessor(processor);
+		}
+
+		if (nextProcessor != null) {
+			nextProcessor.setPrevProcessor(processor);
 		}
 
 		processor.setPrevProcessor(prevProcessor);
@@ -315,7 +323,9 @@ public final class ProcessorChain {
 
 	private void updateAllStreams() {
 		for (final Processor proc : processors) {
-			proc.rebuildStreamSets();
+			if (proc != null) {
+				proc.rebuildStreamSets();
+			}
 		}
 	}
 
@@ -324,16 +334,18 @@ public final class ProcessorChain {
 	 * position in the chain.
 	 *
 	 * @param position
-	 *            index at which to add the new processor.
+	 *            index at which to add the new processor. Already includes +1
+	 *            to compensate for the place-holder elements (null in
+	 *            processors, controlBox in rootLayout).
 	 *
 	 * @return the new processor.
 	 */
 	public InputProcessor addInputProcessor(final int position) {
 		final InputProcessor processor = new InputProcessor(this);
 
+		// Position already compensates for place-holder elements.
 		processors.add(position, processor);
-		// Add 1 to position to compensate for Control Box at index 0.
-		rootLayout.getChildren().add(position + 1, processor.getGUI());
+		rootLayout.getChildren().add(position, processor.getGUI());
 
 		linkProcessor(processor);
 		updateAllStreams();
@@ -363,16 +375,18 @@ public final class ProcessorChain {
 	 * position in the chain.
 	 *
 	 * @param position
-	 *            index at which to add the new processor.
+	 *            index at which to add the new processor. Already includes +1
+	 *            to compensate for the place-holder elements (null in
+	 *            processors, controlBox in rootLayout).
 	 *
 	 * @return the new processor.
 	 */
 	public OutputProcessor addOutputProcessor(final int position) {
 		final OutputProcessor processor = new OutputProcessor(this);
 
+		// Position already compensates for place-holder elements.
 		processors.add(position, processor);
-		// Add 1 to position to compensate for Control Box at index 0.
-		rootLayout.getChildren().add(position + 1, processor.getGUI());
+		rootLayout.getChildren().add(position, processor.getGUI());
 
 		linkProcessor(processor);
 		updateAllStreams();
@@ -402,7 +416,9 @@ public final class ProcessorChain {
 	 * position in the chain.
 	 *
 	 * @param position
-	 *            index at which to add the new processor.
+	 *            index at which to add the new processor. Already includes +1
+	 *            to compensate for the place-holder elements (null in
+	 *            processors, controlBox in rootLayout).
 	 * @param clazz
 	 *            concrete type of EventProcessor to instantiate.
 	 *
@@ -441,9 +457,9 @@ public final class ProcessorChain {
 			return null;
 		}
 
+		// Position already compensates for place-holder elements.
 		processors.add(position, processor);
-		// Add 1 to position to compensate for Control Box at index 0.
-		rootLayout.getChildren().add(position + 1, processor.getGUI());
+		rootLayout.getChildren().add(position, processor.getGUI());
 
 		linkProcessor(processor);
 		updateAllStreams();

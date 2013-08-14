@@ -21,7 +21,7 @@ public final class ProcessorNetwork {
 	/** Unique ID counter for chain identification. */
 	private int chainIdCounter = 1;
 
-	/** Main GUI layout. */
+	/** Main GUI layout - Vertical Box. */
 	private final VBox rootLayout = new VBox(10);
 
 	public ProcessorNetwork() {
