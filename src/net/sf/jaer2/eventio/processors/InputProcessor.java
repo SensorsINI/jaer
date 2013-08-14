@@ -8,6 +8,8 @@ import net.sf.jaer2.chips.Chip;
 import net.sf.jaer2.eventio.ProcessorChain;
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 import net.sf.jaer2.eventio.events.Event;
+import net.sf.jaer2.eventio.events.PolarityEvent;
+import net.sf.jaer2.eventio.events.SampleEvent;
 import net.sf.jaer2.eventio.sources.Source;
 
 public final class InputProcessor extends Processor {
@@ -63,5 +65,9 @@ public final class InputProcessor extends Processor {
 		if (interpreterChip != null) {
 			outputs.addAll(interpreterChip.getEventTypes());
 		}
+
+		// FIXME: for testing only.
+		outputs.add(PolarityEvent.class);
+		outputs.add(SampleEvent.class);
 	}
 }

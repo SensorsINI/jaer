@@ -11,7 +11,9 @@ import java.util.concurrent.BlockingQueue;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableSet;
+import javafx.collections.SetChangeListener;
 import javafx.geometry.Insets;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import net.sf.jaer2.eventio.ProcessorChain;
@@ -60,34 +62,38 @@ public abstract class Processor implements Runnable {
 	/** Next processor in the ordered chain. */
 	protected Processor nextProcessor;
 
-	/**
-	 * Processor type management.
-	 *
-	 * inputStreams defines which types of events this Processor can
-	 * work on.
-	 * selectedInputStreams defines which types of events this Processor will
-	 * work on,
-	 * based on user configuration.
-	 * outputStreams defines which types of events this Processor can output,
-	 * based upon the Processor itself and all previous inputs before it.
-	 */
+	// Processor type management
+	/** Defines which Event types this Processor can work on. */
 	private final ObservableSet<Class<? extends Event>> compatibleInputTypes = FXCollections
 		.observableSet(new HashSet<Class<? extends Event>>(4));
+	/** Defines which Event types this Processor creates and then outputs. */
 	private final ObservableSet<Class<? extends Event>> additionalOutputTypes = FXCollections
 		.observableSet(new HashSet<Class<? extends Event>>(4));
 
+	// Processor stream management
+	/** Defines which streams of events this Processor can work on. */
 	private final ObservableSet<ImmutablePair<Class<? extends Event>, Integer>> inputStreams = FXCollections
 		.observableSet(new HashSet<ImmutablePair<Class<? extends Event>, Integer>>(4));
+	/**
+	 * Defines which streams of events this Processor will work on, based on
+	 * user configuration.
+	 */
 	private final ObservableSet<ImmutablePair<Class<? extends Event>, Integer>> selectedInputStreams = FXCollections
 		.observableSet(new HashSet<ImmutablePair<Class<? extends Event>, Integer>>(4));
+	/**
+	 * Defines which streams of events this Processor can output, based upon the
+	 * Processor itself and all previous processors before it in the chain.
+	 */
 	private final ObservableSet<ImmutablePair<Class<? extends Event>, Integer>> outputStreams = FXCollections
 		.observableSet(new HashSet<ImmutablePair<Class<? extends Event>, Integer>>(4));
 
+	/** Queue containing all containers to process. */
 	protected final BlockingQueue<EventPacketContainer> workQueue = new ArrayBlockingQueue<>(16);
-	protected final ArrayList<EventPacketContainer> toProcess = new ArrayList<>(32);
+	/** List containing all containers that are currently being worked on. */
+	protected final List<EventPacketContainer> toProcess = new ArrayList<>(32);
 
 	/** Main GUI layout. */
-	protected final VBox rootLayout = new VBox(10);
+	protected final HBox rootLayout = new HBox(10);
 
 	/** Configuration GUI layout. */
 	protected final VBox rootConfigLayout = new VBox(10);
@@ -263,10 +269,32 @@ public abstract class Processor implements Runnable {
 	 * Create the base GUI elements and add them to the rootLayout.
 	 */
 	protected void buildGUI() {
-		rootLayout.setPadding(new Insets(5));
-		rootLayout.setStyle("-fx-border-style: solid; -fx-border-width: 1; -fx-border-color: black");
+		// Create box holding information and controls for the Processor.
+		final VBox controlInfoBox = new VBox(5);
+		controlInfoBox.setPadding(new Insets(5));
+		controlInfoBox.setStyle("-fx-border-style: solid; -fx-border-width: 1; -fx-border-color: black");
+		rootLayout.getChildren().add(controlInfoBox);
 
-		GUISupport.addLabel(rootLayout, toString(), null, null, null);
+		GUISupport.addLabel(controlInfoBox, toString(), null, null, null);
+
+		// Create box holding information about the types in transit.
+		final VBox typesBox = new VBox(5);
+		rootLayout.getChildren().add(typesBox);
+
+		outputStreams.addListener(new SetChangeListener<ImmutablePair<Class<? extends Event>, Integer>>() {
+			@Override
+			public void onChanged(final Change<? extends ImmutablePair<Class<? extends Event>, Integer>> change) {
+				typesBox.getChildren().clear();
+
+				GUISupport.addArrow(typesBox, 90, 2, 10, 6);
+
+				for (final ImmutablePair<Class<? extends Event>, Integer> outStream : change.getSet()) {
+					GUISupport.addLabel(typesBox,
+						String.format("Type %s from Source %d", outStream.left.getSimpleName(), outStream.right), null,
+						null, null);
+				}
+			}
+		});
 	}
 
 	/**

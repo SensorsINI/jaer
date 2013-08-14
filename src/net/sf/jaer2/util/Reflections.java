@@ -6,7 +6,7 @@ import java.util.Set;
 
 public final class Reflections {
 	private static <T> Set<Class<? extends T>> getSubClasses(final Class<T> clazz) {
-		final org.reflections.Reflections reflections = new org.reflections.Reflections();
+		final org.reflections.Reflections reflections = new org.reflections.Reflections("net.sf.jaer2");
 
 		final Set<Class<? extends T>> classes = reflections.getSubTypesOf(clazz);
 

@@ -26,7 +26,6 @@ import net.sf.jaer2.eventio.processors.Processor.ProcessorTypes;
 import net.sf.jaer2.util.GUISupport;
 import net.sf.jaer2.util.Reflections;
 
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -173,18 +172,20 @@ public final class ProcessorChain {
 	 */
 	private void buildConfigGUI() {
 		// Create EventProcessor type chooser box. It will be added later on.
-		final ImmutablePair<HBox, ComboBox<Class<? extends EventProcessor>>> eventProcessorTypeChooser = GUISupport
-			.addLabelWithComboBoxHorizontal(null, "Event Processor: ", "Select the Event Processor you want to use.",
-				ProcessorChain.eventProcessorTypes, 0);
+		final ComboBox<Class<? extends EventProcessor>> eventProcessorTypeChooser = GUISupport.addComboBox(null,
+			ProcessorChain.eventProcessorTypes, 0);
+		final HBox eventProcessorTypeChooserBox = GUISupport.addLabelWithControlHorizontal(null, "Event Processor: ",
+			"Select the Event Processor you want to use.", eventProcessorTypeChooser);
 
 		// Create Processor type chooser box, based on the ProcessorTypes enum.
-		final ImmutablePair<HBox, ComboBox<ProcessorTypes>> processorTypeChooser = GUISupport
-			.addLabelWithComboBoxHorizontal(rootConfigLayout, "Processor Type: ",
-				"Select the processor type you want to create.", EnumSet.allOf(ProcessorTypes.class), 0);
+		final ComboBox<ProcessorTypes> processorTypeChooser = GUISupport.addComboBox(null,
+			EnumSet.allOf(ProcessorTypes.class), 0);
+		GUISupport.addLabelWithControlHorizontal(rootConfigLayout, "Processor Type: ",
+			"Select the processor type you want to create.", processorTypeChooser);
 
 		// Toggle the EventProcessor type chooser box depending on what type of
 		// Processor the user has selected at the moment.
-		processorTypeChooser.right.valueProperty().addListener(new ChangeListener<ProcessorTypes>() {
+		processorTypeChooser.valueProperty().addListener(new ChangeListener<ProcessorTypes>() {
 			private boolean eventProcessorTypeChooserVisible = false;
 
 			@SuppressWarnings("unused")
@@ -194,11 +195,11 @@ public final class ProcessorChain {
 				// Add or remove EventProcessor type chooser box, based on what
 				// the user selected as a Processor type.
 				if ((newValue == ProcessorTypes.EVENT_PROCESSOR) && (!eventProcessorTypeChooserVisible)) {
-					rootConfigLayout.getChildren().add(eventProcessorTypeChooser.left);
+					rootConfigLayout.getChildren().add(eventProcessorTypeChooserBox);
 					eventProcessorTypeChooserVisible = true;
 				}
 				else if ((newValue != ProcessorTypes.EVENT_PROCESSOR) && (eventProcessorTypeChooserVisible)) {
-					rootConfigLayout.getChildren().remove(eventProcessorTypeChooser.left);
+					rootConfigLayout.getChildren().remove(eventProcessorTypeChooserBox);
 					eventProcessorTypeChooserVisible = false;
 				}
 			}
@@ -206,21 +207,21 @@ public final class ProcessorChain {
 
 		// Create Processor position chooser box, based on the currently
 		// existing processors.
-		final ImmutablePair<HBox, ComboBox<Processor>> processorPositionChooser = GUISupport
-			.addLabelWithComboBoxHorizontal(rootConfigLayout, "After Processor: ",
-				"Place this new Processor right after the selected one.", processors, -1);
+		final ComboBox<Processor> processorPositionChooser = GUISupport.addComboBox(null, processors, -1);
+		GUISupport.addLabelWithControlHorizontal(rootConfigLayout, "After Processor: ",
+			"Place this new Processor right after the selected one.", processorPositionChooser);
 
 		// Bind the shown items to the main processors list, for auto-updating.
-		processorPositionChooser.right.itemsProperty().set(processors);
+		processorPositionChooser.itemsProperty().set(processors);
 
 		// Add task to be enacted, based on above GUI configuration settings.
 		rootConfigTasks.add(new Runnable() {
 			@Override
 			public void run() {
 				// Add a new Processor of the wanted type at the right position.
-				final int position = processors.indexOf(processorPositionChooser.right.getValue()) + 1;
+				final int position = processors.indexOf(processorPositionChooser.getValue()) + 1;
 
-				switch (processorTypeChooser.right.getValue()) {
+				switch (processorTypeChooser.getValue()) {
 					case INPUT_PROCESSOR:
 						addInputProcessor(position);
 						break;
@@ -230,7 +231,7 @@ public final class ProcessorChain {
 						break;
 
 					case EVENT_PROCESSOR:
-						addEventProcessor(position, eventProcessorTypeChooser.right.getValue());
+						addEventProcessor(position, eventProcessorTypeChooser.getValue());
 						break;
 
 					default:
@@ -312,6 +313,12 @@ public final class ProcessorChain {
 		processor.setNextProcessor(null);
 	}
 
+	private void updateAllStreams() {
+		for (final Processor proc : processors) {
+			proc.rebuildStreamSets();
+		}
+	}
+
 	/**
 	 * Create a new input processor and add it to the GUI at the specified
 	 * position in the chain.
@@ -329,6 +336,7 @@ public final class ProcessorChain {
 		rootLayout.getChildren().add(position + 1, processor.getGUI());
 
 		linkProcessor(processor);
+		updateAllStreams();
 
 		ProcessorChain.logger.debug("Added InputProcessor {}.", processor);
 
@@ -367,6 +375,7 @@ public final class ProcessorChain {
 		rootLayout.getChildren().add(position + 1, processor.getGUI());
 
 		linkProcessor(processor);
+		updateAllStreams();
 
 		ProcessorChain.logger.debug("Added OutputProcessor {}.", processor);
 
@@ -437,6 +446,7 @@ public final class ProcessorChain {
 		rootLayout.getChildren().add(position + 1, processor.getGUI());
 
 		linkProcessor(processor);
+		updateAllStreams();
 
 		ProcessorChain.logger.debug("Added EventProcessor {}.", processor);
 
