@@ -4,9 +4,9 @@ import java.lang.reflect.Modifier;
 import java.util.Iterator;
 import java.util.Set;
 
-public class Reflections {
+public final class Reflections {
 	private static <T> Set<Class<? extends T>> getSubClasses(final Class<T> clazz) {
-		final org.reflections.Reflections reflections = new org.reflections.Reflections("net.sf.jaer2");
+		final org.reflections.Reflections reflections = new org.reflections.Reflections();
 
 		final Set<Class<? extends T>> classes = reflections.getSubTypesOf(clazz);
 

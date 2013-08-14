@@ -4,11 +4,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
-import javafx.scene.layout.HBox;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableSet;
+import javafx.geometry.Insets;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import net.sf.jaer2.eventio.ProcessorChain;
@@ -21,6 +24,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public abstract class Processor implements Runnable {
+	/**
+	 * Enumeration containing the available processor types and their string
+	 * representations for printing.
+	 */
 	public enum ProcessorTypes {
 		INPUT_PROCESSOR("Input"),
 		OUTPUT_PROCESSOR("Output"),
@@ -38,37 +45,54 @@ public abstract class Processor implements Runnable {
 		}
 	}
 
+	/** Local logger for log messages. */
 	protected final static Logger logger = LoggerFactory.getLogger(Processor.class);
 
+	/** Processor identification ID. */
 	protected final int processorId;
+	/** Processor identification Name. */
 	protected final String processorName;
 
-	private final ProcessorChain parentChain;
+	/** Chain this processor belongs to. */
+	protected final ProcessorChain parentChain;
+	/** Previous processor in the ordered chain. */
 	protected Processor prevProcessor;
+	/** Next processor in the ordered chain. */
 	protected Processor nextProcessor;
 
 	/**
 	 * Processor type management.
 	 *
-	 * compatibleInputTypes defines which types of events this Processor can
+	 * inputStreams defines which types of events this Processor can
 	 * work on.
-	 * inputTypes defines which types of events this Processor will work on,
+	 * selectedInputStreams defines which types of events this Processor will
+	 * work on,
 	 * based on user configuration.
-	 * outputTypes defines which types of events this Processor can output,
+	 * outputStreams defines which types of events this Processor can output,
 	 * based upon the Processor itself and all previous inputs before it.
 	 */
-	private final Set<Class<? extends Event>> compatibleInputTypes = new HashSet<>(4);
-	private final Set<Class<? extends Event>> additionalOutputTypes = new HashSet<>(4);
+	private final ObservableSet<Class<? extends Event>> compatibleInputTypes = FXCollections
+		.observableSet(new HashSet<Class<? extends Event>>(4));
+	private final ObservableSet<Class<? extends Event>> additionalOutputTypes = FXCollections
+		.observableSet(new HashSet<Class<? extends Event>>(4));
 
-	private final Set<ImmutablePair<Class<? extends Event>, Integer>> inputStreams = new HashSet<>(4);
-	private final Set<ImmutablePair<Class<? extends Event>, Integer>> selectedInputStreams = new HashSet<>(4);
-	private final Set<ImmutablePair<Class<? extends Event>, Integer>> outputStreams = new HashSet<>(4);
+	private final ObservableSet<ImmutablePair<Class<? extends Event>, Integer>> inputStreams = FXCollections
+		.observableSet(new HashSet<ImmutablePair<Class<? extends Event>, Integer>>(4));
+	private final ObservableSet<ImmutablePair<Class<? extends Event>, Integer>> selectedInputStreams = FXCollections
+		.observableSet(new HashSet<ImmutablePair<Class<? extends Event>, Integer>>(4));
+	private final ObservableSet<ImmutablePair<Class<? extends Event>, Integer>> outputStreams = FXCollections
+		.observableSet(new HashSet<ImmutablePair<Class<? extends Event>, Integer>>(4));
 
 	protected final BlockingQueue<EventPacketContainer> workQueue = new ArrayBlockingQueue<>(16);
 	protected final ArrayList<EventPacketContainer> toProcess = new ArrayList<>(32);
 
-	protected final HBox rootLayout = new HBox(20);
-	protected final HBox rootConfigLayout = new HBox(20);
+	/** Main GUI layout. */
+	protected final VBox rootLayout = new VBox(10);
+
+	/** Configuration GUI layout. */
+	protected final VBox rootConfigLayout = new VBox(10);
+	/** Configuration GUI: tasks to execute on success. */
+	protected final List<Runnable> rootConfigTasks = new ArrayList<>(2);
 
 	public Processor(final ProcessorChain chain) {
 		parentChain = chain;
@@ -76,23 +100,40 @@ public abstract class Processor implements Runnable {
 		processorId = parentChain.getNextAvailableProcessorID();
 		processorName = getClass().getSimpleName();
 
-		// Fill in the type information from the inheriting classes.
+		// Fill in the type information from the extending sub-classes.
 		setCompatibleInputTypes(compatibleInputTypes);
 		setAdditionalOutputTypes(additionalOutputTypes);
 
 		// Build GUIs for this processor.
 		buildGUI();
 		buildConfigGUI();
+
+		Processor.logger.debug("Created Processor {}.", this);
 	}
 
+	/**
+	 * Return the ID number of this processor.
+	 *
+	 * @return processor ID number.
+	 */
 	public int getProcessorId() {
 		return processorId;
 	}
 
+	/**
+	 * Return the name of this processor.
+	 *
+	 * @return processor name.
+	 */
 	public String getProcessorName() {
 		return processorName;
 	}
 
+	/**
+	 * Return the chain this processor belongs to.
+	 *
+	 * @return parent chain.
+	 */
 	public ProcessorChain getParentChain() {
 		return parentChain;
 	}
@@ -104,6 +145,7 @@ public abstract class Processor implements Runnable {
 	public void setPrevProcessor(final Processor prev) {
 		prevProcessor = prev;
 
+		// These depends on the previous processor!
 		rebuildStreamSets();
 	}
 
@@ -137,7 +179,7 @@ public abstract class Processor implements Runnable {
 	}
 
 	public Set<ImmutablePair<Class<? extends Event>, Integer>> getAllInputStreams() {
-		return inputStreams;
+		return Collections.unmodifiableSet(inputStreams);
 	}
 
 	private void rebuildOutputStreams() {
@@ -155,7 +197,7 @@ public abstract class Processor implements Runnable {
 	}
 
 	public Set<ImmutablePair<Class<? extends Event>, Integer>> getAllOutputStreams() {
-		return outputStreams;
+		return Collections.unmodifiableSet(outputStreams);
 	}
 
 	public void rebuildStreamSets() {
@@ -180,6 +222,15 @@ public abstract class Processor implements Runnable {
 		selectedInputStreams.clear();
 	}
 
+	/**
+	 * Check if a container is to be processed by this processor.
+	 * This is the case if it contains <Type, Source> combinations that are
+	 * relevant, based upon the configuration done by the user.
+	 *
+	 * @param container
+	 *            the EventPacket container to check.
+	 * @return whether relevant EventPackets are present or not.
+	 */
 	public boolean processContainer(final EventPacketContainer container) {
 		for (final ImmutablePair<Class<? extends Event>, Integer> relevant : selectedInputStreams) {
 			if (container.getPacket(relevant.left, relevant.right) != null) {
@@ -198,23 +249,43 @@ public abstract class Processor implements Runnable {
 		workQueue.addAll(containers);
 	}
 
+	/**
+	 * Get the graphical layout corresponding to this class, so that it can be
+	 * displayed somewhere by adding it to a Scene.
+	 *
+	 * @return GUI reference to display.
+	 */
 	public Pane getGUI() {
 		return rootLayout;
 	}
 
+	/**
+	 * Create the base GUI elements and add them to the rootLayout.
+	 */
+	protected void buildGUI() {
+		rootLayout.setPadding(new Insets(5));
+		rootLayout.setStyle("-fx-border-style: solid; -fx-border-width: 1; -fx-border-color: black");
+
+		GUISupport.addLabel(rootLayout, toString(), null, null, null);
+	}
+
+	/**
+	 * Get the graphical layout for the configuration screen corresponding to
+	 * this class, so that it can be
+	 * displayed somewhere by adding it to a Scene.
+	 *
+	 * @return GUI reference to display.
+	 */
 	public Pane getConfigGUI() {
 		return rootConfigLayout;
 	}
 
-	protected void buildGUI() {
-		final VBox box = new VBox();
-		box.setStyle("-fx-border-style: solid; -fx-border-width: 2; -fx-border-color: black");
-		rootLayout.getChildren().add(box);
-
-		GUISupport.addLabel(box, toString(), null, null, null);
-	}
-
+	/**
+	 * Create the base GUI elements for the configuration screen and add them to
+	 * the rootConfigLayout.
+	 */
 	protected void buildConfigGUI() {
+		// TODO: follows.
 	}
 
 	@Override

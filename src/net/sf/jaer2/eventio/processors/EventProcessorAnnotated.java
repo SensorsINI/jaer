@@ -12,10 +12,10 @@ public abstract class EventProcessorAnnotated extends EventProcessor {
 		super(chain);
 	}
 
-	public abstract Object prepareAnnotateEvents(EventPacketContainer container);
+	protected abstract Object prepareAnnotateEvents(EventPacketContainer container);
 
-	public abstract void annotateEvents(EventPacketContainer container, Object annotateData, GLAutoDrawable glDrawable,
-		Pane fxPane);
+	protected abstract void annotateEvents(EventPacketContainer container, Object annotateData,
+		GLAutoDrawable glDrawable, Pane fxPane);
 
 	@Override
 	public void run() {

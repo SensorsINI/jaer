@@ -15,7 +15,6 @@ public class JAER2 extends Application {
 		Application.launch(args);
 	}
 
-	@SuppressWarnings("unused")
 	@Override
 	public void start(final Stage primaryStage) throws Exception {
 		final ProcessorNetwork net = new ProcessorNetwork();

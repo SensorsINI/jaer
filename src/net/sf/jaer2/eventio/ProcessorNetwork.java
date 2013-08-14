@@ -1,8 +1,7 @@
 package net.sf.jaer2.eventio;
 
-import java.util.LinkedList;
-import java.util.List;
-
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
@@ -13,13 +12,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class ProcessorNetwork {
+	/** Local logger for log messages. */
 	private final static Logger logger = LoggerFactory.getLogger(ProcessorNetwork.class);
 
-	private final List<ProcessorChain> processorChains = new LinkedList<>();
+	/** List of all chains in this network. */
+	private final ObservableList<ProcessorChain> processorChains = FXCollections.observableArrayList();
 
+	/** Unique ID counter for chain identification. */
 	private int chainIdCounter = 1;
 
-	private final VBox rootLayout = new VBox(20);
+	/** Main GUI layout. */
+	private final VBox rootLayout = new VBox(10);
 
 	public ProcessorNetwork() {
 		buildGUI();
@@ -28,20 +31,31 @@ public final class ProcessorNetwork {
 	}
 
 	/**
-	 * Get unique ID for ProcessorChains in this network.
+	 * Get unique ID for processor chain in this network.
 	 * Always increases by one, no duplicates.
 	 * Starts at 1.
 	 *
-	 * @return Next unique ID for ProcessorChain identification.
+	 * @return Next unique ID for processor chain identification.
 	 */
 	public int getNextAvailableChainID() {
 		return chainIdCounter++;
 	}
 
+	/**
+	 * Get the graphical layout corresponding to this class, so that it can be
+	 * displayed somewhere by adding it to a Scene.
+	 *
+	 * @return GUI reference to display.
+	 */
 	public Pane getGUI() {
 		return rootLayout;
 	}
 
+	/**
+	 * Create a new processor chain and add it to the GUI.
+	 *
+	 * @return the new processor chain.
+	 */
 	public ProcessorChain addChain() {
 		final ProcessorChain chain = new ProcessorChain(this);
 
@@ -53,6 +67,12 @@ public final class ProcessorNetwork {
 		return chain;
 	}
 
+	/**
+	 * Deletes the specified processor chain and removes it from the GUI.
+	 *
+	 * @param chain
+	 *            chain to remove.
+	 */
 	public void removeChain(final ProcessorChain chain) {
 		rootLayout.getChildren().remove(chain.getGUI());
 		processorChains.remove(chain);
@@ -60,6 +80,9 @@ public final class ProcessorNetwork {
 		ProcessorNetwork.logger.debug("Removed chain {}.", chain);
 	}
 
+	/**
+	 * Create the base GUI elements and add them to the rootLayout.
+	 */
 	private void buildGUI() {
 		// First, add the buttons to manage new ProcessorChains.
 		GUISupport.addButtonWithMouseClickedHandler(rootLayout, "New Chain", "/icons/Add.png",

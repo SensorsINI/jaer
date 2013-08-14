@@ -2,7 +2,9 @@ package net.sf.jaer2.util;
 
 import java.util.Collection;
 
+import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -17,10 +19,20 @@ import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.controlsfx.control.ButtonBar;
+import org.controlsfx.control.ButtonBar.ButtonType;
+import org.controlsfx.control.action.AbstractAction;
+import org.controlsfx.control.action.Action;
+import org.controlsfx.dialog.Dialog;
+import org.controlsfx.dialog.Dialogs;
 
-public class GUISupport {
+public final class GUISupport {
 	public static Button addButton(final Pane parentPane, final String text, final String imagePath) {
-		final Button button = new Button(text, new ImageView(imagePath));
+		final Button button = new Button(text);
+
+		if (imagePath != null) {
+			button.setGraphic(new ImageView(imagePath));
+		}
 
 		if (parentPane != null) {
 			parentPane.getChildren().add(button);
@@ -134,5 +146,59 @@ public class GUISupport {
 		}
 
 		return txt;
+	}
+
+	public static Action getActionWithRunnables(final String text, final ButtonType type,
+		final Collection<Runnable> tasks) {
+		final Action action = new AbstractAction(text) {
+			{
+				ButtonBar.setType(this, type);
+			}
+
+			@Override
+			public void execute(final ActionEvent ae) {
+				if (!isDisabled()) {
+					if (ae.getSource() instanceof Dialog) {
+						final Dialog dlg = (Dialog) ae.getSource();
+
+						for (final Runnable task : tasks) {
+							task.run();
+						}
+
+						dlg.hide();
+					}
+				}
+			}
+		};
+
+		return action;
+	}
+
+	public static void showDialog(final String title, final Node content, final Collection<Runnable> tasks) {
+		final Dialog dialog = new Dialog(null, title, true, false);
+
+		dialog.setContent(content);
+
+		dialog.getActions().addAll(
+			(tasks == null) ? (Dialog.Actions.OK)
+				: (GUISupport.getActionWithRunnables("OK", ButtonType.OK_DONE, tasks)), Dialog.Actions.CANCEL);
+
+		dialog.show();
+	}
+
+	public static void showDialogInformation(final String message) {
+		Dialogs.create().lightweight().title("Information").message(message).showInformation();
+	}
+
+	public static void showDialogWarning(final String message) {
+		Dialogs.create().lightweight().title("Warning").message(message).showInformation();
+	}
+
+	public static void showDialogError(final String message) {
+		Dialogs.create().lightweight().title("Error").message(message).showInformation();
+	}
+
+	public static void showDialogException(final Throwable exception) {
+		Dialogs.create().lightweight().title("Exception detected").showException(exception);
 	}
 }

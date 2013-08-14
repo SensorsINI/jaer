@@ -12,7 +12,7 @@ public class SynchronizationProcessor extends EventProcessor {
 	}
 
 	@Override
-	public void processEvents(@SuppressWarnings("unused") final EventPacketContainer container) {
+	protected void processEvents(@SuppressWarnings("unused") final EventPacketContainer container) {
 		// TODO: write synchronization processor.
 	}
 

@@ -8,7 +8,7 @@ public abstract class EventProcessor extends Processor {
 		super(chain);
 	}
 
-	public abstract void processEvents(EventPacketContainer container);
+	protected abstract void processEvents(EventPacketContainer container);
 
 	@Override
 	public void run() {

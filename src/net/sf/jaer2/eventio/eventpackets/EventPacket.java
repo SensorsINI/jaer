@@ -15,9 +15,9 @@ public final class EventPacket<E extends Event> extends AbstractCollection<E> {
 	private static final int DEFAULT_EVENT_CAPACITY = 2048;
 
 	// RawEvents array and index into it for adding new elements.
-	protected E[] events;
-	protected int lastEvent;
-	protected int validEvents;
+	private E[] events;
+	private int lastEvent;
+	private int validEvents;
 
 	private final Class<E> eventType;
 	private final int eventSource;
