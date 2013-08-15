@@ -30,8 +30,13 @@ import org.controlsfx.dialog.Dialog;
 import org.controlsfx.dialog.Dialogs;
 
 public final class GUISupport {
-	public static Button addButton(final Pane parentPane, final String text, final String imagePath) {
-		final Button button = new Button(text);
+	public static Button addButton(final Pane parentPane, final String text, final boolean displayText,
+		final String imagePath) {
+		final Button button = new Button();
+
+		if (displayText) {
+			button.setText(text);
+		}
 
 		button.setTooltip(new Tooltip(text));
 
@@ -47,8 +52,8 @@ public final class GUISupport {
 	}
 
 	public static Button addButtonWithMouseClickedHandler(final Pane parentPane, final String text,
-		final String imagePath, final EventHandler<? super MouseEvent> handler) {
-		final Button button = GUISupport.addButton(parentPane, text, imagePath);
+		final boolean displayText, final String imagePath, final EventHandler<? super MouseEvent> handler) {
+		final Button button = GUISupport.addButton(parentPane, text, displayText, imagePath);
 
 		if (handler != null) {
 			button.setOnMouseClicked(handler);
@@ -207,8 +212,8 @@ public final class GUISupport {
 		Dialogs.create().lightweight().title("Exception detected").showException(exception);
 	}
 
-	public static HBox addArrow(final Pane parentPane, final double lineLength, final double lineWidth, final double headLength,
-		final double headAperture) {
+	public static HBox addArrow(final Pane parentPane, final double lineLength, final double lineWidth,
+		final double headLength, final double headAperture) {
 		final HBox arrow = new HBox();
 		arrow.setAlignment(Pos.TOP_LEFT);
 

@@ -142,7 +142,7 @@ public final class ProcessorChain {
 
 		// Then, add the buttons to delete ProcessorChains and add new
 		// Processors.
-		GUISupport.addButtonWithMouseClickedHandler(controlBox, "Delete Chain", "/icons/Remove.png",
+		GUISupport.addButtonWithMouseClickedHandler(controlBox, "Delete Chain", true, "/icons/Remove.png",
 			new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
@@ -150,7 +150,7 @@ public final class ProcessorChain {
 				}
 			});
 
-		GUISupport.addButtonWithMouseClickedHandler(controlBox, "New Processor", "/icons/Add.png",
+		GUISupport.addButtonWithMouseClickedHandler(controlBox, "New Processor", true, "/icons/Add.png",
 			new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
@@ -227,15 +227,15 @@ public final class ProcessorChain {
 
 				switch (processorTypeChooser.getValue()) {
 					case INPUT_PROCESSOR:
-						addInputProcessor(position);
+						addProcessor(position, ProcessorTypes.INPUT_PROCESSOR, null);
 						break;
 
 					case OUTPUT_PROCESSOR:
-						addOutputProcessor(position);
+						addProcessor(position, ProcessorTypes.OUTPUT_PROCESSOR, null);
 						break;
 
 					case EVENT_PROCESSOR:
-						addEventProcessor(position, eventProcessorTypeChooser.getValue());
+						addProcessor(position, ProcessorTypes.EVENT_PROCESSOR, eventProcessorTypeChooser.getValue());
 						break;
 
 					default:
@@ -330,131 +330,74 @@ public final class ProcessorChain {
 	}
 
 	/**
-	 * Create a new input processor and add it to the GUI at the specified
+	 * Create a new processor and add it to the GUI at the specified
 	 * position in the chain.
 	 *
 	 * @param position
 	 *            index at which to add the new processor. Already includes +1
 	 *            to compensate for the place-holder elements (null in
 	 *            processors, controlBox in rootLayout).
-	 *
-	 * @return the new processor.
-	 */
-	public InputProcessor addInputProcessor(final int position) {
-		final InputProcessor processor = new InputProcessor(this);
-
-		// Position already compensates for place-holder elements.
-		processors.add(position, processor);
-		rootLayout.getChildren().add(position, processor.getGUI());
-
-		linkProcessor(processor);
-		updateAllStreams();
-
-		ProcessorChain.logger.debug("Added InputProcessor {}.", processor);
-
-		return processor;
-	}
-
-	/**
-	 * Deletes the specified input processor and removes it from the GUI.
-	 *
-	 * @param processor
-	 *            processor to remove.
-	 */
-	public void removeInputProcessor(final InputProcessor processor) {
-		unlinkProcessor(processor);
-
-		rootLayout.getChildren().remove(processor.getGUI());
-		processors.remove(processor);
-
-		ProcessorChain.logger.debug("Removed InputProcessor {}.", processor);
-	}
-
-	/**
-	 * Create a new output processor and add it to the GUI at the specified
-	 * position in the chain.
-	 *
-	 * @param position
-	 *            index at which to add the new processor. Already includes +1
-	 *            to compensate for the place-holder elements (null in
-	 *            processors, controlBox in rootLayout).
-	 *
-	 * @return the new processor.
-	 */
-	public OutputProcessor addOutputProcessor(final int position) {
-		final OutputProcessor processor = new OutputProcessor(this);
-
-		// Position already compensates for place-holder elements.
-		processors.add(position, processor);
-		rootLayout.getChildren().add(position, processor.getGUI());
-
-		linkProcessor(processor);
-		updateAllStreams();
-
-		ProcessorChain.logger.debug("Added OutputProcessor {}.", processor);
-
-		return processor;
-	}
-
-	/**
-	 * Deletes the specified output processor and removes it from the GUI.
-	 *
-	 * @param processor
-	 *            processor to remove.
-	 */
-	public void removeOutputProcessor(final OutputProcessor processor) {
-		unlinkProcessor(processor);
-
-		rootLayout.getChildren().remove(processor.getGUI());
-		processors.remove(processor);
-
-		ProcessorChain.logger.debug("Removed OutputProcessor {}.", processor);
-	}
-
-	/**
-	 * Create a new event processor and add it to the GUI at the specified
-	 * position in the chain.
-	 *
-	 * @param position
-	 *            index at which to add the new processor. Already includes +1
-	 *            to compensate for the place-holder elements (null in
-	 *            processors, controlBox in rootLayout).
+	 * @param type
+	 *            the type of processor to create (Input, Output, Event).
 	 * @param clazz
-	 *            concrete type of EventProcessor to instantiate.
+	 *            concrete type of EventProcessor to instantiate. Only use this
+	 *            when creating EventProcessors! For Input or Output processors
+	 *            just pass null.
 	 *
 	 * @return the new processor.
 	 */
-	public EventProcessor addEventProcessor(final int position, final Class<? extends EventProcessor> clazz) {
-		Constructor<? extends EventProcessor> constr = null;
+	public Processor addProcessor(final int position, final ProcessorTypes type,
+		final Class<? extends EventProcessor> clazz) {
+		Processor processor;
 
-		try {
-			// Try to find a compatible constructor for the given concrete type.
-			constr = clazz.getConstructor(ProcessorChain.class);
+		switch (type) {
+			case INPUT_PROCESSOR:
+				processor = new InputProcessor(this);
+				break;
 
-			if (constr == null) {
-				throw new NullPointerException("constr is null in addEventProcessor()");
-			}
-		}
-		catch (NoSuchMethodException | SecurityException | NullPointerException e) {
-			GUISupport.showDialogException(e);
-			return null;
-		}
+			case OUTPUT_PROCESSOR:
+				processor = new OutputProcessor(this);
+				break;
 
-		EventProcessor processor = null;
+			case EVENT_PROCESSOR:
+				Constructor<? extends EventProcessor> constr = null;
 
-		try {
-			// Try to create a new instance of the given concrete type, using
-			// the constructor found above.
-			processor = constr.newInstance(this);
+				try {
+					// Try to find a compatible constructor for the given
+					// concrete type.
+					constr = clazz.getConstructor(ProcessorChain.class);
 
-			if (processor == null) {
-				throw new NullPointerException("processor is null in addEventProcessor()");
-			}
-		}
-		catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException
-			| NullPointerException e) {
-			GUISupport.showDialogException(e);
-			return null;
+					if (constr == null) {
+						throw new NullPointerException("constr is null in addEventProcessor()");
+					}
+				}
+				catch (NoSuchMethodException | SecurityException | NullPointerException e) {
+					GUISupport.showDialogException(e);
+					return null;
+				}
+
+				processor = null;
+
+				try {
+					// Try to create a new instance of the given concrete type,
+					// using
+					// the constructor found above.
+					processor = constr.newInstance(this);
+
+					if (processor == null) {
+						throw new NullPointerException("processor is null in addEventProcessor()");
+					}
+				}
+				catch (InstantiationException | IllegalAccessException | IllegalArgumentException
+					| InvocationTargetException | NullPointerException e) {
+					GUISupport.showDialogException(e);
+					return null;
+				}
+				break;
+
+			default:
+				GUISupport.showDialogError("Unknown Processor type.");
+				return null;
 		}
 
 		// Position already compensates for place-holder elements.
@@ -464,24 +407,25 @@ public final class ProcessorChain {
 		linkProcessor(processor);
 		updateAllStreams();
 
-		ProcessorChain.logger.debug("Added EventProcessor {}.", processor);
+		ProcessorChain.logger.debug("Added Processor {}.", processor);
 
 		return processor;
 	}
 
 	/**
-	 * Deletes the specified event processor and removes it from the GUI.
+	 * Deletes the specified processor and removes it from the GUI.
 	 *
 	 * @param processor
 	 *            processor to remove.
 	 */
-	public void removeEventProcessor(final EventProcessor processor) {
+	public void removeProcessor(final Processor processor) {
 		unlinkProcessor(processor);
+		updateAllStreams();
 
 		rootLayout.getChildren().remove(processor.getGUI());
 		processors.remove(processor);
 
-		ProcessorChain.logger.debug("Removed EventProcessor {}.", processor);
+		ProcessorChain.logger.debug("Removed Processor {}.", processor);
 	}
 
 	@Override

@@ -12,7 +12,9 @@ import java.util.concurrent.BlockingQueue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableSet;
 import javafx.collections.SetChangeListener;
+import javafx.event.EventHandler;
 import javafx.geometry.Insets;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
@@ -268,7 +270,7 @@ public abstract class Processor implements Runnable {
 	/**
 	 * Create the base GUI elements and add them to the rootLayout.
 	 */
-	protected void buildGUI() {
+	private void buildGUI() {
 		// Create box holding information and controls for the Processor.
 		final VBox controlInfoBox = new VBox(5);
 		controlInfoBox.setPadding(new Insets(5));
@@ -276,6 +278,25 @@ public abstract class Processor implements Runnable {
 		rootLayout.getChildren().add(controlInfoBox);
 
 		GUISupport.addLabel(controlInfoBox, toString(), null, null, null);
+
+		final HBox buttonBox = new HBox(5);
+		controlInfoBox.getChildren().add(buttonBox);
+
+		GUISupport.addButtonWithMouseClickedHandler(buttonBox, "Remove Processor", false, "/icons/Remove.png",
+			new EventHandler<MouseEvent>() {
+				@Override
+				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
+					parentChain.removeProcessor(Processor.this);
+				}
+			});
+
+		GUISupport.addButtonWithMouseClickedHandler(buttonBox, "Configure Processor", false, "/icons/Gear.png",
+			new EventHandler<MouseEvent>() {
+				@Override
+				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
+					GUISupport.showDialog("Processor Configuration", rootConfigLayout, rootConfigTasks);
+				}
+			});
 
 		// Create box holding information about the types in transit.
 		final VBox typesBox = new VBox(5);
@@ -286,12 +307,15 @@ public abstract class Processor implements Runnable {
 			public void onChanged(final Change<? extends ImmutablePair<Class<? extends Event>, Integer>> change) {
 				typesBox.getChildren().clear();
 
-				GUISupport.addArrow(typesBox, 90, 2, 10, 6);
+				// Only add elements to show outputs if we're not the last box.
+				if (nextProcessor != null) {
+					GUISupport.addArrow(typesBox, 150, 2, 10, 6);
 
-				for (final ImmutablePair<Class<? extends Event>, Integer> outStream : change.getSet()) {
-					GUISupport.addLabel(typesBox,
-						String.format("Type %s from Source %d", outStream.left.getSimpleName(), outStream.right), null,
-						null, null);
+					for (final ImmutablePair<Class<? extends Event>, Integer> outStream : change.getSet()) {
+						GUISupport.addLabel(typesBox,
+							String.format("Type %s from Source %d", outStream.left.getSimpleName(), outStream.right),
+							null, null, null);
+					}
 				}
 			}
 		});
@@ -312,7 +336,7 @@ public abstract class Processor implements Runnable {
 	 * Create the base GUI elements for the configuration screen and add them to
 	 * the rootConfigLayout.
 	 */
-	protected void buildConfigGUI() {
+	private void buildConfigGUI() {
 		// TODO: follows.
 	}
 

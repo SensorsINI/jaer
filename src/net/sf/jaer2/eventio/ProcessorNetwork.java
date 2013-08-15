@@ -85,7 +85,7 @@ public final class ProcessorNetwork {
 	 */
 	private void buildGUI() {
 		// First, add the buttons to manage new ProcessorChains.
-		GUISupport.addButtonWithMouseClickedHandler(rootLayout, "New Chain", "/icons/Add.png",
+		GUISupport.addButtonWithMouseClickedHandler(rootLayout, "New Chain", true, "/icons/Add.png",
 			new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
