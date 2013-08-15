@@ -22,6 +22,11 @@ public abstract class EventProcessor extends Processor {
 				// Check that this container is interesting for this processor.
 				if (processContainer(container)) {
 					processEvents(container);
+
+					// Annotation support.
+					if (this instanceof AnnotatedProcessor) {
+						container.addToAnnotateDataSets(((AnnotatedProcessor)this).prepareAnnotateEvents(container));
+					}
 				}
 
 				if (nextProcessor != null) {
