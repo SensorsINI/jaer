@@ -11,7 +11,7 @@ public abstract class PredicateIterator<E> implements Iterator<E> {
 		iterator = iter;
 	}
 
-	public abstract boolean verifyPredicate(final E element);
+	protected abstract boolean verifyPredicate(final E element);
 
 	@Override
 	public boolean hasNext() {

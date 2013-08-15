@@ -386,7 +386,7 @@ public final class EventPacketContainer implements Iterable<Event> {
 		final EventPacket<Event> evtPkt = (EventPacket<Event>) getPacket(type, source);
 
 		if (evtPkt == null) {
-			return Iterators.emptyIterator();
+			return Collections.emptyIterator();
 
 		}
 
@@ -443,7 +443,7 @@ public final class EventPacketContainer implements Iterable<Event> {
 		final EventPacket<Event> evtPkt = (EventPacket<Event>) getPacket(type, source);
 
 		if (evtPkt == null) {
-			return Iterators.emptyIterator();
+			return Collections.emptyIterator();
 
 		}
 
@@ -495,7 +495,7 @@ public final class EventPacketContainer implements Iterable<Event> {
 		final EventPacket<Event> evtPkt = (EventPacket<Event>) getPacket(type, source);
 
 		if (evtPkt == null) {
-			return Iterators.emptyIterator();
+			return Collections.emptyIterator();
 
 		}
 

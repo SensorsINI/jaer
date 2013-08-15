@@ -30,7 +30,7 @@ import org.controlsfx.dialog.Dialog;
 import org.controlsfx.dialog.Dialogs;
 
 public final class GUISupport {
-	public static Button addButton(final Pane parentPane, final String text, final boolean displayText,
+	public final static Button addButton(final Pane parentPane, final String text, final boolean displayText,
 		final String imagePath) {
 		final Button button = new Button();
 
@@ -51,7 +51,7 @@ public final class GUISupport {
 		return button;
 	}
 
-	public static Button addButtonWithMouseClickedHandler(final Pane parentPane, final String text,
+	public final static Button addButtonWithMouseClickedHandler(final Pane parentPane, final String text,
 		final boolean displayText, final String imagePath, final EventHandler<? super MouseEvent> handler) {
 		final Button button = GUISupport.addButton(parentPane, text, displayText, imagePath);
 
@@ -62,8 +62,8 @@ public final class GUISupport {
 		return button;
 	}
 
-	public static <T> ComboBox<T> addComboBox(final Pane parentPane, final Collection<T> values, final int defaultValue)
-		throws IndexOutOfBoundsException {
+	public final static <T> ComboBox<T> addComboBox(final Pane parentPane, final Collection<T> values,
+		final int defaultValue) throws IndexOutOfBoundsException {
 		if ((defaultValue < -1) || (defaultValue >= values.size())) {
 			throw new IndexOutOfBoundsException();
 		}
@@ -83,8 +83,8 @@ public final class GUISupport {
 		return comboBox;
 	}
 
-	public static Label addLabel(final Pane parentPane, final String text, final String tooltip, final Color color,
-		final Font font) {
+	public final static Label addLabel(final Pane parentPane, final String text, final String tooltip,
+		final Color color, final Font font) {
 		final Label label = new Label(text);
 
 		label.setTooltip(new Tooltip((tooltip == null) ? (text) : (tooltip)));
@@ -104,9 +104,9 @@ public final class GUISupport {
 		return label;
 	}
 
-	public static HBox addLabelWithControlHorizontal(final Pane parentPane, final String text, final String tooltip,
-		final Control control) {
-		final HBox hbox = new HBox();
+	public final static HBox addLabelWithControlHorizontal(final Pane parentPane, final String text,
+		final String tooltip, final Control control) {
+		final HBox hbox = new HBox(5);
 
 		// Create and add both Label and Control.
 		final Label label = GUISupport.addLabel(hbox, text, tooltip, null, null);
@@ -122,9 +122,9 @@ public final class GUISupport {
 		return hbox;
 	}
 
-	public static VBox addLabelWithControlVertical(final Pane parentPane, final String text, final String tooltip,
-		final Control control) {
-		final VBox vbox = new VBox();
+	public final static VBox addLabelWithControlVertical(final Pane parentPane, final String text,
+		final String tooltip, final Control control) {
+		final VBox vbox = new VBox(5);
 
 		// Create and add both Label and Control.
 		final Label label = GUISupport.addLabel(vbox, text, tooltip, null, null);
@@ -140,7 +140,7 @@ public final class GUISupport {
 		return vbox;
 	}
 
-	public static Text addText(final Pane parentPane, final String text, final Color color, final Font font) {
+	public final static Text addText(final Pane parentPane, final String text, final Color color, final Font font) {
 		final Text txt = new Text(text);
 
 		if (color != null) {
@@ -158,7 +158,7 @@ public final class GUISupport {
 		return txt;
 	}
 
-	public static Action getActionWithRunnables(final String text, final ButtonType type,
+	public final static Action getActionWithRunnables(final String text, final ButtonType type,
 		final Collection<Runnable> tasks) {
 		final Action action = new AbstractAction(text) {
 			{
@@ -184,7 +184,7 @@ public final class GUISupport {
 		return action;
 	}
 
-	public static void showDialog(final String title, final Node content, final Collection<Runnable> tasks) {
+	public final static void showDialog(final String title, final Node content, final Collection<Runnable> tasks) {
 		final Dialog dialog = new Dialog(null, title, true, false);
 
 		dialog.setContent(content);
@@ -196,23 +196,23 @@ public final class GUISupport {
 		dialog.show();
 	}
 
-	public static void showDialogInformation(final String message) {
+	public final static void showDialogInformation(final String message) {
 		Dialogs.create().lightweight().title("Information").message(message).showInformation();
 	}
 
-	public static void showDialogWarning(final String message) {
+	public final static void showDialogWarning(final String message) {
 		Dialogs.create().lightweight().title("Warning").message(message).showInformation();
 	}
 
-	public static void showDialogError(final String message) {
+	public final static void showDialogError(final String message) {
 		Dialogs.create().lightweight().title("Error").message(message).showInformation();
 	}
 
-	public static void showDialogException(final Throwable exception) {
+	public final static void showDialogException(final Throwable exception) {
 		Dialogs.create().lightweight().title("Exception detected").showException(exception);
 	}
 
-	public static HBox addArrow(final Pane parentPane, final double lineLength, final double lineWidth,
+	public final static HBox addArrow(final Pane parentPane, final double lineLength, final double lineWidth,
 		final double headLength, final double headAperture) {
 		final HBox arrow = new HBox();
 		arrow.setAlignment(Pos.TOP_LEFT);

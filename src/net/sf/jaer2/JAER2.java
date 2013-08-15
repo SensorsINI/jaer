@@ -3,6 +3,7 @@ package net.sf.jaer2;
 import javafx.application.Application;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.paint.Color;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
@@ -19,8 +20,10 @@ public class JAER2 extends Application {
 	public void start(final Stage primaryStage) throws Exception {
 		final ProcessorNetwork net = new ProcessorNetwork();
 
+		final ScrollPane scroll = new ScrollPane(net.getGUI());
+
 		final Rectangle2D screen = Screen.getPrimary().getVisualBounds();
-		final Scene rootScene = new Scene(net.getGUI(), screen.getWidth(), screen.getHeight(), Color.GRAY);
+		final Scene rootScene = new Scene(scroll, screen.getWidth(), screen.getHeight(), Color.GRAY);
 
 		primaryStage.setTitle("jAER2 ProcessorNetwork Configuration");
 		primaryStage.setScene(rootScene);

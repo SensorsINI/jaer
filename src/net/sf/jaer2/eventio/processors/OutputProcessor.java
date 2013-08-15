@@ -40,8 +40,8 @@ public final class OutputProcessor extends Processor {
 					outputQueue.add(container);
 				}
 
-				if (nextProcessor != null) {
-					nextProcessor.add(container);
+				if (getNextProcessor() != null) {
+					getNextProcessor().add(container);
 				}
 			}
 

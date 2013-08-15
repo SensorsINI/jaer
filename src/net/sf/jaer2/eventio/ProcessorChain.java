@@ -37,7 +37,7 @@ public final class ProcessorChain {
 	private final static Set<Class<? extends EventProcessor>> eventProcessorTypes;
 	static {
 		// Generate the list of classes only once. */
-		eventProcessorTypes = Reflections.getSubTypes(EventProcessor.class);
+		eventProcessorTypes = Reflections.getSubClasses(EventProcessor.class);
 	}
 
 	/** Chain identification ID. */
@@ -73,8 +73,8 @@ public final class ProcessorChain {
 		chainName = getClass().getSimpleName();
 
 		// Build GUIs for this processor.
-		buildGUI();
 		buildConfigGUI();
+		buildGUI();
 
 		ProcessorChain.logger.debug("Created ProcessorChain {}.", this);
 	}
@@ -86,7 +86,7 @@ public final class ProcessorChain {
 	 *
 	 * @return Next unique ID for processor identification.
 	 */
-	public int getNextAvailableProcessorID() {
+	public final int getNextAvailableProcessorID() {
 		return processorIdCounter++;
 	}
 
@@ -95,7 +95,7 @@ public final class ProcessorChain {
 	 *
 	 * @return chain ID number.
 	 */
-	public int getChainId() {
+	public final int getChainId() {
 		return chainId;
 	}
 
@@ -104,7 +104,7 @@ public final class ProcessorChain {
 	 *
 	 * @return chain name.
 	 */
-	public String getChainName() {
+	public final String getChainName() {
 		return chainName;
 	}
 
@@ -113,7 +113,7 @@ public final class ProcessorChain {
 	 *
 	 * @return parent network.
 	 */
-	public ProcessorNetwork getParentNetwork() {
+	public final ProcessorNetwork getParentNetwork() {
 		return parentNetwork;
 	}
 
@@ -123,7 +123,7 @@ public final class ProcessorChain {
 	 *
 	 * @return GUI reference to display.
 	 */
-	public Pane getGUI() {
+	public final Pane getGUI() {
 		return rootLayout;
 	}
 
@@ -166,7 +166,7 @@ public final class ProcessorChain {
 	 *
 	 * @return GUI reference to display.
 	 */
-	public Pane getConfigGUI() {
+	public final Pane getConfigGUI() {
 		return rootConfigLayout;
 	}
 
@@ -178,13 +178,13 @@ public final class ProcessorChain {
 		// Create EventProcessor type chooser box. It will be added later on.
 		final ComboBox<Class<? extends EventProcessor>> eventProcessorTypeChooser = GUISupport.addComboBox(null,
 			ProcessorChain.eventProcessorTypes, 0);
-		final HBox eventProcessorTypeChooserBox = GUISupport.addLabelWithControlHorizontal(null, "Event Processor: ",
+		final HBox eventProcessorTypeChooserBox = GUISupport.addLabelWithControlHorizontal(null, "Event Processor:",
 			"Select the Event Processor you want to use.", eventProcessorTypeChooser);
 
 		// Create Processor type chooser box, based on the ProcessorTypes enum.
 		final ComboBox<ProcessorTypes> processorTypeChooser = GUISupport.addComboBox(null,
 			EnumSet.allOf(ProcessorTypes.class), 0);
-		GUISupport.addLabelWithControlHorizontal(rootConfigLayout, "Processor Type: ",
+		GUISupport.addLabelWithControlHorizontal(rootConfigLayout, "Processor Type:",
 			"Select the processor type you want to create.", processorTypeChooser);
 
 		// Toggle the EventProcessor type chooser box depending on what type of
@@ -212,11 +212,12 @@ public final class ProcessorChain {
 		// Create Processor position chooser box, based on the currently
 		// existing processors.
 		final ComboBox<Processor> processorPositionChooser = GUISupport.addComboBox(null, processors, 0);
-		GUISupport.addLabelWithControlHorizontal(rootConfigLayout, "After Processor: ",
+		GUISupport.addLabelWithControlHorizontal(rootConfigLayout, "After Processor:",
 			"Place this new Processor right after the selected one.", processorPositionChooser);
 
 		// Bind the shown items to the main processors list, for auto-updating.
-		processorPositionChooser.itemsProperty().set(processors);
+		processorPositionChooser.setItems(processors);
+		processorPositionChooser.getSelectionModel().select(0);
 
 		// Add task to be enacted, based on above GUI configuration settings.
 		rootConfigTasks.add(new Runnable() {
@@ -271,16 +272,18 @@ public final class ProcessorChain {
 			nextProcessor = null;
 		}
 
+		// Set links in such an order that the calls to rebuildStreamSets(),
+		// inside setPrevProcessor(), are minimized.
 		if (prevProcessor != null) {
 			prevProcessor.setNextProcessor(processor);
 		}
 
+		processor.setPrevProcessor(prevProcessor);
+		processor.setNextProcessor(nextProcessor);
+
 		if (nextProcessor != null) {
 			nextProcessor.setPrevProcessor(processor);
 		}
-
-		processor.setPrevProcessor(prevProcessor);
-		processor.setNextProcessor(nextProcessor);
 	}
 
 	/**
@@ -309,23 +312,18 @@ public final class ProcessorChain {
 			nextProcessor = null;
 		}
 
-		if (prevProcessor != null) {
-			prevProcessor.setNextProcessor(nextProcessor);
-		}
-
+		// Set links in such an order that the calls to rebuildStreamSets(),
+		// inside setPrevProcessor(), are minimized. This is achieved by using
+		// the inverse order of linkProcessor().
 		if (nextProcessor != null) {
 			nextProcessor.setPrevProcessor(prevProcessor);
 		}
 
-		processor.setPrevProcessor(null);
 		processor.setNextProcessor(null);
-	}
+		processor.setPrevProcessor(null);
 
-	private void updateAllStreams() {
-		for (final Processor proc : processors) {
-			if (proc != null) {
-				proc.rebuildStreamSets();
-			}
+		if (prevProcessor != null) {
+			prevProcessor.setNextProcessor(nextProcessor);
 		}
 	}
 
@@ -346,7 +344,7 @@ public final class ProcessorChain {
 	 *
 	 * @return the new processor.
 	 */
-	public Processor addProcessor(final int position, final ProcessorTypes type,
+	public final Processor addProcessor(final int position, final ProcessorTypes type,
 		final Class<? extends EventProcessor> clazz) {
 		Processor processor;
 
@@ -405,7 +403,6 @@ public final class ProcessorChain {
 		rootLayout.getChildren().add(position, processor.getGUI());
 
 		linkProcessor(processor);
-		updateAllStreams();
 
 		ProcessorChain.logger.debug("Added Processor {}.", processor);
 
@@ -418,9 +415,8 @@ public final class ProcessorChain {
 	 * @param processor
 	 *            processor to remove.
 	 */
-	public void removeProcessor(final Processor processor) {
+	public final void removeProcessor(final Processor processor) {
 		unlinkProcessor(processor);
-		updateAllStreams();
 
 		rootLayout.getChildren().remove(processor.getGUI());
 		processors.remove(processor);

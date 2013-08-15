@@ -46,8 +46,8 @@ public final class InputProcessor extends Processor {
 				continue;
 			}
 
-			if (nextProcessor != null) {
-				nextProcessor.addAll(toProcess);
+			if (getNextProcessor() != null) {
+				getNextProcessor().addAll(toProcess);
 			}
 
 			toProcess.clear();
