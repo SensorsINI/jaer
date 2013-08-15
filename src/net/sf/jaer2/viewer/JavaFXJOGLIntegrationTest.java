@@ -11,6 +11,7 @@ import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -73,14 +74,6 @@ public class JavaFXJOGLIntegrationTest extends Application {
 
 				fxJogl.addGLEventListener(new WriteRandom(((r + 1) * (c + 1)) % 4));
 
-				fxJogl.setOnMouseClicked(new EventHandler<MouseEvent>() {
-					@Override
-					public void handle(final MouseEvent event) {
-						currentX.setValue(event.getX() / JavaFXJOGLIntegrationTest.RSIZE);
-						currentY.setValue(event.getY() / JavaFXJOGLIntegrationTest.RSIZE);
-					}
-				});
-
 				// Add text showing col-row.
 				final Text colRowTxt = new Text(String.format("Col: %d - Row: %d", c, r));
 				stack.getChildren().add(colRowTxt);
@@ -91,6 +84,18 @@ public class JavaFXJOGLIntegrationTest extends Application {
 				// Add random line.
 				final Line line = new Line(5, 5, 100, 100);
 				stack.getChildren().add(line);
+
+				// Add MouseEvent capture pane on top.
+				final Pane mouseCapture = new Pane();
+				stack.getChildren().add(mouseCapture);
+
+				mouseCapture.setOnMouseClicked(new EventHandler<MouseEvent>() {
+					@Override
+					public void handle(final MouseEvent event) {
+						currentX.setValue(event.getX() / JavaFXJOGLIntegrationTest.RSIZE);
+						currentY.setValue(event.getY() / JavaFXJOGLIntegrationTest.RSIZE);
+					}
+				});
 
 				final AnimationTimer animator = new AnimationTimer() {
 					@Override

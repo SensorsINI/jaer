@@ -166,7 +166,7 @@ public abstract class Processor implements Runnable {
 	public final void setPrevProcessor(final Processor prev) {
 		prevProcessor = prev;
 
-		// These depend on the previous processor!
+		// StreamSets depend on the previous processor.
 		rebuildStreamSets();
 	}
 
@@ -176,6 +176,9 @@ public abstract class Processor implements Runnable {
 
 	public final void setNextProcessor(final Processor next) {
 		nextProcessor = next;
+
+		// Needed to correctly update GUI for new/last processor.
+		rebuildStreamSets();
 	}
 
 	protected abstract void setCompatibleInputTypes(Set<Class<? extends Event>> inputs);
@@ -350,12 +353,14 @@ public abstract class Processor implements Runnable {
 			public void onChanged(final Change<? extends ImmutablePair<Class<? extends Event>, Integer>> change) {
 				selectedInputStreamsBox.getChildren().clear();
 
-				GUISupport.addLabel(selectedInputStreamsBox, "Currently processing:", null, null, null);
+				if (!change.getList().isEmpty()) {
+					GUISupport.addLabel(selectedInputStreamsBox, "Currently processing:", null, null, null);
 
-				for (final ImmutablePair<Class<? extends Event>, Integer> outStream : change.getList()) {
-					GUISupport.addLabel(selectedInputStreamsBox,
-						String.format("Type %s from Source %d", outStream.left.getSimpleName(), outStream.right), null,
-						null, null);
+					for (final ImmutablePair<Class<? extends Event>, Integer> outStream : change.getList()) {
+						GUISupport.addLabel(selectedInputStreamsBox,
+							String.format("Type %s from Source %d", outStream.left.getSimpleName(), outStream.right),
+							null, null, null);
+					}
 				}
 			}
 		});
@@ -369,12 +374,15 @@ public abstract class Processor implements Runnable {
 			public void onChanged(final Change<? extends ImmutablePair<Class<? extends Event>, Integer>> change) {
 				typesBox.getChildren().clear();
 
-				GUISupport.addArrow(typesBox, 150, 2, 10, 6);
+				// Only add elements to show outputs if we're not the last box.
+				if ((nextProcessor != null) && !change.getList().isEmpty()) {
+					GUISupport.addArrow(typesBox, 150, 2, 10, 6);
 
-				for (final ImmutablePair<Class<? extends Event>, Integer> outStream : change.getList()) {
-					GUISupport.addLabel(typesBox,
-						String.format("Type %s from Source %d", outStream.left.getSimpleName(), outStream.right), null,
-						null, null);
+					for (final ImmutablePair<Class<? extends Event>, Integer> outStream : change.getList()) {
+						GUISupport.addLabel(typesBox,
+							String.format("Type %s from Source %d", outStream.left.getSimpleName(), outStream.right),
+							null, null, null);
+					}
 				}
 			}
 		});
