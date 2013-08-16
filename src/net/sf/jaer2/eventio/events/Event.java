@@ -14,4 +14,6 @@ public interface Event {
 	public boolean isValid();
 
 	public int getTimestamp();
+
+	public Event deepCopy();
 }

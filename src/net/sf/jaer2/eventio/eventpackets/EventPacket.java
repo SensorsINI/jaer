@@ -260,19 +260,23 @@ public final class EventPacket<E extends Event> extends AbstractCollection<E> {
 		// <= 0 are accepted and converted to this source implicitly.
 		final int source = evt.getEventSource();
 
-		if (source <= 0) {
+		if (source != eventSource) {
+			if (source > 0) {
+				throw new InvalidParameterException("Event from incompatible source!");
+			}
+
 			evt.setEventSource(eventSource);
-		}
-		else if (source != eventSource) {
-			throw new InvalidParameterException("Event from incompatible source!");
 		}
 
 		ensureCapacity(1);
 
-		// Add event.
-		events[lastEvent++] = evt;
+		@SuppressWarnings("unchecked")
+		final E newEvt = (E) evt.deepCopy();
 
-		if (evt.isValid()) {
+		// Add event.
+		events[lastEvent++] = newEvt;
+
+		if (newEvt.isValid()) {
 			validEvents++;
 		}
 

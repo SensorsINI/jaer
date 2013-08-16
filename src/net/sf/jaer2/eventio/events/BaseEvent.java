@@ -45,4 +45,23 @@ public class BaseEvent implements Event {
 	public int getTimestamp() {
 		return timestamp;
 	}
+
+	protected void deepCopyInternal(BaseEvent evt) {
+		evt.sourceID = sourceID;
+		evt.valid = valid;
+
+		evt.timestamp = timestamp;
+
+		evt.type = type;
+
+		evt.x = x;
+		evt.y = y;
+	}
+
+	@Override
+	public BaseEvent deepCopy() {
+		BaseEvent evt = new BaseEvent();
+		deepCopyInternal(evt);
+		return evt;
+	}
 }
