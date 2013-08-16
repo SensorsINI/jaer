@@ -21,6 +21,7 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
+import net.sf.jaer2.chips.Chip;
 import net.sf.jaer2.eventio.ProcessorChain;
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 import net.sf.jaer2.eventio.events.Event;
@@ -290,6 +291,31 @@ public abstract class Processor implements Runnable {
 		return FXCollections.unmodifiableObservableList(selectedInputStreams);
 	}
 
+	public final Processor getProcessorForSourceId(final int sourceId) {
+		// Search backwards for given source ID and get the corresponding
+		// Processor. A source *must* be either the current Processor or
+		// upstream of it.
+		if (sourceId == processorId) {
+			return this;
+		}
+
+		if (prevProcessor == null) {
+			return null;
+		}
+
+		return prevProcessor.getProcessorForSourceId(sourceId);
+	}
+
+	public final Chip getChipForSourceId(final int sourceId) {
+		final Processor procSource = getProcessorForSourceId(sourceId);
+
+		if ((procSource != null) && (procSource instanceof InputProcessor)) {
+			return ((InputProcessor) procSource).getInterpreterChip();
+		}
+
+		return null;
+	}
+
 	/**
 	 * Check if a container is to be processed by this processor.
 	 * This is the case if it contains <Type, Source> combinations that are
@@ -299,7 +325,7 @@ public abstract class Processor implements Runnable {
 	 *            the EventPacket container to check.
 	 * @return whether relevant EventPackets are present or not.
 	 */
-	protected final boolean processContainer(final EventPacketContainer container) {
+	public final boolean processContainer(final EventPacketContainer container) {
 		for (final ImmutablePair<Class<? extends Event>, Integer> relevant : selectedInputStreams) {
 			if (container.getPacket(relevant.left, relevant.right) != null) {
 				return true;
