@@ -2,6 +2,8 @@ package net.sf.jaer2.eventio.processors;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -201,9 +203,25 @@ public abstract class Processor implements Runnable {
 		rebuildStreamSets();
 	}
 
+	private final class StreamComparator implements Comparator<ImmutablePair<Class<? extends Event>, Integer>> {
+		@Override
+		public int compare(final ImmutablePair<Class<? extends Event>, Integer> stream1,
+			final ImmutablePair<Class<? extends Event>, Integer> stream2) {
+			if (stream1.right > stream2.right) {
+				return 1;
+			}
+
+			if (stream1.right < stream2.right) {
+				return -1;
+			}
+
+			return 0;
+		}
+	}
+
 	private void rebuildInputStreams() {
 		if (prevProcessor != null) {
-			final Set<ImmutablePair<Class<? extends Event>, Integer>> compatibleInputStreams = new HashSet<>();
+			final List<ImmutablePair<Class<? extends Event>, Integer>> compatibleInputStreams = new ArrayList<>();
 
 			// Add all outputs from previous Processor, filtering incompatible
 			// Event types out.
@@ -212,6 +230,9 @@ public abstract class Processor implements Runnable {
 					compatibleInputStreams.add(stream);
 				}
 			}
+
+			// Sort intermediate list.
+			Collections.sort(compatibleInputStreams, new StreamComparator());
 
 			// Replace with new data in a non-destructive way, by not touching
 			// values that were already present.
@@ -240,7 +261,7 @@ public abstract class Processor implements Runnable {
 	}
 
 	private void rebuildOutputStreams() {
-		final Set<ImmutablePair<Class<? extends Event>, Integer>> allOutputStreams = new HashSet<>();
+		final List<ImmutablePair<Class<? extends Event>, Integer>> allOutputStreams = new ArrayList<>();
 
 		// Add all outputs from previous Processor, as well as outputs produced
 		// by the current Processor.
@@ -251,6 +272,9 @@ public abstract class Processor implements Runnable {
 		for (final Class<? extends Event> outputType : additionalOutputTypes) {
 			allOutputStreams.add(new ImmutablePair<Class<? extends Event>, Integer>(outputType, processorId));
 		}
+
+		// Sort intermediate list.
+		Collections.sort(allOutputStreams, new StreamComparator());
 
 		outputStreams.clear();
 		outputStreams.addAll(allOutputStreams);

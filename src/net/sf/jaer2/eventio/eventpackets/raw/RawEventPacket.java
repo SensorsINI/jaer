@@ -85,9 +85,6 @@ public final class RawEventPacket implements Iterable<RawEvent> {
 	private final class RawEventPacketIterator implements Iterator<RawEvent> {
 		private int position = 0;
 
-		public RawEventPacketIterator() {
-		}
-
 		@Override
 		public boolean hasNext() {
 			if (position < lastRawEvent) {

@@ -124,9 +124,6 @@ public final class JavaFXImgJOGLConnector extends ImageView {
 	private final class GLReadOutToImage implements GLEventListener {
 		protected final PixelFormat<ByteBuffer> pxFormat = PixelFormat.getByteBgraPreInstance();
 
-		public GLReadOutToImage() {
-		}
-
 		@Override
 		public void display(final GLAutoDrawable drawable) {
 			final GL2 gl = drawable.getGL().getGL2();

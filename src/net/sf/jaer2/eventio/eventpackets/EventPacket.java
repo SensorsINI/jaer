@@ -460,9 +460,6 @@ public final class EventPacket<E extends Event> extends AbstractCollection<E> {
 	}
 
 	private final class EventTimestampComparator implements Comparator<E> {
-		public EventTimestampComparator() {
-		}
-
 		@Override
 		public int compare(final E evt1, final E evt2) {
 			if (evt1.getTimestamp() > evt2.getTimestamp()) {
@@ -494,9 +491,6 @@ public final class EventPacket<E extends Event> extends AbstractCollection<E> {
 	private final class EventPacketIteratorFull implements Iterator<E> {
 		private int position = 0;
 		private boolean nextCalled = false;
-
-		public EventPacketIteratorFull() {
-		}
 
 		@Override
 		public boolean hasNext() {
