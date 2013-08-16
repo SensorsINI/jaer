@@ -272,8 +272,8 @@ public final class ProcessorChain {
 			nextProcessor = null;
 		}
 
-		// Set links in such an order that the calls to rebuildStreamSets(),
-		// inside setPrevProcessor(), are minimized.
+		// Set links in such an order that the effects of the calls to
+		// rebuildStreamSets(), inside setPrevProcessor(), are minimized.
 		if (prevProcessor != null) {
 			prevProcessor.setNextProcessor(processor);
 		}
@@ -312,19 +312,20 @@ public final class ProcessorChain {
 			nextProcessor = null;
 		}
 
-		// Set links in such an order that the calls to rebuildStreamSets(),
-		// inside setPrevProcessor(), are minimized. This is achieved by using
-		// the inverse order of linkProcessor().
+		// Set links in such an order that the effects of the calls to
+		// rebuildStreamSets(), inside setPrevProcessor(), are minimized.
+		// This is achieved by first re-linking the processors that remain in
+		// the chain and only afterwards disconnecting the one to be removed.
+		if (prevProcessor != null) {
+			prevProcessor.setNextProcessor(nextProcessor);
+		}
+
 		if (nextProcessor != null) {
 			nextProcessor.setPrevProcessor(prevProcessor);
 		}
 
 		processor.setNextProcessor(null);
 		processor.setPrevProcessor(null);
-
-		if (prevProcessor != null) {
-			prevProcessor.setNextProcessor(nextProcessor);
-		}
 	}
 
 	/**

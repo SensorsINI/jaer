@@ -176,9 +176,6 @@ public abstract class Processor implements Runnable {
 
 	public final void setNextProcessor(final Processor next) {
 		nextProcessor = next;
-
-		// Needed to correctly update GUI for new/last processor.
-		rebuildStreamSets();
 	}
 
 	protected abstract void setCompatibleInputTypes(Set<Class<? extends Event>> inputs);
@@ -256,14 +253,27 @@ public abstract class Processor implements Runnable {
 		return FXCollections.unmodifiableObservableList(outputStreams);
 	}
 
-	public final void rebuildStreamSets() {
+	private void rebuildStreamSetsInternal() {
+		Processor.logger.debug("Rebuilding StreamSets for {}.", toString());
+
 		rebuildInputStreams();
 		rebuildOutputStreams();
 
 		// Call recursively on the next Processor, so that the rest of the chain
 		// gets updated correctly.
 		if (nextProcessor != null) {
-			nextProcessor.rebuildStreamSets();
+			nextProcessor.rebuildStreamSetsInternal();
+		}
+	}
+
+	public final void rebuildStreamSets() {
+		// Ensure previous is updated, to show last box in GUI.
+		if (prevProcessor != null) {
+			prevProcessor.rebuildStreamSetsInternal();
+		}
+		else {
+			// If previous is not defined, let's start from here (this).
+			rebuildStreamSetsInternal();
 		}
 	}
 
