@@ -11,7 +11,7 @@ public abstract class EventProcessor extends Processor {
 	protected abstract void processEvents(EventPacketContainer container);
 
 	@Override
-	public void run() {
+	public final void run() {
 		while (!Thread.currentThread().isInterrupted()) {
 			if (workQueue.drainTo(toProcess) == 0) {
 				// No elements, retry.

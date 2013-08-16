@@ -37,7 +37,7 @@ public final class ProcessorNetwork {
 	 *
 	 * @return Next unique ID for processor chain identification.
 	 */
-	public final int getNextAvailableChainID() {
+	public int getNextAvailableChainID() {
 		return chainIdCounter++;
 	}
 
@@ -47,7 +47,7 @@ public final class ProcessorNetwork {
 	 *
 	 * @return GUI reference to display.
 	 */
-	public final Pane getGUI() {
+	public Pane getGUI() {
 		return rootLayout;
 	}
 
@@ -56,7 +56,7 @@ public final class ProcessorNetwork {
 	 *
 	 * @return the new processor chain.
 	 */
-	public final ProcessorChain addChain() {
+	public ProcessorChain addChain() {
 		final ProcessorChain chain = new ProcessorChain(this);
 
 		processorChains.add(chain);
@@ -73,7 +73,7 @@ public final class ProcessorNetwork {
 	 * @param chain
 	 *            chain to remove.
 	 */
-	public final void removeChain(final ProcessorChain chain) {
+	public void removeChain(final ProcessorChain chain) {
 		rootLayout.getChildren().remove(chain.getGUI());
 		processorChains.remove(chain);
 

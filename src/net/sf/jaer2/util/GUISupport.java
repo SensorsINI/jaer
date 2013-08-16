@@ -27,7 +27,7 @@ import org.controlsfx.dialog.Dialog;
 import org.controlsfx.dialog.Dialogs;
 
 public final class GUISupport {
-	public final static Button addButton(final Pane parentPane, final String text, final boolean displayText,
+	public static Button addButton(final Pane parentPane, final String text, final boolean displayText,
 		final String imagePath) {
 		final Button button = new Button();
 
@@ -48,7 +48,7 @@ public final class GUISupport {
 		return button;
 	}
 
-	public final static Button addButtonWithMouseClickedHandler(final Pane parentPane, final String text,
+	public static Button addButtonWithMouseClickedHandler(final Pane parentPane, final String text,
 		final boolean displayText, final String imagePath, final EventHandler<? super MouseEvent> handler) {
 		final Button button = GUISupport.addButton(parentPane, text, displayText, imagePath);
 
@@ -59,8 +59,8 @@ public final class GUISupport {
 		return button;
 	}
 
-	public final static <T> ComboBox<T> addComboBox(final Pane parentPane, final Collection<T> values,
-		final int defaultValue) throws IndexOutOfBoundsException {
+	public static <T> ComboBox<T> addComboBox(final Pane parentPane, final Collection<T> values, final int defaultValue)
+		throws IndexOutOfBoundsException {
 		if ((defaultValue < -1) || (defaultValue >= values.size())) {
 			throw new IndexOutOfBoundsException();
 		}
@@ -80,7 +80,7 @@ public final class GUISupport {
 		return comboBox;
 	}
 
-	public final static CheckBox addCheckBox(final Pane parentPane, final String text, final boolean selected) {
+	public static CheckBox addCheckBox(final Pane parentPane, final String text, final boolean selected) {
 		final CheckBox checkBox = new CheckBox(text);
 
 		checkBox.setTooltip(new Tooltip(text));
@@ -94,8 +94,8 @@ public final class GUISupport {
 		return checkBox;
 	}
 
-	public final static Label addLabel(final Pane parentPane, final String text, final String tooltip,
-		final Color color, final Font font) {
+	public static Label addLabel(final Pane parentPane, final String text, final String tooltip, final Color color,
+		final Font font) {
 		final Label label = new Label(text);
 
 		label.setTooltip(new Tooltip((tooltip == null) ? (text) : (tooltip)));
@@ -115,8 +115,8 @@ public final class GUISupport {
 		return label;
 	}
 
-	public final static HBox addLabelWithControlsHorizontal(final Pane parentPane, final String text,
-		final String tooltip, final Control... controls) {
+	public static HBox addLabelWithControlsHorizontal(final Pane parentPane, final String text, final String tooltip,
+		final Control... controls) {
 		final HBox hbox = new HBox(5);
 
 		// Create and add both Label and Control.
@@ -136,8 +136,8 @@ public final class GUISupport {
 		return hbox;
 	}
 
-	public final static VBox addLabelWithControlsVertical(final Pane parentPane, final String text,
-		final String tooltip, final Control... controls) {
+	public static VBox addLabelWithControlsVertical(final Pane parentPane, final String text, final String tooltip,
+		final Control... controls) {
 		final VBox vbox = new VBox(5);
 
 		// Create and add both Label and Control.
@@ -157,7 +157,7 @@ public final class GUISupport {
 		return vbox;
 	}
 
-	public final static Text addText(final Pane parentPane, final String text, final Color color, final Font font) {
+	public static Text addText(final Pane parentPane, final String text, final Color color, final Font font) {
 		final Text txt = new Text(text);
 
 		if (color != null) {
@@ -175,7 +175,7 @@ public final class GUISupport {
 		return txt;
 	}
 
-	public final static void showDialog(final String title, final Node content, final Collection<Runnable> tasks) {
+	public static void showDialog(final String title, final Node content, final Collection<Runnable> tasks) {
 		final Dialog dialog = new Dialog(null, title, true, false);
 
 		dialog.setContent(content);
@@ -191,23 +191,23 @@ public final class GUISupport {
 		}
 	}
 
-	public final static void showDialogInformation(final String message) {
+	public static void showDialogInformation(final String message) {
 		Dialogs.create().lightweight().title("Information").message(message).showInformation();
 	}
 
-	public final static void showDialogWarning(final String message) {
+	public static void showDialogWarning(final String message) {
 		Dialogs.create().lightweight().title("Warning").message(message).showInformation();
 	}
 
-	public final static void showDialogError(final String message) {
+	public static void showDialogError(final String message) {
 		Dialogs.create().lightweight().title("Error").message(message).showInformation();
 	}
 
-	public final static void showDialogException(final Throwable exception) {
+	public static void showDialogException(final Throwable exception) {
 		Dialogs.create().lightweight().title("Exception detected").showException(exception);
 	}
 
-	public final static HBox addArrow(final Pane parentPane, final double lineLength, final double lineWidth,
+	public static HBox addArrow(final Pane parentPane, final double lineLength, final double lineWidth,
 		final double headLength, final double headAperture) {
 		final HBox arrow = new HBox();
 		arrow.setAlignment(Pos.TOP_LEFT);

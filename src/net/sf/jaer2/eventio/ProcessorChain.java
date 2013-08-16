@@ -84,7 +84,7 @@ public final class ProcessorChain {
 	 *
 	 * @return Next unique ID for processor identification.
 	 */
-	public final int getNextAvailableProcessorID() {
+	public int getNextAvailableProcessorID() {
 		return processorIdCounter++;
 	}
 
@@ -93,7 +93,7 @@ public final class ProcessorChain {
 	 *
 	 * @return chain ID number.
 	 */
-	public final int getChainId() {
+	public int getChainId() {
 		return chainId;
 	}
 
@@ -102,7 +102,7 @@ public final class ProcessorChain {
 	 *
 	 * @return chain name.
 	 */
-	public final String getChainName() {
+	public String getChainName() {
 		return chainName;
 	}
 
@@ -111,7 +111,7 @@ public final class ProcessorChain {
 	 *
 	 * @return parent network.
 	 */
-	public final ProcessorNetwork getParentNetwork() {
+	public ProcessorNetwork getParentNetwork() {
 		return parentNetwork;
 	}
 
@@ -121,7 +121,7 @@ public final class ProcessorChain {
 	 *
 	 * @return GUI reference to display.
 	 */
-	public final Pane getGUI() {
+	public Pane getGUI() {
 		return rootLayout;
 	}
 
@@ -164,7 +164,7 @@ public final class ProcessorChain {
 	 *
 	 * @return GUI reference to display.
 	 */
-	public final Pane getConfigGUI() {
+	public Pane getConfigGUI() {
 		return rootConfigLayout;
 	}
 
@@ -377,7 +377,7 @@ public final class ProcessorChain {
 	 *
 	 * @return the new processor.
 	 */
-	public final Processor addProcessor(final int position, final ProcessorTypes type,
+	public Processor addProcessor(final int position, final ProcessorTypes type,
 		final Class<? extends EventProcessor> clazz) {
 		// Check for valid positions (the first element in the chain has to
 		// always be an input, the last an output).
@@ -461,7 +461,7 @@ public final class ProcessorChain {
 	 * @param processor
 	 *            processor to remove.
 	 */
-	public final void removeProcessor(final Processor processor) {
+	public void removeProcessor(final Processor processor) {
 		unlinkProcessor(processor);
 
 		rootLayout.getChildren().remove(processor.getGUI());

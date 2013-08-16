@@ -6,7 +6,7 @@ import net.sf.jaer2.eventio.ProcessorChain;
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 import net.sf.jaer2.eventio.events.Event;
 
-public class SynchronizationProcessor extends EventProcessor {
+public final class SynchronizationProcessor extends EventProcessor {
 	public SynchronizationProcessor(final ProcessorChain chain) {
 		super(chain);
 	}
@@ -22,9 +22,9 @@ public class SynchronizationProcessor extends EventProcessor {
 		inputs.add(Event.class);
 	}
 
-	@SuppressWarnings("unused")
 	@Override
-	protected void setAdditionalOutputTypes(final Set<Class<? extends Event>> outputs) {
-		// Empty, no new output types are ever produced here.
+	protected void setAdditionalOutputTypes(@SuppressWarnings("unused") final Set<Class<? extends Event>> outputs) {
+		// Empty, no new output types are ever produced here by itself.
+		// The fully depend on the selected Input types.
 	}
 }

@@ -9,7 +9,7 @@ import javafx.stage.Screen;
 import javafx.stage.Stage;
 import net.sf.jaer2.eventio.ProcessorNetwork;
 
-public class JAER2 extends Application {
+public final class JAER2 extends Application {
 	public static void main(final String[] args) {
 		// Launch the JavaFX application: do initialization and call start()
 		// when ready.
