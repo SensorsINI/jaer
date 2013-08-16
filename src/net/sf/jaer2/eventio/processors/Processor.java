@@ -194,6 +194,12 @@ public abstract class Processor implements Runnable {
 		rebuildStreamSets();
 	}
 
+	protected final void clearAdditionalOutputTypes() {
+		additionalOutputTypes.clear();
+
+		rebuildStreamSets();
+	}
+
 	private void rebuildInputStreams() {
 		if (prevProcessor != null) {
 			final Set<ImmutablePair<Class<? extends Event>, Integer>> compatibleInputStreams = new HashSet<>();
@@ -366,10 +372,9 @@ public abstract class Processor implements Runnable {
 				if (!change.getList().isEmpty()) {
 					GUISupport.addLabel(selectedInputStreamsBox, "Currently processing:", null, null, null);
 
-					for (final ImmutablePair<Class<? extends Event>, Integer> outStream : change.getList()) {
-						GUISupport.addLabel(selectedInputStreamsBox,
-							String.format("Type %s from Source %d", outStream.left.getSimpleName(), outStream.right),
-							null, null, null);
+					for (final ImmutablePair<Class<? extends Event>, Integer> selInStream : change.getList()) {
+						GUISupport.addLabel(selectedInputStreamsBox, String.format("Type %s from Source %d",
+							selInStream.left.getSimpleName(), selInStream.right), null, null, null);
 					}
 				}
 			}
