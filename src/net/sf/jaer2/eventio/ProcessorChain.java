@@ -207,14 +207,14 @@ public final class ProcessorChain {
 			}
 		});
 
+		// Give the opportunity to add a Processor before all others (start).
+		final CheckBox processorPositionAtBeginning = GUISupport.addCheckBox(rootConfigLayout, "At Beginning", true);
+
 		// Create Processor position chooser box, based on the currently
 		// existing processors.
-		final CheckBox processorPositionAtBeginningChoice = GUISupport.addCheckBox(null, "At Beginning", true);
 		final ComboBox<Processor> processorPositionChooser = GUISupport.addComboBox(null, processors, -1);
-
-		GUISupport.addLabelWithControlsHorizontal(rootConfigLayout, "After Processor:",
-			"Place this new Processor right after the selected one.", processorPositionAtBeginningChoice,
-			processorPositionChooser);
+		GUISupport.addLabelWithControlsHorizontal(rootConfigLayout, "OR After Processor:",
+			"Place this new Processor right after the selected one.", processorPositionChooser);
 
 		// Bind the shown items to the main processors list, for auto-updating.
 		processorPositionChooser.setItems(processors);
@@ -227,22 +227,23 @@ public final class ProcessorChain {
 
 				// If the list is empty, ensure the CheckBox is ticked.
 				if (change.getList().isEmpty()) {
-					processorPositionAtBeginningChoice.setSelected(true);
+					processorPositionAtBeginning.setSelected(true);
 				}
 			}
 		});
 
 		// Bind the CheckBox and ComboBox enabled status to each-other.
-		processorPositionChooser.disableProperty().bind(processorPositionAtBeginningChoice.selectedProperty());
-		processorPositionAtBeginningChoice.selectedProperty().addListener(new ChangeListener<Boolean>() {
+		processorPositionChooser.disableProperty().bind(processorPositionAtBeginning.selectedProperty());
+
+		processorPositionAtBeginning.selectedProperty().addListener(new ChangeListener<Boolean>() {
 			@SuppressWarnings("unused")
 			@Override
 			public void changed(final ObservableValue<? extends Boolean> observable, final Boolean oldValue,
 				final Boolean newValue) {
 				// If the processor list is empty, it should not be possible to
-				// unset the CheckBox tick.
+				// deselect the CheckBox tick.
 				if ((!newValue) && (processors.isEmpty())) {
-					processorPositionAtBeginningChoice.setSelected(true);
+					processorPositionAtBeginning.setSelected(true);
 				}
 			}
 		});
@@ -254,7 +255,7 @@ public final class ProcessorChain {
 				// Add a new Processor of the wanted type at the right position.
 				int position = 0;
 
-				if (!processorPositionAtBeginningChoice.isSelected()) {
+				if (!processorPositionAtBeginning.isSelected()) {
 					position = processors.indexOf(processorPositionChooser.getValue()) + 1;
 				}
 
@@ -272,6 +273,7 @@ public final class ProcessorChain {
 						break;
 
 					default:
+						GUISupport.showDialogError("Unknown Processor type.");
 						break;
 				}
 			}
@@ -377,6 +379,19 @@ public final class ProcessorChain {
 	 */
 	public final Processor addProcessor(final int position, final ProcessorTypes type,
 		final Class<? extends EventProcessor> clazz) {
+		// Check for valid positions (the first element in the chain has to
+		// always be an input, the last an output).
+		if ((position == 0) && (type != ProcessorTypes.INPUT_PROCESSOR)) {
+			GUISupport.showDialogError("First Processor must always be an Input!");
+			return null;
+		}
+		else if ((!processors.isEmpty()) && (position == processors.size())
+			&& (type != ProcessorTypes.OUTPUT_PROCESSOR)) {
+			GUISupport.showDialogError("Last Processor must always be an Output!");
+			return null;
+		}
+
+		// Create the new, specified Processor.
 		Processor processor;
 
 		switch (type) {

@@ -2,7 +2,6 @@ package net.sf.jaer2.util;
 
 import java.util.Collection;
 
-import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -23,9 +22,6 @@ import javafx.scene.shape.Polygon;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 
-import org.controlsfx.control.ButtonBar;
-import org.controlsfx.control.ButtonBar.ButtonType;
-import org.controlsfx.control.action.AbstractAction;
 import org.controlsfx.control.action.Action;
 import org.controlsfx.dialog.Dialog;
 import org.controlsfx.dialog.Dialogs;
@@ -179,42 +175,20 @@ public final class GUISupport {
 		return txt;
 	}
 
-	public final static Action getActionWithRunnables(final String text, final ButtonType type,
-		final Collection<Runnable> tasks) {
-		final Action action = new AbstractAction(text) {
-			{
-				ButtonBar.setType(this, type);
-			}
-
-			@Override
-			public void execute(final ActionEvent ae) {
-				if (!isDisabled()) {
-					if (ae.getSource() instanceof Dialog) {
-						final Dialog dlg = (Dialog) ae.getSource();
-
-						for (final Runnable task : tasks) {
-							task.run();
-						}
-
-						dlg.hide();
-					}
-				}
-			}
-		};
-
-		return action;
-	}
-
 	public final static void showDialog(final String title, final Node content, final Collection<Runnable> tasks) {
 		final Dialog dialog = new Dialog(null, title, true, false);
 
 		dialog.setContent(content);
 
-		dialog.getActions().addAll(
-			(tasks == null) ? (Dialog.Actions.OK)
-				: (GUISupport.getActionWithRunnables("OK", ButtonType.OK_DONE, tasks)), Dialog.Actions.CANCEL);
+		dialog.getActions().addAll(Dialog.Actions.OK, Dialog.Actions.CANCEL);
 
-		dialog.show();
+		final Action result = dialog.show();
+
+		if (result == Dialog.Actions.OK) {
+			for (final Runnable task : tasks) {
+				task.run();
+			}
+		}
 	}
 
 	public final static void showDialogInformation(final String message) {
