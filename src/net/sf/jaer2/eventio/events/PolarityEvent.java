@@ -7,4 +7,17 @@ public class PolarityEvent extends BaseEvent {
 	}
 
 	public Polarity polarity;
+
+	protected final void deepCopyInternal(final PolarityEvent evt) {
+		super.deepCopyInternal(evt);
+
+		evt.polarity = polarity;
+	}
+
+	@Override
+	public PolarityEvent deepCopy() {
+		final PolarityEvent evt = new PolarityEvent();
+		deepCopyInternal(evt);
+		return evt;
+	}
 }

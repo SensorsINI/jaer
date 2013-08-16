@@ -12,41 +12,41 @@ public class BaseEvent implements Event {
 	public int y;
 
 	@Override
-	public Class<? extends Event> getEventType() {
+	public final Class<? extends Event> getEventType() {
 		return getClass();
 	}
 
 	@Override
-	public int getEventSource() {
+	public final int getEventSource() {
 		return sourceID;
 	}
 
 	@Override
-	public void setEventSource(final int source) {
+	public final void setEventSource(final int source) {
 		sourceID = source;
 	}
 
 	@Override
-	public void invalidate() {
-		setValid(false);
-	}
-
-	@Override
-	public void setValid(final boolean validEvent) {
-		valid = validEvent;
-	}
-
-	@Override
-	public boolean isValid() {
+	public final boolean isValid() {
 		return valid;
 	}
 
 	@Override
-	public int getTimestamp() {
+	public final void setValid(final boolean validEvent) {
+		valid = validEvent;
+	}
+
+	@Override
+	public final void invalidate() {
+		valid = false;
+	}
+
+	@Override
+	public final int getTimestamp() {
 		return timestamp;
 	}
 
-	protected void deepCopyInternal(BaseEvent evt) {
+	protected final void deepCopyInternal(final BaseEvent evt) {
 		evt.sourceID = sourceID;
 		evt.valid = valid;
 
@@ -60,7 +60,7 @@ public class BaseEvent implements Event {
 
 	@Override
 	public BaseEvent deepCopy() {
-		BaseEvent evt = new BaseEvent();
+		final BaseEvent evt = new BaseEvent();
 		deepCopyInternal(evt);
 		return evt;
 	}

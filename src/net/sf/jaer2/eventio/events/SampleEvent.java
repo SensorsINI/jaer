@@ -3,7 +3,7 @@ package net.sf.jaer2.eventio.events;
 public class SampleEvent extends BaseEvent {
 	public int sample;
 
-	protected void deepCopyInternal(SampleEvent evt) {
+	protected final void deepCopyInternal(final SampleEvent evt) {
 		super.deepCopyInternal(evt);
 
 		evt.sample = sample;
@@ -11,7 +11,7 @@ public class SampleEvent extends BaseEvent {
 
 	@Override
 	public SampleEvent deepCopy() {
-		SampleEvent evt = new SampleEvent();
+		final SampleEvent evt = new SampleEvent();
 		deepCopyInternal(evt);
 		return evt;
 	}
