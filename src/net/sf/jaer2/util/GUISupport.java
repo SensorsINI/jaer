@@ -7,6 +7,7 @@ import javafx.event.EventHandler;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Control;
 import javafx.scene.control.Label;
@@ -83,6 +84,20 @@ public final class GUISupport {
 		return comboBox;
 	}
 
+	public final static CheckBox addCheckBox(final Pane parentPane, final String text, final boolean selected) {
+		final CheckBox checkBox = new CheckBox(text);
+
+		checkBox.setTooltip(new Tooltip(text));
+
+		checkBox.setSelected(selected);
+
+		if (parentPane != null) {
+			parentPane.getChildren().add(checkBox);
+		}
+
+		return checkBox;
+	}
+
 	public final static Label addLabel(final Pane parentPane, final String text, final String tooltip,
 		final Color color, final Font font) {
 		final Label label = new Label(text);
@@ -104,16 +119,19 @@ public final class GUISupport {
 		return label;
 	}
 
-	public final static HBox addLabelWithControlHorizontal(final Pane parentPane, final String text,
-		final String tooltip, final Control control) {
+	public final static HBox addLabelWithControlsHorizontal(final Pane parentPane, final String text,
+		final String tooltip, final Control... controls) {
 		final HBox hbox = new HBox(5);
 
 		// Create and add both Label and Control.
 		final Label label = GUISupport.addLabel(hbox, text, tooltip, null, null);
-		hbox.getChildren().add(control);
 
-		// Ensure the Control has the same Tooltip as the Label.
-		control.setTooltip(label.getTooltip());
+		for (final Control control : controls) {
+			hbox.getChildren().add(control);
+
+			// Ensure the Control has the same Tooltip as the Label.
+			control.setTooltip(label.getTooltip());
+		}
 
 		if (parentPane != null) {
 			parentPane.getChildren().add(hbox);
@@ -122,16 +140,19 @@ public final class GUISupport {
 		return hbox;
 	}
 
-	public final static VBox addLabelWithControlVertical(final Pane parentPane, final String text,
-		final String tooltip, final Control control) {
+	public final static VBox addLabelWithControlsVertical(final Pane parentPane, final String text,
+		final String tooltip, final Control... controls) {
 		final VBox vbox = new VBox(5);
 
 		// Create and add both Label and Control.
 		final Label label = GUISupport.addLabel(vbox, text, tooltip, null, null);
-		vbox.getChildren().add(control);
 
-		// Ensure the Control has the same Tooltip as the Label.
-		control.setTooltip(label.getTooltip());
+		for (final Control control : controls) {
+			vbox.getChildren().add(control);
+
+			// Ensure the Control has the same Tooltip as the Label.
+			control.setTooltip(label.getTooltip());
+		}
 
 		if (parentPane != null) {
 			parentPane.getChildren().add(vbox);

@@ -10,9 +10,11 @@ import java.util.Set;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
@@ -48,12 +50,8 @@ public final class ProcessorChain {
 	/** Network this chain belongs to. */
 	private final ProcessorNetwork parentNetwork;
 
-	/**
-	 * List of all processors in this chain. Index 0 contains a null element as
-	 * place-holder to enable the insertion of new Processors at the head of the
-	 * list (selection in ComboBox) and link it correctly.
-	 */
-	private final ObservableList<Processor> processors = FXCollections.observableArrayList((Processor) null);
+	/** List of all processors in this chain. */
+	private final ObservableList<Processor> processors = FXCollections.observableArrayList();
 
 	/** Unique ID counter for processor identification. */
 	private int processorIdCounter = 1;
@@ -178,13 +176,13 @@ public final class ProcessorChain {
 		// Create EventProcessor type chooser box. It will be added later on.
 		final ComboBox<Class<? extends EventProcessor>> eventProcessorTypeChooser = GUISupport.addComboBox(null,
 			ProcessorChain.eventProcessorTypes, 0);
-		final HBox eventProcessorTypeChooserBox = GUISupport.addLabelWithControlHorizontal(null, "Event Processor:",
+		final HBox eventProcessorTypeChooserBox = GUISupport.addLabelWithControlsHorizontal(null, "Event Processor:",
 			"Select the Event Processor you want to use.", eventProcessorTypeChooser);
 
 		// Create Processor type chooser box, based on the ProcessorTypes enum.
 		final ComboBox<ProcessorTypes> processorTypeChooser = GUISupport.addComboBox(null,
 			EnumSet.allOf(ProcessorTypes.class), 0);
-		GUISupport.addLabelWithControlHorizontal(rootConfigLayout, "Processor Type:",
+		GUISupport.addLabelWithControlsHorizontal(rootConfigLayout, "Processor Type:",
 			"Select the processor type you want to create.", processorTypeChooser);
 
 		// Toggle the EventProcessor type chooser box depending on what type of
@@ -211,20 +209,54 @@ public final class ProcessorChain {
 
 		// Create Processor position chooser box, based on the currently
 		// existing processors.
-		final ComboBox<Processor> processorPositionChooser = GUISupport.addComboBox(null, processors, 0);
-		GUISupport.addLabelWithControlHorizontal(rootConfigLayout, "After Processor:",
-			"Place this new Processor right after the selected one.", processorPositionChooser);
+		final CheckBox processorPositionAtBeginningChoice = GUISupport.addCheckBox(null, "At Beginning", true);
+		final ComboBox<Processor> processorPositionChooser = GUISupport.addComboBox(null, processors, -1);
+
+		GUISupport.addLabelWithControlsHorizontal(rootConfigLayout, "After Processor:",
+			"Place this new Processor right after the selected one.", processorPositionAtBeginningChoice,
+			processorPositionChooser);
 
 		// Bind the shown items to the main processors list, for auto-updating.
 		processorPositionChooser.setItems(processors);
-		processorPositionChooser.getSelectionModel().select(0);
+
+		processorPositionChooser.getItems().addListener(new ListChangeListener<Processor>() {
+			@Override
+			public void onChanged(final Change<? extends Processor> change) {
+				// Reset default selection on each change to the backing list.
+				processorPositionChooser.getSelectionModel().select(0);
+
+				// If the list is empty, ensure the CheckBox is ticked.
+				if (change.getList().isEmpty()) {
+					processorPositionAtBeginningChoice.setSelected(true);
+				}
+			}
+		});
+
+		// Bind the CheckBox and ComboBox enabled status to each-other.
+		processorPositionChooser.disableProperty().bind(processorPositionAtBeginningChoice.selectedProperty());
+		processorPositionAtBeginningChoice.selectedProperty().addListener(new ChangeListener<Boolean>() {
+			@SuppressWarnings("unused")
+			@Override
+			public void changed(final ObservableValue<? extends Boolean> observable, final Boolean oldValue,
+				final Boolean newValue) {
+				// If the processor list is empty, it should not be possible to
+				// unset the CheckBox tick.
+				if ((!newValue) && (processors.isEmpty())) {
+					processorPositionAtBeginningChoice.setSelected(true);
+				}
+			}
+		});
 
 		// Add task to be enacted, based on above GUI configuration settings.
 		rootConfigTasks.add(new Runnable() {
 			@Override
 			public void run() {
 				// Add a new Processor of the wanted type at the right position.
-				final int position = processors.indexOf(processorPositionChooser.getValue()) + 1;
+				int position = 0;
+
+				if (!processorPositionAtBeginningChoice.isSelected()) {
+					position = processors.indexOf(processorPositionChooser.getValue()) + 1;
+				}
 
 				switch (processorTypeChooser.getValue()) {
 					case INPUT_PROCESSOR:
@@ -333,9 +365,7 @@ public final class ProcessorChain {
 	 * position in the chain.
 	 *
 	 * @param position
-	 *            index at which to add the new processor. Already includes +1
-	 *            to compensate for the place-holder elements (null in
-	 *            processors, controlBox in rootLayout).
+	 *            index at which to add the new processor.
 	 * @param type
 	 *            the type of processor to create (Input, Output, Event).
 	 * @param clazz
@@ -399,9 +429,9 @@ public final class ProcessorChain {
 				return null;
 		}
 
-		// Position already compensates for place-holder elements.
 		processors.add(position, processor);
-		rootLayout.getChildren().add(position, processor.getGUI());
+		// Add +1 to compensate for ControlBox element at start.
+		rootLayout.getChildren().add(position + 1, processor.getGUI());
 
 		linkProcessor(processor);
 

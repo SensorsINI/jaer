@@ -425,7 +425,7 @@ public abstract class Processor implements Runnable {
 		// Make the selected items globally available.
 		selectedInputStreams = streams.getSelectionModel().getSelectedItems();
 
-		GUISupport.addLabelWithControlVertical(rootConfigLayout, "Select streams to process:",
+		GUISupport.addLabelWithControlsVertical(rootConfigLayout, "Select streams to process:",
 			"Select the <Type, Source> combinations (streams) on which to operate.", streams);
 	}
 
