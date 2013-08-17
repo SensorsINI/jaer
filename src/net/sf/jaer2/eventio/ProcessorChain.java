@@ -7,6 +7,10 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
+import javafx.beans.InvalidationListener;
+import javafx.beans.Observable;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
@@ -14,6 +18,7 @@ import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
+import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.input.MouseEvent;
@@ -55,6 +60,9 @@ public final class ProcessorChain {
 
 	/** Unique ID counter for processor identification. */
 	private int processorIdCounter = 1;
+
+	/** Commit Change Signal. */
+	private final BooleanProperty changesToCommit = new SimpleBooleanProperty(false);
 
 	/** Main GUI layout - Horizontal Box. */
 	private final HBox rootLayout = new HBox(10);
@@ -155,6 +163,25 @@ public final class ProcessorChain {
 					GUISupport.showDialog("New Processor Configuration", rootConfigLayout, rootConfigTasks);
 				}
 			});
+
+		final Button commitButton = GUISupport.addButtonWithMouseClickedHandler(controlBox, "Commit Changes", true,
+			"/icons/Clear Green Button.png", new EventHandler<MouseEvent>() {
+				@Override
+				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
+					commitAndRunChain();
+				}
+			});
+
+		// Disable the Commit Changes button when there aren't any.
+		commitButton.disableProperty().bind(changesToCommit.not());
+
+		// Add listener to enable the button when there are structural changes.
+		processors.addListener(new InvalidationListener() {
+			@Override
+			public void invalidated(@SuppressWarnings("unused") final Observable observable) {
+				changesToCommit.set(true);
+			}
+		});
 	}
 
 	/**
@@ -379,18 +406,6 @@ public final class ProcessorChain {
 	 */
 	public Processor addProcessor(final int position, final ProcessorTypes type,
 		final Class<? extends EventProcessor> clazz) {
-		// Check for valid positions (the first element in the chain has to
-		// always be an input, the last an output).
-		if ((position == 0) && (type != ProcessorTypes.INPUT_PROCESSOR)) {
-			GUISupport.showDialogError("First Processor must always be an Input!");
-			return null;
-		}
-		else if ((!processors.isEmpty()) && (position == processors.size())
-			&& (type != ProcessorTypes.OUTPUT_PROCESSOR)) {
-			GUISupport.showDialogError("Last Processor must always be an Output!");
-			return null;
-		}
-
 		// Create the new, specified Processor.
 		Processor processor;
 
@@ -468,6 +483,36 @@ public final class ProcessorChain {
 		processors.remove(processor);
 
 		ProcessorChain.logger.debug("Removed Processor {}.", processor);
+	}
+
+	/**
+	 * Verify the changes done to chain configuration and either display error
+	 * messages or commit them to the running configuration. If none exists, or
+	 * if new processors are to be added, start them as required.
+	 */
+	private void commitAndRunChain() {
+		// Empty chain? Invalid!
+		if (processors.isEmpty() || (processors.size() < 2)) {
+			GUISupport.showDialogError("Empty chain, add at least one Input and one Output Processor!");
+			return;
+		}
+
+		// Check for valid positions (the first element in the chain has to
+		// always be an input, the last an output).
+		if (!(processors.get(0) instanceof InputProcessor)) {
+			GUISupport.showDialogError("First Processor must always be an Input!");
+			return;
+		}
+
+		if (!(processors.get(processors.size() - 1) instanceof OutputProcessor)) {
+			GUISupport.showDialogError("Last Processor must always be an Output!");
+			return;
+		}
+
+		// TODO: add other checks, then run the chain.
+
+		// No more changes to commit after successful commit operation.
+		changesToCommit.set(false);
 	}
 
 	@Override

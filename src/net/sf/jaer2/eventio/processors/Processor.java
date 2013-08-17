@@ -185,20 +185,10 @@ public abstract class Processor implements Runnable {
 
 	protected abstract void setAdditionalOutputTypes(Set<Class<? extends Event>> outputs);
 
-	protected final void addToAdditionalOutputTypes(final Class<? extends Event> newOutput) {
-		additionalOutputTypes.add(newOutput);
-
-		rebuildStreamSets();
-	}
-
-	protected final void removeFromAdditionalOutputTypes(final Class<? extends Event> oldOutput) {
-		additionalOutputTypes.remove(oldOutput);
-
-		rebuildStreamSets();
-	}
-
-	protected final void clearAdditionalOutputTypes() {
+	protected final void regenerateAdditionalOutputTypes(final Collection<Class<? extends Event>> newOutputs) {
 		additionalOutputTypes.clear();
+
+		additionalOutputTypes.addAll(newOutputs);
 
 		rebuildStreamSets();
 	}
