@@ -259,14 +259,16 @@ public class JavaFXJOGLIntegrationTest extends Application {
 			gl.glDrawPixels(JavaFXJOGLIntegrationTest.XLEN, JavaFXJOGLIntegrationTest.YLEN, buffer.getGLColorFormat(),
 				buffer.getGLFormat(), buffer.getBuffer());
 
-			renderer.begin3DRendering();
-			renderer.setColor(java.awt.Color.BLACK);
-			final String str = "TEST";
-			final java.awt.geom.Rectangle2D r = renderer.getBounds(str);
-			final float scaleFactor = (float) ((JavaFXJOGLIntegrationTest.XLEN / 2) / r.getWidth());
-			renderer.draw3D(str, 5, JavaFXJOGLIntegrationTest.YLEN - (int) (r.getHeight() * scaleFactor), 0,
-				scaleFactor);
-			renderer.end3DRendering();
+			if (org.controlsfx.tools.Platform.getCurrent() != org.controlsfx.tools.Platform.OSX) {
+				renderer.begin3DRendering();
+				renderer.setColor(java.awt.Color.BLACK);
+				final String str = "TEST";
+				final java.awt.geom.Rectangle2D r = renderer.getBounds(str);
+				final float scaleFactor = (float) ((JavaFXJOGLIntegrationTest.XLEN / 2) / r.getWidth());
+				renderer.draw3D(str, 5, JavaFXJOGLIntegrationTest.YLEN - (int) (r.getHeight() * scaleFactor), 0,
+					scaleFactor);
+				renderer.end3DRendering();
+			}
 
 			gl.glFlush();
 		}
