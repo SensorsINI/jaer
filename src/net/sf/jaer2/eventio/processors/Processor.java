@@ -305,7 +305,7 @@ public abstract class Processor implements Runnable {
 		// This is strictly a subset of inputStreams and is automatically
 		// updated when either inputStreams or the selection is changed, thanks
 		// to JavaFX observables and bindings.
-		return FXCollections.unmodifiableObservableList(selectedInputStreams);
+		return selectedInputStreams;
 	}
 
 	public final Processor getProcessorForSourceId(final int sourceId) {
