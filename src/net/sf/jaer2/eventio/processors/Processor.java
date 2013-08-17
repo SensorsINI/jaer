@@ -2,10 +2,8 @@ package net.sf.jaer2.eventio.processors;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -27,6 +25,7 @@ import net.sf.jaer2.chips.Chip;
 import net.sf.jaer2.eventio.ProcessorChain;
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 import net.sf.jaer2.eventio.events.Event;
+import net.sf.jaer2.util.Collections;
 import net.sf.jaer2.util.GUISupport;
 import net.sf.jaer2.util.Reflections;
 
@@ -185,11 +184,17 @@ public abstract class Processor implements Runnable {
 
 	protected abstract void setAdditionalOutputTypes(Set<Class<? extends Event>> outputs);
 
+	/**
+	 * Regenerates the list of additional output types by replacing it with the
+	 * supplied one.
+	 * Please note that you'll have to call rebuildStreamSets() after having
+	 * done the changes explicitly.
+	 *
+	 * @param newOutputs
+	 *            all new types that this processor can emit.
+	 */
 	protected final void regenerateAdditionalOutputTypes(final Collection<Class<? extends Event>> newOutputs) {
-		additionalOutputTypes.clear();
-		additionalOutputTypes.addAll(newOutputs);
-
-		rebuildStreamSetsInternal();
+		Collections.replaceNonDestructive(additionalOutputTypes, newOutputs);
 	}
 
 	private final class StreamComparator implements Comparator<ImmutablePair<Class<? extends Event>, Integer>> {
@@ -220,25 +225,10 @@ public abstract class Processor implements Runnable {
 				}
 			}
 
-			// Sort intermediate list.
-			Collections.sort(compatibleInputStreams, new StreamComparator());
+			Collections.replaceNonDestructive(inputStreams, compatibleInputStreams);
 
-			// Replace with new data in a non-destructive way, by not touching
-			// values that were already present.
-			for (final Iterator<ImmutablePair<Class<? extends Event>, Integer>> iter = inputStreams.iterator(); iter
-				.hasNext();) {
-				final ImmutablePair<Class<? extends Event>, Integer> element = iter.next();
-
-				if (compatibleInputStreams.contains(element)) {
-					compatibleInputStreams.remove(element);
-				}
-				else {
-					iter.remove();
-				}
-			}
-
-			// Add remaining values that weren't yet present.
-			inputStreams.addAll(compatibleInputStreams);
+			// Sort list by source ID.
+			FXCollections.sort(inputStreams, new StreamComparator());
 		}
 		else {
 			inputStreams.clear();
@@ -262,11 +252,10 @@ public abstract class Processor implements Runnable {
 			allOutputStreams.add(new ImmutablePair<Class<? extends Event>, Integer>(outputType, processorId));
 		}
 
-		// Sort intermediate list.
-		Collections.sort(allOutputStreams, new StreamComparator());
+		Collections.replaceNonDestructive(outputStreams, allOutputStreams);
 
-		outputStreams.clear();
-		outputStreams.addAll(allOutputStreams);
+		// Sort list by source ID.
+		FXCollections.sort(outputStreams, new StreamComparator());
 	}
 
 	public final ObservableList<ImmutablePair<Class<? extends Event>, Integer>> getAllOutputStreams() {
@@ -290,7 +279,7 @@ public abstract class Processor implements Runnable {
 		}
 	}
 
-	public final void rebuildStreamSets() {
+	protected final void rebuildStreamSets() {
 		// Ensure previous is updated, to show last box in GUI.
 		if (prevProcessor != null) {
 			prevProcessor.rebuildStreamSetsInternal();
@@ -316,11 +305,11 @@ public abstract class Processor implements Runnable {
 			return this;
 		}
 
-		if (prevProcessor == null) {
-			return null;
+		if (prevProcessor != null) {
+			return prevProcessor.getProcessorForSourceId(sourceId);
 		}
 
-		return prevProcessor.getProcessorForSourceId(sourceId);
+		return null;
 	}
 
 	public final Chip getChipForSourceId(final int sourceId) {
@@ -348,6 +337,7 @@ public abstract class Processor implements Runnable {
 				return true;
 			}
 		}
+		// TODO: think about thread-safety of this.
 
 		return false;
 	}

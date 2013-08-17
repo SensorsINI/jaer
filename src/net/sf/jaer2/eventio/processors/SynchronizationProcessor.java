@@ -12,8 +12,6 @@ import net.sf.jaer2.eventio.events.Event;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
 public final class SynchronizationProcessor extends EventProcessor {
-	private final List<Class<? extends Event>> newOutputs = new ArrayList<>();
-
 	public SynchronizationProcessor(final ProcessorChain chain) {
 		super(chain);
 
@@ -24,23 +22,25 @@ public final class SynchronizationProcessor extends EventProcessor {
 		// out synchronized containers with the same types it gets as input.
 		getAllSelectedInputStreams().addListener(
 			new ListChangeListener<ImmutablePair<Class<? extends Event>, Integer>>() {
-
 				@Override
 				public void onChanged(final Change<? extends ImmutablePair<Class<? extends Event>, Integer>> change) {
-					newOutputs.clear();
+					final List<Class<? extends Event>> newOutputs = new ArrayList<>();
 
 					if (!change.getList().isEmpty()) {
 						for (final ImmutablePair<Class<? extends Event>, Integer> selInStream : change.getList()) {
 							newOutputs.add(selInStream.left);
 						}
 					}
+
+					regenerateAdditionalOutputTypes(newOutputs);
 				}
 			});
 
+		// Rebuild StreamSets after clicking on OK.
 		rootConfigTasks.add(new Runnable() {
 			@Override
 			public void run() {
-				regenerateAdditionalOutputTypes(newOutputs);
+				rebuildStreamSets();
 			}
 		});
 	}
