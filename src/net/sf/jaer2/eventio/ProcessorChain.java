@@ -179,7 +179,7 @@ public final class ProcessorChain {
 		processors.addListener(new InvalidationListener() {
 			@Override
 			public void invalidated(@SuppressWarnings("unused") final Observable observable) {
-				changesToCommit.set(true);
+				newStructuralChangesToCommit();
 			}
 		});
 	}
@@ -486,11 +486,27 @@ public final class ProcessorChain {
 	}
 
 	/**
+	 * Call this if you or your Processor just caused structural changes in the
+	 * chain. This means you changed the presence or position of Processors
+	 * (such as Drag&Drop) or you changed the Input/Output types configuration
+	 * in any way (such as in the Synchronizer when enabling new outputs).
+	 */
+	public void newStructuralChangesToCommit() {
+		changesToCommit.set(true);
+	}
+
+	/**
 	 * Verify the changes done to chain configuration and either display error
 	 * messages or commit them to the running configuration. If none exists, or
 	 * if new processors are to be added, start them as required.
 	 */
 	private void commitAndRunChain() {
+		// Check if there are any changes signalled.
+		if (!changesToCommit.get()) {
+			GUISupport.showDialogError("No structural changes to commit!");
+			return;
+		}
+
 		// Empty chain? Invalid!
 		if (processors.isEmpty() || (processors.size() < 2)) {
 			GUISupport.showDialogError("Empty chain, add at least one Input and one Output Processor!");

@@ -24,7 +24,7 @@ public final class SynchronizationProcessor extends EventProcessor {
 			new ListChangeListener<ImmutablePair<Class<? extends Event>, Integer>>() {
 				@Override
 				public void onChanged(final Change<? extends ImmutablePair<Class<? extends Event>, Integer>> change) {
-					List<Class<? extends Event>> newOutputs = new ArrayList<>();
+					final List<Class<? extends Event>> newOutputs = new ArrayList<>();
 
 					if (!change.getList().isEmpty()) {
 						for (final ImmutablePair<Class<? extends Event>, Integer> selInStream : change.getList()) {

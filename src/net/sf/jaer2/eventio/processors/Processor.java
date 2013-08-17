@@ -187,10 +187,9 @@ public abstract class Processor implements Runnable {
 
 	protected final void regenerateAdditionalOutputTypes(final Collection<Class<? extends Event>> newOutputs) {
 		additionalOutputTypes.clear();
-
 		additionalOutputTypes.addAll(newOutputs);
 
-		rebuildStreamSets();
+		rebuildStreamSetsInternal();
 	}
 
 	private final class StreamComparator implements Comparator<ImmutablePair<Class<? extends Event>, Integer>> {
@@ -284,6 +283,10 @@ public abstract class Processor implements Runnable {
 		// gets updated correctly.
 		if (nextProcessor != null) {
 			nextProcessor.rebuildStreamSetsInternal();
+		}
+		else {
+			// Rebuilding the StreamSets always constitutes a structural change.
+			parentChain.newStructuralChangesToCommit();
 		}
 	}
 
