@@ -10,6 +10,8 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 import javafx.application.Platform;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
@@ -67,9 +69,9 @@ public abstract class Processor implements Runnable {
 	/** Chain this processor belongs to. */
 	protected final ProcessorChain parentChain;
 	/** Previous processor in the ordered chain. */
-	private Processor prevProcessor;
+	private final ObjectProperty<Processor> prevProcessor = new SimpleObjectProperty<>();
 	/** Next processor in the ordered chain. */
-	private Processor nextProcessor;
+	private final ObjectProperty<Processor> nextProcessor = new SimpleObjectProperty<>();
 
 	// Processor type management
 	/** Defines which Event types this Processor can work on. */
@@ -163,22 +165,22 @@ public abstract class Processor implements Runnable {
 	}
 
 	public final Processor getPrevProcessor() {
-		return prevProcessor;
+		return prevProcessor.get();
 	}
 
 	public final void setPrevProcessor(final Processor prev) {
-		prevProcessor = prev;
+		prevProcessor.set(prev);
 
 		// StreamSets depend on the previous processor.
 		rebuildStreamSets();
 	}
 
 	public final Processor getNextProcessor() {
-		return nextProcessor;
+		return nextProcessor.get();
 	}
 
 	public final void setNextProcessor(final Processor next) {
-		nextProcessor = next;
+		nextProcessor.set(next);
 	}
 
 	protected abstract void setCompatibleInputTypes(Set<Class<? extends Event>> inputs);
@@ -231,12 +233,12 @@ public abstract class Processor implements Runnable {
 	}
 
 	private void rebuildInputStreams() {
-		if (prevProcessor != null) {
+		if (getPrevProcessor() != null) {
 			final List<ImmutablePair<Class<? extends Event>, Integer>> compatibleInputStreams = new ArrayList<>();
 
 			// Add all outputs from previous Processor, filtering incompatible
 			// Event types out.
-			for (final ImmutablePair<Class<? extends Event>, Integer> stream : prevProcessor.getAllOutputStreams()) {
+			for (final ImmutablePair<Class<? extends Event>, Integer> stream : getPrevProcessor().getAllOutputStreams()) {
 				if (compatibleInputTypes.contains(stream.left)) {
 					compatibleInputStreams.add(stream);
 				}
@@ -257,8 +259,8 @@ public abstract class Processor implements Runnable {
 
 		// Add all outputs from previous Processor, as well as outputs produced
 		// by the current Processor.
-		if (prevProcessor != null) {
-			allOutputStreams.addAll(prevProcessor.getAllOutputStreams());
+		if (getPrevProcessor() != null) {
+			allOutputStreams.addAll(getPrevProcessor().getAllOutputStreams());
 		}
 
 		for (final Class<? extends Event> outputType : additionalOutputTypes) {
@@ -279,8 +281,8 @@ public abstract class Processor implements Runnable {
 
 		// Call recursively on the next Processor, so that the rest of the chain
 		// gets updated correctly.
-		if (nextProcessor != null) {
-			nextProcessor.rebuildStreamSetsInternal();
+		if (getNextProcessor() != null) {
+			getNextProcessor().rebuildStreamSetsInternal();
 		}
 		else {
 			// Rebuilding the StreamSets always constitutes a structural change.
@@ -293,8 +295,8 @@ public abstract class Processor implements Runnable {
 			@Override
 			public void run() {
 				// Ensure previous is updated, to show last box in GUI.
-				if (prevProcessor != null) {
-					prevProcessor.rebuildStreamSetsInternal();
+				if (getPrevProcessor() != null) {
+					getPrevProcessor().rebuildStreamSetsInternal();
 				}
 				else {
 					// If previous is not defined, let's start from here (this).
@@ -326,8 +328,8 @@ public abstract class Processor implements Runnable {
 			return this;
 		}
 
-		if (prevProcessor != null) {
-			return prevProcessor.getProcessorForSourceId(sourceId);
+		if (getPrevProcessor() != null) {
+			return getPrevProcessor().getProcessorForSourceId(sourceId);
 		}
 
 		return null;
@@ -438,13 +440,17 @@ public abstract class Processor implements Runnable {
 		final VBox typesBox = new VBox(5);
 		rootLayout.getChildren().add(typesBox);
 
+		// The types info box should only be show if we aren't the last
+		// processor in the chain.
+		typesBox.visibleProperty().bind(nextProcessor.isNotNull());
+		typesBox.managedProperty().bind(nextProcessor.isNotNull());
+
 		outputStreams.addListener(new ListChangeListener<ImmutablePair<Class<? extends Event>, Integer>>() {
 			@Override
 			public void onChanged(final Change<? extends ImmutablePair<Class<? extends Event>, Integer>> change) {
 				typesBox.getChildren().clear();
 
-				// Only add elements to show outputs if we're not the last box.
-				if ((nextProcessor != null) && !change.getList().isEmpty()) {
+				if (!change.getList().isEmpty()) {
 					GUISupport.addArrow(typesBox, 150, 2, 10, 6);
 
 					for (final ImmutablePair<Class<? extends Event>, Integer> outStream : change.getList()) {

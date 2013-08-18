@@ -201,39 +201,11 @@ public final class ProcessorChain {
 	 * the rootConfigLayout.
 	 */
 	private void buildConfigGUI() {
-		// Create EventProcessor type chooser box. It will be added later on.
-		final ComboBox<Class<? extends EventProcessor>> eventProcessorTypeChooser = GUISupport.addComboBox(null,
-			ProcessorChain.eventProcessorTypes, 0);
-		final HBox eventProcessorTypeChooserBox = GUISupport.addLabelWithControlsHorizontal(null, "Event Processor:",
-			"Select the Event Processor you want to use.", eventProcessorTypeChooser);
-
 		// Create Processor type chooser box, based on the ProcessorTypes enum.
 		final ComboBox<ProcessorTypes> processorTypeChooser = GUISupport.addComboBox(null,
 			EnumSet.allOf(ProcessorTypes.class), 0);
 		GUISupport.addLabelWithControlsHorizontal(rootConfigLayout, "Processor Type:",
 			"Select the processor type you want to create.", processorTypeChooser);
-
-		// Toggle the EventProcessor type chooser box depending on what type of
-		// Processor the user has selected at the moment.
-		processorTypeChooser.valueProperty().addListener(new ChangeListener<ProcessorTypes>() {
-			private boolean eventProcessorTypeChooserVisible = false;
-
-			@SuppressWarnings("unused")
-			@Override
-			public void changed(final ObservableValue<? extends ProcessorTypes> observable,
-				final ProcessorTypes oldValue, final ProcessorTypes newValue) {
-				// Add or remove EventProcessor type chooser box, based on what
-				// the user selected as a Processor type.
-				if ((newValue == ProcessorTypes.EVENT_PROCESSOR) && (!eventProcessorTypeChooserVisible)) {
-					rootConfigLayout.getChildren().add(eventProcessorTypeChooserBox);
-					eventProcessorTypeChooserVisible = true;
-				}
-				else if ((newValue != ProcessorTypes.EVENT_PROCESSOR) && (eventProcessorTypeChooserVisible)) {
-					rootConfigLayout.getChildren().remove(eventProcessorTypeChooserBox);
-					eventProcessorTypeChooserVisible = false;
-				}
-			}
-		});
 
 		// Give the opportunity to add a Processor before all others (start).
 		final CheckBox processorPositionAtBeginning = GUISupport.addCheckBox(rootConfigLayout, "At Beginning", true);
@@ -275,6 +247,19 @@ public final class ProcessorChain {
 				}
 			}
 		});
+
+		// Create EventProcessor type chooser box.
+		final ComboBox<Class<? extends EventProcessor>> eventProcessorTypeChooser = GUISupport.addComboBox(null,
+			ProcessorChain.eventProcessorTypes, 0);
+		final HBox eventProcessorTypeChooserBox = GUISupport.addLabelWithControlsHorizontal(rootConfigLayout,
+			"Event Processor:", "Select the Event Processor you want to use.", eventProcessorTypeChooser);
+
+		// Toggle the EventProcessor type chooser box depending on what type of
+		// Processor the user has selected at the moment.
+		eventProcessorTypeChooserBox.visibleProperty().bind(
+			processorTypeChooser.valueProperty().isEqualTo(ProcessorTypes.EVENT_PROCESSOR));
+		eventProcessorTypeChooserBox.managedProperty().bind(
+			processorTypeChooser.valueProperty().isEqualTo(ProcessorTypes.EVENT_PROCESSOR));
 
 		// Add task to be enacted, based on above GUI configuration settings.
 		rootConfigTasks.add(new Runnable() {
