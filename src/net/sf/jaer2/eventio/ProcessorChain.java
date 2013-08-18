@@ -138,7 +138,7 @@ public final class ProcessorChain {
 	 */
 	private void buildGUI() {
 		rootLayout.setPadding(new Insets(5));
-		rootLayout.setStyle("-fx-border-style: solid; -fx-border-width: 2; -fx-border-color: black");
+		rootLayout.getStyleClass().add("border-box");
 
 		final VBox controlBox = new VBox(5);
 		rootLayout.getChildren().add(controlBox);

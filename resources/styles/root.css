@@ -1,0 +1,9 @@
+.root {
+	-fx-font-size: 10pt;
+}
+
+.border-box {
+	-fx-border-style: solid;
+	-fx-border-width: 1;
+	-fx-border-color: black
+}

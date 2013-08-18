@@ -25,6 +25,9 @@ public final class JAER2 extends Application {
 		final Rectangle2D screen = Screen.getPrimary().getVisualBounds();
 		final Scene rootScene = new Scene(scroll, screen.getWidth(), screen.getHeight(), Color.GRAY);
 
+		// Add default CSS style-sheet.
+		rootScene.getStylesheets().add("/styles/root.css");
+
 		primaryStage.setTitle("jAER2 ProcessorNetwork Configuration");
 		primaryStage.setScene(rootScene);
 

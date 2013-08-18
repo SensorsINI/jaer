@@ -389,7 +389,7 @@ public abstract class Processor implements Runnable {
 		// Create box holding information and controls for the Processor.
 		final VBox controlInfoBox = new VBox(5);
 		controlInfoBox.setPadding(new Insets(5));
-		controlInfoBox.setStyle("-fx-border-style: solid; -fx-border-width: 1; -fx-border-color: black");
+		controlInfoBox.getStyleClass().add("border-box");
 		rootLayout.getChildren().add(controlInfoBox);
 
 		GUISupport.addLabel(controlInfoBox, toString(), null, null, null);
