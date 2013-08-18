@@ -148,7 +148,7 @@ public final class ProcessorChain {
 
 		// Then, add the buttons to delete ProcessorChains and add new
 		// Processors.
-		GUISupport.addButtonWithMouseClickedHandler(controlBox, "Delete Chain", true, "/icons/Remove.png",
+		GUISupport.addButtonWithMouseClickedHandler(controlBox, "Delete Chain", true, "/images/icons/Remove.png",
 			new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
@@ -156,7 +156,7 @@ public final class ProcessorChain {
 				}
 			});
 
-		GUISupport.addButtonWithMouseClickedHandler(controlBox, "New Processor", true, "/icons/Add.png",
+		GUISupport.addButtonWithMouseClickedHandler(controlBox, "New Processor", true, "/images/icons/Add.png",
 			new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
@@ -165,7 +165,7 @@ public final class ProcessorChain {
 			});
 
 		final Button commitButton = GUISupport.addButtonWithMouseClickedHandler(controlBox, "Commit Changes", true,
-			"/icons/Clear Green Button.png", new EventHandler<MouseEvent>() {
+			"/images/icons/Clear Green Button.png", new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
 					commitAndRunChain();

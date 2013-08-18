@@ -398,7 +398,7 @@ public abstract class Processor implements Runnable {
 		final HBox buttonBox = new HBox(5);
 		controlInfoBox.getChildren().add(buttonBox);
 
-		GUISupport.addButtonWithMouseClickedHandler(buttonBox, "Remove Processor", false, "/icons/Remove.png",
+		GUISupport.addButtonWithMouseClickedHandler(buttonBox, "Remove Processor", false, "/images/icons/Remove.png",
 			new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
@@ -406,7 +406,7 @@ public abstract class Processor implements Runnable {
 				}
 			});
 
-		GUISupport.addButtonWithMouseClickedHandler(buttonBox, "Configure Processor", false, "/icons/Gear.png",
+		GUISupport.addButtonWithMouseClickedHandler(buttonBox, "Configure Processor", false, "/images/icons/Gear.png",
 			new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
