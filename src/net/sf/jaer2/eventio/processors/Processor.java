@@ -210,6 +210,10 @@ public abstract class Processor implements Runnable {
 		}
 	}
 
+	private ObservableList<ImmutablePair<Class<? extends Event>, Integer>> getAllOutputStreams() {
+		return FXCollections.unmodifiableObservableList(outputStreams);
+	}
+
 	private final class StreamComparator implements Comparator<ImmutablePair<Class<? extends Event>, Integer>> {
 		@Override
 		public int compare(final ImmutablePair<Class<? extends Event>, Integer> stream1,
@@ -248,10 +252,6 @@ public abstract class Processor implements Runnable {
 		}
 	}
 
-	public final ObservableList<ImmutablePair<Class<? extends Event>, Integer>> getAllInputStreams() {
-		return FXCollections.unmodifiableObservableList(inputStreams);
-	}
-
 	private void rebuildOutputStreams() {
 		final List<ImmutablePair<Class<? extends Event>, Integer>> allOutputStreams = new ArrayList<>();
 
@@ -269,10 +269,6 @@ public abstract class Processor implements Runnable {
 
 		// Sort list by source ID.
 		FXCollections.sort(outputStreams, new StreamComparator());
-	}
-
-	public final ObservableList<ImmutablePair<Class<? extends Event>, Integer>> getAllOutputStreams() {
-		return FXCollections.unmodifiableObservableList(outputStreams);
 	}
 
 	private void rebuildStreamSetsInternal() {
