@@ -7,6 +7,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
+import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
 import javafx.beans.property.BooleanProperty;
@@ -288,15 +289,19 @@ public final class ProcessorChain {
 
 				switch (processorTypeChooser.getValue()) {
 					case INPUT_PROCESSOR:
-						addProcessor(position, ProcessorTypes.INPUT_PROCESSOR, null);
+						final Processor inputProcessor = createProcessor(ProcessorTypes.INPUT_PROCESSOR, null);
+						addProcessor(inputProcessor, position);
 						break;
 
 					case OUTPUT_PROCESSOR:
-						addProcessor(position, ProcessorTypes.OUTPUT_PROCESSOR, null);
+						final Processor outputProcessor = createProcessor(ProcessorTypes.OUTPUT_PROCESSOR, null);
+						addProcessor(outputProcessor, position);
 						break;
 
 					case EVENT_PROCESSOR:
-						addProcessor(position, ProcessorTypes.EVENT_PROCESSOR, eventProcessorTypeChooser.getValue());
+						final Processor eventProcessor = createProcessor(ProcessorTypes.EVENT_PROCESSOR,
+							eventProcessorTypeChooser.getValue());
+						addProcessor(eventProcessor, position);
 						break;
 
 					default:
@@ -390,11 +395,8 @@ public final class ProcessorChain {
 	}
 
 	/**
-	 * Create a new processor and add it to the GUI at the specified
-	 * position in the chain.
+	 * Create a new processor of the given type.
 	 *
-	 * @param position
-	 *            index at which to add the new processor.
 	 * @param type
 	 *            the type of processor to create (Input, Output, Event).
 	 * @param clazz
@@ -404,8 +406,7 @@ public final class ProcessorChain {
 	 *
 	 * @return the new processor.
 	 */
-	public Processor addProcessor(final int position, final ProcessorTypes type,
-		final Class<? extends EventProcessor> clazz) {
+	private Processor createProcessor(final ProcessorTypes type, final Class<? extends EventProcessor> clazz) {
 		// Create the new, specified Processor.
 		Processor processor;
 
@@ -459,30 +460,65 @@ public final class ProcessorChain {
 				return null;
 		}
 
-		processors.add(position, processor);
-		// Add +1 to compensate for ControlBox element at start.
-		rootLayout.getChildren().add(position + 1, processor.getGUI());
-
-		linkProcessor(processor);
-
-		ProcessorChain.logger.debug("Added Processor {}.", processor);
-
 		return processor;
 	}
 
 	/**
-	 * Deletes the specified processor and removes it from the GUI.
+	 * Add the specified processor to the chain and GUI at the specified
+	 * position inside the chain.
+	 *
+	 * @param processor
+	 *            processor to add.
+	 * @param position
+	 *            index at which to add the new processor.
+	 */
+	public void addProcessor(final Processor processor, final int position) {
+		final Runnable runOperation = new Runnable() {
+			@Override
+			public void run() {
+				processors.add(position, processor);
+				// Add +1 to compensate for ControlBox element at start.
+				rootLayout.getChildren().add(position + 1, processor.getGUI());
+
+				linkProcessor(processor);
+
+				ProcessorChain.logger.debug("Added Processor {}.", processor);
+			}
+		};
+
+		if (Platform.isFxApplicationThread()) {
+			runOperation.run();
+		}
+		else {
+			Platform.runLater(runOperation);
+		}
+	}
+
+	/**
+	 * Removes the specified processor from the chain and GUI.
 	 *
 	 * @param processor
 	 *            processor to remove.
 	 */
 	public void removeProcessor(final Processor processor) {
-		unlinkProcessor(processor);
+		final Runnable runOperation = new Runnable() {
+			@Override
+			public void run() {
+				unlinkProcessor(processor);
 
-		rootLayout.getChildren().remove(processor.getGUI());
-		processors.remove(processor);
+				rootLayout.getChildren().remove(processor.getGUI());
+				processors.remove(processor);
 
-		ProcessorChain.logger.debug("Removed Processor {}.", processor);
+				ProcessorChain.logger.debug("Removed Processor {}.", processor);
+			}
+		};
+
+		if (Platform.isFxApplicationThread()) {
+			runOperation.run();
+		}
+		else {
+			Platform.runLater(runOperation);
+		}
 	}
 
 	/**
@@ -492,7 +528,19 @@ public final class ProcessorChain {
 	 * in any way (such as in the Synchronizer when enabling new outputs).
 	 */
 	public void newStructuralChangesToCommit() {
-		changesToCommit.set(true);
+		final Runnable runOperation = new Runnable() {
+			@Override
+			public void run() {
+				changesToCommit.set(true);
+			}
+		};
+
+		if (Platform.isFxApplicationThread()) {
+			runOperation.run();
+		}
+		else {
+			Platform.runLater(runOperation);
+		}
 	}
 
 	/**

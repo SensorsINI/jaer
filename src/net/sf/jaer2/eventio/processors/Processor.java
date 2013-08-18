@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
@@ -194,7 +195,19 @@ public abstract class Processor implements Runnable {
 	 *            all new types that this processor can emit.
 	 */
 	protected final void regenerateAdditionalOutputTypes(final Collection<Class<? extends Event>> newOutputs) {
-		Collections.replaceNonDestructive(additionalOutputTypes, newOutputs);
+		final Runnable runOperation = new Runnable() {
+			@Override
+			public void run() {
+				Collections.replaceNonDestructive(additionalOutputTypes, newOutputs);
+			}
+		};
+
+		if (Platform.isFxApplicationThread()) {
+			runOperation.run();
+		}
+		else {
+			Platform.runLater(runOperation);
+		}
 	}
 
 	private final class StreamComparator implements Comparator<ImmutablePair<Class<? extends Event>, Integer>> {
@@ -280,13 +293,25 @@ public abstract class Processor implements Runnable {
 	}
 
 	protected final void rebuildStreamSets() {
-		// Ensure previous is updated, to show last box in GUI.
-		if (prevProcessor != null) {
-			prevProcessor.rebuildStreamSetsInternal();
+		final Runnable runOperation = new Runnable() {
+			@Override
+			public void run() {
+				// Ensure previous is updated, to show last box in GUI.
+				if (prevProcessor != null) {
+					prevProcessor.rebuildStreamSetsInternal();
+				}
+				else {
+					// If previous is not defined, let's start from here (this).
+					rebuildStreamSetsInternal();
+				}
+			}
+		};
+
+		if (Platform.isFxApplicationThread()) {
+			runOperation.run();
 		}
 		else {
-			// If previous is not defined, let's start from here (this).
-			rebuildStreamSetsInternal();
+			Platform.runLater(runOperation);
 		}
 	}
 
