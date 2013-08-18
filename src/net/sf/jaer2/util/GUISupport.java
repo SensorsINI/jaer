@@ -2,6 +2,7 @@ package net.sf.jaer2.util;
 
 import java.util.Collection;
 
+import javafx.application.Platform;
 import javafx.event.EventHandler;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -227,5 +228,14 @@ public final class GUISupport {
 		arrow.getChildren().add(head);
 
 		return arrow;
+	}
+
+	public static void runOnJavaFXThread(final Runnable operationToRun) {
+		if (Platform.isFxApplicationThread()) {
+			operationToRun.run();
+		}
+		else {
+			Platform.runLater(operationToRun);
+		}
 	}
 }

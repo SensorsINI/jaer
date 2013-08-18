@@ -9,7 +9,6 @@ import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
-import javafx.application.Platform;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.collections.FXCollections;
@@ -169,10 +168,15 @@ public abstract class Processor implements Runnable {
 	}
 
 	public final void setPrevProcessor(final Processor prev) {
-		prevProcessor.set(prev);
+		GUISupport.runOnJavaFXThread(new Runnable() {
+			@Override
+			public void run() {
+				prevProcessor.set(prev);
 
-		// StreamSets depend on the previous processor.
-		rebuildStreamSets();
+				// StreamSets depend on the previous processor.
+				rebuildStreamSets();
+			}
+		});
 	}
 
 	public final Processor getNextProcessor() {
@@ -180,7 +184,12 @@ public abstract class Processor implements Runnable {
 	}
 
 	public final void setNextProcessor(final Processor next) {
-		nextProcessor.set(next);
+		GUISupport.runOnJavaFXThread(new Runnable() {
+			@Override
+			public void run() {
+				nextProcessor.set(next);
+			}
+		});
 	}
 
 	protected abstract void setCompatibleInputTypes(Set<Class<? extends Event>> inputs);
@@ -197,19 +206,12 @@ public abstract class Processor implements Runnable {
 	 *            all new types that this processor can emit.
 	 */
 	protected final void regenerateAdditionalOutputTypes(final Collection<Class<? extends Event>> newOutputs) {
-		final Runnable runOperation = new Runnable() {
+		GUISupport.runOnJavaFXThread(new Runnable() {
 			@Override
 			public void run() {
 				Collections.replaceNonDestructive(additionalOutputTypes, newOutputs);
 			}
-		};
-
-		if (Platform.isFxApplicationThread()) {
-			runOperation.run();
-		}
-		else {
-			Platform.runLater(runOperation);
-		}
+		});
 	}
 
 	private ObservableList<ImmutablePair<Class<? extends Event>, Integer>> getAllOutputStreams() {
@@ -291,7 +293,7 @@ public abstract class Processor implements Runnable {
 	}
 
 	protected final void rebuildStreamSets() {
-		final Runnable runOperation = new Runnable() {
+		GUISupport.runOnJavaFXThread(new Runnable() {
 			@Override
 			public void run() {
 				// Ensure previous is updated, to show last box in GUI.
@@ -303,17 +305,10 @@ public abstract class Processor implements Runnable {
 					rebuildStreamSetsInternal();
 				}
 			}
-		};
-
-		if (Platform.isFxApplicationThread()) {
-			runOperation.run();
-		}
-		else {
-			Platform.runLater(runOperation);
-		}
+		});
 	}
 
-	public final ObservableList<ImmutablePair<Class<? extends Event>, Integer>> getAllSelectedInputStreams() {
+	protected final ObservableList<ImmutablePair<Class<? extends Event>, Integer>> getAllSelectedInputStreams() {
 		// This is strictly a subset of inputStreams and is automatically
 		// updated when either inputStreams or the selection is changed, thanks
 		// to JavaFX observables and bindings.
@@ -331,6 +326,8 @@ public abstract class Processor implements Runnable {
 		if (getPrevProcessor() != null) {
 			return getPrevProcessor().getProcessorForSourceId(sourceId);
 		}
+		// TODO: think about thread-safety of this. Move to ProcessorChain
+		// maybe.
 
 		return null;
 	}
@@ -341,6 +338,8 @@ public abstract class Processor implements Runnable {
 		if ((procSource != null) && (procSource instanceof InputProcessor)) {
 			return ((InputProcessor) procSource).getInterpreterChip();
 		}
+		// TODO: think about thread-safety of this. Move to ProcessorChain
+		// maybe.
 
 		return null;
 	}

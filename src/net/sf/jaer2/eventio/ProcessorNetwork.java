@@ -1,6 +1,5 @@
 package net.sf.jaer2.eventio;
 
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
@@ -56,7 +55,7 @@ public final class ProcessorNetwork {
 	 * Create a new processor chain and add it to the GUI.
 	 */
 	public void addChain() {
-		final Runnable runOperation = new Runnable() {
+		GUISupport.runOnJavaFXThread(new Runnable() {
 			@Override
 			public void run() {
 				final ProcessorChain chain = new ProcessorChain(ProcessorNetwork.this);
@@ -66,14 +65,7 @@ public final class ProcessorNetwork {
 
 				ProcessorNetwork.logger.debug("Added chain {}.", chain);
 			}
-		};
-
-		if (Platform.isFxApplicationThread()) {
-			runOperation.run();
-		}
-		else {
-			Platform.runLater(runOperation);
-		}
+		});
 	}
 
 	/**
@@ -83,7 +75,7 @@ public final class ProcessorNetwork {
 	 *            chain to remove.
 	 */
 	public void removeChain(final ProcessorChain chain) {
-		final Runnable runOperation = new Runnable() {
+		GUISupport.runOnJavaFXThread(new Runnable() {
 			@Override
 			public void run() {
 				rootLayout.getChildren().remove(chain.getGUI());
@@ -91,14 +83,7 @@ public final class ProcessorNetwork {
 
 				ProcessorNetwork.logger.debug("Removed chain {}.", chain);
 			}
-		};
-
-		if (Platform.isFxApplicationThread()) {
-			runOperation.run();
-		}
-		else {
-			Platform.runLater(runOperation);
-		}
+		});
 	}
 
 	/**

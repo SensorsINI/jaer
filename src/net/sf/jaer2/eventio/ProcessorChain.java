@@ -7,7 +7,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
-import javafx.application.Platform;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
 import javafx.beans.property.BooleanProperty;
@@ -458,7 +457,7 @@ public final class ProcessorChain {
 	 *            index at which to add the new processor.
 	 */
 	public void addProcessor(final Processor processor, final int position) {
-		final Runnable runOperation = new Runnable() {
+		GUISupport.runOnJavaFXThread(new Runnable() {
 			@Override
 			public void run() {
 				processors.add(position, processor);
@@ -469,14 +468,7 @@ public final class ProcessorChain {
 
 				ProcessorChain.logger.debug("Added Processor {}.", processor);
 			}
-		};
-
-		if (Platform.isFxApplicationThread()) {
-			runOperation.run();
-		}
-		else {
-			Platform.runLater(runOperation);
-		}
+		});
 	}
 
 	/**
@@ -486,7 +478,7 @@ public final class ProcessorChain {
 	 *            processor to remove.
 	 */
 	public void removeProcessor(final Processor processor) {
-		final Runnable runOperation = new Runnable() {
+		GUISupport.runOnJavaFXThread(new Runnable() {
 			@Override
 			public void run() {
 				unlinkProcessor(processor);
@@ -496,14 +488,7 @@ public final class ProcessorChain {
 
 				ProcessorChain.logger.debug("Removed Processor {}.", processor);
 			}
-		};
-
-		if (Platform.isFxApplicationThread()) {
-			runOperation.run();
-		}
-		else {
-			Platform.runLater(runOperation);
-		}
+		});
 	}
 
 	/**
@@ -513,19 +498,12 @@ public final class ProcessorChain {
 	 * in any way (such as in the Synchronizer when enabling new outputs).
 	 */
 	public void newStructuralChangesToCommit() {
-		final Runnable runOperation = new Runnable() {
+		GUISupport.runOnJavaFXThread(new Runnable() {
 			@Override
 			public void run() {
 				changesToCommit.set(true);
 			}
-		};
-
-		if (Platform.isFxApplicationThread()) {
-			runOperation.run();
-		}
-		else {
-			Platform.runLater(runOperation);
-		}
+		});
 	}
 
 	/**
