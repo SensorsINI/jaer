@@ -1,5 +1,7 @@
 package net.sf.jaer2.eventio.processors;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -47,11 +49,18 @@ public final class InputProcessor extends Processor {
 
 		// Regenerate output types based on what the Chip can produce.
 		if (interpreterChip != null) {
-			regenerateAdditionalOutputTypes(interpreterChip.getEventTypes());
+			final List<Class<? extends Event>> chipOutputTypes = new ArrayList<>();
+			chipOutputTypes.addAll(interpreterChip.getEventTypes());
+
+			regenerateAdditionalOutputTypes(chipOutputTypes);
+			rebuildStreamSets();
 		}
 	}
 
 	private void buildConfigGUI() {
+		// Clear input stream selection box from parent, not needed.
+		rootConfigLayout.getChildren().clear();
+
 		// Create Source type chooser box.
 		final ComboBox<Class<? extends Source>> sourceTypeChooser = GUISupport.addComboBox(null,
 			Reflections.sourceTypes, 0);
@@ -63,6 +72,42 @@ public final class InputProcessor extends Processor {
 		GUISupport.addLabelWithControlsHorizontal(rootConfigLayout, "Chip:",
 			"Select the Chip you want to use to translate the raw events coming from the source into meaningful ones.",
 			chipTypeChooser);
+
+		rootConfigTasks.add(new Runnable() {
+			@Override
+			public void run() {
+				Constructor<? extends Chip> constr = null;
+
+				try {
+					constr = chipTypeChooser.getValue().getConstructor();
+
+					if (constr == null) {
+						throw new NullPointerException("constructor is null");
+					}
+				}
+				catch (NoSuchMethodException | SecurityException | NullPointerException e) {
+					GUISupport.showDialogException(e);
+					return;
+				}
+
+				Chip chip = null;
+
+				try {
+					chip = constr.newInstance();
+
+					if (chip == null) {
+						throw new NullPointerException("newly created class is null");
+					}
+				}
+				catch (InstantiationException | IllegalAccessException | IllegalArgumentException
+					| InvocationTargetException | NullPointerException e) {
+					GUISupport.showDialogException(e);
+					return;
+				}
+
+				setInterpreterChip(chip);
+			}
+		});
 	}
 
 	@Override

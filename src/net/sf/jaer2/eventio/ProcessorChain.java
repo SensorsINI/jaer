@@ -410,7 +410,7 @@ public final class ProcessorChain {
 					constr = clazz.getConstructor(ProcessorChain.class);
 
 					if (constr == null) {
-						throw new NullPointerException("constr is null in addEventProcessor()");
+						throw new NullPointerException("constructor is null");
 					}
 				}
 				catch (NoSuchMethodException | SecurityException | NullPointerException e) {
@@ -427,7 +427,7 @@ public final class ProcessorChain {
 					processor = constr.newInstance(this);
 
 					if (processor == null) {
-						throw new NullPointerException("processor is null in addEventProcessor()");
+						throw new NullPointerException("newly created class is null");
 					}
 				}
 				catch (InstantiationException | IllegalAccessException | IllegalArgumentException

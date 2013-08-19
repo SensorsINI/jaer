@@ -1,10 +1,10 @@
 package net.sf.jaer2.chips;
 
-import java.util.List;
-
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 import net.sf.jaer2.eventio.eventpackets.raw.RawEventPacket;
 import net.sf.jaer2.eventio.events.Event;
+
+import com.google.common.collect.ImmutableList;
 
 public interface Chip {
 	public int getSizeX();
@@ -31,7 +31,7 @@ public interface Chip {
 
 	public boolean compatibleWith(final Chip chip);
 
-	public List<Class<? extends Event>> getEventTypes();
+	public ImmutableList<Class<? extends Event>> getEventTypes();
 
 	public EventPacketContainer extractEventPacketContainer(final RawEventPacket rawEventPacket);
 
