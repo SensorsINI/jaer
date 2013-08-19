@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
@@ -23,7 +24,6 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
-import net.sf.jaer2.chips.Chip;
 import net.sf.jaer2.eventio.ProcessorChain;
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 import net.sf.jaer2.eventio.events.Event;
@@ -98,6 +98,21 @@ public abstract class Processor implements Runnable {
 	 */
 	private final ObservableList<ImmutablePair<Class<? extends Event>, Integer>> outputStreams = FXCollections
 		.observableArrayList();
+
+	/**
+	 * Input streams on which this Processor is working on, based on user
+	 * configuration. This is the fast, thread-safe counter-part to
+	 * selectedInputStreams, updated when changes are committed.
+	 */
+	private final List<ImmutablePair<Class<? extends Event>, Integer>> workInputStreams = new CopyOnWriteArrayList<>();
+	/**
+	 * Input streams on which this Processor is working on, based on user
+	 * configuration. This is the fast, thread-safe counter-part to
+	 * selectedInputStreams, for use inside processors, and as such limited to
+	 * read-only operations.
+	 */
+	protected final List<ImmutablePair<Class<? extends Event>, Integer>> workInputStreamsReadOnly = java.util.Collections
+		.unmodifiableList(workInputStreams);
 
 	/** Queue containing all containers to process. */
 	protected final BlockingQueue<EventPacketContainer> workQueue = new ArrayBlockingQueue<>(16);
@@ -311,33 +326,24 @@ public abstract class Processor implements Runnable {
 		});
 	}
 
-	public final Processor getProcessorForSourceId(final int sourceId) {
-		// Search backwards for given source ID and get the corresponding
-		// Processor. A source *must* be either the current Processor or
-		// upstream of it.
-		if (sourceId == processorId) {
-			return this;
-		}
+	public final void updateWorkInputStreams() {
+		GUISupport.runOnJavaFXThread(new Runnable() {
+			@Override
+			public void run() {
+				if (!selectedInputStreams.isEmpty()) {
+					final List<ImmutablePair<Class<? extends Event>, Integer>> allSelInStream = new ArrayList<>();
 
-		if (getPrevProcessor() != null) {
-			return getPrevProcessor().getProcessorForSourceId(sourceId);
-		}
-		// TODO: think about thread-safety of this. Move to ProcessorChain
-		// maybe.
+					// Copy current selectedInputStreams to temporary list,
+					// since replaceNonDestructive() will drain it fully.
+					allSelInStream.addAll(selectedInputStreams);
 
-		return null;
-	}
-
-	public final Chip getChipForSourceId(final int sourceId) {
-		final Processor procSource = getProcessorForSourceId(sourceId);
-
-		if ((procSource != null) && (procSource instanceof InputProcessor)) {
-			return ((InputProcessor) procSource).getInterpreterChip();
-		}
-		// TODO: think about thread-safety of this. Move to ProcessorChain
-		// maybe.
-
-		return null;
+					Collections.replaceNonDestructive(workInputStreams, allSelInStream);
+				}
+				else {
+					workInputStreams.clear();
+				}
+			}
+		});
 	}
 
 	/**
@@ -350,12 +356,11 @@ public abstract class Processor implements Runnable {
 	 * @return whether relevant EventPackets are present or not.
 	 */
 	public final boolean processContainer(final EventPacketContainer container) {
-		for (final ImmutablePair<Class<? extends Event>, Integer> relevant : selectedInputStreams) {
+		for (final ImmutablePair<Class<? extends Event>, Integer> relevant : workInputStreams) {
 			if (container.getPacket(relevant.left, relevant.right) != null) {
 				return true;
 			}
 		}
-		// TODO: think about thread-safety of this.
 
 		return false;
 	}
@@ -428,6 +433,17 @@ public abstract class Processor implements Runnable {
 							selInStream.left.getSimpleName(), selInStream.right), null, null, null);
 					}
 				}
+			}
+		});
+
+		selectedInputStreams.addListener(new ListChangeListener<ImmutablePair<Class<? extends Event>, Integer>>() {
+			@Override
+			public void onChanged(
+				@SuppressWarnings("unused") final Change<? extends ImmutablePair<Class<? extends Event>, Integer>> change) {
+				// Changing anything about the selected input streams is
+				// considered a structural change, as it requires updating the
+				// chain's stream information.
+				parentChain.newStructuralChangesToCommit();
 			}
 		});
 

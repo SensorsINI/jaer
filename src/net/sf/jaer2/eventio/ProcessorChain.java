@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
@@ -25,6 +27,7 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
+import net.sf.jaer2.chips.Chip;
 import net.sf.jaer2.eventio.processors.EventProcessor;
 import net.sf.jaer2.eventio.processors.InputProcessor;
 import net.sf.jaer2.eventio.processors.OutputProcessor;
@@ -60,6 +63,9 @@ public final class ProcessorChain {
 
 	/** Unique ID counter for processor identification. */
 	private int processorIdCounter = 1;
+
+	/** Map Processor IDs to the corresponding Processor. */
+	private final ConcurrentMap<Integer, Processor> idToProcessorMap = new ConcurrentHashMap<>();
 
 	/** Commit Change Signal. */
 	private final BooleanProperty changesToCommit = new SimpleBooleanProperty(false);
@@ -538,8 +544,26 @@ public final class ProcessorChain {
 
 		// TODO: add other checks, then run the chain.
 
+		// TODO: Update ID -> Processor mapping.
+		// idToProcessorMap.put(processorId, processor);
+
 		// No more changes to commit after successful commit operation.
 		changesToCommit.set(false);
+	}
+
+	public Processor getProcessorForSourceId(final int sourceId) {
+		// Any valid source ID will always be present inside the Map.
+		return idToProcessorMap.get(sourceId);
+	}
+
+	public Chip getChipForSourceId(final int sourceId) {
+		final Processor procSource = getProcessorForSourceId(sourceId);
+
+		if ((procSource != null) && (procSource instanceof InputProcessor)) {
+			return ((InputProcessor) procSource).getInterpreterChip();
+		}
+
+		return null;
 	}
 
 	@Override
