@@ -3,6 +3,10 @@ package net.sf.jaer2.eventio.events;
 public class XYZPositionEvent extends XYPositionEvent {
 	public int z;
 
+	public XYZPositionEvent(int ts) {
+		super(ts);
+	}
+
 	protected final void deepCopyInternal(final XYZPositionEvent evt) {
 		super.deepCopyInternal(evt);
 
@@ -11,7 +15,7 @@ public class XYZPositionEvent extends XYPositionEvent {
 
 	@Override
 	public XYZPositionEvent deepCopy() {
-		final XYZPositionEvent evt = new XYZPositionEvent();
+		final XYZPositionEvent evt = new XYZPositionEvent(timestamp);
 		deepCopyInternal(evt);
 		return evt;
 	}

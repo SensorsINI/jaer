@@ -9,6 +9,10 @@ public class IMUEvent extends Event {
 	public double gyroY;
 	public double gyroZ;
 
+	public IMUEvent(int ts) {
+		super(ts);
+	}
+
 	protected final void deepCopyInternal(final IMUEvent evt) {
 		super.deepCopyInternal(evt);
 
@@ -23,7 +27,7 @@ public class IMUEvent extends Event {
 
 	@Override
 	public IMUEvent deepCopy() {
-		final IMUEvent evt = new IMUEvent();
+		final IMUEvent evt = new IMUEvent(timestamp);
 		deepCopyInternal(evt);
 		return evt;
 	}

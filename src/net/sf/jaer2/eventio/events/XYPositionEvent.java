@@ -4,6 +4,10 @@ public class XYPositionEvent extends Event {
 	public int x;
 	public int y;
 
+	public XYPositionEvent(int ts) {
+		super(ts);
+	}
+
 	protected final void deepCopyInternal(final XYPositionEvent evt) {
 		super.deepCopyInternal(evt);
 
@@ -13,7 +17,7 @@ public class XYPositionEvent extends Event {
 
 	@Override
 	public XYPositionEvent deepCopy() {
-		final XYPositionEvent evt = new XYPositionEvent();
+		final XYPositionEvent evt = new XYPositionEvent(timestamp);
 		deepCopyInternal(evt);
 		return evt;
 	}

@@ -6,33 +6,29 @@ import net.sf.jaer2.eventio.eventpackets.raw.RawEventPacket;
 import net.sf.jaer2.eventio.events.Event;
 import net.sf.jaer2.eventio.events.PolarityEvent;
 import net.sf.jaer2.eventio.events.SampleEvent;
+import net.sf.jaer2.eventio.events.SpecialEvent;
 
 import com.google.common.collect.ImmutableList;
 
 public class SBRet10 implements Chip {
-
 	@Override
 	public int getSizeX() {
-		// TODO Auto-generated method stub
-		return 0;
+		return 240;
 	}
 
 	@Override
 	public int getSizeY() {
-		// TODO Auto-generated method stub
-		return 0;
+		return 180;
 	}
 
 	@Override
 	public int getMaxSize() {
-		// TODO Auto-generated method stub
-		return 0;
+		return 240;
 	}
 
 	@Override
 	public int getMinSize() {
-		// TODO Auto-generated method stub
-		return 0;
+		return 180;
 	}
 
 	@Override
@@ -48,26 +44,25 @@ public class SBRet10 implements Chip {
 	}
 
 	@Override
-	public boolean compatibleWith(Chip chip) {
+	public boolean compatibleWith(final Chip chip) {
 		// TODO Auto-generated method stub
 		return false;
 	}
 
 	@Override
 	public ImmutableList<Class<? extends Event>> getEventTypes() {
-		return ImmutableList.<Class<? extends Event>>of(PolarityEvent.class, SampleEvent.class);
+		return ImmutableList.<Class<? extends Event>> of(PolarityEvent.class, SampleEvent.class, SpecialEvent.class);
 	}
 
 	@Override
-	public EventPacketContainer extractEventPacketContainer(RawEventPacket rawEventPacket) {
+	public void extractEventPacketContainer(final RawEventPacket rawEventPacket, final EventPacketContainer eventPacketContainer) {
 		// TODO Auto-generated method stub
-		return null;
+
 	}
 
 	@Override
-	public RawEventPacket reconstructRawEventPacket(EventPacketContainer eventPacketContainer) {
+	public void reconstructRawEventPacket(final EventPacketContainer eventPacketContainer, final RawEventPacket rawEventPacket) {
 		// TODO Auto-generated method stub
-		return null;
-	}
 
+	}
 }

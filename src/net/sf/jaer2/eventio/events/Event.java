@@ -4,9 +4,11 @@ public abstract class Event {
 	private int sourceID = 0;
 	private boolean valid = true;
 
-	public int timestamp;
+	public final int timestamp;
 
-	public int type;
+	public Event(final int ts) {
+		timestamp = ts;
+	}
 
 	public final Class<? extends Event> getEventType() {
 		return getClass();
@@ -39,10 +41,6 @@ public abstract class Event {
 	protected final void deepCopyInternal(final Event evt) {
 		evt.sourceID = sourceID;
 		evt.valid = valid;
-
-		evt.timestamp = timestamp;
-
-		evt.type = type;
 	}
 
 	public abstract Event deepCopy();

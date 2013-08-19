@@ -33,7 +33,9 @@ public interface Chip {
 
 	public ImmutableList<Class<? extends Event>> getEventTypes();
 
-	public EventPacketContainer extractEventPacketContainer(final RawEventPacket rawEventPacket);
+	public void extractEventPacketContainer(final RawEventPacket rawEventPacket,
+		final EventPacketContainer eventPacketContainer);
 
-	public RawEventPacket reconstructRawEventPacket(final EventPacketContainer eventPacketContainer);
+	public void reconstructRawEventPacket(final EventPacketContainer eventPacketContainer,
+		final RawEventPacket rawEventPacket);
 }

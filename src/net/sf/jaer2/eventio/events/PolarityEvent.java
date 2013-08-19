@@ -8,6 +8,10 @@ public class PolarityEvent extends XYPositionEvent {
 
 	public Polarity polarity;
 
+	public PolarityEvent(int ts) {
+		super(ts);
+	}
+
 	protected final void deepCopyInternal(final PolarityEvent evt) {
 		super.deepCopyInternal(evt);
 
@@ -16,7 +20,7 @@ public class PolarityEvent extends XYPositionEvent {
 
 	@Override
 	public PolarityEvent deepCopy() {
-		final PolarityEvent evt = new PolarityEvent();
+		final PolarityEvent evt = new PolarityEvent(timestamp);
 		deepCopyInternal(evt);
 		return evt;
 	}

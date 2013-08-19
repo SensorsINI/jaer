@@ -128,10 +128,13 @@ public final class InputProcessor extends Processor {
 
 			// Convert raw events into real ones.
 			for (final RawEventPacket inRawEventPacket : inputToProcess) {
-				final EventPacketContainer pktContainer = interpreterChip.extractEventPacketContainer(inRawEventPacket);
+				final EventPacketContainer outPacketContainer = new EventPacketContainer(this);
 
-				if (pktContainer != null) {
-					getNextProcessor().add(pktContainer);
+				interpreterChip.extractEventPacketContainer(inRawEventPacket, outPacketContainer);
+
+				// Send only packets with some (in)valid events on their way.
+				if (outPacketContainer.sizeFull() != 0) {
+					getNextProcessor().add(outPacketContainer);
 				}
 			}
 
