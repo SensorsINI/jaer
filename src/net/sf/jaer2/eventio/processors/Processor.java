@@ -87,6 +87,9 @@ public abstract class Processor implements Runnable {
 	/**
 	 * Defines which streams of events this Processor will work on, based on
 	 * user configuration.
+	 * This is strictly a subset of inputStreams and is automatically updated
+	 * when either inputStreams or the selection is changed, thanks to JavaFX
+	 * observables and bindings.
 	 */
 	private ObservableList<ImmutablePair<Class<? extends Event>, Integer>> selectedInputStreams = null;
 	/**
@@ -275,44 +278,37 @@ public abstract class Processor implements Runnable {
 		FXCollections.sort(outputStreams, new StreamComparator());
 	}
 
-	private void rebuildStreamSetsInternal() {
-		Processor.logger.debug("Rebuilding StreamSets for {}.", toString());
-
-		rebuildInputStreams();
-		rebuildOutputStreams();
-
-		// Call recursively on the next Processor, so that the rest of the chain
-		// gets updated correctly.
-		if (getNextProcessor() != null) {
-			getNextProcessor().rebuildStreamSetsInternal();
-		}
-		else {
-			// Rebuilding the StreamSets always constitutes a structural change.
-			parentChain.newStructuralChangesToCommit();
-		}
-	}
-
 	protected final void rebuildStreamSets() {
 		GUISupport.runOnJavaFXThread(new Runnable() {
 			@Override
 			public void run() {
-				// Ensure previous is updated, to show last box in GUI.
-				if (getPrevProcessor() != null) {
-					getPrevProcessor().rebuildStreamSetsInternal();
+				Processor.logger.debug("Rebuilding StreamSets for {}.", Processor.this.toString());
+
+				rebuildInputStreams();
+				rebuildOutputStreams();
+
+				// Call recursively on the next Processor, so that the rest of
+				// the chain gets updated correctly.
+				if (getNextProcessor() != null) {
+					getNextProcessor().rebuildStreamSets();
 				}
 				else {
-					// If previous is not defined, let's start from here (this).
-					rebuildStreamSetsInternal();
+					// Rebuilding the StreamSets always constitutes a structural
+					// change.
+					parentChain.newStructuralChangesToCommit();
 				}
 			}
 		});
 	}
 
-	protected final ObservableList<ImmutablePair<Class<? extends Event>, Integer>> getAllSelectedInputStreams() {
-		// This is strictly a subset of inputStreams and is automatically
-		// updated when either inputStreams or the selection is changed, thanks
-		// to JavaFX observables and bindings.
-		return selectedInputStreams;
+	protected final void setListenerOnSelectedInputStreams(
+		final ListChangeListener<ImmutablePair<Class<? extends Event>, Integer>> listener) {
+		GUISupport.runOnJavaFXThread(new Runnable() {
+			@Override
+			public void run() {
+				selectedInputStreams.addListener(listener);
+			}
+		});
 	}
 
 	public final Processor getProcessorForSourceId(final int sourceId) {
