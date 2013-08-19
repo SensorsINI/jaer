@@ -15,11 +15,11 @@ public final class SynchronizationProcessor extends EventProcessor {
 	public SynchronizationProcessor(final ProcessorChain chain) {
 		super(chain);
 
-		// Setup a change listener on the selected Input Streams for this
+		// Setup a change listener on the selected input streams for this
 		// Processor. If they change, the change shall be reflected in the types
 		// this Processor can output, since synchronization is solved for the
 		// general case (depends only on time-stamp/number) and thus throws back
-		// out synchronized containers with the same types it gets as input.
+		// out synchronized containers with the same types it gets as an input.
 		setListenerOnSelectedInputStreams(new ListChangeListener<ImmutablePair<Class<? extends Event>, Integer>>() {
 			@Override
 			public void onChanged(final Change<? extends ImmutablePair<Class<? extends Event>, Integer>> change) {
@@ -58,6 +58,6 @@ public final class SynchronizationProcessor extends EventProcessor {
 	@Override
 	protected void setAdditionalOutputTypes(@SuppressWarnings("unused") final Set<Class<? extends Event>> outputs) {
 		// Empty, no new output types are ever produced here by itself.
-		// They fully depend on the selected Input types (see constructor).
+		// They fully depend on the selected input types (see constructor).
 	}
 }

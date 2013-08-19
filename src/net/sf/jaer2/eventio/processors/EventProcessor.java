@@ -13,12 +13,12 @@ public abstract class EventProcessor extends Processor {
 	@Override
 	public final void run() {
 		while (!Thread.currentThread().isInterrupted()) {
-			if (workQueue.drainTo(toProcess) == 0) {
+			if (workQueue.drainTo(workToProcess) == 0) {
 				// No elements, retry.
 				continue;
 			}
 
-			for (final EventPacketContainer container : toProcess) {
+			for (final EventPacketContainer container : workToProcess) {
 				// Check that this container is interesting for this processor.
 				if (processContainer(container)) {
 					processEvents(container);
@@ -29,12 +29,10 @@ public abstract class EventProcessor extends Processor {
 					}
 				}
 
-				if (getNextProcessor() != null) {
-					getNextProcessor().add(container);
-				}
+				getNextProcessor().add(container);
 			}
 
-			toProcess.clear();
+			workToProcess.clear();
 		}
 	}
 }

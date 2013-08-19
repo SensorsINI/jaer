@@ -29,12 +29,12 @@ public final class OutputProcessor extends Processor {
 	@Override
 	public void run() {
 		while (!Thread.currentThread().isInterrupted()) {
-			if (workQueue.drainTo(toProcess) == 0) {
+			if (workQueue.drainTo(workToProcess) == 0) {
 				// No elements, retry.
 				continue;
 			}
 
-			for (final EventPacketContainer container : toProcess) {
+			for (final EventPacketContainer container : workToProcess) {
 				// Check that this container is interesting for this processor.
 				if (processContainer(container)) {
 					outputQueue.add(container);
@@ -45,7 +45,7 @@ public final class OutputProcessor extends Processor {
 				}
 			}
 
-			toProcess.clear();
+			workToProcess.clear();
 		}
 	}
 

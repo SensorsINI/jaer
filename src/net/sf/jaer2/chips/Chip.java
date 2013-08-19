@@ -2,7 +2,7 @@ package net.sf.jaer2.chips;
 
 import java.util.List;
 
-import net.sf.jaer2.eventio.eventpackets.EventPacket;
+import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 import net.sf.jaer2.eventio.eventpackets.raw.RawEventPacket;
 import net.sf.jaer2.eventio.events.Event;
 
@@ -29,11 +29,11 @@ public interface Chip {
 	 */
 	public int getNumPixels();
 
-	public boolean compatibleWith(Chip chip);
+	public boolean compatibleWith(final Chip chip);
 
 	public List<Class<? extends Event>> getEventTypes();
 
-	public <E extends Event> EventPacket<E> extractEventPacket(RawEventPacket rawEventPacket);
+	public EventPacketContainer extractEventPacketContainer(final RawEventPacket rawEventPacket);
 
-	public <E extends Event> RawEventPacket reconstructRawEventPacket(EventPacket<E> eventPacket);
+	public RawEventPacket reconstructRawEventPacket(final EventPacketContainer eventPacketContainer);
 }

@@ -118,9 +118,9 @@ public abstract class Processor implements Runnable {
 	protected final BlockingQueue<EventPacketContainer> workQueue = new ArrayBlockingQueue<>(16);
 	/**
 	 * List containing all containers that are currently being worked on (inside
-	 * the Processor, not thread-safe!).
+	 * the Processor, not thread-safe!). Never bigger than {@link #workQueue}.
 	 */
-	protected final List<EventPacketContainer> toProcess = new ArrayList<>(32);
+	protected final List<EventPacketContainer> workToProcess = new ArrayList<>(16);
 
 	/** Main GUI layout - Horizontal Box. */
 	protected final HBox rootLayout = new HBox(10);
@@ -366,11 +366,13 @@ public abstract class Processor implements Runnable {
 	}
 
 	public final void add(final EventPacketContainer container) {
-		workQueue.add(container);
+		workQueue.offer(container);
 	}
 
 	public final void addAll(final Collection<EventPacketContainer> containers) {
-		workQueue.addAll(containers);
+		for (final EventPacketContainer container : containers) {
+			workQueue.offer(container);
+		}
 	}
 
 	/**
