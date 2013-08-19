@@ -1,6 +1,6 @@
 package net.sf.jaer2.eventio.events;
 
-public class PolarityEvent extends BaseEvent {
+public class PolarityEvent extends XYPositionEvent {
 	public enum Polarity {
 		ON,
 		OFF,

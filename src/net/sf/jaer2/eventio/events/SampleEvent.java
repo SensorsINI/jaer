@@ -1,6 +1,6 @@
 package net.sf.jaer2.eventio.events;
 
-public class SampleEvent extends BaseEvent {
+public class SampleEvent extends XYPositionEvent {
 	public int sample;
 
 	protected final void deepCopyInternal(final SampleEvent evt) {
