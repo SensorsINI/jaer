@@ -1,5 +1,7 @@
 package net.sf.jaer2.util;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.util.Iterator;
 import java.util.Set;
@@ -46,4 +48,51 @@ public final class Reflections {
 
 	/** List of classes extending Sink. */
 	public static final Set<Class<? extends Sink>> sinkTypes = Reflections.getSubClasses(Sink.class);
+
+	public static <T> T newInstanceForClass(final Class<T> clazz) throws NoSuchMethodException, SecurityException,
+		InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
+		NullPointerException {
+		Constructor<T> constr = null;
+
+		constr = clazz.getConstructor();
+
+		if (constr == null) {
+			throw new NullPointerException("constructor is null");
+		}
+
+		T newClass = null;
+
+		newClass = constr.newInstance();
+
+		if (newClass == null) {
+			throw new NullPointerException("newly created class is null");
+		}
+
+		return newClass;
+	}
+
+	public static <T, E> T newInstanceForClassWithArgument(final Class<T> clazz, final Class<E> argumentType,
+		final E argumentValue) throws NoSuchMethodException, SecurityException, InstantiationException,
+		IllegalAccessException, IllegalArgumentException, InvocationTargetException, NullPointerException {
+		Constructor<T> constr = null;
+
+		// Try to find a compatible constructor for the given concrete type.
+		constr = clazz.getConstructor(argumentType);
+
+		if (constr == null) {
+			throw new NullPointerException("constructor is null");
+		}
+
+		T newClass = null;
+
+		// Try to create a new instance of the given concrete type, using the
+		// constructor found above.
+		newClass = constr.newInstance(argumentValue);
+
+		if (newClass == null) {
+			throw new NullPointerException("newly created class is null");
+		}
+
+		return newClass;
+	}
 }

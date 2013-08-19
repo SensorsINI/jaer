@@ -1,6 +1,5 @@
 package net.sf.jaer2.eventio.processors;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -61,12 +60,6 @@ public final class InputProcessor extends Processor {
 		// Clear input stream selection box from parent, not needed.
 		rootConfigLayout.getChildren().clear();
 
-		// Create Source type chooser box.
-		final ComboBox<Class<? extends Source>> sourceTypeChooser = GUISupport.addComboBox(null,
-			Reflections.sourceTypes, 0);
-		GUISupport.addLabelWithControlsHorizontal(rootConfigLayout, "Source:",
-			"Select the input Source you want to use.", sourceTypeChooser);
-
 		// Create Chip type chooser box.
 		final ComboBox<Class<? extends Chip>> chipTypeChooser = GUISupport.addComboBox(null, Reflections.chipTypes, 0);
 		GUISupport.addLabelWithControlsHorizontal(rootConfigLayout, "Chip:",
@@ -76,36 +69,42 @@ public final class InputProcessor extends Processor {
 		rootConfigTasks.add(new Runnable() {
 			@Override
 			public void run() {
-				Constructor<? extends Chip> constr = null;
+				Chip chip;
 
 				try {
-					constr = chipTypeChooser.getValue().getConstructor();
-
-					if (constr == null) {
-						throw new NullPointerException("constructor is null");
-					}
+					chip = Reflections.newInstanceForClass(chipTypeChooser.getValue());
 				}
-				catch (NoSuchMethodException | SecurityException | NullPointerException e) {
-					GUISupport.showDialogException(e);
-					return;
-				}
-
-				Chip chip = null;
-
-				try {
-					chip = constr.newInstance();
-
-					if (chip == null) {
-						throw new NullPointerException("newly created class is null");
-					}
-				}
-				catch (InstantiationException | IllegalAccessException | IllegalArgumentException
-					| InvocationTargetException | NullPointerException e) {
+				catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException
+					| IllegalArgumentException | InvocationTargetException | NullPointerException e) {
 					GUISupport.showDialogException(e);
 					return;
 				}
 
 				setInterpreterChip(chip);
+			}
+		});
+
+		// Create Source type chooser box.
+		final ComboBox<Class<? extends Source>> sourceTypeChooser = GUISupport.addComboBox(null,
+			Reflections.sourceTypes, 0);
+		GUISupport.addLabelWithControlsHorizontal(rootConfigLayout, "Source:",
+			"Select the input Source you want to use.", sourceTypeChooser);
+
+		rootConfigTasks.add(new Runnable() {
+			@Override
+			public void run() {
+				Source source;
+
+				try {
+					source = Reflections.newInstanceForClass(sourceTypeChooser.getValue());
+				}
+				catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException
+					| IllegalArgumentException | InvocationTargetException | NullPointerException e) {
+					GUISupport.showDialogException(e);
+					return;
+				}
+
+				setConnectedSource(source);
 			}
 		});
 	}

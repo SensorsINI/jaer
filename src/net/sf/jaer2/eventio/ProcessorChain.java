@@ -1,6 +1,5 @@
 package net.sf.jaer2.eventio;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -402,36 +401,11 @@ public final class ProcessorChain {
 				break;
 
 			case EVENT_PROCESSOR:
-				Constructor<? extends EventProcessor> constr = null;
-
 				try {
-					// Try to find a compatible constructor for the given
-					// concrete type.
-					constr = clazz.getConstructor(ProcessorChain.class);
-
-					if (constr == null) {
-						throw new NullPointerException("constructor is null");
-					}
+					processor = Reflections.newInstanceForClassWithArgument(clazz, ProcessorChain.class, this);
 				}
-				catch (NoSuchMethodException | SecurityException | NullPointerException e) {
-					GUISupport.showDialogException(e);
-					return null;
-				}
-
-				processor = null;
-
-				try {
-					// Try to create a new instance of the given concrete type,
-					// using
-					// the constructor found above.
-					processor = constr.newInstance(this);
-
-					if (processor == null) {
-						throw new NullPointerException("newly created class is null");
-					}
-				}
-				catch (InstantiationException | IllegalAccessException | IllegalArgumentException
-					| InvocationTargetException | NullPointerException e) {
+				catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException
+					| IllegalArgumentException | InvocationTargetException | NullPointerException e) {
 					GUISupport.showDialogException(e);
 					return null;
 				}
@@ -535,6 +509,10 @@ public final class ProcessorChain {
 		}
 
 		// TODO: add other checks, then run the chain.
+
+		for (final Processor processor : processors) {
+			processor.updateWorkInputStreams();
+		}
 
 		// TODO: Update ID -> Processor mapping.
 		// idToProcessorMap.put(processorId, processor);
