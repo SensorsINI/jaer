@@ -7,12 +7,15 @@ import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
+import javafx.scene.control.ComboBox;
 import net.sf.jaer2.chips.Chip;
 import net.sf.jaer2.eventio.ProcessorChain;
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 import net.sf.jaer2.eventio.eventpackets.raw.RawEventPacket;
 import net.sf.jaer2.eventio.events.Event;
 import net.sf.jaer2.eventio.sources.Source;
+import net.sf.jaer2.util.GUISupport;
+import net.sf.jaer2.util.Reflections;
 
 public final class InputProcessor extends Processor {
 	private final BlockingQueue<RawEventPacket> inputQueue = new ArrayBlockingQueue<>(32);
@@ -23,6 +26,8 @@ public final class InputProcessor extends Processor {
 
 	public InputProcessor(final ProcessorChain chain) {
 		super(chain);
+
+		buildConfigGUI();
 	}
 
 	public Source getConnectedSource() {
@@ -46,6 +51,20 @@ public final class InputProcessor extends Processor {
 		}
 	}
 
+	private void buildConfigGUI() {
+		// Create Source type chooser box.
+		final ComboBox<Class<? extends Source>> sourceTypeChooser = GUISupport.addComboBox(null,
+			Reflections.sourceTypes, 0);
+		GUISupport.addLabelWithControlsHorizontal(rootConfigLayout, "Source:",
+			"Select the input Source you want to use.", sourceTypeChooser);
+
+		// Create Chip type chooser box.
+		final ComboBox<Class<? extends Chip>> chipTypeChooser = GUISupport.addComboBox(null, Reflections.chipTypes, 0);
+		GUISupport.addLabelWithControlsHorizontal(rootConfigLayout, "Chip:",
+			"Select the Chip you want to use to translate the raw events coming from the source into meaningful ones.",
+			chipTypeChooser);
+	}
+
 	@Override
 	public void run() {
 		while (!Thread.currentThread().isInterrupted()) {
@@ -63,8 +82,8 @@ public final class InputProcessor extends Processor {
 			}
 
 			// Convert raw events into real ones.
-			for (RawEventPacket inRawEventPacket : inputToProcess) {
-				EventPacketContainer pktContainer = interpreterChip.extractEventPacketContainer(inRawEventPacket);
+			for (final RawEventPacket inRawEventPacket : inputToProcess) {
+				final EventPacketContainer pktContainer = interpreterChip.extractEventPacketContainer(inRawEventPacket);
 
 				if (pktContainer != null) {
 					getNextProcessor().add(pktContainer);

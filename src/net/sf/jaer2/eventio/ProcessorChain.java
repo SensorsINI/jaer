@@ -5,7 +5,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -42,13 +41,6 @@ import org.slf4j.LoggerFactory;
 public final class ProcessorChain {
 	/** Local logger for log messages. */
 	private final static Logger logger = LoggerFactory.getLogger(ProcessorChain.class);
-
-	/** List of classes extending EventProcessor. */
-	private final static Set<Class<? extends EventProcessor>> eventProcessorTypes;
-	static {
-		// Generate the list of classes only once. */
-		eventProcessorTypes = Reflections.getSubClasses(EventProcessor.class);
-	}
 
 	/** Chain identification ID. */
 	private final int chainId;
@@ -255,7 +247,7 @@ public final class ProcessorChain {
 
 		// Create EventProcessor type chooser box.
 		final ComboBox<Class<? extends EventProcessor>> eventProcessorTypeChooser = GUISupport.addComboBox(null,
-			ProcessorChain.eventProcessorTypes, 0);
+			Reflections.eventProcessorTypes, 0);
 		final HBox eventProcessorTypeChooserBox = GUISupport.addLabelWithControlsHorizontal(rootConfigLayout,
 			"Event Processor:", "Select the Event Processor you want to use.", eventProcessorTypeChooser);
 
