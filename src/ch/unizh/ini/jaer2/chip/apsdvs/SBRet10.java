@@ -1,5 +1,6 @@
 package ch.unizh.ini.jaer2.chip.apsdvs;
 
+import javafx.scene.control.Label;
 import net.sf.jaer2.chips.Chip;
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 import net.sf.jaer2.eventio.eventpackets.raw.RawEventPacket;
@@ -7,6 +8,7 @@ import net.sf.jaer2.eventio.events.Event;
 import net.sf.jaer2.eventio.events.PolarityEvent;
 import net.sf.jaer2.eventio.events.SampleEvent;
 import net.sf.jaer2.eventio.events.SpecialEvent;
+import net.sf.jaer2.util.GUISupport;
 
 import com.google.common.collect.ImmutableList;
 
@@ -55,14 +57,24 @@ public class SBRet10 implements Chip {
 	}
 
 	@Override
-	public void extractEventPacketContainer(final RawEventPacket rawEventPacket, final EventPacketContainer eventPacketContainer) {
+	public void extractEventPacketContainer(final RawEventPacket rawEventPacket,
+		final EventPacketContainer eventPacketContainer) {
 		// TODO Auto-generated method stub
 
 	}
 
 	@Override
-	public void reconstructRawEventPacket(final EventPacketContainer eventPacketContainer, final RawEventPacket rawEventPacket) {
+	public void reconstructRawEventPacket(final EventPacketContainer eventPacketContainer,
+		final RawEventPacket rawEventPacket) {
 		// TODO Auto-generated method stub
 
+	}
+
+	private static final Label stringRepresentation = GUISupport.addLabel(null, SBRet10.class.getSimpleName(), null,
+		null, null);
+
+	@Override
+	public Label getDisplayName() {
+		return stringRepresentation;
 	}
 }

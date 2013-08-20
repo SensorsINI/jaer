@@ -39,6 +39,7 @@ public final class InputProcessor extends Processor {
 		super(chain);
 
 		buildConfigGUI();
+		buildGUI();
 	}
 
 	public Source getConnectedSource() {
@@ -137,13 +138,42 @@ public final class InputProcessor extends Processor {
 		}
 	}
 
+	private void buildGUI() {
+		// Display chip and source as soon as they are set.
+		interpreterChip.addListener(new ChangeListener<Chip>() {
+			@Override
+			public void changed(@SuppressWarnings("unused") final ObservableValue<? extends Chip> observable,
+				final Chip oldValue, final Chip newValue) {
+				// Remove current label (if any).
+				if (oldValue != null) {
+					rootLayoutChildren.getChildren().remove(oldValue.getDisplayName());
+				}
+
+				rootLayoutChildren.getChildren().add(newValue.getDisplayName());
+			}
+		});
+
+		connectedSource.addListener(new ChangeListener<Source>() {
+			@Override
+			public void changed(@SuppressWarnings("unused") final ObservableValue<? extends Source> observable,
+				final Source oldValue, final Source newValue) {
+				// Remove current label (if any).
+				if (oldValue != null) {
+					rootLayoutChildren.getChildren().remove(oldValue.getGUI());
+				}
+
+				rootLayoutChildren.getChildren().add(newValue.getGUI());
+			}
+		});
+	}
+
 	private void buildConfigGUI() {
 		// Clear input stream selection box from parent, not needed.
-		rootConfigLayout.getChildren().clear();
+		rootConfigLayoutChildren.getChildren().clear();
 
 		// Create Chip type chooser box.
 		final ComboBox<Class<? extends Chip>> chipTypeChooser = GUISupport.addComboBox(null, Reflections.chipTypes, 0);
-		GUISupport.addLabelWithControlsHorizontal(rootConfigLayout, "Chip:",
+		GUISupport.addLabelWithControlsHorizontal(rootConfigLayoutChildren, "Chip:",
 			"Select the Chip you want to use to translate the raw events coming from the source into meaningful ones.",
 			chipTypeChooser);
 
@@ -189,7 +219,7 @@ public final class InputProcessor extends Processor {
 		// Create Source type chooser box.
 		final ComboBox<Class<? extends Source>> sourceTypeChooser = GUISupport.addComboBox(null,
 			Reflections.sourceTypes, -1);
-		GUISupport.addLabelWithControlsHorizontal(rootConfigLayout, "Source:",
+		GUISupport.addLabelWithControlsHorizontal(rootConfigLayoutChildren, "Source:",
 			"Select the input Source you want to use.", sourceTypeChooser);
 
 		connectedSource.addListener(new ChangeListener<Source>() {
@@ -210,7 +240,7 @@ public final class InputProcessor extends Processor {
 				final Class<? extends Source> oldValue, final Class<? extends Source> newValue) {
 				// Don't display old value anymore (if any).
 				if (currentSourceConfig != null) {
-					rootConfigLayout.getChildren().remove(currentSourceConfig.getConfigGUI());
+					rootConfigLayoutChildren.getChildren().remove(currentSourceConfig.getConfigGUI());
 				}
 
 				// When the chosen source type changes, create an instance of
@@ -226,7 +256,7 @@ public final class InputProcessor extends Processor {
 				}
 
 				// Add config GUI for new source instance.
-				rootConfigLayout.getChildren().add(currentSourceConfig.getConfigGUI());
+				rootConfigLayoutChildren.getChildren().add(currentSourceConfig.getConfigGUI());
 			}
 		});
 
@@ -250,10 +280,10 @@ public final class InputProcessor extends Processor {
 				if (getConnectedSource() != null) {
 					// Reset GUI to previous state, like in handler above.
 					if (currentSourceConfig != null) {
-						rootConfigLayout.getChildren().remove(currentSourceConfig.getConfigGUI());
+						rootConfigLayoutChildren.getChildren().remove(currentSourceConfig.getConfigGUI());
 					}
 					currentSourceConfig = getConnectedSource();
-					rootConfigLayout.getChildren().add(currentSourceConfig.getConfigGUI());
+					rootConfigLayoutChildren.getChildren().add(currentSourceConfig.getConfigGUI());
 
 					sourceTypeChooser.setValue(getConnectedSource().getClass());
 				}

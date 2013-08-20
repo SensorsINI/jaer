@@ -1,5 +1,6 @@
 package ch.unizh.ini.jaer2.chip.dvs;
 
+import javafx.scene.control.Label;
 import net.sf.jaer2.chips.Chip;
 import net.sf.jaer2.eventio.eventpackets.EventPacket;
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
@@ -9,6 +10,7 @@ import net.sf.jaer2.eventio.events.PolarityEvent;
 import net.sf.jaer2.eventio.events.SpecialEvent;
 import net.sf.jaer2.eventio.events.SpecialEvent.Type;
 import net.sf.jaer2.eventio.events.raw.RawEvent;
+import net.sf.jaer2.util.GUISupport;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -125,5 +127,13 @@ public class DVS128 implements Chip {
 	public void reconstructRawEventPacket(final EventPacketContainer eventPacketContainer,
 		final RawEventPacket rawEventPacket) {
 		// TODO Auto-generated method stub
+	}
+
+	private static final Label stringRepresentation = GUISupport.addLabel(null, DVS128.class.getSimpleName(), null,
+		null, null);
+
+	@Override
+	public Label getDisplayName() {
+		return stringRepresentation;
 	}
 }

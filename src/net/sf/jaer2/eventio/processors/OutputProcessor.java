@@ -25,6 +25,7 @@ public final class OutputProcessor extends Processor {
 		super(chain);
 
 		buildConfigGUI();
+		buildGUI();
 	}
 
 	public Sink getConnectedSink() {
@@ -87,6 +88,10 @@ public final class OutputProcessor extends Processor {
 
 	public void getAllFromOutput(final Collection<EventPacketContainer> eventPacketContainers) {
 		outputQueue.drainTo(eventPacketContainers);
+	}
+
+	private void buildGUI() {
+
 	}
 
 	private void buildConfigGUI() {

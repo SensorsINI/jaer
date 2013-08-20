@@ -124,11 +124,15 @@ public abstract class Processor implements Runnable {
 	protected final List<EventPacketContainer> workToProcess = new ArrayList<>(16);
 
 	/** Main GUI layout - Horizontal Box. */
-	protected final HBox rootLayout = new HBox(10);
+	private final HBox rootLayout = new HBox(10);
+	/** Main GUI layout for Sub-Classes - Vertical Box. */
+	protected final VBox rootLayoutChildren = new VBox(5);
 
 	/** Configuration GUI layout - Vertical Box. */
-	protected final VBox rootConfigLayout = new VBox(10);
-	/** Configuration GUI: tasks to execute on success. */
+	private final VBox rootConfigLayout = new VBox(10);
+	/** Configuration GUI layout for Sub-Classes - Vertical Box. */
+	protected final VBox rootConfigLayoutChildren = new VBox(5);
+	/** Configuration GUI: tasks to execute on dialog closure. */
 	protected final List<ImmutablePair<Dialog.Actions, Runnable>> rootConfigTasks = new ArrayList<>(2);
 
 	public Processor(final ProcessorChain chain) {
@@ -423,6 +427,9 @@ public abstract class Processor implements Runnable {
 		final VBox selectedInputStreamsBox = new VBox(5);
 		controlInfoBox.getChildren().add(selectedInputStreamsBox);
 
+		// Add layout box for sub-classes at the very end.
+		controlInfoBox.getChildren().add(rootLayoutChildren);
+
 		selectedInputStreams.addListener(new ListChangeListener<ImmutablePair<Class<? extends Event>, Integer>>() {
 			@Override
 			public void onChanged(final Change<? extends ImmutablePair<Class<? extends Event>, Integer>> change) {
@@ -506,6 +513,9 @@ public abstract class Processor implements Runnable {
 
 		GUISupport.addLabelWithControlsVertical(rootConfigLayout, "Select streams to process:",
 			"Select the <Type, Source> combinations (streams) on which to operate.", streams);
+
+		// Add layout box for sub-classes at the very end.
+		rootConfigLayout.getChildren().add(rootConfigLayoutChildren);
 	}
 
 	@Override
