@@ -132,6 +132,7 @@ public abstract class Processor implements Runnable {
 	private final VBox rootConfigLayout = new VBox(10);
 	/** Configuration GUI layout for Sub-Classes - Vertical Box. */
 	protected final VBox rootConfigLayoutChildren = new VBox(5);
+
 	/** Configuration GUI: tasks to execute on dialog closure. */
 	protected final List<ImmutablePair<Dialog.Actions, Runnable>> rootConfigTasks = new ArrayList<>(2);
 
@@ -511,8 +512,11 @@ public abstract class Processor implements Runnable {
 		// Make the selected items globally available.
 		selectedInputStreams = streams.getSelectionModel().getSelectedItems();
 
-		GUISupport.addLabelWithControlsVertical(rootConfigLayout, "Select streams to process:",
-			"Select the <Type, Source> combinations (streams) on which to operate.", streams);
+		// Only show stream selection if not an InputProcessor.
+		if (!(this instanceof InputProcessor)) {
+			GUISupport.addLabelWithControlsVertical(rootConfigLayout, "Select streams to process:",
+				"Select the <Type, Source> combinations (streams) on which to operate.", streams);
+		}
 
 		// Add layout box for sub-classes at the very end.
 		rootConfigLayout.getChildren().add(rootConfigLayoutChildren);

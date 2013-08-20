@@ -13,6 +13,9 @@ import net.sf.jaer2.eventio.events.Event;
 import net.sf.jaer2.eventio.sinks.Sink;
 import net.sf.jaer2.util.GUISupport;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.controlsfx.dialog.Dialog;
+
 public final class OutputProcessor extends Processor {
 	private final BlockingQueue<EventPacketContainer> outputQueue = new ArrayBlockingQueue<>(32);
 
@@ -95,6 +98,22 @@ public final class OutputProcessor extends Processor {
 	}
 
 	private void buildConfigGUI() {
-
+		// Add first config tasks to execute the Source-related config tasks.
+		rootConfigTasks.add(new ImmutablePair<Dialog.Actions, Runnable>(Dialog.Actions.OK, new Runnable() {
+			@Override
+			public void run() {
+				if (currentSinkConfig != null) {
+					currentSinkConfig.executeConfigTasks(Dialog.Actions.OK);
+				}
+			}
+		}));
+		rootConfigTasks.add(new ImmutablePair<Dialog.Actions, Runnable>(Dialog.Actions.CANCEL, new Runnable() {
+			@Override
+			public void run() {
+				if (currentSinkConfig != null) {
+					currentSinkConfig.executeConfigTasks(Dialog.Actions.CANCEL);
+				}
+			}
+		}));
 	}
 }

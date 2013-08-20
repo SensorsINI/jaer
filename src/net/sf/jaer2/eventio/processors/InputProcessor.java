@@ -171,6 +171,24 @@ public final class InputProcessor extends Processor {
 		// Clear input stream selection box from parent, not needed.
 		rootConfigLayoutChildren.getChildren().clear();
 
+		// Add first config tasks to execute the Source-related config tasks.
+		rootConfigTasks.add(new ImmutablePair<Dialog.Actions, Runnable>(Dialog.Actions.OK, new Runnable() {
+			@Override
+			public void run() {
+				if (currentSourceConfig != null) {
+					currentSourceConfig.executeConfigTasks(Dialog.Actions.OK);
+				}
+			}
+		}));
+		rootConfigTasks.add(new ImmutablePair<Dialog.Actions, Runnable>(Dialog.Actions.CANCEL, new Runnable() {
+			@Override
+			public void run() {
+				if (currentSourceConfig != null) {
+					currentSourceConfig.executeConfigTasks(Dialog.Actions.CANCEL);
+				}
+			}
+		}));
+
 		// Create Chip type chooser box.
 		final ComboBox<Class<? extends Chip>> chipTypeChooser = GUISupport.addComboBox(null, Reflections.chipTypes, 0);
 		GUISupport.addLabelWithControlsHorizontal(rootConfigLayoutChildren, "Chip:",

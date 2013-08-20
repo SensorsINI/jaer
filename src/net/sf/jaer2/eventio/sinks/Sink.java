@@ -1,9 +1,16 @@
 package net.sf.jaer2.eventio.sinks;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import net.sf.jaer2.util.GUISupport;
+
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.controlsfx.control.action.Action;
+import org.controlsfx.dialog.Dialog;
 
 public abstract class Sink {
 	/** Main GUI layout - Horizontal Box. */
@@ -16,9 +23,30 @@ public abstract class Sink {
 	/** Configuration GUI layout for Sub-Classes - Vertical Box. */
 	protected final VBox rootConfigLayoutChildren = new VBox(0);
 
+	/** Configuration GUI: tasks to execute on dialog closure. */
+	protected final List<ImmutablePair<Dialog.Actions, Runnable>> rootConfigTasks = new ArrayList<>(2);
+
 	public Sink() {
 		buildConfigGUI();
 		buildGUI();
+	}
+
+	public void executeConfigTasks(final Action result) {
+		if (result == Dialog.Actions.OK) {
+			for (final ImmutablePair<Dialog.Actions, Runnable> task : rootConfigTasks) {
+				if ((task.left == null) || (task.left == Dialog.Actions.OK)) {
+					task.right.run();
+				}
+			}
+		}
+
+		if (result == Dialog.Actions.CANCEL) {
+			for (final ImmutablePair<Dialog.Actions, Runnable> task : rootConfigTasks) {
+				if ((task.left == null) || (task.left == Dialog.Actions.CANCEL)) {
+					task.right.run();
+				}
+			}
+		}
 	}
 
 	/**
