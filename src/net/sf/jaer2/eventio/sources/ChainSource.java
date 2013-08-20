@@ -1,5 +1,5 @@
 package net.sf.jaer2.eventio.sources;
 
-public class ChainSource implements Source {
+public class ChainSource extends Source {
 
 }

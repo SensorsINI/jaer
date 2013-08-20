@@ -10,6 +10,7 @@ import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 import net.sf.jaer2.eventio.events.Event;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.controlsfx.dialog.Dialog;
 
 public final class SynchronizationProcessor extends EventProcessor {
 	public SynchronizationProcessor(final ProcessorChain chain) {
@@ -36,12 +37,12 @@ public final class SynchronizationProcessor extends EventProcessor {
 		});
 
 		// Rebuild StreamSets after clicking on OK.
-		rootConfigTasks.add(new Runnable() {
+		rootConfigTasks.add(new ImmutablePair<Dialog.Actions, Runnable>(Dialog.Actions.OK, new Runnable() {
 			@Override
 			public void run() {
 				rebuildStreamSets();
 			}
-		});
+		}));
 	}
 
 	@Override

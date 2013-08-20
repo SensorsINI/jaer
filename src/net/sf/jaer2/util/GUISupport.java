@@ -23,11 +23,17 @@ import javafx.scene.shape.Polygon;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.controlsfx.control.action.Action;
 import org.controlsfx.dialog.Dialog;
 import org.controlsfx.dialog.Dialogs;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class GUISupport {
+	/** Local logger for log messages. */
+	private final static Logger logger = LoggerFactory.getLogger(GUISupport.class);
+
 	public static Button addButton(final Pane parentPane, final String text, final boolean displayText,
 		final String imagePath) {
 		final Button button = new Button();
@@ -176,7 +182,8 @@ public final class GUISupport {
 		return txt;
 	}
 
-	public static void showDialog(final String title, final Node content, final Collection<Runnable> tasks) {
+	public static void showDialog(final String title, final Node content,
+		final Collection<ImmutablePair<Dialog.Actions, Runnable>> tasks) {
 		final Dialog dialog = new Dialog(null, title, true, false);
 
 		dialog.setContent(content);
@@ -185,9 +192,21 @@ public final class GUISupport {
 
 		final Action result = dialog.show();
 
+		GUISupport.logger.debug("Clicked on {} in dialog.", result);
+
 		if (result == Dialog.Actions.OK) {
-			for (final Runnable task : tasks) {
-				task.run();
+			for (final ImmutablePair<Dialog.Actions, Runnable> task : tasks) {
+				if ((task.left == null) || (task.left == Dialog.Actions.OK)) {
+					task.right.run();
+				}
+			}
+		}
+
+		if (result == Dialog.Actions.CANCEL) {
+			for (final ImmutablePair<Dialog.Actions, Runnable> task : tasks) {
+				if ((task.left == null) || (task.left == Dialog.Actions.CANCEL)) {
+					task.right.run();
+				}
 			}
 		}
 	}

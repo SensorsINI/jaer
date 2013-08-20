@@ -34,6 +34,8 @@ import net.sf.jaer2.eventio.processors.Processor.ProcessorTypes;
 import net.sf.jaer2.util.GUISupport;
 import net.sf.jaer2.util.Reflections;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.controlsfx.dialog.Dialog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,7 +69,7 @@ public final class ProcessorChain {
 	/** Configuration GUI layout - Vertical Box. */
 	private final VBox rootConfigLayout = new VBox(10);
 	/** Configuration GUI: tasks to execute on success. */
-	private final List<Runnable> rootConfigTasks = new ArrayList<>(2);
+	private final List<ImmutablePair<Dialog.Actions, Runnable>> rootConfigTasks = new ArrayList<>(2);
 
 	public ProcessorChain(final ProcessorNetwork network) {
 		parentNetwork = network;
@@ -258,7 +260,7 @@ public final class ProcessorChain {
 			processorTypeChooser.valueProperty().isEqualTo(ProcessorTypes.EVENT_PROCESSOR));
 
 		// Add task to be enacted, based on above GUI configuration settings.
-		rootConfigTasks.add(new Runnable() {
+		rootConfigTasks.add(new ImmutablePair<Dialog.Actions, Runnable>(Dialog.Actions.OK, new Runnable() {
 			@Override
 			public void run() {
 				// Add a new Processor of the wanted type at the right position.
@@ -290,7 +292,7 @@ public final class ProcessorChain {
 						break;
 				}
 			}
-		});
+		}));
 	}
 
 	/**

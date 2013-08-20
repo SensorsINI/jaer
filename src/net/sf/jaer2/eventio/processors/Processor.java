@@ -32,6 +32,7 @@ import net.sf.jaer2.util.GUISupport;
 import net.sf.jaer2.util.Reflections;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.controlsfx.dialog.Dialog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -128,7 +129,7 @@ public abstract class Processor implements Runnable {
 	/** Configuration GUI layout - Vertical Box. */
 	protected final VBox rootConfigLayout = new VBox(10);
 	/** Configuration GUI: tasks to execute on success. */
-	protected final List<Runnable> rootConfigTasks = new ArrayList<>(2);
+	protected final List<ImmutablePair<Dialog.Actions, Runnable>> rootConfigTasks = new ArrayList<>(2);
 
 	public Processor(final ProcessorChain chain) {
 		parentChain = chain;
