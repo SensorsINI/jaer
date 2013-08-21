@@ -8,8 +8,6 @@ import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.scene.control.ComboBox;
@@ -22,15 +20,12 @@ import net.sf.jaer2.eventio.sources.Source;
 import net.sf.jaer2.util.GUISupport;
 import net.sf.jaer2.util.Reflections;
 
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.controlsfx.dialog.Dialog;
-
 public final class InputProcessor extends Processor {
 	private final BlockingQueue<RawEventPacket> inputQueue = new ArrayBlockingQueue<>(32);
 	private final List<RawEventPacket> inputToProcess = new ArrayList<>(32);
 
-	private final ObjectProperty<Source> connectedSource = new SimpleObjectProperty<>();
-	private final ObjectProperty<Chip> interpreterChip = new SimpleObjectProperty<>();
+	private Source connectedSource;
+	private Chip interpreterChip;
 
 	/** For displaying and maintaining a link to the current config GUI. */
 	private Source currentSourceConfig;
@@ -38,47 +33,34 @@ public final class InputProcessor extends Processor {
 	public InputProcessor(final ProcessorChain chain) {
 		super(chain);
 
+		// Build GUIs for this processor, always in this order!
 		buildConfigGUI();
 		buildGUI();
 	}
 
 	public Source getConnectedSource() {
-		return connectedSource.get();
+		return connectedSource;
 	}
 
 	public void setConnectedSource(final Source source) {
-		GUISupport.runOnJavaFXThread(new Runnable() {
-			@Override
-			public void run() {
-				connectedSource.set(source);
+		connectedSource = source;
 
-				Processor.logger.debug("ConnectedSource set to: {}.", source);
-			}
-		});
+		Processor.logger.debug("ConnectedSource set to: {}.", source);
 	}
 
 	public Chip getInterpreterChip() {
-		return interpreterChip.get();
+		return interpreterChip;
 	}
 
 	public void setInterpreterChip(final Chip chip) {
-		GUISupport.runOnJavaFXThread(new Runnable() {
-			@Override
-			public void run() {
-				interpreterChip.set(chip);
+		interpreterChip = chip;
 
-				// Regenerate output types based on what the Chip can produce.
-				if (getInterpreterChip() != null) {
-					final List<Class<? extends Event>> chipOutputTypes = new ArrayList<>();
-					chipOutputTypes.addAll(getInterpreterChip().getEventTypes());
+		// Regenerate output types based on what the Chip can produce.
+		if (interpreterChip != null) {
+			regenerateAdditionalOutputTypes(getInterpreterChip().getEventTypes());
+		}
 
-					regenerateAdditionalOutputTypes(chipOutputTypes);
-					rebuildStreamSets();
-				}
-
-				Processor.logger.debug("InterpreterChip set to: {}.", chip);
-			}
-		});
+		Processor.logger.debug("InterpreterChip set to: {}.", chip);
 	}
 
 	@Override
@@ -139,74 +121,40 @@ public final class InputProcessor extends Processor {
 	}
 
 	private void buildGUI() {
-		// Display chip and source as soon as they are set.
-		interpreterChip.addListener(new ChangeListener<Chip>() {
+		rootTasksUIRefresh.add(new Runnable() {
 			@Override
-			public void changed(@SuppressWarnings("unused") final ObservableValue<? extends Chip> observable,
-				final Chip oldValue, final Chip newValue) {
-				// Remove current label (if any).
-				if (oldValue != null) {
-					rootLayoutChildren.getChildren().remove(oldValue.getDisplayName());
+			public void run() {
+				rootLayoutChildren.getChildren().clear();
+
+				if (interpreterChip != null) {
+					GUISupport.addLabel(rootLayoutChildren, interpreterChip.toString(), null, null, null);
 				}
 
-				rootLayoutChildren.getChildren().add(newValue.getDisplayName());
-			}
-		});
-
-		connectedSource.addListener(new ChangeListener<Source>() {
-			@Override
-			public void changed(@SuppressWarnings("unused") final ObservableValue<? extends Source> observable,
-				final Source oldValue, final Source newValue) {
-				// Remove current label (if any).
-				if (oldValue != null) {
-					rootLayoutChildren.getChildren().remove(oldValue.getGUI());
+				if (connectedSource != null) {
+					rootLayoutChildren.getChildren().add(connectedSource.getGUI());
 				}
-
-				rootLayoutChildren.getChildren().add(newValue.getGUI());
 			}
 		});
 	}
 
 	private void buildConfigGUI() {
-		// Clear input stream selection box from parent, not needed.
-		rootConfigLayoutChildren.getChildren().clear();
-
-		// Add first config tasks to execute the Source-related config tasks.
-		rootConfigTasks.add(new ImmutablePair<Dialog.Actions, Runnable>(Dialog.Actions.OK, new Runnable() {
-			@Override
-			public void run() {
-				if (currentSourceConfig != null) {
-					currentSourceConfig.executeConfigTasks(Dialog.Actions.OK);
-				}
-			}
-		}));
-		rootConfigTasks.add(new ImmutablePair<Dialog.Actions, Runnable>(Dialog.Actions.CANCEL, new Runnable() {
-			@Override
-			public void run() {
-				if (currentSourceConfig != null) {
-					currentSourceConfig.executeConfigTasks(Dialog.Actions.CANCEL);
-				}
-			}
-		}));
-
 		// Create Chip type chooser box.
 		final ComboBox<Class<? extends Chip>> chipTypeChooser = GUISupport.addComboBox(null, Reflections.chipTypes, 0);
 		GUISupport.addLabelWithControlsHorizontal(rootConfigLayoutChildren, "Chip:",
 			"Select the Chip you want to use to translate the raw events coming from the source into meaningful ones.",
 			chipTypeChooser);
 
-		interpreterChip.addListener(new ChangeListener<Chip>() {
-			@SuppressWarnings("unused")
+		rootConfigTasksDialogRefresh.add(new Runnable() {
 			@Override
-			public void changed(final ObservableValue<? extends Chip> observable, final Chip oldValue,
-				final Chip newValue) {
-				// Ensure the GUI always reflects the value set with the setter
-				// method, even from outside this class.
-				chipTypeChooser.setValue(newValue.getClass());
+			public void run() {
+				if (interpreterChip != null) {
+					// Set default value.
+					chipTypeChooser.setValue(interpreterChip.getClass());
+				}
 			}
 		});
 
-		rootConfigTasks.add(new ImmutablePair<Dialog.Actions, Runnable>(Dialog.Actions.OK, new Runnable() {
+		rootConfigTasksDialogOK.add(new Runnable() {
 			@Override
 			public void run() {
 				Chip chip;
@@ -222,34 +170,13 @@ public final class InputProcessor extends Processor {
 
 				setInterpreterChip(chip);
 			}
-		}));
-		rootConfigTasks.add(new ImmutablePair<Dialog.Actions, Runnable>(Dialog.Actions.CANCEL, new Runnable() {
-			@Override
-			public void run() {
-				// On Cancel, reset the value of the drop-down box to the
-				// correct value for the currently selected item, if any.
-				if (getInterpreterChip() != null) {
-					chipTypeChooser.setValue(getInterpreterChip().getClass());
-				}
-			}
-		}));
+		});
 
 		// Create Source type chooser box.
 		final ComboBox<Class<? extends Source>> sourceTypeChooser = GUISupport.addComboBox(null,
 			Reflections.sourceTypes, -1);
 		GUISupport.addLabelWithControlsHorizontal(rootConfigLayoutChildren, "Source:",
 			"Select the input Source you want to use.", sourceTypeChooser);
-
-		connectedSource.addListener(new ChangeListener<Source>() {
-			@SuppressWarnings("unused")
-			@Override
-			public void changed(final ObservableValue<? extends Source> observable, final Source oldValue,
-				final Source newValue) {
-				// Ensure the GUI always reflects the value set with the setter
-				// method, even from outside this class.
-				sourceTypeChooser.setValue(newValue.getClass());
-			}
-		});
 
 		sourceTypeChooser.valueProperty().addListener(new ChangeListener<Class<? extends Source>>() {
 			@SuppressWarnings("unused")
@@ -278,7 +205,17 @@ public final class InputProcessor extends Processor {
 			}
 		});
 
-		rootConfigTasks.add(new ImmutablePair<Dialog.Actions, Runnable>(Dialog.Actions.OK, new Runnable() {
+		rootConfigTasksDialogRefresh.add(new Runnable() {
+			@Override
+			public void run() {
+				if (connectedSource != null) {
+					// Set default value.
+					sourceTypeChooser.setValue(connectedSource.getClass());
+				}
+			}
+		});
+
+		rootConfigTasksDialogOK.add(new Runnable() {
 			@Override
 			public void run() {
 				if (currentSourceConfig == null) {
@@ -289,23 +226,6 @@ public final class InputProcessor extends Processor {
 
 				setConnectedSource(currentSourceConfig);
 			}
-		}));
-		rootConfigTasks.add(new ImmutablePair<Dialog.Actions, Runnable>(Dialog.Actions.CANCEL, new Runnable() {
-			@Override
-			public void run() {
-				// On Cancel, reset the value of the drop-down box to the
-				// correct value for the currently selected item, if any.
-				if (getConnectedSource() != null) {
-					// Reset GUI to previous state, like in handler above.
-					if (currentSourceConfig != null) {
-						rootConfigLayoutChildren.getChildren().remove(currentSourceConfig.getConfigGUI());
-					}
-					currentSourceConfig = getConnectedSource();
-					rootConfigLayoutChildren.getChildren().add(currentSourceConfig.getConfigGUI());
-
-					sourceTypeChooser.setValue(getConnectedSource().getClass());
-				}
-			}
-		}));
+		});
 	}
 }

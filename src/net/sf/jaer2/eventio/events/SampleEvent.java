@@ -3,7 +3,7 @@ package net.sf.jaer2.eventio.events;
 public class SampleEvent extends XYPositionEvent {
 	public int sample;
 
-	public SampleEvent(int ts) {
+	public SampleEvent(final int ts) {
 		super(ts);
 	}
 

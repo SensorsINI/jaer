@@ -9,7 +9,7 @@ public class IMUEvent extends Event {
 	public double gyroY;
 	public double gyroZ;
 
-	public IMUEvent(int ts) {
+	public IMUEvent(final int ts) {
 		super(ts);
 	}
 

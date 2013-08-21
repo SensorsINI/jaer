@@ -1,6 +1,7 @@
 package net.sf.jaer2.util;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.util.Iterator;
@@ -13,8 +14,13 @@ import net.sf.jaer2.eventio.sources.Source;
 
 import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class Reflections {
+	/** Local logger for log messages. */
+	private static final Logger logger = LoggerFactory.getLogger(Reflections.class);
+
 	private static final ConfigurationBuilder config = new ConfigurationBuilder();
 	static {
 		Reflections.config.addUrls(ClasspathHelper.forPackage("net.sf.jaer2"));
@@ -94,5 +100,25 @@ public final class Reflections {
 		}
 
 		return newClass;
+	}
+
+	/**
+	 * DO NOT EVER USE THIS OUTSIDE OF A CONSTRUCTOR OR READRESOLVE() METHOD!
+	 * SERIOUSLY, NEVER, EVER!
+	 */
+	public static <T> void setFinalField(final T instance, final String field, final Object value) {
+		try {
+			if ((instance == null) || (field == null) || (value == null)) {
+				throw new NullPointerException();
+			}
+
+			final Field f = instance.getClass().getDeclaredField(field);
+			f.setAccessible(true);
+			f.set(instance, value);
+		}
+		catch (NullPointerException | NoSuchFieldException | SecurityException | IllegalArgumentException
+			| IllegalAccessException e) {
+			Reflections.logger.error("CRITICAL: Exception while setting final field!", e);
+		}
 	}
 }

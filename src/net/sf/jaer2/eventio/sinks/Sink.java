@@ -83,4 +83,9 @@ public abstract class Sink {
 		// Add layout box for sub-classes at the very end.
 		rootConfigLayout.getChildren().add(rootConfigLayoutChildren);
 	}
+
+	@Override
+	public String toString() {
+		return getClass().getSimpleName();
+	}
 }

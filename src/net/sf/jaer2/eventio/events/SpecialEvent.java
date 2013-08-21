@@ -9,7 +9,7 @@ public class SpecialEvent extends XYPositionEvent {
 
 	public Type type;
 
-	public SpecialEvent(int ts) {
+	public SpecialEvent(final int ts) {
 		super(ts);
 	}
 

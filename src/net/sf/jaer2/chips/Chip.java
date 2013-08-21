@@ -1,6 +1,5 @@
 package net.sf.jaer2.chips;
 
-import javafx.scene.control.Label;
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 import net.sf.jaer2.eventio.eventpackets.raw.RawEventPacket;
 import net.sf.jaer2.eventio.events.Event;
@@ -8,8 +7,6 @@ import net.sf.jaer2.eventio.events.Event;
 import com.google.common.collect.ImmutableList;
 
 public interface Chip {
-	public Label getDisplayName();
-
 	public int getSizeX();
 
 	public int getSizeY();

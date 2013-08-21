@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public final class Collections {
+public final class CollectionsUpdate {
 	/**
 	 * Replace the data in the first collection with the content of the second
 	 * one, by draining the changes into it.
@@ -17,16 +17,21 @@ public final class Collections {
 	 *            collection whose data shall be replaced by the second one.
 	 * @param newContent
 	 *            collection whose data shall replace the one in the first.
-	 *            This collection will be empty (drained) after this call!
+	 *            This collection is not touched, and can thus be read-only.
+	 *
+	 * @return true if the first collection changed as a result of the call.
 	 */
-	public static <T> void replaceNonDestructive(final Collection<T> oldContent, final Collection<T> newContent) {
+	public static <T> boolean replaceNonDestructive(final Collection<T> oldContent, final Collection<T> newContent) {
+		// Temporary storage to allow modification.
+		final List<T> tmpDrain = new ArrayList<>(newContent);
+
 		// Replace with new data in a non-destructive way, by not touching
 		// values that were already present.
 		final List<T> removals = new ArrayList<>();
 
 		for (final T element : oldContent) {
-			if (newContent.contains(element)) {
-				newContent.remove(element);
+			if (tmpDrain.contains(element)) {
+				tmpDrain.remove(element);
 			}
 			else {
 				removals.add(element);
@@ -35,11 +40,13 @@ public final class Collections {
 
 		// Remove all items that need to be deleted and add all the new ones in
 		// only one call each.
-		oldContent.removeAll(removals);
-		oldContent.addAll(newContent);
+		final boolean changedRemoveAll = oldContent.removeAll(removals);
+		final boolean changedAddAll = oldContent.addAll(tmpDrain);
 
 		// Consume newContent fully.
-		newContent.clear();
+		tmpDrain.clear();
+
+		return (changedRemoveAll || changedAddAll);
 	}
 
 	/**
@@ -54,21 +61,28 @@ public final class Collections {
 	 *            collection whose data shall be updated by the second one.
 	 * @param newContent
 	 *            collection whose data shall update the one in the first.
-	 *            This collection will be empty (drained) after this call!
+	 *            This collection is not touched, and can thus be read-only.
+	 *
+	 * @return true if the first collection changed as a result of the call.
 	 */
-	public static <T> void updateNonDestructive(final Collection<T> oldContent, final Collection<T> newContent) {
+	public static <T> boolean updateNonDestructive(final Collection<T> oldContent, final Collection<T> newContent) {
+		// Temporary storage to allow modification.
+		final List<T> tmpDrain = new ArrayList<>(newContent);
+
 		// Update with new data in a non-destructive way, by not touching
 		// values that were already present.
 		for (final T element : oldContent) {
-			if (newContent.contains(element)) {
-				newContent.remove(element);
+			if (tmpDrain.contains(element)) {
+				tmpDrain.remove(element);
 			}
 		}
 
 		// Add all new items in only one call.
-		oldContent.addAll(newContent);
+		final boolean changedAddAll = oldContent.addAll(tmpDrain);
 
 		// Consume newContent fully.
-		newContent.clear();
+		tmpDrain.clear();
+
+		return changedAddAll;
 	}
 }

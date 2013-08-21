@@ -4,7 +4,7 @@ public class XYPositionEvent extends Event {
 	public int x;
 	public int y;
 
-	public XYPositionEvent(int ts) {
+	public XYPositionEvent(final int ts) {
 		super(ts);
 	}
 

@@ -7,15 +7,11 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import javafx.beans.InvalidationListener;
-import javafx.beans.Observable;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
-import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
-import javafx.collections.ObservableList;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
@@ -31,45 +27,47 @@ import net.sf.jaer2.eventio.processors.InputProcessor;
 import net.sf.jaer2.eventio.processors.OutputProcessor;
 import net.sf.jaer2.eventio.processors.Processor;
 import net.sf.jaer2.eventio.processors.Processor.ProcessorTypes;
+import net.sf.jaer2.util.CollectionsUpdate;
 import net.sf.jaer2.util.GUISupport;
 import net.sf.jaer2.util.Reflections;
 
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.controlsfx.dialog.Dialog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class ProcessorChain {
 	/** Local logger for log messages. */
-	private final static Logger logger = LoggerFactory.getLogger(ProcessorChain.class);
+	private static final Logger logger = LoggerFactory.getLogger(ProcessorChain.class);
 
 	/** Chain identification ID. */
-	private final int chainId;
+	transient private final int chainId;
 	/** Chain identification Name. */
 	private final String chainName;
 
 	/** Network this chain belongs to. */
-	private final ProcessorNetwork parentNetwork;
+	transient private final ProcessorNetwork parentNetwork;
 
 	/** List of all processors in this chain. */
-	private final ObservableList<Processor> processors = FXCollections.observableArrayList();
+	private final List<Processor> processors = new ArrayList<>(8);
 
 	/** Unique ID counter for processor identification. */
-	private int processorIdCounter = 1;
+	transient private int processorIdCounter = 1;
 
 	/** Map Processor IDs to the corresponding Processor. */
-	private final ConcurrentMap<Integer, Processor> idToProcessorMap = new ConcurrentHashMap<>();
+	transient private final ConcurrentMap<Integer, Processor> idToProcessorMap = new ConcurrentHashMap<>();
 
 	/** Commit Change Signal. */
-	private final BooleanProperty changesToCommit = new SimpleBooleanProperty(false);
+	transient private final BooleanProperty changesToCommit = new SimpleBooleanProperty(false);
 
 	/** Main GUI layout - Horizontal Box. */
-	private final HBox rootLayout = new HBox(10);
+	transient private final HBox rootLayout = new HBox(10);
 
 	/** Configuration GUI layout - Vertical Box. */
-	private final VBox rootConfigLayout = new VBox(10);
-	/** Configuration GUI: tasks to execute on success. */
-	private final List<ImmutablePair<Dialog.Actions, Runnable>> rootConfigTasks = new ArrayList<>(2);
+	transient private final VBox rootConfigLayout = new VBox(10);
+
+	/** Configuration GUI: tasks to execute before showing the dialog. */
+	transient private final List<Runnable> rootConfigTasksDialogRefresh = new ArrayList<>(8);
+	/** Configuration GUI: tasks to execute on clicking OK. */
+	transient private final List<Runnable> rootConfigTasksDialogOK = new ArrayList<>(8);
 
 	public ProcessorChain(final ProcessorNetwork network) {
 		parentNetwork = network;
@@ -159,7 +157,8 @@ public final class ProcessorChain {
 			new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
-					GUISupport.showDialog("New Processor Configuration", rootConfigLayout, rootConfigTasks);
+					GUISupport.showDialog("New Processor Configuration", rootConfigLayout,
+						rootConfigTasksDialogRefresh, rootConfigTasksDialogOK, null);
 				}
 			});
 
@@ -173,14 +172,6 @@ public final class ProcessorChain {
 
 		// Disable the Commit Changes button when there aren't any.
 		commitButton.disableProperty().bind(changesToCommit.not());
-
-		// Add listener to enable the button when there are structural changes.
-		processors.addListener(new InvalidationListener() {
-			@Override
-			public void invalidated(@SuppressWarnings("unused") final Observable observable) {
-				newStructuralChangesToCommit();
-			}
-		});
 	}
 
 	/**
@@ -214,8 +205,13 @@ public final class ProcessorChain {
 		GUISupport.addLabelWithControlsHorizontal(rootConfigLayout, "OR After Processor:",
 			"Place this new Processor right after the selected one.", processorPositionChooser);
 
-		// Bind the shown items to the main processors list, for auto-updating.
-		processorPositionChooser.setItems(processors);
+		// Update processors to choose from with the latest content.
+		rootConfigTasksDialogRefresh.add(new Runnable() {
+			@Override
+			public void run() {
+				CollectionsUpdate.replaceNonDestructive(processorPositionChooser.getItems(), processors);
+			}
+		});
 
 		processorPositionChooser.getItems().addListener(new ListChangeListener<Processor>() {
 			@Override
@@ -240,7 +236,7 @@ public final class ProcessorChain {
 				final Boolean newValue) {
 				// If the processor list is empty, it should not be possible to
 				// deselect the CheckBox tick.
-				if ((!newValue) && (processors.isEmpty())) {
+				if ((!newValue) && (processorPositionChooser.getItems().isEmpty())) {
 					processorPositionAtBeginning.setSelected(true);
 				}
 			}
@@ -254,13 +250,13 @@ public final class ProcessorChain {
 
 		// Toggle the EventProcessor type chooser box depending on what type of
 		// Processor the user has selected at the moment.
-		eventProcessorTypeChooserBox.visibleProperty().bind(
-			processorTypeChooser.valueProperty().isEqualTo(ProcessorTypes.EVENT_PROCESSOR));
 		eventProcessorTypeChooserBox.managedProperty().bind(
+			processorTypeChooser.valueProperty().isEqualTo(ProcessorTypes.EVENT_PROCESSOR));
+		eventProcessorTypeChooserBox.visibleProperty().bind(
 			processorTypeChooser.valueProperty().isEqualTo(ProcessorTypes.EVENT_PROCESSOR));
 
 		// Add task to be enacted, based on above GUI configuration settings.
-		rootConfigTasks.add(new ImmutablePair<Dialog.Actions, Runnable>(Dialog.Actions.OK, new Runnable() {
+		rootConfigTasksDialogOK.add(new Runnable() {
 			@Override
 			public void run() {
 				// Add a new Processor of the wanted type at the right position.
@@ -292,7 +288,7 @@ public final class ProcessorChain {
 						break;
 				}
 			}
-		}));
+		});
 	}
 
 	/**
@@ -511,10 +507,6 @@ public final class ProcessorChain {
 		}
 
 		// TODO: add other checks, then run the chain.
-
-		for (final Processor processor : processors) {
-			processor.updateWorkInputStreams();
-		}
 
 		// TODO: Update ID -> Processor mapping.
 		// idToProcessorMap.put(processorId, processor);

@@ -23,7 +23,6 @@ import javafx.scene.shape.Polygon;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.controlsfx.control.action.Action;
 import org.controlsfx.dialog.Dialog;
 import org.controlsfx.dialog.Dialogs;
@@ -32,7 +31,7 @@ import org.slf4j.LoggerFactory;
 
 public final class GUISupport {
 	/** Local logger for log messages. */
-	private final static Logger logger = LoggerFactory.getLogger(GUISupport.class);
+	private static final Logger logger = LoggerFactory.getLogger(GUISupport.class);
 
 	public static Button addButton(final Pane parentPane, final String text, final boolean displayText,
 		final String imagePath) {
@@ -182,8 +181,19 @@ public final class GUISupport {
 		return txt;
 	}
 
+	public static void runTasksCollection(final Collection<Runnable> tasks) {
+		if (tasks != null) {
+			for (final Runnable task : tasks) {
+				task.run();
+			}
+		}
+	}
+
 	public static void showDialog(final String title, final Node content,
-		final Collection<ImmutablePair<Dialog.Actions, Runnable>> tasks) {
+		final Collection<Runnable> tasksDialogRefresh, final Collection<Runnable> tasksDialogOK,
+		final Collection<Runnable> tasksUIRefresh) {
+		GUISupport.runTasksCollection(tasksDialogRefresh);
+
 		final Dialog dialog = new Dialog(null, title, true, false);
 
 		dialog.setContent(content);
@@ -192,22 +202,12 @@ public final class GUISupport {
 
 		final Action result = dialog.show();
 
-		GUISupport.logger.debug("Clicked on {} in dialog.", result);
+		GUISupport.logger.debug("Dialog: clicked on {}.", result);
 
 		if (result == Dialog.Actions.OK) {
-			for (final ImmutablePair<Dialog.Actions, Runnable> task : tasks) {
-				if ((task.left == null) || (task.left == Dialog.Actions.OK)) {
-					task.right.run();
-				}
-			}
-		}
+			GUISupport.runTasksCollection(tasksDialogOK);
 
-		if (result == Dialog.Actions.CANCEL) {
-			for (final ImmutablePair<Dialog.Actions, Runnable> task : tasks) {
-				if ((task.left == null) || (task.left == Dialog.Actions.CANCEL)) {
-					task.right.run();
-				}
-			}
+			GUISupport.runTasksCollection(tasksUIRefresh);
 		}
 	}
 

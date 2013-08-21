@@ -8,7 +8,7 @@ public class PolarityEvent extends XYPositionEvent {
 
 	public Polarity polarity;
 
-	public PolarityEvent(int ts) {
+	public PolarityEvent(final int ts) {
 		super(ts);
 	}
 

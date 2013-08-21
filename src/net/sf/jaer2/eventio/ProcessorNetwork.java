@@ -1,33 +1,53 @@
 package net.sf.jaer2.eventio;
 
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+
 import javafx.event.EventHandler;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import net.sf.jaer2.util.GUISupport;
+import net.sf.jaer2.util.Reflections;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class ProcessorNetwork {
+public final class ProcessorNetwork implements Serializable {
+	private static final long serialVersionUID = 5207051699167107128L;
+
 	/** Local logger for log messages. */
-	private final static Logger logger = LoggerFactory.getLogger(ProcessorNetwork.class);
+	private static final Logger logger = LoggerFactory.getLogger(ProcessorNetwork.class);
 
 	/** List of all chains in this network. */
-	private final ObservableList<ProcessorChain> processorChains = FXCollections.observableArrayList();
+	private final List<ProcessorChain> processorChains = new ArrayList<>(4);
 
 	/** Unique ID counter for chain identification. */
-	private int chainIdCounter = 1;
+	transient private int chainIdCounter = 1;
 
 	/** Main GUI layout - Vertical Box. */
-	private final VBox rootLayout = new VBox(10);
+	transient private final VBox rootLayout = new VBox(10);
 
 	public ProcessorNetwork() {
+		Constructor();
+	}
+
+	private void Constructor() {
 		buildGUI();
 
 		ProcessorNetwork.logger.debug("Created ProcessorNetwork {}.", this);
+	}
+
+	private Object readResolve() {
+		// Restore transient fields.
+		chainIdCounter = 1;
+		Reflections.setFinalField(this, "rootLayout", new VBox(10));
+
+		// Do construction.
+		Constructor();
+
+		return this;
 	}
 
 	/**
