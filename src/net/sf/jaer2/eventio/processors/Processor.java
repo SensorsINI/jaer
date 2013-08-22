@@ -28,10 +28,13 @@ import net.sf.jaer2.eventio.events.Event;
 import net.sf.jaer2.util.CollectionsUpdate;
 import net.sf.jaer2.util.GUISupport;
 import net.sf.jaer2.util.Reflections;
+import net.sf.jaer2.util.XMLconf;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.ImmutableList;
 
 public abstract class Processor implements Runnable, Serializable {
 	private static final long serialVersionUID = -4105000625025892690L;
@@ -417,6 +420,18 @@ public abstract class Processor implements Runnable, Serializable {
 				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
 					GUISupport.showDialog("Processor Configuration", rootConfigLayout, rootConfigTasksDialogRefresh,
 						rootConfigTasksDialogOK, rootTasksUIRefresh);
+				}
+			});
+
+		GUISupport.addButtonWithMouseClickedHandler(configButtonBox, "Save Processor", false,
+			"/images/icons/Export To Document.png", new EventHandler<MouseEvent>() {
+				@Override
+				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
+					XMLconf.toXML(
+						Processor.this,
+						ImmutableList.<ImmutablePair<Class<?>, String>> of(
+							ImmutablePair.<Class<?>, String> of(Processor.class, "prevProcessor"),
+							ImmutablePair.<Class<?>, String> of(Processor.class, "nextProcessor")));
 				}
 			});
 

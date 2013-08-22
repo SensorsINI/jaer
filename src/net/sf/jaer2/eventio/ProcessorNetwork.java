@@ -1,6 +1,5 @@
 package net.sf.jaer2.eventio;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
@@ -13,11 +12,10 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import net.sf.jaer2.util.GUISupport;
 import net.sf.jaer2.util.Reflections;
+import net.sf.jaer2.util.XMLconf;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.thoughtworks.xstream.XStream;
 
 public final class ProcessorNetwork implements Serializable {
 	private static final long serialVersionUID = 5207051699167107128L;
@@ -90,6 +88,8 @@ public final class ProcessorNetwork implements Serializable {
 		GUISupport.runOnJavaFXThread(new Runnable() {
 			@Override
 			public void run() {
+				chain.setParentNetwork(ProcessorNetwork.this);
+
 				processorChains.add(chain);
 				rootLayout.getChildren().add(chain.getGUI());
 
@@ -133,7 +133,7 @@ public final class ProcessorNetwork implements Serializable {
 			"/images/icons/Import Document.png", new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
-					loadChain();
+					addChain(XMLconf.fromXML(ProcessorChain.class));
 				}
 			});
 
@@ -141,16 +141,6 @@ public final class ProcessorNetwork implements Serializable {
 		for (final ProcessorChain chain : processorChains) {
 			rootLayout.getChildren().add(chain.getGUI());
 		}
-	}
-
-	private void loadChain() {
-		final File toLoad = GUISupport.showDialogLoadFile(null);
-
-		final XStream xstream = new XStream();
-		xstream.setMode(XStream.ID_REFERENCES);
-		final ProcessorChain loadedChain = (ProcessorChain) xstream.fromXML(toLoad);
-
-		addChain(loadedChain);
 	}
 
 	@Override

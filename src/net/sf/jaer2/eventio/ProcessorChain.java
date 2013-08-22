@@ -1,7 +1,5 @@
 package net.sf.jaer2.eventio;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
@@ -35,11 +33,10 @@ import net.sf.jaer2.eventio.processors.Processor.ProcessorTypes;
 import net.sf.jaer2.util.CollectionsUpdate;
 import net.sf.jaer2.util.GUISupport;
 import net.sf.jaer2.util.Reflections;
+import net.sf.jaer2.util.XMLconf;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.thoughtworks.xstream.XStream;
 
 public final class ProcessorChain implements Serializable {
 	private static final long serialVersionUID = -3333908358242929812L;
@@ -187,11 +184,19 @@ public final class ProcessorChain implements Serializable {
 
 		// Then, add the buttons to delete ProcessorChains and add new
 		// Processors.
-		GUISupport.addButtonWithMouseClickedHandler(controlBox, "Delete Chain", true, "/images/icons/Remove.png",
+		GUISupport.addButtonWithMouseClickedHandler(controlBox, "Remove Chain", true, "/images/icons/Remove.png",
 			new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
 					parentNetwork.removeChain(ProcessorChain.this);
+				}
+			});
+
+		GUISupport.addButtonWithMouseClickedHandler(controlBox, "Save Chain", true,
+			"/images/icons/Export To Document.png", new EventHandler<MouseEvent>() {
+				@Override
+				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
+					XMLconf.toXML(ProcessorChain.this, null);
 				}
 			});
 
@@ -204,11 +209,11 @@ public final class ProcessorChain implements Serializable {
 				}
 			});
 
-		GUISupport.addButtonWithMouseClickedHandler(controlBox, "Save Chain", true,
-			"/images/icons/Export To Document.png", new EventHandler<MouseEvent>() {
+		GUISupport.addButtonWithMouseClickedHandler(controlBox, "Load Processor", true,
+			"/images/icons/Import Document.png", new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
-					saveChain();
+					addProcessor(XMLconf.fromXML(Processor.class), 0);
 				}
 			});
 
@@ -485,6 +490,8 @@ public final class ProcessorChain implements Serializable {
 		GUISupport.runOnJavaFXThread(new Runnable() {
 			@Override
 			public void run() {
+				processor.setParentChain(ProcessorChain.this);
+
 				processors.add(position, processor);
 				// Add +1 to compensate for ControlBox element at start.
 				rootLayout.getChildren().add(position + 1, processor.getGUI());
@@ -587,19 +594,6 @@ public final class ProcessorChain implements Serializable {
 		}
 
 		return null;
-	}
-
-	private void saveChain() {
-		final File toSave = GUISupport.showDialogSaveFile(null);
-
-		try (FileWriter out = new FileWriter(toSave)) {
-			final XStream xstream = new XStream();
-			xstream.setMode(XStream.ID_REFERENCES);
-			xstream.toXML(this, out);
-		}
-		catch (final IOException e) {
-			GUISupport.showDialogException(e);
-		}
 	}
 
 	@Override
