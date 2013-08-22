@@ -24,6 +24,11 @@ public final class RawEventPacket implements Iterable<RawEvent> {
 	}
 
 	public void clear() {
+		// Ensure freeing by GC.
+		for (int i = 0; i < lastRawEvent; i++) {
+			rawEvents[i] = null;
+		}
+
 		lastRawEvent = 0;
 	}
 

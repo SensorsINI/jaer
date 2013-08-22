@@ -5,18 +5,15 @@ import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleObjectProperty;
 import net.sf.jaer2.eventio.ProcessorChain;
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 import net.sf.jaer2.eventio.events.Event;
 import net.sf.jaer2.eventio.sinks.Sink;
-import net.sf.jaer2.util.GUISupport;
 
 public final class OutputProcessor extends Processor {
 	private final BlockingQueue<EventPacketContainer> outputQueue = new ArrayBlockingQueue<>(32);
 
-	private final ObjectProperty<Sink> connectedSink = new SimpleObjectProperty<>();
+	private Sink connectedSink;
 
 	public OutputProcessor(final ProcessorChain chain) {
 		super(chain);
@@ -26,18 +23,13 @@ public final class OutputProcessor extends Processor {
 	}
 
 	public Sink getConnectedSink() {
-		return connectedSink.get();
+		return connectedSink;
 	}
 
 	public void setConnectedSink(final Sink sink) {
-		GUISupport.runOnJavaFXThread(new Runnable() {
-			@Override
-			public void run() {
-				connectedSink.set(sink);
+		connectedSink = sink;
 
-				Processor.logger.debug("ConnectedSink set to: {}.", sink);
-			}
-		});
+		Processor.logger.debug("ConnectedSink set to: {}.", sink);
 	}
 
 	@Override

@@ -4,8 +4,11 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import net.sf.jaer2.chips.Chip;
 import net.sf.jaer2.eventio.processors.EventProcessor;
@@ -29,7 +32,7 @@ public final class Reflections {
 
 	private static final org.reflections.Reflections reflections = new org.reflections.Reflections(Reflections.config);
 
-	public static <T> Set<Class<? extends T>> getSubClasses(final Class<T> clazz) {
+	public static <T> SortedSet<Class<? extends T>> getSubClasses(final Class<T> clazz) {
 		final Set<Class<? extends T>> classes = Reflections.reflections.getSubTypesOf(clazz);
 
 		for (final Iterator<Class<? extends T>> iter = classes.iterator(); iter.hasNext();) {
@@ -39,21 +42,31 @@ public final class Reflections {
 			}
 		}
 
-		return classes;
+		// Return a sorted set, to give predictable order.
+		final SortedSet<Class<? extends T>> sortedClasses = new TreeSet<>(new Comparator<Class<? extends T>>() {
+			@Override
+			public int compare(final Class<? extends T> cl1, final Class<? extends T> cl2) {
+				return cl1.getCanonicalName().compareTo(cl2.getCanonicalName());
+			}
+		});
+
+		sortedClasses.addAll(classes);
+
+		return sortedClasses;
 	}
 
 	/** List of classes extending EventProcessor. */
-	public static final Set<Class<? extends EventProcessor>> eventProcessorTypes = Reflections
+	public static final SortedSet<Class<? extends EventProcessor>> eventProcessorTypes = Reflections
 		.getSubClasses(EventProcessor.class);
 
 	/** List of classes extending Sink. */
-	public static final Set<Class<? extends Source>> sourceTypes = Reflections.getSubClasses(Source.class);
+	public static final SortedSet<Class<? extends Source>> sourceTypes = Reflections.getSubClasses(Source.class);
 
 	/** List of classes extending Chip. */
-	public static final Set<Class<? extends Chip>> chipTypes = Reflections.getSubClasses(Chip.class);
+	public static final SortedSet<Class<? extends Chip>> chipTypes = Reflections.getSubClasses(Chip.class);
 
 	/** List of classes extending Sink. */
-	public static final Set<Class<? extends Sink>> sinkTypes = Reflections.getSubClasses(Sink.class);
+	public static final SortedSet<Class<? extends Sink>> sinkTypes = Reflections.getSubClasses(Sink.class);
 
 	public static <T> T newInstanceForClass(final Class<T> clazz) throws NoSuchMethodException, SecurityException,
 		InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
