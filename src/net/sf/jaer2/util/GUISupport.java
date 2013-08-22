@@ -1,6 +1,8 @@
 package net.sf.jaer2.util;
 
+import java.io.File;
 import java.util.Collection;
+import java.util.List;
 
 import javafx.application.Platform;
 import javafx.event.EventHandler;
@@ -22,7 +24,10 @@ import javafx.scene.shape.Line;
 import javafx.scene.shape.Polygon;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
+import javafx.stage.FileChooser;
+import javafx.stage.FileChooser.ExtensionFilter;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.controlsfx.control.action.Action;
 import org.controlsfx.dialog.Dialog;
 import org.controlsfx.dialog.Dialogs;
@@ -225,6 +230,34 @@ public final class GUISupport {
 
 	public static void showDialogException(final Throwable exception) {
 		Dialogs.create().lightweight().title("Exception detected").showException(exception);
+	}
+
+	public static File showDialogLoadFile(final List<ImmutablePair<String, String>> allowedExtensions) {
+		final FileChooser fileChooser = new FileChooser();
+
+		fileChooser.setTitle("Select File to load from ...");
+
+		if ((allowedExtensions != null) && !allowedExtensions.isEmpty()) {
+			for (final ImmutablePair<String, String> ext : allowedExtensions) {
+				fileChooser.getExtensionFilters().add(new ExtensionFilter(ext.left, ext.right));
+			}
+		}
+
+		return fileChooser.showOpenDialog(null);
+	}
+
+	public static File showDialogSaveFile(final List<ImmutablePair<String, String>> allowedExtensions) {
+		final FileChooser fileChooser = new FileChooser();
+
+		fileChooser.setTitle("Select File to save to ...");
+
+		if ((allowedExtensions != null) && !allowedExtensions.isEmpty()) {
+			for (final ImmutablePair<String, String> ext : allowedExtensions) {
+				fileChooser.getExtensionFilters().add(new ExtensionFilter(ext.left, ext.right));
+			}
+		}
+
+		return fileChooser.showSaveDialog(null);
 	}
 
 	public static HBox addArrow(final Pane parentPane, final double lineLength, final double lineWidth,

@@ -1,5 +1,7 @@
 package net.sf.jaer2.eventio.processors;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -21,8 +23,10 @@ import net.sf.jaer2.util.GUISupport;
 import net.sf.jaer2.util.Reflections;
 
 public final class InputProcessor extends Processor {
-	private final BlockingQueue<RawEventPacket> inputQueue = new ArrayBlockingQueue<>(32);
-	private final List<RawEventPacket> inputToProcess = new ArrayList<>(32);
+	private static final long serialVersionUID = 8497760950881048850L;
+
+	transient private final BlockingQueue<RawEventPacket> inputQueue = new ArrayBlockingQueue<>(32);
+	transient private final List<RawEventPacket> inputToProcess = new ArrayList<>(32);
 
 	private Source connectedSource;
 	private Chip interpreterChip;
@@ -33,9 +37,26 @@ public final class InputProcessor extends Processor {
 	public InputProcessor(final ProcessorChain chain) {
 		super(chain);
 
+		CommonConstructor();
+	}
+
+	private void CommonConstructor() {
 		// Build GUIs for this processor, always in this order!
 		buildConfigGUI();
 		buildGUI();
+	}
+
+	private void readObject(final ObjectInputStream in) throws IOException, ClassNotFoundException {
+		in.defaultReadObject();
+
+		// Restore transient fields.
+		Reflections.setFinalField(this, "inputQueue", new ArrayBlockingQueue<RawEventPacket>(32));
+		Reflections.setFinalField(this, "inputToProcess", new ArrayList<RawEventPacket>(32));
+
+		// Do construction.
+		CommonConstructor();
+		// TODO: check interpreterChip.getEventTypes() and merge on
+		// readResolve() if needed.
 	}
 
 	public Source getConnectedSource() {
@@ -57,7 +78,7 @@ public final class InputProcessor extends Processor {
 
 		// Regenerate output types based on what the Chip can produce.
 		if (interpreterChip != null) {
-			regenerateAdditionalOutputTypes(getInterpreterChip().getEventTypes());
+			regenerateAdditionalOutputTypes(interpreterChip.getEventTypes());
 		}
 
 		Processor.logger.debug("InterpreterChip set to: {}.", chip);
@@ -75,7 +96,7 @@ public final class InputProcessor extends Processor {
 	}
 
 	public boolean readyToRun() {
-		return ((getInterpreterChip() != null) && (getConnectedSource() != null));
+		return ((interpreterChip != null) && (connectedSource != null));
 	}
 
 	@Override
@@ -98,7 +119,7 @@ public final class InputProcessor extends Processor {
 			for (final RawEventPacket inRawEventPacket : inputToProcess) {
 				final EventPacketContainer outPacketContainer = new EventPacketContainer(this);
 
-				getInterpreterChip().extractEventPacketContainer(inRawEventPacket, outPacketContainer);
+				interpreterChip.extractEventPacketContainer(inRawEventPacket, outPacketContainer);
 
 				// Send only packets with some (in)valid events on their way.
 				if (outPacketContainer.sizeFull() != 0) {
@@ -135,6 +156,9 @@ public final class InputProcessor extends Processor {
 				}
 			}
 		});
+
+		// TODO: Ensure the current data is shown.
+		GUISupport.runTasksCollection(rootTasksUIRefresh);
 	}
 
 	private void buildConfigGUI() {

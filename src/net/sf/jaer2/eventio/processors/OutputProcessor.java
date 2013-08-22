@@ -1,5 +1,7 @@
 package net.sf.jaer2.eventio.processors;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.util.Collection;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -9,17 +11,35 @@ import net.sf.jaer2.eventio.ProcessorChain;
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 import net.sf.jaer2.eventio.events.Event;
 import net.sf.jaer2.eventio.sinks.Sink;
+import net.sf.jaer2.util.Reflections;
 
 public final class OutputProcessor extends Processor {
-	private final BlockingQueue<EventPacketContainer> outputQueue = new ArrayBlockingQueue<>(32);
+	private static final long serialVersionUID = -1037683376951856401L;
+
+	transient private final BlockingQueue<EventPacketContainer> outputQueue = new ArrayBlockingQueue<>(32);
 
 	private Sink connectedSink;
 
 	public OutputProcessor(final ProcessorChain chain) {
 		super(chain);
 
+		CommonConstructor();
+	}
+
+	private void CommonConstructor() {
+		// Build GUIs for this processor, always in this order!
 		buildConfigGUI();
 		buildGUI();
+	}
+
+	private void readObject(final ObjectInputStream in) throws IOException, ClassNotFoundException {
+		in.defaultReadObject();
+
+		// Restore transient fields.
+		Reflections.setFinalField(this, "outputQueue", new ArrayBlockingQueue<EventPacketContainer>(32));
+
+		// Do construction.
+		CommonConstructor();
 	}
 
 	public Sink getConnectedSink() {
@@ -45,7 +65,7 @@ public final class OutputProcessor extends Processor {
 	}
 
 	public boolean readyToRun() {
-		return (getConnectedSink() != null);
+		return (connectedSink != null);
 	}
 
 	@Override

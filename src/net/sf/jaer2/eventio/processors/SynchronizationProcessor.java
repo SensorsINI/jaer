@@ -11,6 +11,8 @@ import net.sf.jaer2.eventio.events.Event;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
 public final class SynchronizationProcessor extends EventProcessor {
+	private static final long serialVersionUID = -5426769954051929383L;
+
 	public SynchronizationProcessor(final ProcessorChain chain) {
 		super(chain);
 

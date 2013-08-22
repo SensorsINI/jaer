@@ -1,5 +1,10 @@
 package net.sf.jaer2.eventio;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -34,7 +39,11 @@ import net.sf.jaer2.util.Reflections;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class ProcessorChain {
+import com.thoughtworks.xstream.XStream;
+
+public final class ProcessorChain implements Serializable {
+	private static final long serialVersionUID = -3333908358242929812L;
+
 	/** Local logger for log messages. */
 	private static final Logger logger = LoggerFactory.getLogger(ProcessorChain.class);
 
@@ -44,16 +53,16 @@ public final class ProcessorChain {
 	private final String chainName;
 
 	/** Network this chain belongs to. */
-	transient private final ProcessorNetwork parentNetwork;
+	transient private ProcessorNetwork parentNetwork;
 
 	/** List of all processors in this chain. */
 	private final List<Processor> processors = new ArrayList<>(8);
 
 	/** Unique ID counter for processor identification. */
-	transient private int processorIdCounter = 1;
+	private int processorIdCounter = 1;
 
 	/** Map Processor IDs to the corresponding Processor. */
-	transient private final ConcurrentMap<Integer, Processor> idToProcessorMap = new ConcurrentHashMap<>();
+	private final ConcurrentMap<Integer, Processor> idToProcessorMap = new ConcurrentHashMap<>();
 
 	/** Commit Change Signal. */
 	transient private final BooleanProperty changesToCommit = new SimpleBooleanProperty(false);
@@ -69,17 +78,40 @@ public final class ProcessorChain {
 	/** Configuration GUI: tasks to execute on clicking OK. */
 	transient private final List<Runnable> rootConfigTasksDialogOK = new ArrayList<>(8);
 
-	public ProcessorChain(final ProcessorNetwork network) {
-		parentNetwork = network;
+	public ProcessorChain(final ProcessorNetwork parent) {
+		parentNetwork = parent;
 
-		chainId = parentNetwork.getNextAvailableChainID();
+		chainId = ProcessorNetwork.getNextAvailableChainID();
 		chainName = getClass().getSimpleName();
 
-		// Build GUIs for this processor.
+		CommonConstructor();
+	}
+
+	private void CommonConstructor() {
+		// Build GUIs for this processor, always in this order!
 		buildConfigGUI();
 		buildGUI();
 
 		ProcessorChain.logger.debug("Created ProcessorChain {}.", this);
+	}
+
+	private void readObject(final ObjectInputStream in) throws IOException, ClassNotFoundException {
+		in.defaultReadObject();
+
+		// Restore transient fields.
+		Reflections.setFinalField(this, "chainId", ProcessorNetwork.getNextAvailableChainID());
+		Reflections.setFinalField(this, "changesToCommit", new SimpleBooleanProperty(false));
+		Reflections.setFinalField(this, "rootLayout", new HBox(10));
+		Reflections.setFinalField(this, "rootConfigLayout", new VBox(10));
+		Reflections.setFinalField(this, "rootConfigTasksDialogRefresh", new ArrayList<Runnable>(8));
+		Reflections.setFinalField(this, "rootConfigTasksDialogOK", new ArrayList<Runnable>(8));
+
+		for (final Processor proc : processors) {
+			proc.setParentChain(this);
+		}
+
+		// Do construction.
+		CommonConstructor();
 	}
 
 	/**
@@ -118,6 +150,16 @@ public final class ProcessorChain {
 	 */
 	public ProcessorNetwork getParentNetwork() {
 		return parentNetwork;
+	}
+
+	/**
+	 * Set the network this chain belongs to.
+	 *
+	 * @param network
+	 *            parent network.
+	 */
+	public void setParentNetwork(final ProcessorNetwork network) {
+		parentNetwork = network;
 	}
 
 	/**
@@ -162,6 +204,14 @@ public final class ProcessorChain {
 				}
 			});
 
+		GUISupport.addButtonWithMouseClickedHandler(controlBox, "Save Chain", true,
+			"/images/icons/Export To Document.png", new EventHandler<MouseEvent>() {
+				@Override
+				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
+					saveChain();
+				}
+			});
+
 		final Button commitButton = GUISupport.addButtonWithMouseClickedHandler(controlBox, "Commit Changes", true,
 			"/images/icons/Clear Green Button.png", new EventHandler<MouseEvent>() {
 				@Override
@@ -172,6 +222,11 @@ public final class ProcessorChain {
 
 		// Disable the Commit Changes button when there aren't any.
 		commitButton.disableProperty().bind(changesToCommit.not());
+
+		// Add content already present at build-time.
+		for (final Processor proc : processors) {
+			rootLayout.getChildren().add(proc.getGUI());
+		}
 	}
 
 	/**
@@ -437,6 +492,8 @@ public final class ProcessorChain {
 				linkProcessor(processor);
 
 				ProcessorChain.logger.debug("Added Processor {}.", processor);
+
+				newStructuralChangesToCommit();
 			}
 		});
 	}
@@ -457,6 +514,8 @@ public final class ProcessorChain {
 				processors.remove(processor);
 
 				ProcessorChain.logger.debug("Removed Processor {}.", processor);
+
+				newStructuralChangesToCommit();
 			}
 		});
 	}
@@ -528,6 +587,19 @@ public final class ProcessorChain {
 		}
 
 		return null;
+	}
+
+	private void saveChain() {
+		final File toSave = GUISupport.showDialogSaveFile(null);
+
+		try (FileWriter out = new FileWriter(toSave)) {
+			final XStream xstream = new XStream();
+			xstream.setMode(XStream.ID_REFERENCES);
+			xstream.toXML(this, out);
+		}
+		catch (final IOException e) {
+			GUISupport.showDialogException(e);
+		}
 	}
 
 	@Override

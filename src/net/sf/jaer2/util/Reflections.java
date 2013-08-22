@@ -125,13 +125,31 @@ public final class Reflections {
 				throw new NullPointerException();
 			}
 
-			final Field f = instance.getClass().getDeclaredField(field);
+			Reflections.logger.debug("Searching for field {} in instance {} of type {}.", field, instance,
+				instance.getClass());
+
+			final Field f = Reflections.getSuperField(instance.getClass(), field);
 			f.setAccessible(true);
 			f.set(instance, value);
 		}
 		catch (NullPointerException | NoSuchFieldException | SecurityException | IllegalArgumentException
 			| IllegalAccessException e) {
 			Reflections.logger.error("CRITICAL: Exception while setting final field!", e);
+		}
+	}
+
+	private static <T> Field getSuperField(final Class<T> clazz, final String field) throws NoSuchFieldException {
+		try {
+			return clazz.getDeclaredField(field);
+		}
+		catch (final NoSuchFieldException e) {
+			final Class<? super T> superClass = clazz.getSuperclass();
+
+			if (superClass == null) {
+				throw e;
+			}
+
+			return Reflections.getSuperField(superClass, field);
 		}
 	}
 }

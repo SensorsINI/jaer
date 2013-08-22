@@ -1,5 +1,8 @@
 package net.sf.jaer2.eventio.processors;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -30,7 +33,9 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class Processor implements Runnable {
+public abstract class Processor implements Runnable, Serializable {
+	private static final long serialVersionUID = -4105000625025892690L;
+
 	/**
 	 * Enumeration containing the available processor types and their string
 	 * representations for printing.
@@ -61,7 +66,7 @@ public abstract class Processor implements Runnable {
 	protected final String processorName;
 
 	/** Chain this processor belongs to. */
-	protected final ProcessorChain parentChain;
+	transient protected ProcessorChain parentChain;
 	/** Previous processor in the ordered chain. */
 	private Processor prevProcessor;
 	/** Next processor in the ordered chain. */
@@ -69,9 +74,9 @@ public abstract class Processor implements Runnable {
 
 	// Processor type management
 	/** Defines which Event types this Processor can work on. */
-	private final Set<Class<? extends Event>> compatibleInputTypes = new HashSet<>(4);
+	transient private final Set<Class<? extends Event>> compatibleInputTypes = new HashSet<>(4);
 	/** Defines which Event types this Processor creates and then outputs. */
-	private final Set<Class<? extends Event>> additionalOutputTypes = new HashSet<>(4);
+	transient private final Set<Class<? extends Event>> additionalOutputTypes = new HashSet<>(4);
 
 	// Processor stream management
 	/** Defines which streams of events this Processor can work on. */
@@ -95,34 +100,34 @@ public abstract class Processor implements Runnable {
 	 * selectedInputStreams, for use inside processors, and as such limited to
 	 * read-only operations.
 	 */
-	protected final List<ImmutablePair<Class<? extends Event>, Integer>> selectedInputStreamsReadOnly = Collections
+	transient protected final List<ImmutablePair<Class<? extends Event>, Integer>> selectedInputStreamsReadOnly = Collections
 		.unmodifiableList(selectedInputStreams);
 
 	/** Queue containing all containers to process. */
-	protected final BlockingQueue<EventPacketContainer> workQueue = new ArrayBlockingQueue<>(16);
+	transient protected final BlockingQueue<EventPacketContainer> workQueue = new ArrayBlockingQueue<>(16);
 	/**
 	 * List containing all containers that are currently being worked on (inside
 	 * the Processor, not thread-safe!). Never bigger than {@link #workQueue}.
 	 */
-	protected final List<EventPacketContainer> workToProcess = new ArrayList<>(16);
+	transient protected final List<EventPacketContainer> workToProcess = new ArrayList<>(16);
 
 	/** Main GUI layout - Horizontal Box. */
-	private final HBox rootLayout = new HBox(10);
+	transient private final HBox rootLayout = new HBox(10);
 	/** Main GUI layout for Sub-Classes - Vertical Box. */
-	protected final VBox rootLayoutChildren = new VBox(5);
+	transient protected final VBox rootLayoutChildren = new VBox(5);
 
 	/** Main GUI GUI: tasks to execute when related data changes. */
-	protected final List<Runnable> rootTasksUIRefresh = new ArrayList<>(8);
+	transient protected final List<Runnable> rootTasksUIRefresh = new ArrayList<>(8);
 
 	/** Configuration GUI layout - Vertical Box. */
-	private final VBox rootConfigLayout = new VBox(10);
+	transient private final VBox rootConfigLayout = new VBox(10);
 	/** Configuration GUI layout for Sub-Classes - Vertical Box. */
-	protected final VBox rootConfigLayoutChildren = new VBox(5);
+	transient protected final VBox rootConfigLayoutChildren = new VBox(5);
 
 	/** Configuration GUI: tasks to execute before showing the dialog. */
-	protected final List<Runnable> rootConfigTasksDialogRefresh = new ArrayList<>(8);
+	transient protected final List<Runnable> rootConfigTasksDialogRefresh = new ArrayList<>(8);
 	/** Configuration GUI: tasks to execute on clicking OK. */
-	protected final List<Runnable> rootConfigTasksDialogOK = new ArrayList<>(8);
+	transient protected final List<Runnable> rootConfigTasksDialogOK = new ArrayList<>(8);
 
 	public Processor(final ProcessorChain chain) {
 		parentChain = chain;
@@ -130,6 +135,10 @@ public abstract class Processor implements Runnable {
 		processorId = parentChain.getNextAvailableProcessorID();
 		processorName = getClass().getSimpleName();
 
+		CommonConstructor();
+	}
+
+	private void CommonConstructor() {
 		// Fill in the type information from the extending sub-classes.
 		setCompatibleInputTypes(compatibleInputTypes);
 		setAdditionalOutputTypes(additionalOutputTypes);
@@ -141,11 +150,37 @@ public abstract class Processor implements Runnable {
 		}
 		compatibleInputTypes.addAll(inflatedCompatibleInputTypes);
 
+		// TODO: Ensure refresh of stream information.
+		// rebuildStreamSets();
+
 		// Build GUIs for this processor, always in this order!
 		buildConfigGUI();
 		buildGUI();
 
 		Processor.logger.debug("Created Processor {}.", this);
+	}
+
+	private void readObject(final ObjectInputStream in) throws IOException, ClassNotFoundException {
+		in.defaultReadObject();
+
+		// Restore transient fields.
+		Reflections.setFinalField(this, "compatibleInputTypes", new HashSet<Class<? extends Event>>(4));
+		Reflections.setFinalField(this, "additionalOutputTypes", new HashSet<Class<? extends Event>>(4));
+		Reflections.setFinalField(this, "selectedInputStreamsReadOnly",
+			Collections.unmodifiableList(selectedInputStreams));
+		Reflections.setFinalField(this, "workQueue", new ArrayBlockingQueue<EventPacketContainer>(16));
+		Reflections.setFinalField(this, "workToProcess", new ArrayList<EventPacketContainer>(16));
+		Reflections.setFinalField(this, "rootLayout", new HBox(10));
+		Reflections.setFinalField(this, "rootLayoutChildren", new VBox(5));
+		Reflections.setFinalField(this, "rootTasksUIRefresh", new ArrayList<Runnable>(8));
+		Reflections.setFinalField(this, "rootConfigLayout", new VBox(10));
+		Reflections.setFinalField(this, "rootConfigLayoutChildren", new VBox(5));
+		Reflections.setFinalField(this, "rootConfigTasksDialogRefresh", new ArrayList<Runnable>(8));
+		Reflections.setFinalField(this, "rootConfigTasksDialogOK", new ArrayList<Runnable>(8));
+
+		// Do construction.
+		CommonConstructor();
+		// TODO: preserve additionalOutputTypes and merge on readResolve().
 	}
 
 	/**
@@ -173,6 +208,16 @@ public abstract class Processor implements Runnable {
 	 */
 	public final ProcessorChain getParentChain() {
 		return parentChain;
+	}
+
+	/**
+	 * Set the chain this processor belongs to.
+	 *
+	 * @param chain
+	 *            parent chain.
+	 */
+	public final void setParentChain(final ProcessorChain chain) {
+		parentChain = chain;
 	}
 
 	public final Processor getPrevProcessor() {
@@ -235,12 +280,12 @@ public abstract class Processor implements Runnable {
 	}
 
 	private void rebuildInputStreams() {
-		if (getPrevProcessor() != null) {
+		if (prevProcessor != null) {
 			final List<ImmutablePair<Class<? extends Event>, Integer>> compatibleInputStreams = new ArrayList<>();
 
 			// Add all outputs from previous Processor, filtering incompatible
 			// Event types out.
-			for (final ImmutablePair<Class<? extends Event>, Integer> stream : getPrevProcessor().getAllOutputStreams()) {
+			for (final ImmutablePair<Class<? extends Event>, Integer> stream : prevProcessor.getAllOutputStreams()) {
 				if (compatibleInputTypes.contains(stream.left)) {
 					compatibleInputStreams.add(stream);
 				}
@@ -263,8 +308,8 @@ public abstract class Processor implements Runnable {
 
 		// Add all outputs from previous Processor, as well as outputs produced
 		// by the current Processor.
-		if (getPrevProcessor() != null) {
-			allOutputStreams.addAll(getPrevProcessor().getAllOutputStreams());
+		if (prevProcessor != null) {
+			allOutputStreams.addAll(prevProcessor.getAllOutputStreams());
 		}
 
 		for (final Class<? extends Event> outputType : additionalOutputTypes) {
@@ -290,8 +335,8 @@ public abstract class Processor implements Runnable {
 
 				// Call recursively on the next Processor, so that the rest of
 				// the chain gets updated correctly.
-				if (getNextProcessor() != null) {
-					getNextProcessor().rebuildStreamSets();
+				if (nextProcessor != null) {
+					nextProcessor.rebuildStreamSets();
 				}
 				else {
 					// Rebuilding the StreamSets always constitutes a structural

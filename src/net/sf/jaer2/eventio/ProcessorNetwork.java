@@ -1,5 +1,8 @@
 package net.sf.jaer2.eventio;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,40 +17,45 @@ import net.sf.jaer2.util.Reflections;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.thoughtworks.xstream.XStream;
+
 public final class ProcessorNetwork implements Serializable {
 	private static final long serialVersionUID = 5207051699167107128L;
 
 	/** Local logger for log messages. */
 	private static final Logger logger = LoggerFactory.getLogger(ProcessorNetwork.class);
 
+	/** Unique ID counter for chain identification. */
+	private static int chainIdCounter = 1;
+
 	/** List of all chains in this network. */
 	private final List<ProcessorChain> processorChains = new ArrayList<>(4);
-
-	/** Unique ID counter for chain identification. */
-	transient private int chainIdCounter = 1;
 
 	/** Main GUI layout - Vertical Box. */
 	transient private final VBox rootLayout = new VBox(10);
 
 	public ProcessorNetwork() {
-		Constructor();
+		CommonConstructor();
 	}
 
-	private void Constructor() {
+	private void CommonConstructor() {
 		buildGUI();
 
 		ProcessorNetwork.logger.debug("Created ProcessorNetwork {}.", this);
 	}
 
-	private Object readResolve() {
+	private void readObject(final ObjectInputStream in) throws IOException, ClassNotFoundException {
+		in.defaultReadObject();
+
 		// Restore transient fields.
-		chainIdCounter = 1;
 		Reflections.setFinalField(this, "rootLayout", new VBox(10));
 
-		// Do construction.
-		Constructor();
+		for (final ProcessorChain chain : processorChains) {
+			chain.setParentNetwork(this);
+		}
 
-		return this;
+		// Do construction.
+		CommonConstructor();
 	}
 
 	/**
@@ -57,8 +65,8 @@ public final class ProcessorNetwork implements Serializable {
 	 *
 	 * @return Next unique ID for processor chain identification.
 	 */
-	public int getNextAvailableChainID() {
-		return chainIdCounter++;
+	public static int getNextAvailableChainID() {
+		return ProcessorNetwork.chainIdCounter++;
 	}
 
 	/**
@@ -71,15 +79,17 @@ public final class ProcessorNetwork implements Serializable {
 		return rootLayout;
 	}
 
+	private ProcessorChain createProcessorChain() {
+		return new ProcessorChain(this);
+	}
+
 	/**
 	 * Create a new processor chain and add it to the GUI.
 	 */
-	public void addChain() {
+	public void addChain(final ProcessorChain chain) {
 		GUISupport.runOnJavaFXThread(new Runnable() {
 			@Override
 			public void run() {
-				final ProcessorChain chain = new ProcessorChain(ProcessorNetwork.this);
-
 				processorChains.add(chain);
 				rootLayout.getChildren().add(chain.getGUI());
 
@@ -115,8 +125,36 @@ public final class ProcessorNetwork implements Serializable {
 			new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
-					addChain();
+					addChain(createProcessorChain());
 				}
 			});
+
+		GUISupport.addButtonWithMouseClickedHandler(rootLayout, "Load Chain", true,
+			"/images/icons/Import Document.png", new EventHandler<MouseEvent>() {
+				@Override
+				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
+					loadChain();
+				}
+			});
+
+		// Add content already present at build-time.
+		for (final ProcessorChain chain : processorChains) {
+			rootLayout.getChildren().add(chain.getGUI());
+		}
+	}
+
+	private void loadChain() {
+		final File toLoad = GUISupport.showDialogLoadFile(null);
+
+		final XStream xstream = new XStream();
+		xstream.setMode(XStream.ID_REFERENCES);
+		final ProcessorChain loadedChain = (ProcessorChain) xstream.fromXML(toLoad);
+
+		addChain(loadedChain);
+	}
+
+	@Override
+	public String toString() {
+		return getClass().getSimpleName();
 	}
 }
