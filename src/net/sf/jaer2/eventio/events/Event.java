@@ -1,7 +1,11 @@
 package net.sf.jaer2.eventio.events;
 
-public abstract class Event {
-	private int sourceID = 0;
+import java.io.Serializable;
+
+public abstract class Event implements Serializable {
+	private static final long serialVersionUID = 6776816266258337111L;
+
+	transient private int sourceID = 0;
 	private boolean valid = true;
 
 	public final int timestamp;

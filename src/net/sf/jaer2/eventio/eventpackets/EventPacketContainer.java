@@ -20,7 +20,7 @@ public final class EventPacketContainer implements Iterable<Event> {
 	// Lookup map: a Pair consisting of the Event type and the Event source
 	// determine the returned EventPacket<Type>.
 	private final Map<ImmutablePair<Class<? extends Event>, Integer>, EventPacket<? extends Event>> eventPackets = new HashMap<>();
-	private final ArrayList<Object> annotateDataSets = new ArrayList<>(8);
+	private final ArrayList<Object> annotateDataSets = new ArrayList<>();
 	private final int sourceId;
 
 	private ArrayList<Event> eventsTimeOrdered;

@@ -1,5 +1,6 @@
 package net.sf.jaer2.eventio.eventpackets;
 
+import java.io.Serializable;
 import java.security.InvalidParameterException;
 import java.util.AbstractCollection;
 import java.util.Arrays;
@@ -11,7 +12,9 @@ import java.util.NoSuchElementException;
 import net.sf.jaer2.eventio.events.Event;
 import net.sf.jaer2.util.PredicateIterator;
 
-public final class EventPacket<E extends Event> extends AbstractCollection<E> {
+public final class EventPacket<E extends Event> extends AbstractCollection<E> implements Serializable {
+	private static final long serialVersionUID = -4118170560046352775L;
+
 	private static final int DEFAULT_EVENT_CAPACITY = 2048;
 
 	// RawEvents array and index into it for adding new elements.
@@ -20,8 +23,8 @@ public final class EventPacket<E extends Event> extends AbstractCollection<E> {
 	private int validEvents;
 
 	private final Class<E> eventType;
-	private final int eventSource;
-	private EventPacketContainer parentContainer;
+	transient private int eventSource;
+	transient private EventPacketContainer parentContainer;
 
 	private boolean timeOrdered;
 	private boolean timeOrderingEnforced;
@@ -66,6 +69,15 @@ public final class EventPacket<E extends Event> extends AbstractCollection<E> {
 
 	public int getEventSource() {
 		return eventSource;
+	}
+
+	public void setEventSource(final int source) {
+		eventSource = source;
+
+		// Update all events accordingly!
+		for (int i = 0; i < lastEvent; i++) {
+			events[i].setEventSource(source);
+		}
 	}
 
 	public EventPacketContainer getParentContainer() {

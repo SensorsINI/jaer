@@ -1,6 +1,8 @@
 package net.sf.jaer2.eventio.events;
 
 public class SampleEvent extends XYPositionEvent {
+	private static final long serialVersionUID = 1922113968889799454L;
+
 	public int sample;
 
 	public SampleEvent(final int ts) {
