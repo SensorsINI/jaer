@@ -15,6 +15,11 @@ public final class XMLconf {
 		final File toSave = GUISupport.showDialogSaveFile(ImmutableList
 			.<ImmutablePair<String, String>> of(ImmutablePair.of("XML", "*.xml")));
 
+		if (toSave == null) {
+			// Error in opening file, check dialog message for what went wrong.
+			return;
+		}
+
 		try (FileWriter out = new FileWriter(toSave)) {
 			final XStream xstream = new XStream();
 			xstream.setMode(XStream.ID_REFERENCES);
@@ -36,6 +41,11 @@ public final class XMLconf {
 	public static <T> T fromXML(@SuppressWarnings("unused") final Class<T> clazz) {
 		final File toLoad = GUISupport.showDialogLoadFile(ImmutableList
 			.<ImmutablePair<String, String>> of(ImmutablePair.of("XML", "*.xml")));
+
+		if (toLoad == null) {
+			// Error in opening file, check dialog message for what went wrong.
+			return null;
+		}
 
 		final XStream xstream = new XStream();
 		xstream.setMode(XStream.ID_REFERENCES);

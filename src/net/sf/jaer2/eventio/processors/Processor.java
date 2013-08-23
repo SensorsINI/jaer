@@ -16,6 +16,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
+import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.input.MouseEvent;
@@ -77,9 +78,9 @@ public abstract class Processor implements Runnable, Serializable {
 
 	// Processor type management
 	/** Defines which Event types this Processor can work on. */
-	transient private final Set<Class<? extends Event>> compatibleInputTypes = new HashSet<>(4);
+	private final Set<Class<? extends Event>> compatibleInputTypes = new HashSet<>();
 	/** Defines which Event types this Processor creates and then outputs. */
-	transient private final Set<Class<? extends Event>> additionalOutputTypes = new HashSet<>(4);
+	private final Set<Class<? extends Event>> additionalOutputTypes = new HashSet<>();
 
 	// Processor stream management
 	/** Defines which streams of events this Processor can work on. */
@@ -120,7 +121,7 @@ public abstract class Processor implements Runnable, Serializable {
 	transient protected final VBox rootLayoutChildren = new VBox(5);
 
 	/** Main GUI GUI: tasks to execute when related data changes. */
-	transient protected final List<Runnable> rootTasksUIRefresh = new ArrayList<>(8);
+	transient protected final List<Runnable> rootTasksUIRefresh = new ArrayList<>();
 
 	/** Configuration GUI layout - Vertical Box. */
 	transient private final VBox rootConfigLayout = new VBox(10);
@@ -128,14 +129,12 @@ public abstract class Processor implements Runnable, Serializable {
 	transient protected final VBox rootConfigLayoutChildren = new VBox(5);
 
 	/** Configuration GUI: tasks to execute before showing the dialog. */
-	transient protected final List<Runnable> rootConfigTasksDialogRefresh = new ArrayList<>(8);
+	transient protected final List<Runnable> rootConfigTasksDialogRefresh = new ArrayList<>();
 	/** Configuration GUI: tasks to execute on clicking OK. */
-	transient protected final List<Runnable> rootConfigTasksDialogOK = new ArrayList<>(8);
+	transient protected final List<Runnable> rootConfigTasksDialogOK = new ArrayList<>();
 
-	public Processor(final ProcessorChain chain) {
-		parentChain = chain;
-
-		processorId = parentChain.getNextAvailableProcessorID();
+	public Processor() {
+		processorId = 0;
 		processorName = getClass().getSimpleName();
 
 		CommonConstructor();
@@ -143,18 +142,27 @@ public abstract class Processor implements Runnable, Serializable {
 
 	private void CommonConstructor() {
 		// Fill in the type information from the extending sub-classes.
-		setCompatibleInputTypes(compatibleInputTypes);
-		setAdditionalOutputTypes(additionalOutputTypes);
+		final Set<Class<? extends Event>> loadedCompatibleInputTypes = new HashSet<>();
+		setCompatibleInputTypes(loadedCompatibleInputTypes);
+
+		final Set<Class<? extends Event>> loadedAdditionalOutputTypes = new HashSet<>();
+		setAdditionalOutputTypes(loadedAdditionalOutputTypes);
 
 		// Inflate compatibleInputTypes, so as to also consider sub-classes.
-		final Set<Class<? extends Event>> inflatedCompatibleInputTypes = new HashSet<>();
-		for (final Class<? extends Event> clazz : compatibleInputTypes) {
-			inflatedCompatibleInputTypes.addAll(Reflections.getSubClasses(clazz));
+		final Set<Class<? extends Event>> inflatedLoadedCompatibleInputTypes = new HashSet<>();
+		for (final Class<? extends Event> clazz : loadedCompatibleInputTypes) {
+			inflatedLoadedCompatibleInputTypes.addAll(Reflections.getSubClasses(clazz));
 		}
-		compatibleInputTypes.addAll(inflatedCompatibleInputTypes);
+		loadedCompatibleInputTypes.addAll(inflatedLoadedCompatibleInputTypes);
 
-		// TODO: Ensure refresh of stream information.
-		// rebuildStreamSets();
+		// Now update the present, main data structures with the new
+		// information. This is done in such a way as to preserve the content
+		// loaded from the saved chains and processors as much as possible, but
+		// at the same time reflect possible updates in the types definitions
+		// themselves and in their inheritance tree.
+		CollectionsUpdate.replaceNonDestructive(compatibleInputTypes, loadedCompatibleInputTypes);
+
+		CollectionsUpdate.replaceNonDestructive(additionalOutputTypes, loadedAdditionalOutputTypes);
 
 		// Build GUIs for this processor, always in this order!
 		buildConfigGUI();
@@ -166,24 +174,41 @@ public abstract class Processor implements Runnable, Serializable {
 	private void readObject(final ObjectInputStream in) throws IOException, ClassNotFoundException {
 		in.defaultReadObject();
 
+		// Restore omitted field on single processor save.
+		if (compatibleInputTypes == null) {
+			Reflections.setFinalField(this, "compatibleInputTypes", new HashSet<Class<? extends Event>>());
+		}
+		if (additionalOutputTypes == null) {
+			Reflections.setFinalField(this, "additionalOutputTypes", new HashSet<Class<? extends Event>>());
+		}
+		if (inputStreams == null) {
+			Reflections.setFinalField(this, "inputStreams",
+				new ArrayList<ImmutablePair<Class<? extends Event>, Integer>>());
+		}
+		if (selectedInputStreams == null) {
+			Reflections.setFinalField(this, "selectedInputStreams",
+				new CopyOnWriteArrayList<ImmutablePair<Class<? extends Event>, Integer>>());
+		}
+		if (outputStreams == null) {
+			Reflections.setFinalField(this, "outputStreams",
+				new ArrayList<ImmutablePair<Class<? extends Event>, Integer>>());
+		}
+
 		// Restore transient fields.
-		Reflections.setFinalField(this, "compatibleInputTypes", new HashSet<Class<? extends Event>>(4));
-		Reflections.setFinalField(this, "additionalOutputTypes", new HashSet<Class<? extends Event>>(4));
 		Reflections.setFinalField(this, "selectedInputStreamsReadOnly",
 			Collections.unmodifiableList(selectedInputStreams));
 		Reflections.setFinalField(this, "workQueue", new ArrayBlockingQueue<EventPacketContainer>(16));
 		Reflections.setFinalField(this, "workToProcess", new ArrayList<EventPacketContainer>(16));
 		Reflections.setFinalField(this, "rootLayout", new HBox(10));
 		Reflections.setFinalField(this, "rootLayoutChildren", new VBox(5));
-		Reflections.setFinalField(this, "rootTasksUIRefresh", new ArrayList<Runnable>(8));
+		Reflections.setFinalField(this, "rootTasksUIRefresh", new ArrayList<Runnable>());
 		Reflections.setFinalField(this, "rootConfigLayout", new VBox(10));
 		Reflections.setFinalField(this, "rootConfigLayoutChildren", new VBox(5));
-		Reflections.setFinalField(this, "rootConfigTasksDialogRefresh", new ArrayList<Runnable>(8));
-		Reflections.setFinalField(this, "rootConfigTasksDialogOK", new ArrayList<Runnable>(8));
+		Reflections.setFinalField(this, "rootConfigTasksDialogRefresh", new ArrayList<Runnable>());
+		Reflections.setFinalField(this, "rootConfigTasksDialogOK", new ArrayList<Runnable>());
 
 		// Do construction.
 		CommonConstructor();
-		// TODO: preserve additionalOutputTypes and merge on readResolve().
 	}
 
 	/**
@@ -221,6 +246,14 @@ public abstract class Processor implements Runnable, Serializable {
 	 */
 	public final void setParentChain(final ProcessorChain chain) {
 		parentChain = chain;
+
+		// Update processor ID, while keeping the field read-only.
+		if (processorId == 0) {
+			Reflections.setFinalField(this, "processorId", parentChain.getNextAvailableProcessorID());
+
+			// Update UI to show new ID number.
+			GUISupport.runTasksCollection(rootTasksUIRefresh);
+		}
 	}
 
 	public final Processor getPrevProcessor() {
@@ -256,10 +289,13 @@ public abstract class Processor implements Runnable, Serializable {
 	 * @param newOutputs
 	 *            all new types that this processor can emit.
 	 */
-	protected final void regenerateAdditionalOutputTypes(final Collection<Class<? extends Event>> newOutputs) {
-		CollectionsUpdate.replaceNonDestructive(additionalOutputTypes, newOutputs);
-
-		rebuildStreamSets();
+	protected final void regenerateAdditionalOutputTypes(final Collection<Class<? extends Event>> newOutputs,
+		final boolean rebuildStreamSets) {
+		if (CollectionsUpdate.replaceNonDestructive(additionalOutputTypes, newOutputs)) {
+			if (rebuildStreamSets) {
+				rebuildStreamSets();
+			}
+		}
 	}
 
 	private List<ImmutablePair<Class<? extends Event>, Integer>> getAllOutputStreams() {
@@ -325,7 +361,7 @@ public abstract class Processor implements Runnable, Serializable {
 		Collections.sort(outputStreams, new StreamComparator());
 	}
 
-	protected final void rebuildStreamSets() {
+	public final void rebuildStreamSets() {
 		GUISupport.runOnJavaFXThread(new Runnable() {
 			@Override
 			public void run() {
@@ -334,6 +370,7 @@ public abstract class Processor implements Runnable, Serializable {
 				rebuildInputStreams();
 				rebuildOutputStreams();
 
+				// Update UI after changes to streams.
 				GUISupport.runTasksCollection(rootTasksUIRefresh);
 
 				// Call recursively on the next Processor, so that the rest of
@@ -379,6 +416,8 @@ public abstract class Processor implements Runnable, Serializable {
 		}
 	}
 
+	protected abstract boolean readyToRun();
+
 	/**
 	 * Get the graphical layout corresponding to this class, so that it can be
 	 * displayed somewhere by adding it to a Scene.
@@ -400,7 +439,14 @@ public abstract class Processor implements Runnable, Serializable {
 		rootLayout.getChildren().add(processorBox);
 
 		// Name of processor.
-		GUISupport.addLabel(processorBox, toString(), null, null, null);
+		final Label processorNameID = GUISupport.addLabel(processorBox, toString(), null, null, null);
+
+		rootTasksUIRefresh.add(new Runnable() {
+			@Override
+			public void run() {
+				processorNameID.setText(Processor.this.toString());
+			}
+		});
 
 		// Box holding the processor configuration buttons.
 		final HBox configButtonBox = new HBox(5);
@@ -414,24 +460,28 @@ public abstract class Processor implements Runnable, Serializable {
 				}
 			});
 
+		GUISupport.addButtonWithMouseClickedHandler(configButtonBox, "Save Processor", false,
+			"/images/icons/Export To Document.png", new EventHandler<MouseEvent>() {
+				@Override
+				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
+					XMLconf.toXML(Processor.this, ImmutableList.<ImmutablePair<Class<?>, String>> of(
+						ImmutablePair.<Class<?>, String> of(Processor.class, "prevProcessor"),
+						ImmutablePair.<Class<?>, String> of(Processor.class, "nextProcessor"),
+						ImmutablePair.<Class<?>, String> of(Processor.class, "processorId"),
+						ImmutablePair.<Class<?>, String> of(Processor.class, "compatibleInputTypes"),
+						ImmutablePair.<Class<?>, String> of(Processor.class, "additionalOutputTypes"),
+						ImmutablePair.<Class<?>, String> of(Processor.class, "inputStreams"),
+						ImmutablePair.<Class<?>, String> of(Processor.class, "selectedInputStreams"),
+						ImmutablePair.<Class<?>, String> of(Processor.class, "outputStreams")));
+				}
+			});
+
 		GUISupport.addButtonWithMouseClickedHandler(configButtonBox, "Configure Processor", false,
 			"/images/icons/Gear.png", new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
 					GUISupport.showDialog("Processor Configuration", rootConfigLayout, rootConfigTasksDialogRefresh,
 						rootConfigTasksDialogOK, rootTasksUIRefresh);
-				}
-			});
-
-		GUISupport.addButtonWithMouseClickedHandler(configButtonBox, "Save Processor", false,
-			"/images/icons/Export To Document.png", new EventHandler<MouseEvent>() {
-				@Override
-				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
-					XMLconf.toXML(
-						Processor.this,
-						ImmutableList.<ImmutablePair<Class<?>, String>> of(
-							ImmutablePair.<Class<?>, String> of(Processor.class, "prevProcessor"),
-							ImmutablePair.<Class<?>, String> of(Processor.class, "nextProcessor")));
 				}
 			});
 
@@ -517,8 +567,10 @@ public abstract class Processor implements Runnable, Serializable {
 		streamsView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 		streamsView.setPrefHeight(140);
 
-		GUISupport.addLabelWithControlsVertical(rootConfigLayout, "Select streams to process:",
-			"Select the <Type, Source> combinations (streams) on which to operate.", streamsView);
+		if (!(this instanceof InputProcessor)) {
+			GUISupport.addLabelWithControlsVertical(rootConfigLayout, "Select streams to process:",
+				"Select the <Type, Source> combinations (streams) on which to operate.", streamsView);
+		}
 
 		// Update input streams view with the latest content.
 		rootConfigTasksDialogRefresh.add(new Runnable() {

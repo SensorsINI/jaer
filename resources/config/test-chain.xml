@@ -1,0 +1,259 @@
+<net.sf.jaer2.eventio.ProcessorChain id="1" serialization="custom">
+  <net.sf.jaer2.eventio.ProcessorChain>
+    <default>
+      <processorIdCounter>6</processorIdCounter>
+      <chainName>ProcessorChain</chainName>
+      <idToProcessorMap class="concurrent-hash-map" id="2"/>
+      <processors id="3">
+        <net.sf.jaer2.eventio.processors.InputProcessor id="4" serialization="custom">
+          <net.sf.jaer2.eventio.processors.Processor>
+            <default>
+              <processorId>1</processorId>
+              <additionalOutputTypes id="5">
+                <java-class>net.sf.jaer2.eventio.events.PolarityEvent</java-class>
+                <java-class>net.sf.jaer2.eventio.events.SpecialEvent</java-class>
+                <java-class>net.sf.jaer2.eventio.events.SampleEvent</java-class>
+              </additionalOutputTypes>
+              <compatibleInputTypes id="6"/>
+              <inputStreams id="7"/>
+              <nextProcessor class="net.sf.jaer2.eventio.processors.SynchronizationProcessor" id="8" serialization="custom">
+                <net.sf.jaer2.eventio.processors.Processor>
+                  <default>
+                    <processorId>4</processorId>
+                    <additionalOutputTypes id="9">
+                      <java-class>net.sf.jaer2.eventio.events.SampleEvent</java-class>
+                    </additionalOutputTypes>
+                    <compatibleInputTypes id="10">
+                      <java-class>net.sf.jaer2.eventio.events.XYZPositionEvent</java-class>
+                      <java-class>net.sf.jaer2.eventio.events.PolarityEvent</java-class>
+                      <java-class>net.sf.jaer2.eventio.events.Event</java-class>
+                      <java-class>net.sf.jaer2.eventio.events.SpecialEvent</java-class>
+                      <java-class>net.sf.jaer2.eventio.events.SampleEvent</java-class>
+                      <java-class>net.sf.jaer2.eventio.events.XYPositionEvent</java-class>
+                      <java-class>net.sf.jaer2.eventio.events.IMUEvent</java-class>
+                    </compatibleInputTypes>
+                    <inputStreams id="11">
+                      <org.apache.commons.lang3.tuple.ImmutablePair id="12">
+                        <left class="java-class">net.sf.jaer2.eventio.events.PolarityEvent</left>
+                        <right class="int">1</right>
+                      </org.apache.commons.lang3.tuple.ImmutablePair>
+                      <org.apache.commons.lang3.tuple.ImmutablePair id="13">
+                        <left class="java-class">net.sf.jaer2.eventio.events.SpecialEvent</left>
+                        <right class="int">1</right>
+                      </org.apache.commons.lang3.tuple.ImmutablePair>
+                      <org.apache.commons.lang3.tuple.ImmutablePair id="14">
+                        <left class="java-class">net.sf.jaer2.eventio.events.SampleEvent</left>
+                        <right class="int">1</right>
+                      </org.apache.commons.lang3.tuple.ImmutablePair>
+                    </inputStreams>
+                    <nextProcessor class="net.sf.jaer2.eventio.processors.InputProcessor" id="15" serialization="custom">
+                      <net.sf.jaer2.eventio.processors.Processor>
+                        <default>
+                          <processorId>3</processorId>
+                          <additionalOutputTypes id="16">
+                            <java-class>net.sf.jaer2.eventio.events.PolarityEvent</java-class>
+                            <java-class>net.sf.jaer2.eventio.events.SpecialEvent</java-class>
+                          </additionalOutputTypes>
+                          <compatibleInputTypes id="17"/>
+                          <inputStreams id="18"/>
+                          <nextProcessor class="net.sf.jaer2.eventio.processors.SynchronizationProcessor" id="19" serialization="custom">
+                            <net.sf.jaer2.eventio.processors.Processor>
+                              <default>
+                                <processorId>5</processorId>
+                                <additionalOutputTypes id="20">
+                                  <java-class>net.sf.jaer2.eventio.events.PolarityEvent</java-class>
+                                </additionalOutputTypes>
+                                <compatibleInputTypes id="21">
+                                  <java-class>net.sf.jaer2.eventio.events.XYZPositionEvent</java-class>
+                                  <java-class>net.sf.jaer2.eventio.events.PolarityEvent</java-class>
+                                  <java-class>net.sf.jaer2.eventio.events.Event</java-class>
+                                  <java-class>net.sf.jaer2.eventio.events.SpecialEvent</java-class>
+                                  <java-class>net.sf.jaer2.eventio.events.SampleEvent</java-class>
+                                  <java-class>net.sf.jaer2.eventio.events.XYPositionEvent</java-class>
+                                  <java-class>net.sf.jaer2.eventio.events.IMUEvent</java-class>
+                                </compatibleInputTypes>
+                                <inputStreams id="22">
+                                  <org.apache.commons.lang3.tuple.ImmutablePair reference="12"/>
+                                  <org.apache.commons.lang3.tuple.ImmutablePair reference="13"/>
+                                  <org.apache.commons.lang3.tuple.ImmutablePair reference="14"/>
+                                  <org.apache.commons.lang3.tuple.ImmutablePair id="23">
+                                    <left class="java-class">net.sf.jaer2.eventio.events.PolarityEvent</left>
+                                    <right class="int">3</right>
+                                  </org.apache.commons.lang3.tuple.ImmutablePair>
+                                  <org.apache.commons.lang3.tuple.ImmutablePair id="24">
+                                    <left class="java-class">net.sf.jaer2.eventio.events.SpecialEvent</left>
+                                    <right class="int">3</right>
+                                  </org.apache.commons.lang3.tuple.ImmutablePair>
+                                  <org.apache.commons.lang3.tuple.ImmutablePair id="25">
+                                    <left class="java-class">net.sf.jaer2.eventio.events.SampleEvent</left>
+                                    <right class="int">4</right>
+                                  </org.apache.commons.lang3.tuple.ImmutablePair>
+                                </inputStreams>
+                                <nextProcessor class="net.sf.jaer2.eventio.processors.OutputProcessor" id="26" serialization="custom">
+                                  <net.sf.jaer2.eventio.processors.Processor>
+                                    <default>
+                                      <processorId>2</processorId>
+                                      <additionalOutputTypes id="27"/>
+                                      <compatibleInputTypes id="28">
+                                        <java-class>net.sf.jaer2.eventio.events.XYZPositionEvent</java-class>
+                                        <java-class>net.sf.jaer2.eventio.events.PolarityEvent</java-class>
+                                        <java-class>net.sf.jaer2.eventio.events.Event</java-class>
+                                        <java-class>net.sf.jaer2.eventio.events.SpecialEvent</java-class>
+                                        <java-class>net.sf.jaer2.eventio.events.SampleEvent</java-class>
+                                        <java-class>net.sf.jaer2.eventio.events.XYPositionEvent</java-class>
+                                        <java-class>net.sf.jaer2.eventio.events.IMUEvent</java-class>
+                                      </compatibleInputTypes>
+                                      <inputStreams id="29">
+                                        <org.apache.commons.lang3.tuple.ImmutablePair reference="12"/>
+                                        <org.apache.commons.lang3.tuple.ImmutablePair reference="13"/>
+                                        <org.apache.commons.lang3.tuple.ImmutablePair reference="14"/>
+                                        <org.apache.commons.lang3.tuple.ImmutablePair reference="23"/>
+                                        <org.apache.commons.lang3.tuple.ImmutablePair reference="24"/>
+                                        <org.apache.commons.lang3.tuple.ImmutablePair reference="25"/>
+                                        <org.apache.commons.lang3.tuple.ImmutablePair id="30">
+                                          <left class="java-class">net.sf.jaer2.eventio.events.PolarityEvent</left>
+                                          <right class="int">5</right>
+                                        </org.apache.commons.lang3.tuple.ImmutablePair>
+                                      </inputStreams>
+                                      <outputStreams id="31">
+                                        <org.apache.commons.lang3.tuple.ImmutablePair reference="12"/>
+                                        <org.apache.commons.lang3.tuple.ImmutablePair reference="13"/>
+                                        <org.apache.commons.lang3.tuple.ImmutablePair reference="14"/>
+                                        <org.apache.commons.lang3.tuple.ImmutablePair reference="23"/>
+                                        <org.apache.commons.lang3.tuple.ImmutablePair reference="24"/>
+                                        <org.apache.commons.lang3.tuple.ImmutablePair reference="25"/>
+                                        <org.apache.commons.lang3.tuple.ImmutablePair reference="30"/>
+                                      </outputStreams>
+                                      <prevProcessor class="net.sf.jaer2.eventio.processors.SynchronizationProcessor" reference="19"/>
+                                      <processorName>OutputProcessor</processorName>
+                                      <selectedInputStreams class="java.util.concurrent.CopyOnWriteArrayList" id="32" serialization="custom">
+                                        <java.util.concurrent.CopyOnWriteArrayList>
+                                          <default/>
+                                          <int>5</int>
+                                          <org.apache.commons.lang3.tuple.ImmutablePair reference="12"/>
+                                          <org.apache.commons.lang3.tuple.ImmutablePair reference="14"/>
+                                          <org.apache.commons.lang3.tuple.ImmutablePair reference="23"/>
+                                          <org.apache.commons.lang3.tuple.ImmutablePair reference="25"/>
+                                          <org.apache.commons.lang3.tuple.ImmutablePair reference="30"/>
+                                        </java.util.concurrent.CopyOnWriteArrayList>
+                                      </selectedInputStreams>
+                                    </default>
+                                  </net.sf.jaer2.eventio.processors.Processor>
+                                  <net.sf.jaer2.eventio.processors.OutputProcessor>
+                                    <default>
+                                      <connectedSink class="net.sf.jaer2.eventio.sinks.RenderSink" id="33" serialization="custom">
+                                        <net.sf.jaer2.eventio.sinks.Sink>
+                                          <default/>
+                                        </net.sf.jaer2.eventio.sinks.Sink>
+                                      </connectedSink>
+                                    </default>
+                                  </net.sf.jaer2.eventio.processors.OutputProcessor>
+                                </nextProcessor>
+                                <outputStreams id="34">
+                                  <org.apache.commons.lang3.tuple.ImmutablePair reference="12"/>
+                                  <org.apache.commons.lang3.tuple.ImmutablePair reference="13"/>
+                                  <org.apache.commons.lang3.tuple.ImmutablePair reference="14"/>
+                                  <org.apache.commons.lang3.tuple.ImmutablePair reference="23"/>
+                                  <org.apache.commons.lang3.tuple.ImmutablePair reference="24"/>
+                                  <org.apache.commons.lang3.tuple.ImmutablePair reference="25"/>
+                                  <org.apache.commons.lang3.tuple.ImmutablePair reference="30"/>
+                                </outputStreams>
+                                <prevProcessor class="net.sf.jaer2.eventio.processors.InputProcessor" reference="15"/>
+                                <processorName>SynchronizationProcessor</processorName>
+                                <selectedInputStreams class="java.util.concurrent.CopyOnWriteArrayList" id="35" serialization="custom">
+                                  <java.util.concurrent.CopyOnWriteArrayList>
+                                    <default/>
+                                    <int>2</int>
+                                    <org.apache.commons.lang3.tuple.ImmutablePair reference="12"/>
+                                    <org.apache.commons.lang3.tuple.ImmutablePair reference="23"/>
+                                  </java.util.concurrent.CopyOnWriteArrayList>
+                                </selectedInputStreams>
+                              </default>
+                            </net.sf.jaer2.eventio.processors.Processor>
+                            <net.sf.jaer2.eventio.processors.SynchronizationProcessor>
+                              <default/>
+                            </net.sf.jaer2.eventio.processors.SynchronizationProcessor>
+                          </nextProcessor>
+                          <outputStreams id="36">
+                            <org.apache.commons.lang3.tuple.ImmutablePair reference="12"/>
+                            <org.apache.commons.lang3.tuple.ImmutablePair reference="13"/>
+                            <org.apache.commons.lang3.tuple.ImmutablePair reference="14"/>
+                            <org.apache.commons.lang3.tuple.ImmutablePair reference="23"/>
+                            <org.apache.commons.lang3.tuple.ImmutablePair reference="24"/>
+                            <org.apache.commons.lang3.tuple.ImmutablePair reference="25"/>
+                          </outputStreams>
+                          <prevProcessor class="net.sf.jaer2.eventio.processors.SynchronizationProcessor" reference="8"/>
+                          <processorName>InputProcessor</processorName>
+                          <selectedInputStreams class="java.util.concurrent.CopyOnWriteArrayList" id="37" serialization="custom">
+                            <java.util.concurrent.CopyOnWriteArrayList>
+                              <default/>
+                              <int>0</int>
+                            </java.util.concurrent.CopyOnWriteArrayList>
+                          </selectedInputStreams>
+                        </default>
+                      </net.sf.jaer2.eventio.processors.Processor>
+                      <net.sf.jaer2.eventio.processors.InputProcessor>
+                        <default>
+                          <connectedSource class="net.sf.jaer2.eventio.sources.NetworkSource" id="38" serialization="custom">
+                            <net.sf.jaer2.eventio.sources.Source>
+                              <default/>
+                            </net.sf.jaer2.eventio.sources.Source>
+                          </connectedSource>
+                          <interpreterChip class="ch.unizh.ini.jaer2.chip.dvs.DVS128" id="39"/>
+                        </default>
+                      </net.sf.jaer2.eventio.processors.InputProcessor>
+                    </nextProcessor>
+                    <outputStreams id="40">
+                      <org.apache.commons.lang3.tuple.ImmutablePair reference="12"/>
+                      <org.apache.commons.lang3.tuple.ImmutablePair reference="13"/>
+                      <org.apache.commons.lang3.tuple.ImmutablePair reference="14"/>
+                      <org.apache.commons.lang3.tuple.ImmutablePair reference="25"/>
+                    </outputStreams>
+                    <prevProcessor class="net.sf.jaer2.eventio.processors.InputProcessor" reference="4"/>
+                    <processorName>SynchronizationProcessor</processorName>
+                    <selectedInputStreams class="java.util.concurrent.CopyOnWriteArrayList" id="41" serialization="custom">
+                      <java.util.concurrent.CopyOnWriteArrayList>
+                        <default/>
+                        <int>1</int>
+                        <org.apache.commons.lang3.tuple.ImmutablePair reference="14"/>
+                      </java.util.concurrent.CopyOnWriteArrayList>
+                    </selectedInputStreams>
+                  </default>
+                </net.sf.jaer2.eventio.processors.Processor>
+                <net.sf.jaer2.eventio.processors.SynchronizationProcessor>
+                  <default/>
+                </net.sf.jaer2.eventio.processors.SynchronizationProcessor>
+              </nextProcessor>
+              <outputStreams id="42">
+                <org.apache.commons.lang3.tuple.ImmutablePair reference="12"/>
+                <org.apache.commons.lang3.tuple.ImmutablePair reference="13"/>
+                <org.apache.commons.lang3.tuple.ImmutablePair reference="14"/>
+              </outputStreams>
+              <processorName>InputProcessor</processorName>
+              <selectedInputStreams class="java.util.concurrent.CopyOnWriteArrayList" id="43" serialization="custom">
+                <java.util.concurrent.CopyOnWriteArrayList>
+                  <default/>
+                  <int>0</int>
+                </java.util.concurrent.CopyOnWriteArrayList>
+              </selectedInputStreams>
+            </default>
+          </net.sf.jaer2.eventio.processors.Processor>
+          <net.sf.jaer2.eventio.processors.InputProcessor>
+            <default>
+              <connectedSource class="net.sf.jaer2.eventio.sources.DeviceSource" id="44" serialization="custom">
+                <net.sf.jaer2.eventio.sources.Source>
+                  <default/>
+                </net.sf.jaer2.eventio.sources.Source>
+              </connectedSource>
+              <interpreterChip class="ch.unizh.ini.jaer2.chip.apsdvs.SBRet10" id="45"/>
+            </default>
+          </net.sf.jaer2.eventio.processors.InputProcessor>
+        </net.sf.jaer2.eventio.processors.InputProcessor>
+        <net.sf.jaer2.eventio.processors.SynchronizationProcessor reference="8"/>
+        <net.sf.jaer2.eventio.processors.InputProcessor reference="15"/>
+        <net.sf.jaer2.eventio.processors.SynchronizationProcessor reference="19"/>
+        <net.sf.jaer2.eventio.processors.OutputProcessor reference="26"/>
+      </processors>
+    </default>
+  </net.sf.jaer2.eventio.ProcessorChain>
+</net.sf.jaer2.eventio.ProcessorChain>

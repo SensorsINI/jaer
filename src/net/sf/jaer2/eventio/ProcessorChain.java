@@ -14,7 +14,6 @@ import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
-import javafx.collections.ListChangeListener;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
@@ -30,7 +29,6 @@ import net.sf.jaer2.eventio.processors.InputProcessor;
 import net.sf.jaer2.eventio.processors.OutputProcessor;
 import net.sf.jaer2.eventio.processors.Processor;
 import net.sf.jaer2.eventio.processors.Processor.ProcessorTypes;
-import net.sf.jaer2.util.CollectionsUpdate;
 import net.sf.jaer2.util.GUISupport;
 import net.sf.jaer2.util.Reflections;
 import net.sf.jaer2.util.XMLconf;
@@ -53,7 +51,7 @@ public final class ProcessorChain implements Serializable {
 	transient private ProcessorNetwork parentNetwork;
 
 	/** List of all processors in this chain. */
-	private final List<Processor> processors = new ArrayList<>(8);
+	private final List<Processor> processors = new ArrayList<>();
 
 	/** Unique ID counter for processor identification. */
 	private int processorIdCounter = 1;
@@ -71,13 +69,11 @@ public final class ProcessorChain implements Serializable {
 	transient private final VBox rootConfigLayout = new VBox(10);
 
 	/** Configuration GUI: tasks to execute before showing the dialog. */
-	transient private final List<Runnable> rootConfigTasksDialogRefresh = new ArrayList<>(8);
+	transient private final List<Runnable> rootConfigTasksDialogRefresh = new ArrayList<>();
 	/** Configuration GUI: tasks to execute on clicking OK. */
-	transient private final List<Runnable> rootConfigTasksDialogOK = new ArrayList<>(8);
+	transient private final List<Runnable> rootConfigTasksDialogOK = new ArrayList<>();
 
-	public ProcessorChain(final ProcessorNetwork parent) {
-		parentNetwork = parent;
-
+	public ProcessorChain() {
 		chainId = ProcessorNetwork.getNextAvailableChainID();
 		chainName = getClass().getSimpleName();
 
@@ -100,12 +96,16 @@ public final class ProcessorChain implements Serializable {
 		Reflections.setFinalField(this, "changesToCommit", new SimpleBooleanProperty(false));
 		Reflections.setFinalField(this, "rootLayout", new HBox(10));
 		Reflections.setFinalField(this, "rootConfigLayout", new VBox(10));
-		Reflections.setFinalField(this, "rootConfigTasksDialogRefresh", new ArrayList<Runnable>(8));
-		Reflections.setFinalField(this, "rootConfigTasksDialogOK", new ArrayList<Runnable>(8));
+		Reflections.setFinalField(this, "rootConfigTasksDialogRefresh", new ArrayList<Runnable>());
+		Reflections.setFinalField(this, "rootConfigTasksDialogOK", new ArrayList<Runnable>());
 
+		// Update processors to set parent chain to this current instance.
 		for (final Processor proc : processors) {
 			proc.setParentChain(this);
 		}
+
+		// Ensure the full stream sets are rebuilt and displayed.
+		processors.get(0).rebuildStreamSets();
 
 		// Do construction.
 		CommonConstructor();
@@ -214,6 +214,7 @@ public final class ProcessorChain implements Serializable {
 				@Override
 				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
 					addProcessor(XMLconf.fromXML(Processor.class), 0);
+					// TODO: position support for processor load.
 				}
 			});
 
@@ -269,18 +270,14 @@ public final class ProcessorChain implements Serializable {
 		rootConfigTasksDialogRefresh.add(new Runnable() {
 			@Override
 			public void run() {
-				CollectionsUpdate.replaceNonDestructive(processorPositionChooser.getItems(), processors);
-			}
-		});
+				processorPositionChooser.getItems().clear();
+				processorPositionChooser.getItems().addAll(processors);
 
-		processorPositionChooser.getItems().addListener(new ListChangeListener<Processor>() {
-			@Override
-			public void onChanged(final Change<? extends Processor> change) {
 				// Reset default selection on each change to the backing list.
 				processorPositionChooser.getSelectionModel().select(0);
 
 				// If the list is empty, ensure the CheckBox is ticked.
-				if (change.getList().isEmpty()) {
+				if (processors.isEmpty()) {
 					processorPositionAtBeginning.setSelected(true);
 				}
 			}
@@ -328,17 +325,19 @@ public final class ProcessorChain implements Serializable {
 
 				switch (processorTypeChooser.getValue()) {
 					case INPUT_PROCESSOR:
-						final Processor inputProcessor = createProcessor(ProcessorTypes.INPUT_PROCESSOR, null);
+						final Processor inputProcessor = ProcessorChain.createProcessor(ProcessorTypes.INPUT_PROCESSOR,
+							null);
 						addProcessor(inputProcessor, position);
 						break;
 
 					case OUTPUT_PROCESSOR:
-						final Processor outputProcessor = createProcessor(ProcessorTypes.OUTPUT_PROCESSOR, null);
+						final Processor outputProcessor = ProcessorChain.createProcessor(
+							ProcessorTypes.OUTPUT_PROCESSOR, null);
 						addProcessor(outputProcessor, position);
 						break;
 
 					case EVENT_PROCESSOR:
-						final Processor eventProcessor = createProcessor(ProcessorTypes.EVENT_PROCESSOR,
+						final Processor eventProcessor = ProcessorChain.createProcessor(ProcessorTypes.EVENT_PROCESSOR,
 							eventProcessorTypeChooser.getValue());
 						addProcessor(eventProcessor, position);
 						break;
@@ -445,22 +444,22 @@ public final class ProcessorChain implements Serializable {
 	 *
 	 * @return the new processor.
 	 */
-	private Processor createProcessor(final ProcessorTypes type, final Class<? extends EventProcessor> clazz) {
+	private static Processor createProcessor(final ProcessorTypes type, final Class<? extends EventProcessor> clazz) {
 		// Create the new, specified Processor.
 		Processor processor;
 
 		switch (type) {
 			case INPUT_PROCESSOR:
-				processor = new InputProcessor(this);
+				processor = new InputProcessor();
 				break;
 
 			case OUTPUT_PROCESSOR:
-				processor = new OutputProcessor(this);
+				processor = new OutputProcessor();
 				break;
 
 			case EVENT_PROCESSOR:
 				try {
-					processor = Reflections.newInstanceForClassWithArgument(clazz, ProcessorChain.class, this);
+					processor = Reflections.newInstanceForClass(clazz);
 				}
 				catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException
 					| IllegalArgumentException | InvocationTargetException | NullPointerException e) {
@@ -487,6 +486,11 @@ public final class ProcessorChain implements Serializable {
 	 *            index at which to add the new processor.
 	 */
 	public void addProcessor(final Processor processor, final int position) {
+		if (processor == null) {
+			// Ignore null.
+			return;
+		}
+
 		GUISupport.runOnJavaFXThread(new Runnable() {
 			@Override
 			public void run() {

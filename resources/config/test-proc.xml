@@ -1,0 +1,17 @@
+<net.sf.jaer2.eventio.processors.InputProcessor id="1" serialization="custom">
+  <net.sf.jaer2.eventio.processors.Processor>
+    <default>
+      <processorName>InputProcessor</processorName>
+    </default>
+  </net.sf.jaer2.eventio.processors.Processor>
+  <net.sf.jaer2.eventio.processors.InputProcessor>
+    <default>
+      <connectedSource class="net.sf.jaer2.eventio.sources.DeviceSource" id="2" serialization="custom">
+        <net.sf.jaer2.eventio.sources.Source>
+          <default/>
+        </net.sf.jaer2.eventio.sources.Source>
+      </connectedSource>
+      <interpreterChip class="ch.unizh.ini.jaer2.chip.apsdvs.SBRet10" id="3"/>
+    </default>
+  </net.sf.jaer2.eventio.processors.InputProcessor>
+</net.sf.jaer2.eventio.processors.InputProcessor>

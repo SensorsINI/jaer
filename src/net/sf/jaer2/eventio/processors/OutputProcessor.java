@@ -2,15 +2,19 @@ package net.sf.jaer2.eventio.processors;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
-import net.sf.jaer2.eventio.ProcessorChain;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
+import javafx.scene.control.ComboBox;
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 import net.sf.jaer2.eventio.events.Event;
 import net.sf.jaer2.eventio.sinks.Sink;
+import net.sf.jaer2.util.GUISupport;
 import net.sf.jaer2.util.Reflections;
 
 public final class OutputProcessor extends Processor {
@@ -20,8 +24,11 @@ public final class OutputProcessor extends Processor {
 
 	private Sink connectedSink;
 
-	public OutputProcessor(final ProcessorChain chain) {
-		super(chain);
+	/** For displaying and maintaining a link to the current config GUI. */
+	transient private Sink currentSinkConfig;
+
+	public OutputProcessor() {
+		super();
 
 		CommonConstructor();
 	}
@@ -64,6 +71,7 @@ public final class OutputProcessor extends Processor {
 		// Empty, doesn't add any new output types to the system.
 	}
 
+	@Override
 	public boolean readyToRun() {
 		return (connectedSink != null);
 	}
@@ -100,10 +108,87 @@ public final class OutputProcessor extends Processor {
 	}
 
 	private void buildGUI() {
+		rootTasksUIRefresh.add(new Runnable() {
+			@Override
+			public void run() {
+				rootLayoutChildren.getChildren().clear();
 
+				if (connectedSink != null) {
+					rootLayoutChildren.getChildren().add(connectedSink.getGUI());
+				}
+			}
+		});
 	}
 
 	private void buildConfigGUI() {
+		// Create Sink type chooser box.
+		final ComboBox<Class<? extends Sink>> sinkTypeChooser = GUISupport.addComboBox(null, Reflections.sinkTypes, -1);
+		GUISupport.addLabelWithControlsHorizontal(rootConfigLayoutChildren, "Sink:",
+			"Select the output Sink you want to use.", sinkTypeChooser);
 
+		sinkTypeChooser.valueProperty().addListener(new ChangeListener<Class<? extends Sink>>() {
+			@SuppressWarnings("unused")
+			@Override
+			public void changed(final ObservableValue<? extends Class<? extends Sink>> observable,
+				final Class<? extends Sink> oldValue, final Class<? extends Sink> newValue) {
+				if ((currentSinkConfig != null) && currentSinkConfig.getClass().equals(newValue)) {
+					// If the class didn't change, don't generate a new one!
+					return;
+				}
+
+				// Don't display old value anymore (if any).
+				if (currentSinkConfig != null) {
+					rootConfigLayoutChildren.getChildren().remove(currentSinkConfig.getConfigGUI());
+				}
+
+				// When the chosen sink type changes, create an instance
+				// of the new one and save it for future reference, so that
+				// when the user clicks OK, it gets saved.
+				try {
+					currentSinkConfig = Reflections.newInstanceForClass(newValue);
+				}
+				catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException
+					| IllegalArgumentException | InvocationTargetException | NullPointerException e) {
+					GUISupport.showDialogException(e);
+					return;
+				}
+
+				// Add config GUI for new sink instance.
+				rootConfigLayoutChildren.getChildren().add(currentSinkConfig.getConfigGUI());
+			}
+		});
+
+		rootConfigTasksDialogRefresh.add(new Runnable() {
+			@Override
+			public void run() {
+				if (connectedSink != null) {
+					// If connectedSink is defined, let's make sure
+					// currentSinkConfig reflects that value and its effects.
+					if (currentSinkConfig != null) {
+						rootConfigLayoutChildren.getChildren().remove(currentSinkConfig.getConfigGUI());
+					}
+
+					currentSinkConfig = connectedSink;
+
+					rootConfigLayoutChildren.getChildren().add(currentSinkConfig.getConfigGUI());
+
+					// Set default value.
+					sinkTypeChooser.setValue(connectedSink.getClass());
+				}
+			}
+		});
+
+		rootConfigTasksDialogOK.add(new Runnable() {
+			@Override
+			public void run() {
+				if (currentSinkConfig == null) {
+					// Enforce setting a sink type.
+					GUISupport.showDialogError("No Sink selected, please do so!");
+					return;
+				}
+
+				setConnectedSink(currentSinkConfig);
+			}
+		});
 	}
 }

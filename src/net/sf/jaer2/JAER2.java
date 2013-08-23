@@ -18,6 +18,7 @@ public final class JAER2 extends Application {
 
 	@Override
 	public void start(final Stage primaryStage) throws Exception {
+		// TODO: implement save/restore network.
 		final ProcessorNetwork net = new ProcessorNetwork();
 
 		final ScrollPane scroll = new ScrollPane(net.getGUI());

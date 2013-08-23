@@ -189,7 +189,7 @@ public final class GUISupport {
 	public static void runTasksCollection(final Collection<Runnable> tasks) {
 		if (tasks != null) {
 			for (final Runnable task : tasks) {
-				task.run();
+				GUISupport.runOnJavaFXThread(task);
 			}
 		}
 	}
@@ -237,13 +237,36 @@ public final class GUISupport {
 
 		fileChooser.setTitle("Select File to load from ...");
 
-		if ((allowedExtensions != null) && !allowedExtensions.isEmpty()) {
+		if (allowedExtensions != null) {
 			for (final ImmutablePair<String, String> ext : allowedExtensions) {
 				fileChooser.getExtensionFilters().add(new ExtensionFilter(ext.left, ext.right));
 			}
 		}
 
-		return fileChooser.showOpenDialog(null);
+		final File toLoad = fileChooser.showOpenDialog(null);
+
+		if (toLoad == null) {
+			return null;
+		}
+
+		if (!GUISupport.checkReadPermissions(toLoad)) {
+			GUISupport.showDialogError("Cannot read from file " + toLoad.getAbsolutePath());
+			return null;
+		}
+
+		// Sanity check on file name extension.
+		if (allowedExtensions != null) {
+			for (final ImmutablePair<String, String> ext : allowedExtensions) {
+				if (toLoad.getName().endsWith(ext.right.substring(ext.right.indexOf('.')))) {
+					return toLoad;
+				}
+			}
+
+			GUISupport.showDialogError("Invalid file-name extension!");
+			return null;
+		}
+
+		return toLoad;
 	}
 
 	public static File showDialogSaveFile(final List<ImmutablePair<String, String>> allowedExtensions) {
@@ -251,13 +274,68 @@ public final class GUISupport {
 
 		fileChooser.setTitle("Select File to save to ...");
 
-		if ((allowedExtensions != null) && !allowedExtensions.isEmpty()) {
+		if (allowedExtensions != null) {
 			for (final ImmutablePair<String, String> ext : allowedExtensions) {
 				fileChooser.getExtensionFilters().add(new ExtensionFilter(ext.left, ext.right));
 			}
 		}
 
-		return fileChooser.showSaveDialog(null);
+		final File toSave = fileChooser.showSaveDialog(null);
+
+		if (toSave == null) {
+			return null;
+		}
+
+		if (!GUISupport.checkWritePermissions(toSave)) {
+			GUISupport.showDialogError("Cannot write to file " + toSave.getAbsolutePath());
+			return null;
+		}
+
+		// Sanity check on file name extension.
+		if (allowedExtensions != null) {
+			for (final ImmutablePair<String, String> ext : allowedExtensions) {
+				if (toSave.getName().endsWith(ext.right.substring(ext.right.indexOf('.')))) {
+					return toSave;
+				}
+			}
+
+			GUISupport.showDialogError("Invalid file-name extension!");
+			return null;
+		}
+
+		return toSave;
+	}
+
+	public static boolean checkReadPermissions(final File f) throws NullPointerException {
+		if (f == null) {
+			throw new NullPointerException();
+		}
+
+		// We want to read, so it has to exist and be readable.
+		if (f.exists() && f.canRead()) {
+			return true;
+		}
+
+		return false;
+	}
+
+	public static boolean checkWritePermissions(final File f) throws NullPointerException {
+		if (f == null) {
+			throw new NullPointerException();
+		}
+
+		if (f.exists()) {
+			if (f.canWrite()) {
+				// If it exists already, but is writable.
+				return true;
+			}
+
+			// Exists already, but is not writable.
+			return false;
+		}
+
+		// Non-existing paths can usually be written to.
+		return true;
 	}
 
 	public static HBox addArrow(final Pane parentPane, final double lineLength, final double lineWidth,
@@ -282,7 +360,11 @@ public final class GUISupport {
 		return arrow;
 	}
 
-	public static void runOnJavaFXThread(final Runnable operationToRun) {
+	public static void runOnJavaFXThread(final Runnable operationToRun) throws NullPointerException {
+		if (operationToRun == null) {
+			throw new NullPointerException();
+		}
+
 		if (Platform.isFxApplicationThread()) {
 			operationToRun.run();
 		}

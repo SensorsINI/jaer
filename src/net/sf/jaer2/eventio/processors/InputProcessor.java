@@ -14,7 +14,6 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.scene.control.ComboBox;
 import net.sf.jaer2.chips.Chip;
-import net.sf.jaer2.eventio.ProcessorChain;
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
 import net.sf.jaer2.eventio.eventpackets.raw.RawEventPacket;
 import net.sf.jaer2.eventio.events.Event;
@@ -32,10 +31,10 @@ public final class InputProcessor extends Processor {
 	private Chip interpreterChip;
 
 	/** For displaying and maintaining a link to the current config GUI. */
-	private Source currentSourceConfig;
+	transient private Source currentSourceConfig;
 
-	public InputProcessor(final ProcessorChain chain) {
-		super(chain);
+	public InputProcessor() {
+		super();
 
 		CommonConstructor();
 	}
@@ -53,10 +52,15 @@ public final class InputProcessor extends Processor {
 		Reflections.setFinalField(this, "inputQueue", new ArrayBlockingQueue<RawEventPacket>(32));
 		Reflections.setFinalField(this, "inputToProcess", new ArrayList<RawEventPacket>(32));
 
+		// Regenerate output types based on what the Chip can produce. This is
+		// needed during de-serialization to reload the most current values from
+		// the Chip (they might have changed).
+		if (interpreterChip != null) {
+			regenerateAdditionalOutputTypes(interpreterChip.getEventTypes(), false);
+		}
+
 		// Do construction.
 		CommonConstructor();
-		// TODO: check interpreterChip.getEventTypes() and merge on
-		// readResolve() if needed.
 	}
 
 	public Source getConnectedSource() {
@@ -78,7 +82,7 @@ public final class InputProcessor extends Processor {
 
 		// Regenerate output types based on what the Chip can produce.
 		if (interpreterChip != null) {
-			regenerateAdditionalOutputTypes(interpreterChip.getEventTypes());
+			regenerateAdditionalOutputTypes(interpreterChip.getEventTypes(), true);
 		}
 
 		Processor.logger.debug("InterpreterChip set to: {}.", chip);
@@ -95,6 +99,7 @@ public final class InputProcessor extends Processor {
 		// Chip can output.
 	}
 
+	@Override
 	public boolean readyToRun() {
 		return ((interpreterChip != null) && (connectedSource != null));
 	}
@@ -156,9 +161,6 @@ public final class InputProcessor extends Processor {
 				}
 			}
 		});
-
-		// TODO: Ensure the current data is shown.
-		GUISupport.runTasksCollection(rootTasksUIRefresh);
 	}
 
 	private void buildConfigGUI() {
@@ -207,14 +209,19 @@ public final class InputProcessor extends Processor {
 			@Override
 			public void changed(final ObservableValue<? extends Class<? extends Source>> observable,
 				final Class<? extends Source> oldValue, final Class<? extends Source> newValue) {
+				if ((currentSourceConfig != null) && currentSourceConfig.getClass().equals(newValue)) {
+					// If the class didn't change, don't generate a new one!
+					return;
+				}
+
 				// Don't display old value anymore (if any).
 				if (currentSourceConfig != null) {
 					rootConfigLayoutChildren.getChildren().remove(currentSourceConfig.getConfigGUI());
 				}
 
-				// When the chosen source type changes, create an instance of
-				// the new one and save it for future reference, so that when
-				// the user clicks OK, it gets saved.
+				// When the chosen source type changes, create an instance
+				// of the new one and save it for future reference, so that
+				// when the user clicks OK, it gets saved.
 				try {
 					currentSourceConfig = Reflections.newInstanceForClass(newValue);
 				}
@@ -233,6 +240,16 @@ public final class InputProcessor extends Processor {
 			@Override
 			public void run() {
 				if (connectedSource != null) {
+					// If connectedSource is defined, let's make sure
+					// currentSourceConfig reflects that value and its effects.
+					if (currentSourceConfig != null) {
+						rootConfigLayoutChildren.getChildren().remove(currentSourceConfig.getConfigGUI());
+					}
+
+					currentSourceConfig = connectedSource;
+
+					rootConfigLayoutChildren.getChildren().add(currentSourceConfig.getConfigGUI());
+
 					// Set default value.
 					sourceTypeChooser.setValue(connectedSource.getClass());
 				}

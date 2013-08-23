@@ -48,6 +48,7 @@ public final class ProcessorNetwork implements Serializable {
 		// Restore transient fields.
 		Reflections.setFinalField(this, "rootLayout", new VBox(10));
 
+		// Update chains to set parent network to this current instance.
 		for (final ProcessorChain chain : processorChains) {
 			chain.setParentNetwork(this);
 		}
@@ -77,14 +78,15 @@ public final class ProcessorNetwork implements Serializable {
 		return rootLayout;
 	}
 
-	private ProcessorChain createProcessorChain() {
-		return new ProcessorChain(this);
-	}
-
 	/**
 	 * Create a new processor chain and add it to the GUI.
 	 */
 	public void addChain(final ProcessorChain chain) {
+		if (chain == null) {
+			// Ignore null.
+			return;
+		}
+
 		GUISupport.runOnJavaFXThread(new Runnable() {
 			@Override
 			public void run() {
@@ -125,7 +127,7 @@ public final class ProcessorNetwork implements Serializable {
 			new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
-					addChain(createProcessorChain());
+					addChain(new ProcessorChain());
 				}
 			});
 
