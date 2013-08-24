@@ -215,8 +215,47 @@ public final class ProcessorChain implements Serializable {
 			"/images/icons/Import Document.png", new EventHandler<MouseEvent>() {
 				@Override
 				public void handle(@SuppressWarnings("unused") final MouseEvent event) {
-					addProcessor(XMLconf.fromXML(Processor.class), 0);
-					// TODO: position support for processor load.
+					final VBox positionChooserLayout = new VBox(10);
+
+					final CheckBox processorPositionAtBeginning = GUISupport.addCheckBox(positionChooserLayout,
+						"At Beginning", true);
+
+					final ComboBox<Processor> processorPositionChooser = GUISupport.addComboBox(null, processors, -1);
+					GUISupport.addLabelWithControlsHorizontal(positionChooserLayout, "OR After Processor:",
+						"Place this new Processor right after the selected one.", processorPositionChooser);
+
+					processorPositionChooser.getSelectionModel().select(0);
+
+					processorPositionChooser.disableProperty().bind(processorPositionAtBeginning.selectedProperty());
+
+					processorPositionAtBeginning.selectedProperty().addListener(new ChangeListener<Boolean>() {
+						@SuppressWarnings("unused")
+						@Override
+						public void changed(final ObservableValue<? extends Boolean> observable,
+							final Boolean oldValue, final Boolean newValue) {
+							if ((!newValue) && (processorPositionChooser.getItems().isEmpty())) {
+								processorPositionAtBeginning.setSelected(true);
+							}
+						}
+					});
+
+					final List<Runnable> positionChooserDialogOK = new ArrayList<>();
+
+					positionChooserDialogOK.add(new Runnable() {
+						@Override
+						public void run() {
+							int position = 0;
+
+							if (!processorPositionAtBeginning.isSelected()) {
+								position = processors.indexOf(processorPositionChooser.getValue()) + 1;
+							}
+
+							addProcessor(XMLconf.fromXML(Processor.class), position);
+						}
+					});
+
+					GUISupport.showDialog("Load Processor Configuration", positionChooserLayout, null,
+						positionChooserDialogOK, null);
 				}
 			});
 
