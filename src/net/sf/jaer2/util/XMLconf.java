@@ -20,7 +20,20 @@ public final class XMLconf {
 			return;
 		}
 
-		try (FileWriter out = new FileWriter(toSave)) {
+		XMLconf.toXML(object, fieldsToOmit, toSave);
+	}
+
+	public static <T> void toXML(final T object, final List<ImmutablePair<Class<?>, String>> fieldsToOmit,
+		final File xmlFile) {
+		if (!GUISupport.checkWritePermissions(xmlFile)) {
+			// Error in opening file.
+			return;
+		}
+
+		// Create any necessary directories in the path.s
+		xmlFile.getParentFile().mkdirs();
+
+		try (FileWriter out = new FileWriter(xmlFile)) {
 			final XStream xstream = new XStream();
 			xstream.setMode(XStream.ID_REFERENCES);
 
@@ -37,8 +50,7 @@ public final class XMLconf {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
-	public static <T> T fromXML(@SuppressWarnings("unused") final Class<T> clazz) {
+	public static <T> T fromXML(final Class<T> clazz) {
 		final File toLoad = GUISupport.showDialogLoadFile(ImmutableList
 			.<ImmutablePair<String, String>> of(ImmutablePair.of("XML", "*.xml")));
 
@@ -47,9 +59,19 @@ public final class XMLconf {
 			return null;
 		}
 
+		return XMLconf.fromXML(clazz, toLoad);
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <T> T fromXML(@SuppressWarnings("unused") final Class<T> clazz, final File xmlFile) {
+		if (!GUISupport.checkReadPermissions(xmlFile)) {
+			// Error in opening file.
+			return null;
+		}
+
 		final XStream xstream = new XStream();
 		xstream.setMode(XStream.ID_REFERENCES);
 
-		return (T) xstream.fromXML(toLoad);
+		return (T) xstream.fromXML(xmlFile);
 	}
 }

@@ -27,7 +27,7 @@ public final class ProcessorNetwork implements Serializable {
 	private static int chainIdCounter = 1;
 
 	/** List of all chains in this network. */
-	private final List<ProcessorChain> processorChains = new ArrayList<>(4);
+	private final List<ProcessorChain> processorChains = new ArrayList<>();
 
 	/** Main GUI layout - Vertical Box. */
 	transient private final VBox rootLayout = new VBox(10);

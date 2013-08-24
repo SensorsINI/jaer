@@ -105,7 +105,9 @@ public final class ProcessorChain implements Serializable {
 		}
 
 		// Ensure the full stream sets are rebuilt and displayed.
-		processors.get(0).rebuildStreamSets();
+		if (!processors.isEmpty()) {
+			processors.get(0).rebuildStreamSets();
+		}
 
 		// Do construction.
 		CommonConstructor();
