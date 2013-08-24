@@ -283,20 +283,15 @@ public abstract class Processor implements Runnable, Serializable {
 	protected abstract void setAdditionalOutputTypes(Set<Class<? extends Event>> outputs);
 
 	/**
-	 * Regenerates the list of additional output types by replacing it wholly
-	 * with the supplied one.
+	 * Updates the list of additional output types by replacing it wholly
+	 * with the one returned by the user through this function.
 	 *
-	 * @param newOutputs
-	 *            all new types that this processor can emit.
+	 * @return set of all the types that this processor can emit.
+	 *
+	 * @throws UnsupportedOperationException
+	 *             not supported, since output types do never change.
 	 */
-	protected final void regenerateAdditionalOutputTypes(final Collection<Class<? extends Event>> newOutputs,
-		final boolean rebuildStreamSets) {
-		if (CollectionsUpdate.replaceNonDestructive(additionalOutputTypes, newOutputs)) {
-			if (rebuildStreamSets) {
-				rebuildStreamSets();
-			}
-		}
-	}
+	protected abstract Set<Class<? extends Event>> updateAdditionalOutputTypes() throws UnsupportedOperationException;
 
 	private List<ImmutablePair<Class<? extends Event>, Integer>> getAllOutputStreams() {
 		return Collections.unmodifiableList(outputStreams);
@@ -349,6 +344,15 @@ public abstract class Processor implements Runnable, Serializable {
 		// by the current Processor.
 		if (prevProcessor != null) {
 			allOutputStreams.addAll(prevProcessor.getAllOutputStreams());
+		}
+
+		// Ensure we're using the current, correct data for
+		// additionalOutputTypes.
+		try {
+			CollectionsUpdate.replaceNonDestructive(additionalOutputTypes, updateAdditionalOutputTypes());
+		}
+		catch (final UnsupportedOperationException e) {
+			// Ignore UnsupportedOperationException, it's expected.
 		}
 
 		for (final Class<? extends Event> outputType : additionalOutputTypes) {

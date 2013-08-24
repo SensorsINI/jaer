@@ -5,6 +5,7 @@ import java.io.ObjectInputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -52,13 +53,6 @@ public final class InputProcessor extends Processor {
 		Reflections.setFinalField(this, "inputQueue", new ArrayBlockingQueue<RawEventPacket>(32));
 		Reflections.setFinalField(this, "inputToProcess", new ArrayList<RawEventPacket>(32));
 
-		// Regenerate output types based on what the Chip can produce. This is
-		// needed during de-serialization to reload the most current values from
-		// the Chip (they might have changed).
-		if (interpreterChip != null) {
-			regenerateAdditionalOutputTypes(interpreterChip.getEventTypes(), false);
-		}
-
 		// Do construction.
 		CommonConstructor();
 	}
@@ -81,9 +75,7 @@ public final class InputProcessor extends Processor {
 		interpreterChip = chip;
 
 		// Regenerate output types based on what the Chip can produce.
-		if (interpreterChip != null) {
-			regenerateAdditionalOutputTypes(interpreterChip.getEventTypes(), true);
-		}
+		rebuildStreamSets();
 
 		Processor.logger.debug("InterpreterChip set to: {}.", chip);
 	}
@@ -97,6 +89,17 @@ public final class InputProcessor extends Processor {
 	protected void setAdditionalOutputTypes(@SuppressWarnings("unused") final Set<Class<? extends Event>> outputs) {
 		// No events exist here by default, they depend on what the selected
 		// Chip can output.
+	}
+
+	@Override
+	protected Set<Class<? extends Event>> updateAdditionalOutputTypes() {
+		final Set<Class<? extends Event>> newOutputs = new HashSet<>();
+
+		if (interpreterChip != null) {
+			newOutputs.addAll(interpreterChip.getEventTypes());
+		}
+
+		return newOutputs;
 	}
 
 	@Override

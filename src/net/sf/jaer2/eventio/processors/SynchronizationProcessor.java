@@ -2,8 +2,7 @@ package net.sf.jaer2.eventio.processors;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Set;
 
 import net.sf.jaer2.eventio.eventpackets.EventPacketContainer;
@@ -29,30 +28,13 @@ public final class SynchronizationProcessor extends EventProcessor {
 		rootConfigTasksDialogOK.add(new Runnable() {
 			@Override
 			public void run() {
-				final List<Class<? extends Event>> newOutputs = new ArrayList<>();
-
-				for (final ImmutablePair<Class<? extends Event>, Integer> selInStream : selectedInputStreamsReadOnly) {
-					newOutputs.add(selInStream.left);
-				}
-
-				regenerateAdditionalOutputTypes(newOutputs, true);
+				rebuildStreamSets();
 			}
 		});
 	}
 
 	private void readObject(final ObjectInputStream in) throws IOException, ClassNotFoundException {
 		in.defaultReadObject();
-
-		// When loading from serialized settings, the additional output types
-		// need to be regenerated for the SynchronizerProcessor, since it
-		// doesn't declare any himself in setAdditionalOutputTypes().
-		final List<Class<? extends Event>> newOutputs = new ArrayList<>();
-
-		for (final ImmutablePair<Class<? extends Event>, Integer> selInStream : selectedInputStreamsReadOnly) {
-			newOutputs.add(selInStream.left);
-		}
-
-		regenerateAdditionalOutputTypes(newOutputs, false);
 
 		// Do construction.
 		CommonConstructor();
@@ -73,6 +55,17 @@ public final class SynchronizationProcessor extends EventProcessor {
 	protected void setAdditionalOutputTypes(@SuppressWarnings("unused") final Set<Class<? extends Event>> outputs) {
 		// Empty, no new output types are ever produced here by itself.
 		// They fully depend on the selected input types (see constructor).
+	}
+
+	@Override
+	protected Set<Class<? extends Event>> updateAdditionalOutputTypes() {
+		final Set<Class<? extends Event>> newOutputs = new HashSet<>();
+
+		for (final ImmutablePair<Class<? extends Event>, Integer> selInStream : selectedInputStreamsReadOnly) {
+			newOutputs.add(selInStream.left);
+		}
+
+		return newOutputs;
 	}
 
 	@Override

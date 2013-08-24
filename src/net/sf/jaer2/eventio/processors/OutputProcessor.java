@@ -72,6 +72,12 @@ public final class OutputProcessor extends Processor {
 	}
 
 	@Override
+	protected Set<Class<? extends Event>> updateAdditionalOutputTypes() {
+		// Never changes it's returned output types (which are none!).
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
 	public boolean readyToRun() {
 		return (connectedSink != null);
 	}
