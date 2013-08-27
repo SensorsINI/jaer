@@ -54,9 +54,9 @@ public class SeeBetter30 extends AETemporalConstastRetina {
      */
   public static final int POLMASK = 1,
             XSHIFT = Integer.bitCount(POLMASK),
-            XMASK = 127 << XSHIFT, // 7 bits
+            XMASK = 63 << XSHIFT, // 6 bits
             YSHIFT = 16, // so that y addresses don't overlap ADC bits and cause fake ADC events Integer.bitCount(POLMASK | XMASK),
-            YMASK = 63 << YSHIFT, // 6 bits
+            YMASK = 31 << YSHIFT, // 5 bits
             INTENSITYMASK = 0x40000000;
 //   public static final int 
 //            YSHIFT = SeeBetter20.YSHIFT,

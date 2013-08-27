@@ -51,6 +51,9 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 	float[][] convolutionValues = null;
 	
 	
+	/**
+	 * @return The values of the currently applied convolution kernel.
+	 */
 	public synchronized float[][] getConvolutionValues() {
 		return convolutionValues;
 	}
@@ -160,6 +163,11 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 		updateConvolutionViewer();
 	}
 	
+	/**
+	 * Allows to modify the dimensions of the convolution kernel
+	 * @param width
+	 * @param height
+	 */
 	public synchronized void changeSize(int width, int height) {
 		if (width != this.width || height != this.height && width >= 0 && height >= 0) {
 			synchronized (convolutionValuesLock) {
@@ -179,31 +187,71 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 		}
 	}
 	
+	/**
+	 * This function should be reimplemented by child classes if certain variables need to be 
+	 * recomputed after size changes of the kernel. 
+	 */
 	protected void recomputeMappings() {
 		
 	}
 	
+	/**
+	 * Informs the kernel about size changes of connected response fields.
+	 * @param inputX
+	 * @param inputY
+	 * @param outputX
+	 * @param outputY
+	 */
 	public synchronized void setInputOutputSizes(int inputX, int inputY, int outputX, int outputY) {
 		changeOffset((outputX - inputX) / 2 ,(outputX - outputY) / 2);
 	}
+	
+	/**
+	 * Sets the offset of this kernel. The offset defines the position to which a signal at 0/0 from the 
+	 * input map will be mapped to the output map.
+	 * @param offsetX
+	 * @param offsetY
+	 */
 	public synchronized void changeOffset(int offsetX, int offsetY) {
 		this.offsetX = offsetX;
 		this.offsetY = offsetY;
 	}
 	
+	/**
+	 * The center is defined at the coordinate of the kernel which should be considered the center of the kernel.
+	 * The corresponding kernel values will be applied when mapping an incoming signal at x/y to a unit at the
+	 * same position in the output map.
+	 * @return
+	 */
 	public synchronized int getCenterX() {
 		return centerX;
 	}
 
+	/**
+	 * The center is defined at the coordinate of the kernel which should be considered the center of the kernel.
+	 * The corresponding kernel values will be applied when mapping an incoming signal at x/y to a unit at the
+	 * same position in the output map.
+	 * @return
+	 */
 	public synchronized int getCenterY() {
 		return centerY;
 	}
 
+	/**
+	 * The center is defined at the coordinate of the kernel which should be considered the center of the kernel.
+	 * The corresponding kernel values will be applied when mapping an incoming signal at x/y to a unit at the
+	 * same position in the output map.
+	 */
 	public synchronized void setCenterX(int centerX) {
 		this.centerX = centerX;
 		recomputeMappings();
 	}
 	
+	/**
+	 * The center is defined at the coordinate of the kernel which should be considered the center of the kernel.
+	 * The corresponding kernel values will be applied when mapping an incoming signal at x/y to a unit at the
+	 * same position in the output map.
+	 */
 	public synchronized void setCenterY(int centerY) {
 		this.centerY = centerY;
 		recomputeMappings();
@@ -213,28 +261,11 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 	@Override
 	public void signalAt(int tx, int ty, int time, double value) {
 		if (isEnabled()) {
-	//		
-	//	}
-	//	
-	//	@Override
-	////	public synchronized void apply(int tx, int ty, int time, Polarity polarity,
-	////			FiringModelMap map, SpikeHandler spikeHandler) {
-	//	public synchronized void apply(int tx, int ty, int time, Polarity polarity,
-	//			FiringModelMap map, SpikeHandler spikeHandler) {
 			tx = tx - centerX + offsetX;
 			ty = ty - centerY + offsetY;
-	//		int minx = Math.max(0, -tx), maxx = Math.min(width, map.getSizeX()-tx);
-	//		int miny = Math.max(0, -ty), maxy = Math.min(height, map.getSizeY()-ty);
 			int minx = Math.max(0, -tx), maxx = Math.min(width, getOutputWidth()-tx);
 			int miny = Math.max(0, -ty), maxy = Math.min(height, getOutputHeight()-ty);
 			tx += minx; ty += miny;
-	//		float[][] convolutionValues;
-	//		if (polarity == Polarity.On) 
-	//			convolutionValues = onConvolutionValues;
-	//		else
-	//			convolutionValues = offConvolutionValues;
-	//		tx -= map.getOffsetX();
-	//		ty -= map.getOffsetY();
 			final FiringModelMap map = getOutputMap();
 			if (value == 1.0) {
 				for (int x = minx; x < maxx; x++, tx++) 
@@ -274,29 +305,35 @@ public class ExpressionBasedSpatialInputKernel extends SignalTransformationKerne
 //		this.offsetY = offsetY;
 //	}
 
-	public synchronized void savePrefs(Preferences prefs, String prefString) {
-		prefs.put(prefString+"expressionString", expressionString);
-//		prefs.put(prefString+"offExpressionString", offExpressionString);
-		prefs.putInt(prefString+"width", width);
-		prefs.putInt(prefString+"height", height);
-		prefs.putInt(prefString+"centerX", centerX);
-		prefs.putInt(prefString+"centerY", centerY);
-		prefs.putInt(prefString+"offsetX", offsetX);
-		prefs.putInt(prefString+"offsetY", offsetY);
-	}
 	
-	public synchronized void loadPrefs(Preferences prefs, String prefString) {
-		int width = prefs.getInt(prefString+"width", this.width);
-		int height = prefs.getInt(prefString+"height", this.height);
-		changeSize(width, height);
-		centerX = prefs.getInt(prefString+"centerX", centerX);
-		centerY = prefs.getInt(prefString+"centerY", centerY);
-		offsetX = prefs.getInt(prefString+"offsetX", offsetX);
-		offsetY = prefs.getInt(prefString+"offsetY", offsetY);
-		setExpressionString(prefs.get(prefString+"expressionString", expressionString));
-//		setOnExpressionString(prefs.get(prefString+"onExpressionString", onExpressionString));
-//		setOffExpressionString(offExpressionString = prefs.get(prefString+"offExpressionString", offExpressionString));
-	}
+//	/**
+//	 * Saves the settings of this kernel to a Preference node
+//	 * @param prefs
+//	 * @param prefString
+//	 */
+//	public synchronized void savePrefs(Preferences prefs, String prefString) {
+//		prefs.put(prefString+"expressionString", expressionString);
+////		prefs.put(prefString+"offExpressionString", offExpressionString);
+//		prefs.putInt(prefString+"width", width);
+//		prefs.putInt(prefString+"height", height);
+//		prefs.putInt(prefString+"centerX", centerX);
+//		prefs.putInt(prefString+"centerY", centerY);
+//		prefs.putInt(prefString+"offsetX", offsetX);
+//		prefs.putInt(prefString+"offsetY", offsetY);
+//	}
+//	
+//	public synchronized void loadPrefs(Preferences prefs, String prefString) {
+//		int width = prefs.getInt(prefString+"width", this.width);
+//		int height = prefs.getInt(prefString+"height", this.height);
+//		changeSize(width, height);
+//		centerX = prefs.getInt(prefString+"centerX", centerX);
+//		centerY = prefs.getInt(prefString+"centerY", centerY);
+//		offsetX = prefs.getInt(prefString+"offsetX", offsetX);
+//		offsetY = prefs.getInt(prefString+"offsetY", offsetY);
+//		setExpressionString(prefs.get(prefString+"expressionString", expressionString));
+////		setOnExpressionString(prefs.get(prefString+"onExpressionString", onExpressionString));
+////		setOffExpressionString(offExpressionString = prefs.get(prefString+"offExpressionString", offExpressionString));
+//	}
 
 	@Override
 	public void reset() {

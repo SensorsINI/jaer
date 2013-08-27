@@ -21,7 +21,9 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
             XSHIFT = 12,
             XMASK = 1023 << XSHIFT, // 10 bits from bits 12 to 21
             POLSHIFT = 11,  
-            POLMASK = 1 << POLSHIFT; //,    // 1 bit at bit 11
+            POLMASK = 1 << POLSHIFT, //,    // 1 bit at bit 11
+            TRIGGERSHIFT = 10,
+            TRIGGERMASK = 1 << TRIGGERSHIFT;
 //            IMUSHIFT =31, // 1 bit at bit 31 encodes IMU data
 //            IMUMASK=1<<IMUSHIFT; // adc samples are bits 0-9, with ADC data type at bits 10 to 11 and x and y addresses at DVS x,y bit locations
 

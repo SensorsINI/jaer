@@ -307,7 +307,7 @@ public class SeeBetter30HardwareInterface extends CypressFX2Biasgen {
          *@param minusEventEffect the data buffer
          *@see #translateEvents
          */
-        static private final byte Xmask = (byte) 0x01;
+        static private final byte Xbit = (byte) 0x01;
         static private final byte triggerMask = (byte) 0x10;
         private int lasty = 0;
         private int currentts = 0;
@@ -365,7 +365,7 @@ public class SeeBetter30HardwareInterface extends CypressFX2Biasgen {
                                         addresses[eventCounter] = 256;  // combine current bits with last y address bits and send
                                         timestamps[eventCounter] = currentts;
                                         eventCounter++;
-                                     } else if ((buf[i + 1] & Xmask) == Xmask) {////  received an X address, write out event to addresses/timestamps output arrays
+                                     } else if ((buf[i + 1] & Xbit) == Xbit) {////  received an X address, write out event to addresses/timestamps output arrays
                                         // x adddress
                                         //xadd = (buf[i] & 0xff);  //
                                         addresses[eventCounter] = (lasty << SeeBetter30.YSHIFT) | (dataword & (SeeBetter30.XMASK | SeeBetter30.POLMASK));  // combine current bits with last y address bits and send
@@ -389,8 +389,8 @@ public class SeeBetter30HardwareInterface extends CypressFX2Biasgen {
 //                                            yonlycons++;
 //                                            doubleY=true;
 //                                        }
-   
-                                        lasty = (SeeBetter30.YMASK >>> SeeBetter30.YSHIFT) & dataword; //(0xFF & buf[i]); //
+//                                        lasty = SeeBetter30.YMASK >>> SeeBetter30.YSHIFT;
+                                          lasty = (SeeBetter30.YMASK >>> SeeBetter30.YSHIFT) & dataword; //(0xFF & buf[i]); //
                                         gotY = true;
                                     }
                                 }

@@ -785,8 +785,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * Not thread safe but does use the thread-safe swap() method of AEPacketRawPool to swap data with the acquisition
 	 * thread.
 	 *
-	 * @return number of events acquired. If this is zero there is no point in getting the events, because there are
-	 *         none.
+	 * @return packet of events acquired. 
 	 * @throws HardwareInterfaceException
 	 * @see #setEventAcquisitionEnabled
 	 *

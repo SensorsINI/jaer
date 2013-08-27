@@ -35,7 +35,7 @@ import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ContinuousOutputViewerManager
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.MapOutputViewer;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.NonGLImageDisplay;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterBrowserPanel;
-
+//import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
 /**
  * Filter class for applying convolution kernels to the output of the DVS (tested on DVS128 and APS-DVS).
  * The user can create multiple response fields and connect these through convolution kernels. The
@@ -227,7 +227,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 		}
 	}
 
-	ArrayList<KernelProcessor> kernelProcessors = new ArrayList<KernelProcessor>();
+//	ArrayList<KernelProcessor> kernelProcessors = new ArrayList<KernelProcessor>();
 
 //	SpikingOutputDisplay spikingOutputDisplay = null;// = new SpikingOutputDisplay();
 
@@ -630,7 +630,22 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 			int adcSample = e.getAdcSample();
                         if ((e.isResetRead() && (selectedOutput == ADCType.A)) ||
 					(e.isSignalRead() && ((selectedOutput == ADCType.B) || (selectedOutput == ADCType.DIFF_B)))) {
-                        	if (oldValue >= 0) { // && adcSample != adcAMap[x][y]) {
+//			if ((e.isResetRead() && selectedOutput == ADCType.A) ||
+//					(e.isSignalRead() && (selectedOutput == ADCType.B || selectedOutput == ADCType.DIFF_B)) ||
+//					(e.isC() && selectedOutput == ADCType.C)) {
+				/*if (e.isStartOfFrame() && false) {
+					// reduce influence of past measurements by dividing all accumulating values by 2 at the start of a new frame
+					before2sum >>= 1;
+					plus2sum >>= 1;
+					minus2sum >>= 1;
+					beforeAfterSum >>= 1;
+					plusAfterSum >>= 1;
+					minusAfterSum >>= 1;
+					plusChangeSum >>= 1;
+					minusChangeSum >>= 1;
+
+				}*/
+				if (oldValue >= 0) { // && adcSample != adcAMap[x][y]) {
 					//						if (adcPlusEventMap[x][y] == plusEvents && adcMinusEventMap[x][y] == minusEvents) {
 					if (selectedOutput == ADCType.DIFF_B) {
 						oldValue = adcDIFF_BMap[x][y];
@@ -1345,11 +1360,11 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 
 			summarizeAPS();
 		}
-		synchronized (kernelProcessors) {
-			for (KernelProcessor kp : kernelProcessors) {
-				kp.reset();
-			}
-		}
+//		synchronized (kernelProcessors) {
+//			for (KernelProcessor kp : kernelProcessors) {
+//				kp.reset();
+//			}
+//		}
 		synchronized (firingModelMaps) {
 			for (FiringModelMap map : firingModelMaps) {
 				map.reset();
@@ -1386,21 +1401,19 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 //		}
 //	}
 
-	public void addKernelProcessor(KernelProcessor kernelProcessor) {
-		synchronized (kernelProcessors) {
-			if (!kernelProcessors.contains(kernelProcessor)) {
-				kernelProcessors.add(kernelProcessor);
-			}
-		}
-	}
-
-	public void removeKernelProcessor(KernelProcessor kernelProcessor) {
-		synchronized (kernelProcessors) {
-			if (kernelProcessors.contains(kernelProcessor)) {
-				kernelProcessors.remove(kernelProcessor);
-			}
-		}
-	}
+//	public void addKernelProcessor(KernelProcessor kernelProcessor) {
+//		synchronized (kernelProcessors) {
+//			if (!kernelProcessors.contains(kernelProcessor))
+//				kernelProcessors.add(kernelProcessor);
+//		}
+//	}
+//
+//	public void removeKernelProcessor(KernelProcessor kernelProcessor) {
+//		synchronized (kernelProcessors) {
+//			if (kernelProcessors.contains(kernelProcessor))
+//				kernelProcessors.remove(kernelProcessor);
+//		}
+//	}
 
 	@Override
 	public void initFilter() {

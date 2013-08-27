@@ -216,6 +216,7 @@ public class SBret10 extends ApsDvsChip {
 
             for (int i = 0; i < n; i++) {  // TODO implement skipBy/subsampling, but without missing the frame start/end events and still delivering frames
                 int data = datas[i];
+
                 if((ApsDvsChip.ADDRESS_TYPE_MASK&data)==ApsDvsChip.ADDRESS_TYPE_IMU){
                     try {
                         imuSample = new IMUSample(in, i);
@@ -228,17 +229,26 @@ public class SBret10 extends ApsDvsChip {
                 }else if((data & ApsDvsChip.ADDRESS_TYPE_MASK) == ApsDvsChip.ADDRESS_TYPE_DVS) {
                     //DVS event
                     ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
-                    e.adcSample = -1; // TODO hack to mark as not an ADC sample
-                    e.startOfFrame = false;
-                    e.special = false;
-                    e.address = data;
-                    e.timestamp = (timestamps[i]);
-                    e.polarity = (data & POLMASK) == POLMASK ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
-                    e.x = (short) (sx1 - ((data & XMASK) >>> XSHIFT));
-                    e.y = (short) ((data & YMASK) >>> YSHIFT);
-                    //System.out.println(data);
-                    // autoshot triggering
-                    autoshotEventsSinceLastShot++; // number DVS events captured here
+                    if((data & ApsDvsChip.TRIGGERMASK) == ApsDvsChip.TRIGGERMASK){
+                        e.adcSample = -1; // TODO hack to mark as not an ADC sample
+                        e.startOfFrame = false;
+                        e.special = true;
+                        e.address = data;
+                        e.timestamp = (timestamps[i]);
+                    }else{
+                        e.adcSample = -1; // TODO hack to mark as not an ADC sample
+                        e.startOfFrame = false;
+                        e.special = false;
+                        e.address = data;
+                        e.timestamp = (timestamps[i]);
+                        e.polarity = (data & POLMASK) == POLMASK ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
+                        e.type = (byte)((data & POLMASK) == POLMASK ? 1 : 0);
+                        e.x = (short) (sx1 - ((data & XMASK) >>> XSHIFT));
+                        e.y = (short) ((data & YMASK) >>> YSHIFT);
+                        //System.out.println(data);
+                        // autoshot triggering
+                        autoshotEventsSinceLastShot++; // number DVS events captured here
+                    }
                 } else if ((data & ApsDvsChip.ADDRESS_TYPE_MASK) == ApsDvsChip.ADDRESS_TYPE_APS) {
                     //APS event
                     ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
@@ -266,17 +276,25 @@ public class SBret10 extends ApsDvsChip {
                     e.address = data;
                     e.x = (short) (((data & XMASK) >>> XSHIFT));
                     e.y = (short) ((data & YMASK) >>> YSHIFT);
-                    boolean pixZero = (e.x == 0) && (e.y == 0);
+                    e.type = (byte)(2);
+                    boolean pixZero = (e.x == sx1) && (e.y == sy1);//first event of frame (addresses get flipped)
                     e.startOfFrame = (e.readoutType == ApsDvsEvent.ReadoutType.ResetRead) && pixZero;
-                    if (e.startOfFrame) {
+                    if (!config.chipConfigChain.configBits[6].isSet() && e.startOfFrame) {
+                        //rolling shutter
                         //if(pixCnt!=129600) System.out.println("New frame, pixCnt was incorrectly "+pixCnt+" instead of 129600 but this could happen at end of file");
                         frameTime = e.timestamp - firstFrameTs;
                         firstFrameTs = e.timestamp;
                     }
+                    if (config.chipConfigChain.configBits[6].isSet() && e.isResetRead() && (e.x == 0) && (e.y == sy1)) {
+                        //global shutter
+                        frameTime = e.timestamp - firstFrameTs;
+                        firstFrameTs = e.timestamp;
+                    }
+                    e.isEndOfFrame();
                     if (pixZero && e.isSignalRead()) {
                         exposure = e.timestamp - firstFrameTs;
                     }
-                    if (e.isSignalRead() && (e.x == 0) && (e.y == sy1)) {
+                    if (e.isSignalRead() && (e.x == 0) && (e.y == 0)) {
                         // if we use ResetRead+SignalRead+C readout, OR, if we use ResetRead-SignalRead readout and we are at last APS pixel, then write EOF event
                         lastADCevent(); // TODO what does this do?
                         //insert a new "end of frame" event not present in original data

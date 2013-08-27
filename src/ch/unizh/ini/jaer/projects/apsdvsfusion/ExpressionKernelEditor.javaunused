@@ -28,7 +28,7 @@ import javax.swing.event.ChangeListener;
 
 import net.sf.jaer.graphics.ImageDisplay;
 
-
+//import ch.unizh.ini.jaer.projects.apsdvsfusion.SpikingOutputDisplay.SingleOutputViewer;
 
 /**
  * @author Dennis

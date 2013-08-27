@@ -10,6 +10,7 @@ import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.LeakyIntegrateAndFire
 import ch.unizh.ini.jaer.projects.apsdvsfusion.firingmodel.LinearThresholdIF;
 
 /**
+ * Abstract class to produce many instances of different kinds of FiringModels.
  * @author Dennis Goehlsdorf
  *
  */
@@ -19,9 +20,7 @@ public abstract class FiringModelCreator extends ParameterContainer {
 	 * 
 	 */
 	private static final long serialVersionUID = -3903017569141294350L;
-//	public FiringModelCreator(String name, Preferences parentPrefs, String nodeName) {
-//		super(name, parentPrefs, nodeName);
-//	}
+
 	public FiringModelCreator(String name, Preferences prefs) {
 		super(name, prefs);
 	}

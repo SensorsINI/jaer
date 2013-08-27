@@ -3,6 +3,7 @@
  */
 package ch.unizh.ini.jaer.projects.apsdvsfusion;
 
+import net.sf.jaer.event.PolarityEvent;
 
 /**
  * @author Dennis

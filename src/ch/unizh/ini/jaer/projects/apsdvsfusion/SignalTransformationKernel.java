@@ -396,8 +396,4 @@ public abstract class SignalTransformationKernel extends ParameterContainer impl
 
 	
 	
-//	public int getOffsetX();
-//	public int getOffsetY();
-//	public void setOffsetX(int offsetX);
-//	public void setOffsetY(int offsetY);
 }

@@ -160,8 +160,9 @@ public class RotateFilter extends EventFilter2D implements Observer{
      */
     public void setAngleDeg (float angleDeg){
         // round to nearest 5 deg
-        if(angleDeg>this.angleDeg) this.angleDeg+=1; else if(angleDeg<this.angleDeg)this.angleDeg-=1;
-        this.angleDeg = (int)Math.round(this.angleDeg);
+//        if(angleDeg==0) this.angleDeg=0; else if(angleDeg>this.angleDeg) this.angleDeg+=1; else if(angleDeg<this.angleDeg)this.angleDeg-=1;
+//        this.angleDeg = (int)Math.round(this.angleDeg);
+        this.angleDeg=angleDeg;
         putFloat("angleDeg",angleDeg);
         cosAng = (float)Math.cos(angleDeg * Math.PI / 180);
         sinAng = (float)Math.sin(angleDeg * Math.PI / 180);

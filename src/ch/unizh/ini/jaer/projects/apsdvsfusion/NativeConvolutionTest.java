@@ -7,7 +7,9 @@ package ch.unizh.ini.jaer.projects.apsdvsfusion;
 import java.util.prefs.Preferences;
 
 /**
- * @author Dennis
+ * This class was originally created to test the performance of convolution operations when executed in
+ * native code. Summary is: Due to JIT compiling, Java is NOT slower, rather faster than native code!
+ * @author Dennis Goehlsdorf
  *
  */
 public class NativeConvolutionTest extends SignalTransformationKernel {

@@ -26,7 +26,6 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
-
 import ch.unizh.ini.jaer.projects.apsdvsfusion.FiringModelMap;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.SpatioTemporalFusion;
 

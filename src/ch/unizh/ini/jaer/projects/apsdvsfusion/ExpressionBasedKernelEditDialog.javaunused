@@ -39,7 +39,7 @@ import javax.swing.event.ChangeListener;
 
 import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.NonGLImageDisplay;
 
-
+//import net.sf.jaer.graphics.ImageDisplay;
 
 /**
  * @author Dennis

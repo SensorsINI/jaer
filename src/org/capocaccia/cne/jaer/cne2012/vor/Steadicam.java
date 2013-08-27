@@ -268,6 +268,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
             case VORSensor:
                 // compute the current lastTransform based on rate gyro signals
                 TransformAtTime tr=vorSensor.computeTransform(msg.timestamp);
+                evenMotion=vorSensor.getPanRate()*vorSensor.getTiltRate()>0;
 //                System.out.println("added transform "+tr);
                 transformList.add(tr);
 

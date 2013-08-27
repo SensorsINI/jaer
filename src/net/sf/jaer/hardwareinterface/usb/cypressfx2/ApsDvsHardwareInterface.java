@@ -400,6 +400,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                     buffer.overrunOccuredFlag = true; // throw away events if we have overrun the output arrays
                                 } else {
                                     if ((dataword & TYPE_WORD_BIT) == TYPE_WORD_BIT) {
+                                        //APS event
                                         if((dataword & FRAME_START_BIT) == FRAME_START_BIT)resetFrameAddressCounters();
                                         int readcycle = (dataword & ApsDvsChip.ADC_READCYCLE_MASK)>>ApsDvsChip.ADC_READCYCLE_SHIFT;
                                         if(countY[readcycle]>=chip.getSizeY()){
@@ -418,7 +419,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                         eventCounter++;
 //                                              System.out.println("ADC word: " + (dataword&SeeBetter20.ADC_DATA_MASK));
                                     } else if ((buf[i + 1] & TRIGGER_BIT) == TRIGGER_BIT) { 
-                                        addresses[eventCounter] = 256;  // combine current bits with last y address bits and send
+                                        addresses[eventCounter] = ApsDvsChip.TRIGGERMASK;  // combine current bits with last y address bits and send
                                         timestamps[eventCounter] = currentts;
                                         eventCounter++;
                                      } else if ((buf[i + 1] & XBIT) == XBIT) {////  received an X address, write out event to addresses/timestamps output arrays

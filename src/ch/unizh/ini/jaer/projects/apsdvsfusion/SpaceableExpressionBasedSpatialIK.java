@@ -422,28 +422,26 @@ public class SpaceableExpressionBasedSpatialIK extends
 	}
 
 
-	@Override
-	public synchronized void savePrefs(Preferences prefs, String prefString) {
-		super.savePrefs(prefs, prefString);
-		prefs.putInt(prefString+"spacingX",spacingX);
-		prefs.putInt(prefString+"spacingY",spacingY);
-		prefs.putInt(prefString+"kernelOffsetX",kernelOffsetX);
-		prefs.putInt(prefString+"kernelOffsetX",kernelOffsetY);
-	}
-
-
-	@Override
-	public synchronized void loadPrefs(Preferences prefs, String prefString) {
-		spacingX = prefs.getInt(prefString+"spacingX",spacingX);
-		spacingY = prefs.getInt(prefString+"spacingY",spacingY);
-		kernelOffsetX = prefs.getInt(prefString+"kernelOffsetX",kernelOffsetX);
-		kernelOffsetY = prefs.getInt(prefString+"kernelOffsetX",kernelOffsetY);
-//		inputWidth = prefs.getInt(prefString+"inputWidth",inputWidth);
-//		inputHeight = prefs.getInt(prefString+"inputHeight",inputHeight);
-//		outputWidth = prefs.getInt(prefString+"outputWidth",outputWidth);
-//		outputHeight = prefs.getInt(prefString+"outputHeight",outputHeight);
-		super.loadPrefs(prefs, prefString);
-	}
+//	public synchronized void savePrefs(Preferences prefs, String prefString) {
+//		super.savePrefs(prefs, prefString);
+//		prefs.putInt(prefString+"spacingX",spacingX);
+//		prefs.putInt(prefString+"spacingY",spacingY);
+//		prefs.putInt(prefString+"kernelOffsetX",kernelOffsetX);
+//		prefs.putInt(prefString+"kernelOffsetX",kernelOffsetY);
+//	}
+//
+//
+//	public synchronized void loadPrefs(Preferences prefs, String prefString) {
+//		spacingX = prefs.getInt(prefString+"spacingX",spacingX);
+//		spacingY = prefs.getInt(prefString+"spacingY",spacingY);
+//		kernelOffsetX = prefs.getInt(prefString+"kernelOffsetX",kernelOffsetX);
+//		kernelOffsetY = prefs.getInt(prefString+"kernelOffsetX",kernelOffsetY);
+////		inputWidth = prefs.getInt(prefString+"inputWidth",inputWidth);
+////		inputHeight = prefs.getInt(prefString+"inputHeight",inputHeight);
+////		outputWidth = prefs.getInt(prefString+"outputWidth",outputWidth);
+////		outputHeight = prefs.getInt(prefString+"outputHeight",outputHeight);
+//		super.loadPrefs(prefs, prefString);
+//	}
 	public static void main(String[] args) {
 		SpaceableExpressionBasedSpatialIK k = new SpaceableExpressionBasedSpatialIK(4, 4, null);
 		final int[] pos = new int[2];

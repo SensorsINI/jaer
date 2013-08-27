@@ -36,8 +36,8 @@ import eu.seebetter.ini.chips.sbret10.SBret10;
  */
 public class AEFrameChipRenderer extends AEChipRenderer {
 
-    public int textureWidth; //due to hardware acceleration reasons, has to be a 2^x with x a natural number
-    public int textureHeight; //due to hardware acceleration reasons, has to be a 2^x with x a natural number
+    public int textureWidth; //due to hardware acceloration reasons, has to be a 2^x with x a natural number
+    public int textureHeight; //due to hardware acceloration reasons, has to be a 2^x with x a natural number
 
     private int sizeX, sizeY, maxADC;
     private int timestamp = 0;
@@ -47,6 +47,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     private float[] onColor, offColor;
     private ApsDvsConfig config;
 
+    /** The linear buffer of RGBA pixel colors of image frame brightness values */
     protected FloatBuffer pixBuffer;
     protected FloatBuffer onMap, onBuffer;
     protected FloatBuffer offMap, offBuffer;
@@ -79,7 +80,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         final int n = 4 * textureWidth * textureHeight;
         boolean madebuffer = false;
         if ((grayBuffer == null) || (grayBuffer.capacity() != n)) {
-            grayBuffer = FloatBuffer.allocate(n); // Buffers.newDirectFloatBuffer(n);
+            grayBuffer = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
             madebuffer = true;
         }
         if (madebuffer || (value != grayValue)) {
@@ -116,7 +117,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         checkPixmapAllocation();
         final int n = 4 * textureWidth * textureHeight;
         if ((grayBuffer == null) || (grayBuffer.capacity() != n)) {
-            grayBuffer = FloatBuffer.allocate(n); // Buffers.newDirectFloatBuffer(n);
+            grayBuffer = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
         }
 
         grayBuffer.rewind();
@@ -175,6 +176,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             if((warningCount++%WARNING_INTERVAL)==0) {
 				log.info("I only know how to render ApsDvsEventPacket but got "+pkt);
 			}
+               resetEventMaps();
+               resetFrame(0);
             return;
         }
 
@@ -189,7 +192,9 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
         this.packet = packet;
         if (!(packet.getEventPrototype() instanceof ApsDvsEvent)) {
-            log.warning("wrong input event class, got " + packet.getEventPrototype() + " but we need to have " + ApsDvsEvent.class);
+            if((warningCount++%WARNING_INTERVAL)==0) {
+				log.warning("wrong input event class, got " + packet.getEventPrototype() + " but we need to have " + ApsDvsEvent.class);
+			}
             return;
         }
         if (!accumulateEnabled){
@@ -201,8 +206,14 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 paused=chip.getAeViewer().isPaused(), backwards=packet.getDurationUs()<0;
 
         Iterator allItr = packet.fullIterator();
+        setSpecialCount(0);
         while(allItr.hasNext()){
+            //The iterator only iterates over the DVS events
             ApsDvsEvent e = (ApsDvsEvent) allItr.next();
+            if (e.special) {
+                setSpecialCount(specialCount + 1); // TODO optimize special count increment
+                continue;
+            }
             int type = e.getType();
             boolean isAdcSampleFlag=e.isAdcSample();
             if(!isAdcSampleFlag){
@@ -358,7 +369,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
         final int n = 4 * textureWidth * textureHeight;
         if ((pixmap == null) || (pixmap.capacity() < n) || (pixBuffer.capacity() < n) || (onMap.capacity() < n) || (offMap.capacity() < n)) {
-            pixmap = FloatBuffer.allocate(n); // Buffers.newDirectFloatBuffer(n);
+            pixmap = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
             pixBuffer = FloatBuffer.allocate(n);
             onMap = FloatBuffer.allocate(n);
             offMap = FloatBuffer.allocate(n);
@@ -405,6 +416,11 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     @Override
     public int getPixMapIndex(int x, int y) {
         return 4 * (x + (y * sizeX));
+    }
+
+    /** Returns the buffer holding the image frame brightness values in RGBA order */
+    public FloatBuffer getPixBuffer(){
+        return pixBuffer;
     }
 
     @Override
