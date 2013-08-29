@@ -29,19 +29,22 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 		return LibUsbHardwareInterfaceFactory.instance;
 	}
 
-	private final Map<ImmutablePair<Short, Short>, Class<?>> vidPidToClassMap = new HashMap<ImmutablePair<Short, Short>, Class<?>>();
-	private final List<Device> compatibleDevicesList = new ArrayList<Device>();
+	private final Map<ImmutablePair<Short, Short>, Class<?>> vidPidToClassMap = new HashMap<>();
+	private final List<Device> compatibleDevicesList = new ArrayList<>();
 
 	private LibUsbHardwareInterfaceFactory() {
-		// Thesycon Vendor ID.
-		final short VID_Thesycon = 0x152A;
+		// Build a mapping of VID/PID pairs and corresponding
+		// HardwareInterfaces.
+		// addDeviceToMap(CypressFX2.VID, CypressFX2.PID_USB2AERmapper,
+		// CypressFX2Mapper.class);
+		addDeviceToMap(CypressFX2.VID, CypressFX2.PID_DVS128_REV0, CypressFX2DVS128HardwareInterface.class);
+		addDeviceToMap(CypressFX2.VID, CypressFX2.PID_TMPDIFF128_RETINA, CypressFX2TmpdiffRetinaHardwareInterface.class);
+		// addDeviceToMap(CypressFX2.VID, CypressFX2.PID_USBAERmini2,
+		// CypressFX2MonitorSequencer.class);
+		addDeviceToMap(CypressFX2.VID, ApsDvsHardwareInterface.PID, ApsDvsHardwareInterface.class);
 
-		// Build a mapping of VID/PID pairs and corresponding HardwareInterfaces.
-		// addDeviceToMap(VID_Thesycon, CypressFX2.PID_USB2AERmapper, CypressFX2Mapper.class);
-		addDeviceToMap(VID_Thesycon, CypressFX2.PID_DVS128_REV0, CypressFX2DVS128HardwareInterface.class);
-		addDeviceToMap(VID_Thesycon, CypressFX2.PID_TMPDIFF128_RETINA, CypressFX2TmpdiffRetinaHardwareInterface.class);
-		// addDeviceToMap(VID_Thesycon, CypressFX2.PID_USBAERmini2, CypressFX2MonitorSequencer.class);
-		addDeviceToMap(VID_Thesycon, ApsDvsHardwareInterface.PID, ApsDvsHardwareInterface.class);
+		// Add blank device for flashing.
+		addDeviceToMap(CypressFX2.VID_BLANK, CypressFX2.PID_BLANK, CypressFX2.class);
 
 		// Initialize LibUsb.
 		LibUsb.init(null);
@@ -51,14 +54,16 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 	}
 
 	private void addDeviceToMap(final short VID, final short PID, final Class<?> cls) {
-		vidPidToClassMap.put(new ImmutablePair<Short, Short>(VID, PID), cls);
+		vidPidToClassMap.put(new ImmutablePair<>(VID, PID), cls);
 	}
 
 	private void buildCompatibleDevicesList() {
-		// First let's make sure the list is empty, as we're going to re-scan everything.
+		// First let's make sure the list is empty, as we're going to re-scan
+		// everything.
 		if (!compatibleDevicesList.isEmpty()) {
 			for (final Device dev : compatibleDevicesList) {
-				// Unreference each device once, as to be here, it must have been referenced exactly once later on.
+				// Unreference each device once, as to be here, it must have
+				// been referenced exactly once later on.
 				LibUsb.unrefDevice(dev);
 			}
 
@@ -73,8 +78,7 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 			final DeviceDescriptor devDesc = new DeviceDescriptor();
 			LibUsb.getDeviceDescriptor(dev, devDesc);
 
-			final ImmutablePair<Short, Short> vidPid = new ImmutablePair<Short, Short>(devDesc.idVendor(),
-				devDesc.idProduct());
+			final ImmutablePair<Short, Short> vidPid = new ImmutablePair<>(devDesc.idVendor(), devDesc.idProduct());
 
 			LibUsb.freeDeviceDescriptor(devDesc);
 
@@ -91,7 +95,8 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 
 			if (((status == LibUsb.ERROR_NOT_SUPPORTED) || (status == LibUsb.SUCCESS))
 				&& vidPidToClassMap.containsKey(vidPid)) {
-				// This is a VID/PID combination we support, so let's add the device to the compatible
+				// This is a VID/PID combination we support, so let's add the
+				// device to the compatible
 				// devices list and increase its reference count.
 				compatibleDevicesList.add(LibUsb.refDevice(dev));
 			}
@@ -102,7 +107,7 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 
 	/**
 	 * returns the first interface in the list
-	 * 
+	 *
 	 * @return reference to the first interface in the list
 	 */
 	@Override
@@ -113,12 +118,14 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 	/**
 	 * returns the n-th interface in the list, the model depends on the PID.
 	 * <p>
-	 * For unknown or blank device PID a bare Cypress FX2 is returned, which should be discarded after it is used to
-	 * download to the device RAM some preferred default firmware. A new Cypress FX2 should then be manufactured that
-	 * will be correctly constructed here.
+	 * For unknown or blank device PID a bare Cypress FX2 is returned, which
+	 * should be discarded after it is used to download to the device RAM some
+	 * preferred default firmware. A new Cypress FX2 should then be manufactured
+	 * that will be correctly constructed here.
 	 * <p>
-	 * This method hard-codes the mapping from VID/PID and the HardwareInterface object that is constructed for it.
-	 * 
+	 * This method hard-codes the mapping from VID/PID and the HardwareInterface
+	 * object that is constructed for it.
+	 *
 	 * @param n
 	 *            the number to instantiate (0 based)
 	 */
@@ -143,12 +150,12 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 		// Get device from list.
 		final Device dev = compatibleDevicesList.get(n);
 
-		// Get device descriptor again and instantiate the correct class for the device.
+		// Get device descriptor again and instantiate the correct class for the
+		// device.
 		final DeviceDescriptor devDesc = new DeviceDescriptor();
 		LibUsb.getDeviceDescriptor(dev, devDesc);
 
-		final ImmutablePair<Short, Short> vidPid = new ImmutablePair<Short, Short>(devDesc.idVendor(),
-			devDesc.idProduct());
+		final ImmutablePair<Short, Short> vidPid = new ImmutablePair<>(devDesc.idVendor(), devDesc.idProduct());
 
 		LibUsb.freeDeviceDescriptor(devDesc);
 
@@ -157,37 +164,28 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 		Constructor<?> constr = null;
 		try {
 			constr = cls.getDeclaredConstructor(Device.class);
+
+			if (constr == null) {
+				throw new NullPointerException();
+			}
 		}
-		catch (final NoSuchMethodException e) {
-			// TODO Auto-generated catch block
+		catch (NoSuchMethodException | SecurityException | NullPointerException e) {
 			e.printStackTrace();
-			System.exit(1);
-		}
-		catch (final SecurityException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			System.exit(1);
+			return null;
 		}
 
 		Object iface = null;
 		try {
 			iface = constr.newInstance(dev);
+
+			if (iface == null) {
+				throw new NullPointerException();
+			}
 		}
-		catch (final InstantiationException e) {
-			// TODO Auto-generated catch block
+		catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException
+			| NullPointerException e) {
 			e.printStackTrace();
-		}
-		catch (final IllegalAccessException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		catch (final IllegalArgumentException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		catch (final InvocationTargetException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			return null;
 		}
 
 		return (USBInterface) iface;
