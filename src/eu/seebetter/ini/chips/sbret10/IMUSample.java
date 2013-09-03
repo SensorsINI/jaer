@@ -26,7 +26,7 @@ public class IMUSample {
 	private static final byte IMU_SAMPLE_CODE = (byte) 0xff;
 
 	/** The data bits of the IMU data are these bits */
-	private static final int DATABITMASK = 0xffff;
+	private static final int DATABITMASK = 0x0FFFF000;
 
 	/**
 	 * code for this sample is left shifted this many bits in the raw 32 bit AE
@@ -80,18 +80,13 @@ public class IMUSample {
 			throw new IncompleteIMUSampleException("IMUSample cannot be constructed from packet " + packet
 				+ " starting from event " + start + ", not enough events for a complete sample");
 		}
+
 		for (final IMUSampleType sampleType : IMUSampleType.values()) {
-			// int v = DATABITMASK & 0xffff;
-			int v = IMUSample.DATABITMASK & packet.addresses[start + sampleType.code];
-			if (v > 32767) { // negative short
-				v -= 65637;
-				final short s = (short) v;
-				data[sampleType.code] = s;
-			}
-			else { // positive short
-				data[sampleType.code] = (short) v;
-			}
+			final int v = (IMUSample.DATABITMASK & packet.addresses[start + sampleType.code]) >>> 12;
+
+			data[sampleType.code] = (short) v;
 		}
+
 		timestamp = packet.timestamps[start]; // assume all have same timestamp
 	}
 
@@ -116,8 +111,8 @@ public class IMUSample {
 		}
 		final byte[] b = buf.BufferMem;
 		if (b[0] != IMUSample.IMU_SAMPLE_CODE) {
-			IMUSample.log.warning("got IMU_Sample message with wrong first byte code. Should be " + IMUSample.IMU_SAMPLE_CODE + " but got "
-				+ b[0]);
+			IMUSample.log.warning("got IMU_Sample message with wrong first byte code. Should be "
+				+ IMUSample.IMU_SAMPLE_CODE + " but got " + b[0]);
 			return;
 		}
 		ByteBuffer.wrap(b, 1, 14).asShortBuffer().get(data, 0, 7); // from
@@ -163,8 +158,8 @@ public class IMUSample {
 		}
 
 		if (buf.get(0) != IMUSample.IMU_SAMPLE_CODE) {
-			IMUSample.log.warning("got IMU_Sample message with wrong first byte code. Should be " + IMUSample.IMU_SAMPLE_CODE + " but got "
-				+ buf.get(0));
+			IMUSample.log.warning("got IMU_Sample message with wrong first byte code. Should be "
+				+ IMUSample.IMU_SAMPLE_CODE + " but got " + buf.get(0));
 			return;
 		}
 
@@ -234,8 +229,9 @@ public class IMUSample {
 	 * @return the accelZ
 	 */
 	final public float getAccelZ() {
-		return data[IMUSampleType.az.code] * IMUSample.accelScale; // TODO sign not
-															// checked
+		return data[IMUSampleType.az.code] * IMUSample.accelScale; // TODO sign
+																	// not
+		// checked
 	}
 
 	/**
@@ -302,26 +298,26 @@ public class IMUSample {
 	final public int getAddress(final IMUSampleType imuSampleType) {
 		switch (imuSampleType) {
 			case ax:
-				return ApsDvsChip.ADDRESS_TYPE_IMU | (IMUSampleType.ax.code << IMUSample.CODEBITSHIFT)
-					| data[IMUSampleType.ax.code];
+				return ApsDvsChip.ADDRESS_TYPE_IMU
+					| (((IMUSampleType.ax.code << IMUSample.CODEBITSHIFT) | data[IMUSampleType.ax.code]) << 12);
 			case ay:
-				return ApsDvsChip.ADDRESS_TYPE_IMU | (IMUSampleType.ay.code << IMUSample.CODEBITSHIFT)
-					| data[IMUSampleType.ay.code];
+				return ApsDvsChip.ADDRESS_TYPE_IMU
+					| (((IMUSampleType.ay.code << IMUSample.CODEBITSHIFT) | data[IMUSampleType.ay.code]) << 12);
 			case az:
-				return ApsDvsChip.ADDRESS_TYPE_IMU | (IMUSampleType.az.code << IMUSample.CODEBITSHIFT)
-					| data[IMUSampleType.az.code];
+				return ApsDvsChip.ADDRESS_TYPE_IMU
+					| (((IMUSampleType.az.code << IMUSample.CODEBITSHIFT) | data[IMUSampleType.az.code]) << 12);
 			case gx:
-				return ApsDvsChip.ADDRESS_TYPE_IMU | (IMUSampleType.gx.code << IMUSample.CODEBITSHIFT)
-					| data[IMUSampleType.gx.code];
+				return ApsDvsChip.ADDRESS_TYPE_IMU
+					| (((IMUSampleType.gx.code << IMUSample.CODEBITSHIFT) | data[IMUSampleType.gx.code]) << 12);
 			case gy:
-				return ApsDvsChip.ADDRESS_TYPE_IMU | (IMUSampleType.gy.code << IMUSample.CODEBITSHIFT)
-					| data[IMUSampleType.gy.code];
+				return ApsDvsChip.ADDRESS_TYPE_IMU
+					| (((IMUSampleType.gy.code << IMUSample.CODEBITSHIFT) | data[IMUSampleType.gy.code]) << 12);
 			case gz:
-				return ApsDvsChip.ADDRESS_TYPE_IMU | (IMUSampleType.gz.code << IMUSample.CODEBITSHIFT)
-					| data[IMUSampleType.gz.code];
+				return ApsDvsChip.ADDRESS_TYPE_IMU
+					| (((IMUSampleType.gz.code << IMUSample.CODEBITSHIFT) | data[IMUSampleType.gz.code]) << 12);
 			case temp:
-				return ApsDvsChip.ADDRESS_TYPE_IMU | (IMUSampleType.temp.code << IMUSample.CODEBITSHIFT)
-					| data[IMUSampleType.temp.code];
+				return ApsDvsChip.ADDRESS_TYPE_IMU
+					| (((IMUSampleType.temp.code << IMUSample.CODEBITSHIFT) | data[IMUSampleType.temp.code]) << 12);
 			default:
 				throw new RuntimeException("no such sample type " + imuSampleType);
 		}
@@ -348,8 +344,6 @@ public class IMUSample {
 		}
 		return IMUSample.SIZE_EVENTS;
 	}
-
-
 
 	// /** Fills in this IMUSample from the event packet, assuming that all
 	// samples are in order.

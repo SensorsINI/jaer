@@ -24,6 +24,7 @@ import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 import javax.swing.ProgressMonitor;
+import javax.swing.SwingUtilities;
 
 import jp.ac.osakau.eng.eei.IVS128HardwareInterface;
 import li.longi.USBTransferThread.RestrictedTransfer;
@@ -1421,9 +1422,19 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 						}
 
 						case (byte) 0xFF:
+							// llongi - copy message to send it out
+							final ByteBuffer newBuf = ByteBuffer.allocate(transfer.buffer().limit());
+							newBuf.put(transfer.buffer());
+
 							// tobi - send message to listeners
-							support.firePropertyChange(CypressFX2.PROPERTY_CHANGE_ASYNC_STATUS_MSG, null,
-								transfer.buffer());
+							SwingUtilities.invokeLater(new Runnable() {
+								@Override
+								public void run() {
+									support.firePropertyChange(CypressFX2.PROPERTY_CHANGE_ASYNC_STATUS_MSG, null,
+										newBuf);
+								}
+							});
+
 							break;
 
 						default:

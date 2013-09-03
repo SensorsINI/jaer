@@ -20,7 +20,7 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
             YMASK = 511 << YSHIFT, // 9 bits from bits 22 to 30
             XSHIFT = 12,
             XMASK = 1023 << XSHIFT, // 10 bits from bits 12 to 21
-            POLSHIFT = 11,  
+            POLSHIFT = 11,
             POLMASK = 1 << POLSHIFT, //,    // 1 bit at bit 11
             TRIGGERSHIFT = 10,
             TRIGGERMASK = 1 << TRIGGERSHIFT;
@@ -28,11 +28,11 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
 //            IMUMASK=1<<IMUSHIFT; // adc samples are bits 0-9, with ADC data type at bits 10 to 11 and x and y addresses at DVS x,y bit locations
 
     /* Address-type refers to data if is it an "address". This data is either an AE address or ADC reading or an IMU sample.*/
-    public static final int ADDRESS_TYPE_MASK = 0xC0000000, ADDRESS_TYPE_DVS = 0x00000000, ADDRESS_TYPE_APS = 0x80000000, ADDRESS_TYPE_IMU=0xC0000000;
+    public static final int ADDRESS_TYPE_MASK = 0x80000000, ADDRESS_TYPE_DVS = 0x00000000, ADDRESS_TYPE_APS = 0x80000000, ADDRESS_TYPE_IMU=0x80000C00;
     /**
      * Maximal ADC value
      */
-    public static final int ADC_BITS = 10, MAX_ADC = (int) ((1 << ADC_BITS) - 1);
+    public static final int ADC_BITS = 10, MAX_ADC = (1 << ADC_BITS) - 1;
     /**
      * For ADC data, the data is defined by the reading cycle (0:reset read, 1
      * first read, 2 second read, which is deprecated and not used).
@@ -70,23 +70,23 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
      * @return exposure time in ms
      */
     abstract public float getExposureMs();
-    
+
       /**
      * Triggers the taking of one snapshot
      */
     abstract public void takeSnapshot();
-    
+
     /** Sets threshold for automatically triggers snapshot images
-     * 
+     *
      * @param thresholdEvents set to zero to disable automatic snapshots
      */
     abstract public void setAutoshotThresholdEvents(int thresholdEvents);
     /** Returns threshold
-     * 
-     * @return threshold. Zero means auto-shot is disabled. 
+     *
+     * @return threshold. Zero means auto-shot is disabled.
      */
     abstract public int getAutoshotThresholdEvents();
-  
+
     /**
      * Sets whether automatic exposure control is enabled
      * @param yes
@@ -98,7 +98,7 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
      * @return
      */
     abstract public boolean isAutoExposureEnabled();
-    
+
     /**
      * Returns if the image histogram should be displayed.
      * @return true if it should be displayed.
@@ -121,5 +121,5 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
      * @return true if it should be shown
      */
     abstract public boolean isShowIMU();
-    
+
 }

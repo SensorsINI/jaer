@@ -217,7 +217,7 @@ public class SBret10 extends ApsDvsChip {
             for (int i = 0; i < n; i++) {  // TODO implement skipBy/subsampling, but without missing the frame start/end events and still delivering frames
                 int data = datas[i];
 
-                if((ApsDvsChip.ADDRESS_TYPE_MASK&data)==ApsDvsChip.ADDRESS_TYPE_IMU){
+                if((ApsDvsChip.ADDRESS_TYPE_IMU & data)==ApsDvsChip.ADDRESS_TYPE_IMU){
                     try {
                         imuSample = new IMUSample(in, i);
     //                    System.out.println(imuSample); // debug
