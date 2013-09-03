@@ -31,9 +31,10 @@ import net.sf.jaer.Description;
  * @author Peter
  */
 public class FilterIndexPrinter {
-	private static final int DIVIDE_INTO_NUM_FILES = 4;
-	private static final int MAX_DESC_LENGTH = 120;
-
+	private static final int DIVIDE_INTO_NUM_FILES = 2; // if pages are too long, sf.net allura wiki barfs
+	private static final int MAX_DESC_LENGTH = 1000;
+        private static Logger log=Logger.getLogger("FilterIndexPrinter");
+                
 	public static void main(final String[] args) throws IOException {
 		final List<String> classList = SubclassFinder.findSubclassesOf("net.sf.jaer.eventprocessing.EventFilter2D");
 
@@ -99,7 +100,7 @@ public class FilterIndexPrinter {
 		}
 
 		// Print the file.
-		System.out.println("Printing file ...");
+		log.info("Printing index to file "+selectedFile.getAbsolutePath());
 
 		final PrintStream ps = new PrintStream(fout);
 
@@ -198,7 +199,7 @@ public class FilterIndexPrinter {
 			f.close();
 		}
 
-		System.out.println("Done");
+		log.info("Done");
 		System.exit(0);
 	}
 }
