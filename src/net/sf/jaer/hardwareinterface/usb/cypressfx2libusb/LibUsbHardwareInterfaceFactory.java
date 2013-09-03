@@ -50,26 +50,42 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 		LibUsb.init(null);
 
 		// Build up first list of compatible devices.
-		buildCompatibleDevicesList();
+		refreshCompatibleDevicesList();
 	}
 
 	private void addDeviceToMap(final short VID, final short PID, final Class<?> cls) {
 		vidPidToClassMap.put(new ImmutablePair<>(VID, PID), cls);
 	}
 
-	private void buildCompatibleDevicesList() {
-		// First let's make sure the list is empty, as we're going to re-scan
-		// everything.
-		if (!compatibleDevicesList.isEmpty()) {
-			for (final Device dev : compatibleDevicesList) {
-				// Unreference each device once, as to be here, it must have
-				// been referenced exactly once later on.
-				LibUsb.unrefDevice(dev);
-			}
+	private void refreshCompatibleDevicesList() {
+		// Temporary storage to allow modification.
+		final List<Device> tmpDrain = new ArrayList<>(buildCompatibleDevicesList());
 
-			// Clear out the list.
-			compatibleDevicesList.clear();
+		// Replace with new data in a non-destructive way, by not touching
+		// values that were already present.
+		final List<Device> removals = new ArrayList<>();
+
+		for (final Device element : compatibleDevicesList) {
+			if (tmpDrain.contains(element)) {
+				tmpDrain.remove(element);
+			}
+			else {
+				removals.add(element);
+				LibUsb.unrefDevice(element);
+			}
 		}
+
+		// Remove all items that need to be deleted and add all the new ones in
+		// only one call each.
+		compatibleDevicesList.removeAll(removals);
+		compatibleDevicesList.addAll(tmpDrain);
+
+		// Consume newContent fully.
+		tmpDrain.clear();
+	}
+
+	private List<Device> buildCompatibleDevicesList() {
+		final List<Device> compatibleDevicesListLocal = new ArrayList<>();
 
 		final DeviceList devList = new DeviceList();
 		LibUsb.getDeviceList(null, devList);
@@ -98,11 +114,13 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 				// This is a VID/PID combination we support, so let's add the
 				// device to the compatible
 				// devices list and increase its reference count.
-				compatibleDevicesList.add(LibUsb.refDevice(dev));
+				compatibleDevicesListLocal.add(LibUsb.refDevice(dev));
 			}
 		}
 
 		LibUsb.freeDeviceList(devList, true);
+
+		return compatibleDevicesListLocal;
 	}
 
 	/**
@@ -196,6 +214,7 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 	 */
 	@Override
 	synchronized public int getNumInterfacesAvailable() {
+		refreshCompatibleDevicesList();
 		return compatibleDevicesList.size();
 	}
 
