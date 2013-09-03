@@ -1,15 +1,18 @@
 /*
  * CypressFX2Biasgen.java
- * 
+ *
  * Created on 23 Jan 2008
  */
 package net.sf.jaer.hardwareinterface.usb.cypressfx2libusb;
 
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.LineNumberReader;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.concurrent.ArrayBlockingQueue;
 
 import javax.swing.ProgressMonitor;
 
@@ -17,11 +20,13 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import de.ailis.usb4java.libusb.Device;
 import eu.seebetter.ini.chips.ApsDvsChip;
+import eu.seebetter.ini.chips.sbret10.IMUSample;
 
 /**
- * Adds functionality of apsDVS sensors to based CypressFX2Biasgen class. The key method is translateEvents that parses
+ * Adds functionality of apsDVS sensors to based CypressFX2Biasgen class. The
+ * key method is translateEvents that parses
  * the data from the sensor to construct jAER raw events.
- * 
+ *
  * @author Christian/Tobi
  */
 public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
@@ -33,17 +38,24 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 	private boolean translateRowOnlyEvents = CypressFX2.prefs.getBoolean(
 		"ApsDvsHardwareInterface.translateRowOnlyEvents", false);
 
-	/** Signals an IMU (gyro/accel/compass) sample */
-	public static final byte IMU_GYRO_SAMPLE = (byte) 0xff;
+	private volatile ArrayBlockingQueue<IMUSample> imuSampleQueue; // this queue
+																	// is used
+																	// for
+																	// holding
+																	// imu
+																	// samples
+																	// sent to
+																	// aeReader
 
 	/** Creates a new instance of CypressFX2Biasgen */
 	public ApsDvsHardwareInterface(final Device device) {
 		super(device);
+		imuSampleQueue = new ArrayBlockingQueue<IMUSample>(1);
 	}
 
 	/**
 	 * Overridden to use PortBit powerDown in biasgen
-	 * 
+	 *
 	 * @param powerDown
 	 *            true to power off masterbias
 	 * @throws HardwareInterfaceException
@@ -121,14 +133,22 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 		ProgressMonitor progressMonitor = makeProgressMonitor("Writing CPLD configuration - do not unplug", 0,
 			bytearray.length);
 
-		final int numChunks = bytearray.length / MAX_CONTROL_XFER_SIZE; // this is number of full chunks to send
+		final int numChunks = bytearray.length / MAX_CONTROL_XFER_SIZE; // this
+																		// is
+																		// number
+																		// of
+																		// full
+																		// chunks
+																		// to
+																		// send
 		int addr = 0;
 
 		for (int i = 0; i < numChunks; i++) {
 			sendVendorRequest(CypressFX2.VR_DOWNLOAD_FIRMWARE, (short) addr, (short) 0, bytearray, i
 				* MAX_CONTROL_XFER_SIZE, MAX_CONTROL_XFER_SIZE);
 
-			addr += MAX_CONTROL_XFER_SIZE; // change address of firmware location
+			addr += MAX_CONTROL_XFER_SIZE; // change address of firmware
+											// location
 
 			if (progressMonitor.isCanceled()) {
 				progressMonitor = makeProgressMonitor("Writing CPLD configuration - do not unplug", 0, bytearray.length);
@@ -174,11 +194,17 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 	}
 
 	/**
-	 * Starts reader buffer pool thread and enables in endpoints for AEs. This method is overridden to construct
+	 * Starts reader buffer pool thread and enables in endpoints for AEs. This
+	 * method is overridden to construct
 	 * our own reader with its translateEvents method
 	 */
 	@Override
-	public void startAEReader() throws HardwareInterfaceException { // raphael: changed from private to protected,
+	public void startAEReader() throws HardwareInterfaceException { // raphael:
+																	// changed
+																	// from
+																	// private
+																	// to
+																	// protected,
 		// because i need to access this method
 		setAeReader(new RetinaAEReader(this));
 		allocateAEBuffers();
@@ -190,8 +216,9 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 	boolean gotY = false; // TODO hack for debugging state machine
 
 	/**
-	 * If set, then row-only events are transmitted to raw packets from USB interface
-	 * 
+	 * If set, then row-only events are transmitted to raw packets from USB
+	 * interface
+	 *
 	 * @param translateRowOnlyEvents
 	 *            true to translate these parasitic events.
 	 */
@@ -204,44 +231,62 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 		return translateRowOnlyEvents;
 	}
 
-	/** This reader understands the format of raw USB data and translates to the AEPacketRaw */
-	public class RetinaAEReader extends CypressFX2.AEReader {
-		private static final int NONMONOTONIC_WARNING_COUNT = 30; // how many warnings to print after start or timestamp
-
-		// reset
+	/**
+	 * This reader understands the format of raw USB data and translates to the
+	 * AEPacketRaw
+	 */
+	public class RetinaAEReader extends CypressFX2.AEReader implements PropertyChangeListener {
+		private static final int NONMONOTONIC_WARNING_COUNT = 30; // how many
+																	// warnings
+																	// to print
+																	// after
+																	// start or
+																	// timestamp
+		public static final int IMU_POLLING_INTERVAL_EVENTS = 1000;
 
 		public RetinaAEReader(final CypressFX2 cypress) throws HardwareInterfaceException {
 			super(cypress);
 			resetFrameAddressCounters();
-
+			getSupport().addPropertyChangeListener(CypressFX2.PROPERTY_CHANGE_ASYNC_STATUS_MSG, this);
 		}
 
 		/**
-		 * Method to translate the UsbIoBuffer for the DVS320 sensor which uses the 32 bit address space.
+		 * Method to translate the UsbIoBuffer for the DVS320 sensor which uses
+		 * the 32 bit address space.
 		 * <p>
-		 * It has a CPLD to timestamp events and uses the CypressFX2 in slave FIFO mode.
+		 * It has a CPLD to timestamp events and uses the CypressFX2 in slave
+		 * FIFO mode.
 		 * <p>
-		 * The DVS320 has a burst mode readout mechanism that outputs a row address, then all the latched column
-		 * addresses. The columns are output left to right. A timestamp is only meaningful at the row addresses level.
-		 * Therefore the board timestamps on row address, and then sends the data in the following sequence: timestamp,
-		 * row, col, col, col,....,timestamp,row,col,col...
+		 * The DVS320 has a burst mode readout mechanism that outputs a row
+		 * address, then all the latched column addresses. The columns are
+		 * output left to right. A timestamp is only meaningful at the row
+		 * addresses level. Therefore the board timestamps on row address, and
+		 * then sends the data in the following sequence: timestamp, row, col,
+		 * col, col,....,timestamp,row,col,col...
 		 * <p>
-		 * Intensity information is transmitted by bit 8, which is set by the chip The bit encoding of the data is as
-		 * follows <literal> Address bit Address bit pattern 0 LSB Y or Polarity ON=1 1 Y1 or LSB X 2 Y2 or X1 3 Y3 or
-		 * X2 4 Y4 or X3 5 Y5 or X4 6 Y6 or X5 7 Y7 (MSBY) or X6 8 intensity or X7. This bit is set for a Y address if
-		 * the intensity neuron has spiked. This bit is also X7 for X addreses. 9 X8 (MSBX) 10 Y=0, X=1 </literal>
-		 * 
-		 * The two msbs of the raw 16 bit data are used to tag the type of data, e.g. address, timestamp, or special
-		 * events wrap or reset host timestamps. <literal> Address Name 00xx xxxx xxxx xxxx pixel address 01xx xxxx xxxx
-		 * xxxx timestamp 10xx xxxx xxxx xxxx wrap 11xx xxxx xxxx xxxx timestamp reset </literal>
-		 * 
-		 * The msb of the 16 bit timestamp is used to signal a wrap (the actual timestamp is only 15 bits). The wrapAdd
-		 * is incremented when an empty event is received which has the timestamp bit 15 set to one.
+		 * Intensity information is transmitted by bit 8, which is set by the
+		 * chip The bit encoding of the data is as follows <literal> Address bit
+		 * Address bit pattern 0 LSB Y or Polarity ON=1 1 Y1 or LSB X 2 Y2 or X1
+		 * 3 Y3 or X2 4 Y4 or X3 5 Y5 or X4 6 Y6 or X5 7 Y7 (MSBY) or X6 8
+		 * intensity or X7. This bit is set for a Y address if the intensity
+		 * neuron has spiked. This bit is also X7 for X addreses. 9 X8 (MSBX) 10
+		 * Y=0, X=1 </literal>
+		 *
+		 * The two msbs of the raw 16 bit data are used to tag the type of data,
+		 * e.g. address, timestamp, or special events wrap or reset host
+		 * timestamps. <literal> Address Name 00xx xxxx xxxx xxxx pixel address
+		 * 01xx xxxx xxxx xxxx timestamp 10xx xxxx xxxx xxxx wrap 11xx xxxx xxxx
+		 * xxxx timestamp reset </literal>
+		 *
+		 * The msb of the 16 bit timestamp is used to signal a wrap (the actual
+		 * timestamp is only 15 bits). The wrapAdd is incremented when an empty
+		 * event is received which has the timestamp bit 15 set to one.
 		 * <p>
-		 * Therefore for a valid event only 15 bits of the 16 transmitted timestamp bits are valid, bit 15 is the status
-		 * bit. overflow happens every 32 ms. This way, no roll overs go by undetected, and the problem of invalid wraps
-		 * doesn't arise.
-		 * 
+		 * Therefore for a valid event only 15 bits of the 16 transmitted
+		 * timestamp bits are valid, bit 15 is the status bit. overflow happens
+		 * every 32 ms. This way, no roll overs go by undetected, and the
+		 * problem of invalid wraps doesn't arise.
+		 *
 		 * @param minusEventEffect
 		 *            the data buffer
 		 * @see #translateEvents
@@ -262,18 +307,21 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 		@Override
 		protected void translateEvents(final ByteBuffer b) {
 			try {
-				// data from cDVS is stateful. 2 bytes sent for each word of data can consist of either timestamp, y
+				// data from cDVS is stateful. 2 bytes sent for each word of
+				// data can consist of either timestamp, y
 				// address, x address, or ADC value.
 				// The type of data is determined from bits in these two bytes.
 
-				// if(tobiLogger.isEnabled()==false) tobiLogger.setEnabled(true); //debug
+				// if(tobiLogger.isEnabled()==false)
+				// tobiLogger.setEnabled(true); //debug
 				synchronized (aePacketRawPool) {
 					final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
 
 					int bytesSent = b.limit();
 					if ((bytesSent % 2) != 0) {
 						System.err.println("warning: " + bytesSent + " bytes sent, which is not multiple of 2");
-						bytesSent = (bytesSent / 2) * 2; // truncate off any extra part-event
+						bytesSent = (bytesSent / 2) * 2; // truncate off any
+															// extra part-event
 					}
 
 					final int[] addresses = buffer.getAddresses();
@@ -283,34 +331,60 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 					buffer.lastCaptureIndex = eventCounter;
 					// tobiLogger.log("#packet");
 					for (int i = 0; i < bytesSent; i += 2) {
-						// tobiLogger.log(String.format("%d %x %x",eventCounter,buf[i],buf[i+1])); // DEBUG
-						// int val=(buf[i+1] << 8) + buf[i]; // 16 bit value of data
-						final int dataword = (0xff & b.get(i)) | (0xff00 & (b.get(i + 1) << 8)); // data sent little
+						// tobiLogger.log(String.format("%d %x %x",eventCounter,buf[i],buf[i+1]));
+						// // DEBUG
+						// int val=(buf[i+1] << 8) + buf[i]; // 16 bit value of
+						// data
+						final int dataword = (0xff & b.get(i)) | (0xff00 & (b.get(i + 1) << 8)); // data
+																									// sent
+																									// little
 						// endian
 
-						final int code = (b.get(i + 1) & 0xC0) >> 6; // gets two bits at XX00 0000 0000 0000.
+						final int code = (b.get(i + 1) & 0xC0) >> 6; // gets two
+																		// bits
+																		// at
+																		// XX00
+																		// 0000
+																		// 0000
+																		// 0000.
 						// (val&0xC000)>>>14;
 						// log.info("code " + code);
 						final int xmask = (ApsDvsChip.XMASK | ApsDvsChip.POLMASK) >>> ApsDvsChip.POLSHIFT;
 						switch (code) {
 							case 0: // address
-								// If the data is an address, we write out an address value if we either get an ADC
+								// If the data is an address, we write out an
+								// address value if we either get an ADC
 								// reading or an x address.
 								// We also write a (fake) address if
-								// we get two y addresses in a row, which occurs when the on-chip AE state machine
+								// we get two y addresses in a row, which occurs
+								// when the on-chip AE state machine
 								// doesn't properly function.
-								// Here we also read y addresses but do not write out any output address until we get
+								// Here we also read y addresses but do not
+								// write out any output address until we get
 								// either 1) an x-address, or 2)
-								// another y address without intervening x-address.
-								// NOTE that because ADC events do not have a timestamp, the size of the addresses and
+								// another y address without intervening
+								// x-address.
+								// NOTE that because ADC events do not have a
+								// timestamp, the size of the addresses and
 								// timestamps data are not the same.
-								// To simplify data structure handling in AEPacketRaw and AEPacketRawPool,
-								// ADC events are timestamped just like address-events. ADC events get the timestamp of
+								// To simplify data structure handling in
+								// AEPacketRaw and AEPacketRawPool,
+								// ADC events are timestamped just like
+								// address-events. ADC events get the timestamp
+								// of
 								// the most recently preceeding address-event.
-								// NOTE2: unmasked bits are read as 1's from the hardware. Therefore it is crucial to
+								// NOTE2: unmasked bits are read as 1's from the
+								// hardware. Therefore it is crucial to
 								// properly mask bits.
 								if ((eventCounter >= aeBufferSize) || (buffer.overrunOccuredFlag)) {
-									buffer.overrunOccuredFlag = true; // throw away events if we have overrun the output
+									buffer.overrunOccuredFlag = true; // throw
+																		// away
+																		// events
+																		// if we
+																		// have
+																		// overrun
+																		// the
+																		// output
 									// arrays
 								}
 								else {
@@ -329,12 +403,24 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 										addresses[eventCounter] = ApsDvsChip.ADDRESS_TYPE_APS
 											| (yAddr << ApsDvsChip.YSHIFT) | (xAddr << ApsDvsChip.XSHIFT)
 											| (dataword & (ApsDvsChip.ADC_READCYCLE_MASK | ApsDvsChip.ADC_DATA_MASK));
-										timestamps[eventCounter] = currentts; // ADC event gets last timestamp
+										timestamps[eventCounter] = currentts; // ADC
+																				// event
+																				// gets
+																				// last
+																				// timestamp
 										eventCounter++;
-										// System.out.println("ADC word: " + (dataword&SeeBetter20.ADC_DATA_MASK));
+										// System.out.println("ADC word: " +
+										// (dataword&SeeBetter20.ADC_DATA_MASK));
 									}
 									else if ((b.get(i + 1) & RetinaAEReader.TRIGGER_BIT) == RetinaAEReader.TRIGGER_BIT) {
-										addresses[eventCounter] = 256; // combine current bits with last y address bits
+										addresses[eventCounter] = 256; // combine
+																		// current
+																		// bits
+																		// with
+																		// last
+																		// y
+																		// address
+																		// bits
 										// and send
 										timestamps[eventCounter] = currentts;
 										eventCounter++;
@@ -348,25 +434,44 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 										// to addresses/timestamps output arrays
 										// x adddress
 										addresses[eventCounter] = (lasty << ApsDvsChip.YSHIFT)
-											| ((dataword & xmask) << ApsDvsChip.POLSHIFT); // combine current bits with
+											| ((dataword & xmask) << ApsDvsChip.POLSHIFT); // combine
+																							// current
+																							// bits
+																							// with
 										// last y address bits and
 										// send
-										timestamps[eventCounter] = currentts; // add in the wrap offset and convert to
+										timestamps[eventCounter] = currentts; // add
+																				// in
+																				// the
+																				// wrap
+																				// offset
+																				// and
+																				// convert
+																				// to
 										// 1us tick
 										eventCounter++;
-										// log.info("X: "+((dataword & ApsDvsChip.XMASK)>>1));
+										// log.info("X: "+((dataword &
+										// ApsDvsChip.XMASK)>>1));
 										gotY = false;
 									}
 									else { // row address came
-										if (gotY) { // no col address, last one was row only event
-											if (translateRowOnlyEvents) {// make row-only event
+										if (gotY) { // no col address, last one
+													// was row only event
+											if (translateRowOnlyEvents) {// make
+																			// row-only
+																			// event
 
 												addresses[eventCounter] = (lasty << ApsDvsChip.YSHIFT); // combine
 												// current bits
 												// with last y
 												// address bits
 												// and send
-												timestamps[eventCounter] = currentts; // add in the wrap offset and
+												timestamps[eventCounter] = currentts; // add
+																						// in
+																						// the
+																						// wrap
+																						// offset
+																						// and
 												// convert to 1us tick
 												eventCounter++;
 											}
@@ -374,9 +479,12 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 										}
 										// y address
 										final int ymask = (ApsDvsChip.YMASK >>> ApsDvsChip.YSHIFT);
-										lasty = ymask & dataword; // (0xFF & buf[i]); //
+										lasty = ymask & dataword; // (0xFF &
+																	// buf[i]);
+																	// //
 										gotY = true;
-										// log.info("Y: "+lasty+" - data "+dataword+" - mask: "+(ApsDvsChip.YMASK >>>
+										// log.info("Y: "+lasty+" - data "+dataword+" - mask: "+(ApsDvsChip.YMASK
+										// >>>
 										// ApsDvsChip.YSHIFT));
 									}
 								}
@@ -401,15 +509,26 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 								// log.info("timestamp reset");
 								break;
 						}
+
+						// write IMUSample to AEPacketRaw if we have one
+						if ((eventCounter % RetinaAEReader.IMU_POLLING_INTERVAL_EVENTS) == 0) {
+							final IMUSample imuSample = imuSampleQueue.poll();
+							if (imuSample != null) {
+								imuSample.setTimestamp(currentts);
+								eventCounter += imuSample.writeToPacket(buffer, eventCounter);
+							}
+						}
 					} // end for
 
 					buffer.setNumEvents(eventCounter);
 					// write capture size
 					buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
 
-					// log.info("packet size " + buffer.lastCaptureLength + " number of Y addresses " + numberOfY);
+					// log.info("packet size " + buffer.lastCaptureLength +
+					// " number of Y addresses " + numberOfY);
 					// if (NumberOfWrapEvents!=0) {
-					// System.out.println("Number of wrap events received: "+ NumberOfWrapEvents);
+					// System.out.println("Number of wrap events received: "+
+					// NumberOfWrapEvents);
 					// }
 					// System.out.println("wrapAdd : "+ wrapAdd);
 				} // sync on aePacketRawPool
@@ -426,6 +545,24 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 			}
 			Arrays.fill(countX, 0, numReadoutTypes, (short) 0);
 			Arrays.fill(countY, 0, numReadoutTypes, (short) 0);
+		}
+
+		@Override
+		public void propertyChange(final PropertyChangeEvent evt) {
+			try {
+				final ByteBuffer buf = (ByteBuffer) evt.getNewValue();
+				try {
+					final IMUSample sample = new IMUSample(buf, currentts);
+					imuSampleQueue.put(sample);
+				}
+				catch (final InterruptedException ex) {
+					CypressFX2.log.warning("putting IMUSample to queue was interrupted");
+				}
+
+			}
+			catch (final ClassCastException e) {
+				CypressFX2.log.warning("receieved wrong type of data for the IMU: " + e.toString());
+			}
 		}
 	}
 }

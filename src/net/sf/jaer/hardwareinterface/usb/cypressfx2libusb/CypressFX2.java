@@ -178,6 +178,20 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	public final PropertyChangeEvent NEW_EVENTS_PROPERTY_CHANGE = new PropertyChangeEvent(this, "NewEvents", null, null);
 
 	/**
+	 * Property change fired when new events are received. The new object in the
+	 * event is AEPacketRaw just received.
+	 */
+	public static final String PROPERTY_CHANGE_NEW_EVENTS = "NewEvents";
+
+	/**
+	 * Property change fired when a new message is received on the asynchronous
+	 * status endpoint.
+	 *
+	 * @see AsyncStatusThread
+	 */
+	public static final String PROPERTY_CHANGE_ASYNC_STATUS_MSG = "AsyncStatusMessage";
+
+	/**
 	 * This support can be used to register this interface for property change
 	 * events
 	 */
@@ -497,6 +511,13 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 	}
 
+	/**
+	 * Returns the PropertyChangeSupport.
+	 *
+	 * @return the support.
+	 * @see #PROPERTY_CHANGE_ASYNC_STATUS_MSG
+	 * @see #PROPERTY_CHANGE_NEW_EVENTS
+	 */
 	public PropertyChangeSupport getSupport() {
 		return support;
 	}
@@ -1022,9 +1043,8 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		computeEstimatedEventRate(lastEventsAcquired);
 		if (nEvents != 0) {
-			support.firePropertyChange(NEW_EVENTS_PROPERTY_CHANGE); // call
-																	// listeners
-			// }
+			support.firePropertyChange(CypressFX2.PROPERTY_CHANGE_NEW_EVENTS, null, lastEventsAcquired); // call
+			// listeners
 		}
 		return lastEventsAcquired;
 
@@ -1316,6 +1336,16 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		return support;
 	}
 
+	/**
+	 * This threads reads asynchronous status or other data from the device.
+	 * It handles timestamp reset messages from the device and possibly other
+	 * types of data.
+	 * It fires PropertyChangeEvent {@link #PROPERTY_CHANGE_ASYNC_STATUS_MSG} on
+	 * receiving a message
+	 *
+	 * @author tobi delbruck
+	 * @see #getSupport()
+	 */
 	private class AsyncStatusThread {
 		USBTransferThread usbTransfer;
 		CypressFX2 monitor;
@@ -1373,17 +1403,32 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 				if (transfer.actualLength() > 0) {
 					final byte msg = transfer.buffer().get(0);
 
-					if (msg == 1) {
-						final AEReader reader = getAeReader();
+					switch (msg) {
+						case 0x01: {
+							final AEReader reader = getAeReader();
 
-						if (reader != null) {
-							CypressFX2.log.info("********** CypressFX2.AsyncStatusThread: timestamps externally reset");
-							reader.resetTimestamps();
+							if (reader != null) {
+								CypressFX2.log
+									.info("********** CypressFX2.AsyncStatusThread: timestamps externally reset");
+								reader.resetTimestamps();
+							}
+							else {
+								CypressFX2.log
+									.info("Received timestamp external reset message, but monitor is not running");
+							}
+
+							break;
 						}
-						else {
-							CypressFX2.log
-								.info("Received timestamp external reset message, but monitor is not running");
-						}
+
+						case (byte) 0xFF:
+							// tobi - send message to listeners
+							support.firePropertyChange(CypressFX2.PROPERTY_CHANGE_ASYNC_STATUS_MSG, null,
+								transfer.buffer());
+							break;
+
+						default:
+							// Nothing to do here.
+							break;
 					}
 				}
 			}
@@ -1971,7 +2016,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 				try {
 					LibUsb.close(deviceHandle);
 				}
-				catch (IllegalStateException e) {
+				catch (final IllegalStateException e) {
 					// Ignore.
 				}
 
