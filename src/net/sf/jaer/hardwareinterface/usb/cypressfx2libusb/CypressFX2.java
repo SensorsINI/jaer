@@ -2026,17 +2026,17 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 				try {
 					LibUsb.close(deviceHandle);
+
+					status = LibUsb.open(device, deviceHandle);
+					if (status != LibUsb.SUCCESS) {
+						triesLeft--;
+					}
+					else {
+						success = true;
+					}
 				}
 				catch (final IllegalStateException e) {
 					// Ignore.
-				}
-
-				status = LibUsb.open(device, deviceHandle);
-				if (status != LibUsb.SUCCESS) {
-					triesLeft--;
-				}
-				else {
-					success = true;
 				}
 			}
 
