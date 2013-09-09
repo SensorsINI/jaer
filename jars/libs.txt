@@ -12,6 +12,6 @@ nrjavaserial - 3.8.8 - http://code.google.com/p/nrjavaserial/
 phidget21 - 2.1.8.20130618 - http://www.phidgets.com/docs/Language_-_Java
 svgSalamander-tiny - downloaded on 2013-07-13 - https://svgsalamander.java.net/
 swing-layout - 1.0.4 - NetBeans IDE
-usb4java - 1.1.0-llongi - https://github.com/llongi/usb4java/
+usb4java - 1.1.1-llongi - https://github.com/llongi/usb4java/
 UsbIoJava - ??? - http://www.thesycon.de/eng/usbio.shtml
 USBTransferThread - 0.7 - https://github.com/llongi/USBTransferThread/

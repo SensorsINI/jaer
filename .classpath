@@ -12,7 +12,7 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="lib" path="jars/usb-api-1.0.2.jar"/>
-	<classpathentry kind="lib" path="jars/usb4java-1.1.0.jar"/>
+	<classpathentry kind="lib" path="jars/usb4java-1.1.1-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="jars/USBTransferThread-0.7.jar"/>
 	<classpathentry kind="lib" path="jars/nrjavaserial-3.8.8.jar"/>
 	<classpathentry kind="lib" path="jars/commons-net-3.3.jar">
