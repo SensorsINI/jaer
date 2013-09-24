@@ -55,7 +55,8 @@ public class AEChipRenderer extends Chip2DRenderer {
         GrayLevel("Each event causes linear change in brightness"), 
         Contrast("Each event causes multiplicative change in brightness to produce logarithmic scale"), 
                 RedGreen("ON events are green; OFF events are red"), 
-                ColorTime("Events are colored according to time within displayed slice, with red coding old events and green coding new events");
+                ColorTime("Events are colored according to time within displayed slice, with red coding old events and green coding new events"),
+                GrayTime("Events are colored according to time within displayed slice, with white coding old events and black coding new events");
         public String description;
         ColorMode(String description){
             this.description=description;

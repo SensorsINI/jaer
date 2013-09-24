@@ -92,7 +92,12 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                         grayBuffer.put(0);
                         grayBuffer.put(0);
                         grayBuffer.put(1.0f);
-                    } else {
+                    } else if(colorMode == ColorMode.GrayTime){
+                        grayBuffer.put(1.0f);
+                        grayBuffer.put(1.0f);
+                        grayBuffer.put(1.0f);
+                        grayBuffer.put(1.0f);
+                    }else {
                         grayBuffer.put(grayValue);
                         grayBuffer.put(grayValue);
                         grayBuffer.put(grayValue);
@@ -324,7 +329,16 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             map[index + 1] = timeColors[ind][1];
             map[index + 2] = timeColors[ind][2];
             map[index + 3] = 0.5f;
-        }else{
+        }else if(colorMode == ColorMode.GrayTime){
+            int ts0 = packet.getFirstTimestamp();
+            float dt = packet.getDurationUs();
+            float v = 0.95f-0.95f*((e.timestamp - ts0) / dt);
+            map[index] = v;
+            map[index + 1] = v;
+            map[index + 2] = v;
+            map[index + 3] = 1.0f;
+        }
+        else{
             float alpha = map[index+3]+(1.0f/colorScale);
             alpha = normalizeEvent(alpha);
             if(e.polarity == PolarityEvent.Polarity.On){
@@ -523,6 +537,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     public float getGrayValue() {
         if(config.isDisplayFrames() || (colorMode==ColorMode.Contrast) || (colorMode==ColorMode.GrayLevel)){
             grayValue = 0.5f;
+        }else if(colorMode == ColorMode.GrayTime){
+            grayValue = 1.0f;
         }else{
             grayValue = 0.0f;
         }
