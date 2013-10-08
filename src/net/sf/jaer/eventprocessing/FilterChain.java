@@ -483,9 +483,9 @@ public class FilterChain extends LinkedList<EventFilter2D> {
      * @return the updateIntervalMs
      */
     /**
-     * The list of clusters is updated at least this often in us, but also at least once per event packet.
+     * The list of clusters is updated at least this often in ms, but also at least once per event packet.
      *
-     * @return the updateIntervalMs
+     * @return the updateIntervalMs the update interval in milliseconds (float values <1 are allowed, e.g. .1f for 100us)
      */
     public float getUpdateIntervalMs() {
         return updateIntervalMs;

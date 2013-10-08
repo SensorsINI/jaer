@@ -137,7 +137,7 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
             }
         }
         
-        ApsDvsEvent lastPacketEvent=null;
+        private ApsDvsEvent lastPacketEvent=null; // an event from the previous packet, which supplies a timestamp if none is available fromt his packet
 
         /** Overrides the default iterator <code>next()</code> to skip over ADC samples and write these
          * to the designated {@link #outputPacket}.
@@ -158,12 +158,12 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
                     output = (E) elementData[cursorDvs++]; // point to next event
                 }
             }
-            if(!output.isAdcSample()) {
+            if(!output.isAdcSample()) { // if event is not an ADC sammple then save it for later
                 lastPacketEvent=output;
             }else {
                 int lastTs=output.timestamp;
                 output = (E)lastPacketEvent;
-                output.timestamp=lastTs; // to avoid small nonmonotonic timestamp backward jumps due to APS events that came at end of packet
+                if(output!=null) output.timestamp=lastTs; // to avoid small nonmonotonic timestamp backward jumps due to APS events that came at end of packet
             }
             return output; // now return the element we obtained at start
         }

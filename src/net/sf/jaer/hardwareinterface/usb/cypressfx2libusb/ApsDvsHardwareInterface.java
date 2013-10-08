@@ -242,7 +242,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 																	// after
 																	// start or
 																	// timestamp
-		public static final int IMU_POLLING_INTERVAL_EVENTS = 1000;
+		public static final int IMU_POLLING_INTERVAL_EVENTS = 100;
 
 		public RetinaAEReader(final CypressFX2 cypress) throws HardwareInterfaceException {
 			super(cypress);

@@ -626,6 +626,8 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 		try{
 			float intvl=engFmt.parseFloat(updateIntervalField.getText());
 			filterChain.setUpdateIntervalMs(intvl);
+                        updateIntervalField.setText(engFmt.format(intvl));
+                        log.info("set global event filter update interval to "+updateIntervalField.getText());
 		}catch(Exception e){
 			updateIntervalField.selectAll();
 			log.warning(e.toString());

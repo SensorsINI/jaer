@@ -228,6 +228,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         autoContrastCB = new javax.swing.JCheckBox();
         diCB = new javax.swing.JCheckBox();
         histCB = new javax.swing.JCheckBox();
+        snapshotButton = new javax.swing.JButton();
         imuPanel = new javax.swing.JPanel();
         imuVisibleCB = new javax.swing.JCheckBox();
 
@@ -477,22 +478,28 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
             }
         });
 
+        snapshotButton.setLabel("Snapshot");
+        snapshotButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                snapshotButtonActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout apsPanelLayout = new javax.swing.GroupLayout(apsPanel);
         apsPanel.setLayout(apsPanelLayout);
         apsPanelLayout.setHorizontalGroup(
             apsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(apsPanelLayout.createSequentialGroup()
-                .addGap(4, 4, 4)
-                .addComponent(jLabel6)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(contrastSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(autoContrastCB)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(histCB)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-            .addGroup(apsPanelLayout.createSequentialGroup()
                 .addGroup(apsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(apsPanelLayout.createSequentialGroup()
+                        .addGap(4, 4, 4)
+                        .addComponent(jLabel6)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(contrastSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(autoContrastCB)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(histCB))
                     .addGroup(apsPanelLayout.createSequentialGroup()
                         .addGroup(apsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(apsPanelLayout.createSequentialGroup()
@@ -505,18 +512,24 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
                                     .addComponent(jLabel1))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(fdSp, javax.swing.GroupLayout.PREFERRED_SIZE, 54, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                        .addGap(11, 11, 11)
+                        .addGap(34, 34, 34)
                         .addGroup(apsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, apsPanelLayout.createSequentialGroup()
-                                .addGap(2, 2, 2)
-                                .addComponent(jLabel5)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(exposMsTF, javax.swing.GroupLayout.PREFERRED_SIZE, 71, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addGroup(apsPanelLayout.createSequentialGroup()
-                                .addGap(4, 4, 4)
-                                .addComponent(jLabel4)
+                                .addGap(11, 11, 11)
+                                .addGroup(apsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, apsPanelLayout.createSequentialGroup()
+                                        .addGap(2, 2, 2)
+                                        .addComponent(jLabel5)
+                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                        .addComponent(exposMsTF, javax.swing.GroupLayout.PREFERRED_SIZE, 71, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                    .addGroup(apsPanelLayout.createSequentialGroup()
+                                        .addGap(4, 4, 4)
+                                        .addComponent(jLabel4)
+                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                        .addComponent(fpsTF, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, apsPanelLayout.createSequentialGroup()
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(fpsTF, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                                .addComponent(snapshotButton))))
                     .addGroup(apsPanelLayout.createSequentialGroup()
                         .addComponent(jLabel3)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -528,8 +541,11 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         apsPanelLayout.setVerticalGroup(
             apsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(apsPanelLayout.createSequentialGroup()
-                .addGap(1, 1, 1)
-                .addComponent(diCB)
+                .addGroup(apsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(apsPanelLayout.createSequentialGroup()
+                        .addGap(1, 1, 1)
+                        .addComponent(diCB))
+                    .addComponent(snapshotButton))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(apsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel1)
@@ -554,6 +570,8 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
                     .addComponent(autoContrastCB)
                     .addComponent(histCB)))
         );
+
+        snapshotButton.getAccessibleContext().setAccessibleName("snapshotButton");
 
         imuPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("IMU"));
         imuPanel.setToolTipText("Controls for Inertial Measurement Unit (Gyro/Accelometer)");
@@ -594,7 +612,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
                         .addComponent(apsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(imuPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(0, 9, Short.MAX_VALUE))))
+                        .addGap(0, 0, Short.MAX_VALUE))))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -606,7 +624,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
                         .addComponent(imuPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(dvsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(28, Short.MAX_VALUE))
+                .addContainerGap(25, Short.MAX_VALUE))
         );
 
         bindingGroup.bind();
@@ -688,6 +706,10 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         chip.setShowIMU(imuVisibleCB.isSelected());
     }//GEN-LAST:event_imuVisibleCBActionPerformed
 
+    private void snapshotButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_snapshotButtonActionPerformed
+        chip.takeSnapshot();
+    }//GEN-LAST:event_snapshotButtonActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel apsPanel;
     private javax.swing.JCheckBox autoContrastCB;
@@ -720,6 +742,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
     private javax.swing.JPanel jPanel1;
     private net.sf.jaer.biasgen.PotTweaker maxFiringRateTweaker;
     private net.sf.jaer.biasgen.PotTweaker onOffBalanceTweaker;
+    private javax.swing.JButton snapshotButton;
     private net.sf.jaer.biasgen.PotTweaker thresholdTweaker;
     private org.jdesktop.beansbinding.BindingGroup bindingGroup;
     // End of variables declaration//GEN-END:variables

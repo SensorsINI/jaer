@@ -78,6 +78,7 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
         int sx = chip.getSizeX() - 1;
         int sy = chip.getSizeY() - 1;
         for (Object e : in) {
+            if(e==null) break;  // this can occur if we are supplied packet that has data (e.g. APS samples) but no events
             BasicEvent i = (BasicEvent) e;
             if (i.special) {
                 BasicEvent o = (BasicEvent) outItr.nextOutput();
@@ -133,6 +134,9 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
 //        }catch(Exception e){
 //            e.printStackTrace();
 //        }
+        if (in.isEmpty()) {
+            return in; // handle case that packet contains APS samples but no DVS events
+        }
         return getOutputPacket(); // return the events not filtered away, along with events that have been bypassed by the built-in packet input iterator
     }
 

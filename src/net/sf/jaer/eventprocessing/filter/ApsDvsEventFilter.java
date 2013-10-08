@@ -15,7 +15,7 @@ import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**
- *
+ * Enables filtering out of either DVS or APS events from ApsDvsEventPacket
  * @author tobi
  */
 @Description("Enables filtering out of either DVS or APS events from ApsDvsEventPacket")

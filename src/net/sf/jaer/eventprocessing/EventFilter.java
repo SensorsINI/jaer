@@ -521,6 +521,18 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
 	public void putByteArray(String key, byte[] value) {
 		prefs.putByteArray(prefsKeyHeader() + key, value);
 	}
+        
+        /** Puts a preference.
+	 *
+	 * @param key the property name, e.g. "tauMs"
+	 * @param value the value to be stored
+	 */
+	public void putFloatArray(String key, float[] value) {
+                prefs.putInt(prefsKeyHeader() + key+ "Length", value.length);
+                for(int i = 0; i<value.length; i++){
+                    prefs.putFloat(prefsKeyHeader() + key + i, value[i]);
+                }
+	}
 
 	/** Puts a preference.
 	 *
@@ -588,6 +600,22 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
 	 */
 	public byte[] getByteArray(String key, byte[] def) {
 		return prefs.getByteArray(prefsKeyHeader() + key, def);
+	}
+        
+        /** Gets a preference from the built in preferences node.
+	 *
+	 * @param key the property name, e.g. "tauMs".
+	 * @param def the default value if there is no preference already stored.
+	 * @return float[] in preferences
+	 */
+	public float[] getFloatArray(String key, float[] def) {
+                int length = prefs.getInt(prefsKeyHeader() + key + "Length", 0);
+                if(def.length != length)return def;
+                float[] outArray = new float[length];
+                for(int i = 0 ; i < length ; i++ ){
+                    outArray[i] = prefs.getFloat(prefsKeyHeader() + key + i, 0.0f);
+                }
+		return outArray;
 	}
 
 	/** Gets a preference from the built in preferences node.

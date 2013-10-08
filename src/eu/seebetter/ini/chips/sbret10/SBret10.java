@@ -6,6 +6,10 @@
  */
 package eu.seebetter.ini.chips.sbret10;
 
+import static ch.unizh.ini.jaer.chip.retina.DVS128.CMD_TWEAK_BANDWIDTH;
+import static ch.unizh.ini.jaer.chip.retina.DVS128.CMD_TWEAK_MAX_FIRING_RATE;
+import static ch.unizh.ini.jaer.chip.retina.DVS128.CMD_TWEAK_ONOFF_BALANCE;
+import static ch.unizh.ini.jaer.chip.retina.DVS128.CMD_TWEAK_THESHOLD;
 import java.awt.Font;
 import java.util.Iterator;
 import java.util.logging.Level;
@@ -38,6 +42,8 @@ import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.histogram.Abstract
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.ApsDvsChip;
+import net.sf.jaer.util.RemoteControlCommand;
+import net.sf.jaer.util.RemoteControlled;
 
 /**
  * Describes retina and its event extractor and bias generator. Two constructors
@@ -53,7 +59,7 @@ import eu.seebetter.ini.chips.ApsDvsChip;
  * @author tobi, christian
  */
 @Description("SBret version 1.0")
-public class SBret10 extends ApsDvsChip {
+public class SBret10 extends ApsDvsChip implements RemoteControlled {
 
     private final int ADC_NUMBER_OF_TRAILING_ZEROS = Integer.numberOfTrailingZeros(ADC_READCYCLE_MASK); // speedup in loop
     // following define bit masks for various hardware data types.
@@ -88,6 +94,8 @@ public class SBret10 extends ApsDvsChip {
     int sx1 = getSizeX() - 1, sy1 = getSizeY() - 1;
     private int autoshotThresholdEvents=getPrefs().getInt("SBRet10.autoshotThresholdEvents",0);
     private IMUSample imuSample;
+    private final String CMD_EXPOSURE="exposure";
+    private final String CMD_EXPOSURE_CC="exposureCC";
 
     /**
      * Creates a new instance of cDVSTest20.
@@ -119,8 +127,41 @@ public class SBret10 extends ApsDvsChip {
         addDefaultEventFilter(HotPixelSupressor.class);
         addDefaultEventFilter(RefractoryFilter.class);
         addDefaultEventFilter(Info.class);
+        
+       if (getRemoteControl() != null) {
+            getRemoteControl().addCommandListener(this, CMD_EXPOSURE, CMD_EXPOSURE + " val - sets exposure. val in ms.");
+            getRemoteControl().addCommandListener(this, CMD_EXPOSURE_CC, CMD_EXPOSURE_CC + " val - sets exposure. val in clock cycles");
+        }
+    }
 
-
+    @Override
+    public String processRemoteControlCommand(RemoteControlCommand command, String input) {
+        log.info("processing RemoteControlCommand " + command + " with input=" + input);
+        if (command == null) {
+            return null;
+        }
+        String[] tokens = input.split(" ");
+        if (tokens.length < 2) {
+            return input + ": unknown command - did you forget the argument?";
+        }
+        if (tokens[1] == null || tokens[1].length() == 0) {
+            return input + ": argument too short - need a number";
+        }
+        float v = 0;
+        try {
+            v = Float.parseFloat(tokens[1]);
+        } catch (NumberFormatException e) {
+            return input + ": bad argument? Caught " + e.toString();
+        }
+        String c = command.getCmdName();
+        if (c.equals(CMD_EXPOSURE)) {
+            config.setExposureDelayMs((int) v);
+        } else if(c.equals(CMD_EXPOSURE_CC)) {
+            config.exposure.set((int) v);
+        } else {
+            return input + ": unknown command";
+        }
+        return "successfully processed command " + input;
     }
 
     @Override
@@ -477,13 +518,13 @@ public class SBret10 extends ApsDvsChip {
             imuTextRenderer.begin3DRendering();
             final float trans = .7f;
             imuTextRenderer.setColor(1,1,0, trans);
-            imuTextRenderer.draw3D("IMU", -4, 0,0,.2f); // x,y,z, scale factor
+            imuTextRenderer.draw3D(String.format("IMU dtMs=%.1f",imuSample.getDeltaTimeUs()*.001f), -4, 0,0,.2f); // x,y,z, scale factor
             imuTextRenderer.setColor(1,0,0, trans);
             imuTextRenderer.draw3D("G", -6, -6,0,.2f); // x,y,z, scale factor
             imuTextRenderer.setColor(0,1,0, trans);
             imuTextRenderer.draw3D("A", +6, -6,0,.2f); // x,y,z, scale factor
             imuTextRenderer.setColor(1,1,1, trans);
-            imuTextRenderer.draw3D(String.format("%-6.1fms",IMUSample.getAverageSampleIntervalUs()/1000), -6, -12,0,.2f); // x,y,z, scale factor
+            imuTextRenderer.draw3D(String.format("Invtl: %-6.1fms",IMUSample.getAverageSampleIntervalUs()/1000), -6, -12,0,.2f); // x,y,z, scale factor
 
             imuTextRenderer.end3DRendering();
           gl.glPopMatrix();

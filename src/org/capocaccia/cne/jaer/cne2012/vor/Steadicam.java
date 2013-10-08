@@ -133,6 +133,8 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         setPropertyTooltip("opticalGyroTauLowpassMs", "lowpass filter time constant in ms for optical gyro camera rotation measure");
         setPropertyTooltip("opticalGyroRotationEnabled", "enables rotation in transform");
         setPropertyTooltip("vestibularStabilizationEnabled", "use the gyro/accelometer to provide transform");
+        setPropertyTooltip("zeroGyro", "zeros the gyro output. Sensor should be stationary for period of 1-2 seconds during zeroing");
+        setPropertyTooltip("eraseGyroZero", "Erases the gyro zero values");
     }
 
     @Override
@@ -268,7 +270,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
             case VORSensor:
                 // compute the current lastTransform based on rate gyro signals
                 TransformAtTime tr=vorSensor.computeTransform(msg.timestamp);
-                evenMotion=vorSensor.getPanRate()*vorSensor.getTiltRate()>0;
+                evenMotion=(vorSensor.getPanRate()*vorSensor.getTiltRate())>0;
 //                System.out.println("added transform "+tr);
                 transformList.add(tr);
 
@@ -593,5 +595,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         vorSensor.doZeroGyro();
     }
 
-
+    public void doEraseGyroZero() {
+    	vorSensor.doEraseGyroZero();
+    }
 }

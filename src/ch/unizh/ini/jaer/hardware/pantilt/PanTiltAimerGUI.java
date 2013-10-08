@@ -14,6 +14,7 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
 import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -181,6 +182,7 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
         loopTB = new javax.swing.JToggleButton();
         centerBut = new javax.swing.JButton();
         relaxBut = new javax.swing.JButton();
+        execFlatTrajector = new javax.swing.JButton();
 
         jButton1.setText("jButton1");
 
@@ -188,7 +190,8 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
         setTitle("PanTiltAimer");
         setCursor(new java.awt.Cursor(java.awt.Cursor.CROSSHAIR_CURSOR));
         addWindowListener(new java.awt.event.WindowAdapter() {
-            public void windowClosed(java.awt.event.WindowEvent evt) {
+            @Override
+			public void windowClosed(java.awt.event.WindowEvent evt) {
                 formWindowClosed(evt);
             }
         });
@@ -200,31 +203,38 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
         calibrationPanel.setBorder(javax.swing.BorderFactory.createEtchedBorder());
         calibrationPanel.setToolTipText("Drag or click mouse to aim pan-tilt");
         calibrationPanel.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
+            @Override
+			public void mouseEntered(java.awt.event.MouseEvent evt) {
                 calibrationPanelMouseEntered(evt);
             }
-            public void mouseExited(java.awt.event.MouseEvent evt) {
+            @Override
+			public void mouseExited(java.awt.event.MouseEvent evt) {
                 calibrationPanelMouseExited(evt);
             }
-            public void mousePressed(java.awt.event.MouseEvent evt) {
+            @Override
+			public void mousePressed(java.awt.event.MouseEvent evt) {
                 calibrationPanelMousePressed(evt);
             }
-            public void mouseReleased(java.awt.event.MouseEvent evt) {
+            @Override
+			public void mouseReleased(java.awt.event.MouseEvent evt) {
                 calibrationPanelMouseReleased(evt);
             }
         });
         calibrationPanel.addComponentListener(new java.awt.event.ComponentAdapter() {
-            public void componentResized(java.awt.event.ComponentEvent evt) {
+            @Override
+			public void componentResized(java.awt.event.ComponentEvent evt) {
                 calibrationPanelComponentResized(evt);
             }
         });
         calibrationPanel.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
-            public void mouseDragged(java.awt.event.MouseEvent evt) {
+            @Override
+			public void mouseDragged(java.awt.event.MouseEvent evt) {
                 calibrationPanelMouseDragged(evt);
             }
         });
         calibrationPanel.addKeyListener(new java.awt.event.KeyAdapter() {
-            public void keyPressed(java.awt.event.KeyEvent evt) {
+            @Override
+			public void keyPressed(java.awt.event.KeyEvent evt) {
                 calibrationPanelKeyPressed(evt);
             }
         });
@@ -244,38 +254,52 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
 
         recordCB.setText("Record trajectory");
         recordCB.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 recordCBActionPerformed(evt);
             }
         });
 
         clearBut.setText("Clear trajectory");
         clearBut.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 clearButActionPerformed(evt);
             }
         });
 
         loopTB.setText("Loop trajectory");
         loopTB.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 loopTBActionPerformed(evt);
             }
         });
 
         centerBut.setText("Center");
         centerBut.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 centerButActionPerformed(evt);
             }
         });
 
         relaxBut.setText("Relax");
         relaxBut.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 relaxButActionPerformed(evt);
             }
         });
+
+        execFlatTrajector.setText("Execute Flat Trajectory");
+        execFlatTrajector.addActionListener(new java.awt.event.ActionListener() {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            	execFlatTrajectorActionPerformed(evt);
+            }
+        });
+
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -304,6 +328,8 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                                 .addComponent(centerBut)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(execFlatTrajector)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(relaxBut)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))))
                 .addContainerGap())
@@ -321,7 +347,8 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(loopTB)
                             .addComponent(relaxBut)
-                            .addComponent(centerBut))
+                            .addComponent(centerBut)
+                            .addComponent(execFlatTrajector))
                         .addGap(0, 3, Short.MAX_VALUE))
                     .addComponent(jLabel5))
                 .addGap(18, 18, 18)
@@ -344,7 +371,7 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
 
     private float getTilt(MouseEvent evt) {
         int y = evt.getY();
-        float tilt = 1 - (float) (h - y) / h;
+        float tilt = 1 - ((float) (h - y) / h);
 //        log.info("computed tilt="+tilt);
         return tilt;
     }
@@ -364,18 +391,18 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
     }
 
     private float clipPan(float pan) {
-        if (pan > 0.5f + panLimit) {
+        if (pan > (0.5f + panLimit)) {
             pan = 0.5f + panLimit;
-        } else if (pan < .5f - panLimit) {
+        } else if (pan < (.5f - panLimit)) {
             pan = .5f - panLimit;
         }
         return pan;
     }
 
     private float clipTilt(float tilt) {
-        if (tilt > 0.5f + tiltLimit) {
+        if (tilt > (0.5f + tiltLimit)) {
             tilt = 0.5f + tiltLimit;
-        } else if (tilt < .5f - tiltLimit) {
+        } else if (tilt < (.5f - tiltLimit)) {
             tilt = .5f - tiltLimit;
         }
         return tilt;
@@ -477,7 +504,7 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
     }//GEN-LAST:event_centerButActionPerformed
 
     private void relaxButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_relaxButActionPerformed
-        if (panTilt != null && panTilt.getServoInterface() != null) {
+        if ((panTilt != null) && (panTilt.getServoInterface() != null)) {
             try {
                 panTilt.stopJitter();
                 panTilt.getServoInterface().disableAllServos();
@@ -486,6 +513,53 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
             }
         }
     }//GEN-LAST:event_relaxButActionPerformed
+
+    private void execFlatTrajectorActionPerformed(java.awt.event.ActionEvent evt) {
+        boolean jittering=panTilt.isJitterEnabled();
+        panTilt.setJitterEnabled(false);
+
+        clearButActionPerformed(null);
+
+        Runnable move = new Runnable() {
+            @Override
+            public void run() {
+                for (int i = 0; i < 50; i++) {
+                    // Center camera to start from.
+                    setPanTilt(.5f, .5f);
+
+                    try {
+                        float from = 0.5f;
+                        float to = 0.45f;
+                        int sleepTime = 10;
+
+                        // Back and forth.
+                        for (float d = from; d > to; d -= 0.001f) {
+                            Thread.sleep(sleepTime);
+                            setPanTilt(d, 0.5f);
+                        }
+
+                        for (float d = to; d < from; d += 0.001f) {
+                            Thread.sleep(sleepTime);
+                            setPanTilt(d, 0.5f);
+                        }
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(PanTiltAimerGUI.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+            }
+        };
+
+        // Execute in thread to not block main data acquisition.
+        Thread t = new Thread(move);
+        t.start();
+
+        // Center again at end.
+        setPanTilt(.5f, .5f);
+
+        panTilt.setJitterEnabled(jittering);
+    }
+
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel calibrationPanel;
     private javax.swing.JButton centerBut;
@@ -496,9 +570,11 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements ExceptionList
     private javax.swing.JCheckBox recordCB;
     private javax.swing.JButton relaxBut;
     private javax.swing.JLabel statusLabel;
+    private javax.swing.JButton execFlatTrajector;
     // End of variables declaration//GEN-END:variables
 
-    public void exceptionOccurred(Exception x, Object source) {
+    @Override
+	public void exceptionOccurred(Exception x, Object source) {
         statusLabel.setText(x.getMessage());
     }
 
