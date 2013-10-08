@@ -1370,6 +1370,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 			usbTransfer = new USBTransferThread(monitor.deviceHandle, CypressFX2.STATUS_ENDPOINT_ADDRESS,
 				LibUsb.TRANSFER_TYPE_BULK, new ProcessStatusMessages(), 2, 128);
 			usbTransfer.setName("AsyncStatusThread");
+			usbTransfer.setPriority(AEReader.MONITOR_PRIORITY);
 			usbTransfer.start();
 		}
 

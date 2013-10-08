@@ -1178,6 +1178,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
         AsyncStatusThread(CypressFX2 monitor) {
             this.monitor = monitor;
+            setPriority(AEReader.MONITOR_PRIORITY);
         }
 
         public void stopThread() {
