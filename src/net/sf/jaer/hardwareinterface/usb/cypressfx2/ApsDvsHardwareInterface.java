@@ -36,9 +36,9 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
     /** The USB product ID of this device */
     static public final short PID = (short) 0x840D;
     static public final short DID = (short) 0x0002;
-    
+
     private boolean translateRowOnlyEvents=prefs.getBoolean("ApsDvsHardwareInterface.translateRowOnlyEvents", false);
-   
+
      private volatile ArrayBlockingQueue<IMUSample> imuSampleQueue; // this queue is used for holding imu samples sent to aeReader
 
     /**
@@ -51,18 +51,18 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
     }
 
     /** Overridden to use PortBit powerDown in biasgen
-     * 
+     *
      * @param powerDown true to power off masterbias
-     * @throws HardwareInterfaceException 
+     * @throws HardwareInterfaceException
      */
     @Override
     synchronized public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
-        if(chip!=null && chip instanceof ApsDvsChip){
+        if((chip!=null) && (chip instanceof ApsDvsChip)){
             ApsDvsChip apsDVSchip = (ApsDvsChip) chip;
             apsDVSchip.setPowerDown(powerDown);
         }
     }
-    
+
     private byte[] parseHexData(String firmwareFile) throws IOException {
 
         byte[] fwBuffer;
@@ -246,7 +246,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
         }
     }
 
-    /** 
+    /**
      * Starts reader buffer pool thread and enables in endpoints for AEs. This method is overridden to construct
     our own reader with its translateEvents method
      */
@@ -261,7 +261,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
     boolean gotY = false; // TODO  hack for debugging state machine
 
     /** If set, then row-only events are transmitted to raw packets from USB interface
-     * 
+     *
      * @param translateRowOnlyEvents true to translate these parasitic events.
      */
     public void setTranslateRowOnlyEvents(boolean translateRowOnlyEvents) {
@@ -272,7 +272,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
     public boolean isTranslateRowOnlyEvents(){
         return translateRowOnlyEvents;
     }
-    
+
     /** This reader understands the format of raw USB data and translates to the AEPacketRaw */
     public class RetinaAEReader extends CypressFX2.AEReader implements PropertyChangeListener{
         private static final int NONMONOTONIC_WARNING_COUNT = 30; // how many warnings to print after start or timestamp reset
@@ -286,13 +286,13 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
         /** Method to translate the UsbIoBuffer for the DVS320 sensor which uses the 32 bit address space.
          *<p>
          * It has a CPLD to timestamp events and uses the CypressFX2 in slave
-         * FIFO mode. 
-         *<p>The DVS320 has a burst mode readout mechanism that 
+         * FIFO mode.
+         *<p>The DVS320 has a burst mode readout mechanism that
          * outputs a row address,
          * then all the latched column addresses.
          *The columns are output left to right. A timestamp is only
          * meaningful at the row addresses level. Therefore
-         *the board timestamps on row address, and then 
+         *the board timestamps on row address, and then
          * sends the data in the following sequence:
          * timestamp, row, col, col, col,....,timestamp,row,col,col...
          * <p>
@@ -322,7 +322,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
         10xx xxxx xxxx xxxx	wrap
         11xx xxxx xxxx xxxx	timestamp reset
         </literal>
-        
+
          *The msb of the 16 bit timestamp is used to signal a wrap (the actual timestamp is only 15 bits).
          * The wrapAdd is incremented when an empty event is received which has the timestamp bit 15
          * set to one.
@@ -341,16 +341,16 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
         private int currentts = 0;
         private int lastts = 0;
         private int nonmonotonicTimestampWarningCount=NONMONOTONIC_WARNING_COUNT;
-        
+
         private int[] countX;
         private int[] countY;
         private int numReadoutTypes = 3;
-        
+
         @Override
         protected void translateEvents(UsbIoBuf b) {
             // TODO debug
 //            if(imuSample!=null) System.out.println(imuSample);
-            
+
             try {
                 // data from cDVS is stateful. 2 bytes sent for each word of data can consist of either timestamp, y address, x address, or ADC value.
                 // The type of data is determined from bits in these two bytes.
@@ -364,7 +364,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 
                     byte[] buf = b.BufferMem;
                     int bytesSent = b.BytesTransferred;
-                    if (bytesSent % 2 != 0) {
+                    if ((bytesSent % 2) != 0) {
                         System.err.println("warning: " + bytesSent + " bytes sent, which is not multiple of 2");
                         bytesSent = (bytesSent / 2) * 2; // truncate off any extra part-event
                     }
@@ -375,8 +375,8 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                     // write the start of the packet
                     buffer.lastCaptureIndex = eventCounter;
 //                     tobiLogger.log("#packet");
-                    
- 
+
+
                     for (int i = 0; i < bytesSent; i += 2) {
                         //   tobiLogger.log(String.format("%d %x %x",eventCounter,buf[i],buf[i+1])); // DEBUG
                         //   int val=(buf[i+1] << 8) + buf[i]; // 16 bit value of data
@@ -401,7 +401,9 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                 } else {
                                     if ((dataword & TYPE_WORD_BIT) == TYPE_WORD_BIT) {
                                         //APS event
-                                        if((dataword & FRAME_START_BIT) == FRAME_START_BIT)resetFrameAddressCounters();
+                                        if((dataword & FRAME_START_BIT) == FRAME_START_BIT) {
+											resetFrameAddressCounters();
+										}
                                         int readcycle = (dataword & ApsDvsChip.ADC_READCYCLE_MASK)>>ApsDvsChip.ADC_READCYCLE_SHIFT;
                                         if(countY[readcycle]>=chip.getSizeY()){
                                             countY[readcycle] = 0;
@@ -411,14 +413,14 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                         int yAddr=(short)(chip.getSizeY()-1-countY[readcycle]);
 //                                        if(xAddr >= chip.getSizeX() || xAddr<0 || yAddr >= chip.getSizeY() || yAddr<0)System.out.println("out of bounds event: x = "+xAddr+", y = "+yAddr+", read = "+readcycle);
                                         countY[readcycle]++;
-                                        addresses[eventCounter] = ApsDvsChip.ADDRESS_TYPE_APS | 
+                                        addresses[eventCounter] = ApsDvsChip.ADDRESS_TYPE_APS |
                                                 (yAddr<<ApsDvsChip.YSHIFT)|
                                                 (xAddr<<ApsDvsChip.XSHIFT)|
                                                 (dataword & (ApsDvsChip.ADC_READCYCLE_MASK | ApsDvsChip.ADC_DATA_MASK));
                                         timestamps[eventCounter] = currentts;  // ADC event gets last timestamp
                                         eventCounter++;
 //                                              System.out.println("ADC word: " + (dataword&SeeBetter20.ADC_DATA_MASK));
-                                    } else if ((buf[i + 1] & TRIGGER_BIT) == TRIGGER_BIT) { 
+                                    } else if ((buf[i + 1] & TRIGGER_BIT) == TRIGGER_BIT) {
                                         addresses[eventCounter] = ApsDvsChip.TRIGGERMASK;  // combine current bits with last y address bits and send
                                         timestamps[eventCounter] = currentts;
                                         eventCounter++;
@@ -448,12 +450,12 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                 }
                                 break;
                             case 1: // timestamp
-                                lastts = currentts;
                                 currentts = ((0x3f & buf[i + 1]) << 8) | (buf[i] & 0xff);
                                 currentts = (TICK_US * (currentts + wrapAdd));
-                                if(lastts>currentts && nonmonotonicTimestampWarningCount-->0){
+                                if((lastts>currentts) && (nonmonotonicTimestampWarningCount-->0)){
                                     log.warning("non-monotonic timestamp: currentts="+currentts+" lastts="+lastts+" currentts-lastts="+(currentts-lastts));
                                 }
+                                lastts = currentts;
                                 //           log.info("received timestamp");
                                 break;
                             case 2: // wrap
@@ -464,10 +466,11 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                             case 3: // ts reset event
                                 nonmonotonicTimestampWarningCount=NONMONOTONIC_WARNING_COUNT;
                                 this.resetTimestamps();
+                                lastts = 0; // Also reset this one to avoid spurious warnings.
                                 //   log.info("timestamp reset");
                                 break;
                         }
-                        if (eventCounter % IMU_POLLING_INTERVAL_EVENTS == 0) {                       // write IMUSample to AEPacketRaw if we have one
+                        if ((eventCounter % IMU_POLLING_INTERVAL_EVENTS) == 0) {                       // write IMUSample to AEPacketRaw if we have one
                             IMUSample imuSample = imuSampleQueue.poll();
                             if (imuSample != null) {
                                 imuSample.setTimestamp(currentts);
@@ -490,9 +493,9 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                 log.warning(e.toString());
             }
         }
-        
+
         private void resetFrameAddressCounters(){
-            if(countX == null || countY == null){
+            if((countX == null) || (countY == null)){
                 countX = new int[numReadoutTypes];
                 countY = new int[numReadoutTypes];
             }
@@ -511,15 +514,15 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                 } catch (InterruptedException ex) {
                     log.warning("putting IMUSample to queue was interrupted");
                 }
-                
+
             }catch(ClassCastException e){
                 log.warning("receieved wrong type of data for the IMU: "+e.toString());
             }
         }
     }
-    
- 
-    
- 
- 
+
+
+
+
+
 }

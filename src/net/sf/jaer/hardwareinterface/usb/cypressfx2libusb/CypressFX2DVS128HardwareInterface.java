@@ -250,6 +250,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 					else if ((b.get(i + 3) & 0x40) == 0x40) { // timestamp bit 14 is one -> wrapAdd reset
 						// this firmware version uses reset events to reset timestamps
 						resetTimestamps();
+						lastTimestampTmp = 0; // Also reset this one to avoid spurious warnings.
 						if ((resetTimestampWarningCount < RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT)
 							|| ((resetTimestampWarningCount % RESET_TIMESTAMPS_WARNING_INTERVAL) == 0)) {
 							CypressFX2.log.info(this + ".translateEvents got reset event from hardware, timestamp "

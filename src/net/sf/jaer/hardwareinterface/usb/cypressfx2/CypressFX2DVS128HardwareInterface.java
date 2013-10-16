@@ -53,7 +53,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
         setSyncEventEnabled(syncEventEnabled);
     }
 
-    /** 
+    /**
      * Starts reader buffer pool thread and enables in endpoints for AEs. This method is overridden to construct
     our own reader with its translateEvents method
      */
@@ -77,7 +77,8 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 
     }
 
-    public void setSyncEventEnabled(boolean yes) {
+    @Override
+	public void setSyncEventEnabled(boolean yes) {
         log.info("setting " + yes);
 
         try {
@@ -89,14 +90,15 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
         }
     }
 
-    public boolean isSyncEventEnabled() {
+    @Override
+	public boolean isSyncEventEnabled() {
         return syncEventEnabled;
     }
     int lastTimestampTmp = 0; // TODO debug remove
 
     /** Returns 1
-     * 
-     * @return 1 
+     *
+     * @return 1
      */
     @Override
     public int getNumLEDs() {
@@ -104,7 +106,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
     }
 
     /** Sets the LED state. Throws no exception, just prints warning on hardware exceptions.
-     * 
+     *
      * @param led only 0 in this case
      * @param state the new state
      */
@@ -137,7 +139,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
     }
 
     /** Returns the last set LED state
-     * 
+     *
      * @param led ignored
      * @return the last set state, or UNKNOWN if never set from host.
      */
@@ -180,7 +182,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
                 byte[] aeBuffer = b.BufferMem;
                 //            byte lsb,msb;
                 int bytesSent = b.BytesTransferred;
-                if (bytesSent % 4 != 0) {
+                if ((bytesSent % 4) != 0) {
                     log.warning("CypressFX2.AEReader.translateEvents(): warning: " + bytesSent + " bytes sent, which is not multiple of 4");
                     bytesSent = (bytesSent / 4) * 4; // truncate off any extra part-event
                 }
@@ -209,24 +211,25 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
                     } else if ((aeBuffer[i + 3] & 0x40) == 0x40) { // timestamp bit 14 is one -> wrapAdd reset
                         // this firmware version uses reset events to reset timestamps
                         this.resetTimestamps();
-                        if (resetTimestampWarningCount < RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT || resetTimestampWarningCount % RESET_TIMESTAMPS_WARNING_INTERVAL == 0) {
-                            log.info(this + ".translateEvents got reset event from hardware, timestamp " + (0xffff & ((short) aeBuffer[i + 2] & 0xff | ((short) aeBuffer[i + 3] & 0x3f) << 8)));
+                        lastTimestampTmp = 0; // Also reset this one to avoid spurious warnings.
+                        if ((resetTimestampWarningCount < RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT) || ((resetTimestampWarningCount % RESET_TIMESTAMPS_WARNING_INTERVAL) == 0)) {
+                            log.info(this + ".translateEvents got reset event from hardware, timestamp " + (0xffff & ((aeBuffer[i + 2] & 0xff) | ((aeBuffer[i + 3] & 0x3f) << 8))));
                         }
                         if (resetTimestampWarningCount == RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT) {
                             log.warning("will only print reset timestamps message every " + RESET_TIMESTAMPS_WARNING_INTERVAL + " times now\nCould it be that you are trying to inject sync events using the DVS128 IN pin?\nIf so, select the \"Enable sync events output\" option in the DVS128 menu");
                         }
                         resetTimestampWarningCount++;
-                    } else if ((eventCounter > aeBufferSize - 1) || (buffer.overrunOccuredFlag)) { // just do nothing, throw away events
+                    } else if ((eventCounter > (aeBufferSize - 1)) || (buffer.overrunOccuredFlag)) { // just do nothing, throw away events
                         buffer.overrunOccuredFlag = true;
                     } else {
                         // address is LSB MSB
-                        addresses[eventCounter] = (int) ((aeBuffer[i] & 0xFF) | ((aeBuffer[i + 1] & 0xFF) << 8));
+                        addresses[eventCounter] = (aeBuffer[i] & 0xFF) | ((aeBuffer[i + 1] & 0xFF) << 8);
 
                         // same for timestamp, LSB MSB
-                        shortts = (aeBuffer[i + 2] & 0xff | ((aeBuffer[i + 3] & 0xff) << 8)); // this is 15 bit value of timestamp in TICK_US tick
+                        shortts = ((aeBuffer[i + 2] & 0xff) | ((aeBuffer[i + 3] & 0xff) << 8)); // this is 15 bit value of timestamp in TICK_US tick
 
 
-                        timestamps[eventCounter] = (int) (TICK_US * (shortts + wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
+                        timestamps[eventCounter] = TICK_US * (shortts + wrapAdd); //*TICK_US; //add in the wrap offset and convert to 1us tick
 
                         if (timestamps[eventCounter] < lastTimestampTmp) {
                             log.info("nonmonotonic timestamp: lastTimestamp=" + lastTimestampTmp + " timestamp=" + timestamps[eventCounter]);
@@ -264,7 +267,8 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
     /** set the pixel array reset
      * @param value true to reset the pixels, false to let them run normally
      */
-    synchronized public void setArrayReset(boolean value) {
+    @Override
+	synchronized public void setArrayReset(boolean value) {
         arrayResetEnabled = value;
         // send vendor request for device to reset array
         if (gUsbIo == null) {
@@ -296,13 +300,14 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
         return arrayResetEnabled;
     }
 
-    /** Updates the firmware by downloading to the board's EEPROM. 
+    /** Updates the firmware by downloading to the board's EEPROM.
      * The firmware filename is hardcoded. TODO fix this hardcoding.
     This method starts a background thread which pauses acquisition of data
     and pops up progress monitors.
      * @throws doesn't actually throw anything, so there's no way for the caller to know if the update succeeded.
      */
-    synchronized public void updateFirmware() throws HardwareInterfaceException {
+    @Override
+	synchronized public void updateFirmware() throws HardwareInterfaceException {
         //TODO no exceptions thrown
         Thread T = new Thread("FirmwareUpdater") {
 
