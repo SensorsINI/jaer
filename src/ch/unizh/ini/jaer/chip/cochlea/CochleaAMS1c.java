@@ -684,7 +684,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 		//        }
 		/** convenience method for sending configuration to hardware. Sends vendor request VENDOR_REQUEST_SEND_BIAS_BYTES with subcommand cmd, index index and bytes bytes.
 		 * cmd is decoded by case switch in firmware to dispatch data properly.
-		 * 
+		 *
 		 * @param cmd the subcommand to set particular configuration, e.g. CMD_CPLD_CONFIG
 		 * @param index unused
 		 * @param bytes the payload
@@ -720,7 +720,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 		}
 
 		/** convenience method for sending configuration to hardware. Sends vendor request VENDOR_REQUEST_SEND_BIAS_BYTES with subcommand cmd, index index and empty byte array.
-		 * 
+		 *
 		 * @param cmd
 		 * @param index
 		 * @throws HardwareInterfaceException
@@ -890,7 +890,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 		}
 
 		/** Sets the VDACs on the board to be powered or high impedance output. This is a global operation.
-		 * 
+		 *
 		 * @param yes true to power up DACs
 		 * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException
 		 */
@@ -910,7 +910,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 		}
 
 		/** Returns the DAC powered state
-		 * 
+		 *
 		 * @return true if powered up
 		 */
 		public boolean isDACPowered() {
@@ -971,7 +971,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 		}
 
 		/** Resets equalizer channels to default state, and finally does sequence with special bits to ensure hardware latches are all cleared.
-		 * 
+		 *
 		 */
 		void resetEqualizer() {
 			equalizer.reset();
@@ -1060,7 +1060,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
 			/** Computes the bits to be sent to the CPLD from all the CPLD config values: bits, tristateable bits, and ints.
 			 * Writes the bits boolean[] so that they are set according to the bit position, e.g. for a bit if startBit=n, then bits[n] is set.
-			 * 
+			 *
 			 */
 			private void compute() {
 				if (minBit > 0) {
@@ -1105,7 +1105,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
             the bytes sent will be sent in big endian order to the device, according to how they are handled in firmware
             and loaded into the CPLD shift register. In other words, the msb of the first byte returned (getBytes()[0] is the last bit
 			 * in the bits[] array of booleans, bit 63 in the case of 64 bits of CPLD SR contents.
-			 * 
+			 *
 			 */
 			private byte[] getBytes() {
 				compute();
@@ -1366,7 +1366,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 			boolean def;
 
 			/** Constructs new CPLDBit.
-			 * 
+			 *
 			 * @param pos position in shift register
 			 * @param name name label
 			 * @param tip tool-tip
@@ -1621,7 +1621,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 			}
 
 			/** Sets the scan rate using the ADC idleTime setting, indirectly.
-			 * 
+			 *
 			 * @param period
 			 */
 			public void setPeriod(int period) {
@@ -1740,7 +1740,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 			}
 
 			/** Resets equalizer channels to default state, and finally does sequence with special bits to ensure hardware latches are all cleared.
-			 * 
+			 *
 			 */
 			void reset() {
 				log.info("resetting all Equalizer states to default");
@@ -2235,7 +2235,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 	 * TY1 - AE9
 	 * AE15:10 are unused and are unconnected - they should be masked out in software.
 	 * </pre>
-	 * 
+	 *
 	 * <table border="1px">
 	 * <tr><td>15<td>14<td>13<td>12<td>11<td>10<td>9<td>8<td>7<td>6<td>5<td>4<td>3<td>2<td>1<td>0
 	 * <tr><td>x<td>x<td>x<td>x<td>x<td>x<td>TH1<td>TH0<td>CH5<td>CH4<td>CH3<td>CH2<td>CH1<td>CH0<td>EAR<td>LPFBPF
@@ -2248,7 +2248,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 	 * <li>
 	 * EAR is the binaural ear. EAR=0 is left ear, EAR=1 is right ear.
 	 * <li>
-	 * LPFBPF is the ganglion cell type. LPFBPF=1 is a low-pass neuron, LPFBPF=1 is a bandpass neuron.
+	 * LPFBPF is the ganglion cell type. LPFBPF=1 is a low-pass neuron, LPFBPF=0 is a band-pass neuron.
 	 * </ul>
 	 */
 	public class Extractor extends TypedEventExtractor {
@@ -2261,12 +2261,12 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 		 * Extracts the meaning of the raw events. This form is used to supply an output packet. This method is used for real time
 		 * event filtering using a buffer of output events local to data acquisition. An AEPacketRaw may contain multiple events,
 		 * not all of them have to sent out as EventPackets. An AEPacketRaw is a set(!) of addresses and corresponding timing moments.
-		 * 
+		 *
 		 * A first filter (independent from the other ones) is implemented by subSamplingEnabled and getSubsampleThresholdEventCount.
 		 * The latter may limit the amount of samples in one package to say 50,000. If there are 160,000 events and there is a sub samples
 		 * threshold of 50,000, a "skip parameter" set to 3. Every so now and then the routine skips with 4, so we end up with 50,000.
 		 * It's an approximation, the amount of events may be less than 50,000. The events are extracted uniform from the input.
-		 * 
+		 *
 		 * @param in 		the raw events, can be null
 		 * @param out 		the processed events. these are partially processed in-place. empty packet is returned if null is
 		 * 					supplied as input.
@@ -2335,7 +2335,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen {
 
 		/** Overrides default extractor so that cochlea channels are returned,
 		 * numbered from x=0 (base, high frequencies, input end) to x=63 (apex, low frequencies).
-		 * 
+		 *
 		 * @param addr raw address.
 		 * @return channel, from 0 to 63.
 		 */
