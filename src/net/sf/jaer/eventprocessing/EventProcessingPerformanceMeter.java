@@ -20,12 +20,14 @@ import net.sf.jaer.event.EventPacket;
  * @author tobi
  */
 public class EventProcessingPerformanceMeter {
+    private static final float SPNS = 1e-9f;
+    public static final float NSPS = 1e9f;
     
     EventPacket packet;
-    long startTime, endTime;
+    long startTimeNs, endTimeNs;
     int size=1;
     long durationSum, sumSquared;
-    long duration=1;
+    long durationNs=1;
     int nSamples=0;
     float thisNspe=0, nspeSum=0,nspeSq=0; // summary stats for ns per event
     EventFilter filter;
@@ -40,18 +42,18 @@ public class EventProcessingPerformanceMeter {
     public void start(EventPacket packet){
         this.packet=packet;
         size=packet.getSize();
-        startTime=System.nanoTime();
+        startTimeNs=System.nanoTime();
     }
     
     public void start(int nEvents){
         size=nEvents;
-        startTime=System.nanoTime();
+        startTimeNs=System.nanoTime();
     }
     
     public void stop(){
-        endTime=System.nanoTime();
-        duration=endTime-startTime;
-        thisNspe=size==0? 0: duration/size;
+        endTimeNs=System.nanoTime();
+        durationNs=endTimeNs-startTimeNs;
+        thisNspe=size==0? 0: durationNs/size;
         nspeSum+=thisNspe;
         nspeSq+=thisNspe*thisNspe;
         nSamples++;
@@ -63,7 +65,7 @@ public class EventProcessingPerformanceMeter {
     }
     
     public float eps(){
-        return size/(1e-9f*duration);
+        return size/(SPNS*durationNs);
     }
     
     public float sPerEvent(){
@@ -71,12 +73,17 @@ public class EventProcessingPerformanceMeter {
         if(eps==0) return 0; else return 1/eps;
     }
     
+    public float avgSPerEvent(){
+        return (float)nspeSum*SPNS/nSamples;
+    }
+    
     public float stdErrSecPerEvent(){
-        float avg=(float)nspeSum/nSamples;
+        if(nSamples<2) return 0;
+        float avg=avgSPerEvent();
 //        float avg=(float)durationSum/nSamples;
-        float std=(float)Math.sqrt( ((float)nspeSq-nSamples*avg*avg)/nSamples);
+        float std=(float)Math.sqrt( ((float)nspeSq-((float)nspeSum*nspeSum)/nSamples)/(nSamples-1));
 //        float std=(float)Math.sqrt( ((float)sumSquared-nSamples*avg*avg)/nSamples);
-        return std*1e-9f;
+        return std*SPNS;
     }
     
     public void resetStatistics(){
@@ -91,13 +98,15 @@ public class EventProcessingPerformanceMeter {
 //    }
     
     public String toString(){
-        String s=String.format("%s: %8d events, %12d ns, %10.2g eps, %10.4g+%10.2g ns/event, ", 
+        String s=String.format("%s: %9d events, %8.3f ms, %8.2g eps, %8.1f ns/event (Average %8.1f +/- %-6.1f ns/event, N=%d samples), ", 
                 filterClassName,
                 size, 
-                duration,
+                durationNs*1e-6f,
                 eps(),
-                1e9f*sPerEvent(),
-                1e9f*stdErrSecPerEvent()
+                NSPS*sPerEvent(),
+                NSPS*avgSPerEvent(),
+                NSPS*stdErrSecPerEvent(),
+                nSamples
                 );
         return s;
     }

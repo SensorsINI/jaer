@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.BufferUnderflowException;
 import java.nio.MappedByteBuffer;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Date;
@@ -86,9 +87,11 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     private Class addressType = Short.TYPE; // default address type, unless file header specifies otherwise
     public final int MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT = 1000;
     private int numNonMonotonicTimeExceptionsPrinted = 0;
+
+    /** Marking positions */
     private long markPosition = 0; // a single MARK position for rewinding to
-//    private int markOutPosition = 0,  markInPosition = 0; // positions for editing (not yet implemented TODO)
-//    private int markInPosition = 0,  markOutPosition = 0; // points to mark IN and OUT positions for editing
+    private long markIn=0, markOut=Long.MAX_VALUE;
+
     private int eventSizeBytes = AEFileInputStream.EVENT16_SIZE; // size of event in bytes, set finally after reading file header
     protected boolean firstReadCompleted = false;
     private long absoluteStartingTimeMs = 0; // parsed from filename if possible
@@ -160,6 +163,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
         setupChunks();
 
+        clearMarks();
+
 
 
 
@@ -197,6 +202,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             position(0);
             currentStartTimestamp = firstTimestamp;
             mostRecentTimestamp = firstTimestamp;
+
         } catch ( IOException e ){
             log.warning("couldn't read first event to set starting timestamp - maybe the file is empty?");
         } catch ( NonMonotonicTimeException e2 ){
@@ -222,10 +228,14 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * @throws WrappedTimeException  - the event that has wrapped will be returned on the next readEventForwards
      */
     private EventRaw readEventForwards (int maxTimestamp) throws IOException,NonMonotonicTimeException{
-        int ts = -1;
+        int ts = firstTimestamp;
         int addr = 0;
         int lastTs=mostRecentTimestamp;
         try{
+            if(position==markOut) { // TODO check exceptions here for markOut set before markIn
+                rewind();
+                return readEventForwards();
+            }
 //            eventByteBuffer.rewind();
 //            fileChannel.read(eventByteBuffer);
 //            eventByteBuffer.rewind();
@@ -415,11 +425,11 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 //        return new AEPacketRaw(addr,ts);
     }
 
-    /** Returns an AEPacketRaw at most {@code dt} long up to the max size of the buffer or until end-of-file.
-     *Events are read as long as the timestamp does not exceed {@code currentStartTimestamp+dt}. If there are no events in this period
+    /** Returns an AEPacketRaw at most {@literal dt} long up to the max size of the buffer or until end-of-file.
+     *Events are read as long as the timestamp does not exceed {@literal currentStartTimestamp+dt}. If there are no events in this period
      * then the very last event from the previous packet is returned again.
      * The currentStartTimestamp is incremented after the call by dt, unless there is an exception like EVENT_NON_MONOTONIC_TIMESTAMP, in which case the
-     * currentStartTimestamp is set to the most recently read timestamp {@code mostRecentTimestamp}.
+     * currentStartTimestamp is set to the most recently read timestamp {@literal mostRecentTimestamp}.
      * <p>
      * The following property changes are fired:
      * <ol>
@@ -559,9 +569,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     @Override
 	synchronized public void rewind () throws IOException{
         long oldPosition = position();
-        position(markPosition);
+        position(markIn);
         try{
-            if ( markPosition == 0 ){
+            if ( markIn == 0 ){
                 mostRecentTimestamp = firstTimestamp;
 //                skipHeader();
             } else{
@@ -597,8 +607,10 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             }
             byteBuffer.position((int)(( event * eventSizeBytes ) % chunkSizeBytes));
             position = event;
+        }catch(ClosedByInterruptException e3){
+            log.info("caught interrupt, probably from single stepping this file");
         } catch ( IOException e ){
-            log.log(Level.WARNING,"caught {0}",e);
+            log.warning("caught exception "+e);
             e.printStackTrace();
         } catch ( IllegalArgumentException e2 ){
             log.warning("caught " + e2);
@@ -640,49 +652,84 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         return support;
     }
 
-    /** mark the current position.
-     * @throws IOException if there is some error in reading the data
+    /** Sets or clears the marked IN position. Does nothing if trying to set markIn > markOut.
+     *
+     * @return the markIn position.
      */
-    @Override
-    synchronized public void mark () throws IOException{
-        long old=markPosition;
-        markPosition = position();
-        markPosition = ( markPosition / eventSizeBytes ) * eventSizeBytes; // to avoid marking inside an event
-        getSupport().firePropertyChange(AEInputStream.EVENT_MARKSET,old,markPosition);
+       @Override
+    public long setMarkIn() {
+         long here=position();
+        if(here>markOut) {
+			return markIn;
+		}
+        long old=markIn;
+        markIn = position();
+        markIn = ( markIn / eventSizeBytes ) * eventSizeBytes; // to avoid marking inside an event
+        getSupport().firePropertyChange(AEInputStream.EVENT_MARK_IN_SET,old,markIn);
+        return markIn;
+   }
 
-//        System.out.println("AEInputStream.mark() marked position "+markPosition);
+    /** Sets or clears the marked OUT position. Does nothing if trying to set markOut <= markIn.
+     *
+     * @return the markIn position.
+     */
+     @Override
+    public long setMarkOut() {
+        long here=position();
+        if(here<=markIn) {
+			return markOut;
+		}
+         long old=markOut;
+        markOut = position();
+        markOut = ( markOut / eventSizeBytes ) * eventSizeBytes; // to avoid marking inside an event
+        getSupport().firePropertyChange(AEInputStream.EVENT_MARK_OUT_SET,old,markOut);
+        return markIn;
     }
 
-//    /** mark the current position as the IN point for editing.
-//     * @throws IOException if there is some error in reading the data
-//     */
-//    synchronized public void markIn () throws IOException{
-//        markInPosition = position();
-//        markInPosition = ( markPosition / eventSizeBytes ) * eventSizeBytes; // to avoid marking inside an event
-//    }
-//
-//    /** mark the current position as the OUT position for editing.
-//     * @throws IOException if there is some error in reading the data
-//     */
-//    synchronized public void markOut () throws IOException{
-//        markOutPosition = position();
-//        markOutPosition = ( markPosition / eventSizeBytes ) * eventSizeBytes; // to avoid marking inside an event
-//    }
 
     /** clear any marked position */
     @Override
-    synchronized public void unmark (){
-       long old=markPosition;
+    synchronized public void clearMarks (){
+       long oldIn=markIn;
+       long oldOut=markOut;
+       long[] oldMarks={oldIn,oldOut};
+
+        markOut=size()-1;
+        markIn=0;
+        long[] newMarks={markIn, markOut};
+
          markPosition = 0;
-       getSupport().firePropertyChange(AEInputStream.EVENT_MARKCLEARED,old,markPosition);
+       getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_CLEARED,oldMarks,newMarks);
     }
 
     /** Returns true if mark has been set to nonzero position.
      *
      * @return true if set.
+     * @deprecated
      */
-    public boolean isMarkSet(){
+    @Deprecated
+	public boolean isMarkSet(){
         return markPosition!=0;
+    }
+
+    @Override
+    public long getMarkInPosition() {
+       return markIn;
+    }
+
+    @Override
+    public long getMarkOutPosition() {
+        return markOut;
+    }
+
+    @Override
+    public boolean isMarkInSet() {
+        return markIn!=0;
+    }
+
+    @Override
+    public boolean isMarkOutSet() {
+        return markOut!=size();
     }
 
     @Override
@@ -730,6 +777,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     public void setMostRecentTimestamp (int mostRecentTimestamp){
         this.mostRecentTimestamp = mostRecentTimestamp;
     }
+
+
     /** class used to signal a backwards read from input stream */
     public class NonMonotonicTimeException extends Exception{
         protected int timestamp,  lastTimestamp;

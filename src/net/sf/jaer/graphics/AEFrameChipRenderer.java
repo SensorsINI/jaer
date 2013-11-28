@@ -105,8 +105,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                     }
                 }
             }
-            grayBuffer.rewind();
         }
+            grayBuffer.rewind();
         System.arraycopy(grayBuffer.array(), 0, pixmap.array(), 0, n);
         System.arraycopy(grayBuffer.array(), 0, pixBuffer.array(), 0, n);
         pixmap.rewind();
@@ -220,7 +220,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 continue;
             }
             int type = e.getType();
-            boolean isAdcSampleFlag=e.isAdcSample();
+            boolean isAdcSampleFlag=e.isSampleEvent();
             if(!isAdcSampleFlag){
                 if(displayEvents){
                     if ((xsel >= 0) && (ysel >= 0)) { // find correct mouse pixel interpretation to make sounds for large pixels
@@ -244,18 +244,17 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     private void updateFrameBuffer(ApsDvsEvent e){
         float[] buf = pixBuffer.array();
         // TODO if playing backwards, then frame will come out white because B sample comes before A
-        if(e.isResetRead()){
+        if(e.isStartOfFrame()){
+            startFrame(e.timestamp);
+        } else if (e.isResetRead()) {
             int index = getIndex(e);
-            if((index<0) || (index >= buf.length)) {
-				return;
-			}
+            if (index < 0 || index >= buf.length) {
+                return;
+            }
             float val = e.getAdcSample();
             buf[index] = val;
-            buf[index+1] = val;
+            buf[index + 1] = val;
             buf[index+2] = val;
-            if(e.isStartOfFrame()) {
-				startFrame(e.timestamp);
-			}
         }else if(e.isSignalRead()){
             int index = getIndex(e);
             if((index<0) || (index >= buf.length)) {
@@ -276,8 +275,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             buf[index] = fval;
             buf[index+1] = fval;
             buf[index+2] = fval;
-        }
-        if(e.isEndOfFrame()){
+            buf[index+3] = 1;
+        }else if(e.isEndOfFrame()){
             endFrame();
             AbstractHistogram tmp = currentHist;
             if (computeHistograms) {
@@ -292,10 +291,12 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         timestamp=ts;
         maxValue = Float.MIN_VALUE;
         minValue = Float.MAX_VALUE;
+                System.arraycopy(grayBuffer.array(), 0, pixBuffer.array(), 0, pixBuffer.array().length);
+
     }
 
     private void endFrame(){
-        System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixmap.array().length);
+        System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
         if ((minValue > 0) && (maxValue > 0)) { // don't adapt to first frame which is all zeros
             java.awt.geom.Point2D.Float filter2d = lowpassFilter.filter2d(minValue, maxValue, timestamp);
             getSupport().firePropertyChange(AGC_VALUES, null, filter2d); // inform listeners (GUI) of new AGC min/max filterd log intensity values

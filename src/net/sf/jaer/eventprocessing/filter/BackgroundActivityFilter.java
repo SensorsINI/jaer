@@ -41,6 +41,9 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
      *map. This effectively increases the range of support. E.g. setting subSamplingShift to 1 quadruples range
      *because both x and y are shifted right by one bit */
     private int subsampleBy = getInt("subsampleBy", 0);
+    
+    
+    private boolean filterInPlace=getBoolean("filterInPlace", true);
 
      int[][] lastTimestamps;
 
@@ -69,21 +72,21 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
     synchronized public EventPacket filterPacket(EventPacket in) {
         // Make sure that this filter's built-in output packet is of same type as input packet in. 
         // This also sets up output packet for bypassing input events that should not be processed here.
-        checkOutputPacketEventType(in); 
+//        checkOutputPacketEventType(in); 
         if (lastTimestamps == null) {
             allocateMaps(chip);
         }
         // for each event only write it to the out buffers if it is within dt of the last time an event happened in neighborhood
-        OutputEventIterator outItr = getOutputPacket().outputIterator(); // gets the iterator to write out events we want to keep
+//        OutputEventIterator outItr = getOutputPacket().outputIterator(); // gets the iterator to write out events we want to keep
         int sx = chip.getSizeX() - 1;
         int sy = chip.getSizeY() - 1;
         for (Object e : in) {
             if(e==null) break;  // this can occur if we are supplied packet that has data (e.g. APS samples) but no events
             BasicEvent i = (BasicEvent) e;
-            if (i.special) {
-                BasicEvent o = (BasicEvent) outItr.nextOutput();
-                o.copyFrom(i);
-            }
+            if (i.special) continue;
+//            {
+//                outItr.writeToNextOutput(i);
+//            }
             ts = i.timestamp;
             short x = (short) (i.x >>> subsampleBy), y = (short) (i.y >>> subsampleBy);
             if (x < 0 || x > sx || y < 0 || y > sy) {
@@ -92,10 +95,13 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
             int lastt = lastTimestamps[x][y];
             int deltat = (ts - lastt);
             if ((deltat < dt && lastt != DEFAULT_TIMESTAMP)) {
+//                outItr.writeToNextOutput(i);
                 //System.out.println("x: "+i.x+" x: "+i.y+" dt: "+dt);
-                BasicEvent o = (BasicEvent) outItr.nextOutput();
-//                    m.invoke(o,i);
-                o.copyFrom(i);
+//                BasicEvent o = (BasicEvent) outItr.nextOutput();
+////                    m.invoke(o,i);
+//                o.copyFrom(i);
+            }else{
+                i.setFilteredOut(true);
             }
 
             try {
@@ -134,10 +140,12 @@ public class BackgroundActivityFilter extends EventFilter2D implements Observer 
 //        }catch(Exception e){
 //            e.printStackTrace();
 //        }
-        if (in.isEmpty()) {
-            return in; // handle case that packet contains APS samples but no DVS events
-        }
-        return getOutputPacket(); // return the events not filtered away, along with events that have been bypassed by the built-in packet input iterator
+//        if (in.isEmpty()) {
+//            return in; // handle case that packet contains APS samples but no DVS events
+//        }
+        int filteredOutCount=in.getFilteredOutCount();
+        return in;
+//        return getOutputPacket(); // return the events not filtered away, along with events that have been bypassed by the built-in packet input iterator
     }
 
     /**

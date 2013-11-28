@@ -35,13 +35,13 @@ public class AEInputStream implements Closeable {
      * <li>EVENT_REWIND means files has just rewound to start
      * <li>EVENT_MARKSET means the mark has just been set on the stream for
      * later possible rewind 
-     * <li>EVENT_MARKCLEARED means the mark was cleared
+     * <li>EVENT_MARKS_CLEARED means the marks were cleared
      * <li>EVENT_INIT is called after initialization of the input stream,
      * <li>EVENT_NON_MONOTONIC_TIMESTAMP a non-monotonic timestamp was detected
      * </ul>
      */
      public static final String EVENT_EOF="eof", EVENT_WRAPPED_TIME="wrappedTime", EVENT_POSITION="posiiton", EVENT_REWIND="rewind",
-             EVENT_MARKSET="markset", EVENT_MARKCLEARED="markcleared", EVENT_INIT="init", EVENT_NON_MONOTONIC_TIMESTAMP="nonMonotonicTimestamp";
+             EVENT_MARKSET="markset", EVENT_MARKS_CLEARED="marksCleared",EVENT_MARK_IN_SET="markInSet",EVENT_MARK_OUT_SET="markOutSet", EVENT_INIT="init", EVENT_NON_MONOTONIC_TIMESTAMP="nonMonotonicTimestamp";
 
     private InputStream is;
     AEPacketRaw packet = new AEPacketRaw();

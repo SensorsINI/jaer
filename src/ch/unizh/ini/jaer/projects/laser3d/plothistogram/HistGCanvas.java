@@ -55,8 +55,8 @@ public class HistGCanvas extends Canvas {
             if (histg.isInitialized()) {
                 int availableWidth = CFWidth / histg.nBins(); //available width per x-datapoint
                 int xOffset = availableWidth / 2; // offset of the markers on x-axis
-                double[] XData = histg.XData();
-                double[][] YData = histg.YData();
+                float[] XData = histg.XData();
+                float[][] YData = histg.YData();
                 int nDatasets = Array.getLength(YData);
                 int barWidth = (availableWidth - 6) / nDatasets;
                 if (barWidth == 0) {

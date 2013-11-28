@@ -64,29 +64,31 @@ public class RefractoryFilter extends EventFilter2D implements Observer {
      * in place in the in packet.
      */
     synchronized public EventPacket filterPacket(EventPacket in) {
-        checkOutputPacketEventType(in);
+//        checkOutputPacketEventType(in);
         if (lastTimestamps == null) {
             allocateMaps(chip);
         }
         // for each event only write it to the out buffers if it is 
         // more than refractoryPeriodUs after the last time an event happened in neighborhood
-        OutputEventIterator outItr = getOutputPacket().outputIterator();
-        int sx = chip.getSizeX() - 1;
-        int sy = chip.getSizeY() - 1;
+//        OutputEventIterator outItr = getOutputPacket().outputIterator();
+//        int sx = chip.getSizeX() - 1;
+//        int sy = chip.getSizeY() - 1;
         for (Object e : in) {
             BasicEvent i = (BasicEvent) e;
+            if(i.isSpecial()) continue;
             ts = i.timestamp;
             short x = (short) (i.x >>> subsampleBy), y = (short) (i.y >>> subsampleBy);
             int lastt = lastTimestamps[x][y];
             int deltat = (ts - lastt);
             boolean longISI = deltat > refractoryPeriodUs && lastt != DEFAULT_TIMESTAMP; // if refractoryPeriodUs==0, then all events with ISI==0 pass if passShortISIsEnabled
             if ((longISI && !passShortISIsEnabled) || (!longISI && passShortISIsEnabled)) {
-                BasicEvent o = (BasicEvent) outItr.nextOutput();
-                o.copyFrom(i);
+//                BasicEvent o = (BasicEvent) outItr.nextOutput();
+//                o.copyFrom(i);
+                i.setFilteredOut(true);
             }
             lastTimestamps[x][y] = ts;
         }
-        return getOutputPacket();
+        return in;
     }
 
     /**

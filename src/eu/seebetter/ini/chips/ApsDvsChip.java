@@ -5,6 +5,7 @@
 package eu.seebetter.ini.chips;
 
 import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
 
 /**
  * Constants for ApsDvsChip AE data format such as raw address encodings.

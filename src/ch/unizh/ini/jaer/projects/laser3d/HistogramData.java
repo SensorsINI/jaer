@@ -1,7 +1,7 @@
 package ch.unizh.ini.jaer.projects.laser3d;
 
 import java.util.Arrays;
-
+import javax.media.opengl.GL;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 /**
  * histogramData holds a history of data over a certain timeperiod and returns a
@@ -14,11 +14,11 @@ public class HistogramData {
     private int historySize = 1000;
     private int binSize = 20;
     private int nBins;
-    private double maxVal;
+    private float maxVal;
     private int binIndx = 0;
-    private double[] newData;
-    private double[] dataBins;
-    private double[][] dataHistory;
+    private float[] newData;
+    private float[] dataBins;
+    private float[][] dataHistory;
     private int sumOfBins;
     EventFilter2D filter;
 
@@ -41,7 +41,7 @@ public class HistogramData {
      *
      * @param x
      */
-    public void addToData(double x) {
+    public final void addToData(float x) {
         if (isInitialized()) { // TODO catch if not initialized
             int curBin = (int) (x / binSize);
 
@@ -61,7 +61,7 @@ public class HistogramData {
      *
      * @return
      */
-    public boolean isInitialized() {
+    private final boolean  isInitialized() {
         if (dataBins != null & dataHistory != null) {
             return true;
         }
@@ -71,7 +71,7 @@ public class HistogramData {
     /**
      *
      */
-    public void resetHistData() {
+    public final void resetHistData() {
         binIndx = 0;
         sumOfBins = 0;
         Arrays.fill(newData, 0);
@@ -87,11 +87,11 @@ public class HistogramData {
      *
      * @return
      */
-    public double getSumOfBins() {
+    public float getSumOfBins() {
         return sumOfBins;
     }
     
-    public double getMaxVal() {
+    public float getMaxVal() {
         return maxVal;
     }
 
@@ -141,32 +141,32 @@ public class HistogramData {
     }
 
     private void initHistData() {
-        newData = new double[nBins];
-        dataBins = new double[nBins];
-        dataHistory = new double[nBins][historySize];
+        newData = new float[nBins];
+        dataBins = new float[nBins];
+        dataHistory = new float[nBins][historySize];
 
         resetHistData();
     }
     
-    double[] getNormalized() {
+    float[] getNormalized() {
         return getNormalized(false);    
     }
     
-    double[] getNormalized(boolean subtractAvg) {
-        double[] normalizedData = null;
+    float[] getNormalized(boolean subtractAvg) {
+        float[] normalizedData = null;
         normalizedData = getNormalized(normalizedData, subtractAvg);
         return normalizedData;             
     }
     
-    double[] getNormalized(double[] d) {
+    float[] getNormalized(float[] d) {
         return getNormalized(d,false);
     }
     
-    double[] getNormalized(double[] d, boolean subtractAvg) {
+    float[] getNormalized(float[] d, boolean subtractAvg) {
         if (sumOfBins == 0) {
             sumOfBins = 1; // avoid divsion by 0
         }
-        double avg = sumOfBins/nBins;
+        float avg = sumOfBins/nBins;
         d = Arrays.copyOf(dataBins, nBins);
         for (int i = 0; i < nBins; i++) {
             if (subtractAvg) {
@@ -177,9 +177,9 @@ public class HistogramData {
         return d;
     }
     
-    public double[] getData(double[] d) {
+    public float[] getData(float[] d) {
         d = Arrays.copyOf(dataBins, nBins);
         return d;
     }
-
+    
 }

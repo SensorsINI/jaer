@@ -31,7 +31,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 
     public final static String FIRMWARE_FILENAME_DVS128_XSVF = "/net/sf/jaer/hardwareinterface/usb/cypressfx2/dvs128CPLD.xsvf";
     private static Preferences prefs = Preferences.userNodeForPackage(CypressFX2DVS128HardwareInterface.class);
-    private boolean syncEventEnabled = prefs.getBoolean("CypressFX2DVS128HardwareInterface.syncEventEnabled", true); // default is true so that device is the timestamp master by default, necessary after firmware rev 11
+    private boolean syncEventEnabled = true; // tobi changed to always true so that if user selects this mode, then it must be deselected explicitly for slave cameras // default is true so that device is the timestamp master by default, necessary after firmware rev 11
     // if not, a device will not advance timestamps
     /** Vendor request for setting LED */
     public final byte VENDOR_REQUEST_LED = (byte) 0xCD;
@@ -84,7 +84,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
         try {
             this.sendVendorRequest(this.VENDOR_REQUEST_SET_SYNC_ENABLED, yes ? (byte) 1 : (byte) 0, (byte) 0);
             syncEventEnabled = yes;
-            prefs.putBoolean("CypressFX2DVS128HardwareInterface.syncEventEnabled", yes);
+//            prefs.putBoolean("CypressFX2DVS128HardwareInterface.syncEventEnabled", yes); // tobi made default to avoid cameras that do not advance timestamp
         } catch (HardwareInterfaceException e) {
             log.warning(e.toString());
         }

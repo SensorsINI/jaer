@@ -36,20 +36,32 @@ public abstract class AEPacket {
 
     protected EventRaw[] events;
 
+    /** Returns the number of events in the packet.
+     * 
+     * @return number of events.
+     */
     public int getNumEvents() {
         return this.numEvents;
     }
 
+    /** Sets the number of events in the packet. Just sets the field holding this value.
+     * 
+     * @param numEvents 
+     */
     public void setNumEvents(final int numEvents) {
         this.numEvents = numEvents;
     }
 
+    /** Returns the timestamp array.
+     * 
+     * @return the array of timestamps. Only elements up to numEvents-1 are valid.
+     */
     public int[] getTimestamps() {
         return this.timestamps;
     }
 
-    /** @param n the index (0 based) of the timestamp
-     *@return the timestamp
+    /** @param n the index (0 based) of the timestamp. Only values up to numEvents-1 are valid.
+     *@return the timestamp. 
      */
     public int getTimestamp(int n){
         return timestamps[n];

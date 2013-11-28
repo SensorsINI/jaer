@@ -24,13 +24,13 @@ public interface Histogram {
      * 
      * @return
      */
-    double[] XData();
+    float[] XData();
     
     /**
      * 
      * @return
      */
-    double[][] YData();
+    float[][] YData();
     
     /**
      * 
@@ -42,7 +42,7 @@ public interface Histogram {
      * 
      * @return
      */
-    double maxYVal();
+    float maxYVal();
     
     
     /**

@@ -1,5 +1,6 @@
 package net.sf.jaer;
 
+import java.awt.Cursor;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.BufferedReader;
@@ -71,6 +72,11 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     private ArrayList<AEViewer> playingViewers = new ArrayList<AEViewer>();
     static Preferences prefs = Preferences.userNodeForPackage(SyncPlayer.class);
 
+    /** Create new SyncPlayer
+     * 
+     * @param viewer the viewer we actually play in
+     * @param outer the JAERViewer that maintains all the AEViewers
+     */
     public SyncPlayer(AEViewer viewer, JAERViewer outer) {
         super(viewer);
         this.outer = outer;
@@ -219,6 +225,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
                     vToUse = new AEViewer(outer);
                     dontUseAgain.add(vToUse);
                     vToUse.setVisible(true);
+                    vToUse.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                 }
                 map.put(file, vToUse);
                 log.info("mapped " + file + " to viewer " + vToUse);
@@ -251,6 +258,10 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            for (AEViewer v : getPlayingViewers()) {
+                v.setCursor(Cursor.getDefaultCursor());
+            }
         }
         outer.setPlayBack(true);
     }
@@ -356,7 +367,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
 //            int awaitVal = barrier.await(SYNC_PLAYER_TIMEOUT_SEC,TimeUnit.SECONDS);
             int awaitVal = barrier.await(); // SYNC_PLAYER_TIMEOUT_SEC,TimeUnit.SECONDS);
         } catch (InterruptedException e) {
-            log.warning(Thread.currentThread() + " interrupted");
+//            log.warning(Thread.currentThread() + " interrupted");
         } catch (BrokenBarrierException ignore) {
 //        } catch ( TimeoutException e ){
 //            if ( !isPaused() ){
@@ -371,25 +382,11 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         throw new UnsupportedOperationException();
     }
 
-    public void mark() throws IOException {
+    @Override
+    public void clearMarks() {
         for (AEViewer v : outer.getViewers()) {
-            v.aePlayer.mark();
+            v.aePlayer.clearMarks();
         }
-    }
-
-    public void unmark() {
-        for (AEViewer v : outer.getViewers()) {
-            v.aePlayer.unmark();
-        }
-    }
-
-    public boolean isMarkSet() {
-        for (AEViewer v : outer.getViewers()) {
-            if (!v.aePlayer.isMarkSet()) {
-                return false;
-            }
-        }
-        return true;
     }
 
     public long position(AEFileInputStreamInterface stream) {
@@ -458,7 +455,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
         throw new UnsupportedOperationException();
     }
 
-    /** always returns null,  bince this is a sync player for multiple viewers */
+    /** always returns null, because this is a sync player for multiple viewers */
     public AEFileInputStream getAEInputStream() {
         return null;
     }
@@ -534,5 +531,29 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
 
     public static List<String> getChipClassNames() {
         return chipClassNames;
+    }
+
+    /** Sets IN marker on all viewers.
+     * 
+     * @return always 0, because every player has its own position. 
+     */
+    @Override
+    public long setMarkIn() {
+        for (AEViewer v : getPlayingViewers()) {
+            v.aePlayer.setMarkIn();
+        }
+        return 0;
+    }
+
+  /** Sets OUT marker on all viewers.
+     * 
+     * @return always 0, because every player has its own position. 
+     */
+    @Override
+    public long setMarkOut() {
+        for (AEViewer v : getPlayingViewers()) {
+            v.aePlayer.setMarkOut();
+        }
+        return 0;
     }
 }

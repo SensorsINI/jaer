@@ -6,33 +6,24 @@
  * To change this template, choose Tools | Template Manager
  * and open the template in the editor.
  */
-
 package net.sf.jaer.eventio;
 
 import java.io.IOException;
 
 /**
- * A general interface for input data files of finite length that can be rewound, positioned, marked, etc.
- A data file has units of data, e.g. events for AE data, frames for frame-based data.
- 
+ * A general interface for input data files of finite length that can be
+ * rewound, positioned, marked, etc. A data file has units of data, e.g. events
+ * for AE data, frames for frame-based data.
+ *
  * @author tobi
  */
 public interface InputDataFileInterface {
+
     /**
-     * 
-     * 
-     * 
+     *
      * @return fractional position in total events
      */
     public float getFractionalPosition();
-
-    /**
-     * mark the current position.
-     * 
-     * 
-     * @throws IOException if there is some error in reading the data
-     */
-    public void mark() throws IOException;
 
     /**
      * return position in events
@@ -41,7 +32,8 @@ public interface InputDataFileInterface {
 
     /**
      * set position in units of the file, e.g. events or frames
-     @param n the number to position to
+     *
+     * @param n the number to position to
      */
     public void position(long n);
 
@@ -52,22 +44,55 @@ public interface InputDataFileInterface {
 
     /**
      * Sets fractional position in units of the file
-     * 
+     *
      * @param frac 0-1 float range, 0 at start, 1 at end
      */
     public void setFractionalPosition(float frac);
 
     /**
-     * 
-     * 
-     * 
      * @return size in units of the file
      */
-    long size();
+    public long size();
 
     /**
-     * clear any marked position
+     * clear any marked positions.
      */
-    void unmark();
+    public void clearMarks();
+
+    /**
+     * Mark IN (start) position, or clear the mark to start of file if it was set.
+     * @return the new marked position.
+     */
+    public long setMarkIn();
+
+    /**
+     * Mark OUT (end) position, or clear the mark to end of file if it was set.
+     * @return the new marked position.
+     */
+    public long setMarkOut();
+
+    /** Returns the marked IN position, or 0 if mark was not set.
+     * 
+     * @return 
+     */
+    public long getMarkInPosition();
+
+    /** Returns the marked out position, or end of file if mark was not set.
+     * 
+     * @return 
+     */
+    public long getMarkOutPosition();
     
+    /** Returns whether IN mark is set 
+     * 
+     * @return true if set. 
+     */
+    public boolean isMarkInSet();
+    
+    /** Returns whether OUT mark is set.
+     * 
+     * @return true if set. 
+     */
+    public boolean isMarkOutSet();
+
 }

@@ -70,6 +70,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
 
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     private boolean measurePerformanceEnabled = false;
+    public boolean resetPerformanceMeasurementStatistics=false; // flag to reset everyone on this cycle
     Logger log = Logger.getLogger("FilterChain");
     AEChip chip;
     private boolean filteringEnabled = true;
@@ -87,6 +88,15 @@ public class FilterChain extends LinkedList<EventFilter2D> {
      *
      */
     protected float updateIntervalMs;
+
+    /**
+     * Call this method to reset the performance measurements on the next <code>filterPacket</code> call.
+     * 
+     * @param resetPerformanceMeasurementStatistics the resetPerformanceMeasurementStatistics to set
+     */
+    public void resetResetPerformanceMeasurementStatistics() {
+        this.resetPerformanceMeasurementStatistics = true;
+    }
 
     /** Filters can either be processed in the rendering or the data acquisition cycle. Procesing in the rendering cycle is certainly more efficient because
     events are processed in larger packets, but latency is increased to the rendering frame rate delay. Processing in the data acquisition thread has the
@@ -162,6 +172,10 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             }
         }
         for (EventFilter2D f : this) {
+            if (measurePerformanceEnabled && f.perf != null && (!f.isFilterEnabled() || resetPerformanceMeasurementStatistics)) { // check to reset performance meter
+                f.perf.resetStatistics();
+                f.perf = null;
+            }
             if(!f.isFilterEnabled() || in==null) continue;  // tobi added so that each filter doesn't need to check if enabled and non-null packet
             if (measurePerformanceEnabled) {
                 if (f.perf == null) {
@@ -175,13 +189,10 @@ public class FilterChain extends LinkedList<EventFilter2D> {
                 System.out.println(f.perf);
             }
             in = out;
-            if (measurePerformanceEnabled && f.perf != null && !f.isFilterEnabled()) { // check to reset performance meter
-                f.perf.resetStatistics();
-                f.perf = null;
-            }
         }
         timedOut = EventPacket.isTimedOut();
         EventPacket.setTimeLimitEnabled(false);
+        resetPerformanceMeasurementStatistics=false;
         return in;
     }
 

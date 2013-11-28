@@ -6,10 +6,9 @@
  */
 package eu.seebetter.ini.chips.sbret10;
 
-import static ch.unizh.ini.jaer.chip.retina.DVS128.CMD_TWEAK_BANDWIDTH;
-import static ch.unizh.ini.jaer.chip.retina.DVS128.CMD_TWEAK_MAX_FIRING_RATE;
-import static ch.unizh.ini.jaer.chip.retina.DVS128.CMD_TWEAK_ONOFF_BALANCE;
-import static ch.unizh.ini.jaer.chip.retina.DVS128.CMD_TWEAK_THESHOLD;
+import static ch.unizh.ini.jaer.chip.retina.DVS128.FIRMWARE_CHANGELOG;
+import static ch.unizh.ini.jaer.chip.retina.DVS128.HELP_URL_RETINA;
+import static ch.unizh.ini.jaer.chip.retina.DVS128.USER_GUIDE_URL_RETINA;
 import java.awt.Font;
 import java.util.Iterator;
 import java.util.logging.Level;
@@ -42,8 +41,31 @@ import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.histogram.Abstract
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.ApsDvsChip;
+import eu.seebetter.ini.chips.sbret10.IMUSample.IncompleteIMUSampleException;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.geom.Rectangle2D;
+import java.util.Observable;
+import java.util.Observer;
+import javax.media.opengl.glu.GLU;
+import javax.media.opengl.glu.GLUquadric;
+import javax.swing.AbstractButton;
+import javax.swing.ButtonGroup;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
+import javax.swing.JRadioButtonMenuItem;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.ApsDvsHardwareInterface;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2DVS128HardwareInterface;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasLEDControl;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
+import net.sf.jaer.util.HexString;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
+import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 
 /**
  * Describes retina and its event extractor and bias generator. Two constructors
@@ -59,8 +81,10 @@ import net.sf.jaer.util.RemoteControlled;
  * @author tobi, christian
  */
 @Description("SBret version 1.0")
-public class SBret10 extends ApsDvsChip implements RemoteControlled {
+public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
 
+    private JMenu chipMenu = null;
+    private JMenuItem syncEnabledMenuItem = null;
     private final int ADC_NUMBER_OF_TRAILING_ZEROS = Integer.numberOfTrailingZeros(ADC_READCYCLE_MASK); // speedup in loop
     // following define bit masks for various hardware data types.
     // The hardware interface translateEvents method packs the raw device data into 32 bit 'addresses' and timestamps.
@@ -89,13 +113,14 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled {
     private boolean resetOnReadout = false;
     private SBret10config config;
     JFrame controlFrame = null;
-    public static short WIDTH = 240;
-    public static short HEIGHT = 180;
+    public static final short WIDTH = 240;
+    public static final short HEIGHT = 180;
     int sx1 = getSizeX() - 1, sy1 = getSizeY() - 1;
     private int autoshotThresholdEvents=getPrefs().getInt("SBRet10.autoshotThresholdEvents",0);
-    private IMUSample imuSample;
+    private IMUSample imuSample; // latest IMUSample from sensor 
     private final String CMD_EXPOSURE="exposure";
     private final String CMD_EXPOSURE_CC="exposureCC";
+    private final String CMD_RS_SETTLE_CC="resetSettleCC";
 
     /**
      * Creates a new instance of cDVSTest20.
@@ -124,14 +149,16 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled {
         getCanvas().addDisplayMethod(sbretDisplayMethod);
         getCanvas().setDisplayMethod(sbretDisplayMethod);
         addDefaultEventFilter(ApsDvsEventFilter.class);
-        addDefaultEventFilter(HotPixelSupressor.class);
+        addDefaultEventFilter(HotPixelFilter.class);
         addDefaultEventFilter(RefractoryFilter.class);
         addDefaultEventFilter(Info.class);
         
        if (getRemoteControl() != null) {
             getRemoteControl().addCommandListener(this, CMD_EXPOSURE, CMD_EXPOSURE + " val - sets exposure. val in ms.");
             getRemoteControl().addCommandListener(this, CMD_EXPOSURE_CC, CMD_EXPOSURE_CC + " val - sets exposure. val in clock cycles");
+            getRemoteControl().addCommandListener(this, CMD_RS_SETTLE_CC, CMD_RS_SETTLE_CC + " val - sets reset settling time. val in clock cycles");
         }
+       addObserver(this);  // we observe ourselves so that if hardware interface for example calls notifyListeners we get informed
     }
 
     @Override
@@ -158,6 +185,8 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled {
             config.setExposureDelayMs((int) v);
         } else if(c.equals(CMD_EXPOSURE_CC)) {
             config.exposure.set((int) v);
+        } else if(c.equals(CMD_RS_SETTLE_CC)) {
+            config.resSettle.set((int) v);
         } else {
             return input + ": unknown command";
         }
@@ -219,6 +248,11 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled {
             }
         }
 
+        private IncompleteIMUSampleException incompleteIMUSampleException=null;
+        private static final int IMU_WARNING_INTERVAL=1000;
+        private int missedImuSampleCounter=0;
+        private int badImuDataCounter=0;
+        
         /**
          * extracts the meaning of the raw events.
          *
@@ -243,10 +277,11 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled {
             int n = in.getNumEvents(); //addresses.length;
             sx1 = chip.getSizeX() - 1;
             sy1 = chip.getSizeY() - 1;
-
+            
             int[] datas = in.getAddresses();
             int[] timestamps = in.getTimestamps();
             OutputEventIterator outItr = out.outputIterator();
+            // NOTE we must make sure we write ApsDvsEvents when we want them, not reuse the IMUSamples
 
             // at this point the raw data from the USB IN packet has already been digested to extract timestamps, including timestamp wrap events and timestamp resets.
             // The datas array holds the data, which consists of a mixture of AEs and ADC values.
@@ -254,45 +289,62 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled {
 
 
             // TODO entire rendering / processing approach is not very efficient now
-
+//            System.out.println("Extracting new packet "+out);
             for (int i = 0; i < n; i++) {  // TODO implement skipBy/subsampling, but without missing the frame start/end events and still delivering frames
                 int data = datas[i];
-
-                if((ApsDvsChip.ADDRESS_TYPE_IMU & data)==ApsDvsChip.ADDRESS_TYPE_IMU){
-                    try {
-                        imuSample = new IMUSample(in, i);
-    //                    System.out.println(imuSample); // debug
-                        i+=IMUSample.SIZE_EVENTS;
-                        continue;
-                    } catch (IMUSample.IncompleteIMUSampleException ex) {
-                        log.warning(ex.toString());
+                
+                if (incompleteIMUSampleException != null || (ApsDvsChip.ADDRESS_TYPE_IMU & data) == ApsDvsChip.ADDRESS_TYPE_IMU) {
+                    if (IMUSample.extractSampleTypeCode(data) == 0) { /// only start getting an IMUSample at code 0, the first sample type
+                        try {
+                            IMUSample possibleSample = IMUSample.constructFromAEPacketRaw(in, i, incompleteIMUSampleException);
+                            i += IMUSample.SIZE_EVENTS;
+                            incompleteIMUSampleException = null;
+                            imuSample = possibleSample;  // asking for sample from AEChip now gives this value, but no access to intermediate IMU samples
+                            imuSample.imuSampleEvent = true;
+                            outItr.writeToNextOutput(imuSample); // also write the event out to the next output event slot
+//                           System.out.println("at position "+(out.size-1)+" put "+imuSample); 
+                            continue;
+                        } catch (IMUSample.IncompleteIMUSampleException ex) {
+                            incompleteIMUSampleException = ex;
+                            if (missedImuSampleCounter++ % IMU_WARNING_INTERVAL == 0) {
+                                log.warning(String.format("%s (obtained %d partial samples so far)", ex.toString(), missedImuSampleCounter));
+                            }
+                            break; // break out of loop because this packet only contained part of an IMUSample and formed the end of the packet anyhow. Next time we come back here we will complete the IMUSample
+                        } catch (IMUSample.BadIMUDataException ex2) {
+                            if (badImuDataCounter++ % IMU_WARNING_INTERVAL == 0) {
+                                log.warning(String.format("%s (%d bad samples so far)", ex2.toString(), badImuDataCounter));
+                            }
+                            incompleteIMUSampleException = null;
+                            continue; // continue because there may be other data
+                        }
                     }
-                }else if((data & ApsDvsChip.ADDRESS_TYPE_MASK) == ApsDvsChip.ADDRESS_TYPE_DVS) {
+                    
+                } else if ((data & ApsDvsChip.ADDRESS_TYPE_MASK) == ApsDvsChip.ADDRESS_TYPE_DVS) {
                     //DVS event
-                    ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
-                    if((data & ApsDvsChip.TRIGGERMASK) == ApsDvsChip.TRIGGERMASK){
+                    ApsDvsEvent e = nextApsDvsEvent(outItr);
+                    if ((data & ApsDvsChip.TRIGGERMASK) == ApsDvsChip.TRIGGERMASK) {
                         e.adcSample = -1; // TODO hack to mark as not an ADC sample
-                        e.startOfFrame = false;
-                        e.special = true;
+                        e.special = true; // TODO special is set here when capturing frames which will mess us up if this is an IMUSample used as a plain ApsDvsEvent
                         e.address = data;
                         e.timestamp = (timestamps[i]);
-                    }else{
+                        e.setIsDVS(true);
+                    } else {
                         e.adcSample = -1; // TODO hack to mark as not an ADC sample
-                        e.startOfFrame = false;
                         e.special = false;
                         e.address = data;
                         e.timestamp = (timestamps[i]);
                         e.polarity = (data & POLMASK) == POLMASK ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
-                        e.type = (byte)((data & POLMASK) == POLMASK ? 1 : 0);
+                        e.type = (byte) ((data & POLMASK) == POLMASK ? 1 : 0);
                         e.x = (short) (sx1 - ((data & XMASK) >>> XSHIFT));
                         e.y = (short) ((data & YMASK) >>> YSHIFT);
+                        e.setIsDVS(true);
                         //System.out.println(data);
                         // autoshot triggering
                         autoshotEventsSinceLastShot++; // number DVS events captured here
                     }
                 } else if ((data & ApsDvsChip.ADDRESS_TYPE_MASK) == ApsDvsChip.ADDRESS_TYPE_APS) {
                     //APS event
-                    ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
+                    ApsDvsEvent e = nextApsDvsEvent(outItr);
                     e.adcSample = data & ADC_DATA_MASK;
                     int sampleType = (data & ADC_READCYCLE_MASK) >> ADC_NUMBER_OF_TRAILING_ZEROS;
                     switch (sampleType) {
@@ -317,35 +369,33 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled {
                     e.address = data;
                     e.x = (short) (((data & XMASK) >>> XSHIFT));
                     e.y = (short) ((data & YMASK) >>> YSHIFT);
-                    e.type = (byte)(2);
+                    e.type = (byte) (2);
                     boolean pixZero = (e.x == sx1) && (e.y == sy1);//first event of frame (addresses get flipped)
-                    e.startOfFrame = (e.readoutType == ApsDvsEvent.ReadoutType.ResetRead) && pixZero;
-                    if (!config.chipConfigChain.configBits[6].isSet() && e.startOfFrame) {
-                        //rolling shutter
-                        //if(pixCnt!=129600) System.out.println("New frame, pixCnt was incorrectly "+pixCnt+" instead of 129600 but this could happen at end of file");
-                        frameTime = e.timestamp - firstFrameTs;
-                        firstFrameTs = e.timestamp;
-                    }
+                    if ((e.readoutType == ApsDvsEvent.ReadoutType.ResetRead) && pixZero) {
+                        createApsFlagEvent(outItr,ApsDvsEvent.ReadoutType.SOF,timestamps[i]);
+                        if(!config.chipConfigChain.configBits[6].isSet()){
+                            //rolling shutter start of exposure (SOE)
+                            createApsFlagEvent(outItr,ApsDvsEvent.ReadoutType.SOE,timestamps[i]);
+                            frameTime = e.timestamp - firstFrameTs;
+                            firstFrameTs = e.timestamp;
+                        }
+                    }    
                     if (config.chipConfigChain.configBits[6].isSet() && e.isResetRead() && (e.x == 0) && (e.y == sy1)) {
-                        //global shutter
+                        //global shutter start of exposure (SOE)
+                        createApsFlagEvent(outItr,ApsDvsEvent.ReadoutType.SOE,timestamps[i]);
                         frameTime = e.timestamp - firstFrameTs;
                         firstFrameTs = e.timestamp;
                     }
-                    e.isEndOfFrame();
+                    //end of exposure
                     if (pixZero && e.isSignalRead()) {
+                        createApsFlagEvent(outItr,ApsDvsEvent.ReadoutType.EOE,timestamps[i]);
                         exposure = e.timestamp - firstFrameTs;
                     }
                     if (e.isSignalRead() && (e.x == 0) && (e.y == 0)) {
                         // if we use ResetRead+SignalRead+C readout, OR, if we use ResetRead-SignalRead readout and we are at last APS pixel, then write EOF event
-                        lastADCevent(); // TODO what does this do?
+                        lastADCevent();
                         //insert a new "end of frame" event not present in original data
-                        ApsDvsEvent a = (ApsDvsEvent) outItr.nextOutput();
-                        a.startOfFrame = false;
-                        a.adcSample = 0; // set this effectively as ADC sample even though fake
-                        a.timestamp = (timestamps[i]);
-                        a.x = -1;
-                        a.y = -1;
-                        a.readoutType = ApsDvsEvent.ReadoutType.EOF;
+                        createApsFlagEvent(outItr,ApsDvsEvent.ReadoutType.EOF,timestamps[i]);
                         if (snapshot) {
                             snapshot = false;
                             config.apsReadoutControl.setAdcEnabled(false);
@@ -354,13 +404,47 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled {
                     }
                 }
             }
-            if((getAutoshotThresholdEvents()>0) && (autoshotEventsSinceLastShot>getAutoshotThresholdEvents())){
+            if ((getAutoshotThresholdEvents() > 0) && (autoshotEventsSinceLastShot > getAutoshotThresholdEvents())) {
                 takeSnapshot();
-                autoshotEventsSinceLastShot=0;
+                autoshotEventsSinceLastShot = 0;
             }
+//            int imuEventCount=0, realImuEventCount=0;
+//            for(Object e:out){
+//                if(e instanceof IMUSample){
+//                    imuEventCount++;
+//                    IMUSample i=(IMUSample)e;
+//                    if(i.imuSampleEvent) realImuEventCount++;
+//                }
+//            }
+//            System.out.println(String.format("packet has \ttotal %d, \timu type=%d, \treal imu data=%d events", out.getSize(), imuEventCount, realImuEventCount));
             return out;
         } // extractPacket
 
+        // TODO hack to reuse IMUSample events as ApsDvsEvents holding only APS or DVS data by using the special flags
+        private ApsDvsEvent nextApsDvsEvent(OutputEventIterator outItr) {
+            ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
+            e.special = false;
+            if(e instanceof IMUSample) ((IMUSample)e).imuSampleEvent=false;
+            return e;
+        }
+        
+        /** creates a special ApsDvsEvent in output packet just for flagging APS frame markers such as start of frame, reset, end of frame.
+         * 
+         * @param outItr
+         * @param flag
+         * @param timestamp
+         * @return 
+         */
+        private ApsDvsEvent createApsFlagEvent(OutputEventIterator outItr, ApsDvsEvent.ReadoutType flag, int timestamp) {
+            ApsDvsEvent a = nextApsDvsEvent(outItr);
+            a.adcSample = 0; // set this effectively as ADC sample even though fake
+            a.timestamp = timestamp;
+            a.x = -1;
+            a.y = -1;
+            a.readoutType = flag;
+            return a;
+        }
+        
         @Override
         public AEPacketRaw reconstructRawPacket(EventPacket packet) {
             if (raw == null) {
@@ -466,6 +550,11 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled {
                 exposureRenderer.setColor(1, 1, 1, 1);
             }
             super.display(drawable);
+            if (config.syncTimestampMasterEnabled.isSet() == false) {
+                exposureRenderer.begin3DRendering();  // TODO make string rendering more efficient here using String.format or StringBuilder
+                exposureRenderer.draw3D("Slave camera", 0, -(FONTSIZE / 2), 0, .5f); // x,y,z, scale factor
+                exposureRenderer.end3DRendering();
+            }
             if ((config.videoControl != null) && config.videoControl.displayFrames) {
                 GL2 gl = drawable.getGL().getGL2();
                 exposureRender(gl);
@@ -489,6 +578,8 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled {
         }
 
         TextRenderer imuTextRenderer=new TextRenderer(new Font("SansSerif", Font.PLAIN, 36));
+    GLU glu=null;
+    GLUquadric accelCircle=null;
 
         private void imuRender(GLAutoDrawable drawable, IMUSample imuSample) {
 //            System.out.println("on rendering: "+imuSample.toString());
@@ -497,34 +588,77 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled {
             gl.glTranslatef(chip.getSizeX()/2,chip.getSizeY()/2,0);
             gl.glLineWidth(3);
 
-            final float s=.8f;
+            final float vectorScale=.8f;
+            final float textScale = .2f;
+            final float trans = .7f;
+            float x,y;
             // gyro pan/tilt
             gl.glColor3f(1, 0, 0);
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(0, 0);
-            gl.glVertex2f((s*imuSample.getGyroYawY() * HEIGHT) / IMUSample.FULL_SCALE_GYRO_DEG_PER_SEC, (s*imuSample.getGyroTiltX() * HEIGHT) / IMUSample.FULL_SCALE_GYRO_DEG_PER_SEC);
-            // gyro roll
-            gl.glVertex2f(0, 40);
-            gl.glVertex2f((s*imuSample.getGyroRollZ() * HEIGHT) / IMUSample.FULL_SCALE_GYRO_DEG_PER_SEC, 40);
-            gl.glEnd();
-
-            //acceleration x,y
-            gl.glColor3f(0, 1, 0);
-            gl.glBegin(GL.GL_LINES);
-            gl.glVertex2f(0, 0);
-            gl.glVertex2f((s*imuSample.getAccelX() * HEIGHT) / IMUSample.FULL_SCALE_ACCEL_G, (s*imuSample.getAccelY() * HEIGHT) / IMUSample.FULL_SCALE_ACCEL_G);
+            x = (vectorScale * imuSample.getGyroYawY() * HEIGHT) / IMUSample.FULL_SCALE_GYRO_DEG_PER_SEC;
+            y = (vectorScale * imuSample.getGyroTiltX() * HEIGHT) / IMUSample.FULL_SCALE_GYRO_DEG_PER_SEC;
+            gl.glVertex2f(x, y);
             gl.glEnd();
 
             imuTextRenderer.begin3DRendering();
-            final float trans = .7f;
-            imuTextRenderer.setColor(1,1,0, trans);
-            imuTextRenderer.draw3D(String.format("IMU dtMs=%.1f",imuSample.getDeltaTimeUs()*.001f), -4, 0,0,.2f); // x,y,z, scale factor
-            imuTextRenderer.setColor(1,0,0, trans);
-            imuTextRenderer.draw3D("G", -6, -6,0,.2f); // x,y,z, scale factor
+            imuTextRenderer.setColor(1, 0, 0, trans);
+            imuTextRenderer.draw3D(String.format("%.2f,%.2f dps", imuSample.getGyroYawY()+5, imuSample.getGyroTiltX()), x, y, 0, textScale); // x,y,z, scale factor
+            imuTextRenderer.end3DRendering();
+
+            // gyro roll
+            x = (vectorScale * imuSample.getGyroRollZ() * HEIGHT) / IMUSample.FULL_SCALE_GYRO_DEG_PER_SEC;
+            y = chip.getSizeY() * .25f;
+            gl.glBegin(GL.GL_LINES);
+            gl.glVertex2f(0, y);
+            gl.glVertex2f(x, y);
+            gl.glEnd();
+            imuTextRenderer.begin3DRendering();
+            imuTextRenderer.setColor(1, 0, 0, trans);
+            imuTextRenderer.draw3D(String.format("%.2f dps", imuSample.getGyroRollZ()), x, y, 0, textScale); // x,y,z, scale factor
+            imuTextRenderer.end3DRendering();
+
+            //acceleration x,y
+            x = (vectorScale * imuSample.getAccelX() * HEIGHT) / IMUSample.FULL_SCALE_ACCEL_G/2;
+            y = (vectorScale * imuSample.getAccelY() * HEIGHT) / IMUSample.FULL_SCALE_ACCEL_G/2;
+            gl.glColor3f(0, 1, 0);
+            gl.glBegin(GL.GL_LINES);
+            gl.glVertex2f(0, 0);
+            gl.glVertex2f(x, y);
+            gl.glEnd();
+            imuTextRenderer.begin3DRendering();
             imuTextRenderer.setColor(0,1,0, trans);
-            imuTextRenderer.draw3D("A", +6, -6,0,.2f); // x,y,z, scale factor
-            imuTextRenderer.setColor(1,1,1, trans);
-            imuTextRenderer.draw3D(String.format("Invtl: %-6.1fms",IMUSample.getAverageSampleIntervalUs()/1000), -6, -12,0,.2f); // x,y,z, scale factor
+            imuTextRenderer.draw3D(String.format("%.2f,%.2f g", imuSample.getAccelX(), imuSample.getAccelY()), x, y, 0, textScale); // x,y,z, scale factor
+            imuTextRenderer.end3DRendering();
+
+            // acceleration z, drawn as circle
+            if (glu == null) {
+                glu = new GLU();
+            }
+            if (accelCircle == null) {
+                accelCircle = glu.gluNewQuadric();
+            }
+            final float az = (vectorScale * imuSample.getAccelZ() * HEIGHT/2) / IMUSample.FULL_SCALE_ACCEL_G/2;
+            final float rim = .5f;
+            glu.gluQuadricDrawStyle(accelCircle, GLU.GLU_FILL);
+            glu.gluDisk(accelCircle, az - rim, az + rim, 16, 1);
+            imuTextRenderer.begin3DRendering();
+            imuTextRenderer.setColor(0, 1, 0, trans);
+            final String saz=String.format("%.2f g", imuSample.getAccelZ());
+            Rectangle2D rect=imuTextRenderer.getBounds(saz);
+            imuTextRenderer.draw3D(saz, az, -(float)rect.getHeight()*textScale*0.5f, 0, textScale); // x,y,z, scale factor
+            imuTextRenderer.end3DRendering();
+         
+            // color annotation to show what is being rendered
+            imuTextRenderer.begin3DRendering();
+//            imuTextRenderer.setColor(1,0,0, trans);
+//            imuTextRenderer.draw3D("G", -6, -6,0, textScale); // x,y,z, scale factor
+//            imuTextRenderer.setColor(0,1,0, trans);
+//            imuTextRenderer.draw3D("A", +6, -6,0, textScale); // x,y,z, scale factor
+            imuTextRenderer.setColor(1, 1, 1, trans);
+            final String ratestr = String.format("IMU: timestamp=%-+9.3fs last dtMs=%-6.1fms  avg dtMs=%-6.1fms", 1e-6f*imuSample.getTimestampUs(), imuSample.getDeltaTimeUs() * .001f, IMUSample.getAverageSampleIntervalUs() / 1000);
+            Rectangle2D raterect = imuTextRenderer.getBounds(ratestr);
+            imuTextRenderer.draw3D(ratestr, -(float) raterect.getWidth() * textScale * 0.5f *.7f, -12, 0, textScale*.7f); // x,y,z, scale factor
 
             imuTextRenderer.end3DRendering();
           gl.glPopMatrix();
@@ -703,5 +837,84 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled {
     public boolean isShowIMU() {
         return showIMU;
     }
+    
+        /**
+     * Updates AEViewer specialized menu items according to capabilities of
+     * HardwareInterface.
+     *
+     * @param o the observable, i.e. this Chip.
+     * @param arg the argument (e.g. the HardwareInterface).
+     */
+    @Override
+    public void update(Observable o, Object arg) {
+        if (o == config.syncTimestampMasterEnabled) {
+            if (syncEnabledMenuItem != null) {
+                syncEnabledMenuItem.setSelected(config.syncTimestampMasterEnabled.isSet());
+            }
+        }
+    }
+
+
+    /**
+     * Enables or disable DVS128 menu in AEViewer
+     *
+     * @param yes true to enable it
+     */
+    private void enableChipMenu(boolean yes) {
+        if (yes) {
+            if (chipMenu == null) {
+                chipMenu = new JMenu(this.getClass().getSimpleName());
+                chipMenu.getPopupMenu().setLightWeightPopupEnabled(false); // to paint on GLCanvas
+                chipMenu.setToolTipText("Specialized menu for chip");
+            }
+
+
+            if (syncEnabledMenuItem == null) {
+                syncEnabledMenuItem = new JCheckBoxMenuItem("Timestamp master / Enable sync event output");
+                syncEnabledMenuItem.setToolTipText("<html>Sets this device as timestamp master and enables sync event generation on external IN pin falling edges (disables slave clock input).<br>Falling edges inject special sync events with bitmask " + HexString.toString(ApsDvsHardwareInterface.SYNC_EVENT_BITMASK) + " set<br>These events are not rendered but are logged and can be used to synchronize an external signal to the recorded data.<br>If you are only using one camera, enable this option.<br>If you want to synchronize two DVS128, disable this option in one of the cameras and connect the OUT pin of the master to the IN pin of the slave and also connect the two GND pins.");
+
+                syncEnabledMenuItem.addActionListener(new ActionListener() {
+
+                    public void actionPerformed(ActionEvent evt) {
+                        log.info("setting sync/timestamp master to "+syncEnabledMenuItem.isSelected());
+                        config.syncTimestampMasterEnabled.set(syncEnabledMenuItem.isSelected());
+                    }
+                });
+                syncEnabledMenuItem.setSelected(config.syncTimestampMasterEnabled.isSet());
+                chipMenu.add(syncEnabledMenuItem);
+                config.syncTimestampMasterEnabled.addObserver(this);
+            }
+
+            if (getAeViewer() != null) {
+                getAeViewer().setMenu(chipMenu);
+            }
+
+        } else { // disable menu
+            if (chipMenu != null) {
+                getAeViewer().removeMenu(chipMenu);
+            }
+        }
+    }
+
+    
+    @Override
+    public void onDeregistration() {
+        super.onDeregistration();
+        if (getAeViewer() == null) {
+            return;
+        }
+
+        enableChipMenu(false);
+    }
+
+    @Override
+    public void onRegistration() {
+        super.onRegistration();
+        if (getAeViewer() == null) {
+            return;
+        }
+        enableChipMenu(true);
+    }
+
 
 }

@@ -17,12 +17,12 @@ import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
  * you can just use the default iterator (i.e., for(BasicEvent e:inputPacket) 
  * and you will get just the DVS events. However, if you iterate over <code>ApsDvsEventPacket</code>,
  * then the APS events will be bypassed to an internal output packet of <code>ApsDvsEventPacket</code>
- * called {@link #outputPacket}. This packet is automatically initialized to contain 
+ * called {@link #outputPacket}. This packet is automatically initialized when you call checkOutputPacketEventType(in). 
  * 
  * TODO explain better.
  * 
  * Call 
- *      <pre>   
+ * <pre>   
  * checkOutputPacketEventType(in); 
  * </pre>
  * before your iterator
@@ -121,18 +121,23 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
      * 
      */
     public class InDvsItr extends InItr{
-        int cursorDvs;
+        int cursorDvs; // this cursor marks the next DVS event
 
         public InDvsItr() {
             reset();
             if(getOutputPacket()==null) constructNewPacket();
         }
 
+        /** Overrides the default hasNext() method to use cursorDvs.
+         * 
+         * @return true if there is a (not filteredOut) event left in the packet
+         */
         @Override
         public boolean hasNext() {
             if(usingTimeout) {
                 return cursorDvs<size&&!timeLimitTimer.isTimedOut();
             } else {
+                while(elementData[cursorDvs].isFilteredOut() && cursorDvs<size) {filteredOutCount++; cursorDvs++;}
                 return cursorDvs<size;
             }
         }
@@ -151,14 +156,14 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
             E output = (E) elementData[cursorDvs++]; // get next element of this packet (TODO guarenteed to be dvs event how?) and advance cursor
             if (outputPacket != null) {
                 OutputEventIterator outItr = outputPacket.getOutputIterator(); // and the output iterator for the "outputPacket" (without resetting it)
-                while (output.isAdcSample() && cursorDvs < size) { // while the event is an ADC sample and we are not done with packet
+                while (output.isSampleEvent() && cursorDvs < size) { // while the event is an ADC sample and we are not done with packet
                     // copy the ADC sample to outputPacket
                     E nextOut = (E) outItr.nextOutput();
                     nextOut.copyFrom(output);
                     output = (E) elementData[cursorDvs++]; // point to next event
                 }
             }
-            if(!output.isAdcSample()) { // if event is not an ADC sammple then save it for later
+            if(!output.isSampleEvent()) { // if event is not an ADC sammple then save it for later
                 lastPacketEvent=output;
             }else {
                 int lastTs=output.timestamp;
@@ -172,6 +177,7 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
         public void reset() {
             cursorDvs=0;
             usingTimeout=timeLimitTimer.isEnabled(); // timelimiter only used if timeLimitTimer is enabled but flag to check it it only set on packet reset
+            filteredOutCount=0;
         }
 
         public void remove() {

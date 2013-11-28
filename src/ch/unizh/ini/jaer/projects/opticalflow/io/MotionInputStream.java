@@ -94,9 +94,35 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
     public float getFractionalPosition() {
         return (float)position()/size;
     }
-    
+
     @Override
-    public void mark() throws IOException {
+    public long setMarkIn() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public long setMarkOut() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public long getMarkInPosition() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public long getMarkOutPosition() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public boolean isMarkInSet() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public boolean isMarkOutSet() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
     
     @Override
@@ -139,7 +165,7 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
     }
     
     @Override
-    public void unmark() {
+    public void clearMarks() {
     }
     
     public PropertyChangeSupport getSupport() {

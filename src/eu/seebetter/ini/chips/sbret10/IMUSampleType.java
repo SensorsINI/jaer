@@ -1,5 +1,7 @@
 package eu.seebetter.ini.chips.sbret10;
 
+import eu.seebetter.ini.chips.ApsDvsChip;
+
 /** Defines MPU-6150 sample types and bit encodings. Enums are ordered as in sensor output I2C address space. */
 public enum IMUSampleType {
 
@@ -7,10 +9,14 @@ public enum IMUSampleType {
     public final String name;
     /** code for this sample type used in raw address encoding in AEPacketRaw events and index into data array containing raw samples */
     public final int code;
+    
+    /** The actual bits to code the IMU sample type shifted to the correct positions in the 32-bit address and including the ApsDvsChip.ADDRESS_TYPE_IMU */
+    public final int codeBits;
 
     IMUSampleType(String name, int code) {
         this.name = name;
         this.code=code;
+        this.codeBits=(code<<(IMUSample.CODEBITSHIFT))|ApsDvsChip.ADDRESS_TYPE_IMU;
     }
 
 }

@@ -25,7 +25,8 @@ public class LowpassFilter extends Filter {
     protected float lastVal = 0;
 
     /** @param val the new input value
-    @param time the time in us - note units here, microseconds!
+    @param time the time in us - note units here, microseconds! If the time step since the last filter update is negative, then
+    * the time step is set to zero and the new time is used for the next update.
      */
     @Override
     public float filter(float val, int time) {

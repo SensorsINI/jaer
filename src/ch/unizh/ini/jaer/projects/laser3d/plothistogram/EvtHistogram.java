@@ -22,7 +22,7 @@ public class EvtHistogram implements Histogram {
     private int lastTriggerTimestamp = DEFAULT_TIMESTAMP;
     boolean initialized = false;
     private int nBins;
-    private double[] xData;
+    private float[] xData;
     private HistogramData[] data;
     private int xLowerbound = 0;
     private int xUpperbound = 127;
@@ -95,9 +95,9 @@ public class EvtHistogram implements Histogram {
                 if(ev.x >= xLowerbound & ev.x <= xUpperbound & ev.y >= yLowerbound & ev.y <= yUpperbound) {
                     // add to histogram
                     if (ev.polarity == Polarity.On) {
-                        data[0].addToData((double) (ev.timestamp-lastTriggerTimestamp));
+                        data[0].addToData((float) (ev.timestamp-lastTriggerTimestamp));
                     } else if (ev.polarity == Polarity.Off) {
-                        data[1].addToData((double) (ev.timestamp-lastTriggerTimestamp));
+                        data[1].addToData((float) (ev.timestamp-lastTriggerTimestamp));
                     }                
                 }   
             }
@@ -108,7 +108,7 @@ public class EvtHistogram implements Histogram {
     @Override
     public void initHistogram() {
         nBins = (triggerPeriod / BIN_SIZE) + 1;
-        xData = new double[nBins];
+        xData = new float[nBins];
         for (int i = 0; i < nBins; i++) {
             xData[i] = i * BIN_SIZE;
         }
@@ -128,20 +128,20 @@ public class EvtHistogram implements Histogram {
     }
     
     @Override
-    public double[] XData() {
+    public float[] XData() {
         return xData;
     }
     
     @Override
-    public double[][] YData() {
-        double[][] yData = new double[2][BUFFER_SIZE];
+    public float[][] YData() {
+        float[][] yData = new float[2][BUFFER_SIZE];
         yData[0] = data[0].getData(yData[0]);
         yData[1] = data[1].getData(yData[1]);
         return yData;
     }
     
     @Override
-    public double maxYVal() {
+    public float maxYVal() {
         if(data[0].getMaxVal() > data[1].getMaxVal()) {
             return data[0].getMaxVal();
         } else {
@@ -155,11 +155,11 @@ public class EvtHistogram implements Histogram {
         return nBins;
     }
     
-    public double onSum() {
+    public float onSum() {
         return data[0].getSumOfBins();
     }
     
-    public double offSum() {
+    public float offSum() {
         return data[1].getSumOfBins();
     }
     

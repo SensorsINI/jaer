@@ -120,9 +120,6 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
      */
     @Override
 	synchronized public EventPacket filterPacket (EventPacket in){
-        if ( enclosedFilter != null ){
-            in = enclosedFilter.filterPacket(in);
-        }
         int i;
         if(!(typeEnabled||xEnabled||yEnabled))
 		 {

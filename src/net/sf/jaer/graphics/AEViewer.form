@@ -596,24 +596,41 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="togglePlaybackDirectionMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
-            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="toggleMarkCheckBoxMenuItem">
+            <MenuItem class="javax.swing.JMenuItem" name="clearMarksMI">
               <Properties>
                 <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
                   <KeyStroke key="M"/>
                 </Property>
-                <Property name="text" type="java.lang.String" value="Toggle mark present location for rewind"/>
-                <Property name="enabled" type="boolean" value="false"/>
+                <Property name="text" type="java.lang.String" value="Clear IN and OUT markers"/>
+                <Property name="toolTipText" type="java.lang.String" value="Clears the IN and OUT markers for playing back a section of a recording"/>
               </Properties>
               <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="toggleMarkCheckBoxMenuItemActionPerformed"/>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="clearMarksMIActionPerformed"/>
               </Events>
             </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="measureTimeMenuItem">
+            <MenuItem class="javax.swing.JMenuItem" name="setMarkInMI">
               <Properties>
-                <Property name="mnemonic" type="int" value="109"/>
-                <Property name="text" type="java.lang.String" value="Measure time"/>
-                <Property name="toolTipText" type="java.lang.String" value="Each click reports statistics about timing since last click"/>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="OPEN_BRACKET"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Set IN marker"/>
+                <Property name="toolTipText" type="java.lang.String" value="If playing back file, it rewinds to this position"/>
               </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setMarkInMIActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="setMarkOutMI">
+              <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="CLOSE_BRACKET"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Set OUT marker"/>
+                <Property name="toolTipText" type="java.lang.String" value="If playing back recording, it plays to this marker"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setMarkOutMIActionPerformed"/>
+              </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator10">
             </MenuItem>

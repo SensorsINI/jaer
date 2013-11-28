@@ -8,29 +8,25 @@ package net.sf.jaer.event;
  */
 public class ApsDvsEvent extends PolarityEvent {
 
+ 
     /** The readout type of the multiple readouts: ResetRead is the readout of reset level, SignalRead is the readout of first sample, C, is the readout of 2nd sample, etc.
      * Normally only ResetRead and SignalRead are used and the CDS is done in digital domain by subtracting ResetRead-SignalRead readings.
      */
-    public enum ReadoutType {ResetRead,SignalRead,EOF,SOE,EOE};
+    public enum ReadoutType {DVS,ResetRead,SignalRead,SOF,EOF,SOE,EOE,IMU,Null};
     
     /** The ADC sample value. Has value -1 by convention for non-sample events. */
     public int adcSample = 0;
     
-    /** Set if this event is a start bit event, e.g. start of frame sample. */
-    public boolean startOfFrame=false;
-    
-    /** This bit determines whether it is the first read (ResetRead) or the second read (SignalRead) of a pixel */
-    public ReadoutType readoutType = ReadoutType.ResetRead;
+    /** This bit determines whether it is the first read (ResetRead) or the second read (SignalRead) of a pixel. Start/end of frame (SOF/EOF) and start/end of exposure (SOE/EOE)*/
+    public ReadoutType readoutType = ReadoutType.Null;
 
     public ApsDvsEvent() {
     }
 
     @Override
     public String toString() {
-        return super.toString()+" adcSample="+adcSample+" startOfFrame="+startOfFrame+" readoutType="+readoutType.toString(); 
+        return super.toString()+", adcSample="+adcSample+", readoutType="+readoutType.toString(); 
     }
-    
-    
 
     /**
      * The ADC sample value.
@@ -68,19 +64,13 @@ public class ApsDvsEvent extends PolarityEvent {
 
     /**
      * Flags if this sample is from the start of the frame.
-     * @return the startOfFrame
-     */
-    public boolean isStartOfFrame() {
-        return startOfFrame;
-    }
-
-    /**
-     * Flags if this sample is from the start of the frame.
     * 
      * @param startOfFrame the startOfFrame to set
      */
     public void setStartOfFrame(boolean startOfFrame) {
-        this.startOfFrame = startOfFrame;
+        if(startOfFrame){
+            this.readoutType = ReadoutType.SOF;
+        }
     }
 
     @Override
@@ -91,13 +81,26 @@ public class ApsDvsEvent extends PolarityEvent {
         readoutType = e.getReadoutType();
         setStartOfFrame(e.isStartOfFrame());
     }
+    
+        
+    public void setIsDVS(boolean isDVS){
+        if(isDVS) readoutType = ReadoutType.DVS;
+    }
 
     /** Returns true if sample is non-negative.
      * 
      * @return true if this is an ADC sample
      */
-    public boolean isAdcSample() {
-        return adcSample>=0;
+    public boolean isSampleEvent() {
+        return this.readoutType != ReadoutType.Null && this.readoutType != ReadoutType.DVS;
+    }
+
+    public boolean isAPSSample(){
+        return readoutType == ReadoutType.SignalRead || readoutType == ReadoutType.SignalRead;
+    }
+    
+    public boolean isDVSEvent(){
+        return readoutType == ReadoutType.DVS;
     }
     
     public boolean isResetRead(){
@@ -108,7 +111,23 @@ public class ApsDvsEvent extends PolarityEvent {
         return readoutType == ReadoutType.SignalRead;
     }
     
+    /**
+     * Flags if this sample is from the start of the frame.
+     * @return the startOfFrame
+     */
+    public boolean isStartOfFrame() {
+        return this.readoutType == ReadoutType.SOF;
+    }
+    
     public boolean isEndOfFrame(){
         return readoutType == ReadoutType.EOF;
+    }
+    
+    public boolean isStartOfExposure() {
+        return this.readoutType == ReadoutType.SOE;
+    }
+    
+    public boolean isEndOfExposure(){
+        return readoutType == ReadoutType.EOE;
     }
 }

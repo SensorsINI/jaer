@@ -974,7 +974,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 			boolean adcSample = false;
 			if (be instanceof ApsDvsEvent) {
 				ApsDvsEvent ade = ((ApsDvsEvent)be);
-				if (ade.isAdcSample()) {
+				if (ade.isSampleEvent()) {
 					adcSample = true;
 					evaluateADCEvent(ade);
 				}
@@ -1016,7 +1016,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	}
 
 	protected boolean checkApsDvsEvent(ApsDvsEvent ade) {
-		if (ade.isAdcSample()) {
+		if (ade.isSampleEvent()) {
 			evaluateADCEvent(ade);
 			return true;
 		}

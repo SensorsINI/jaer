@@ -134,7 +134,7 @@ public class ApsFrameExtractor extends EventFilter2D {
         Iterator apsItr = packet.fullIterator();
         while (apsItr.hasNext()) {
             ApsDvsEvent e = (ApsDvsEvent) apsItr.next();
-            if (e.isAdcSample()) {
+            if (e.isSampleEvent()) {
                 putAPSevent(e);
             }
         }
@@ -153,7 +153,7 @@ public class ApsFrameExtractor extends EventFilter2D {
     }
 
     public void putAPSevent(ApsDvsEvent e) {
-        if (!e.isAdcSample()) {
+        if (!e.isSampleEvent()) {
             return;
         }
         //if(e.isStartOfFrame())timestamp=e.timestamp;
@@ -170,8 +170,8 @@ public class ApsFrameExtractor extends EventFilter2D {
         }
         if (idx < 0) {
             if (e.isEndOfFrame()) {
-                if (preBufferFrame && displayBuffer != null) {
-                    apsDisplay.setPixmapArray(apsDisplayPixmapBuffer);
+                if (preBufferFrame && displayBuffer != null && !useExtRender && showAPSFrameDisplay) {
+                    displayPreBuffer();
                 }
                 newFrame = true;
             }
@@ -210,14 +210,12 @@ public class ApsFrameExtractor extends EventFilter2D {
             grayValue = scaleGrayValue(displayBuffer[idx]);
         }
         displayFrame[idx] = (double) grayValue;
-        if (!useExtRender & showAPSFrameDisplay) {
-            if (!preBufferFrame) {
-                apsDisplay.setPixmapGray(e.x, e.y, grayValue);
-            } else {
-                apsDisplayPixmapBuffer[3 * idx] = grayValue;
-                apsDisplayPixmapBuffer[3 * idx + 1] = grayValue;
-                apsDisplayPixmapBuffer[3 * idx + 2] = grayValue;
-            }
+        if (!preBufferFrame && !useExtRender && showAPSFrameDisplay) {
+            apsDisplay.setPixmapGray(e.x, e.y, grayValue);
+        } else {
+            apsDisplayPixmapBuffer[3 * idx] = grayValue;
+            apsDisplayPixmapBuffer[3 * idx + 1] = grayValue;
+            apsDisplayPixmapBuffer[3 * idx + 2] = grayValue;
         }
     }
 
@@ -239,6 +237,14 @@ public class ApsFrameExtractor extends EventFilter2D {
             grayValue = scaleGrayValue(value);
         }
         apsDisplay.setPixmapGray(xAddr, yAddr, grayValue);
+    }
+    
+    public void setPixmapArray(float[] pixmapArray){
+        apsDisplay.setPixmapArray(pixmapArray);
+    }
+    
+    public void displayPreBuffer(){
+        apsDisplay.setPixmapArray(apsDisplayPixmapBuffer);
     }
 
     /** returns the index into pixel arrays for a given x,y location where 

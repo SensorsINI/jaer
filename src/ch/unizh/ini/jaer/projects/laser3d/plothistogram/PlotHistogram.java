@@ -41,9 +41,9 @@ public class PlotHistogram {
         histogramFrame.setVisible(true);
     }
     
-    public void makeHistogramFrameVisible() {
+    public void setHistogramPlotVisible(boolean yes) {
         if (histogramFrame != null) {
-            histogramFrame.setVisible(true);
+            histogramFrame.setVisible(yes);
         }
     }
         

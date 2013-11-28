@@ -281,9 +281,9 @@ public class AEChipRenderer extends Chip2DRenderer {
                             resetFrame(.5f);
                         }
                         float eventContrastRecip = 1 / eventContrast;
-                        for (int i = 0; i
-                                < numEvents; i += skipBy) {
-                            BasicEvent e = packet.getEvent(i);
+                        for (Object obj : packet) {
+                            BasicEvent e = (BasicEvent) obj;
+
                             int type = e.getType();
                             if (e.special) {
                                 setSpecialCount(specialCount + 1); // TODO optimate special count increment
@@ -311,9 +311,9 @@ public class AEChipRenderer extends Chip2DRenderer {
                             resetFrame(0);
                         }
                         step = 1f / (colorScale); // cs=1, step=1, cs=2, step=.5
-                        for (int i = 0; i
-                                < numEvents; i += skipBy) {
-                            BasicEvent e = packet.getEvent(i);
+                        for (Object obj : packet) {
+                            BasicEvent e = (BasicEvent) obj;
+
                             int type = e.getType();
                             if (e.special) {
                                 setSpecialCount(specialCount + 1); // TODO optimate special count increment
@@ -337,9 +337,9 @@ public class AEChipRenderer extends Chip2DRenderer {
                         int ts0 = packet.getFirstTimestamp();
                         float dt = packet.getDurationUs();
                         step = 1f / (colorScale); // cs=1, step=1, cs=2, step=.5
-                        for (int i = 0; i
-                                < numEvents; i += skipBy) {
-                            BasicEvent e = packet.getEvent(i);
+                        for (Object obj : packet) {
+                            BasicEvent e = (BasicEvent) obj;
+
                             int type = e.getType();
                             if (e.special) {
                                 setSpecialCount(getSpecialCount() + 1); // TODO optimate special count increment

@@ -37,7 +37,7 @@ public class ApsDvsEventFilter extends EventFilter2D {
         OutputEventIterator outItr=out.outputIterator();
         while(fullIterator.hasNext()){
             ApsDvsEvent event=(ApsDvsEvent)fullIterator.next();
-            if((filterAPSEvents && event.isAdcSample()) || (filterDVSEvents && !event.isAdcSample())) continue;
+            if((filterAPSEvents && event.isSampleEvent()) || (filterDVSEvents && !event.isSampleEvent())) continue;
             outItr.nextOutput().copyFrom(event);
         }
         return out;

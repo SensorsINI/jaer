@@ -5,8 +5,6 @@
 package ch.unizh.ini.jaer.projects.poseestimation;
 
 import java.awt.geom.Point2D;
-import java.util.Observable;
-import java.util.Observer;
 
 import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
@@ -35,7 +33,7 @@ import eu.seebetter.ini.chips.sbret10.SBret10;
  * @author tobi
  */
 @Description("The Phidgets Spatial 9-DOF rate gyro, accelormeter, compass")
-public class VORSensorForSteadicam extends EventFilter2D implements FrameAnnotater, Observer {
+public class VORSensorForSteadicam extends EventFilter2D implements FrameAnnotater {
 
     private int sampleIntervalMs = getInt("sampleIntervalMs", 100);
     private double[] angular, acceleration;
@@ -59,10 +57,10 @@ public class VORSensorForSteadicam extends EventFilter2D implements FrameAnnotat
     float radPerPixel;
 //    private ArrayBlockingQueue<PhidgetsSpatialEvent> spatialDataQueue = new ArrayBlockingQueue<PhidgetsSpatialEvent>(9 * 4); // each phidgets sample could be 9 (3 gyro + 3 accel + 3 compass) and we want room for 4 samples
     private volatile boolean resetCalled=false;
+    private IMUSample imuSample=null;
 
     public VORSensorForSteadicam(AEChip chip) {
         super(chip);
-        chip.addObserver(this);
         rollFilter.setTauMs(highpassTauMsRotation);
         panTranslationFilter.setTauMs(highpassTauMsTranslation);
         tiltTranslationFilter.setTauMs(highpassTauMsTranslation);
@@ -86,6 +84,9 @@ public class VORSensorForSteadicam extends EventFilter2D implements FrameAnnotat
             lastAeTimestamp = in.getLastTimestamp();
         }
         for (BasicEvent o : in) {
+            if(o instanceof IMUSample){
+                imuSample=(IMUSample)o;
+            }
             maybeCallUpdateObservers(in, o.timestamp);
         } // call listeners if enough time has passed for update. This update should update the camera rotation values.
 
@@ -107,14 +108,18 @@ public class VORSensorForSteadicam extends EventFilter2D implements FrameAnnotat
             resetCalled=false;
         }
         float dtS = (timestamp - lastUpdateTimestamp) * 1e-6f;
-        lastUpdateTimestamp = timestamp;
         if (chip.getClass() == DVS128Phidget.class) {
             panRate =  (float)((DVS128Phidget)chip).getGyro()[0];
             tiltRate = -(float)((DVS128Phidget)chip).getGyro()[1];
             rollRate = (float)((DVS128Phidget)chip).getGyro()[2];
             timestampUs = ((DVS128Phidget)chip).getTimeUs();
         }else if (chip.getClass() == SBret10.class) {
-            IMUSample imuSample=((SBret10)chip).getImuSample();
+            //IMUSample imuSample=((SBret10)chip).getImuSample();// TODO problem with this call is that this is the latest (last) sample of the IMU, which was set during packet extraction. So it is the last IMU sample from the EventPacket that the entire rendering cycle is processing. It's not the sample we want, which is the one at this time inside the packet. It's a problem of having the data external to the AEPacket.
+            if(imuSample==null) {
+				return null;
+			}
+        dtS = (imuSample.getTimestampUs() - lastUpdateTimestamp) * 1e-6f;
+        lastUpdateTimestamp = imuSample.getTimestampUs();
             panRate=imuSample.getGyroYawY();
             tiltRate=imuSample.getGyroTiltX();
             rollRate=imuSample.getGyroRollZ();
@@ -155,7 +160,7 @@ public class VORSensorForSteadicam extends EventFilter2D implements FrameAnnotat
         tiltOffset=0;
         rollOffset=0;
     }
-    
+
     public void doZeroGyro() {
         if (chip.getClass() == DVS128Phidget.class) {
             ((DVS128Phidget) chip).doZeroGyro();
@@ -180,7 +185,7 @@ public class VORSensorForSteadicam extends EventFilter2D implements FrameAnnotat
         panTranslationFilter.reset();
         tiltTranslationFilter.reset();
         rollFilter.reset();
-         radPerPixel = (float) Math.asin((getChip().getPixelWidthUm() * 1e-3f) /lensFocalLengthMm);
+        radPerPixel = (float) Math.atan((getChip().getPixelWidthUm() * 1e-3f) /lensFocalLengthMm);
 
     }
 
@@ -339,10 +344,6 @@ public class VORSensorForSteadicam extends EventFilter2D implements FrameAnnotat
         this.highpassTauMsRotation = highpassTauMs;
         putFloat("highpassTauMsRotation", highpassTauMs);
         rollFilter.setTauMs(highpassTauMs);
-    }
-
-    @Override
-    public void update(Observable o, Object arg) {
     }
 
     private float clip(float f, float lim) {
