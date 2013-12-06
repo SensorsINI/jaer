@@ -751,8 +751,8 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
     public class SBRet10ChipConfigChain extends ChipConfigChain {
 
         //Config Bits
-        OnchipConfigBit resetCalib = new OnchipConfigBit(chip, "resetCalib", 0, "turn the calibration neuron off", true),
-                typeNCalib = new OnchipConfigBit(chip, "typeNCalib", 1, "make the calibration neuron N type", false),
+        OnchipConfigBit resetCalib = new OnchipConfigBit(chip, "resetCalib", 0, "turns the bias generator integrate and fire calibration neuron off", true),
+                typeNCalib = new OnchipConfigBit(chip, "typeNCalib", 1, "make the bias generator intgrate and fire calibration neuron configured to measure N type biases; otherwise measures P-type currents", false),
                 resetTestpixel = new OnchipConfigBit(chip, "resetTestpixel", 2, "keeps the test pixel in reset", true),
                 hotPixelSuppression = new OnchipConfigBit(chip, "hotPixelSuppression", 3, "<html>SBRet10: turns on the hot pixel suppression. <p>SBRet20: enables test pixel stripes on right side of array", false),
                 nArow = new OnchipConfigBit(chip, "nArow", 4, "use nArow in the AER state machine", false),
