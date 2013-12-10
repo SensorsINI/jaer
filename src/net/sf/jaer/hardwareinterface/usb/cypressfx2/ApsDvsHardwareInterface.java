@@ -414,6 +414,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
         private int currentts = 0;
         private int lastts = 0;
         private int nonmonotonicTimestampWarningCount = NONMONOTONIC_WARNING_COUNT;
+        private int frameEvtDropped = 10000;
         private int[] countX;
         private int[] countY;
         private int numReadoutTypes = 3;
@@ -486,13 +487,22 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                             countY[readcycle] = 0;
                                             countX[readcycle]++;
                                         }
+                                        if (countX[readcycle] >= chip.getSizeX()) {
+                                            if (frameEvtDropped == 0) {
+                                                log.warning("countX above chip size, a start frame event was dropped");
+                                                frameEvtDropped = 10000;
+                                            }
+                                            else {
+                                                frameEvtDropped--;
+                                            }
+                                        }
                                         int xAddr = (short) (chip.getSizeX() - 1 - countX[readcycle]);
                                         int yAddr = (short) (chip.getSizeY() - 1 - countY[readcycle]);
 //                                        if(xAddr >= chip.getSizeX() || xAddr<0 || yAddr >= chip.getSizeY() || yAddr<0)System.out.println("out of bounds event: x = "+xAddr+", y = "+yAddr+", read = "+readcycle);
                                         countY[readcycle]++;
                                         addr = ApsDvsChip.ADDRESS_TYPE_APS
-                                                | (yAddr << ApsDvsChip.YSHIFT)
-                                                | (xAddr << ApsDvsChip.XSHIFT)
+                                                | ((yAddr << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
+                                                | ((xAddr << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
                                                 | (dataword & (ApsDvsChip.ADC_READCYCLE_MASK | ApsDvsChip.ADC_DATA_MASK));
                                         timestamp = currentts;  // ADC event gets last timestamp
                                         haveEvent = true;
@@ -595,8 +605,8 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                 countX = new int[numReadoutTypes];
                 countY = new int[numReadoutTypes];
             }
-            Arrays.fill(countX, 0, numReadoutTypes, (short) 0);
-            Arrays.fill(countY, 0, numReadoutTypes, (short) 0);
+            Arrays.fill(countX, 0, numReadoutTypes, 0);
+            Arrays.fill(countY, 0, numReadoutTypes, 0);
 //            log.info("Start of new frame");
         }
         private int putImuSampleToQueueWarningCounter = 0;

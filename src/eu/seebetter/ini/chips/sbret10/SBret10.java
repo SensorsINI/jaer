@@ -297,7 +297,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
                     if (IMUSample.extractSampleTypeCode(data) == 0) { /// only start getting an IMUSample at code 0, the first sample type
                         try {
                             IMUSample possibleSample = IMUSample.constructFromAEPacketRaw(in, i, incompleteIMUSampleException);
-                            i += IMUSample.SIZE_EVENTS;
+                            i += IMUSample.SIZE_EVENTS - 1;
                             incompleteIMUSampleException = null;
                             imuSample = possibleSample;  // asking for sample from AEChip now gives this value, but no access to intermediate IMU samples
                             imuSample.imuSampleEvent = true;
