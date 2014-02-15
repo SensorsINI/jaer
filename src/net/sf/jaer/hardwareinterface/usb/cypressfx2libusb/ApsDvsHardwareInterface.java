@@ -18,7 +18,7 @@ import javax.swing.ProgressMonitor;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import de.ailis.usb4java.libusb.Device;
+import org.libusb4java.Device;
 import eu.seebetter.ini.chips.ApsDvsChip;
 import eu.seebetter.ini.chips.sbret10.IMUSample;
 

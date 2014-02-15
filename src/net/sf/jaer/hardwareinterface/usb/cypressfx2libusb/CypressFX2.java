@@ -45,11 +45,12 @@ import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
 import net.sf.jaer.util.HexFileParser;
 import net.sf.jaer.util.HexString;
-import de.ailis.usb4java.libusb.Device;
-import de.ailis.usb4java.libusb.DeviceDescriptor;
-import de.ailis.usb4java.libusb.DeviceHandle;
-import de.ailis.usb4java.libusb.LibUsb;
-import de.ailis.usb4java.utils.BufferUtils;
+
+import org.libusb4java.Device;
+import org.libusb4java.DeviceDescriptor;
+import org.libusb4java.DeviceHandle;
+import org.libusb4java.LibUsb;
+import org.libusb4java.utils.BufferUtils;
 
 /**
  * Devices that use the CypressFX2 and the USBIO driver, e.g. the DVS retinas,
@@ -1231,9 +1232,6 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		LibUsb.close(deviceHandle);
 
 		deviceHandle = null;
-
-		LibUsb.freeDeviceDescriptor(deviceDescriptor);
-
 		deviceDescriptor = null;
 
 		inEndpointEnabled = false;
@@ -2181,9 +2179,6 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		LibUsb.close(deviceHandle);
 
 		deviceHandle = null;
-
-		LibUsb.freeDeviceDescriptor(deviceDescriptor);
-
 		deviceDescriptor = null;
 	}
 

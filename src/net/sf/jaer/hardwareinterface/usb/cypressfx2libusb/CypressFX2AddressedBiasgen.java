@@ -5,7 +5,7 @@ import javax.swing.JOptionPane;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import de.ailis.usb4java.libusb.Device;
+import org.libusb4java.Device;
 
 /**
  * Adds biasgen functionality to base interface via Cypress FX2.

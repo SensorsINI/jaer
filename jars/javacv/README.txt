@@ -1,11 +1,13 @@
 =JavaCV=
 
 ==Introduction==
-JavaCV first provides wrappers to commonly used libraries by researchers in the field of computer vision: [http://opencv.willowgarage.com/ OpenCV], [http://www.ffmpeg.org/ FFmpeg], [http://damien.douxchamps.net/ieee1394/libdc1394/ libdc1394], [http://www.ptgrey.com/products/pgrflycapture/ PGR FlyCapture], [http://openkinect.org/ OpenKinect], [http://muonics.net/school/spring05/videoInput/ videoInput], and [http://studierstube.icg.tugraz.at/handheld_ar/artoolkitplus.php ARToolKitPlus]. The classes found under the `com.googlecode.javacv.cpp` package namespace expose their complete APIs. Moreover, utility classes make their functionality easier to use on the Java platform, including Android.
+JavaCV first provides wrappers to commonly used libraries by researchers in the field of computer vision: [http://opencv.org/ OpenCV], [http://ffmpeg.org/ FFmpeg], [http://damien.douxchamps.net/ieee1394/libdc1394/ libdc1394], [http://www.ptgrey.com/products/pgrflycapture/ PGR FlyCapture], [http://openkinect.org/ OpenKinect], [http://muonics.net/school/spring05/videoInput/ videoInput], and [http://studierstube.icg.tugraz.at/handheld_ar/artoolkitplus.php ARToolKitPlus]. The classes found under the `com.googlecode.javacv.cpp` package namespace expose their complete APIs. Moreover, utility classes make their functionality easier to use on the Java platform, including Android.
 
 JavaCV also comes with hardware accelerated full-screen image display (`CanvasFrame` and `GLCanvasFrame`), easy-to-use methods to execute code in parallel on multiple cores (`Parallel`), user-friendly geometric and color calibration of cameras and projectors (`GeometricCalibrator`, `ProCamGeometricCalibrator`, `ProCamColorCalibrator`), detection and matching of feature points (`ObjectFinder`), a set of classes that implement direct image alignment of projector-camera systems (mainly `GNImageAligner`, `ProjectiveTransformer`, `ProjectiveColorTransformer`, `ProCamTransformer`, and `ReflectanceInitializer`), a blob analysis package (`Blobs`), as well as miscellaneous functionality in the `JavaCV` class. Some of these classes also have an OpenCL and OpenGL counterpart, their names ending with `CL` or starting with `GL`, i.e.: `JavaCVCL`, `GLCanvasFrame`, etc.
 
 To learn how to use the API, since documentation currently lacks, please refer to the [#Quick_Start_for_OpenCV_and_FFmpeg] section below as well as the [http://code.google.com/p/javacv/source/browse/samples/ sample programs], including two for Android (`FacePreview.java` and `RecordActivity.java`), also found in the `samples` directory. You may also find it useful to refer to the source code of [http://code.google.com/p/javacv/source/browse?repo=procamcalib ProCamCalib] and [http://code.google.com/p/javacv/source/browse?repo=procamtracker ProCamTracker] as well as [http://code.google.com/p/javacv/source/browse?repo=examples Examples ported from OpenCV2 Cookbook] and the associated [http://code.google.com/p/javacv/wiki/OpenCV2_Cookbook_Examples Wiki pages].
+
+Please keep me informed of any updates or fixes you make to the code so that I may integrate them into the next release. Thank you! And feel free to ask questions on [http://groups.google.com/group/javacv the mailing list] if you encounter any problems with the software! I am sure it is far from perfect...
 
 
 ==Required Software==
@@ -15,35 +17,36 @@ To use JavaCV, you will need to download and install the following software:
   * Sun JDK  http://www.oracle.com/technetwork/java/javase/downloads/  or
   * IBM JDK  http://www.ibm.com/developerworks/java/jdk/  or
   * Java SE for Mac OS X  http://developer.apple.com/java/  etc.
- * OpenCV 2.4.5  http://sourceforge.net/projects/opencvlibrary/files/
+ * OpenCV 2.4.8  http://sourceforge.net/projects/opencvlibrary/files/
   * Precompiled and prepackaged CPPJARs for Linux, Mac OS X, Windows, and Android:
     * http://code.google.com/p/javacv/downloads/list
 
 And please make sure your Java and OpenCV have the same bitness: *32-bit and 64-bit modules do not mix under any circumstances*. Further, although not always required, some functionality of JavaCV also relies on:
- * FFmpeg 1.2.x  http://ffmpeg.org/download.html
+ * FFmpeg 2.1.x  http://ffmpeg.org/download.html
   * Precompiled and prepackaged CPPJARs for Linux, Mac OS X, Windows, and Android:
     * http://code.google.com/p/javacv/downloads/list
  * libdc1394 2.1.x or 2.2.x  http://sourceforge.net/projects/libdc1394/files/
- * PGR FlyCapture 1.7~2.3 (Windows only)  http://www.ptgrey.com/products/pgrflycapture/
+ * PGR FlyCapture 1.7 or newer (Windows only)  http://www.ptgrey.com/products/pgrflycapture/
  * OpenKinect  http://openkinect.org/
  * CL Eye Platform SDK (Windows only)  http://codelaboratories.com/downloads/
  * Android SDK API 8 or newer  http://developer.android.com/sdk/
  * JOCL and JOGL from JogAmp  http://jogamp.org/
- * ARToolKitPlus 2.1.1t  http://code.google.com/p/javacv/downloads/list
+ * ARToolKitPlus 2.3.0  https://launchpad.net/artoolkitplus
 
-To modify the source code, please note that the project files were created for:
+Finally, because we are dealing with native code, bugs can easily crash the virtual machine. Luckily, Java provides some tools to help us debug under those circumstances:
+ * Troubleshooting Guide for HotSpot VM  http://docs.oracle.com/javase/7/docs/webnotes/tsg/TSG-VM/html/
+
+
+==Build Instructions==
+To rebuild the source code, please note that the project files were created for:
  * Maven 2 or 3  http://maven.apache.org/download.html
- * JavaCPP 0.5  http://code.google.com/p/javacpp/
+ * JavaCPP 0.7  http://code.google.com/p/javacpp/
 
-To rebuild, simply call the usual `mvn install` command for both JavaCPP and JavaCV. By default, all the dependencies listed above are NOT required, except for OpenCV and a C++ compiler for JavaCPP, whose command line options can be passed via the `javacpp.options` Maven property, such as [http://code.google.com/p/javacpp/#Instructions_for_Android those required for Android]. Please refer to the comments inside the `pom.xml` file for further details.
-
-Please keep me informed of any updates or fixes you make to the code so that I may integrate them into the next release. Thank you!
-
-And feel free to ask questions on [http://groups.google.com/group/javacv the mailing list] if you encounter any problems with the software! I am sure it is far from perfect...
+Once installed, simply call the usual `mvn install` command for both JavaCPP and JavaCV. By default, all the dependencies listed above are NOT required, except for OpenCV and a C++ compiler for JavaCPP, whose command line options can be passed via the `javacpp.options` Maven property, such as [http://code.google.com/p/javacpp/#Instructions_for_Android those required for Android]. Please refer to the comments inside the `pom.xml` file for further details.
 
 
 ==Quick Start for OpenCV and FFmpeg==
-First, put all the JAR files of JavaCV (`javacpp.jar`, `javacv.jar`, and `javacv-*.jar`), of OpenCV (`opencv-2.4.5*.jar`), and of FFmpeg (`ffmpeg-1.2*.jar`) somewhere in your CLASSPATH. Or point your `pom.xml` file to the Maven repository http://maven2.javacv.googlecode.com/git/, and make sure that the library files of OpenCV and FFmpeg (`*.so`, `*.dylib`, or `*.dll`) can be found either in their default installation directories or in the system library PATH, which under Windows includes the current working directory. (For answers to problems frequently encountered with OpenCV on the Windows platform, please refer to [http://code.google.com/p/javacv/wiki/Windows7AndOpenCV Common issues with OpenCV under Windows 7].) Here are some more specific instructions for common cases:
+First, put all the JAR files of JavaCV (`javacpp.jar`, `javacv.jar`, and `javacv-*.jar`), of OpenCV (`opencv-*.jar`), and of FFmpeg (`ffmpeg-*.jar`) somewhere in your CLASSPATH. Or point your `pom.xml` file to the Maven repository http://maven2.javacv.googlecode.com/git/, and make sure that the library files of OpenCV and FFmpeg (`*.so`, `*.dylib`, or `*.dll`) can be found either in their default installation directories or in the system library PATH, which under Windows includes the current working directory. (For answers to problems frequently encountered with OpenCV on the Windows platform, please refer to [http://code.google.com/p/javacv/wiki/Windows7AndOpenCV Common issues with OpenCV under Windows 7].) Here are some more specific instructions for common cases:
 
 NetBeans (Java SE 6 or 7):
  # In the Projects window, right-click the Libraries node of your project, and select "Add JAR/Folder...".
@@ -57,13 +60,14 @@ Eclipse (Android 2.2 or newer):
  # Follow the instructions on this page: http://developer.android.com/training/basics/firstapp/
  # Go to File > New > Folder, select your project as parent folder, type "libs/armeabi" as Folder name, and click Finish.
  # Copy `javacpp.jar` and `javacv.jar` into the newly created "libs" folder.
- # Extract all the `*.so` files from `javacv-android-arm.jar`, `opencv-2.4.5-android-arm.jar`, and `ffmpeg-1.2-android-arm.jar` directly into the newly created "libs/armeabi" folder, without creating any of the subdirectories found in the JAR files.
+ # Extract all the `*.so` files from `javacv-android-arm.jar`, `opencv-2.4.8-android-arm.jar`, and `ffmpeg-2.1.1-android-arm.jar` directly into the newly created "libs/armeabi" folder, without creating any of the subdirectories found in the JAR files.
  # Navigate to Project > Properties > Java Build Path > Libraries and click "Add JARs...".
  # Select both `javacpp.jar` and `javacv.jar` from the newly created "libs" folder.
 
 After that, the wrapper classes for OpenCV and FFmpeg can automatically access all of their C/C++ APIs:
  * [http://docs.opencv.org/ OpenCV documentation]
  * [http://ffmpeg.org/doxygen/ FFmpeg documentation]
+
 The class definitions are basically ports to Java of the original header files in C, plus the missing functionality exposed only by the C++ API of OpenCV, and I deliberately decided to keep as much of the original syntax as possible. For example, here is a method that tries to load an image file, smooth it, and save it back to disk:
 
 {{{
@@ -102,7 +106,7 @@ public class Demo {
         if (args.length > 0) {
             classifierName = args[0];
         } else {
-            URL url = new URL("https://raw.github.com/Itseez/opencv/master/data/haarcascades/haarcascade_frontalface_alt.xml");
+            URL url = new URL("https://raw.github.com/Itseez/opencv/2.4/data/haarcascades/haarcascade_frontalface_alt.xml");
             File file = Loader.extractResource(url, null, "classifier", ".xml");
             file.deleteOnExit();
             classifierName = file.getAbsolutePath();
@@ -220,6 +224,39 @@ This project was conceived at the Okutomi & Tanaka Laboratory, Tokyo Institute o
 
 
 ==Changes==
+
+===January 6, 2014 version 0.7===
+ * Upgraded support to OpenCV 2.4.8
+ * Upgraded supported FFmpeg API to the 2.1 release branch
+ * Updated `freenect` to reflect the latest changes of OpenKinect's master branch
+ * Updated `videoInput` to reflect the latest changes in the "update2013" branch
+ * Added `Frame.opaque` field to give access to the raw `AVFrame` in the case of `FFmpegFrameGrabber` (issue #399)
+ * Added new `FFmpegFrameGrabber.grabKeyFrame()` method to grab key frames (I-frames) directly (issue #312)
+ * `VideoInputFrameGrabber` now uses 640x480 as default image size to prevent "videoInput.getPixels() Error: Could not get pixels."
+ * Fixed `FFmpegFrameGrabber.setTimestamp()` not working for streams with audio (issue #398)
+ * Fixed wrong `haarcascade_frontalface_alt.xml` file getting downloaded by the `Demo` class (issue #402)
+ * Added a `Frame.sampleRate` field to allow audio samples to be resampled by `FFmpegFrameRecorder` (issue #388)
+ * Incorporated `IPCameraFrameGrabber` from Greg Perry (issue #384)
+ * Fixed thread safety issues with FFmpeg in `FFmpegFrameGrabber` and `FFmpegFrameRecorder` (issue #377)
+ * Fixed memory leak in the `MotionDetector.java` sample file (issue #372)
+ * New `videoCodecName` and `audioCodecName` properties to allow users of `FFmpegFrameRecorder` to use codecs such as "libx264rgb" (issue #369)
+
+===September 15, 2013 version 0.6===
+ * Upgraded supported FFmpeg API to the 2.0 release branch (with Java interface files now based on code automatically produced by [https://code.google.com/p/javacpp/wiki/Presets JavaCPP Presets])
+ * Fixed `FFmpegFrameGrabber.getFrameNumber()`
+ * Upgraded support to OpenCV 2.4.6
+ * Fixed callbacks when used with custom class loaders such as with Web containers
+ * Upgraded to ARToolKitPlus 2.3.0 (issue #234)
+ * Fixed drawing issues with `MarkerDetector.draw()`
+ * Fixed `FFmpegFrameGrabber.getTimestamp()` not returning values for audio frames (issue #328)
+ * Added new `Frame.keyFrame` field returned by `FFmpegFrameGrabber.grabFrame()` to know when a grabbed frame is a key frame or not (issue #312)
+ * Worked around problem in `samples/RecordActivity.java` that would happen when trying to record a frame with an invalid timestamp (issue #313)
+ * Fixed potential resource leak that could occur after `FFmpegFrameRecorder` throwing an `Exception`
+ * Fixed `FFmpegFrameGrabber` not returning the last few frames of video streams (issue #315)
+ * Fixed wrong dependencies of OpenCV preventing correct loading (issue #304)
+ * Renamed `FrameRecorder.record(Buffer[] samples)` to a cleaner `record(Buffer ... samples)` (issue #303)
+ * Fixed `FFmpegFrameRecorder` not flushing buffers on `stop()` (issue #302)
+
 ===April 7, 2013 version 0.5===
  * Upgraded support to OpenCV 2.4.5
  * Upgraded supported FFmpeg API to the 1.2 release branch
@@ -566,7 +603,7 @@ Initial release
 
 
 ----
-Copyright (C) 2009-2013 Samuel Audet <samuel.audet@gmail.com>
+Copyright (C) 2009-2014 Samuel Audet <samuel.audet@gmail.com>
 Project site: http://code.google.com/p/javacv/
 
 Licensed under the GNU General Public License version 2 (GPLv2) with Classpath exception.

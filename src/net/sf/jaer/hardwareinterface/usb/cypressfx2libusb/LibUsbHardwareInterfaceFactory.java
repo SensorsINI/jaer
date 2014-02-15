@@ -12,12 +12,11 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
-
-import de.ailis.usb4java.libusb.Device;
-import de.ailis.usb4java.libusb.DeviceDescriptor;
-import de.ailis.usb4java.libusb.DeviceHandle;
-import de.ailis.usb4java.libusb.DeviceList;
-import de.ailis.usb4java.libusb.LibUsb;
+import org.libusb4java.Device;
+import org.libusb4java.DeviceDescriptor;
+import org.libusb4java.DeviceHandle;
+import org.libusb4java.DeviceList;
+import org.libusb4java.LibUsb;
 
 public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryInterface {
 	private final static Logger log = Logger.getLogger("LibUsbHardwareInterfaceFactory");
@@ -90,13 +89,12 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 		final DeviceList devList = new DeviceList();
 		LibUsb.getDeviceList(null, devList);
 
+		final DeviceDescriptor devDesc = new DeviceDescriptor();
+
 		for (final Device dev : devList) {
-			final DeviceDescriptor devDesc = new DeviceDescriptor();
 			LibUsb.getDeviceDescriptor(dev, devDesc);
 
 			final ImmutablePair<Short, Short> vidPid = new ImmutablePair<>(devDesc.idVendor(), devDesc.idProduct());
-
-			LibUsb.freeDeviceDescriptor(devDesc);
 
 			// Check that the device is not already bound to any other driver.
 			final DeviceHandle devHandle = new DeviceHandle();
@@ -174,8 +172,6 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 		LibUsb.getDeviceDescriptor(dev, devDesc);
 
 		final ImmutablePair<Short, Short> vidPid = new ImmutablePair<>(devDesc.idVendor(), devDesc.idProduct());
-
-		LibUsb.freeDeviceDescriptor(devDesc);
 
 		final Class<?> cls = vidPidToClassMap.get(vidPid);
 
