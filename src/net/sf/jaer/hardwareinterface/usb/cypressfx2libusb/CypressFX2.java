@@ -46,11 +46,11 @@ import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
 import net.sf.jaer.util.HexFileParser;
 import net.sf.jaer.util.HexString;
 
-import org.libusb4java.Device;
-import org.libusb4java.DeviceDescriptor;
-import org.libusb4java.DeviceHandle;
-import org.libusb4java.LibUsb;
-import org.libusb4java.utils.BufferUtils;
+import org.usb4java.Device;
+import org.usb4java.DeviceDescriptor;
+import org.usb4java.DeviceHandle;
+import org.usb4java.LibUsb;
+import org.usb4java.utils.BufferUtils;
 
 /**
  * Devices that use the CypressFX2 and the USBIO driver, e.g. the DVS retinas,

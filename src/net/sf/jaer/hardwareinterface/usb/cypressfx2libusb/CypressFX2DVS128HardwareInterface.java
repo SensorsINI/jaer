@@ -17,7 +17,8 @@ import javax.swing.JOptionPane;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.HasUpdatableFirmware;
-import org.libusb4java.Device;
+
+import org.usb4java.Device;
 
 /**
  * The hardware interface for the DVS128 (second Tmpdiff128 board, with CPLD) retina boards.

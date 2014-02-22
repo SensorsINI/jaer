@@ -13,7 +13,8 @@ import java.nio.ByteBuffer;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import org.libusb4java.Device;
+
+import org.usb4java.Device;
 
 /**
  * The hardware interface for the Tmpdiff128 (original) retina boards.
