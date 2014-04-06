@@ -1,20 +1,15 @@
 /*
- * CypressFX2Biasgen.java
+ * CypressFX3Biasgen.java
  *
  * Created on 23 Jan 2008
  */
-package net.sf.jaer.hardwareinterface.usb.cypressfx2libusb;
+package net.sf.jaer.hardwareinterface.usb.cypressfx3libusb;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.LineNumberReader;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.concurrent.ArrayBlockingQueue;
-
-import javax.swing.ProgressMonitor;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -25,19 +20,19 @@ import eu.seebetter.ini.chips.ApsDvsChip;
 import eu.seebetter.ini.chips.sbret10.IMUSample;
 
 /**
- * Adds functionality of apsDVS sensors to based CypressFX2Biasgen class. The
+ * Adds functionality of apsDVS sensors to based CypressFX3Biasgen class. The
  * key method is translateEvents that parses
  * the data from the sensor to construct jAER raw events.
  *
  * @author Christian/Tobi
  */
-public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
+public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 	/** The USB product ID of this device */
-	static public final short PID = (short) 0x840D;
-	static public final short DID = (short) 0x0002;
+	static public final short PID = (short) 0x841A;
+	static public final short DID = (short) 0x0000;
 
-	private boolean translateRowOnlyEvents = CypressFX2.prefs.getBoolean(
+	private boolean translateRowOnlyEvents = CypressFX3.prefs.getBoolean(
 		"ApsDvsHardwareInterface.translateRowOnlyEvents", false);
 
 	private volatile ArrayBlockingQueue<IMUSample> imuSampleQueue; // this queue
@@ -49,8 +44,8 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 																	// sent to
 																	// aeReader
 
-	/** Creates a new instance of CypressFX2Biasgen */
-	public ApsDvsHardwareInterface(final Device device) {
+	/** Creates a new instance of CypressFX3Biasgen */
+	public DAViSFX3HardwareInterface(final Device device) {
 		super(device);
 		imuSampleQueue = new ArrayBlockingQueue<IMUSample>(128);
 	}
@@ -70,129 +65,9 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 		}
 	}
 
-	private byte[] parseHexData(final String firmwareFile) throws IOException {
-
-		byte[] fwBuffer;
-		// load firmware file (this is binary file of 8051 firmware)
-
-		CypressFX2.log.info("reading firmware file " + firmwareFile);
-		FileReader reader;
-		LineNumberReader lineReader;
-		String line;
-		int length;
-		// load firmware file (this is a lattice c file)
-		try {
-
-			reader = new FileReader(firmwareFile);
-			lineReader = new LineNumberReader(reader);
-
-			line = lineReader.readLine();
-			while (!line.startsWith("xdata")) {
-				line = lineReader.readLine();
-			}
-			final int scIndex = line.indexOf(";");
-			final int eqIndex = line.indexOf("=");
-			int index = 0;
-			length = Integer.parseInt(line.substring(eqIndex + 2, scIndex));
-			// log.info("File length: " + length);
-			String[] tokens;
-			fwBuffer = new byte[length];
-			Short value;
-			while (!line.endsWith("};")) {
-				line = lineReader.readLine();
-				tokens = line.split("0x");
-				// System.out.println(line);
-				for (int i = 1; i < tokens.length; i++) {
-					value = Short.valueOf(tokens[i].substring(0, 2), 16);
-					fwBuffer[index++] = value.byteValue();
-					// System.out.println(fwBuffer[index-1]);
-				}
-			}
-			// log.info("index" + index);
-
-			lineReader.close();
-		}
-		catch (final IOException e) {
-			close();
-			CypressFX2.log.warning(e.getMessage());
-			throw new IOException("can't load binary Cypress FX2 firmware file " + firmwareFile);
-		}
-		return fwBuffer;
-	}
-
 	@Override
 	synchronized public void writeCPLDfirmware(final String svfFile) throws HardwareInterfaceException {
-		byte[] bytearray;
-
-		try {
-			bytearray = parseHexData(svfFile);
-		}
-		catch (final Exception e) {
-			e.printStackTrace();
-			return;
-		}
-
-		ProgressMonitor progressMonitor = makeProgressMonitor("Writing CPLD configuration - do not unplug", 0,
-			bytearray.length);
-
-		final int numChunks = bytearray.length / MAX_CONTROL_XFER_SIZE; // this
-																		// is
-																		// number
-																		// of
-																		// full
-																		// chunks
-																		// to
-																		// send
-		int addr = 0;
-
-		for (int i = 0; i < numChunks; i++) {
-			sendVendorRequest(CypressFX2.VR_DOWNLOAD_FIRMWARE, (short) addr, (short) 0, bytearray, i
-				* MAX_CONTROL_XFER_SIZE, MAX_CONTROL_XFER_SIZE);
-
-			addr += MAX_CONTROL_XFER_SIZE; // change address of firmware
-											// location
-
-			if (progressMonitor.isCanceled()) {
-				progressMonitor = makeProgressMonitor("Writing CPLD configuration - do not unplug", 0, bytearray.length);
-			}
-
-			progressMonitor.setProgress(addr);
-			progressMonitor.setNote(String.format("sent %d of %d bytes of CPLD configuration", addr, bytearray.length));
-		}
-
-		// now send final (short) chunk
-		final int numBytesLeft = bytearray.length % MAX_CONTROL_XFER_SIZE; // remainder
-
-		if (numBytesLeft > 0) {
-			// send remaining part of firmware
-			sendVendorRequest(VR_EEPROM, (short) addr, (short) 0, bytearray, numChunks * MAX_CONTROL_XFER_SIZE,
-				numBytesLeft);
-		}
-
-		try {
-			sendVendorRequest(CypressFX2.VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 1);
-		}
-		catch (final HardwareInterfaceException e) {
-			try {
-				Thread.sleep(2000);
-				open();
-			}
-			catch (final Exception ee) {
-			}
-		}
-
-		final ByteBuffer dataBuffer = sendVendorRequestIN(CypressFX2.VR_DOWNLOAD_FIRMWARE, (short) 0, (short) 0, 10);
-
-		if (dataBuffer.get(1) != 0) {
-			final int dataindex = (dataBuffer.get(6) << 24) | (dataBuffer.get(7) << 16) | (dataBuffer.get(8) << 8)
-				| (dataBuffer.get(9));
-			final int algoindex = (dataBuffer.get(2) << 24) | (dataBuffer.get(3) << 16) | (dataBuffer.get(4) << 8)
-				| (dataBuffer.get(5));
-			throw new HardwareInterfaceException("Unable to program CPLD, error code: " + dataBuffer.get(1)
-				+ " algo index: " + algoindex + " data index " + dataindex);
-		}
-
-		progressMonitor.close();
+		// Firmware upload via Flashy.
 	}
 
 	/**
@@ -226,7 +101,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 	 */
 	public void setTranslateRowOnlyEvents(final boolean translateRowOnlyEvents) {
 		this.translateRowOnlyEvents = translateRowOnlyEvents;
-		CypressFX2.prefs.putBoolean("ApsDvsHardwareInterface.translateRowOnlyEvents", translateRowOnlyEvents);
+		CypressFX3.prefs.putBoolean("ApsDvsHardwareInterface.translateRowOnlyEvents", translateRowOnlyEvents);
 	}
 
 	public boolean isTranslateRowOnlyEvents() {
@@ -245,7 +120,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 	 * This reader understands the format of raw USB data and translates to the
 	 * AEPacketRaw
 	 */
-	public class RetinaAEReader extends CypressFX2.AEReader implements PropertyChangeListener {
+	public class RetinaAEReader extends CypressFX3.AEReader implements PropertyChangeListener {
 		private static final int NONMONOTONIC_WARNING_COUNT = 30; // how many
 																	// warnings
 																	// to print
@@ -254,17 +129,17 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 																	// timestamp
 		public static final int IMU_POLLING_INTERVAL_EVENTS = 100;
 
-		public RetinaAEReader(final CypressFX2 cypress) throws HardwareInterfaceException {
+		public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
 			super(cypress);
 			resetFrameAddressCounters();
-			getSupport().addPropertyChangeListener(CypressFX2.PROPERTY_CHANGE_ASYNC_STATUS_MSG, this);
+			getSupport().addPropertyChangeListener(CypressFX3.PROPERTY_CHANGE_ASYNC_STATUS_MSG, this);
 		}
 
 		/**
 		 * Method to translate the UsbIoBuffer for the DVS320 sensor which uses
 		 * the 32 bit address space.
 		 * <p>
-		 * It has a CPLD to timestamp events and uses the CypressFX2 in slave
+		 * It has a CPLD to timestamp events and uses the CypressFX3 in slave
 		 * FIFO mode.
 		 * <p>
 		 * The DVS320 has a burst mode readout mechanism that outputs a row
@@ -619,7 +494,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 				} // sync on aePacketRawPool
 			}
 			catch (final java.lang.IndexOutOfBoundsException e) {
-				CypressFX2.log.warning(e.toString());
+				CypressFX3.log.warning(e.toString());
 			}
 		}
 
@@ -641,12 +516,12 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 					imuSampleQueue.put(sample);
 				}
 				catch (final InterruptedException ex) {
-					CypressFX2.log.warning("putting IMUSample to queue was interrupted");
+					CypressFX3.log.warning("putting IMUSample to queue was interrupted");
 				}
 
 			}
 			catch (final ClassCastException e) {
-				CypressFX2.log.warning("receieved wrong type of data for the IMU: " + e.toString());
+				CypressFX3.log.warning("receieved wrong type of data for the IMU: " + e.toString());
 			}
 		}
 	}

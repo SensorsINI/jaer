@@ -260,12 +260,13 @@ public class IMUSample extends ApsDvsEvent {
 		setFromUsbIoBuf(buf);
 	}
 
-	public IMUSample(final ByteBuffer buf, final int timestamp) {
-		setFromLibUsbBuf(buf, timestamp);
+	public IMUSample(final ByteBuffer buf) {
+		this();
+		setFromLibUsbBuf(buf);
 	}
 
-	private void setFromLibUsbBuf(final ByteBuffer buf, final int ts) {
-		if (buf.limit() != 15) {
+	private void setFromLibUsbBuf(final ByteBuffer buf) {
+		if (buf.limit() != 19) {
 			IMUSample.log.warning("wrong number of bytes transferred, got " + buf.limit());
 			return;
 		}
@@ -277,6 +278,9 @@ public class IMUSample extends ApsDvsEvent {
 		}
 
 		buf.position(1);
+		timestampUs = buf.asIntBuffer().get(0);
+
+		buf.position(5);
 		buf.asShortBuffer().get(data, 0, 7);
 
 		// see page 7 of RM-MPU-6100A.pdf (register map for MPU6150 IMU)

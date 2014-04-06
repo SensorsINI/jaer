@@ -34,7 +34,7 @@ import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import ch.unizh.ini.jaer.config.MuxControlPanel;
 import ch.unizh.ini.jaer.config.OutputMap;
-import ch.unizh.ini.jaer.config.boards.LatticeMachFX2config;
+import ch.unizh.ini.jaer.config.boards.LatticeLogicConfig;
 import ch.unizh.ini.jaer.config.cpld.CPLDConfigValue;
 import ch.unizh.ini.jaer.config.dac.DAC_AD5391;
 import ch.unizh.ini.jaer.config.dac.DACchannel;
@@ -50,13 +50,13 @@ import ch.unizh.ini.jaer.config.onchip.OutputMux;
  *
  * @author Christian
  */
-public class SeeBetter30config extends LatticeMachFX2config{
-    
+public class SeeBetter30config extends LatticeLogicConfig{
+
     protected ShiftedSourceBiasCF ssn, ssp;
-    
+
     JPanel configPanel;
     JTabbedPane configTabbedPane;
-    
+
     //*********** FX2 *********************
     // portA
     protected PortBit runCpld = new PortBit(chip, "a3", "runCpld", "(A3) Set high to run CPLD which enables event capture, low to hold logic in reset", true);
@@ -74,7 +74,7 @@ public class SeeBetter30config extends LatticeMachFX2config{
         this.chip = (AEChip)chip;
         setName("SeeBetter30 Configuration");
 
-        
+
         // port bits
         addConfigValue(nChipReset);
         addConfigValue(powerDown);
@@ -108,10 +108,10 @@ public class SeeBetter30config extends LatticeMachFX2config{
         setPotArray(new AddressedIPotArray(this));
 
         try {
-            addAIPot("VBP0,p,normal,photoreceptor"); 
+            addAIPot("VBP0,p,normal,photoreceptor");
             addAIPot("VBP1,p,normal,source follower1");
             addAIPot("VBP2,p,normal,first stage amplifier");
-            addAIPot("VBP3,p,normal,second stage amplifier"); 
+            addAIPot("VBP3,p,normal,second stage amplifier");
             addAIPot("VBP4,p,normal,comparator");
             addAIPot("VBN1,n,normal,source follower2");
             addAIPot("VBN2,n,normal,AER delay");
@@ -131,7 +131,7 @@ public class SeeBetter30config extends LatticeMachFX2config{
         } catch (Exception e) {
             throw new Error(e.toString());
         }
-        
+
         setDACchannelArray(new DACchannelArray(this));
         setDAC(new DAC_AD5391(0.0f, 5.0f, 3.3f));
 
@@ -145,7 +145,7 @@ public class SeeBetter30config extends LatticeMachFX2config{
         } catch (Exception e) {
             throw new Error(e.toString());
         }
-        
+
         // on-chip configuration chain
         chipConfigChain = new SeeBetter30ChipConfigChain(chip);
         chipConfigChain.addObserver(this);
@@ -160,17 +160,17 @@ public class SeeBetter30config extends LatticeMachFX2config{
             Logger.getLogger(SeeBetter30.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
+
     /** Momentarily puts the pixels and on-chip AER logic in reset and then releases the reset.
-    * 
+    *
     */
     protected void resetChip() {
         log.info("resetting AER communication");
         nChipReset.set(false);
         nChipReset.set(true);
     }
-    
-    
+
+
     /**
     *
     * Overrides the default method to addConfigValue the custom control panel for configuring the SBret10 output muxes
@@ -200,7 +200,7 @@ public class SeeBetter30config extends LatticeMachFX2config{
 
         configTabbedPane = new JTabbedPane();
         setBatchEditOccurring(true); // stop updates on building panel
-        
+
         //biasgen
         JPanel combinedBiasShiftedSourcePanel = new JPanel();
         combinedBiasShiftedSourcePanel.setLayout(new BoxLayout(combinedBiasShiftedSourcePanel, BoxLayout.Y_AXIS));
@@ -208,13 +208,13 @@ public class SeeBetter30config extends LatticeMachFX2config{
         combinedBiasShiftedSourcePanel.add(new ShiftedSourceControlsCF(ssn));
         combinedBiasShiftedSourcePanel.add(new ShiftedSourceControlsCF(ssp));
         configTabbedPane.addTab("Bias Current Control", combinedBiasShiftedSourcePanel);
-        
+
         //DAC
         JPanel dacPanel = new JPanel();
         dacPanel.setLayout(new BoxLayout(dacPanel, BoxLayout.Y_AXIS));
         dacPanel.add(new DACpanel(dacChannels));
         configTabbedPane.addTab("DAC Control", dacPanel);
-        
+
         //muxes
         configTabbedPane.addTab("Debug Output MUX control", chipConfigChain.buildMuxControlPanel());
 
@@ -243,7 +243,7 @@ public class SeeBetter30config extends LatticeMachFX2config{
         setBatchEditOccurring(false);
         return configPanel;
     }
-    
+
     /** The central point for communication with HW from biasgen. All objects in SeeBetterConfig are Observables
     * and addConfigValue SeeBetterConfig.this as Observer. They then call notifyObservers when their state changes.
     * Objects such as ADC store preferences for ADC, and update should update the hardware registers accordingly.
@@ -262,12 +262,12 @@ public class SeeBetter30config extends LatticeMachFX2config{
         }
 //            log.info("update with " + observable);
         try {
-            if (observable instanceof IPot || observable instanceof VPot) { // must send all of the onchip shift register values to replace shift register contents
+            if ((observable instanceof IPot) || (observable instanceof VPot)) { // must send all of the onchip shift register values to replace shift register contents
                 sendOnChipConfig();
             } else if (observable instanceof DACchannel){
                 DACchannel p = (DACchannel) observable;
                 sendDACchannel(p);
-            } else if (observable instanceof OutputMux || observable instanceof OnchipConfigBit) {
+            } else if ((observable instanceof OutputMux) || (observable instanceof OnchipConfigBit)) {
                 sendOnChipConfigChain();
             } else if (observable instanceof SeeBetter30ChipConfigChain) {
                 sendOnChipConfigChain();
@@ -283,7 +283,7 @@ public class SeeBetter30config extends LatticeMachFX2config{
                 sendFx2ConfigCommand(CMD_SETBIT, b.getPortbit(), bytes); // sends value=CMD_SETBIT, index=portbit with (port(b=0,d=1,e=2)<<8)|bitmask(e.g. 00001000) in MSB/LSB, byte[0]=value (1,0)
             } else if (observable instanceof CPLDConfigValue) {
                     sendCPLDConfig();
-            } else if (observable instanceof AddressedIPot) { 
+            } else if (observable instanceof AddressedIPot) {
                 sendAIPot((AddressedIPot)observable);
             } else {
                 super.update(observable, object);  // super (SeeBetterConfig) handles others, e.g. masterbias
@@ -301,13 +301,13 @@ public class SeeBetter30config extends LatticeMachFX2config{
     * Formats bits represented in a string as '0' or '1' as a byte array to be sent over the interface to the firmware, for loading
     * in big endian bit order, in order of the bytes sent starting with byte 0.
     * <p>
-    * Because the firmware writes integral bytes it is important that the 
-    * bytes sent to the device are padded with leading bits 
+    * Because the firmware writes integral bytes it is important that the
+    * bytes sent to the device are padded with leading bits
     * (at msbs of first byte) that are finally shifted out of the on-chip shift register.
-    * 
+    *
     * Therefore <code>bitString2Bytes</code> should only be called ONCE, after the complete bit string has been assembled, unless it is known
     * the other bits are an integral number of bytes.
-    * 
+    *
     * @param bitString in msb to lsb order from left end, where msb will be in msb of first output byte
     * @return array of bytes to send
     */
@@ -328,12 +328,12 @@ public class SeeBetter30config extends LatticeMachFX2config{
         ArrayList<OutputMux> muxes = new ArrayList();
         MuxControlPanel controlPanel = null;
 
-        public SeeBetter30ChipConfigChain(Chip chip){  
+        public SeeBetter30ChipConfigChain(Chip chip){
             super(chip);
             this.sbChip = chip;
 
             TOTAL_CONFIG_BITS = 24;
-            
+
             hasPreferenceList.add(this);
             configBits = new OnchipConfigBit[4];
             configBits[0] = S1;
@@ -343,9 +343,9 @@ public class SeeBetter30config extends LatticeMachFX2config{
             for (OnchipConfigBit b : configBits) {
                 b.addObserver(this);
             }
-            
-            
-            muxes.addAll(Arrays.asList(bmuxes)); 
+
+
+            muxes.addAll(Arrays.asList(bmuxes));
             muxes.addAll(Arrays.asList(dmuxes)); // 5 digital muxes, first in list since at end of chain - bits must be sent first, before any biasgen bits
             muxes.addAll(Arrays.asList(amuxes)); // finally send the 5 voltage muxes
 
@@ -436,11 +436,11 @@ public class SeeBetter30config extends LatticeMachFX2config{
                 amuxes[i].put(15, null);
             }
             amuxes[1].put(15, "nTimeOut");
-            
+
             for (int i = 4; i < 16; i++) {
                 amuxes[0].put(i, null);
             }
-            
+
             amuxes[0].put(0, "IOUTNN");
             amuxes[0].put(1, "IOUTNC");
             amuxes[0].put(2, "IOUTPN");
@@ -469,7 +469,7 @@ public class SeeBetter30config extends LatticeMachFX2config{
         class AnalogOutputMux extends OutputMux {
 
             AnalogOutputMux(int n) {
-                super(sbChip, 4, 16, (OutputMap)(new VoltageOutputMap()));
+                super(sbChip, 4, 16, (new VoltageOutputMap()));
                 setName("Voltages" + n);
             }
         }
@@ -477,7 +477,7 @@ public class SeeBetter30config extends LatticeMachFX2config{
         class DigitalOutputMux extends OutputMux {
 
             DigitalOutputMux(int n) {
-                super(sbChip, 4, 16, (OutputMap)(new DigitalOutputMap()));
+                super(sbChip, 4, 16, (new DigitalOutputMap()));
                 setName("LogicSignals" + n);
             }
         }
@@ -510,8 +510,8 @@ public class SeeBetter30config extends LatticeMachFX2config{
 
         String getConfigBitString() {
             StringBuilder s = new StringBuilder();
-            for (int i = 0; i < TOTAL_CONFIG_BITS - configBits.length; i++) {
-                s.append("0"); 
+            for (int i = 0; i < (TOTAL_CONFIG_BITS - configBits.length); i++) {
+                s.append("0");
             }
             for (int i = configBits.length - 1; i >= 0; i--) {
                 s.append(configBits[i].isSet() ? "1" : "0");

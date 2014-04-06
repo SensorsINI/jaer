@@ -45,8 +45,7 @@ import net.sf.jaer.util.PropertyTooltipSupport;
 import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
 import ch.unizh.ini.jaer.config.MuxControlPanel;
 import ch.unizh.ini.jaer.config.OutputMap;
-import ch.unizh.ini.jaer.config.boards.LatticeMachFX2config;
-import ch.unizh.ini.jaer.config.cpld.CPLDBit;
+import ch.unizh.ini.jaer.config.boards.LatticeLogicConfig;
 import ch.unizh.ini.jaer.config.cpld.CPLDConfigValue;
 import ch.unizh.ini.jaer.config.cpld.CPLDInt;
 import ch.unizh.ini.jaer.config.fx2.PortBit;
@@ -61,7 +60,7 @@ import ch.unizh.ini.jaer.config.onchip.OutputMux;
  *
  * @author Christian/Tobi
  */
-public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig, ApsDvsTweaks {
+public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, ApsDvsTweaks {
 
     private static final float EXPOSURE_CONTROL_CLOCK_FREQ_HZ = 30000000 / 1025; // this is actual clock freq in Hz of clock that controls timing of inter-frame delay and exposure delay
     protected ShiftedSourceBiasCF ssn, ssp;
@@ -79,7 +78,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
      */
     protected PortBit powerDown = new PortBit(chip, "e2", "powerDown", "(E2) High to disable master bias and tie biases to default rails", false);
     protected PortBit nChipReset = new PortBit(chip, "e3", "nChipReset", "(E3) Low to reset AER circuits and hold pixels in reset, High to run", true); // shouldn't need to manipulate from host
-    protected PortBit syncTimestampMasterEnabled = new PortBit(chip, "a1", "syncTimestampMaster", "<html> (A1) High to make this camera timestamp master or to enable external<br>specical external input events to be injected into the event stream on detected edges on the IN pin<p>An external input event is detected on the falling edge of the IN input pin.", true); 
+    protected PortBit syncTimestampMasterEnabled = new PortBit(chip, "a1", "syncTimestampMaster", "<html> (A1) High to make this camera timestamp master or to enable external<br>specical external input events to be injected into the event stream on detected edges on the IN pin<p>An external input event is detected on the falling edge of the IN input pin.", true);
     //*********** CPLD *********************
     // CPLD shift register contents specified here by CPLDInt and CPLDBit
     protected CPLDInt exposure = new CPLDInt(chip, 15, 0, "exposure", "global shutter exposure time between reset and readout phases; interpretation depends on whether rolling or global shutter readout is used.", 0);
@@ -91,7 +90,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
     private AddressedIPotCF diffOn, diffOff, refr, pr, sf, diff;
     // graphic options for rendering
     protected VideoControl videoControl;
-//        private Scanner scanner; 
+//        private Scanner scanner;
     protected ApsReadoutControl apsReadoutControl;
     private int autoShotThreshold; // threshold for triggering a new frame snapshot automatically
 
@@ -192,7 +191,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
         } catch (HardwareInterfaceException ex) {
             Logger.getLogger(SBret10.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
+
         syncTimestampMasterEnabled.set(true); // normally set this true despite preference value because slave mode should be set by user or by plug insertion to slave input 3.5mm plug
     }
 
@@ -356,9 +355,9 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
         }
 //            log.info("update with " + observable);
         try {
-            if (observable instanceof IPot || observable instanceof VPot) { // must send all of the onchip shift register values to replace shift register contents
+            if ((observable instanceof IPot) || (observable instanceof VPot)) { // must send all of the onchip shift register values to replace shift register contents
                 sendOnChipConfig();
-            } else if (observable instanceof OutputMux || observable instanceof OnchipConfigBit) {
+            } else if ((observable instanceof OutputMux) || (observable instanceof OnchipConfigBit)) {
                 sendOnChipConfigChain();
             } else if (observable instanceof ShiftedSourceBiasCF) {
                 sendOnChipConfig();
@@ -899,7 +898,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
         class AnalogOutputMux extends OutputMux {
 
             AnalogOutputMux(int n) {
-                super(sbChip, 4, 8, (OutputMap) (new VoltageOutputMap()));
+                super(sbChip, 4, 8, (new VoltageOutputMap()));
                 setName("Voltages" + n);
             }
         }
@@ -907,7 +906,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
         class DigitalOutputMux extends OutputMux {
 
             DigitalOutputMux(int n) {
-                super(sbChip, 4, 16, (OutputMap) (new DigitalOutputMap()));
+                super(sbChip, 4, 16, (new DigitalOutputMap()));
                 setName("LogicSignals" + n);
             }
         }
@@ -940,7 +939,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
 
         String getConfigBitString() {
             StringBuilder s = new StringBuilder();
-            for (int i = 0; i < TOTAL_CONFIG_BITS - configBits.length; i++) {
+            for (int i = 0; i < (TOTAL_CONFIG_BITS - configBits.length); i++) {
                 s.append("0");
             }
             for (int i = configBits.length - 1; i >= 0; i--) {
@@ -997,9 +996,13 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
                         if (getHardwareInterface() instanceof ApsDvsHardwareInterface) {
                             ((ApsDvsHardwareInterface) getHardwareInterface()).setTranslateRowOnlyEvents(((AbstractButton) evt.getSource()).isSelected());
                         }
-                        
+
                         if (getHardwareInterface() instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.ApsDvsHardwareInterface) {
                             ((net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.ApsDvsHardwareInterface) getHardwareInterface()).setTranslateRowOnlyEvents(((AbstractButton) evt.getSource()).isSelected());
+                        }
+
+                        if (getHardwareInterface() instanceof net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DAViSFX3HardwareInterface) {
+                            ((net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DAViSFX3HardwareInterface) getHardwareInterface()).setTranslateRowOnlyEvents(((AbstractButton) evt.getSource()).isSelected());
                         }
                     };
                 }
@@ -1065,7 +1068,8 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
      *
      * @param val -1 to 1 range
      */
-    public void setThresholdTweak(float val) {
+    @Override
+	public void setThresholdTweak(float val) {
         if (val > 1) {
             val = 1;
         } else if (val < -1) {
@@ -1127,22 +1131,22 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
 
     @Override
     public void setFrameDelayMs(int ms) {
-        int fd = (int) Math.round(ms * EXPOSURE_CONTROL_CLOCK_FREQ_HZ * 1e-3f);
+        int fd = Math.round(ms * EXPOSURE_CONTROL_CLOCK_FREQ_HZ * 1e-3f);
         // frame delay config register is in clock cycles, to to go from ms to clock cycles do ms*(clockcycles/sec)*(sec/1000ms)
         frameDelay.set(fd);
     }
 
     @Override
     public int getFrameDelayMs() {
-        // to get frame delay in ms from register value, 
+        // to get frame delay in ms from register value,
         // multiply frame delay register value frameDelay in cycles by the ms per clock cycle
-        int fd = (int) Math.round(frameDelay.get() / (1e-3f * EXPOSURE_CONTROL_CLOCK_FREQ_HZ));
+        int fd = Math.round(frameDelay.get() / (1e-3f * EXPOSURE_CONTROL_CLOCK_FREQ_HZ));
         return fd;
     }
 
     @Override
     public void setExposureDelayMs(int ms) {
-        int exp = (int) Math.round(ms * EXPOSURE_CONTROL_CLOCK_FREQ_HZ * 1e-3f);
+        int exp = Math.round(ms * EXPOSURE_CONTROL_CLOCK_FREQ_HZ * 1e-3f);
         if (exp <= 0) {
             exp = 1;
         }
@@ -1151,7 +1155,7 @@ public class SBret10config extends LatticeMachFX2config implements ApsDvsConfig,
 
     @Override
     public int getExposureDelayMs() {
-        int ed = (int) Math.round(exposure.get() / (1e-3f * EXPOSURE_CONTROL_CLOCK_FREQ_HZ));
+        int ed = Math.round(exposure.get() / (1e-3f * EXPOSURE_CONTROL_CLOCK_FREQ_HZ));
         return ed;
     }
 
