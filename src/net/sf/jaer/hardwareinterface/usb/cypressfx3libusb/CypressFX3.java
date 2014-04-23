@@ -18,6 +18,7 @@ import java.nio.CharBuffer;
 import java.nio.IntBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -1330,7 +1331,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 				LibUsb.TRANSFER_TYPE_INTERRUPT, new ProcessStatusMessages(), 4, 64);
 			usbTransfer.setName("AsyncStatusThread");
 			usbTransfer.setPriority(AEReader.MONITOR_PRIORITY);
-			// usbTransfer.start();
+			usbTransfer.start();
 		}
 
 		public void stopThread() {
@@ -1366,7 +1367,20 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 					switch (msg) {
 						case 0x00:
-							CypressFX3.log.info("FX3 error message received.");
+							final int errorCode = transfer.buffer().get(1) & 0xFF;
+
+							final int timeStamp = transfer.buffer().getInt(2);
+
+							final byte[] errorMsgBytes = new byte[transfer.buffer().limit() - 6];
+							transfer.buffer().position(6);
+							transfer.buffer().get(errorMsgBytes, 0, errorMsgBytes.length);
+							transfer.buffer().position(0);
+							final String errorMsg = new String(errorMsgBytes, StandardCharsets.UTF_8);
+
+							final String output = String.format("%s - Error: 0x%02X, Time: %d\n", errorMsg, errorCode,
+								timeStamp);
+
+							CypressFX3.log.warning("FX3 error message received - " + output);
 
 							break;
 
@@ -1380,8 +1394,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 							SwingUtilities.invokeLater(new Runnable() {
 								@Override
 								public void run() {
-									support.firePropertyChange(CypressFX3.PROPERTY_CHANGE_ASYNC_STATUS_MSG, null,
-										newBuf);
+									//support.firePropertyChange(CypressFX3.PROPERTY_CHANGE_ASYNC_STATUS_MSG, null, newBuf);
 								}
 							});
 
