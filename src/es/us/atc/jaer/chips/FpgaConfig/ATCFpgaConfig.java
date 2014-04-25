@@ -8,12 +8,12 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
+import org.usb4java.BufferUtils;
 import org.usb4java.Device;
 import org.usb4java.DeviceDescriptor;
 import org.usb4java.DeviceHandle;
 import org.usb4java.DeviceList;
 import org.usb4java.LibUsb;
-import org.usb4java.utils.BufferUtils;
 
 public class ATCFpgaConfig extends EventFilter2D {
 	private int trackerId = getInt("trackerId", 1);
@@ -21,7 +21,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 	private int cmCellInitY = getInt("cmCellInitY", 64);
 	private int cmCellRadixStep = getInt("cmCellRadixStep", 1);
 	private int cmCellInitRadix = getInt("cmCellInitRadix", 1);
-	private int cmCellMaxTime = getInt("cmCellMaxTime", 200_000);
+	private int cmCellMaxTime = getInt("cmCellMaxTime", 200000);
 	private int cmCellNevTh = getInt("cmCellNevTh", 1);
 	private int cmCellAVG = getInt("cmCellAVG", 1);
 	private boolean trackerEnable = getBoolean("trackerEnable", true);
@@ -46,8 +46,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 		setPropertyTooltip("cmCellNevTh",
 			"Number of events to receive within a cluster before calculating center of mass.");
 		setPropertyTooltip("cmCellAVG",
-			"Amount of CM evolved in calculating the average for the new CM point (2^cmCellAVG)."); // TODO:
-																									// what?
+			"Amount of CM history involved in calculating the average for the new CM point (2^cmCellAVG).");
 		setPropertyTooltip("trackerEnable", "Enable this tracker.");
 
 		setPropertyTooltip("bgaFilterDeltaT", "Delta time for BackgroundActivity filter (in µs).");
@@ -55,6 +54,14 @@ public class ATCFpgaConfig extends EventFilter2D {
 
 	public int getTrackerId() {
 		return trackerId;
+	}
+
+	public static int getMinTrackerId() {
+		return 1;
+	}
+
+	public static int getMaxTrackerId() {
+		return 4;
 	}
 
 	public void setTrackerId(final int trackerId) {
@@ -139,7 +146,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 	}
 
 	public static int getMaxCmCellMaxTime() {
-		return 1_000_000; // 1 second (in µs).
+		return 1000000; // 1 second (in µs).
 	}
 
 	public void setCmCellMaxTime(final int cmCellMaxTime) {
@@ -173,7 +180,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 	}
 
 	public static int getMaxCmCellAVG() {
-		return 1000; // TODO: unclear if 8 or 1000 according to Matlab spec.
+		return 8;
 	}
 
 	public void setCmCellAVG(final int cmCellAVG) {
@@ -197,23 +204,23 @@ public class ATCFpgaConfig extends EventFilter2D {
 		}
 
 		// Convert time into cycles.
-		final int cmCellMaxTimeCycles = cmCellMaxTime * CLOCK_SPEED;
+		final int cmCellMaxTimeCycles = getInt("cmCellMaxTime", 0) * CLOCK_SPEED;
 
 		// Select the tracker.
-		sendCommand((byte) 127, (byte) trackerId, true);
+		sendCommand((byte) 127, (byte) (getInt("trackerId", 0) & 0xFF), true);
 
 		// Send all the tracker configuration.
-		sendCommand((byte) 78, (byte) (cmCellInitY & 0xFF), true);
-		sendCommand((byte) 79, (byte) (cmCellInitX & 0xFF), true);
-		sendCommand((byte) 80, (byte) (cmCellRadixStep & 0xFF), true);
-		sendCommand((byte) 81, (byte) (cmCellInitRadix & 0xFF), true);
+		sendCommand((byte) 78, (byte) (getInt("cmCellInitY", 0) & 0xFF), true);
+		sendCommand((byte) 79, (byte) (getInt("cmCellInitX", 0) & 0xFF), true);
+		sendCommand((byte) 80, (byte) (getInt("cmCellRadixStep", 0) & 0xFF), true);
+		sendCommand((byte) 81, (byte) (getInt("cmCellInitRadix", 0) & 0xFF), true);
 		sendCommand((byte) 82, (byte) (cmCellMaxTimeCycles & 0xFF), true);
 		sendCommand((byte) 83, (byte) ((cmCellMaxTimeCycles >>> 8) & 0xFF), true);
 		sendCommand((byte) 84, (byte) ((cmCellMaxTimeCycles >>> 16) & 0xFF), true);
 		sendCommand((byte) 85, (byte) ((cmCellMaxTimeCycles >>> 24) & 0xFF), true);
-		sendCommand((byte) 86, (byte) (cmCellNevTh & 0xFF), true);
-		sendCommand((byte) 87, (byte) (cmCellAVG & 0xFF), true);
-		sendCommand((byte) 88, (byte) ((trackerEnable) ? (0xFF) : (0x00)), true);
+		sendCommand((byte) 86, (byte) (getInt("cmCellNevTh", 0) & 0xFF), true);
+		sendCommand((byte) 87, (byte) (getInt("cmCellAVG", 0) & 0xFF), true);
+		sendCommand((byte) 88, (byte) ((getBoolean("trackerEnable", true)) ? (0xFF) : (0x00)), true);
 
 		// Disable tracker configuration.
 		sendCommand((byte) 127, (byte) 0xFF, true);
@@ -231,7 +238,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 	}
 
 	public static int getMaxBgaFilterDeltaT() {
-		return 1_000_000; // 1 second (in µs).
+		return 1000000; // 1 second (in µs).
 	}
 
 	public void setBgaFilterDeltaT(final int bgaFilterDeltaT) {
@@ -246,7 +253,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 		}
 
 		// Convert time into cycles.
-		final int bgaFilterDeltaTCycles = bgaFilterDeltaT * CLOCK_SPEED;
+		final int bgaFilterDeltaTCycles = getInt("bgaFilterDeltaT", 0) * CLOCK_SPEED;
 
 		// Send the four bytes that make up the integer to their respective
 		// addresses.
@@ -265,7 +272,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 	}
 
 	// The SiLabs C8051F320 used by ATC has VID=0xC410 and PID=0x0000.
-	private final short VID = (short) 0xC410;
+	private final short VID = (short) 0x10C4;
 	private final short PID = 0x0000;
 
 	private final byte ENDPOINT = 0x02;
@@ -332,7 +339,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 	}
 
 	private void sendCommand(final byte cmd, final byte data, final boolean spiEnable) {
-		System.out.println("Sending command.");
+		System.out.println(String.format("Sending command - cmd: %X, data: %X", cmd, data));
 
 		// Check for presence of ready device.
 		if (devHandle == null) {
@@ -351,13 +358,13 @@ public class ATCFpgaConfig extends EventFilter2D {
 		dataBuffer.put(6, (byte) 0x00);
 		dataBuffer.put(7, (byte) 0x00);
 		dataBuffer.put(8, cmd); // Send actual SPI command (address usually).
-		dataBuffer.put(9, (byte) ((spiEnable) ? (0x01) : (0x00)));
+		dataBuffer.put(9, (byte) ((spiEnable) ? (0x00) : (0x01)));
 		// Enable or disable SPI communication.
 
 		// Send bulk transfer request on given endpoint.
 		final IntBuffer transferred = BufferUtils.allocateIntBuffer();
 		LibUsb.bulkTransfer(devHandle, ENDPOINT, dataBuffer, transferred, 0);
-		if (transferred.get() != PACKET_LENGTH) {
+		if (transferred.get(0) != PACKET_LENGTH) {
 			System.out.println("Failed to transfer whole packet.");
 		}
 
@@ -366,7 +373,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 
 		// Send second bulk transfer request on given endpoint.
 		LibUsb.bulkTransfer(devHandle, ENDPOINT, dataBuffer, transferred, 0);
-		if (transferred.get() != PACKET_LENGTH) {
+		if (transferred.get(0) != PACKET_LENGTH) {
 			System.out.println("Failed to transfer whole packet.");
 		}
 	}
