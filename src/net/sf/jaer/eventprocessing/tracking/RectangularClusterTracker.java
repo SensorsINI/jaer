@@ -167,9 +167,9 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 	/** The vanishing point for perspective object sizing */
 	protected Point vanishingPoint=null;
 
-	GLU glu=new GLU();
-	GLUquadric clusterRadiusQuad = glu.gluNewQuadric();
-
+	GLU glu=null;
+	GLUquadric clusterRadiusQuad = null;
+        
 
 	@Override
 	public void mouseClicked(MouseEvent e) {
@@ -1428,6 +1428,10 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 		public void draw(GLAutoDrawable drawable) {
 			final float BOX_LINE_WIDTH = 2f; // in chip
 			final float PATH_POINT_SIZE = 4f;
+                        if (glu == null) {
+                            glu = new GLU();
+                            clusterRadiusQuad = glu.gluNewQuadric();
+                        }
 			GL2 gl = drawable.getGL().getGL2();
 			float x = location.x;
 			float y = location.y;
