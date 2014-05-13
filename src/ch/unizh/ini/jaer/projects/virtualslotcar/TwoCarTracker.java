@@ -38,7 +38,7 @@ import com.jogamp.opengl.util.gl2.GLUT;
  * @author tobi
  */
 @Description("Slot car car tracker for finding closest car to track model")
-public class TwoCarTracker extends RectangularClusterTracker implements FrameAnnotater, PropertyChangeListener, CarTracker {
+public class TwoCarTracker extends RectangularClusterTracker implements FrameAnnotater, PropertyChangeListener, CarTrackerInterface {
 
 	// properties
 	private boolean onlyFollowTrack = getBoolean("onlyFollowTrack", true);
@@ -51,6 +51,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 	private SlotcarTrack track;
 	private TwoCarCluster currentCarCluster = null, crashedCar = null;
 	private NearbyTrackEventFilter nearbyTrackFilter = null;
+    private TrackHistogramFilter trackHistogramFilter = null;
 	private TwoCarCluster computerControlledCarCluster = null;
 	private int warnedNullTrackerCounter = 0;
 	private final int WARNED_NULL_TRACK_INTERVAL = 1000;
@@ -58,7 +59,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 	public TwoCarTracker(AEChip chip) {
 		super(chip);
 		final String s = "TwoCarTracker";
-		setPropertyTooltip(s, "onlyFollowTrack", "If set, clusters will only follow the track. If false, clusters can follow car off the track.");
+        setPropertyTooltip(s, "onlyFollowTrack", "If set, clusters will only follow the track. If false, clusters can follow car off the track or even jump to another part of the track. Recommended setting is true.");
 		setPropertyTooltip(s, "relaxToTrackFactor", "Tracking will normally only parallel the track. This factor control how much the cluster converges onto the track, i.e., the allowed normal motion as fraction of the parallel motion.");
 		setPropertyTooltip(s, "distanceFromTrackMetricTauMs", "Each car cluster distance from track model is lowpass filtered with this time constant in ms; the closest one is chosen as the computer controlled car");
 		setPropertyTooltip(s, "minSegmentsToBeCarCluster", "a CarCluster needs to pass at least this many segments to be marked as the car cluster");
@@ -125,9 +126,10 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 		}
 
 		FilterChain filterChain = new FilterChain(chip);
-		filterChain.add(new BackgroundActivityFilter(chip));
+//        filterChain.add(new BackgroundActivityFilter(chip));
 		nearbyTrackFilter = new NearbyTrackEventFilter(chip);
-		filterChain.add(nearbyTrackFilter);
+        trackHistogramFilter = new TrackHistogramFilter(chip);
+        filterChain.add(trackHistogramFilter);
 
 		setEnclosedFilterChain(filterChain);
 
@@ -174,7 +176,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 	synchronized protected EventPacket track(EventPacket in) {
 		boolean updatedClusterList = false;
 		crashedCar = null; // before possible prune operation that could set this field to non-null
-		out = getEnclosedFilterChain().filterPacket(in);
+        in = getEnclosedFilterChain().filterPacket(in);
 
 		// record cluster locations before packet is processed
 		for (Cluster c : clusters) {
@@ -183,8 +185,9 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 
 		// for each event, assign events to each cluster according probabalistically to the distance of the event from the cluster
 		// if its too far from any cluster, make a new cluster if we can
-		for (Object o : out) {
+        for (Object o : in) {
 			BasicEvent ev = (BasicEvent) o;
+            if(ev.isSpecial()) continue;
 			addEventToClustersOrSpawnNewCluster(ev);
 
 			updatedClusterList = maybeCallUpdateObservers(in, ev.timestamp); // callback to update()
@@ -293,7 +296,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 		if (currentCarCluster != null) {
 			computerControlledCarCluster = currentCarCluster;
 		}
-		return out;
+        return in;
 	}
 
 	/** Returns the putative car cluster.
@@ -350,23 +353,13 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 		final int w=2;
 		for (Cluster c : clusters) {
 			TwoCarCluster cc = (TwoCarCluster) c;
-
-
-
 			if (isShowAllClusters() || cc.isVisible()) {
-
 				cc.draw(drawable);
 				gl.glColor3f(0, 0, 1);
 				gl.glRectf(offset, 0, offset+w, (chip.getSizeY()*cc.segmentSpeedSPS)/300);
 				offset+=2*w;
-
-
-
-
-
 			}
 		}
-
 	}
 
 	/**
@@ -404,7 +397,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 	public class TwoCarCluster extends RectangularClusterTracker.Cluster implements CarClusterInterface {
 
 		private final int SEGMENT_HISTORY_LENGTH = 150; // number of segments to keep track of in past
-		private final int NUM_SEGMENTS_TO_BE_MARKED_RUNNING = 30;
+        private final int NUM_SEGMENTS_TO_BE_MARKED_RUNNING = 15;
 		/** Current segment index */
 		public int segmentIdx = -1; // current segment
 		public int highestSegment = -1; // highwater mark for segment, for counting increases
@@ -485,7 +478,7 @@ public class TwoCarTracker extends RectangularClusterTracker implements FrameAnn
 		@Override
 		public void draw(GLAutoDrawable drawable) {
 			super.draw(drawable);
-			final float BOX_LINE_WIDTH = 8f; // in chip
+            final float BOX_LINE_WIDTH = 10f; // in chip
 			GL2 gl = drawable.getGL().getGL2();
 
 			// set color and line width of cluster annotation

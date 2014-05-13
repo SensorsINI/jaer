@@ -4,11 +4,14 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.logging.Logger;
 
 /**
  * Measures lap times and lap count.
  */
 class LapTimer implements PropertyChangeListener {
+
+    private static Logger log = Logger.getLogger("LapTimer");
 
     SlotcarTrack track;
     int lastSegment = Integer.MAX_VALUE;
@@ -22,8 +25,9 @@ class LapTimer implements PropertyChangeListener {
     private static final int MAX_LAPS_TO_STORE = 3;
     private int lapStartTime = 0;
 
-    /** Constructs a new LapTimer for a track with numSegments points.
-     * 
+    /**
+     * Constructs a new LapTimer for a track with numSegments points.
+     *
      * @param numSegments
      */
     public LapTimer(SlotcarTrack track) {
@@ -41,7 +45,7 @@ class LapTimer implements PropertyChangeListener {
 
         int laptimeUs = 0;
         int[] splitsUs = new int[4];
-        int quartersCompleted=0;
+        int quartersCompleted = 0;
 
         public Lap() {
         }
@@ -59,35 +63,40 @@ class LapTimer implements PropertyChangeListener {
 
         @Override
         public String toString() {
-            return String.format("%6.2f %6.2f %6.2f %6.2f : %7.3fs", split(0), split(1),split(2),split(3), laptime());
+            return String.format("%6.2f %6.2f %6.2f %6.2f : %7.3fs", split(0), split(1), split(2), split(3), laptime());
         }
 
         private float t(int t) {
             return (float) t * 1e-6f;
         }
-        
-        float laptime(){
-            return 1e-6f*laptimeUs;
+
+        float laptime() {
+            return 1e-6f * laptimeUs;
         }
 
-        float split(int n){
-            if(n<0 || n>quartersCompleted) return Float.NaN;
-            else if(n==0) return 1e-6f*(splitsUs[0]);
-            else return 1e-6f*(splitsUs[n]-splitsUs[n-1]);
+        float split(int n) {
+            if (n < 0 || n > quartersCompleted) {
+                return Float.NaN;
+            } else if (n == 0) {
+                return 1e-6f * (splitsUs[0]);
+            } else {
+                return 1e-6f * (splitsUs[n] - splitsUs[n - 1]);
+            }
         }
 
-        void storeSplit(int quarter, int time){
-           quartersCompleted=quarter;
-           splitsUs[quarter]=time;
+        void storeSplit(int quarter, int time) {
+            quartersCompleted = quarter;
+            splitsUs[quarter] = time;
         }
     }
     LinkedList<Lap> laps = new LinkedList();
     Lap currentLap = new Lap();
 
-    /** returns true if there was a new lap (crossed finish line - segment 0)
+    /**
+     * returns true if there was a new lap (crossed finish line - segment 0)
      *
      * @param newSegment - the current track segment spline point.
-     * @param timeUs  - the time in us of this measurement.
+     * @param timeUs - the time in us of this measurement.
      * @return true if we just crossed finish line.
      */
     boolean update(int newSegment, int timeUs) {
@@ -103,20 +112,25 @@ class LapTimer implements PropertyChangeListener {
         } else { // initialized
             if (lastSegment == newSegment) { // if segment doesn't change, don't do anything
                 return false;
-            } else if (quarters == 0 || quarters==4) { // if we haven't passed segment zero, then check if we have
+            } else if (quarters == 0 || quarters == 4) { // if we haven't passed segment zero, then check if we have
                 if (lastSegment >= (3 * n) / 4 && newSegment < n / 4) { // passed segment 0 (the start segment)
                     if (currentLap != null) {
                         currentLap.storeSplit(3, timeUs - lapStartTime);
                         lapCounter++;
                         int deltaTime = timeUs - lapStartTime;
-                        currentLap.laptimeUs = deltaTime;
-                        sumTime += deltaTime;
-                        if (deltaTime < bestTime) {
-                            bestTime = deltaTime;
+                        if (deltaTime <= 0) {
+                            log.warning("negative or zero lap time, ignoring");
+
+                        } else {
+                            currentLap.laptimeUs = deltaTime;
+                            sumTime += deltaTime;
+                            if (deltaTime > 0 && deltaTime < bestTime) {
+                                bestTime = deltaTime;
+                            }
+                            lastUpdateTime = timeUs;
+                            ret = true;
                         }
-                        lastUpdateTime = timeUs;
-                       ret = true;
-                   }
+                    }
                     quarters = 1; //  next, look to pass 1st quarter of track
                     currentLap = new Lap();
                     laps.add(currentLap);
@@ -128,8 +142,8 @@ class LapTimer implements PropertyChangeListener {
                     startSegment = 0;
                 }
             } else if (quarters > 0 && quarters < 4) {
-                if (newSegment >= (n * quarters) / 4 && newSegment <((n*(quarters+1))/4)) {
-                    currentLap.storeSplit(quarters-1,  timeUs - lapStartTime);
+                if (newSegment >= (n * quarters) / 4 && newSegment < ((n * (quarters + 1)) / 4)) {
+                    currentLap.storeSplit(quarters - 1, timeUs - lapStartTime);
                     quarters++;
                 }
             }
@@ -161,12 +175,12 @@ class LapTimer implements PropertyChangeListener {
                 lapCounter, quarters - 1,
                 (float) sumTime * 1.0E-6F / lapCounter,
                 (float) bestTime * 1.0E-6F)
-                );
+        );
         int count = 0;
 
-        Iterator<Lap> itr=laps.descendingIterator();
-        while(itr.hasNext()){
-            Lap l=itr.next();
+        Iterator<Lap> itr = laps.descendingIterator();
+        while (itr.hasNext()) {
+            Lap l = itr.next();
             sb.append(String.format("\n%6d: %s", -(count++), l.toString()));
         }
         return sb.toString();

@@ -71,7 +71,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
 	 * @return the throttle from 0-1.
 	 */
 	@Override
-	public ThrottleBrake computeControl(CarTracker tracker, SlotcarTrack track) {
+    public ThrottleBrake computeControl(CarTrackerInterface tracker, SlotcarTrack track) {
 		// find the csar, pass it to the track if there is one to getString it's location, the use the UpcomingCurvature to compute the curvature coming up,
 		// then compute the throttle to getString our speed at the limit of traction.
 
@@ -87,11 +87,11 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
 			this.track = track; // copyFrom track for logging
 			track.setPointTolerance(maxDistanceFromTrackPoint);
 			/*
-			 * during the normal running of the car, the steps would be as follows (which are computed in the controller, given the CarTracker and SlotcarTrack)
+             * during the normal running of the car, the steps would be as follows (which are computed in the controller, given the CarTrackerInterface and SlotcarTrack)
 
             1. Get the car position from the tracker.
             2. Ask the track model for the nearest spline point which is an int indexing into the list of track points.
-            3. Update the car state SlotcarState of the track model - not clear how this should be done from the CarTracker data.
+            3. Update the car state SlotcarState of the track model - not clear how this should be done from the CarTrackerInterface data.
             4. Ask the track model for the list of upcoming curvatures.
             5. From the parameter throttleDelayMs, find the curvature at this time in the future.
             6. Compute the throttle needed to getString us to a speed at this future time that puts us at the limit of traction.

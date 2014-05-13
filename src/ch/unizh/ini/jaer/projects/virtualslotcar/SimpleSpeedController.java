@@ -44,7 +44,7 @@ public class SimpleSpeedController extends AbstractSlotCarController implements 
     }
 
     @Override
-    public ThrottleBrake computeControl(CarTracker tracker, SlotcarTrack track) {
+    public ThrottleBrake computeControl(CarTrackerInterface tracker, SlotcarTrack track) {
         ClusterInterface car = tracker.findCarCluster();
         if (useModelEnabled) {
             throttle.throttle=throttleModel.computeThrottle(desiredSpeedPPS);
@@ -149,7 +149,7 @@ public class SimpleSpeedController extends AbstractSlotCarController implements 
     }
 
     public void annotate(GLAutoDrawable drawable) {
-        String s=String.format("SimpleSpeedController\nDesired speed: %8.1f\nMeasured: %8.1f\nError: %8.0f\nThrottle: %5.2f",desiredSpeedPPS, measuredSpeedPPS, (measuredSpeedPPS-desiredSpeedPPS),throttle);
+        String s=String.format("SimpleSpeedController\nDesired speed: %8.1f\nMeasured: %8.1f\nError: %8.0f\nThrottle: %s",desiredSpeedPPS, measuredSpeedPPS, (measuredSpeedPPS-desiredSpeedPPS),throttle.toString());
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
 

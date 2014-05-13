@@ -58,7 +58,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
      * @return the throttle from 0-1.
      */
     @Override
-    synchronized public ThrottleBrake computeControl(CarTracker tracker, SlotcarTrack track) {
+    synchronized public ThrottleBrake computeControl(CarTrackerInterface tracker, SlotcarTrack track) {
         // find the csar, pass it to the track if there is one to getString it's location, the use the UpcomingCurvature to compute the curvature coming up,
         // then compute the throttle to getString our speed at the limit of traction.
         ClusterInterface car = tracker.findCarCluster();
@@ -182,7 +182,7 @@ public class LookUpBasedTrottleController extends AbstractSlotCarController impl
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        String s = String.format("LookUpBasedTrottleController\ncurrentTrackPos: %d\nThrottle: %8.3f", currentTrackPos, throttle);
+        String s = String.format("LookUpBasedTrottleController\ncurrentTrackPos: %d\nThrottle: %s", currentTrackPos, throttle.toString());
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
 

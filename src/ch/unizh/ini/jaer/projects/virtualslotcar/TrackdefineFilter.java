@@ -215,6 +215,7 @@ public class TrackdefineFilter extends EventFilter2D implements FrameAnnotater, 
 		// for each event only write it to the tmp buffers if it matches
 		for (Object obj : in) {
 			BasicEvent e = (BasicEvent) obj;
+            if(e.isSpecial())continue;
 			if ((e.x >= 0) && (e.y >= 0)
 				&& (e.x < numX) && (e.y < numY)) {
 				// Increase histogram count

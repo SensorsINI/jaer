@@ -29,11 +29,14 @@ public class NearbyTrackEventFilter extends EventFilter2D implements PropertyCha
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if(track==null) return in;
+        if (track == null) {
+            return in;
+        }
         checkOutputPacketEventType(in);
         OutputEventIterator outItr=out.outputIterator();
         Point2D.Float p=new Point2D.Float();
         for(BasicEvent e:in){
+            if(e.isSpecial()) continue;
             p.x=e.x; p.y=e.y;
             if(track.findClosestIndex(p, 0, true)!=-1){
                 BasicEvent eout=outItr.nextOutput();

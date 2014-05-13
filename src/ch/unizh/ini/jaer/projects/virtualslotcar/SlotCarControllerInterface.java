@@ -22,7 +22,7 @@ public interface SlotCarControllerInterface {
      * @param track
      * @return the throttle setting ranging from 0 to 1.
      */
-    public ThrottleBrake computeControl(CarTracker tracker, SlotcarTrack track);
+    public ThrottleBrake computeControl(CarTrackerInterface tracker, SlotcarTrack track);
 
     /** Returns the last computed throttle setting.
      *
