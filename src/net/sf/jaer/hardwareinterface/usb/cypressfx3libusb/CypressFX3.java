@@ -1386,15 +1386,17 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 						case 0x01:
 							// llongi - copy message to send it out
-							final ByteBuffer newBuf = ByteBuffer.allocate(transfer.buffer().limit());
+							final ByteBuffer newBuf = ByteBuffer.allocate(19);
+							newBuf.position(4);
 							newBuf.put(transfer.buffer());
+							newBuf.position(0);
 							newBuf.put(0, (byte) 0xFF);
 
 							// tobi - send message to listeners
 							SwingUtilities.invokeLater(new Runnable() {
 								@Override
 								public void run() {
-									//support.firePropertyChange(CypressFX3.PROPERTY_CHANGE_ASYNC_STATUS_MSG, null, newBuf);
+									support.firePropertyChange(CypressFX3.PROPERTY_CHANGE_ASYNC_STATUS_MSG, null, newBuf);
 								}
 							});
 

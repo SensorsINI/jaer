@@ -511,6 +511,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		public void propertyChange(final PropertyChangeEvent evt) {
 			try {
 				final ByteBuffer buf = (ByteBuffer) evt.getNewValue();
+
+				// Add current timestamp into buffer (temporary hack until new logic ready).
+				buf.putInt(1, currentts);
+
 				try {
 					final IMUSample sample = new IMUSample(buf);
 					imuSampleQueue.put(sample);
