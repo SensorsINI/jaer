@@ -10,6 +10,7 @@ import java.util.logging.Logger;
 
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_LibUsb_PAER;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.usb4java.Device;
@@ -41,6 +42,11 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 		// addDeviceToMap(CypressFX2.VID, CypressFX2.PID_USBAERmini2,
 		// CypressFX2MonitorSequencer.class);
 		addDeviceToMap(CypressFX2.VID, ApsDvsHardwareInterface.PID, ApsDvsHardwareInterface.class);
+
+		// Linux Drivers for PAER retina.
+		if (System.getProperty("os.name").startsWith("Linux")) {
+			addDeviceToMap(CypressFX2.VID, SiLabsC8051F320_LibUsb_PAER.PID_PAER, SiLabsC8051F320_LibUsb_PAER.class);
+		}
 
 		// Add blank device for flashing.
 		addDeviceToMap(CypressFX2.VID_BLANK, CypressFX2.PID_BLANK, CypressFX2.class);
