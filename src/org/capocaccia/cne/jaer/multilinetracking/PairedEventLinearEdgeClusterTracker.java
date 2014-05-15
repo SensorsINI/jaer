@@ -9,27 +9,47 @@
  */
 package org.capocaccia.cne.jaer.multilinetracking;
 
-import net.sf.jaer.chip.*;
-import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.event.*;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.graphics.*;
-import net.sf.jaer.util.filter.*;
-import com.sun.opengl.util.*;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics2D;
 //import ch.unizh.ini.caviar.util.PreferencesEditor;
-import java.awt.geom.*;
-import java.io.*;
-import java.util.*;
+import java.awt.geom.Point2D;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.Observable;
+import java.util.Observer;
+import java.util.Random;
+
 import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.GLCanvas;
 import javax.media.opengl.GLCapabilities;
 import javax.media.opengl.GLEventListener;
+import javax.media.opengl.awt.GLCanvas;
+import javax.media.opengl.fixedfunc.GLLightingFunc;
+import javax.media.opengl.fixedfunc.GLMatrixFunc;
 import javax.media.opengl.glu.GLU;
+
 import net.sf.jaer.Description;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsOrientationEvent;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.DvsOrientationEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.tracking.LIFOEventBuffer;
 import net.sf.jaer.eventprocessing.tracking.LineDetector;
+import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.filter.LowpassFilter;
+
+import com.jogamp.opengl.util.gl2.GLUT;
 
 /**
  * Tracks multiple lines in the scene using a cluster based method based on
@@ -66,7 +86,7 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
      */
     public static final float MAX_SCALE_RATIO = 2;
     private float rhoRadius = getPrefs().getFloat("MultiLineClusterTracker.rhoRadius", 6);
-    private float thetaRadiusRad = getPrefs().getFloat("MultiLineClusterTracker.thetaRadiusRad", (float) (30 * Math.PI / 180));
+    private float thetaRadiusRad = getPrefs().getFloat("MultiLineClusterTracker.thetaRadiusRad", (float) ((30 * Math.PI) / 180));
     private float minDistanceNormalized = getPrefs().getFloat("MultiLineClusterTracker.minDistanceNormalized", 0.1f);
 
     {
@@ -230,7 +250,7 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
                     killOff = true;
                 }
             }
-            if (t0 > t1 || killOff || timeSinceSupport < 0) {
+            if ((t0 > t1) || killOff || (timeSinceSupport < 0)) {
                 // ordinarily, we discard the cluster if it hasn't gotten any support for a while, but we also discard it if there
                 // is something funny about the timestamps
                 pruneList.add(c);
@@ -265,7 +285,7 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
                     }
                 }
             }
-            if (mergePending && c1 != null && c2 != null) {
+            if (mergePending && (c1 != null) && (c2 != null)) {
 //                    pruneList.add(c1);
 //                    pruneList.add(c2); // we just remove them, no need to prune them
                 clusters.remove(c1); // ok to remove because we are not iterating here
@@ -287,7 +307,7 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
 //        for(LinearFeatureModel c:clusters) c.updatePath();
 
 //        if(clusters.size()>beforeMergeCount) throw new RuntimeException("more clusters after merge than before");
-        if (isLogDataEnabled() && getNumClusters() > 0) {
+        if (isLogDataEnabled() && (getNumClusters() > 0)) {
             if (logStream != null) {
                 for (LinearFeatureModel c : clusters) {
                     if (!c.isVisible()) {
@@ -311,7 +331,8 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
         return clusters.size();
     }
 
-    public String toString() {
+    @Override
+	public String toString() {
         String s = clusters != null ? Integer.toString(clusters.size()) : null;
         String s2 = "MultiLineClusterTracker with " + s + " clusters ";
         return s2;
@@ -408,7 +429,7 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
             dt = b.timestamp - a.timestamp;
             dx = ax - bx;
             dy = ay - by; // vector (dx,dy) points from b to a (adding dx,dy to b gives a)
-            length = Math.sqrt(dx * dx + dy * dy);
+            length = Math.sqrt((dx * dx) + (dy * dy));
             // now compute angle of dual of vector
             // dual of vector has components exchanged and one sign flipped
             // this is a rotation by 90 deg
@@ -416,7 +437,7 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
             // this angle is angle relative to x axis CCW of normal to dx,dy
             thetaRad = Math.atan2(dx, -dy); // atan2(y,x) goes from -PI to PI, theta goes from 0 to Pi, 0 and Pi being horizontal angles for normal to segment
             // now compute rho of this segment. This is closest passage to origin.
-            rhoPixels = x * Math.cos(thetaRad) + y * Math.sin(thetaRad);
+            rhoPixels = (x * Math.cos(thetaRad)) + (y * Math.sin(thetaRad));
             // rho may come out negative, in this case we make it positive and rotate theta by PI
             if (rhoPixels < 0) {
                 // flip rho, rotate by PI
@@ -441,11 +462,12 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
 //            drho*=drho;
 //            return (dtheta+drho);
 //        }
-        public String toString() {
+        @Override
+		public String toString() {
             return String.format("LineSegment a x,y=%d,%d, b x,y=%d,%d, rho=%.1f pix theta=%.0f deg x,y=%.1f,%.1f", ax, ay, bx, by, rhoPixels, Math.toDegrees(thetaRad), x, y);
         }
 
-        private void draw(GL gl) {
+        private void draw(GL2 gl) {
             if (lineCluster != null) {
                 gl.glColor3fv(lineCluster.rgb, 0);
 //                System.out.println(this);
@@ -489,10 +511,10 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
         }
 
         int dx = Math.abs(newer.x - older.x), dy = Math.abs(older.y - newer.y);
-        if (dx < minSegmentLength && dy < minSegmentLength) {
+        if ((dx < minSegmentLength) && (dy < minSegmentLength)) {
             return false;
         }
-        if (dx > maxSegmentLength || dy > maxSegmentLength) {
+        if ((dx > maxSegmentLength) || (dy > maxSegmentLength)) {
             return false;
         }
         int dt = newer.timestamp - older.timestamp;
@@ -639,8 +661,8 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
 
             // merge locations by average weighted by number of events supporting cluster
             int sumEvents = one.numEvents + two.numEvents;
-            location.x = (one.location.x * one.numEvents + two.location.x * two.numEvents) / (sumEvents);
-            location.y = (one.location.y * one.numEvents + two.location.y * two.numEvents) / (sumEvents);
+            location.x = ((one.location.x * one.numEvents) + (two.location.x * two.numEvents)) / (sumEvents);
+            location.y = ((one.location.y * one.numEvents) + (two.location.y * two.numEvents)) / (sumEvents);
 //            averageEventDistance=( one.averageEventDistance*one.numEvents + two.averageEventDistance*two.numEvents )/sumEvents;
             lastTimestamp = (one.lastTimestamp + two.lastTimestamp) / 2;
             numEvents = sumEvents;
@@ -689,21 +711,21 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
             // mixing factors
             m = getWeightedMixingFactor(seg, mixingFactorRho);
             m1 = 1 - m;
-            rhoPixels = m * seg.rhoPixels + m1 * rhoPixels;
+            rhoPixels = (m * seg.rhoPixels) + (m1 * rhoPixels);
 
             m = getWeightedMixingFactor(seg, mixingFactorTheta);
             double dTheta = angleDistance(thetaRad, seg.thetaRad);
-            thetaRad = thetaRad + m * dTheta;
+            thetaRad = thetaRad + (m * dTheta);
 
             float mixFacPos1 = 1 - mixingFactorPosition;
 
-            location.x = (mixFacPos1) * location.x + mixingFactorPosition * seg.x;
-            location.y = (mixFacPos1) * location.y + mixingFactorPosition * seg.y;
+            location.x = ((mixFacPos1) * location.x) + (mixingFactorPosition * seg.x);
+            location.y = ((mixFacPos1) * location.y) + (mixingFactorPosition * seg.y);
 
             if (!lengthEnabled) {
                 length = maxSegmentLength;
             } else {
-                length = (1 - mixingFactorLength) * length + mixingFactorLength * seg.length;
+                length = ((1 - mixingFactorLength) * length) + (mixingFactorLength * seg.length);
             }
 
 //            if(showVelocity && dt>0){
@@ -728,10 +750,10 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
             if (instantaneousISI <= 0) {
                 instantaneousISI = 1;
             }
-            avgISI = mixFacPos1 * avgISI + mixingFactorPosition * instantaneousISI;
+            avgISI = (mixFacPos1 * avgISI) + (mixingFactorPosition * instantaneousISI);
 
             instantaneousEventRate = 1f / instantaneousISI;
-            avgEventRate = mixFacPos1 * avgEventRate + mixingFactorPosition * instantaneousEventRate;
+            avgEventRate = (mixFacPos1 * avgEventRate) + (mixingFactorPosition * instantaneousEventRate);
 
 //            averageEventDistance= mixFacPos1*averageEventDistance + mixingFactorPosition*distanceToLastEvent;
 
@@ -845,7 +867,7 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
         public boolean isOverlapping(LinearFeatureModel c) {
             double d1 = distanceAbsToRho(c);
             double d2 = distanceAbsToTheta(c);
-            if (d1 < rhoRadius * 2 && d2 < thetaRadiusRad * 2) {
+            if ((d1 < (rhoRadius * 2)) && (d2 < (thetaRadiusRad * 2))) {
                 return true;
             }
             return false;
@@ -883,13 +905,14 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
 //            if(path.size()>MAX_PATH_LENGTH) path.remove(path.getString(0));
         }
 
-        public String toString() {
+        @Override
+		public String toString() {
             return String.format("Cluster #%d with %d events near x,y=%d,%d rho=%.0f, theta=%.0f deg, visible=%s",
                     getClusterNumber(), numEvents,
                     (int) location.x,
                     (int) location.y,
                     rhoPixels,
-                    thetaRad * 180 / Math.PI,
+                    (thetaRad * 180) / Math.PI,
                     isVisible());
         }
 
@@ -921,7 +944,7 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
          * Sets color according to age of cluster
          */
         public void setColorAccordingToAge() {
-            float brightness = (float) Math.max(0f, Math.min(1f, getLifetime() / fullbrightnessLifetime));
+            float brightness = Math.max(0f, Math.min(1f, getLifetime() / fullbrightnessLifetime));
             Color color = Color.getHSBColor(.5f, 1f, brightness);
             setColor(color);
         }
@@ -964,7 +987,7 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
          * draws LinearFeatureModel in current GL context assuming 1 pixel to 1
          * graphics unit with chip LL corner at LL canvas corner
          */
-        private void draw(GL gl) {
+        private void draw(GL2 gl) {
 //            int x=(int)location.x;
 //            int y=(int)location.y;
 //            final int length=chip.getMaxSize()/3;
@@ -980,7 +1003,7 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
             double x0, y0, x1, y1;
 
             double absTheta = Math.abs(thetaRad);
-            boolean isVert = ((absTheta < Math.PI / 4) || (absTheta > 3 * Math.PI / 4)) ? true : false; // true if line vertical
+            boolean isVert = ((absTheta < (Math.PI / 4)) || (absTheta > ((3 * Math.PI) / 4))) ? true : false; // true if line vertical
 
             // therefore we take x=location.x, cmpute y1 from above
             // and vice versa to getString x1,y
@@ -995,14 +1018,14 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
                 // vertical line, take y indep
                 y0 = location.y - length;
                 y1 = location.y + length;
-                x0 = ((rhoPixels - y0 * sTheta) / cTheta);
-                x1 = ((rhoPixels - y1 * sTheta) / cTheta);
+                x0 = ((rhoPixels - (y0 * sTheta)) / cTheta);
+                x1 = ((rhoPixels - (y1 * sTheta)) / cTheta);
             } else {
                 // horiz line, take x indep
                 x0 = location.x - length;
                 x1 = location.x + length;
-                y0 = ((rhoPixels - x0 * cTheta) / sTheta);
-                y1 = ((rhoPixels - x1 * cTheta) / sTheta);
+                y0 = ((rhoPixels - (x0 * cTheta)) / sTheta);
+                y1 = ((rhoPixels - (x1 * cTheta)) / sTheta);
             }
 
             // set color and line width of cluster annotation
@@ -1152,7 +1175,8 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
         return false;
     }
 
-    synchronized public void resetFilter() {
+    @Override
+	synchronized public void resetFilter() {
         clusters.clear();
     }
 
@@ -1202,7 +1226,8 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
         getPrefs().putBoolean("MultiLineClusterTracker.colorClustersDifferentlyEnabled", colorClustersDifferentlyEnabled);
     }
 
-    public void update(Observable o, Object arg) {
+    @Override
+	public void update(Observable o, Object arg) {
         initFilter();
     }
 
@@ -1213,13 +1238,14 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
     }
     float[] rgb = new float[4]; // used for rendering
 
-    synchronized public void annotate(GLAutoDrawable drawable) {
+    @Override
+	synchronized public void annotate(GLAutoDrawable drawable) {
         final float BOX_LINE_WIDTH = 5f; // in pixels
         final float PATH_LINE_WIDTH = 3f;
         if (!isFilterEnabled()) {
             return;
         }
-        GL gl = drawable.getGL(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
+        GL2 gl = drawable.getGL().getGL2(); // when we getString this we are already set up with scale 1=1 pixel, at LL corner
         if (gl == null) {
             log.warning("null GL in MultiLineClusterTracker.annotate");
             return;
@@ -1398,8 +1424,9 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
             setPreferredSize(new Dimension(400, 200));
         }
 
-        public void init(GLAutoDrawable gLAutoDrawable) {
-            GL gl = gLAutoDrawable.getGL();
+        @Override
+		public void init(GLAutoDrawable gLAutoDrawable) {
+            GL2 gl = gLAutoDrawable.getGL().getGL2();
 
             log.info(
                     "INIT GL IS: " + gl.getClass().getName() + "\nGL_VENDOR: " + gl.glGetString(GL.GL_VENDOR)
@@ -1408,7 +1435,7 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
                     );
 
             gl.setSwapInterval(1);
-            gl.glShadeModel(GL.GL_FLAT);
+            gl.glShadeModel(GLLightingFunc.GL_FLAT);
 
             gl.glClearColor(0, 0, 0, 0f);
             gl.glClear(GL.GL_COLOR_BUFFER_BIT);
@@ -1419,11 +1446,12 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
             glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "Initialized display");
         }
 
-        public void display(GLAutoDrawable gLAutoDrawable) {
+        @Override
+		public void display(GLAutoDrawable gLAutoDrawable) {
             float[] rgb = new float[4];
             float w = gLAutoDrawable.getWidth();
             float h = gLAutoDrawable.getHeight();
-            GL gl = gLAutoDrawable.getGL();
+            GL2 gl = gLAutoDrawable.getGL().getGL2();
             gl.glClearColor(0, 0, 0, 0f);
             gl.glClear(GL.GL_COLOR_BUFFER_BIT);
             gl.glPushMatrix();
@@ -1431,8 +1459,8 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
             gl.glColor3f(1, 1, 1);
             gl.glBegin(GL.GL_POINTS);
             for (LinearFeatureModel c : clusters) {
-                float rho = (int) ((float) c.rhoPixels / chip.getMaxSize() * h);
-                float theta = (float) ((Math.PI + c.thetaRad) / Math.PI / 2 * w);
+                float rho = (int) (((float) c.rhoPixels / chip.getMaxSize()) * h);
+                float theta = (float) (((Math.PI + c.thetaRad) / Math.PI / 2) * w);
                 gl.glColor3fv(c.rgb, 0);
                 gl.glVertex2f(rho, theta);
             }
@@ -1440,11 +1468,12 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
             gl.glEnd();
         }
 
-        public void reshape(GLAutoDrawable gLAutoDrawable, int x, int y, int w, int h) {
-            GL gl = getGL();
-            gl.glMatrixMode(GL.GL_PROJECTION);
+        @Override
+		public void reshape(GLAutoDrawable gLAutoDrawable, int x, int y, int w, int h) {
+            GL2 gl = getGL().getGL2();
+            gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
             gl.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
-            gl.glMatrixMode(GL.GL_MODELVIEW);
+            gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
             gl.glLoadIdentity();
             gl.glViewport(0, 0, w, h);
         }
@@ -1462,12 +1491,17 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
         public void checkGLError(GL g, GLU glu, String msg) {
             int error = g.glGetError();
             int nerrors = 10;
-            while (error != GL.GL_NO_ERROR && nerrors-- != 0) {
+            while ((error != GL.GL_NO_ERROR) && (nerrors-- != 0)) {
                 log.warning("GL error number " + error + " " + glu.gluErrorString(error) + " : " + msg);
 //             Thread.dumpStack();
                 error = g.glGetError();
             }
         }
+
+		@Override
+		public void dispose(GLAutoDrawable arg0) {
+			// TODO Auto-generated method stub
+		}
     }
 
     public boolean isShowLineSegments() {
@@ -1537,7 +1571,8 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
 
     class LineClusterComparator implements Comparator<LinearFeatureModel> {
 
-        public int compare(PairedEventLinearEdgeClusterTracker.LinearFeatureModel o1, PairedEventLinearEdgeClusterTracker.LinearFeatureModel o2) {
+        @Override
+		public int compare(PairedEventLinearEdgeClusterTracker.LinearFeatureModel o1, PairedEventLinearEdgeClusterTracker.LinearFeatureModel o2) {
             final float f1 = o1.getAvgEventRate(), f2 = o2.getAvgEventRate();
             if (f1 > f2) {
                 return 1;
@@ -1557,7 +1592,8 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
      * over +-Math.sqrt( (sx/2)^2 + (sy/2)^2). This number is positive if the
      * line is above the origin (center of chip)
      */
-    public float getRhoPixelsFiltered() {
+    @Override
+	public float getRhoPixelsFiltered() {
         return rhoPixelsFiltered;
     }
 
@@ -1569,7 +1605,8 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
      * a horizontal line (??? not consistent with LineDetector interface
      * definition!!! - should fix) TO-DO
      */
-    public float getThetaDegFiltered() {
+    @Override
+	public float getThetaDegFiltered() {
         return thetaDegFiltered;
     }
 
@@ -1594,7 +1631,7 @@ public class PairedEventLinearEdgeClusterTracker extends EventFilter2D implement
         int tx = -sizex / 2, ty = -sizey / 2;  // transform x,y by this much
         double rad = strongest.getThetaRad(); // angle remains the same
         // rho is transformed according to definition of line: rho=x*cos(theta)+y*sin(theta) with xprime=x+tx, yprime=y+ty
-        double rho = strongest.getRhoPixels() + tx * Math.cos(rad) + ty * Math.sin(rad);
+        double rho = strongest.getRhoPixels() + (tx * Math.cos(rad)) + (ty * Math.sin(rad));
 //        rhoPixelsFiltered = rhoFilter.filter((float)rho,packet.getLastTimestamp());
 //        thetaDegFiltered = thetaFilter.filter((float)Math.toDegrees(rad),packet.getLastTimestamp());
         //phase shift between internal theta and interface definition

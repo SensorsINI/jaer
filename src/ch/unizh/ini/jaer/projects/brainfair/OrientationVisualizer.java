@@ -4,12 +4,13 @@
  */
 package ch.unizh.ini.jaer.projects.brainfair;
 
-import java.util.Observable;
 import javax.media.opengl.GL;
-import net.sf.jaer.event.ApsDvsOrientationEvent;
+import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsOrientationEvent;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
@@ -29,7 +30,7 @@ public class OrientationVisualizer extends EventFilter2D implements FrameAnnotat
 
     // Update factor for history of orientations
     private float historyFactor = getFloat("historyFactor", 0.001f);
-    
+
     // History of orientations
     private float[] orientHistory;
     private float[] normOrientHistory;
@@ -39,41 +40,43 @@ public class OrientationVisualizer extends EventFilter2D implements FrameAnnotat
 
     public OrientationVisualizer(AEChip chip) {
         super(chip);
-        
+
         // Create enclosed filter and filter chain
         orientFilter = new DvsOrientationFilter(chip);
         filterChain = new FilterChain(chip);
         filterChain.add(orientFilter);
         setEnclosedFilterChain(filterChain);
-    
+
         // add this string tooltip to FilterPanel GUI control for filterLength
         setPropertyTooltip("historyFactor", "Update rate for history");
-        
+
         orientHistory = new float[8];
         normOrientHistory = new float[8];
     }
-    
-    
-    
+
+
+
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if(!filterEnabled) return in;
+        if(!filterEnabled) {
+			return in;
+		}
 
         // Helper variables
         int i;
-        
+
         EventPacket<?> nextOut = getEnclosedFilterChain().filterPacket(in);
 
         if ( in == null ){
             return null;
         }
-        
+
         checkOutputPacketEventType(ApsDvsOrientationEvent.class);
 
         OutputEventIterator outItr=out.outputIterator();
-        
+
         for (BasicEvent e : nextOut) { // iterate over all input events
-            BasicEvent o=(BasicEvent)outItr.nextOutput();
+            BasicEvent o=outItr.nextOutput();
             o.copyFrom(e);
 
             if (e instanceof ApsDvsOrientationEvent) {
@@ -81,17 +84,18 @@ public class OrientationVisualizer extends EventFilter2D implements FrameAnnotat
 
                 byte orient = oe.orientation;
                 if ((orient>=0) && (orient<8)) {
-                    for (i=0; i<4; i++)
-                        orientHistory[i]*=(1-historyFactor);
+                    for (i=0; i<4; i++) {
+						orientHistory[i]*=(1-historyFactor);
+					}
                     orientHistory[orient]++;
                 }
-                
+
             } // e instanceof ApsDvsOrientationEvent
 
         } // BasicEvent e
 
         return in;
-        
+
     }
 
     @Override
@@ -101,7 +105,7 @@ public class OrientationVisualizer extends EventFilter2D implements FrameAnnotat
         for (int i=0; i<8; i++) {
             orientHistory[i]=0.0f;
         }
-       
+
     }
 
     @Override
@@ -113,24 +117,25 @@ public class OrientationVisualizer extends EventFilter2D implements FrameAnnotat
     public void annotate(GLAutoDrawable drawable) {
         float sumHist = 0.0f;
         int i;
-        for (i=0; i<8; i++)
-            sumHist+=orientHistory[i];
-         
-            GL gl=drawable.getGL(); // gets the OpenGL GL context. Coordinates are in chip pixels, 0,0 is LL
+        for (i=0; i<8; i++) {
+			sumHist+=orientHistory[i];
+		}
+
+            GL2 gl=drawable.getGL().getGL2(); // gets the OpenGL GL context. Coordinates are in chip pixels, 0,0 is LL
             float x, y;
             float histWidth = 10;
             float histHeight = 50;
             for (i=0; i<8; i++) {
                 gl.glBegin(GL.GL_LINE_LOOP);
-                    x = -50.0f + histWidth*i;
-                    y = 1.0f + histHeight * ((float) orientHistory[i] / (float) sumHist);
+                    x = -50.0f + (histWidth*i);
+                    y = 1.0f + (histHeight * (orientHistory[i] / sumHist));
                     gl.glVertex2f(x,1.0f);
                     gl.glVertex2f(x,y);
                     gl.glVertex2f(x+histWidth, y);
                     gl.glVertex2f(x+histWidth, 1.0f);
                     gl.glEnd();
             }
-    
+
     }
 
     public float getHistoryFactor() {
@@ -141,7 +146,7 @@ public class OrientationVisualizer extends EventFilter2D implements FrameAnnotat
         this.historyFactor = historyFactor;
         putFloat("historyFactor", historyFactor);
     }
-    
-    
-    
+
+
+
 }

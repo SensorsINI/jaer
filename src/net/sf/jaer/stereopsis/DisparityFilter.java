@@ -8,23 +8,30 @@
  */
 package net.sf.jaer.stereopsis;
 import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import net.sf.jaer.chip.*;
+import java.util.Arrays;
+import java.util.Observable;
+import java.util.Observer;
+
+import javax.media.opengl.GL2;
+import javax.media.opengl.GLAutoDrawable;
+
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BinocularDisparityEvent;
+import net.sf.jaer.event.BinocularEvent;
+import net.sf.jaer.event.BinocularOrientationEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.label.DvsOrientationFilter;
-import net.sf.jaer.event.*;
+import net.sf.jaer.graphics.FrameAnnotater;
 
-import java.util.*;
-import net.sf.jaer.graphics.*;
-import com.sun.opengl.util.GLUT;
-import javax.media.opengl.GL;
-import javax.media.opengl.GLAutoDrawable;
+import com.jogamp.opengl.util.gl2.GLUT;
 /**
  * The filter calculates x-coordinate disparities for every single event, by averaging over disparities of previous events in the local
  * neighborhood. Therefore the disparites of single events should be spatially and temporally smooth.
  *
- * First, the algorithm calculates a weighted average of previous disparity values in the neighborhood (= oldMeanDisp). The weight 
+ * First, the algorithm calculates a weighted average of previous disparity values in the neighborhood (= oldMeanDisp). The weight
  * depends on the time difference between the actual and the previous events, s.t. recent events will have more weight. Depending
  * on the mean time difference from the previous events, the search range for the actual stereomatching will be restricted around
  * oldMeanDisp. The disparity of the actual event is then calculated by a linear interpolation between the best match in the restricted
@@ -33,7 +40,7 @@ import javax.media.opengl.GLAutoDrawable;
  * Because looking at all points in a certain radius is too expansive for neighborhood computation, only a sparse set of surrounding
  * points will be evaluated. These points are stored in the file 'neighbors.dat'. New sets of points can be generated easyly
  * by using the matlab 'function neighborhoodCreator.m'.
- * 
+ *
  * @author Peter Hess
  */
 public class DisparityFilter extends EventFilter2D implements FrameAnnotater,Observer{
@@ -80,7 +87,8 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater,Obs
         glut = chip.getCanvas().getGlut();
     }
 
-    public synchronized EventPacket filterPacket (EventPacket in){
+    @Override
+	public synchronized EventPacket filterPacket (EventPacket in){
 
         in = enclosedFilter.filterPacket(in);
         if ( !( in.getEventPrototype() instanceof BinocularOrientationEvent ) ){
@@ -115,10 +123,10 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater,Obs
             float normDisp = 0f;
             int sumTime = 0;
             int normTime = 0;
-            for ( int i = 0 ; i < prototypeNeighbors.length ; i++ ){
-                int nx = x + prototypeNeighbors[i][0];
-                int ny = y + prototypeNeighbors[i][1];
-                if ( nx < 0 || ny < 0 || ny >= lastDisp[eye].length || nx >= lastDisp[eye][ny].length ){
+            for (int[] prototypeNeighbor : prototypeNeighbors) {
+                int nx = x + prototypeNeighbor[0];
+                int ny = y + prototypeNeighbor[1];
+                if ( (nx < 0) || (ny < 0) || (ny >= lastDisp[eye].length) || (nx >= lastDisp[eye][ny].length) ){
                     continue;
                 }
                 float w = distance(lastTime[eye][ny][nx],time);
@@ -131,7 +139,7 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater,Obs
             int oldMeanDisp = (int)( sumDisp / normDisp );
             // this shouldn't happen, but it may be caused due to nummerical errors if the distance between lastTime[][][] and
             // time is too large
-            if ( oldMeanDisp < 0 || oldMeanDisp > maxDisp ){
+            if ( (oldMeanDisp < 0) || (oldMeanDisp > maxDisp) ){
                 oldMeanDisp = 0;
             }
             int meanTime = sumTime / normTime;
@@ -144,14 +152,14 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater,Obs
             sumRange += r;
             normRange++;
 
-            for ( int j = oldMeanDisp - r ; j <= oldMeanDisp + r ; j++ ){
+            for ( int j = oldMeanDisp - r ; j <= (oldMeanDisp + r) ; j++ ){
                 // check disparity range
-                if ( j < 0 || j > maxDisp ){
+                if ( (j < 0) || (j > maxDisp) ){
                     continue;
                 }
                 int nx = eye == 0 ? x + j : x - j;
                 // check array bounds
-                if ( nx < 0 || nx >= lastTime[eye][y].length ){
+                if ( (nx < 0) || (nx >= lastTime[eye][y].length) ){
                     continue;
                 }
                 // only match events of same polarity and orientation
@@ -176,7 +184,7 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater,Obs
             lastDisp[eye][y][x] = (short)bestDisp;
             // try to symmetrize events from left and right eye, by storing the event at the other eye with the assumed disparity
             int nx = eye == 0 ? x + bestDisp : x - bestDisp;
-            if ( nx >= 0 && nx < lastTime[eye][y].length ){
+            if ( (nx >= 0) && (nx < lastTime[eye][y].length) ){
                 lastTime[1 - eye][y][nx] = time;
                 lastIsOn[1 - eye][y][nx] = isOn;
                 lastOrientation[1 - eye][y][nx] = ori;
@@ -184,7 +192,7 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater,Obs
             }
 
             // linear interpolation between old and new disparity values
-            bestDisp = (int)( ( 1f - smoothFactor ) * (float)bestDisp + smoothFactor * (float)oldMeanDisp );
+            bestDisp = (int)( (( 1f - smoothFactor ) * bestDisp) + (smoothFactor * oldMeanDisp) );
 
             // create output events
             BinocularDisparityEvent outE = (BinocularDisparityEvent)outIt.nextOutput();
@@ -199,11 +207,12 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater,Obs
         return out;
     }
 
-    public void annotate (GLAutoDrawable drawable){
+    @Override
+	public void annotate (GLAutoDrawable drawable){
         if ( !isFilterEnabled() ){
             return;
         }
-        GL gl = drawable.getGL();
+        GL2 gl = drawable.getGL().getGL2();
         if ( gl == null ){
             return;
         }
@@ -219,7 +228,7 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater,Obs
      */
     private final float distance (int t1,int t2){
         /* linear */
-        return 1f / ( distFactor * ( t2 - t1 ) + 1f );
+        return 1f / ( (distFactor * ( t2 - t1 )) + 1f );
 
         /* squared */
 //        return 1f/(distFactor*distFactor*(t2 - t1)*(t2 - t1) + 1f);
@@ -232,7 +241,7 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater,Obs
 //        return t2 - t1 > distFactor ? 0f : 1f;
     }
 
-    /** Calculates the allowed search range. 
+    /** Calculates the allowed search range.
     The return value lies in [.2*maxDisp, maxDisp] with a minimum at 0 time difference.
      * Make sure that t1 <= t2 !!!
      */
@@ -240,10 +249,11 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater,Obs
         /* linear */
 //        return (int)(.8f*maxDisp*(1f - 1f/(rangeFactor*(t2 - t1) + 1f)) + .2f*maxDisp);
          /* squared */
-        return (int)( .8f * maxDisp * ( 1f - 1f / ( rangeFactor * ( t2 - t1 ) * ( t2 - t1 ) + 1f ) ) + .2f * maxDisp );
+        return (int)( (.8f * maxDisp * ( 1f - (1f / ( (rangeFactor * ( t2 - t1 ) * ( t2 - t1 )) + 1f )) )) + (.2f * maxDisp) );
     }
 
-    synchronized public void initFilter (){
+    @Override
+	synchronized public void initFilter (){
         lastTime = new int[ 2 ][ chip.getSizeY() ][ chip.getSizeX() ];
         lastIsOn = new boolean[ 2 ][ chip.getSizeY() ][ chip.getSizeX() ];
         lastOrientation = new byte[ 2 ][ chip.getSizeY() ][ chip.getSizeX() ];
@@ -251,25 +261,26 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater,Obs
         resetFilter();
     }
 
-    synchronized public void resetFilter (){
-        for ( int i = 0 ; i < lastTime.length ; i++ ){
-            for ( int j = 0 ; j < lastTime[i].length ; j++ ){
-                Arrays.fill(lastTime[i][j],0);
+    @Override
+	synchronized public void resetFilter (){
+        for (int[][] element : lastTime) {
+            for (int[] element2 : element) {
+                Arrays.fill(element2,0);
             }
         }
-        for ( int i = 0 ; i < lastIsOn.length ; i++ ){
-            for ( int j = 0 ; j < lastIsOn[i].length ; j++ ){
-                Arrays.fill(lastIsOn[i][j],true);
+        for (boolean[][] element : lastIsOn) {
+            for (boolean[] element2 : element) {
+                Arrays.fill(element2,true);
             }
         }
-        for ( int i = 0 ; i < lastOrientation.length ; i++ ){
-            for ( int j = 0 ; j < lastOrientation[i].length ; j++ ){
-                Arrays.fill(lastOrientation[i][j],(byte)0);
+        for (byte[][] element : lastOrientation) {
+            for (byte[] element2 : element) {
+                Arrays.fill(element2,(byte)0);
             }
         }
-        for ( int i = 0 ; i < lastDisp.length ; i++ ){
-            for ( int j = 0 ; j < lastDisp[i].length ; j++ ){
-                Arrays.fill(lastDisp[i][j],(short)0);
+        for (short[][] element : lastDisp) {
+            for (short[] element2 : element) {
+                Arrays.fill(element2,(short)0);
             }
         }
     }
@@ -282,7 +293,8 @@ public class DisparityFilter extends EventFilter2D implements FrameAnnotater,Obs
         return false;
     }
 
-    public void update (Observable o,Object arg){
+    @Override
+	public void update (Observable o,Object arg){
         initFilter();
     }
 

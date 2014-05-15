@@ -3,7 +3,7 @@
  * Created on November 6, 2005, 10:31 AM */
 package net.sf.jaer.event;
 
-import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 
 /** Base class for events. This class is extended by producers offering extended
@@ -15,7 +15,7 @@ public class BasicEvent implements EventInterface<BasicEvent>, BasicEventInterfa
 
     /** timestamp of event, by convention in us */
     public int timestamp;
-    
+
     /** The raw address corresponding to the event which has originated in
      * hardware and is associated here for purposes of low level IO to streams.
      * <p> This address is generally not transformed by event filtering, so
@@ -23,36 +23,36 @@ public class BasicEvent implements EventInterface<BasicEvent>, BasicEventInterfa
      * must handle the transformation of the raw addresses. Event filters which
      * simply remove events need not worry about this effect. */
     public int address;
-    
+
     /** x address of event (horizontal coordinate, by convention starts at left
      * of image) */
     public short x;
-    
+
     /** y address of event (vertical coordinate, by convention starts at bottom
      * of image) */
     public short y;
- 
-    /** Flags this event to be ignored in iteration (skipped over). 
-     * Used to filter out events in-place, without incurring the overhead of 
+
+    /** Flags this event to be ignored in iteration (skipped over).
+     * Used to filter out events in-place, without incurring the overhead of
      * copying other events to a mostly-duplicated output packet. */
     private boolean filteredOut=false;
-    
+
     /** Indicates that this event is a special (e.g. synchronizing) event, e.g.
      * originating from a separate hardware input pin or from a special source. */
     public boolean special = false;
-    
+
     /** When this bit is set in raw address it indicates some kind of special
      * event, e.g. sync, special data, etc. */
     public final static int SPECIAL_EVENT_BIT_MASK = 0x80000000;
 
     /** Source byte.  This is used to identify the source of the event when using
-     * filters that integrate multiple event sources (eg, Retina, Cochlea ; 
+     * filters that integrate multiple event sources (eg, Retina, Cochlea ;
      * Left Retina, Right Retina, etc). */
     public byte source;
-    
-     
+
+
     /** Indicates that this event is a special event, e.g.
-     * originating from a separate hardware input pin or from a special, 
+     * originating from a separate hardware input pin or from a special,
      * i.e., exceptional, source.
      * @return the special */
     @Override
@@ -79,7 +79,7 @@ public class BasicEvent implements EventInterface<BasicEvent>, BasicEventInterfa
     //    /** Marks whether event is filtered away; false is default value and filters can set true to mark
     //     * the event as unused for further processing. */
     //    public boolean filteredAway=false;
-    
+
     // TODO implement this filteredAway in such a way that the count of events is properly maintained in a packet.
     //    /** True if an EventFilter has marked this event to be ignored */
     //    public boolean isFilteredAway() {
@@ -89,14 +89,14 @@ public class BasicEvent implements EventInterface<BasicEvent>, BasicEventInterfa
     //    public void setFilteredAway(boolean filteredAway) {
     //        this.filteredAway=filteredAway;
     //    }
-    
-    
+
+
     /** Creates a new instance of BasicEvent */
     public BasicEvent() {
     }
 
     /** create an BasicEvent with a timestamp, x, y, and a variable length number
-     * of bytes types. 
+     * of bytes types.
      * TODO: currently the type and types fields are ignored.
      * @param timestamp
      * @param x
@@ -137,15 +137,15 @@ public class BasicEvent implements EventInterface<BasicEvent>, BasicEventInterfa
         this.setFilteredOut(e.isFilteredOut());
         //        this.filteredAway=e.filteredAway;
     }
-    
+
     @Override
     public String toString() {
-        return getClass().getSimpleName() 
-                + " timestamp=" + timestamp 
-                + " address=" + address 
-                + " x=" + x 
-                + " y=" + y 
-                + " special=" + special 
+        return getClass().getSimpleName()
+                + " timestamp=" + timestamp
+                + " address=" + address
+                + " x=" + x
+                + " y=" + y
+                + " special=" + special
                 + " filteredOut="+filteredOut;
     }
 
@@ -208,15 +208,15 @@ public class BasicEvent implements EventInterface<BasicEvent>, BasicEventInterfa
      *
      * @param drawable the OpenGL drawable. */
     public void draw(GLAutoDrawable drawable) {
-        GL gl = drawable.getGL(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
+        GL2 gl = drawable.getGL().getGL2(); // when we get this we are already set up with scale 1=1 pixel, at LL corner
 
         gl.glColor3f(1, 1, 1);
         gl.glRectf(x, y, x + 1, y + 1);
     }
 
 
-    /** Is this event to be ignored in iteration (skipped over)? 
-     * Used to filter out events in-place, without incurring the 
+    /** Is this event to be ignored in iteration (skipped over)?
+     * Used to filter out events in-place, without incurring the
      * overhead of copying other events to a mostly-duplicated output packet.
      * @return the filteredOut */
     @Override
@@ -224,11 +224,11 @@ public class BasicEvent implements EventInterface<BasicEvent>, BasicEventInterfa
         return filteredOut;
     }
 
-    /** Flags this event to be ignored in iteration (skipped over). 
-     * Used to filter out events in-place, without incurring the overhead 
+    /** Flags this event to be ignored in iteration (skipped over).
+     * Used to filter out events in-place, without incurring the overhead
      * of copying other events to a mostly-duplicated output packet.
      * @param filteredOut the filteredOut to set */
-    @Override 
+    @Override
     public void setFilteredOut(boolean filteredOut) {
         this.filteredOut = filteredOut;
     }

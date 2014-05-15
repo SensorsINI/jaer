@@ -3,38 +3,23 @@
  * and open the template in the editor.
  */
 package eu.visualize.ini.retinamodel;
-import java.io.*; 
-import java.util.*;
-import com.sun.opengl.util.j2d.TextRenderer;
 import java.io.File;
-import java.io.FileWriter;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.awt.Font;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.util.Observable;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.util.Observer;
 import java.util.Random;
-import javax.media.opengl.GL;
+
+import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.GLException;
 import javax.media.opengl.glu.GLU;
-import javax.media.opengl.glu.GLUquadric;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
-import static net.sf.jaer.event.PolarityEvent.Polarity.Off;
-import static net.sf.jaer.event.PolarityEvent.Polarity.On;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.util.SpikeSound;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
@@ -89,7 +74,7 @@ public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAn
         setPropertyTooltip("exponentialToTanh", "Switch from exponential non-linearity to exponential tangent");
     }
     private int lastObjectMotionCellSpikeCheckTimestamp = 0;
-        
+
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!(in.getEventPrototype() instanceof PolarityEvent)) {
@@ -121,18 +106,18 @@ public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAn
 //        System.out.println(String.format("spikeRate=%.1g \tonActivity=%.2f \toffActivity=%.1f", objectMotionCellModel.spikeRate, inhibition, offExcitation));
         return in;
     }
-    
+
        @Override
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
-        GL gl = drawable.getGL();
- 
+        GL2 gl = drawable.getGL().getGL2();
+
         gl.glPushMatrix();
         gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 10);
-        if (showOutputCell && objectMotionCellModel.nSpikes > getIntegrateAndFireThreshold()) {
+        if (showOutputCell && (objectMotionCellModel.nSpikes > getIntegrateAndFireThreshold())) {
             gl.glColor4f(1, 1, 1, .2f);
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
-            float radius = chip.getMaxSize() * objectMotionCellModel.spikeRateHz / maxSpikeRateHz / 2;
+            float radius = (chip.getMaxSize() * objectMotionCellModel.spikeRateHz) / maxSpikeRateHz / 2;
             glu.gluDisk(quad, 0, radius, 32, 1);
             objectMotionCellModel.resetSpikeCount();
         }
@@ -186,10 +171,10 @@ public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAn
         int ny;
         int ntot;
         int lastUpdateTimestamp;
-        
+
         FileOutputStream out; // declare a file output object
         PrintStream p; // declare a print stream object
-        
+
         public Subunits() {
             reset();
         }
@@ -197,7 +182,7 @@ public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAn
         synchronized public void update(PolarityEvent e) {
             // subsample retina address to clump retina input pixel blocks.
             int x = e.x >> subunitSubsamplingBits, y = e.y >> subunitSubsamplingBits;
-            if (x < nx && y < ny) {
+            if ((x < nx) && (y < ny)) {
                 switch (e.polarity) {
                     case Off: // these subunits are excited by OFF events and in turn excite the approach cell
                         subunits[x][y].updatepos(e);
@@ -235,13 +220,13 @@ public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAn
 //            float inhibition = 0;
             for (int x = excludedEdgeSubunits; x < (nx-excludedEdgeSubunits); x++) {
                 for (int y = excludedEdgeSubunits; y < (ny-excludedEdgeSubunits); y++) {
-                    if ((x == nx / 2 && y == ny / 2) || (x == ((nx / 2) - 1) && y == ny / 2) || (x == ((nx / 2) - 1) && y == ((ny / 2) - 1)) || (x == nx / 2 && y == ((ny / 2) - 1))) {
+                    if (((x == (nx / 2)) && (y == (ny / 2))) || ((x == ((nx / 2) - 1)) && (y == (ny / 2))) || ((x == ((nx / 2) - 1)) && (y == ((ny / 2) - 1))) || ((x == (nx / 2)) && (y == ((ny / 2) - 1)))) {
                         continue; // don't include center
                     }
                     if(exponentialToTanh == false){
-                        inhibition += (float) Math.pow(subunits[x][y].computeInputToCell(),nonLinearityOrder);   
+                        inhibition += (float) Math.pow(subunits[x][y].computeInputToCell(),nonLinearityOrder);
                     }else{
-                        inhibition += (float) tanhSaturation*Math.tanh(subunits[x][y].computeInputToCell());
+                        inhibition += tanhSaturation*Math.tanh(subunits[x][y].computeInputToCell());
                     }
             }}
             inhibition /= (ntot - 4);
@@ -275,11 +260,11 @@ public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAn
                 if(exponentialToTanh == false){
                    centerExcitation = (float)(Math.pow((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[nx / 2][ny / 2].computeInputToCell()),nonLinearityOrder) + Math.pow((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[(nx / 2) - 1][ny / 2].computeInputToCell()),nonLinearityOrder) + Math.pow((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[(nx / 2) - 1][(ny / 2) - 1].computeInputToCell()),nonLinearityOrder) + Math.pow((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[nx / 2][(ny / 2) - 1].computeInputToCell()),nonLinearityOrder)) / 4;//average of 4 central cells
                 }else{
-                   centerExcitation = (float)(tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[nx / 2][ny / 2].computeInputToCell())) + tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[(nx / 2) - 1][ny / 2].computeInputToCell())) + tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[(nx / 2) - 1][(ny / 2) - 1].computeInputToCell())) + tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[nx / 2][(ny / 2) - 1].computeInputToCell()))) / 4;//average of 4 central cells                
+                   centerExcitation = (float)((tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[nx / 2][ny / 2].computeInputToCell()))) + (tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[(nx / 2) - 1][ny / 2].computeInputToCell()))) + (tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[(nx / 2) - 1][(ny / 2) - 1].computeInputToCell()))) + (tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[nx / 2][(ny / 2) - 1].computeInputToCell())))) / 4;//average of 4 central cells
                 }
-                
+
             }
-            if (startLogging == true){  
+            if (startLogging == true){
                 try {
                     // Create a new file output stream.
                     FileOutputStream out = new FileOutputStream(new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\excitation.txt"), true);
@@ -294,12 +279,12 @@ public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAn
                     System.err.println("Error writing to file");
                 }
             }
-            
+
             if (deleteLogging == true){
               File fout = new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\excitation.txt");
               fout.delete();
             }
-            
+
             return centerExcitation;
         }
 
@@ -323,15 +308,15 @@ public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAn
             }
         }
 
-        private void render(GL gl) {
+        private void render(GL2 gl) {
             final float alpha = .2f;
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
             int off = (1 << (subunitSubsamplingBits)) / 2;
-            for (int x = excludedEdgeSubunits; x < nx-excludedEdgeSubunits; x++) {
-                for (int y = excludedEdgeSubunits; y < ny-excludedEdgeSubunits; y++) {
+            for (int x = excludedEdgeSubunits; x < (nx-excludedEdgeSubunits); x++) {
+                for (int y = excludedEdgeSubunits; y < (ny-excludedEdgeSubunits); y++) {
                     gl.glPushMatrix();
                     gl.glTranslatef((x << subunitSubsamplingBits) + off, (y << subunitSubsamplingBits) + off, 5);
-                    if ((x == nx / 2 && y == ny / 2) || (x == ((nx / 2) - 1) && y == ny / 2) || (x == ((nx / 2) - 1) && y == ((ny / 2) - 1)) || (x == nx / 2 && y == ((ny / 2) - 1))) {
+                    if (((x == (nx / 2)) && (y == (ny / 2))) || ((x == ((nx / 2) - 1)) && (y == (ny / 2))) || ((x == ((nx / 2) - 1)) && (y == ((ny / 2) - 1))) || ((x == (nx / 2)) && (y == ((ny / 2) - 1)))) {
                         gl.glColor4f(1, 0, 0, alpha);
                     } else {
                         gl.glColor4f(0, 1, 0, alpha);
@@ -376,7 +361,7 @@ public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAn
         public void updateneg (PolarityEvent e) {
             vmem = vmem - 1;
         }
-        
+
         /**
          * subunit input is pure rectification
          */
@@ -386,24 +371,24 @@ public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAn
 //                    return 0; // actually it cannot be negative since it only gets excitation from DVS events
 //                } else {
                     return vmem;
-                
+
             } else { // surround inhibition
                 // here we return the half-rectified local difference between ourselves and our neighbors
                 int n = 0;
                 float sum = 0;
-                if (x + 1 < subunits.nx) {
+                if ((x + 1) < subunits.nx) {
                     sum += mySubunits[x + 1][y].vmem;
                     n++;
                 }
-                if (x - 1 >= 0) {
+                if ((x - 1) >= 0) {
                     sum += mySubunits[x - 1][y].vmem;
                     n++;
                 }
-                if (y + 1 < subunits.ny) {
+                if ((y + 1) < subunits.ny) {
                     sum += mySubunits[x][y + 1].vmem;
                     n++;
                 }
-                if (y - 1 >= 0) {
+                if ((y - 1) >= 0) {
                     sum += mySubunits[x][y - 1].vmem;
                     n++;
                 }
@@ -449,7 +434,7 @@ public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAn
                 if (spikeRate > maxSpikeRateHz) {
                     spikeRate = maxSpikeRateHz;
                 }
-                if (r.nextFloat() < spikeRate * 1e-6f * dtUs) {
+                if (r.nextFloat() < (spikeRate * 1e-6f * dtUs)) {
                     spike(timestamp);
                     return true;
                 } else {
@@ -475,7 +460,7 @@ public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAn
             }
             nSpikes++;
             int dtUs = timestamp - lastSpikeTimestamp;
-            if (initialized && dtUs>=0) {
+            if (initialized && (dtUs>=0)) {
                 float avgIsiUs = isiFilter.filter(dtUs, timestamp);
                 spikeRateHz = 1e6f / avgIsiUs;
             } else {
@@ -567,7 +552,7 @@ public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAn
         this.barsHeight = barsHeight;
         putFloat("barsHeight", barsHeight);
     }
-    
+
     /**
      * @return the excludedEdgeSubunits
      */
@@ -581,9 +566,9 @@ public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAn
     public void setExcludedEdgeSubunits(int excludedEdgeSubunits) {
         this.excludedEdgeSubunits = excludedEdgeSubunits;
         putFloat("excludedEdgeSubunits", excludedEdgeSubunits);
-    }            
-            
-    
+    }
+
+
     /**
      * @return the onOffWeightRatio
      */
@@ -598,7 +583,7 @@ public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAn
         this.centerExcitationToSurroundInhibitionRatio = onOffWeightRatio;
         putFloat("centerExcitationToSurroundInhibitionRatio", onOffWeightRatio);
     }
-    
+
     /**
      * @return the tanhSaturation
      */
@@ -613,8 +598,8 @@ public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAn
         this.tanhSaturation = tanhSaturation;
         putInt("tanhSaturation", tanhSaturation);
     }
-    
-    
+
+
         /**
      * @return the deleteLogging
      */
@@ -645,7 +630,7 @@ public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAn
         putBoolean("exponentialToTanh", exponentialToTanh);
     }
 
-    
+
         /**
      * @return the startLogging
      */
@@ -660,7 +645,7 @@ public class ObjectMotionCell extends AbstractRetinaModelCell implements FrameAn
         this.startLogging = startLogging;
         putBoolean("startLogging", startLogging);
     }
-    
+
     /**
      * @return the surroundSuppressionEnabled
      */

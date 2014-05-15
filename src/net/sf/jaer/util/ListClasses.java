@@ -13,18 +13,19 @@ import java.util.List;
 import java.util.StringTokenizer;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/** Provides a static method that returns a List<String> of all classes on 
- * java.class.path starting with root of package name, 
- * e.g. "org/netbeans/.." and ending with ".class". 
+/** Provides a static method that returns a List<String> of all classes on
+ * java.class.path starting with root of package name,
+ * e.g. "org/netbeans/.." and ending with ".class".
  * Classes that are on IGNORED_CLASSPATH are not scanned.
  * <p>
  * From http://forums.java.net/jive/thread.jspa?messageID=212405&tstart=0 */
 public class ListClasses {
-    
-    /** ListClasses doesn't iterate over classpath classes starting with 
-     * these strings; this is hack to avoid iterating over standard java 
+
+    /** ListClasses doesn't iterate over classpath classes starting with
+     * these strings; this is hack to avoid iterating over standard java
      * classes to avoid running into missing DLLs with JOGL. */
     public static final String[] IGNORED_CLASSPATH={
         "java",
@@ -38,11 +39,11 @@ public class ListClasses {
         "org/jdesktop", "de/thesycon", "com/kitfox", "org/uncommons",
         "de/ailis", "jspikestack"
     };
-    
+
     static final Logger log=Logger.getLogger("net.sf.jaer.util");
     private static boolean debug = false;
     private static final int INIT_SIZE=500, SIZE_INC=500;
-    
+
     private static void usage() {
         System.err.println(
                 "usage: java ListClasses [-debug]"
@@ -50,7 +51,7 @@ public class ListClasses {
                 + "\n\tclasspath defined in your environment for all .class files available" );
         System.exit(-1);
     }
-    
+
     /** Iterate over the system classpath defined by "java.class.path" searching
      * for all .class files available
      * @return list of all fully qualified class names */
@@ -59,32 +60,40 @@ public class ListClasses {
         try {
             // get the system classpath
             String classpath = System.getProperty("java.class.path", "");
-            if(debug) log.log(Level.INFO, "java.class.path={0}", classpath);
-            
-            if (classpath.equals("")) log.log(Level.SEVERE,"classpath is not set!");
-            
+            if(debug) {
+				log.log(Level.INFO, "java.class.path={0}", classpath);
+			}
+
+            if (classpath.equals("")) {
+				log.log(Level.SEVERE,"classpath is not set!");
+			}
+
             StringTokenizer st = new StringTokenizer(classpath, File.pathSeparator);
 
             while (st.hasMoreTokens()) {
                 String token = st.nextToken();
-                if(debug) log.log(Level.INFO, "classpath token = {0}", token);
+                if(debug) {
+					log.log(Level.INFO, "classpath token = {0}", token);
+				}
                 File classpathElement = new File(token);
                 classNames.addAll(classpathElement.isDirectory()
                 //?loadClassesFromDir(classpathElement.list(new CLASSFilter()))
                 ? loadClassesFromDir(null, classpathElement, classpathElement)
-                : loadClassesFromJar(classpathElement));                              
+                : loadClassesFromJar(classpathElement));
             }
-        } catch (Exception e) {         
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return classNames;
     }
-    
+
     private static List<String> loadClassesFromJar(File jarFile) {
         List<String> files = new ArrayList<String>(INIT_SIZE);
         try {
             if(jarFile.getName().endsWith(".jar")){
-                if(debug) log.log(Level.INFO, "{0} is being scanned", jarFile);
+                if(debug) {
+					log.log(Level.INFO, "{0} is being scanned", jarFile);
+				}
                 Enumeration<JarEntry> fileNames;
                 fileNames = new JarFile(jarFile).entries();
                 JarEntry entry = null;
@@ -93,7 +102,9 @@ public class ListClasses {
                     boolean skipThis=false;
                     for(String s:IGNORED_CLASSPATH){
                         if(entry.getName().startsWith(s)) {
-                            if(debug) log.log(Level.INFO, "skipping {0} because it starts with {1}", new Object[]{entry.getName(), s});
+                            if(debug) {
+								log.log(Level.INFO, "skipping {0} because it starts with {1}", new Object[]{entry.getName(), s});
+							}
                             skipThis=true;
                             break;
                         }
@@ -102,7 +113,9 @@ public class ListClasses {
                         files.add(entry.getName());
                     }
                     if(skipThis){
-                        if(debug) log.log(Level.INFO, "ignoring rest of classes in jar file {0}", jarFile.getName());
+                        if(debug) {
+							log.log(Level.INFO, "ignoring rest of classes in jar file {0}", jarFile.getName());
+						}
                         break;
                     }
                 }
@@ -112,18 +125,18 @@ public class ListClasses {
         }
         return files;
     }
-    
+
     private static List<String> loadClassesFromDir(String fileNames[]) {
         return Arrays.asList(fileNames);
     }
-    
+
     private static List<String> loadClassesFromDir(List<String> classes, File rootDir, File baseDir)
     {
         if(classes == null)
         {
             classes = new LinkedList<String>();
         }
-        
+
         File[] classFiles = baseDir.listFiles(new CLASSFilter());
         for (File classFile : classFiles) {
             if (classFile != null) {
@@ -133,14 +146,14 @@ public class ListClasses {
         }
 
         File[] directories = baseDir.listFiles(new DirFilter());
-        
+
         for (File dir : directories) {
             classes = loadClassesFromDir(classes, rootDir, dir);
         }
-       
+
         return classes;
     }
-    
+
     static class CLASSFilter implements FilenameFilter {
 
         @Override
@@ -156,7 +169,7 @@ public class ListClasses {
             return pathname.isDirectory();
         }
     }
-    
+
     /** Main method used in command-line mode for searching the system
      * classpath for all the .class file available in the classpath
      * @param args command-line arguments  */
@@ -170,7 +183,7 @@ public class ListClasses {
                         "error: unrecognized \"" + args[0] + "\" option ");
                 System.exit(-1);
             }
-        } else if (args.length == 1 && args[0].equals("-help")) {
+        } else if ((args.length == 1) && args[0].equals("-help")) {
             usage();
         } else if (args.length == 0) {
             List<String> classNames=listClasses();

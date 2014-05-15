@@ -2,24 +2,33 @@
  *
  * Created on November 2, 2005, 8:24 PM */
 package net.sf.jaer.eventprocessing.label;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
+import java.awt.geom.Point2D;
+import java.util.Arrays;
+import java.util.Observable;
+import java.util.Observer;
+import java.util.Random;
+
+import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
+import javax.media.opengl.GLAutoDrawable;
+
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OrientationEvent;
+import net.sf.jaer.event.OrientationEventInterface;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.VectorHistogram;
-import java.awt.geom.Point2D;
-import java.util.*;
-import javax.media.opengl.GL;
-import javax.media.opengl.GLAutoDrawable;
-import net.sf.jaer.Description;
-import net.sf.jaer.DevelopmentStatus;
 
 
 /** Computes simple-type orientation-tuned cells.                           <br>
  * multiOriOutputEnabled - boolean switch:
  *      WTA mode {false} only max 1 orientation per event
  *      or many event {true} any orientation that passes coincidence threshold.
- * Another switch allows contour enhancement by using previous output 
+ * Another switch allows contour enhancement by using previous output
  * orientation events to make it easier to make events along the same orientation.
  * Another switch decides whether to use max delay or average delay as the coincidence measure.
  * <p>
@@ -29,17 +38,17 @@ import net.sf.jaer.DevelopmentStatus;
  * 2 is a vertical edge (rotated 90 deg),                       <br>
  * 3 is tilted up and to left (rotated 135 deg from horizontal edge).
  * <p>
- * The filter takes either PolarityEvents or BinocularEvents to create 
+ * The filter takes either PolarityEvents or BinocularEvents to create
  * DvsOrientationEvent or BinocularEvents.
  * @author tobi/phess */
 @Description("Abstract superclass for labelers that detect local orientation by spatio-temporal correlation")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 abstract public class AbstractOrientationFilter extends EventFilter2D implements Observer , FrameAnnotater{
-    
+
     public static final int MAX_LENGTH = 6;
     /** the number of cell output types */
     public final int NUM_TYPES = 4;
-    
+
     protected boolean showGlobalEnabled       = getBoolean("showGlobalEnabled",false);
     protected boolean showVectorsEnabled      = getBoolean("showVectorsEnabled",false);
     protected boolean showRawInputEnabled     = getBoolean("showRawInputEnabled",false);
@@ -62,7 +71,7 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
     protected int     dtRejectThreshold       = minDtThreshold * dtRejectMultiplier;
     protected int     rfSize;
     protected Random  r;
-    
+
     /** Times of most recent input events: [x][y][polarity] */
     protected int[][][] lastTimesMap; // x,y,polarity
     /** Scalar map of past orientation values: [x][y] */
@@ -74,7 +83,7 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
     protected int[]     oriDecideHelper = new int[ NUM_TYPES ];
     /** Historical orientation values. */
     protected VectorHistogram oriHist = new VectorHistogram(NUM_TYPES);
-    
+
     // takes about 350ns/event on tobi's t43p laptop at max performance (2.1GHz Pentium M, 1GB RAM)
     /** A vector direction object used for iterating over neighborhood. */
     protected final class Dir{
@@ -90,7 +99,7 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
             return String.format("%d,%d",x,y);
         }
     }
-    /** 
+    /**
      * Offsets from a pixel to pixels forming the receptive field (RF) for an orientation response.
      * They are computed whenever the RF size changes.
      * First index is orientation 0-NUM_TYPES, second is index over offsets. */
@@ -128,33 +137,35 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
         setPropertyTooltip(tim,"multiOriOutputEnabled","Enables multiple event output for all events that pass test");
         setPropertyTooltip(hist,"oriHistoryEnabled","enable use of prior orientation values to filter out events not consistent with history");
         setPropertyTooltip(hist,"oriHistoryMixingFactor","mixing factor for history of local orientation, increase to learn new orientations more quickly");
-        setPropertyTooltip(hist,"oriHistoryDiffThreshold","detected orientation must be within this value of historical value to pass. Value of 0.5 corresponds to 45degree with 4 directions."); 
+        setPropertyTooltip(hist,"oriHistoryDiffThreshold","detected orientation must be within this value of historical value to pass. Value of 0.5 corresponds to 45degree with 4 directions.");
     }
-     
+
     public Object getFilterState (){
         return lastTimesMap;
     }
-    
+
     public boolean isGeneratingFilter (){
         return true;
     }
 
     @Override
     synchronized public void resetFilter (){
-        if ( !isFilterEnabled() ) return;
-        
+        if ( !isFilterEnabled() ) {
+			return;
+		}
+
 //        allocateMaps(); // will allocate even if filter is enclosed and enclosing is not enabled
         oriHist.reset();
         if ( lastTimesMap != null ){
-            for ( int i = 0 ; i < lastTimesMap.length ; i++ ){
-                for ( int j = 0 ; j < lastTimesMap[i].length ; j++ ){
-                    Arrays.fill(lastTimesMap[i][j],0);
+            for (int[][] element : lastTimesMap) {
+                for (int[] element2 : element) {
+                    Arrays.fill(element2,0);
                 }
             }
         }
         if ( oriHistoryMap != null ){
-            for ( int i = 0 ; i < oriHistoryMap.length ; i++ ){
-                Arrays.fill(oriHistoryMap[i],-1f);
+            for (float[] element : oriHistoryMap) {
+                Arrays.fill(element,-1f);
             }
         }
     }
@@ -172,21 +183,23 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
     }
 
     protected void checkMaps (EventPacket packet){
-        if ( lastTimesMap == null 
-                || lastTimesMap.length != chip.getSizeX() 
-                || lastTimesMap[0].length != chip.getSizeY() 
-                || lastTimesMap[0][0].length != 2 ){ // changed to 2 for PolarityEvents
+        if ( (lastTimesMap == null)
+                || (lastTimesMap.length != chip.getSizeX())
+                || (lastTimesMap[0].length != chip.getSizeY())
+                || (lastTimesMap[0][0].length != 2) ){ // changed to 2 for PolarityEvents
             allocateMaps();
         }
     }
 
     synchronized protected void allocateMaps (){
-        if ( !isFilterEnabled() ) return;
+        if ( !isFilterEnabled() ) {
+			return;
+		}
         if ( chip != null ){
             lastTimesMap = new int[ chip.getSizeX() ][ chip.getSizeY() ][ 2 ]; // fixed to 2 for PolarityEvents
             oriHistoryMap = new float[ chip.getSizeX() ][ chip.getSizeY() ];
-            for ( int i = 0 ; i < oriHistoryMap.length ; i++ ){
-                Arrays.fill(oriHistoryMap[i],-1f);
+            for (float[] element : oriHistoryMap) {
+                Arrays.fill(element,-1f);
             }
             log.info(String.format("allocated int[%d][%d][%d] array for last event times and float[%d][%d] array for orientation history",chip.getSizeX(),chip.getSizeY(),2,chip.getSizeX(),chip.getSizeY()));
         }
@@ -204,7 +217,7 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
         java.awt.geom.Point2D.Float p = new Point2D.Float();
         int[] counts = oriHist.getCounts();
         for ( int i = 0 ; i < NUM_TYPES ; i++ ){
-            double theta = ( Math.PI * (double)i / NUM_TYPES ); // theta starts vertical up, type 0 is for vertical ori -Math.PI/2
+            double theta = ( (Math.PI * i) / NUM_TYPES ); // theta starts vertical up, type 0 is for vertical ori -Math.PI/2
             float wx = (float)Math.cos(theta);
             float wy = (float)Math.sin(theta);
             p.x += counts[i] * wx; // multiply unit vector by count of ori events
@@ -218,18 +231,20 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
     /** precomputes offsets for iterating over neighborhoods */
     protected void computeRFOffsets (){
         // compute array of Dir for each orientation
-        rfSize = 2 * length * ( 2 * width + 1 );
+        rfSize = 2 * length * ( (2 * width) + 1 );
         offsets = new Dir[ NUM_TYPES ][ rfSize ];
         for ( int ori = 0 ; ori < NUM_TYPES ; ori++ ){
             Dir  d = baseOffsets[ori];
             Dir pd = baseOffsets[( ori + 2 ) % NUM_TYPES]; // this is offset in perpindicular direction
             int ind = 0;
             for ( int s = -length ; s <= length ; s++ ){
-                if ( s == 0 ) continue;
+                if ( s == 0 ) {
+					continue;
+				}
 
                 for ( int w = -width ; w <= width ; w++ ){
                     // for each line of RF
-                    offsets[ori][ind] = new Dir(s * d.x + w * pd.x,s * d.y + w * pd.y);
+                    offsets[ori][ind] = new Dir((s * d.x) + (w * pd.x),(s * d.y) + (w * pd.y));
                     ind++;
                 }
             }
@@ -268,8 +283,8 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
     /** @param width the width of the RF, 0 for a single line of pixels, 1 for 3 lines, etc */
     synchronized public void setWidth (final int width){
         int setValue = (width < 0) ? 0 : width;
-            setValue = (width > length -1) ? length -1 : setValue;
-        
+            setValue = (width > (length -1)) ? length -1 : setValue;
+
         this.width = setValue;
         allocateMaps();
         putInt("width",setValue);
@@ -277,12 +292,16 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
 
     @Override
     public void annotate (GLAutoDrawable drawable){
-        if ( !isAnnotationEnabled() ) return;
+        if ( !isAnnotationEnabled() ) {
+			return;
+		}
 
-        GL gl = drawable.getGL();
+        GL2 gl = drawable.getGL().getGL2();
 
         if ( isShowGlobalEnabled() ){
-            if ( gl == null ) return;
+            if ( gl == null ) {
+				return;
+			}
 
             gl.glPushMatrix();
             gl.glTranslatef(chip.getSizeX() / 2,chip.getSizeY() / 2,0);
@@ -295,7 +314,7 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
             gl.glEnd();
             gl.glPopMatrix();
         }
-        if ( isShowVectorsEnabled() && getOutputPacket()!=null ){
+        if ( isShowVectorsEnabled() && (getOutputPacket()!=null) ){
             // draw individual orientation vectors
             gl.glPushMatrix();
             EventPacket outputPacket=getOutputPacket();
@@ -306,11 +325,13 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
             gl.glPopMatrix();
         }
     }
-    
-    
+
+
     // plots a single motion vector which is the number of pixels per second times scaling
-    protected void drawOrientationVector (GL gl,OrientationEventInterface e){
-        if ( !e.isHasOrientation() ) return;
+    protected void drawOrientationVector (GL2 gl,OrientationEventInterface e){
+        if ( !e.isHasOrientation() ) {
+			return;
+		}
 
         byte ori=e.getOrientation();
         OrientationEvent.UnitVector d = OrientationEvent.unitVectors[ori];
@@ -325,19 +346,19 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
         gl.glColor3fv(c,0);
         gl.glBegin(GL.GL_LINES);
         BasicEvent be=(BasicEvent)e;
-        gl.glVertex2f(be.x - d.x * length + jx, be.y - d.y * length + jy);
-        gl.glVertex2f(be.x + d.x * length + jx, be.y + d.y * length+jy);
+        gl.glVertex2f((be.x - (d.x * length)) + jx, (be.y - (d.y * length)) + jy);
+        gl.glVertex2f(be.x + (d.x * length) + jx, be.y + (d.y * length)+jy);
         gl.glEnd();
     }
 
-    /**Abstract method that filters in to out packet. 
+    /**Abstract method that filters in to out packet.
      * If filtering is enabled, the number of getOutputPacket() may be less
      * than the number in
      * @param in input events can be null or empty.
      * @return the processed events, may be fewer in number. */
     @Override
     abstract  public EventPacket<?> filterPacket (EventPacket<?> in);
-    
+
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --MinDtThreshold--">
     public int getMinDtThreshold (){
         return this.minDtThreshold;
@@ -370,15 +391,15 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
         this.multiOriOutputEnabled = multiOriOutputEnabled;
     }
     // </editor-fold>
-    
+
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --PassAllEvents--">
     public boolean isPassAllEvents (){
         return passAllEvents;
     }
 
-    /** Set this to true to pass all events even if they don't satisfy the 
+    /** Set this to true to pass all events even if they don't satisfy the
      * orientation test. These passed events have no orientation set.
-     * @param passAllEvents true to pass all events, false to pass only events 
+     * @param passAllEvents true to pass all events, false to pass only events
      * that pass coincidence test. */
     public void setPassAllEvents (boolean passAllEvents){
         this.passAllEvents = passAllEvents;
@@ -391,9 +412,9 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
         return subSampleShift;
     }
 
-    /** Sets the number of spatial bits to subsample events times by. 
-     * Setting this equal to 1, for example, subsamples into an event time map 
-     * with halved spatial resolution, aggregating over more space at coarser 
+    /** Sets the number of spatial bits to subsample events times by.
+     * Setting this equal to 1, for example, subsamples into an event time map
+     * with halved spatial resolution, aggregating over more space at coarser
      * resolution but increasing the search range by a factor of two at no additional cost.
      * @param subSampleShift the number of bits, 0 means no subsampling */
     public void setSubSampleShift (int subSampleShift){
@@ -422,7 +443,7 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
         dtRejectThreshold = minDtThreshold * dtRejectMultiplier;
     }
     // </editor-fold>
-    
+
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --OriHist--">
     public VectorHistogram getOriHist (){
         return oriHist;
@@ -432,7 +453,7 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
         this.oriHist = oriHist;
     }
     // </editor-fold>
- 
+
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --OriHistoryMixingFactor--">
     public float getOriHistoryMixingFactor (){
         return oriHistoryMixingFactor;
@@ -459,7 +480,7 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
         putBoolean("oriHistoryEnabled",oriHistoryEnabled);
     }
     // </editor-fold>
-    
+
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --OriHistoryDiffThreshold--">
     public float getOriHistoryDiffThreshold (){
         return oriHistoryDiffThreshold;
@@ -473,7 +494,7 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
         putFloat("oriHistoryDiffThreshold",oriHistoryDiffThreshold);
     }
     // </editor-fold>
-    
+
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --JitterVectorLocations--">
     /**
      * @return the jitterVectorLocations
@@ -509,18 +530,18 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
         getChip().getAeViewer().interruptViewloop();
     }
     // </editor-fold>
-    
+
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --ShowRawInputEnable--">
     public boolean isShowRawInputEnabled() {
         return showRawInputEnabled;
     }
-    
+
     public void setShowRawInputEnabled(boolean showRawInputEnabled) {
         this.showRawInputEnabled = showRawInputEnabled;
         putBoolean("showRawInputEnabled",showRawInputEnabled);
     }
     // </editor-fold>
-    
+
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --ShowVectorsEnabled--">
     public boolean isShowVectorsEnabled (){
         return showVectorsEnabled;

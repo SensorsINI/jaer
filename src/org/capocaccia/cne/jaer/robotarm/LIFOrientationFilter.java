@@ -9,15 +9,15 @@ import java.util.Observer;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsOrientationEvent;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OrientationEvent;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**
  * Orientation extractor / labeler using LIF neurons.
- * 
+ *
  * @author Michael Pfeiffer, Alex Russell
  */
 @Description("Computes Orientations via a LIF-Neuron Model")
@@ -97,9 +97,14 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
     }
 
     /** Filters events */
-    synchronized public EventPacket filterPacket(EventPacket in) {
-        if(!filterEnabled) return in;
-        if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
+    @Override
+	synchronized public EventPacket filterPacket(EventPacket in) {
+        if(!filterEnabled) {
+			return in;
+		}
+        if(enclosedFilter!=null) {
+			in=enclosedFilter.filterPacket(in);
+		}
         checkOutputPacketEventType(ApsDvsOrientationEvent.class);
 
         OutputEventIterator outItr=out.outputIterator();
@@ -109,38 +114,38 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
             System.out.println("Not ready yet!");
             initFilter();
         }
-        
+
         // Cycle through events
         for(Object e:in){
            BasicEvent i=(BasicEvent)e;
            float ts=i.timestamp;
-           short x=(short)(i.x), y=(short)(i.y);
+           short x=(i.x), y=(i.y);
 
 
            int idx = 0;
            int local_idx = 0;
            int h_spike = 0;
            int v_spike = 0;
-           
-           int offset = (weight_size+2*(spatialscale-1)-1)/2;
+
+           int offset = ((weight_size+(2*(spatialscale-1)))-1)/2;
            // Update the horizontal and vertical neurons
            for (int nx=0; nx <weight_size; nx++) {
-               if (((x-offset+spatialscale*nx) >= 0) && ((x-offset+spatialscale*nx) < dim_pixels)) {
+               if ((((x-offset)+(spatialscale*nx)) >= 0) && (((x-offset)+(spatialscale*nx)) < dim_pixels)) {
                 for (int ny=0; ny < weight_size; ny++) {
-                    if (((y-offset+spatialscale*ny) >= 0) && ((y-offset+spatialscale*ny) < dim_pixels)) {
+                    if ((((y-offset)+(spatialscale*ny)) >= 0) && (((y-offset)+(spatialscale*ny)) < dim_pixels)) {
                         // Now the exciting part!!
-                       idx = (x-offset+spatialscale*nx) + (y-offset+spatialscale*ny)*dim_pixels;
-                       local_idx = nx + ny*weight_size;
+                       idx = ((x-offset)+(spatialscale*nx)) + (((y-offset)+(spatialscale*ny))*dim_pixels);
+                       local_idx = nx + (ny*weight_size);
 
                        h_spike = horizontal_cells[idx].update(scalew*w_horiz[local_idx], ts);
-                       
+
                        if (h_spike==1) {
                         ApsDvsOrientationEvent testi = new ApsDvsOrientationEvent();
-                        testi.setX((short)(x-offset+spatialscale*nx));
-                        testi.setY((short)(y-offset+spatialscale*ny));
+                        testi.setX((short)((x-offset)+(spatialscale*nx)));
+                        testi.setY((short)((y-offset)+(spatialscale*ny)));
                         testi.setTimestamp((int)ts);
                         testi.orientation=0;
-                        BasicEvent o=(BasicEvent)outItr.nextOutput();
+                        BasicEvent o=outItr.nextOutput();
                         o.copyFrom(testi);
                         vertical_cells[idx].update(-inhibitw, ts);
                        }
@@ -148,11 +153,11 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
                        v_spike = vertical_cells[idx].update(scalew*w_vert[local_idx], ts);
                        if (v_spike==1) {
                         ApsDvsOrientationEvent testi = new ApsDvsOrientationEvent();
-                        testi.setX((short)(x-offset+spatialscale*nx));
-                        testi.setY((short)(y-offset+spatialscale*ny));
+                        testi.setX((short)((x-offset)+(spatialscale*nx)));
+                        testi.setY((short)((y-offset)+(spatialscale*ny)));
                         testi.setTimestamp((int)ts);
                         testi.orientation=2;
-                        BasicEvent o=(BasicEvent)outItr.nextOutput();
+                        BasicEvent o=outItr.nextOutput();
                         o.copyFrom(testi);
                         horizontal_cells[idx].update(-inhibitw, ts);
                        }
@@ -178,7 +183,7 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
 
         this.vleak = vleak;
         if (horizontal_cells != null) {
-            for (int i=0; i<dim_pixels*dim_pixels; i++) {
+            for (int i=0; i<(dim_pixels*dim_pixels); i++) {
                 horizontal_cells[i].setVleak(vleak);
                 vertical_cells[i].setVleak(vleak);
             }
@@ -195,7 +200,7 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
 
         this.vreset = vreset;
         if (horizontal_cells != null) {
-            for (int i=0; i<dim_pixels*dim_pixels; i++) {
+            for (int i=0; i<(dim_pixels*dim_pixels); i++) {
                 horizontal_cells[i].setVreset(vreset);
                 vertical_cells[i].setVreset(vreset);
             }
@@ -212,7 +217,7 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
 
         this.tau = tau;
         if (horizontal_cells != null) {
-            for (int i=0; i<dim_pixels*dim_pixels; i++) {
+            for (int i=0; i<(dim_pixels*dim_pixels); i++) {
                 horizontal_cells[i].setTau(tau);
                 vertical_cells[i].setTau(tau);
             }
@@ -229,7 +234,7 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
 
         this.thresh = thresh;
         if (horizontal_cells != null) {
-            for (int i=0; i<dim_pixels*dim_pixels; i++) {
+            for (int i=0; i<(dim_pixels*dim_pixels); i++) {
                 horizontal_cells[i].setThresh(thresh);
                 vertical_cells[i].setThresh(thresh);
             }
@@ -269,7 +274,8 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
 
 
 
-    public void initFilter() {
+    @Override
+	public void initFilter() {
         w_horiz = make_horizontal_filter(3);
         w_vert = make_vertical_filter(3);
 
@@ -278,9 +284,10 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
 
 
     /** Reset filter */
-    synchronized public void resetFilter() {
+    @Override
+	synchronized public void resetFilter() {
         if (horizontal_cells != null) {
-            for (int i=0; i<dim_pixels*dim_pixels; i++) {
+            for (int i=0; i<(dim_pixels*dim_pixels); i++) {
                 horizontal_cells[i].reset_neuron();
                 vertical_cells[i].reset_neuron();
             }
@@ -292,7 +299,8 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
         return null;
     }
 
-    synchronized public void update(Observable o, Object arg) {
+    @Override
+	synchronized public void update(Observable o, Object arg) {
 //        if(!isFilterEnabled()) return;
         initFilter();
         resetFilter();

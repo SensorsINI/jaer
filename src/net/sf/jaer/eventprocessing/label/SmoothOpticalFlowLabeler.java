@@ -7,10 +7,14 @@ package net.sf.jaer.eventprocessing.label;
 import java.awt.geom.Point2D;
 import java.util.Observable;
 import java.util.Observer;
+
 import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.MotionOrientationEvent;
 import net.sf.jaer.event.MotionOrientationEvent.Dir;
@@ -56,9 +60,9 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         EventPacket dirOut = dirFilter.filterPacket(in);
         checkOutputPacketEventType(OpticalFlowEvent.class);
-        // add each motion event to lowpassed values and output 
+        // add each motion event to lowpassed values and output
         // an event if refractory period has passed
-        int s = 1 << subSampleBy - 1;
+        int s = 1 << (subSampleBy - 1);
         OutputEventIterator outItr = out.outputIterator();
         if (dirOut.getEventClass() != MotionOrientationEvent.class) {
             log.warning("input events are " + dirOut.getEventClass() + ", but they need to be MotionOrientationEvent's");
@@ -70,7 +74,7 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
 
             Dir d = e.dir;
             Point2D.Float v = vels[x][y].filter2d(e.velocity.x, e.velocity.y, e.timestamp);
-            if (e.timestamp - lastSentTimestamps[x][y] > refractoryPeriodUs || e.timestamp < lastSentTimestamps[x][y]) {
+            if (((e.timestamp - lastSentTimestamps[x][y]) > refractoryPeriodUs) || (e.timestamp < lastSentTimestamps[x][y])) {
                 OpticalFlowEvent oe = (OpticalFlowEvent) outItr.nextOutput();
                 oe.copyFrom(e);
                 oe.x = (short) ((x << subSampleBy) + s);
@@ -82,8 +86,9 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
         return showRawInputEnabled ? in : out;
     }
 
-    public void annotate(GLAutoDrawable drawable) {
-        GL gl = drawable.getGL();
+    @Override
+	public void annotate(GLAutoDrawable drawable) {
+        GL2 gl = drawable.getGL().getGL2();
         // draw individual motion vectors
         gl.glPushMatrix();
         gl.glColor3f(1, 1, 1);
@@ -98,13 +103,13 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
     }
 
     // plots a single motion vector which is the number of pixels per second times scaling
-    void drawMotionVector(GL gl, OpticalFlowEvent e, float scale) {
+    void drawMotionVector(GL2 gl, OpticalFlowEvent e, float scale) {
         gl.glBegin(GL.GL_POINTS);
         gl.glVertex2d(e.x, e.y);
         gl.glEnd();
         gl.glBegin(GL.GL_LINES);
         gl.glVertex2d(e.x, e.y);
-        gl.glVertex2f(e.x + scale * e.optFlowVelPPS.x, e.y + scale * e.optFlowVelPPS.y);
+        gl.glVertex2f(e.x + (scale * e.optFlowVelPPS.x), e.y + (scale * e.optFlowVelPPS.y));
         gl.glEnd();
     }
 
@@ -121,7 +126,7 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
 
     synchronized void alloc() {
         setSubsampling();
-        if (sx > 0 && sy > 0) {
+        if ((sx > 0) && (sy > 0)) {
             vels = new LowpassFilter2d[sx][sy];
             lastSentTimestamps = new int[sx][sy];
             for (int x = 0; x < sx; x++) {
@@ -135,7 +140,7 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
     @Override
     public void update(Observable o, Object arg) {
         if (o instanceof AEChip) {
-            if (arg == AEChip.EVENT_SIZEX || arg == AEChip.EVENT_SIZEY) {
+            if ((arg == Chip2D.EVENT_SIZEX) || (arg == Chip2D.EVENT_SIZEY)) {
                 resetFilter();
             }
         }
@@ -184,7 +189,7 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
         }
         this.tauMs = tauMs;
         putFloat("tauMs", tauMs);
-        if (sx > 0 && sy > 0) {
+        if ((sx > 0) && (sy > 0)) {
             for (int x = 0; x < sx; x++) {
                 for (int y = 0; y < sy; y++) {
                     vels[x][y].setTauMs(tauMs);

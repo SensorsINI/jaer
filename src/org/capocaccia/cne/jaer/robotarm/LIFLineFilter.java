@@ -7,21 +7,22 @@ import java.awt.Graphics2D;
 import java.util.Observable;
 import java.util.Observer;
 
+import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsOrientationEvent;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OrientationEvent;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
  *  Extracts lines in Manhatten directions using LIF neurons along rows / columns.
- * 
+ *
  * @author Michael Pfeiffer, Alex Russell
  */
 @Description("Detects parallel lines via a LIF-Neuron Model")
@@ -83,9 +84,14 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
     }
 
     /** Filters events */
-    synchronized public EventPacket filterPacket(EventPacket in) {
-        if(!filterEnabled) return in;
-        if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
+    @Override
+	synchronized public EventPacket filterPacket(EventPacket in) {
+        if(!filterEnabled) {
+			return in;
+		}
+        if(enclosedFilter!=null) {
+			in=enclosedFilter.filterPacket(in);
+		}
         checkOutputPacketEventType(ApsDvsOrientationEvent.class);
 
         OutputEventIterator outItr=out.outputIterator();
@@ -100,7 +106,7 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
         for(Object e:in){
            ApsDvsOrientationEvent i=(ApsDvsOrientationEvent)e;
            float ts=i.timestamp;
-           short x=(short)(i.x), y=(short)(i.y);
+           short x=(i.x), y=(i.y);
            byte orientation = i.orientation;
 
            int h_spike = 0;
@@ -113,35 +119,35 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
            if (orientation == 0) {
                // Process only horizontal events
                for (int nx=0; nx <recfieldsize; nx++) {
-                   loc_x = x-offset+nx;
+                   loc_x = (x-offset)+nx;
                 if ((loc_x >= 0) && (loc_x < dim_pixels)) {
                     h_spike = horizontal_cells[loc_x].update(scalew, ts);
                     if (h_spike==1) {
                         ApsDvsOrientationEvent testi = new ApsDvsOrientationEvent();
-                        testi.setX((short)(x-offset+nx));
-                        testi.setY((short)(y));
+                        testi.setX((short)((x-offset)+nx));
+                        testi.setY((y));
                         testi.setTimestamp((int)ts);
                         testi.orientation=0;
-                        BasicEvent o=(BasicEvent)outItr.nextOutput();
+                        BasicEvent o=outItr.nextOutput();
                         o.copyFrom(testi);
                         lastVertLine = loc_x;
                        }
-                    } 
+                    }
                 }  // end for
            } // end if (orientation)
            if (orientation == 2) {
                // Process only vertical events
                for (int ny=0; ny < recfieldsize; ny++) {
-                   loc_y = y-offset+ny;
+                   loc_y = (y-offset)+ny;
                     if ((loc_y >= 0) && (loc_y < dim_pixels)) {
                         v_spike = vertical_cells[loc_y].update(scalew, ts);
                         if (v_spike==1) {
                         ApsDvsOrientationEvent testi = new ApsDvsOrientationEvent();
-                        testi.setX((short)(x));
-                        testi.setY((short)(y-offset+ny));
+                        testi.setX((x));
+                        testi.setY((short)((y-offset)+ny));
                         testi.setTimestamp((int)ts);
                         testi.orientation=2;
-                        BasicEvent o=(BasicEvent)outItr.nextOutput();
+                        BasicEvent o=outItr.nextOutput();
                         o.copyFrom(testi);
 
                         lastHorizLine = loc_y;
@@ -245,7 +251,8 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
     }
 
 
-    public void initFilter() {
+    @Override
+	public void initFilter() {
 
         init_neuron_array();
         resetFilter();
@@ -253,7 +260,8 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
 
 
     /** Reset filter */
-    synchronized public void resetFilter() {
+    @Override
+	synchronized public void resetFilter() {
         if (horizontal_cells != null) {
             for (int i=0; i<dim_pixels; i++) {
                 horizontal_cells[i].reset_neuron();
@@ -270,7 +278,8 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
         return null;
     }
 
-    synchronized public void update(Observable o, Object arg) {
+    @Override
+	synchronized public void update(Observable o, Object arg) {
 //        if(!isFilterEnabled()) return;
         initFilter();
         resetFilter();
@@ -284,8 +293,11 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
     public void annotate(Graphics2D g) {
     }
     /** JOGL annotation */
-    public void annotate(GLAutoDrawable drawable) {
-        if(!isFilterEnabled()) return;
+    @Override
+	public void annotate(GLAutoDrawable drawable) {
+        if(!isFilterEnabled()) {
+			return;
+		}
         if ((lastHorizLine >= 0) || (lastVertLine >= 0)) {
             GL2 gl=drawable.getGL().getGL2();
         if (lastHorizLine >= 0) {
@@ -293,7 +305,7 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
             gl.glPushMatrix();
             gl.glColor3f(1,1,0);
             gl.glLineWidth(3);
-            gl.glBegin(GL2.GL_LINE_LOOP);
+            gl.glBegin(GL.GL_LINE_LOOP);
             gl.glVertex2d(0, lastHorizLine);
             gl.glVertex2d(dim_pixels, lastHorizLine);
             gl.glEnd();
@@ -305,7 +317,7 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
             gl.glPushMatrix();
             gl.glColor3f(0,1,1);
             gl.glLineWidth(3);
-            gl.glBegin(GL2.GL_LINE_LOOP);
+            gl.glBegin(GL.GL_LINE_LOOP);
             gl.glVertex2d(lastVertLine, 0);
             gl.glVertex2d(lastVertLine, dim_pixels);
             gl.glEnd();

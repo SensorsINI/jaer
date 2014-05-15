@@ -11,14 +11,15 @@ import java.util.Observable;
 import java.util.Observer;
 import java.util.Vector;
 
+import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsOrientationEvent;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OrientationEvent;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -131,15 +132,17 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
         }
     }
 
-    public void finalize() {
-        if (robot != null)
-            robot.stop();
+    @Override
+	public void finalize() {
+        if (robot != null) {
+			robot.stop();
+		}
     }
 
     /** Create array of orientation selective neurons */
     private void init_neuron_array() {
         map_addresses = new Vector(dim_pixels);
-        int total_recsize = 2*recfieldsize + 1;
+        int total_recsize = (2*recfieldsize) + 1;
         horizontal_cells = new LIFNeuron[dim_pixels][total_recsize][2];
         vertical_cells = new LIFNeuron[dim_pixels][total_recsize][2];
         horizontal_median_cells = new LIFNeuron[dim_pixels];
@@ -150,8 +153,8 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
             LinkedList medpixels = new LinkedList();
             LinkedList idxpixels = new LinkedList();
             for (int j=0; j<total_recsize; j++) {
-                int med_up_pixel = i+lineseparate-recfieldsize+j;
-                int med_down_pixel = i-lineseparate-recfieldsize+j;
+                int med_up_pixel = ((i+lineseparate)-recfieldsize)+j;
+                int med_down_pixel = (i-lineseparate-recfieldsize)+j;
                 if ((med_up_pixel >= 0) && (med_up_pixel < dim_pixels)) {
                     medpixels.add(new Integer(med_up_pixel));
                     int upmostpixel = Math.max(0, med_up_pixel-lineseparate-recfieldsize);
@@ -163,7 +166,7 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
                 }
                 if ((med_down_pixel >= 0) && (med_down_pixel < dim_pixels)) {
                     medpixels.add(new Integer(med_down_pixel));
-                    int upmostpixel = Math.max(0, med_down_pixel+lineseparate-recfieldsize);
+                    int upmostpixel = Math.max(0, (med_down_pixel+lineseparate)-recfieldsize);
                     int up_idx = i-upmostpixel;
                     Vector idxObj = new Vector(2);
                     idxObj.add(new Integer(up_idx));
@@ -175,7 +178,7 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
             ad_map.add(medpixels);
             ad_map.add(idxpixels);
             map_addresses.add(i, ad_map);
-          
+
             int upper_rec_field[] = upper_rec_idx(i);
             int lower_rec_field[] = lower_rec_idx(i);
 
@@ -219,36 +222,43 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
     /** Compute indices for upper receptive field */
     private int[] upper_rec_idx(int y) {
         int upper_point = Math.min(dim_pixels, Math.max(0, y-lineseparate-recfieldsize));
-        int lower_point = Math.min(dim_pixels, Math.max(0, y-lineseparate+recfieldsize));
+        int lower_point = Math.min(dim_pixels, Math.max(0, (y-lineseparate)+recfieldsize));
 
-        int num_idx = lower_point-upper_point+1;
+        int num_idx = (lower_point-upper_point)+1;
 
         int idx[] = new int[num_idx];
-        for (int i=0; i<num_idx; i++)
-            idx[i] = upper_point+i;
+        for (int i=0; i<num_idx; i++) {
+			idx[i] = upper_point+i;
+		}
 
         return idx;
     }
 
     /** Compute indices for lower receptive field */
     private int[] lower_rec_idx(int y) {
-        int upper_point = Math.min(dim_pixels, Math.max(0, y+lineseparate-recfieldsize));
+        int upper_point = Math.min(dim_pixels, Math.max(0, (y+lineseparate)-recfieldsize));
         int lower_point = Math.min(dim_pixels, Math.max(0, y+lineseparate+recfieldsize));
 
-        int num_idx = lower_point-upper_point+1;
+        int num_idx = (lower_point-upper_point)+1;
 
         int idx[] = new int[num_idx];
-        for (int i=0; i<num_idx; i++)
-            idx[i] = upper_point+i;
+        for (int i=0; i<num_idx; i++) {
+			idx[i] = upper_point+i;
+		}
 
         return idx;
     }
 
-    
+
     /** Filters events */
-    synchronized public EventPacket filterPacket(EventPacket in) {
-        if(!filterEnabled) return in;
-        if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
+    @Override
+	synchronized public EventPacket filterPacket(EventPacket in) {
+        if(!filterEnabled) {
+			return in;
+		}
+        if(enclosedFilter!=null) {
+			in=enclosedFilter.filterPacket(in);
+		}
         checkOutputPacketEventType(ApsDvsOrientationEvent.class);
 
         OutputEventIterator outItr=out.outputIterator();
@@ -263,7 +273,7 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
         for(Object e:in){
            ApsDvsOrientationEvent i=(ApsDvsOrientationEvent)e;
            float ts=i.timestamp;
-           short x=(short)(i.x), y=(short)(i.y);
+           short x=(i.x), y=(i.y);
            byte orientation = i.orientation;
 
            int h_spike = 0;
@@ -292,7 +302,7 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
                 h_spike = horizontal_cells[med_y][loc_y][loc_updown].update(scalew, ts);
                 if (h_spike==1) {
                     // Inhibit other neurons in same receptive field
-                    int total_recfield = 2*recfieldsize+1;
+                    int total_recfield = (2*recfieldsize)+1;
                     for (int j=0; j<total_recfield; j++) {
                         if (horizontal_cells[med_y][j][loc_updown] != null) {
                             horizontal_cells[med_y][j][loc_updown].update(-recinhibition, ts);
@@ -309,7 +319,7 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
                             testi.setY((short)(med_y));
                             testi.setTimestamp((int)ts);
                             testi.orientation=0;
-                            BasicEvent o=(BasicEvent)outItr.nextOutput();
+                            BasicEvent o=outItr.nextOutput();
                             o.copyFrom(testi);
                         }
                             lastMedianY = med_y;
@@ -339,7 +349,7 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
                 v_spike = vertical_cells[med_x][loc_x][loc_updown].update(scalew, ts);
                 if (v_spike==1) {
                     // Inhibit other neurons in same receptive field
-                    int total_recfield = 2*recfieldsize+1;
+                    int total_recfield = (2*recfieldsize)+1;
                     for (int j=0; j<total_recfield; j++) {
                         if (vertical_cells[med_x][j][loc_updown] != null) {
                             vertical_cells[med_x][j][loc_updown].update(-recinhibition, ts);
@@ -356,7 +366,7 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
                             testi.setY((short)(lastMedianY));
                             testi.setTimestamp((int)ts);
                             testi.orientation=2;
-                            BasicEvent o=(BasicEvent)outItr.nextOutput();
+                            BasicEvent o=outItr.nextOutput();
                             o.copyFrom(testi);
                         }
                         lastMedianX = med_x;
@@ -616,7 +626,8 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
 
 
 
-    public void initFilter() {
+    @Override
+	public void initFilter() {
 
         init_neuron_array();
         resetFilter();
@@ -624,7 +635,8 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
 
 
     /** Reset filter */
-    synchronized public void resetFilter() {
+    @Override
+	synchronized public void resetFilter() {
         if (horizontal_median_cells != null) {
             for (int i=0; i<dim_pixels; i++) {
                 if (horizontal_median_cells[i] != null) {
@@ -659,7 +671,8 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
         return null;
     }
 
-    synchronized public void update(Observable o, Object arg) {
+    @Override
+	synchronized public void update(Observable o, Object arg) {
 //        if(!isFilterEnabled()) return;
         initFilter();
         resetFilter();
@@ -673,14 +686,17 @@ public class LIFMedianFilter extends EventFilter2D implements Observer, FrameAnn
     public void annotate(Graphics2D g) {
     }
     /** JOGL annotation */
-    public void annotate(GLAutoDrawable drawable) {
-        if(!isFilterEnabled()) return;
+    @Override
+	public void annotate(GLAutoDrawable drawable) {
+        if(!isFilterEnabled()) {
+			return;
+		}
         if ((lastMedianX >= 0) || (lastMedianY >= 0)) {
             GL2 gl=drawable.getGL().getGL2();
             gl.glPushMatrix();
             gl.glColor3f(1,0,1);
             gl.glLineWidth(3);
-            gl.glBegin(GL2.GL_LINE_LOOP);
+            gl.glBegin(GL.GL_LINE_LOOP);
             int left = Math.max(0, lastMedianX-2);
             int right = Math.min(127, lastMedianX+2);
             int up = Math.max(0, lastMedianY-2);
