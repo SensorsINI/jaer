@@ -57,6 +57,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 import com.jogamp.opengl.util.gl2.GLUT;
+import java.io.FileNotFoundException;
 
 /** This complex and highly configurable tracker tracks blobs of events using a
  * rectangular hypothesis about the object shape. Many parameters constrain
@@ -184,22 +185,12 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             glCanvas.removeMouseListener(this);
         }
     }
-
-    @Override
-    public void mousePressed(MouseEvent e) {
-    }
-
-    @Override
-    public void mouseReleased(MouseEvent e) {
-    }
-
-    @Override
-    public void mouseEntered(MouseEvent e) {
-    }
-
-    @Override
-    public void mouseExited(MouseEvent e) {
-    }
+    
+    //The following methods need to be implement for 'MouseListener' we only use 'mouseClicked'
+    @Override public void mousePressed(MouseEvent e) { }
+    @Override public void mouseReleased(MouseEvent e) { }
+    @Override public void mouseEntered(MouseEvent e) { }
+    @Override public void mouseExited(MouseEvent e) { }
 
     public enum ClusterLoggingMethod {
         LogFrames, LogClusters
@@ -214,73 +205,68 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         initFilter();
         chip.addObserver(this);
         addObserver(this); // to handle updates during packet
-        final String sizing = "Sizing", mov = "Movement", life = "Lifetime", disp = "Display", global = TOOLTIP_GROUP_GLOBAL, update = "Update", log = "Logging", pi="PI Controller";
+        
+        // <editor-fold defaultstate="collapsed" desc=" -- Property Tooltips -- ">
+        final String sizing = "Sizing", mov = "Movement", life = "Lifetime", 
+                     disp = "Display", global = TOOLTIP_GROUP_GLOBAL, 
+                     update = "Update", logg = "Logging", pi="PI Controller";
         setPropertyTooltip(life, "enableClusterExitPurging", "enables rapid purging of clusters that hit edge of scene");
-        setPropertyTooltip(sizing, "defaultClusterRadius", "default starting size of cluster as fraction of chip size");
+        setPropertyTooltip(life, "clusterMassDecayTauUs", "time constant of exponential decay of \"mass\" of cluster between events (us)");
+        setPropertyTooltip(life, "thresholdMassForVisibleCluster", "Cluster needs this \"mass\" to be visible. Mass increments with each event and decays with e-folding time constant of clusterMassDecayTauUs. Use \"showAllClusters\" to diagnose fleeting clusters.");
+        setPropertyTooltip(life, "thresholdVelocityForVisibleCluster", "cluster must have at least this velocity in pixels/sec to become visible");
+        setPropertyTooltip(life, "dontMergeEver", "never merge overlapping clusters");
+        setPropertyTooltip(life, "surroundInhibitionEnabled", "Enabling this option causes events in the surround region to actively reduce the cluster mass, enabling tracking of only isolated features");
+        setPropertyTooltip(life, "surroundInhibitionCost", "If above is checked: The negative weight of surrounding points");
         setPropertyTooltip(mov, "mixingFactor", "how much cluster is moved towards an event, as a fraction of the distance from the cluster to the event");
         setPropertyTooltip(mov, "velocityPoints", "the number of recent path points (one per packet of events) to use for velocity vector regression");
         setPropertyTooltip(mov, "velocityTauMs", "lowpass filter time constant in ms for velocity updates; effectively limits acceleration");
         setPropertyTooltip(mov, "frictionTauMs", "velocities decay towards zero with this time constant to mimic friction; set to NaN to disable friction");
+        setPropertyTooltip(mov, "pathsEnabled", "draw paths of clusters over some window");
+        setPropertyTooltip(mov, "useVelocity", "uses measured cluster velocity to predict future position; vectors are scaled " + String.format("%.1f pix/pix/s", (VELOCITY_VECTOR_SCALING / AEConstants.TICK_DEFAULT_US) * 1e-6));
+        setPropertyTooltip(mov, "useNearestCluster", "event goes to nearest cluster, not to first (usually oldest) cluster containing it");
+        setPropertyTooltip(mov, "predictiveVelocityFactor", "how much cluster position leads position based on estimated velocity");
+        setPropertyTooltip(mov, "initializeVelocityToAverage", "initializes cluster velocity to moving average of cluster velocities; otherwise initialized to zero");
         setPropertyTooltip(sizing, "surround", "the radius is expanded by this ratio to define events that pull radius of cluster");
         setPropertyTooltip(sizing, "dynamicSizeEnabled", "size varies dynamically depending on cluster events");
         setPropertyTooltip(sizing, "dynamicAspectRatioEnabled", "aspect ratio of cluster depends on events");
         setPropertyTooltip(sizing, "dynamicAngleEnabled", "angle of cluster depends on events, otherwise angle is zero");
-        setPropertyTooltip(mov, "pathsEnabled", "draw paths of clusters over some window");
-        setPropertyTooltip(disp, "pathLength", "paths are at most this many packets long");
-        setPropertyTooltip(disp, "colorClustersDifferentlyEnabled", "each cluster gets assigned a random color, otherwise color indicates ages");
-        setPropertyTooltip(update, "useOnePolarityOnlyEnabled", "use only one event polarity");
-        setPropertyTooltip(update, "useOffPolarityOnlyEnabled", "use only OFF events, not ON - if useOnePolarityOnlyEnabled");
-        setPropertyTooltip(disp, "useEllipticalClusters", "true uses elliptical rather than rectangular clusters - distance based on elliptical distance including cluster angle");
+        setPropertyTooltip(sizing, "defaultClusterRadius", "default starting size of cluster as fraction of chip size");
         setPropertyTooltip(sizing, "aspectRatio", "default (or initial) aspect ratio, <1 is wide");
         setPropertyTooltip(sizing, "clusterSize", "size (starting) in fraction of chip max size");
-        setPropertyTooltip(update, "growMergedSizeEnabled", "enabling makes merged clusters take on sum of sizes, otherwise they take on size of older cluster");
-        setPropertyTooltip(mov, "useVelocity", "uses measured cluster velocity to predict future position; vectors are scaled " + String.format("%.1f pix/pix/s", (VELOCITY_VECTOR_SCALING / AEConstants.TICK_DEFAULT_US) * 1e-6));
+        setPropertyTooltip(sizing, "highwayPerspectiveEnabled", "Cluster size depends on perspective location; mouse click defines horizon");
+        setPropertyTooltip(sizing, "angleFollowsVelocity", "cluster angle is set by velocity vector angle; requires that useVelocity is on");
+        setPropertyTooltip(disp, "pathLength", "paths are at most this many packets long");
+        setPropertyTooltip(disp, "colorClustersDifferentlyEnabled", "each cluster gets assigned a random color, otherwise color indicates ages");
+        setPropertyTooltip(disp, "useEllipticalClusters", "true uses elliptical rather than rectangular clusters - distance based on elliptical distance including cluster angle");
         setPropertyTooltip(disp, "showPaths", "shows the stored path points of each cluster");
         setPropertyTooltip(disp, "classifierEnabled", "colors clusters based on single size metric");
         setPropertyTooltip(disp, "classifierThreshold", "the boundary for cluster size classification in fractions of chip max dimension");
         setPropertyTooltip(disp, "showAllClusters", "shows all clusters, not just those with sufficient support");
-        setPropertyTooltip(mov, "useNearestCluster", "event goes to nearest cluster, not to first (usually oldest) cluster containing it");
-        setPropertyTooltip(life, "clusterMassDecayTauUs", "time constant of exponential decay of \"mass\" of cluster between events (us)");
-        setPropertyTooltip(mov, "predictiveVelocityFactor", "how much cluster position leads position based on estimated velocity");
-        setPropertyTooltip(sizing, "highwayPerspectiveEnabled", "Cluster size depends on perspective location; mouse click defines horizon");
-        setPropertyTooltip(life, "thresholdMassForVisibleCluster", "Cluster needs this \"mass\" to be visible. Mass increments with each event and decays with e-folding time constant of clusterMassDecayTauUs. Use \"showAllClusters\" to diagnose fleeting clusters.");
-        setPropertyTooltip(life, "thresholdVelocityForVisibleCluster", "cluster must have at least this velocity in pixels/sec to become visible");
-        setPropertyTooltip(global, "maxNumClusters", "Sets the maximum potential number of clusters");
-        setPropertyTooltip(update, "velAngDiffDegToNotMerge", "minimum relative angle in degrees of cluster velocity vectors for which not to merge overlapping clusters. Set this to zero to allow merging independent of cluster velocity. If clusters are moving in different directions, then this will prevent their merging.  The angle should be set at least to 90 deg for this to be effective.");
-        setPropertyTooltip(life, "dontMergeEver", "never merge overlapping clusters");
-        setPropertyTooltip(sizing, "angleFollowsVelocity", "cluster angle is set by velocity vector angle; requires that useVelocity is on");
         setPropertyTooltip(disp, "showClusterVelocity", "annotates velocity in pixels/second");
         setPropertyTooltip(disp, "showClusterRadius", "draws cluster radius");
         setPropertyTooltip(disp, "showClusterEps", "shows cluster events per second");
         setPropertyTooltip(disp, "showClusterNumber", "shows cluster ID number");
         setPropertyTooltip(disp, "showClusterMass", "shows cluster mass; mass is decaying measure of the rate of captured events");
         setPropertyTooltip(disp, "velocityVectorScaling", "scaling of drawn velocity vectors");
-        setPropertyTooltip(log, "logDataEnabled", "writes a cluster log matlab file called RectangularClusterTrackerLog.m in the startup folder host/java");
-        setPropertyTooltip(log, "loggingIntervalUs", "interval in us between logging cluster info to logging file");
-        setPropertyTooltip(log, "clusterLoggingMethod", "method for logging cluster data: LogFrames logs at specified time intervals; LogClusters logs each valid cluster on its death");
-        setPropertyTooltip(mov, "initializeVelocityToAverage", "initializes cluster velocity to moving average of cluster velocities; otherwise initialized to zero");
+        setPropertyTooltip(update, "useOnePolarityOnlyEnabled", "use only one event polarity");
+        setPropertyTooltip(update, "useOffPolarityOnlyEnabled", "use only OFF events, not ON - if useOnePolarityOnlyEnabled");
+        setPropertyTooltip(update, "growMergedSizeEnabled", "enabling makes merged clusters take on sum of sizes, otherwise they take on size of older cluster");
+        setPropertyTooltip(update, "velAngDiffDegToNotMerge", "minimum relative angle in degrees of cluster velocity vectors for which not to merge overlapping clusters. Set this to zero to allow merging independent of cluster velocity. If clusters are moving in different directions, then this will prevent their merging.  The angle should be set at least to 90 deg for this to be effective.");
+        setPropertyTooltip(logg, "logDataEnabled", "writes a cluster log matlab file called RectangularClusterTrackerLog.m in the startup folder host/java");
+        setPropertyTooltip(logg, "loggingIntervalUs", "interval in us between logging cluster info to logging file");
+        setPropertyTooltip(logg, "clusterLoggingMethod", "method for logging cluster data: LogFrames logs at specified time intervals; LogClusters logs each valid cluster on its death");
         setPropertyTooltip(global, "filterEventsEnabled", "<html>If disabled, input packet is unaltered. <p>If enabled, output packet contains RectangularClusterTrackerEvent, <br>events refer to containing cluster, and non-owned events are discarded.");
-        setPropertyTooltip(life, "surroundInhibitionEnabled", "Enabling this option causes events in the surround region to actively reduce the cluster mass, enabling tracking of only isolated features");
-        setPropertyTooltip(life, "surroundInhibitionCost", "If above is checked: The negative weight of surrounding points");
+        setPropertyTooltip(global, "maxNumClusters", "Sets the maximum potential number of clusters");
         setPropertyTooltip(pi, "smoothMove","Use the PI controller");
         setPropertyTooltip(pi, "smoothWeight","If smoothmove is checked, the 'weight' of a cluster");
         setPropertyTooltip(pi, "smoothPosition","Position Coefficient");
         setPropertyTooltip(pi, "smoothIntegral","Integral Coefficient");
         setPropertyTooltip("selectVanishingPoint", "Select using a mouse click a particular location in the scene as the vanishing point on the horizon");
-
-//      setPropertyTooltip(lifetime, "clusterLifetimeIncreasesWithAge", "older clusters can live longer (up to clusterMassDecayTauUs) without support, good for objects that stop (like walking flies)");
-//      setPropertyTooltip(logging, "logClustersSeparatelyEnabled", "if enabled, clusters histories are logged on cluster purging");
-//      setPropertyTooltip("sizeClassificationEnabled", "Enables coloring cluster by size threshold");
-//      setPropertyTooltip("opticalGyroTauHighpassMs", "highpass filter time constant in ms for optical gyro position, increase to forget DC value more slowly");
-//      setPropertyTooltip("velocityMixingFactor","how much cluster velocityPPT estimate is updated by each packet (IIR filter constant)");
-//      setPropertyTooltip("velocityTauMs","time constant in ms for cluster velocityPPT lowpass filter");
-
-//      kalmanFilter = new KalmanFilter(chip,this);
-//      setEnclosedFilter(kalmanFilter);
+        // </editor-fold>
     }
 
-    /** Logs data if clusterLoggingMethod==ClusterLoggingMethod.LogFrames and loggingIntervalUs has passed since
-     * last log record. The frame number is computed as <code> ev.timestamp / loggingIntervalUs</code>.
+    /** Logs data if clusterLoggingMethod==ClusterLoggingMethod.LogFrames and logggingIntervalUs has passed since
+     * last logg record. The frame number is computed as <code> ev.timestamp / logggingIntervalUs</code>.
      * @param ev
      * @param ae */
     protected void logData(BasicEvent ev, EventPacket<BasicEvent> ae) {
@@ -292,7 +278,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         }
     }
 
-    /** Handles logging clusters to a file for later analysis. */
+    /** Handles loggging clusters to a file for later analysis. */
     protected class ClusterLogger {
         String dateString = null;
         String filename = null;
@@ -324,14 +310,14 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 log.info("created cluster logging file at " + filename);
                 logStream = new PrintStream(new BufferedOutputStream(new FileOutputStream(new File(filename))));
                 writeHeader();
-            } catch (Exception e) {
+            } catch (FileNotFoundException e) {
                 e.printStackTrace();
             }
         }
 
         /** Logs the clusters at frame number as a matlab switch statement.
          * @param ae the event packet.
-         * @param logNumber the case # (analagous to frame) of this log record. */
+         * @param logNumber the case # (analagous to frame) of this logg record. */
         protected void logClusters(EventPacket<BasicEvent> ae, int logNumber) {
             if (!isLogDataEnabled() || (clusterLoggingMethod != ClusterLoggingMethod.LogFrames)) {
                 return;
@@ -387,7 +373,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             }
         }
 
-        /** Returns the description of the fields that are logged for each cluster, e.g. "lasttimestampus x y xvel yvel".
+        /** Returns the description of the fields that are loggged for each cluster, e.g. "lasttimestampus x y xvel yvel".
          * @return the description. Matlab comment character is prepended. */
         protected String getFieldDescription() {
             switch (clusterLoggingMethod) {
@@ -419,21 +405,21 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         }
 
         /**
-         * @return the logStream */
+         * @return the loggStream */
         public PrintStream getLogStream() {
             return logStream;
         }
 
         private void logClusterHistories(java.util.List<Cluster> pruneList) {
             for (Cluster c : pruneList) {
-                // log valid clusters to logging data file
+                // logg valid clusters to logging data file
                 if (isLoggable(c)) {
                     logClusterHistory(c);
                 }
             }
         }
 
-        /** logs the cluster history to the logging using the clusterLogger */
+        /** loggs the cluster history to the loggging using the clusterLogger */
         private void logClusterHistory(Cluster c) {
             PrintStream s = clusterLogger.getLogStream();
             if (s == null) {
@@ -558,10 +544,10 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //                else if(massTooSmall) reason="mass is too small and cluster has existed at least clusterMassDecayTauUs";
 //                else if(timeSinceSupport<0) reason="timeSinceSupport is negative";
 //                else if(hitEdge) reason="cluster hit edge";
-//                log.info("pruning "+c+" because "+reason);
+//                logg.info("pruning "+c+" because "+reason);
             }
 //            if(t0>t1){
-//                log.warning("last cluster timestamp is later than last packet timestamp");
+//                logg.warning("last cluster timestamp is later than last packet timestamp");
 //            }
         }
         if (logDataEnabled && (clusterLogger != null) && (clusterLoggingMethod == ClusterLoggingMethod.LogClusters) && !pruneList.isEmpty()) {
@@ -581,7 +567,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
      *
      * @param t the global timestamp of the update. */
     protected void updateClusterList(int t) {
-//        log.info("updating cluster list at time="+t);
+//        logg.info("updating cluster list at time="+t);
         pruneClusters(t);
         mergeClusters();
         updateClusterLocations(t);
@@ -702,7 +688,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                     newCluster = createCluster(ev); // new Cluster(ev);
                 }
                 clusters.add(newCluster);
-//                    log.info("created "+newCluster);
+//                    logg.info("created "+newCluster);
            }
 
             updatedClusterList = maybeCallUpdateObservers(in, (lastTimestamp=ev.timestamp)); // callback to update()
@@ -1667,7 +1653,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             // turn cluster so that it is aligned along velocity
             if (angleFollowsVelocity && velocityValid) {
 //                if (!useVelocity) {
-//                    log.warning("angleFollowsVelocity cannot be used unless useVelocity=true");
+//                    logg.warning("angleFollowsVelocity cannot be used unless useVelocity=true");
 //                    return;
 //                }
                 float velAngle = (float) Math.atan2(velocityPPS.y, velocityPPS.x);
@@ -1904,7 +1890,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
         /** Updates path (historical) information for this cluster,
          * including cluster velocity (by calling updateVelocity()).
-         * The path is trimmed to maximum length if logging is not enabled.
+         * The path is trimmed to maximum length if loggging is not enabled.
          * @param t current timestamp. */
         public void updatePath(int t) {
             if (!pathsEnabled && !useVelocity) {
@@ -2358,7 +2344,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         }
 
         // <editor-fold defaultstate="collapsed" desc="getter-setter for --VelocityValid--">
-        /** This flog is set true after a velocityPPT has been computed for the cluster.
+        /** This flogg is set true after a velocityPPT has been computed for the cluster.
          * This may take several packets.
          *@return true if valid. */
         public boolean isVelocityValid() {
@@ -2377,7 +2363,14 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 	public java.util.List<RectangularClusterTracker.Cluster> getClusters() {
         return this.clusters;
     }
-
+        
+    /** Returns list of actually visible clusters that have received enough 
+     * support and pass other visibility tests. Updated every packet or update interval.
+     * @return the visibleClusters */
+    public LinkedList<Cluster> getVisibleClusters() {
+        return visibleClusters;
+    }   
+    
     /** Returns the list of clusters that will be pruned because they have not received enough support (enough events in their region of interest) or because
      * they have been merged with other clusters.
      * @return the list of pruned clusters. */
@@ -2575,7 +2568,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
     @Override
     synchronized public void resetFilter() {
-        // before reset, log all the clusters that remain
+        // before reset, logg all the clusters that remain
         if (logDataEnabled && (clusterLoggingMethod == ClusterLoggingMethod.LogClusters)) {
             clusterLogger.logClusterHistories(clusters);
         }
@@ -3407,13 +3400,6 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //        this.loggingIntervalUs = loggingIntervalUs;
 //        putInt("loggingIntervalUs", loggingIntervalUs);
 //    }
-
-    /** Returns list of actually visible clusters that have received enough
-     * support and pass other visibility tests. Updated every packet or update interval.
-     * @return the visibleClusters */
-    public LinkedList<Cluster> getVisibleClusters() {
-        return visibleClusters;
-    }
 
     protected FastClusterFinder fastClusterFinder=new FastClusterFinder();
 

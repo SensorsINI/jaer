@@ -61,8 +61,13 @@ public class MotionOrientationEvent extends DvsOrientationEvent {
     @Override public void copyFrom(BasicEvent src){
         super.copyFrom(src);
         if(src instanceof MotionOrientationEvent){
-            this.direction=((MotionOrientationEvent)src).direction;
-            this.delay=((MotionOrientationEvent)src).delay;
+            this.direction    = ((MotionOrientationEvent)src).direction;
+            this.hasDirection = ((MotionOrientationEvent)src).hasDirection;
+            this.dir          = ((MotionOrientationEvent)src).dir;
+            this.delay        = ((MotionOrientationEvent)src).delay;
+            this.distance     = ((MotionOrientationEvent)src).distance;
+            this.speed        = ((MotionOrientationEvent)src).speed;
+            this.velocity     = ((MotionOrientationEvent)src).velocity;
         }
     }
     

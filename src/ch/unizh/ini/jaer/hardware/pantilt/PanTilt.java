@@ -1,7 +1,4 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
+
 package ch.unizh.ini.jaer.hardware.pantilt;
 
 import java.util.logging.Level;
@@ -29,33 +26,32 @@ import java.beans.PropertyChangeListener;
  * @see ch.unizh.ini.jaer.hardware.pantilt.PanTiltTracker */
 public class PanTilt implements PanTiltInterface, LaserOnOffControl {
 
+    /** Servo output number on SiLabsC8051F320_USBIO_ServoController, 0 based. */
+    public final int  DEFAULT_PAN_SERVO = 1,  
+                      DEFAULT_TILT_SERVO = 2; // number of servo output on controller
+    private final int CHECK_SERVO_INTERVAL = 100;
+    
     private static final Logger log = Logger.getLogger("PanTilt");
     ServoInterface servo;
-    /** Servo output number on SiLabsC8051F320_USBIO_ServoController, 0 based. */
-    public final int DEFAULT_PAN_SERVO = 1,  
-                     DEFAULT_TILT_SERVO = 2; // number of servo output on controller
-    
+
     volatile boolean lockAcquired = false;
-    java.util.Timer jitterTimer;
-    java.util.Timer followTimer;
+    java.util.Timer jitterTimer, followTimer;
     
-    private float   pan         = .5f,   tilt         = .5f;
-    private float   previousPan = pan,   previousTilt = tilt;
-    private float   panTarget   = pan,   tiltTarget   = tilt;
-    private float   panJitterTarget = pan,tiltJitterTarget = pan;
-    private float   limitOfPan  = .5f,   limitOfTilt  = .5f;
-    private boolean panInverted = false, tiltInverted = false;
-    private int panServoNumber  = DEFAULT_PAN_SERVO, 
-                tiltServoNumber = DEFAULT_TILT_SERVO;
+    private float   pan             = .5f,   tilt             = .5f;
+    private float   previousPan     = pan,   previousTilt     = tilt;
+    private float   panTarget       = pan,   tiltTarget       = tilt;
+    private float   panJitterTarget = pan,   tiltJitterTarget = pan;
+    private float   limitOfPan      = .5f,   limitOfTilt      = .5f;
+    private boolean panInverted     = false, tiltInverted     = false;
+    private int     panServoNumber  = DEFAULT_PAN_SERVO, 
+                    tiltServoNumber = DEFAULT_TILT_SERVO;
     
     private float   jitterAmplitude = .01f;
     private float   jitterFreqHz    = 10f;
     private boolean jitterEnabled   = false;
     
-    private int checkServoCount=0;
-    private final int CHECK_SERVO_INTERVAL = 100;
+    private int checkServoCount = 0;
     
-    boolean followEnabled = true;
     float MaxMovePerUpdate = .1f; //Max amount of servochange per update
     float MinMovePerUpdate = 0.001f; //Min amount of servochange per update 
     int   MoveUpdateFreqHz = 100; //in Hz how often does the targeted pantilt move
@@ -74,7 +70,7 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
                 setLaserEnabled(false);
             }
         });
-   }
+        }
     
     /** Constructs instance with previously constructed SiLabsC8051F320_USBIO_ServoController */
     public PanTilt(ServoInterface servo){
@@ -106,13 +102,15 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
         }
     }
     
-    /** Returns previous pan and tilt values. */
+    /** Returns previous pan and tilt values.
+     * @return  the previous pantilt values*/
     public float[] getPreviousPanTiltValues(){
         float[] r={previousPan,previousTilt};
         return r;
     }
     
-    /** Returns last change of pan and tilt values.*/
+    /** Returns last change of pan and tilt values.
+     * @return the change of current pantilt values to the last values*/
     public float[] getPreviousPanTiltChange(){
         float[] r={pan-previousPan,tilt-previousTilt};
         return r;
@@ -135,7 +133,7 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
      * get clipped by the limitOfPan/limitOfTilt
      * 
      * @param newPan the pan value from 0 to 1 inclusive, 0.5f is the center 
-     *  position. 1 is full right.
+     *        position. 1 is full right.
      * @param newTilt the tilt value from 0 to 1. 1 is full down.
      * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException.
      *  If this exception is thrown, the interface should be closed. 
@@ -198,20 +196,18 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     // </editor-fold>
 
     /** A method can set this flag to tell other objects that the servo is "owned" */
-    @Override
-    public void acquire() {
+    @Override public void acquire() {
         lockAcquired = true;
     }
 
     /** Releases the "acquired" flag */
-    @Override
-    public void release() {
+    @Override public void release() {
         lockAcquired = false;
     }
 
-    /** A method can check this to see if it can use the servo */
-    @Override
-    public boolean isLockOwned() {
+    /** A method can check this to see if it can use the servo
+     * @return  lockAcquired*/
+    @Override public boolean isLockOwned() {
         return lockAcquired;
     }
     
@@ -235,12 +231,9 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
             MoveVec[1] = Target[1] - Current[1];
             Distance = (float)Math.sqrt(MoveVec[0]*MoveVec[0]+MoveVec[1]*MoveVec[1]);
 
-            if(MoveVec[0] != 0) {
-                MoveVec[0] = MoveVec[0]/Distance;//UnitVector
-            } else stopFollow(); //If target is reached we do not need to continue to follow. If a new target is set the follower will start again
-            if(MoveVec[1] != 0) {
-                MoveVec[1] = MoveVec[1]/Distance;
-            } else stopFollow();
+            if(MoveVec[0] != 0) MoveVec[0] = MoveVec[0]/Distance;//UnitVector
+            if(MoveVec[1] != 0) MoveVec[1] = MoveVec[1]/Distance;
+            if(MoveVec[0] ==0 && MoveVec[1] == 0) stopFollow(); //If target is reached we do not need to continue to follow. If a new target is set the follower will start again
 
             try {
                 // As the servo values are between 0 and 1 the maximum distance
@@ -291,9 +284,11 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     }
     
     public void startFollow() {
-        followTimer = new java.util.Timer();
-        // Repeat the JitterTask without delay and with 20ms between executions
-        followTimer.scheduleAtFixedRate(new FollowerTask(), 0, 1000/getMoveUpdateFreqHz()); //NEED USER DEFINED FREQ HERE
+        if (followTimer == null){
+            followTimer = new java.util.Timer();
+            // Repeat the JitterTask without delay and with 20ms between executions
+            followTimer.scheduleAtFixedRate(new FollowerTask(), 0, 1000/getMoveUpdateFreqHz());
+        }
     }
     
     public void stopFollow() {
@@ -312,6 +307,7 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
         }
     }
 
+    @Override
     public void setLaserEnabled(boolean yes) {
         setLaserOn(yes);
     }
@@ -437,7 +433,11 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
      * @param jitterEnabled the jitterEnabled to set */
     public void setJitterEnabled(boolean jitterEnabled) {
         this.jitterEnabled = jitterEnabled;
-        if(jitterEnabled) startJitter(); else stopJitter();
+        if(jitterEnabled) {
+            float[] current = getPanTiltValues();
+            startJitter();
+            setTarget(current[0],current[1]);//set target so that pantilt starts tracking
+        } else stopJitter();
     }
     // </editor-fold>
     
@@ -485,19 +485,6 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     }
     // </editor-fold>
     
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --FollowEnabled--">
-    public boolean isFollowEnabled() {
-        return followEnabled;
-    }
-    
-    public void setFollowEnabled(boolean SetFollow) {
-        this.followEnabled = SetFollow;
-        if(SetFollow) {
-            if(followTimer == null) startFollow();
-        } else stopFollow();
-    }
-    // </editor-fold>
-    
         
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --Target--">
     public float[] getTarget() {
@@ -517,9 +504,13 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
             setJitterTarget(PanTarget,TiltTarget);
         }
         this.pcs.firePropertyChange("Target", oldTarget , new float[] {PanTarget,TiltTarget});
-        if(isFollowEnabled() && followTimer == null) {
-            startFollow();
-        }
+        startFollow(); //automatically start following target. This will initialize the servo if it is not already.
+    }
+    
+    public void setTargetChange(float panTargetChange, float tiltTargetChange) {
+        float[] oldTarget = {this.panTarget,this.tiltTarget};
+        
+        setTarget(oldTarget[0] + panTargetChange, oldTarget[1] + tiltTargetChange);
     }
     // </editor-fold>
     

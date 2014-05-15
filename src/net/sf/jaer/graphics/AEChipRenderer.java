@@ -1,46 +1,38 @@
-/*
- * ChipRenderer.java
+/* ChipRenderer.java
  *
- * Created on May 2, 2006, 1:49 PM
- *
- * To change this template, choose Tools | Template Manager
- * and open the template in the editor.
- */
+ * Created on May 2, 2006, 1:49 PM */
 package net.sf.jaer.graphics;
 
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.*;
+import net.sf.jaer.util.SpikeSound;
 import java.awt.Color;
 import java.util.HashMap;
 import java.util.logging.Logger;
-
 import javax.swing.JButton;
 
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OrientationEventInterface;
-import net.sf.jaer.util.SpikeSound;
-
-/**
- * Superclass for classes that render AEs to a memory buffer so that they can be painted on the screen.
- * Note these classes do not actually render to the graphcs
- *device; they take AEPacket's and render them to a pixmap memory buffer that later gets painted by a ChipCanvas.
- *The method chosen (by user cycling method from GUI) chooses how the events are painted.
- *In effect the events are histogrammed for most rendering methods except for "color-time", and even there they are histogrammed or averaged.
- * For methods that render polarized events (such as ON-OFF) then ON events increase the rendered value while OFF events decreases it.
- *Thus the rendered image fr can be drawn in 3-d if desired and it will represent a histogram, although the default method using for drawing the rendered frame
- *is to paint the cell brightness.
+/** Superclass for classes that render AEs to a memory buffer so that they can 
+ * be painted on the screen.
+ * Note these classes do not actually render to the graphics device; 
+ * They take AEPacket's and render them to a pixmap memory buffer that later 
+ * gets painted by a ChipCanvas. The method chosen (by user cycling 
+ * method from GUI) chooses how the events are painted. In effect the events 
+ * are histogrammed for most rendering methods except for "color-time", and 
+ * even there they are histogrammed or averaged.
+ * For methods that render polarized events (such as ON-OFF) then ON events 
+ * increase the rendered value while OFF events decreases it.
+ * Thus the rendered image fr can be drawn in 3-d if desired and it will 
+ * represent a histogram, although the default method using for drawing 
+ * the rendered frame is to paint the cell brightness.
  *
  * @author tobi
- * @see ChipRendererDisplayMethod
- */
+ * @see ChipRendererDisplayMethod */
 public class AEChipRenderer extends Chip2DRenderer {
 
      /** PropertyChange events */
     public static final String PROPERTY_COLOR_SCALE = "colorScale",
 
-    /**
-     * PropertyChange events
-     */
+    /** PropertyChange events */
     PROPERTY_COLOR_MODE = "colorMode";
 
     /**

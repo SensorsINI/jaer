@@ -12,58 +12,47 @@ package net.sf.jaer.eventprocessing;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.util.ArrayList;
-
 import javax.swing.JPanel;
-
 import net.sf.jaer.aemonitor.AEConstants;
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.ApsDvsEventPacket;
-import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.chip.*;
+import net.sf.jaer.event.*;
 import net.sf.jaer.event.EventPacket;
 
-/**
- * A filter that filters or otherwise processes a packet of events. <code>EventFilter2D</code> is the base class
- * for all processing methods in jAER. 
- * 
+/** A filter that filters or otherwise processes a packet of events. 
+ * <code>EventFilter2D</code> is the base class  for all processing methods in jAER. 
  * <p>
  * The method <code>filterPacket</code> is called when data is available to be processed.
  * A subclass implements <code>filterPacket</code> along with <code>resetFilter</code>.
  * 
- * <p>
- * 
- * @author tobi
- */
+ * @author tobi */
 abstract public class EventFilter2D extends EventFilter {
 
-    /** The built-in reference to the output packet. This packet is uninitialized (to save memory) by default. 
-     To make this packet, use one of the <code>checkOutputPacketEventType</code> methods.
+    /** The built-in reference to the output packet. This packet is 
+     * uninitialized (to save memory) by default. To create this packet, use 
+     * one of the <code>checkOutputPacketEventType</code> methods.
      * <p>
-     * When processing events in subtypes of EventPacket (like {@link ApsDvsEventPacket}) that may contain
-     * other kinds of events than asynchronous pixel events (like APS image sensor samples), then
-     * it may be necessary to write output events to a different output packet than the built in <code>out</code>
-     * packet. See {@link ApsDvsEventPacket}.
+     * When processing events in subtypes of EventPacket 
+     * (like {@link ApsDvsEventPacket}) that may contain other kinds of events 
+     * than asynchronous pixel events (like APS image sensor samples), then
+     * it may be necessary to write output events to a different output packet 
+     * than the built in <code>out</code>packet. See {@link ApsDvsEventPacket}.
      * 
-     @see EventFilter2D#checkOutputPacketEventType(net.sf.jaer.event.EventPacket) 
-     @see EventFilter2D#checkOutputPacketEventType(java.lang.Class) 
-     */
+     * @see EventFilter2D#checkOutputPacketEventType(net.sf.jaer.event.EventPacket) 
+     * @see EventFilter2D#checkOutputPacketEventType(java.lang.Class) */
     protected EventPacket out = null;
     
     /** Returns reference to the built-in output packet.
-     * 
      * @return the out packet. 
-     * @see #out
-     */
+     * @see #out */
     protected EventPacket getOutputPacket(){
         return out;
     }
-
 
     /** This field is used for update callbacks on this packet. */
     protected float currentUpdateIntervalMs;
 
     /** Resets the output packet to be a new packet if none has been constructed or clears the packet
-    if it exists
-     */
+    if it exists */
     protected void clearOutputPacket() {
         if (out == null) {
             out = new EventPacket();
@@ -71,18 +60,20 @@ abstract public class EventFilter2D extends EventFilter {
             out.clear();
         }
     }
-
-    /** Checks the built-in <code>out</code> packet to make sure it holds the same type as the 
-    input packet. This method is used for filters that must pass output
-    that has same event type as input. Unlike the other checkOutputPacketEventType method, this also ensures that 
-    * the output EventPacket is of the correct class, e.g. if it is a subclass of EventPacket, 
-    * but only if {@link EventPacket#setBypassPacket()} has been
-    * called. I.e., the user must set {@link EventPacket#bypassPacket}. 
+    
+    /** Checks the built-in <code>out</code> packet to make sure it holds the 
+     * same type as the input packet. 
+     * This method is used for filters that must pass output that has same 
+     * event type as input. Unlike the other checkOutputPacketEventType method, 
+     * this also ensures that the output EventPacket is of the correct class, 
+     * e.g. if it is a subclass of EventPacket, but only if 
+     * {@link EventPacket#setBypassPacket()} has been called. I.e., the user 
+     * must set {@link EventPacket#bypassPacket}. 
      * <p>
-     * This method also copies fields from the input packet to the output packet, e.g. <code>systemModificationTimeNs</code>.
-    @param in the input packet
-    @see #out
-     */
+     * This method also copies fields from the input packet to the output 
+     * packet, e.g. <code>systemModificationTimeNs</code>.
+     * @param in the input packet
+     * @see #out */
     protected void checkOutputPacketEventType(EventPacket in) {
         if (out != null && out.getEventClass() == in.getEventClass() && out.getClass() == in.getClass()) {
             out.systemModificationTimeNs=in.systemModificationTimeNs;
@@ -94,26 +85,23 @@ abstract public class EventFilter2D extends EventFilter {
     }
     
     /** Checks <code>out</code>  packet to make sure it holds the same type of events as the given class. 
-     * This method is used for filters that must pass output
-    that has a particular output type.  This method does not ensure that the output packet is of the correct subtype of EventPacket.
-    @param outClass the output packet event type class.
-     @see #out
+     * This method is used for filters that must pass output that has a 
+     * particular output type.  This method does not ensure that the output 
+     * packet is of the correct subtype of EventPacket.
+     * @param outClass the output packet event type class.
+     * @see #out
      * @see EventPacket#constructNewPacket
-     * @see #checkOutputPacketEventType(java.lang.Class) 
-    */
+     * @see #checkOutputPacketEventType(java.lang.Class) */
     protected void checkOutputPacketEventType(Class<? extends BasicEvent> outClass) {
         if (out == null || out.getEventClass() == null || out.getEventClass() != outClass) {
-//            Class oldClass=out.getEventClass();
             out = new EventPacket(outClass);
-//           log.info("oldClass="+oldClass+" outClass="+outClass+"; allocated new "+out);
         }
         out.clear();
     }
     
     /** Subclasses implement this method to define custom processing.
-    @param in the input packet
-    @return the output packet
-     */
+     * @param in the input packet
+     * @return the output packet */
     public abstract EventPacket<?> filterPacket(EventPacket<?> in);
 
     /** Subclasses should call this super initializer */
@@ -121,24 +109,23 @@ abstract public class EventFilter2D extends EventFilter {
         super(chip);
         this.chip = chip;
     }
+    
     /** overrides EventFilter type in EventFilter */
     protected EventFilter2D enclosedFilter;
 
     /** A filter can enclose another filter and can access and process this filter. Note that this
-    processing is not automatic. Enclosing a filter inside another filter means that it will
-    be built into the GUI as such
-    @return the enclosed filter
-     */
+     * processing is not automatic. Enclosing a filter inside another filter means that it will
+     * be built into the GUI as such
+     * @return the enclosed filter */
     @Override
     public EventFilter2D getEnclosedFilter() {
         return this.enclosedFilter;
     }
 
     /** A filter can enclose another filter and can access and process this filter. Note that this
-    processing is not automatic. Enclosing a filter inside another filter means that it will
-    be built into the GUI as such.
-    @param enclosedFilter the enclosed filter
-     */
+     * processing is not automatic. Enclosing a filter inside another filter means that it will
+     * be built into the GUI as such.
+     * @param enclosedFilter the enclosed filter */
     public void setEnclosedFilter(final EventFilter2D enclosedFilter) {
         if(this.enclosedFilter!=null){
             log.warning("replacing existing enclosedFilter= "+this.enclosedFilter+" with new enclosedFilter= "+enclosedFilter);
@@ -148,8 +135,7 @@ abstract public class EventFilter2D extends EventFilter {
     }
 
     /** Resets the filter
-    @param yes true to reset
-     */
+     * @param yes true to reset */
     @Override
     synchronized public void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
@@ -159,7 +145,6 @@ abstract public class EventFilter2D extends EventFilter {
             out = null; // garbage collect
         }
     }
-
  
     private int nextUpdateTimeUs = 0; // next timestamp we should update cluster list
     private boolean updateTimeInitialized = false;// to initialize time for cluster list update
@@ -201,8 +186,7 @@ abstract public class EventFilter2D extends EventFilter {
     }
 
     /** Supplied as object for update. 
-     @see #maybeCallUpdateObservers
-     */
+     * @see #maybeCallUpdateObservers */
     public class UpdateMessage{
         /** The packet that needs the update. */
         public EventPacket packet;

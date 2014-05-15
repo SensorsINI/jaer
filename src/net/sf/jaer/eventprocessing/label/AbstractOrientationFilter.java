@@ -17,7 +17,6 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OrientationEvent;
 import net.sf.jaer.event.OrientationEventInterface;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -334,7 +333,7 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
 		}
 
         byte ori=e.getOrientation();
-        OrientationEvent.UnitVector d = OrientationEvent.unitVectors[ori];
+        OrientationEventInterface.UnitVector d = OrientationEventInterface.unitVectors[ori];
         float jx=0, jy=0;
         if(jitterVectorLocations){
             r = new Random();

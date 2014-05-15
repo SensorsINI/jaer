@@ -7,17 +7,16 @@ package net.sf.jaer.eventprocessing.label;
 import java.awt.geom.Point2D;
 import java.util.Observable;
 import java.util.Observer;
-
+import java.util.logging.Level;
 import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
-
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.MotionOrientationEvent;
-import net.sf.jaer.event.MotionOrientationEvent.Dir;
 import net.sf.jaer.event.OpticalFlowEvent;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -25,28 +24,27 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter2d;
 
-/**
- * Computes temporally and spatially smoothed optical flow using AbstractDirectionSelectiveFilter.
- * @author tobi
- */
+/**Computes temporally and spatially smoothed optical flow using AbstractDirectionSelectiveFilter.
+ * @author tobi */
 @Description("Computes temporally and spatially smoothed optical flow using DirectionSelectiveFilter")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer, FrameAnnotater {
 
-    private AbstractDirectionSelectiveFilter dirFilter;
+    private final AbstractDirectionSelectiveFilter dirFilter;
     private int sx = 0, sy = 0;
     private LowpassFilter2d[][] vels;
     private int[][] lastSentTimestamps;
-    private int subSampleBy = getInt("subSampleBy", 2);
-    private float tauMs = getFloat("tauMs", 100);
-    private int refractoryPeriodUs = getInt("refractoryPeriodUs", 1000);
+    private int     subSampleBy         = getInt("subSampleBy", 2);
+    private float   tauMs               = getFloat("tauMs", 100);
+    private int     refractoryPeriodUs  = getInt("refractoryPeriodUs", 1000);
     private boolean showRawInputEnabled = getBoolean("showRawInputEnabled", false);
 
     public SmoothOpticalFlowLabeler(AEChip chip) {
         super(chip);
         FilterChain chain = new FilterChain(chip);
-        dirFilter = new DvsDirectionSelectiveFilter(chip);
-        dirFilter.setAnnotationEnabled(false);
-        chain.add(dirFilter);
+            dirFilter = new DvsDirectionSelectiveFilter(chip);
+            dirFilter.setAnnotationEnabled(false);
+            chain.add(dirFilter);
         setEnclosedFilterChain(chain);
         chip.addObserver(this);
         setPropertyTooltip("subSampleBy", "compute flow on this subsampled grid; 0 means no subsampling");
@@ -60,25 +58,34 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         EventPacket dirOut = dirFilter.filterPacket(in);
         checkOutputPacketEventType(OpticalFlowEvent.class);
-        // add each motion event to lowpassed values and output
+        // add each motion event to lowpassed values and output 
         // an event if refractory period has passed
-        int s = 1 << (subSampleBy - 1);
+        int s = 1 << (subSampleBy - 1); //the middle of the subsample intervall, hence we add it when assigning the positions
         OutputEventIterator outItr = out.outputIterator();
         if (dirOut.getEventClass() != MotionOrientationEvent.class) {
-            log.warning("input events are " + dirOut.getEventClass() + ", but they need to be MotionOrientationEvent's");
+            log.log(Level.WARNING, "input events are {0}, but they need to be MotionOrientationEvent's", dirOut.getEventClass());
             return in;
         }
         for (Object o : dirOut) {
             MotionOrientationEvent e = (MotionOrientationEvent) o;
             int x = e.x >>> subSampleBy, y = e.y >>> subSampleBy;
-
-            Dir d = e.dir;
+            
             Point2D.Float v = vels[x][y].filter2d(e.velocity.x, e.velocity.y, e.timestamp);
-            if (((e.timestamp - lastSentTimestamps[x][y]) > refractoryPeriodUs) || (e.timestamp < lastSentTimestamps[x][y])) {
-                OpticalFlowEvent oe = (OpticalFlowEvent) outItr.nextOutput();
-                oe.copyFrom(e);
-                oe.x = (short) ((x << subSampleBy) + s);
-                oe.y = (short) ((y << subSampleBy) + s);
+            
+            //We call the outItr here (outside the if) so that this is really
+            // a labeler and not a Filter. Only if we call the iterator 
+            // unconditionally will every event pass this Labeler.
+            // As this is also a subsampler we DO shift all events to a subsample
+            // position as to keep consistency. 
+            // Note that we set the optFlowVelPPS to (0,0) outside the if such
+            // that the smoothed speed is initialized to 0. If events do not pass
+            // the refractory period test they will have a smoothed speed of 0.
+            OpticalFlowEvent oe = (OpticalFlowEvent) outItr.nextOutput();
+            oe.copyFrom(e);
+            oe.x = (short) ((x << subSampleBy) + s);
+            oe.y = (short) ((y << subSampleBy) + s);
+            oe.optFlowVelPPS.setLocation(0,0);
+            if (e.timestamp - lastSentTimestamps[x][y] > refractoryPeriodUs || e.timestamp < lastSentTimestamps[x][y]) {
                 oe.optFlowVelPPS.setLocation(v);
                 lastSentTimestamps[x][y] = e.timestamp;
             }
@@ -87,7 +94,7 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
     }
 
     @Override
-	public void annotate(GLAutoDrawable drawable) {
+    public void annotate(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
         // draw individual motion vectors
         gl.glPushMatrix();
@@ -146,6 +153,12 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
         }
     }
 
+    private void setSubsampling() {
+        sx = chip.getSizeX() >> subSampleBy;
+        sy = chip.getSizeY() >> subSampleBy;
+    }
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --PpsScale--">
     public void setPpsScale(float ppsScale) {
         dirFilter.setPpsScale(ppsScale);
     }
@@ -153,17 +166,17 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
     public float getPpsScale() {
         return dirFilter.getPpsScale();
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --SubSampleBy--">
     /**
-     * @return the subSampleBy
-     */
+     * @return the subSampleBy */
     public int getSubSampleBy() {
         return subSampleBy;
     }
 
     /**
-     * @param subSampleBy the subSampleBy to set
-     */
+     * @param subSampleBy the subSampleBy to set */
     synchronized public void setSubSampleBy(int subSampleBy) {
         if (subSampleBy < 0) {
             subSampleBy = 0;
@@ -172,24 +185,24 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
         putInt("subSampleBy", subSampleBy);
         alloc();
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --TauMs--">
     /**
-     * @return the tauMs
-     */
+     * @return the tauMs  */
     public float getTauMs() {
         return tauMs;
     }
 
     /**
-     * @param tauMs the tauMs to set
-     */
+     * @param tauMs the tauMs to set */
     public void setTauMs(float tauMs) {
         if (tauMs < 0) {
             tauMs = 0;
         }
         this.tauMs = tauMs;
         putFloat("tauMs", tauMs);
-        if ((sx > 0) && (sy > 0)) {
+        if (sx > 0 && sy > 0) {
             for (int x = 0; x < sx; x++) {
                 for (int y = 0; y < sy; y++) {
                     vels[x][y].setTauMs(tauMs);
@@ -197,27 +210,24 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
             }
         }
     }
+    // </editor-fold>
 
-    private void setSubsampling() {
-        sx = chip.getSizeX() >> subSampleBy;
-        sy = chip.getSizeY() >> subSampleBy;
-    }
-
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --RefractoryPeriodUs--">
     /**
-     * @return the refractoryPeriodUs
-     */
+     * @return the refractoryPeriodUs */
     public int getRefractoryPeriodUs() {
         return refractoryPeriodUs;
     }
 
     /**
-     * @param refractoryPeriodUs the refractoryPeriodUs to set
-     */
+     * @param refractoryPeriodUs the refractoryPeriodUs to set */
     public void setRefractoryPeriodUs(int refractoryPeriodUs) {
         this.refractoryPeriodUs = refractoryPeriodUs;
         putInt("refractoryPeriodUs", refractoryPeriodUs);
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --ShowRawInputEnabled--">
     public void setShowRawInputEnabled(boolean showRawInputEnabled) {
         this.showRawInputEnabled = showRawInputEnabled;
         putBoolean("showRawInputEnabled", showRawInputEnabled);
@@ -226,4 +236,5 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
     public boolean isShowRawInputEnabled() {
         return showRawInputEnabled;
     }
+    // </editor-fold>
 }

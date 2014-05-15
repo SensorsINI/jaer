@@ -175,6 +175,10 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
                 }
                 // </editor-fold>
             } else { // use max dt
+                //bbeyer: I dont really see a situation in which the maxDt method
+                // would be preferred over the averageDt method. When is this useful?
+                // I find the maxDt method to be unreliable and unmeaningful, wheras
+                // I can understand the idea behind the averageDt method.
                 // <editor-fold defaultstate="collapsed" desc="--compute the max dt in each direction--">
                 for ( int ori = 0 ; ori < NUM_TYPES ; ori++ ){
                     oridts[ori] = Integer.MIN_VALUE;

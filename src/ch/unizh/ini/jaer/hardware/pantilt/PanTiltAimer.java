@@ -1,14 +1,10 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
+
 package ch.unizh.ini.jaer.hardware.pantilt;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
-
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -40,7 +36,6 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
     private float   maxMovePerUpdate= getFloat("maxMovePerUpdate", .1f);
     private float   minMovePerUpdate= getFloat("minMovePerUpdate", .001f);
     private int     moveUpdateFreqHz= getInt("moveUpdateFreqHz", 100);
-    private boolean followEnabled   = getBoolean("followEnabled",true);
     
     private final PropertyChangeSupport supportPanTilt = new PropertyChangeSupport(this);
     Trajectory mouseTrajectory;
@@ -84,18 +79,18 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getPropertyName() == Message.SetRecordingEnabled.name()) {
+        if (evt.getPropertyName().equals(Message.SetRecordingEnabled.name())) {
             recordingEnabled = (Boolean) evt.getNewValue();
-        } else if (evt.getPropertyName() == Message.AbortRecording.name()) {
+        } else if (evt.getPropertyName().equals(Message.AbortRecording.name())) {
             recordingEnabled = false;
             if (mouseTrajectory != null) {
                 mouseTrajectory.clear();
             }
-        } else if (evt.getPropertyName() == Message.ClearRecording.name()) {
+        } else if (evt.getPropertyName().equals(Message.ClearRecording.name())) {
             if (mouseTrajectory != null) {
                 mouseTrajectory.clear();
             }
-        } else if (evt.getPropertyName() == Message.PanTiltSet.name()) {
+        } else if (evt.getPropertyName().equals(Message.PanTiltSet.name())) {
             supportPanTilt.firePropertyChange(evt);
         } else if (evt.getPropertyName().equals("PanTiltValues")) {
             float[] NewV = (float[])evt.getNewValue();
@@ -116,20 +111,29 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
     }
 
     public enum Message {
-
         AbortRecording,
         ClearRecording,
         SetRecordingEnabled,
         PanTiltSet
     }
+    
 
+    
     /** Constructs instance of the new 'filter' CalibratedPanTilt. The only time
      * events are actually used is during calibration. The PanTilt hardware
      * interface is also constructed.
      * @param chip */
     public PanTiltAimer(AEChip chip) {
+        this(chip, new PanTilt());
+    }
+    
+    /** If a panTilt unit is already used by implementing classes it can be 
+     * handed to the PanTiltAimer for avoiding initializing multiple pantilts
+     * @param chip 
+     * @param pt the panTilt unit to be used*/
+    public PanTiltAimer(AEChip chip, PanTilt pt) {
         super(chip);
-        panTiltHardware = new PanTilt();
+        panTiltHardware = pt;
         panTiltHardware.setPanServoNumber(panServoNumber);
         panTiltHardware.setTiltServoNumber(tiltServoNumber);
         panTiltHardware.setJitterAmplitude(jitterAmplitude);
@@ -168,18 +172,15 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
         // </editor-fold>
     }
 
-    @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    @Override public EventPacket<?> filterPacket(EventPacket<?> in) {
         return in;
     }
 
-    @Override
-    public void resetFilter() {
+    @Override public void resetFilter() {
         panTiltHardware.close();
     }
 
-    @Override
-    public void initFilter() {
+    @Override public void initFilter() {
         resetFilter();
     }
 
@@ -198,7 +199,8 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
 
     // <editor-fold defaultstate="collapsed" desc="GUI button --Center--">
     public void doCenter() {
-        if (panTiltHardware != null && panTiltHardware.getServoInterface() != null) {
+        if (panTiltHardware != null) {
+//            if(!panTiltHardware.isFollowEnabled()) panTiltHardware.setFollowEnabled(true);
             panTiltHardware.setTarget(.5f,.5f);
         }
     }
@@ -209,6 +211,7 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
         if (panTiltHardware != null && panTiltHardware.getServoInterface() != null) {
             setJitterEnabled(false);
             panTiltHardware.stopFollow();
+//            setFollowEnabled(false);
             try {
                 panTiltHardware.getServoInterface().disableAllServos();
             } catch (HardwareInterfaceException ex) {
@@ -218,33 +221,27 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
     }
     // </editor-fold>
    
-    @Override
-    public void acquire() {
+    @Override public void acquire() {
         getPanTiltHardware().acquire();
     }
 
-    @Override
-    public boolean isLockOwned() {
+    @Override public boolean isLockOwned() {
         return getPanTiltHardware().isLockOwned();
     }
 
-    @Override
-    public void release() {
+    @Override public void release() {
         getPanTiltHardware().release();
     }
 
-    @Override
-    public void startJitter() {
+    @Override public void startJitter() {
         getPanTiltHardware().startJitter();
     }
 
-    @Override
-    public void stopJitter() {
+    @Override public void stopJitter() {
         getPanTiltHardware().stopJitter();
     }
 
-    @Override
-    public void setLaserEnabled(boolean yes) {
+    @Override public void setLaserEnabled(boolean yes) {
         getPanTiltHardware().setLaserEnabled(yes);
     }
 
@@ -268,7 +265,7 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
                     panTiltHardware.getServoInterface().disableAllServos();
                 }
                 panTiltHardware.close();
-            } catch (Exception ex) {
+            } catch (HardwareInterfaceException ex) {
                 log.warning(ex.toString());
             }
         }
@@ -282,6 +279,7 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
 
     /**
      * @return the support */
+    @Override
     public PropertyChangeSupport getSupport() {
         return supportPanTilt;
     }
@@ -325,6 +323,7 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
     public void setJitterEnabled(boolean jitterEnabled) {
         putBoolean("jitterEnabled", jitterEnabled);
         boolean OldValue = this.jitterEnabled;
+//        if(!isFollowEnabled()) setFollowEnabled(true); //To start jittering the pantilt must follow target
         
         this.jitterEnabled = jitterEnabled;
         getPanTiltHardware().setJitterEnabled(jitterEnabled);
@@ -418,19 +417,6 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
     }
     // </editor-fold> 
     
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --FollowEnabled--">
-    public boolean isFollowEnabled() {
-        return getPanTiltHardware().isFollowEnabled();
-    }
-    
-    public void setFollowEnabled(boolean SetFollow) {
-        putBoolean("followEnabled", SetFollow);
-        boolean OldValue = isFollowEnabled();
-        getPanTiltHardware().setFollowEnabled(SetFollow);
-        this.followEnabled=SetFollow;
-        support.firePropertyChange("followEnabled",OldValue,SetFollow);
-    }
-    // </editor-fold>   
       
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --PanTiltTarget--">
     public float[] getPanTiltTarget() {
@@ -441,7 +427,6 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
         getPanTiltHardware().setTarget(PanTarget, TiltTarget);
     }
     // </editor-fold>
-    
     
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --PanTiltValues--">
     @Override
