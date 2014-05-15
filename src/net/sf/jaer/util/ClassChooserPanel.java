@@ -5,9 +5,13 @@
  */
 package net.sf.jaer.util;
 
+import java.awt.Cursor;
+import java.beans.PropertyChangeEvent;
+import java.util.logging.Level;
+import javax.swing.JTextPane;
+import net.sf.jaer.Description;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
@@ -16,18 +20,11 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.font.FontRenderContext;
 import java.awt.geom.Rectangle2D;
-import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.*;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Vector;
-import java.util.logging.Level;
 import java.util.logging.Logger;
-
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.DefaultListModel;
@@ -35,14 +32,11 @@ import javax.swing.InputMap;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
-import javax.swing.JTextPane;
 import javax.swing.KeyStroke;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListModel;
 import javax.swing.SwingWorker;
 import javax.swing.event.ListSelectionEvent;
-
-import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 
 /**
@@ -62,7 +56,6 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     private String MISSING_DESCRIPTION_MESSAGE = "<html>No description available - provide one using @Description annotation, as in <pre>@Description(\"Example class\") \n public class MyClass</pre></html>";
 
     private class ClassDescription {
-
         String description = null;
         DevelopmentStatus.Status developmentStatus = null;
 
@@ -335,31 +328,34 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 //            if(!cellHasFocus) return this; // not visible
             if (isSelected) {
                 background = list.getSelectionBackground();
+                DevelopmentStatus.Status develStatus = getClassDevelopmentStatus(fullclassname);
+                if (develStatus == DevelopmentStatus.Status.Experimental) {
+                    foreground = Color.ORANGE;
+                    develStatusTF.setText(develStatus.toString());
+                } else if(develStatus == DevelopmentStatus.Status.Stable) {
+                    foreground = Color.BLUE;
+                    develStatusTF.setText(develStatus.toString());
+                } else {
+                    foreground = Color.LIGHT_GRAY;
+                    develStatusTF.setText("unknown");
+                }
                 if (getClassDescription(fullclassname) != null) {
-                    DevelopmentStatus.Status develStatus = null;
-                    if ((develStatus = getClassDevelopmentStatus(fullclassname)) == DevelopmentStatus.Status.Experimental) {
-                        foreground = Color.ORANGE;
-                        develStatusTF.setText(develStatus.toString());
-                    } else {
-                        foreground = Color.BLUE;
-                        develStatusTF.setText("unknown");
-                    }
                     setToolTipText(fullclassname + ": " + getClassDescription(fullclassname));
                 } else {
-                    foreground = list.getSelectionForeground();
+                    foreground = Color.GRAY;
                     setToolTipText(fullclassname);
                 }
             } else {
                 background = list.getBackground();
-                foreground = list.getForeground();
-                if (getClassDescription(fullclassname) != null) {
-                    if ((getClassDevelopmentStatus(fullclassname)) == DevelopmentStatus.Status.Experimental) {
-                        foreground = Color.ORANGE;
-                    } else {
-                        foreground = Color.BLUE;
-                    }
+                if ((getClassDevelopmentStatus(fullclassname)) == DevelopmentStatus.Status.Experimental) {
+                    foreground = Color.ORANGE;
+                } else if(getClassDevelopmentStatus(fullclassname) == DevelopmentStatus.Status.Stable) {
+                    foreground = Color.BLUE;
                 } else {
-                    foreground = list.getSelectionForeground();
+                    foreground = Color.LIGHT_GRAY;
+                }
+                if (getClassDescription(fullclassname) == null) {
+                    foreground = Color.GRAY;
                 }
             }
             setEnabled(list.isEnabled());
@@ -451,20 +447,22 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         availClassDesciptionPanel = new javax.swing.JScrollPane();
         availClassJList = new javax.swing.JList();
         chosenClassPanel = new javax.swing.JPanel();
-        jScrollPane2 = new javax.swing.JScrollPane();
+        jScrollPane3 = new javax.swing.JScrollPane();
         classJList = new javax.swing.JList();
         addClassButton = new javax.swing.JButton();
         removeClassButton = new javax.swing.JButton();
-        moveUpButton = new javax.swing.JButton();
-        moveDownButton = new javax.swing.JButton();
-        revertButton = new javax.swing.JButton();
         removeAllButton = new javax.swing.JButton();
-        defaultsButton = new javax.swing.JButton();
         descPanel = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
         descPane = new javax.swing.JTextPane();
         jLabel1 = new javax.swing.JLabel();
         develStatusTF = new javax.swing.JTextField();
+        moveUpButton = new javax.swing.JButton();
+        revertButton = new javax.swing.JButton();
+        moveDownButton = new javax.swing.JButton();
+        defaultsButton = new javax.swing.JButton();
+
+        setPreferredSize(new java.awt.Dimension(580, 686));
 
         availClassPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Available classes"));
         availClassPanel.setToolTipText("If your class doesn't show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath)");
@@ -498,20 +496,22 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         filterPanelLayout.setHorizontalGroup(
             filterPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(filterPanelLayout.createSequentialGroup()
-                .addContainerGap()
+                .addGap(2, 2, 2)
                 .addGroup(filterPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(filterPanelLayout.createSequentialGroup()
                         .addComponent(filterLabel)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(availFilterTextField))
-                    .addComponent(filterTypeOptionsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(clearFilterBut))
+                        .addComponent(availFilterTextField)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(clearFilterBut))
+                    .addGroup(filterPanelLayout.createSequentialGroup()
+                        .addComponent(filterTypeOptionsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addGap(0, 0, 0))))
         );
         filterPanelLayout.setVerticalGroup(
             filterPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(filterPanelLayout.createSequentialGroup()
-                .addContainerGap()
+                .addGap(2, 2, 2)
                 .addGroup(filterPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(filterLabel)
                     .addComponent(availFilterTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -521,7 +521,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                 .addGap(42, 42, 42))
         );
 
-        availClassDesciptionPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Available classes"));
+        availClassDesciptionPanel.setBorder(null);
 
         availClassJList.setToolTipText("If your class doesn't show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath)");
         availClassJList.addListSelectionListener(new javax.swing.event.ListSelectionListener() {
@@ -537,27 +537,27 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         availClassPanelLayout.setHorizontalGroup(
             availClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(availClassPanelLayout.createSequentialGroup()
-                .addContainerGap()
+                .addGap(2, 2, 2)
                 .addGroup(availClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(availClassDesciptionPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 296, Short.MAX_VALUE)
-                    .addComponent(filterPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addContainerGap())
+                    .addComponent(availClassDesciptionPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
+                    .addGroup(availClassPanelLayout.createSequentialGroup()
+                        .addComponent(filterPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addGap(2, 2, 2))))
         );
         availClassPanelLayout.setVerticalGroup(
             availClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, availClassPanelLayout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(filterPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 0, 0)
+                .addComponent(filterPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 27, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(availClassDesciptionPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 413, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap())
+                .addComponent(availClassDesciptionPanel))
         );
 
-        chosenClassPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Class list"));
+        chosenClassPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Selected classes"));
         chosenClassPanel.setToolTipText("These classes will be available to choose.");
         chosenClassPanel.setPreferredSize(new java.awt.Dimension(400, 300));
 
-        jScrollPane2.setPreferredSize(new java.awt.Dimension(200, 100));
+        jScrollPane3.setBorder(null);
 
         classJList.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
         classJList.setToolTipText("These classes will be available to choose.");
@@ -571,27 +571,27 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                 classJListValueChanged(evt);
             }
         });
-        jScrollPane2.setViewportView(classJList);
+        jScrollPane3.setViewportView(classJList);
         classJList.getAccessibleContext().setAccessibleDescription("");
 
         javax.swing.GroupLayout chosenClassPanelLayout = new javax.swing.GroupLayout(chosenClassPanel);
         chosenClassPanel.setLayout(chosenClassPanelLayout);
         chosenClassPanelLayout.setHorizontalGroup(
             chosenClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(chosenClassPanelLayout.createSequentialGroup()
-                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 427, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+            .addComponent(jScrollPane3, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
         );
         chosenClassPanelLayout.setVerticalGroup(
             chosenClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(chosenClassPanelLayout.createSequentialGroup()
-                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 286, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, chosenClassPanelLayout.createSequentialGroup()
+                .addGap(36, 36, 36)
+                .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 312, Short.MAX_VALUE))
         );
 
         addClassButton.setMnemonic('a');
-        addClassButton.setText("Add");
+        addClassButton.setText(">");
         addClassButton.setToolTipText("Add the filter to the list of available filters");
+        addClassButton.setMargin(new java.awt.Insets(2, 5, 2, 5));
+        addClassButton.setMaximumSize(null);
         addClassButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 addClassButtonActionPerformed(evt);
@@ -599,75 +599,54 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         });
 
         removeClassButton.setMnemonic('r');
-        removeClassButton.setText("Remove");
+        removeClassButton.setText("<");
+        removeClassButton.setToolTipText("Remove the filter from the list of selected filters");
+        removeClassButton.setMargin(new java.awt.Insets(2, 5, 2, 5));
+        removeClassButton.setMaximumSize(null);
         removeClassButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 removeClassButtonActionPerformed(evt);
             }
         });
 
-        moveUpButton.setMnemonic('u');
-        moveUpButton.setText("Move up");
-        moveUpButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                moveUpButtonActionPerformed(evt);
-            }
-        });
-
-        moveDownButton.setMnemonic('d');
-        moveDownButton.setText("Move down");
-        moveDownButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                moveDownButtonActionPerformed(evt);
-            }
-        });
-
-        revertButton.setMnemonic('e');
-        revertButton.setText("Revert");
-        revertButton.setToolTipText("Revert changes to the list");
-        revertButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                revertButtonActionPerformed(evt);
-            }
-        });
-
-        removeAllButton.setText("Remove all");
+        removeAllButton.setText("<<");
+        removeAllButton.setToolTipText("Remove all filters from the list of selected filters");
+        removeAllButton.setMargin(new java.awt.Insets(2, 5, 2, 5));
+        removeAllButton.setMaximumSize(null);
         removeAllButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 removeAllButtonActionPerformed(evt);
             }
         });
 
-        defaultsButton.setMnemonic('d');
-        defaultsButton.setText("Defaults");
-        defaultsButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                defaultsButtonActionPerformed(evt);
-            }
-        });
-
         descPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Class description"));
 
+        jScrollPane1.setBorder(null);
+
         descPane.setEditable(false);
+        descPane.setBorder(null);
         jScrollPane1.setViewportView(descPane);
 
         jLabel1.setText("Development status: ");
 
         develStatusTF.setEditable(false);
+        develStatusTF.setBackground(new java.awt.Color(255, 255, 255));
         develStatusTF.setToolTipText("Shows DevelopmentStatus of class as annotated with DevelopmentStatus");
+        develStatusTF.setBorder(null);
 
         javax.swing.GroupLayout descPanelLayout = new javax.swing.GroupLayout(descPanel);
         descPanel.setLayout(descPanelLayout);
         descPanelLayout.setHorizontalGroup(
             descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(descPanelLayout.createSequentialGroup()
-                .addGroup(descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 585, Short.MAX_VALUE)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, descPanelLayout.createSequentialGroup()
+                .addGap(2, 2, 2)
+                .addGroup(descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(descPanelLayout.createSequentialGroup()
                         .addComponent(jLabel1)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(develStatusTF, javax.swing.GroupLayout.DEFAULT_SIZE, 478, Short.MAX_VALUE)))
-                .addContainerGap())
+                        .addGap(5, 5, 5)
+                        .addComponent(develStatusTF, javax.swing.GroupLayout.DEFAULT_SIZE, 446, Short.MAX_VALUE))
+                    .addComponent(jScrollPane1))
+                .addGap(2, 2, 2))
         );
         descPanelLayout.setVerticalGroup(
             descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -677,87 +656,102 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                 .addGroup(descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel1)
                     .addComponent(develStatusTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGap(2, 2, 2))
         );
+
+        moveUpButton.setMnemonic('u');
+        moveUpButton.setText("Move up");
+        moveUpButton.setMargin(new java.awt.Insets(2, 5, 2, 5));
+        moveUpButton.setMaximumSize(null);
+        moveUpButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                moveUpButtonActionPerformed(evt);
+            }
+        });
+
+        revertButton.setMnemonic('e');
+        revertButton.setText("Revert");
+        revertButton.setToolTipText("Revert changes to the list");
+        revertButton.setMargin(new java.awt.Insets(2, 5, 2, 5));
+        revertButton.setMaximumSize(null);
+        revertButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                revertButtonActionPerformed(evt);
+            }
+        });
+
+        moveDownButton.setMnemonic('d');
+        moveDownButton.setText("Move down");
+        moveDownButton.setMargin(new java.awt.Insets(2, 5, 2, 5));
+        moveDownButton.setMaximumSize(null);
+        moveDownButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                moveDownButtonActionPerformed(evt);
+            }
+        });
+
+        defaultsButton.setMnemonic('d');
+        defaultsButton.setText("Defaults");
+        defaultsButton.setMargin(new java.awt.Insets(2, 5, 2, 5));
+        defaultsButton.setMaximumSize(null);
+        defaultsButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                defaultsButtonActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(availClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 328, Short.MAX_VALUE)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addGap(2, 2, 2)
-                        .addComponent(addClassButton, javax.swing.GroupLayout.PREFERRED_SIZE, 63, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(chosenClassPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 449, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(descPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
+                        .addComponent(availClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 236, Short.MAX_VALUE)
+                        .addGap(10, 10, 10)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(defaultsButton, javax.swing.GroupLayout.PREFERRED_SIZE, 61, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(removeClassButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(removeAllButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(moveUpButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(moveDownButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(removeClassButton)
-                            .addComponent(revertButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(defaultsButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-                    .addGroup(layout.createSequentialGroup()
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(descPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap())
+                            .addComponent(moveUpButton, javax.swing.GroupLayout.PREFERRED_SIZE, 61, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(revertButton, javax.swing.GroupLayout.PREFERRED_SIZE, 61, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(moveDownButton, javax.swing.GroupLayout.PREFERRED_SIZE, 71, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(addClassButton, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(10, 10, 10)
+                        .addComponent(chosenClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 234, Short.MAX_VALUE))))
         );
 
-        layout.linkSize(javax.swing.SwingConstants.HORIZONTAL, new java.awt.Component[] {defaultsButton, moveDownButton, moveUpButton, removeAllButton, removeClassButton, revertButton});
+        layout.linkSize(javax.swing.SwingConstants.HORIZONTAL, new java.awt.Component[] {addClassButton, defaultsButton, moveDownButton, moveUpButton, removeAllButton, removeClassButton, revertButton});
 
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addGap(112, 112, 112)
-                        .addComponent(addClassButton))
-                    .addGroup(layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(chosenClassPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 324, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(18, 18, 18)
-                                .addComponent(descPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                            .addGroup(layout.createSequentialGroup()
-                                .addGap(27, 27, 27)
-                                .addComponent(availClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 509, Short.MAX_VALUE))))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGap(58, 58, 58)
-                        .addComponent(moveUpButton)
+                        .addGap(67, 67, 67)
+                        .addComponent(addClassButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(moveDownButton)
-                        .addGap(33, 33, 33)
-                        .addComponent(removeClassButton)
+                        .addComponent(removeClassButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(removeAllButton)
+                        .addComponent(removeAllButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(18, 18, 18)
-                        .addComponent(revertButton)
+                        .addComponent(moveUpButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(defaultsButton)))
+                        .addComponent(moveDownButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(revertButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(defaultsButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(availClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 371, Short.MAX_VALUE)
+                    .addComponent(chosenClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 371, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(descPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
     }// </editor-fold>//GEN-END:initComponents
-
-    private void availFilterTextFieldKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_availFilterTextFieldKeyTyped
-        if (availClassesListModel == null) {
-            return;
-        }
-        String s = availFilterTextField.getText();
-        availClassesListModel.filter(s);
-    }//GEN-LAST:event_availFilterTextFieldKeyTyped
-
-    private void availFilterTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_availFilterTextFieldActionPerformed
-        if (availClassesListModel == null) {
-            return;
-        }
-        String s = availFilterTextField.getText();
-        availClassesListModel.filter(s);
-    }//GEN-LAST:event_availFilterTextFieldActionPerformed
 
     private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_defaultsButtonActionPerformed
         chosenClassesListModel.clear();
@@ -836,18 +830,35 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         moveUpButton.setEnabled(true);
     }//GEN-LAST:event_classJListMouseClicked
 
-private void availClassJListValueChanged(javax.swing.event.ListSelectionEvent evt) {//GEN-FIRST:event_availClassJListValueChanged
-    showDescription(evt, descPane);
-}//GEN-LAST:event_availClassJListValueChanged
-
 private void classJListValueChanged(javax.swing.event.ListSelectionEvent evt) {//GEN-FIRST:event_classJListValueChanged
     showDescription(evt, descPane);
 }//GEN-LAST:event_classJListValueChanged
+
+    private void availClassJListValueChanged(javax.swing.event.ListSelectionEvent evt) {//GEN-FIRST:event_availClassJListValueChanged
+        showDescription(evt, descPane);
+    }//GEN-LAST:event_availClassJListValueChanged
 
     private void clearFilterButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearFilterButActionPerformed
         availFilterTextField.setText("");
         availClassesListModel.clearFilter();
     }//GEN-LAST:event_clearFilterButActionPerformed
+
+    private void availFilterTextFieldKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_availFilterTextFieldKeyTyped
+        if (availClassesListModel == null) {
+            return;
+        }
+        String s = availFilterTextField.getText();
+        availClassesListModel.filter(s);
+    }//GEN-LAST:event_availFilterTextFieldKeyTyped
+
+    private void availFilterTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_availFilterTextFieldActionPerformed
+        if (availClassesListModel == null) {
+            return;
+        }
+        String s = availFilterTextField.getText();
+        availClassesListModel.filter(s);
+    }//GEN-LAST:event_availFilterTextFieldActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton addClassButton;
     private javax.swing.JScrollPane availClassDesciptionPanel;
@@ -866,7 +877,7 @@ private void classJListValueChanged(javax.swing.event.ListSelectionEvent evt) {/
     private javax.swing.JPanel filterTypeOptionsPanel;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JScrollPane jScrollPane1;
-    private javax.swing.JScrollPane jScrollPane2;
+    private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JButton moveDownButton;
     private javax.swing.JButton moveUpButton;
     private javax.swing.JButton removeAllButton;

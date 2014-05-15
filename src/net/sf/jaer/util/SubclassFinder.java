@@ -1,32 +1,20 @@
-/*
- * SubclassFinder.java
- *
+/* SubclassFinder.java
  * Created on May 13, 2007, 8:13 PM
- *
- * To change this template, choose Tools | Template Manager
- * and open the template in the editor.
- *
- *
- *Copyright May 13, 2007 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
- */
+ * Copyright May 13, 2007 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich */
 package net.sf.jaer.util;
 
+import java.util.*;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
-
 import javax.swing.ProgressMonitor;
 import javax.swing.SwingWorker;
 
-/**
- * Finds subclasses of a given class name in classes on the loaded classpath.
+/** Finds subclasses of a given class name in classes on the loaded classpath.
  * Classes are cached in a HashMap to reduce cost of subsequent lookups.
  * <p>
  * See http://www.javaworld.com/javaworld/javatips/jw-javatip113.html?page=2
- * @author tobi
- */
+ * @author tobi */
 public class SubclassFinder {
     // TODO needs a way of caching in preferences the list of classes and the number or checksum of classes,
     // to reduce startup time, since this lookup of subclasses takes 10s of seconds on some machines
@@ -35,43 +23,33 @@ public class SubclassFinder {
 
     /** Creates a new instance of SubclassFinder */
     private SubclassFinder() {
+        super();
     }
 
     private static class FastClassFinder {
 
         static HashMap<String, Class> map = new HashMap<String, Class>();
 
-        synchronized private static Class forName(String name) throws ClassNotFoundException, ExceptionInInitializerError {
-            Class c = null;
+        private static synchronized Class forName(String name) throws ExceptionInInitializerError, NoClassDefFoundError, UnsatisfiedLinkError {
+            Class c;
             if ((c = map.get(name)) == null) {
                 try {
                     c = Class.forName(name);
                     map.put(name, c);
-                } catch (Exception e) {
-                    log.warning("caught " + e + " when trying to get class named " + name);
+                } catch (ClassNotFoundException e) {
+                    log.warning("caught "+e+" when trying to get class named "+name);
                 }
-                return c;
-            } else {
-                return c;
             }
+            return c;
         }
 
-        static private synchronized void clear() {
+        private static synchronized void clear() {
             map.clear();
         }
     }
-
-    /** Updates a ProgressMonitor while finding subclasses
-     * 
-     * @param name class to find subclasses of
-     * @return list of subclasses that are not abstract
-     */
-    public static ArrayList<String> findSubclassesOf(String name) {
-        return findSubclassesOf(name, null);
-    }
-
+    
     /** Finds subclasses in SwingWorker */
-    static public class SubclassFinderWorker extends SwingWorker<ArrayList<String>, Object> {
+    public static class SubclassFinderWorker extends SwingWorker<ArrayList<String>, Object> {
 
         Class clazz;
 
@@ -80,10 +58,8 @@ public class SubclassFinder {
         }
 
         /** Called by SwingWorker on execute()
-         * 
          * @return the list of classes that are subclasses.
-         * @throws Exception on any error
-         */
+         * @throws Exception on any error */
         @Override
         protected ArrayList<String> doInBackground() throws Exception {
             setProgress(0);
@@ -93,106 +69,27 @@ public class SubclassFinder {
                 log.warning("tried to find subclasses of null class name, returning empty list");
                 return classes;
             }
-            try {
-                publish("Building class list");
-                Class superClass = FastClassFinder.forName(superClassName);
-                List<String> allClasses = ListClasses.listClasses();  // expensive, must search all classpath and make big string array list
-                int n = ".class".length();
-                Class c = null;
-                if (allClasses.isEmpty()) {
-                    log.warning("List of subclasses of " + superClassName + " is empty, is there something wrong with your classpath. Do you have \"compile on save\" turned on? (This option can break the SubclassFinder).");
-                }
-                int i = 0;
-                int nclasses = allClasses.size();
-                publish("Scanning class list to find subclasses");
-                int lastProgress = 0;
-                for (String s : allClasses) {
-                    i++;
-                    try {
-                        int p = (int) ((float) i / nclasses * 100);
-                        if (p > lastProgress+5) {
-                            setProgress(p);
-                            lastProgress = p;
-                        }
-
-                        s = s.substring(0, s.length() - n);
-                        s = s.replace('/', '.').replace('\\', '.'); // TODO check this replacement of file separators on win/unix
-                        if (s.indexOf("$") != -1) {
-                            continue; // inner class
-                        }
-                        c = FastClassFinder.forName(s);
-                        if (c == superClass || c == null) {
-                            continue; // don't add the superclass
-                        }
-                        if (Modifier.isAbstract(c.getModifiers())) {
-                            continue;//if class is abstract, dont add to list.
-                        }
-                        if (superClass.isAssignableFrom(c)) { //sees if e.g. superclass AEChip can be cast from e.g. c=DVS128, i.e. can we do (AEChip)DVS128?
-                            classes.add(s);
-                        }
-                    } catch (Throwable t) { // must catch Error, not just Exception here, because UnsatisfiedLinkError is Error
-                        log.warning("ERROR: " + t + " while seeing if " + superClass + " isAssignableFrom " + c);
-                    }
-                }
-            } catch (Exception e) {
-                log.warning("Exception " + e.toString() + " while finding subclasses of " + superClassName);
-                e.printStackTrace();
-            } finally {
-                return classes;
-            }
-        }
-
-        @Override
-        protected void done() {
-            setProgress(100);
-        }
-
-        @Override
-        protected void process(List<Object> chunks) {
-//            System.out.println("chunks="+chunks);
-        }
-    }
-
-    /** Finds and returns list of fully-qualified name Strings of all subclases of a class.
-     * @param superClassName the fully qualified name, e.g. net.sf.jaer.chip.AEChip
-     * @param progressMonitor updated during search
-     * @return list of fully qualified class names that are subclasses (and not the same as) the argument
-     * @see #findSubclassesOf(java.lang.String) 
-     */
-    public static ArrayList<String> findSubclassesOf(String superClassName, final ProgressMonitor progressMonitor) { // TODO this doesn't work, monitor bar does not update and just shows blank, even if this method is executed in a SwingWorker thread
-        ArrayList<String> classes = new ArrayList<String>(100);
-        if (superClassName == null) {
-            log.warning("tried to find subclasses of null class name, returning empty list");
-            return classes;
-        }
-        try {
-            if (progressMonitor != null) {
-                progressMonitor.setNote("Building class list");
-            }
+            publish("Building class list");
             Class superClass = FastClassFinder.forName(superClassName);
             List<String> allClasses = ListClasses.listClasses();  // expensive, must search all classpath and make big string array list
             int n = ".class".length();
             Class c = null;
             if (allClasses.isEmpty()) {
-                log.warning("List of subclasses of " + superClassName + " is empty, is there something wrong with your classpath. Do you have \"compile on save\" turned on? (This option can break the SubclassFinder).");
+                log.warning("List of subclasses of "+superClassName+" is empty, is there something wrong with your classpath. Do you have \"compile on save\" turned on? (This option can break the SubclassFinder).");
             }
             int i = 0;
-            if (progressMonitor != null) {
-                progressMonitor.setNote("Scanning class list to find subclasses");
-            }
-            if (progressMonitor != null) {
-                progressMonitor.setMaximum(allClasses.size());
-            }
+            int nclasses = allClasses.size();
+            publish("Scanning class list to find subclasses");
+            int lastProgress = 0;
             for (String s : allClasses) {
+                i++;
                 try {
-                    if (progressMonitor != null) {
-                        if (progressMonitor.isCanceled()) {
-                            break;
-                        }
-                        progressMonitor.setProgress(i);
-                        i++;
-//                        Thread.sleep(1); // for debug of progressmonitor
+                    int p = (int) ((float) i / nclasses * 100);
+                    if (p > lastProgress+5) {
+                        setProgress(p);
+                        lastProgress = p;
                     }
+
                     s = s.substring(0, s.length() - n);
                     s = s.replace('/', '.').replace('\\', '.'); // TODO check this replacement of file separators on win/unix
                     if (s.indexOf("$") != -1) {
@@ -208,17 +105,99 @@ public class SubclassFinder {
                     if (superClass.isAssignableFrom(c)) { //sees if e.g. superclass AEChip can be cast from e.g. c=DVS128, i.e. can we do (AEChip)DVS128?
                         classes.add(s);
                     }
-                } catch (Throwable t) { // must catch Error, not just Exception here, because UnsatisfiedLinkError is Error
-                    log.warning("ERROR: " + t + " while seeing if " + superClass + " isAssignableFrom " + c);
+                // TODO: Better way of handling Errors is needed. Most of them arent a problem, as they dont belong to jAER anyway. If that is the case we should ignore, not log...    
+                } catch (ExceptionInInitializerError t) {
+                    log.warning(t+" while seeing if "+superClass+" isAssignableFrom "+c);
+                } catch (NoClassDefFoundError t) {
+                    log.warning(t+" while seeing if "+superClass+" isAssignableFrom "+c);
+                } catch (UnsatisfiedLinkError t) {
+                    log.warning(t+" while seeing if "+superClass+" isAssignableFrom "+c);
                 }
             }
-        } catch (Exception e) {
-            log.warning("Exception " + e.toString() + " while finding subclasses of " + superClassName);
-            e.printStackTrace();
-        } finally {
-
             return classes;
         }
+
+        @Override
+        protected void done() {
+            setProgress(100);
+        }
+
+        @Override
+        protected void process(List<Object> chunks) {
+//            System.out.println("chunks="+chunks);
+        }
+    }
+    
+    /** Updates a ProgressMonitor while finding subclasses
+     * @param name class to find subclasses of
+     * @return list of subclasses that are not abstract */
+    public static ArrayList<String> findSubclassesOf(String name) {
+        return findSubclassesOf(name, null);
+    }
+
+    /** Finds and returns list of fully-qualified name Strings of all subclases of a class.
+     * @param superClassName the fully qualified name, e.g. net.sf.jaer.chip.AEChip
+     * @param progressMonitor updated during search
+     * @return list of fully qualified class names that are subclasses (and not the same as) the argument
+     * @see #findSubclassesOf(java.lang.String) */
+    public static ArrayList<String> findSubclassesOf(String superClassName, final ProgressMonitor progressMonitor) { // TODO this doesn't work, monitor bar does not update and just shows blank, even if this method is executed in a SwingWorker thread
+        ArrayList<String> classes = new ArrayList<String>(1000);
+        if (superClassName == null) {
+            log.warning("tried to find subclasses of null class name, returning empty list");
+            return classes;
+        }
+        if (progressMonitor != null) {
+            progressMonitor.setNote("Building class list");
+        }
+        Class superClass = FastClassFinder.forName(superClassName);
+        List<String> allClasses = ListClasses.listClasses();  // expensive, must search all classpath and make big string array list
+        int n = ".class".length();
+        Class c = null;
+        if (allClasses.isEmpty()) {
+            log.warning("List of subclasses of "+superClassName+" is empty, is there something wrong with your classpath. Do you have \"compile on save\" turned on? (This option can break the SubclassFinder).");
+        }
+        int i = 0;
+        if (progressMonitor != null) {
+            progressMonitor.setNote("Scanning class list to find subclasses");
+        }
+        if (progressMonitor != null) {
+            progressMonitor.setMaximum(allClasses.size());
+        }
+        for (String s : allClasses) {
+            try {
+                if (progressMonitor != null) {
+                    if (progressMonitor.isCanceled()) {
+                        break;
+                    }
+                    progressMonitor.setProgress(i);
+                    i++;
+//                        Thread.sleep(1); // for debug of progressmonitor
+                }
+                s = s.substring(0, s.length() - n);
+                s = s.replace('/', '.').replace('\\', '.'); // TODO check this replacement of file separators on win/unix
+                if (s.indexOf("$") != -1) {
+                    continue; // inner class
+                }
+                c = FastClassFinder.forName(s); //THIS LINE THROWS ALL THE EXCEPTIONS
+                if (c == superClass || c == null) {
+                    continue; // don't add the superclass
+                }
+                if (Modifier.isAbstract(c.getModifiers())) {
+                    continue;//if class is abstract, dont add to list.
+                }
+                if (superClass.isAssignableFrom(c)) { //sees if e.g. superclass AEChip can be cast from e.g. c=DVS128, i.e. can we do (AEChip)DVS128?
+                    classes.add(s);
+                }
+            // TODO: Better way of handling Errors is needed. Most of them arent a problem, as they dont belong to jAER anyway. If that is the case we should ignore, not log...    
+            } catch (ExceptionInInitializerError t) {
+                log.warning(t+" while seeing if "+superClass+" isAssignableFrom "+c);
+            } catch (NoClassDefFoundError t) {
+                log.warning(t+" while seeing if "+superClass+" isAssignableFrom "+c);
+            } catch (UnsatisfiedLinkError t) {
+                log.warning(t+" while seeing if "+superClass+" isAssignableFrom "+c);
+            }
+        }
+        return classes;
     }
 
     public static void main(String[] args) {

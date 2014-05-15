@@ -4,10 +4,11 @@
  */
 package ch.unizh.ini.jaer.projects.thresholdlearner;
 
-import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.ApsDvsOrientationEvent;
 import net.sf.jaer.graphics.RetinaRenderer;
+import net.sf.jaer.chip.AEChip;
 
 /**
  * Used to render the events in a packet using the Threshold map for the AERetina.

@@ -510,6 +510,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                     } else if ((buf[i + 1] & EXTERNAL_PIN_EVENT) == EXTERNAL_PIN_EVENT) {
                                         addr = ApsDvsChip.TRIGGERMASK;
                                         timestamp = currentts;
+                                        haveEvent = true;
 //                                        haveEvent = true; // TODO don't write out the external pin events for now, because they mess up the IMU special events
                                     } else if ((buf[i + 1] & XBIT) == XBIT) {//  received an X address, write out event to addresses/timestamps output arrays
 

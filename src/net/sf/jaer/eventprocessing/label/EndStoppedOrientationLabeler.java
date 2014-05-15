@@ -9,21 +9,21 @@ import java.util.Random;
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OrientationEvent;
+import net.sf.jaer.event.ApsDvsOrientationEvent;
 import net.sf.jaer.event.OutputEventIterator;
 
 /**
- * Experimental labeler which only outputs endstopped cell activity. The outputs from an enclosed SimpleOrientationFilter are used to filter
- * the events to only pass events with past orientation events in one of the two directions along the orientation.
+ * Experimental labeler which only outputs endstopped cell activity. The outputs from an enclosed DvsOrientationFilter are used to filter
+ the events to only pass events with past orientation events in one of the two directions along the orientation.
  *
  * @author tobi
- *
- * This is part of jAER
+
+ This is part of jAER
 <a href="http://jaerproject.net/">jaerproject.net</a>,
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 @Description("End-stopped orientation labeler")
-public class EndStoppedOrientationLabeler extends SimpleOrientationFilter {
+public class EndStoppedOrientationLabeler extends DvsOrientationFilter {
 
     private float minActivityDifference = getPrefs().getFloat("EndStoppedOrientationLabeler.minActivityDifference", .4f);
     private int maxDtToUse = getPrefs().getInt("EndStoppedOrientationLabeler.maxDtToUse", 100000);
@@ -35,12 +35,20 @@ public class EndStoppedOrientationLabeler extends SimpleOrientationFilter {
     private int[][][] lastOutputTimesMap;
     private Random random = new Random();
     /**
-     * Offsets from a pixel to pixels forming the receptive field (RF) for an endstopped orientation response.
+    
+     Offsets from a pixel to pixels forming the receptive field (RF) for an endstopped orientation response.
      * They are computed whenever the RF size changes.
      * First index is orientation 0-NUM_TYPES, second is index over array.
      * The two sets of offsets are for the two directions for the endstopping.
      */
-    protected Dir[][] offsets0 = null, offsets1 = null;
+    protected Dir[][] offsets0 = null,
+
+    /**
+     * Offsets from a pixel to pixels forming the receptive field (RF) for an endstopped orientation response.They are computed whenever the RF size changes.
+ First index is orientation 0-NUM_TYPES, second is index over array.
+ The two sets of offsets are for the two directions for the endstopping.
+     */
+    offsets1 = null;
 
     public EndStoppedOrientationLabeler(AEChip chip) {
         super(chip);
@@ -52,7 +60,7 @@ public class EndStoppedOrientationLabeler extends SimpleOrientationFilter {
         setPropertyTooltip(endstop, "endStoppedLength", "length of half of RF, total length is length on each side");
         setPropertyTooltip(endstop, "probabilisitcFiltering", "orientation event is passed probabilisitcally based on measured activity ratio: 0 ratio difference=don't pass, 1 ratio difference=pass.");
     }
-    EventPacket esOut = new EventPacket(OrientationEvent.class);
+    EventPacket esOut = new EventPacket(ApsDvsOrientationEvent.class);
 
     @Override
     public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -63,12 +71,12 @@ public class EndStoppedOrientationLabeler extends SimpleOrientationFilter {
         checkMaps();
         EventPacket filt = super.filterPacket(in);
         for (Object o : filt) {
-            OrientationEvent e = (OrientationEvent) o;
+            ApsDvsOrientationEvent e = (ApsDvsOrientationEvent) o;
         }
 
         OutputEventIterator outItr = esOut.outputIterator();
         for (Object o : filt) {
-            OrientationEvent ie = (OrientationEvent) o;
+            ApsDvsOrientationEvent ie = (ApsDvsOrientationEvent) o;
             int thisori=0; // ie.orientation;
             lastOutputTimesMap[ie.x >>> sss][ie.y >>> sss][thisori] = ie.timestamp;
             if (!ie.hasOrientation) {
@@ -113,7 +121,7 @@ public class EndStoppedOrientationLabeler extends SimpleOrientationFilter {
             }
 //            System.out.println(String.format(" n0=%d n1=%d pass=%s",n0,n1,pass));
             if (pass) {
-                OrientationEvent oe = (OrientationEvent) outItr.nextOutput();
+                ApsDvsOrientationEvent oe = (ApsDvsOrientationEvent) outItr.nextOutput();
                 oe.copyFrom(ie);
             }
         }
@@ -121,7 +129,7 @@ public class EndStoppedOrientationLabeler extends SimpleOrientationFilter {
     }
 
     /** precomputes offsets for iterating over neighborhoods */
-    private void computeRFOffsets() {
+    protected void computeRFOffsets() {
         // compute array of Dir for each orientation and each of two endstopping directions.
 
         rfSize = getEndStoppedLength() * (2 * getEndStoppedWidth() + 1);
@@ -150,7 +158,7 @@ public class EndStoppedOrientationLabeler extends SimpleOrientationFilter {
         }
     }
 
-    synchronized private void allocateMaps() {
+    synchronized protected void allocateMaps() {
         if (!isFilterEnabled()) {
             return;
         }

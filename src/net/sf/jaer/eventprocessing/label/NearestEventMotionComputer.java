@@ -163,7 +163,7 @@ public class NearestEventMotionComputer extends EventFilter2D implements Observe
 
     @Override protected void clearOutputPacket(){
         if(out==null){
-            out=new EventPacket(OrientationEvent.class);
+            out=new EventPacket(ApsDvsOrientationEvent.class);
         }else{
             out.clear();
         }

@@ -94,7 +94,7 @@ public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnP
             return new SiLabsC8051F320_OpticalFlowHardwareInterface(n);
         n-= usbioList.size();
         // same is true for PS3 eyes
-        if (n<psEyes.length)
+        if (psEyes!=null && n<psEyes.length)
             return psEyes[n];
         // the last hardware interface is by definition the dsPIC33F_COM_OpticalFlowHardwareInterface
         // (that may not be connected; error issued on opening)

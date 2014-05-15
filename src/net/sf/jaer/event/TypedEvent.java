@@ -15,7 +15,7 @@ package net.sf.jaer.event;
  * Represents an event with a byte type. This is a legacy class to support previous implementations.
  * @author tobi
  */
-public class TypedEvent extends BasicEvent {
+public class TypedEvent extends BasicEvent implements TypedEventInterface {
 
     /** The type field of the event. Generally a small number representing the cell type. */
     public byte type = 0;

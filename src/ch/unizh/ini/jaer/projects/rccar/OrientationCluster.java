@@ -27,17 +27,17 @@ import net.sf.jaer.graphics.FrameAnnotater;
 /**
  *
  * @author braendch
- * This Filter creates for each event an orientation vector and calculates the common orientation of its neighbors.
- * To pass the filter, the difference of these two orientations has to be smaller than a certain 'tolerance' (in degrees), 
- * and the orientation must be within a certain range around vertical (ori) and the neighborhoodvector has to 
- * be big enough (neighborThr) to ensure that it doesn't have the right orientation just because of random.
- * To create the orientation vector for each event the receptive (width*height) field is investigated and the
- * normalized orientation vectors to each past event in the receptive field that satisfies a certain actuality 
- * (dt) is divided by the time past between the two events.
- * If two events are of different polarity (data index 3) the orientation is roatated by 90° - this is because the contrast gradient
- * is perpendicular to an edge.
- * To simplify calculation all vectors have an positive y-component.
- * The orientation History takes account of the past orientaions of the events and of the neighbors.
+ This Filter creates for each event an orientation vector and calculates the common orientation of its neighbors.
+ To pass the filter, the difference of these two orientations has to be smaller than a certain 'tolerance' (in degrees), 
+ and the orientation must be within a certain range around vertical (ori) and the neighborhoodvector has to 
+ be big enough (neighborThr) to ensure that it doesn't have the right orientation just because of random.
+ To create the orientation vector for each event the receptive (width*height) field is investigated and the
+ normalized orientation vectors to each past event in the receptive field that satisfies a certain actuality 
+ (dt) is divided by the time past between the two events.
+ If two events are of different polarity (data index 3) the orientation is roatated by 90° - this is because the contrast gradient
+ is perpendicular to an edge.
+ To simplify calculation all vectors have an positive y-component.
+ The orientation History takes account of the past orientaions of the events and of the neighbors.
 
  */    
     public class OrientationCluster extends EventFilter2D implements Observer, FrameAnnotater {
@@ -153,7 +153,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
             return in;
         }
      
-        checkOutputPacketEventType(OrientationEvent.class);
+        checkOutputPacketEventType(ApsDvsOrientationEvent.class);
         
         OutputEventIterator outItr=out.outputIterator();
       
@@ -284,7 +284,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
                             neighborLength > neighborThr*(1-thrGradient*e.y/(sizey))){
                         //the output gets displayed
                         if(showOriEnabled){
-                            OrientationEvent eout=(OrientationEvent)outItr.nextOutput();
+                            ApsDvsOrientationEvent eout=(ApsDvsOrientationEvent)outItr.nextOutput();
                             eout.copyFrom(e);
                             eout.orientation=(byte)Math.abs(8*90*vectorMap[x][y][4]/(ori*Math.PI));
                             eout.hasOrientation=true;

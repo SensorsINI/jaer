@@ -25,6 +25,7 @@ import eu.seebetter.ini.chips.sbret10.SBret10old.SBret10Rendererold;
  * @author Tobi
  * @deprecated not used any more, was for original SBRet10old class
  */
+@Deprecated
 public class SBret10DisplayControlPanelold extends javax.swing.JPanel implements PropertyChangeListener{
 
     private SBret10DisplayMethod displayMethod=null;

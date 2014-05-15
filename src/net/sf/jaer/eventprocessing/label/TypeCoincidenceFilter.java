@@ -30,7 +30,7 @@ public class TypeCoincidenceFilter extends EventFilter2D implements Observer {
    public boolean isGeneratingFilter(){ return true;}
     
     /** events must occur within this time along orientation in us to generate an event */
-//    protected int maxDtThreshold=prefs.getInt("SimpleOrientationFilter.maxDtThreshold",Integer.MAX_VALUE);
+//    protected int maxDtThreshold=prefs.getInt("DvsOrientationFilter.maxDtThreshold",Integer.MAX_VALUE);
     private int minDtThreshold=getPrefs().getInt("TypeCoincidenceFilter.minDtThreshold",10000);
     {setPropertyTooltip("minDtThreshold","events must be this close in us to result in output");}
     
@@ -58,11 +58,11 @@ public class TypeCoincidenceFilter extends EventFilter2D implements Observer {
         return lastTimesMap;
     }
     
-    SimpleOrientationFilter oriFilter;
+    DvsOrientationFilter oriFilter;
     
     synchronized public void resetFilter() {
         allocateMap();
-        if(oriFilter==null) oriFilter=new SimpleOrientationFilter(chip);
+        if(oriFilter==null) oriFilter=new DvsOrientationFilter(chip);
         setEnclosedFilter(oriFilter);
     }
     
@@ -97,7 +97,7 @@ public class TypeCoincidenceFilter extends EventFilter2D implements Observer {
         initFilter();
     }
     
-    EventPacket<OrientationEvent> oriPacket;
+    EventPacket<ApsDvsOrientationEvent> oriPacket;
     
     synchronized public EventPacket filterPacket(EventPacket in) {
         if(in==null) return null;
@@ -107,7 +107,7 @@ public class TypeCoincidenceFilter extends EventFilter2D implements Observer {
             setFilterEnabled(false);
             return in;
         }
-        oriPacket=(EventPacket<OrientationEvent>)(enclosedFilter.filterPacket(in));
+        oriPacket=(EventPacket<ApsDvsOrientationEvent>)(enclosedFilter.filterPacket(in));
         checkMap();
         checkOutputPacketEventType(in);
         int n=in.getSize();
@@ -117,7 +117,7 @@ public class TypeCoincidenceFilter extends EventFilter2D implements Observer {
         // iff there has been an orievent of 90 angle to this one in immediate neighborhood within past minDtThreshold
         OutputEventIterator outItr=out.outputIterator();
         for(Object o:oriPacket){
-            OrientationEvent e=(OrientationEvent)o;  // the orievent
+            ApsDvsOrientationEvent e=(ApsDvsOrientationEvent)o;  // the orievent
             // save time of event in lastTimesMap, subsampled by some number of bits in x and y
             int ex=e.x>>>subSampleBy, ey=e.y>>>subSampleBy;
             lastTimesMap[ex+P][ey+P][e.orientation]=e.timestamp;

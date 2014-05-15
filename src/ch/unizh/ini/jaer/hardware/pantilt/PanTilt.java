@@ -4,49 +4,70 @@
  */
 package ch.unizh.ini.jaer.hardware.pantilt;
 
-import java.util.Random;
-import java.util.TimerTask;
 import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.ServoInterface;
 import net.sf.jaer.hardwareinterface.usb.ServoInterfaceFactory;
+import java.util.TimerTask;
+import java.util.logging.Logger;
+import java.beans.PropertyChangeSupport;
+import java.beans.PropertyChangeListener;
 
-/**
- * Encapsulates a pan tilt controller based on using SiLabsC8051F320_USBIO_ServoController.
- * Currently assumes that there is only one controller attached and that the pan and tilt servos are 
- * tied to the panServoNumber and DEFAULT_TILT_SERVO servo output channels on the board.
- * Port 2 of the ServoUSB board is used to power a laser pointer that can be activated.
- * PanTilt directly controls the servo settings, but does not implement a calbration that maps from 
- * visual coordinates to pan tilt settings. To control the pan tilt to aim at a particular visual location
- * in the field of view of a silicon retina, see PanTiltTracker.
+/** Encapsulates a pan tilt controller based on using SiLabsC8051F320_USBIO_ServoController.
+ * Currently assumes that there is only one controller attached and that the 
+ * pan and tilt servos are tied to the panServoNumber and DEFAULT_TILT_SERVO 
+ * servo output channels on the board. Port 2 of the ServoUSB board is used 
+ * to power a laser pointer that can be activated. PanTilt directly controls 
+ * the servo settings, but does not implement a calibration that maps from 
+ * visual coordinates to pan tilt settings. To control the pan tilt to aim at 
+ * a particular visual location in the field of view of a silicon retina, see 
+ * PanTiltTracker.
  * 
  * @author tobi
  * @see #DEFAULT_PAN_SERVO
  * @see #DEFAULT_TILT_SERVO
- * @see ch.unizh.ini.jaer.hardware.pantilt.PanTiltTracker
- */
+ * @see ch.unizh.ini.jaer.hardware.pantilt.PanTiltTracker */
 public class PanTilt implements PanTiltInterface, LaserOnOffControl {
 
-    private static Logger log = Logger.getLogger("PanTilt");
+    private static final Logger log = Logger.getLogger("PanTilt");
     ServoInterface servo;
     /** Servo output number on SiLabsC8051F320_USBIO_ServoController, 0 based. */
-    public final int DEFAULT_PAN_SERVO = 1,  DEFAULT_TILT_SERVO = 2; // number of servo output on controller
-    volatile boolean lockAcquired = false;
-    java.util.Timer timer;
-    private float pan=.5f, tilt=.5f;
-    private float previousPan=pan, previousTilt=tilt;
+    public final int DEFAULT_PAN_SERVO = 1,  
+                     DEFAULT_TILT_SERVO = 2; // number of servo output on controller
     
-    private float jitterAmplitude=.01f;
-    private float jitterFreqHz=10f;
-    private boolean jitterEnabled=false;
-    private boolean panInverted=false, tiltInverted=false;
-    private int panServoNumber=DEFAULT_PAN_SERVO, tiltServoNumber=DEFAULT_TILT_SERVO;
-
+    volatile boolean lockAcquired = false;
+    java.util.Timer jitterTimer;
+    java.util.Timer followTimer;
+    
+    private float   pan         = .5f,   tilt         = .5f;
+    private float   previousPan = pan,   previousTilt = tilt;
+    private float   panTarget   = pan,   tiltTarget   = tilt;
+    private float   panJitterTarget = pan,tiltJitterTarget = pan;
+    private float   limitOfPan  = .5f,   limitOfTilt  = .5f;
+    private boolean panInverted = false, tiltInverted = false;
+    private int panServoNumber  = DEFAULT_PAN_SERVO, 
+                tiltServoNumber = DEFAULT_TILT_SERVO;
+    
+    private float   jitterAmplitude = .01f;
+    private float   jitterFreqHz    = 10f;
+    private boolean jitterEnabled   = false;
+    
+    private int checkServoCount=0;
+    private final int CHECK_SERVO_INTERVAL = 100;
+    
+    boolean followEnabled = true;
+    float MaxMovePerUpdate = .1f; //Max amount of servochange per update
+    float MinMovePerUpdate = 0.001f; //Min amount of servochange per update 
+    int   MoveUpdateFreqHz = 100; //in Hz how often does the targeted pantilt move
+    
+    private final PropertyChangeSupport pcs = new PropertyChangeSupport(this);
 
     public PanTilt() {
-         Runtime.getRuntime().addShutdownHook(new Thread(){
+        // Sets a ShutDown Hook that is fired everytime the JVM terminates.
+        // This includes normal ending of jAER as well as terminations such as
+        // system shutdown. This Hook makes sure that the laser does not stay 
+        // on in this event.
+        Runtime.getRuntime().addShutdownHook(new Thread(){
             @Override
             public void run(){
                 log.info("disabling laser");
@@ -60,13 +81,10 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
         this();
         this.servo=servo;
     }
-
+        
     public void close(){
         if(getServoInterface()!=null) getServoInterface().close();
     }
-
-    private int checkServoCount=0;
-    private int CHECK_SERVO_INTERVAL=100;
     
     private void checkServos() throws HardwareInterfaceException {
         if (checkServoCount++ % CHECK_SERVO_INTERVAL == 0) {
@@ -88,38 +106,96 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
         }
     }
     
-    /** Simultaneously sets pan and tilt values. The directions here depend on the servo polarities, which could vary.
-     * These values apply to HiTec digital servos.
+    /** Returns previous pan and tilt values. */
+    public float[] getPreviousPanTiltValues(){
+        float[] r={previousPan,previousTilt};
+        return r;
+    }
+    
+    /** Returns last change of pan and tilt values.*/
+    public float[] getPreviousPanTiltChange(){
+        float[] r={pan-previousPan,tilt-previousTilt};
+        return r;
+    }
+
+    /** Returns the last value set, even if the servo interface is not functional. 
+     * The servo could still be moving to this location. 
+     * @return a float[] array with the 0 component being the pan value, 
+     * and the 1 component being the tilt */
+    @Override
+    public float[] getPanTiltValues(){
+        float[] r={pan,tilt};
+        return r;
+    }
+    
+    /** Simultaneously sets pan and tilt values. 
+     * The directions here depend on the servo polarities, which could vary.
+     * These values apply to HiTec digital servos. If selected the values for 
+     * pan or tilt respectively get inverted. If set the values for pan/tilt 
+     * get clipped by the limitOfPan/limitOfTilt
      * 
-     * @param newPan the pan value from 0 to 1 inclusive, 0.5f is the center position. 1 is full right.
+     * @param newPan the pan value from 0 to 1 inclusive, 0.5f is the center 
+     *  position. 1 is full right.
      * @param newTilt the tilt value from 0 to 1. 1 is full down.
      * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException.
-     If this exception is thrown, the interface should be closed. The next attempt to set the pan/tilt values will reopen
-     the interface.
+     *  If this exception is thrown, the interface should be closed. 
+     *  The next attempt to set the pan/tilt values will reopen the interface.
      * @see #panServoNumber
-     * @see #tiltServoNumber
-     */
+     * @see #tiltServoNumber */
     @Override
     synchronized public void setPanTiltValues(float newPan, float newTilt) throws HardwareInterfaceException {
         checkServos();
-        previousPan=this.pan;
-        previousTilt=this.tilt;
-         this.pan=newPan;
-        this.tilt=newTilt; //efferent copy
-        if(panInverted)newPan=1-newPan;
-        if(tiltInverted)newTilt=1-newTilt;
-//       float[] lastValues = servo.getLastServoValues();
-//        lastValues[panServoNumber] = pan;
-//        lastValues[tiltServoNumber] = tilt;
-//        for(int i=0;i<4;i++){
-//            System.out.print(lastValues[i]+", ");
-//        }
-//        System.out.println("");
+        previousPan  = this.pan;
+        previousTilt = this.tilt;
+
+        newPan  = clipPan(newPan); //clip values according to set limits
+        newTilt = clipTilt(newTilt);
+        
+        this.pan  = newPan;
+        this.tilt = newTilt; //efferent copy
+        
+        if(panInverted) newPan  = 1-newPan; //invert values if selected
+        if(tiltInverted)newTilt = 1-newTilt;
+
         servo.setServoValue(panServoNumber,newPan);
         servo.setServoValue(tiltServoNumber,newTilt);
-//        servo.setAllServoValues(lastValues);
+        
         setLaserOn(true);
+        
+        float[] PreviousValues = {previousPan,previousTilt};
+        float[] NewValues      = {this.pan,this.tilt};
+        this.pcs.firePropertyChange("PanTiltValues", PreviousValues , NewValues);
     }
+    
+    public void addPropertyChangeListener(PropertyChangeListener listener) {
+         this.pcs.addPropertyChangeListener(listener);
+     }
+
+     public void removePropertyChangeListener(PropertyChangeListener listener) {
+         this.pcs.removePropertyChangeListener(listener);
+     }
+    
+    // <editor-fold defaultstate="collapsed" desc="Helper Methods --clipPan-- and --clipTilt--">
+    private float clipPan(float pan) {
+        float panLimit = getLimitOfPan();
+        if (pan > 0.5f + panLimit) {
+            pan = 0.5f + panLimit;
+        } else if (pan < .5f - panLimit) {
+            pan = .5f - panLimit;
+        }
+        return pan;
+    }
+
+    private float clipTilt(float tilt) {
+        float tiltLimit = getLimitOfTilt();
+        if (tilt > 0.5f + tiltLimit) {
+            tilt = 0.5f + tiltLimit;
+        } else if (tilt < .5f - tiltLimit) {
+            tilt = .5f - tiltLimit;
+        }
+        return tilt;
+    }
+    // </editor-fold>
 
     /** A method can set this flag to tell other objects that the servo is "owned" */
     @Override
@@ -138,31 +214,234 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     public boolean isLockOwned() {
         return lockAcquired;
     }
+    
+    private class FollowerTask extends TimerTask {
+        boolean cancelMe = false;
+        float[] MoveVec = {0,0};
+        float Distance = 0f;
+        
+        FollowerTask() {
+            super();
+        }
+        
+        @Override
+        public void run() {
+            float[] Target = getJitterTarget();
+            float[] Current = getPanTiltValues();
+            Target[0] = clipPan(Target[0]); //Need to clip target, as saved pantilt values are also cliped
+            Target[1] = clipTilt(Target[1]);
+                
+            MoveVec[0] = Target[0] - Current[0];
+            MoveVec[1] = Target[1] - Current[1];
+            Distance = (float)Math.sqrt(MoveVec[0]*MoveVec[0]+MoveVec[1]*MoveVec[1]);
 
-    /** Returns the last value set, even if the servo interface is not functional. 
-     * The servo could still be moving to this location. 
-     * 
-     * @return a float[] array with the 0 component being the pan value, and the 1 component being the tilt 
-     * 
-     */
+            if(MoveVec[0] != 0) {
+                MoveVec[0] = MoveVec[0]/Distance;//UnitVector
+            } else stopFollow(); //If target is reached we do not need to continue to follow. If a new target is set the follower will start again
+            if(MoveVec[1] != 0) {
+                MoveVec[1] = MoveVec[1]/Distance;
+            } else stopFollow();
+
+            try {
+                // As the servo values are between 0 and 1 the maximum distance
+                // is sqrt(1+1), hence we normalize by sqrt(2)
+                Float Speed = (float) Math.max((Distance/Math.sqrt(2))*MaxMovePerUpdate,Math.min(MinMovePerUpdate,Distance));
+                setPanTiltValues(Current[0]+MoveVec[0]*Speed,Current[1]+MoveVec[1]*Speed);
+            } catch(HardwareInterfaceException ex) {
+               log.warning(ex.toString());
+            }
+        }
+    }  
+
+    private class JittererTask extends TimerTask {
+        long startTime=System.currentTimeMillis();
+
+        JittererTask() {
+            super();
+        }
+
+        @Override
+        public void run() {
+            long t=System.currentTimeMillis()-startTime;
+            double phase=Math.PI*2*(double)t/1000*jitterFreqHz;
+            float dx=(float)(jitterAmplitude*Math.sin(phase));
+            float dy=(float)(jitterAmplitude*Math.cos(phase));
+            float[] Target = getTarget();
+            setJitterTarget(Target[0] + dx, Target[1] + dy);//setPanTiltValues(pantiltvalues[0] + dx, pantiltvalues[1] + dy);
+        }
+    }
+
+    /** Starts the servo jittering around its set position at an update 
+     * frequency of 50 Hz with an amplitude set by 'jitterAmplitude'
+     * @see #setJitterAmplitude */
     @Override
-    public float[] getPanTiltValues(){
-        float[] r={pan,tilt};
-        return r;
-    }
-    
-    /** Returns previous pan and tilt values. */
-    public float[] getPreviousPanTiltValues(){
-        float[] r={previousPan,previousTilt};
-        return r;
-    }
-    
-    /** Returns last change of pan and tilt values.*/
-       public float[] getPreviousPanTiltChange(){
-        float[] r={pan-previousPan,tilt-previousTilt};
-        return r;
+    public void startJitter() {
+        jitterTimer = new java.util.Timer();
+        // Repeat the JitterTask without delay and with 20ms between executions
+        jitterTimer.scheduleAtFixedRate(new JittererTask(), 0, 20); 
     }
 
+    /** Stops the jittering */
+    @Override
+    public void stopJitter() {
+        if (jitterTimer != null) {
+            jitterTimer.cancel();
+            jitterTimer = null;
+        }
+    }
+    
+    public void startFollow() {
+        followTimer = new java.util.Timer();
+        // Repeat the JitterTask without delay and with 20ms between executions
+        followTimer.scheduleAtFixedRate(new FollowerTask(), 0, 1000/getMoveUpdateFreqHz()); //NEED USER DEFINED FREQ HERE
+    }
+    
+    public void stopFollow() {
+        if (followTimer != null) {
+            followTimer.cancel();
+            followTimer = null;
+        }
+    }
+    
+    /** Hack to control laser pointer power through pin 2 opendrain pulldown pins (multiple to share laser
+     * current of about 200mA
+     * @param yes to turn on laser */
+      public  void setLaserOn(boolean yes){
+        if(servo!=null){
+            servo.setPort2(yes? 0:0xff);
+        }
+    }
+
+    public void setLaserEnabled(boolean yes) {
+        setLaserOn(yes);
+    }
+     
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --ServoInterface--">  
+    public ServoInterface getServoInterface() {
+        return servo;
+    }
+    
+    public void setServoInterface(ServoInterface servo) {
+        this.servo=servo;
+    }
+    // </editor-fold> 
+    
+
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --PanInverted--">
+    /**
+     * @return the panInverted */
+    public boolean isPanInverted() {
+        return panInverted;
+    }
+
+    /**
+     * @param panInverted the panInverted to set */
+    public void setPanInverted(boolean panInverted) {
+        this.panInverted = panInverted;
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --TiltInverted--">
+    /**
+     * @return the tiltInverted */
+    public boolean isTiltInverted() {
+        return tiltInverted;
+    }
+
+    /**
+     * @param tiltInverted the tiltInverted to set */
+    public void setTiltInverted(boolean tiltInverted) {
+        this.tiltInverted = tiltInverted;
+    }
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --LimitOfPan--">
+    /** gets the limit of the pan for the hardware
+     * @return the panLimit */
+    public float getLimitOfPan() {
+        return limitOfPan;
+    }
+
+    /** sets the limit of the pan for the hardware
+     * @param PanLimit the PanLimit to set */
+    public void setLimitOfPan(float PanLimit) {
+        if (PanLimit < 0) {
+            PanLimit = 0;
+            log.info("The panLimit must be a value between 0 and 0.5");
+        } else if (PanLimit > 0.5f) {
+            PanLimit = 0.5f;
+            log.info("The panLimit must be a value between 0 and 0.5");
+        }
+        this.limitOfPan = PanLimit;
+    }
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --LimitOfTilt--">
+    /** gets the limit of the tilt for the hardware
+     * @return the tiltLimit */
+    public float getLimitOfTilt() {
+        return limitOfTilt;
+    }
+
+    /** sets the limit of the tilt for the hardware
+     * @param TiltLimit the TiltLimit to set */
+    public void setLimitOfTilt(float TiltLimit) {
+        if (TiltLimit < 0) {
+            TiltLimit = 0;
+            log.info("The tiltLimit must be a value between 0 and 0.5");
+        } else if (TiltLimit > 0.5f) {
+            TiltLimit = 0.5f;
+            log.info("The tiltLimit must be a value between 0 and 0.5");
+        }
+        this.limitOfTilt = TiltLimit;
+    }
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --PanServoNumber--">
+    /**
+     * @return the panServoNumber */
+    public int getPanServoNumber() {
+        return panServoNumber;
+    }
+
+    /**
+     * @param panServoNumber the panServoNumber to set */
+    public void setPanServoNumber(int panServoNumber) {
+        this.panServoNumber = panServoNumber;
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --TiltServoNumber--">
+    /**
+     * @return the tiltServoNumber */
+    public int getTiltServoNumber() {
+        return tiltServoNumber;
+    }
+
+    /**
+     * @param tiltServoNumber the tiltServoNumber to set */
+    public void setTiltServoNumber(int tiltServoNumber) {
+        this.tiltServoNumber = tiltServoNumber;
+    }
+    // </editor-fold> 
+    
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --JitterEnabled--">
+    /**
+     * @return the jitterEnabled */
+    public boolean isJitterEnabled() {
+        return jitterEnabled;
+    }
+
+    /**
+     * @param jitterEnabled the jitterEnabled to set */
+    public void setJitterEnabled(boolean jitterEnabled) {
+        this.jitterEnabled = jitterEnabled;
+        if(jitterEnabled) startJitter(); else stopJitter();
+    }
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --JitterAmplitude--">
     @Override
     public float getJitterAmplitude() {
         return jitterAmplitude;
@@ -176,165 +455,101 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     public void setJitterAmplitude(float jitterAmplitude) {
         this.jitterAmplitude = jitterAmplitude;
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --JitterFreqHz--">
     @Override
     public float getJitterFreqHz() {
         return jitterFreqHz;
     }
 
     /** Sets the frequency of the jitter.
-     * 
-     * @param jitterFreqHz in Hz.
-     */
+     * @param jitterFreqHz in Hz. */
     @Override
     public void setJitterFreqHz(float jitterFreqHz) {
         this.jitterFreqHz = jitterFreqHz;
     }
-
-    /**
-     * @return the panInverted
-     */
-    public boolean isPanInverted() {
-        return panInverted;
-    }
-
-    /**
-     * @param panInverted the panInverted to set
-     */
-    public void setPanInverted(boolean panInverted) {
-        this.panInverted = panInverted;
-    }
-
-    /**
-     * @return the tiltInverted
-     */
-    public boolean isTiltInverted() {
-        return tiltInverted;
-    }
-
-    /**
-     * @param tiltInverted the tiltInverted to set
-     */
-    public void setTiltInverted(boolean tiltInverted) {
-        this.tiltInverted = tiltInverted;
-    }
-
-    /**
-     * @return the panServoNumber
-     */
-    public int getPanServoNumber() {
-        return panServoNumber;
-    }
-
-    /**
-     * @param panServoNumber the panServoNumber to set
-     */
-    public void setPanServoNumber(int panServoNumber) {
-        this.panServoNumber = panServoNumber;
-    }
-
-    /**
-     * @return the tiltServoNumber
-     */
-    public int getTiltServoNumber() {
-        return tiltServoNumber;
-    }
-
-    /**
-     * @param tiltServoNumber the tiltServoNumber to set
-     */
-    public void setTiltServoNumber(int tiltServoNumber) {
-        this.tiltServoNumber = tiltServoNumber;
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --JitterTarget--">
+    private float[] getJitterTarget() {
+        float[] r={panJitterTarget,tiltJitterTarget};
+        return r;
     }
     
+    private void setJitterTarget(float PanTarget,float TiltTarget) {
+        float[] oldJitterTarget = {this.panJitterTarget,this.tiltJitterTarget};
+        this.panJitterTarget = PanTarget;
+        this.tiltJitterTarget = TiltTarget;
+        this.pcs.firePropertyChange("JitterTarget", oldJitterTarget , new float[] {PanTarget,TiltTarget});
+    }
+    // </editor-fold>
     
-    
-    private class JittererTask extends TimerTask {
-
-        int delayMs = 1000;
-        float low = 0;
-        float high = 1;
-        Random r = new Random();
-        float[] pantiltvalues;
-        long startTime=System.currentTimeMillis();
-
-        JittererTask(float[] ptv) {
-            super();
-            pantiltvalues=ptv;
-        }
-
-        @Override
-        public void run() {
-            long t=System.currentTimeMillis()-startTime;
-            double phase=Math.PI*2*(double)t/1000*jitterFreqHz;
-            float dx=(float)(jitterAmplitude*Math.sin(phase));
-            float dy=(float)(jitterAmplitude*Math.cos(phase));
-            try {
-                setPanTiltValues(pantiltvalues[0] + dx, pantiltvalues[1] + dy);
-//                setPanTiltValues(pantiltvalues[0] + Math.signum(dx)*jitterAmplitude, pantiltvalues[1] + Math.signum(dy)*jitterAmplitude);
-            } catch (HardwareInterfaceException ex) {
-            }
-//            try {
-//                setPanTiltValues(pantiltvalues[0]+(r.nextFloat()-0.5f)*JIT, pantiltvalues[1]+(r.nextFloat()-0.5f)*JIT);
-//            } catch (HardwareInterfaceException ex) {
-//            }
-        }
-    }
-
-    /** Starts the servo jittering around its set position at a frequency of 50 Hz with an amplitude of 0.02f
-     @see #setJitterAmplitude
-     */
-    @Override
-    public void startJitter() {
-        if(timer!=null) stopJitter(); //  running, must stop to get new position correct
-        timer = new java.util.Timer();
-        timer.scheduleAtFixedRate(new JittererTask(getPanTiltValues()), 0, 20); // 40 ms delay
-    }
-
-    /** Stops the jittering */
-    @Override
-    public void stopJitter() {
-        if (timer != null) {
-            timer.cancel();
-            timer = null;
-        }
-    }
-
-    /**
-     * @return the jitterEnabled
-     */
-    public boolean isJitterEnabled() {
-        return jitterEnabled;
-    }
-
-    /**
-     * @param jitterEnabled the jitterEnabled to set
-     */
-    public void setJitterEnabled(boolean jitterEnabled) {
-        this.jitterEnabled = jitterEnabled;
-        if(jitterEnabled) startJitter(); else stopJitter();
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --FollowEnabled--">
+    public boolean isFollowEnabled() {
+        return followEnabled;
     }
     
-    /** Hack to control laser pointer power through pin 2 opendrain pulldown pins (multiple to share laser
-     * current of about 200mA
-     * @param yes to turn on laser 
-     */
-      public  void setLaserOn(boolean yes){
-        if(servo!=null){
-            servo.setPort2(yes? 0:0xff);
+    public void setFollowEnabled(boolean SetFollow) {
+        this.followEnabled = SetFollow;
+        if(SetFollow) {
+            if(followTimer == null) startFollow();
+        } else stopFollow();
+    }
+    // </editor-fold>
+    
+        
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --Target--">
+    public float[] getTarget() {
+        float[] r={panTarget,tiltTarget};
+        return r;
+    }
+    
+    public void setTarget(float PanTarget,float TiltTarget) {
+        float[] oldTarget = {this.panTarget,this.tiltTarget};
+        
+        this.panTarget = PanTarget;
+        this.tiltTarget = TiltTarget;
+        //If the Jitter is not enabled, we need to set the Jittertarget 
+        // directly, because in the end the PanTilt follows the JitterTarget, 
+        // not the real Target
+        if(!isJitterEnabled()){ 
+            setJitterTarget(PanTarget,TiltTarget);
+        }
+        this.pcs.firePropertyChange("Target", oldTarget , new float[] {PanTarget,TiltTarget});
+        if(isFollowEnabled() && followTimer == null) {
+            startFollow();
         }
     }
-
-    public void setServoInterface(ServoInterface servo) {
-        this.servo=servo;
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --UpdateFreq--">
+    public int getMoveUpdateFreqHz() {
+        return this.MoveUpdateFreqHz;
     }
-
-    public ServoInterface getServoInterface() {
-        return servo;
+    
+    public void setMoveUpdateFreqHz(int UpdateFreq) {
+        this.MoveUpdateFreqHz = UpdateFreq;
     }
-
-    public void setLaserEnabled(boolean yes) {
-        setLaserOn(yes);
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --MaxMovePerUpdate--">
+    public float getMaxMovePerUpdate() {
+        return this.MaxMovePerUpdate;
     }
-
+    
+    public void setMaxMovePerUpdate(float MaxMove) {
+        this.MaxMovePerUpdate = MaxMove;
+    }
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --MinMovePerUpdate--">
+    public float getMinMovePerUpdate() {
+        return this.MinMovePerUpdate;
+    }
+    
+    public void setMinMovePerUpdate(float MinMove) {
+        this.MinMovePerUpdate = MinMove;
+    }
+    // </editor-fold>
 }

@@ -86,7 +86,7 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
     synchronized public EventPacket filterPacket(EventPacket in) {
         if(!filterEnabled) return in;
         if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
-        checkOutputPacketEventType(OrientationEvent.class);
+        checkOutputPacketEventType(ApsDvsOrientationEvent.class);
 
         OutputEventIterator outItr=out.outputIterator();
 
@@ -98,7 +98,7 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
 
         // Cycle through events
         for(Object e:in){
-           OrientationEvent i=(OrientationEvent)e;
+           ApsDvsOrientationEvent i=(ApsDvsOrientationEvent)e;
            float ts=i.timestamp;
            short x=(short)(i.x), y=(short)(i.y);
            byte orientation = i.orientation;
@@ -117,7 +117,7 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
                 if ((loc_x >= 0) && (loc_x < dim_pixels)) {
                     h_spike = horizontal_cells[loc_x].update(scalew, ts);
                     if (h_spike==1) {
-                        OrientationEvent testi = new OrientationEvent();
+                        ApsDvsOrientationEvent testi = new ApsDvsOrientationEvent();
                         testi.setX((short)(x-offset+nx));
                         testi.setY((short)(y));
                         testi.setTimestamp((int)ts);
@@ -136,7 +136,7 @@ public class LIFLineFilter extends EventFilter2D implements Observer, FrameAnnot
                     if ((loc_y >= 0) && (loc_y < dim_pixels)) {
                         v_spike = vertical_cells[loc_y].update(scalew, ts);
                         if (v_spike==1) {
-                        OrientationEvent testi = new OrientationEvent();
+                        ApsDvsOrientationEvent testi = new ApsDvsOrientationEvent();
                         testi.setX((short)(x));
                         testi.setY((short)(y-offset+ny));
                         testi.setTimestamp((int)ts);

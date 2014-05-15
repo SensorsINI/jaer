@@ -16,7 +16,7 @@ package net.sf.jaer.event;
  * Represents an event with a polarity that is On or Off type
  * @author tobi
  */
-public class PolarityEvent extends TypedEvent{
+public class PolarityEvent extends TypedEvent implements PolarityEventInterface{
 
     /** The polarity types */
     public static enum Polarity {On, Off};
@@ -54,6 +54,7 @@ public class PolarityEvent extends TypedEvent{
        /**
      * @return the polarity
      */
+    @Override
     public Polarity getPolarity() {
         return polarity;
     }
@@ -61,6 +62,7 @@ public class PolarityEvent extends TypedEvent{
     /**
      * @param polarity the polarity to set
      */
+    @Override
     public void setPolarity(Polarity polarity) {
         this.polarity = polarity;
     }
@@ -69,6 +71,7 @@ public class PolarityEvent extends TypedEvent{
      * 
      * @return +1 from On event, -1 from Off event. 
      */
+    @Override
     public int getPolaritySignum(){
         switch(polarity){
             case Off: return -1;

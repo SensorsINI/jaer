@@ -100,7 +100,7 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
     synchronized public EventPacket filterPacket(EventPacket in) {
         if(!filterEnabled) return in;
         if(enclosedFilter!=null) in=enclosedFilter.filterPacket(in);
-        checkOutputPacketEventType(OrientationEvent.class);
+        checkOutputPacketEventType(ApsDvsOrientationEvent.class);
 
         OutputEventIterator outItr=out.outputIterator();
 
@@ -135,7 +135,7 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
                        h_spike = horizontal_cells[idx].update(scalew*w_horiz[local_idx], ts);
                        
                        if (h_spike==1) {
-                        OrientationEvent testi = new OrientationEvent();
+                        ApsDvsOrientationEvent testi = new ApsDvsOrientationEvent();
                         testi.setX((short)(x-offset+spatialscale*nx));
                         testi.setY((short)(y-offset+spatialscale*ny));
                         testi.setTimestamp((int)ts);
@@ -147,7 +147,7 @@ public class LIFOrientationFilter extends EventFilter2D implements Observer {
 
                        v_spike = vertical_cells[idx].update(scalew*w_vert[local_idx], ts);
                        if (v_spike==1) {
-                        OrientationEvent testi = new OrientationEvent();
+                        ApsDvsOrientationEvent testi = new ApsDvsOrientationEvent();
                         testi.setX((short)(x-offset+spatialscale*nx));
                         testi.setY((short)(y-offset+spatialscale*ny));
                         testi.setTimestamp((int)ts);

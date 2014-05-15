@@ -7,14 +7,14 @@ package ch.unizh.ini.jaer.projects.brainfair;
 import java.awt.geom.Point2D;
 import java.util.Arrays;
 import java.util.LinkedList;
-
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OrientationEvent;
-import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.event.ApsDvsOrientationEvent;
+import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.eventprocessing.label.SimpleOrientationFilter;
+import net.sf.jaer.eventprocessing.label.DvsOrientationFilter;
 
 /**
  * Computes statistics of the event input and provides an interface for 
@@ -60,7 +60,7 @@ public class StatisticsCalculator extends EventFilter2D {
     
     
     private FilterChain filterChain;  // Enclosed filter chain for orientations
-    private SimpleOrientationFilter orientFilter;
+    private DvsOrientationFilter orientFilter;
 
 
     public StatisticsCalculator(AEChip chip) {
@@ -76,7 +76,7 @@ public class StatisticsCalculator extends EventFilter2D {
         PixelTime = new int[nPixelTime];
         
         // Create enclosed filter and filter chain
-        orientFilter = new SimpleOrientationFilter(chip);
+        orientFilter = new DvsOrientationFilter(chip);
         filterChain = new FilterChain(chip);
         filterChain.add(orientFilter);
         setEnclosedFilterChain(filterChain);
@@ -99,7 +99,7 @@ public class StatisticsCalculator extends EventFilter2D {
             return null;
         }
         
-        // checkOutputPacketEventType(OrientationEvent.class);
+        // checkOutputPacketEventType(ApsDvsOrientationEvent.class);
 
         // OutputEventIterator outItr=out.outputIterator();
         
@@ -116,12 +116,12 @@ public class StatisticsCalculator extends EventFilter2D {
             // BasicEvent o=(BasicEvent)outItr.nextOutput();
             // o.copyFrom(e);
 
-            if (e instanceof OrientationEvent) {
+            if (e instanceof ApsDvsOrientationEvent) {
                 // Update orientation statistics
-                OrientationEvent oe = (OrientationEvent) e;
+                ApsDvsOrientationEvent oe = (ApsDvsOrientationEvent) e;
 
                 updateOrientationStatistics(oe);
-            } // e instanceof OrientationEvent
+            } // e instanceof ApsDvsOrientationEvent
 
         } // BasicEvent e
 
@@ -133,7 +133,7 @@ public class StatisticsCalculator extends EventFilter2D {
     }
     
     // Updates statistics about orientations
-    private void updateOrientationStatistics(OrientationEvent oe) {
+    private void updateOrientationStatistics(ApsDvsOrientationEvent oe) {
         byte orient = oe.orientation;
         if ((orient>=0) && (orient<4)) {
             orientHistory[orient]++;
