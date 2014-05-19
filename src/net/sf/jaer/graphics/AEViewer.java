@@ -1774,9 +1774,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 				} // if (!isPaused() || isSingleStep())
 
 
-				if (skipPacketsRenderingCount-- == 0) {
+				if (skipPacketsRenderingCount-- <= 0) {
 					// we only got new events if we were NOT paused. but now we can apply filters, different rendering methods, etc in 'paused' condition
-					renderPacket(packet);
+					try{
+                                            renderPacket(packet);
+                                        }catch(RuntimeException e){
+                                            log.warning("caught "+e.toString()+" caused by "+e.getCause().toString());
+                                        }
                                         if(packet==null){
                                             log.warning("packet became null");
                                             continue;
