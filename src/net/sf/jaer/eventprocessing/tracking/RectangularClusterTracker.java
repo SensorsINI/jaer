@@ -17,6 +17,7 @@ import java.awt.event.MouseListener;
 import java.awt.geom.Point2D;
 import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.text.DateFormat;
@@ -57,7 +58,6 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 import com.jogamp.opengl.util.gl2.GLUT;
-import java.io.FileNotFoundException;
 
 /** This complex and highly configurable tracker tracks blobs of events using a
  * rectangular hypothesis about the object shape. Many parameters constrain
@@ -175,8 +175,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //    private float classSizeRatio=getFloat("classSizeRatio",2);
 //    private boolean sizeClassificationEnabled=getBoolean("sizeClassificationEnabled",true);
 
-    GLU glu = new GLU();
-    GLUquadric clusterRadiusQuad = glu.gluNewQuadric();
+    GLU glu = null;
+    GLUquadric clusterRadiusQuad = null;
 
     @Override
     public void mouseClicked(MouseEvent e) {
@@ -185,7 +185,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             glCanvas.removeMouseListener(this);
         }
     }
-    
+
     //The following methods need to be implement for 'MouseListener' we only use 'mouseClicked'
     @Override public void mousePressed(MouseEvent e) { }
     @Override public void mouseReleased(MouseEvent e) { }
@@ -205,10 +205,10 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         initFilter();
         chip.addObserver(this);
         addObserver(this); // to handle updates during packet
-        
+
         // <editor-fold defaultstate="collapsed" desc=" -- Property Tooltips -- ">
-        final String sizing = "Sizing", mov = "Movement", life = "Lifetime", 
-                     disp = "Display", global = TOOLTIP_GROUP_GLOBAL, 
+        final String sizing = "Sizing", mov = "Movement", life = "Lifetime",
+                     disp = "Display", global = TOOLTIP_GROUP_GLOBAL,
                      update = "Update", logg = "Logging", pi="PI Controller";
         setPropertyTooltip(life, "enableClusterExitPurging", "enables rapid purging of clusters that hit edge of scene");
         setPropertyTooltip(life, "clusterMassDecayTauUs", "time constant of exponential decay of \"mass\" of cluster between events (us)");
@@ -1354,6 +1354,12 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         /** Draws this cluster using OpenGL.
          * @param drawable area to draw this. */
         public void draw(GLAutoDrawable drawable) {
+        	// Initialize OpenGL resources inside a valid OpenGL context (ticket #61).
+        	if (glu == null) {
+        		glu = new GLU();
+            	clusterRadiusQuad = glu.gluNewQuadric();
+        	}
+
             final float BOX_LINE_WIDTH = 2f; // in chip
             final float PATH_POINT_SIZE = 4f;
             GL2 gl = drawable.getGL().getGL2();
@@ -2363,14 +2369,14 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 	public java.util.List<RectangularClusterTracker.Cluster> getClusters() {
         return this.clusters;
     }
-        
-    /** Returns list of actually visible clusters that have received enough 
+
+    /** Returns list of actually visible clusters that have received enough
      * support and pass other visibility tests. Updated every packet or update interval.
      * @return the visibleClusters */
     public LinkedList<Cluster> getVisibleClusters() {
         return visibleClusters;
-    }   
-    
+    }
+
     /** Returns the list of clusters that will be pruned because they have not received enough support (enough events in their region of interest) or because
      * they have been merged with other clusters.
      * @return the list of pruned clusters. */
