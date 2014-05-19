@@ -60,11 +60,11 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
      */
     public ChipDataFilePreview(JFileChooser jfc, AEChip chip) {
         canvas = new ChipCanvas(chip);
-        if(chip.getCanvas().getDisplayMethod()==null){
-            canvas.setDisplayMethod(new ChipRendererDisplayMethod(canvas)); // needs a default display method
-        }else{
-            canvas.setDisplayMethod(chip.getCanvas().getDisplayMethod());
-        }
+//        if(chip.getCanvas().getDisplayMethod()==null){
+//            canvas.setDisplayMethod(new ChipRendererDisplayMethod(canvas)); // needs a default display method
+//        }else{
+            canvas.setDisplayMethod(chip.getPreferredDisplayMethod()); // construct a new private display method to avoid using objects in different OpenGL contexts, e.g. TextRenderer's, which cause Error 1281 GL errors
+//        }
         setLayout(new BorderLayout());
         this.chooser = jfc;
         extractor = chip.getEventExtractor();

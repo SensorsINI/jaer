@@ -32,7 +32,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
  */
 public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements DisplayMethod2D {
 
-    private TextRenderer textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36));
+    private TextRenderer textRenderer = null;
     public final float SPECIAL_BAR_LOCATION_X = -5;
     public final float SPECIAL_BAR_LOCATION_Y = 0;
     public final float SPECIAL_BAR_LINE_WIDTH=8;
@@ -117,6 +117,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
             gl.glBindTexture (GL.GL_TEXTURE_2D, 0);
             drawPolygon(gl, width, height);
             gl.glDisable(GL.GL_TEXTURE_2D);
+            getChipCanvas().checkGLError(gl, glu, "after frames");
         }
 
         if((onMap != null) && displayEvents){
@@ -190,12 +191,20 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
             gl.glPushMatrix();
             gl.glTranslatef(SPECIAL_BAR_LOCATION_X-3, SPECIAL_BAR_LOCATION_Y, 0);
             gl.glRotated(90, 0, 0, 1);
+            if(textRenderer==null){
+                textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36));
+//                textRenderer.setUseVertexArrays(false);
+            }
+            getChipCanvas().checkGLError(gl, glu, "after transforms and possibily allocating text renderer rendering special event count");
             textRenderer.begin3DRendering();
             textRenderer.setColor(1, 1, 1, 1);
-            textRenderer.draw3D(String.format("%d special events", n), 0, 0, 0, .15f); // x,y,z, scale factor
+            String s=String.format("%d special events", n);
+            textRenderer.draw3D(s, 0, 0, 0, .15f); // x,y,z, scale factor
             textRenderer.end3DRendering();
+            getChipCanvas().checkGLError(gl, glu, "after text renderer end3DRendering special event count");
             gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
             gl.glPopMatrix();
+            getChipCanvas().checkGLError(gl, glu, "after rendering special event count");
 
        }
 

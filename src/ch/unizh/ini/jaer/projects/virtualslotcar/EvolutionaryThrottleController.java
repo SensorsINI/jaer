@@ -145,11 +145,11 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 		setPropertyTooltip(s, "resetAllThrottleValues", "reset all profile points to defaultThrottle");
 		setPropertyTooltip(s, "loadThrottleSettings", "load profile from preferences");
 		setPropertyTooltip(s, "saveThrottleSettings", "save profile to preferences");
-		setPropertyTooltip(s, "revertToLastSuccessfulProfile", "explicitly revert profile to last one that made it around the track at least numSuccessfulLapsToReward");
-		setPropertyTooltip(s, "slowDown", "reduce all profile point throttle settings");
-		setPropertyTooltip(s, "speedUp", "increase all profile point throttle settings");
-        setPropertyTooltip("enableLearning", "turns on learning so the successful laps store the throttle profile, and crash laps remove the last change in profile");
-        setPropertyTooltip("disableLearning", "turns off learning");
+		          setPropertyTooltip(s, "revertToLastSuccessfulProfile", "explicitly revert profile to last one that made it around the track at least numSuccessfulLapsToReward");
+            setPropertyTooltip(s, "slowDown", "reduce all profile point throttle settings");
+            setPropertyTooltip(s, "speedUp", "increase all profile point throttle settings");
+            setPropertyTooltip("enableLearning", "turns on learning so the successful laps store the throttle profile, and crash laps remove the last change in profile");
+            setPropertyTooltip("disableLearning", "turns off learning");
 
 
 		doLoadThrottleSettings();
