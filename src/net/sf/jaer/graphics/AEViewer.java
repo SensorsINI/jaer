@@ -1575,8 +1575,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
 	void setPlaybackControlsEnabledState(boolean yes) {
 		//        log.info("*****************************************************       setting playback controls enabled = "+yes);
-		loggingButton.setEnabled(yes);
-		biasesToggleButton.setEnabled(yes);
+		loggingButton.setEnabled(!yes);
+		biasesToggleButton.setEnabled(!yes);
 		closeMenuItem.setEnabled(yes);
 		increasePlaybackSpeedMenuItem.setEnabled(yes);
 		decreasePlaybackSpeedMenuItem.setEnabled(yes);
