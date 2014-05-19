@@ -1,23 +1,15 @@
-/*
- * RectangularClusterTracker.java
+/* RectangularClusterTracker.java
  *
- * Created on December 5, 2005, 3:49 AM
- *
- * To change this template, choose Tools | Options and locate the template under
- * the Source Creation and Management node. Right-click the template and choose
- * Open. You can then make changes to the template in the Source Editor.
- */
+ * Created on December 5, 2005, 3:49 AM */
 package net.sf.jaer.eventprocessing.tracking;
 
 import java.awt.Color;
 import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
-//import ch.unizh.ini.caviar.util.PreferencesEditor;
 import java.awt.geom.Point2D;
 import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.text.DateFormat;
@@ -58,6 +50,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 import com.jogamp.opengl.util.gl2.GLUT;
+import java.io.FileNotFoundException;
 
 /** This complex and highly configurable tracker tracks blobs of events using a
  * rectangular hypothesis about the object shape. Many parameters constrain
@@ -163,6 +156,19 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
     /** The vanishing point for perspective object sizing */
     protected Point vanishingPoint = null;
+    
+//    ArrayList<Cluster> pruneList=new ArrayList<Cluster>(1);
+    protected LinkedList<Cluster> pruneList = new LinkedList<Cluster>();
+    
+    protected int lastTimestamp=0;
+    
+    protected int clusterCounter = 0; // keeps track of absolute cluster number
+    
+    protected static final float FULL_BRIGHTNESS_LIFETIME = 100000;
+    /** Useful for subclasses. */
+    protected Random random = new Random();
+    
+    protected FastClusterFinder fastClusterFinder=new FastClusterFinder();
 
 //    protected boolean clusterLifetimeIncreasesWithAge = getBoolean("clusterLifetimeIncreasesWithAge", true);
 //    private boolean classifierEnabled = getBoolean("classifierEnabled", false);
@@ -173,31 +179,13 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //    /** the number of classes of objects */
 //    private final int NUM_CLASSES=2;
 //    private float classSizeRatio=getFloat("classSizeRatio",2);
-//    private boolean sizeClassificationEnabled=getBoolean("sizeClassificationEnabled",true);
+//    private boolean sizeClassificationEnabled=getBoolean("sizeClassificationEnabled",true);   
 
     GLU glu = null;
     GLUquadric clusterRadiusQuad = null;
 
-    @Override
-    public void mouseClicked(MouseEvent e) {
-        vanishingPoint = canvas.getPixelFromMouseEvent(e);
-        if(glCanvas!=null){
-            glCanvas.removeMouseListener(this);
-        }
-    }
-
-    //The following methods need to be implement for 'MouseListener' we only use 'mouseClicked'
-    @Override public void mousePressed(MouseEvent e) { }
-    @Override public void mouseReleased(MouseEvent e) { }
-    @Override public void mouseEntered(MouseEvent e) { }
-    @Override public void mouseExited(MouseEvent e) { }
-
-    public enum ClusterLoggingMethod {
-        LogFrames, LogClusters
-    };
-    private ClusterLoggingMethod clusterLoggingMethod = ClusterLoggingMethod.valueOf(getString("clusterLoggingMethod", ClusterLoggingMethod.LogFrames.toString()));
-
-    /** Creates a new instance of RectangularClusterTracker. */
+    /** Creates a new instance of RectangularClusterTracker.
+     * @param chip */
     public RectangularClusterTracker(AEChip chip) {
         super(chip);
         this.chip = chip;
@@ -205,10 +193,10 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         initFilter();
         chip.addObserver(this);
         addObserver(this); // to handle updates during packet
-
+        
         // <editor-fold defaultstate="collapsed" desc=" -- Property Tooltips -- ">
-        final String sizing = "Sizing", mov = "Movement", life = "Lifetime",
-                     disp = "Display", global = TOOLTIP_GROUP_GLOBAL,
+        final String sizing = "Sizing", mov = "Movement", life = "Lifetime", 
+                     disp = "Display", global = TOOLTIP_GROUP_GLOBAL, 
                      update = "Update", logg = "Logging", pi="PI Controller";
         setPropertyTooltip(life, "enableClusterExitPurging", "enables rapid purging of clusters that hit edge of scene");
         setPropertyTooltip(life, "clusterMassDecayTauUs", "time constant of exponential decay of \"mass\" of cluster between events (us)");
@@ -263,6 +251,30 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         setPropertyTooltip(pi, "smoothIntegral","Integral Coefficient");
         setPropertyTooltip("selectVanishingPoint", "Select using a mouse click a particular location in the scene as the vanishing point on the horizon");
         // </editor-fold>
+    }
+    
+    /** Processes the incoming events to output RectangularClusterTrackerEvent's.
+     * @param in
+     * @return packet of RectangularClusterTrackerEvent. */
+    @Override
+    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+        if (!filterEnabled) return in;
+        
+        //added so that packets don't use a zero length packet to set last 
+        // timestamps, etc, which can purge clusters for no reason
+        if (in.getSize() == 0) return in; 
+        
+        if (enclosedFilter != null) in = enclosedFilter.filterPacket(in);
+
+        if(in instanceof ApsDvsEventPacket){
+            checkOutputPacketEventType(in); // make sure memory is allocated to avoid leak
+        }else  if (filterEventsEnabled) {
+            checkOutputPacketEventType(RectangularClusterTrackerEvent.class);
+        }
+        
+        out = track(in);
+        
+        return filterEventsEnabled ? out : in;
     }
 
     /** Logs data if clusterLoggingMethod==ClusterLoggingMethod.LogFrames and logggingIntervalUs has passed since
@@ -560,7 +572,6 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         }
     }
 
-
     /** This method updates the list of clusters, pruning and
      * merging clusters and updating positions based on cluster velocities.
      * It also updates the optical gyro if enabled.
@@ -580,43 +591,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         }
     }
 
-    /**
-     * @return the enableClusterExitPurging */
-    public boolean isEnableClusterExitPurging() {
-        return enableClusterExitPurging;
-    }
-
-    /** Enables rapid purging of clusters that hit the edge of the scene.
-     * @param enableClusterExitPurging the enableClusterExitPurging to set */
-    public void setEnableClusterExitPurging(boolean enableClusterExitPurging) {
-        this.enableClusterExitPurging = enableClusterExitPurging;
-        putBoolean("enableClusterExitPurging", enableClusterExitPurging);
-    }
-
-//    private float opticalGyroTauHighpassMs=getInt("opticalGyroTauHighpassMs", 10000);
-//   {
-//    }
-//    private class OpticalGyroFilters{
-//        LowpassFilter x=new LowpassFilter();
-//        LowpassFilter y=new LowpassFilter();
-//
-//        private OpticalGyroFilters(){
-//            x.setTauMs(opticalGyroTauLowpassMs);
-//            y.setTauMs(opticalGyroTauLowpassMs);
-//        }
-////        private void setTauMsHigh(float opticalGyroTauHighpassMs) {
-//////            x.setTauMsHigh(opticalGyroTauHighpassMs);
-//////            y.setTauMsHigh(opticalGyroTauHighpassMs);
-////        }
-//
-//        private void setTauMsLow(float opticalGyroTauLowpassMs){
-//            x.setTauMs(opticalGyroTauLowpassMs);
-//            y.setTauMs(opticalGyroTauLowpassMs);
-//        }
-//    }
-
-    @Override
-    public void initFilter() {
+    @Override public void initFilter() {
         initDefaults();
         defaultClusterRadius = Math.max(chip.getSizeX(), chip.getSizeY()) * getClusterSize();
         fastClusterFinder.init();
@@ -635,8 +610,6 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             getPrefs().put(key, value);
         }
     }
-//    ArrayList<Cluster> pruneList=new ArrayList<Cluster>(1);
-    protected LinkedList<Cluster> pruneList = new LinkedList<Cluster>();
 
     /** Encapsulates the nearest Cluster and the distance to it */
     private class ClusterAndDistance {
@@ -648,19 +621,14 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         float distance;
     }
 
-    protected int lastTimestamp=0;
-
     /** The method that actually does the tracking.
      * @param in the event packet.
      * @return a possibly filtered event packet passing only events contained in the tracked and visible Clusters, depending on filterEventsEnabled. */
     synchronized protected EventPacket<? extends BasicEvent> track(EventPacket<?> in) {
         boolean updatedClusterList = false;
         OutputEventIterator outItr = out.outputIterator();
-        int n = in.getSize();
-        if (n == 0)
-		 {
-			return out; // nothing to do
-		}
+        
+        if (in.getSize() == 0) return out; // nothing to do
 
         // record cluster locations before packet is processed
         for (Cluster c : clusters) {
@@ -671,7 +639,6 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         // if its too far from any cluster, make a new cluster if we have not jet
         // reached maxNumClusters
         for (BasicEvent ev : in) {
-//            EventXYType ev=ae.getEvent2D(i);
             Cluster closest = fastClusterFinder.findClusterNear(ev);
 
             if (closest != null) {
@@ -681,14 +648,13 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                     closest.addEvent(ev);
                 }
             } else if (clusters.size() < maxNumClusters) { // start a new cluster
-                Cluster newCluster = null;
+                Cluster newCluster;
                 if (filterEventsEnabled) {
-                    newCluster = createCluster(ev, outItr); //new Cluster(ev, outItr);
+                    newCluster = createCluster(ev, outItr); 
                  } else {
-                    newCluster = createCluster(ev); // new Cluster(ev);
+                    newCluster = createCluster(ev);
                 }
                 clusters.add(newCluster);
-//                    logg.info("created "+newCluster);
            }
 
             updatedClusterList = maybeCallUpdateObservers(in, (lastTimestamp=ev.timestamp)); // callback to update()
@@ -737,8 +703,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         return numVisibleClusters;
     }
 
-    @Override
-    public String toString() {
+    @Override public String toString() {
         String s = clusters != null ? Integer.toString(clusters.size()) : null;
         String s2 = "RectangularClusterTracker#" + hashCode() + " with " + s + " clusters ";
         return s2;
@@ -816,14 +781,11 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         }
         return closest;
     }
-    protected int clusterCounter = 0; // keeps track of absolute cluster number
 
     /** Updates cluster locations based on cluster velocities, if {@link #useVelocity} is enabled.
      * @param t the global timestamp of the update. */
     protected void updateClusterLocations(int t) {
-        if (!useVelocity) {
-			return;
-		}
+        if (!useVelocity) return;
 
         for (Cluster c : clusters) {
             if (c.isVelocityValid()) {
@@ -857,14 +819,6 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         }
     }
 
-//    /** Factory method to create a new Cluster; override when subclassing Cluster.
-//     *
-//     * @return a new empty Cluster
-//     */
-//    public Cluster createCluster() {
-//        return new Cluster();
-//    }
-
     /** Factory method to create a new Cluster; override when subclassing Cluster.
      * @param ev the spawning event.
      * @return a new empty Cluster */
@@ -888,43 +842,151 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         return new Cluster(ev, itr);
     }
 
-    /** The basic object that is tracked, which is a rectangular cluster with (optionally) variable size, aspect ratio, and angle. */
+    /** The basic object that is tracked, which is a rectangular cluster 
+     * with (optionally) variable size, aspect ratio, and angle. */
     // This class is 1444 lines of code long... Readability = 0!
     public class Cluster implements ClusterInterface { // TODO badly needs a cheap contains(ev) method that accounts for all cluster geometry (aspect ratio, angle)!!!
 
-        private final int MIN_DT_FOR_VELOCITY_UPDATE = 10;
+        public final float VELPPS_SCALING = 1e6f / AEConstants.TICK_DEFAULT_US;
+        
         /** location of cluster in pixels */
         public Point2D.Float location = new Point2D.Float(); // location in chip pixels
         public Point2D.Float velocity = new Point2D.Float(); // location in chip pixels
-
-        private Point2D.Float birthLocation = new Point2D.Float(); // birth location of cluster
-        private Point2D.Float lastPacketLocation = new Point2D.Float(); // location at end of last packet, used for movement sample
+        
+        /** birth location of cluster */
+        private Point2D.Float birthLocation = new Point2D.Float(); 
+        /** location at end of last packet, used for movement sample */
+        private Point2D.Float lastPacketLocation = new Point2D.Float();
         /** velocityPPT of cluster in pixels/tick, where tick is timestamp tick (usually microseconds) */
-        protected Point2D.Float velocityPPT = new Point2D.Float(); // velocityPPT in chip pixels/tick
-        protected Point2D.Float velocityPPS = new Point2D.Float(); // cluster velocityPPT in pixels/second
-        private boolean velocityValid = false; // used to flag invalid or uncomputable velocityPPT
+        protected Point2D.Float velocityPPT = new Point2D.Float();
+        /** cluster velocityPPT in pixels/second */
+        protected Point2D.Float velocityPPS = new Point2D.Float();
+        /** Angle of cluster in radians with zero being horizontal and CCW > 0.
+         * sinAngle and cosAngle are updated when angle is updated. */
+        protected float angle = 0, cosAngle = 1, sinAngle = 0;
+        /** Rendered color of cluster. */
+        protected Color color = null;
+        /** Number of events collected by this cluster.*/
+        protected int numEvents = 0;
+        /** Number of events from previous update of cluster list. */
+        protected int previousNumEvents = 0; // total number of events and number at previous packet
+        
+        /** First and last timestamp of cluster. 
+         * <code>firstEventTimestamp</code> is updated when cluster becomes visible.
+         * <code>lastEventTimestamp</code> is the last time the cluster was touched either by an event or by
+         * some other timestamped update, e.g. {@link #updateClusterList(net.sf.jaer.event.EventPacket, int) }.
+         * @see #isVisible() */
+        protected int lastEventTimestamp, firstEventTimestamp;
+        
+        /** The "mass" of the cluster is the weighted number of events it has collected.
+         * The mass decays over time and is incremented by one by each collected event.
+         * The mass decays with a first order time constant of clusterMassDecayTauUs in us.
+         * If surroundInhibitionEnabled=true, then the mass is decremented by events captured in the surround. */
+        private float mass = 1;
+
+        /** This is the last time in timestamp ticks that the cluster was updated, either by an event
+         * or by a regular update such as {@link #updateClusterLocations(int)}. This time can be used to
+         * compute position updates given a cluster velocityPPT and time now. */
+        protected int lastUpdateTime;
+        
+        /** events/tick event rate for last two events. */
+        protected float instantaneousEventRate; // in events/tick
+        /** Flag which is set true (forever) once a cluster has first obtained sufficient support. */
+        protected boolean hasObtainedSupport = false;
+        /** average (mixed using mixingFactor) distance of events from cluster center, a measure of actual cluster size. */
+        private float averageEventDistance, averageEventXDistance, averageEventYDistance;
+        /** assigned to be the absolute number of the cluster that has been created. */
+        private int clusterNumber;
+        
+        /** Average event rate as computed using mixingFactor.
+         * @see #mixingFactor */
+        private float avgEventRate = 0;
+
         private LowpassFilter vxFilter = new LowpassFilter(), vyFilter = new LowpassFilter();
-        public final float VELPPS_SCALING = 1e6f / AEConstants.TICK_DEFAULT_US;
+        private float radius; // in chip chip pixels
+        private float avgISI;
+        private float[] rgb = new float[4];
+        private boolean velocityValid = false; // used to flag invalid or uncomputable velocityPPT
+        private boolean visibilityFlag=false; // this flag updated in updateClusterList
+        protected float aspectRatio, radiusX, radiusY;
+        protected float instantaneousISI; // ticks/event
+        protected float distanceToLastEvent = Float.POSITIVE_INFINITY;
+        protected float xDistanceToLastEvent = Float.POSITIVE_INFINITY, yDistanceToLastEvent = Float.POSITIVE_INFINITY;
+        protected LinkedList<ClusterPathPoint> path = new LinkedList<ClusterPathPoint>();
+        
 //        public float tauMsVelocity=50; // LP filter time constant for velocityPPT change
 //        private LowpassFilter velocityFilter=new LowpassFilter();
-        private float radius; // in chip chip pixels
 //        private float mass; // a cluster has a mass correspoding to its support - the higher the mass, the harder it is to change its velocityPPT
-        protected float aspectRatio, radiusX, radiusY;
-        /** Angle of cluster in radians with zero being horizontal and CCW > 0.
-         * sinAngle and cosAngle are updated when angle is updated. */
-        protected float angle = 0,
+//        protected LinkedList<ClusterPathPoint> path = new ArrayList<ClusterPathPoint>(getPathLength());
+//        ArrayList<EventXYType> events=new ArrayList<EventXYType>();
+//        private RollingVelocityFitter velocityFitter = new RollingVelocityFitter(path, velocityPoints);
+        
+        
+        /** Constructs a default cluster. */
+        public Cluster() {
+            setRadius(defaultClusterRadius);
+            float hue = random.nextFloat();
+            Color c = Color.getHSBColor(hue, 1f, 1f);
+            setColor(c);
+            setClusterNumber(clusterCounter++);
+            setAspectRatio(RectangularClusterTracker.this.getAspectRatio());
+            vxFilter.setTauMs(velocityTauMs);
+            vyFilter.setTauMs(velocityTauMs);
+            if (initializeVelocityToAverage) {
+                velocityPPT.x = averageVelocityPPT.x;
+                velocityPPT.y = averageVelocityPPT.y;
+                velocityValid = true;
+            }
+            setAngle(initialAngle);
+        }
 
-        /** Angle of cluster in radians with zero being horizontal and CCW > 0.
-         * sinAngle and cosAngle are updated when angle is updated. */
-        cosAngle = 1,
-
-        /** Angle of cluster in radians with zero being horizontal and CCW > 0.
-         * sinAngle and cosAngle are updated when angle is updated. */
-        sinAngle = 0;
-        protected LinkedList<ClusterPathPoint> path = new LinkedList<ClusterPathPoint>();
-//         protected LinkedList<ClusterPathPoint> path = new ArrayList<ClusterPathPoint>(getPathLength());
-        int hitEdgeTime = 0;
-        private boolean visibilityFlag=false; // this flag updated in updateClusterList
+        /** Constructs a cluster at the location of an event.
+         * The numEvents, location, birthLocation, first and last timestamps are set.
+         * The radius is set to defaultClusterRadius.
+         * @param ev the event. */
+        public Cluster(BasicEvent ev) {
+            this();
+            location.x           = ev.x;
+            location.y           = ev.y;
+            birthLocation.x      = ev.x;
+            birthLocation.y      = ev.y;
+            lastPacketLocation.x = ev.x;
+            lastPacketLocation.y = ev.y;
+            lastEventTimestamp   = ev.timestamp;
+            lastUpdateTime       = ev.timestamp;
+            firstEventTimestamp  = lastEventTimestamp;
+            numEvents            = 1;
+            mass                 = 1;
+            setRadius(defaultClusterRadius);
+        }
+        
+        /** Creates a new Cluster using the event and generates a new output event which points back to the Cluster.
+         * @param ev the event to center the cluster on.
+         * @param outItr used to generate the new event pointing back to the cluster. */
+        protected Cluster(BasicEvent ev, OutputEventIterator outItr) {
+            this(ev);
+            if (!isVisible()) return;
+            
+            RectangularClusterTrackerEvent oe = (RectangularClusterTrackerEvent) outItr.nextOutput();
+            oe.copyFrom(ev);
+            oe.setCluster(this);
+        }
+        
+        /** Constructs a cluster by merging two clusters.
+         * All parameters of the resulting cluster should be reasonable
+         * combinations of the source cluster parameters.
+         * For example, the merged location values are weighted by the mass of
+         * events that have supported each source cluster, so that older
+         * clusters weigh more heavily in the resulting cluster location.
+         * Subtle bugs or poor performance can result from not properly handling
+         * the merging of parameters.
+         *
+         * @param one the first cluster
+         * @param two the second cluster */
+        public Cluster(Cluster one, Cluster two) {
+            this();
+            mergeTwoClustersToThis(one, two);
+        }
 
         /** Computes and returns {@link #mass} at time t, using the last time
          * an event hit this cluster and the {@link #clusterMassDecayTauUs}.
@@ -941,7 +1003,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
          * The mass decays with a first order time constant of clusterMassDecayTauUs in us.
          * @return the mass */
         @Override
-		public float getMass() {
+	public float getMass() {
             return mass;
         }
 
@@ -1147,28 +1209,12 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
          * @return true if cluster has hit edge for long enough
          * (getClusterMassDecayTauUs) and test enableClusterExitPurging */
         protected boolean hasHitEdge() {
-            if (!enableClusterExitPurging) {
-                return false;
-            }
-            int lx = (int) location.x, ly = (int) location.y;
-            int sx = chip.getSizeX(), sy = chip.getSizeY();
+            if (!enableClusterExitPurging) return false;
 
-            if ((lx <= 0) || (lx >= sx) || (ly <= 0) || (ly >= sy)) {
-                return true;  // always prune if cluster center is outside array, e.g. from velocityPPT prediction
-            }
-//            if (lx < radiusX || lx > sx - radiusX || ly < radiusY || ly > sy - radiusY) {
-//                if (hitEdgeTime == 0) {
-//                    hitEdgeTime = lastEventTimestamp;
-//                    return false;
-//                } else {
-//                    if (lastEventTimestamp - hitEdgeTime > 0/* getClusterMassDecayTauUs()*/) {
-//                        return true;
-//                    } else {
-//                        return false;
-//                    }
-//                }
-//            }
-            return false;
+            int lx = (int) location.x , ly = (int) location.y;
+            int sx = chip.getSizeX()  , sy = chip.getSizeY();
+            
+            return ((lx <= 0) || (lx >= sx) || (ly <= 0) || (ly >= sy)); // always prune if cluster center is outside array, e.g. from velocityPPT prediction
         }
 
         /** Returns true if cluster is overlapping chip border on any side.
@@ -1186,26 +1232,11 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             return false;
         }
 
-        // <editor-fold defaultstate="collapsed" desc="getter-setter for --NumEvents--">
-        /** Total number of events collected by this cluster.
-         * @return the numEvents */
-        @Override
-		public int getNumEvents() {
-            return numEvents;
-        }
-
-        /** Sets count of events.
-         * @param numEvents the numEvents to set*/
-        public void setNumEvents(int numEvents) {
-            this.numEvents = numEvents;
-        }
-        // </editor-fold>
-
         /** Cluster velocityPPT in pixels/timestamp tick as a vector. Velocity values are set during cluster upate.
          * @return the velocityPPT in pixels per timestamp tick.
          * @see #getVelocityPPS() */
         @Override
-		public Point2D.Float getVelocityPPT() {
+	public Point2D.Float getVelocityPPT() {
             return velocityPPT;
         }
 
@@ -1230,114 +1261,18 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //            oe.setY((short) getLocation().y);
             oe.setCluster(this);
         }
-//        private RollingVelocityFitter velocityFitter = new RollingVelocityFitter(path, velocityPoints);
-        /** Rendered color of cluster. */
-        protected Color color = null;
-//        ArrayList<EventXYType> events=new ArrayList<EventXYType>();
-        /** Number of events collected by this cluster.*/
-        protected int numEvents = 0;
-        /** Num events from previous update of cluster list. */
-        protected int previousNumEvents = 0; // total number of events and number at previous packet
-        /** First and last timestamp of cluster. <code>firstEventTimestamp</code> is updated when cluster becomes visible.
-         * <code>lastEventTimestamp</code> is the last time the cluster was touched either by an event or by
-         * some other timestamped update, e.g. {@link #updateClusterList(net.sf.jaer.event.EventPacket, int) }.
-         * @see #isVisible()
-         */
-        protected int lastEventTimestamp,
-
-        /** First and last timestamp of cluster.
-         * <code>firstEventTimestamp</code> is updated when cluster becomes visible.
-         * <code>lastEventTimestamp</code> is the last time the cluster was touched
-         * either by an event or by some other timestamped update, e.g.
-         * {@link #updateClusterList(net.sf.jaer.event.EventPacket, int)}.
-         * @see #isVisible() */
-        firstEventTimestamp;
-
-        /** The "mass" of the cluster is the weighted number of events it has collected.
-         * The mass decays over time and is incremented by one by each collected event.
-         * The mass decays with a first order time constant of clusterMassDecayTauUs in us.
-         * If surroundInhibitionEnabled=true, then the mass is decremented by events captured in the surround. */
-        private float mass = 1;
-
-        /** This is the last time in timestamp ticks that the cluster was updated, either by an event
-         * or by a regular update such as {@link #updateClusterLocations(int)}. This time can be used to
-         * compute position updates given a cluster velocityPPT and time now. */
-        protected int lastUpdateTime;
-        /** events/tick event rate for last two events. */
-        protected float instantaneousEventRate; // in events/tick
-        /** Average event rate as computed using mixingFactor.
-         * @see #mixingFactor */
-        private float avgEventRate = 0;
-        protected float instantaneousISI; // ticks/event
-        private float avgISI;
-        /** assigned to be the absolute number of the cluster that has been created. */
-        private int clusterNumber;
-        /** average (mixed using mixingFactor) distance of events from cluster center, a measure of actual cluster size. */
-        private float averageEventDistance,
-
-        /** average (mixed using mixingFactor) distance of events from cluster center, a measure of actual cluster size. */
-        averageEventXDistance,
-
-        /** average (mixed using mixingFactor) distance of events from cluster center, a measure of actual cluster size. */
-        averageEventYDistance;
-        protected float distanceToLastEvent = Float.POSITIVE_INFINITY;
-        protected float xDistanceToLastEvent = Float.POSITIVE_INFINITY, yDistanceToLastEvent = Float.POSITIVE_INFINITY;
-        /** Flag which is set true (forever) once a cluster has first obtained sufficient support. */
-        protected boolean hasObtainedSupport = false;
-        private float[] rgb = new float[4];
-
-        /** Constructs a default cluster. */
-        public Cluster() {
-            setRadius(defaultClusterRadius);
-            float hue = random.nextFloat();
-            Color c = Color.getHSBColor(hue, 1f, 1f);
-            setColor(c);
-            setClusterNumber(clusterCounter++);
-            setAspectRatio(RectangularClusterTracker.this.getAspectRatio());
-            vxFilter.setTauMs(velocityTauMs);
-            vyFilter.setTauMs(velocityTauMs);
-            if (initializeVelocityToAverage) {
-                velocityPPT.x = averageVelocityPPT.x;
-                velocityPPT.y = averageVelocityPPT.y;
-                velocityValid = true;
-            }
-            setAngle(initialAngle);
-        }
-
-        /** Constructs a cluster at the location of an event.
-         * The numEvents, location, birthLocation, first and last timestamps are set.
-         * The radius is set to defaultClusterRadius.
-         * @param ev the event. */
-        public Cluster(BasicEvent ev) {
-            this();
-            location.x = ev.x;
-            location.y = ev.y;
-            birthLocation.x = ev.x;
-            birthLocation.y = ev.y;
-            lastPacketLocation.x = ev.x;
-            lastPacketLocation.y = ev.y;
-            lastEventTimestamp = ev.timestamp;
-            firstEventTimestamp = lastEventTimestamp;
-            lastUpdateTime = ev.timestamp;
-            numEvents = 1;
-            mass=1;
-            setRadius(defaultClusterRadius);
-        }
-
-
+ 
         /** Overrides default hashCode to return {@link #clusterNumber}. This overriding
          * allows for storing clusters in lists and checking for them by their clusterNumber.
          * @return clusterNumber */
-        @Override
-        public int hashCode() {
+        @Override public int hashCode() {
             return clusterNumber;
         }
 
         /** Two clusters are equal if their {@link #clusterNumber}'s are equal.
          * @param obj another Cluster.
          * @return true if equal. */
-        @Override
-        public boolean equals(Object obj) { // derived from http://www.geocities.com/technofundo/tech/java/equalhash.html
+        @Override public boolean equals(Object obj) { // derived from http://www.geocities.com/technofundo/tech/java/equalhash.html
             if (this == obj) {
                 return true;
             }
@@ -1349,16 +1284,14 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             return clusterNumber == test.clusterNumber;
         }
 
-
-
         /** Draws this cluster using OpenGL.
          * @param drawable area to draw this. */
         public void draw(GLAutoDrawable drawable) {
-        	// Initialize OpenGL resources inside a valid OpenGL context (ticket #61).
-        	if (glu == null) {
-        		glu = new GLU();
-            	clusterRadiusQuad = glu.gluNewQuadric();
-        	}
+            // Initialize OpenGL resources inside a valid OpenGL context (ticket #61).
+            if (glu == null) {
+                glu = new GLU();
+                clusterRadiusQuad = glu.gluNewQuadric();
+            }
 
             final float BOX_LINE_WIDTH = 2f; // in chip
             final float PATH_POINT_SIZE = 4f;
@@ -1457,7 +1390,6 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             final float VEL_LINE_WIDTH = 4f;
             gl.glLineWidth(VEL_LINE_WIDTH);
             gl.glBegin(GL.GL_LINES);
-            float jx = 0, jy = 0;
             float startx = location.x, starty = location.y;
             gl.glVertex2f(startx, starty);
             float endx = startx + (velocityPPS.x * velocityVectorScaling), endy = starty + (velocityPPS.y * velocityVectorScaling);
@@ -1512,45 +1444,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             }
         }
 
-        /** Constructs a cluster by merging two clusters.
-         * All parameters of the resulting cluster should be reasonable
-         * combinations of the source cluster parameters.
-         * For example, the merged location values are weighted by the mass of
-         * events that have supported each source cluster, so that older
-         * clusters weigh more heavily in the resulting cluster location.
-         * Subtle bugs or poor performance can result from not properly handling
-         * the merging of parameters.
-         *
-         * @param one the first cluster
-         * @param two the second cluster */
-        public Cluster(Cluster one, Cluster two) {
-            this();
-            // merge locations by just averaging
-//            location.x=(one.location.x+two.location.x)/2;
-//            location.y=(one.location.y+two.location.y)/2;
-            mergeTwoClustersToThis(one, two);
-        }
-
-        /** Creates a new Cluster using the event and generates a new output event which points back to the Cluster.
-         *
-         * @param ev the event to center the cluster on.
-         * @param outItr used to generate the new event pointing back to the cluster. */
-        protected Cluster(BasicEvent ev, OutputEventIterator outItr) {
-            this(ev);
-            if (!isVisible()) {
-                return;
-            }
-            RectangularClusterTrackerEvent oe = (RectangularClusterTrackerEvent) outItr.nextOutput();
-            oe.copyFrom(ev);
-//            oe.setX((short) getLocation().x);
-//            oe.setY((short) getLocation().y);
-            oe.setCluster(this);
-        }
-
-        @Override
-		public int getLastEventTimestamp() {
-//            EventXYType ev=events.getString(events.size()-1);
-//            return ev.timestamp;
+        @Override public int getLastEventTimestamp() {
             return lastEventTimestamp;
         }
 
@@ -1558,18 +1452,12 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
          * the filterPacket level after all events in a packet are added.
          * @param event the event */
         public void addEvent(BasicEvent event) {
-            if ((event instanceof TypedEvent)) {
+            if ((event instanceof TypedEvent) && useOnePolarityOnlyEnabled) {
                 TypedEvent e = (TypedEvent) event;
-                if (useOnePolarityOnlyEnabled) {
-                    if (useOffPolarityOnlyEnabled) {
-                        if (e.type == 1) {
-							return;
-						}
-                    } else {
-                        if (e.type == 0) {
-							return;
-						}
-                    }
+                if (useOffPolarityOnlyEnabled) {
+                    if (e.type == 1) return;
+                } else {
+                    if (e.type == 0) return;
                 }
             }
 
@@ -1582,7 +1470,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
             // if scaling is enabled, now updateShape the cluster size
             updateShape(event);
-             lastUpdateTime = event.timestamp;
+            lastUpdateTime = event.timestamp;
         }
 
         protected void updatePosition(BasicEvent event, float m) {
@@ -1645,16 +1533,10 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
          * dynamicAspectRatioEnabled or dynamicAngleEnabled.
          * @param event the event to updateShape with */
         protected void updateShape(BasicEvent event) {
-            if (dynamicSizeEnabled) {
-				updateSize(event);
-			}
-            if (dynamicAspectRatioEnabled) {
-				updateAspectRatio(event);
-			}
+            if (dynamicSizeEnabled) updateSize(event);
+            if (dynamicAspectRatioEnabled) updateAspectRatio(event);
             // PI/2 for vertical positive, -Pi/2 for vertical negative event
-            if (dynamicAngleEnabled) {
-				updateAngle(event);
-			}
+            if (dynamicAngleEnabled) updateAngle(event);
 
             // turn cluster so that it is aligned along velocity
             if (angleFollowsVelocity && velocityValid) {
@@ -1706,17 +1588,14 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         }
 
         /** Measures distance from cluster center to event.
+         * @param event
          * @return distance of this cluster to the event in Manhattan (cheap)
          * metric (sum of absolute values of x and y distance). */
         public float distanceTo(BasicEvent event) {
             final float dx = event.x - location.x;
             final float dy = event.y - location.y;
-//            return Math.abs(dx)+Math.abs(dy);
+
             return distanceMetric(dx, dy);
-//            dx*=dx;
-//            dy*=dy;
-//            float distance=(float)Math.sqrt(dx+dy);
-//            return distance;
         }
 
         /** Returns the implemented distance metric which is the Manhattan distance for speed.
@@ -1731,6 +1610,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         /** Measures distance in x direction, accounting for
          * instantaneousAngle of cluster and predicted movement of cluster.
          *
+         * @param event
          * @return distance in x direction of this cluster to the event,
          * where x is measured along instantaneousAngle=0. */
         protected float distanceToX(BasicEvent event) {
@@ -1742,6 +1622,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
         /** Measures distance in y direction, accounting for instantaneousAngle of cluster,
          * where y is measured along instantaneousAngle=Pi/2  and predicted movement of cluster
+         * @param event
          * @return distance in y direction of this cluster to the event */
         protected float distanceToY(BasicEvent event) {
             int dt = event.timestamp - lastUpdateTime;
@@ -1751,19 +1632,13 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         }
 
         /** Computes and returns distance to another cluster.
+         * @param c
          * @return distance of this cluster to the other cluster in pixels. */
         public final float distanceTo(Cluster c) {// TODO doesn't use predicted location of clusters, only present locations
 
             float dx = c.location.x - location.x;
             float dy = c.location.y - location.y;
             return distanceMetric(dx, dy);
-//            if(dx<0)dx=-dx;
-//            if(dy<0)dy=-dy;
-//            dx*=dx;
-//            dy*=dy;
-//            float distance=(float)Math.sqrt(dx+dy);
-//            distance=dx+dy;
-//            return distance;
         }
 
         /** Computes and returns the angle of this cluster's velocityPPT vector
@@ -1813,8 +1688,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
          * the cluster. The getRadius value is not used directly since it is a
          * parameter that is combined with perspective location and aspect ratio.
          * @return the cluster radius. */
-        @Override
-        public final float getRadius() {
+        @Override public final float getRadius() {
             return radius;
         }
 
@@ -1836,17 +1710,6 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             radiusX = radius / aspectRatio;
             radiusY = radius * aspectRatio;
         }
-
-        // <editor-fold defaultstate="collapsed" desc="getter-setter for --Location--">
-        @Override
-		final public Point2D.Float getLocation() {
-            return location;
-        }
-
-        public void setLocation(Point2D.Float NewLocation) {
-            this.location = NewLocation;
-        }
-        // </editor-fold>
 
         /** Sets the flag of cluster visibility (check is separated from check
          * for efficiency because this operation is costly.)
@@ -1877,8 +1740,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
          * This flag flags whether cluster has gotten enough support.
          * @return true if cluster has obtained enough support.
          * @see #checkAndSetClusterVisibilityFlag */
-        @Override
-        final public boolean isVisible() {
+        @Override final public boolean isVisible() {
             return visibilityFlag;
         }
 
@@ -1919,24 +1781,9 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
         /** Updates velocityPPT, velocityPPS of cluster and last path point lowpass filtered velocity. */
         protected void updateVelocity() {
-            if(path.size()<2)
-			 {
-				return;
-//            if(!isVisible()) return;
-//            velocityFitter.update();
-//            if (velocityFitter.valid) {
-//                velocityPPT.x = velocityFitter.getXVelocity();
-//                velocityPPT.y = velocityFitter.getYVelocity();
-//                velocityPPS.x = velocityPPT.x * VELPPS_SCALING;
-//                velocityPPS.y = velocityPPT.y * VELPPS_SCALING;
-//                velocityValid = true;
-//            } else {
-//                velocityValid = false;
-//            }
-			}
+            if(path.size()<2) return;
 
             // update velocityPPT of cluster using last two path points
-            final int MIN_EVENTS_TO_UPDATE_VELOCITY=10;
             Iterator<ClusterPathPoint> itr=path.descendingIterator();
             ClusterPathPoint plast=itr.next();
             int nevents=plast.getNEvents();
@@ -1945,9 +1792,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 nevents+=pfirst.getNEvents();
                 pfirst=itr.next();
             }
-            if(nevents<thresholdMassForVisibleCluster) {
-				return;
-			}
+            if(nevents<thresholdMassForVisibleCluster) return;
+
             int dt = plast.t - pfirst.t;
             float vx = (plast.x - pfirst.x) / dt;
             float vy = (plast.y - pfirst.y) / dt;
@@ -1991,16 +1837,6 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             return path;
         }
 
-        // <editor-fold defaultstate="collapsed" desc="getter-setter for --Color--">
-        public Color getColor() {
-            return color;
-        }
-
-        public void setColor(Color color) {
-            this.color = color;
-        }
-        // </editor-fold>
-
         /** Returns velocityPPT of cluster in pixels per second.
          * @return averaged velocityPPT of cluster in pixels per second. <p>
          * The method of measuring velocityPPT is based on a linear regression
@@ -2019,8 +1855,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
         /** Computes and returns speed of cluster in pixels per second.
          * @return speed in pixels per second. */
-        @Override
-        public float getSpeedPPS() {
+        @Override public float getSpeedPPS() {
             return (float) Math.sqrt((velocityPPS.x * velocityPPS.x) + (velocityPPS.y * velocityPPS.y));
         }
 
@@ -2029,38 +1864,6 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         public float getSpeedPPT() {
             return (float) Math.sqrt((velocityPPT.x * velocityPPT.x) + (velocityPPT.y * velocityPPT.y));
         }
-
-        // <editor-fold defaultstate="collapsed" desc="getter-setter for --AverageEventDistance--">
-        /** @return average (mixed by {@link #mixingFactor}) distance from events to cluster center */
-        public float getAverageEventDistance() {
-            return averageEventDistance;
-        }
-
-        /** @see #getAverageEventDistance */
-        public void setAverageEventDistance(float averageEventDistance) {
-            this.averageEventDistance = averageEventDistance;
-        }
-        // </editor-fold>
-
-        // <editor-fold defaultstate="collapsed" desc="getter-setter for --AverageXDistance--">
-        public float getAverageEventXDistance() {
-            return averageEventXDistance;
-        }
-
-        public void setAverageEventXDistance(float averageEventXDistance) {
-            this.averageEventXDistance = averageEventXDistance;
-        }
-        // </editor-fold>
-
-        // <editor-fold defaultstate="collapsed" desc="getter-setter for --AverageEventYDistance--">
-        public float getAverageEventYDistance() {
-            return averageEventYDistance;
-        }
-
-        public void setAverageEventYDistance(float averageEventYDistance) {
-            this.averageEventYDistance = averageEventYDistance;
-        }
-        // </editor-fold>
 
         public float getMeasuredAspectRatio() {
             return averageEventYDistance / averageEventXDistance;
@@ -2101,7 +1904,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
         /** Sets color according to age of cluster */
         public void setColorAccordingToAge() {
-            float brightness = Math.max(0f, Math.min(1f, getLifetime() / fullbrightnessLifetime));
+            float brightness = Math.max(0f, Math.min(1f, getLifetime() / FULL_BRIGHTNESS_LIFETIME));
             Color c = Color.getHSBColor(.5f, 1f, brightness);
             setColor(c);
         }
@@ -2117,6 +1920,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //            Color c=Color.getHSBColor(hue,1f,1f);
 //            setColor(c);
 //        }
+        
         public void setColorAutomatically() {
             if (isColorClustersDifferentlyEnabled()) {
                 // color is set on object creation, don't change it
@@ -2131,79 +1935,10 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //            }
         }
 
-        // <editor-fold defaultstate="collapsed" desc="getter-setter for --ClusterNumber--">
-        public int getClusterNumber() {
-            return clusterNumber;
-        }
-
-        public void setClusterNumber(int clusterNumber) {
-            this.clusterNumber = clusterNumber;
-        }
-        // </editor-fold>
-
-        // <editor-fold defaultstate="collapsed" desc="getter-setter for --AvgISI--">
-        /** @return average ISI for this cluster in timestamp ticks. Average is computed using cluster location mising factor. */
-        public float getAvgISI() {
-            return avgISI;
-        }
-
-        public void setAvgISI(float avgISI) {
-            this.avgISI = avgISI;
-        }
-        // </editor-fold>
-
-        // <editor-fold defaultstate="collapsed" desc="getter-setter for --AvgEventRate-">
-        /** @return average event rate in spikes per timestamp tick.
-         * Average is computed using location mixing factor.
-         * Note that this measure emphasizes the high spike rates because a
-         * few events in rapid succession can rapidly push up the average rate. */
-        public float getAvgEventRate() {
-            return avgEventRate;
-        }
-
-        public void setAvgEventRate(float avgEventRate) {
-            this.avgEventRate = avgEventRate;
-        }
-        // </editor-fold>
-
-        // <editor-fold defaultstate="collapsed" desc="getter-setter for --AspectRatio--">
-        public float getAspectRatio() {
-            return aspectRatio;
-        }
-
-        /** Aspect ratio is 1 for square cluster and in general is height/width.
-         * @param aspectRatio */
-        public void setAspectRatio(float aspectRatio) {
-            this.aspectRatio = aspectRatio;
-//            float radiusX=radius/aspectRatio, radiusY=radius*aspectRatio;
-        }
-        // </editor-fold>
-
-        // <editor-fold defaultstate="collapsed" desc="getter-setter for --Angle--">
-        /** Angle of cluster, in radians.
-         * @return in radians. */
-        public float getAngle() {
-            return angle;
-        }
-
-        /** Angle of cluster is zero by default and increases CCW from 0 lying along the x axis.
-         * Also sets internal cosAngle and sinAngle.
-         * @param angle in radians. */
-        public void setAngle(float angle) {
-            if (this.angle != angle) { // save some cycles if unchanged
-                this.angle = angle;
-                cosAngle = (float) Math.cos(angle);
-                sinAngle = (float) Math.sin(angle);
-                initialAngle=((1-mixingFactor)*initialAngle)+(mixingFactor*angle);
-            }
-        }
-        // </editor-fold>
-
-        /** prune is called when the cluster is about to be pruned from the list of clusters.  By default no special action is taken.
-         * Subclasses can override this method to take a special
-         * action on pruning. */
-        protected void prune() {
-        }
+        /** prune is called when the cluster is about to be pruned from the list of clusters.  
+         * By default no special action is taken. Subclasses can override 
+         * this method to take a special action on pruning. */
+        protected void prune() { }
 
         /** Determines if this cluster overlaps the center of another cluster.
          * @param c2 the other cluster
@@ -2330,6 +2065,147 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             // </editor-fold>
         } // rolling velocityPPT fitter
 
+        /** Returns first timestamp of cluster; this time is updated when cluster becomes visible.
+         * @return timestamp of birth location. */
+        public int getBirthTime() {
+            return firstEventTimestamp;
+        }
+        
+        // <editor-fold defaultstate="collapsed" desc="getter-setter for --NumEvents--">
+        /** Total number of events collected by this cluster.
+         * @return the numEvents */
+        @Override
+		public int getNumEvents() {
+            return numEvents;
+        }
+
+        /** Sets count of events.
+         * @param numEvents the numEvents to set*/
+        public void setNumEvents(int numEvents) {
+            this.numEvents = numEvents;
+        }
+        // </editor-fold>
+        
+        // <editor-fold defaultstate="collapsed" desc="getter-setter for --Color--">
+        public Color getColor() {
+            return color;
+        }
+
+        public void setColor(Color color) {
+            this.color = color;
+        }
+        // </editor-fold>
+        
+        // <editor-fold defaultstate="collapsed" desc="getter-setter for --Location--">
+        @Override final public Point2D.Float getLocation() {
+            return location;
+        }
+
+        public void setLocation(Point2D.Float NewLocation) {
+            this.location = NewLocation;
+        }
+        // </editor-fold>
+        
+        // <editor-fold defaultstate="collapsed" desc="getter-setter for --AverageEventDistance--">
+        /** @return average (mixed by {@link #mixingFactor}) distance from events to cluster center */
+        public float getAverageEventDistance() {
+            return averageEventDistance;
+        }
+
+        /** @see #getAverageEventDistance */
+        public void setAverageEventDistance(float averageEventDistance) {
+            this.averageEventDistance = averageEventDistance;
+        }
+        // </editor-fold>
+
+        // <editor-fold defaultstate="collapsed" desc="getter-setter for --AverageXDistance--">
+        public float getAverageEventXDistance() {
+            return averageEventXDistance;
+        }
+
+        public void setAverageEventXDistance(float averageEventXDistance) {
+            this.averageEventXDistance = averageEventXDistance;
+        }
+        // </editor-fold>
+
+        // <editor-fold defaultstate="collapsed" desc="getter-setter for --AverageEventYDistance--">
+        public float getAverageEventYDistance() {
+            return averageEventYDistance;
+        }
+
+        public void setAverageEventYDistance(float averageEventYDistance) {
+            this.averageEventYDistance = averageEventYDistance;
+        }
+        // </editor-fold>
+
+        // <editor-fold defaultstate="collapsed" desc="getter-setter for --ClusterNumber--">
+        public int getClusterNumber() {
+            return clusterNumber;
+        }
+
+        public void setClusterNumber(int clusterNumber) {
+            this.clusterNumber = clusterNumber;
+        }
+        // </editor-fold>
+
+        // <editor-fold defaultstate="collapsed" desc="getter-setter for --AvgISI--">
+        /** @return average ISI for this cluster in timestamp ticks. Average is computed using cluster location mising factor. */
+        public float getAvgISI() {
+            return avgISI;
+        }
+
+        public void setAvgISI(float avgISI) {
+            this.avgISI = avgISI;
+        }
+        // </editor-fold>
+
+        // <editor-fold defaultstate="collapsed" desc="getter-setter for --AvgEventRate-">
+        /** @return average event rate in spikes per timestamp tick.
+         * Average is computed using location mixing factor.
+         * Note that this measure emphasizes the high spike rates because a
+         * few events in rapid succession can rapidly push up the average rate. */
+        public float getAvgEventRate() {
+            return avgEventRate;
+        }
+
+        public void setAvgEventRate(float avgEventRate) {
+            this.avgEventRate = avgEventRate;
+        }
+        // </editor-fold>
+
+        // <editor-fold defaultstate="collapsed" desc="getter-setter for --AspectRatio--">
+        public float getAspectRatio() {
+            return aspectRatio;
+        }
+
+        /** Aspect ratio is 1 for square cluster and in general is height/width.
+         * @param aspectRatio */
+        public void setAspectRatio(float aspectRatio) {
+            this.aspectRatio = aspectRatio;
+//            float radiusX=radius/aspectRatio, radiusY=radius*aspectRatio;
+        }
+        // </editor-fold>
+
+        // <editor-fold defaultstate="collapsed" desc="getter-setter for --Angle--">
+        /** Angle of cluster, in radians.
+         * @return in radians. */
+        public float getAngle() {
+            return angle;
+        }
+
+        /** Angle of cluster is zero by default and increases CCW from 0 lying along the x axis.
+         * Also sets internal cosAngle and sinAngle.
+         * @param angle in radians. */
+        public void setAngle(float angle) {
+            if (this.angle != angle) { // save some cycles if unchanged
+                this.angle = angle;
+                cosAngle = (float) Math.cos(angle);
+                sinAngle = (float) Math.sin(angle);
+                initialAngle=((1-mixingFactor)*initialAngle)+(mixingFactor*angle);
+            }
+        }
+        // </editor-fold>
+        
         // <editor-fold defaultstate="collapsed" desc="getter-setter for --BirthLocation--">
         /** Returns birth location of cluster: initially the first event and later, after cluster
          * becomes visible, it is the location when it becomes visible, which is presumably less noisy.
@@ -2342,13 +2218,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             this.birthLocation = birthLocation;
         }
         // </editor-fold>
-
-        /** Returns first timestamp of cluster; this time is updated when cluster becomes visible.
-         * @return timestamp of birth location. */
-        public int getBirthTime() {
-            return firstEventTimestamp;
-        }
-
+        
         // <editor-fold defaultstate="collapsed" desc="getter-setter for --VelocityValid--">
         /** This flogg is set true after a velocityPPT has been computed for the cluster.
          * This may take several packets.
@@ -2365,215 +2235,29 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
     /** Returns list of all cluster, visible and invisible
      * @return list of clusters */
-    @Override
-	public java.util.List<RectangularClusterTracker.Cluster> getClusters() {
+    @Override public java.util.List<RectangularClusterTracker.Cluster> getClusters() {
         return this.clusters;
     }
-
-    /** Returns list of actually visible clusters that have received enough
+        
+    /** Returns list of actually visible clusters that have received enough 
      * support and pass other visibility tests. Updated every packet or update interval.
      * @return the visibleClusters */
     public LinkedList<Cluster> getVisibleClusters() {
         return visibleClusters;
-    }
-
+    }   
+    
     /** Returns the list of clusters that will be pruned because they have not received enough support (enough events in their region of interest) or because
      * they have been merged with other clusters.
      * @return the list of pruned clusters. */
     public LinkedList<RectangularClusterTracker.Cluster> getPruneList() {
         return this.pruneList;
     }
-    protected static final float fullbrightnessLifetime = 100000;
-    /** Useful for subclasses. */
-    protected Random random = new Random();
-
-//    private final void drawCluster(final Cluster c, float[][][] fr) {
-//        int x = (int) c.getLocation().x;
-//        int y = (int) c.getLocation().y;
-//
-//
-//        int sy = (int) c.getRadius(); // sx sy are (half) size of rectangle
-//        int sx = sy;
-//        int ix, iy;
-//        int mn, mx;
-//
-//        if (isColorClustersDifferentlyEnabled()) {
-//        } else {
-//            c.setColorAccordingToSize();
-//        }
-//
-//        Color color = c.getColor();
-//        if (true) { // draw boxes
-//            iy = y - sy;    // line under center
-//            mn = x - sx;
-//            mx = x + sx;
-//            for (ix = mn; ix <= mx; ix++) {
-//                colorPixel(ix, iy, fr, clusterColorChannel, color);
-//            }
-//            iy = y + sy;    // line over center
-//            for (ix = mn; ix <= mx; ix++) {
-//                colorPixel(ix, iy, fr, clusterColorChannel, color);
-//            }
-//            ix = x - sx;        // line to left
-//            mn = y - sy;
-//            mx = y + sy;
-//            for (iy = mn; iy <= mx; iy++) {
-//                colorPixel(ix, iy, fr, clusterColorChannel, color);
-//            }
-//            ix = x + sx;    // to right
-//            for (iy = mn; iy <= mx; iy++) {
-//                colorPixel(ix, iy, fr, clusterColorChannel, color);
-//            }
-//        } else { // draw diamond reflecting manhatten distance measure doesn't look very nice because not antialiased at all
-//            iy = y - sy;    // line up right from bot
-//            ix = x;
-//            mx = x + sx;
-//            while (ix < mx) {
-//                colorPixel(ix++, iy++, fr, clusterColorChannel, color);
-//            }
-//            mx = x + sx;
-//            ix = x;
-//            iy = y + sy;    // line down right from top
-//            while (ix < mx) {
-//                colorPixel(ix++, iy--, fr, clusterColorChannel, color);
-//            }
-//            ix = x;        // line from top down left
-//            iy = y + sy;
-//            while (iy >= y) {
-//                colorPixel(ix--, iy--, fr, clusterColorChannel, color);
-//            }
-//            ix = x;
-//            iy = y - sy;
-//            while (iy < y) {
-//                colorPixel(ix--, iy++, fr, clusterColorChannel, color);
-//            }
-//        }
-//
-//        List<ClusterPathPoint> points = c.getPath();
-//        for (Point2D.Float p : points) {
-//            colorPixel(Math.round(p.x), Math.round(p.y), fr, clusterColorChannel, color);
-//        }
-//
-//    }
-//    private static final int clusterColorChannel = 2;
-
-    /** @param x x location of pixel
-     *@param y y location
-     *@param fr the frame data
-     *@param channel the RGB channel number 0-2
-     *@param brightness the brightness 0-1 */
-    private final void colorPixel(final int x, final int y, final float[][][] fr, int channel, Color color) {
-        if ((y < 0) || (y > (fr.length - 1)) || (x < 0) || (x > (fr[0].length - 1))) {
-            return;
-        }
-        float[] rgb = color.getRGBColorComponents(null);
-        float[] f = fr[y][x];
-        for (int i = 0; i < 3; i++) {
-            f[i] = rgb[i];
-        }
-//        fr[y][x][channel]=brightness;
-////        if(brightness<1){
-//        for(int i=0;i<3;i++){
-//            if(i!=channel) fr[y][x][i]=0;
-//        }
-////        }
-    }
-
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --ClusterMassDecayTauUs--">
-    /** lifetime of cluster in ms without support */
-    public final int getClusterMassDecayTauUs() {
-        return clusterMassDecayTauUs;
-    }
-
-    /** lifetime of cluster in ms without support */
-    public void setClusterMassDecayTauUs(final int clusterMassDecayTauUs) {
-        this.clusterMassDecayTauUs = clusterMassDecayTauUs;
-        putInt("clusterMassDecayTauUs", clusterMassDecayTauUs);
-    }
-    // </editor-fold>
-
-    // <editor-fold defaultstate="collapsed" desc="getter/setter - Min/Max for --ClusterSize--">
-    /** max distance from cluster to event as fraction of size of array */
-    public final float getClusterSize() {
-        return clusterSize;
-    }
-
-    /** sets max distance from cluster center to event as fraction of maximum size of chip pixel array.
-     * e.g. clusterSize=0.5 and 128x64 array means cluster has radius of 0.5*128=64 pixels.
-     * @param clusterSize */
-    synchronized public void setClusterSize(float clusterSize) {
-        if (clusterSize > 1f) {
-            clusterSize = 1f;
-        }
-        if (clusterSize < 0) {
-            clusterSize = 0;
-        }
-        float old = this.clusterSize;
-        defaultClusterRadius = Math.max(chip.getSizeX(), chip.getSizeY()) * clusterSize;
-        this.clusterSize = clusterSize;
-        for (Cluster c : clusters) {
-            c.setRadius(defaultClusterRadius);
-        }
-        putFloat("clusterSize", clusterSize);
-        getSupport().firePropertyChange("clusterSize", old, clusterSize);
-    }
-
-    public float getMinClusterSize() { return 0; }
-
-    public float getMaxClusterSize() { return .3f; }
-    // </editor-fold>
-
-    // <editor-fold defaultstate="collapsed" desc="getter/setter - Min/Max for --MaxNumClusters--">
-    /** max number of clusters */
-    public final int getMaxNumClusters() {
-        return maxNumClusters;
-    }
-
-    /** max number of clusters */
-    public void setMaxNumClusters(final int maxNumClusters) {
-        this.maxNumClusters = maxNumClusters;
-        putInt("maxNumClusters", maxNumClusters);
-    }
-
-    public int getMinMaxNumClusters() { return 0; }
-
-    public int getMaxMaxNumClusters() { return 20; }
-    // </editor-fold>
-
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --ThresholdForVisibleCluster--">
-    /** number of events to make a potential cluster visible */
-    public final int getThresholdMassForVisibleCluster() {
-        return thresholdMassForVisibleCluster;
-    }
-
-    /** number of events to make a potential cluster visible */
-    public void setThresholdMassForVisibleCluster(final int thresholdMassForVisibleCluster) {
-        this.thresholdMassForVisibleCluster = thresholdMassForVisibleCluster;
-        putInt("thresholdMassForVisibleCluster", thresholdMassForVisibleCluster);
-    }
-    // </editor-fold>
-
-//    /** number of events to store for a cluster */
-//    public int getNumEventsStoredInCluster() {
-//        return prefs.getInt("RectangularClusterTracker.numEventsStoredInCluster",10);
-//    }
-//
-//    /** number of events to store for a cluster */
-//    public void setNumEventsStoredInCluster(final int numEventsStoredInCluster) {
-//        prefs.putInt("RectangularClusterTracker.numEventsStoredInCluster", numEventsStoredInCluster);
-//    }
 
     public Object getFilterState() {
         return null;
     }
 
-    // PRIVATE?? Whats the use of this method? its private and always returns false...
-    private boolean isGeneratingFilter() {
-        return false;
-    }
-
-    @Override
-    synchronized public void resetFilter() {
+    @Override synchronized public void resetFilter() {
         // before reset, logg all the clusters that remain
         if (logDataEnabled && (clusterLoggingMethod == ClusterLoggingMethod.LogClusters)) {
             clusterLogger.logClusterHistories(clusters);
@@ -2586,34 +2270,249 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         fastClusterFinder.reset();
         initialAngle=0;
     }
-
-    /** Processes the incoming events to output RectangularClusterTrackerEvent's.
-     * @param in
-     * @return packet of RectangularClusterTrackerEvent. */
-    @Override
-	synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if (!filterEnabled) {
-            return in;
-        }
-        if (in.getSize() == 0) {
-            return in; // added so that packets don't use a zero length packet to set last timestamps, etc, which can purge clusters for no reason
-        }//        EventPacket out; // TODO check use of out packet here, doesn't quite make sense
-        if (enclosedFilter != null) {
-            in = enclosedFilter.filterPacket(in);
-        }
-        if(in instanceof ApsDvsEventPacket){
-            checkOutputPacketEventType(in); // make sure memory is allocated to avoid leak
-        }else  if (filterEventsEnabled) {
-            checkOutputPacketEventType(RectangularClusterTrackerEvent.class);
-        }
-        out = track(in);
-        if (filterEventsEnabled) {
-            return out;
-        } else {
-            return in;
+ 
+    @Override public void update(Observable o, Object arg) {
+        if (o == this) {
+            UpdateMessage msg = (UpdateMessage) arg;
+            updateClusterList(msg.timestamp);
+        } else if (o instanceof AEChip) {
+            initFilter();
         }
     }
 
+    protected void drawEllipse(GL2 gl, float x, float y, float sx, float sy, float angle) {
+        final float r2d = (float) (180 / Math.PI);
+        final int N = 10;
+        gl.glPushMatrix();
+            gl.glTranslatef(x, y, 0);
+            double cosAngle = Math.cos(angle), sinAngle = Math.sin(angle);
+            gl.glBegin(GL.GL_LINE_LOOP);
+            {
+                for (int i = 0; i < N; i++) {
+                    double a = ((float) i / N) * 2 * Math.PI;
+                    double ca = Math.cos(a);
+                    double sa = Math.sin(a);
+
+                    float vx = (float) ((sx * ca * cosAngle) - (sy * sa * sinAngle));
+                    float vy = (float) ((sx * ca * sinAngle) + (sy * sa * cosAngle));
+                    gl.glVertex2f(vx, vy);
+                }
+            }
+            gl.glEnd();
+            if (dynamicAngleEnabled) {
+                gl.glRotatef(angle * r2d, 0, 0, 1);
+                gl.glBegin(GL.GL_LINES);
+                {
+                    gl.glVertex2f(0, 0);
+                    gl.glVertex2f(sx, 0);
+                }
+                gl.glEnd();
+            }
+        gl.glPopMatrix();
+    }
+
+    protected void drawBox(GL2 gl, float x, float y, float sx, float sy, float angle) {
+        final float r2d = (float) (180 / Math.PI);
+        gl.glPushMatrix();
+        gl.glTranslatef(x, y, 0);
+        if(angle!=0) gl.glRotatef(angle * r2d, 0, 0, 1);
+
+        gl.glBegin(GL.GL_LINE_LOOP);
+        {
+            gl.glVertex2f(-sx, -sy);
+            gl.glVertex2f(+sx, -sy);
+            gl.glVertex2f(+sx, +sy);
+            gl.glVertex2f(-sx, +sy);
+        }
+        gl.glEnd();
+        if ((angle!=0) || dynamicAngleEnabled) {
+            gl.glBegin(GL.GL_LINES);
+            {
+                gl.glVertex2f(0, 0);
+                gl.glVertex2f(sx, 0);
+            }
+            gl.glEnd();
+        }
+        gl.glPopMatrix();
+    }
+
+     @Override synchronized public void annotate(GLAutoDrawable drawable) {
+        if (!isFilterEnabled()) return;
+
+//        final float BOX_LINE_WIDTH = 2f; // in chip
+//        final float PATH_LINE_WIDTH = .5f;
+//        final float VEL_LINE_WIDTH = 4f;
+//        final float PATH_POINT_SIZE = 4f;
+        GL2 gl = drawable.getGL().getGL2(); // when we getString this we are already set up with updateShape 1=1 pixel, at LL corner
+        if (gl == null) {
+            log.warning("null GL in RectangularClusterTracker.annotate");
+            return;
+        }
+        // mouse selection later on
+        canvas = chip.getCanvas();
+        glCanvas = (GLCanvas) canvas.getCanvas();
+
+        // vanishing point if non-null
+        if(vanishingPoint!=null){
+            gl.glColor3f(0,0,1);
+            gl.glPointSize(10);
+            gl.glBegin(GL.GL_POINTS);
+            gl.glVertex2f(vanishingPoint.x, vanishingPoint.y);
+            gl.glEnd();
+        }
+        // clusters
+        try {
+            gl.glPushMatrix();
+            {
+                for (Cluster c : clusters) {
+                    if (showAllClusters || c.isVisible()) {
+                        c.draw(drawable);
+                    }
+                }
+            }
+        } catch (java.util.ConcurrentModificationException e) {
+            // this is in case cluster list is modified by real time filter during rendering of clusters
+             log.warning("concurrent modification of cluster list while drawing "+clusters.size()+" clusters");
+         } finally {
+             gl.glPopMatrix();
+         }
+    }
+     
+     //The following methods need to be implement for 'MouseListener' we only use 'mouseClicked'
+    @Override public void mousePressed(MouseEvent e) { }
+    @Override public void mouseReleased(MouseEvent e) { }
+    @Override public void mouseEntered(MouseEvent e) { }
+    @Override public void mouseExited(MouseEvent e) { }
+    @Override public void mouseClicked(MouseEvent e) {
+        vanishingPoint = canvas.getPixelFromMouseEvent(e);
+        if(glCanvas!=null){
+            glCanvas.removeMouseListener(this);
+        }
+    }
+
+    /** Speeds up finding the nearest cluster to an event. */
+    protected class FastClusterFinder {
+        /** How much the map is subsampled in bits relative to the pixel array */
+        final int SUBSAMPLE_BY = 2;
+        private Cluster[][] grid = null;
+        private HashMap<Cluster, Point> map=new HashMap();
+        int nx=0, ny=0;
+
+        void init(){
+            nx=chip.getSizeX()>>SUBSAMPLE_BY;
+            ny=chip.getSizeY()>>SUBSAMPLE_BY;
+            grid=new Cluster[nx][ny];
+        }
+
+        /** Finds the nearest cluster to an event. If the cluster has been cached
+         * in the grid map it is returned, otherwise either nearest or first cluster is returned
+         * depending on useNearestCluster flag.
+         * @param e the event
+         * @return the nearest cluster or null */
+        protected Cluster findClusterNear(BasicEvent e) {
+            Cluster c=null;
+            c = grid[(e.x)>>>SUBSAMPLE_BY][(e.y )>>>SUBSAMPLE_BY];
+            if (c == null) {
+                if (useNearestCluster) {
+                    c = getNearestCluster(e);
+                } else {
+                    c = getFirstContainingCluster(e); // find cluster that event falls within (or also within surround if scaling enabled)
+                }
+            }
+            return c;
+        }
+
+        /** updates the lookup table for this cluster.
+         * @param c the cluster to update  */
+        protected void update(Cluster c) {
+            removeCluster(c);
+            int x=(int) (c.location.x)>>SUBSAMPLE_BY;
+            if(x<0) {
+				x=0;
+			}
+			else if(x>=nx) {
+				x=nx-1;
+			}
+            int y=(int) (c.location.y )>>SUBSAMPLE_BY;
+            if(y<0) {
+				y=0;
+			}
+			else if(y>=ny) {
+				y=ny-1;
+			}
+            grid[x][y] = c;
+            map.put(c,new Point(x,y));
+        }
+
+        /** Clears the map */
+        protected void reset() {
+            if (grid == null) {
+                init();
+            } else {
+                for (Cluster[] ca : grid) {
+                    Arrays.fill(ca, null);
+                }
+            }
+        }
+
+        /** Removes the cluster
+         * @param c the cluster to be removed */
+        protected void removeCluster(Cluster c){
+                       if(map.containsKey(c)){
+                Point p=map.get(c);
+                grid[p.x][p.y]=null;
+                map.remove(c);
+            }
+        }
+    }
+
+    public void doSelectVanishingPoint() {
+        if (glCanvas == null) {
+			return;
+		}
+        glCanvas.addMouseListener(this);
+    }
+
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --SurroundInhibitionCost--">
+    public float getSurroundInhibitionCost() { return surroundInhibitionCost; }
+
+    public void setSurroundInhibitionCost(float v) {
+        this.surroundInhibitionCost=v;
+        putFloat("surroundInhibitionCost", v);
+    }
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --EnableClusterExitPurging--">
+    /**
+     * @return the enableClusterExitPurging */
+    public boolean isEnableClusterExitPurging() {
+        return enableClusterExitPurging;
+    }
+
+    /** Enables rapid purging of clusters that hit the edge of the scene.
+     * @param enableClusterExitPurging the enableClusterExitPurging to set */
+    public void setEnableClusterExitPurging(boolean enableClusterExitPurging) {
+        this.enableClusterExitPurging = enableClusterExitPurging;
+        putBoolean("enableClusterExitPurging", enableClusterExitPurging);
+    }
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --ShowClusterRadius--">
+    /**
+     * @return the showClusterRadius */
+    public boolean isShowClusterRadius() {
+        return showClusterRadius;
+    }
+
+    /**
+     * @param showClusterRadius the showClusterRadius to set */
+    public void setShowClusterRadius(boolean showClusterRadius) {
+        this.showClusterRadius = showClusterRadius;
+        putBoolean("showClusterRadius", showClusterRadius);
+    }
+    // </editor-fold>      
+    
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --HighwayPerspectiveEnabled--">
     public boolean isHighwayPerspectiveEnabled() {
         return highwayPerspectiveEnabled;
@@ -2738,17 +2637,6 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     }
     // </editor-fold>
 
-
-    @Override
-	public void update(Observable o, Object arg) {
-        if (o == this) {
-            UpdateMessage msg = (UpdateMessage) arg;
-            updateClusterList(msg.timestamp);
-        } else if (o instanceof AEChip) {
-            initFilter();
-        }
-    }
-
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --UseOnePolarityOnlyEnabled--">
     public boolean isUseOnePolarityOnlyEnabled() {
         return useOnePolarityOnlyEnabled;
@@ -2770,107 +2658,80 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         putBoolean("useOffPolarityOnlyEnabled", useOffPolarityOnlyEnabled);
     }
     // </editor-fold>
-
-    protected void drawEllipse(GL2 gl, float x, float y, float sx, float sy, float angle) {
-        final float r2d = (float) (180 / Math.PI);
-        final int N = 10;
-        gl.glPushMatrix();
-            gl.glTranslatef(x, y, 0);
-            double cosAngle = Math.cos(angle), sinAngle = Math.sin(angle);
-            gl.glBegin(GL.GL_LINE_LOOP);
-            {
-                for (int i = 0; i < N; i++) {
-                    double a = ((float) i / N) * 2 * Math.PI;
-                    double ca = Math.cos(a);
-                    double sa = Math.sin(a);
-
-                    float vx = (float) ((sx * ca * cosAngle) - (sy * sa * sinAngle));
-                    float vy = (float) ((sx * ca * sinAngle) + (sy * sa * cosAngle));
-                    gl.glVertex2f(vx, vy);
-                }
-            }
-            gl.glEnd();
-            if (dynamicAngleEnabled) {
-                gl.glRotatef(angle * r2d, 0, 0, 1);
-                gl.glBegin(GL.GL_LINES);
-                {
-                    gl.glVertex2f(0, 0);
-                    gl.glVertex2f(sx, 0);
-                }
-                gl.glEnd();
-            }
-            gl.glPopMatrix();
-        }
-
-    protected void drawBox(GL2 gl, float x, float y, float sx, float sy, float angle) {
-        final float r2d = (float) (180 / Math.PI);
-        gl.glPushMatrix();
-        gl.glTranslatef(x, y, 0);
-        if(angle!=0) {
-			gl.glRotatef(angle * r2d, 0, 0, 1);
-		}
-        gl.glBegin(GL.GL_LINE_LOOP);
-        {
-            gl.glVertex2f(-sx, -sy);
-            gl.glVertex2f(+sx, -sy);
-            gl.glVertex2f(+sx, +sy);
-            gl.glVertex2f(-sx, +sy);
-        }
-        gl.glEnd();
-        if ((angle!=0) || dynamicAngleEnabled) {
-            gl.glBegin(GL.GL_LINES);
-            {
-                gl.glVertex2f(0, 0);
-                gl.glVertex2f(sx, 0);
-            }
-            gl.glEnd();
-        }
-        gl.glPopMatrix();
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --ClusterMassDecayTauUs--">
+    /** lifetime of cluster in ms without support */
+    public final int getClusterMassDecayTauUs() {
+        return clusterMassDecayTauUs;
     }
 
-     @Override
-	synchronized public void annotate(GLAutoDrawable drawable) {
-        if (!isFilterEnabled()) {
-            return;
-        }
-//        final float BOX_LINE_WIDTH = 2f; // in chip
-//        final float PATH_LINE_WIDTH = .5f;
-//        final float VEL_LINE_WIDTH = 4f;
-//        final float PATH_POINT_SIZE = 4f;
-        GL2 gl = drawable.getGL().getGL2(); // when we getString this we are already set up with updateShape 1=1 pixel, at LL corner
-        if (gl == null) {
-            log.warning("null GL in RectangularClusterTracker.annotate");
-            return;
-        }
-        // mouse selection later on
-        canvas = chip.getCanvas();
-        glCanvas = (GLCanvas) canvas.getCanvas();
-
-        // vanishing point if non-null
-        if(vanishingPoint!=null){
-            gl.glColor3f(0,0,1);
-            gl.glPointSize(10);
-            gl.glBegin(GL.GL_POINTS);
-            gl.glVertex2f(vanishingPoint.x, vanishingPoint.y);
-            gl.glEnd();
-        }
-        // clusters
-        try {
-            gl.glPushMatrix();
-            {
-                for (Cluster c : clusters) {
-                    if (showAllClusters || c.isVisible()) {
-                        c.draw(drawable);
-                    }
-                }
-            }
-        } catch (java.util.ConcurrentModificationException e) {
-            // this is in case cluster list is modified by real time filter during rendering of clusters
-             log.warning("concurrent modification of cluster list while drawing "+clusters.size()+" clusters");
-         } finally {
-             gl.glPopMatrix();
-         }
+    /** lifetime of cluster in ms without support */
+    public void setClusterMassDecayTauUs(final int clusterMassDecayTauUs) {
+        this.clusterMassDecayTauUs = clusterMassDecayTauUs;
+        putInt("clusterMassDecayTauUs", clusterMassDecayTauUs);
     }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="getter/setter - Min/Max for --ClusterSize--">
+    /** max distance from cluster to event as fraction of size of array */
+    public final float getClusterSize() {
+        return clusterSize;
+    }
+
+    /** sets max distance from cluster center to event as fraction of maximum size of chip pixel array.
+     * e.g. clusterSize=0.5 and 128x64 array means cluster has radius of 0.5*128=64 pixels.
+     * @param clusterSize */
+    synchronized public void setClusterSize(float clusterSize) {
+        if (clusterSize > 1f) {
+            clusterSize = 1f;
+        }
+        if (clusterSize < 0) {
+            clusterSize = 0;
+        }
+        float old = this.clusterSize;
+        defaultClusterRadius = Math.max(chip.getSizeX(), chip.getSizeY()) * clusterSize;
+        this.clusterSize = clusterSize;
+        for (Cluster c : clusters) {
+            c.setRadius(defaultClusterRadius);
+        }
+        putFloat("clusterSize", clusterSize);
+        getSupport().firePropertyChange("clusterSize", old, clusterSize);
+    }
+
+    public float getMinClusterSize() { return 0; }
+
+    public float getMaxClusterSize() { return .3f; }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="getter/setter - Min/Max for --MaxNumClusters--">
+    /** max number of clusters */
+    public final int getMaxNumClusters() {
+        return maxNumClusters;
+    }
+
+    /** max number of clusters */
+    public void setMaxNumClusters(final int maxNumClusters) {
+        this.maxNumClusters = maxNumClusters;
+        putInt("maxNumClusters", maxNumClusters);
+    }
+
+    public int getMinMaxNumClusters() { return 0; }
+
+    public int getMaxMaxNumClusters() { return 20; }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --ThresholdForVisibleCluster--">
+    /** number of events to make a potential cluster visible */
+    public final int getThresholdMassForVisibleCluster() {
+        return thresholdMassForVisibleCluster;
+    }
+
+    /** number of events to make a potential cluster visible */
+    public void setThresholdMassForVisibleCluster(final int thresholdMassForVisibleCluster) {
+        this.thresholdMassForVisibleCluster = thresholdMassForVisibleCluster;
+        putInt("thresholdMassForVisibleCluster", thresholdMassForVisibleCluster);
+    }
+    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --GrowMergedSizeEnabled--">
     public boolean isGrowMergedSizeEnabled() {
@@ -3192,7 +3053,13 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --ClusterLoggingMethod--">
+    // <editor-fold defaultstate="collapsed" desc="getter/setter & list definition for --ClusterLoggingMethod--">
+    public enum ClusterLoggingMethod {
+        LogFrames, LogClusters
+    };
+    
+    private ClusterLoggingMethod clusterLoggingMethod = ClusterLoggingMethod.valueOf(getString("clusterLoggingMethod", ClusterLoggingMethod.LogFrames.toString()));
+    
     /**
      * @return the clusterLoggingMethod */
     public ClusterLoggingMethod getClusterLoggingMethod() {
@@ -3313,17 +3180,138 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         putFloat("smoothIntegral", v);
     }
     // </editor-fold>
-    // ----------------------
+    
+    
+//    private float opticalGyroTauHighpassMs=getInt("opticalGyroTauHighpassMs", 10000);
+//   {
+//    }
+//    private class OpticalGyroFilters{
+//        LowpassFilter x=new LowpassFilter();
+//        LowpassFilter y=new LowpassFilter();
+//
+//        private OpticalGyroFilters(){
+//            x.setTauMs(opticalGyroTauLowpassMs);
+//            y.setTauMs(opticalGyroTauLowpassMs);
+//        }
+////        private void setTauMsHigh(float opticalGyroTauHighpassMs) {
+//////            x.setTauMsHigh(opticalGyroTauHighpassMs);
+//////            y.setTauMsHigh(opticalGyroTauHighpassMs);
+////        }
+//
+//        private void setTauMsLow(float opticalGyroTauLowpassMs){
+//            x.setTauMs(opticalGyroTauLowpassMs);
+//            y.setTauMs(opticalGyroTauLowpassMs);
+//        }
+//    }
+     
+//    private final void drawCluster(final Cluster c, float[][][] fr) {
+//        int x = (int) c.getLocation().x;
+//        int y = (int) c.getLocation().y;
+//
+//
+//        int sy = (int) c.getRadius(); // sx sy are (half) size of rectangle
+//        int sx = sy;
+//        int ix, iy;
+//        int mn, mx;
+//
+//        if (isColorClustersDifferentlyEnabled()) {
+//        } else {
+//            c.setColorAccordingToSize();
+//        }
+//
+//        Color color = c.getColor();
+//        if (true) { // draw boxes
+//            iy = y - sy;    // line under center
+//            mn = x - sx;
+//            mx = x + sx;
+//            for (ix = mn; ix <= mx; ix++) {
+//                colorPixel(ix, iy, fr, clusterColorChannel, color);
+//            }
+//            iy = y + sy;    // line over center
+//            for (ix = mn; ix <= mx; ix++) {
+//                colorPixel(ix, iy, fr, clusterColorChannel, color);
+//            }
+//            ix = x - sx;        // line to left
+//            mn = y - sy;
+//            mx = y + sy;
+//            for (iy = mn; iy <= mx; iy++) {
+//                colorPixel(ix, iy, fr, clusterColorChannel, color);
+//            }
+//            ix = x + sx;    // to right
+//            for (iy = mn; iy <= mx; iy++) {
+//                colorPixel(ix, iy, fr, clusterColorChannel, color);
+//            }
+//        } else { // draw diamond reflecting manhatten distance measure doesn't look very nice because not antialiased at all
+//            iy = y - sy;    // line up right from bot
+//            ix = x;
+//            mx = x + sx;
+//            while (ix < mx) {
+//                colorPixel(ix++, iy++, fr, clusterColorChannel, color);
+//            }
+//            mx = x + sx;
+//            ix = x;
+//            iy = y + sy;    // line down right from top
+//            while (ix < mx) {
+//                colorPixel(ix++, iy--, fr, clusterColorChannel, color);
+//            }
+//            ix = x;        // line from top down left
+//            iy = y + sy;
+//            while (iy >= y) {
+//                colorPixel(ix--, iy--, fr, clusterColorChannel, color);
+//            }
+//            ix = x;
+//            iy = y - sy;
+//            while (iy < y) {
+//                colorPixel(ix--, iy++, fr, clusterColorChannel, color);
+//            }
+//        }
+//
+//        List<ClusterPathPoint> points = c.getPath();
+//        for (Point2D.Float p : points) {
+//            colorPixel(Math.round(p.x), Math.round(p.y), fr, clusterColorChannel, color);
+//        }
+//
+//    }
+//    private static final int clusterColorChannel = 2;
 
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --SurroundInhibitionCost--">
-    public float getSurroundInhibitionCost() { return surroundInhibitionCost; }
+//    /** 
+//     * @param x x location of pixel
+//     * @param y y location
+//     * @param fr the frame data
+//     * @param channel the RGB channel number 0-2
+//     * @param brightness the brightness 0-1 */
+//    private final void colorPixel(final int x, final int y, final float[][][] fr, int channel, Color color) {
+//        if ((y < 0) || (y > (fr.length - 1)) || (x < 0) || (x > (fr[0].length - 1))) {
+//            return;
+//        }
+//        float[] rgb = color.getRGBColorComponents(null);
+//        float[] f = fr[y][x];
+//        for (int i = 0; i < 3; i++) {
+//            f[i] = rgb[i];
+//        }
+////        fr[y][x][channel]=brightness;
+//////        if(brightness<1){
+////        for(int i=0;i<3;i++){
+////            if(i!=channel) fr[y][x][i]=0;
+////        }
+//////        }
+//    }
 
-    public void setSurroundInhibitionCost(float v) {
-        this.surroundInhibitionCost=v;
-        putFloat("surroundInhibitionCost", v);
-    }
-    // </editor-fold>
-
+//    /** number of events to store for a cluster */
+//    public int getNumEventsStoredInCluster() {
+//        return prefs.getInt("RectangularClusterTracker.numEventsStoredInCluster",10);
+//    }
+//
+//    /** number of events to store for a cluster */
+//    public void setNumEventsStoredInCluster(final int numEventsStoredInCluster) {
+//        prefs.putInt("RectangularClusterTracker.numEventsStoredInCluster", numEventsStoredInCluster);
+//    }
+    
+//    // PRIVATE?? Whats the use of this method? its private and always returns false...
+//    private boolean isGeneratingFilter() {
+//        return false;
+//    }
+     
 //    public float getVelocityMixingFactor() {
 //        return velocityMixingFactor;
 //    }
@@ -3407,101 +3395,5 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //        putInt("loggingIntervalUs", loggingIntervalUs);
 //    }
 
-    protected FastClusterFinder fastClusterFinder=new FastClusterFinder();
-
-    /** Speeds up finding the nearest cluster to an event. */
-    protected class FastClusterFinder {
-        /** How much the map is subsampled in bits relative to the pixel array */
-        final int SUBSAMPLE_BY = 2;
-        private Cluster[][] grid = null;
-        private HashMap<Cluster, Point> map=new HashMap();
-        int nx=0, ny=0;
-
-        void init(){
-            nx=chip.getSizeX()>>SUBSAMPLE_BY;
-            ny=chip.getSizeY()>>SUBSAMPLE_BY;
-            grid=new Cluster[nx][ny];
-        }
-
-        /** Finds the nearest cluster to an event. If the cluster has been cached
-         * in the grid map it is returned, otherwise either nearest or first cluster is returned
-         * depending on useNearestCluster flag.
-         * @param e the event
-         * @return the nearest cluster or null */
-        protected Cluster findClusterNear(BasicEvent e) {
-            Cluster c=null;
-            c = grid[(e.x)>>>SUBSAMPLE_BY][(e.y )>>>SUBSAMPLE_BY];
-            if (c == null) {
-                if (useNearestCluster) {
-                    c = getNearestCluster(e);
-                } else {
-                    c = getFirstContainingCluster(e); // find cluster that event falls within (or also within surround if scaling enabled)
-                }
-            }
-            return c;
-        }
-
-        /** updates the lookup table for this cluster.
-         * @param c the cluster to update  */
-        protected void update(Cluster c) {
-            removeCluster(c);
-            int x=(int) (c.location.x)>>SUBSAMPLE_BY;
-            if(x<0) {
-				x=0;
-			}
-			else if(x>=nx) {
-				x=nx-1;
-			}
-            int y=(int) (c.location.y )>>SUBSAMPLE_BY;
-            if(y<0) {
-				y=0;
-			}
-			else if(y>=ny) {
-				y=ny-1;
-			}
-            grid[x][y] = c;
-            map.put(c,new Point(x,y));
-        }
-
-        /** Clears the map */
-        protected void reset() {
-            if (grid == null) {
-                init();
-            } else {
-                for (Cluster[] ca : grid) {
-                    Arrays.fill(ca, null);
-                }
-            }
-        }
-
-        /** Removes the cluster
-         * @param c the cluster to be removed */
-        protected void removeCluster(Cluster c){
-                       if(map.containsKey(c)){
-                Point p=map.get(c);
-                grid[p.x][p.y]=null;
-                map.remove(c);
-            }
-        }
-    }
-
-    public void doSelectVanishingPoint() {
-        if (glCanvas == null) {
-			return;
-		}
-        glCanvas.addMouseListener(this);
-    }
-
-    /**
-     * @return the showClusterRadius */
-    public boolean isShowClusterRadius() {
-        return showClusterRadius;
-    }
-
-    /**
-     * @param showClusterRadius the showClusterRadius to set */
-    public void setShowClusterRadius(boolean showClusterRadius) {
-        this.showClusterRadius = showClusterRadius;
-        putBoolean("showClusterRadius", showClusterRadius);
-    }
+    
 }
