@@ -428,6 +428,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 			&& (((AEChip) chip).getFilterChain().getProcessingMode() == FilterChain.ProcessingMode.ACQUISITION)) {
 			if (renderer == null) {
 				renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
+                                renderer.setUseVertexArrays(false);
 			}
 			renderer.begin3DRendering();
 			renderer.setColor(0, 0, 1, 0.8f);
@@ -736,7 +737,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 	public void paintFrame() {
 		try {
 			drawable.display(); // we call the drawable's display method that ends up calling us back via our local
-								// display(GLAutoDrawable)!! very important to getString this right
+								// display(GLAutoDrawable)!! very important to get this right
 		}
 		catch (final GLException e) {
 			if (!(e.getCause() instanceof InterruptedException)) {
