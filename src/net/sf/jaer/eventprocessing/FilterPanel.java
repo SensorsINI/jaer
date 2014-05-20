@@ -63,7 +63,7 @@ filter chains have panels built for them that are enlosed inside the filter pane
  * <li> enum properties construct a JComboBox control, which all the possible enum constant values.
  * </ul>
  * <p>
- * If a filter wants to automatically have the GUI controls reflect what the property state is, then it should 
+ * If a filter wants to automatically have the GUI controls reflect what the property state is, then it should
  * fire PropertyChangeEvent when the property changes. For example, an {@link EventFilter} can implement a setter like this:
  * <pre>
 public void setMapEventsToLearnedTopologyEnabled(boolean mapEventsToLearnedTopologyEnabled) {
@@ -72,7 +72,7 @@ this.mapEventsToLearnedTopologyEnabled = mapEventsToLearnedTopologyEnabled;
 getPrefs().putBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled);
 }
 </pre>
- * Here, <code>support</code> is a protected field of EventFilter. The change event comes here to FilterPanel and the appropriate automatically 
+ * Here, <code>support</code> is a protected field of EventFilter. The change event comes here to FilterPanel and the appropriate automatically
  * generated control is modified.
  * <p>
  * Note that calling firePropertyChange as shown above will inform listeners <em>before</em> the property has actually been
@@ -85,7 +85,7 @@ getPrefs().putBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", mapEv
  * will install a tip for the property sizeClassificationEnabled.
  * <p>
  * <strong>Slider controls.</strong>
- * 
+ *
  * If you want a slider for an int or float property, then create getMin and getMax methods for the property, e.g., for
  * the property <code>dt</code>:
  * <pre>
@@ -253,8 +253,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             Insets butInsets = new Insets(0, 0, 0, 0);
             for (Method m : methods) {
                 if (m.getName().startsWith("do")
-                        && m.getParameterTypes().length == 0
-                        && m.getReturnType() == void.class) {
+                        && (m.getParameterTypes().length == 0)
+                        && (m.getReturnType() == void.class)) {
                     numDoButtons++;
                     JButton button = new JButton(m.getName().substring(2));
                     button.setMargin(butInsets);
@@ -263,7 +263,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     final Method meth = m;
                     button.addActionListener(new ActionListener() {
 
-                        public void actionPerformed(ActionEvent e) {
+                        @Override
+						public void actionPerformed(ActionEvent e) {
                             try {
                                 meth.invoke(f);
                             } catch (IllegalArgumentException ex) {
@@ -381,19 +382,19 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 try {
                     boolean inherited = false;
 
-                    // TODO handle indexed properties 
+                    // TODO handle indexed properties
                     Class c = p.getPropertyType();
                     String name = p.getName();
 
                     // check if method comes from a superclass of this EventFilter
-                    if (control != null && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                    if ((control != null) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
                         Method m = p.getReadMethod();
                         if (m.getDeclaringClass() != getFilter().getClass()) {
                             inherited = true;
                         }
                     }
 
-                    if (c == Integer.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                    if ((c == Integer.TYPE) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
 
                         SliderParams params;
                         if ((params = isSliderType(p, filter)) != null) {
@@ -402,7 +403,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             control = new IntControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
                         }
                         myadd(control, name, inherited);
-                    } else if (c == Float.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                    } else if ((c == Float.TYPE) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
                         SliderParams params;
                         if ((params = isSliderType(p, filter)) != null) {
                             control = new FloatSliderControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod(), params);
@@ -411,7 +412,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
                         }
                         myadd(control, name, inherited);
-                    } else if (c == Boolean.TYPE && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                    } else if ((c == Boolean.TYPE) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
                         if (p.getName().equals("filterEnabled")) { // built in, skip
                             continue;
                         }
@@ -425,7 +426,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
                         control = new BooleanControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
                         myadd(control, name, inherited);
-                    } else if (c == String.class && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                    } else if ((c == String.class) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
                         if (p.getName().equals("filterEnabled")) {
                             continue;
                         }
@@ -434,10 +435,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         }
                         control = new StringControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
                         myadd(control, name, inherited);
-                    } else if (c != null && c.isEnum() && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                    } else if ((c != null) && c.isEnum() && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
                         control = new EnumControl(c, getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
                         myadd(control, name, inherited);
-                    }else if (c != null && c==Point2D.Float.class && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                    }else if ((c != null) && (c==Point2D.Float.class) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
                         control = new Point2DControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
                         myadd(control, name, inherited);
                     } else {
@@ -496,7 +497,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         boolean initValue = false, nval;
         final JComboBox control;
 
-        public void set(Object o) {
+        @Override
+		public void set(Object o) {
             control.setSelectedItem(o);
         }
 
@@ -521,7 +523,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             add(label);
             add(control);
             try {
-                Object x = (Object) r.invoke(filter);
+                Object x = r.invoke(filter);
                 if (x == null) {
                     log.warning("null Object returned from read method " + r);
                     return;
@@ -533,7 +535,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             }
             control.addActionListener(new ActionListener() {
 
-                public void actionPerformed(ActionEvent e) {
+                @Override
+				public void actionPerformed(ActionEvent e) {
                     try {
                         w.invoke(filter, control.getSelectedItem());
                     } catch (Exception e2) {
@@ -551,7 +554,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         boolean initValue = false, nval;
         final JTextField textField;
 
-        public void set(Object o) {
+        @Override
+		public void set(Object o) {
             if (o instanceof String) {
                 String b = (String) o;
                 textField.setText(b);
@@ -593,7 +597,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             }
             textField.addActionListener(new ActionListener() {
 
-                public void actionPerformed(ActionEvent e) {
+                @Override
+				public void actionPerformed(ActionEvent e) {
                     try {
                         w.invoke(filter, textField.getText());
                     } catch (Exception e2) {
@@ -643,7 +648,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             }
             checkBox.addActionListener(new ActionListener() {
 
-                public void actionPerformed(ActionEvent e) {
+                @Override
+				public void actionPerformed(ActionEvent e) {
                     try {
                         w.invoke(filter, checkBox.isSelected());
                     } catch (InvocationTargetException ite) {
@@ -655,7 +661,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             });
         }
 
-        public void set(Object o) {
+        @Override
+		public void set(Object o) {
             if (o instanceof Boolean) {
                 Boolean b = (Boolean) o;
                 checkBox.setSelected(b);
@@ -671,7 +678,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         JSlider slider;
         JTextField tf;
 
-        public void set(Object o) {
+        @Override
+		public void set(Object o) {
             if (o instanceof Integer) {
                 Integer b = (Integer) o;
                 slider.setValue(b);
@@ -708,7 +716,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
             slider.addChangeListener(new ChangeListener() {
 
-                public void stateChanged(ChangeEvent e) {
+                @Override
+				public void stateChanged(ChangeEvent e) {
                     try {
                         w.invoke(filter, new Integer(slider.getValue())); // write int value
                         ic.set(slider.getValue());
@@ -735,14 +744,15 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         boolean dontProcessEvent = false; // to avoid slider callback loops
         float minValue, maxValue, currentValue;
 
-        public void set(Object o) {
+        @Override
+		public void set(Object o) {
             if (o instanceof Integer) {
                 Integer b = (Integer) o;
                 slider.setValue(b);
                 fc.set(b);
             } else if (o instanceof Float) {
                 float f = (Float) o;
-                int sv = Math.round((f - minValue) / (maxValue - minValue) * (slider.getMaximum() - slider.getMinimum()));
+                int sv = Math.round(((f - minValue) / (maxValue - minValue)) * (slider.getMaximum() - slider.getMinimum()));
                 slider.setValue(sv);
             }
         }
@@ -781,10 +791,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
             slider.addChangeListener(new ChangeListener() {
 
-                public void stateChanged(ChangeEvent e) {
+                @Override
+				public void stateChanged(ChangeEvent e) {
                     try {
                         int v = slider.getValue();
-                        currentValue = minValue + (maxValue - minValue) * ((float) slider.getValue() / (slider.getMaximum() - slider.getMinimum()));
+                        currentValue = minValue + ((maxValue - minValue) * ((float) slider.getValue() / (slider.getMaximum() - slider.getMinimum())));
                         w.invoke(filter, new Float(currentValue)); // write int value
                         fc.set(new Float(currentValue));
 
@@ -806,7 +817,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         int initValue = 0, nval;
         final JTextField tf;
 
-        public void set(Object o) {
+        @Override
+		public void set(Object o) {
             if (o instanceof Integer) {
                 Integer b = (Integer) o;
                 tf.setText(b.toString());
@@ -847,7 +859,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             add(tf);
             tf.addActionListener(new ActionListener() {
 
-                public void actionPerformed(ActionEvent e) {
+                @Override
+				public void actionPerformed(ActionEvent e) {
                     try {
                         int y = Integer.parseInt(
                                 tf.getText());
@@ -863,7 +876,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             });
             tf.addKeyListener(new java.awt.event.KeyAdapter() {
 
-                public void keyPressed(java.awt.event.KeyEvent evt) {
+                @Override
+				public void keyPressed(java.awt.event.KeyEvent evt) {
                     try {
                         Integer x = (Integer) r.invoke(filter);
                         initValue = x.intValue();
@@ -883,7 +897,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 if (nval == 0) {
                                     nval = 1;
                                 } else {
-                                    nval = (int) Math.round(initValue * factor);
+                                    nval = Math.round(initValue * factor);
                                 }
                                 w.invoke(filter, new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
@@ -899,7 +913,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 if (nval == 0) {
                                     nval = 0;
                                 } else {
-                                    nval = (int) Math.round(initValue / factor);
+                                    nval = Math.round(initValue / factor);
                                 }
                                 w.invoke(filter, new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
@@ -942,7 +956,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             });
             tf.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
 
-                public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
+                @Override
+				public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
                     try {
                         Integer x = (Integer) r.invoke(filter);
                         initValue = x.intValue();
@@ -962,7 +977,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 if (Math.round(initValue * wheelFactor) == initValue) {
                                     nval++;
                                 } else {
-                                    nval = (int) Math.round(initValue * wheelFactor);
+                                    nval = Math.round(initValue * wheelFactor);
                                 }
                                 w.invoke(filter, new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
@@ -977,7 +992,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 if (Math.round(initValue / wheelFactor) == initValue) {
                                     nval--;
                                 } else {
-                                    nval = (int) Math.round(initValue / wheelFactor);
+                                    nval = Math.round(initValue / wheelFactor);
                                 }
                                 if (nval < 0) {
                                     nval = 0;
@@ -995,12 +1010,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             });
             tf.addFocusListener(new FocusListener() {
 
-                public void focusGained(FocusEvent e) {
+                @Override
+				public void focusGained(FocusEvent e) {
                     tf.setSelectionStart(0);
                     tf.setSelectionEnd(tf.getText().length());
                 }
 
-                public void focusLost(FocusEvent e) {
+                @Override
+				public void focusLost(FocusEvent e) {
                 }
             });
         }
@@ -1025,7 +1042,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
 
     class FloatControl extends JPanel implements HasSetter {
-        
+
         EngineeringFormat engFmt=new EngineeringFormat();
 //        final String format="%.6f";
 
@@ -1034,7 +1051,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         float initValue = 0, nval;
         final JTextField tf;
 
-        public void set(Object o) {
+        @Override
+		public void set(Object o) {
             if (o instanceof Float) {
                 Float b = (Float) o;
                 tf.setText(b.toString());
@@ -1075,7 +1093,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             add(tf);
             tf.addActionListener(new ActionListener() {
 
-                public void actionPerformed(ActionEvent e) {
+                @Override
+				public void actionPerformed(ActionEvent e) {
 //                    System.out.println(e);
                     try {
                         float y = engFmt.parseFloat(tf.getText());
@@ -1097,7 +1116,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 {
                 }
 
-                public void keyPressed(java.awt.event.KeyEvent evt) {
+                @Override
+				public void keyPressed(java.awt.event.KeyEvent evt) {
                     try {
                         Float x = (Float) r.invoke(filter); // getString the value from the getter method
                         initValue = x.floatValue();
@@ -1153,7 +1173,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             });
             tf.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
 
-                public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
+                @Override
+				public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
                     try {
                         Float x = (Float) r.invoke(filter); // getString the value from the getter method
                         initValue = x.floatValue();
@@ -1207,26 +1228,29 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             });
             tf.addFocusListener(new FocusListener() {
 
-                public void focusGained(FocusEvent e) {
+                @Override
+				public void focusGained(FocusEvent e) {
                     tf.setSelectionStart(0);
                     tf.setSelectionEnd(tf.getText().length());
                 }
 
-                public void focusLost(FocusEvent e) {
+                @Override
+				public void focusLost(FocusEvent e) {
                 }
             });
         }
     }
 
     private boolean printedSetterWarning=false;
-    
+
     /** Called when a filter calls firePropertyChange. The PropertyChangeEvent should send the bound property name and the old and new values.
     The GUI control is then updated by this method.
-    @param propertyChangeEvent contains the property that has changed, e.g. it would be called from an EventFilter 
-     * with 
+    @param propertyChangeEvent contains the property that has changed, e.g. it would be called from an EventFilter
+     * with
      * <code>support.firePropertyChange("mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled, this.mapEventsToLearnedTopologyEnabled);</code>
      */
-    public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
+    @Override
+	public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
         if (propertyChangeEvent.getSource() == getFilter()) {
             if (propertyChangeEvent.getPropertyName().equals("selected")) {
                 return; // ignore changes to "selected" for filter because these are masked out from GUI building
@@ -1295,7 +1319,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         enabledCheckBox.setToolTipText("Enable or disable the filter");
         enabledCheckBox.setMargin(new java.awt.Insets(1, 1, 1, 1));
         enabledCheckBox.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 enabledCheckBoxActionPerformed(evt);
             }
         });
@@ -1306,7 +1331,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         resetButton.setToolTipText("Resets the filter");
         resetButton.setMargin(new java.awt.Insets(1, 5, 1, 5));
         resetButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 resetButtonActionPerformed(evt);
             }
         });
@@ -1321,7 +1347,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         bindingGroup.addBinding(binding);
 
         showControlsToggleButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 showControlsToggleButtonActionPerformed(evt);
             }
         });
@@ -1332,7 +1359,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         helpBut.setToolTipText("Shows help on jAER wiki");
         helpBut.setMargin(new java.awt.Insets(1, 5, 1, 5));
         helpBut.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 helpButActionPerformed(evt);
             }
         });
@@ -1369,11 +1397,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         else if (c instanceof GlobalViewer) // Added for compatibility with multi-input mode
         {    c=((GlobalViewer)c).getFilterPane();
             globalEnable=true;
-        
+
         }
-        
+
         // TODO fix bug here with enclosed filters not showing up if they are enclosed in enclosed filter, unless they are declared as enclosed
-        if (!getFilter().isEnclosed() && (c instanceof Window || globalEnable)) {
+        if (!getFilter().isEnclosed() && ((c instanceof Window) || globalEnable)) {
             if (c instanceof FilterFrame) {
                 // hide all filters except one that is being modified, *unless* we are an enclosed filter
                 FilterFrame<FilterPanel> ff = (FilterFrame) c;
@@ -1389,20 +1417,20 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             }
 //            if (c instanceof Window) // Redundant
 //                ((Window) c).pack();
-                
+
         }
-        
-        
+
+
         if (controlPanel!=null)
         {
             controlPanel.setVisible(visible);
         }
-        
+
 
         if (c instanceof Window) {
             ((Window) c).pack();
         }
-        
+
         if(!getFilter().isEnclosed()){ // store last selected top level filter
             if (visible) {
                 getFilter().getChip().getPrefs().put(FilterFrame.LAST_FILTER_SELECTED_KEY, getFilter().getClass().toString());
@@ -1410,7 +1438,16 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 getFilter().getChip().getPrefs().put(FilterFrame.LAST_FILTER_SELECTED_KEY, "");
             }
         }
-        showControlsToggleButton.setSelected(visible);
+
+        if (visible) {
+        	// Show only controls.
+        	showControlsToggleButton.setSelected(true);
+        	showControlsToggleButton.setText("Back to filters list");
+        }
+        else {
+        	showControlsToggleButton.setSelected(false);
+        	showControlsToggleButton.setText("Controls");
+        }
     }
 
     private void setBorderActive(final boolean yes) {
@@ -1468,7 +1505,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }//GEN-LAST:event_showControlsToggleButtonActionPerformed
 
     private void helpButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_helpButActionPerformed
-              if(getFilter()!=null) getFilter().showHelpInBrowser();
+              if(getFilter()!=null) {
+				getFilter().showHelpInBrowser();
+			}
     }//GEN-LAST:event_helpButActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -1533,7 +1572,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         final JTextField tfx, tfy;
         final String format = "%.1f";
 
-        final public void set(Object o) {
+        @Override
+		final public void set(Object o) {
             if (o instanceof Point2D.Float) {
                 Point2D.Float b = (Point2D.Float) o;
                 tfx.setText(String.format(format, b.x));
@@ -1618,54 +1658,58 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
             tfx.addFocusListener(new FocusListener() {
 
-                public void focusGained(FocusEvent e) {
+                @Override
+				public void focusGained(FocusEvent e) {
                     tfx.setSelectionStart(0);
                     tfx.setSelectionEnd(tfx.getText().length());
                 }
 
-                public void focusLost(FocusEvent e) {
+                @Override
+				public void focusLost(FocusEvent e) {
                 }
             });
             tfy.addFocusListener(new FocusListener() {
 
-                public void focusGained(FocusEvent e) {
+                @Override
+				public void focusGained(FocusEvent e) {
                     tfy.setSelectionStart(0);
                     tfy.setSelectionEnd(tfy.getText().length());
                 }
 
-                public void focusLost(FocusEvent e) {
+                @Override
+				public void focusLost(FocusEvent e) {
                 }
             });
 
 
         }
     }
-    
-    
+
+
     // Addition by Peter: Allow user to add custom filter controls
-    
+
 //    ArrayList<JPanel> customControls=new ArrayList();
-    
+
     JPanel controlPanel;
     public void addCustomControls(JPanel control)
-    {   
+    {
         if (controlPanel==null)
-        {   controlPanel=new JPanel(); 
+        {   controlPanel=new JPanel();
             controlPanel.setLayout(new BoxLayout(controlPanel,BoxLayout.Y_AXIS));
             this.add(controlPanel);
         }
-        
-        
+
+
         this.controlPanel.add(control);
 //        this.customControls.add(controls);
-        
+
         setControlsVisible(true);
 //        this.repaint();
 //        this.revalidate();
     }
-    
+
     public void removeCustomControls()
-    {   
+    {
 //        for (JPanel p:customControls)
 //            controls.remove(p);
         if (controlPanel!=null)
@@ -1674,25 +1718,25 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             controlPanel.repaint();
         }
 //        customControls.clear();
-        
+
     }
-    
+
 //    public class ShowControlsAction extends AbstractAction{
 //
 //        public ShowControlsAction() {
 //            super("Show controls");
 //            putValue(SELECTED_KEY, "Hide controls");
 //            putValue(SHORT_DESCRIPTION,"Toggles visibility of controls of this EventFilter");
-//            
+//
 //        }
 //
 //        @Override
 //        public void actionPerformed(ActionEvent e) {
 //            setControlsVisible(enabled);
 //        }
-//        
+//
 //    }
-    
- 
+
+
 
 }
