@@ -47,7 +47,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     public static final byte VR_IS_TIMESTAMP_MASTER = (byte) 0xCB;
     public static final byte VR_MISSED_EVENTS = (byte) 0xCC;
     public static final byte VR_ENABLE_MISSED_EVENTS = (byte) 0xCD;
-    
+
     public final static String CPLD_FIRMWARE_MONSEQ = "/net/sf/jaer/hardwareinterface/usb/cypressfx2/USBAERmini2.xsvf";
     protected AEWriter aeWriter;
     private BlockingQueue<AEPacketRaw> sequencingQueue; // this queue holds packets that should be sequenced in order
@@ -73,13 +73,13 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
      *@return the estimated out rate
      */
     int computeEstimatedOutEventRate(AEPacketRaw events) {
-        if (events == null || events.getNumEvents() < 2) {
+        if ((events == null) || (events.getNumEvents() < 2)) {
             return 0;
         } else {
             int[] ts = events.getTimestamps();
             int n = events.getNumEvents();
             int dt = ts[n - 1] - ts[0];
-            return (int) (1e6f * (float) n / (float) dt);
+            return (int) ((1e6f * n) / dt);
         }
     }
 
@@ -91,7 +91,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     /** Closes the device. Never throws an exception.
      */
     @Override
-    public void close() {
+    synchronized public void close() {
         if (!isOpened) {
             log.warning("warning: close(): not open");
             return;
@@ -168,12 +168,14 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
 
     /** returns the estimated out event rate
      */
-    public int getEstimatedOutEventRate() {
+    @Override
+	public int getEstimatedOutEventRate() {
         return estimateOutEventRate;
     }
 
     /** not yet implemented */
-    public int getNumEventsSent() {
+    @Override
+	public int getNumEventsSent() {
         if (aeWriter == null) {
             log.warning("null aeWriter, returning 0 events sent");
             return 0;
@@ -182,7 +184,8 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     }
 
     /** not yet implemented */
-    public int getNumEventsToSend() {
+    @Override
+	public int getNumEventsToSend() {
         if (aeWriter == null) {
             log.warning("null aeWriter, returning 0 events to send");
             return 0;
@@ -192,7 +195,8 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
 
     /** @return returns true if sequencing is enabled
      */
-    public boolean isEventSequencingEnabled() {
+    @Override
+	public boolean isEventSequencingEnabled() {
         return this.isOutEndpointEnabled();
     }
 
@@ -200,7 +204,8 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     @param eventsToSend the events that should be sequenced, timestamps are realtive to last event,
     inter spike interval must not be bigger than 2^16
      */
-    public void startMonitoringSequencing(AEPacketRaw eventsToSend) throws HardwareInterfaceException {
+    @Override
+	public void startMonitoringSequencing(AEPacketRaw eventsToSend) throws HardwareInterfaceException {
         startMonitoringSequencing(eventsToSend, true);
     }
 
@@ -233,7 +238,8 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
 
         // wait a few ms to send the first packets before starting the device
         try {
-            Thread.currentThread().sleep(10);
+            Thread.currentThread();
+			Thread.sleep(10);
         } catch (InterruptedException e) {
         }
 
@@ -266,7 +272,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
 
 
         if (status != USBIO_ERR_SUCCESS) {
-            gUsbIo.destroyDeviceList(gDevList);
+            UsbIo.destroyDeviceList(gDevList);
             throw new HardwareInterfaceException("Could not bind out pipe: " + UsbIo.errorText(status));
         }
 
@@ -274,7 +280,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         pipeParams.Flags = UsbIoInterface.USBIO_SHORT_TRANSFER_OK;
         status = aeWriter.setPipeParameters(pipeParams);
         if (status != USBIO_ERR_SUCCESS) {
-            gUsbIo.destroyDeviceList(gDevList);
+            UsbIo.destroyDeviceList(gDevList);
             throw new HardwareInterfaceException("startAEWriter: can't set pipe parameters: " + UsbIo.errorText(status));
         }
         //else {
@@ -299,7 +305,8 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
      * from the driver
      * @return AEPacketRaw: the last events
      */
-    public AEPacketRaw stopMonitoringSequencing() throws HardwareInterfaceException {
+    @Override
+	public AEPacketRaw stopMonitoringSequencing() throws HardwareInterfaceException {
         AEPacketRaw packet, tmp1, tmp2;
         int numEvents;
         int ts[];
@@ -309,7 +316,8 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
 
         // wait a few ms for device to send last events
         try {
-            Thread.currentThread().sleep(8);
+            Thread.currentThread();
+			Thread.sleep(8);
         } catch (InterruptedException e) {
         }
 
@@ -371,7 +379,8 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     /** Resets timestamps to start from zero.
      *
      */
-    synchronized public void resetTimestamps() {
+    @Override
+	synchronized public void resetTimestamps() {
         try {
             sendVendorRequest(this.VENDOR_REQUEST_RESET_TIMESTAMPS);
 
@@ -410,11 +419,11 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
 
     /**
      *  This method lets you configure how the USBAERmini2 handles events when the host computer is not fast enough to collect them.
-     * If MissedEvents is disabled, the device will not handshake to the sender until it can write events to the FIFO, so it does not 
+     * If MissedEvents is disabled, the device will not handshake to the sender until it can write events to the FIFO, so it does not
      * lose events but blocks the sender.
-     * If enabled, the device will discard events as long as it can not write to the FIFOs 
-     * (it will still pass them to the pass-through port though). The method {@link #getNumMissedEvents()} will return an estimate of 
-     * the number of events discarded.  
+     * If enabled, the device will discard events as long as it can not write to the FIFOs
+     * (it will still pass them to the pass-through port though). The method {@link #getNumMissedEvents()} will return an estimate of
+     * the number of events discarded.
      * @param yes wheter missed events counting should be enabled to unblock chain
      * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException
      */
@@ -425,8 +434,8 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
             sendVendorRequest(VR_ENABLE_MISSED_EVENTS, (short) 0, (short) 0);
         }
     }
-    
-    
+
+
     /** gets the timestamp mode from the device, prints out if slave or master mode and returns the tick
     @return returns the timestamp tick on the device in us, either 1us or 0.0333us
      */
@@ -587,14 +596,16 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
      * end of the packet and restarts sending from the beginning. otherwise it just stops sequencing.
     @param set true to loop packet, false to sequence a single packet
      **/
-    public void setLoopedSequencingEnabled(boolean set) {
+    @Override
+	public void setLoopedSequencingEnabled(boolean set) {
         this.loopedSequencingEnabled = set;
     }
 
     /**
     @return true if sequencing will loop back to start at end of data
      */
-    public boolean isLoopedSequencingEnabled() {
+    @Override
+	public boolean isLoopedSequencingEnabled() {
         return this.loopedSequencingEnabled;
     }
 
@@ -631,12 +642,12 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
             freeBuffers();
 
             // allocate buffers, size depending on number of events to send
-            if (numOutEvents * 4 <= MAX_BUFFER_SIZE) { // one buffer is sufficient
+            if ((numOutEvents * 4) <= MAX_BUFFER_SIZE) { // one buffer is sufficient
                 allocateBuffers(numOutEvents * 4, 1);
-            } else if ((numOutEvents * 4 / MAX_BUFFER_SIZE) + 1 > MAX_NUMBER_OF_BUFFERS) { // more space needed than max memory, so allocate max memory
+            } else if ((((numOutEvents * 4) / MAX_BUFFER_SIZE) + 1) > MAX_NUMBER_OF_BUFFERS) { // more space needed than max memory, so allocate max memory
                 allocateBuffers(MAX_BUFFER_SIZE, MAX_NUMBER_OF_BUFFERS);
             } else {
-                allocateBuffers(MAX_BUFFER_SIZE, (numOutEvents * 4 / MAX_BUFFER_SIZE) + 1); // allocate as much buffers as necessary
+                allocateBuffers(MAX_BUFFER_SIZE, ((numOutEvents * 4) / MAX_BUFFER_SIZE) + 1); // allocate as much buffers as necessary
             }
         }
         // checks to create queue if needed
@@ -679,7 +690,8 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         //{
         //  index=pos;
         //}
-        public void startThread(int MaxIoErrorCount) {
+        @Override
+		public void startThread(int MaxIoErrorCount) {
 
             super.startThread(MaxIoErrorCount);
             try {
@@ -695,7 +707,8 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         /** this function copies the addresses and timestamps to the UsbIoBuffer, it is called from the IO thread,
         the user doesn't have to call this function himself
          */
-        public synchronized void processBuffer(UsbIoBuf Buf) {
+        @Override
+		public synchronized void processBuffer(UsbIoBuf Buf) {
             if (index >= numOutEvents) // no more events to send
             {
                 if (device.loopedSequencingEnabled) {
@@ -711,11 +724,11 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
             // log.info("Processing Buffer, current index: " + index);
 
             // set the number of bytes to transfer
-            if ((numOutEvents - index) * 4 < Buf.Size) // the buffer size is bigger than needed for the events to send;
+            if (((numOutEvents - index) * 4) < Buf.Size) // the buffer size is bigger than needed for the events to send;
             {
                 Buf.NumberOfBytesToTransfer = (numOutEvents - index) * 4;
             } else {
-                if (Buf.Size % 4 != 0) // the buffer size is not a multiplicative of four, but we only send multiplicatives of four
+                if ((Buf.Size % 4) != 0) // the buffer size is not a multiplicative of four, but we only send multiplicatives of four
                 {
                     Buf.NumberOfBytesToTransfer = (Buf.Size / 4) * 4;
                 } else {
@@ -727,7 +740,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
 
             Buf.BytesTransferred = 0;
             Buf.OperationFinished = false;
-            if (addresses == null || timestamps == null) {
+            if ((addresses == null) || (timestamps == null)) {
                 log.warning("null addresses or timestamps, not sequencing");
                 return;
             }
@@ -743,7 +756,8 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
             }
         }
 
-        public void bufErrorHandler(UsbIoBuf Buf) {
+        @Override
+		public void bufErrorHandler(UsbIoBuf Buf) {
             if (Buf.Status != USBIO_ERR_SUCCESS) {
                 // print error
                 // suppress CANCELED because it is caused by ABORT_PIPE
@@ -753,7 +767,8 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
             }
         }
         // virtual function, called in the context of worker thread
-        public void onThreadExit() {
+        @Override
+		public void onThreadExit() {
             log.fine("AEWriter Worker-thread terminated.");
         }
     } // AEWriter
@@ -776,7 +791,8 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
     }
 
         /** Updates the firmware by downloading to the board's EEPROM */
-    public void updateFirmware() throws HardwareInterfaceException {
+    @Override
+	public void updateFirmware() throws HardwareInterfaceException {
         if (this.getDID()<2)
         {
             throw new HardwareInterfaceException("This device may not support automatic firmware update. Please update manually!");
@@ -792,13 +808,13 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         this.writeEEPROM(0, fw);
         log.info("New firmware written to EEPROM");
     }
-    
+
     @Override
     public int getVersion()
     {
         return getDID();
     }
-    
+
     public void writeMonitorSequencerJTAGFirmware() {
         try {
             byte[] fw;
@@ -813,12 +829,13 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
             log.warning(e.toString());
         }
     }
-        
+
     /**
     Pushes a packet to be sequenced to the sequencer output. Calling this automatically disables looping the sequenced data.
     @param packet the packet to add to the tail of the queue.
      */
-    public void offerPacketToSequencer(AEPacketRaw packet) {
+    @Override
+	public void offerPacketToSequencer(AEPacketRaw packet) {
         aeWriter.pushPacketToSequence(packet);
     }
 //    AEMapper mapper=new AbstractAEMapper(){
@@ -828,32 +845,33 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
 //            return mapping;
 //        }
 //    };
-//    
+//
 //    public int[] getMapping(int src) {
 //        return mapper.getMapping(src);
 //    }
-//    
+//
 //    public void setMappingPassThrough(boolean yes) {
 //        mapper.setMappingPassThrough(yes);
 //    }
-//    
+//
 //    public void setMappingEnabled(boolean yes) {
 //        mapper.setMappingEnabled(yes);
 //    }
-//    
+//
 //    public boolean isMappingEnabled(){
 //        return mapper.isMappingEnabled();
 //    }
-//    
+//
 //    public boolean isMappingPassThrough(){
 //        return mapper.isMappingPassThrough();
 //    }
 //
-    public Collection<AEMapper> getAEMappers() {
+    @Override
+	public Collection<AEMapper> getAEMappers() {
         return null;
     }
 
-    /** 
+    /**
      * Starts reader buffer pool thread and enables in endpoints for AEs. This method is overridden to construct
     our own reader with its translateEvents method
      */
@@ -877,7 +895,8 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
          *
          * @param b
          */
-        protected void translateEvents(UsbIoBuf b) {
+        @Override
+		protected void translateEvents(UsbIoBuf b) {
             if ((monitor.getPID() == PID_USBAERmini2) && (monitor.getDID() > 0)) {
                 translateEventsWithCPLDEventCode(b);
 //                        CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
@@ -888,8 +907,8 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
             }
         }
 
-        /** Method that translates the UsbIoBuffer when a board that has a CPLD to timestamp events and that uses the CypressFX2 in slave 
-         * FIFO mode, such as the USBAERmini2 board or StereoRetinaBoard, is used. 
+        /** Method that translates the UsbIoBuffer when a board that has a CPLD to timestamp events and that uses the CypressFX2 in slave
+         * FIFO mode, such as the USBAERmini2 board or StereoRetinaBoard, is used.
          * <p>
          *On these boards, the msb of the timestamp is used to signal a wrap (the actual timestamp is only 14 bits).
          * The timestamp is also used to signal a timestamp reset
@@ -917,7 +936,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
                 byte[] aeBuffer = b.BufferMem;
                 //            byte lsb,msb;
                 int bytesSent = b.BytesTransferred;
-                if (bytesSent % 4 != 0) {
+                if ((bytesSent % 4) != 0) {
 //                System.out.println("CypressFX2.AEReader.translateEvents(): warning: "+bytesSent+" bytes sent, which is not multiple of 4");
                     bytesSent = (bytesSent / 4) * 4; // truncate off any extra part-event
                 }
@@ -952,16 +971,16 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
                         // this firmware version uses reset events to reset timestamps
                         this.resetTimestamps();
                     // log.info("got reset event, timestamp " + (0xffff&((short)aeBuffer[i]&0xff | ((short)aeBuffer[i+1]&0xff)<<8)));
-                    } else if ((eventCounter > aeBufferSize - 1) || (buffer.overrunOccuredFlag)) { // just do nothing, throw away events
+                    } else if ((eventCounter > (aeBufferSize - 1)) || (buffer.overrunOccuredFlag)) { // just do nothing, throw away events
                         buffer.overrunOccuredFlag = true;
                     } else {
                         // address is LSB MSB
-                        addresses[eventCounter] = (int) ((aeBuffer[i] & 0xFF) | ((aeBuffer[i + 1] & 0xFF) << 8));
+                        addresses[eventCounter] = (aeBuffer[i] & 0xFF) | ((aeBuffer[i + 1] & 0xFF) << 8);
 
                         // same for timestamp, LSB MSB
-                        shortts = (aeBuffer[i + 2] & 0xff | ((aeBuffer[i + 3] & 0xff) << 8)); // this is 15 bit value of timestamp in TICK_US tick
+                        shortts = ((aeBuffer[i + 2] & 0xff) | ((aeBuffer[i + 3] & 0xff) << 8)); // this is 15 bit value of timestamp in TICK_US tick
 
-                        timestamps[eventCounter] = (int) (TICK_US * (shortts + wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
+                        timestamps[eventCounter] = TICK_US * (shortts + wrapAdd); //*TICK_US; //add in the wrap offset and convert to 1us tick
                         // this is USB2AERmini2 or StereoRetina board which have 1us timestamp tick
                         eventCounter++;
                         buffer.setNumEvents(eventCounter);
@@ -979,8 +998,8 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
             } // sync on aePacketRawPool
         }
 
-        /** Method that translates the UsbIoBuffer when a board that has a CPLD with old firmware to timestamp events and that uses the CypressFX2 in slave 
-         * FIFO mode, such as the USBAERmini2 board, is used. 
+        /** Method that translates the UsbIoBuffer when a board that has a CPLD with old firmware to timestamp events and that uses the CypressFX2 in slave
+         * FIFO mode, such as the USBAERmini2 board, is used.
          * <p>
          *On these boards, the msb of the timestamp is used to signal a wrap (the actual timestamp is only 15 bits).
          *
@@ -1006,7 +1025,7 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
                 byte[] aeBuffer = b.BufferMem;
                 //            byte lsb,msb;
                 int bytesSent = b.BytesTransferred;
-                if (bytesSent % 4 != 0) {
+                if ((bytesSent % 4) != 0) {
 //                System.out.println("CypressFX2.AEReader.translateEvents(): warning: "+bytesSent+" bytes sent, which is not multiple of 4");
                     bytesSent = (bytesSent / 4) * 4; // truncate off any extra part-event
                 }
@@ -1032,16 +1051,16 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
 
                         //System.out.println("received wrap event, index:" + eventCounter + " wrapAdd: "+ wrapAdd);
                         NumberOfWrapEvents++;
-                    } else if ((eventCounter > aeBufferSize - 1) || (buffer.overrunOccuredFlag)) { // just do nothing, throw away events
+                    } else if ((eventCounter > (aeBufferSize - 1)) || (buffer.overrunOccuredFlag)) { // just do nothing, throw away events
                         buffer.overrunOccuredFlag = true;
                     } else {
                         // address is LSB MSB
-                        addresses[eventCounter] = (int) ((aeBuffer[i] & 0xFF) | ((aeBuffer[i + 1] & 0xFF) << 8));
+                        addresses[eventCounter] = (aeBuffer[i] & 0xFF) | ((aeBuffer[i + 1] & 0xFF) << 8);
 
                         // same for timestamp, LSB MSB
-                        shortts = (aeBuffer[i + 2] & 0xff | ((aeBuffer[i + 3] & 0xff) << 8)); // this is 15 bit value of timestamp in TICK_US tick
+                        shortts = ((aeBuffer[i + 2] & 0xff) | ((aeBuffer[i + 3] & 0xff) << 8)); // this is 15 bit value of timestamp in TICK_US tick
 
-                        timestamps[eventCounter] = (int) (TICK_US * (shortts + wrapAdd)); //*TICK_US; //add in the wrap offset and convert to 1us tick
+                        timestamps[eventCounter] = TICK_US * (shortts + wrapAdd); //*TICK_US; //add in the wrap offset and convert to 1us tick
                         // this is USB2AERmini2 or StereoRetina board which have 1us timestamp tick
                         eventCounter++;
                         buffer.setNumEvents(eventCounter);
@@ -1059,11 +1078,13 @@ public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorS
         }
     }
 
-    public void startSequencing(AEPacketRaw eventsToSend) throws HardwareInterfaceException {
+    @Override
+	public void startSequencing(AEPacketRaw eventsToSend) throws HardwareInterfaceException {
         startSequencing(eventsToSend);
     }
 
-    public void stopSequencing() throws HardwareInterfaceException {
+    @Override
+	public void stopSequencing() throws HardwareInterfaceException {
         stopMonitoringSequencing();
     }
 }

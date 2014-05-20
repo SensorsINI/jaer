@@ -14,6 +14,7 @@ import java.util.prefs.Preferences;
 
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.SwingConstants;
 import javax.swing.filechooser.FileFilter;
 
 import net.sf.jaer.chip.AEChip;
@@ -216,10 +217,12 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("CypressFX2EEPROM");
         addWindowListener(new java.awt.event.WindowAdapter() {
-            public void windowClosed(java.awt.event.WindowEvent evt) {
+            @Override
+			public void windowClosed(java.awt.event.WindowEvent evt) {
                 formWindowClosed(evt);
             }
-            public void windowClosing(java.awt.event.WindowEvent evt) {
+            @Override
+			public void windowClosing(java.awt.event.WindowEvent evt) {
                 formWindowClosing(evt);
             }
         });
@@ -229,7 +232,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         scanButton.setText("Scan for device");
         scanButton.setToolTipText("Looks for CypressFX2 device");
         scanButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 scanButtonActionPerformed(evt);
             }
         });
@@ -238,7 +242,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         closeButton.setText("Close");
         closeButton.setEnabled(false);
         closeButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 closeButtonActionPerformed(evt);
             }
         });
@@ -246,7 +251,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
 
         cyclePortButton.setText("Cycle port");
         cyclePortButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cyclePortButtonActionPerformed(evt);
             }
         });
@@ -274,23 +280,24 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         writeVIDPIDDIDButton.setText("Write C0 load VIDPIDDID to EEPROM");
         writeVIDPIDDIDButton.setToolTipText("writes only VID/PID/DID to flash memory EEPROM for CypressFX2 C0 load (ram download of code from host)");
         writeVIDPIDDIDButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 writeVIDPIDDIDButtonActionPerformed(evt);
             }
         });
 
         VIDtextField.setColumns(5);
-        VIDtextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
+        VIDtextField.setHorizontalAlignment(SwingConstants.TRAILING);
         VIDtextField.setToolTipText("hex format value for USB vendor ID");
         VIDtextField.setMaximumSize(new java.awt.Dimension(2147483647, 50));
 
         PIDtextField.setColumns(5);
-        PIDtextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
+        PIDtextField.setHorizontalAlignment(SwingConstants.TRAILING);
         PIDtextField.setToolTipText("hex format value for USB product ID");
         PIDtextField.setMaximumSize(new java.awt.Dimension(2147483647, 50));
 
         DIDtextField.setColumns(5);
-        DIDtextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
+        DIDtextField.setHorizontalAlignment(SwingConstants.TRAILING);
         DIDtextField.setToolTipText("hex format value for device ID (optional)");
         DIDtextField.setMaximumSize(new java.awt.Dimension(2147483647, 50));
 
@@ -337,7 +344,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
 
         chooseFileButton.setText("Choose...");
         chooseFileButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 chooseFileButtonActionPerformed(evt);
             }
         });
@@ -347,7 +355,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         writeEEPROMRadioButton.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
         writeEEPROMRadioButton.setMargin(new java.awt.Insets(0, 0, 0, 0));
         writeEEPROMRadioButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 writeEEPROMRadioButtonActionPerformed(evt);
             }
         });
@@ -357,7 +366,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         writeRAMRadioButton.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
         writeRAMRadioButton.setMargin(new java.awt.Insets(0, 0, 0, 0));
         writeRAMRadioButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 writeRAMRadioButtonActionPerformed(evt);
             }
         });
@@ -365,7 +375,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         eraseButton.setText("Erase EEPROM");
         eraseButton.setToolTipText("Erases the EEPROM to blank state (device must first have firmware that can write the EEPROM)");
         eraseButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 eraseButtonActionPerformed(evt);
             }
         });
@@ -373,7 +384,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         downloadFirmwareButton.setText("Download firmware");
         downloadFirmwareButton.setToolTipText("Program EEPROM or write Cypress RAM, depending on file type");
         downloadFirmwareButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 downloadFirmwareButtonActionPerformed(evt);
             }
         });
@@ -460,7 +472,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
         writeDeviceIDButton.setText("Write Serial Number string");
         writeDeviceIDButton.setEnabled(false);
         writeDeviceIDButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 writeDeviceIDButtonActionPerformed(evt);
             }
         });
@@ -475,21 +488,24 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
 
         monSeqCPLDFirmwareButton.setText("Mon/Seq CPLD Firmware");
         monSeqCPLDFirmwareButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 monSeqCPLDFirmwareButtonActionPerformed(evt);
             }
         });
 
         monSeqFX2FirmwareButton.setText("FX2 Firmware");
         monSeqFX2FirmwareButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 monSeqFX2FirmwareButtonActionPerformed(evt);
             }
         });
 
         monSeqFX2FirmwareButtonJTAG.setText("FX2LP Firmware with JTAG support");
         monSeqFX2FirmwareButtonJTAG.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 monSeqFX2FirmwareButtonJTAGActionPerformed(evt);
             }
         });
@@ -522,7 +538,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
 
         chooseCPLDFileButton.setText("Choose...");
         chooseCPLDFileButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 chooseCPLDFileButtonActionPerformed(evt);
             }
         });
@@ -550,7 +567,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
 
         downloadCPLDFirmwareButton.setText("Download firmware");
         downloadCPLDFirmwareButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 downloadCPLDFirmwareButtonActionPerformed(evt);
             }
         });
@@ -582,7 +600,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
 
         exitMenuItem.setText("Exit");
         exitMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 exitMenuItemActionPerformed(evt);
             }
         });
@@ -663,7 +682,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
 //        JFileChooser chooser=new JFileChooser();
         FileFilter filter = new FileFilter() {
 
-            public boolean accept(File f) {
+            @Override
+			public boolean accept(File f) {
                 if (f.getName().toLowerCase().endsWith(".xsvf") || f.isDirectory()) {
                     return true;
                 } else {
@@ -671,7 +691,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                 }
             }
 
-            public String getDescription() {
+            @Override
+			public String getDescription() {
                 return "Firmware download file for CPLD (.xsvf)";
             }
         };
@@ -725,7 +746,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
 //        JFileChooser chooser=new JFileChooser();
         FileFilter filter = new FileFilter() {
 
-            public boolean accept(File f) {
+            @Override
+			public boolean accept(File f) {
                 //if(f.getName().toLowerCase().endsWith(".iic") || f.getName().toLowerCase().endsWith(".hex") || f.isDirectory())
                 if (f.getName().toLowerCase().endsWith(".iic") || f.getName().toLowerCase().endsWith(".bix") || f.getName().toLowerCase().endsWith(".hex") || f.isDirectory()) // hex download stopped working, only accept iic for the moment
                 {
@@ -735,7 +757,8 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                 }
             }
 
-            public String getDescription() {
+            @Override
+			public String getDescription() {
                 return "Binary IIC format firmware download file for Cypress FX2";
             }
         };
@@ -913,6 +936,9 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                     if (cypress != null) {
                         cypress.close();
                     }
+
+                    // Show that download is done by graying out buttons.
+                    setButtonsEnabled(false);
                 }
 
             }
@@ -979,10 +1005,10 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
     }//GEN-LAST:event_exitMenuItemActionPerformed
 
 private void cyclePortButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cyclePortButtonActionPerformed
-    if (cypress != null && cypress.isOpen()) {
+    if ((cypress != null) && cypress.isOpen()) {
         try {
             cypress.open();
-//                cypress.resetUSB(); 
+//                cypress.resetUSB();
             cypress.cyclePort(); // device must be open for cyclePort
             cypress.close();
         } catch (HardwareInterfaceException ex) {
@@ -1021,12 +1047,14 @@ private void closeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-F
 }//GEN-LAST:event_closeButtonActionPerformed
 
     // for bug in USBIO 2.30, need both cases, one for interface and other for JNI
-    synchronized public void onAdd() {
+    @Override
+	synchronized public void onAdd() {
         log.info("device added - not taking any action");
         scanForUsbIoDevices();
     }
 
-    synchronized public void onRemove() {
+    @Override
+	synchronized public void onRemove() {
         log.info("device removed - scanning for devices");
         scanForUsbIoDevices();
     }
@@ -1093,7 +1121,8 @@ private void closeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-F
     public static void main(String args[]) {
         java.awt.EventQueue.invokeLater(new Runnable() {
 
-            public void run() {
+            @Override
+			public void run() {
                 CypressFX2EEPROM instance = new CypressFX2EEPROM();
                 instance.setExitOnCloseEnabled(true);
                 instance.setVisible(true);
