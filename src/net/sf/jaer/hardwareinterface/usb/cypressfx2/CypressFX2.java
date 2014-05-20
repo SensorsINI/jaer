@@ -6,31 +6,52 @@
 package net.sf.jaer.hardwareinterface.usb.cypressfx2;
 
 import java.awt.Component;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeSupport;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.logging.Level;
-import net.sf.jaer.hardwareinterface.usb.*;
-import net.sf.jaer.aemonitor.*;
+import java.util.logging.Logger;
+import java.util.prefs.Preferences;
+
+import javax.swing.ProgressMonitor;
+
+import jp.ac.osakau.eng.eei.IVS128HardwareInterface;
+import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
-import net.sf.jaer.chip.*;
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.aemonitor.AEPacketRawPool;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.EventPacket;
 //import ch.unizh.ini.caviar.chip.EventExtractor2D;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.hardwareinterface.*;
+import net.sf.jaer.hardwareinterface.BlankDeviceException;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
+import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
-import net.sf.jaer.util.*;
-import java.beans.*;
-import java.io.*;
-import de.thesycon.usbio.*;
-import static de.thesycon.usbio.UsbIoErrorCodes.USBIO_ERR_CANCELED;
-import static de.thesycon.usbio.UsbIoErrorCodes.USBIO_ERR_DEVICE_GONE;
-import static de.thesycon.usbio.UsbIoErrorCodes.USBIO_ERR_SUCCESS;
-import de.thesycon.usbio.structs.*;
-import java.util.*;
-import java.util.logging.Logger;
-import java.util.prefs.*;
-import javax.swing.ProgressMonitor;
-import jp.ac.osakau.eng.eei.IVS128;
-import jp.ac.osakau.eng.eei.IVS128HardwareInterface;
+import net.sf.jaer.util.HexFileParser;
+import net.sf.jaer.util.HexString;
+import de.thesycon.usbio.PnPNotify;
+import de.thesycon.usbio.PnPNotifyInterface;
+import de.thesycon.usbio.UsbIo;
+import de.thesycon.usbio.UsbIoBuf;
+import de.thesycon.usbio.UsbIoErrorCodes;
+import de.thesycon.usbio.UsbIoInterface;
+import de.thesycon.usbio.UsbIoPipe;
+import de.thesycon.usbio.UsbIoReader;
+import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
+import de.thesycon.usbio.structs.USBIO_CONFIGURATION_INFO;
+import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
+import de.thesycon.usbio.structs.USBIO_PIPE_PARAMETERS;
+import de.thesycon.usbio.structs.USBIO_SET_CONFIGURATION;
+import de.thesycon.usbio.structs.USB_DEVICE_DESCRIPTOR;
+import de.thesycon.usbio.structs.USB_STRING_DESCRIPTOR;
 
 /**
  *  Devices that use the CypressFX2 and the USBIO driver, e.g. the DVS retinas, the USBAERmini2. This class should not normally be constructed but rather a subclass that overrides
@@ -63,7 +84,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
     protected static final Logger log = Logger.getLogger("CypressFX2");
     protected AEChip chip;
-    // A .bix file format is needed for RAM download. 
+    // A .bix file format is needed for RAM download.
     // The binary file format .iic (i2c) format are image files for the EEPROM. IIC files will not
     // correctly download to RAM. Therefore they cannot be used to bootstrap a blank device.
     // The bootstrap code is necessary in order to write the Cypress EEPROM.
@@ -107,18 +128,18 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * event supplied to listeners when new events are collected. this is final because it is just a marker for the listeners that new events are available
      */
     public final PropertyChangeEvent NEW_EVENTS_PROPERTY_CHANGE = new PropertyChangeEvent(this, "NewEvents", null, null);
-    
+
     /** Property change fired when new events are received. The new object in the event is AEPacketRaw just received. */
     public static final String PROPERTY_CHANGE_NEW_EVENTS="NewEvents";
-    
+
     /** Property change fired when a new message is received on the asynchronous status endpoint.
      * @see AsyncStatusThread
      */
     public static final String PROPERTY_CHANGE_ASYNC_STATUS_MSG="AsyncStatusMessage";
-    
+
     /** Status messages sent by device. This header byte identifies the message type. */
     public static final byte STATUS_MSG_TIMESTAMPS_RESET=(byte)1, STATUS_MSG_OTHER=(byte)0xff;
-    
+
     /** This support can be used to register this interface for property change events */
     public PropertyChangeSupport support = new PropertyChangeSupport(this);    // consts
     final static byte AE_MONITOR_ENDPOINT_ADDRESS = (byte) 0x86;  // this is endpoint of AE fifo on Cypress FX2, 0x86 means IN endpoint EP6.
@@ -186,8 +207,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     protected AEPacketRawPool aePacketRawPool = new AEPacketRawPool(this);
     private String stringDescription = "CypressFX2"; // default which is modified by opening
 
-    /** Populates the device descriptor and the string descriptors and builds the String for toString(). 
-     * 
+    /** Populates the device descriptor and the string descriptors and builds the String for toString().
+     *
      * @param gUsbIo the handle to the UsbIo object.
      */
     protected void populateDescriptors(UsbIo gUsbIo) {
@@ -308,7 +329,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     }
 
     /** Returns the PropertyChangeSupport.
-     * 
+     *
      * @return the support.
      * @see #PROPERTY_CHANGE_ASYNC_STATUS_MSG
      * @see #PROPERTY_CHANGE_NEW_EVENTS
@@ -317,7 +338,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         return this.support;
     }
 
-    /** Returns string description of device including the 
+    /** Returns string description of device including the
      * USB vendor/project IDs. If the device has not been
      * opened then it is minimally opened to populate the deviceDescriptor and then closed.
      * @return the string description of the device.
@@ -334,7 +355,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     }
 
     /** Writes the serial number string to the device EEPROM
-     * 
+     *
      * @param name the string. This string has very limited length, e.g. 4 bytes.
      * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException
      */
@@ -370,7 +391,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     public final int MAX_CONTROL_XFER_SIZE = 64; // max control xfer size
 
     /** Returns a new ProgressMonitor with the AEViewer of this chip as the parent component.
-     * 
+     *
      * @param message message at top of monitor
      * @param start start value
      * @param end value
@@ -378,7 +399,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      */
     protected ProgressMonitor makeProgressMonitor(String message, int start, int end){
         Component c=null;
-        if(getChip()!=null && getChip().getAeViewer()!=null){
+        if((getChip()!=null) && (getChip().getAeViewer()!=null)){
             c=getChip().getAeViewer();
         }
         return new ProgressMonitor(c,message,"",start,end);
@@ -386,7 +407,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     }
 
 
-    /** This is a BLOCKING write call to write the Cypress EEPROM. 
+    /** This is a BLOCKING write call to write the Cypress EEPROM.
      * Max number of bytes is defined by {@link #EEPROM_SIZE}.
      * Thread-safe.
      *@param addr the starting address
@@ -399,7 +420,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         if (bytes.length > this.EEPROM_SIZE) {
             throw new RuntimeException(bytes.length + " is too many bytes for EEPROM to hold (" + EEPROM_SIZE + ")");
         }
-        if (addr < 0 || addr + bytes.length > EEPROM_SIZE) {
+        if ((addr < 0) || ((addr + bytes.length) > EEPROM_SIZE)) {
             throw new RuntimeException(bytes.length + " is too many bytes for EEPROM to hold (" + EEPROM_SIZE + ") starting at address " + addr);
         }
         int result; // result of USBIO operations
@@ -464,7 +485,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
     /** erases the VID/PID/DID and device identifier strings */
     synchronized protected void eraseEEPROM() throws HardwareInterfaceException {
-        log.info("erasing EEPROM of size "+EEPROM_SIZE/1024+" kB by writing all zeros to it");
+        log.info("erasing EEPROM of size "+(EEPROM_SIZE/1024)+" kB by writing all zeros to it");
         writeEEPROM(0, new byte[EEPROM_SIZE]);
     }
 
@@ -477,7 +498,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         if (length > EEPROM_SIZE) {
             throw new RuntimeException(length + " is more bytes than EEPROM can hold (" + EEPROM_SIZE + ")");
         }
-        if (addr < 0 || addr + length > EEPROM_SIZE) {
+        if ((addr < 0) || ((addr + length) > EEPROM_SIZE)) {
             throw new RuntimeException(length + " is too many bytes to read from EEPROM which holds " + EEPROM_SIZE + " bytes, if you start at address " + addr);
         }
         USBIO_DATA_BUFFER dataBuffer = null;
@@ -752,14 +773,15 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      *This method also starts event acquisition if it is not running already.
      *
      *Not thread safe but does use the thread-safe swap() method of AEPacketRawPool to swap data with the acquisition thread.
-     * 
+     *
      * @return number of events acquired. If this is zero there is no point in getting the events, because there are none.
      *@throws HardwareInterfaceException
      *@see #setEventAcquisitionEnabled
      *
      * .
      */
-    public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
+    @Override
+	public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
         if (!isOpened) {
             open();
         }
@@ -832,13 +854,13 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
     /** computes the estimated event rate for a packet of events */
     void computeEstimatedEventRate(AEPacketRaw events) {
-        if (events == null || events.getNumEvents() < 2) {
+        if ((events == null) || (events.getNumEvents() < 2)) {
             estimatedEventRate = 0;
         } else {
             int[] ts = events.getTimestamps();
             int n = events.getNumEvents();
             int dt = ts[n - 1] - ts[0];
-            estimatedEventRate = (int) (1e6f * (float) n / (float) dt);
+            estimatedEventRate = (int) ((1e6f * n) / dt);
         }
     }
 
@@ -846,7 +868,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * #acquireAvailableEventsFromDriver }
      * @return number of events acquired
      */
-    public int getNumEventsAcquired() {
+    @Override
+	public int getNumEventsAcquired() {
         return aePacketRawPool.readBuffer().getNumEvents();
     }
 
@@ -971,18 +994,15 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
     /** Closes the device. Never throws an exception.
      */
-    /*synchronized */@Override
- public void close() { // tobi removed synchronized because it was causing deadlock in AEViewer.ViewLoop - don't know why, something to do with ShutdownHook
-        if (!isOpened) {
-//            log.warning("CypressFX2.close(): not open");
-            return;
+    @Override
+	synchronized public void close() {
+    	if (!isOpen()) {
+        	return;
         }
 
         try {
-//            if (this.isEventAcquisitionEnabled()) {
             setEventAcquisitionEnabled(false);
-//            stopAEReader(); // setting acquisition enabled=false already should stop reader thread
-//            }
+
             if (asyncStatusThread != null) {
                 asyncStatusThread.shutdownThread();
                 asyncStatusThread.unbind();
@@ -992,40 +1012,27 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             e.printStackTrace();
         }
 
-//        log.info("Cycling port on close()");
-//        gUsbIo.cyclePort();
-
         gUsbIo.close();
-        // TODO releaseDevice shouldn't work after close anyhow, right?
-//        int status = gUsbIo.releaseDevice();
-//        if (status != USBIO_ERR_SUCCESS) {
-//            log.info("on releaseDevice got error " + UsbIo.errorText(status));
-//        }
-//        UsbIo.destroyDeviceList(gDevList);
-//        log.info("USBIOInterface.close(): device closed");
+        gUsbIo.releaseDevice();
+
         inEndpointEnabled = false;
         isOpened = false;
     }
     // not really necessary to stop this thread, i believe, because close will unbind already according to usbio docs
 
-    public void stopAEReader() {  // raphael: changed from private to protected, because i need to access this method
-        if (getAeReader() != null) {
-            AEReader reader=getAeReader();
-            //   System.out.println("CypressFX2.stopAEReader(): stopping aeReader thread");
-            if(reader==null){
-                log.warning("null reader, nothing to stop");
-                return;
-            }
-            reader.shutdownThread();
-            // unbind pipe
+    public void stopAEReader() {
+    	final AEReader reader = getAeReader();
+
+		if (reader != null) {
+			reader.shutdownThread();
             reader.unbind();
-            // close device
             reader.close();
 
-            setAeReader(null);
-        }
-
-    //  asyncStatusThread=null;
+			setAeReader(null);
+		}
+		else {
+			CypressFX2.log.warning("null reader, nothing to stop");
+		}
     }
 
     /** sends vendor request to trigger an immediate commit of whatever is in the endpoint fifo immediately.
@@ -1043,7 +1050,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         VendorRequest.Type = UsbIoInterface.RequestTypeVendor;
         VendorRequest.Recipient = UsbIoInterface.RecipientDevice;
         VendorRequest.RequestTypeReservedBits = 0;
-        VendorRequest.Request = (byte) VENDOR_REQUEST_EARLY_TRANFER;
+        VendorRequest.Request = VENDOR_REQUEST_EARLY_TRANFER;
         VendorRequest.Index = 0;
 
         USBIO_DATA_BUFFER dataBuffer = new USBIO_DATA_BUFFER(1);
@@ -1094,7 +1101,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         VendorRequest.Type = UsbIoInterface.RequestTypeVendor;
         VendorRequest.Recipient = UsbIoInterface.RecipientDevice;
         VendorRequest.RequestTypeReservedBits = 0;
-        VendorRequest.Request = (byte) VENDOR_REQUEST_START_TRANSFER;
+        VendorRequest.Request = VENDOR_REQUEST_START_TRANSFER;
         VendorRequest.Index = 0;
 
         VendorRequest.Value = 0;
@@ -1114,7 +1121,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         // these requests are documented in firmware file FX2_to_extFIFO.c
      */
     protected synchronized void disableINEndpoint() {
-        
+
         // make vendor request structure and populate it
         int status = 0; // don't use global status in this function
         USBIO_CLASS_OR_VENDOR_REQUEST VendorRequest = new USBIO_CLASS_OR_VENDOR_REQUEST();
@@ -1147,7 +1154,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * It handles timestamp reset messages from the device and possibly other types of data.
      It fires PropertyChangeEvent {@link #PROPERTY_CHANGE_ASYNC_STATUS_MSG} on receiving a message
      @author tobi delbruck
-     * @see #getSupport() 
+     * @see #getSupport()
      */
     protected class AsyncStatusThread extends UsbIoReader {
 
@@ -1160,7 +1167,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         public AsyncStatusThread(CypressFX2 monitor) {
             super();
             this.monitor = monitor;
-            
+
             int status;
             status = bind(monitor.getInterfaceNumber(), STATUS_ENDPOINT_ADDRESS, gDevList, GUID);
             if (status != USBIO_ERR_SUCCESS) {
@@ -1187,7 +1194,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         public void processData(UsbIoBuf buffer) {
                if (buffer.BytesTransferred > 0) {
                     msg = buffer.BufferMem[0];
-                    
+
                     switch (msg) {
                         case STATUS_MSG_TIMESTAMPS_RESET:
                             AEReader rd = getAeReader();
@@ -1198,11 +1205,11 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                                 log.info("Received timestamp external reset message, but monitor is not running");
                             }
                             break;
-                            
+
                         case STATUS_MSG_OTHER:
                         default:
                                 UsbIoBuf newbuf = new UsbIoBuf(buffer.BytesTransferred);
-                        
+
                         	// Copy data to new buffer, this one is resubmitted right away.
                         	System.arraycopy(buffer.BufferMem, 0, newbuf.BufferMem, 0, buffer.BytesTransferred);
                         	newbuf.BytesTransferred = buffer.BytesTransferred;
@@ -1212,7 +1219,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                     }
                 } // we getString 0 byte read on stopping device
         }
-        
+
         // called before buffer is submitted to driver
         @Override
         public void processBuffer(UsbIoBuf Buf) {
@@ -1241,7 +1248,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             freeBuffers();
         }
 
-    }    
+    }
 
 
     protected boolean relativeTimestampMode=false; // not used anymore //raphael: need this variable to branch in AEReader
@@ -1341,7 +1348,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         /** Resets the timestamp unwrap value and sets flag timestampsReset.
          */
         synchronized public void resetTimestamps() {
-            if (resetTimestampWarningCount < RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT || resetTimestampWarningCount % RESET_TIMESTAMPS_WARNING_INTERVAL == 0) {
+            if ((resetTimestampWarningCount < RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT) || ((resetTimestampWarningCount % RESET_TIMESTAMPS_WARNING_INTERVAL) == 0)) {
                 log.info(CypressFX2.this + ": wrapAdd=" + wrapAdd + ", zeroing it");
             }
             if (resetTimestampWarningCount == RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT) {
@@ -1385,7 +1392,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //            }
 
             synchronized (aePacketRawPool) {
-                if (Buf.Status == USBIO_ERR_SUCCESS || Buf.Status == USBIO_ERR_CANCELED) {
+                if ((Buf.Status == USBIO_ERR_SUCCESS) || (Buf.Status == USBIO_ERR_CANCELED)) {
                     translateEvents(Buf);
 //                    //                System.out.println("ProcessData: "+Buf.BytesTransferred+" bytes transferred: ");
 //                    if ((monitor.getPID()==CypressFX2.PID_TMPDIFF128_RETINA) && (monitor.getDID()==CypressFX2.DID_STEREOBOARD))   {
@@ -1394,14 +1401,14 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //                        translateEventsWithCPLDEventCode(Buf);
 //                      //  CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
 //                        //                    seq.mapPacket(captureBufferPool.active());
-//                        
+//
 //                    } else if ((monitor.getPID()==CypressFX2.PID_TMPDIFF128_FX2_SMALL_BOARD) ||( monitor.getPID()==CypressFX2.PID_DVS128_REV0 )) { // the new retina board with a CPLD
-//                        translateEventsWithCPLDEventCode(Buf);                      
+//                        translateEventsWithCPLDEventCode(Buf);
 //                    } else if ((monitor.getPID()==PID_USBAERmini2) || (monitor.getPID()==PID_USB2AERmapper) ) { // USBAERmini2 with old firmware
 //                        translateEventsFromOriginalUSB2AERmini2WithOriginalFirmware(Buf);
 //                      //  CypressFX2MonitorSequencer seq=(CypressFX2MonitorSequencer)(CypressFX2.this);
 //                        //                    seq.mapPacket(captureBufferPool.active());
-//                        
+//
 //                    } else if(monitor.getPID()==PID_TCVS320_RETINA){
 //                        translateEvents_TCVS320(Buf);
 //                    } else { // original format with timestamps that just wrap
@@ -1409,7 +1416,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //                    }
 //                    //                pop.play();
 
-                    if (chip != null && chip.getFilterChain() != null && chip.getFilterChain().getProcessingMode() == FilterChain.ProcessingMode.ACQUISITION) {
+                    if ((chip != null) && (chip.getFilterChain() != null) && (chip.getFilterChain().getProcessingMode() == FilterChain.ProcessingMode.ACQUISITION)) {
                         // here we do the realTimeFiltering. We finished capturing this buffer's worth of events, now process them
                         // apply realtime filters and realtime (packet level) mapping
 
@@ -1439,7 +1446,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         /** used to indicate a 32 bit timestamp wrap */
         protected boolean wrappedBig = false;  // indicates that wrapAdd has just wrapped itself, so that we should allow nonmonotonic timestamp
 
-        public void bufErrorHandler(UsbIoBuf Buf) {
+        @Override
+		public void bufErrorHandler(UsbIoBuf Buf) {
             if (Buf.Status != USBIO_ERR_SUCCESS) {
                 // print error
                 // suppress CANCELED because it is caused by ABORT_PIPE
@@ -1475,11 +1483,13 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             getSupport().firePropertyChange("readerStarted", false, true); // used in AEViewer to set up menus for changing buffer size
         }
 
-        public int getFifoSize() {
+        @Override
+		public int getFifoSize() {
             return fifoSize;
         }
 
-        public void setFifoSize(int fifoSize) {
+        @Override
+		public void setFifoSize(int fifoSize) {
             if (fifoSize < CYPRESS_FIFO_SIZE) {
                 log.warning("CypressFX2 fifo size clipped to device FIFO size " + CYPRESS_FIFO_SIZE);
                 fifoSize = CYPRESS_FIFO_SIZE;
@@ -1548,7 +1558,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             // at present this may mess up everything else because the output packet is reused.
 
 
-            // hack for stereo hardware interfaces - for real time processing we must label the eye bit here based on which eye our hardware 
+            // hack for stereo hardware interfaces - for real time processing we must label the eye bit here based on which eye our hardware
             // interface is. note the events are labeled here and the real time processing method is called for each low level hardware interface.
             // But each call will only getString events from one eye. it is important that the filterPacket method be sychronized (thread safe) because the
             // filter object may getString called by both AEReader threads at the "same time"
@@ -1615,8 +1625,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      *This call discards collected events.
      * @param size of buffer in events
      */
-    public void setAEBufferSize(int size) {
-        if (size < 1000 || size > 1000000) {
+    @Override
+	public void setAEBufferSize(int size) {
+        if ((size < 1000) || (size > 1000000)) {
             log.warning("ignoring unreasonable aeBufferSize of " + size + ", choose a more reasonable size between 1000 and 1000000");
             return;
         }
@@ -1708,7 +1719,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * @throws HardwareInterfaceException if there is an error opening device
      * @see #openUsbIo_minimal()
      */
-    public void open() throws HardwareInterfaceException {
+    @Override
+	public void open() throws HardwareInterfaceException {
 //        log.info(Thread.currentThread()+": CypressFX2.open()");
         openUsbIo();
 //        setEventAcquisitionEnabled(true); // don't enable anymore, do this instead in acquireAvailableEventsFromDriver if necessary
@@ -1770,7 +1782,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             boolean success = false;
             int triesLeft = 10;
             final long delay = 1000;
-            while (!success && triesLeft > 0) {
+            while (!success && (triesLeft > 0)) {
                 try {
                     Thread.sleep(delay);
                 } catch (InterruptedException e) {
@@ -1903,10 +1915,10 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     }
 
     /** Opens the device just enough to read the device descriptor but does not start the reader or writer
-     * thread. If the device does not have a string descriptor it is assumed that firmware must be downloaded to 
+     * thread. If the device does not have a string descriptor it is assumed that firmware must be downloaded to
      * device RAM and this is done automatically. The device is <strong>not configured by this method. Vendor requests and
      * probably other functionality will not be available.</strong>. The device is left open this method returns.
-     * 
+     *
      * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException
      * @see #open()
      */
@@ -1957,7 +1969,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
             boolean success = false;
             int triesLeft = 10;
             long delay = 400;
-            while (!success && triesLeft > 0) {
+            while (!success && (triesLeft > 0)) {
                 try {
                     Thread.sleep(delay);
                 } catch (InterruptedException e) {
@@ -2007,7 +2019,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     }
 
     /** unconfigure device in case it was still configured from a prior terminated process
-     * 
+     *
      * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException
      */
     protected synchronized void unconfigureDevice() throws HardwareInterfaceException {
@@ -2027,7 +2039,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     /** return the string USB descriptors for the device
      *@return String[] of length 2 or 3 of USB descriptor strings.
      */
-    public String[] getStringDescriptors() {
+    @Override
+	public String[] getStringDescriptors() {
         if (stringDescriptor1 == null) {
             log.warning("USBAEMonitor: getStringDescriptors called but device has not been opened");
             String[] s = new String[numberOfStringDescriptors];
@@ -2059,7 +2072,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         return n;
     }
 
-    public short getVID() {
+    @Override
+	public short getVID() {
         if (deviceDescriptor == null) {
             log.warning("USBAEMonitor: getVIDPID called but device has not been opened");
             return 0;
@@ -2068,7 +2082,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         return (short) deviceDescriptor.idVendor;
     }
 
-    public short getPID() {
+    @Override
+	public short getPID() {
         if (deviceDescriptor == null) {
             log.warning("USBAEMonitor: getVIDPID called but device has not been opened");
             return 0;
@@ -2077,14 +2092,16 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     }
 
     /** @return bcdDevice (the binary coded decimel device version */
-    public short getDID() { // this is not part of USB spec in device descriptor.
+    @Override
+	public short getDID() { // this is not part of USB spec in device descriptor.
         return (short) deviceDescriptor.bcdDevice;
     }
 
     /** reports if interface is {@link #open}.
      * @return true if already open
      */
-    public boolean isOpen() {
+    @Override
+	public boolean isOpen() {
         return isOpened;
     }
 
@@ -2113,12 +2130,13 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 while (numBytesRead<len)
                 {
                     log.info("Could only read " + numBytesRead + " of " + len + ", trying " + ki + "/" + maxtries + " more times.");
-                 
+
                     int rd=firmwareFileStream.read(fwBuffer ,numBytesRead,len-numBytesRead);
                     numBytesRead+=rd;
                     ki++;
-                    if (ki>5)
-                        throw new IOException("could not read binary firmware file");
+                    if (ki>5) {
+						throw new IOException("could not read binary firmware file");
+					}
                 }
                 firmwareFileStream.close();
             } else {
@@ -2195,13 +2213,13 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      *
      *<p>
      * Firmware file is loaded either from the file system or as a resource from the jar archive.
-     * 
+     *
      * @throws BlankDeviceException if device is blank or firmware file is not found.
      * @throws HardwareInterfaceException if there is an error during download
      */
     public synchronized void downloadFirmwareBinaryToBlankDevice() throws HardwareInterfaceException {
 
- 
+
         //  firmware load variables
         byte[] fwBuffer; // buffer to hold contents of firmware file (binary 8051 code)
 
@@ -2234,7 +2252,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * This filename is a full path to a resource on the classpath which is in the project jar jAER.jar.
      * @deprecated not used anymore - user chooses firmware file via AEViewer/CypressFX2 menu item
      */
-    protected String getFirmwareFilenameBinaryFromVIDPID() {
+    @Deprecated
+	protected String getFirmwareFilenameBinaryFromVIDPID() {
         final String defaultResource = FIRMWARE_FILENAME_TCVS320_BIX;
         String firmwareFilename = null;
         if (getPID() == PID_USBAERmini2_without_firmware) {
@@ -2304,7 +2323,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         return firmwareFilename;
     }
 
- 
+
 
     /** Downloads to RAM on FX2 using built-in vendor request to CPUCS.
      * Remember to set8051Reset() before and after calling this method.
@@ -2427,20 +2446,22 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
     /** @return timestamp tick in us
      * NOTE: DOES NOT RETURN THE TICK OF THE USBAERmini2 board*/
-    final public int getTimestampTickUs() {
+    @Override
+	final public int getTimestampTickUs() {
         return TICK_US;
     }
 
     /** returns last events from {@link #acquireAvailableEventsFromDriver}
      *@return the event packet
      */
-    public AEPacketRaw getEvents() {
+    @Override
+	public AEPacketRaw getEvents() {
         return this.lastEventsAcquired;
     }
 
-    /** sends a vender request without data, value and index are set to zero. 
+    /** sends a vender request without data, value and index are set to zero.
      * This is a blocking method.
-     * 
+     *
     * The SETUPDAT array on FX2 has the following 8 elements (see FX2 TRM Section 2.3)<br>
      * SETUPDAT[0] VendorRequest 0x40 for OUT type, 0xC0 for IN type<br>
      * SETUPDAT[1] The actual vendor request (e.g. VR_ENABLE_AE_IN below)<br>
@@ -2459,7 +2480,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
     /** sends a vender request without any data packet but with request, value and index.
      *  This is a blocking method.
-     * 
+     *
     * The SETUPDAT array on FX2 has the following 8 elements (see FX2 TRM Section 2.3)<br>
      * SETUPDAT[0] VendorRequest 0x40 for OUT type, 0xC0 for IN type<br>
      * SETUPDAT[1] The actual vendor request (e.g. VR_ENABLE_AE_IN below)<br>
@@ -2469,7 +2490,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * 5  wIndexH<br>
      * 6  wLengthL Number of bytes to transfer if there is a data phase<br>
      * 7  wLengthH<br>
-     * 
+     *
      *@param request the vendor request byte, identifies the request on the device
      *@param value the value of the request (bValue USB field)
      *@param index the "index" of the request (bIndex USB field)
@@ -2490,7 +2511,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     /**
      * Sends a vendor request with a given byte[].
      *  This is a blocking method.
-     * 
+     *
      * The SETUPDAT array on FX2 has the following 8 elements (see FX2 TRM Section 2.3)<br>
      * SETUPDAT[0] VendorRequest 0x40 for OUT type, 0xC0 for IN type<br>
      * SETUPDAT[1] The actual vendor request (e.g. VR_ENABLE_AE_IN below)<br>
@@ -2514,7 +2535,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
     /** sends a vender request with data.
      *  This is a blocking method.
-    * 
+    *
     * The SETUPDAT array on FX2 has the following 8 elements (see FX2 TRM Section 2.3)<br>
      * SETUPDAT[0] VendorRequest 0x40 for OUT type, 0xC0 for IN type<br>
      * SETUPDAT[1] The actual vendor request (e.g. VR_ENABLE_AE_IN below)<br>
@@ -2614,7 +2635,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         }
         ProgressMonitor progressMonitor = makeProgressMonitor("Writing CPLD configuration - do not unplug", 0, bytearray.length);
 
-        if (bytearray == null || bytearray.length == 0) {
+        if ((bytearray == null) || (bytearray.length == 0)) {
             throw new NullPointerException("xsvf file seems to be empty. Did ISE compile it and did you generate the XSVF file?");
         }
         command = bytearray[index];
@@ -2632,20 +2653,20 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                     commandlength = 5;
                     break;
                 case XSIR:
-                    commandlength = (bytearray[index + 1] + 7) / 8 + 2;
+                    commandlength = ((bytearray[index + 1] + 7) / 8) + 2;
                     break;
                 case XSIR2:
-                    commandlength = ((bytearray[index + 1] << 8 | bytearray[index + 2]) + 7) / 8 + 3;
+                    commandlength = ((((bytearray[index + 1] << 8) | bytearray[index + 2]) + 7) / 8) + 3;
                     break;
                 case XSDR:
                     commandlength = length + 1;
                     break;
                 case XSDRSIZE:
                     commandlength = 5;
-                    length = ((bytearray[index + 1] << 24) | (bytearray[index + 2] << 16) | (bytearray[index + 3] << 8) | (bytearray[index + 4]) + 7) / 8;
+                    length = ((bytearray[index + 1] << 24) | (bytearray[index + 2] << 16) | (bytearray[index + 3] << 8) | ((bytearray[index + 4]) + 7)) / 8;
                     break;
                 case XSDRTDO:
-                    commandlength = 2 * length + 1;
+                    commandlength = (2 * length) + 1;
                     break;
                 case XSDRB:
 
@@ -2661,15 +2682,15 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                     break;
                 case XSDRTDOB:
 
-                    commandlength = 2 * length + 1;
+                    commandlength = (2 * length) + 1;
                     break;
                 case XSDRTDOC:
 
-                    commandlength = 2 * length + 1;
+                    commandlength = (2 * length) + 1;
                     break;
                 case XSDRTDOE:
 
-                    commandlength = 2 * length + 1;
+                    commandlength = (2 * length) + 1;
                     break;
                 case XSTATE:
 
@@ -2686,7 +2707,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 case XCOMMENT:
 
                     commandlength = 2;
-                    while (bytearray[index + commandlength - 1] != 0x00) {
+                    while (bytearray[(index + commandlength) - 1] != 0x00) {
                         commandlength += 1;
                     }
                     log.info("found comment");
@@ -2783,7 +2804,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         this.aeReader = aeReader;
     }
 
-    public int getFifoSize() {
+    @Override
+	public int getFifoSize() {
         if (aeReader == null) {
             return -1;
         } else {
@@ -2791,7 +2813,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         }
     }
 
-    public void setFifoSize(int fifoSize) {
+    @Override
+	public void setFifoSize(int fifoSize) {
         if (aeReader == null) {
             return;
         }
@@ -2800,7 +2823,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         aeReader.startThread(3);
     }
 
-    public int getNumBuffers() {
+    @Override
+	public int getNumBuffers() {
         if (aeReader == null) {
             return 0;
         } else {
@@ -2808,7 +2832,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         }
     }
 
-    public void setNumBuffers(int numBuffers) {
+    @Override
+	public void setNumBuffers(int numBuffers) {
         if (aeReader == null) {
             return;
         }
@@ -2817,11 +2842,13 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         aeReader.startThread(3);
     }
 
-    public void setChip(AEChip chip) {
+    @Override
+	public void setChip(AEChip chip) {
         this.chip = chip;
     }
 
-    public AEChip getChip() {
+    @Override
+	public AEChip getChip() {
         return chip;
     }
 
@@ -2847,13 +2874,13 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         }
     }
 
-    /** Checks for blank cypress VID/PID. 
+    /** Checks for blank cypress VID/PID.
      * Device deviceDescriptor must be populated before calling this method.
-     * 
+     *
      * @return true if blank
      */
     protected boolean isBlankDevice() {
-        if (deviceDescriptor.idVendor == VID_BLANK && deviceDescriptor.idProduct == PID_BLANK) {
+        if ((deviceDescriptor.idVendor == VID_BLANK) && (deviceDescriptor.idProduct == PID_BLANK)) {
 //            log.warning("blank CypressFX2 detected");
             return true;
         }
