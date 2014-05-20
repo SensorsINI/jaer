@@ -900,8 +900,9 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                                 log.info(e.getMessage());
                             }
                             cypress.downloadFirmwareBinary(filenameTextField.getText());
-//                    cypress.resetUSB();  // don't need this which in any case would fail because device is not open or configured
-//                    cypress.cyclePort();
+
+                            // Show success to user.
+                            JOptionPane.showMessageDialog(CypressFX2EEPROM.this, "Bix file written to RAM successfully.");
                         } else {
                             JOptionPane.showMessageDialog(CypressFX2EEPROM.this, "bix files cannot be written to EEPROM, only to RAM.");
                         }
@@ -937,7 +938,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
                         cypress.close();
                     }
 
-                    // Show that download is done by graying out buttons.
+                    // Gray out the buttons too, since the device was closed.
                     setButtonsEnabled(false);
                 }
 
