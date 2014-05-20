@@ -17,6 +17,9 @@ import javax.swing.JOptionPane;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.HasUpdatableFirmware;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasLEDControl;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
 
 import org.usb4java.Device;
 

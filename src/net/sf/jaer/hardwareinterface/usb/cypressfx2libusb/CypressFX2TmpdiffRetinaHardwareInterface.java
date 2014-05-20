@@ -13,6 +13,7 @@ import java.nio.ByteBuffer;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
 
 import org.usb4java.Device;
 
