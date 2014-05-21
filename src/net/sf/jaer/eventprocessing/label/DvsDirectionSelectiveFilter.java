@@ -11,21 +11,20 @@ import net.sf.jaer.event.OrientationEventInterface;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 
-/** Outputs local motion events derived from time of flight of orientation events from DVS sensors. 
+/** Outputs local motion events derived from time of flight of 
+ * orientation events from DVS sensors. 
  * Output cells type has values 0-7,
- * 0 being upward motion, increasing by 45 deg CCW to 7 being motion up and to right.
+ * 0 being upward motion, increasing by 45 deg CCW 
+ * to 7 being motion up and to right.
  * @see AbstractDirectionSelectiveFilter
  * @author tobi */
 @Description("Local motion by time-of-travel of orientation events for DVS sensor")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilter {
 
-    public DvsDirectionSelectiveFilter(AEChip chip) {
-        super(chip);
-    }
+    public DvsDirectionSelectiveFilter(AEChip chip) { super(chip); }
 
-    @Override
-    synchronized public EventPacket filterPacket(EventPacket in) {
+    @Override synchronized public EventPacket filterPacket(EventPacket in) {
         // we use two additional packets: oriPacket which holds the orientation events, and dirPacket that holds the dir vector events
         oriPacket = oriFilter.filterPacket(in);  // compute orientation events.
         if (dirPacket == null) {
@@ -74,6 +73,7 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
             // Also, only find time to events of the same *polarity* and 
             // *orientation*. Otherwise we will falsely match opposite polarity
             // orientation events which arise from two sides of edges.
+            
             // Find the time of the most recent event in a neighborhood of the 
             // same type as the present input event but only in the two 
             // directions perpindiclar to this orientation. Each of these 
@@ -85,13 +85,13 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
             // this computation only makes sense for ori type input
             // neighbors are of same type they are in direction given by 
             // unitDirs in lastTimesMap.
+            
             // The input type tells us which offset to use, e.g. for type 0 
             // (0 deg horiz ori), we offset first in neg vert direction, 
             // then in positive vert direction, thus the unitDirs used here 
             // *depend* on orientation assignments in AbstractDirectionSelectiveFilter
-            int dist, dt;
+            int dist, dt, delay;
             float speed = 0;
-            short delay;
             byte motionDir = ori; // the quantized direction of detected motion
             MotionOrientationEvent.Dir d;
             // d=unitDirs[ori] is perpendicular to orientation 'ori', because
@@ -156,7 +156,7 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                 // This speed is PixelPerSecond, as the distance is in
                 // pixel and dt is in microseconds (1e-6 seconds)
                 speed = 1e6f * (float) dist / dt; 
-                delay = (short) dt; // the smallest delay found in the 'winning' search direction
+                delay = dt; // the smallest delay found in the 'winning' search direction
 
                 avgSpeed = (1 - speedMixingFactor) * avgSpeed + speedMixingFactor * speed;
 
@@ -221,9 +221,16 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                 } 
 
                 dist  = searchDistance / 2; //distance can only be half search distance, as we use average dt and speed.
-                speed = 1e6f * speed;
-                delay = (short) (dist * speed);
-
+                // We want delay to be in us, so we divide by speed while it is
+                // still in its pixel/us form. Thereafter we convert speed to
+                // pixel/s
+                // Also it is more accurate to calculate the distance in float here
+                // as we want to compute a derived quantity, so we should round 
+                // as late as possible. When searchDistance is '3', then dist =1
+                // but we calculate with 1.5 here.
+                delay = (int) ((searchDistance/2f) / speed); // hence delay is in seconds
+                speed = 1e6f * speed; //now speed is in PPS
+                
                 avgSpeed = (1 - speedMixingFactor) * avgSpeed + speedMixingFactor * speed;
                 if (speedControlEnabled && speed > avgSpeed * excessSpeedRejectFactor) {
                     if(passAllEvents) {

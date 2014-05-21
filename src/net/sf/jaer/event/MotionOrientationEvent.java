@@ -20,10 +20,10 @@ public class MotionOrientationEvent extends DvsOrientationEvent {
     /** unit vector of direction of motion */
     public Dir dir=null;
     
-    /** the 'delay' value of this cell, an analog (but quantized) quantity 
-     * that signals the time delay associated with this event.
+    /** the 'delay' value of this cell in us (unit of timestamps), an analog 
+     * (but quantized) quantity that signals the time delay associated with this event.
      * Smaller time delays signal larger speed */
-    public short delay=0;
+    public int delay=0;
     
     /** the distance associated with this motion event. This is the 
      * distance in pixels to the prior event that signaled this direction */
@@ -85,7 +85,8 @@ public class MotionOrientationEvent extends DvsOrientationEvent {
     static public Point2D.Float computeMotionVector(MotionOrientationEvent e){
         Dir d=unitDirs[e.direction];
         int dist=e.distance;
-        int delay=e.delay; if(delay==0) delay=1;
+        int delay=e.delay; 
+        if(delay==0) delay=1;
         float speed=( (float)dist / ((float)delay*1e-6f) );
         motionVector.setLocation(d.x*speed,d.y*speed);
         return motionVector;
