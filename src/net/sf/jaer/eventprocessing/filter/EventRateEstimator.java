@@ -51,6 +51,7 @@ public class EventRateEstimator extends EventFilter2D {
         }
         numEventsInLastPacket=0;
         for (BasicEvent e : in) {
+            if(e.isSpecial()) continue;
             numEventsInLastPacket++;
             int dt = e.timestamp - lastComputeTimestamp;
             if (!initialized || dt < 0) {
