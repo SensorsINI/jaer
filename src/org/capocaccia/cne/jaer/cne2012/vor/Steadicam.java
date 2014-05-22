@@ -110,7 +110,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
     private int calibrationSampleCount = 0;
     private int CALIBRATION_SAMPLES = 800; // 400 samples /sec
     private CalibrationFilter panCalibrator, tiltCalibrator, rollCalibrator;
-    TextRenderer imuTextRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36));
+    TextRenderer imuTextRenderer = null;
     private boolean showTransformRectangle = getBoolean("showTransformRectangle", true);
     // transform control
     public boolean disableTranslation=getBoolean("disableTranslation", false);
@@ -457,6 +457,19 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
+        if (calibrating) {
+            if(imuTextRenderer==null){
+                imuTextRenderer=new TextRenderer(new Font("SansSerif", Font.PLAIN, 36));
+            }
+            imuTextRenderer.begin3DRendering();
+            imuTextRenderer.setColor(1, 1, 1, 1);
+            final String saz = String.format("Don't move sensor (Calibrating %d/%d)", calibrationSampleCount, CALIBRATION_SAMPLES);
+            Rectangle2D rect = imuTextRenderer.getBounds(saz);
+            final float scale = .25f;
+            imuTextRenderer.draw3D(saz, (chip.getSizeX() / 2) - (((float) rect.getWidth() * scale) / 2), chip.getSizeY() / 2, 0, scale); //
+            imuTextRenderer.end3DRendering();
+        }
+        
         if (!showTransformRectangle) {
             return;
         }
@@ -493,15 +506,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
 
         }
 
-        if (calibrating) {
-            imuTextRenderer.begin3DRendering();
-            imuTextRenderer.setColor(1, 1, 1, 1);
-            final String saz = String.format("Don't move sensor (Calibrating %d/%d)", calibrationSampleCount, CALIBRATION_SAMPLES);
-            Rectangle2D rect = imuTextRenderer.getBounds(saz);
-            final float scale = .25f;
-            imuTextRenderer.draw3D(saz, (chip.getSizeX() / 2) - (((float) rect.getWidth() * scale) / 2), chip.getSizeY() / 2, 0, scale); //
-            imuTextRenderer.end3DRendering();
-        }
+ 
     }
 
 //    public float getGainTranslation() {
