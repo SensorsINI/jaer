@@ -6,20 +6,19 @@
 package net.sf.jaer.event;
 
 import java.awt.geom.Point2D;
-import net.sf.jaer.eventprocessing.label.AbstractOrientationFilter;
 
 /** Represents an event with direction of motion and delay for DVS sensors.
  * @author tobi */
 public class DvsMotionOrientationEvent extends DvsOrientationEvent implements MotionOrientationEventInterface {
     
     /** the direction of motion, a quantized value indexing into Dir */
-    private byte direction=0;
+    public byte direction=0;
     
     /** Defaults to true; set to false to indicate unknown direction. */
-    private boolean hasDirection = true;
+    public boolean hasDirection = true;
      
     /** unit vector of direction of motion */
-    private Dir dir=null;
+    public Dir dir=null;
     
     /** the 'delay' value of this cell in us (unit of timestamps), an analog 
      * (but quantized) quantity that signals the time delay associated with this event.
@@ -36,19 +35,18 @@ public class DvsMotionOrientationEvent extends DvsOrientationEvent implements Mo
     public byte distance=0;
     
     /** speed in pixels per second */
-    private float speed=0;
+    public float speed=0;
     
     /** stores computed velocity. 
      * (implementations of AbstractDirectionSelectiveFilter compute it). 
      * This vector points in the direction of motion and has 
      * units of pixels per second (PPS). */
-    private Point2D.Float velocity=new Point2D.Float();
+    public Point2D.Float velocity=new Point2D.Float();
     
-    private static final Point2D.Float motionVector=new Point2D.Float();
+    public static final Point2D.Float motionVector=new Point2D.Float();
     
     /** Creates a new instance of event */
-    public DvsMotionOrientationEvent() {
-    }
+    public DvsMotionOrientationEvent() { }
     
     @Override public int getType(){
         return getDirection();
