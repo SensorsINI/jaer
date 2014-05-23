@@ -2479,15 +2479,24 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      *  This is a blocking method.
      *
     * The SETUPDAT array on FX2 has the following 8 elements (see FX2 TRM Section 2.3)<br>
-     * SETUPDAT[0] VendorRequest 0x40 for OUT type, 0xC0 for IN type<br>
+     * SETUPDAT[0] VendorRequest 0x40 for OUT type, 0xC0 for IN type.  We do not set this value.<br>
      * SETUPDAT[1] The actual vendor request (e.g. VR_ENABLE_AE_IN below)<br>
      * SETUPDAT[2] wValueL 16 bit value LSB<br>
-     * 3  wValueH MSB<br>
-     * 4  wIndexL 16 bit field, varies according to request<br>
-     * 5  wIndexH<br>
-     * 6  wLengthL Number of bytes to transfer if there is a data phase<br>
-     * 7  wLengthH<br>
+     * SETUPDAT[3]  wValueH MSB<br>
+     * SETUPDAT[4]  wIndexL 16 bit field, varies according to request<br>
+     * SETUPDAT[5]  wIndexH<br>
+     * SETUPDAT[6]  wLengthL Number of bytes to transfer if there is a data phase<br>
+     * SETUPDAT[7]  wLengthH<br>
      *
+     * <p>
+     * In firmware, the code looks like this:<br>
+        value = SETUPDAT[2];		// Get request value<br>
+        value |= SETUPDAT[3] << 8;	// data comes little endian<br>
+        ind = SETUPDAT[4];			// Get index<br>
+        ind |= SETUPDAT[5] << 8;<br>
+        len = SETUPDAT[6];      	// length for data phase<br>
+        len |= SETUPDAT[7] << 8;<br>
+                                * 
      *@param request the vendor request byte, identifies the request on the device
      *@param value the value of the request (bValue USB field)
      *@param index the "index" of the request (bIndex USB field)
