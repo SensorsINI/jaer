@@ -38,7 +38,6 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.filter.HighpassFilter;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
-import ch.unizh.ini.jaer.projects.poseestimation.TransformAtTime;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 

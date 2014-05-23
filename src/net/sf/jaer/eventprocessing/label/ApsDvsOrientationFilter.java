@@ -29,7 +29,7 @@ import net.sf.jaer.DevelopmentStatus;
  * @author tobi/phess */
 @Description("Detects local orientation by spatio-temporal correlation for DVS sensors")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class DvsOrientationFilter extends AbstractOrientationFilter{
+public class ApsDvsOrientationFilter extends AbstractOrientationFilter{
     //TODO: The oriHistoryMap is still not completely bias-free.
     //      The values for orientation range from 0-3 and each time we update
     //      the oriHistory map we adjust the value of the history slightly towards 
@@ -48,7 +48,7 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
     
     /** Creates a new instance of DvsOrientationFilter
      * @param chip */
-    public DvsOrientationFilter (AEChip chip){
+    public ApsDvsOrientationFilter (AEChip chip){
         super(chip);
         chip.addObserver(this);
         
@@ -66,9 +66,9 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
         if ( in.getSize() == 0 ) return in;
 
         Class inputClass = in.getEventClass();
-        if ( inputClass == PolarityEvent.class) {
+        if ( inputClass == ApsDvsEvent.class) {
             isBinocular = false;
-            checkOutputPacketEventType(DvsOrientationEvent.class);
+            checkOutputPacketEventType(ApsDvsOrientationEvent.class);
         } else if( inputClass == BinocularEvent.class ) {
             isBinocular = true;
             checkOutputPacketEventType(BinocularOrientationEvent.class);
@@ -93,16 +93,18 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
         for ( Object ein:in ){
             PolarityEvent e = (PolarityEvent)ein;
             
-            if(e.isSpecial())continue;
+            if(e.isSpecial()){
+                continue;
+            }
             
             int    x = e.x >>> subSampleShift;
             int    y = e.y >>> subSampleShift;
             int type = e.getType();
             
             //TODO: Is this check really necessary? Should those special events being marked 'special'? (They would have already being catched above)
-            if (type >= NUM_TYPES || e.x < 0||e.y < 0) {
-                continue;  // tobi - some special type like IMU sample
-            }
+//            if (type >= NUM_TYPES || e.x < 0||e.y < 0) {
+//                continue;  // tobi - some special type like IMU sample
+//            }
 
             /* (Peter Hess) monocular events use eye = 0 as standard. therefore some arrays will waste memory, because eye will never be 1 for monocular events
              * in terms of performance this may not be optimal. but as long as this filter is not final, it makes rewriting code much easier, because
@@ -301,14 +303,12 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
         
         
         for (Object o : outputPacket) {
-            DvsOrientationEvent e = (DvsOrientationEvent) o;
+            ApsDvsOrientationEvent e = (ApsDvsOrientationEvent) o;
             //bbeyer: What is the use of this inclusive or?
             // If the orientation is 0 than the address stays the same.
             // If the orientation is 1 the 16th bit is always 1 ...
             // I dont see what this is trying to achieve.
-            //Tobi: It was added at one point to add the orientation information to the raw address for output to file or network.
-            // I think it was not used for anything in the end and can be removed. I commented it out now.
-//            e.address = e.address | (e.orientation << ORI_SHIFT);
+            e.address = e.address | (e.orientation << ORI_SHIFT);
         }
 
         return showRawInputEnabled ? in : getOutputPacket();
@@ -316,7 +316,7 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
     
     private void writeOutput(OutputEventIterator outItr, PolarityEvent e, boolean hasOrientation, byte orientation){
         if ( !isBinocular ){
-            DvsOrientationEvent eout = (DvsOrientationEvent)outItr.nextOutput();
+            ApsDvsOrientationEvent eout = (ApsDvsOrientationEvent)outItr.nextOutput();
             eout.copyFrom(e);
             eout.hasOrientation = hasOrientation;
             eout.orientation = orientation;
@@ -327,5 +327,5 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
             eout.orientation = orientation;
         }
     }
-  
+    
 }

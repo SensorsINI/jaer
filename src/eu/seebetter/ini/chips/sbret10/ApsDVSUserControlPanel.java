@@ -478,7 +478,8 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
             }
         });
 
-        snapshotButton.setLabel("Snapshot");
+        snapshotButton.setText("Take Snapshot");
+        snapshotButton.setToolTipText("Triggers a single frame capture to onscreen buffer");
         snapshotButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 snapshotButtonActionPerformed(evt);
@@ -527,9 +528,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
                                         .addComponent(jLabel4)
                                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                         .addComponent(fpsTF, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, apsPanelLayout.createSequentialGroup()
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(snapshotButton))))
+                            .addComponent(snapshotButton, javax.swing.GroupLayout.Alignment.TRAILING)))
                     .addGroup(apsPanelLayout.createSequentialGroup()
                         .addComponent(jLabel3)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)

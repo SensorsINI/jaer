@@ -16,7 +16,7 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.MotionOrientationEvent;
+import net.sf.jaer.event.DvsMotionOrientationEvent;
 import net.sf.jaer.event.OpticalFlowEvent;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -62,15 +62,15 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
         // an event if refractory period has passed
         int s = 1 << (subSampleBy - 1); //the middle of the subsample intervall, hence we add it when assigning the positions
         OutputEventIterator outItr = out.outputIterator();
-        if (dirOut.getEventClass() != MotionOrientationEvent.class) {
+        if (dirOut.getEventClass() != DvsMotionOrientationEvent.class) {
             log.log(Level.WARNING, "input events are {0}, but they need to be MotionOrientationEvent's", dirOut.getEventClass());
             return in;
         }
         for (Object o : dirOut) {
-            MotionOrientationEvent e = (MotionOrientationEvent) o;
+            DvsMotionOrientationEvent e = (DvsMotionOrientationEvent) o;
             int x = e.x >>> subSampleBy, y = e.y >>> subSampleBy;
             
-            Point2D.Float v = vels[x][y].filter2d(e.velocity.x, e.velocity.y, e.timestamp);
+            Point2D.Float v = vels[x][y].filter2d(e.getVelocity().x, e.getVelocity().y, e.timestamp);
             
             //We call the outItr here (outside the if) so that this is really
             // a labeler and not a Filter. Only if we call the iterator 

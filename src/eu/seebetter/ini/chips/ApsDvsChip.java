@@ -73,7 +73,7 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
     abstract public float getExposureMs();
 
       /**
-     * Triggers the taking of one snapshot
+     * Triggers the taking of one snapshot, i.e, triggers a frame capture.
      */
     abstract public void takeSnapshot();
 

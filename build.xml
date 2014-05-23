@@ -103,8 +103,8 @@
     -->
     <target name="exe4j" depends="checkos" if="isWindows">
         <echo message="Building exe4j jAERViewer.exe Windows launcher - embedding ico and setting SplashScreen in jAERViewer.exe. ${line.separator} Don't worry if this task fails for you unless you have changed the classpath. ${line.separator}jAERViewer.exe does not normally need to be rebuilt."/>
-        <taskdef name="exe4j" classname="com.exe4j.Exe4JTask" classpath="../../exe4j/bin/ant.jar" onerror="report"/>
-        <exe4j projectfile="../../jaer.exe4j" requirelicense="true"/>
+        <taskdef name="exe4j" classname="com.exe4j.Exe4JTask" classpath="../../trunk/exe4j/bin/ant.jar" onerror="report"/>
+        <exe4j projectfile="../../trunk/jaer.exe4j" requirelicense="true"/>
     </target>
 
     <target name="winrun4j">

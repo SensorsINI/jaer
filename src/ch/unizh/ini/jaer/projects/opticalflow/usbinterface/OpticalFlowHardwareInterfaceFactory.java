@@ -19,8 +19,6 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
-import cl.eye.CLCamera;
-import cl.eye.PSeye_OpticalFlowHardwareInterface;
 import de.thesycon.usbio.PnPNotify;
 import de.thesycon.usbio.PnPNotifyInterface;
 import de.thesycon.usbio.UsbIo;
@@ -61,7 +59,6 @@ public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnP
     private OpticalFlowHardwareInterfaceFactory() {
         UsbIoUtilities.enablePnPNotification(this,GUID);
         buildUsbIoList();
-        buildPsEyeList();
         emptyCache();
     }
 
@@ -119,14 +116,6 @@ public class OpticalFlowHardwareInterfaceFactory implements UsbIoErrorCodes, PnP
     public void onRemove() {
         buildUsbIoList();
         emptyCache();
-    }
-    
-    void buildPsEyeList() {
-        if (CLCamera.isLibraryLoaded()) {
-            psEyes= new MotionChipInterface[ CLCamera.cameraCount() ];
-            for ( int i = 0; i < psEyes.length; i++ )
-                psEyes[i] = new PSeye_OpticalFlowHardwareInterface(i);
-        }
     }
     
     void buildUsbIoList(){

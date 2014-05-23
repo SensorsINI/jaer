@@ -19,7 +19,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsOrientationEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.MotionOrientationEvent;
+import net.sf.jaer.event.DvsMotionOrientationEvent;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -187,7 +187,7 @@ public class NearestEventMotionComputer extends EventFilter2D implements Observe
 			in=enclosedFilter.filterPacket(in);
 		}
         int n=in.getSize();
-        checkOutputPacketEventType(MotionOrientationEvent.class);
+        checkOutputPacketEventType(DvsMotionOrientationEvent.class);
         checkMap(in);
         // if the input is ON/OFF type, then motion detection doesn't make much sense because you are likely to detect
         // the nearest event from along the same edge, not from where the edge moved from.
@@ -234,11 +234,11 @@ public class NearestEventMotionComputer extends EventFilter2D implements Observe
                     }
                 }
                 if((mindt<maxDtThreshold) && (mindt>minDtThreshold)){
-                    MotionOrientationEvent eout=(MotionOrientationEvent)outItr.nextOutput();
+                    DvsMotionOrientationEvent eout=(DvsMotionOrientationEvent)outItr.nextOutput();
                     eout.setX((short)(x-P));
                     eout.setY((short)(y-P));
                     eout.type=outType;
-                    eout.direction=outType;
+                    eout.setDirection(outType);
                     eout.timestamp=ts;
                 }
                 lastTimesMap[x][y][type]=ts;  // update the map

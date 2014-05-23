@@ -303,7 +303,13 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
             imuSampleQueue.clear();
         }
     }
-    private static final byte VR_IMU = (byte) 0xC6;
+    
+    /** 
+        #define VR_IMU 0xC6 // this VR is for dealing with IMU
+        #define IMU_CMD_WRITE_REGISTER 1 // arguments are 8-bit bit register address and 8-bit value to write
+        #define IMU_CMD_READ_REGISTER 2 // argument is 9-bit register address to read
+     */
+    private static final byte VR_IMU = (byte) 0xC6, IMU_CMD_READ_REGISTER=(byte)2, IMU_CMD_WRITE_REGISTER=(byte)1;
 
     /**
      * Sets an IMU register value. This is a blocking method.
@@ -312,7 +318,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
      * @param value the value to set.
      */
     public synchronized void writeImuRegister(byte register, byte value) throws HardwareInterfaceException {
-        sendVendorRequest(VR_IMU, (short) (0xff & register | ((0xff & value) << 8)), (short) 0);
+        sendVendorRequest(VR_IMU,  (short) IMU_CMD_WRITE_REGISTER, (short) (0xff & register | ((0xff & value) << 8)));
     }
 
     /**
@@ -322,7 +328,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
      * @return the value of the register.
      */
     public synchronized byte readImuRegister(byte register) throws HardwareInterfaceException {
-        sendVendorRequest(VR_IMU, (short) (0xff & register), (short) 0);
+        sendVendorRequest(VR_IMU,  (short) IMU_CMD_READ_REGISTER,(short) (0xff & register));
         // read back from control endpoint to get the register value
         USBIO_CLASS_OR_VENDOR_REQUEST vr = new USBIO_CLASS_OR_VENDOR_REQUEST();
         USBIO_DATA_BUFFER buf = new USBIO_DATA_BUFFER(2);

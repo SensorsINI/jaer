@@ -6,9 +6,6 @@
  */
 package eu.seebetter.ini.chips.sbret10;
 
-import static ch.unizh.ini.jaer.chip.retina.DVS128.FIRMWARE_CHANGELOG;
-import static ch.unizh.ini.jaer.chip.retina.DVS128.HELP_URL_RETINA;
-import static ch.unizh.ini.jaer.chip.retina.DVS128.USER_GUIDE_URL_RETINA;
 import java.awt.Font;
 import java.util.Iterator;
 import java.util.logging.Level;
@@ -36,7 +33,6 @@ import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.histogram.AbstractHistogram;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 
@@ -49,38 +45,32 @@ import java.util.Observable;
 import java.util.Observer;
 import javax.media.opengl.glu.GLU;
 import javax.media.opengl.glu.GLUquadric;
-import javax.swing.AbstractButton;
-import javax.swing.ButtonGroup;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
-import javax.swing.JRadioButtonMenuItem;
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.ApsDvsHardwareInterface;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2DVS128HardwareInterface;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasLEDControl;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
 import net.sf.jaer.util.HexString;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
-import net.sf.jaer.util.WarningDialogWithDontShowPreference;
+import net.sf.jaer.util.histogram.AbstractHistogram;
 
 /**
+ * <p>
+ * SBRet10/20 have 240x180 pixels and are built in 180nm technology. SBRet10 has a rolling
+ * shutter APS readout and SBRet20 has global shutter readout (but rolling shutter also possible with SBRet20 with different CPLD logic).
+ * Both do APS CDS in digital domain off-chip, on host side, using difference between reset and signal reads.
+ *<p>
+ * 
  * Describes retina and its event extractor and bias generator. Two constructors
  * ara available, the vanilla constructor is used for event playback and the one
  * with a HardwareInterface parameter is useful for live capture.
  * {@link #setHardwareInterface} is used when the hardware interface is
  * constructed after the retina object. The constructor that takes a hardware
  * interface also constructs the biasgen interface.
- * <p>
- * SBRet10 has 240x180 pixels and is built in 180nm technology. It has a rolling
- * shutter APS readout with CDS in digital domain.
- *
+ * 
  * @author tobi, christian
  */
-@Description("SBret version 1.0")
+@Description("SBRet10/20 240x180 pixel APS-DVS DAVIS sensor")
 public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
 
     private JMenu chipMenu = null;
@@ -569,7 +559,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
                         (sizeX/2)-(size/2), (sizeY/2)+(size/2), size, size);
             }
 
-            if(showIMU && (chip instanceof SBret10)){
+            if(isShowIMU() && (chip instanceof SBret10)){
                 IMUSample imuSample=((SBret10)chip).getImuSample();
                 if(imuSample!=null){
                     imuRender(drawable, imuSample);
@@ -830,7 +820,24 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
   @Override
     public void setShowIMU(boolean yes) {
         showIMU=yes;
+        final byte POWER_MGMT_1=(byte)107;
+        
         getPrefs().putBoolean("SBRet10.showIMU",showIMU);
+        if(hardwareInterface!=null && hardwareInterface instanceof ApsDvsHardwareInterface && hardwareInterface.isOpen()){
+            ApsDvsHardwareInterface apsDvsHardwareInterface=(ApsDvsHardwareInterface)hardwareInterface;
+            try{
+            // disable or enable IMU on device
+            if(yes){
+                apsDvsHardwareInterface.writeImuRegister(POWER_MGMT_1, (byte)(0x00)); // deactivate sleep
+                byte registervalue=apsDvsHardwareInterface.readImuRegister(POWER_MGMT_1);
+                log.info(String.format("POWER_MGMT_1 register=0x%H"));
+            }else{
+                apsDvsHardwareInterface.writeImuRegister(POWER_MGMT_1, (byte)(0x47)); // activate full sleep
+            }
+            }catch(HardwareInterfaceException e){
+                log.warning("tried to set IMU register but got exception "+e.toString());
+            }
+        }
     }
 
     @Override

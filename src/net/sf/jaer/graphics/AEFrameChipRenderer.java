@@ -20,10 +20,10 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.util.filter.LowpassFilter2d;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.histogram.AbstractHistogram;
-import ch.unizh.ini.jaer.projects.spatiatemporaltracking.data.histogram.SimpleHistogram;
 import eu.seebetter.ini.chips.ApsDvsChip;
 import eu.seebetter.ini.chips.sbret10.SBret10;
+import net.sf.jaer.util.histogram.AbstractHistogram;
+import net.sf.jaer.util.histogram.SimpleHistogram;
 
 /**
  * Class adapted from AEChipRenderer to render not only AE events but also

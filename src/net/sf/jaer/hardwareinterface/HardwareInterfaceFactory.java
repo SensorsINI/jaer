@@ -23,7 +23,6 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.LibUsbHardwareInterfac
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.LibUsb3HardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.linux.HardwareInterfaceFactoryLinux;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabs_USBIO_C8051F3xxFactory;
-import cl.eye.CLEyeHardwareInterfaceFactory;
 import de.thesycon.usbio.PnPNotifyInterface;
 
 /**
@@ -53,7 +52,6 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 		LibUsb3HardwareInterfaceFactory.class,
 		HardwareInterfaceFactoryLinux.class,
 		UDPInterfaceFactory.class,
-		CLEyeHardwareInterfaceFactory.class,
 		eDVS128_InterfaceFactory.class,
 		SpiNNaker_InterfaceFactory.class,
 	};

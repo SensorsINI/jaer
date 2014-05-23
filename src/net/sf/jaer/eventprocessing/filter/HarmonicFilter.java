@@ -24,7 +24,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import com.jogamp.opengl.util.awt.TextRenderer;
 /**
  * An AE filter that filters out boring events caused by global flickering illumination. This filter measures the global event activity to obtain
- * the phase and amplitude of flicker. If the amplitude exceeds a threashold, then events around the peak activity are filtered away.
+ * the phase and amplitude of flicker. If the amplitude exceeds a threshold, then events around the peak activity are filtered away.
  *
  * The phase and amplitude are computed by one of two methods.
  *

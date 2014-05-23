@@ -12,7 +12,6 @@ package net.sf.jaer.hardwareinterface.usb.cypressfx2;
 import java.util.ArrayList;
 import java.util.logging.Logger;
 
-import jp.ac.osakau.eng.eei.IVS128HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
@@ -22,15 +21,12 @@ import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_DVS128;
 import net.sf.jaer.util.HexString;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1bHardwareInterface;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cHardwareInterface;
-import ch.unizh.ini.jaer.chip.dvs320.DVS320HardwareInterface;
-import ch.unizh.ini.jaer.chip.dvs320.cDVSTestHardwareInterface;
 import de.thesycon.usbio.PnPNotify;
 import de.thesycon.usbio.PnPNotifyInterface;
 import de.thesycon.usbio.UsbIo;
 import de.thesycon.usbio.UsbIoErrorCodes;
 import de.thesycon.usbio.structs.USB_DEVICE_DESCRIPTOR;
-import eu.seebetter.ini.chips.seebetter1011.SeeBetterHardwareInterface;
-import eu.seebetter.ini.chips.seebetter20.SeeBetter20HardwareInterface;
+import eu.seebetter.ini.chips.SeeBetterHardwareInterface;
 import eu.seebetter.ini.chips.seebetter30.SeeBetter30HardwareInterface;
 
 /**
@@ -216,36 +212,24 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
                     //System.out.println(did);
                 }
                 return new CypressFX2TmpdiffRetinaHardwareInterface(n);
-            case CypressFX2.PID_TCVS320_RETINA:
-                return new DVS320HardwareInterface(n);
             case CypressFX2.PID_USBAERmini2:
                 return new CypressFX2MonitorSequencer(n);
             case SiLabsC8051F320_USBIO_AeSequencer.PID:
                 return new SiLabsC8051F320_USBIO_AeSequencer(n);
-            case cDVSTestHardwareInterface.PID:
-                return new cDVSTestHardwareInterface(n);
             case SeeBetterHardwareInterface.PID:
-                if (did == SeeBetter20HardwareInterface.DID) {
-                    return new SeeBetter20HardwareInterface(n);
-                } else if (did == SeeBetter30HardwareInterface.DID) {
+                if (did == SeeBetter30HardwareInterface.DID) {
                     return new SeeBetter30HardwareInterface(n);
                 } else {
-                    return new SeeBetterHardwareInterface(n);
+                    log.warning("device ID "+did+" is not supported for PID "+SeeBetter30HardwareInterface.PID+", probably some older experimental device");
                 }
             case ApsDvsHardwareInterface.PID:
                 return new ApsDvsHardwareInterface(n);
-            case DVS320HardwareInterface.PID:
-                return new DVS320HardwareInterface(n);
             case CochleaAMS1bHardwareInterface.PID:
                 return new CochleaAMS1bHardwareInterface(n);
             case CochleaAMS1cHardwareInterface.PID:
                 return new CochleaAMS1cHardwareInterface(n);
             case SiLabsC8051F320_USBIO_DVS128.PID:
                 return new SiLabsC8051F320_USBIO_DVS128(n);
-            case IVS128HardwareInterface.PID:
-                if (vid == IVS128HardwareInterface.VID) {
-                    return new IVS128HardwareInterface(n);
-                }
             default:
                 log.warning("PID=" + HexString.toString(pid) + " doesn't match any device, returning bare CypressFX2 instance");
                 return new CypressFX2(n);

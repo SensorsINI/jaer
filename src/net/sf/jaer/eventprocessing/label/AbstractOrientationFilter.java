@@ -49,7 +49,7 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
     public final int NUM_TYPES = 4;
 
     protected boolean showGlobalEnabled       = getBoolean("showGlobalEnabled",false);
-    protected boolean showVectorsEnabled      = getBoolean("showVectorsEnabled",false);
+    protected boolean showVectorsEnabled      = getBoolean("showVectorsEnabled",true);
     protected boolean showRawInputEnabled     = getBoolean("showRawInputEnabled",false);
     protected boolean multiOriOutputEnabled   = getBoolean("multiOriOutputEnabled",false);
     protected boolean jitterVectorLocations   = getBoolean("jitterVectorLocations", true);

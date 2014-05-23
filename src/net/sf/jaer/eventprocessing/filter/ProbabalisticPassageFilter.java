@@ -13,7 +13,7 @@ import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 /**
- * This filter lets through events with some fixed probablity.
+ * This filter lets through events with some fixed probability.
  * @author tobi
  */
 @Description("Passes events probabilistically")

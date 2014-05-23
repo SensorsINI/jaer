@@ -340,10 +340,7 @@
                                       </Group>
                                   </Group>
                               </Group>
-                              <Group type="102" alignment="1" attributes="0">
-                                  <EmptySpace max="-2" attributes="0"/>
-                                  <Component id="snapshotButton" min="-2" max="-2" attributes="0"/>
-                              </Group>
+                              <Component id="snapshotButton" alignment="1" min="-2" max="-2" attributes="0"/>
                           </Group>
                       </Group>
                       <Group type="102" alignment="0" attributes="0">
@@ -531,7 +528,8 @@
         </Component>
         <Component class="javax.swing.JButton" name="snapshotButton">
           <Properties>
-            <Property name="label" type="java.lang.String" value="Snapshot"/>
+            <Property name="text" type="java.lang.String" value="Take Snapshot"/>
+            <Property name="toolTipText" type="java.lang.String" value="Triggers a single frame capture to onscreen buffer"/>
           </Properties>
           <AccessibilityProperties>
             <Property name="AccessibleContext.accessibleName" type="java.lang.String" value="snapshotButton"/>

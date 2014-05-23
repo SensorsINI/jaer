@@ -27,7 +27,6 @@ import java.util.prefs.Preferences;
 import javax.swing.ProgressMonitor;
 import javax.swing.SwingUtilities;
 
-import jp.ac.osakau.eng.eei.IVS128HardwareInterface;
 import li.longi.USBTransferThread.RestrictedTransfer;
 import li.longi.USBTransferThread.RestrictedTransferCallback;
 import li.longi.USBTransferThread.USBTransferThread;
@@ -171,8 +170,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	static public final short PID_USB2AERmapper = (short) 0x8900;
 	static public final short DID_STEREOBOARD = (short) 0x2007;
 	static public final short PID_TCVS320_RETINA = (short) 0x8702;
-	// The yagi lab IVS
-	static public final short PID_IVS128 = (short) IVS128HardwareInterface.PID;
 	/**
 	 * event supplied to listeners when new events are collected. this is final
 	 * because it is just a marker for the

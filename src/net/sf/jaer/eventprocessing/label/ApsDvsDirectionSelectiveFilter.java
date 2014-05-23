@@ -4,10 +4,11 @@ package net.sf.jaer.eventprocessing.label;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsMotionOrientationEvent;
+import net.sf.jaer.event.ApsDvsOrientationEvent;
 import net.sf.jaer.event.DvsOrientationEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.DvsMotionOrientationEvent;
-import net.sf.jaer.event.MotionOrientationEventInterface;
 import net.sf.jaer.event.OrientationEventInterface;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
@@ -19,15 +20,15 @@ import net.sf.jaer.event.PolarityEvent;
  * to 7 being motion up and to right.
  * @see AbstractDirectionSelectiveFilter
  * @author tobi */
-@Description("Local motion by time-of-travel of orientation events for DVS sensor")
+@Description("Local motion by time-of-travel of orientation events for APSDVS (DAVIS) sensor")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilter {
+public class ApsDvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilter {
 
-    public DvsDirectionSelectiveFilter(AEChip chip) {
+    public ApsDvsDirectionSelectiveFilter(AEChip chip) {
         super(chip);
-        oriFilter = new DvsOrientationFilter(chip);
+        oriFilter = new ApsDvsOrientationFilter(chip);
         oriFilter.setAnnotationEnabled(false);
-        oriFilter.setShowRawInputEnabled(false); // so that the orientation filter returns orientation events, not the input packet (tobi)
+        oriFilter.setShowRawInputEnabled(false); // so that the orientation filter returns the orientation events, not the input packet (tobi)
         setEnclosedFilter(oriFilter);
     }
 
@@ -35,7 +36,7 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
         // we use two additional packets: oriPacket which holds the orientation events, and dirPacket that holds the dir vector events
         oriPacket = oriFilter.filterPacket(in);  // compute orientation events.
         if (dirPacket == null) {
-            dirPacket = new EventPacket(DvsMotionOrientationEvent.class);
+            dirPacket = new EventPacket(ApsDvsMotionOrientationEvent.class);
         }
         checkMap();
 
@@ -52,13 +53,14 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
         // Only write the event if the delta time is within two-sided threshold.
         OutputEventIterator outItr = dirPacket.outputIterator(); // this initializes the output iterator of dirPacket
         for (Object ein : oriPacket) {
+            if(!(ein instanceof ApsDvsOrientationEvent)) continue;
             OrientationEventInterface e = (OrientationEventInterface) ein;
 
             if(!e.isHasOrientation()){
                 if(passAllEvents){
-                    DvsMotionOrientationEvent eout = (DvsMotionOrientationEvent) outItr.nextOutput();
+                    ApsDvsMotionOrientationEvent eout = (ApsDvsMotionOrientationEvent) outItr.nextOutput();
                     eout.copyFrom((DvsOrientationEvent) ein);
-                    eout.setHasDirection(false);
+                    eout.hasDirection = false;
                 }
                 continue;
             }
@@ -100,7 +102,7 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
             int dist, dt, delay;
             float speed = 0;
             byte motionDir = ori; // the quantized direction of detected motion
-            MotionOrientationEventInterface.Dir d;
+            DvsMotionOrientationEvent.Dir d;
             // d=unitDirs[ori] is perpendicular to orientation 'ori', because
             // of the order of orientation and Dir. The first four 
             // directions in Dir are perpendicular to the four orientations.
@@ -208,7 +210,7 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                     if(passAllEvents) {
                         DvsMotionOrientationEvent eout = (DvsMotionOrientationEvent) outItr.nextOutput();
                         eout.copyFrom((DvsOrientationEvent) ein);
-                       eout.setHasDirection(false);
+                        eout.setHasDirection(false);
                     }
                     continue; // no pass, i.e. no event to write
                 }
@@ -243,7 +245,7 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                     if(passAllEvents) {
                         DvsMotionOrientationEvent eout = (DvsMotionOrientationEvent) outItr.nextOutput();
                         eout.copyFrom((DvsOrientationEvent) ein);
-                       eout.setHasDirection(false);
+                        eout.setHasDirection(false);
                     }
                     continue;
                 } // don't output event if speed too high compared to average
@@ -253,16 +255,16 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
 
             //Now the event has passed all tests and properties are computed.
             // write the event to the OutputStream.
-            DvsMotionOrientationEvent eout = (DvsMotionOrientationEvent) outItr.nextOutput();
-            eout.copyFrom( (DvsOrientationEvent)ein);
-            eout.setDirection(motionDir);
-            eout.setHasDirection(true);
-//            eout.set TODO
-            eout.distance = (byte) dist; // the pixel distance to the temporally closest event of the same type
-            eout.setSpeed(speed);
-            eout.setDir(MotionOrientationEventInterface.unitDirs[motionDir]);
-            eout.getVelocity().x   = -speed * eout.getDir().x; // these have minus sign because dir vector points towards direction that previous event occurred
-            eout.getVelocity().y   = -speed * eout.getDir().y;
+            ApsDvsMotionOrientationEvent eout = (ApsDvsMotionOrientationEvent) outItr.nextOutput();
+            eout.copyFrom((ApsDvsOrientationEvent) ein);
+            eout.direction    = motionDir;
+            eout.hasDirection = true;
+            eout.delay        = delay; 
+            eout.distance     = (byte) dist; // the pixel distance to the temporally closest event of the same type
+            eout.speed        = speed;
+            eout.dir          = ApsDvsMotionOrientationEvent.unitDirs[motionDir];
+            eout.velocity.x   = -speed * eout.dir.x; // these have minus sign because dir vector points towards direction that previous event occurred
+            eout.velocity.y   = -speed * eout.dir.y;
             motionVectors.addEvent(eout);
         }
         return isShowRawInputEnabled() ? in : dirPacket; 

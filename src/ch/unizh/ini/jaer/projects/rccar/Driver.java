@@ -46,7 +46,6 @@ import net.sf.jaer.hardwareinterface.usb.toradex.ToradexOakG3AxisAccelerationSen
 import net.sf.jaer.util.TobiLogger;
 import net.sf.jaer.util.filter.LowpassFilter;
 
-import org.capocaccia.cne.jaer.multilinetracking.PairedEventLinearEdgeClusterTracker;
 
 /**
  * Drives the RC car using the output from an enclosed line detector filter.
@@ -205,7 +204,6 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
 //    private float lpCornerFreqHz=getPrefs().getFloat("Driver.lpCornerFreqHz",1);
 //    {setPropertyTooltip("lpCornerFreqHz","corner freq in Hz for steering control");}
     private EventFilter2D lineTracker;
-    private PairedEventLinearEdgeClusterTracker multiLineTracker;
     private float steerInstantaneous = 0.5f; // instantaneous value, before filtering
     private float steerCommand = 0.5f; // actual command, as modified by filtering
     private float speed;
@@ -394,11 +392,8 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
 	synchronized public void initFilter() {
 //        steeringFilter.set3dBFreqHz(lpCornerFreqHz);
         lineTracker = null;
-        if (useMultiLineTracker) {
-            lineTracker = new PairedEventLinearEdgeClusterTracker(chip);
-        } else {
+        
             lineTracker = new HoughLineTracker(chip);
-        }
         lineTracker.setEnclosedFilter(new DriverPreFilter(chip));
 //        lineTracker.getEnclosedFilter().setEnclosed(true, lineTracker);
         setEnclosedFilter(lineTracker);

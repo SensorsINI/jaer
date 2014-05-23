@@ -20,7 +20,6 @@ import java.util.prefs.Preferences;
 
 import javax.swing.ProgressMonitor;
 
-import jp.ac.osakau.eng.eei.IVS128HardwareInterface;
 import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -122,8 +121,6 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     static public final short PID_USB2AERmapper = (short) 0x8900;
     static public final short DID_STEREOBOARD = (short) 0x2007;
     static public final short PID_TCVS320_RETINA = (short) 0x8702;
-    // The yagi lab IVS
-     static public final short PID_IVS128 = (short) IVS128HardwareInterface.PID;
    /**
      * event supplied to listeners when new events are collected. this is final because it is just a marker for the listeners that new events are available
      */
