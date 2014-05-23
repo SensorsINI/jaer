@@ -22,7 +22,9 @@ import net.sf.jaer.event.PolarityEvent;
 @Description("Local motion by time-of-travel of orientation events for DVS sensor")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilter {
-
+    
+    private static final double SQRT2 = Math.sqrt(2);
+    
     public DvsDirectionSelectiveFilter(AEChip chip) {
         super(chip);
         oriFilter = new DvsOrientationFilter(chip);
@@ -31,6 +33,25 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
         setEnclosedFilter(oriFilter);
     }
 
+//TODO: BjoernBeyer: The speed is not correct! The UnitDirs in MotionOrientationEvent.unitDirs
+//      are not really UnitVectors (the diagonal vectors are not) This means that the speed for the 
+//      diagonal events is actually higher than computed here, as the euclidian distance the edge must have travelled
+//      is larger than the search distance 's' (by a factor of sqrt2).   
+//
+//      This also means, that the diagonals are underrepresented in general, as the 'dt' for diagonals will
+//      be larger than for the horizontals and verticals, since the search distance is larger. So for the same
+//      actual motion speed the reported dt for diagonal motion will be larger than for the other directions.
+//       This means we should increase the search distance in the speed calculation by a factor of sqrt2 and 
+//       also incearse the min/maxDtThreshold by the same factor for the diagonal orientations. 
+//                        
+//      Note however that the velocity currently is correct, as in the diagonal cases we are multiplying the 
+//      too small speed with a too large unitvector, both are of by a factor of sqrt2. Hence the velocity is 
+//      correct for all directions. If the speed calculation is fixed however the velocity needs to be adjusted as well!  
+//      -------------------
+//      I hacked arround the dt Threshold Problem. Infact the diagonal directions where pretty much underrepresented.
+//      From rough estimations the measured speed for the same PHYSICAL speed was 30% lower for diagonal motion (rotated with the rotation filter)
+//      than for horizontal or vertical motion. With the Threshold problem removed the speeds are 
+//      acutally the same, as the annotated speed is based on the velocity, not the speed of the event.
     @Override synchronized public EventPacket filterPacket(EventPacket in) {
         // we use two additional packets: oriPacket which holds the orientation events, and dirPacket that holds the dir vector events
         oriPacket = oriFilter.filterPacket(in);  // compute orientation events.
@@ -73,6 +94,7 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
             // update the map here - this is ok because we never refer to ourselves anyhow in computing motion
             lastTimesMap[x][y][type] = ts;
 
+            // <editor-fold defaultstate="collapsed" desc="--COMMENT--">
             // for each output cell type (which codes a direction of motion), 
             // find the dt between the orientation cell type perdindicular
             // to this direction in this pixel and in the neighborhood - but 
@@ -97,7 +119,9 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
             // (0 deg horiz ori), we offset first in neg vert direction, 
             // then in positive vert direction, thus the unitDirs used here 
             // *depend* on orientation assignments in AbstractDirectionSelectiveFilter
-            int dist, dt, delay;
+            // </editor-fold>
+            int dist, dt, delay = 0;
+            int helpMinDtThreshold, helpMaxDtThreshold;
             float speed = 0;
             byte motionDir = ori; // the quantized direction of detected motion
             MotionOrientationEventInterface.Dir d;
@@ -116,7 +140,7 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                 // <editor-fold defaultstate="collapsed" desc="--Motion direction using MIN dt--">
                 int mindt1 = Integer.MAX_VALUE, mindt2 = Integer.MAX_VALUE;
                 int dist1 = 1, dist2 = 1;
-
+                
                 // now iterate over search distance to find minimum delay 
                 // between this input orientation event and previous 
                 // orientiation input events in offset direction
@@ -149,9 +173,18 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                     dist      = dist2;
                 }
 
+                //TODO: SUPER HACKY... This is because of the sqrt2 error in the 
+                // orientations. Look at comment in avgDt
+                if(ori % 2 == 1){
+                    helpMaxDtThreshold = (int) (maxDtThreshold * SQRT2);
+                    helpMinDtThreshold = (int) (minDtThreshold * SQRT2);
+                } else {
+                    helpMaxDtThreshold = maxDtThreshold;
+                    helpMinDtThreshold = minDtThreshold;
+                }
                 // if the time between this event and the most recent neighbor 
-                // event lies not within the interval, dont write an output event
-                if (!(dt < maxDtThreshold && dt > minDtThreshold)) {
+                // event lies not within the interval, dont write an output event           
+                if (!(dt < helpMaxDtThreshold && dt > helpMinDtThreshold)) {
                     if(passAllEvents) {
                         DvsMotionOrientationEvent eout = (DvsMotionOrientationEvent) outItr.nextOutput();
                         eout.copyFrom((DvsOrientationEvent) ein);
@@ -165,8 +198,8 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                 speed = 1e6f * (float) dist / dt; 
                 delay = dt; // the smallest delay found in the 'winning' search direction
 
+                // don't output event if speed too high compared to average
                 avgSpeed = (1 - speedMixingFactor) * avgSpeed + speedMixingFactor * speed;
-
                 if (speedControlEnabled && speed > avgSpeed * excessSpeedRejectFactor) {
                     if(passAllEvents) {
                         DvsMotionOrientationEvent eout = (DvsMotionOrientationEvent) outItr.nextOutput();
@@ -174,12 +207,13 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                         eout.setHasDirection(false);
                     }
                     continue;
-                } // don't store event if speed too high compared to average
+                } 
 
                 // </editor-fold>
             } else {
                 // <editor-fold defaultstate="collapsed" desc="--Motion direction using AVG dt--">
                 float speed1 = 0, speed2 = 0; // summed speeds
+                int delay1 = 0,delay2 = 0;
                 int n1 = 0, n2 = 0; // counts of passing matches, each direction
 
                 // use average time to previous ori events iterate over 
@@ -191,16 +225,28 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                 for (int s = 1; s <= searchDistance; s++) {
                     d = DvsMotionOrientationEvent.unitDirs[ori];
                     dt = ts - lastTimesMap[x + s * d.x][y + s * d.y][type]; // this is time between this event and previous
-                    if (dt < maxDtThreshold && dt > minDtThreshold) {
+                    
+                    //TODO: SUPER HACKY... This is because of the sqrt2 error in the 
+                    // orientations. Look at comment in avgDt
+                    if(ori % 2 == 1){
+                        helpMaxDtThreshold = (int) (maxDtThreshold * SQRT2);
+                        helpMinDtThreshold = (int) (minDtThreshold * SQRT2);
+                    } else {
+                        helpMaxDtThreshold = maxDtThreshold;
+                        helpMinDtThreshold = minDtThreshold;
+                    }
+                    if (dt < helpMaxDtThreshold && dt > helpMinDtThreshold) {
                         n1++;
                         speed1 += (float) s / dt; // sum speed in pixels/us
+                        delay1 += dt;
                     }
 
                     d = DvsMotionOrientationEvent.unitDirs[ori + 4];
                     dt = ts - lastTimesMap[x + s * d.x][y + s * d.y][type];
-                    if (dt < maxDtThreshold && dt > minDtThreshold) {
+                    if (dt < helpMaxDtThreshold && dt > helpMinDtThreshold) {
                         n2++;
                         speed2 += (float) s / dt;
+                        delay2 += dt;
                     }
                 }
 
@@ -221,23 +267,21 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                 // is asigned to the 'positive' search direction.
                 if (n1 > n2 || (n1 == n2 && speed1 <= speed2)) {
                     speed     = speed1 / n1;
+                    delay     = delay1 / n1;
                     motionDir = ori;
                 } else if (n2 > n1 || (n1 == n2 && speed2 < speed1)) {
                     speed     = speed2 / n2;
+                    delay     = delay2 / n2;
                     motionDir = (byte) (ori + 4);
                 } 
 
-                dist  = searchDistance / 2; //distance can only be half search distance, as we use average dt and speed.
-                // We want delay to be in us, so we divide by speed while it is
-                // still in its pixel/us form. Thereafter we convert speed to
-                // pixel/s
-                // Also it is more accurate to calculate the distance in float here
-                // as we want to compute a derived quantity, so we should round 
-                // as late as possible. When searchDistance is '3', then dist =1
-                // but we calculate with 1.5 here.
-                delay = (int) ((searchDistance/2f) / speed); // hence delay is in seconds
+                //distance can only be half search distance, as we use average dt and speed.
+                // Note that dist is in int, so for a normal searchDistance of '3' the
+                // 'dist' saved will be 1.
+                dist  = searchDistance / 2; 
                 speed = 1e6f * speed; //now speed is in PPS
                 
+                // don't output event if speed too high compared to average
                 avgSpeed = (1 - speedMixingFactor) * avgSpeed + speedMixingFactor * speed;
                 if (speedControlEnabled && speed > avgSpeed * excessSpeedRejectFactor) {
                     if(passAllEvents) {
@@ -246,8 +290,7 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                        eout.setHasDirection(false);
                     }
                     continue;
-                } // don't output event if speed too high compared to average
-
+                } 
                 // </editor-fold>
             }
 

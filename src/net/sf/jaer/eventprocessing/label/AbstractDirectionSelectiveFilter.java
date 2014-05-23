@@ -3,6 +3,7 @@
  * Created on November 2, 2005, 8:24 PM */
 package net.sf.jaer.eventprocessing.label;
 
+import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.geom.Point2D;
 import java.util.Observable;
 import java.util.Observer;
@@ -72,7 +73,12 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
     protected MotionVectors motionVectors;
     protected float avgSpeed = 0;
 
-
+    GLU glu = null;
+    GLUquadric expansionQuad;
+    boolean hasBlendChecked = false;
+    boolean hasBlend = false;
+    Random r = new Random();
+    
     /** Creates a new instance of DirectionSelectiveFilter
      * @param chip */
     public AbstractDirectionSelectiveFilter(AEChip chip) {
@@ -96,9 +102,9 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
         setPropertyTooltip("subSampleShift", "Shift subsampled timestamp map stores by this many bits");
         setPropertyTooltip("tauLow", "time constant in ms of lowpass filters for global motion signals");
         setPropertyTooltip("useAvgDtEnabled", "uses average delta time over search instead of minimum");
-        setPropertyTooltip("excessSpeedRejectFactor", "local speeds this factor higher than average are rejected as non-physical");
-        setPropertyTooltip("speedMixingFactor", "speeds computed are mixed with old values with this factor");
         setPropertyTooltip("speedControlEnabled", "enables filtering of excess speeds");
+        setPropertyTooltip("speedControl_ExcessSpeedRejectFactor", "local speeds this factor higher than average are rejected as non-physical");
+        setPropertyTooltip("speedControl_speedMixingFactor", "speeds computed are mixed with old values with this factor");
         setPropertyTooltip("searchDistance", "search distance perpindicular to orientation, 1 means search 1 to each side");
         setPropertyTooltip("minDtThreshold", "min delta time (us) for past events allowed for selecting a particular direction");
         setPropertyTooltip("maxDtThreshold", "max delta time (us) that is considered");
@@ -133,23 +139,15 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
         log.info(String.format("allocated int[%d][%d][%d] array for last event times",chip.getSizeX(),chip.getSizeY(),NUM_INPUT_TYPES));
     }
 
-    GLU glu = null;
-    GLUquadric expansionQuad;
-    boolean hasBlendChecked = false;
-    boolean hasBlend = false;
-    Random r = new Random();
-
-    @Override
-    public void annotate(GLAutoDrawable drawable) {
-        if (!isFilterEnabled()) {
-			return;
-		}
+    @Override public void annotate(GLAutoDrawable drawable) {
+        if (!isFilterEnabled()) return;
 
         GL2 gl = drawable.getGL().getGL2();
-        if (gl == null) {
-			return;
-		}
+        if (gl == null) return;
 
+        // text annoations on clusters, setup
+        final int font = GLUT.BITMAP_HELVETICA_18;
+        
         if (!hasBlendChecked) {
             hasBlendChecked = true;
             String glExt = gl.glGetString(GL.GL_EXTENSIONS);
@@ -171,16 +169,19 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
         if (isShowGlobalEnabled()) {
             // <editor-fold defaultstate="collapsed" desc="-- draw global translation vector --">
             gl.glPushMatrix();
-            gl.glColor3f(1, 1, 1);
-            gl.glTranslatef(chip.getSizeX()/2,chip.getSizeY()/2,0);
-            gl.glLineWidth(6f);
-            gl.glBegin(GL.GL_LINES);
-            gl.glVertex2f(0,0);
-            Translation t=motionVectors.translation;
-            int mult=chip.getMaxSize()/4;
-            gl.glVertex2f(t.xFilter.getValue()*ppsScale*mult,t.yFilter.getValue()*ppsScale*mult);
-            gl.glEnd();
+                gl.glColor3f(1, 1, 1);
+                gl.glTranslatef(chip.getSizeX()/2,chip.getSizeY()/2,0);
+                gl.glLineWidth(6f);
+                gl.glBegin(GL.GL_LINES);
+                    gl.glVertex2f(0,0);
+                    Translation t=motionVectors.translation;
+                    int mult=chip.getMaxSize()/4;
+                    gl.glVertex2f(t.xFilter.getValue()*ppsScale*mult,t.yFilter.getValue()*ppsScale*mult);
+                gl.glEnd();
+                
             gl.glPopMatrix();
+            gl.glRasterPos2i(chip.getSizeX()/2,chip.getSizeY()/2+10);
+            chip.getCanvas().getGlut().glutBitmapString(font, String.format("glob speed=%.2f ", (float)Math.sqrt(Math.pow(t.xFilter.getValue(), 2)+Math.pow(t.yFilter.getValue(), 2))));
             // </editor-fold>
 
             // <editor-fold defaultstate="collapsed" desc="-- draw global rotation vector as line left/right --">
@@ -243,10 +244,9 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
             for(Object o:dirPacket){
                 MotionOrientationEventInterface e=(MotionOrientationEventInterface)o;
                 c=chip.getRenderer().makeTypeColors(e.getNumCellTypes());
-                if(e.isHasDirection())
-				 {
-					drawMotionVector(gl,e,frameDuration,c); //If we passAllEvents then the check is needed to not annotate the events without a real direction
-				}
+                if(e.isHasDirection()) {
+                    drawMotionVector(gl,e,frameDuration,c); //If we passAllEvents then the check is needed to not annotate the events without a real direction
+		}
             }
             gl.glEnd();
             gl.glPopMatrix();
@@ -283,16 +283,14 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
         gl.glVertex2f(endx+arx, endy+ary);
         // other half, 90 degrees
         gl.glVertex2f(endx,endy);
-        gl.glVertex2f((endx+ary), endy-arx);
+        gl.glVertex2f(endx+ary, endy-arx);
     }
 
-    @Override
-    public void initFilter() {
+    @Override public void initFilter() {
         resetFilter();
     }
 
-    @Override
-    public void update(Observable o, Object arg) {
+    @Override public void update(Observable o, Object arg) {
         initFilter();
     }
 
@@ -452,17 +450,6 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --SpeedControlEnabled--">
-    public boolean isSpeedControlEnabled() {
-        return speedControlEnabled;
-    }
-
-    public void setSpeedControlEnabled(boolean speedControlEnabled) {
-        this.speedControlEnabled = speedControlEnabled;
-        putBoolean("speedControlEnabled",speedControlEnabled);
-    }
-    // </editor-fold>
-
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --ShowGlobalEnabled--">
     public boolean isShowGlobalEnabled() {
         return showGlobalEnabled;
@@ -530,34 +517,7 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
         putFloat("ppsScale",ppsScale);
     }
     // </editor-fold>
-
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --SpeedMixingFactor--">
-    public float getSpeedMixingFactor() {
-        return speedMixingFactor;
-    }
-
-    public void setSpeedMixingFactor(float speedMixingFactor) {
-        if(speedMixingFactor > 1) {
-            speedMixingFactor=1;
-        } else if(speedMixingFactor < Float.MIN_VALUE) {
-            speedMixingFactor = Float.MIN_VALUE;
-        }
-        this.speedMixingFactor = speedMixingFactor;
-        putFloat("speedMixingFactor",speedMixingFactor);
-    }
-    // </editor-fold>
-
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --ExcessSpeedRejectFactor--">
-    public int getExcessSpeedRejectFactor() {
-        return excessSpeedRejectFactor;
-    }
-
-    public void setExcessSpeedRejectFactor(int excessSpeedRejectFactor) {
-        this.excessSpeedRejectFactor = excessSpeedRejectFactor;
-        putInt("excessSpeedRejectFactor",excessSpeedRejectFactor);
-    }
-    // </editor-fold>
-
+    
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --TauLow--">
     public int getTauLow() {
         return tauLow;
@@ -645,6 +605,45 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
         this.jitterAmountPixels = jitterAmountPixels;
         putFloat("jitterAmountPixels",jitterAmountPixels);
         getChip().getAeViewer().interruptViewloop();
+    }
+    // </editor-fold>
+    
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --SpeedControlEnabled--">
+    public boolean isSpeedControlEnabled() {
+        return speedControlEnabled;
+    }
+
+    public void setSpeedControlEnabled(boolean speedControlEnabled) {
+        this.speedControlEnabled = speedControlEnabled;
+        putBoolean("speedControlEnabled",speedControlEnabled);
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --SpeedControl_SpeedMixingFactor--">
+    public float getSpeedControl_SpeedMixingFactor() {
+        return speedMixingFactor;
+    }
+
+    public void setSpeedControl_SpeedMixingFactor(float speedMixingFactor) {
+        if(speedMixingFactor > 1) {
+            speedMixingFactor=1;
+        } else if(speedMixingFactor < Float.MIN_VALUE) {
+            speedMixingFactor = Float.MIN_VALUE;
+        }
+        this.speedMixingFactor = speedMixingFactor;
+        putFloat("speedMixingFactor",speedMixingFactor);
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --SpeedControl_ExcessSpeedRejectFactor--">
+    public int getSpeedControl_ExcessSpeedRejectFactor() {
+        return excessSpeedRejectFactor;
+    }
+
+    public void setSpeedControl_ExcessSpeedRejectFactor(int excessSpeedRejectFactor) {
+        this.excessSpeedRejectFactor = excessSpeedRejectFactor;
+        putInt("excessSpeedRejectFactor",excessSpeedRejectFactor);
     }
     // </editor-fold>
 }

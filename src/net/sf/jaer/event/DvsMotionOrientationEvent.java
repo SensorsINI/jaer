@@ -27,7 +27,12 @@ public class DvsMotionOrientationEvent extends DvsOrientationEvent implements Mo
     public int delay=0;
     
     /** the distance associated with this motion event. This is the 
-     * distance in pixels to the prior event that signaled this direction */
+     * distance in pixels to the prior event that signaled this direction 
+     * Note: This distance is neither euclidian not taxicab. Its the distance
+     *       in the receptive field of the current orientation. This means that
+     *       the pixel at location (1,1) relative to current location has a 
+     *       distance of '1' (in a diagonal direction event) as has the pixel
+     *       at (1,0) a distance of '1' (in a horizontal direction event) */
     public byte distance=0;
     
     /** speed in pixels per second */
