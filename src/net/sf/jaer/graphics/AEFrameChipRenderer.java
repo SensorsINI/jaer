@@ -215,7 +215,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         while(allItr.hasNext()){
             //The iterator only iterates over the DVS events
             ApsDvsEvent e = (ApsDvsEvent) allItr.next();
-            if (e.special) {
+            if (e.isSpecial()) {
                 setSpecialCount(specialCount + 1); // TODO optimize special count increment
                 continue;
             }

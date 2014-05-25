@@ -329,7 +329,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										// (dataword&SeeBetter20.ADC_DATA_MASK));
 									}
 									else if ((b.get(i + 1) & EXTERNAL_PIN_EVENT) == EXTERNAL_PIN_EVENT) {
-										addr = ApsDvsChip.TRIGGERMASK;
+										addr = ApsDvsChip.EXTERNAL_INPUT_EVENT_ADDR;
 										timestamp = currentts;
 										// haveEvent = true; // TODO don't write
 										// out the external pin events for now,

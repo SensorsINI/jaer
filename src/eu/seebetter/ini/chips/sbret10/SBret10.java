@@ -312,7 +312,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
                 } else if ((data & ApsDvsChip.ADDRESS_TYPE_MASK) == ApsDvsChip.ADDRESS_TYPE_DVS) {
                     //DVS event
                     ApsDvsEvent e = nextApsDvsEvent(outItr);
-                    if ((data & ApsDvsChip.TRIGGERMASK) == ApsDvsChip.TRIGGERMASK) {
+                    if ((data & ApsDvsChip.EVENT_TYPE_MASK) == ApsDvsChip.EXTERNAL_INPUT_EVENT_ADDR) {
                         e.adcSample = -1; // TODO hack to mark as not an ADC sample
                         e.special = true; // TODO special is set here when capturing frames which will mess us up if this is an IMUSample used as a plain ApsDvsEvent
                         e.address = data;
@@ -820,7 +820,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
   @Override
     public void setShowIMU(boolean yes) {
         showIMU=yes;
-        final byte POWER_MGMT_1=(byte)107;
+        final byte POWER_MGMT_1=(byte)0x6b; // register 107 decimel
         
         getPrefs().putBoolean("SBRet10.showIMU",showIMU);
         if(hardwareInterface!=null && hardwareInterface instanceof ApsDvsHardwareInterface && hardwareInterface.isOpen()){
@@ -828,11 +828,9 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
             try{
             // disable or enable IMU on device
             if(yes){
-                apsDvsHardwareInterface.writeImuRegister(POWER_MGMT_1, (byte)(0x00)); // deactivate sleep
-                byte registervalue=apsDvsHardwareInterface.readImuRegister(POWER_MGMT_1);
-                log.info(String.format("POWER_MGMT_1 register=0x%H"));
+                apsDvsHardwareInterface.writeImuRegister(POWER_MGMT_1, (byte)(0x02)); // deactivate sleep
             }else{
-                apsDvsHardwareInterface.writeImuRegister(POWER_MGMT_1, (byte)(0x47)); // activate full sleep
+                apsDvsHardwareInterface.writeImuRegister(POWER_MGMT_1, (byte)(0x42)); // activate full sleep
             }
             }catch(HardwareInterfaceException e){
                 log.warning("tried to set IMU register but got exception "+e.toString());

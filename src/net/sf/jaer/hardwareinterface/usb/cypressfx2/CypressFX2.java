@@ -805,6 +805,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //            addresses=events.getAddresses();
 //            timestamps=events.getTimestamps();
         nEvents = lastEventsAcquired.getNumEvents();
+//        System.out.println(nEvents+" events");
         eventCounter = 0;
         realTimeEventCounterStart = 0;
 

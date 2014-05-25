@@ -23,8 +23,13 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
             XMASK = 1023 << XSHIFT, // 10 bits from bits 12 to 21
             POLSHIFT = 11,
             POLMASK = 1 << POLSHIFT, //,    // 1 bit at bit 11
-            TRIGGERSHIFT = 10,
-            TRIGGERMASK = 1 << TRIGGERSHIFT;
+            EVENT_TYPE_SHIFT=10,
+            EVENT_TYPE_MASK=3<<EVENT_TYPE_SHIFT, // these 2 bits encode readout type for APS and other event type (IMU/DVS) for
+            EXTERNAL_INPUT_EVENT_ADDR = 1 << EVENT_TYPE_SHIFT, // This special address is is for external pin input events
+            IMU_SAMPLE_VALUE=3<<EVENT_TYPE_SHIFT // this special code is for IMU sample events
+            ;
+    // see the files in trunk\doc\data structure\apsDVS 
+    // below was original IMU code location, not used anymore (tobi)
 //            IMUSHIFT =31, // 1 bit at bit 31 encodes IMU data
 //            IMUMASK=1<<IMUSHIFT; // adc samples are bits 0-9, with ADC data type at bits 10 to 11 and x and y addresses at DVS x,y bit locations
 

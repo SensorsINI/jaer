@@ -319,42 +319,42 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
      */
     public synchronized void writeImuRegister(byte imuRegister, byte imuRegisterValue) throws HardwareInterfaceException {
         //                setup1              setup3,setup2                   setup4                setup5
-        sendVendorRequest(VR_IMU,  (short) IMU_CMD_WRITE_REGISTER, (short) (0xff & imuRegister | ((0xff & imuRegisterValue) << 8)));
+        sendVendorRequest(VR_IMU,  (short) IMU_CMD_WRITE_REGISTER, (short)(0xffff & (0xff & imuRegister | ((0xff & imuRegisterValue) << 8))));
 //        sendVendorRequest(byte request, short value, short index)
 }
 
-    /**
-     * Reads an IMU register value. This method blocks until value is read.
-     *
-     * @param register the register address.
-     * @return the value of the register.
-     */
-    public synchronized byte readImuRegister(byte register) throws HardwareInterfaceException {
-        sendVendorRequest(VR_IMU,  (short) IMU_CMD_READ_REGISTER,(short) (0xff & register));
-        // read back from control endpoint to get the register value
-        USBIO_CLASS_OR_VENDOR_REQUEST vr = new USBIO_CLASS_OR_VENDOR_REQUEST();
-        USBIO_DATA_BUFFER buf = new USBIO_DATA_BUFFER(2);
-
-        vr.Flags = UsbIoInterface.USBIO_SHORT_TRANSFER_OK;
-        vr.Type = UsbIoInterface.RequestTypeVendor;
-        vr.Recipient = UsbIoInterface.RecipientDevice;
-        vr.RequestTypeReservedBits = 0;
-        vr.Request = VR_DOWNLOAD_FIRMWARE;
-        vr.Index = 0;
-        vr.Value = 0;
-
-        buf.setNumberOfBytesToTransfer(1);
-        int status = gUsbIo.classOrVendorInRequest(buf, vr);
-
-        if (status != USBIO_ERR_SUCCESS) {
-            throw new HardwareInterfaceException("Unable to receive IMU register value: " + UsbIo.errorText(status));
-        }
-        if (buf.getBytesTransferred() != 1) {
-            throw new HardwareInterfaceException("Wrong number of bytes transferred, recieved " + buf.getBytesTransferred() + " but should have recieved 1 byte");
-        }
-        byte value = buf.Buffer()[0];
-        return value;
-    }
+//    /**
+//     * Reads an IMU register value. This method blocks until value is read.
+//     *
+//     * @param register the register address.
+//     * @return the value of the register.
+//     */
+//    public synchronized byte readImuRegister(byte register) throws HardwareInterfaceException {
+//        sendVendorRequest(VR_IMU,  (short) IMU_CMD_READ_REGISTER,(short) (0xff & register));
+//        // read back from control endpoint to get the register value
+//        USBIO_CLASS_OR_VENDOR_REQUEST vr = new USBIO_CLASS_OR_VENDOR_REQUEST();
+//        USBIO_DATA_BUFFER buf = new USBIO_DATA_BUFFER(1);
+//
+//        vr.Flags = UsbIoInterface.USBIO_SHORT_TRANSFER_OK;
+//        vr.Type = UsbIoInterface.RequestTypeVendor;
+//        vr.Recipient = UsbIoInterface.RecipientDevice;
+//        vr.RequestTypeReservedBits = 0;
+//        vr.Request = VR_IMU;
+//        vr.Index = 0;
+//        vr.Value = 0;
+//
+//        buf.setNumberOfBytesToTransfer(1);
+//        int status = gUsbIo.classOrVendorInRequest(buf, vr);
+//
+//        if (status != USBIO_ERR_SUCCESS) {
+//            throw new HardwareInterfaceException("Unable to receive IMU register value: " + UsbIo.errorText(status));
+//        }
+//        if (buf.getBytesTransferred() != 1) {
+//            throw new HardwareInterfaceException("Wrong number of bytes transferred, recieved " + buf.getBytesTransferred() + " but should have recieved 1 byte");
+//        }
+//        byte value = buf.Buffer()[0];
+//        return value;
+//    }
 
     /**
      * This reader understands the format of raw USB data and translates to the
@@ -453,7 +453,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 
                     int[] addresses = buffer.getAddresses();
                     int[] timestamps = buffer.getTimestamps();
-                    //log.info("received " + bytesSent + " bytes");
+//                    log.info("received " + bytesSent + " bytes");
                     // write the start of the packet
                     buffer.lastCaptureIndex = eventCounter;
 //                     tobiLogger.log("#packet");
@@ -516,9 +516,9 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                         haveEvent = true;
 //                                              System.out.println("ADC word: " + (dataword&SeeBetter20.ADC_DATA_MASK));
                                     } else if ((buf[i + 1] & EXTERNAL_PIN_EVENT) == EXTERNAL_PIN_EVENT) {
-                                        addr = ApsDvsChip.TRIGGERMASK;
+                                        addr = ApsDvsChip.EXTERNAL_INPUT_EVENT_ADDR;
                                         timestamp = currentts;
-                                        haveEvent = true;
+                                        haveEvent = false; // TODO set false for now
 //                                        haveEvent = true; // TODO don't write out the external pin events for now, because they mess up the IMU special events
                                     } else if ((buf[i + 1] & XBIT) == XBIT) {//  received an X address, write out event to addresses/timestamps output arrays
 
@@ -561,7 +561,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 //                                            System.out.println(imuSample.toString());
                                             imuSample = imuSampleQueue.poll();
                                         }
-                                        while (imuSample != null && imuSample.getTimestampUs() > timestamp + 100000) {
+                                        while (imuSample != null && imuSample.getTimestampUs() > timestamp + 10000) {
                                             imuSample = imuSampleQueue.poll(); // drain out imu samples that are too far in future
                                         }
                                         addresses[eventCounter] = addr;
@@ -598,7 +598,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                     // write capture size
                     buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
 
-                    //     log.info("packet size " + buffer.lastCaptureLength + " number of Y addresses " + numberOfY);
+//                         log.info("packet size " + buffer.lastCaptureLength);
                     // if (NumberOfWrapEvents!=0) {
                     //System.out.println("Number of wrap events received: "+ NumberOfWrapEvents);
                     //}
@@ -631,6 +631,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                 UsbIoBuf buf = (UsbIoBuf) evt.getNewValue();
                 try {
                     IMUSample sample = new IMUSample(buf);
+//                    System.out.println(sample.getTimestampUs());
                     imuSampleQueue.add(sample);
                 } catch (IllegalStateException ex) {
                     if (putImuSampleToQueueWarningCounter++ % PUT_IMU_WARNING_INTERVAL == 0) {

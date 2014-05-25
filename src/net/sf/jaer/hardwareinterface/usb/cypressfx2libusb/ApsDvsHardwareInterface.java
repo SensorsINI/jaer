@@ -454,8 +454,9 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 										// (dataword&SeeBetter20.ADC_DATA_MASK));
 									}
 									else if ((b.get(i + 1) & EXTERNAL_PIN_EVENT) == EXTERNAL_PIN_EVENT) {
-										addr = ApsDvsChip.TRIGGERMASK;
+										addr = ApsDvsChip.EXTERNAL_INPUT_EVENT_ADDR;
 										timestamp = currentts;
+                                                                                 haveEvent=false; // don't write for now; these events are flagged as special events but are not distinguished currently from IMU events;  they appear without any external input on SBRet10_Gyro camera with default CPLD global shutter logic for unknown reason, even with nothing plugged into IN sync connector
 										// haveEvent = true; // TODO don't write
 										// out the external pin events for now,
 										// because they mess up the IMU special
