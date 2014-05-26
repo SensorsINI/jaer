@@ -174,24 +174,11 @@ public class ApsDvsMotionOrientationEvent extends ApsDvsOrientationEvent impleme
         this.velocity.setLocation(velocity.x, velocity.y);
     }
 
-    /**
-     * An array of 8 nearest-neighbor unitDirs going CCW from down (south)
-     * direction.
-     * <p>
-     * these unitDirs are indexed by inputType, then by (inputType+4)%8
-     * (opposite direction) when input type is orientation, then input type 0 is
-     * 0 deg horiz edge, so first index could be to down, second to up so list
-     * should start with down IMPORTANT, this order *depends* on
-     * DirectionSelectiveFilter order of orientations
-     */
-    public static final Dir[] unitDirs = {
-        new Dir(0, -1), // down
-        new Dir(1, -1), // down right
-        new Dir(1, 0), // right
-        new Dir(1, 1), // up right
-        new Dir(0, 1), // up
-        new Dir(-1, 1), // up left
-        new Dir(-1, 0), // left
-        new Dir(-1, -1), // down left
-    };
+    public byte getDistance() {
+        return distance;
+    }
+
+    public void setDistance(byte distance) {
+        this.distance = distance;
+    }
 }

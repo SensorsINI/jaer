@@ -119,12 +119,7 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
             // (0 deg horiz ori), we offset first in neg vert direction, 
             // then in positive vert direction, thus the unitDirs used here 
             // *depend* on orientation assignments in AbstractDirectionSelectiveFilter
-            // </editor-fold>
-            int dist, dt, delay = 0;
-            int helpMinDtThreshold, helpMaxDtThreshold;
-            float speed = 0;
-            byte motionDir = ori; // the quantized direction of detected motion
-            MotionOrientationEventInterface.Dir d;
+            //
             // d=unitDirs[ori] is perpendicular to orientation 'ori', because
             // of the order of orientation and Dir. The first four 
             // directions in Dir are perpendicular to the four orientations.
@@ -136,6 +131,13 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
             // minimum delay.
             // If an event does not pass tests for being a motion event, we
             // use 'continue' to NOT write the event at the end of the loop.
+            // </editor-fold>
+            int dist, dt, delay = 0;
+            int helpMinDtThreshold, helpMaxDtThreshold;
+            float speed = 0;
+            byte motionDir = ori; // the quantized direction of detected motion
+            MotionOrientationEventInterface.Dir d;
+
             if (!useAvgDtEnabled) {
                 // <editor-fold defaultstate="collapsed" desc="--Motion direction using MIN dt--">
                 int mindt1 = Integer.MAX_VALUE, mindt2 = Integer.MAX_VALUE;
@@ -197,18 +199,6 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                 // pixel and dt is in microseconds (1e-6 seconds)
                 speed = 1e6f * (float) dist / dt; 
                 delay = dt; // the smallest delay found in the 'winning' search direction
-
-                // don't output event if speed too high compared to average
-                avgSpeed = (1 - speedMixingFactor) * avgSpeed + speedMixingFactor * speed;
-                if (speedControlEnabled && speed > avgSpeed * excessSpeedRejectFactor) {
-                    if(passAllEvents) {
-                        DvsMotionOrientationEvent eout = (DvsMotionOrientationEvent) outItr.nextOutput();
-                        eout.copyFrom((DvsOrientationEvent) ein);
-                        eout.setHasDirection(false);
-                    }
-                    continue;
-                } 
-
                 // </editor-fold>
             } else {
                 // <editor-fold defaultstate="collapsed" desc="--Motion direction using AVG dt--">
@@ -280,32 +270,31 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                 // 'dist' saved will be 1.
                 dist  = searchDistance / 2; 
                 speed = 1e6f * speed; //now speed is in PPS
-                
-                // don't output event if speed too high compared to average
-                avgSpeed = (1 - speedMixingFactor) * avgSpeed + speedMixingFactor * speed;
-                if (speedControlEnabled && speed > avgSpeed * excessSpeedRejectFactor) {
-                    if(passAllEvents) {
-                        DvsMotionOrientationEvent eout = (DvsMotionOrientationEvent) outItr.nextOutput();
-                        eout.copyFrom((DvsOrientationEvent) ein);
-                       eout.setHasDirection(false);
-                    }
-                    continue;
-                } 
                 // </editor-fold>
             }
+            
+            // don't output event if speed too high compared to average
+            avgSpeed = (1 - speedMixingFactor) * avgSpeed + speedMixingFactor * speed;
+            if (speedControlEnabled && speed > avgSpeed * excessSpeedRejectFactor) {
+                if(passAllEvents) {
+                    DvsMotionOrientationEvent eout = (DvsMotionOrientationEvent) outItr.nextOutput();
+                    eout.copyFrom((DvsOrientationEvent) ein);
+                    eout.setHasDirection(false);
+                }
+                continue;
+            } 
 
             //Now the event has passed all tests and properties are computed.
             // write the event to the OutputStream.
             DvsMotionOrientationEvent eout = (DvsMotionOrientationEvent) outItr.nextOutput();
-            eout.copyFrom( (DvsOrientationEvent)ein);
+            eout.copyFrom((DvsOrientationEvent) ein);
             eout.setDirection(motionDir);
+            eout.setDelay(delay);
             eout.setHasDirection(true);
-//            eout.set TODO
-            eout.distance = (byte) dist; // the pixel distance to the temporally closest event of the same type
+            eout.setDistance((byte) dist); // the pixel distance to the temporally closest event of the same type
             eout.setSpeed(speed);
             eout.setDir(MotionOrientationEventInterface.unitDirs[motionDir]);
-            eout.getVelocity().x   = -speed * eout.getDir().x; // these have minus sign because dir vector points towards direction that previous event occurred
-            eout.getVelocity().y   = -speed * eout.getDir().y;
+            eout.setVelocity(-speed * eout.getDir().x, -speed * eout.getDir().y); // these have minus sign because dir vector points towards direction that previous event occurred
             motionVectors.addEvent(eout);
         }
         return isShowRawInputEnabled() ? in : dirPacket; 

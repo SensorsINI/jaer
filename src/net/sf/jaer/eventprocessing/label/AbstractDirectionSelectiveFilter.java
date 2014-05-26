@@ -18,7 +18,6 @@ import javax.media.opengl.glu.GLUquadric;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.DvsMotionOrientationEvent;
 import net.sf.jaer.event.MotionOrientationEventInterface;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -31,8 +30,8 @@ import net.sf.jaer.util.filter.LowpassFilter;
 // No need to have @Description and @DevelopmentStatus here, as the abstract
 // class needs to be implemented, which is where the desc. and status. are used.
 abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D implements Observer, FrameAnnotater {
-    protected final int NUM_INPUT_TYPES = 8; // 4 orientations * 2 polarities
-    public static final int MAX_SEARCH_DISTANCE = 12;
+    protected static final int NUM_INPUT_TYPES = 8; // 4 orientations * 2 polarities
+    protected static final int MAX_SEARCH_DISTANCE = 12;
 
     protected boolean showGlobalEnabled   = getBoolean("showGlobalEnabled",true);
     protected boolean showVectorsEnabled  = getBoolean("showVectorsEnabled",true);
@@ -44,21 +43,19 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
     protected int minDtThreshold = getInt("minDtThreshold",100); // min 100us to filter noise or multiple spikes
 
     protected int searchDistance = getInt("searchDistance",3);
+    protected int subSampleShift = getInt("subSampleShift",0);
     protected float ppsScale     = getFloat("ppsScale",.03f);
-
+    protected boolean useAvgDtEnabled = getBoolean("useAvgDtEnabled",true);
+    
+    protected boolean jitterVectorLocations = getBoolean("jitterVectorLocations", true);
+    protected float jitterAmountPixels      = getFloat("jitterAmountPixels",.5f);
+    
     protected boolean speedControlEnabled = getBoolean("speedControlEnabled", true);
     protected float speedMixingFactor     = getFloat("speedMixingFactor",.001f);
     protected int excessSpeedRejectFactor = getInt("excessSpeedRejectFactor",2);
 
-    protected boolean useAvgDtEnabled = getBoolean("useAvgDtEnabled",true);
-
     /** taulow sets time constant of low-pass filter, limiting max frequency */
     protected int tauLow = getInt("tauLow",100);
-
-    protected int subSampleShift = getInt("subSampleShift",0);
-
-    protected boolean jitterVectorLocations = getBoolean("jitterVectorLocations", true);
-    protected float jitterAmountPixels      = getFloat("jitterAmountPixels",.5f);
 
     protected EventPacket oriPacket = null; // holds orientation events
     protected EventPacket dirPacket = null; // the output events, also used for rendering output events
@@ -85,8 +82,6 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
         super(chip);
 
         resetFilter();
-        setFilterEnabled(false);
-
 
         motionVectors = new MotionVectors();
 
@@ -112,11 +107,9 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
 
     // The Method that needs to be implemented.
     // This will be different for DVS and DAVIS, hence the abstract filter
-    @Override
-    public abstract EventPacket filterPacket(EventPacket in);
+    @Override public abstract EventPacket filterPacket(EventPacket in);
 
-    @Override
-    public synchronized final void resetFilter() {
+    @Override public synchronized final void resetFilter() {
         setPadding(getSearchDistance()); // make sure to set padding
         sizex=chip.getSizeX();
         sizey=chip.getSizeY();
@@ -132,9 +125,8 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
     }
 
     protected void allocateMap() {
-        if(!isFilterEnabled()) {
-			return;
-		}
+        if(!isFilterEnabled()) return;
+
         lastTimesMap=new int[chip.getSizeX()+PADDING][chip.getSizeY()+PADDING][NUM_INPUT_TYPES];
         log.info(String.format("allocated int[%d][%d][%d] array for last event times",chip.getSizeX(),chip.getSizeY(),NUM_INPUT_TYPES));
     }
@@ -258,7 +250,7 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
     // plots a single motion vector which is the number of pixels per second times scaling
     void drawMotionVector(GL2 gl, MotionOrientationEventInterface e, int frameDuration,float[][] c) {
         float jx = 0, jy = 0;
-        DvsMotionOrientationEvent.Dir d = DvsMotionOrientationEvent.unitDirs[e.getDirection()];
+        MotionOrientationEventInterface.Dir d = MotionOrientationEventInterface.unitDirs[e.getDirection()];
 
         if (jitterVectorLocations) {
             jx = (r.nextFloat() - .5f) * jitterAmountPixels;
@@ -266,7 +258,7 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
         }
         float speed  = e.getSpeed() * ppsScale;
         // motion vector points in direction of motion, *from* dir value (minus sign) which points in direction from prevous event
-        float startx = e.getX()+jx,           starty = e.getY()+jy;
+        float startx = e.getX()+jx,               starty = e.getY()+jy;
         float endx   = (e.getX()-(d.x*speed))+jx, endy   = (e.getY()-(d.y*speed))+jy;
         gl.glColor3fv(c[e.getType()],0);
         gl.glVertex2f(startx,starty);
@@ -357,10 +349,8 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
             // thus tangential comtribution is given by v.t/r=(-vx*ry+vy*rx)/r^2.
 
             int rx=e.getX()-(sizex/2), ry=e.getY()-(sizey/2);
-            if((rx==0) && (ry==0))
-			 {
-				return; // don't add singular event at origin
-			}
+            if((rx==0) && (ry==0)) return; // don't add singular event at origin
+
             float r2=(rx*rx)+(ry*ry); // radius of event from center
             float dphi=( (-e.getVelocity().x*ry) + (e.getVelocity().y*rx) )/r2;
             int t=e.getTimestamp();
@@ -392,26 +382,21 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
 
             int rx=e.getX()-(sizex/2), ry=e.getY()-(sizey/2);
             final int f=2; // singular region
-            if(((rx>-f) && (rx<f)) && ((ry>-f) && (ry<f)))
-			 {
-				return; // don't add singular event at origin
-			}
+            if(((rx>-f) && (rx<f)) && ((ry>-f) && (ry<f))) return; // don't add singular event at origin
+
             float r2=(rx*rx)+(ry*ry); // radius of event from center
             float dradial=( (e.getVelocity().x*rx) + (e.getVelocity().y*ry) )/r2;
             int t=e.getTimestamp();
             filter.filter(dradial,t);
             if((rx>0) && (rx>ry) && (rx>-ry)) {
-				east.filter(dradial,t);
-			}
-			else if((ry>0) && (ry>rx) && (ry>-rx)) {
-				north.filter(dradial,t);
-			}
-			else if((rx<0) && (rx<ry) && (rx<-ry)) {
-				west.filter(dradial,t);
-			}
-			else {
-				south.filter(dradial,t);
-			}
+                east.filter(dradial,t);
+            } else if((ry>0) && (ry>rx) && (ry>-rx)) {
+                north.filter(dradial,t);
+            } else if((rx<0) && (rx<ry) && (rx<-ry)) {
+                west.filter(dradial,t);
+            } else {
+                south.filter(dradial,t);
+            }
         }
     }
 

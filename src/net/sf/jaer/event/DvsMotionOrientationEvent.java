@@ -12,18 +12,18 @@ import java.awt.geom.Point2D;
 public class DvsMotionOrientationEvent extends DvsOrientationEvent implements MotionOrientationEventInterface {
     
     /** the direction of motion, a quantized value indexing into Dir */
-    public byte direction=0;
+    protected byte direction=0;
     
     /** Defaults to true; set to false to indicate unknown direction. */
-    public boolean hasDirection = true;
+    protected boolean hasDirection = true;
      
     /** unit vector of direction of motion */
-    public Dir dir=null;
+    protected Dir dir=null;
     
     /** the 'delay' value of this cell in us (unit of timestamps), an analog 
      * (but quantized) quantity that signals the time delay associated with this event.
      * Smaller time delays signal larger speed */
-    public int delay=0;
+    protected int delay=0;
     
     /** the distance associated with this motion event. This is the 
      * distance in pixels to the prior event that signaled this direction 
@@ -32,18 +32,18 @@ public class DvsMotionOrientationEvent extends DvsOrientationEvent implements Mo
      *       the pixel at location (1,1) relative to current location has a 
      *       distance of '1' (in a diagonal direction event) as has the pixel
      *       at (1,0) a distance of '1' (in a horizontal direction event) */
-    public byte distance=0;
+    protected byte distance=0;
     
     /** speed in pixels per second */
-    public float speed=0;
+    protected float speed=0;
     
     /** stores computed velocity. 
      * (implementations of AbstractDirectionSelectiveFilter compute it). 
      * This vector points in the direction of motion and has 
      * units of pixels per second (PPS). */
-    public Point2D.Float velocity=new Point2D.Float();
+    protected Point2D.Float velocity=new Point2D.Float();
     
-    public static final Point2D.Float motionVector=new Point2D.Float();
+    protected static final Point2D.Float motionVector=new Point2D.Float();
     
     /** Creates a new instance of event */
     public DvsMotionOrientationEvent() { }
@@ -53,7 +53,7 @@ public class DvsMotionOrientationEvent extends DvsOrientationEvent implements Mo
     }
     
     @Override public String toString(){
-        return super.toString()+" direction="+getDirection()+" distance="+distance+" delay="+delay+" speed="+getSpeed();
+        return super.toString()+" direction="+getDirection()+" distance="+getDistance()+" delay="+getDelay()+" speed="+getSpeed();
     }
     
     @Override public int getNumCellTypes() {
@@ -68,8 +68,8 @@ public class DvsMotionOrientationEvent extends DvsOrientationEvent implements Mo
             this.setDirection(((DvsMotionOrientationEvent)src).getDirection());
             this.setHasDirection(((DvsMotionOrientationEvent)src).isHasDirection());
             this.setDir(((DvsMotionOrientationEvent)src).getDir());
-            this.delay        = ((DvsMotionOrientationEvent)src).delay;
-            this.distance     = ((DvsMotionOrientationEvent)src).distance;
+            this.setDelay(((DvsMotionOrientationEvent)src).getDelay());
+            this.setDistance(((DvsMotionOrientationEvent)src).getDistance());
             this.setSpeed(((DvsMotionOrientationEvent)src).getSpeed());
             this.setVelocity(((DvsMotionOrientationEvent)src).getVelocity());
         }
@@ -81,7 +81,7 @@ public class DvsMotionOrientationEvent extends DvsOrientationEvent implements Mo
     }
     
 
-      /** computes the motionVectors for a given Event
+    /** computes the motionVectors for a given Event
      * @param e a MotionOrientationEvent to compute MotionVectors from
      * @return The newly-computed motion vector that uses the 
      *         distance of the event and the delay. The speed is the 
@@ -97,85 +97,84 @@ public class DvsMotionOrientationEvent extends DvsOrientationEvent implements Mo
     }
 
     /**
-     * @return the direction
-     */
-    @Override
-    public byte getDirection() {
+     * @return the direction */
+    @Override public byte getDirection() {
         return direction;
     }
 
     /**
-     * @param direction the direction to set
-     */
-    @Override
-    public void setDirection(byte direction) {
+     * @param direction the direction to set */
+    @Override public void setDirection(byte direction) {
         this.direction = direction;
     }
 
     /**
-     * @return the hasDirection
-     */
-    @Override
-    public boolean isHasDirection() {
+     * @return the hasDirection */
+    @Override public boolean isHasDirection() {
         return hasDirection;
     }
 
     /**
-     * @param hasDirection the hasDirection to set
-     */
-    @Override
-    public void setHasDirection(boolean hasDirection) {
+     * @param hasDirection the hasDirection to set */
+    @Override public void setHasDirection(boolean hasDirection) {
         this.hasDirection = hasDirection;
     }
 
     /**
-     * @return the speed
-     */
-    @Override
-    public float getSpeed() {
+     * @return the speed */
+    @Override public float getSpeed() {
         return speed;
     }
 
     /**
-     * @param speed the speed to set
-     */
-    @Override
-    public void setSpeed(float speed) {
+     * @param speed the speed to set */
+    @Override public void setSpeed(float speed) {
         this.speed = speed;
     }
 
     /**
-     * @return the dir
-     */
-    @Override
-    public Dir getDir() {
+     * @return the dir */
+    @Override public Dir getDir() {
         return dir;
     }
 
     /**
-     * @param dir the dir to set
-     */
-    @Override
-    public void setDir(Dir dir) {
+     * @param dir the dir to set */
+    @Override public void setDir(Dir dir) {
         this.dir = dir;
     }
 
     /**
-     * @return the velocity
-     */
-    @Override
-    public Point2D.Float getVelocity() {
+     * @return the velocity */
+    @Override public Point2D.Float getVelocity() {
         return velocity;
     }
 
     /**
-     * @param velocity the velocity to set
-     */
-    @Override
-    public void setVelocity(Point2D.Float velocity) {
+     * @param velocity the velocity to set */
+    @Override public void setVelocity(Point2D.Float velocity) {
         this.velocity = velocity;
     }
     
-     
- 
+    public void setVelocity(float x, float y) {
+        this.velocity.x = x;
+        this.velocity.y = y;
+    }
+
+    public byte getDistance() {
+        return distance;
+    }
+
+    public void setDistance(byte distance) {
+        this.distance = distance;
+    }
+
+    public int getDelay() {
+        return delay;
+    }
+
+    public void setDelay(int delay) {
+        this.delay = delay;
+    }
+    
 }
