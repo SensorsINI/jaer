@@ -476,7 +476,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
 			if (selection == null) {
 				return;
 			}
-			nPixels = ((selection.width + 1) * (selection.height + 1));
+			nPixels = ((selection.width) * (selection.height));
 			stats.count = 0;
 			for (Object o : in) {
 				BasicEvent e = (BasicEvent) o;
