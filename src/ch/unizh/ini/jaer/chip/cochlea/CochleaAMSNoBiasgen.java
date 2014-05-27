@@ -54,9 +54,11 @@ public class CochleaAMSNoBiasgen extends CochleaChip {
 
         @Override
         protected void checkTypeColors(int numCellTypes) {
-            if(didit) return;
+            if(didit) {
+				return;
+			}
             didit=true;
-            super.makeTypeColors(numCellTypes);
+            super.checkTypeColors(numCellTypes);
             Color[] colors={Color.green,Color.red,Color.green,Color.red};
             int ind=0;
             for(int i=0;i<4;i++){
@@ -66,11 +68,11 @@ public class CochleaAMSNoBiasgen extends CochleaChip {
             }
         }
     }
-    
+
     /** Extract cochlea events. The event class returned by the extractor is CochleaAMSEvent.
      * The address are mapped as follows
      * <pre>
-     * TX0 - AE0 
+     * TX0 - AE0
      * TX1 - AE1
      * ...
      * TX7 - AE7
@@ -78,7 +80,7 @@ public class CochleaAMSNoBiasgen extends CochleaChip {
      * TY1 - AE9
      * AE15:10 are unused and are unconnected - they should be masked out in software.
      * </pre>
-     * 
+     *
      * <table border="1px">
      * <tr><td>15<td>14<td>13<td>12<td>11<td>10<td>9<td>8<td>7<td>6<td>5<td>4<td>3<td>2<td>1<td>0
      * <tr><td>x<td>x<td>x<td>x<td>x<td>x<td>TH1<td>TH0<td>CH5<td>CH4<td>CH3<td>CH2<td>CH1<td>CH0<td>EAR<td>LPFBPF
@@ -110,14 +112,14 @@ public class CochleaAMSNoBiasgen extends CochleaChip {
 
         /**
          * Extracts the meaning of the raw events. This form is used to supply an output packet. This method is used for real time
-         * event filtering using a buffer of output events local to data acquisition. An AEPacketRaw may contain multiple events, 
+         * event filtering using a buffer of output events local to data acquisition. An AEPacketRaw may contain multiple events,
          * not all of them have to sent out as EventPackets. An AEPacketRaw is a set(!) of addresses and corresponding timing moments.
-         * 
-         * A first filter (independent from the other ones) is implemented by subSamplingEnabled and getSubsampleThresholdEventCount. 
-         * The latter may limit the amount of samples in one package to say 50,000. If there are 160,000 events and there is a sub sample 
+         *
+         * A first filter (independent from the other ones) is implemented by subSamplingEnabled and getSubsampleThresholdEventCount.
+         * The latter may limit the amount of samples in one package to say 50,000. If there are 160,000 events and there is a sub sample
          * threshold of 50,000, a "skip parameter" set to 3. Every so now and then the routine skips with 4, so we end up with 50,000.
-         * It's an approximation, the amount of events may be less than 50,000. The events are extracted uniform from the input. 
-         * 
+         * It's an approximation, the amount of events may be less than 50,000. The events are extracted uniform from the input.
+         *
          * @param in 		the raw events, can be null
          * @param out 		the processed events. these are partially processed in-place. empty packet is returned if null is
          * 					supplied as input.
@@ -164,9 +166,9 @@ public class CochleaAMSNoBiasgen extends CochleaChip {
             }
         }
 
-        /** Overrides default extractor so that cochlea channels are returned, 
+        /** Overrides default extractor so that cochlea channels are returned,
          * numbered from x=0 (base, high frequencies, input end) to x=63 (apex, low frequencies).
-         * 
+         *
          * @param addr raw address.
          * @return channel, from 0 to 63.
          */
