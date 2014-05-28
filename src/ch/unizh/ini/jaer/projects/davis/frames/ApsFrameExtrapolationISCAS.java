@@ -367,15 +367,15 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
                 System.out.println("weight update diverged");
             }
         }
-        System.out.print("ON bins: ");
+        System.out.print("ON bins:\t");
         for (int j = 0; j < numTimeBins; j++) {
-            System.out.print(onTimeBins[j] + ", ");
+            System.out.print(String.format(" %+1.4f\t",onTimeBins[j]));
         }
         System.out.println();
-        System.out.print("OFF bins: ");
+        System.out.print("OFF bins:\t");
         for (int j = 0; j < numTimeBins; j++) {
-            System.out.print(offTimeBins[j] + ", ");
-        }
+            System.out.print(String.format(" %+1.4f\t",offTimeBins[j]));
+         }
         System.out.println("");
         System.out.println("--------------------------");
         putFloatArray("onTimeBins", onTimeBins);
