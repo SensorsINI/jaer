@@ -315,7 +315,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
      * Sets an IMU register value. This is a blocking method.
      *
      * @param imuRegister register address on device.
-     * @param imuRegisterValue the value to set.
+     * @param imuRegisterValue the value to set.*
      */
     public synchronized void writeImuRegister(byte imuRegister, byte imuRegisterValue) throws HardwareInterfaceException {
         //                setup1              setup3,setup2                   setup4                setup5
