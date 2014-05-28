@@ -72,9 +72,16 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
     public ApsFrameExtrapolationISCAS(AEChip chip) {
         super(chip);
 
-        setPropertyTooltip("manualOnGain", "Gain for the rendering of the ON DVS event (if manual extrapolation method chosen)");
-        setPropertyTooltip("manualOffGain", "Gain for the rendering of the ON DVS event (if manual extrapolation method chosen)");
-        setPropertyTooltip("doRevertLearning", "Revert gains back to manual settings");
+        setPropertyTooltip("manualOnGain", "Gain for the rendering of the ON DVS event (if manual extrapolation method chosen by selecting freezeWeights and revertLearning button)");
+        setPropertyTooltip("manualOffGain", "Gain for the rendering of the ON DVS event (if manual extrapolation method chosen by selecting freezeWeights and revertLearning button)");
+        setPropertyTooltip("revertLearning", "Revert gains back to manual settings");
+        setPropertyTooltip("clipping", "Clip the output ??? TODO");
+        setPropertyTooltip("displayError", "Show the pixel errors compared to last frame TODO");
+        setPropertyTooltip("freezeWeights", "Freeze the gains");
+        setPropertyTooltip("learningRate", "Sets the rate of gain change. Typical values are ???? TODO");
+        setPropertyTooltip("lowpassFilterTime", "TODO some mixing factor for time bins");
+        setPropertyTooltip("revertLearning", "TODO");
+        setPropertyTooltip("tiedToAvg", "TODO");
 
         filterChain = new FilterChain(chip);
         baFilter = new BackgroundActivityFilter(chip);
