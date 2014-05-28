@@ -20,7 +20,9 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 
 /**
- *
+ * Demonstrates the DAVIS real time interframe reconstruction in the paper 
+ * C. Brandli, L. Muller, and T. Delbruck, “Real-Time, High-Speed Video Decompression Using a Frame- and Event-Based DAVIS Sensor,” in Proc. 2014 Intl. Symp. Circuits and Systems (ISCAS 2014), Melbourne, Australia, 2014. 
+
  * @author Christian & Lorenz
  */
 @Description("Extrapolates between two frames using the events ISCAS paper version")
@@ -34,9 +36,9 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
 //    {setPropertyTooltip("useOpenCV", "A boolean to set whether the OpenGL acceleration should be used");}
     private boolean revertLearning = getBoolean("revertLearning", false);
     private boolean displayError = getBoolean("displayError", false);
-    private boolean freezeWeights = getBoolean("freezeWeights", false);
+    private boolean freezeGains = getBoolean("freezeGains", false);
     private boolean clipping = getBoolean("clipping", true);
-    private boolean tiedToAvg = getBoolean("tiedToAvg", true);
+    private boolean tieGainsToAverage = getBoolean("tieGainsToAverage", true);
     private float manualOnGain = getFloat("manualOnGain", 0.001f);
     private float manualOffGain = getFloat("manualOffGain", -0.001f);
 
@@ -59,12 +61,12 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
     private float minDisplayBuffer, maxDisplayBuffer;
 
     //TIMEbins method parameters
-    private float binErrorMixingFactor = 0.4f;
-    private float binAvgMixingFactor = getFloat("lowpassFilterTime", 0.4f);//0.4f;
+//    private float binErrorMixingFactor = 0.4f; // not used currently
+    private float binAvgMixingFactor = getFloat("binAvgMixingFactor", 0.4f);//0.4f; // how quickly the bin average adapts
+    private float perPixelAndTimeBinMixingFactor = getFloat("perPixelAndTimeBinMixingFactor", 0.004f);//0.004f; //how quickly the per pixel bins adapts
     private int[] lastStamp;
     private final float timeBinSize = 1.5f;
-    private final int numTimeBins = 10;
-    private float detMixFac = getFloat("learningRate", 0.004f);//0.004f; //how quickly the per pixel bins adapts
+    private final int numTimeBins = 10;  // per pixel this many bins are used
     private short[][] onTimeBlame, offTimeBlame;
     private float[] onTimeBins, offTimeBins;
     private float[][] onPixTimeBins, offPixTimeBins;
@@ -72,16 +74,16 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
     public ApsFrameExtrapolationISCAS(AEChip chip) {
         super(chip);
 
-        setPropertyTooltip("manualOnGain", "Gain for the rendering of the ON DVS event (if manual extrapolation method chosen by selecting freezeWeights and revertLearning button)");
-        setPropertyTooltip("manualOffGain", "Gain for the rendering of the ON DVS event (if manual extrapolation method chosen by selecting freezeWeights and revertLearning button)");
+        setPropertyTooltip("manualOnGain", "Gain for the rendering of the ON DVS event (if manual extrapolation method chosen by selecting freezeGains and revertLearning button)");
+        setPropertyTooltip("manualOffGain", "Gain for the rendering of the ON DVS event (if manual extrapolation method chosen by selecting freezeGains and revertLearning button)");
         setPropertyTooltip("revertLearning", "Revert gains back to manual settings");
-        setPropertyTooltip("clipping", "Clip the output ??? TODO");
+        setPropertyTooltip("clipping", "Clip the image to 0-1 range; use to reset reconstructed frame if it has diverged. Sometimes turning off clipping helps learn better gains, faster and more stably.");
         setPropertyTooltip("displayError", "Show the pixel errors compared to last frame TODO");
-        setPropertyTooltip("freezeWeights", "Freeze the gains");
-        setPropertyTooltip("learningRate", "Sets the rate of gain change. Typical values are ???? TODO");
-        setPropertyTooltip("lowpassFilterTime", "TODO some mixing factor for time bins");
-        setPropertyTooltip("revertLearning", "TODO");
-        setPropertyTooltip("tiedToAvg", "TODO");
+        setPropertyTooltip("freezeGains", "Freeze the gains");
+        setPropertyTooltip("perPixelAndTimeBinMixingFactor", "Sets the rate of gain change for individual pixels (when tieGainsToAverage is not set) and per time bin since last event. Range 0-1, typical value 0.4.");
+        setPropertyTooltip("binAvgMixingFactor", "mixing factor for average of time bins, range 0-1, increase to speed up learning.");
+        setPropertyTooltip("revertLearning", "If set, continually reverts gains to the manual settings.");
+        setPropertyTooltip("tieGainsToAverage", "All the gains are clamped to be identical to the average. Use this option to greatly speed up initial gain setting.");
 
         filterChain = new FilterChain(chip);
         baFilter = new BackgroundActivityFilter(chip);
@@ -210,7 +212,7 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
 
     private void addEvent(ApsDvsEvent inEv) {
         addEventToFrameBinBased(inEv);
-        if (!freezeWeights) {
+        if (!freezeGains) {
             updateTimeBlame(inEv);
         }
         eventsSinceFrame++;
@@ -304,7 +306,7 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
 
         lastDisplayBuffer = displayBuffer.clone();
         displayBuffer = frameExtractor.getDisplayBuffer();
-        if (!freezeWeights) {
+        if (!freezeGains) {
             updateWeightsTIMEbin();
         }
     }
@@ -318,7 +320,7 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
         Arrays.fill(newOffTimeBinCount, 0);
         float[] newOffTimeBinSum = new float[numTimeBins];
         Arrays.fill(newOffTimeBinSum, 0.0f);
-        boolean tied = isTiedToAvg();
+        boolean tied = isTieGainsToAverage();
 
         for (int i = 0; i < lastDisplayBuffer.length; i++) {
 
@@ -330,7 +332,7 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
 
                 if (onTimeBlame[i][j] > 0) {
                     if (Math.abs((pixelOffEventCounter[i] + pixelOnEventCounter[i])) > 0.01f) {
-                        onPixTimeBins[i][j] = onPixTimeBins[i][j] - detMixFac * pixelErrors[i] * onTimeBlame[i][j] / ((pixelOffEventCounter[i] + pixelOnEventCounter[i]));
+                        onPixTimeBins[i][j] = onPixTimeBins[i][j] - perPixelAndTimeBinMixingFactor * pixelErrors[i] * onTimeBlame[i][j] / ((pixelOffEventCounter[i] + pixelOnEventCounter[i]));
                     }
                     newOnTimeBinSum[j] += onPixTimeBins[i][j];//onTimeBins[j] - binErrorMixingFactor*pixelErrors[i]*onTimeBlame[i][j]/((pixelOffEventCounter[i]+pixelOnEventCounter[i]));
                     newOnTimeBinCount[j]++; //the commented part above is an alternative to the RHS
@@ -338,7 +340,7 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
                 }
                 if (offTimeBlame[i][j] > 0) {
                     if (Math.abs((pixelOffEventCounter[i] + pixelOnEventCounter[i])) > 0.01f) {
-                        offPixTimeBins[i][j] = offPixTimeBins[i][j] - detMixFac * pixelErrors[i] * offTimeBlame[i][j] / ((pixelOffEventCounter[i] + pixelOnEventCounter[i]));
+                        offPixTimeBins[i][j] = offPixTimeBins[i][j] - perPixelAndTimeBinMixingFactor * pixelErrors[i] * offTimeBlame[i][j] / ((pixelOffEventCounter[i] + pixelOnEventCounter[i]));
                     }
                     newOffTimeBinSum[j] += offPixTimeBins[i][j];//offTimeBins[j] - binErrorMixingFactor*pixelErrors[i]*offTimeBlame[i][j]/((pixelOffEventCounter[i]+pixelOnEventCounter[i]));
                     newOffTimeBinCount[j]++; //the commented part above is an alternative to the RHS
@@ -442,20 +444,20 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
     /**
      * @param displayError the displayError to set
      */
-    public void setDisplayError(boolean displayError) {
+    synchronized public void setDisplayError(boolean displayError) {
         this.displayError = displayError;
         putBoolean("displayError", displayError);
     }
 
-    public boolean isTiedToAvg() {
-        return tiedToAvg;
+    public boolean isTieGainsToAverage() {
+        return tieGainsToAverage;
     }
 
     /**
-     * @param tiedToAvg the tiedToAvg to set
+     * @param tieGainsToAverage the tieGainsToAverage to set
      */
-    public void setTiedToAvg(boolean tiedToAvg) {
-        this.tiedToAvg = tiedToAvg;
+    synchronized public void setTieGainsToAverage(boolean tieGainsToAverage) {
+        this.tieGainsToAverage = tieGainsToAverage;
     }
 
     /**
@@ -468,7 +470,7 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
     /**
      * @param revertLearning the revertLearning to set
      */
-    public void setRevertLearning(boolean revertLearning) {
+    synchronized public void setRevertLearning(boolean revertLearning) {
         this.revertLearning = revertLearning;
     }
 
@@ -482,30 +484,29 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
     /**
      * @param manualOnGain the manualOnGain to set
      */
-    public void setManualOnGain(float manualOnGain) {
+    synchronized public void setManualOnGain(float manualOnGain) {
+        manualOnGain=clip01(manualOnGain);
         this.manualOnGain = manualOnGain;
         putFloat("manualOnGain", manualOnGain);
-        resetFilter();
     }
 
-    public float getLearningRate() {
-        return detMixFac;
+    public float getPerPixelAndTimeBinMixingFactor() {
+        return perPixelAndTimeBinMixingFactor;
     }
 
-    synchronized public void setLearningRate(float learningRate) {
-        this.detMixFac = learningRate;
-        putFloat("learningRate", learningRate);
-        resetFilter();
+    synchronized public void setPerPixelAndTimeBinMixingFactor(float perPixelAndTimeBinMixingFactor) {
+        perPixelAndTimeBinMixingFactor=clip01(perPixelAndTimeBinMixingFactor);
+        this.perPixelAndTimeBinMixingFactor = perPixelAndTimeBinMixingFactor;
+        putFloat("perPixelAndTimeBinMixingFactor", perPixelAndTimeBinMixingFactor);
     }
 
-    public float getLowpassFilterTime() {
+    public float getBinAvgMixingFactor() {
         return binAvgMixingFactor;
     }
 
-    public void setLowpassFilterTime(float lowpassFilterTime) {
-        this.binAvgMixingFactor = lowpassFilterTime;
-        putFloat("lowpassFilterTime", lowpassFilterTime);
-        resetFilter();
+    synchronized public void setBinAvgMixingFactor(float binAvgMixingFactor) {
+        this.binAvgMixingFactor = binAvgMixingFactor;
+        putFloat("binAvgMixingFactor", binAvgMixingFactor);
     }
 
     /**
@@ -519,23 +520,23 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
      * @param manualOffGain the manualOffGain to set
      */
     public void setManualOffGain(float manualOffGain) {
+        manualOffGain=clip01(manualOffGain);
         this.manualOffGain = manualOffGain;
         putFloat("manualOffGain", manualOffGain);
-        resetFilter();
     }
 
     /**
-     * @return the freezeWeights
+     * @return the freezeGains
      */
-    public boolean isFreezeWeights() {
-        return freezeWeights;
+    public boolean isFreezeGains() {
+        return freezeGains;
     }
 
     /**
-     * @param freezeWeights the freezeWeights to set
+     * @param freezeGains the freezeGains to set
      */
-    public void setFreezeWeights(boolean freezeWeights) {
-        this.freezeWeights = freezeWeights;
+    public void setFreezeGains(boolean freezeGains) {
+        this.freezeGains = freezeGains;
     }
 
     /**
@@ -550,6 +551,12 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
      */
     public void setClipping(boolean clipping) {
         this.clipping = clipping;
+        putBoolean("clipping",clipping);
+    }
+
+    private float clip01(float val) {
+        if(val>1) val=1; else if(val<0) val=0;
+        return val;
     }
 
 }
