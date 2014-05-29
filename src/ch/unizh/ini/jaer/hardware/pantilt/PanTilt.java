@@ -9,6 +9,8 @@ import java.util.TimerTask;
 import java.util.logging.Logger;
 import java.beans.PropertyChangeSupport;
 import java.beans.PropertyChangeListener;
+import java.util.ArrayList;
+import java.util.List;
 
 /** Encapsulates a pan tilt controller based on using SiLabsC8051F320_USBIO_ServoController.
  * Currently assumes that there is only one controller attached and that the 
@@ -25,13 +27,17 @@ import java.beans.PropertyChangeListener;
  * @see #DEFAULT_TILT_SERVO
  * @see ch.unizh.ini.jaer.hardware.pantilt.PanTiltTracker */
 public class PanTilt implements PanTiltInterface, LaserOnOffControl {
+    
+    private static List<PanTilt> InstanceList = new ArrayList<>();
+    private static int numberInstances=0;
+    private final int instanceID;
+    private static final Logger log = Logger.getLogger("PanTilt");
 
     /** Servo output number on SiLabsC8051F320_USBIO_ServoController, 0 based. */
     public final int  DEFAULT_PAN_SERVO = 1,  
                       DEFAULT_TILT_SERVO = 2; // number of servo output on controller
     private final int CHECK_SERVO_INTERVAL = 100;
     
-    private static final Logger log = Logger.getLogger("PanTilt");
     ServoInterface servo;
 
     volatile boolean lockAcquired = false;
@@ -49,6 +55,7 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     private float   jitterAmplitude = .01f;
     private float   jitterFreqHz    = 10f;
     private boolean jitterEnabled   = false;
+    private final Trajectory panTiltTrajectory = new Trajectory();
     
     private int checkServoCount = 0;
     
@@ -58,7 +65,85 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     
     private final PropertyChangeSupport pcs = new PropertyChangeSupport(this);
 
-    public PanTilt() {
+    public static synchronized PanTilt makeNewInstance() {
+        PanTilt res = new PanTilt();
+        InstanceList.add(res);
+        numberInstances++;
+        return res;
+    }
+    public static synchronized PanTilt makeNewInstance(ServoInterface servo) {
+        PanTilt res = new PanTilt(servo);
+        InstanceList.add(res);
+        numberInstances++;
+        return res;
+    }
+    public static synchronized PanTilt getLastInstance() {
+        PanTilt res;
+        int size = getNumInstances();
+        if(size == 0) {
+            res = new PanTilt();
+            InstanceList.add(res);
+            numberInstances++;
+            return res;
+        }
+        if(size > 1) log.info("There are more than one instances of 'PanTilt' currently active. The last Instance is returned");
+        return InstanceList.get(size-1);
+    }
+    public static synchronized PanTilt getInstance(int index) {
+        int size = getNumInstances();
+        if(size == index){
+            PanTilt res = new PanTilt();
+            InstanceList.add(res);
+            numberInstances++;
+            return res;
+        } else if(size < index) {
+            throw new IllegalStateException("There is no instance at index "+index+" in the InstanceList! The number of Instances is"+size);
+        } 
+        return InstanceList.get(index);
+    }
+    public static synchronized int getNumInstances() {
+        if(InstanceList.size() != numberInstances) throw new IllegalStateException("The number of instances in the list does not match the number of instances recorded!");
+        return numberInstances;
+    }
+    public static synchronized int getInstanceIndex(PanTilt instance) {
+        return instance.instanceID;
+    }
+    
+       
+    public class Trajectory extends ArrayList<TrajectoryPoint> { 
+        long lastTime;
+        
+        void start() { start(System.nanoTime()); }
+        void start(long startTime) {
+            if(!isEmpty()) super.clear();
+            lastTime = startTime;
+        }
+                
+        void add(float pan, float tilt) {
+            if (isEmpty()) start();
+            
+            long now = System.nanoTime(); //We want this in nanotime, as the panTilt values do change very fast and millis is often not accurate enough.
+            add(new TrajectoryPoint(now-lastTime, pan, tilt));
+            lastTime = now;
+        }
+    }
+
+    public class TrajectoryPoint {
+        private long timeNanos;
+        private float pan, tilt;
+
+        public TrajectoryPoint(long timeNanos, float pan, float tilt) {
+            this.timeNanos = timeNanos;
+            this.pan = pan;
+            this.tilt = tilt;
+        }
+        
+        public long getTime() { return timeNanos; }
+        public float getPan() { return pan; }
+        public float getTilt() { return tilt; }
+    }
+    
+    private PanTilt() {
         // Sets a ShutDown Hook that is fired everytime the JVM terminates.
         // This includes normal ending of jAER as well as terminations such as
         // system shutdown. This Hook makes sure that the laser does not stay 
@@ -70,10 +155,12 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
                 setLaserEnabled(false);
             }
         });
-        }
+        instanceID = numberInstances;
+    }
     
-    /** Constructs instance with previously constructed SiLabsC8051F320_USBIO_ServoController */
-    public PanTilt(ServoInterface servo){
+    /** Constructs instance with previously constructed SiLabsC8051F320_USBIO_ServoController
+     * @param servo */
+    private PanTilt(ServoInterface servo){
         this();
         this.servo=servo;
     }
@@ -120,8 +207,7 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
      * The servo could still be moving to this location. 
      * @return a float[] array with the 0 component being the pan value, 
      * and the 1 component being the tilt */
-    @Override
-    public float[] getPanTiltValues(){
+    @Override public float[] getPanTiltValues(){
         float[] r={pan,tilt};
         return r;
     }
@@ -135,13 +221,12 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
      * @param newPan the pan value from 0 to 1 inclusive, 0.5f is the center 
      *        position. 1 is full right.
      * @param newTilt the tilt value from 0 to 1. 1 is full down.
-     * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException.
+     * @throws HardwareInterfaceException
      *  If this exception is thrown, the interface should be closed. 
      *  The next attempt to set the pan/tilt values will reopen the interface.
      * @see #panServoNumber
      * @see #tiltServoNumber */
-    @Override
-    synchronized public void setPanTiltValues(float newPan, float newTilt) throws HardwareInterfaceException {
+    @Override synchronized public void setPanTiltValues(float newPan, float newTilt) throws HardwareInterfaceException {
         checkServos();
         previousPan  = this.pan;
         previousTilt = this.tilt;
@@ -162,16 +247,17 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
         
         float[] PreviousValues = {previousPan,previousTilt};
         float[] NewValues      = {this.pan,this.tilt};
+        panTiltTrajectory.add(this.pan, this.tilt);
         this.pcs.firePropertyChange("PanTiltValues", PreviousValues , NewValues);
     }
     
     public void addPropertyChangeListener(PropertyChangeListener listener) {
-         this.pcs.addPropertyChangeListener(listener);
-     }
+        this.pcs.addPropertyChangeListener(listener);
+    }
 
-     public void removePropertyChangeListener(PropertyChangeListener listener) {
-         this.pcs.removePropertyChangeListener(listener);
-     }
+    public void removePropertyChangeListener(PropertyChangeListener listener) {
+        this.pcs.removePropertyChangeListener(listener);
+    }
     
     // <editor-fold defaultstate="collapsed" desc="Helper Methods --clipPan-- and --clipTilt--">
     private float clipPan(float pan) {
@@ -267,16 +353,14 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     /** Starts the servo jittering around its set position at an update 
      * frequency of 50 Hz with an amplitude set by 'jitterAmplitude'
      * @see #setJitterAmplitude */
-    @Override
-    public void startJitter() {
+    @Override public void startJitter() {
         jitterTimer = new java.util.Timer();
         // Repeat the JitterTask without delay and with 20ms between executions
         jitterTimer.scheduleAtFixedRate(new JittererTask(), 0, 20); 
     }
 
     /** Stops the jittering */
-    @Override
-    public void stopJitter() {
+    @Override public void stopJitter() {
         if (jitterTimer != null) {
             jitterTimer.cancel();
             jitterTimer = null;
@@ -307,17 +391,16 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
         }
     }
 
-    @Override
-    public void setLaserEnabled(boolean yes) {
+    @Override public void setLaserEnabled(boolean yes) {
         setLaserOn(yes);
     }
      
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --ServoInterface--">  
-    public ServoInterface getServoInterface() {
+    @Override public ServoInterface getServoInterface() {
         return servo;
     }
     
-    public void setServoInterface(ServoInterface servo) {
+    @Override public void setServoInterface(ServoInterface servo) {
         this.servo=servo;
     }
     // </editor-fold> 
@@ -542,5 +625,15 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     public void setMinMovePerUpdate(float MinMove) {
         this.MinMovePerUpdate = MinMove;
     }
+
     // </editor-fold>
+    
+    public Trajectory getPanTiltTrajectory() {
+        return panTiltTrajectory;
+    }
+    
+    public void resetPanTiltTrajectory() {
+        panTiltTrajectory.clear();
+    }
+    
 }

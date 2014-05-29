@@ -41,7 +41,7 @@ public class CalibratedPanTilt extends EventFilter2D implements FrameAnnotater, 
 		super(chip);
 		tracker = new RectangularClusterTracker(chip);
 		setEnclosedFilter(tracker);
-		panTiltHardware = new PanTilt();
+		panTiltHardware = PanTilt.getLastInstance();
 	}
 
 	/** Sets the pan and tilt to aim at a particular calibrated x,y visual direction

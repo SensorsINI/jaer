@@ -39,17 +39,13 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
     
     private final PropertyChangeSupport supportPanTilt = new PropertyChangeSupport(this);
     Trajectory mouseTrajectory;
-    Trajectory panTiltTrajectory = new Trajectory();
     Trajectory targetTrajectory = new Trajectory();
     Trajectory jitterTargetTrajectory = new Trajectory();
 
     public class Trajectory extends ArrayList<TrajectoryPoint> { 
         long lastTime;
         
-        void start() {
-            if(!isEmpty()) super.clear();
-            lastTime = System.currentTimeMillis();
-        }
+        void start() { start(System.nanoTime()); }
         void start(long startTime) {
             if(!isEmpty()) super.clear();
             lastTime = startTime;
@@ -57,28 +53,31 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
                 
         void add(float pan, float tilt) {
             if (isEmpty()) start();
-
-            long now = System.currentTimeMillis();
+            
+            long now = System.nanoTime(); //We want this in nanotime, as the panTilt values do change very fast and millis is often not accurate enough.
             add(new TrajectoryPoint(now-lastTime, pan, tilt));
             lastTime = now;
         }
     }
 
-    class TrajectoryPoint {
-        long timeMillis;
+    public class TrajectoryPoint {
+        long timeNanos;
         float pan, tilt;
 
-        public TrajectoryPoint(long timeMillis, float pan, float tilt) {
-            this.timeMillis = timeMillis;
+        public TrajectoryPoint(long timeNanos, float pan, float tilt) {
+            this.timeNanos = timeNanos;
             this.pan = pan;
             this.tilt = tilt;
         }
+        
+        public long getTime() { return timeNanos; }
+        public float getPan() { return pan; }
+        public float getTilt() { return tilt; }
     }
     
     private boolean recordingEnabled = false; // not used
 
-    @Override
-    public void propertyChange(PropertyChangeEvent evt) {
+    @Override public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getPropertyName().equals(Message.SetRecordingEnabled.name())) {
             recordingEnabled = (Boolean) evt.getNewValue();
         } else if (evt.getPropertyName().equals(Message.AbortRecording.name())) {
@@ -100,7 +99,7 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
             this.tiltValue = NewV[1];
             support.firePropertyChange("panValue",OldV[0],this.PanValue);
             support.firePropertyChange("tiltValue",OldV[1],this.tiltValue);
-            this.panTiltTrajectory.add(NewV[0], NewV[1]);
+            supportPanTilt.firePropertyChange("panTiltValues", OldV, NewV);
         } else if(evt.getPropertyName().equals("Target")){
             float[] NewV = (float[])evt.getNewValue();
             this.targetTrajectory.add(NewV[0], NewV[1]);
@@ -117,14 +116,12 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
         PanTiltSet
     }
     
-
-    
     /** Constructs instance of the new 'filter' CalibratedPanTilt. The only time
      * events are actually used is during calibration. The PanTilt hardware
      * interface is also constructed.
      * @param chip */
     public PanTiltAimer(AEChip chip) {
-        this(chip, new PanTilt());
+        this(chip, PanTilt.getInstance(0));
     }
     
     /** If a panTilt unit is already used by implementing classes it can be 
@@ -279,19 +276,16 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
 
     /**
      * @return the support */
-    @Override
-    public PropertyChangeSupport getSupport() {
+    @Override public PropertyChangeSupport getSupport() {
         return supportPanTilt;
     }
     
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --ServoInterface--">
-    @Override
-    public ServoInterface getServoInterface() {
+    @Override public ServoInterface getServoInterface() {
         return getPanTiltHardware().getServoInterface();
     }
     
-    @Override
-    public void setServoInterface(ServoInterface servo) {
+    @Override public void setServoInterface(ServoInterface servo) {
         getPanTiltHardware().setServoInterface(servo);
     }
     // </editor-fold>
@@ -300,7 +294,7 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
     public PanTilt getPanTiltHardware() {
         if(panTiltHardware == null) {
             log.warning("No Pan-Tilt Hardware found. Initialising new PanTilt");
-            panTiltHardware = new PanTilt();
+            panTiltHardware = PanTilt.getLastInstance();
         }
         return panTiltHardware;
     }
