@@ -745,10 +745,10 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
                 int c_ = (0xff & b[i + 2]);
                 int d_ = (0xff & b[i + 3]);
 
-//                if ( (y_ & 0x80) != 0){
-//                     log.warning("Data not aligned - flushing rest of buffer");
-//                     break;
-//                }
+                if ( (y_ & 0x80) != 0x80){
+                     log.warning("Data not aligned - flushing rest of buffer");
+                     i++;
+                } else {
 
                 if (eventCounter >= buffer.getCapacity()) {
                     buffer.overrunOccuredFlag = true;
@@ -774,6 +774,7 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
 
                 eventCounter++;
                 i += 4; // event size in bytes
+                }
             }
             if (DEBUG) {
                 log.info(sb.toString());
