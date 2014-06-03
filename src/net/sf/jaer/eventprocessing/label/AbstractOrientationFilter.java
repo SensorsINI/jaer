@@ -1,4 +1,4 @@
-/* DvsOrientationFilter.java
+/* AbstractOrientationFilter.java
  *
  * Created on November 2, 2005, 8:24 PM */
 package net.sf.jaer.eventprocessing.label;
@@ -93,8 +93,7 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
             this.y = y;
         }
 
-        @Override
-        public String toString (){
+        @Override public String toString (){
             return String.format("%d,%d",x,y);
         }
     }
@@ -147,11 +146,8 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
         return true;
     }
 
-    @Override
-    synchronized public void resetFilter (){
-        if ( !isFilterEnabled() ) {
-			return;
-		}
+    @Override synchronized public void resetFilter (){
+        if ( !isFilterEnabled() ) return;
 
 //        allocateMaps(); // will allocate even if filter is enclosed and enclosing is not enabled
         oriHist.reset();
@@ -191,9 +187,8 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
     }
 
     synchronized protected void allocateMaps (){
-        if ( !isFilterEnabled() ) {
-			return;
-		}
+        if ( !isFilterEnabled() ) return;
+
         if ( chip != null ){
             lastTimesMap = new int[ chip.getSizeX() ][ chip.getSizeY() ][ 2 ]; // fixed to 2 for PolarityEvents
             oriHistoryMap = new float[ chip.getSizeX() ][ chip.getSizeY() ];
@@ -237,9 +232,7 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
             Dir pd = baseOffsets[( ori + 2 ) % NUM_TYPES]; // this is offset in perpindicular direction
             int ind = 0;
             for ( int s = -length ; s <= length ; s++ ){
-                if ( s == 0 ) {
-					continue;
-				}
+                if ( s == 0 ) continue;
 
                 for ( int w = -width ; w <= width ; w++ ){
                     // for each line of RF
@@ -251,57 +244,21 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
         dts = new int[ NUM_TYPES ][ rfSize ]; // delta times to neighbors in each direction
     }
 
-    @Override
-    public void initFilter (){
+    @Override public void initFilter (){
         resetFilter();
     }
 
-    @Override
-    public void update (Observable o,Object arg){
+    @Override public void update (Observable o,Object arg){
         initFilter();
     }
 
-    public int getLength (){
-        return length;
-    }
-
-    /** @param lengthToSet the length of the RF, actual length is twice this because we search on each side of pixel by length*/
-    synchronized public void setLength (int lengthToSet){
-        int setValue = (lengthToSet < 1) ? 1 : lengthToSet;
-            setValue = (lengthToSet > MAX_LENGTH) ? MAX_LENGTH : setValue;
-
-        this.length = setValue;
-        allocateMaps();
-        putInt("length",setValue);
-    }
-
-    public int getWidth (){
-        return width;
-    }
-
-    /** @param width the width of the RF, 0 for a single line of pixels, 1 for 3 lines, etc */
-    synchronized public void setWidth (final int width){
-        int setValue = (width < 0) ? 0 : width;
-            setValue = (width > (length -1)) ? length -1 : setValue;
-
-        this.width = setValue;
-        allocateMaps();
-        putInt("width",setValue);
-    }
-
-    @Override
-    public void annotate (GLAutoDrawable drawable){
-        if ( !isAnnotationEnabled() ) {
-			return;
-		}
+    @Override public void annotate (GLAutoDrawable drawable){
+        if ( !isAnnotationEnabled() ) return;
 
         GL2 gl = drawable.getGL().getGL2();
-
+        if ( gl == null ) return;
+        
         if ( isShowGlobalEnabled() ){
-            if ( gl == null ) {
-				return;
-			}
-
             gl.glPushMatrix();
             gl.glTranslatef(chip.getSizeX() / 2,chip.getSizeY() / 2,0);
             gl.glLineWidth(6f);
@@ -325,12 +282,9 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
         }
     }
 
-
     // plots a single motion vector which is the number of pixels per second times scaling
     protected void drawOrientationVector (GL2 gl,OrientationEventInterface e){
-        if ( !e.isHasOrientation() ) {
-			return;
-		}
+        if ( !e.isHasOrientation() ) return;
 
         byte ori=e.getOrientation();
         OrientationEventInterface.UnitVector d = OrientationEventInterface.unitVectors[ori];
@@ -344,9 +298,8 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
         float[] c=chip.getRenderer().makeTypeColors(e.getNumCellTypes())[ori];
         gl.glColor3fv(c,0);
         gl.glBegin(GL.GL_LINES);
-        BasicEvent be=(BasicEvent)e;
-        gl.glVertex2f((be.x - (d.x * length)) + jx, (be.y - (d.y * length)) + jy);
-        gl.glVertex2f(be.x + (d.x * length) + jx, be.y + (d.y * length)+jy);
+        gl.glVertex2f((e.getX() - (d.x * length)) + jx, (e.getY() - (d.y * length)) + jy);
+        gl.glVertex2f((e.getX() + (d.x * length)) + jx, (e.getY() + (d.y * length)) + jy);
         gl.glEnd();
     }
 
@@ -357,6 +310,39 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
      * @return the processed events, may be fewer in number. */
     @Override
     abstract  public EventPacket<?> filterPacket (EventPacket<?> in);
+    
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --length--">
+    public int getLength (){
+        return length;
+    }
+
+    /** @param lengthToSet the length of the RF, actual length is twice this because we search on each side of pixel by length*/
+    synchronized public void setLength (int lengthToSet){
+        int setValue = (lengthToSet < 1) ? 1 : lengthToSet;
+            setValue = (lengthToSet > MAX_LENGTH) ? MAX_LENGTH : setValue;
+
+        this.length = setValue;
+        allocateMaps();
+        putInt("length",setValue);
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --width--">
+    public int getWidth (){
+        return width;
+    }
+
+    /** @param width the width of the RF, 0 for a single line of pixels, 1 for 3 lines, etc */
+    synchronized public void setWidth (final int width){
+        int setValue = (width < 0) ? 0 : width;
+            setValue = (width > (length -1)) ? length -1 : setValue;
+
+        this.width = setValue;
+        allocateMaps();
+        putInt("width",setValue);
+    }
+    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --MinDtThreshold--">
     public int getMinDtThreshold (){

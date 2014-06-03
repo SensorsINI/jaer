@@ -1,8 +1,8 @@
-/* ApsDvsOrientationEvent.java
+/* DvsOrientationEvent.java
  *
  * Created on May 27, 2006, 11:49 PM
  *
- *Copyright May 27, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich */
+ * Copyright May 27, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich */
 
 package net.sf.jaer.event;
 
@@ -12,8 +12,9 @@ package net.sf.jaer.event;
  * 0 is horizontal edge              (0 deg),               <br>
  * 1 is tilted up and to right edge  (rotated CCW 45 deg),  <br>
  * 2 is vertical edge                (rotated CCW 90 deg),  <br>
- * 3 is tilted up and to left edge   (rotated CCW 135 deg).
+ * 3 is tilted up and to left edge   (rotated CCW 135 deg). <br><br>
  *
+ * These Events are used by the {@link net.sf.jaer.eventprocessing.label.DvsOrientationFilter}
  * @author tobi */
 public class DvsOrientationEvent extends PolarityEvent implements OrientationEventInterface {
     
@@ -24,8 +25,7 @@ public class DvsOrientationEvent extends PolarityEvent implements OrientationEve
     public boolean hasOrientation=true;
     
     /** Creates a new instance of OrientationEvent */
-    public DvsOrientationEvent() {
-    }
+    public DvsOrientationEvent() { }
     
     /** Orientation type output takes values 0-3;                   <br>
      * 0 is a horizontal edge (0 deg),                              <br>

@@ -9,6 +9,7 @@ public interface OrientationEventInterface extends PolarityEventInterface{
     public void setOrientation(byte orientation);
     public boolean isHasOrientation();
     public void setHasOrientation(boolean yes);
+    public void copyFrom(BasicEvent src);
     
     /** represents a unit orientation.
      * The x and y fields represent relative offsets in the x and y 
@@ -16,6 +17,7 @@ public interface OrientationEventInterface extends PolarityEventInterface{
      * to represent a valid UnitVector */
     public static final class UnitVector{
         public float x, y;
+        
         UnitVector(float x, float y){
             float l = (float)Math.sqrt(x*x+y*y);
             x = x/l;

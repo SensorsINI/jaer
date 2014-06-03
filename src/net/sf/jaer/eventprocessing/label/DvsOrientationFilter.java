@@ -25,7 +25,7 @@ import net.sf.jaer.DevelopmentStatus;
  * 3 is tilted up and to left (rotated 135 deg from horizontal edge).
  * <p>
  * The filter takes either PolarityEvents or BinocularEvents to create 
- * DvsOrientationEvent or BinocularEvents.
+ * DvsOrientationEvent or BinocularOrientationEvents.
  * @author tobi/phess */
 @Description("Detects local orientation by spatio-temporal correlation for DVS sensors")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
@@ -43,25 +43,24 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
     //      This fact gives a bias towards orientations 1 and 2 and yields 
     //      fewer outputs of orientations 0 and 3...
     
-    final int ORI_SHIFT = 16; // will shift our orientation value this many bits in raw address
     private boolean isBinocular;
     
     /** Creates a new instance of DvsOrientationFilter
+     * Most of the initialization is done in the Abstract super of this class.
      * @param chip */
     public DvsOrientationFilter (AEChip chip){
         super(chip);
-        chip.addObserver(this);
-        
         //Tooltips and Properties are defined in the AbstractOrientationFilter.
     }
 
     /** filters in to getOutputPacket(). 
-     * if filtering is enabled, the number of getOutputPacket() may be less
-     * than the number putString in
+     * This filter can be used as FILTER (i.e. the number of events in the 
+     * outputPacket can be less than the number of input events) or as LABELER
+     * (i.e. the number of events is exactly the same) based on the flag
+     * 'passAllEvents'
      * @param in input events can be null or empty.
      * @return the processed events, may be fewer in number. */
-    @Override
-    synchronized public EventPacket<?> filterPacket (EventPacket<?> in){
+    @Override synchronized public EventPacket<?> filterPacket (EventPacket<?> in){
         if ( enclosedFilter != null ) in = enclosedFilter.filterPacket(in);
         if ( in.getSize() == 0 ) return in;
 
@@ -100,7 +99,7 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
             int type = e.getType();
             
             //TODO: Is this check really necessary? Should those special events being marked 'special'? (They would have already being catched above)
-            if (type >= NUM_TYPES || e.x < 0||e.y < 0) {
+            if(type >= NUM_TYPES || e.x < 0||e.y < 0) {
                 continue;  // tobi - some special type like IMU sample
             }
 
@@ -108,10 +107,8 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
              * in terms of performance this may not be optimal. but as long as this filter is not final, it makes rewriting code much easier, because
              * monocular and binocular events may be handled the same way. */
             int eye = 0;
-            if ( isBinocular ){
-                if ( ( (BinocularEvent)ein ).eye == BinocularEvent.Eye.RIGHT ){
-                    eye = 1;
-                }
+            if(isBinocular && (( (BinocularEvent)ein ).eye == BinocularEvent.Eye.RIGHT)){
+                eye = 1;
             }
             if ( eye == 1 ){
                 type = type << 1;
@@ -236,7 +233,7 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
                         }
                     }
                 }
-
+                
                 if ( dir == -1 ){ // didn't find a good orientation
                     if ( passAllEvents ) writeOutput(outItr , e , false , (byte)0);
                     continue;
@@ -298,34 +295,15 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
                 // </editor-fold>
             }
         }
-        
-        
-        for (Object o : outputPacket) {
-            DvsOrientationEvent e = (DvsOrientationEvent) o;
-            //bbeyer: What is the use of this inclusive or?
-            // If the orientation is 0 than the address stays the same.
-            // If the orientation is 1 the 16th bit is always 1 ...
-            // I dont see what this is trying to achieve.
-            //Tobi: It was added at one point to add the orientation information to the raw address for output to file or network.
-            // I think it was not used for anything in the end and can be removed. I commented it out now.
-//            e.address = e.address | (e.orientation << ORI_SHIFT);
-        }
 
         return showRawInputEnabled ? in : getOutputPacket();
     }
     
     private void writeOutput(OutputEventIterator outItr, PolarityEvent e, boolean hasOrientation, byte orientation){
-        if ( !isBinocular ){
-            DvsOrientationEvent eout = (DvsOrientationEvent)outItr.nextOutput();
-            eout.copyFrom(e);
-            eout.hasOrientation = hasOrientation;
-            eout.orientation = orientation;
-        } else {
-            BinocularOrientationEvent eout = (BinocularOrientationEvent)outItr.nextOutput();
-            eout.copyFrom(e);
-            eout.hasOrientation = hasOrientation;
-            eout.orientation = orientation;
-        }
+        OrientationEventInterface eout = (OrientationEventInterface) outItr.nextOutput();
+        eout.copyFrom(e);
+        eout.setHasOrientation(hasOrientation);
+        eout.setOrientation(orientation);
     }
   
 }
