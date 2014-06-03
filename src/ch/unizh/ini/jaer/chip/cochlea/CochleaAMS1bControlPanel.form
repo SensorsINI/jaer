@@ -41,6 +41,100 @@
 
       <Layout class="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout"/>
       <SubComponents>
+        <Container class="javax.swing.JPanel" name="basicControlsPanel">
+          <Constraints>
+            <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout" value="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout$JTabbedPaneConstraintsDescription">
+              <JTabbedPaneConstraints tabName="basics">
+                <Property name="tabTitle" type="java.lang.String" value="basics"/>
+              </JTabbedPaneConstraints>
+            </Constraint>
+          </Constraints>
+
+          <Layout class="org.netbeans.modules.form.compat2.layouts.DesignGridLayout">
+            <Property name="columns" type="int" value="1"/>
+            <Property name="rows" type="int" value="0"/>
+          </Layout>
+          <SubComponents>
+            <Component class="javax.swing.JLabel" name="jLabel1">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="&lt;html&gt;This panel allows &quot;tweaking&quot; bias values around the nominal ones loaded from the XML file. Change made here are &lt;b&gt;not&lt;/b&gt; permanent until the settings are saved to an XML file. On restart, these new settings will then become the nominal settings."/>
+              </Properties>
+            </Component>
+            <Component class="net.sf.jaer.biasgen.PotTweaker" name="Vbias1Tweaker">
+              <Properties>
+                <Property name="lessDescription" type="java.lang.String" value=""/>
+                <Property name="moreDescription" type="java.lang.String" value=""/>
+                <Property name="name" type="java.lang.String" value="Vbias1" noResource="true"/>
+                <Property name="tweakDescription" type="java.lang.String" value="Adjusts the High Frequency cut off"/>
+              </Properties>
+              <Events>
+                <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="Vbias1TweakerStateChanged"/>
+              </Events>
+            </Component>
+            <Component class="net.sf.jaer.biasgen.PotTweaker" name="Vbias2Tweaker">
+              <Properties>
+                <Property name="lessDescription" type="java.lang.String" value=""/>
+                <Property name="moreDescription" type="java.lang.String" value=""/>
+                <Property name="name" type="java.lang.String" value="Vbias2" noResource="true"/>
+                <Property name="tweakDescription" type="java.lang.String" value="Adjusts the Low Frequency cut off"/>
+              </Properties>
+              <Events>
+                <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="Vbias2TweakerStateChanged"/>
+              </Events>
+            </Component>
+            <Component class="net.sf.jaer.biasgen.PotTweaker" name="VqTweaker">
+              <Properties>
+                <Property name="lessDescription" type="java.lang.String" value=""/>
+                <Property name="moreDescription" type="java.lang.String" value=""/>
+                <Property name="name" type="java.lang.String" value="Vq" noResource="true"/>
+                <Property name="tweakDescription" type="java.lang.String" value="Adjusts Q of filter - dependent on Vtau"/>
+              </Properties>
+              <Events>
+                <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="VqTweakerStateChanged"/>
+              </Events>
+            </Component>
+            <Component class="net.sf.jaer.biasgen.PotTweaker" name="NeuronVLeakTweaker">
+              <Properties>
+                <Property name="lessDescription" type="java.lang.String" value=""/>
+                <Property name="moreDescription" type="java.lang.String" value=""/>
+                <Property name="name" type="java.lang.String" value="NeuronVLeak" noResource="true"/>
+                <Property name="tweakDescription" type="java.lang.String" value="Adjusts leak current to neuron"/>
+              </Properties>
+              <Events>
+                <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="NeuronVLeakTweakerStateChanged"/>
+              </Events>
+            </Component>
+            <Component class="net.sf.jaer.biasgen.PotTweaker" name="VgainTweaker">
+              <Properties>
+                <Property name="lessDescription" type="java.lang.String" value=""/>
+                <Property name="moreDescription" type="java.lang.String" value=""/>
+                <Property name="name" type="java.lang.String" value="Vgain" noResource="true"/>
+                <Property name="tweakDescription" type="java.lang.String" value="Adjusts input current to neuron"/>
+              </Properties>
+              <Events>
+                <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="VgainTweakerStateChanged"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JButton" name="ResetBasic">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Reset"/>
+                <Property name="toolTipText" type="java.lang.String" value="Resets all basic bias changes to the loaded values"/>
+                <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                  <Dimension value="[73, 15]"/>
+                </Property>
+                <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                  <Dimension value="[73, 15]"/>
+                </Property>
+              </Properties>
+              <AccessibilityProperties>
+                <Property name="AccessibleContext.accessibleDescription" type="java.lang.String" value="Resets all basic bias changes to the loaded values"/>
+              </AccessibilityProperties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="ResetBasicActionPerformed"/>
+              </Events>
+            </Component>
+          </SubComponents>
+        </Container>
         <Container class="javax.swing.JPanel" name="onchipBiasgenPanel">
           <Properties>
             <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
