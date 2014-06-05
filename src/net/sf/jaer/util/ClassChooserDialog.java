@@ -1,8 +1,3 @@
-/*
- * NewOkCancelDialog.java
- *
- * Created on May 13, 2007, 3:52 PM - From netbeans template
- */
 
 package net.sf.jaer.util;
 
@@ -21,21 +16,19 @@ import javax.swing.KeyStroke;
 
 import net.sf.jaer.chip.AEChip;
 
-/**
- * A modal dialog that shows a list of source classes (found from the classpath) and a list of String names of classes and lets
+/** A modal dialog that shows a list of source classes (found from the classpath) and a list of String names of classes and lets
  the user shuffle them from one side to the other and reorder the chosen class names.
  Use it by contructing a new instance, making it visible (this call will magically block until
  the user presses OK or Cancel), and then calling <code>getReturnValue()</code>.
  
- * @author  tobi
- */
+ * @author  tobi */
 public class ClassChooserDialog extends javax.swing.JDialog {
     /** A return status code - returned if Cancel button has been pressed */
     public static final int RET_CANCEL = 0;
     /** A return status code - returned if OK button has been pressed */
     public static final int RET_OK = 1;
     
-    private ClassChooserPanel chooserPanel;
+    private final ClassChooserPanel chooserPanel;
     
     /** Creates new model dialog ClassChooserDialog.
      * @param parent parent Frame
@@ -55,7 +48,7 @@ public class ClassChooserDialog extends javax.swing.JDialog {
         
         KeyStroke escape = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false);
         Action escapeAction = new AbstractAction() {
-            public void actionPerformed(ActionEvent e) {
+            @Override public void actionPerformed(ActionEvent e) {
                 dispose();
             }
         };
@@ -80,7 +73,7 @@ public class ClassChooserDialog extends javax.swing.JDialog {
     
     public ArrayList<String> getList(){
         if(returnStatus==RET_CANCEL) return null;
-        Object[] oa=chooserPanel.chosenClassesListModel.toArray();
+        Object[] oa=chooserPanel.getChosenClassesListModel().toArray();
         ArrayList<String> ret=new ArrayList(Arrays.asList(oa));
         return ret;
     }
@@ -189,8 +182,8 @@ public class ClassChooserDialog extends javax.swing.JDialog {
      */
     public static void main(String args[]) {
         java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                ArrayList<String> classNames=new ArrayList<String>();
+            @Override public void run() {
+                ArrayList<String> classNames=new ArrayList<>();
                 ClassChooserDialog dlg=new ClassChooserDialog(new javax.swing.JFrame(), AEChip.class,classNames,new ArrayList<String>());
                 int ret;
                 do{

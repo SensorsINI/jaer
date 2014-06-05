@@ -1,29 +1,25 @@
-/*
- * ClassChooserPanel2.java
+/* ClassChooserPanel2.java
  *
- * Created on May 13, 2007, 3:46 PM
- */
+ * Created on May 13, 2007, 3:46 PM */
 package net.sf.jaer.util;
 
-import java.awt.Cursor;
-import java.beans.PropertyChangeEvent;
-import java.util.logging.Level;
-import javax.swing.JTextPane;
-import net.sf.jaer.Description;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
+import java.awt.Cursor;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.font.FontRenderContext;
-import java.awt.geom.Rectangle2D;
+import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.util.*;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Vector;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -34,27 +30,24 @@ import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.ListCellRenderer;
-import javax.swing.ListModel;
 import javax.swing.SwingWorker;
-import javax.swing.event.ListSelectionEvent;
+import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 
-/**
- * A panel that finds subclasses of a class, displays them in a left list,
+/** A panel that finds subclasses of a class, displays them in a left list,
  * displays another list given as a parameter in the right panel, and accepts a
  * list of default class names. The user can choose which classes and these are
  * returned by a call to getList. The list of available classes is built in the background.
  *
- * @author tobi
- */
+ * @author tobi */
 public class ClassChooserPanel extends javax.swing.JPanel {
 
-    Logger log = Logger.getLogger("net.sf.jaer.util");
-    FilterableListModel chosenClassesListModel, availClassesListModel;
-    ArrayList<String> revertCopy, defaultClassNames, availAllList, availFiltList;
-//    MyBoundedJLabel myDescLabel=null;
-    private String MISSING_DESCRIPTION_MESSAGE = "<html>No description available - provide one using @Description annotation, as in <pre>@Description(\"Example class\") \n public class MyClass</pre></html>";
-
+    private static final Logger log = Logger.getLogger("net.sf.jaer.util");
+    private static final String MISSING_DESCRIPTION_MESSAGE = "<html>No description available - provide one using @Description annotation, as in <pre>@Description(\"Example class\") \n public class MyClass</pre></html>";
+    private FilterableListModel chosenClassesListModel, availClassesListModel;
+    private ArrayList<String> revertCopy, defaultClassNames, availAllList;
+    private DescriptionMap descriptionMap = new DescriptionMap();
+    
     private class ClassDescription {
         String description = null;
         DevelopmentStatus.Status developmentStatus = null;
@@ -68,9 +61,8 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     class DescriptionMap extends HashMap<String, ClassDescription> {
 
         ClassDescription get(String name) {
-            if (name == null) {
-                return null;
-            }
+            if (name == null) return null;
+
             if (super.get(name) == null) {
                 put(name);
             }
@@ -78,9 +70,8 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         }
 
         void put(String name) {
-            if (name == null) {
-                return;
-            }
+            if (name == null) return;
+
             if (containsKey(name)) {
                 return;
             }
@@ -109,19 +100,16 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
         }
     }
-    private DescriptionMap descriptionMap = new DescriptionMap();
-
+    
     /**
      * Creates new form ClassChooserPanel
      *
      * @param subclassOf a Class that will be used to search the classpath for
-     * subclasses of subClassOf.
+     *  subclasses of subClassOf.
      * @param classNames a list of names, which is filled in by the actions of
-     * the user with the chosen classes
+     *  the user with the chosen classes
      * @param defaultClassNames the list on the right is replaced by this lixt
-     * if the user pushes the Defaults button.
-     *
-     */
+     *  if the user pushes the Defaults button. */
     public ClassChooserPanel(final Class subclassOf, ArrayList<String> classNames, ArrayList<String> defaultClassNames) {
         initComponents();
         availFilterTextField.requestFocusInWindow();
@@ -132,8 +120,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         availClassJList.setModel(tmpList);
         worker.addPropertyChangeListener(new PropertyChangeListener() {
 
-            @Override
-            public void propertyChange(PropertyChangeEvent evt) {
+            @Override public void propertyChange(PropertyChangeEvent evt) {
 //                System.out.println(evt.getPropertyName() + "  " + evt.getNewValue());
                 if (evt != null && evt.getNewValue().equals(SwingWorker.StateValue.DONE)) {
                     try {
@@ -148,8 +135,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                         availClassJList.setCellRenderer(new MyCellRenderer());
                         Action addAction = new AbstractAction() {
 
-                            @Override
-                            public void actionPerformed(ActionEvent e) {
+                            @Override public void actionPerformed(ActionEvent e) {
                                 Object o = availClassJList.getSelectedValue();
                                 if (o == null) {
                                     return;
@@ -183,17 +169,14 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
         Action removeAction = new AbstractAction() {
 
-            public void actionPerformed(ActionEvent e) {
+            @Override public void actionPerformed(final ActionEvent e) {
                 int index = classJList.getSelectedIndex();
                 chosenClassesListModel.removeElementAt(index);
                 int size = chosenClassesListModel.getSize();
 
                 if (size == 0) { //Nobody's left, disable firing.
-
                     removeClassButton.setEnabled(false);
-
                 } else { //Select an index.
-
                     if (index == chosenClassesListModel.getSize()) {
                         //removed item in last position
                         index--;
@@ -206,11 +189,10 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         };
         addAction(classJList, removeAction);
 
-        revertCopy = new ArrayList<String>(classNames);
+        revertCopy = new ArrayList<>(classNames);
         chosenClassesListModel = new FilterableListModel(classNames);
         classJList.setModel(chosenClassesListModel);
         classJList.setCellRenderer(new MyCellRenderer());
-//        descPanel.add((myDescLabel=new MyBoundedJLabel()),BorderLayout.CENTER);
     }
 
     public JPanel getFilterTypeOptionsPanel() {
@@ -218,8 +200,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     }
 
     private class ClassNameSorter implements Comparator {
-
-        public int compare(Object o1, Object o2) {
+        @Override public int compare(Object o1, Object o2) {
             if (o1 instanceof String && o2 instanceof String) {
                 return shortName((String) o1).compareTo(shortName((String) o2));
             } else {
@@ -228,82 +209,17 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         }
     }
 
-    /**
-     * Fills in the descLabel with the description of the class. If the class
-     * implements a static method named
-     * <code>getDescription</code> which returns a String, then the label text
-     * is set to the string. In addition, if the class implements a method named
-     * <code>getDevelopmentStatus()</code> which returns an enum, then the
-     * string of the enum is all filled in.
-     *
-     * @param evt
-     * @param area
-     */
-    private void showDescription(ListSelectionEvent evt, JTextPane area) {
-        if (evt.getValueIsAdjusting()) {
-            return;
-        }
-        try {
-            // we need to check which list item was last selected
-            JList list = (JList) evt.getSource();
-            int ind = list.getSelectedIndex();
-            if (ind < 0) {
-                area.setText(MISSING_DESCRIPTION_MESSAGE);
-                return;
-            }
-            ListModel model = ((JList) evt.getSource()).getModel();
-            String className = (String) model.getElementAt(ind);
-            String shortClassName = className.substring(className.lastIndexOf(".") + 1);
-            String des = getClassDescription(className);
-            if (des == null) {
-                des = MISSING_DESCRIPTION_MESSAGE;
-            }
-            String d = "<html>" + shortClassName + ": " + des;
-            area.setContentType("text/html");
-            area.setText(d);
-        } catch (Exception e) {
-            area.setText(MISSING_DESCRIPTION_MESSAGE);
-            log.warning(e.toString());
-        }
-    }
-
-    private class MyBoundedJLabel extends JLabel {
-
-        private MyBoundedJLabel() {
-            super();
-        }
-
-        @Override
-        public void paint(Graphics g) {
-            if (g == null) {
-                return;
-            }
-            Graphics2D g2 = (Graphics2D) g;
-            FontRenderContext frc = g2.getFontRenderContext();
-            String s = getText();
-            if (s != null) {
-                Rectangle2D r = g2.getFont().getStringBounds(s, frc);
-                if (r.getWidth() > getWidth()) {
-                    setText(s.substring(0, 60));
-                }
-            }
-            super.paint(g);
-        }
-    }
-
     private DevelopmentStatus.Status getClassDevelopmentStatus(String className) {
         ClassDescription des = descriptionMap.get(className);
-        if (des == null) {
-            return null;
-        }
+        if (des == null) return null;
+
         return des.developmentStatus;
     }
 
     private String getClassDescription(String className) {
         ClassDescription des = descriptionMap.get(className);
-        if (des == null) {
-            return null;
-        }
+        if (des == null) return null;
+
         return des.description;
     }
 
@@ -311,24 +227,23 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         // This is the only method defined by ListCellRenderer.
         // We just reconfigure the JLabel each time we're called.
 
-        public Component getListCellRendererComponent(
-                JList list, // the list
-                Object obj, // value to display
-                int index, // cell index
-                boolean isSelected, // is the cell selected
-                boolean cellHasFocus) // does the cell have focus
-        {
+        /** 
+         * @param list The JList we're painting.
+         * @param value The value returned by list.getModel().getElementAt(index).
+         * @param index The cells index.
+         * @param isSelected True if the specified cell was selected.
+         * @param cellHasFocus True if the specified cell has the focus. */
+        @Override public Component getListCellRendererComponent(JList list, Object obj, int index, boolean isSelected, boolean cellHasFocus) {
             String fullclassname = obj.toString();
-            String shortname = fullclassname.substring(fullclassname.lastIndexOf('.') + 1);
-//            String s = value.toString(); // full class name
+            String shortname     = shortName(fullclassname);//.substring(fullclassname.lastIndexOf('.') + 1);
             setText(shortname);
             Color foreground, background;
-//         setIcon((s.length() > 10) ? longIcon : shortIcon);
-//            log.info("rendering " + obj);
-//            if(!cellHasFocus) return this; // not visible
             if (isSelected) {
                 background = list.getSelectionBackground();
                 DevelopmentStatus.Status develStatus = getClassDevelopmentStatus(fullclassname);
+                String des = getClassDescription(fullclassname);
+                ClassNameTF.setText(fullclassname);
+                
                 if (develStatus == DevelopmentStatus.Status.Experimental) {
                     foreground = Color.ORANGE;
                     develStatusTF.setText(develStatus.toString());
@@ -339,17 +254,22 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                     foreground = Color.LIGHT_GRAY;
                     develStatusTF.setText("unknown");
                 }
-                if (getClassDescription(fullclassname) != null) {
-                    setToolTipText(fullclassname + ": " + getClassDescription(fullclassname));
+                
+                if (des != null) {
+                    setToolTipText(fullclassname + ": " + des);
+                    descPane.setContentType("text/html");
+                    descPane.setText("<html>" + shortname + ": " + des);
                 } else {
                     foreground = Color.GRAY;
                     setToolTipText(fullclassname);
+                    descPane.setText(MISSING_DESCRIPTION_MESSAGE);
                 }
             } else {
                 background = list.getBackground();
-                if ((getClassDevelopmentStatus(fullclassname)) == DevelopmentStatus.Status.Experimental) {
+                DevelopmentStatus.Status develStatus = getClassDevelopmentStatus(fullclassname);
+                if (develStatus == DevelopmentStatus.Status.Experimental) {
                     foreground = Color.ORANGE;
-                } else if(getClassDevelopmentStatus(fullclassname) == DevelopmentStatus.Status.Stable) {
+                } else if(develStatus == DevelopmentStatus.Status.Stable) {
                     foreground = Color.BLUE;
                 } else {
                     foreground = Color.LIGHT_GRAY;
@@ -359,7 +279,6 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                 }
             }
             setEnabled(list.isEnabled());
-//            setFont(list.getFont());
             setOpaque(true);
             setForeground(foreground);
             setBackground(background);
@@ -374,9 +293,9 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         }
         return s.substring(i + 1);
     }
+    
     // extends DefaultListModel to add a text filter
-
-    class FilterableListModel extends DefaultListModel {
+    public class FilterableListModel extends DefaultListModel {
 
         Vector origList = new Vector();
         String filterString = null;
@@ -398,15 +317,13 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         }
 
         synchronized void filter(String s) {
-            if (s == null) {
+            if (s == null || s.equals("")) {
                 resetList();
                 return;
             }
             filterString = s.toLowerCase();
             resetList();
-            if (s == null || s.equals("")) {
-                return;
-            }
+            
             Vector v = new Vector();  // list to prune out
             // must build a list of stuff to prune, then prune
 
@@ -428,6 +345,10 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         synchronized void clearFilter() {
             filter(null);
         }
+    }
+
+    public FilterableListModel getChosenClassesListModel() {
+        return chosenClassesListModel;
     }
 
     /**
@@ -453,10 +374,12 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         removeClassButton = new javax.swing.JButton();
         removeAllButton = new javax.swing.JButton();
         descPanel = new javax.swing.JPanel();
-        jScrollPane1 = new javax.swing.JScrollPane();
+        ClassDescSP = new javax.swing.JScrollPane();
         descPane = new javax.swing.JTextPane();
-        jLabel1 = new javax.swing.JLabel();
+        devlStatusLbl = new javax.swing.JLabel();
         develStatusTF = new javax.swing.JTextField();
+        ClassNameLbl = new javax.swing.JLabel();
+        ClassNameTF = new javax.swing.JTextField();
         moveUpButton = new javax.swing.JButton();
         revertButton = new javax.swing.JButton();
         moveDownButton = new javax.swing.JButton();
@@ -504,9 +427,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                         .addComponent(availFilterTextField)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(clearFilterBut))
-                    .addGroup(filterPanelLayout.createSequentialGroup()
-                        .addComponent(filterTypeOptionsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addGap(0, 0, 0))))
+                    .addComponent(filterTypeOptionsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
         );
         filterPanelLayout.setVerticalGroup(
             filterPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -524,11 +445,6 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         availClassDesciptionPanel.setBorder(null);
 
         availClassJList.setToolTipText("If your class doesn't show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath)");
-        availClassJList.addListSelectionListener(new javax.swing.event.ListSelectionListener() {
-            public void valueChanged(javax.swing.event.ListSelectionEvent evt) {
-                availClassJListValueChanged(evt);
-            }
-        });
         availClassDesciptionPanel.setViewportView(availClassJList);
         availClassJList.getAccessibleContext().setAccessibleDescription("");
 
@@ -566,11 +482,6 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                 classJListMouseClicked(evt);
             }
         });
-        classJList.addListSelectionListener(new javax.swing.event.ListSelectionListener() {
-            public void valueChanged(javax.swing.event.ListSelectionEvent evt) {
-                classJListValueChanged(evt);
-            }
-        });
         jScrollPane3.setViewportView(classJList);
         classJList.getAccessibleContext().setAccessibleDescription("");
 
@@ -584,7 +495,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             chosenClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, chosenClassPanelLayout.createSequentialGroup()
                 .addGap(36, 36, 36)
-                .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 312, Short.MAX_VALUE))
+                .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 421, Short.MAX_VALUE))
         );
 
         addClassButton.setMnemonic('a');
@@ -621,18 +532,27 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
         descPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Class description"));
 
-        jScrollPane1.setBorder(null);
+        ClassDescSP.setBorder(null);
 
         descPane.setEditable(false);
         descPane.setBorder(null);
-        jScrollPane1.setViewportView(descPane);
+        ClassDescSP.setViewportView(descPane);
 
-        jLabel1.setText("Development status: ");
+        devlStatusLbl.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+        devlStatusLbl.setText("Development status:");
 
         develStatusTF.setEditable(false);
         develStatusTF.setBackground(new java.awt.Color(255, 255, 255));
         develStatusTF.setToolTipText("Shows DevelopmentStatus of class as annotated with DevelopmentStatus");
         develStatusTF.setBorder(null);
+
+        ClassNameLbl.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+        ClassNameLbl.setText("Full class name:");
+
+        ClassNameTF.setEditable(false);
+        ClassNameTF.setBackground(new java.awt.Color(255, 255, 255));
+        ClassNameTF.setToolTipText("Shows the full classname of a class and hence its location in the jAER project");
+        ClassNameTF.setBorder(null);
 
         javax.swing.GroupLayout descPanelLayout = new javax.swing.GroupLayout(descPanel);
         descPanel.setLayout(descPanelLayout);
@@ -641,22 +561,30 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, descPanelLayout.createSequentialGroup()
                 .addGap(2, 2, 2)
                 .addGroup(descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(ClassDescSP)
                     .addGroup(descPanelLayout.createSequentialGroup()
-                        .addComponent(jLabel1)
-                        .addGap(5, 5, 5)
-                        .addComponent(develStatusTF, javax.swing.GroupLayout.DEFAULT_SIZE, 446, Short.MAX_VALUE))
-                    .addComponent(jScrollPane1))
+                        .addGroup(descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                            .addComponent(ClassNameLbl, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(devlStatusLbl, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addGap(4, 4, 4)
+                        .addGroup(descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(ClassNameTF, javax.swing.GroupLayout.DEFAULT_SIZE, 450, Short.MAX_VALUE)
+                            .addComponent(develStatusTF, javax.swing.GroupLayout.DEFAULT_SIZE, 450, Short.MAX_VALUE))))
                 .addGap(2, 2, 2))
         );
         descPanelLayout.setVerticalGroup(
             descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(descPanelLayout.createSequentialGroup()
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 105, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(ClassDescSP, javax.swing.GroupLayout.PREFERRED_SIZE, 105, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel1)
+                    .addComponent(devlStatusLbl)
                     .addComponent(develStatusTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(2, 2, 2))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(ClassNameLbl)
+                    .addComponent(ClassNameTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(10, 10, 10))
         );
 
         moveUpButton.setMnemonic('u');
@@ -745,8 +673,8 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                         .addComponent(revertButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(defaultsButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(availClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 371, Short.MAX_VALUE)
-                    .addComponent(chosenClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 371, Short.MAX_VALUE))
+                    .addComponent(availClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 480, Short.MAX_VALUE)
+                    .addComponent(chosenClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 480, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(descPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
@@ -773,9 +701,8 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
     private void addClassButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addClassButtonActionPerformed
         Object o = availClassJList.getSelectedValue();
-        if (o == null) {
-            return;
-        }
+        if (o == null)  return;
+
         int last = chosenClassesListModel.getSize() - 1;
         chosenClassesListModel.add(last + 1, o);
         classJList.setSelectedIndex(last + 1);
@@ -784,9 +711,8 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     private void moveDownButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moveDownButtonActionPerformed
         int last = chosenClassesListModel.getSize() - 1;
         int index = classJList.getSelectedIndex();
-        if (index == last) {
-            return;
-        }
+        if (index == last) return;
+
         Object o = chosenClassesListModel.getElementAt(index);
         chosenClassesListModel.removeElementAt(index);
         chosenClassesListModel.insertElementAt(o, index + 1);
@@ -795,9 +721,8 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
     private void moveUpButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moveUpButtonActionPerformed
         int index = classJList.getSelectedIndex();
-        if (index == 0) {
-            return;
-        }
+        if (index == 0) return;
+
         Object o = chosenClassesListModel.getElementAt(index);
         chosenClassesListModel.removeElementAt(index);
         chosenClassesListModel.insertElementAt(o, index - 1);
@@ -810,11 +735,8 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         int size = chosenClassesListModel.getSize();
 
         if (size == 0) { //Nobody's left, disable firing.
-
             removeClassButton.setEnabled(false);
-
         } else { //Select an index.
-
             if (index == chosenClassesListModel.getSize()) {
                 //removed item in last position
                 index--;
@@ -830,36 +752,29 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         moveUpButton.setEnabled(true);
     }//GEN-LAST:event_classJListMouseClicked
 
-private void classJListValueChanged(javax.swing.event.ListSelectionEvent evt) {//GEN-FIRST:event_classJListValueChanged
-    showDescription(evt, descPane);
-}//GEN-LAST:event_classJListValueChanged
-
-    private void availClassJListValueChanged(javax.swing.event.ListSelectionEvent evt) {//GEN-FIRST:event_availClassJListValueChanged
-        showDescription(evt, descPane);
-    }//GEN-LAST:event_availClassJListValueChanged
-
     private void clearFilterButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearFilterButActionPerformed
         availFilterTextField.setText("");
         availClassesListModel.clearFilter();
     }//GEN-LAST:event_clearFilterButActionPerformed
 
     private void availFilterTextFieldKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_availFilterTextFieldKeyTyped
-        if (availClassesListModel == null) {
-            return;
-        }
+        if (availClassesListModel == null) return;
+
         String s = availFilterTextField.getText();
         availClassesListModel.filter(s);
     }//GEN-LAST:event_availFilterTextFieldKeyTyped
 
     private void availFilterTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_availFilterTextFieldActionPerformed
-        if (availClassesListModel == null) {
-            return;
-        }
+        if (availClassesListModel == null) return;
+
         String s = availFilterTextField.getText();
         availClassesListModel.filter(s);
     }//GEN-LAST:event_availFilterTextFieldActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JScrollPane ClassDescSP;
+    private javax.swing.JLabel ClassNameLbl;
+    private javax.swing.JTextField ClassNameTF;
     private javax.swing.JButton addClassButton;
     private javax.swing.JScrollPane availClassDesciptionPanel;
     private javax.swing.JList availClassJList;
@@ -872,11 +787,10 @@ private void classJListValueChanged(javax.swing.event.ListSelectionEvent evt) {/
     private javax.swing.JTextPane descPane;
     private javax.swing.JPanel descPanel;
     private javax.swing.JTextField develStatusTF;
+    private javax.swing.JLabel devlStatusLbl;
     private javax.swing.JLabel filterLabel;
     private javax.swing.JPanel filterPanel;
     private javax.swing.JPanel filterTypeOptionsPanel;
-    private javax.swing.JLabel jLabel1;
-    private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JButton moveDownButton;
     private javax.swing.JButton moveUpButton;
@@ -902,6 +816,7 @@ private void classJListValueChanged(javax.swing.event.ListSelectionEvent evt) {/
 
     static class ActionMouseListener extends MouseAdapter {
 
+        @Override
         public void mouseClicked(MouseEvent e) {
             if (e.getClickCount() == 2) {
                 JList list = (JList) e.getSource();
