@@ -4,6 +4,7 @@
 
 package ch.unizh.ini.jaer.hardware.pantilt;
 
+import ch.unizh.ini.jaer.hardware.pantilt.PanTiltAimer.Message;
 import java.awt.Color;
 import java.awt.Toolkit;
 import java.util.ArrayList;
@@ -528,7 +529,7 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChang
         boolean old = this.recordingEnabled;
         this.recordingEnabled = recordingEnabled;
         recordCB.setSelected(recordingEnabled);
-        supportPTAimerGUI.firePropertyChange("SetRecordingEnabled", old, recordingEnabled);
+        supportPTAimerGUI.firePropertyChange(Message.SetRecordingEnabled.name(), old, recordingEnabled);
     }  
     
     private void paintLimitBox(javax.swing.JPanel printPanel) {
@@ -579,7 +580,7 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChang
                 repaint();
                 break;
             case KeyEvent.VK_ESCAPE:
-                supportPTAimerGUI.firePropertyChange("AbortRecording", null, null);
+                supportPTAimerGUI.firePropertyChange(Message.AbortRecording.name(), null, null);
                 trajectory.clear();
                 setRecordingEnabled(false);
                 break;
@@ -632,7 +633,7 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChang
     }//GEN-LAST:event_calibrationPanelMouseExited
 
     private void clearButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearButActionPerformed
-        supportPTAimerGUI.firePropertyChange("ClearRecording", null, null);
+        supportPTAimerGUI.firePropertyChange(Message.ClearRecording.name(), null, null);
         trajectory.clear();
         repaint();
     }//GEN-LAST:event_clearButActionPerformed

@@ -105,7 +105,7 @@
                               <Component id="clearBut" alignment="1" min="-2" max="-2" attributes="0"/>
                               <Component id="relaxBut" alignment="1" min="-2" max="-2" attributes="0"/>
                           </Group>
-                          <Component id="showTargetCB" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="showTargetCB" min="-2" max="-2" attributes="0"/>
                       </Group>
                       <Group type="103" groupAlignment="0" attributes="0">
                           <Group type="102" attributes="0">
