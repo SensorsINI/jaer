@@ -33,7 +33,6 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2TmpdiffRetinaHardwareInterface;
-import net.sf.jaer.hardwareinterface.usb.linux.CypressFX2RetinaLinux;
 
 /**
  * Describes tmpdiff128 retina and its event extractor and bias generator.
@@ -175,7 +174,6 @@ public class Tmpdiff128 extends AETemporalConstastRetina implements Serializable
 				public void actionPerformed(ActionEvent evt) {
 					HardwareInterface hw = getHardwareInterface();
 					if ((hw == null) || !((hw instanceof CypressFX2TmpdiffRetinaHardwareInterface)
-						|| (hw instanceof CypressFX2RetinaLinux)
 						|| (hw instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2TmpdiffRetinaHardwareInterface))) {
 						log.warning("cannot reset pixels with hardware interface=" + hw);
 						return;
@@ -183,9 +181,6 @@ public class Tmpdiff128 extends AETemporalConstastRetina implements Serializable
 					log.info("resetting pixels");
 					if (hw instanceof CypressFX2TmpdiffRetinaHardwareInterface) {
 						((CypressFX2TmpdiffRetinaHardwareInterface) hw).resetPixelArray();
-					}
-					if (hw instanceof CypressFX2RetinaLinux) {
-						((CypressFX2RetinaLinux) hw).resetPixelArray();
 					}
 					if (hw instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2TmpdiffRetinaHardwareInterface) {
 						((net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2TmpdiffRetinaHardwareInterface) hw).resetPixelArray();
