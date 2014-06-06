@@ -35,9 +35,10 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
     private float   tiltValue       = getFloat("tiltValue", 0.5f);
     private float   maxMovePerUpdate= getFloat("maxMovePerUpdate", .1f);
     private float   minMovePerUpdate= getFloat("minMovePerUpdate", .001f);
-    private int     moveUpdateFreqHz= getInt("moveUpdateFreqHz", 100);
+    private int     moveUpdateFreqHz= getInt("moveUpdateFreqHz", 1000);
     
     private final PropertyChangeSupport supportPanTilt = new PropertyChangeSupport(this);
+    private boolean recordingEnabled = false; // not used
     Trajectory mouseTrajectory;
     Trajectory targetTrajectory = new Trajectory();
     Trajectory jitterTargetTrajectory = new Trajectory();
@@ -74,46 +75,38 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
         public float getPan() { return pan; }
         public float getTilt() { return tilt; }
     }
-    
-    private boolean recordingEnabled = false; // not used
 
     @Override public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getPropertyName().equals(Message.SetRecordingEnabled.name())) {
-            recordingEnabled = (Boolean) evt.getNewValue();
-        } else if (evt.getPropertyName().equals(Message.AbortRecording.name())) {
-            recordingEnabled = false;
-            if (mouseTrajectory != null) {
-                mouseTrajectory.clear();
-            }
-        } else if (evt.getPropertyName().equals(Message.ClearRecording.name())) {
-            if (mouseTrajectory != null) {
-                mouseTrajectory.clear();
-            }
-        } else if (evt.getPropertyName().equals(Message.PanTiltSet.name())) {
-            supportPanTilt.firePropertyChange(evt);
-        } else if (evt.getPropertyName().equals("PanTiltValues")) {
-            float[] NewV = (float[])evt.getNewValue();
-            float[] OldV = (float[])evt.getOldValue();
-            
-            this.PanValue = NewV[0];
-            this.tiltValue = NewV[1];
-            support.firePropertyChange("panValue",OldV[0],this.PanValue);
-            support.firePropertyChange("tiltValue",OldV[1],this.tiltValue);
-            supportPanTilt.firePropertyChange("panTiltValues", OldV, NewV);
-        } else if(evt.getPropertyName().equals("Target")){
-            float[] NewV = (float[])evt.getNewValue();
-            this.targetTrajectory.add(NewV[0], NewV[1]);
-        } else if(evt.getPropertyName().equals("JitterTarget")) {
-            float[] NewV = (float[])evt.getNewValue();
-            this.jitterTargetTrajectory.add(NewV[0], NewV[1]);
+        float[] NewV = (float[])evt.getNewValue();
+        float[] OldV = (float[])evt.getOldValue();
+        switch (evt.getPropertyName()) {
+            case "SetRecordingEnabled":
+                recordingEnabled = (Boolean) evt.getNewValue();
+                break;
+            case "AbortRecording":
+                recordingEnabled = false;
+                if (mouseTrajectory != null) mouseTrajectory.clear();
+                break;
+            case "ClearRecording":
+                if (mouseTrajectory != null) mouseTrajectory.clear();
+                break;
+            case "PanTiltSet":
+                supportPanTilt.firePropertyChange(evt);
+                break;
+            case "PanTiltValues":
+                this.PanValue = NewV[0];
+                this.tiltValue = NewV[1];
+                support.firePropertyChange("panValue",OldV[0],this.PanValue);
+                support.firePropertyChange("tiltValue",OldV[1],this.tiltValue);
+                supportPanTilt.firePropertyChange("panTiltValues", OldV, NewV);
+                break;
+            case "Target":
+                this.targetTrajectory.add(NewV[0], NewV[1]);
+                break;
+            case "JitterTarget":
+                this.jitterTargetTrajectory.add(NewV[0], NewV[1]);
+                break;
         }
-    }
-
-    public enum Message {
-        AbortRecording,
-        ClearRecording,
-        SetRecordingEnabled,
-        PanTiltSet
     }
     
     /** Constructs instance of the new 'filter' CalibratedPanTilt. The only time
@@ -242,8 +235,7 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
         getPanTiltHardware().setLaserEnabled(yes);
     }
 
-    @Override
-    public synchronized void setFilterEnabled(boolean yes) {
+    @Override public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
         if (yes) {
             panTiltHardware.setPanServoNumber(panServoNumber);

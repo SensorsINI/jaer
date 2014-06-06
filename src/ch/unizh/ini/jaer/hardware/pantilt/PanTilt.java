@@ -61,7 +61,7 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     
     float MaxMovePerUpdate = .1f; //Max amount of servochange per update
     float MinMovePerUpdate = 0.001f; //Min amount of servochange per update 
-    int   MoveUpdateFreqHz = 100; //in Hz how often does the targeted pantilt move
+    int   MoveUpdateFreqHz = 1000; //in Hz how often does the targeted pantilt move
     
     private final PropertyChangeSupport pcs = new PropertyChangeSupport(this);
 
@@ -129,8 +129,8 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     }
 
     public class TrajectoryPoint {
-        private long timeNanos;
-        private float pan, tilt;
+        private final long timeNanos;
+        private final float pan, tilt;
 
         public TrajectoryPoint(long timeNanos, float pan, float tilt) {
             this.timeNanos = timeNanos;
@@ -603,6 +603,7 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     }
     
     public void setMoveUpdateFreqHz(int UpdateFreq) {
+        if(UpdateFreq > 1000) UpdateFreq = 1000;
         this.MoveUpdateFreqHz = UpdateFreq;
     }
     // </editor-fold>

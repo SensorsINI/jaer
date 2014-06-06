@@ -1,8 +1,7 @@
-/*
- * PanTiltGUI.java
+/*PanTiltGUI.java
  *
- * Created on April 21, 2008, 11:50 AM
- */
+ * Created on April 21, 2008, 11:50 AM */
+
 package ch.unizh.ini.jaer.hardware.pantilt;
 
 import ch.unizh.ini.jaer.hardware.pantilt.PanTiltAimer.Message;
@@ -43,6 +42,7 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChang
     private final Trajectory targetTrajectory = new Trajectory();
     private final Trajectory jitterTargetTrajectory = new Trajectory();
     private int w = 200, h = 200;
+    private float speed = .02f;
     private boolean recordingEnabled = false;   
 
     class Trajectory extends ArrayList<TrajectoryPoint> {
@@ -158,38 +158,33 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChang
         initComponents();
         calibrationPanel.setPreferredSize(new Dimension(w, h));
         calibrationPanel.requestFocusInWindow();
+        
+        setSpeedTB.setText(String.format("%.2f", speed));
         pack();
     }
     
-    @Override
-    public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getPropertyName() == "PanTiltValues") {
-            float[] NewV = (float[])evt.getNewValue();
-            Point MouseN = getMouseFromPanTilt(new Point2D.Float(NewV[0],NewV[1]));
-            
-            this.SetPanTB.setText(String.format("%.2f", NewV[0]));
-            this.SetTiltTB.setText(String.format("%.2f", NewV[1]));
-            
-            this.panTiltTrajectory.add(NewV[0], NewV[1], (int)MouseN.getX(), (int)MouseN.getY());
-
-            if(showPosCB.isSelected()) repaint();
-        } else if(evt.getPropertyName() == "Target"){
-            float[] NewV = (float[])evt.getNewValue();
-            Point MouseN = getMouseFromPanTilt(new Point2D.Float(NewV[0],NewV[1]));
-            this.targetTrajectory.add(NewV[0], NewV[1],(int)MouseN.getX(), (int)MouseN.getY());
-            
-            if(showTargetCB.isSelected()) repaint();
-        } else if(evt.getPropertyName() == "JitterTarget") {
-            float[] NewV = (float[])evt.getNewValue();
-            Point MouseN = getMouseFromPanTilt(new Point2D.Float(NewV[0],NewV[1]));
-            this.jitterTargetTrajectory.add(NewV[0], NewV[1],(int)MouseN.getX(), (int)MouseN.getY());
-            
-            if(showTargetCB.isSelected()) repaint();
+    @Override public void propertyChange(PropertyChangeEvent evt) {
+        float[] NewV = (float[])evt.getNewValue();
+        Point MouseN = getMouseFromPanTilt(new Point2D.Float(NewV[0],NewV[1]));
+        switch (evt.getPropertyName()) {
+            case "PanTiltValues":
+                this.SetPanTB.setText(String.format("%.2f", NewV[0]));
+                this.SetTiltTB.setText(String.format("%.2f", NewV[1]));
+                this.panTiltTrajectory.add(NewV[0], NewV[1], (int)MouseN.getX(), (int)MouseN.getY());
+                if(showPosCB.isSelected()) repaint();
+                break;
+            case "Target":
+                this.targetTrajectory.add(NewV[0], NewV[1],(int)MouseN.getX(), (int)MouseN.getY());
+                if(showTargetCB.isSelected()) repaint();
+                break;
+            case "JitterTarget":
+                this.jitterTargetTrajectory.add(NewV[0], NewV[1],(int)MouseN.getX(), (int)MouseN.getY());
+                if(showTargetCB.isSelected()) repaint();
+                break;
         }
     }
 
-    @Override
-    public void paint(Graphics g) {
+    @Override public void paint(Graphics g) {
         super.paint(g);
         
         paintLimitBox(calibrationPanel); //paints a dashed box indicating the user defined pan and tilt limits
@@ -219,12 +214,15 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChang
         PanLabel = new javax.swing.JLabel();
         showPosCB = new javax.swing.JCheckBox();
         showTargetCB = new javax.swing.JCheckBox();
+        jitterBut = new javax.swing.JButton();
+        setSpeedTB = new javax.swing.JTextField();
+        SpeedLabel = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("PanTiltAimer");
         setCursor(new java.awt.Cursor(java.awt.Cursor.CROSSHAIR_CURSOR));
-        setMinimumSize(new java.awt.Dimension(700, 535));
-        setPreferredSize(new java.awt.Dimension(600, 600));
+        setMinimumSize(new java.awt.Dimension(650, 700));
+        setPreferredSize(new java.awt.Dimension(700, 750));
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosed(java.awt.event.WindowEvent evt) {
                 formWindowClosed(evt);
@@ -275,10 +273,11 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChang
         );
         calibrationPanelLayout.setVerticalGroup(
             calibrationPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 484, Short.MAX_VALUE)
+            .addGap(0, 463, Short.MAX_VALUE)
         );
 
-        InfoLabel.setText("<html>Drag or click  mouse to aim pan tilt. Use <b>r</b> to toggle recording a trajectory. Dashed lines show limits of pantilt.</html>");
+        InfoLabel.setFont(InfoLabel.getFont().deriveFont((InfoLabel.getFont().getStyle() & ~java.awt.Font.ITALIC) & ~java.awt.Font.BOLD));
+        InfoLabel.setText("<html>Drag or click the <b>mouse</b> or use the <b>arrow keys</b> to aim pan tilt. <br>Use <b>r</b> to toggle recording a trajectory and <b>esc</b> to delete recorded trjectory. <br>Dashed lines show limits of pantilt.</html>");
 
         recordCB.setText("Record path");
         recordCB.setToolTipText("Draw a fixed path with the mouse");
@@ -290,6 +289,9 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChang
 
         clearBut.setText("Clear path");
         clearBut.setToolTipText("clears a previously set path");
+        clearBut.setMargin(new java.awt.Insets(2, 5, 2, 5));
+        clearBut.setMaximumSize(new java.awt.Dimension(41, 23));
+        clearBut.setMinimumSize(new java.awt.Dimension(41, 23));
         clearBut.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 clearButActionPerformed(evt);
@@ -298,6 +300,10 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChang
 
         loopBut.setText("Loop path");
         loopBut.setToolTipText("loops a previously set path");
+        loopBut.setMaximumSize(new java.awt.Dimension(41, 23));
+        loopBut.setMinimumSize(new java.awt.Dimension(41, 23));
+        loopBut.setOpaque(true);
+        loopBut.setPreferredSize(new java.awt.Dimension(83, 23));
         loopBut.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 loopButActionPerformed(evt);
@@ -307,6 +313,9 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChang
         centerBut.setText("Center");
         centerBut.setToolTipText("Centers the pan-tilt to 0.5/0.5");
         centerBut.setMargin(new java.awt.Insets(2, 5, 2, 5));
+        centerBut.setMaximumSize(new java.awt.Dimension(41, 23));
+        centerBut.setMinimumSize(new java.awt.Dimension(41, 23));
+        centerBut.setPreferredSize(new java.awt.Dimension(83, 23));
         centerBut.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 centerButActionPerformed(evt);
@@ -316,7 +325,7 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChang
         relaxBut.setText("Relax");
         relaxBut.setToolTipText("Disables the servos");
         relaxBut.setMargin(new java.awt.Insets(2, 5, 2, 5));
-        relaxBut.setPreferredSize(new java.awt.Dimension(65, 23));
+        relaxBut.setPreferredSize(new java.awt.Dimension(83, 23));
         relaxBut.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 relaxButActionPerformed(evt);
@@ -345,7 +354,7 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChang
 
         PanLabel.setText("Pan:");
 
-        showPosCB.setText("show pos.");
+        showPosCB.setText("show position");
         showPosCB.setToolTipText("");
         showPosCB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -360,6 +369,29 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChang
             }
         });
 
+        jitterBut.setText("Toggle jitter");
+        jitterBut.setToolTipText("toggles the jitter of servos.");
+        jitterBut.setMargin(new java.awt.Insets(2, 5, 2, 5));
+        jitterBut.setMaximumSize(new java.awt.Dimension(41, 23));
+        jitterBut.setMinimumSize(new java.awt.Dimension(41, 23));
+        jitterBut.setPreferredSize(new java.awt.Dimension(83, 23));
+        jitterBut.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jitterButActionPerformed(evt);
+            }
+        });
+
+        setSpeedTB.setText("init...");
+        setSpeedTB.setToolTipText("Enter the speed controlled with the arrow keys");
+        setSpeedTB.setPreferredSize(new java.awt.Dimension(40, 20));
+        setSpeedTB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                setSpeedTBActionPerformed(evt);
+            }
+        });
+
+        SpeedLabel.setText("Speed:");
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -367,61 +399,77 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChang
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
-                        .addComponent(InfoLabel, javax.swing.GroupLayout.PREFERRED_SIZE, 187, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 41, Short.MAX_VALUE)
+                    .addComponent(statusLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(calibrationPanel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(InfoLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 184, Short.MAX_VALUE)
+                        .addGap(18, 18, Short.MAX_VALUE)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(showPosCB)
-                                .addGap(6, 6, 6)
-                                .addComponent(recordCB))
-                            .addComponent(showTargetCB))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                            .addComponent(clearBut, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(loopBut, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(relaxBut, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(centerBut, javax.swing.GroupLayout.PREFERRED_SIZE, 65, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(showPosCB)
+                            .addComponent(showTargetCB)
+                            .addComponent(recordCB))
+                        .addGap(9, 9, 9)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(loopBut, javax.swing.GroupLayout.PREFERRED_SIZE, 83, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(clearBut, javax.swing.GroupLayout.PREFERRED_SIZE, 83, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                                .addComponent(TiltLabel)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(relaxBut, javax.swing.GroupLayout.PREFERRED_SIZE, 83, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(centerBut, javax.swing.GroupLayout.PREFERRED_SIZE, 83, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(jitterBut, javax.swing.GroupLayout.PREFERRED_SIZE, 83, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(24, 24, 24)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(SpeedLabel, javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(TiltLabel, javax.swing.GroupLayout.Alignment.TRAILING))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(SetTiltTB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(setSpeedTB, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(SetTiltTB, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
                             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                                 .addComponent(PanLabel)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(SetPanTB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                    .addComponent(statusLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(calibrationPanel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                .addComponent(SetPanTB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                .addComponent(loopBut)
-                                .addComponent(centerBut)
-                                .addComponent(recordCB)
-                                .addComponent(showPosCB))
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                .addComponent(SetPanTB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addComponent(PanLabel)))
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(loopBut, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(centerBut, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                .addComponent(SetTiltTB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(TiltLabel))
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(clearBut, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(relaxBut, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(showTargetCB))
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createSequentialGroup()
+                                .addGap(6, 6, 6)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                    .addComponent(recordCB)
+                                    .addComponent(jitterBut, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addGroup(layout.createSequentialGroup()
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                    .addComponent(setSpeedTB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(SpeedLabel)))))
+                    .addComponent(InfoLabel)
+                    .addComponent(showPosCB)
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(3, 3, 3)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(SetTiltTB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(TiltLabel)
-                            .addComponent(clearBut)
-                            .addComponent(relaxBut, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(showTargetCB)))
-                    .addComponent(InfoLabel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(18, 18, 18)
+                            .addComponent(SetPanTB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(PanLabel))))
+                .addGap(10, 10, 10)
                 .addComponent(calibrationPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addGap(5, 5, 5)
                 .addComponent(statusLabel)
@@ -452,13 +500,11 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChang
     }
     
 
-    @Override
-    public void exceptionOccurred(Exception x, Object source) {
+    @Override public void exceptionOccurred(Exception x, Object source) {
         statusLabel.setText(x.getMessage());
     }
 
     /** Property change events are fired to return events
-     *
      * For sample messages "sample", the Point2D.Float object that is returned
      * is the pan,tilt value for that point, i.e., the last pan,tilt value that
      * has been set.
@@ -525,6 +571,8 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChang
     }//GEN-LAST:event_calibrationPanelMousePressed
 
     private void calibrationPanelKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_calibrationPanelKeyPressed
+        float[] curTarget = panTilt.getTarget();
+        float newVal;
         switch (evt.getKeyCode()) {
             case KeyEvent.VK_R:
                 // send a message with pantilt and mouse filled in, tracker will fill in retina if there is a tracked locaton
@@ -535,6 +583,29 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChang
                 supportPTAimerGUI.firePropertyChange(Message.AbortRecording.name(), null, null);
                 trajectory.clear();
                 setRecordingEnabled(false);
+                break;
+            case KeyEvent.VK_DOWN:
+                // These checks are neccesary as otherwise the target can be 
+                // WAY out of bounds and it takes many key presses to get the 
+                // target back into a reasonable range.
+                if(curTarget[1]+speed > 1) newVal = 1;
+                else newVal = curTarget[1]+speed;
+                panTilt.setTarget(curTarget[0], newVal);
+                break;
+            case KeyEvent.VK_UP:
+                if(curTarget[1]-speed < 0) newVal = 0;
+                else newVal = curTarget[1]-speed;
+                panTilt.setTarget(curTarget[0], newVal);
+                break;
+            case KeyEvent.VK_RIGHT:
+                if(curTarget[0]+speed > 1) newVal = 1;
+                else newVal = curTarget[0]+speed;
+                panTilt.setTarget(newVal, curTarget[1]);
+                break;
+            case KeyEvent.VK_LEFT:
+                if(curTarget[0]-speed < 0) newVal = 0;
+                else newVal = curTarget[0]-speed;
+                panTilt.setTarget(newVal, curTarget[1]);
                 break;
             default:
                 Toolkit.getDefaultToolkit().beep();
@@ -608,19 +679,34 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChang
     private void showTargetCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showTargetCBActionPerformed
         repaint();
     }//GEN-LAST:event_showTargetCBActionPerformed
+
+    private void jitterButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jitterButActionPerformed
+        panTilt.setJitterEnabled(!panTilt.isJitterEnabled());
+    }//GEN-LAST:event_jitterButActionPerformed
+
+    private void setSpeedTBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setSpeedTBActionPerformed
+        speed = Float.parseFloat(setSpeedTB.getText());
+        if(speed < 0) {
+            speed = 0;
+            setSpeedTB.setText(String.format("%.2f", 0f));
+        }
+    }//GEN-LAST:event_setSpeedTBActionPerformed
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel InfoLabel;
     private javax.swing.JLabel PanLabel;
     private javax.swing.JTextField SetPanTB;
     private javax.swing.JTextField SetTiltTB;
+    private javax.swing.JLabel SpeedLabel;
     private javax.swing.JLabel TiltLabel;
     private javax.swing.JPanel calibrationPanel;
     private javax.swing.JButton centerBut;
     private javax.swing.JButton clearBut;
+    private javax.swing.JButton jitterBut;
     private javax.swing.JToggleButton loopBut;
     private javax.swing.JCheckBox recordCB;
     private javax.swing.JButton relaxBut;
+    private javax.swing.JTextField setSpeedTB;
     private javax.swing.JCheckBox showPosCB;
     private javax.swing.JCheckBox showTargetCB;
     private javax.swing.JLabel statusLabel;

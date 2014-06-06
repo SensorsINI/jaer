@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
-<Form version="1.3" maxVersion="1.5" type="org.netbeans.modules.form.forminfo.JFrameFormInfo">
+<Form version="1.5" maxVersion="1.5" type="org.netbeans.modules.form.forminfo.JFrameFormInfo">
   <Properties>
     <Property name="defaultCloseOperation" type="int" value="2"/>
     <Property name="title" type="java.lang.String" value="PanTiltAimer"/>
@@ -8,10 +8,10 @@
       <Color id="Crosshair Cursor"/>
     </Property>
     <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-      <Dimension value="[700, 535]"/>
+      <Dimension value="[650, 700]"/>
     </Property>
     <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-      <Dimension value="[600, 600]"/>
+      <Dimension value="[700, 750]"/>
     </Property>
   </Properties>
   <SyntheticProperties>
@@ -39,33 +39,39 @@
           <Group type="102" alignment="1" attributes="0">
               <EmptySpace max="-2" attributes="0"/>
               <Group type="103" groupAlignment="1" attributes="0">
-                  <Group type="102" alignment="0" attributes="0">
-                      <Component id="InfoLabel" min="-2" pref="187" max="-2" attributes="0"/>
-                      <EmptySpace pref="41" max="32767" attributes="0"/>
+                  <Component id="statusLabel" alignment="1" max="32767" attributes="0"/>
+                  <Component id="calibrationPanel" alignment="0" max="32767" attributes="0"/>
+                  <Group type="102" attributes="0">
+                      <Component id="InfoLabel" pref="184" max="32767" attributes="0"/>
+                      <EmptySpace type="separate" max="32767" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
-                          <Group type="102" attributes="0">
-                              <Component id="showPosCB" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace min="-2" pref="6" max="-2" attributes="0"/>
-                              <Component id="recordCB" min="-2" max="-2" attributes="0"/>
-                          </Group>
-                          <Component id="showTargetCB" min="-2" max="-2" attributes="0"/>
+                          <Component id="showPosCB" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Component id="showTargetCB" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Component id="recordCB" alignment="0" min="-2" max="-2" attributes="0"/>
                       </Group>
-                      <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                      <Group type="103" groupAlignment="1" max="-2" attributes="0">
-                          <Component id="clearBut" max="32767" attributes="0"/>
-                          <Component id="loopBut" max="32767" attributes="0"/>
-                      </Group>
-                      <EmptySpace max="-2" attributes="0"/>
-                      <Group type="103" groupAlignment="0" attributes="0">
-                          <Component id="relaxBut" alignment="0" min="-2" max="-2" attributes="0"/>
-                          <Component id="centerBut" alignment="0" min="-2" pref="65" max="-2" attributes="0"/>
+                      <EmptySpace min="-2" pref="9" max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                          <Component id="loopBut" min="-2" pref="83" max="-2" attributes="0"/>
+                          <Component id="clearBut" min="-2" pref="83" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace type="unrelated" max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
                           <Group type="102" alignment="1" attributes="0">
-                              <Component id="TiltLabel" min="-2" max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Component id="relaxBut" min="-2" pref="83" max="-2" attributes="0"/>
+                                  <Component id="centerBut" min="-2" pref="83" max="-2" attributes="0"/>
+                                  <Component id="jitterBut" min="-2" pref="83" max="-2" attributes="0"/>
+                              </Group>
+                              <EmptySpace min="-2" pref="24" max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Component id="SpeedLabel" alignment="1" min="-2" max="-2" attributes="0"/>
+                                  <Component id="TiltLabel" alignment="1" min="-2" max="-2" attributes="0"/>
+                              </Group>
                               <EmptySpace max="-2" attributes="0"/>
-                              <Component id="SetTiltTB" min="-2" max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Component id="setSpeedTB" alignment="1" min="-2" max="-2" attributes="0"/>
+                                  <Component id="SetTiltTB" alignment="1" min="-2" max="-2" attributes="0"/>
+                              </Group>
                           </Group>
                           <Group type="102" alignment="1" attributes="0">
                               <Component id="PanLabel" min="-2" max="-2" attributes="0"/>
@@ -74,8 +80,6 @@
                           </Group>
                       </Group>
                   </Group>
-                  <Component id="statusLabel" alignment="1" max="32767" attributes="0"/>
-                  <Component id="calibrationPanel" alignment="0" max="32767" attributes="0"/>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
           </Group>
@@ -85,32 +89,52 @@
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" alignment="0" attributes="0">
               <EmptySpace max="-2" attributes="0"/>
-              <Group type="103" groupAlignment="0" attributes="0">
+              <Group type="103" groupAlignment="0" max="-2" attributes="0">
                   <Group type="102" attributes="0">
-                      <Group type="103" groupAlignment="1" attributes="0">
-                          <Group type="103" groupAlignment="3" attributes="0">
-                              <Component id="loopBut" alignment="3" min="-2" max="-2" attributes="0"/>
-                              <Component id="centerBut" alignment="3" min="-2" max="-2" attributes="0"/>
-                              <Component id="recordCB" alignment="3" min="-2" max="-2" attributes="0"/>
-                              <Component id="showPosCB" alignment="3" min="-2" max="-2" attributes="0"/>
-                          </Group>
-                          <Group type="103" groupAlignment="3" attributes="0">
-                              <Component id="SetPanTB" alignment="3" min="-2" max="-2" attributes="0"/>
-                              <Component id="PanLabel" alignment="3" min="-2" max="-2" attributes="0"/>
-                          </Group>
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Component id="loopBut" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Component id="centerBut" alignment="0" min="-2" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace max="-2" attributes="0"/>
-                      <Group type="103" groupAlignment="3" attributes="0">
-                          <Component id="SetTiltTB" alignment="3" min="-2" max="-2" attributes="0"/>
-                          <Component id="TiltLabel" alignment="3" min="-2" max="-2" attributes="0"/>
-                          <Component id="clearBut" alignment="3" min="-2" max="-2" attributes="0"/>
-                          <Component id="relaxBut" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Group type="103" groupAlignment="3" attributes="0">
+                              <Component id="SetTiltTB" alignment="3" min="-2" max="-2" attributes="0"/>
+                              <Component id="TiltLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                          </Group>
+                          <Group type="103" groupAlignment="0" attributes="0">
+                              <Component id="clearBut" alignment="1" min="-2" max="-2" attributes="0"/>
+                              <Component id="relaxBut" alignment="1" min="-2" max="-2" attributes="0"/>
+                          </Group>
                           <Component id="showTargetCB" alignment="3" min="-2" max="-2" attributes="0"/>
                       </Group>
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Group type="102" attributes="0">
+                              <EmptySpace min="-2" pref="6" max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="3" attributes="0">
+                                  <Component id="recordCB" alignment="3" min="-2" max="-2" attributes="0"/>
+                                  <Component id="jitterBut" alignment="3" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                          </Group>
+                          <Group type="102" alignment="0" attributes="0">
+                              <EmptySpace max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="3" attributes="0">
+                                  <Component id="setSpeedTB" alignment="3" min="-2" max="-2" attributes="0"/>
+                                  <Component id="SpeedLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                          </Group>
+                      </Group>
                   </Group>
-                  <Component id="InfoLabel" alignment="1" min="-2" max="-2" attributes="0"/>
+                  <Component id="InfoLabel" max="32767" attributes="0"/>
+                  <Component id="showPosCB" min="-2" max="-2" attributes="0"/>
+                  <Group type="102" attributes="0">
+                      <EmptySpace min="3" pref="3" max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="3" attributes="0">
+                          <Component id="SetPanTB" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="PanLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                  </Group>
               </Group>
-              <EmptySpace type="separate" max="-2" attributes="0"/>
+              <EmptySpace min="-2" pref="10" max="-2" attributes="0"/>
               <Component id="calibrationPanel" max="32767" attributes="0"/>
               <EmptySpace min="-2" pref="5" max="-2" attributes="0"/>
               <Component id="statusLabel" min="-2" max="-2" attributes="0"/>
@@ -160,14 +184,19 @@
         </DimensionLayout>
         <DimensionLayout dim="1">
           <Group type="103" groupAlignment="0" attributes="0">
-              <EmptySpace min="0" pref="484" max="32767" attributes="0"/>
+              <EmptySpace min="0" pref="463" max="32767" attributes="0"/>
           </Group>
         </DimensionLayout>
       </Layout>
     </Container>
     <Component class="javax.swing.JLabel" name="InfoLabel">
       <Properties>
-        <Property name="text" type="java.lang.String" value="&lt;html&gt;Drag or click  mouse to aim pan tilt. Use &lt;b&gt;r&lt;/b&gt; to toggle recording a trajectory. Dashed lines show limits of pantilt.&lt;/html&gt;"/>
+        <Property name="font" type="java.awt.Font" editor="org.netbeans.modules.form.editors2.FontEditor">
+          <FontInfo relative="true">
+            <Font bold="false" component="InfoLabel" italic="false" property="font" relativeSize="true" size="0"/>
+          </FontInfo>
+        </Property>
+        <Property name="text" type="java.lang.String" value="&lt;html&gt;Drag or click the &lt;b&gt;mouse&lt;/b&gt; or use the &lt;b&gt;arrow keys&lt;/b&gt; to aim pan tilt. &lt;br&gt;Use &lt;b&gt;r&lt;/b&gt; to toggle recording a trajectory and &lt;b&gt;esc&lt;/b&gt; to delete recorded trjectory. &lt;br&gt;Dashed lines show limits of pantilt.&lt;/html&gt;"/>
       </Properties>
     </Component>
     <Component class="javax.swing.JCheckBox" name="recordCB">
@@ -183,6 +212,15 @@
       <Properties>
         <Property name="text" type="java.lang.String" value="Clear path"/>
         <Property name="toolTipText" type="java.lang.String" value="clears a previously set path"/>
+        <Property name="margin" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+          <Insets value="[2, 5, 2, 5]"/>
+        </Property>
+        <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+          <Dimension value="[41, 23]"/>
+        </Property>
+        <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+          <Dimension value="[41, 23]"/>
+        </Property>
       </Properties>
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="clearButActionPerformed"/>
@@ -192,6 +230,16 @@
       <Properties>
         <Property name="text" type="java.lang.String" value="Loop path"/>
         <Property name="toolTipText" type="java.lang.String" value="loops a previously set path"/>
+        <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+          <Dimension value="[41, 23]"/>
+        </Property>
+        <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+          <Dimension value="[41, 23]"/>
+        </Property>
+        <Property name="opaque" type="boolean" value="true"/>
+        <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+          <Dimension value="[83, 23]"/>
+        </Property>
       </Properties>
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="loopButActionPerformed"/>
@@ -203,6 +251,15 @@
         <Property name="toolTipText" type="java.lang.String" value="Centers the pan-tilt to 0.5/0.5"/>
         <Property name="margin" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
           <Insets value="[2, 5, 2, 5]"/>
+        </Property>
+        <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+          <Dimension value="[41, 23]"/>
+        </Property>
+        <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+          <Dimension value="[41, 23]"/>
+        </Property>
+        <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+          <Dimension value="[83, 23]"/>
         </Property>
       </Properties>
       <Events>
@@ -217,7 +274,7 @@
           <Insets value="[2, 5, 2, 5]"/>
         </Property>
         <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-          <Dimension value="[65, 23]"/>
+          <Dimension value="[83, 23]"/>
         </Property>
       </Properties>
       <Events>
@@ -260,7 +317,7 @@
     </Component>
     <Component class="javax.swing.JCheckBox" name="showPosCB">
       <Properties>
-        <Property name="text" type="java.lang.String" value="show pos."/>
+        <Property name="text" type="java.lang.String" value="show position"/>
         <Property name="toolTipText" type="java.lang.String" value=""/>
       </Properties>
       <Events>
@@ -274,6 +331,44 @@
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="showTargetCBActionPerformed"/>
       </Events>
+    </Component>
+    <Component class="javax.swing.JButton" name="jitterBut">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Toggle jitter"/>
+        <Property name="toolTipText" type="java.lang.String" value="toggles the jitter of servos."/>
+        <Property name="margin" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+          <Insets value="[2, 5, 2, 5]"/>
+        </Property>
+        <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+          <Dimension value="[41, 23]"/>
+        </Property>
+        <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+          <Dimension value="[41, 23]"/>
+        </Property>
+        <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+          <Dimension value="[83, 23]"/>
+        </Property>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jitterButActionPerformed"/>
+      </Events>
+    </Component>
+    <Component class="javax.swing.JTextField" name="setSpeedTB">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="init..."/>
+        <Property name="toolTipText" type="java.lang.String" value="Enter the speed controlled with the arrow keys"/>
+        <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+          <Dimension value="[40, 20]"/>
+        </Property>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setSpeedTBActionPerformed"/>
+      </Events>
+    </Component>
+    <Component class="javax.swing.JLabel" name="SpeedLabel">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Speed:"/>
+      </Properties>
     </Component>
   </SubComponents>
 </Form>
