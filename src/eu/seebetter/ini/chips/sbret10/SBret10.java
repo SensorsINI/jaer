@@ -578,35 +578,12 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
             gl.glTranslatef(chip.getSizeX()/2,chip.getSizeY()/2,0);
             gl.glLineWidth(3);
 
-            final float vectorScale=.8f;
+            final float vectorScale=1.5f;
             final float textScale = .2f;
             final float trans = .7f;
             float x,y;
-            // gyro pan/tilt
-            gl.glColor3f(1, 0, 0);
-            gl.glBegin(GL.GL_LINES);
-            gl.glVertex2f(0, 0);
-            x = (vectorScale * imuSample.getGyroYawY() * HEIGHT) / IMUSample.FULL_SCALE_GYRO_DEG_PER_SEC;
-            y = (vectorScale * imuSample.getGyroTiltX() * HEIGHT) / IMUSample.FULL_SCALE_GYRO_DEG_PER_SEC;
-            gl.glVertex2f(x, y);
-            gl.glEnd();
 
-            imuTextRenderer.begin3DRendering();
-            imuTextRenderer.setColor(1, 0, 0, trans);
-            imuTextRenderer.draw3D(String.format("%.2f,%.2f dps", imuSample.getGyroYawY()+5, imuSample.getGyroTiltX()), x, y, 0, textScale); // x,y,z, scale factor
-            imuTextRenderer.end3DRendering();
-
-            // gyro roll
-            x = (vectorScale * imuSample.getGyroRollZ() * HEIGHT) / IMUSample.FULL_SCALE_GYRO_DEG_PER_SEC;
-            y = chip.getSizeY() * .25f;
-            gl.glBegin(GL.GL_LINES);
-            gl.glVertex2f(0, y);
-            gl.glVertex2f(x, y);
-            gl.glEnd();
-            imuTextRenderer.begin3DRendering();
-            imuTextRenderer.setColor(1, 0, 0, trans);
-            imuTextRenderer.draw3D(String.format("%.2f dps", imuSample.getGyroRollZ()), x, y, 0, textScale); // x,y,z, scale factor
-            imuTextRenderer.end3DRendering();
+            
 
             //acceleration x,y
             x = (vectorScale * imuSample.getAccelX() * HEIGHT) / IMUSample.FULL_SCALE_ACCEL_G/2;
@@ -639,7 +616,32 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
             imuTextRenderer.draw3D(saz, az, -(float)rect.getHeight()*textScale*0.5f, 0, textScale); // x,y,z, scale factor
             imuTextRenderer.end3DRendering();
          
-            // color annotation to show what is being rendered
+             // gyro pan/tilt
+            gl.glColor3f(.3f, 0, 1);
+            gl.glBegin(GL.GL_LINES);
+            gl.glVertex2f(0, 0);
+            x = (vectorScale * imuSample.getGyroYawY() * HEIGHT) / IMUSample.FULL_SCALE_GYRO_DEG_PER_SEC;
+            y = (vectorScale * imuSample.getGyroTiltX() * HEIGHT) / IMUSample.FULL_SCALE_GYRO_DEG_PER_SEC;
+            gl.glVertex2f(x, y);
+            gl.glEnd();
+
+            imuTextRenderer.begin3DRendering();
+            imuTextRenderer.setColor(.3f, 0, 1, trans);
+            imuTextRenderer.draw3D(String.format("%.2f,%.2f dps", imuSample.getGyroYawY()+5, imuSample.getGyroTiltX()), x, y, 0, textScale); // x,y,z, scale factor
+            imuTextRenderer.end3DRendering();
+
+            // gyro roll
+            x = (vectorScale * imuSample.getGyroRollZ() * HEIGHT) / IMUSample.FULL_SCALE_GYRO_DEG_PER_SEC;
+            y = chip.getSizeY() * .25f;
+            gl.glBegin(GL.GL_LINES);
+            gl.glVertex2f(0, y);
+            gl.glVertex2f(x, y);
+            gl.glEnd();
+            imuTextRenderer.begin3DRendering();
+            imuTextRenderer.draw3D(String.format("%.2f dps", imuSample.getGyroRollZ()), x, y, 0, textScale); // x,y,z, scale factor
+            imuTextRenderer.end3DRendering();
+            
+// color annotation to show what is being rendered
             imuTextRenderer.begin3DRendering();
 //            imuTextRenderer.setColor(1,0,0, trans);
 //            imuTextRenderer.draw3D("G", -6, -6,0, textScale); // x,y,z, scale factor
