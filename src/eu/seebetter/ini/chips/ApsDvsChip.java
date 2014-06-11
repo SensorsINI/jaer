@@ -28,11 +28,15 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
             EXTERNAL_INPUT_EVENT_ADDR = 1 << EVENT_TYPE_SHIFT, // This special address is is for external pin input events
             IMU_SAMPLE_VALUE=3<<EVENT_TYPE_SHIFT // this special code is for IMU sample events
             ;
+    
     // see the files in trunk\doc\data structure\apsDVS 
     // below was original IMU code location, not used anymore (tobi)
 //            IMUSHIFT =31, // 1 bit at bit 31 encodes IMU data
 //            IMUMASK=1<<IMUSHIFT; // adc samples are bits 0-9, with ADC data type at bits 10 to 11 and x and y addresses at DVS x,y bit locations
 
+    /* Detects bit indicating a DVS external event of type IMU*/
+    public static final int IMUSHIFT = 0, IMUMASK = 1<<IMUSHIFT;
+                
     /* Address-type refers to data if is it an "address". This data is either an AE address or ADC reading or an IMU sample.*/
     public static final int ADDRESS_TYPE_MASK = 0x80000000, ADDRESS_TYPE_DVS = 0x00000000, ADDRESS_TYPE_APS = 0x80000000, ADDRESS_TYPE_IMU=0x80000C00;
     /**
