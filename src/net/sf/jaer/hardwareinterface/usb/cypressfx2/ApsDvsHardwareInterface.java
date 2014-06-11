@@ -428,6 +428,10 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
         private int numReadoutTypes = 3;
         private IMUSample imuSample = null;
 
+        private boolean readingIMUEvents = false; // Indicates that we are reading in IMU Events from the buffer to switch reading mode
+        private int countIMUEvents = 0;
+        private short[] dataIMUEvents = new short[7];
+        
         @Override
         protected void translateEvents(UsbIoBuf b) {
             // TODO debug
@@ -458,140 +462,224 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                     buffer.lastCaptureIndex = eventCounter;
 //                     tobiLogger.log("#packet");
 
-
-
                     for (int i = 0; i < bytesSent; i += 2) {
                         //   tobiLogger.log(String.format("%d %x %x",eventCounter,buf[i],buf[i+1])); // DEBUG
                         //   int val=(buf[i+1] << 8) + buf[i]; // 16 bit value of data
                         int dataword = (0xff & buf[i]) | (0xff00 & (buf[i + 1] << 8));  // data sent little endian
 
-                        final int code = (buf[i + 1] & 0xC0) >> 6; // gets two bits at XX00 0000 0000 0000. (val&0xC000)>>>14;
-                        //  log.info("code " + code);
-                        int xmask = (ApsDvsChip.XMASK | ApsDvsChip.POLMASK) >>> ApsDvsChip.POLSHIFT;
-                        switch (code) {
-                            case 0: // address
-                                // If the data is an address, we write out an address value if we either get an ADC reading or an x address.
-                                // We also write a (fake) address if
-                                // we get two y addresses in a row, which occurs when the on-chip AE state machine doesn't properly function.
-                                //  Here we also read y addresses but do not write out any output address until we get either 1) an x-address, or 2)
-                                // another y address without intervening x-address.
-                                // NOTE that because ADC events do not have a timestamp, the size of the addresses and timestamps data are not the same.
-                                // To simplify data structure handling in AEPacketRaw and AEPacketRawPool,
-                                // ADC events are timestamped just like address-events. ADC events get the timestamp of the most recently preceeding address-event.
-                                // NOTE2: unmasked bits are read as 1's from the hardware. Therefore it is crucial to properly mask bits.
-                                if ((eventCounter >= aeBufferSize) || (buffer.overrunOccuredFlag)) {
-                                    buffer.overrunOccuredFlag = true; // throw away events if we have overrun the output arrays
-                                } else {
-                                    int addr, timestamp; // used to store event to write out
-                                    boolean haveEvent = false;
-                                    if ((dataword & ADDRESS_TYPE_BIT) == ADDRESS_TYPE_BIT) {
+                        // Check that we are not reading IMU Events which have a different encoding scheme
+                        // START IF readingIMUEvents
+                        if (readingIMUEvents == false) {
+                                
+                            final int code = (buf[i + 1] & 0xC0) >> 6; // gets two bits at XX00 0000 0000 0000. (val&0xC000)>>>14;
+                            //  log.info("code " + code);
+                            int xmask = (ApsDvsChip.XMASK | ApsDvsChip.POLMASK) >>> ApsDvsChip.POLSHIFT;
+                            switch (code) {
+                                case 0: // address
+                                    // If the data is an address, we write out an address value if we either get an ADC reading or an x address.
+                                    // We also write a (fake) address if
+                                    // we get two y addresses in a row, which occurs when the on-chip AE state machine doesn't properly function.
+                                    //  Here we also read y addresses but do not write out any output address until we get either 1) an x-address, or 2)
+                                    // another y address without intervening x-address.
+                                    // NOTE that because ADC events do not have a timestamp, the size of the addresses and timestamps data are not the same.
+                                    // To simplify data structure handling in AEPacketRaw and AEPacketRawPool,
+                                    // ADC events are timestamped just like address-events. ADC events get the timestamp of the most recently preceeding address-event.
+                                    // NOTE2: unmasked bits are read as 1's from the hardware. Therefore it is crucial to properly mask bits.
+                                    if ((eventCounter >= aeBufferSize) || (buffer.overrunOccuredFlag)) {
+                                        buffer.overrunOccuredFlag = true; // throw away events if we have overrun the output arrays
+                                    } else {
+                                        int addr, timestamp; // used to store event to write out
+                                        boolean haveEvent = false;
+                                        if ((dataword & ADDRESS_TYPE_BIT) == ADDRESS_TYPE_BIT) {
 
-                                        //APS event
-                                        if ((dataword & FRAME_START_BIT) == FRAME_START_BIT) {
-                                            resetFrameAddressCounters();
-                                        }
-                                        int readcycle = (dataword & ApsDvsChip.ADC_READCYCLE_MASK) >> ApsDvsChip.ADC_READCYCLE_SHIFT;
-                                        if (countY[readcycle] >= chip.getSizeY()) {
-                                            countY[readcycle] = 0;
-                                            countX[readcycle]++;
-                                        }
-                                        if (countX[readcycle] >= chip.getSizeX()) {
-                                            if (frameEvtDropped == 0) {
-                                                log.warning("countX above chip size, a start frame event was dropped");
-                                                frameEvtDropped = 10000;
+                                            //APS event
+                                            if ((dataword & FRAME_START_BIT) == FRAME_START_BIT) {
+                                                resetFrameAddressCounters();
                                             }
-                                            else {
-                                                frameEvtDropped--;
+                                            int readcycle = (dataword & ApsDvsChip.ADC_READCYCLE_MASK) >> ApsDvsChip.ADC_READCYCLE_SHIFT;
+                                            if (countY[readcycle] >= chip.getSizeY()) {
+                                                countY[readcycle] = 0;
+                                                countX[readcycle]++;
                                             }
+                                            if (countX[readcycle] >= chip.getSizeX()) {
+                                                if (frameEvtDropped == 0) {
+                                                    log.warning("countX above chip size, a start frame event was dropped");
+                                                    frameEvtDropped = 10000;
+                                                }
+                                                else {
+                                                    frameEvtDropped--;
+                                                }
+                                            }
+                                            int xAddr = (short) (chip.getSizeX() - 1 - countX[readcycle]);
+                                            int yAddr = (short) (chip.getSizeY() - 1 - countY[readcycle]);
+    //                                        if(xAddr >= chip.getSizeX() || xAddr<0 || yAddr >= chip.getSizeY() || yAddr<0)System.out.println("out of bounds event: x = "+xAddr+", y = "+yAddr+", read = "+readcycle);
+                                            countY[readcycle]++;
+                                            addr = ApsDvsChip.ADDRESS_TYPE_APS
+                                                    | ((yAddr << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
+                                                    | ((xAddr << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
+                                                    | (dataword & (ApsDvsChip.ADC_READCYCLE_MASK | ApsDvsChip.ADC_DATA_MASK));
+                                            timestamp = currentts;  // ADC event gets last timestamp
+                                            haveEvent = true;
+    //                                              System.out.println("ADC word: " + (dataword&SeeBetter20.ADC_DATA_MASK));
+                                        
+                                        // Detects Special Events which can be of type IMUEvents
+                                        } else if ((buf[i + 1] & EXTERNAL_PIN_EVENT) == EXTERNAL_PIN_EVENT) {
+                                            addr = ApsDvsChip.EXTERNAL_INPUT_EVENT_ADDR;
+                                            timestamp = currentts;
+                                            haveEvent = false; // TODO set false for now
+    //                                        haveEvent = true; // TODO don't write out the external pin events for now, because they mess up the IMU special events
+                                            
+                                            // Detect Special / External Event of Type IMU, and set flag to start reading subsequent pairs of bytes as IMUEvents
+                                            if ((buf[i] & ApsDvsChip.IMUMASK) == ApsDvsChip.IMUMASK) {
+                                                readingIMUEvents = true;
+                                                //if (bytesSent - i < 20) System.out.println(bytesSent - i);
+                                            }
+                                            
+                                        } else if ((buf[i + 1] & XBIT) == XBIT) {//  received an X address, write out event to addresses/timestamps output arrays
+
+                                            // x/column part of DVS event
+                                            // x column adddress received, combine with previous row y address and commit to output packet
+                                            addr = (lasty << ApsDvsChip.YSHIFT) | ((dataword & xmask) << ApsDvsChip.POLSHIFT);  // combine current bits with last y address bits and send
+                                            timestamp = currentts; // add in the wrap offset and convert to 1us tick
+                                            haveEvent = true;
+                                            //log.info("X: "+((dataword & ApsDvsChip.XMASK)>>1));
+                                            gotY = false;
+                                        } else { // row address came, just save it until we get a column address
+                                            addr = 0;
+                                            timestamp = 0;
+                                            // y/row part of DVS event
+                                            if (gotY) { // no col address came after last row address, last event was row-only event
+                                                if (translateRowOnlyEvents) {// make  row-only event
+
+                                                    addresses[eventCounter] = (lasty << ApsDvsChip.YSHIFT);  // combine current bits with last y address bits and send
+                                                    timestamps[eventCounter] = currentts; // add in the wrap offset and convert to 1us tick
+                                                    eventCounter++;
+                                                }
+
+                                            }
+                                            // y address, save it for all the x/row addresses that should follow
+                                            int ymask = (ApsDvsChip.YMASK >>> ApsDvsChip.YSHIFT);
+                                            lasty = ymask & dataword; //(0xFF & buf[i]); //
+                                            gotY = true;
+                                            //log.info("Y: "+lasty+" - data "+dataword+" - mask: "+(ApsDvsChip.YMASK >>> ApsDvsChip.YSHIFT));
                                         }
-                                        int xAddr = (short) (chip.getSizeX() - 1 - countX[readcycle]);
-                                        int yAddr = (short) (chip.getSizeY() - 1 - countY[readcycle]);
-//                                        if(xAddr >= chip.getSizeX() || xAddr<0 || yAddr >= chip.getSizeY() || yAddr<0)System.out.println("out of bounds event: x = "+xAddr+", y = "+yAddr+", read = "+readcycle);
-                                        countY[readcycle]++;
-                                        addr = ApsDvsChip.ADDRESS_TYPE_APS
-                                                | ((yAddr << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
-                                                | ((xAddr << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
-                                                | (dataword & (ApsDvsChip.ADC_READCYCLE_MASK | ApsDvsChip.ADC_DATA_MASK));
-                                        timestamp = currentts;  // ADC event gets last timestamp
-                                        haveEvent = true;
-//                                              System.out.println("ADC word: " + (dataword&SeeBetter20.ADC_DATA_MASK));
-                                    } else if ((buf[i + 1] & EXTERNAL_PIN_EVENT) == EXTERNAL_PIN_EVENT) {
-                                        addr = ApsDvsChip.EXTERNAL_INPUT_EVENT_ADDR;
-                                        timestamp = currentts;
-                                        haveEvent = false; // TODO set false for now
-//                                        haveEvent = true; // TODO don't write out the external pin events for now, because they mess up the IMU special events
-                                    } else if ((buf[i + 1] & XBIT) == XBIT) {//  received an X address, write out event to addresses/timestamps output arrays
-
-                                        // x/column part of DVS event
-                                        // x column adddress received, combine with previous row y address and commit to output packet
-                                        addr = (lasty << ApsDvsChip.YSHIFT) | ((dataword & xmask) << ApsDvsChip.POLSHIFT);  // combine current bits with last y address bits and send
-                                        timestamp = currentts; // add in the wrap offset and convert to 1us tick
-                                        haveEvent = true;
-                                        //log.info("X: "+((dataword & ApsDvsChip.XMASK)>>1));
-                                        gotY = false;
-                                    } else { // row address came, just save it until we get a column address
-                                        addr = 0;
-                                        timestamp = 0;
-                                        // y/row part of DVS event
-                                        if (gotY) { // no col address came after last row address, last event was row-only event
-                                            if (translateRowOnlyEvents) {// make  row-only event
-
-                                                addresses[eventCounter] = (lasty << ApsDvsChip.YSHIFT);  // combine current bits with last y address bits and send
-                                                timestamps[eventCounter] = currentts; // add in the wrap offset and convert to 1us tick
-                                                eventCounter++;
+                                        if (haveEvent) {
+                                            // see if there are any IMU samples to add to packet
+                                            // merge the IMUSamples to the packet, attempting to maintain timestamp monotonicity, 
+                                            // even if the timestamp is on a different origin that is not related to the data on this endpoint.
+                                            if (imuSample == null) {
+                                                imuSample = imuSampleQueue.poll();
                                             }
 
+                                            while (imuSample != null && imuSample.getTimestampUs() < timestamp) {
+                                                eventCounter += imuSample.writeToPacket(buffer, eventCounter);
+    //                                            System.out.println(imuSample.toString());
+                                                imuSample = imuSampleQueue.poll();
+                                            }
+                                            while (imuSample != null && imuSample.getTimestampUs() > timestamp + 10000) {
+                                                imuSample = imuSampleQueue.poll(); // drain out imu samples that are too far in future
+                                            }
+                                            addresses[eventCounter] = addr;
+                                            timestamps[eventCounter++] = timestamp;
+
                                         }
-                                        // y address, save it for all the x/row addresses that should follow
-                                        int ymask = (ApsDvsChip.YMASK >>> ApsDvsChip.YSHIFT);
-                                        lasty = ymask & dataword; //(0xFF & buf[i]); //
-                                        gotY = true;
-                                        //log.info("Y: "+lasty+" - data "+dataword+" - mask: "+(ApsDvsChip.YMASK >>> ApsDvsChip.YSHIFT));
                                     }
-                                    if (haveEvent) {
-                                        // see if there are any IMU samples to add to packet
-                                        // merge the IMUSamples to the packet, attempting to maintain timestamp monotonicity, 
-                                        // even if the timestamp is on a different origin that is not related to the data on this endpoint.
-                                        if (imuSample == null) {
-                                            imuSample = imuSampleQueue.poll();
-                                        }
 
-                                        while (imuSample != null && imuSample.getTimestampUs() < timestamp) {
-                                            eventCounter += imuSample.writeToPacket(buffer, eventCounter);
-//                                            System.out.println(imuSample.toString());
-                                            imuSample = imuSampleQueue.poll();
-                                        }
-                                        while (imuSample != null && imuSample.getTimestampUs() > timestamp + 10000) {
-                                            imuSample = imuSampleQueue.poll(); // drain out imu samples that are too far in future
-                                        }
-                                        addresses[eventCounter] = addr;
-                                        timestamps[eventCounter++] = timestamp;
+                                    break;
+                                case 1: // timestamp
+                                    lastts = currentts;
+                                    currentts = ((0x3f & buf[i + 1]) << 8) | (buf[i] & 0xff);
+                                    currentts = (TICK_US * (currentts + wrapAdd));
+                                    if (lastts > currentts && nonmonotonicTimestampWarningCount-- > 0) {
+                                        log.warning(this.toString()+": non-monotonic timestamp: currentts=" + currentts + " lastts=" + lastts + " currentts-lastts=" + (currentts - lastts));
+                                    }
+                                    //           log.info("received timestamp");
+                                    break;
+                                case 2: // wrap
+                                    wrapAdd += 0x4000L;
+                                    NumberOfWrapEvents++;
+                                    //   log.info("wrap");
+                                    break;
+                                case 3: // ts reset event
+                                    nonmonotonicTimestampWarningCount = NONMONOTONIC_WARNING_COUNT;
+                                    this.resetTimestamps();
+                                    log.info("timestamp reset event received on "+super.toString());
+                                    break;
+                            }
+                            
+                        // Code to read IMUEvents
+                        } else {
+                            
+                            ///*
+                            // Populate array containing IMU Events
+                            dataIMUEvents[countIMUEvents] = (short) dataword;
 
+                            // Increment Counter
+                            if (countIMUEvents < 6) {
+                                countIMUEvents++;
+
+                            // When have a full set of IMU Events
+                            } else {
+                                try {
+                                    // Convert IMU Events array and current timestamp to an IMUSample
+                                    IMUSample sample = new IMUSample(currentts, dataIMUEvents);
+                                    // Add to IMU Sample Queue
+                                    imuSampleQueue.add(sample);
+                                    // Update buf counter to iterate through next word
+                                } catch (IllegalStateException ex) {
+                                    if (putImuSampleToQueueWarningCounter++ % PUT_IMU_WARNING_INTERVAL == 0) {
+                                        log.warning("putting IMUSample to queue not possible because queue has" + imuSampleQueue.size() + " samples and was full");
                                     }
                                 }
-
-                                break;
-                            case 1: // timestamp
-                                lastts = currentts;
-                                currentts = ((0x3f & buf[i + 1]) << 8) | (buf[i] & 0xff);
-                                currentts = (TICK_US * (currentts + wrapAdd));
-                                if (lastts > currentts && nonmonotonicTimestampWarningCount-- > 0) {
-                                    log.warning(this.toString()+": non-monotonic timestamp: currentts=" + currentts + " lastts=" + lastts + " currentts-lastts=" + (currentts - lastts));
+                                // Stop reading data as IMU
+                                readingIMUEvents = false;
+                                // Reset counter
+                                countIMUEvents = 0;
+                            
+                            }
+                            
+                            
+                            //*/
+                            //REALLY UGLY CODE! DON"T LOOK!
+                            /*
+                            int dataword1 = (0xff & buf[i]) | (0xff00 & (buf[i + 1] << 8));  // data sent little endian
+                            int dataword2 = (0xff & buf[i + 2]) | (0xff00 & (buf[i + 3] << 8));  // data sent little endian
+                            int dataword3 = (0xff & buf[i + 4]) | (0xff00 & (buf[i + 5] << 8));  // data sent little endian
+                            int dataword4 = (0xff & buf[i + 6]) | (0xff00 & (buf[i + 7] << 8));  // data sent little endian
+                            int dataword5 = (0xff & buf[i + 8]) | (0xff00 & (buf[i + 9] << 8));  // data sent little endian
+                            int dataword6 = (0xff & buf[i + 10]) | (0xff00 & (buf[i + 11] << 8));  // data sent little endian
+                            int dataword7 = (0xff & buf[i + 12]) | (0xff00 & (buf[i + 13] << 8));  // data sent little endian
+                            
+                            short[] imuDataShortA = new short[7];
+                            imuDataShortA[0] = (short) dataword1; 
+                            imuDataShortA[1] = (short) dataword2;
+                            imuDataShortA[2] = (short) dataword3;
+                            imuDataShortA[3] = (short) dataword4;
+                            imuDataShortA[4] = (short) dataword5;
+                            imuDataShortA[5] = (short) dataword6;
+                            imuDataShortA[6] = (short) dataword7;
+                            
+                            try {
+                                // Read in buf and convert to IMUSample
+                                IMUSample sample = new IMUSample(currentts, imuDataShortA);
+                                // Add to IMU Sample Queue
+                                imuSampleQueue.add(sample);
+                                // Update buf counter to iterate through next word
+                            } catch (IllegalStateException ex) {
+                                if (putImuSampleToQueueWarningCounter++ % PUT_IMU_WARNING_INTERVAL == 0) {
+                                    log.warning("putting IMUSample to queue not possible because queue has" + imuSampleQueue.size() + " samples and was full");
                                 }
-                                //           log.info("received timestamp");
-                                break;
-                            case 2: // wrap
-                                wrapAdd += 0x4000L;
-                                NumberOfWrapEvents++;
-                                //   log.info("wrap");
-                                break;
-                            case 3: // ts reset event
-                                nonmonotonicTimestampWarningCount = NONMONOTONIC_WARNING_COUNT;
-                                this.resetTimestamps();
-                                   log.info("timestamp reset event received on "+super.toString());
-                                break;
-                        }
+                            }
+                            i = i+12;
+                            readingIMUEvents = false;
+                            //REALLY UGLY CODE!!!!! JUST GET IT WORKING 
+                            // 
+*/
 
+                            
+                        } // END IF readingIMUEvents
+                        
+                        
                     } // end loop over usb data buffer
 
                     buffer.setNumEvents(eventCounter);
