@@ -189,6 +189,11 @@ public class ChipCanvas implements GLEventListener, Observer {
 			drawable = new GLCanvas(); // was new GLCanvas(caps); // but this causes an exception in GLDrawableFactory
 										// in linux running with hardware accelerated OpenGL -tobi
 
+			if (drawable == null) {
+				// Failed to init OpenGL, exit system!
+				System.exit(1);
+			}
+
 			/*
 			 * got following under VirtualBox Ubuntu guest running on tobi's W510 Win7x64SP1 machine
 			 * INFO: OpenGL implementation is: com.sun.opengl.impl.GLImpl
