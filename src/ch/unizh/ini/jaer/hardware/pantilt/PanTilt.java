@@ -46,7 +46,7 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     private float   pan             = .5f,   tilt             = .5f;
     private float   previousPan     = pan,   previousTilt     = tilt;
     private float   panTarget       = pan,   tiltTarget       = tilt;
-    private float   panJitterTarget = pan,   tiltJitterTarget = pan;
+    private float   panJitterTarget = pan,   tiltJitterTarget = tilt;
     private float   limitOfPan      = .5f,   limitOfTilt      = .5f;
     private boolean panInverted     = false, tiltInverted     = false;
     private int     panServoNumber  = DEFAULT_PAN_SERVO, 

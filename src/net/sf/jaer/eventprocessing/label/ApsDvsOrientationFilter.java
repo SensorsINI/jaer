@@ -209,7 +209,7 @@ public class ApsDvsOrientationFilter extends AbstractOrientationFilter{
                 // orienation IFF is also satisfies coincidence timing requirement
 
                 // now find min of these, this is most likely orientation, iff this time is also less than minDtThreshold
-                int mindt = minDtThreshold, decideHelper = 0, dir = -1;
+                int mindt = minDtThresholdUs, decideHelper = 0, dir = -1;
                 for ( int ori = 0 ; ori < NUM_TYPES ; ori++ ){
                     if ( oridts[ori] < mindt ){
                         mindt = oridts[ori];
@@ -292,7 +292,7 @@ public class ApsDvsOrientationFilter extends AbstractOrientationFilter{
                 // here events are generated in oris that satisfy timing; there is no WTA
                 // now write output cell iff all events along dir occur within minDtThreshold
                 for ( int k = 0 ; k < NUM_TYPES ; k++ ){
-                    if ( oridts[k] < minDtThreshold ){
+                    if ( oridts[k] < minDtThresholdUs ){
                         writeOutput(outItr , e , true , (byte)k);
                         oriHist.add(k);
                     } else writeOutput(outItr , e , false , (byte)0);

@@ -185,10 +185,6 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
      * Calibration values are stored persistently as preferences.
      * Built automatically into filter parameter panel as an action. */
     public void doAim() {
-        if (getGui() == null) {
-            gui = new PanTiltAimerGUI(panTiltHardware);
-            getGui().getSupport().addPropertyChangeListener(this);
-        }
         getGui().setVisible(true);
     }
     // </editor-fold>
@@ -269,6 +265,10 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
     /**
      * @return the gui */
     public PanTiltAimerGUI getGui() {
+        if(gui == null) {
+            gui = new PanTiltAimerGUI(panTiltHardware);
+            gui.getSupport().addPropertyChangeListener(this);
+        }
         return gui;
     }
 

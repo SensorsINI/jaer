@@ -98,4 +98,5 @@ public interface MotionOrientationEventInterface extends OrientationEventInterfa
      */
     void setVelocity(Point2D.Float velocity);
     
+    @Override public void copyFrom(BasicEvent src);
 }

@@ -62,12 +62,12 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
     protected int     length                  = getInt("length",3);
     protected int     width                   = getInt("width",0);
     /** events must occur within this time along orientation in us to generate an event */
-    protected int     minDtThreshold          = getInt("minDtThreshold",100000);
-    /** We reject delta times that are larger than minDtThreshold by this factor, to rule out very old events */
+    protected int     minDtThresholdUs        = getInt("minDtThresholdUs",100000);
+    /** We reject delta times that are larger than minDtThresholdUs by this factor, to rule out very old events */
     protected int     dtRejectMultiplier      = getInt("dtRejectMultiplier",5);
     /** set true to use min of average time to neighbors. Set false to use max time to neighbors (reduces # events) */
     protected boolean useAverageDtEnabled     = getBoolean("useAverageDtEnabled",true);
-    protected int     dtRejectThreshold       = minDtThreshold * dtRejectMultiplier;
+    protected int     dtRejectThreshold       = minDtThresholdUs * dtRejectMultiplier;
     protected int     rfSize;
     protected Random  r;
 
@@ -128,8 +128,8 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
         setPropertyTooltip(size,"subSampleShift","Shift subsampled timestamp map stores by this many bits");
         setPropertyTooltip(size,"width","width of RF, total is 2*width+1");
         setPropertyTooltip(size,"length","length of half of RF, total length is length*2+1");
-        setPropertyTooltip(tim,"minDtThreshold","Coincidence time, events that pass this coincidence test are considerd for orientation output");
-        setPropertyTooltip(tim,"dtRejectMultiplier","<html>reject delta times more than this factor times <em>minDtThreshold</em> to reduce noise");
+        setPropertyTooltip(tim,"minDtThresholdUs","Coincidence time, events that pass this coincidence test are considerd for orientation output");
+        setPropertyTooltip(tim,"dtRejectMultiplier","<html>reject delta times more than this factor times <em>minDtThresholdUs</em> to reduce noise");
         setPropertyTooltip(tim,"dtRejectThreshold","reject delta times more than this time in us to reduce effect of very old events");
         setPropertyTooltip(tim,"useAverageDtEnabled","Use averarge delta time instead of minimum");
         setPropertyTooltip(tim,"multiOriOutputEnabled","Enables multiple event output for all events that pass test");
@@ -345,13 +345,13 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --MinDtThreshold--">
-    public int getMinDtThreshold (){
-        return this.minDtThreshold;
+    public int getMinDtThresholdUs (){
+        return this.minDtThresholdUs;
     }
 
-    public void setMinDtThreshold (final int minDtThreshold){
-        this.minDtThreshold = minDtThreshold;
-        putInt("minDtThreshold",minDtThreshold);
+    public void setMinDtThresholdUs (final int minDtThreshold){
+        this.minDtThresholdUs = minDtThreshold;
+        putInt("minDtThresholdUs",minDtThreshold);
         dtRejectThreshold = minDtThreshold * dtRejectMultiplier;
     }
     // </editor-fold>
@@ -425,7 +425,7 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
             dtRejectMultiplier = 128;
         }
         this.dtRejectMultiplier = dtRejectMultiplier;
-        dtRejectThreshold = minDtThreshold * dtRejectMultiplier;
+        dtRejectThreshold = minDtThresholdUs * dtRejectMultiplier;
     }
     // </editor-fold>
 

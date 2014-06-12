@@ -77,8 +77,8 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
 
             if(!e.isHasOrientation()){
                 if(passAllEvents){
-                    DvsMotionOrientationEvent eout = (DvsMotionOrientationEvent) outItr.nextOutput();
-                    eout.copyFrom((DvsOrientationEvent) ein);
+                    MotionOrientationEventInterface eout = (MotionOrientationEventInterface) outItr.nextOutput();
+                    eout.copyFrom((DvsOrientationEvent)e);
                     eout.setHasDirection(false);
                 }
                 continue;
@@ -213,9 +213,6 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                 // acceptable delay bounds
 
                 for (int s = 1; s <= searchDistance; s++) {
-                    d = DvsMotionOrientationEvent.unitDirs[ori];
-                    dt = ts - lastTimesMap[x + s * d.x][y + s * d.y][type]; // this is time between this event and previous
-                    
                     //TODO: SUPER HACKY... This is because of the sqrt2 error in the 
                     // orientations. Look at comment in avgDt
                     if(ori % 2 == 1){
@@ -225,6 +222,9 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                         helpMaxDtThreshold = maxDtThreshold;
                         helpMinDtThreshold = minDtThreshold;
                     }
+                    
+                    d = DvsMotionOrientationEvent.unitDirs[ori];
+                    dt = ts - lastTimesMap[x + s * d.x][y + s * d.y][type]; // this is time between this event and previous
                     if (dt < helpMaxDtThreshold && dt > helpMinDtThreshold) {
                         n1++;
                         speed1 += (float) s / dt; // sum speed in pixels/us
@@ -277,7 +277,7 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
             avgSpeed = (1 - speedMixingFactor) * avgSpeed + speedMixingFactor * speed;
             if (speedControlEnabled && speed > avgSpeed * excessSpeedRejectFactor) {
                 if(passAllEvents) {
-                    DvsMotionOrientationEvent eout = (DvsMotionOrientationEvent) outItr.nextOutput();
+                    MotionOrientationEventInterface eout = (MotionOrientationEventInterface) outItr.nextOutput();
                     eout.copyFrom((DvsOrientationEvent) ein);
                     eout.setHasDirection(false);
                 }
@@ -288,9 +288,9 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
             // write the event to the OutputStream.
             DvsMotionOrientationEvent eout = (DvsMotionOrientationEvent) outItr.nextOutput();
             eout.copyFrom((DvsOrientationEvent) ein);
+            eout.setHasDirection(true);
             eout.setDirection(motionDir);
             eout.setDelay(delay);
-            eout.setHasDirection(true);
             eout.setDistance((byte) dist); // the pixel distance to the temporally closest event of the same type
             eout.setSpeed(speed);
             eout.setDir(MotionOrientationEventInterface.unitDirs[motionDir]);

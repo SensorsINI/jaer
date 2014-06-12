@@ -1,17 +1,9 @@
-/*
- * Info.java
+/* Info.java
  *
  * Created on September 28, 2007, 7:29 PM
  *
- * To change this template, choose Tools | Template Manager
- * and open the template in the editor.
- *
- *
- *Copyright September 28, 2007 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
- */
+ *Copyright September 28, 2007 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich */
 package net.sf.jaer.eventprocessing.filter;
-
-
 
 import java.awt.Font;
 import java.beans.PropertyChangeEvent;
@@ -50,21 +42,19 @@ import net.sf.jaer.util.TobiLogger;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
 
-/**
- * Annotates the rendered data stream canvas with additional information like a
+/** Annotates the rendered data stream canvas with additional information like a
  * clock with absolute time, a bar showing instantaneous activity rate, a graph
  * showing historical activity over the file, etc. These features are enabled by
  * flags of the filter.
  *
- * @author tobi
- */
+ * @author tobi */
 @Description("Adds useful information annotation to the display, e.g. date/time/event rate")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class Info extends EventFilter2D implements FrameAnnotater, PropertyChangeListener, Observer {
 
-	private DateFormat timeFormat = new SimpleDateFormat("k:mm:ss.S"); //DateFormat.getTimeInstance();
-	private DateFormat dateFormat = DateFormat.getDateInstance();
-	private Calendar calendar = Calendar.getInstance();
+	private final DateFormat timeFormat = new SimpleDateFormat("k:mm:ss.S"); //DateFormat.getTimeInstance();
+	private final DateFormat dateFormat = DateFormat.getDateInstance();
+	private final Calendar calendar = Calendar.getInstance();
 	private boolean analogClock = getPrefs().getBoolean("Info.analogClock", true);
 	private boolean digitalClock = getPrefs().getBoolean("Info.digitalClock", true);
 	private boolean date = getPrefs().getBoolean("Info.date", true);

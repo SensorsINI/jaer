@@ -1,12 +1,6 @@
-/*
- * EventFilter2D.java
+/* EventFilter2D.java
  *
- * Created on November 9, 2005, 8:49 AM
- *
- * To change this template, choose Tools | Options and locate the template under
- * the Source Creation and Management node. Right-click the template and choose
- * Open. You can then make changes to the template in the Source Editor.
- */
+ * Created on November 9, 2005, 8:49 AM */
 package net.sf.jaer.eventprocessing;
 
 import java.awt.BorderLayout;
@@ -51,8 +45,8 @@ abstract public class EventFilter2D extends EventFilter {
     /** This field is used for update callbacks on this packet. */
     protected float currentUpdateIntervalMs;
 
-    /** Resets the output packet to be a new packet if none has been constructed or clears the packet
-    if it exists */
+    /** Resets the output packet to be a new packet if none has been 
+     * constructed or clears the packet if it exists */
     protected void clearOutputPacket() {
         if (out == null) {
             out = new EventPacket();

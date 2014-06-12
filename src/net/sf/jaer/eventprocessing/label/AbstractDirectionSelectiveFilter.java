@@ -232,12 +232,11 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
             float[][] c=null;
             gl.glLineWidth(2f);
             gl.glBegin(GL.GL_LINES);
-            int frameDuration=dirPacket.getDurationUs();
             for(Object o:dirPacket){
                 MotionOrientationEventInterface e=(MotionOrientationEventInterface)o;
                 c=chip.getRenderer().makeTypeColors(e.getNumCellTypes());
                 if(e.isHasDirection()) {
-                    drawMotionVector(gl,e,frameDuration,c); //If we passAllEvents then the check is needed to not annotate the events without a real direction
+                    drawMotionVector(gl,e,c); //If we passAllEvents then the check is needed to not annotate the events without a real direction
 		}
             }
             gl.glEnd();
@@ -248,7 +247,7 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
 
 
     // plots a single motion vector which is the number of pixels per second times scaling
-    void drawMotionVector(GL2 gl, MotionOrientationEventInterface e, int frameDuration,float[][] c) {
+    void drawMotionVector(GL2 gl, MotionOrientationEventInterface e,float[][] c) {
         float jx = 0, jy = 0;
         MotionOrientationEventInterface.Dir d = MotionOrientationEventInterface.unitDirs[e.getDirection()];
 

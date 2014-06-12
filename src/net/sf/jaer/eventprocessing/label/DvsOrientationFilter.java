@@ -1,7 +1,7 @@
-/*
- * DvsOrientationFilter.java
+/* DvsOrientationFilter.java
  *
  * Created on November 2, 2005, 8:24 PM */
+
 package net.sf.jaer.eventprocessing.label;
 
 import java.util.logging.Level;
@@ -11,17 +11,27 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 
 /** Computes simple-type orientation-tuned cells.                           <br>
- * multiOriOutputEnabled - boolean switch:
- *      WTA mode {false} only max 1 orientation per event
- *      or many event {true} any orientation that passes coincidence threshold.
- * Another switch allows contour enhancement by using previous output 
- * orientation events to make it easier to make events along the same orientation.
- * Another switch decides whether to use max delay or average delay as the coincidence measure.
- * <p>
- * Orientation type output takes values 0-3;                    <br>
- * 0 is a horizontal edge (0 deg),                              <br>
- * 1 is an edge tilted up and to right (rotated CCW 45 deg),    <br>
- * 2 is a vertical edge (rotated 90 deg),                       <br>
+ * <ul>
+ * <li>SWITCH: multiOriOutputEnabled:                                       <br>
+ *     {false} = WTA mode, meaning only max 1 orientation per event         <br>
+ *     {true}  = any orientation that passes coincidence threshold 
+ *               (so multiple per event possible)</li>                      <br>
+ * <li>SWITCH: oriHistoryEnabled:                                           <br>
+ *     {false} = orientations are generated just based on current events    <br>
+ *     {true}  = Previous orientations at this location are used to 
+ *               make generation of similar orientations easier and 
+ *               inhibit very different orientations. This can be 
+ *               understood as contour enhancement.</li>                    <br>
+ * <li>SWITCH: useAverageDtEnabled:                                         <br>
+ *     {false} = the maximum temporal difference per orientation is 
+ *               used as coincidence measure.                               <br>
+ *     {true}  = the average over all cells in the receptive field 
+ *               per orientation is used as coincidence measure.</li>
+ * </ul><p>
+ * Orientation type output takes values 0-3;                                <br>
+ * 0 is a horizontal edge (0 deg),                                          <br>
+ * 1 is an edge tilted up and to right (rotated CCW 45 deg),                <br>
+ * 2 is a vertical edge (rotated 90 deg),                                   <br>
  * 3 is tilted up and to left (rotated 135 deg from horizontal edge).
  * <p>
  * The filter takes either PolarityEvents or BinocularEvents to create 
@@ -149,6 +159,19 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
                     for ( int k = 0 ; k < rfSize ; k++ ){
                         int dt = dts[ori][k];
                         if ( dt > dtRejectThreshold ){
+                            //TODO: bbeyer: There is a small bug here that I could not
+                            // figure out. Using the orientation sample data from the jAER
+                            // project page and measuring how often events where rejected
+                            // due to dtRejectThreshold I could reliably find, that
+                            // diagonal orientations (ori 1 and 3) get rejected 11% more
+                            // often than horizontal and vertical orientations.
+                            // At first I thought that this might be due to the euclidian distance
+                            // to diagonal pixels being longer than to horizontal/vertical pixels.
+                            // But since we are concerned about orientation not motion here this should
+                            // not matter!?
+                            // Basically I dont know why diagonal orientations get systematicallty rejected
+                            // more often, but I am pretty certain that it should not be the case, given 
+                            // a well diversified sample...
                             continue; // we're averaging delta times; this rejects outliers
                         }
                         oridts[ori] += dt; // average dt
@@ -203,8 +226,8 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
                 // here we do a WTA, only 1 event max gets generated in optimal 
                 // orienation IFF is also satisfies coincidence timing requirement
 
-                // now find min of these, this is most likely orientation, iff this time is also less than minDtThreshold
-                int mindt = minDtThreshold, decideHelper = 0, dir = -1;
+                // now find min of these, this is most likely orientation, iff this time is also less than minDtThresholdUs
+                int mindt = minDtThresholdUs, decideHelper = 0, dir = -1;
                 for ( int ori = 0 ; ori < NUM_TYPES ; ori++ ){
                     if ( oridts[ori] < mindt ){
                         mindt = oridts[ori];
@@ -234,7 +257,7 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
                     }
                 }
                 
-                if ( dir == -1 ){ // didn't find a good orientation
+                if ( dir == -1 ){ // didn't find a good orientation(meaning oridts[ori] has been larger than minDtThresholdUs for all ori)
                     if ( passAllEvents ) writeOutput(outItr , e , false , (byte)0);
                     continue;
                 }
@@ -285,9 +308,9 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
             } else {
                 // <editor-fold defaultstate="collapsed" desc="--allow multiple orientations per event--">
                 // here events are generated in oris that satisfy timing; there is no WTA
-                // now write output cell iff all events along dir occur within minDtThreshold
+                // now write output cell iff all events along dir occur within minDtThresholdUs
                 for ( int k = 0 ; k < NUM_TYPES ; k++ ){
-                    if ( oridts[k] < minDtThreshold ){
+                    if ( oridts[k] < minDtThresholdUs ){
                         writeOutput(outItr , e , true , (byte)k);
                         oriHist.add(k);
                     } else writeOutput(outItr , e , false , (byte)0);

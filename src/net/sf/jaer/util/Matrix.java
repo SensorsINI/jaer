@@ -1,11 +1,6 @@
-/*
- * Matrix.java
+/* Matrix.java
  *
- * Created on 23. Mai 2006, 17:33
- *
- * To change this template, choose Tools | Template Manager
- * and open the template in the editor.
- */
+ * Created on 23. Mai 2006, 17:33 */
 
 package net.sf.jaer.util;
 
@@ -48,7 +43,7 @@ import java.util.logging.Logger;
  */
 public strictfp class Matrix {
     
-    static Logger log=Logger.getLogger("Matrix");
+    static final Logger log=Logger.getLogger("Matrix");
     
 /**
  *         // solve real linear equations for X where Y = A * X
@@ -457,7 +452,7 @@ public strictfp class Matrix {
         int nk = A[0].length;
         int nj = B[0].length;
         if(B.length!=nk || C.length!=ni || C[0].length!=nj) {
-            log.warning("Error in Matrix.multiply, incompatible sizes");
+            log.warning("Error in Matrix.multiply, incompatible sizes in operation A*B=C: A.col("+nk+")==B.row("+B.length+") , C.row("+C.length+")==A.row("+ni+") , C.col("+C[0].length+")==B.col("+nj+")");
         }
         for(int i=0; i<ni; i++)
             for(int j=0; j<nj; j++) {
@@ -603,13 +598,26 @@ public strictfp class Matrix {
         int rows = A.length;
         int cols = A[0].length;
         for(int i=0; i<rows; i++){
-            System.out.println("");
-            for(int j=0; j<cols; j++)
+            for(int j=0; j<cols; j++) {
                 System.out.print(A[i][j] + "  ");
+            }
+            System.out.println("");
         }
         System.out.println("");
     } // end print
     
+    public static final void print(float A[][], int precision) {
+        int rows = A.length;
+        int cols = A[0].length;
+        for(int i=0; i<rows; i++){
+            for(int j=0; j<cols; j++) {
+                System.out.printf("% "+(precision+6)+"."+precision+"f ", A[i][j]);
+            }
+            System.out.println("");
+        }
+        System.out.println("");
+    } // end print
+                    
     public static final void multiply(float A[][], float B[], float C[]) {
         int rows=A.length;
         int cols=B.length;

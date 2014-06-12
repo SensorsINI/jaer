@@ -13,11 +13,10 @@ import net.sf.jaer.event.OrientationEventInterface;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 
-/** Outputs local motion events derived from time of flight of 
- * orientation events from DVS sensors. 
- * Output cells type has values 0-7,
- * 0 being upward motion, increasing by 45 deg CCW 
- * to 7 being motion up and to right.
+/** Outputs local motion events derived from time of flight of orientation 
+ * events from DVS sensors. 
+ * Output cells type has values 0-7, 0 being upward motion, increasing by 
+ * 45 deg CCW to 7 being motion up and to right.
  * @see AbstractDirectionSelectiveFilter
  * @author tobi */
 @Description("Local motion by time-of-travel of orientation events for APSDVS (DAVIS) sensor")

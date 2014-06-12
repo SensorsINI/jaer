@@ -1,11 +1,7 @@
-/*
- * FilterChain.java
+/* FilterChain.java
  *
- * Created on January 30, 2006, 7:58 PM
- *
- * To change this template, choose Tools | Template Manager
- * and open the template in the editor.
- */
+ * Created on January 30, 2006, 7:58 PM */
+
 package net.sf.jaer.eventprocessing;
 
 import java.beans.PropertyChangeSupport;
@@ -28,50 +24,51 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.util.ClassChooserDialog;
 
 /**
- * A chain of EventFilter that serially filters or processes packets of AEPacket2D. An instance of
- * this object can be passed to FilterFrame and is an instance field of e.g. AERetina. Filters know which chain they are part of and can
- *find out what filters come before and afterwards, allowing them to enable or disable them according to their needs, e.g. NearestEventMotionFilter needs
- *SimpleOrientationFilter to be enabled.
-<p>
-FilterChain fires the following PropertyChangeEvents
-<ul>
-<li> processingmode - when the processing mode is changed
-</ul>
+ * A chain of EventFilter that serially filters or processes packets of AEPacket2D. 
+ * An instance of this object can be passed to FilterFrame and is an instance 
+ * field of e.g. AERetina. Filters know which chain they are part of and can
+ * find out what filters come before and afterwards, allowing them to enable 
+ * or disable them according to their needs, 
+ * e.g. NearestEventMotionFilter needs SimpleOrientationFilter to be enabled.
+ * <p>
+ * FilterChain fires the following PropertyChangeEvents
+ * <ul>
+ * <li> processingmode - when the processing mode is changed
+ * </ul>
  * FilterChains should be constructed as in the following example taken from a filter:
  * <pre>
- *         //build hierarchy
-FilterChain trackingFilterChain = new FilterChain(chip);
-EventFilter tracker=new RectangularClusterTracker(chip);
-EventFilter servoArm = new ServoArm(chip);
-EventFilter xYFilter = new XYTypeFilter(chip);
-EventFilter tableFilter=new GoalieTableFilter(chip);
-
-trackingFilterChain.add(new BackgroundActivityFilter(chip));
-trackingFilterChain.add(tableFilter);
-trackingFilterChain.add(tracker);
-trackingFilterChain.add(servoArm);
-setEnclosedFilterChain(trackingFilterChain); // labels enclosed filters as being enclosed
-tracker.setEnclosedFilter(xYFilter); // marks xYFilter as enclosed by tracker
-tracker.setEnclosed(true, this);    // tracker is enclosed by this
-servoArm.setEnclosed(true, this);   // same for servoArm
-xYFilter.setEnclosed(true, tracker); // but xYFilter is enclosed by tracker
+ * //build hierarchy
+ * FilterChain trackingFilterChain = new FilterChain(chip);
+ * EventFilter tracker=new RectangularClusterTracker(chip);
+ * EventFilter servoArm = new ServoArm(chip);
+ * EventFilter xYFilter = new XYTypeFilter(chip);
+ * EventFilter tableFilter=new GoalieTableFilter(chip);
+ *
+ * trackingFilterChain.add(new BackgroundActivityFilter(chip));
+ * trackingFilterChain.add(tableFilter);
+ * trackingFilterChain.add(tracker);
+ * trackingFilterChain.add(servoArm);
+ * setEnclosedFilterChain(trackingFilterChain); // labels enclosed filters as being enclosed
+ * tracker.setEnclosedFilter(xYFilter); // marks xYFilter as enclosed by tracker
+ * tracker.setEnclosed(true, this);    // tracker is enclosed by this
+ * servoArm.setEnclosed(true, this);   // same for servoArm
+ * xYFilter.setEnclosed(true, tracker); // but xYFilter is enclosed by tracker
  * </pre>
  * Another, simpler, example is as follows, as part of an EventFilter's constructor:
  * <pre>
- *        setEnclosedFilterChain(new FilterChain(chip)); // make a new FilterChain for this EventFilter
-RefractoryFilter rf=new RefractoryFilter(chip); // make a filter to go in the chain
-rf.setEnclosed(true, this);                     // set rf to be enclosed and inside this filter
-getEnclosedFilterChain().add(rf);               // add rf to this EventFilter's FilterChain
+ * setEnclosedFilterChain(new FilterChain(chip)); // make a new FilterChain for this EventFilter
+ * RefractoryFilter rf=new RefractoryFilter(chip); // make a filter to go in the chain
+ * rf.setEnclosed(true, this);                     // set rf to be enclosed and inside this filter
+ * getEnclosedFilterChain().add(rf);               // add rf to this EventFilter's FilterChain
  * </pre>
  *
- * @author tobi
- */
+ * @author tobi */
 public class FilterChain extends LinkedList<EventFilter2D> {
 
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     private boolean measurePerformanceEnabled = false;
     public boolean resetPerformanceMeasurementStatistics=false; // flag to reset everyone on this cycle
-    Logger log = Logger.getLogger("FilterChain");
+    static final Logger log = Logger.getLogger("FilterChain");
     AEChip chip;
     private boolean filteringEnabled = true;
     /** true if filter is enclosed by another filter */
@@ -84,9 +81,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     private boolean timedOut = false;
 
     /** The updateIntervalMs is used by EventFilter2D's to ensure maximum update intervals while iterating over packets of events.
-     * Subclasses of EventFilter2D should check for Observers which may wish to be informed of these updates during iteration over packets.
-     *
-     */
+     * Subclasses of EventFilter2D should check for Observers which may wish to be informed of these updates during iteration over packets. */
     protected float updateIntervalMs;
 
     /**
@@ -214,6 +209,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     @return true
      * @see net.sf.jaer.eventprocessing.EventFilter#setEnclosed(boolean, net.sf.jaer.eventprocessing.EventFilter) )
      */
+    @Override
     public boolean add(EventFilter2D filter) {
 //        log.info("adding "+filter+" to "+this);
 //        filter.setEnclosed(true, filter.getEnclosingFilter()); // all filters are enclosed (in a sense) in this filter chain but they may
