@@ -1725,7 +1725,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
 					packet = extractPacket(aeRaw);
                                         if(packet==null) {
-                                            log.warning("packet became null");
+                                            log.warning("packet became null after extracting events from raw input packet");
                                             continue;
                                         }
 					numEvents = packet.getSize();
@@ -1783,7 +1783,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 				} // if (!isPaused() || isSingleStep())
 
 
-				if (skipPacketsRenderingCount-- <= 0) {
+				if (packet!=null && skipPacketsRenderingCount-- <= 0) {
 					// we only got new events if we were NOT paused. but now we can apply filters, different rendering methods, etc in 'paused' condition
 					try{
                                             renderPacket(packet);
@@ -1791,7 +1791,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                             log.warning("caught "+e.toString()+" caused by "+e.getCause().toString());
                                         }
                                         if(packet==null){
-                                            log.warning("packet became null");
+                                            log.warning("packet became null after rendering");
                                             continue;
                                         }
 					numFilteredEvents = packet.getSizeNotFilteredOut();
