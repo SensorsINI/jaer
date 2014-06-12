@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<exe4j version="4.5.2" transformSequenceNumber="1">
+  <directoryPresets config="C:/Users/tobi/Documents/1-jaercode-1.7svn/branches/jAER_1.5/jars/jogl" />
+  <application name="jaer1.5 win_java_x64" distributionSourceDir=".">
+    <languages>
+      <principalLanguage id="en" customLocalizationFile="" />
+    </languages>
+  </application>
+  <executable name="jAERViewer 1.5" type="1" iconSet="true" iconFile="jaer.ico" executableDir="." redirectStderr="false" stderrFile="error.log" stderrMode="overwrite" redirectStdout="false" stdoutFile="output.log" stdoutMode="overwrite" failOnStderrOutput="true" executableMode="2" changeWorkingDirectory="true" workingDirectory="../branches/jAER1.5" singleInstance="false" serviceStartType="2" serviceDependencies="" serviceDescription="" jreLocation="" executionLevel="asInvoker" checkConsoleParameter="false" globalSingleInstance="false" amd64="true">
+    <messageSet />
+    <versionInfo include="true" fileVersion="" fileDescription="Launcher for AEViewers for jAER" legalCopyright="Tobi Delbruck, 2011" internalName="jAERViewer" productName="" companyName="inilabs.com" productVersion="1.0.0.0" />
+  </executable>
+  <splashScreen show="true" autoOff="true" alwaysOnTop="true" width="0" height="0" bitmapFile="C:/Users/tobi/Documents/1-jaercode-1.7svn/branches/jAER_1.5/SplashScreen.gif" java6SplashScreen="true">
+    <text>
+      <statusLine x="20" y="20" text="" font="Arial" fontSize="8" fontColor="0,0,0" fontWeight="500" />
+      <versionLine x="20" y="40" text="version %VERSION%" font="Arial" fontSize="8" fontColor="0,0,0" fontWeight="500" />
+    </text>
+  </splashScreen>
+  <java mainClass="net.sf.jaer.JAERViewer" vmParameters="-splash:SplashScreen.gif  -Djava.util.logging.config.file=conf/Logging.properties  -Dsun.java2d.noddraw=true  -Dsun.java2d.opengl=false" arguments="" allowVMPassthroughParameters="true" preferredVM="" bundleRuntime="true" minVersion="1.6" maxVersion="" allowBetaVM="true" jdkOnly="false">
+    <searchSequence>
+      <registry />
+      <envVar name="JAVA_HOME" />
+      <envVar name="JDK_HOME" />
+    </searchSequence>
+    <classPath>
+      <scanDirectory location="../branches/jAER_1.5/jars" failOnError="false" />
+      <archive location="../branches/jAER_1.5/dist/jAER.jar" failOnError="false" />
+      <scanDirectory location="../branches/jAER_1.5/jars/usb4java" failOnError="false" />
+      <scanDirectory location="../branches/jAER_1.5/jars/javacv" failOnError="false" />
+      <archive location="../branches/jAER_1.5/jars/jogl/gluegen-rt.jar" failOnError="false" />
+      <archive location="../branches/jAER_1.5/jars/jogl/jogl-all.jar" failOnError="false" />
+    </classPath>
+    <nativeLibraryDirectories>
+      <directory name="../branches/jAER_1.5/jars/win64" />
+      <directory name="../branches/jAER_1.5/jars/jogl" />
+    </nativeLibraryDirectories>
+  </java>
+  <includedFiles />
+  <unextractableFiles />
+</exe4j>
+
