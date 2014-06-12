@@ -1576,7 +1576,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	void setPlaybackControlsEnabledState(boolean yes) {
 		//        log.info("*****************************************************       setting playback controls enabled = "+yes);
 		loggingButton.setEnabled(!yes);
-		biasesToggleButton.setEnabled(!yes);
+
+		if (DVS128.class.isInstance(chip)) {
+			// We don't want the HW configuration button to be visible on DVS128 (ticket #13),
+			// when in playback mode.
+			biasesToggleButton.setEnabled(!yes);
+		}
+		else {
+			// On others, it seems to be needed for some settings (ticket #75).
+			biasesToggleButton.setEnabled(true);
+		}
 		closeMenuItem.setEnabled(yes);
 		increasePlaybackSpeedMenuItem.setEnabled(yes);
 		decreasePlaybackSpeedMenuItem.setEnabled(yes);
@@ -2277,7 +2286,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 		private float thisTime=Float.NaN;
 
 		private void makeStatisticsLabel(EventPacket packet) {
-			if (((renderCount %10) == 0) || isPaused() || isSingleStep() || (getFrameRater().getDesiredFPS() <=30) || getFrameRater().getLastDtNs()>10000000L) {  // don't draw stats too fast
+			if (((renderCount %10) == 0) || isPaused() || isSingleStep() || (getFrameRater().getDesiredFPS() <=30) || (getFrameRater().getLastDtNs()>10000000L)) {  // don't draw stats too fast
 				if (getAePlayer().isChoosingFile()) {
 					return;
 				} // don't render stats while user is choosing file
@@ -2611,7 +2620,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 		}
 
                 /** Returns last loop delay in ms
-                 * 
+                 *
                  * @return last frame delay in ms
                  */
 		final int getLastDelayMs() {
@@ -2619,7 +2628,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 		}
 
                 /** Returns time since last frame in ns
-                 * 
+                 *
                  * @return time in ns
                  */
 		final long getLastDtNs() {
