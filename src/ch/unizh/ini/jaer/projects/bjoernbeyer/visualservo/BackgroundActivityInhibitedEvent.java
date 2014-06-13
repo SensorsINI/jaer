@@ -1,5 +1,8 @@
 
-package net.sf.jaer.event;
+package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.PolarityEvent;
+
 
 /** Represents a motion event with inhibited background activity. 
  * Extends PolarityEvent

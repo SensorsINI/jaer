@@ -22,7 +22,6 @@ import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import java.util.Collections;
 import java.util.List;
-import net.sf.jaer.event.SelfMotionEvent;
 import net.sf.jaer.event.MotionOrientationEventInterface;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.label.AbstractDirectionSelectiveFilter;

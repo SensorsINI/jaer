@@ -1,7 +1,8 @@
 
-package net.sf.jaer.event;
+package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
 
-import ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo.Vector2D;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.OpticalFlowEvent;
 
 /** Represents a motion event with inhibited background motion and excited 
  * object motion. Extends OpticalFlowEvent
