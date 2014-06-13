@@ -5,6 +5,7 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -43,7 +44,6 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
     public TrackHistogramFilter(AEChip chip) {
         super(chip);
         setEnclosedFilter(new BackgroundActivityFilter(chip));
-        doLoadHistogram();
         setPropertyTooltip("collect", "set true to accumulate histogram");
         setPropertyTooltip("threshold", "threshold in accumulated events to allow events to pass through");
         setPropertyTooltip("histmax", "maximum histogram count");
@@ -119,18 +119,22 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
                 return;
             }
             File file = fileChooser.getSelectedFile();
-            log.info("Saving track data to " + file.getName());
-            FileOutputStream fos = new FileOutputStream(file);
-            ObjectOutputStream oos = new ObjectOutputStream(fos);
-            oos.writeObject(histogram.length);
-            oos.writeObject(histogram);
-            oos.close();
-            fos.close();
-            log.info("histogram saved in startup path (usually host/java) to file " + file.getPath());
+            saveHistogramToFile(file);
         } catch (IOException e) {
             log.warning("couldn't save histogram: " + e);
         }
 
+    }
+
+    public void saveHistogramToFile(File file) throws IOException, FileNotFoundException {
+        log.info("Saving track data to " + file.getName());
+        FileOutputStream fos = new FileOutputStream(file);
+        ObjectOutputStream oos = new ObjectOutputStream(fos);
+        oos.writeObject(histogram.length);
+        oos.writeObject(histogram);
+        oos.close();
+        fos.close();
+        log.info("histogram saved in startup path (usually host/java) to file " + file.getPath());
     }
 
     final synchronized public void doLoadHistogram() {
@@ -144,6 +148,11 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
             return;
         }
         File file = fileChooser.getSelectedFile();
+        loadHistogramFromFile(file);
+
+    }
+
+    public void loadHistogramFromFile(File file) {
         try {
             FileInputStream fis = new FileInputStream(file);
             ObjectInputStream ois = new ObjectInputStream(fis);
@@ -156,7 +165,6 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
         } catch (Exception e) {
             log.info("couldn't load histogram from file " + file + ": " + e.toString());
         }
-
     }
 
     @Override

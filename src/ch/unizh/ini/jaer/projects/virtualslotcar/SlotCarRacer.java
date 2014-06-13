@@ -35,7 +35,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     private boolean playThrottleSound = prefs().getBoolean("SlotCarRacer.playThrottleSound", true);
     private TobiLogger tobiLogger;
     private SlotCarHardwareInterface hw;
-    private TwoCarTracker.TwoCarCluster car = null;
+    private CarTracker.CarCluster car = null;
     private FilterChain filterChain;
     private AbstractSlotCarController throttleController;
     private SpikeSound spikeSound;

@@ -113,10 +113,10 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 	LapTimer lapTimer = null;
 	private int lapTime;
 	private int prevLapTime;
-	private TrackdefineFilter trackDefineFilter;
+	private TrackDefineFilter trackDefineFilter;
 	private FilterChain filterChain;
-	private TwoCarTracker carTracker;
-	private TwoCarTracker.TwoCarCluster car = null;
+	private CarTracker carTracker;
+	private CarTracker.CarCluster car = null;
 	private boolean showedMissingTrackWarning = false;
 	private SlotcarSoundEffects sounds = null;
 	private int lastCrashLocation = -1;
@@ -156,9 +156,9 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
 		filterChain = new FilterChain(chip);
 
-		trackDefineFilter = new TrackdefineFilter(chip);
+		trackDefineFilter = new TrackDefineFilter(chip);
 		trackDefineFilter.setEnclosed(true, this);
-		carTracker = new TwoCarTracker(chip);
+		carTracker = new CarTracker(chip);
 		carTracker.setTrack(trackDefineFilter.getTrack());
 		carTracker.setEnclosed(true, this);
 
