@@ -62,8 +62,6 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
 
     protected int[][][] lastTimesMap; // map of input orientation event times, [x][y][type] where type is mixture of orienation and polarity
 
-    int PADDING = 2; // padding around array that holds previous orientation event timestamps to prevent arrayoutofbounds errors and need for checking
-    int P=1; // PADDING/2
     protected int sizex,sizey; // chip sizes
 
     protected AbstractOrientationFilter oriFilter;
@@ -110,15 +108,14 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
     @Override public abstract EventPacket filterPacket(EventPacket in);
 
     @Override public synchronized final void resetFilter() {
-        setPadding(getSearchDistance()); // make sure to set padding
         sizex=chip.getSizeX();
         sizey=chip.getSizeY();
     }
 
     protected void checkMap(){
         if((lastTimesMap==null) ||
-           (lastTimesMap.length      !=(chip.getSizeX()+PADDING)) ||
-           (lastTimesMap[0].length   !=(chip.getSizeY()+PADDING)) ||
+           (lastTimesMap.length      !=(chip.getSizeX()+(2*getSearchDistance()))) ||
+           (lastTimesMap[0].length   !=(chip.getSizeY()+(2*getSearchDistance()))) ||
            (lastTimesMap[0][0].length!=NUM_INPUT_TYPES)){
                 allocateMap();
         }
@@ -127,7 +124,7 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
     protected void allocateMap() {
         if(!isFilterEnabled()) return;
 
-        lastTimesMap=new int[chip.getSizeX()+PADDING][chip.getSizeY()+PADDING][NUM_INPUT_TYPES];
+        lastTimesMap=new int[chip.getSizeX()+(2*getSearchDistance())][chip.getSizeY()+(2*getSearchDistance())][NUM_INPUT_TYPES];
         log.info(String.format("allocated int[%d][%d][%d] array for last event times",chip.getSizeX(),chip.getSizeY(),NUM_INPUT_TYPES));
     }
 
@@ -308,11 +305,6 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
         return motionVectors;
     }
 
-    protected void setPadding (int searchDistance){
-        PADDING = 2 * searchDistance;
-        P = ( PADDING / 2 );
-    }
-
     /** global translatory motion, pixels per second */
     public class Translation{
         LowpassFilter xFilter=new LowpassFilter(), yFilter=new LowpassFilter();
@@ -428,7 +420,6 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
             searchDistance = 1;
         } // limit size
         this.searchDistance = searchDistance;
-        setPadding(searchDistance);
         allocateMap();
         putInt("searchDistance",searchDistance);
     }

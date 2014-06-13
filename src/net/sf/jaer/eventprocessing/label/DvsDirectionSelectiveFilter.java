@@ -24,7 +24,7 @@ import net.sf.jaer.event.PolarityEvent;
 public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilter {
     
     private static final double SQRT2 = Math.sqrt(2);
-    
+    private int n=0;
     public DvsDirectionSelectiveFilter(AEChip chip) {
         super(chip);
         oriFilter = new DvsOrientationFilter(chip);
@@ -84,8 +84,8 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                 continue;
             }
             
-            int  x        = ((e.getX() >>> subSampleShift) + P); // x and y are offset inside our timestamp storage array to avoid array access violations
-            int  y        = ((e.getY() >>> subSampleShift) + P); // without the 'P' we could be at x==0 and search for orientations at x==-1, hence we need offset
+            int  x        = ((e.getX() >>> subSampleShift) + getSearchDistance()); // x and y are offset inside our timestamp storage array to avoid array access violations
+            int  y        = ((e.getY() >>> subSampleShift) + getSearchDistance()); // without the 'searchdistance' we could be at x==0 and search for orientations at x==-1, hence we need offset
             int  polValue = ((e.getPolarity() == PolarityEvent.Polarity.On) ? 0 : 4);
             byte ori      = e.getOrientation();
             byte type     = (byte) (ori + polValue); // type information here is mixture of input orientation and polarity, in order to match both characteristics
@@ -94,6 +94,21 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
             // update the map here - this is ok because we never refer to ourselves anyhow in computing motion
             lastTimesMap[x][y][type] = ts;
 
+//            n++;
+//            if(n%100000 == 0) {
+//                String s = new String();
+//                System.out.println("------------------");
+//                for(int i=0;i<(128 >>> subSampleShift);i++){
+//                    for (int j=0;j<(128 >>> subSampleShift);j++){
+//                        s = s + lastTimesMap[i][j][0] + " ";
+////                        System.out.println(lastTimesMap[i][j][type]+" ");
+//                    }
+//                    System.out.println(s);
+//                    s = "";
+//                }
+//                System.out.println("------------------");
+//            }
+            
             // <editor-fold defaultstate="collapsed" desc="--COMMENT--">
             // for each output cell type (which codes a direction of motion), 
             // find the dt between the orientation cell type perdindicular
@@ -224,6 +239,11 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                     }
                     
                     d = DvsMotionOrientationEvent.unitDirs[ori];
+                    
+                    if((x + s * d.x)<0 || (y + s * d.y)<0){
+                        System.out.println((x + s * d.x)+ " -- "+(y + s * d.y));
+                    }
+                        
                     dt = ts - lastTimesMap[x + s * d.x][y + s * d.y][type]; // this is time between this event and previous
                     if (dt < helpMaxDtThreshold && dt > helpMinDtThreshold) {
                         n1++;

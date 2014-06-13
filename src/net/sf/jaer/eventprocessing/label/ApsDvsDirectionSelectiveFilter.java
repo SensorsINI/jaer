@@ -64,8 +64,8 @@ public class ApsDvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFi
                 continue;
             }
             
-            int  x        = ((e.getX() >>> subSampleShift) + P); // x and y are offset inside our timestamp storage array to avoid array access violations
-            int  y        = ((e.getY() >>> subSampleShift) + P); // without the 'P' we could be at x==0 and search for orientations at x==-1, hence we need offset
+            int  x        = ((e.getX() >>> subSampleShift) + getSearchDistance()); // x and y are offset inside our timestamp storage array to avoid array access violations
+            int  y        = ((e.getY() >>> subSampleShift) + getSearchDistance()); // without the 'P' we could be at x==0 and search for orientations at x==-1, hence we need offset
             int  polValue = ((e.getPolarity() == PolarityEvent.Polarity.On) ? 0 : 4);
             byte ori      = e.getOrientation();
             byte type     = (byte) (ori + polValue); // type information here is mixture of input orientation and polarity, in order to match both characteristics
