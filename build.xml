@@ -107,21 +107,7 @@
         <exe4j projectfile="../../trunk/jaer.exe4j" requirelicense="true"/>
     </target>
 
-    <target name="winrun4j">
-         <echo message="If running Windows 7, building WinRun4J launcher - embedding jaer.ini in jAERViewer.exe"/>
-        <property name="executable-full-path" location="../../WinRun4J/RCEDIT.exe"/>
-        <exec os="Windows 7" dir="../.." executable="${executable-full-path}">
-            <arg value="/n"/>
-            <arg value="jAERViewer.exe"/>
-            <arg value="WinRun4J/jaer.ini"/>
-        </exec>
-        <echo message="If running Windows 7 - embedding icon jaer.ico in jAERViewer.exe"/>
-        <exec os="Windows 7" dir="../.." executable="${executable-full-path}">
-            <arg value="/a"/>
-            <arg value="jAERViewer.exe"/>
-            <arg value="WinRun4J/jaer.ico"/>
-        </exec>
-    </target>
+ 
 
     <!-- builds the windows executable .exe launcher files -->
 <!--     or use winrun4j as depends to build with winrun4j-->
