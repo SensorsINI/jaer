@@ -379,6 +379,14 @@ public class FilterChain extends LinkedList<EventFilter2D> {
                         Throwable t = e.getCause();
                         t.printStackTrace();
                     }
+                } catch(NoClassDefFoundError err){
+                     log.warning("couldn't construct filter " + s + " for chip " + chip.getClass().getName() + " : " + err.toString() + " will remove this filter from Preferences");
+                    toRemove.add(s);
+                    if (err.getCause() != null) {
+                        Throwable t = err.getCause();
+                        t.printStackTrace();
+                    }
+                   
                 }
             }
             if (toRemove.size() > 0) {
