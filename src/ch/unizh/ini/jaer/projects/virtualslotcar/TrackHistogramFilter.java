@@ -12,6 +12,7 @@ import java.io.ObjectOutputStream;
 import java.util.Arrays;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
+import javax.swing.JFileChooser;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -20,6 +21,8 @@ import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.DATFileFilter;
+import net.sf.jaer.util.IndexFileFilter;
 
 /**
  * Allows accumulating a histogram of active pixels during practice rounds of a
@@ -106,8 +109,16 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
             return;
         }
         try {
-
-            File file = new File(HISTOGRAM_FILE_NAME);
+            JFileChooser fileChooser = new JFileChooser();
+            String lastFilePath = getString("lastFile", "");
+            // get the last folder
+//            fileChooser.setFileFilter(datFileFilter);
+            fileChooser.setCurrentDirectory(new File(lastFilePath));
+            int retValue = fileChooser.showOpenDialog(fileChooser);
+            if (retValue == JFileChooser.CANCEL_OPTION) {
+                return;
+            }
+            File file = fileChooser.getSelectedFile();
             log.info("Saving track data to " + file.getName());
             FileOutputStream fos = new FileOutputStream(file);
             ObjectOutputStream oos = new ObjectOutputStream(fos);
@@ -123,7 +134,16 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
     }
 
     final synchronized public void doLoadHistogram() {
-        File file = new File(HISTOGRAM_FILE_NAME);
+        JFileChooser fileChooser = new JFileChooser();
+        String lastFilePath = getString("lastFile", "");
+        // get the last folder
+//            fileChooser.setFileFilter(datFileFilter);
+        fileChooser.setCurrentDirectory(new File(lastFilePath));
+        int retValue = fileChooser.showOpenDialog(fileChooser);
+        if (retValue == JFileChooser.CANCEL_OPTION) {
+            return;
+        }
+        File file = fileChooser.getSelectedFile();
         try {
             FileInputStream fis = new FileInputStream(file);
             ObjectInputStream ois = new ObjectInputStream(fis);
@@ -156,8 +176,13 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
         int numX = chip.getSizeX(), numY = chip.getSizeY();
         for (int y = 0; y < numY; y++) {
             for (int x = 0; x < numX; x++) {
-                float v = (float) histogram[x][y] / histmax;
-                gl.glColor4f(v, v, v, 0.5f);
+                float v1 = (float) histogram[x][y];
+                float v2 = v1 / histmax;
+                if(v1>threshold){
+                    gl.glColor4f(v2, v2, 0, 0.5f);
+                }else{
+                    gl.glColor4f(0, v2, v2, 0.5f);
+                }
                 gl.glRectf(x, y, x + 1, y + 1);
             }
         }
