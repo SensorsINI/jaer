@@ -101,33 +101,33 @@
     <!--    The exe4j launcher target to build jAERViewer.exe with integrated java 6 splash screen.
             http://www.ej-technologies.com/products/exe4j/overview.html
     -->
-    <target name="exe4j" depends="checkos" if="isWindows">
-        <echo message="Building exe4j jAERViewer.exe Windows launcher - embedding ico and setting SplashScreen in jAERViewer.exe. ${line.separator} Don't worry if this task fails for you unless you have changed the classpath. ${line.separator}jAERViewer.exe does not normally need to be rebuilt."/>
-        <taskdef name="exe4j" classname="com.exe4j.Exe4JTask" classpath="../../trunk/exe4j/bin/ant.jar" onerror="report"/>
-        <exe4j projectfile="../../trunk/jaer.exe4j" requirelicense="true"/>
+    <target name="exe4j">
+        <subant failonerror="false" target="exe4jx86">
+            <fileset dir="." includes="build.xml"/>
+        </subant>
+       <subant failonerror="false" target="exe4jx64">
+            <fileset dir="." includes="build.xml"/>
+        </subant>
+    </target>
+    
+    <target name="exe4jx86" depends="checkos" if="isWindows" >
+        <echo message="Building exe4j jAERViewer.exe 32-bit Windows launcher - embedding ico and setting SplashScreen in jAERViewer.exe. ${line.separator} Don't worry if this task fails for you unless you have changed the classpath. ${line.separator}jAERViewer.exe does not normally need to be rebuilt."/>
+        <taskdef name="exe4j" classname="com.exe4j.Exe4JTask" classpath="../../trunk/exe4j_x86/bin/ant.jar" onerror="ignore" />
+        <exe4j projectfile="../../branches/jAER_1.5/jaer1.5_win_jre_x86.exe4j" requirelicense="true"/>
+    </target>
+
+    <target name="exe4jx64" depends="checkos" if="isWindows">
+        <echo message="Building exe4j jAERViewer.exe 64-bit Windows launcher - embedding ico and setting SplashScreen in jAERViewer.exe. ${line.separator} Don't worry if this task fails for you unless you have changed the classpath. ${line.separator}jAERViewer.exe does not normally need to be rebuilt."/>
+        <taskdef name="exe4j" classname="com.exe4j.Exe4JTask" classpath="../../trunk/exe4j_x64/bin/ant.jar" onerror="report"/>
+        <exe4j projectfile="../../branches/jAER_1.5/jaer1.5_win_jre_x64.exe4j" requirelicense="true"/>
     </target>
 
  
 
     <!-- builds the windows executable .exe launcher files -->
-<!--     or use winrun4j as depends to build with winrun4j-->
-<!--uncomment following line and comment second line to run exe4j to rebuild the exe. Not normally needed unless classpath is changed.-->
     <target name="-post-jar" depends="exe4j">
-<!--    <target name="-post-jar" > -->
-        <!-- can use to pack swing layout libs into jar
-        <jar update="true" destfile="${dist.jar}">
-            <zipfileset src="${libs.swing-layout.classpath}"/>
-        </jar>
-        -->
-<!--        Tobi deprecated jAERViewer.exe build by jsmoothgen Oct 2011 because of need for jsmoothgen to edit configuration.
-        Changed over to WinRun4J.-->
-<!--        <taskdef name="jsmoothgen"
-                 classname="net.charabia.jsmoothgen.ant.JSmoothGen"
-                 classpath="../../jSmoothExeLauncher/jsmoothgen-ant.jar"/>
-         build the exe in the jar build.
-        <jsmoothgen project="../../jSmoothExeLauncher/jAERViewer" skeletonroot="../../jSmoothExeLauncher/skeletons" />
-        <jsmoothgen project="../../jSmoothExeLauncher/jAERTrayLauncher" skeletonroot="../../jSmoothExeLauncher/skeletons" />-->
-    </target>
+        
+     </target>
 
     <!-- builds a zip of all the javadoc -->
     <target name="archive-javadoc" depends="javadoc">
