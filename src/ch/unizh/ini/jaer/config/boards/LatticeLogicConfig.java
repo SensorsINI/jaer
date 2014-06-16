@@ -144,23 +144,23 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 				// Translate index (port numbers).
 				if (index == 0x0008) {
 					// runCPLD
-					index = 36;
+					index = 35; // Now: runFPGA
 				}
 				else if (index == 0x0002) {
 					// extTrigger/TSsync
-					index = 43;
+					index = 38; // Now: runIMU
 				}
 				else if (index == 0x0101) {
 					// runADC
-					index = 37;
+					index = 37; // Now: runAPS
 				}
 				else if (index == 0x0304) {
 					// powerDown
-					index = 38;
+					index = 43; // Now: BiasEnable
 				}
 				else if (index == 0x0308) {
 					// nChipReset
-					index = 35;
+					index = 36; // Now: runDVS
 				}
 
 				((net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3) getHardwareInterface())

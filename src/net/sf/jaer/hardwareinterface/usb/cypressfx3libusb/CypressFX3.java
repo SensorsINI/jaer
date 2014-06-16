@@ -25,7 +25,6 @@ import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 import javax.swing.ProgressMonitor;
-import javax.swing.SwingUtilities;
 
 import li.longi.USBTransferThread.RestrictedTransfer;
 import li.longi.USBTransferThread.RestrictedTransferCallback;
@@ -1378,24 +1377,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 								timeStamp);
 
 							CypressFX3.log.warning("FX3 error message received - " + output);
-
-							break;
-
-						case 0x01:
-							// llongi - copy message to send it out
-							final ByteBuffer newBuf = ByteBuffer.allocate(19);
-							newBuf.position(4);
-							newBuf.put(transfer.buffer());
-							newBuf.position(0);
-							newBuf.put(0, (byte) 0xFF);
-
-							// tobi - send message to listeners
-							SwingUtilities.invokeLater(new Runnable() {
-								@Override
-								public void run() {
-									support.firePropertyChange(CypressFX3.PROPERTY_CHANGE_ASYNC_STATUS_MSG, null, newBuf);
-								}
-							});
 
 							break;
 
