@@ -1107,7 +1107,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 
 		try {
-			sendVendorRequest(VENDOR_REQUEST_RESET_TIMESTAMPS, (short) 0, (short) 0);
+			sendVendorRequest((byte) 0xB6, (short) (42 & 0xFFFF), (short) (2 & 0xFFFF));
 		}
 		catch (final HardwareInterfaceException e) {
 			CypressFX3.log.warning("CypressFX3.resetTimestamps: couldn't send vendor request to reset timestamps");
