@@ -108,7 +108,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 					int bytesSent = b.limit();
 					if ((bytesSent % 2) != 0) {
-						CypressFX3.log.severe("warning: " + bytesSent + " bytes sent, which is not multiple of 2");
+						CypressFX3.log.severe(bytesSent + " bytes sent via USB, which is not a multiple of 2");
 						bytesSent = (bytesSent / 2) * 2;
 					}
 
@@ -176,7 +176,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										if (translateRowOnlyEvents) {
 											addresses[eventCounter] = ((lastY << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK);
 											timestamps[eventCounter++] = currentTimestamp;
-											CypressFX3.log.info("Row only event on " + super.toString());
+											CypressFX3.log.warning("Row only event on " + super.toString());
 										}
 									}
 
