@@ -26,31 +26,25 @@ import ch.unizh.ini.jaer.hardware.pantilt.*;
 @Description("Moves the DVS towards a target based on the cluster tracker")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class SimpleVS_Cluster extends EventFilter2D implements FrameAnnotater {
-    //TODO
-    // - TrackerEnabled sollte nicht im code angetastet werden, weil sonnst das GUI nicht updated
-    
-    
+
     private boolean TrackerEnabled = getBoolean("TrackerEnabled", false);
-    private CalibrationTransformation retinaPTCalib;
-    private Vector2D clusterLoc = new Vector2D();
+    private final CalibrationTransformation retinaPTCalib;
+    private final Vector2D clusterLoc = new Vector2D();
+    private float targetFactor = .1f;
     
     RectangularClusterTracker tracker;
-    PanTiltAimer PTAimer;
+    PanTilt panTilt;
     
     public SimpleVS_Cluster(AEChip chip) {
         super(chip);
         
         tracker       = new RectangularClusterTracker(chip);
-        PTAimer       = new PanTiltAimer(chip);
+        panTilt       = PanTilt.getInstance(0);
         retinaPTCalib = new CalibrationTransformation(chip,"retinaPTCalib");
         
         tracker.setAnnotationEnabled(true);//we WANT to see trackers annotations!
         
-        FilterChain filterChain = new FilterChain(chip);
-        setEnclosedFilterChain(filterChain);
-            filterChain.add(PTAimer);
-            filterChain.add(tracker);
-        setEnclosedFilterChain(filterChain);  
+        setEnclosedFilter(tracker);
         
         setPropertyTooltip("DisableServos", "disables servos, e.g. to turn off annoying servo hum");
         setPropertyTooltip("Center", "centers pan and tilt");
@@ -61,19 +55,31 @@ public class SimpleVS_Cluster extends EventFilter2D implements FrameAnnotater {
     @Override public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) return in;
    
-        getEnclosedFilterChain().filterPacket(in);
+        getEnclosedFilter().filterPacket(in);
         
         if(tracker.getNumClusters()>0) {
             RectangularClusterTracker.Cluster c = tracker.getClusters().get(0); //currently gets first cluster... should decide on other options: fastest, biggest etc.
             if(c.isVisible()) {
                 clusterLoc.setLocation(c.getLocation());
+                float[] ptChange  = retinaPTCalib.makeTransform(new float[] {clusterLoc.x-64,clusterLoc.y-64,0f});
+                float[] curTarget = panTilt.getTarget();
+                float[] newTarget = {(curTarget[0]+ptChange[0]),(curTarget[1]+ptChange[1])};
+                System.out.println(newTarget[0]+" -- " +newTarget[1]);
+                if(newTarget[0] > 1) {
+                    newTarget[0]  = 1;
+                }else if(newTarget[0] < 0) {
+                    newTarget[0] =0;
+                }
+                
+                if(newTarget[1] > 1) {
+                    newTarget[1]  = 1;
+                }else if(newTarget[1] < 0){
+                    newTarget[1] = 0;
+                }
+                
+                System.out.printf("current: (%.2f,%.2f) ; ptchange: (%.2f,%.2f) ; clusterLoc: (%.2f,%.2f)\n",curTarget[0],curTarget[1],ptChange[0],ptChange[1],clusterLoc.x,clusterLoc.y);
                 if(isTrackerEnabled()) {
-                    
-                    float[] ptChange  = retinaPTCalib.makeTransform(new float[] {clusterLoc.x-64,clusterLoc.y-64,0f});
-                    float[] curTarget = PTAimer.getPanTiltTarget();
-                    System.out.printf("current: (%.2f,%.2f) ; change: (%.2f,%.2f) ; clusterLoc: (%.2f,%.2f)\n",curTarget[0],curTarget[1],ptChange[0],ptChange[1],clusterLoc.x,clusterLoc.y);
-                    
-                    PTAimer.setPanTiltTarget(curTarget[0]+ptChange[0],curTarget[1]+ptChange[1]);
+                    panTilt.setTarget(newTarget[0],newTarget[1]);
                     
                     
 //                    float[] PanTiltPos = PTAimer.getPanTiltValues();
@@ -91,33 +97,25 @@ public class SimpleVS_Cluster extends EventFilter2D implements FrameAnnotater {
     
     @Override public void resetFilter() {
         tracker.resetFilter();
-        PTAimer.resetFilter();
     }
 
     @Override public void initFilter() {
         resetFilter();
     }
     
-    /**
-     * Centers the Pan-Tilt.  
-     * Built automatically into filter parameter panel as an action.
-     */
-    public void doCenter() {
-        setTrackerEnabled(false); //So that PanTilt can move to center before tracking again
-        PTAimer.doCenter();
+    /** Switch the tracking mode
+     * Sets the tracking mode to the opposite of the current mode */
+    public void doSwitchTracking() {
+        setTrackerEnabled(!isTrackerEnabled());
+    }
+    public void doCenterPT() {
+        setTrackerEnabled(false);
+        panTilt.setTarget(.5f, .5f);
     }
     
     public void doAim() {
-        PanTiltAimerGUI aimerGui = new PanTiltAimerGUI(PTAimer.getPanTiltHardware());
+        PanTiltAimerGUI aimerGui = new PanTiltAimerGUI(panTilt);
         aimerGui.setVisible(true);
-    }
-    
-    /**
-     * Disables all Servos and stops jitter.  
-     * Built automatically into filter parameter panel as an action.
-     */
-    public void doDisableServos() {
-        PTAimer.doDisableServos();
     }
     
     @Override public void annotate(GLAutoDrawable drawable) {
@@ -138,5 +136,13 @@ public class SimpleVS_Cluster extends EventFilter2D implements FrameAnnotater {
         boolean oldValue = this.TrackerEnabled;
         this.TrackerEnabled = TrackerEnabled;
         support.firePropertyChange("TrackerEnabled",oldValue,TrackerEnabled);
+    }
+
+    public float getTargetFactor() {
+        return targetFactor;
+    }
+
+    public void setTargetFactor(float targetFactor) {
+        this.targetFactor = targetFactor;
     }
 }

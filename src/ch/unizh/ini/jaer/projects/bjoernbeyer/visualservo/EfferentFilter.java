@@ -11,7 +11,7 @@ import java.beans.PropertyChangeListener;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.DvsMotionOrientationEvent;
+import net.sf.jaer.event.orientation.DvsMotionOrientationEvent;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -22,7 +22,7 @@ import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import java.util.Collections;
 import java.util.List;
-import net.sf.jaer.event.MotionOrientationEventInterface;
+import net.sf.jaer.event.orientation.MotionOrientationEventInterface;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.label.AbstractDirectionSelectiveFilter;
 import net.sf.jaer.eventprocessing.label.DvsDirectionSelectiveFilter;
@@ -61,6 +61,7 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
     
     private final AbstractDirectionSelectiveFilter dirFilter;
     private CalibrationTransformation retinaPTCalib;
+    private CalibratedScreenPanTilt calibScreenPT;
     private final List<ListPoint> panTiltInducedMotionList = Collections.synchronizedList(new ArrayList<ListPoint>());//need synchronized collection or otherwise we get a lot of access violations and unpredicted behaviour!
     private float   delayThresholdMS            = getFloat("delayThresholdMS",100);
     private float   ppsScale                    = getFloat("ppsScale",.03f);
@@ -75,6 +76,7 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
     private boolean outputSelfMotionEnabled     = getBoolean("outputSelfMotionEnabled",true);
     private boolean outputAlienMotionEnabled    = getBoolean("outputAlienMotionEnabled",true);
     private boolean outputPolarityEvents        = getBoolean("outputPolarityEvents",false);
+    private boolean passAllEvents               = getBoolean("passAllEvents",false);
     
     
     int delay;
@@ -110,6 +112,7 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         dirFilter.setShowRawInputEnabled(false); //Otherwise this filter crashes if the dirfilter outputs polarityevents
         
         retinaPTCalib = new CalibrationTransformation(chip,"retinaPTCalib");
+        calibScreenPT = new CalibratedScreenPanTilt(chip,pt);
 
         setEnclosedFilter(dirFilter);
         
@@ -134,7 +137,10 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
  
         for(Object eIn:motionPacket) {
             DvsMotionOrientationEvent e = (DvsMotionOrientationEvent) eIn;
-            if(!e.isHasDirection()) continue;//writeOutput(outItr,e,false,false,null,null);
+            if(!e.isHasDirection()) {
+                if(passAllEvents) writeOutput(outItr,e,false,false,null,null);
+                continue;
+            }//writeOutput(outItr,e,false,false,null,null);
             
             delay = e.getDelay();
             detectedVelocity.setLocation(e.getVelocity());
@@ -148,7 +154,7 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
                 if(alienVelocity.length() > alienVelocityThreshold){
                     if(isOutputAlienMotionEnabled()) writeOutput(outItr,e,false,true,null,alienVelocity);  
                 } else {
-                    continue;
+                    if(passAllEvents) writeOutput(outItr,e,false,false,null,null);
 //                    writeOutput(outItr,e,false,false,null,null);    
                 }
                 continue;
@@ -162,7 +168,7 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
                 if(alienVelocity.length() > alienVelocityThreshold){
                     if(isOutputAlienMotionEnabled()) writeOutput(outItr,e,false,true,null,alienVelocity);    
                 } else {
-                    continue;
+                    if(passAllEvents) writeOutput(outItr,e,false,false,null,null);
 //                    writeOutput(outItr,e,false,false,null,null);    
                 }
                 continue;
@@ -225,6 +231,7 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
                 // due to objects or due to self, then we need to filter out events
                 // completely based on our best guess if it belongs to self or 
                 // to object.
+                if(passAllEvents) writeOutput(outItr,e,true,false,selfVelocity,null);
                 continue;
             }
             
@@ -232,10 +239,12 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
                 hasSelfMotion = false;
                 selfVelocity.setLength(0);
             } else if(!isOutputSelfMotionEnabled() && selfVelocity.length() > alienVelocity.length()) {
+                if(passAllEvents) writeOutput(outItr,e,false,true,null,alienVelocity);
                 continue;
             }
             
             if(!isOutputAlienMotionEnabled() && !isOutputSelfMotionEnabled()) {
+                if(passAllEvents) writeOutput(outItr,e,false,false,null,null);
                 continue;
             }
 //            System.out.println("Both discovered");
@@ -243,7 +252,9 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         }
         return isShowRawInputEnabled() ? in : out; 
     }
-    
+    public void doCalibrate() {
+        calibScreenPT.doCalibrate();
+    }
     public void doAim() {
         PanTiltAimerGUI aimerGui = new PanTiltAimerGUI(PanTilt.getInstance(0));
         aimerGui.setVisible(true);
@@ -329,6 +340,7 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
                 gl.glBegin(GL.GL_LINES);
 
                 Vector2D ptChange = panTiltInducedMotionList.get(size-1).ptChange;
+                ptChange.signChangeY(); //Need this because in pt coordinates up left is (0,0) and down right (1,1). Hence positive change in y means downward, negative change upward.
                 gl.glColor3f(1, 0, 0);
                 
                 Vector2D testUnitDir = new Vector2D(0,0),testVector = new Vector2D(0,0);
@@ -386,7 +398,7 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
             TrajectoryPoint pastVal    = pt.getPanTiltTrajectory().get(pt.getPanTiltTrajectory().size()-2);
 
             //The tilt needs to be inverted
-            float[] ptChange   = {currentVal.getPan() - pastVal.getPan(),-(currentVal.getTilt() - pastVal.getTilt()),1};
+            float[] ptChange   = {currentVal.getPan() - pastVal.getPan(),currentVal.getTilt() - pastVal.getTilt(),1};//{currentVal.getPan() - pastVal.getPan(),-(currentVal.getTilt() - pastVal.getTilt()),1};
             float[] retChange  = retinaPTCalib.makeInverseTransform(ptChange);
             double timeChangeUS;
             if(useFixedTimeIntervalEnabled){
@@ -521,6 +533,14 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
     public void setDelayThresholdMS(float delayThresholdMS) {
         putFloat("delayThresholdMS",delayThresholdMS);
         this.delayThresholdMS = delayThresholdMS;
+    }
+
+    public boolean isPassAllEvents() {
+        return passAllEvents;
+    }
+
+    public void setPassAllEvents(boolean passAllEvents) {
+        this.passAllEvents = passAllEvents;
     }
     
 }

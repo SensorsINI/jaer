@@ -70,7 +70,7 @@ public class CalibratedScreenPanTilt extends EventFilter2D implements PropertyCh
             g.fillOval((int)(width*(1+x)), (int)(height*(1+y)), 10, 10);
         }
     }
-    private final CalibrationTransformation screenPTCalib, retinaPTCalib;
+    private CalibrationTransformation screenPTCalib, retinaPTCalib;
     
     @Override public void propertyChange(PropertyChangeEvent evt) {
         switch (evt.getPropertyName()) {
@@ -90,19 +90,19 @@ public class CalibratedScreenPanTilt extends EventFilter2D implements PropertyCh
                 switch ((Integer) evt.getNewValue()) {
                     case KeyEvent.VK_DOWN:
                         if((Integer) evt.getOldValue() == 0) CalFrame.move(0, .01f);
-                        else panTilt.setTarget(curTarget[0], curTarget[1]-.02f);
+                        else panTilt.setTarget(curTarget[0], curTarget[1]+.01f);
                         break;
                     case KeyEvent.VK_UP:
                         if((Integer) evt.getOldValue() == 0) CalFrame.move(0, -.01f);
-                        else panTilt.setTarget(curTarget[0], curTarget[1]+.02f);
+                        else panTilt.setTarget(curTarget[0], curTarget[1]-.01f);
                         break;
                     case KeyEvent.VK_LEFT:
                         if((Integer) evt.getOldValue() == 0) CalFrame.move(-.01f, 0);
-                        else panTilt.setTarget(curTarget[0]-.02f, curTarget[1]);
+                        else panTilt.setTarget(curTarget[0]-.01f, curTarget[1]);
                         break;
                     case KeyEvent.VK_RIGHT:
                         if((Integer) evt.getOldValue() == 0) CalFrame.move(.01f, 0);
-                        else panTilt.setTarget(curTarget[0]+.02f, curTarget[1]);
+                        else panTilt.setTarget(curTarget[0]+.01f, curTarget[1]);
                         break;
                     case KeyEvent.VK_W:
                         CalFrame.rescale(0, .01f);break;
@@ -128,13 +128,19 @@ public class CalibratedScreenPanTilt extends EventFilter2D implements PropertyCh
                 }   break;
         }
     }
-
-    CalibratedScreenPanTilt(AEChip chip, PanTilt pt, ScreenActionCanvas CalibGUI) {
+    
+    public CalibratedScreenPanTilt(AEChip chip) {
+        this(chip,PanTilt.getInstance(0));
+    }
+    public CalibratedScreenPanTilt(AEChip chip,PanTilt pt) {
+        this(chip,pt,new ScreenActionCanvas());
+    }
+    public CalibratedScreenPanTilt(AEChip chip,PanTilt pt, ScreenActionCanvas calibGUI) {
         super(chip);
         
-        panTilt = pt;
+        panTilt = PanTilt.getInstance(0);
         tracker = new RectangularClusterTracker(chip);
-        CalibrationGUI = CalibGUI;
+        CalibrationGUI = calibGUI;
         
         CalibrationGUI.addPropertyChangeListener(this); //need to knwo when this is resized
         panTilt.addPropertyChangeListener(this);
@@ -143,6 +149,8 @@ public class CalibratedScreenPanTilt extends EventFilter2D implements PropertyCh
         
         screenPTCalib = new CalibrationTransformation(chip,"screenPTCalib");
         retinaPTCalib = new CalibrationTransformation(chip,"retinaPTCalib");
+        System.out.println(screenPTCalib.isCalibrated());
+        System.out.println(retinaPTCalib.isCalibrated());
         
         setEnclosedFilter(tracker);
     }
@@ -156,7 +164,7 @@ public class CalibratedScreenPanTilt extends EventFilter2D implements PropertyCh
 
     @Override public void resetFilter() {
         tracker.resetFilter();
-        resetCalibration(); //this means we are trowing away everything we had
+//        resetCalibration(); //this means we are trowing away everything we had
     }
 
     @Override public void initFilter() {
@@ -299,7 +307,7 @@ public class CalibratedScreenPanTilt extends EventFilter2D implements PropertyCh
             CalFrame.setFrameVisible(true);
             CalFrame.setRectVisible(false);
             
-            panTilt.setTarget(0, 1); // This will most likely be too far. In the next step we have a prior on where the edge of the screen is.
+            panTilt.setTarget(0, 0); // This will most likely be too far. In the next step we have a prior on where the edge of the screen is.
             
             CalFrame.setPosX(-.9f+CalFrame.getScaleX());
             CalFrame.setPosY(-.9f+CalFrame.getScaleY());
@@ -308,7 +316,7 @@ public class CalibratedScreenPanTilt extends EventFilter2D implements PropertyCh
         } else if(CalibrationStep == 4) {
             setNewSamplePoint(screenPTCalib);
             newPanTiltLimitClue();
-            panTilt.setTarget(.5f + newPanLimit, .5f + newTiltLimit); //top right
+            panTilt.setTarget(.5f + newPanLimit, .5f - newTiltLimit); //top right
             
             CalFrame.setPosX(-CalFrame.getPosX());
             CalFrame.setPosY(CalFrame.getPosY());
@@ -316,7 +324,7 @@ public class CalibratedScreenPanTilt extends EventFilter2D implements PropertyCh
         } else if(CalibrationStep == 7) {
             setNewSamplePoint(screenPTCalib);
             newPanTiltLimitClue();
-            panTilt.setTarget(.5f + newPanLimit, .5f - newTiltLimit); //bottom right
+            panTilt.setTarget(.5f + newPanLimit, .5f + newTiltLimit); //bottom right
            
             CalFrame.setPosX(CalFrame.getPosX());
             CalFrame.setPosY(-CalFrame.getPosY());
@@ -324,7 +332,7 @@ public class CalibratedScreenPanTilt extends EventFilter2D implements PropertyCh
         } else if(CalibrationStep == 5) {
             setNewSamplePoint(screenPTCalib);
             newPanTiltLimitClue();
-            panTilt.setTarget(.5f - newPanLimit, .5f - newTiltLimit); //bottom left
+            panTilt.setTarget(.5f - newPanLimit, .5f + newTiltLimit); //bottom left
            
             CalFrame.setPosX(-CalFrame.getPosX());
             CalFrame.setPosY(CalFrame.getPosY());
@@ -535,6 +543,7 @@ public class CalibratedScreenPanTilt extends EventFilter2D implements PropertyCh
     }
     
     public void doTestScreenCalib() {
+        System.out.println(screenPTCalib.isCalibrated());
         if(!testScreenCalibEnabled){
             if(!screenPTCalib.isCalibrated()) return;
             if(!CalibrationGUI.isShowing()) {
@@ -548,6 +557,7 @@ public class CalibratedScreenPanTilt extends EventFilter2D implements PropertyCh
     }
     
     public void doTestRetinaCalib() {
+        System.out.println(retinaPTCalib.isCalibrated());
         if(!retinaPTCalib.isCalibrated()) return;
         testRetinaCalibEnabled = !testRetinaCalibEnabled;
 

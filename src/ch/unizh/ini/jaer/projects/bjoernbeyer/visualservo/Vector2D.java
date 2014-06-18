@@ -121,4 +121,10 @@ public class Vector2D extends Point2D.Float {
     public double getAbsLengthDiff(Vector2D vec) {
         return Math.abs(this.length()-vec.length());
     }
+    public void signChangeX() {
+        x = -x;
+    }
+    public void signChangeY() {
+        y = -y;
+    }
 }

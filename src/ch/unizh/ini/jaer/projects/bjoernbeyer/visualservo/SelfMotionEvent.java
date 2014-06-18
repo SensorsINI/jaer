@@ -7,7 +7,7 @@
 package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
 
 import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.event.DvsMotionOrientationEvent;
+import net.sf.jaer.event.orientation.DvsMotionOrientationEvent;
 
 /**
  *

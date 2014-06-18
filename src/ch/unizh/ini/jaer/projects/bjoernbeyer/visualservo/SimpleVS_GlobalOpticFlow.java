@@ -13,12 +13,10 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.eventprocessing.FilterChain;
 
 import net.sf.jaer.eventprocessing.label.*;
 import net.sf.jaer.graphics.FrameAnnotater;
 import ch.unizh.ini.jaer.hardware.pantilt.*;
-import net.sf.jaer.util.Matrix;
 
 /**
  *
@@ -33,46 +31,26 @@ public class SimpleVS_GlobalOpticFlow extends EventFilter2D implements FrameAnno
     private float   MaxMove        = getFloat("maxMove",0.5f);
     private float   FactorDec      = getFloat("factorDec",0.01f);
     private boolean TrackerEnabled = getBoolean("trackerEnabled", false);
-    private CalibratedStimulusGUI calibGUI;
     private final PanTilt panTilt;
     
-    private ScreenActionCanvas ActionGUI;
-    //Can be final because Point2D is an object with components. 
-    // The components are allowed to change although final
     private final Point2D.Float GlobalDir; 
     
     DvsDirectionSelectiveFilter DirFilter;
-    PanTiltAimer PTAimer;
-    CalibratedScreenPanTilt calibSPT;
     
     public SimpleVS_GlobalOpticFlow(AEChip chip) {
         super(chip);
         
-        ActionGUI = new ScreenActionCanvas();
-        
         DirFilter = new DvsDirectionSelectiveFilter(chip);
-        panTilt = PanTilt.getLastInstance();
-        PTAimer = new PanTiltAimer(chip,panTilt);
-        calibSPT = new CalibratedScreenPanTilt(chip,panTilt,ActionGUI);
+        panTilt = PanTilt.getInstance(0);
         GlobalDir = new Point2D.Float(0,0);
         
-        //We always need Pan to be inverted as of design of the pan-tilt aimer
-        PTAimer.setPanInverted(true); 
-        
-        FilterChain filterChain = new FilterChain(chip);
-        setEnclosedFilterChain(filterChain);
-            filterChain.add(PTAimer);
-            filterChain.add(DirFilter);
-            filterChain.add(calibSPT);
-        setEnclosedFilterChain(filterChain);  
+        setEnclosedFilter(DirFilter);
 
         setPropertyTooltip("threshDir", "Threshold when a global motion should be taken into account");
         setPropertyTooltip("maxMove", "maximum distance the pantilt moves per event");
         setPropertyTooltip("factorDec", "forgetfullness of old global motions");
         setPropertyTooltip("trackerEnabled", "Move the PanTilt to the target");
         
-        setPropertyTooltip("disableServos", "disables servos, e.g. to turn off annoying servo hum");
-        setPropertyTooltip("center", "centers pan and tilt");
         setPropertyTooltip("switchTracking","switches the tracking of the pantilt.");
     }
     
@@ -82,7 +60,7 @@ public class SimpleVS_GlobalOpticFlow extends EventFilter2D implements FrameAnno
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) return in;
         
-        getEnclosedFilterChain().filterPacket(in);
+        getEnclosedFilter().filterPacket(in);
         
         Point2D.Float MotionVec = DirFilter.getTranslationVector();
         
@@ -104,15 +82,15 @@ public class SimpleVS_GlobalOpticFlow extends EventFilter2D implements FrameAnno
             //System.out.println(Move.toString());
             
             if(isTrackerEnabled()) {
-                float[] PanTiltPos = PTAimer.getPanTiltValues();
+                float[] PanTiltPos = panTilt.getPanTiltValues();
                 float[] NewPos = {0.5f,0.5f};
                 NewPos[0] = PanTiltPos[0]+Move.x; 
-                NewPos[1] = PanTiltPos[1]+Move.y;
+                NewPos[1] = PanTiltPos[1]-Move.y;
                 //We dont need to pay attention to weather the new values
                 // are larger 1 or smaller 0 as the values are clipped by
                 // 'setPanTiltValues' anyway.
                 
-                PTAimer.setPanTiltTarget(NewPos[0],NewPos[1]); 
+               panTilt.setTarget(NewPos[0],NewPos[1]); 
                 //float[] NewPanTiltPos = PTAimer.getPanTiltValues();
                 //System.out.println(Float.toString(NewPanTiltPos[0])+" - "+Float.toString(NewPanTiltPos[1]));
             }
@@ -124,7 +102,6 @@ public class SimpleVS_GlobalOpticFlow extends EventFilter2D implements FrameAnno
     /*resetFilter is neccessary to extend 'EventFilter'*/
     public void resetFilter() {
         DirFilter.resetFilter();
-        PTAimer.resetFilter();
     }
 
     @Override
@@ -136,39 +113,22 @@ public class SimpleVS_GlobalOpticFlow extends EventFilter2D implements FrameAnno
     @Override
     /*annotate is neccessary to implement 'FrameAnnotater'*/
     public void annotate(GLAutoDrawable drawable) {
-        if(!isFilterEnabled()) {
-            return;
-        }
+        if(!isFilterEnabled()) return;
+
         DirFilter.annotate(drawable);
      }
     
-    // <editor-fold defaultstate="collapsed" desc="All automatically created action buttons">
-    /**
-     * Centers the Pan-Tilt.  
-     * Built automatically into filter parameter panel as an action.
-     */
-    public void doCenter() {
-        setTrackerEnabled(false); //So that PanTilt can move to center before tracking again
-        PTAimer.doCenter();
+    public void doAim() {
+        PanTiltAimerGUI aimerGui = new PanTiltAimerGUI(PanTilt.getInstance(0));
+        aimerGui.setVisible(true);
     }
-    
-    /**
-     * Disables all Servos and stops jitter.  
-     * Built automatically into filter parameter panel as an action.
-     */
-    public void doDisableServos() {
-        PTAimer.doDisableServos();
-    }
-    
     /** Switch the tracking mode
      * Sets the tracking mode to the opposite of the current mode */
     public void doSwitchTracking() {
-        if(isTrackerEnabled()) {
-            doCenter();
-            doDisableServos();
-        } else {
-            setTrackerEnabled(true);
-        }
+        setTrackerEnabled(!isTrackerEnabled());
+    }
+    public void doCenterPT() {
+        panTilt.setTarget(.5f, .5f);
     }
 
     
@@ -226,8 +186,4 @@ public class SimpleVS_GlobalOpticFlow extends EventFilter2D implements FrameAnno
         support.firePropertyChange("trackerEnabled",OldValue,EnableTracker);
     }
     // </editor-fold>  
-    
-    public CalibratedStimulusGUI getGUI() {
-        return calibGUI;
-    }
 }
