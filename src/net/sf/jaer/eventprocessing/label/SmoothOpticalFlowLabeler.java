@@ -16,7 +16,7 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.DvsMotionOrientationEvent;
+import net.sf.jaer.event.orientation.DvsMotionOrientationEvent;
 import net.sf.jaer.event.OpticalFlowEvent;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;

@@ -4,7 +4,10 @@
  *
  * Copyright May 27, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich */
 
-package net.sf.jaer.event;
+package net.sf.jaer.event.orientation;
+
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.PolarityEvent;
 
 /** Represents an event with an orientation that can take 4 values.
  * <p>

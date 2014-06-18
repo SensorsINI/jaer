@@ -18,7 +18,7 @@ import javax.media.opengl.glu.GLUquadric;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.MotionOrientationEventInterface;
+import net.sf.jaer.event.orientation.MotionOrientationEventInterface;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter;

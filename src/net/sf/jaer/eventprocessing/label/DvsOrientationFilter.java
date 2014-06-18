@@ -4,6 +4,9 @@
 
 package net.sf.jaer.eventprocessing.label;
 
+import net.sf.jaer.event.orientation.DvsOrientationEvent;
+import net.sf.jaer.event.orientation.BinocularOrientationEvent;
+import net.sf.jaer.event.orientation.OrientationEventInterface;
 import java.util.logging.Level;
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;

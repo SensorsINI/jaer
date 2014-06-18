@@ -3,6 +3,7 @@
  * Created on May 2, 2006, 1:49 PM */
 package net.sf.jaer.graphics;
 
+import net.sf.jaer.event.orientation.OrientationEventInterface;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.*;
 import net.sf.jaer.util.SpikeSound;

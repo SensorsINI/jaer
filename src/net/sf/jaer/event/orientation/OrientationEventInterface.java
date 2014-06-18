@@ -1,5 +1,8 @@
 
-package net.sf.jaer.event;
+package net.sf.jaer.event.orientation;
+
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.PolarityEventInterface;
 
 /** Common interface for all events signaling an orientation
  * @author tobi */

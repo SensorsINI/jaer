@@ -10,7 +10,7 @@
 package net.sf.jaer.stereopsis;
 
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.BinocularDisparityEvent;
+import net.sf.jaer.event.orientation.BinocularDisparityEvent;
 import net.sf.jaer.event.BinocularEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;

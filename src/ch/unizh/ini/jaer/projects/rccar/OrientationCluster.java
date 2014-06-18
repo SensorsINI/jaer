@@ -13,7 +13,7 @@ import java.util.Observer;
 import javax.media.opengl.GLAutoDrawable;
 
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.ApsDvsOrientationEvent;
+import net.sf.jaer.event.orientation.ApsDvsOrientationEvent;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;

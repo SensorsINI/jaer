@@ -4,9 +4,10 @@
  * and open the template in the editor.
  */
 
-package net.sf.jaer.event;
+package net.sf.jaer.event.orientation;
 
 import java.awt.geom.Point2D;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  * Interface for motion vector events.

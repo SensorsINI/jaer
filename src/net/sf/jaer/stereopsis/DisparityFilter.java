@@ -16,9 +16,9 @@ import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.BinocularDisparityEvent;
+import net.sf.jaer.event.orientation.BinocularDisparityEvent;
 import net.sf.jaer.event.BinocularEvent;
-import net.sf.jaer.event.BinocularOrientationEvent;
+import net.sf.jaer.event.orientation.BinocularOrientationEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;

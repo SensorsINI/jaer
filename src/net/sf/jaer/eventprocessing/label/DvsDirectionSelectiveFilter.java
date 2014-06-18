@@ -4,11 +4,11 @@ package net.sf.jaer.eventprocessing.label;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.DvsOrientationEvent;
+import net.sf.jaer.event.orientation.DvsOrientationEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.DvsMotionOrientationEvent;
-import net.sf.jaer.event.MotionOrientationEventInterface;
-import net.sf.jaer.event.OrientationEventInterface;
+import net.sf.jaer.event.orientation.DvsMotionOrientationEvent;
+import net.sf.jaer.event.orientation.MotionOrientationEventInterface;
+import net.sf.jaer.event.orientation.OrientationEventInterface;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 

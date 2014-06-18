@@ -3,9 +3,10 @@
  * Created on May 28, 2006, 4:09 PM
  *
  *Copyright May 28, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich */
-package net.sf.jaer.event;
+package net.sf.jaer.event.orientation;
 
 import java.awt.geom.Point2D;
+import net.sf.jaer.event.BasicEvent;
 
 /** Represents an event with direction of motion and delay for DVS sensors.
  * @author tobi */

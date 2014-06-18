@@ -3,8 +3,9 @@
  * Created on May 28, 2006, 4:09 PM
  *
  *Copyright May 28, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich */
-package net.sf.jaer.event;
+package net.sf.jaer.event.orientation;
 
+import net.sf.jaer.event.BasicEvent;
 import java.awt.geom.Point2D;
 
 /**

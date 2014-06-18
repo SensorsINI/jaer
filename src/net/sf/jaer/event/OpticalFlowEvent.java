@@ -4,6 +4,7 @@
  */
 package net.sf.jaer.event;
 
+import net.sf.jaer.event.orientation.DvsMotionOrientationEvent;
 import java.awt.geom.Point2D;
 
 /**

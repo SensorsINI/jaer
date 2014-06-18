@@ -7,7 +7,11 @@
  * and open the template in the editor.
  */
 
-package net.sf.jaer.event;
+package net.sf.jaer.event.orientation;
+
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.BinocularEvent;
+import net.sf.jaer.event.orientation.BinocularOrientationEvent;
 
 /**
  *
