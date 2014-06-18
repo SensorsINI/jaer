@@ -75,7 +75,12 @@ public interface MotionOrientationEventInterface extends OrientationEventInterfa
      * @param dir the dir to set
      */
     void setDir(Dir dir);
+    
+    byte getDistance();
+    void setDistance(byte distance);
 
+    int getDelay();
+    void setDelay(int delay);
     /**
      * Sets the byte value of the direction.
      * 
@@ -98,6 +103,7 @@ public interface MotionOrientationEventInterface extends OrientationEventInterfa
      * @param velocity the velocity to set
      */
     void setVelocity(Point2D.Float velocity);
+    void setVelocity(float x, float y);
     
     @Override public void copyFrom(BasicEvent src);
 }

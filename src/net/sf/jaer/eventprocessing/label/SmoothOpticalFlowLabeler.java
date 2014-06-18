@@ -41,11 +41,11 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
 
     public SmoothOpticalFlowLabeler(AEChip chip) {
         super(chip);
-        FilterChain chain = new FilterChain(chip);
-            dirFilter = new DvsDirectionSelectiveFilter(chip);
-            dirFilter.setAnnotationEnabled(false);
-            chain.add(dirFilter);
-        setEnclosedFilterChain(chain);
+        
+        dirFilter = new DvsDirectionSelectiveFilter(chip);
+        dirFilter.setAnnotationEnabled(false);
+        setEnclosedFilter(dirFilter);
+        
         chip.addObserver(this);
         setPropertyTooltip("subSampleBy", "compute flow on this subsampled grid; 0 means no subsampling");
         setPropertyTooltip("tauMs", "lowpass temporal filter time contant in ms");

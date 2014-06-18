@@ -162,19 +162,19 @@ public class DvsMotionOrientationEvent extends DvsOrientationEvent implements Mo
         this.velocity.y = y;
     }
 
-    public byte getDistance() {
+    @Override public byte getDistance() {
         return distance;
     }
 
-    public void setDistance(byte distance) {
+    @Override public void setDistance(byte distance) {
         this.distance = distance;
     }
 
-    public int getDelay() {
+    @Override public int getDelay() {
         return delay;
     }
 
-    public void setDelay(int delay) {
+    @Override public void setDelay(int delay) {
         this.delay = delay;
     }
     

@@ -174,12 +174,27 @@ public class ApsDvsMotionOrientationEvent extends ApsDvsOrientationEvent impleme
     public void setVelocity(Point2D.Float velocity) {
         this.velocity.setLocation(velocity.x, velocity.y);
     }
+    
+    public void setVelocity(float x, float y) {
+        this.velocity.x = x;
+        this.velocity.y = y;
+    }
 
-    public byte getDistance() {
+    @Override public byte getDistance() {
         return distance;
     }
 
-    public void setDistance(byte distance) {
+    @Override public void setDistance(byte distance) {
         this.distance = distance;
+    }
+
+    @Override
+    public int getDelay() {
+        return delay;
+    }
+
+    @Override
+    public void setDelay(int delay) {
+        this.delay = delay;
     }
 }

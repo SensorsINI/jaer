@@ -183,7 +183,7 @@ public class BackgroundMotionSelectiveFilter extends EventFilter2D implements Ob
                     float[][] c=chip.getRenderer().makeTypeColors(2);
                     gl.glColor3fv(c[e.hasGlobalMotion],0);
                     gl.glBegin(GL2.GL_POINTS);
-                    gl.glVertex2d(e.x, e.y);
+                        gl.glVertex2d(e.x, e.y);
                     gl.glEnd();
                 }
                 gl.glPopMatrix();

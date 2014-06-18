@@ -93,21 +93,6 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
 
             // update the map here - this is ok because we never refer to ourselves anyhow in computing motion
             lastTimesMap[x][y][type] = ts;
-
-//            n++;
-//            if(n%100000 == 0) {
-//                String s = new String();
-//                System.out.println("------------------");
-//                for(int i=0;i<(128 >>> subSampleShift);i++){
-//                    for (int j=0;j<(128 >>> subSampleShift);j++){
-//                        s = s + lastTimesMap[i][j][0] + " ";
-////                        System.out.println(lastTimesMap[i][j][type]+" ");
-//                    }
-//                    System.out.println(s);
-//                    s = "";
-//                }
-//                System.out.println("------------------");
-//            }
             
             // <editor-fold defaultstate="collapsed" desc="--COMMENT--">
             // for each output cell type (which codes a direction of motion), 
@@ -162,14 +147,14 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                 // between this input orientation event and previous 
                 // orientiation input events in offset direction
                 for (int s = 1; s <= searchDistance; s++) {
-                    d = DvsMotionOrientationEvent.unitDirs[ori];
+                    d = MotionOrientationEventInterface.unitDirs[ori];
                     // dt is the time between this event and the previous event of the same type
                     dt = ts - lastTimesMap[x + s * d.x][y + s * d.y][type];
                     if (dt < mindt1) {
                         dist1 = s; // dist1 is the distance we found min dt
                         mindt1 = dt;
                     }
-                    d = DvsMotionOrientationEvent.unitDirs[ori + 4];
+                    d = MotionOrientationEventInterface.unitDirs[ori + 4];
                     dt = ts - lastTimesMap[x + s * d.x][y + s * d.y][type];
                     if (dt < mindt2) {
                         dist2 = s;
@@ -203,7 +188,7 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                 // event lies not within the interval, dont write an output event           
                 if (!(dt < helpMaxDtThreshold && dt > helpMinDtThreshold)) {
                     if(passAllEvents) {
-                        DvsMotionOrientationEvent eout = (DvsMotionOrientationEvent) outItr.nextOutput();
+                        MotionOrientationEventInterface eout = (MotionOrientationEventInterface) outItr.nextOutput();
                         eout.copyFrom((DvsOrientationEvent) ein);
                         eout.setHasDirection(false);
                     }
@@ -238,7 +223,7 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                         helpMinDtThreshold = minDtThreshold;
                     }
                     
-                    d = DvsMotionOrientationEvent.unitDirs[ori];
+                    d = MotionOrientationEventInterface.unitDirs[ori];
                     
                     if((x + s * d.x)<0 || (y + s * d.y)<0){
                         System.out.println((x + s * d.x)+ " -- "+(y + s * d.y));
@@ -251,7 +236,7 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
                         delay1 += dt;
                     }
 
-                    d = DvsMotionOrientationEvent.unitDirs[ori + 4];
+                    d = MotionOrientationEventInterface.unitDirs[ori + 4];
                     dt = ts - lastTimesMap[x + s * d.x][y + s * d.y][type];
                     if (dt < helpMaxDtThreshold && dt > helpMinDtThreshold) {
                         n2++;
@@ -262,9 +247,9 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
 
                 if (n1 == 0 && n2 == 0) {
                     if(passAllEvents) {
-                        DvsMotionOrientationEvent eout = (DvsMotionOrientationEvent) outItr.nextOutput();
+                        MotionOrientationEventInterface eout = (MotionOrientationEventInterface) outItr.nextOutput();
                         eout.copyFrom((DvsOrientationEvent) ein);
-                       eout.setHasDirection(false);
+                        eout.setHasDirection(false);
                     }
                     continue; // no pass, i.e. no event to write
                 }
@@ -306,7 +291,7 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
 
             //Now the event has passed all tests and properties are computed.
             // write the event to the OutputStream.
-            DvsMotionOrientationEvent eout = (DvsMotionOrientationEvent) outItr.nextOutput();
+            MotionOrientationEventInterface eout = (MotionOrientationEventInterface) outItr.nextOutput();
             eout.copyFrom((DvsOrientationEvent) ein);
             eout.setHasDirection(true);
             eout.setDirection(motionDir);
