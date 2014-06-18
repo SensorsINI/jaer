@@ -7,8 +7,6 @@ package net.sf.jaer.hardwareinterface.usb.cypressfx3libusb;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.io.FileNotFoundException;
-import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -94,18 +92,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	 * AEPacketRaw
 	 */
 	public class RetinaAEReader extends CypressFX3.AEReader implements PropertyChangeListener {
-		private PrintWriter outFile;
-
 		public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
 			super(cypress);
-
-			 try {
-				outFile = new PrintWriter("/home/llongi/evtout.log");
-			}
-			catch (FileNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
 		}
 
 		private int currentTimestamp, lastTimestamp;
@@ -144,8 +132,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 							// Is a timestamp!
 							lastTimestamp = currentTimestamp;
 							currentTimestamp = wrapAdd + (event & 0x7FFF);
-
-							outFile.println(currentTimestamp);
 
 							if (currentTimestamp < lastTimestamp) {
 								CypressFX3.log.severe(toString() + ": non-monotonic timestamp: currentTimestamp="
@@ -216,8 +202,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									// which is located in the data part of this
 									// event.
 									wrapAdd += (0x8000L * data);
-
-									outFile.println("WRAP EVENT! Wrap increased by " + data);
 
 									CypressFX3.log.info(String.format(
 										"Timestamp wrap event received on %s with multiplier of %d.", super.toString(),
