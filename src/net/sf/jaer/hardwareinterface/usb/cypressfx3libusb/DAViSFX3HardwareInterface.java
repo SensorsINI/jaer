@@ -176,7 +176,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										if (translateRowOnlyEvents) {
 											addresses[eventCounter] = ((lastY << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK);
 											timestamps[eventCounter++] = currentTimestamp;
-											CypressFX3.log.warning("Row only event on " + super.toString());
+											CypressFX3.log.info("Row only event on " + super.toString());
 										}
 									}
 

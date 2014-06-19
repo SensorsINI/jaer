@@ -1783,7 +1783,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 				} // if (!isPaused() || isSingleStep())
 
 
-				if (packet!=null && skipPacketsRenderingCount-- <= 0) {
+				if ((packet!=null) && (skipPacketsRenderingCount-- <= 0)) {
 					// we only got new events if we were NOT paused. but now we can apply filters, different rendering methods, etc in 'paused' condition
 					try{
                                             renderPacket(packet);
@@ -2327,10 +2327,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 				String thisTimeString = String.format("%5.3fs ", thisTime);
 
 				String rateString = null;
-				if (ratekeps >= 40e3f) {
-					rateString = "   >40 Meps ";
+				if (ratekeps >= 100e3f) {
+					rateString = "   >=100 Meps ";
 				} else {
-					rateString = String.format("%5.1fkeps", ratekeps); //String.format("%6.2fkeps ",ratekeps);
+					rateString = String.format("%5.1f Keps", ratekeps); //String.format("%6.2fkeps ",ratekeps);
 				}
 
 
