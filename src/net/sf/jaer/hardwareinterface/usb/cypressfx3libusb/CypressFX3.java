@@ -2553,7 +2553,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	synchronized public void sendVendorRequest(final byte request, final short value, final short index,
 		final byte[] bytes) throws HardwareInterfaceException {
 		sendVendorRequest(request, value, index, bytes, 0, bytes.length);
-		System.out.println("Length is %d: " + bytes.length);
 	}
 
 	/**

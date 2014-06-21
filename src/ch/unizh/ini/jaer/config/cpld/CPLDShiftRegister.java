@@ -141,7 +141,6 @@ public class CPLDShiftRegister {
 
 		for (int i = 7, byteIndex = 0, bitIndex = (bits.length - 1); bitIndex >= 0; bitIndex--, i--) {
 			bytesf[byteIndex] |= (bits[bitIndex] == true) ? (1 << i) : (0);
-			System.out.println(String.format("%d %d %d", i, byteIndex, bitIndex));
 
 			if (i == 0) {
 				// Reset byte counters.
