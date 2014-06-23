@@ -199,7 +199,7 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
                         log.warning("Did not see \"EDVS\" in the post-reset response. Maybe the wrong serial port or IP address?");
                     }
                 }
-                write("!E1"); // data format, as in serial port interrface
+                write("!E2"); // data format, as in serial port interrface
                 sendAllBiases();
                 wait = 10;
                 while (!reader.ready() && wait-- > 0) {
