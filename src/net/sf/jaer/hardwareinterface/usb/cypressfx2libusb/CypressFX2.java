@@ -2692,9 +2692,6 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		final byte bmRequestType = (byte) (LibUsb.ENDPOINT_OUT | LibUsb.REQUEST_TYPE_VENDOR | LibUsb.RECIPIENT_DEVICE);
 
-		System.out.println(String.format("Sent VR %X, wValue %X, wIndex %X, wLength %d.\n", request, value, index,
-			dataBuffer.limit()));
-
 		final int status = LibUsb.controlTransfer(deviceHandle, bmRequestType, request, value, index, dataBuffer, 0);
 		if (status < LibUsb.SUCCESS) {
 			throw new HardwareInterfaceException("Unable to send vendor OUT request " + String.format("0x%x", request)

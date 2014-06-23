@@ -9,6 +9,7 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.ShortBuffer;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -106,10 +107,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 				synchronized (aePacketRawPool) {
 					final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
 
-					int bytesSent = b.limit();
-					if ((bytesSent % 2) != 0) {
-						CypressFX3.log.severe(bytesSent + " bytes sent via USB, which is not a multiple of 2");
-						bytesSent = (bytesSent / 2) * 2;
+					// Truncate off any extra partial event.
+					if ((b.limit() & 0x01) != 0) {
+						CypressFX3.log.severe(b.limit() + " bytes sent via USB, which is not a multiple of two.");
+						b.limit(b.limit() & ~0x01);
 					}
 
 					final int[] addresses = buffer.getAddresses();
@@ -117,7 +118,9 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 					buffer.lastCaptureIndex = eventCounter;
 
-					for (int i = 0; i < (bytesSent / 2); i++) {
+					final ShortBuffer sBuf = b.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();
+
+					for (int i = 0; i < sBuf.limit(); i++) {
 						if ((eventCounter >= aeBufferSize) || (buffer.overrunOccuredFlag)) {
 							buffer.overrunOccuredFlag = true;
 
@@ -125,7 +128,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 							continue;
 						}
 
-						final short event = b.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(i);
+						final short event = sBuf.get(i);
 
 						// Check if timestamp
 						if ((event & 0x8000) != 0) {
