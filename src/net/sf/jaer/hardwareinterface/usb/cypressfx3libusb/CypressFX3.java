@@ -1009,8 +1009,10 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		// synchronized(aePacketRawPool){ // synchronize on aeReader so that we
 		// don't try to access the events at the
 		// same time
-		aePacketRawPool.swap();
-		lastEventsAcquired = aePacketRawPool.readBuffer();
+		synchronized (aePacketRawPool) {
+			aePacketRawPool.swap();
+			lastEventsAcquired = aePacketRawPool.readBuffer().getPrunedCopy();
+		}
 		// log.info(this+" acquired "+lastEventsAcquired);
 		// addresses=events.getAddresses();
 		// timestamps=events.getTimestamps();
@@ -1084,7 +1086,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 */
 	@Override
 	public int getNumEventsAcquired() {
-		return aePacketRawPool.readBuffer().getNumEvents();
+		return lastEventsAcquired.getNumEvents();
 	}
 
 	/**
@@ -1180,7 +1182,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 */
 	@Override
 	public boolean overrunOccurred() {
-		return aePacketRawPool.readBuffer().overrunOccuredFlag;
+		return lastEventsAcquired.overrunOccuredFlag;
 	}
 
 	/**
@@ -2022,8 +2024,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		// start the thread that listens for device status information (e.g.
 		// timestamp reset)
-		asyncStatusThread = new AsyncStatusThread(this);
-		asyncStatusThread.startThread();
+		//asyncStatusThread = new AsyncStatusThread(this);
+		//asyncStatusThread.startThread();
 	}
 
 	/**
