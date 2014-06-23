@@ -2340,7 +2340,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 				if (overrunOccurred) {
 					ovstring = "(overrun)";
 				} else {
-					ovstring = "";
+					ovstring = "         ";
 				}
 
 				//                if(numEvents==0) s=thisTimeString+ "s: No events";
