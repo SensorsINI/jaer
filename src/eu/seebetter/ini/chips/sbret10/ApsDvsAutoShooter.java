@@ -19,7 +19,11 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.ApsDvsChip;
+import java.util.HashMap;
+import java.util.LinkedList;
 import javax.media.opengl.GL2;
+import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
+import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 
 /**
  * Triggers snapshots of APS frames based on sensor data stream.
@@ -30,6 +34,7 @@ import javax.media.opengl.GL2;
 public class ApsDvsAutoShooter extends EventFilter2D implements FrameAnnotater {
 
     private EventRateEstimator eventRateEstimator = new EventRateEstimator(chip);
+    private RectangularClusterTracker tracker =new RectangularClusterTracker(chip);
     private TextRenderer textRenderer = new TextRenderer(new Font("Monospaced", Font.BOLD, 24));
     private float eventRateThresholdHz = getFloat("eventRateThresholdHz", 50000);
     private int eventCountThresholdKEvents = getInt("eventCountThresholdKEvents", 100);
@@ -37,6 +42,11 @@ public class ApsDvsAutoShooter extends EventFilter2D implements FrameAnnotater {
     private int eventsSinceLastShot = 0;
     private boolean snapshotTriggered = false;
     private boolean uninitialized=true;
+    private boolean useTracker=getBoolean("useTracker", false);
+    private boolean useEventCount=getBoolean("useEventCount", true);
+    private boolean useEventRateThreshold=getBoolean("useEventRateThreshold", true);
+    private int trackerMovementPixelsForNewFrame=getInt("trackerMovementPixelsForNewFrame",5);
+    private HashMap<Cluster,Cluster> oldClusters=new HashMap();
 
     public ApsDvsAutoShooter(AEChip chip) {
         super(chip);
@@ -45,10 +55,16 @@ public class ApsDvsAutoShooter extends EventFilter2D implements FrameAnnotater {
         }
         FilterChain chain = new FilterChain(chip);
         chain.add(eventRateEstimator);
+        chain.add(tracker);
         setEnclosedFilterChain(chain);
-        setPropertyTooltip("eventCountThresholdKEvents", "shots are triggered every this many thousand DVS events");
-        setPropertyTooltip("eventRateThresholdHz", "shots are triggered whenever the DVS event rate in Hz is above this value");
+        String count="Event Count",rate="Event Rate",track="Tracker";
         setPropertyTooltip("showAnnotation", "draws the bars to show frame capture status");
+        setPropertyTooltip(count,"eventCountThresholdKEvents", "shots are triggered every this many thousand DVS events");
+        setPropertyTooltip(count,"useEventCount", "use an accumulated event count criteria");
+        setPropertyTooltip(rate,"eventRateThresholdHz", "shots are triggered whenever the DVS event rate in Hz is above this value");
+        setPropertyTooltip(rate,"useEventRateThreshold", "use an event rate criteria");
+        setPropertyTooltip(track,"useTracker", "use the object tracker to determine whether to trigger new frame capture");
+        setPropertyTooltip(track,"trackerMovementPixelsForNewFrame", "at least one tracker cluster must move this many pixels (or any new visible cluster must be found) to trigger a new frame capture");
     }
 
     @Override
@@ -71,9 +87,30 @@ public class ApsDvsAutoShooter extends EventFilter2D implements FrameAnnotater {
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         checkOutputPacketEventType(in);
-        eventRateEstimator.filterPacket(in);
+        getEnclosedFilterChain().filterPacket(in);
         eventsSinceLastShot += eventRateEstimator.getNumEventsInLastPacket();
-        if (uninitialized || (eventRateEstimator.getFilteredEventRate() > eventRateThresholdHz) || (eventsSinceLastShot > (eventCountThresholdKEvents << 10))) {
+        float maxDistance=0;
+        boolean newClusterFound=false;
+        if (isUseTracker()) {
+            LinkedList<Cluster> clusters = tracker.getVisibleClusters();
+            for (Cluster c : clusters) {
+                if (oldClusters.containsKey(c)) {
+                    float d = oldClusters.get(c).distanceTo(c);
+                    if (d > maxDistance) {
+                        d = maxDistance;
+                    }
+                } else {
+                    newClusterFound = true;
+                }
+            }
+        }
+        
+        
+        if (uninitialized 
+                || (useEventRateThreshold && eventRateEstimator.getFilteredEventRate() > eventRateThresholdHz) 
+                || (useEventCount && eventsSinceLastShot > (eventCountThresholdKEvents << 10))
+                || (newClusterFound)
+                || maxDistance>getTrackerMovementPixelsForNewFrame()) {
             // trigger shot
             eventsSinceLastShot = 0;
             snapshotTriggered = true;
@@ -140,5 +177,65 @@ public class ApsDvsAutoShooter extends EventFilter2D implements FrameAnnotater {
     public void setShowAnnotation(boolean showAnnotation) {
         this.showAnnotation = showAnnotation;
         putBoolean("showAnnotation",showAnnotation);
+    }
+
+    /**
+     * @return the useTracker
+     */
+    public boolean isUseTracker() {
+        return useTracker;
+    }
+
+    /**
+     * @param useTracker the useTracker to set
+     */
+    public void setUseTracker(boolean useTracker) {
+        this.useTracker = useTracker;
+        putBoolean("useTracker",useTracker);
+    }
+
+    /**
+     * @return the trackerMovementPixelsForNewFrame
+     */
+    public int getTrackerMovementPixelsForNewFrame() {
+        return trackerMovementPixelsForNewFrame;
+    }
+
+    /**
+     * @param trackerMovementPixelsForNewFrame the trackerMovementPixelsForNewFrame to set
+     */
+    public void setTrackerMovementPixelsForNewFrame(int trackerMovementPixelsForNewFrame) {
+        this.trackerMovementPixelsForNewFrame = trackerMovementPixelsForNewFrame;
+        putInt("trackerMovementPixelsForNewFrame",trackerMovementPixelsForNewFrame);
+    }
+
+    /**
+     * @return the useEventCount
+     */
+    public boolean isUseEventCount() {
+        return useEventCount;
+    }
+
+    /**
+     * @param useEventCount the useEventCount to set
+     */
+    public void setUseEventCount(boolean useEventCount) {
+        this.useEventCount = useEventCount;
+        putBoolean("useEventCount",useEventCount);
+    }
+
+    /**
+     * @return the useEventRateThreshold
+     */
+    public boolean isUseEventRateThreshold() {
+        return useEventRateThreshold;
+    }
+
+    /**
+     * @param useEventRateThreshold the useEventRateThreshold to set
+     */
+    public void setUseEventRateThreshold(boolean useEventRateThreshold) {
+        this.useEventRateThreshold = useEventRateThreshold;
+        putBoolean("useEventRateThreshold",useEventRateThreshold);
     }
 }
