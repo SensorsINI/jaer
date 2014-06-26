@@ -612,6 +612,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         // if its too far from any cluster, make a new cluster if we have not jet
         // reached maxNumClusters
         for (BasicEvent ev : in) {
+            if(ev.isSpecial()) continue;
             Cluster closest = fastClusterFinder.findClusterNear(ev);
 
             if (closest != null) {
