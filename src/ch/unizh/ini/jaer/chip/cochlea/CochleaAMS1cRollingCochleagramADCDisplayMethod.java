@@ -36,7 +36,7 @@ import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.DataBuffer;
  * <P>
  * In the image case, the data in the ADCSamples object is not reset by the acquisition. Rather, whatever data is in the ADCSamples object is passed to Series after the Series has been reset.
  * Thus the data shown represents the latest data available, which could be a mixture of different "frames".
- * 
+ *
  * @author Tobi
  */
 public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochleaGramDisplayMethod {
@@ -70,6 +70,8 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
 
 	@Override
 	public void display(GLAutoDrawable drawable) {
+		drawable.getContext().makeCurrent();
+
 		super.display(drawable); // display the events from cochlea channels as for normal rolling cochleagram display
 		checkAndAddToViewer();
 		if(!addedToViewer){
