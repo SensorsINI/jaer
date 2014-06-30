@@ -199,6 +199,7 @@ public abstract class Chart extends GLJPanel {
 		 */
 		@Override
 		public void display(GLAutoDrawable drawable) {
+                        drawable.getContext().makeCurrent();
 			GL2 gl = drawable.getGL().getGL2();
 			gl.glClear(GL.GL_COLOR_BUFFER_BIT);
 			gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
