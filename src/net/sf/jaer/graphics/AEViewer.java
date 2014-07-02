@@ -575,7 +575,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	/** The date formatter used by AEViewer for logged data files */
 	private File loggingFile;
 	AEFileOutputStream loggingOutputStream;
-	private boolean activeRenderingEnabled = prefs.getBoolean("AEViewer.activeRenderingEnabled", false);
+	private boolean activeRenderingEnabled = prefs.getBoolean("AEViewer.activeRenderingEnabled", true);
 	private boolean renderBlankFramesEnabled = prefs.getBoolean("AEViewer.renderBlankFramesEnabled", false);
 	// number of packets to skip over rendering, used to speed up real time processing
 	private int skipPacketsRenderingNumber = prefs.getInt("AEViewer.skipPacketsRenderingNumber", 0);
