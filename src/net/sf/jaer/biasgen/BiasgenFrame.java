@@ -240,7 +240,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 	}
 
 	void importPreferencesFromFile(File f) throws Exception {
-		log.info("importing biasgen settings from File " + f);
+		log.info("Current chip object is class "+chip==null?null:chip.getClass()+"; importing biasgen settings from File " + f);
 		InputStream is = new BufferedInputStream(new FileInputStream(f));
 		biasgen.importPreferences(is);
 		setCurrentFile(f);
