@@ -178,8 +178,9 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
     /** Imports preference values for this subtree of all Preferences (the biasgen package subtreee).
      * Biases and other settings (e.g. master bias resistor) are read in from an XML file. Bias values are sent as a batch to the device after values
      *are imported.
-     *@param is an input stream, typically constructed for a FileInputStream
-     *@throws IOException if the output stream cannot be read
+     *@param is an input stream, typically constructed for a FileInputStream.
+     *@throws IOException if the output stream cannot be read.
+     * @throws java.util.prefs.InvalidPreferencesFormatException if settings XML file is not formatted correctly.
      */
     @Override
     public void importPreferences(java.io.InputStream is) throws java.io.IOException, InvalidPreferencesFormatException, HardwareInterfaceException {
