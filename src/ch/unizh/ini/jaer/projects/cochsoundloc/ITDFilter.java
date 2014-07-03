@@ -40,6 +40,10 @@ import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent;
 import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent.Ear;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ChannelBuffer;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.DataBuffer;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMSEvent;
 
 import com.jogamp.opengl.util.gl2.GLUT;
@@ -92,6 +96,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 	// UDP messages
 	private String sendITD_UDP_port = getString("sendITD_UDP_port", "localhost:9999");
 	private boolean sendITD_UDP_Messages = getBoolean("sendITD_UDP_Messages", false);
+        private boolean sendADCSamples=getBoolean("sendADCSamples", true);
+        
 	protected DatagramChannel channel = null;
 	protected DatagramSocket socket = null;
 	int packetSequenceNumber = 0;
@@ -403,6 +409,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 		String udp = "UDP Messages";
 		setPropertyTooltip(udp, "sendITD_UDP_Messages", "send ITD messages via UDP datagrams to a chosen host and port");
 		setPropertyTooltip(udp, "sendITD_UDP_port", "hostname:port (e.g. localhost:9999) to send UDP ITD histograms to; messages are int32 seq # followed by int32 bin values");
+		setPropertyTooltip(udp, "sendADCSamples", "true to send UDP ITD histograms to; messages are int32 seq # followed by int32 sample count followed by pairs of right/left short ADC samples totalling 2*count short sample values");
 		String bf = "Beam Forming";
 		setPropertyTooltip(bf, "beamFormingEnabled", "filters out events that are not near the peak ITD");
 		setPropertyTooltip(bf, "beamFormingRangeUs", "range of time in us for which events are passed around best ITD");
@@ -619,29 +626,54 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 		long now = System.currentTimeMillis();
 		if (((now - lastUdpMsgTime) > MIN_UPD_PACKET_INTERVAL_MS) && sendITD_UDP_Messages && (client != null)) {
 			lastUdpMsgTime = now;
-			try {
-				udpBuffer.clear();
-				udpBuffer.putInt(packetSequenceNumber++);
-				udpBuffer.putLong(now);
-				udpBuffer.putInt(maxITD);
-				float[] bins = getITDBins().getBins();
-				for (float f : bins) {
-					udpBuffer.putFloat(f);
-				}
-				if (!printedFirstUdpMessage) {
-					log.info("sending buf=" + udpBuffer + " to client=" + client);
-					printedFirstUdpMessage = true;
-				}
-				udpBuffer.flip();
-				channel.send(udpBuffer, client);
-			} catch (IOException udpEx) {
-				log.warning(udpEx.toString());
-				setSendITD_UDP_Messages(false);
-			} catch (BufferOverflowException boe) {
-				log.warning(boe.toString() + ": decrease number of histogram bins to fit 1024 byte datagrams");
-			}
-		}
-		return isBeamFormingEnabled() ? out : in;
+			             try {
+                    udpBuffer.clear();
+                    udpBuffer.putInt(packetSequenceNumber++);
+                    udpBuffer.putLong(now);
+                    udpBuffer.putInt(maxITD);
+                    float[] bins = getITDBins().getBins();
+                    for (float f : bins) {
+                        udpBuffer.putFloat(f);
+                    }
+                    if (sendADCSamples) {
+                        // get ADC samples from chip object, put to udpBuffer 
+                        CochleaAMS1c coch = (CochleaAMS1c) chip;
+                        CochleaAMS1cADCSamples samples = coch.getAdcSamples();  // should have only new ADC samples obtained from this packet if we are running in the AEViewer.ViewLoop.run thread
+                        try {
+                            samples.acquire();
+                            DataBuffer dataBuffer = samples.getCurrentReadingDataBuffer();
+                            int nChannels = dataBuffer.getNumActiveChannelBuffers();
+                            if (nChannels > 0) {
+                                int[] activeChannelIndices = dataBuffer.getActiveChannelIndices();
+                                ChannelBuffer[] channelBuffers=dataBuffer.getChannelBuffers();
+                                int nSamples = channelBuffers[activeChannelIndices[0]].size();
+                                udpBuffer.putInt(nSamples);
+                                udpBuffer.putInt(nChannels);
+                                for(int s=0;s<nSamples;s++){
+                                    for(int c=0;c<nChannels;c++){
+                                        udpBuffer.putShort((short)channelBuffers[activeChannelIndices[c]].samples[s].data);
+                                    }
+                                }
+                            }
+                        } finally {
+                            samples.release();
+                        }
+
+                    }
+                    if (!printedFirstUdpMessage) {
+                        log.info("sending buf=" + udpBuffer + " to client=" + client);
+                        printedFirstUdpMessage = true;
+                    }
+                    udpBuffer.flip();
+                    channel.send(udpBuffer, client);
+                } catch (IOException udpEx) {
+                    log.warning(udpEx.toString());
+                    setSendITD_UDP_Messages(false);
+                } catch (BufferOverflowException boe) {
+                    log.warning(boe.toString() + ": decrease number of histogram bins to fit 1024 byte datagrams");
+                }
+            }
+            return isBeamFormingEnabled() ? out : in;
 	}
 
 	public void refreshITD() {
@@ -1719,4 +1751,19 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 		getSupport().firePropertyChange("sendITD_UDP_Messages", old, this.sendITD_UDP_Messages);
 		printedFirstUdpMessage=false;
 	}
+
+    /**
+     * @return the sendADCSamples
+     */
+    public boolean isSendADCSamples() {
+        return sendADCSamples;
+    }
+
+    /**
+     * @param sendADCSamples the sendADCSamples to set
+     */
+    public void setSendADCSamples(boolean sendADCSamples) {
+        this.sendADCSamples = sendADCSamples;
+        putBoolean("sendADCSamples", sendADCSamples);
+    }
 }
