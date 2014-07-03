@@ -386,6 +386,7 @@ public class IMUSample extends ApsDvsEvent {
 
 	@Override
 	public String toString() {
+            if(imuSampleEvent){
 		return String
 			.format(
 				"imuSample=%s timestampUs=%d deltaTimeUs=%d (ax,ay,az)=(%.2f,%.2f,%.2f) g (gx,gy,gz)=(%.2f,%.2f,%.2f) deg/sec temp=%.2fC Samples: (ax,ay,az)=(%d,%d,%d) (gx,gy,gz)=(%d,%d,%d) temp=%d",
@@ -393,6 +394,9 @@ public class IMUSample extends ApsDvsEvent {
 				getGyroYawY(), getGyroRollZ(), getTemperature(), getSensorRaw(IMUSampleType.ax),
 				getSensorRaw(IMUSampleType.ay), getSensorRaw(IMUSampleType.az), getSensorRaw(IMUSampleType.gx),
 				getSensorRaw(IMUSampleType.gy), getSensorRaw(IMUSampleType.gz), getSensorRaw(IMUSampleType.temp));
+            }else{
+                return super.toString();
+            }
 	}
 
 	public short getSensorRaw(final IMUSampleType type) {
