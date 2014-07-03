@@ -15,7 +15,7 @@ import net.sf.jaer.eventprocessing.label.SmoothOpticalFlowLabeler;
 import net.sf.jaer.graphics.FrameAnnotater;
 import javax.media.opengl.GL2;
 import net.sf.jaer.event.PolarityEvent;
-import net.sf.jaer.util.drawGL;
+import net.sf.jaer.util.DrawGL;
 
 /**
  *

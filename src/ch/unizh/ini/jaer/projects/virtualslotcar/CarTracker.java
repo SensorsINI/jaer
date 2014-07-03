@@ -29,7 +29,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 import com.jogamp.opengl.util.gl2.GLUT;
-import net.sf.jaer.util.drawGL;
+import net.sf.jaer.util.DrawGL;
 
 /**
  * Tracks slot car using the TrackHistogramFilter to filter out events not belonging to this car.
@@ -430,9 +430,9 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
                 gl.glLineWidth(BOX_LINE_WIDTH);
                 // draw cluster rectangle
                 gl.glPushMatrix();
-                    drawGL.drawBox(gl, x, y, 2*sx, 2*sy, getAngle());
+                    DrawGL.drawBox(gl, x, y, 2*sx, 2*sy, getAngle());
                     if ((getAngle()!=0) || isDynamicAngleEnabled()) {
-                        drawGL.drawLine(gl, 0, 0, sx, 0, 1);
+                        DrawGL.drawLine(gl, 0, 0, sx, 0, 1);
                     }
                 gl.glPopMatrix();            
                 gl.glLineWidth(VEL_LINE_WIDTH);

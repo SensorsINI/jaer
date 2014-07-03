@@ -19,7 +19,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.orientation.MotionOrientationEventInterface;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.util.drawGL;
+import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 /** Computes motion based nearest event (in past time) in neighboring pixels. <p>
@@ -163,7 +163,7 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
             Translation t=motionVectors.translation;
             
             gl.glPushMatrix();
-                drawGL.drawVector(gl, cX/2, cY/2, t.xFilter.getValue(), t.yFilter.getValue(), 4, ppsScale*(chip.getMaxSize()/4));
+                DrawGL.drawVector(gl, cX/2, cY/2, t.xFilter.getValue(), t.yFilter.getValue(), 4, ppsScale*(chip.getMaxSize()/4));
                 
                 gl.glRasterPos2i(2,10);
                 float vel = (float) Math.sqrt(Math.pow(t.xFilter.getValue(), 2)+Math.pow(t.yFilter.getValue(), 2));
@@ -175,7 +175,7 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
             Rotation rot=motionVectors.rotation;
                 
             gl.glPushMatrix();
-                drawGL.drawLine(gl, cX/2, (cY*3)/4, -rot.filter.getValue(), 0, ppsScale*(chip.getMaxSize()*10));
+                DrawGL.drawLine(gl, cX/2, (cY*3)/4, -rot.filter.getValue(), 0, ppsScale*(chip.getMaxSize()*10));
             gl.glPopMatrix();
             // </editor-fold>
 
@@ -184,7 +184,7 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
                 Expansion expan = motionVectors.expansion;
                 float rad = (1+expan.filter.getValue())*ppsScale*(chip.getMaxSize()*4);
                 
-                drawGL.drawCircle(gl, cX/2, cY/2, rad, 15);
+                DrawGL.drawCircle(gl, cX/2, cY/2, rad, 15);
             gl.glPopMatrix();
             // </editor-fold>
 
@@ -232,7 +232,7 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
         // motion vector points in direction of motion, *from* dir value (minus sign) which points in direction from prevous event
         gl.glPushMatrix();
             gl.glColor3fv(c[e.getType()],0);
-            drawGL.drawVector(gl, e.getX()+jx, e.getY()+jy, -d.x, -d.y, 1, e.getSpeed() * ppsScale);
+            DrawGL.drawVector(gl, e.getX()+jx, e.getY()+jy, -d.x, -d.y, 1, e.getSpeed() * ppsScale);
         gl.glPopMatrix();
         
     }

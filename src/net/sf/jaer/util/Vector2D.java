@@ -92,7 +92,7 @@ public class Vector2D extends Point2D.Float {
     public void drawVector(GL2 gl) { drawVector(gl,0,0,1,1); }
     public void drawVector(GL2 gl, float origX, float origY) { drawVector(gl,origX,origY,1,1); }
     public void drawVector(GL2 gl, float origX, float origY, float headlength, float Scale) {
-        drawGL.drawVector(gl, origX, origY, this.x, this.y, headlength, Scale);
+        DrawGL.drawVector(gl, origX, origY, this.x, this.y, headlength, Scale);
     }
    
     /** returns the angle between this and the argument from 0 to pi

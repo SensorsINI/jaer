@@ -31,7 +31,7 @@ import net.sf.jaer.util.PlayWavFile;
 import net.sf.jaer.util.filter.LowpassFilter3D;
 
 import com.jogamp.opengl.util.gl2.GLUT;
-import net.sf.jaer.util.drawGL;
+import net.sf.jaer.util.DrawGL;
 /**
  * Extends ClusterTracker to track objects in 3-d space. The StereoCluster is extended to include disparity information and the events
  * used to track are BinocularEvents.
@@ -528,9 +528,9 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 			float sx = sy;
 			int x2 = (int) (x - (getDisparity() / 2));
                         gl.glPushMatrix();
-                            drawGL.drawBox(gl, x2, y, 2*sx, 2*sy, 0);
+                            DrawGL.drawBox(gl, x2, y, 2*sx, 2*sy, 0);
                             if (isDynamicAngleEnabled()) {
-                                drawGL.drawLine(gl, 0, 0, sx, 0, 1);
+                                DrawGL.drawLine(gl, 0, 0, sx, 0, 1);
                             }
                         gl.glPopMatrix();
 
@@ -540,9 +540,9 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 
 			x2 = (int) (x + (getDisparity() / 2));
                         gl.glPushMatrix();
-                            drawGL.drawBox(gl, x2, y, 2*sx, 2*sy, 0);
+                            DrawGL.drawBox(gl, x2, y, 2*sx, 2*sy, 0);
                             if (isDynamicAngleEnabled()) {
-                                drawGL.drawLine(gl, 0, 0, sx, 0, 1);
+                                DrawGL.drawLine(gl, 0, 0, sx, 0, 1);
                             }
                         gl.glPopMatrix();
 		}
@@ -618,9 +618,9 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 
 						int x2 = (int)( x - (c.getDisparity () / 2) );
                                                 gl.glPushMatrix();
-                                                    drawGL.drawBox(gl, x2, y, 2*sx, 2*sy, 0);
+                                                    DrawGL.drawBox(gl, x2, y, 2*sx, 2*sy, 0);
                                                     if (isDynamicAngleEnabled()) {
-                                                        drawGL.drawLine(gl, 0, 0, sx, 0, 1);
+                                                        DrawGL.drawLine(gl, 0, 0, sx, 0, 1);
                                                     }
                                                 gl.glPopMatrix();
 
@@ -630,9 +630,9 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 
 						x2 = (int)( x + (c.getDisparity () / 2) );
 						gl.glPushMatrix();
-                                                    drawGL.drawBox(gl, x2, y, 2*sx, 2*sy, 0);
+                                                    DrawGL.drawBox(gl, x2, y, 2*sx, 2*sy, 0);
                                                     if (isDynamicAngleEnabled()) {
-                                                        drawGL.drawLine(gl, 0, 0, sx, 0, 1);
+                                                        DrawGL.drawLine(gl, 0, 0, sx, 0, 1);
                                                     }
                                                 gl.glPopMatrix();
 					}

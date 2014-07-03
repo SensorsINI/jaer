@@ -48,7 +48,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
 
 import com.jogamp.opengl.util.gl2.GLUT;
 import java.io.FileNotFoundException;
-import net.sf.jaer.util.drawGL;
+import net.sf.jaer.util.DrawGL;
 
 /** This complex and highly configurable tracker tracks blobs of events using a
  * rectangular hypothesis about the object shape. Many parameters constrain
@@ -1261,17 +1261,17 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
                 // draw cluster rectangle
                 if (isUseEllipticalClusters()) {
-                    drawGL.drawEllipse(gl, 0, 0, radiusX, radiusY, angle, 15);
+                    DrawGL.drawEllipse(gl, 0, 0, radiusX, radiusY, angle, 15);
                 } else {
-                    drawGL.drawBox(gl, 0, 0, radiusX*2, radiusY*2, angle); //Radius*2 because we need width and height
+                    DrawGL.drawBox(gl, 0, 0, radiusX*2, radiusY*2, angle); //Radius*2 because we need width and height
                 }
                 if ((angle!=0) || dynamicAngleEnabled) {
-                    drawGL.drawLine(gl, 0, 0, radiusX, 0, 1);
+                    DrawGL.drawLine(gl, 0, 0, radiusX, 0, 1);
                 }
  
                 // plots a single motion vector which is the number of pixels per second times scaling
-                if (showClusterVelocity) drawGL.drawVector(gl,0,0, velocityPPS.x, velocityPPS.y , 2, velocityVectorScaling);
-                if (showClusterRadius)   drawGL.drawCircle(gl, 0, 0, getRadius(), 32);
+                if (showClusterVelocity) DrawGL.drawVector(gl,0,0, velocityPPS.x, velocityPPS.y , 2, velocityVectorScaling);
+                if (showClusterRadius)   DrawGL.drawCircle(gl, 0, 0, getRadius(), 32);
             gl.glPopMatrix();
             
             if (showPaths) {
