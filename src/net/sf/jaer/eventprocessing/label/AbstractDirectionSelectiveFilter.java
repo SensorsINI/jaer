@@ -13,14 +13,13 @@ import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLException;
-import javax.media.opengl.glu.GLU;
-import javax.media.opengl.glu.GLUquadric;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.orientation.MotionOrientationEventInterface;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.drawGL;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 /** Computes motion based nearest event (in past time) in neighboring pixels. <p>
@@ -68,8 +67,6 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
     protected MotionVectors motionVectors;
     protected float avgSpeed = 0;
 
-    GLU glu = null;
-    GLUquadric expansionQuad;
     boolean hasBlendChecked = false;
     boolean hasBlend = false;
     Random r = new Random();
@@ -134,6 +131,9 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
         GL2 gl = drawable.getGL().getGL2();
         if (gl == null) return;
 
+        // The ChipSizes are needed several times
+        int cX = chip.getSizeX(), cY = chip.getSizeY();
+        
         // text annoations on clusters, setup
         final int font = GLUT.BITMAP_HELVETICA_18;
         
@@ -156,57 +156,41 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
         }
 
         if (isShowGlobalEnabled()) {
+            gl.glLineWidth(4f);
+            gl.glColor3f(1, 1, 1);
+            
             // <editor-fold defaultstate="collapsed" desc="-- draw global translation vector --">
+            Translation t=motionVectors.translation;
+            
             gl.glPushMatrix();
-                gl.glColor3f(1, 1, 1);
-                gl.glTranslatef(chip.getSizeX()/2,chip.getSizeY()/2,0);
-                gl.glLineWidth(6f);
-                gl.glBegin(GL.GL_LINES);
-                    gl.glVertex2f(0,0);
-                    Translation t=motionVectors.translation;
-                    int mult=chip.getMaxSize()/4;
-                    gl.glVertex2f(t.xFilter.getValue()*ppsScale*mult,t.yFilter.getValue()*ppsScale*mult);
-                gl.glEnd();
+                drawGL.drawVector(gl, cX/2, cY/2, t.xFilter.getValue(), t.yFilter.getValue(), 4, ppsScale*(chip.getMaxSize()/4));
                 
+                gl.glRasterPos2i(2,10);
+                float vel = (float) Math.sqrt(Math.pow(t.xFilter.getValue(), 2)+Math.pow(t.yFilter.getValue(), 2));
+                chip.getCanvas().getGlut().glutBitmapString(font, String.format("glob. speed=%.2f ", vel));
             gl.glPopMatrix();
-            gl.glRasterPos2i(chip.getSizeX()/2,chip.getSizeY()/2+10);
-            chip.getCanvas().getGlut().glutBitmapString(font, String.format("glob speed=%.2f ", (float)Math.sqrt(Math.pow(t.xFilter.getValue(), 2)+Math.pow(t.yFilter.getValue(), 2))));
             // </editor-fold>
 
             // <editor-fold defaultstate="collapsed" desc="-- draw global rotation vector as line left/right --">
-            gl.glPushMatrix();
-            gl.glTranslatef(chip.getSizeX()/2, (chip.getSizeY()*3)/4,0);
-            gl.glLineWidth(6f);
-            gl.glBegin(GL.GL_LINES);
-            gl.glVertex2i(0,0);
             Rotation rot=motionVectors.rotation;
-            int multr=chip.getMaxSize()*10;
-            gl.glVertex2f(-rot.filter.getValue()*multr*ppsScale,0);
-            gl.glEnd();
+                
+            gl.glPushMatrix();
+                drawGL.drawLine(gl, cX/2, (cY*3)/4, -rot.filter.getValue(), 0, ppsScale*(chip.getMaxSize()*10));
             gl.glPopMatrix();
             // </editor-fold>
 
-            // <editor-fold defaultstate="collapsed" desc="-- draw global expansion as circle with radius proportional to expansion metric, smaller for contraction, larger for expansion --">
-            if(glu==null) {
-				glu=new GLU();
-			}
-            if(expansionQuad==null) {
-				expansionQuad = glu.gluNewQuadric();
-			}
+            // <editor-fold defaultstate="collapsed" desc="-- draw global expansion as circle with radius proportional to expansion metric, smaller for contraction, larger for expansion --"> 
             gl.glPushMatrix();
-            gl.glTranslatef(chip.getSizeX()/2, (chip.getSizeY())/2,0);
-            gl.glLineWidth(6f);
-            Expansion e=motionVectors.expansion;
-            int multe=chip.getMaxSize()*4;
-            glu.gluQuadricDrawStyle(expansionQuad,GLU.GLU_FILL);
-            double rad=(1+e.filter.getValue())*ppsScale*multe;
-            glu.gluDisk(expansionQuad,rad,rad+1,16,1);
+                Expansion expan = motionVectors.expansion;
+                float rad = (1+expan.filter.getValue())*ppsScale*(chip.getMaxSize()*4);
+                
+                drawGL.drawCircle(gl, cX/2, cY/2, rad, 15);
             gl.glPopMatrix();
             // </editor-fold>
 
             // <editor-fold defaultstate="collapsed" desc="-- draw expansion compass vectors as arrows pointing in.getOutputPacket() from origin --">
 //            gl.glPushMatrix();
-//            gl.glTranslatef(chip.getSizeX()/2, (chip.getSizeY())/2,0);
+//            gl.glTranslatef(cX/2, cY/2,0);
 //            gl.glLineWidth(6f);
 //            gl.glBegin(GL.GL_LINES);
 //            gl.glVertex2i(0,0);
@@ -224,20 +208,13 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
 
         if((dirPacket!=null) && isShowVectorsEnabled()){
             // <editor-fold defaultstate="collapsed" desc="-- draw individual motion vectors --">
-            gl.glPushMatrix();
-//            gl.glColor4f(1f,1f,1f,0.7f);
-            float[][] c=null;
+            float[][] c;
             gl.glLineWidth(2f);
-            gl.glBegin(GL.GL_LINES);
-            for(Object o:dirPacket){
+            for(Object o : dirPacket){
                 MotionOrientationEventInterface e=(MotionOrientationEventInterface)o;
                 c=chip.getRenderer().makeTypeColors(e.getNumCellTypes());
-                if(e.isHasDirection()) {
-                    drawMotionVector(gl,e,c); //If we passAllEvents then the check is needed to not annotate the events without a real direction
-		}
+                if(e.isHasDirection()) drawMotionVector(gl,e,c); //If we passAllEvents then the check is needed to not annotate the events without a real direction
             }
-            gl.glEnd();
-            gl.glPopMatrix();
             // </editor-fold>
         }
     }
@@ -252,26 +229,12 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
             jx = (r.nextFloat() - .5f) * jitterAmountPixels;
             jy = (r.nextFloat() - .5f) * jitterAmountPixels;
         }
-        float speed  = e.getSpeed() * ppsScale;
         // motion vector points in direction of motion, *from* dir value (minus sign) which points in direction from prevous event
-        float startx = e.getX()+jx,               starty = e.getY()+jy;
-        float endx   = (e.getX()-(d.x*speed))+jx, endy   = (e.getY()-(d.y*speed))+jy;
-        gl.glColor3fv(c[e.getType()],0);
-        gl.glVertex2f(startx,starty);
-        gl.glVertex2f(endx,endy);
-        // compute arrowhead
-        final float headlength=1;
-        float vecx = endx-startx, vecy = endy-starty; // orig vec
-        float vx2  = vecy,        vy2  = -vecx; // right angles +90 CW
-        float arx  = -vecx+vx2,   ary  = -vecy+vy2; // halfway between pointing back to origin
-        float l = (float)Math.sqrt((arx*arx)+(ary*ary)); // length
-        arx = (arx/l)*headlength;   ary  = (ary/l)*headlength; // normalize to headlength
-        // draw arrow (half)
-        gl.glVertex2f(endx,endy);
-        gl.glVertex2f(endx+arx, endy+ary);
-        // other half, 90 degrees
-        gl.glVertex2f(endx,endy);
-        gl.glVertex2f(endx+ary, endy-arx);
+        gl.glPushMatrix();
+            gl.glColor3fv(c[e.getType()],0);
+            drawGL.drawVector(gl, e.getX()+jx, e.getY()+jy, -d.x, -d.y, 1, e.getSpeed() * ppsScale);
+        gl.glPopMatrix();
+        
     }
 
     @Override public void initFilter() {

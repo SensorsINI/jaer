@@ -29,8 +29,6 @@ import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.awt.GLCanvas;
-import javax.media.opengl.glu.GLU;
-import javax.media.opengl.glu.GLUquadric;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -50,6 +48,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
 
 import com.jogamp.opengl.util.gl2.GLUT;
 import java.io.FileNotFoundException;
+import net.sf.jaer.util.drawGL;
 
 /** This complex and highly configurable tracker tracks blobs of events using a
  * rectangular hypothesis about the object shape. Many parameters constrain
@@ -165,9 +164,6 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     protected Random random = new Random();
     
     protected FastClusterFinder fastClusterFinder=new FastClusterFinder(); 
-
-    GLU glu = null;
-    GLUquadric clusterRadiusQuad = null;
 
     /** Creates a new instance of RectangularClusterTracker.
      * @param chip */
@@ -825,8 +821,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         
         /** location of cluster in pixels */
         public Point2D.Float location = new Point2D.Float(); // location in chip pixels
+        /** velocity of cluster in PPS */
         public Point2D.Float velocity = new Point2D.Float(); // location in chip pixels
-        
         /** birth location of cluster */
         private Point2D.Float birthLocation = new Point2D.Float(); 
         /** location at end of last packet, used for movement sample */
@@ -844,25 +840,21 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         protected int numEvents = 0;
         /** Number of events from previous update of cluster list. */
         protected int previousNumEvents = 0; // total number of events and number at previous packet
-        
         /** First and last timestamp of cluster. 
          * <code>firstEventTimestamp</code> is updated when cluster becomes visible.
          * <code>lastEventTimestamp</code> is the last time the cluster was touched either by an event or by
          * some other timestamped update, e.g. {@link #updateClusterList(net.sf.jaer.event.EventPacket, int) }.
          * @see #isVisible() */
         protected int lastEventTimestamp, firstEventTimestamp;
-        
         /** The "mass" of the cluster is the weighted number of events it has collected.
          * The mass decays over time and is incremented by one by each collected event.
          * The mass decays with a first order time constant of clusterMassDecayTauUs in us.
          * If surroundInhibitionEnabled=true, then the mass is decremented by events captured in the surround. */
         private float mass = 1;
-
         /** This is the last time in timestamp ticks that the cluster was updated, either by an event
          * or by a regular update such as {@link #updateClusterLocations(int)}. This time can be used to
          * compute position updates given a cluster velocityPPT and time now. */
         protected int lastUpdateTime;
-        
         /** events/tick event rate for last two events. */
         protected float instantaneousEventRate; // in events/tick
         /** Flag which is set true (forever) once a cluster has first obtained sufficient support. */
@@ -871,22 +863,21 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         private float averageEventDistance, averageEventXDistance, averageEventYDistance;
         /** assigned to be the absolute number of the cluster that has been created. */
         private int clusterNumber;
-        
         /** Average event rate as computed using mixingFactor.
          * @see #mixingFactor */
         private float avgEventRate = 0;
-
-        private LowpassFilter vxFilter = new LowpassFilter(), vyFilter = new LowpassFilter();
         private float radius; // in chip chip pixels
+        protected float aspectRatio, radiusX, radiusY;
+        protected LinkedList<ClusterPathPoint> path = new LinkedList<>();
+        
+        private LowpassFilter vxFilter = new LowpassFilter(), vyFilter = new LowpassFilter();
         private float avgISI;
         private float[] rgb = new float[4];
         private boolean velocityValid = false; // used to flag invalid or uncomputable velocityPPT
-        private boolean visibilityFlag=false; // this flag updated in updateClusterList
-        protected float aspectRatio, radiusX, radiusY;
+        private boolean visibilityFlag = false; // this flag updated in updateClusterList
         protected float instantaneousISI; // ticks/event
         protected float distanceToLastEvent = Float.POSITIVE_INFINITY;
         protected float xDistanceToLastEvent = Float.POSITIVE_INFINITY, yDistanceToLastEvent = Float.POSITIVE_INFINITY;
-        protected LinkedList<ClusterPathPoint> path = new LinkedList<ClusterPathPoint>();
         
 //        public float tauMsVelocity=50; // LP filter time constant for velocityPPT change
 //        private LowpassFilter velocityFilter=new LowpassFilter();
@@ -894,8 +885,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //        protected LinkedList<ClusterPathPoint> path = new ArrayList<ClusterPathPoint>(getPathLength());
 //        ArrayList<EventXYType> events=new ArrayList<EventXYType>();
 //        private RollingVelocityFitter velocityFitter = new RollingVelocityFitter(path, velocityPoints);
-        
-        
+
         /** Constructs a default cluster. */
         public Cluster() {
             setRadius(defaultClusterRadius);
@@ -972,6 +962,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             return m;
         }
 
+        // <editor-fold defaultstate="collapsed" desc="getter/setter for --mass--">
         /** The "mass" of the cluster is the weighted number of events it has collected.
          * The mass decays over time and is incremented by one by each collected event.
          * The mass decays with a first order time constant of clusterMassDecayTauUs in us.
@@ -987,6 +978,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         public void setMass(float mass){
             this.mass=mass;
         }
+        // </editor-fold>
 
         /** Merges information from two source clusters into this cluster to preserve the combined history that is most reliable.
          * @param one
@@ -1071,7 +1063,6 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 // newAngle is clockwise a lot, flip it back across to
                 // negative value that can be averaged; e.g. instantaneousAngle=10, newAngle=179, newAngle->-1.
                 newAngle = newAngle - (float) Math.PI;
-                //                    flippedPos=true;
             } else if (diff < (-Math.PI / 2)) {
                 // newAngle is CCW
                 newAngle = -(float) Math.PI + newAngle; // instantaneousAngle=10, newAngle=179, newAngle->1
@@ -1209,8 +1200,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         /** Cluster velocityPPT in pixels/timestamp tick as a vector. Velocity values are set during cluster upate.
          * @return the velocityPPT in pixels per timestamp tick.
          * @see #getVelocityPPS() */
-        @Override
-	public Point2D.Float getVelocityPPT() {
+        @Override public Point2D.Float getVelocityPPT() {
             return velocityPPT;
         }
 
@@ -1219,21 +1209,6 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
          * @return the lastPacketLocation. */
         public Point2D.Float getLastPacketLocation() {
             return lastPacketLocation;
-        }
-
-        /** Updates cluster and generates new output event pointing to the cluster.
-         * @param ev the event.
-         * @param outItr the output iterator; used to generate new output event pointing to cluster. */
-        protected void addEvent(BasicEvent ev, OutputEventIterator outItr) {
-            addEvent(ev);
-            if (!isVisible()) {
-                return;
-            }
-            RectangularClusterTrackerEvent oe = (RectangularClusterTrackerEvent) outItr.nextOutput();
-            oe.copyFrom(ev);
-//            oe.setX((short) getLocation().x);
-//            oe.setY((short) getLocation().y);
-            oe.setCluster(this);
         }
  
         /** Overrides default hashCode to return {@link #clusterNumber}. This overriding
@@ -1261,128 +1236,67 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         /** Draws this cluster using OpenGL.
          * @param drawable area to draw this. */
         public void draw(GLAutoDrawable drawable) {
-            // Initialize OpenGL resources inside a valid OpenGL context (ticket #61).
-            if (glu == null) {
-                glu = new GLU();
-                clusterRadiusQuad = glu.gluNewQuadric();
-            }
+            GL2  gl    = drawable.getGL().getGL2();
+            GLUT cGLUT = chip.getCanvas().getGlut();
 
             final float BOX_LINE_WIDTH = 2f; // in chip
             final float PATH_POINT_SIZE = 4f;
-            GL2 gl = drawable.getGL().getGL2();
-            float x = location.x;
-            float y = location.y;
-
-            float sy = radiusY; // sx sy are (half) size of rectangle
-            float sx = radiusX;
 
             // set color and line width of cluster annotation
             setColorAutomatically();
-            getColor().getRGBComponents(rgb);
+            rgb = getColor().getRGBComponents(null);
 
-            if (visibilityFlag) {
-                gl.glColor3fv(rgb, 0);
-                gl.glLineWidth(BOX_LINE_WIDTH);
-            } else {
-                gl.glColor3f(.3f, .3f, .3f);
-                gl.glLineWidth(.5f);
-            }
+            gl.glPushMatrix();
+                //We translate here once, so that everything else is 
+                // centered and has origin = 0
+                gl.glTranslatef(location.x, location.y, 0); 
+                
+                if (visibilityFlag) {
+                    gl.glColor3fv(rgb, 0);
+                    gl.glLineWidth(BOX_LINE_WIDTH);
+                } else {
+                    gl.glColor3f(.3f, .3f, .3f);
+                    gl.glLineWidth(.5f);
+                }
 
-            // draw cluster rectangle
-            if (useEllipticalClusters) {
-                drawEllipse(gl, x, y, sx, sy, angle);
-            } else {
-                drawBox(gl, x, y, sx, sy, angle);
-            }
-
+                // draw cluster rectangle
+                if (isUseEllipticalClusters()) {
+                    drawGL.drawEllipse(gl, 0, 0, radiusX, radiusY, angle, 15);
+                } else {
+                    drawGL.drawBox(gl, 0, 0, radiusX*2, radiusY*2, angle); //Radius*2 because we need width and height
+                }
+                if ((angle!=0) || dynamicAngleEnabled) {
+                    drawGL.drawLine(gl, 0, 0, radiusX, 0, 1);
+                }
+ 
+                // plots a single motion vector which is the number of pixels per second times scaling
+                if (showClusterVelocity) drawGL.drawVector(gl,0,0, velocityPPS.x, velocityPPS.y , 2, velocityVectorScaling);
+                if (showClusterRadius)   drawGL.drawCircle(gl, 0, 0, getRadius(), 32);
+            gl.glPopMatrix();
+            
             if (showPaths) {
                 gl.glPointSize(PATH_POINT_SIZE);
-                try{
-                    gl.glBegin(GL.GL_POINTS);
-// WRONG CODE HERE?? TRY WITHOUT CATCH?
-// I DONT KNOW WHAT NEEDS TO BE CATCHED HERE THOUGH
-                {
+                gl.glBegin(GL.GL_POINTS);
                     java.util.List<ClusterPathPoint> points = getPath();
                     for (Point2D.Float p : points) {
                         gl.glVertex2f(p.x, p.y);
                     }
-                }
-                }finally{
-                    gl.glEnd();
-                }
+                gl.glEnd();
             }
-
-            // now draw velocityPPT vector
-            if (showClusterVelocity) {
-                drawVelocity(gl);
-            }
+            
             // text annoations on clusters, setup
             final int font = GLUT.BITMAP_HELVETICA_18;
             if(showClusterMass||showClusterEps||showClusterNumber){
                 gl.glColor3f(1, 1, 1);
-            gl.glRasterPos3f(location.x, location.y, 0);
+                gl.glRasterPos3f(location.x, location.y, 0);
             }
 
-            // annotate with instantaneousAngle (debug)
-//                        chip.getCanvas().getGlut().glutBitmapString(font, String.format("%.0fdeg", instantaneousAngle*180/Math.PI));
-
-            //annotate the cluster with the event rate computed as 1/(avg ISI) in keps
-            if (showClusterEps) {
-                float keps = (getAvgEventRate() / (AEConstants.TICK_DEFAULT_US)) * 1e3f;
-                chip.getCanvas().getGlut().glutBitmapString(font, String.format("eps=%.0fk ", keps));
-            }
-
-            // annotate the cluster with hash ID
-            if (showClusterNumber) {
-                chip.getCanvas().getGlut().glutBitmapString(font, String.format("#=%d ", hashCode()));
-            }
-
-            //annotate the cluster with the velocityPPT in pps
-//            if (showClusterVelocity) {
-////                Point2D.Float velpps = getVelocityPPS();
-//                chip.getCanvas().getGlut().glutBitmapString(font, String.format("v=%.0fpps ", getSpeedPPS()));
-//            }
-
-            if (showClusterMass) {
-                chip.getCanvas().getGlut().glutBitmapString(font, String.format("m=%.1f ", getMassNow(lastUpdateTime)));
-            }
-
-            if (showClusterRadius) {
-                // draw radius text
-                float myRadius = getRadius();
-//                chip.getCanvas().getGlut().glutBitmapString(font, String.format("%.1f", myRadius));
-                gl.glPushMatrix();
-                gl.glTranslatef(location.x, location.y, 0);
-                glu.gluQuadricDrawStyle(clusterRadiusQuad, GLU.GLU_LINE);
-                glu.gluDisk(clusterRadiusQuad, myRadius-.05f, myRadius+.05f, 32, 1);
-                gl.glPopMatrix();
-            }
-        }
-
-        // plots a single motion vector which is the number of pixels per second times scaling
-        void drawVelocity(GL2 gl) {
-            final float VEL_LINE_WIDTH = 4f;
-            gl.glLineWidth(VEL_LINE_WIDTH);
-            gl.glBegin(GL.GL_LINES);
-            float startx = location.x, starty = location.y;
-            gl.glVertex2f(startx, starty);
-            float endx = startx + (velocityPPS.x * velocityVectorScaling), endy = starty + (velocityPPS.y * velocityVectorScaling);
-            gl.glVertex2f(endx, endy);
-            // compute arrowhead
-            final float headlength = 2;
-            float vecx = endx - startx, vecy = endy - starty; // orig vec
-            float vx2 = vecy, vy2 = -vecx; // right angles +90 CW
-            float arx = -vecx + vx2, ary = -vecy + vy2; // halfway between pointing back to origin
-            float l = (float) Math.sqrt((arx * arx) + (ary * ary)); // length
-            arx = (arx / l) * headlength;
-            ary = (ary / l) * headlength; // normalize to headlength
-            // draw arrow (half)
-            gl.glVertex2f(endx, endy);
-            gl.glVertex2f(endx + arx, endy + ary);
-            // other half, 90 degrees
-            gl.glVertex2f(endx, endy);
-            gl.glVertex2f((endx + ary), endy - arx);
-            gl.glEnd();
+//            cGLUT.glutBitmapString(font, String.format("%.0fdeg", instantaneousAngle*180/Math.PI)); // annotate with instantaneousAngle (debug)
+//            if (showClusterVelocity) cGLUT.glutBitmapString(font, String.format("v=%.0fpps ", getSpeedPPS()));  
+//            if (showClusterRadius) cGLUT.glutBitmapString(font, String.format("rad=%.1f ", getRadius()));
+            if (showClusterEps)    cGLUT.glutBitmapString(font, String.format("eps=%.0fk ", (getAvgEventRate() / (AEConstants.TICK_DEFAULT_US)) * 1e3f)); //annotate the cluster with the event rate computed as 1/(avg ISI) in keps
+            if (showClusterNumber) cGLUT.glutBitmapString(font, String.format("#=%d ", hashCode())); // annotate the cluster with hash ID
+            if (showClusterMass)   cGLUT.glutBitmapString(font, String.format("m=%.1f ", getMassNow(lastUpdateTime)));    
         }
 
         /** Computes a geometrical updateShape factor based on location of a
@@ -1421,7 +1335,21 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         @Override public int getLastEventTimestamp() {
             return lastEventTimestamp;
         }
-
+        
+       /** Updates cluster and generates new output event pointing to the cluster.
+         * @param ev the event.
+         * @param outItr the output iterator; used to generate new output event pointing to cluster. */
+        protected void addEvent(BasicEvent ev, OutputEventIterator outItr) {
+            addEvent(ev);
+            if (!isVisible()) {
+                return;
+            }
+            RectangularClusterTrackerEvent oe = (RectangularClusterTrackerEvent) outItr.nextOutput();
+            oe.copyFrom(ev);
+//            oe.setX((short) getLocation().x);
+//            oe.setY((short) getLocation().y);
+            oe.setCluster(this);
+        }
         /** updates cluster by one event. The cluster velocityPPT is updated at
          * the filterPacket level after all events in a packet are added.
          * @param event the event */
@@ -1692,7 +1620,10 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
          * @param t the current timestamp
          * @return true if cluster is visible */
         public boolean checkAndSetClusterVisibilityFlag(int t){
-              boolean ret = true;
+            boolean ret = true;
+// TODO: In the tooltip it is pormissed that the thresholdMassForVisibleCluster is
+// checking the MASS of the cluster to determine if its visible. However as far
+// as I see here this is not the case! Instead we check only for the number of Events this cluster has gathered            
             if (numEvents < thresholdMassForVisibleCluster) {
                 ret = false;
             }
@@ -1791,10 +1722,10 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             setVelocityValid(true);
         }
 
-        @Override
-        public String toString() {
-            return String.format("Cluster number=#%d numEvents=%d locationX=%d locationY=%d radiusX=%.1f radiusY=%.1f angle=%.1f mass=%.1f lifetime=%d visible=%s speedPPS=%.2f",
-                    getClusterNumber(), numEvents,
+        @Override public String toString() {
+            return String.format("Cluster number=#%d numEvents=%d location(x,y)=(%d,%d) radius(x,y)=(%.1f,%.1f) angle=%.1f mass=%.1f lifetime=%d visible=%s speedPPS=%.2f",
+                    getClusterNumber(), 
+                    numEvents,
                     (int) location.x,
                     (int) location.y,
                     radiusX,
@@ -1806,8 +1737,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                     getSpeedPPS());
         }
 
-        @Override
-        public java.util.List<ClusterPathPoint> getPath() {
+        @Override public java.util.List<ClusterPathPoint> getPath() {
             return path;
         }
 
@@ -1816,8 +1746,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
          * The method of measuring velocityPPT is based on a linear regression
          * of a number of previous cluster locations.
          * @see #getVelocityPPT() */
-        @Override
-        public Point2D.Float getVelocityPPS() {
+        @Override public Point2D.Float getVelocityPPS() {
             return velocityPPS;
             /* old method for velocityPPT estimation is as follows
              * The velocityPPT is instantaneously
@@ -1882,7 +1811,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             Color c = Color.getHSBColor(.5f, 1f, brightness);
             setColor(c);
         }
-
+        
 //        public void setColorAccordingToClass(){
 //            float s=getMeasuredSizeCorrectedByPerspective();
 //            float hue=0.5f;
@@ -2048,8 +1977,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         // <editor-fold defaultstate="collapsed" desc="getter-setter for --NumEvents--">
         /** Total number of events collected by this cluster.
          * @return the numEvents */
-        @Override
-		public int getNumEvents() {
+        @Override public int getNumEvents() {
             return numEvents;
         }
 
@@ -2254,69 +2182,9 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         }
     }
 
-    protected void drawEllipse(GL2 gl, float x, float y, float sx, float sy, float angle) {
-        final float r2d = (float) (180 / Math.PI);
-        final int N = 10;
-        gl.glPushMatrix();
-            gl.glTranslatef(x, y, 0);
-            double cosAngle = Math.cos(angle), sinAngle = Math.sin(angle);
-            gl.glBegin(GL.GL_LINE_LOOP);
-            {
-                for (int i = 0; i < N; i++) {
-                    double a = ((float) i / N) * 2 * Math.PI;
-                    double ca = Math.cos(a);
-                    double sa = Math.sin(a);
-
-                    float vx = (float) ((sx * ca * cosAngle) - (sy * sa * sinAngle));
-                    float vy = (float) ((sx * ca * sinAngle) + (sy * sa * cosAngle));
-                    gl.glVertex2f(vx, vy);
-                }
-            }
-            gl.glEnd();
-            if (dynamicAngleEnabled) {
-                gl.glRotatef(angle * r2d, 0, 0, 1);
-                gl.glBegin(GL.GL_LINES);
-                {
-                    gl.glVertex2f(0, 0);
-                    gl.glVertex2f(sx, 0);
-                }
-                gl.glEnd();
-            }
-        gl.glPopMatrix();
-    }
-
-    protected void drawBox(GL2 gl, float x, float y, float sx, float sy, float angle) {
-        final float r2d = (float) (180 / Math.PI);
-        gl.glPushMatrix();
-        gl.glTranslatef(x, y, 0);
-        if(angle!=0) gl.glRotatef(angle * r2d, 0, 0, 1);
-
-        gl.glBegin(GL.GL_LINE_LOOP);
-        {
-            gl.glVertex2f(-sx, -sy);
-            gl.glVertex2f(+sx, -sy);
-            gl.glVertex2f(+sx, +sy);
-            gl.glVertex2f(-sx, +sy);
-        }
-        gl.glEnd();
-        if ((angle!=0) || dynamicAngleEnabled) {
-            gl.glBegin(GL.GL_LINES);
-            {
-                gl.glVertex2f(0, 0);
-                gl.glVertex2f(sx, 0);
-            }
-            gl.glEnd();
-        }
-        gl.glPopMatrix();
-    }
-
      @Override synchronized public void annotate(GLAutoDrawable drawable) {
         if (!isFilterEnabled()) return;
 
-//        final float BOX_LINE_WIDTH = 2f; // in chip
-//        final float PATH_LINE_WIDTH = .5f;
-//        final float VEL_LINE_WIDTH = 4f;
-//        final float PATH_POINT_SIZE = 4f;
         GL2 gl = drawable.getGL().getGL2(); // when we getString this we are already set up with updateShape 1=1 pixel, at LL corner
         if (gl == null) {
             log.warning("null GL in RectangularClusterTracker.annotate");
@@ -2675,12 +2543,14 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter - Min/Max for --MaxNumClusters--">
-    /** max number of clusters */
+    /** max number of clusters
+     * @return  */
     public final int getMaxNumClusters() {
         return maxNumClusters;
     }
 
-    /** max number of clusters */
+    /** max number of clusters
+     * @param maxNumClusters */
     public void setMaxNumClusters(final int maxNumClusters) {
         this.maxNumClusters = maxNumClusters;
         putInt("maxNumClusters", maxNumClusters);
@@ -2692,12 +2562,14 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --ThresholdForVisibleCluster--">
-    /** number of events to make a potential cluster visible */
+    /** number of events to make a potential cluster visible
+     * @return  */
     public final int getThresholdMassForVisibleCluster() {
         return thresholdMassForVisibleCluster;
     }
 
-    /** number of events to make a potential cluster visible */
+    /** number of events to make a potential cluster visible
+     * @param thresholdMassForVisibleCluster */
     public void setThresholdMassForVisibleCluster(final int thresholdMassForVisibleCluster) {
         this.thresholdMassForVisibleCluster = thresholdMassForVisibleCluster;
         putInt("thresholdMassForVisibleCluster", thresholdMassForVisibleCluster);

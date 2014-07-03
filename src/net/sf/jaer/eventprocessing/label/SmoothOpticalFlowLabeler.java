@@ -20,7 +20,6 @@ import net.sf.jaer.event.orientation.DvsMotionOrientationEvent;
 import net.sf.jaer.event.OpticalFlowEvent;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter2d;
 
@@ -44,6 +43,7 @@ public class SmoothOpticalFlowLabeler extends EventFilter2D implements Observer,
         
         dirFilter = new DvsDirectionSelectiveFilter(chip);
         dirFilter.setAnnotationEnabled(false);
+        dirFilter.setShowRawInputEnabled(false); //Otherwise this will not work as polarity events can not be cast correctly
         setEnclosedFilter(dirFilter);
         
         chip.addObserver(this);

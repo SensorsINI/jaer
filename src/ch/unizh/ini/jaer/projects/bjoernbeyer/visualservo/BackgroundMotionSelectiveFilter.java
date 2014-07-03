@@ -1,6 +1,7 @@
 
 package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
 
+import net.sf.jaer.util.Vector2D;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Level;
@@ -14,6 +15,7 @@ import net.sf.jaer.eventprocessing.label.SmoothOpticalFlowLabeler;
 import net.sf.jaer.graphics.FrameAnnotater;
 import javax.media.opengl.GL2;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.util.drawGL;
 
 /**
  *
@@ -42,7 +44,7 @@ public class BackgroundMotionSelectiveFilter extends EventFilter2D implements Ob
     private float maxDtMs                     = getFloat("maxDtMs",50f); //The maximum temporal distance in milliseconds between the current event and the last event in an inhibiting or exciting location that is taken into acount for the averge inhibition/excitation vector. Events with a dt larger than this will be ignored. Events with half the dt than this will contribute with 50% of their length.
     private float exciteInhibitRatioThreshold = getFloat("exciteInhibitRatioThreshold",-.3f);
     private boolean showRawInputEnabled       = getBoolean("showRawInputEnabled",false);
-    private boolean drawInhibitExcitePoints   = getBoolean("drawInhibitExcitePoints",true);
+    private boolean drawInhibitExcitePoints   = getBoolean("drawInhibitExcitePoints",false);
     private boolean drawCenterCell            = getBoolean("drawCenterCell",false); 
     private boolean showInhibitedEvents       = getBoolean("showInhibitedEvents", true);
     private boolean outputPolarityEvents      = getBoolean("outputPolarityEvents", false);
@@ -59,6 +61,8 @@ public class BackgroundMotionSelectiveFilter extends EventFilter2D implements Ob
     private int[][] lastTimesMap;
     
     private int x,y;
+    
+    private CalibratedStimulusGUI StimGUI;
     
     //TODO: make sure that everytime a raidus changes we calculate the new circle.
     //TODO: Das wird jetzt alles nicht funktionieren wenn man subsampled im anderen Filter oder?
@@ -206,25 +210,28 @@ public class BackgroundMotionSelectiveFilter extends EventFilter2D implements Ob
                         gl.glVertex2d(circ1[0]+maxX/2, circ1[1]+maxY/2);
                     }
                 gl.glEnd();
-
+                gl.glPopMatrix();
+                
                 int xOffset = maxX/2,yOffset = maxY/2;
                 int scale=20;
                 for(Object o : out) {
                     BackgroundMotionInhibitedEvent e = (BackgroundMotionInhibitedEvent) o;
                     if(e.x == maxX/2 && e.y == maxY/2){
-                        gl.glBegin(GL2.GL_LINES);
-                            gl.glColor3f(0, 1, 0);
-                            e.avgExcitationVel.drawVector(gl, xOffset+20, yOffset, 1, scale);
-                            gl.glColor3f(1, 0, 0);
-                            e.avgInhibitionVel.drawVector(gl, xOffset-20, yOffset, 1, scale);
-                        gl.glEnd();
+                        gl.glPushMatrix();
+                        gl.glColor3f(0, 1, 0);
+                        e.avgExcitationVel.drawVector(gl, xOffset+20, yOffset, 1, scale);
+                        gl.glPopMatrix();
+                        
+                        gl.glPushMatrix();
+                        gl.glColor3f(1, 0, 0);
+                        e.avgInhibitionVel.drawVector(gl, xOffset-20, yOffset, 1, scale);
+                        gl.glPopMatrix();
 
                         gl.glColor3f(1, 1, 1);
                         gl.glRectf(-10, 0, -5,  100*(float)e.exciteInhibitionRatio);
                         gl.glRectf(-10.5f, 0, -10, 100);
                     }
                 }
-                gl.glPopMatrix();
             }
         }
     }

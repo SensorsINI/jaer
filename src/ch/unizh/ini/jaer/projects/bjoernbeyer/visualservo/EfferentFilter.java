@@ -6,6 +6,7 @@
 
 package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
 
+import net.sf.jaer.util.Vector2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import javax.media.opengl.GLAutoDrawable;
@@ -60,8 +61,7 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
 //    private EventPacket dirPacket = null; // the output events, also used for rendering output events
     
     private final AbstractDirectionSelectiveFilter dirFilter;
-    private CalibrationTransformation retinaPTCalib;
-    private CalibratedScreenPanTilt calibScreenPT;
+    private CalibrationPanTiltScreen retinaPTCalib;
     private final List<ListPoint> panTiltInducedMotionList = Collections.synchronizedList(new ArrayList<ListPoint>());//need synchronized collection or otherwise we get a lot of access violations and unpredicted behaviour!
     private float   delayThresholdMS            = getFloat("delayThresholdMS",100);
     private float   ppsScale                    = getFloat("ppsScale",.03f);
@@ -110,9 +110,6 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         dirFilter = new DvsDirectionSelectiveFilter(chip);
         dirFilter.setAnnotationEnabled(false);
         dirFilter.setShowRawInputEnabled(false); //Otherwise this filter crashes if the dirfilter outputs polarityevents
-        
-        retinaPTCalib = new CalibrationTransformation(chip,"retinaPTCalib");
-        calibScreenPT = new CalibratedScreenPanTilt(chip,pt);
 
         setEnclosedFilter(dirFilter);
         
@@ -252,9 +249,7 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         }
         return isShowRawInputEnabled() ? in : out; 
     }
-    public void doCalibrate() {
-        calibScreenPT.doCalibrate();
-    }
+
     public void doAim() {
         PanTiltAimerGUI aimerGui = new PanTiltAimerGUI(PanTilt.getInstance(0));
         aimerGui.setVisible(true);
@@ -318,6 +313,11 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
 
     @Override public void resetFilter() {
         panTiltInducedMotionList.clear();
+        retinaPTCalib = new CalibrationPanTiltScreen("retinaPTCalib");
+        if(!retinaPTCalib.isCalibrated()) {
+            log.warning("No retinaPT calibration found. using default instead.");
+            retinaPTCalib.setCalibration(CalibrationPanTiltScreen.getRetinaPanTiltDefaultCalibration());
+        }
     }
 
     @Override public final void initFilter() {
@@ -335,13 +335,12 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
             // <editor-fold defaultstate="collapsed" desc="ExpectedMotionAnnotation">
             int size = panTiltInducedMotionList.size();
             if(size > 1){
-                gl.glPushMatrix();
                 gl.glLineWidth(4f);
-                gl.glBegin(GL.GL_LINES);
-
+                gl.glColor3f(1, 0, 0);
+                
                 Vector2D ptChange = panTiltInducedMotionList.get(size-1).ptChange;
                 ptChange.signChangeY(); //Need this because in pt coordinates up left is (0,0) and down right (1,1). Hence positive change in y means downward, negative change upward.
-                gl.glColor3f(1, 0, 0);
+                
                 
                 Vector2D testUnitDir = new Vector2D(0,0),testVector = new Vector2D(0,0);
                 double projectionLength;
@@ -353,14 +352,17 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
                     if(projectionLength > 0){
                         testVector.setLocation(testUnitDir);
                         testVector.setLength(projectionLength);
+                        
+                        
+                        gl.glPushMatrix();
                         testVector.drawVector(gl, -10, 64, 1, ppsScale);
+                        gl.glPopMatrix();
                     }
                 }
                 
                 gl.glColor3f(0, 1, 0);
+                gl.glPushMatrix();
                 ptChange.drawVector(gl, -10, 64, 2, 3000);
-                
-                gl.glEnd();
                 gl.glPopMatrix();
             }
             // </editor-fold>
@@ -368,26 +370,28 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         
         if((isShowSelfMotionEnabled() || isShowAlienMotionEnabled()) && !outputPolarityEvents){
             // <editor-fold defaultstate="collapsed" desc="Alien- and/or SelfMotionAnnotation">
-            gl.glPushMatrix();
+            
             float[][] c;
             gl.glLineWidth(2f);
-            gl.glBegin(GL.GL_LINES);
             for(Object o:out){
                 SelfMotionEvent e=(SelfMotionEvent)o;
                 c=chip.getRenderer().makeTypeColors(8);
                 if(e.hasSelfMotion && isShowSelfMotionEnabled()) {
                     gl.glColor3fv(c[e.getDirection()],0);
+                    gl.glPushMatrix();
                     e.selfMotion.drawVector(gl, e.x, e.y, 1,ppsScale);
+                    gl.glPopMatrix();
     //                System.out.println("||||"+e.selfMotion.toString());
                 }
                 if(e.hasAlienMotion && isShowAlienMotionEnabled()) {
                     gl.glColor3fv(c[e.getDirection()],0);
+                    gl.glPushMatrix();
                     e.alienMotion.drawVector(gl, e.x, e.y, 1, ppsScale);
+                    gl.glPopMatrix();
     //                System.out.println("||||"+e.alienMotion.toString());
                 }
             }
-            gl.glEnd();
-            gl.glPopMatrix();
+            
             // </editor-fold>
         }
     }

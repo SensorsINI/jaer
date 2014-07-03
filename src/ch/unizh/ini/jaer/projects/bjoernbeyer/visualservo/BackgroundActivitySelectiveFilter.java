@@ -34,9 +34,9 @@ public class BackgroundActivitySelectiveFilter extends EventFilter2D implements 
     private int excitationInnerRadiusPX       = getInt("excitationOuterRadius",1); //The excitation radius in pixel from current position. By default the current cell does not self excite.
     private int circleCoarseness              = getInt("circleCoarseness",2);      
     private float maxDtMs                     = getFloat("maxDtMs",50f); //The maximum temporal distance in milliseconds between the current event and the last event in an inhibiting or exciting location that is taken into acount for the averge inhibition/excitation vector. Events with a dt larger than this will be ignored. Events with half the dt than this will contribute with 50% of their length.
-    private float exciteInhibitRatioThreshold = getFloat("exciteInhibitRatioThreshold",.1f);
+    private float exciteInhibitRatioThreshold = getFloat("exciteInhibitRatioThreshold",.45f);
     private boolean showRawInputEnabled       = getBoolean("showRawInputEnabled",false);
-    private boolean drawInhibitExcitePoints   = getBoolean("drawInhibitExcitePoints",true);
+    private boolean drawInhibitExcitePoints   = getBoolean("drawInhibitExcitePoints",false);
     private boolean drawCenterCell            = getBoolean("drawCenterCell",false); 
     private boolean showInhibitedEvents       = getBoolean("showInhibitedEvents", true);
     private boolean outputPolarityEvents      = getBoolean("outputPolarityEvents", false);
