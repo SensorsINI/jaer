@@ -110,7 +110,7 @@ final public class CochleaAMS1cADCSamples implements Observer {
     /** A single samples */
     public class ADCSample {
 
-        int data, time;
+        public int data, time;
 
         @Override
         public String toString() {
@@ -210,7 +210,7 @@ final public class CochleaAMS1cADCSamples implements Observer {
     /** The top data structure that holds data from all channels - some may be empty if conversion is not enabled */
     public final class DataBuffer {
 
-        ChannelBuffer[] channelBuffers = new ChannelBuffer[NUM_CHANNELS];
+        public ChannelBuffer[] channelBuffers = new ChannelBuffer[NUM_CHANNELS];
 
         public DataBuffer() {
             for (int i = 0; i < NUM_CHANNELS; i++) {
@@ -222,7 +222,32 @@ final public class CochleaAMS1cADCSamples implements Observer {
             for (int i = 0; i < NUM_CHANNELS; i++) {
                 channelBuffers[i].clear();
             }
+        }
+    
+        public int getNumActiveChannelBuffers() {
+            int n = 0;
+            for (int i = 0; i < NUM_CHANNELS; i++) {
+                if (channelBuffers[i].hasData()) {
+                    n++;
+                }
+            }
+            return n;
+        }
 
+        public int[] getActiveChannelIndices() {
+            int n = getNumActiveChannelBuffers();
+            int[] channels = new int[n];
+            int idx = 0;
+            for (int i = 0; i < NUM_CHANNELS; i++) {
+                if (channelBuffers[i].hasData()) {
+                    channels[idx++] = i;
+                }
+            }
+            return channels;
+        }
+        
+        public ChannelBuffer[] getChannelBuffers(){
+            return channelBuffers;
         }
     }
 
