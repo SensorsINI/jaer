@@ -6,6 +6,7 @@
 
 package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
 
+import net.sf.jaer.util.Vector2D;
 import java.awt.geom.Point2D;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.Description;
@@ -28,7 +29,7 @@ import ch.unizh.ini.jaer.hardware.pantilt.*;
 public class SimpleVS_Cluster extends EventFilter2D implements FrameAnnotater {
 
     private boolean TrackerEnabled = getBoolean("TrackerEnabled", false);
-    private final CalibrationTransformation retinaPTCalib;
+    private final CalibrationPanTiltScreen retinaPTCalib;
     private final Vector2D clusterLoc = new Vector2D();
     private float targetFactor = .1f;
     
@@ -40,7 +41,7 @@ public class SimpleVS_Cluster extends EventFilter2D implements FrameAnnotater {
         
         tracker       = new RectangularClusterTracker(chip);
         panTilt       = PanTilt.getInstance(0);
-        retinaPTCalib = new CalibrationTransformation(chip,"retinaPTCalib");
+        retinaPTCalib = new CalibrationPanTiltScreen("retinaPTCalib");
         
         tracker.setAnnotationEnabled(true);//we WANT to see trackers annotations!
         

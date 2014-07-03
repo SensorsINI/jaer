@@ -41,6 +41,8 @@ public class SimpleVS_GlobalOpticFlow extends EventFilter2D implements FrameAnno
         super(chip);
         
         DirFilter = new DvsDirectionSelectiveFilter(chip);
+        DirFilter.setAnnotationEnabled(false);
+        DirFilter.setShowRawInputEnabled(false);
         panTilt = PanTilt.getInstance(0);
         GlobalDir = new Point2D.Float(0,0);
         
@@ -84,8 +86,8 @@ public class SimpleVS_GlobalOpticFlow extends EventFilter2D implements FrameAnno
             if(isTrackerEnabled()) {
                 float[] PanTiltPos = panTilt.getPanTiltValues();
                 float[] NewPos = {0.5f,0.5f};
-                NewPos[0] = PanTiltPos[0]+Move.x; 
-                NewPos[1] = PanTiltPos[1]-Move.y;
+                NewPos[0] = PanTiltPos[0]-Move.x; 
+                NewPos[1] = PanTiltPos[1]+Move.y;
                 //We dont need to pay attention to weather the new values
                 // are larger 1 or smaller 0 as the values are clipped by
                 // 'setPanTiltValues' anyway.

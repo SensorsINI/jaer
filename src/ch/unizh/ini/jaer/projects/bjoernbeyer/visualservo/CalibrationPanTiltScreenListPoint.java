@@ -6,7 +6,7 @@ import java.io.Serializable;
 
 /** A single pan tilt screen calibration point.
  * @author bjoern */
-public class CalibrationPointPanTiltScreen implements Serializable{
+public class CalibrationPanTiltScreenListPoint implements Serializable{
 
     /** Retina coordinates */
     Point2D.Float ret;
@@ -15,13 +15,13 @@ public class CalibrationPointPanTiltScreen implements Serializable{
     /** Screen coordinates in GUI relative to the center of the panel*/
     Point2D.Float screen;
 
-    public CalibrationPointPanTiltScreen(Point2D.Float ret, Point2D.Float pt, Point2D.Float screen) {
+    public CalibrationPanTiltScreenListPoint(Point2D.Float ret, Point2D.Float pt, Point2D.Float screen) {
         this.ret    = ret;
         this.pt     = pt;
         this.screen = screen;
     }
     
-    public CalibrationPointPanTiltScreen(float retX, float retY, float ptX, float ptY, float screenX, float screenY) {
+    public CalibrationPanTiltScreenListPoint(float retX, float retY, float ptX, float ptY, float screenX, float screenY) {
         ret    = new Point2D.Float();
         pt     = new Point2D.Float();
         screen = new Point2D.Float();

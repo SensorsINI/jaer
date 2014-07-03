@@ -70,7 +70,7 @@ public class CalibratedScreenPanTilt extends EventFilter2D implements PropertyCh
             g.fillOval((int)(width*(1+x)), (int)(height*(1+y)), 10, 10);
         }
     }
-    private CalibrationTransformation screenPTCalib, retinaPTCalib;
+    private CalibrationPanTiltScreen screenPTCalib, retinaPTCalib;
     
     @Override public void propertyChange(PropertyChangeEvent evt) {
         switch (evt.getPropertyName()) {
@@ -138,7 +138,7 @@ public class CalibratedScreenPanTilt extends EventFilter2D implements PropertyCh
     public CalibratedScreenPanTilt(AEChip chip,PanTilt pt, ScreenActionCanvas calibGUI) {
         super(chip);
         
-        panTilt = PanTilt.getInstance(0);
+        panTilt = pt;
         tracker = new RectangularClusterTracker(chip);
         CalibrationGUI = calibGUI;
         
@@ -147,10 +147,10 @@ public class CalibratedScreenPanTilt extends EventFilter2D implements PropertyCh
         CalFrame = new CalibrationFrame();
         CalibrationGUI.setContentPane(CalFrame);
         
-        screenPTCalib = new CalibrationTransformation(chip,"screenPTCalib");
-        retinaPTCalib = new CalibrationTransformation(chip,"retinaPTCalib");
-        System.out.println(screenPTCalib.isCalibrated());
-        System.out.println(retinaPTCalib.isCalibrated());
+        screenPTCalib = new CalibrationPanTiltScreen("screenPTCalib");
+        retinaPTCalib = new CalibrationPanTiltScreen("retinaPTCalib");
+        System.out.println(getClass()+"  ,ScreenPT--> "+screenPTCalib.isCalibrated());
+        System.out.println(getClass()+"  ,RetinaPT--> "+retinaPTCalib.isCalibrated());
         
         setEnclosedFilter(tracker);
     }
@@ -179,6 +179,10 @@ public class CalibratedScreenPanTilt extends EventFilter2D implements PropertyCh
     public void doShowCalibration() {
         Matrix.print(retinaPTCalib.getInverseTransformation());
         Matrix.print(retinaPTCalib.getTransformation());
+    }
+    public void doLoadDefaultCalibration() {
+        retinaPTCalib.setCalibration(CalibrationPanTiltScreen.getRetinaPanTiltDefaultCalibration());
+        retinaPTCalib.saveCalibration();
     }
     
     public void doCalibrate() {
@@ -224,7 +228,7 @@ public class CalibratedScreenPanTilt extends EventFilter2D implements PropertyCh
     }
     // </editor-fold>
     
-    private void setNewSamplePoint(CalibrationTransformation trafo) {
+    private void setNewSamplePoint(CalibrationPanTiltScreen trafo) {
         Point2D.Float pRet;        
         if( tracker.getNumVisibleClusters() == 1 ) {
             RectangularClusterTracker.Cluster c=tracker.getVisibleClusters().get(0);
@@ -235,7 +239,7 @@ public class CalibratedScreenPanTilt extends EventFilter2D implements PropertyCh
                 return;
             }
         } else {
-            log.info("More than one clusters visible. ignoring point");
+            log.info("More than one clusters or no cluster visible. ignoring point");
             return;
         }
         float[] curValues = panTilt.getPanTiltValues();
@@ -366,8 +370,8 @@ public class CalibratedScreenPanTilt extends EventFilter2D implements PropertyCh
     public void resetCalibration() {
         CalFrame.stopFlashing();
         CalFrame.reset();
-        retinaPTCalib.resetFilter();
-        screenPTCalib.resetFilter();
+        retinaPTCalib.resetCalibration();
+        screenPTCalib.resetCalibration();
         screenCenterPoint = new float[2];
         CalibrationStep=1;
         setCalibrating(false);

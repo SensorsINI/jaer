@@ -1,6 +1,7 @@
 
 package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
 
+import net.sf.jaer.util.Vector2D;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.OpticalFlowEvent;
 
@@ -39,7 +40,7 @@ public class BackgroundMotionInhibitedEvent extends OpticalFlowEvent{
     }
     @Override 
     public int getType(){
-        return polarity==Polarity.Off? 0: 1;
-        //return hasGlobalMotion;
+//        return polarity==Polarity.Off? 0: 1;
+        return hasGlobalMotion;
     }
 }

@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
 
@@ -15,17 +10,14 @@ import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.util.Matrix;
 
 /**
  *
  * @author Bjoern
  */
-public class CalibrationTransformation extends EventFilter2D {
-    private ArrayList<CalibrationPointPanTiltScreen> sampleList = new ArrayList<>();
+public class CalibrationPanTiltScreen {
+    private ArrayList<CalibrationPanTiltScreenListPoint> sampleList = new ArrayList<>();
     private float[][] transformation = new float[3][3];
     private float[][] inverseTransformation = new float[3][3];
     private boolean isCalibrated = false;
@@ -35,6 +27,17 @@ public class CalibrationTransformation extends EventFilter2D {
     
     private static final Logger log=Logger.getLogger("CalibrationTransformation");
     
+    public static CalibrationPanTiltScreen getRetinaPanTiltDefaultCalibration() {
+        CalibrationPanTiltScreen def = new CalibrationPanTiltScreen(null);
+        float[][] trafo    = {{-471.2072f    ,0,0},{0,460.00894f   ,0},{0,0,1f}};
+        float[][] invTrafo = {{-0.0021130797f,0,0},{0,0.0021632595f,0},{0,0,1f}};
+
+        def.setTransformation(trafo);
+        def.setInverseTransformation(invTrafo);
+        def.setCalibrated(true);
+        
+        return def;
+    }
     //IMPORTANT: this class makes use of its own preferrences. This allows to
     // save the calibration by name that can be accessed by any other class.
     // This means, that one can calibrate a device once and save it under a
@@ -42,29 +45,27 @@ public class CalibrationTransformation extends EventFilter2D {
     // to this particular calibration by initializing a new calss of this with the
     // same name as the calibration was done with. Of course this only works on
     // one Computer.
-    CalibrationTransformation(AEChip chip, String CalibName) {
-        super(chip);
+    CalibrationPanTiltScreen( String CalibName ) {
         setCalibrationName(CalibName);
         InitialCalibrationName = CalibName;
         
+        //This makes sure that we can load the same calibration from all different
+        // filters as the preference is saved for this class and not per filter
         myPrefs = Preferences.userNodeForPackage(getClass());
         
         if(CalibName == null || !loadCalibration(CalibName)) {
             //if loadCalib returns true a calibration has been loaded and we
             // dont need to reset. Otherwise reset everything to make sure
             // things are initialized.
-            if(!loadCalibration("defaultCalibration")){
-                resetFilter();
-                log.warning("No Calibration could be found! Please calibrate the system first!");
-            } else log.warning("Calibration not found. Default calibration is loaded instead.");
+            // If no calibration is found the user can see this by checking the
+            // 'isCalibrated' falg. Then he can load a static default with the
+            // 'setCalibration' method.
+            resetCalibration();
         }
-    }
-    CalibrationTransformation(AEChip chip) {
-        this(chip,"defaultCalibration");
     }
 
     public void addNewSamplePoint(float retX, float retY, float ptX, float ptY, float screenX, float screenY) {    
-        CalibrationPointPanTiltScreen newSample  = new CalibrationPointPanTiltScreen(retX,retY,ptX,ptY,screenX,screenY);
+        CalibrationPanTiltScreenListPoint newSample  = new CalibrationPanTiltScreenListPoint(retX,retY,ptX,ptY,screenX,screenY);
         System.out.println("New samplepoint ("+getNumSamples() +") --> " + newSample.toString());
         sampleList.add(newSample);
     }
@@ -164,7 +165,7 @@ public class CalibrationTransformation extends EventFilter2D {
     }
 
     public final boolean loadCalibration( String name ) {
-        resetFilter();
+        resetCalibration();
 
         byte[] bytes = myPrefs.getByteArray(name, null);
         // Deserialize from a byte array
@@ -173,7 +174,7 @@ public class CalibrationTransformation extends EventFilter2D {
                 transformation        = (float[][]) in.readObject();
                 inverseTransformation = (float[][]) in.readObject();
                 if((int) in.readObject() < 20) {
-                    sampleList        = (ArrayList<CalibrationPointPanTiltScreen>) in.readObject();
+                    sampleList        = (ArrayList<CalibrationPanTiltScreenListPoint>) in.readObject();
                 }
                 isCalibrated          = true;
                 setCalibrationName(name);
@@ -189,20 +190,12 @@ public class CalibrationTransformation extends EventFilter2D {
         }
     }
 
-    @Override public EventPacket<?> filterPacket(EventPacket<?> in) {
-        return in;
-    }
-
-    @Override public final void resetFilter() {
+    public final void resetCalibration() {
         sampleList.clear();
         transformation = new float[3][3];
         inverseTransformation = new float[3][3];
         setCalibrationName(InitialCalibrationName);
         isCalibrated = false; 
-    }
-
-    @Override public void initFilter() {
-        resetFilter();
     }
 
     public String getCalibrationName() {
@@ -211,5 +204,11 @@ public class CalibrationTransformation extends EventFilter2D {
 
     private void setCalibrationName(String CalibrationName) {
         this.CalibrationName = CalibrationName;
+    }
+    
+    public void setCalibration(CalibrationPanTiltScreen calibToSet) {
+        this.setTransformation(calibToSet.getTransformation());
+        this.setInverseTransformation(calibToSet.getInverseTransformation());
+        this.setCalibrated(calibToSet.isCalibrated());
     }
 }

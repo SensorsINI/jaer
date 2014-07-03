@@ -29,15 +29,15 @@ public class BackgroundActivityInhibitedEvent extends PolarityEvent{
             this.hasGlobalMotion =  ((BackgroundActivityInhibitedEvent)e).hasGlobalMotion;
         }
     }
-//    
-//    // TODO: THIS IS A HUGE HACK
-//    @Override
-//    public int getNumCellTypes() {
-//        return 2;
-//    }
-//    @Override 
-//    public int getType(){
+    
+    // TODO: THIS IS A HUGE HACK
+    @Override
+    public int getNumCellTypes() {
+        return 2;
+    }
+    @Override 
+    public int getType(){
 //        return polarity==PolarityEvent.Polarity.Off? 0: 1;
-//        //return hasGlobalMotion;
-//    }
+        return hasGlobalMotion;
+    }
 }

@@ -6,6 +6,7 @@
 
 package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
 
+import net.sf.jaer.util.Vector2D;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.orientation.DvsMotionOrientationEvent;
 
