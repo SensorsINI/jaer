@@ -15,13 +15,14 @@ import de.thesycon.usbio.UsbIoBuf;
 import de.thesycon.usbio.UsbIoInterface;
 import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
 import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
 
 /**
  * The hardware interface to CochleaAMS1c.
  *
  * @author tobi
  */
-public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements BiasgenHardwareInterface {
+public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements BiasgenHardwareInterface, HasSyncEventOutput {
 
     /** The USB product ID of this device */
     static public final short PID = (short) 0x8406;
@@ -42,6 +43,8 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements 
             ADC_CHANNEL_MASK = 0x0c00; // marks ADC channel of data
     /** AER_DATA_MASK (0x3ff) part of data word. */
     public static final int AER_DATA_MASK = 0x3ff; // used elsewhere to mask for AER data
+    private boolean syncEventEnabled = true; // tobi changed to always true so that if user selects this mode, then it must be deselected explicitly for slave cameras // default is true so that device is the timestamp master by default, necessary after firmware rev 11
+    public final byte VR_IS_TS_MASTER = (byte) 0xCB;  // this VR make the board timestamp master if argument is 1, otherwise it is slave device (default in firmware is master device)
 
     public CochleaAMS1cHardwareInterface(int n) {
         super(n);
@@ -329,4 +332,27 @@ public class CochleaAMS1cHardwareInterface extends CypressFX2Biasgen implements 
 //        String bitString = s.toString();
 //        return bitString;
 //    }
+  
+    /** 
+     *  Enables generation of external input 'sync' events on positive edges of IN pin.  Also makes us a timestamp master clock source.
+     * @param yes true to enable external input events and make us timestamp master, otherwise we are timestamp slave.
+     */
+    @Override
+    public void setSyncEventEnabled(boolean yes) {
+        log.info("setting " + yes);
+
+        try {
+            this.sendVendorRequest(this.VENDOR_REQUEST_SET_SYNC_ENABLED, yes ? (byte) 1 : (byte) 0, (byte) 0);
+            syncEventEnabled = yes;
+//            prefs.putBoolean("CypressFX2DVS128HardwareInterface.syncEventEnabled", yes); // tobi made default to avoid cameras that do not advance timestamp
+        } catch (HardwareInterfaceException e) {
+            log.warning(e.toString());
+        }
+    }
+
+    @Override
+	public boolean isSyncEventEnabled() {
+        return syncEventEnabled;
+    }
+
 }
