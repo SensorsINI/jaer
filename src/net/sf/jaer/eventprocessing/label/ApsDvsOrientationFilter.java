@@ -4,6 +4,7 @@
  * Created on November 2, 2005, 8:24 PM */
 package net.sf.jaer.eventprocessing.label;
 
+import eu.seebetter.ini.chips.sbret10.IMUSample;
 import net.sf.jaer.event.orientation.ApsDvsOrientationEvent;
 import net.sf.jaer.event.orientation.BinocularOrientationEvent;
 import java.util.logging.Level;
@@ -95,7 +96,12 @@ public class ApsDvsOrientationFilter extends AbstractOrientationFilter{
         for ( Object ein:in ){
             PolarityEvent e = (PolarityEvent)ein;
             
-            if(e.isSpecial()){
+            if(e.isSpecial() || (e instanceof IMUSample && ((IMUSample)e).imuSampleEvent)){
+                continue;
+            }
+            
+            if(e.isFilteredOut()){
+                log.warning("should not see this filteredOut event here: "+e.toString());
                 continue;
             }
             
@@ -119,6 +125,10 @@ public class ApsDvsOrientationFilter extends AbstractOrientationFilter{
             }
             if ( eye == 1 ){
                 type = type << 1;
+            }
+            if(x<0||y<0||type<0){
+                log.warning("negative coordinate for event "+e.toString());
+                continue;
             }
             lastTimesMap[x][y][type] = e.timestamp;
 
