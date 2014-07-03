@@ -1,12 +1,11 @@
 
-package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
+package net.sf.jaer.util;
 
 import java.awt.geom.Point2D;
 import javax.media.opengl.GL2;
-/**
+/** A simple wrapper class for Point2D.Float that allows for basic vector operation
  *
- * @author Bjoern
- */
+ * @author Bjoern */
 public class Vector2D extends Point2D.Float {
     
     public Vector2D() { super(); }
@@ -26,6 +25,11 @@ public class Vector2D extends Point2D.Float {
         this.y += y;
     }
     
+    /** Adds a fractional part of a vector to this. Each component of vec
+     * is multiplied with factor before added to this.
+     *
+     * @param vec the vector to be added
+     * @param factor the fraction of the vector to be added */
     public void addFraction(Vector2D vec, float factor) {
         add(factor*vec.x, factor*vec.y);
     }
@@ -88,26 +92,11 @@ public class Vector2D extends Point2D.Float {
     public void drawVector(GL2 gl) { drawVector(gl,0,0,1,1); }
     public void drawVector(GL2 gl, float origX, float origY) { drawVector(gl,origX,origY,1,1); }
     public void drawVector(GL2 gl, float origX, float origY, float headlength, float Scale) {
-        float startx = origX,                starty = origY;
-        float endx   = origX + this.x*Scale, endy   = origY + this.y*Scale;
-        float vecx   = endx-startx,          vecy   = endy-starty; // orig vec
-        float vx2    = vecy,                 vy2    = -vecx;       // right angles +90 CW
-        float arx    = -vecx+vx2,            ary    = -vecy+vy2;   // halfway between pointing back to origin
-        float l = (float)Math.sqrt((arx*arx)+(ary*ary)); // length
-        arx = (arx/l)*headlength;              ary  = (ary/l)*headlength; // normalize to headlength
-        
-        gl.glVertex2f(startx,starty);
-        gl.glVertex2f(endx,endy);
-        // draw arrow (half)
-        gl.glVertex2f(endx,endy);
-        gl.glVertex2f(endx+arx, endy+ary);
-        // other half, 90 degrees
-        gl.glVertex2f(endx,endy);
-        gl.glVertex2f(endx+ary, endy-arx);
+        drawGL.drawVector(gl, origX, origY, this.x, this.y, headlength, Scale);
     }
    
-    /*returns the angle between this and the argument from 0 to pi
-     * 0 meaning vectors have the same direction and pi meaning vectors are orthogonal*/
+    /** returns the angle between this and the argument from 0 to pi
+     * 0 meaning vectors have the same direction and pi meaning vectors are orthogonal */
     public double getAngle(Vector2D vec){
         if(this.length() == 0) throw new IllegalStateException("The length of this vector is 0, the angle can not be computed!");
         if(vec.length() == 0) throw new IllegalStateException("The length of the argument vector is 0, the angle can not be computed!");
