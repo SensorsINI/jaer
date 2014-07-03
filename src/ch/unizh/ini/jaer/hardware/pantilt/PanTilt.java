@@ -297,6 +297,12 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
         return lockAcquired;
     }
     
+    public void disableAllServos() throws HardwareInterfaceException {
+        setJitterEnabled(false);
+        stopFollow();
+        servo.disableAllServos();
+    }
+    
     private class FollowerTask extends TimerTask {
         boolean cancelMe = false;
         float[] MoveVec = {0,0};
@@ -564,6 +570,7 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
         float[] oldJitterTarget = {this.panJitterTarget,this.tiltJitterTarget};
         this.panJitterTarget = PanTarget;
         this.tiltJitterTarget = TiltTarget;
+        startFollow();//automatically start following target. This will initialize the servo if it is not already.
         this.pcs.firePropertyChange("JitterTarget", oldJitterTarget , new float[] {PanTarget,TiltTarget});
     }
     // </editor-fold>
@@ -587,7 +594,6 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
             setJitterTarget(PanTarget,TiltTarget);
         }
         this.pcs.firePropertyChange("Target", oldTarget , new float[] {PanTarget,TiltTarget});
-        startFollow(); //automatically start following target. This will initialize the servo if it is not already.
     }
     
     public void setTargetChange(float panTargetChange, float tiltTargetChange) {

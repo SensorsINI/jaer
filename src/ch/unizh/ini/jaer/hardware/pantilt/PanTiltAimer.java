@@ -201,11 +201,8 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
     // <editor-fold defaultstate="collapsed" desc="GUI button --DisableServos--">
     public void doDisableServos() {
         if (panTiltHardware != null && panTiltHardware.getServoInterface() != null) {
-            setJitterEnabled(false);
-            panTiltHardware.stopFollow();
-//            setFollowEnabled(false);
             try {
-                panTiltHardware.getServoInterface().disableAllServos();
+                panTiltHardware.disableAllServos();
             } catch (HardwareInterfaceException ex) {
                 log.warning(ex.toString());
             }
