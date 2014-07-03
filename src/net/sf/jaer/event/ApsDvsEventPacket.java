@@ -137,7 +137,7 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
             if(usingTimeout) {
                 return cursorDvs<size&&!timeLimitTimer.isTimedOut();
             } else {
-                while(elementData[cursorDvs].isFilteredOut() && cursorDvs<size) {filteredOutCount++; cursorDvs++;}
+                while(elementData[cursorDvs].isFilteredOut() && cursorDvs<size) {filteredOutCount++; cursorDvs++;} // TODO: can return filteredOut event if it is the last one in the packet
                 return cursorDvs<size;
             }
         }
