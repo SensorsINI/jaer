@@ -4,6 +4,7 @@
 
 package net.sf.jaer.eventprocessing.label;
 
+import eu.seebetter.ini.chips.sbret10.IMUSample;
 import net.sf.jaer.event.orientation.DvsOrientationEvent;
 import net.sf.jaer.event.orientation.BinocularOrientationEvent;
 import net.sf.jaer.event.orientation.OrientationEventInterface;
@@ -12,6 +13,8 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.event.orientation.ApsDvsOrientationEvent;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 
 /** Computes simple-type orientation-tuned cells.                           <br>
  * <ul>
@@ -81,6 +84,9 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
         if ( inputClass == PolarityEvent.class) {
             isBinocular = false;
             checkOutputPacketEventType(DvsOrientationEvent.class);
+        } else if ( inputClass == ApsDvsEvent.class) {
+            isBinocular = false;
+            checkOutputPacketEventType(ApsDvsOrientationEvent.class);
         } else if( inputClass == BinocularEvent.class ) {
             isBinocular = true;
             checkOutputPacketEventType(BinocularOrientationEvent.class);
@@ -105,7 +111,14 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
         for ( Object ein:in ){
             PolarityEvent e = (PolarityEvent)ein;
             
-            if(e.isSpecial())continue;
+            if(e.isSpecial() || (e instanceof IMUSample && ((IMUSample)e).imuSampleEvent)){
+                continue;
+            }
+            
+            if(e.isFilteredOut()){
+                log.warning("should not see this filteredOut event here: "+e.toString());
+                continue;
+            }
             
             int    x = e.x >>> subSampleShift;
             int    y = e.y >>> subSampleShift;
@@ -126,6 +139,12 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
             if ( eye == 1 ){
                 type = type << 1;
             }
+            
+            if(x<0||y<0||type<0){
+                log.warning("negative coordinate for event "+e.toString());
+                continue;
+            }
+            
             lastTimesMap[x][y][type] = e.timestamp;
 
             // For each orientation and position in the receptive field compute
