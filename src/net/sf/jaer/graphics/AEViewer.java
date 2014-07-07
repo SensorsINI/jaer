@@ -1267,39 +1267,45 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 		setTitleAccordingToState();
 	}
 
-	/** If the AEViewer is playing (or has played) a file, then this method returns it.
-    @return the File
-    @see PlayMode
-	 */
-	public File getCurrentFile() {
-		return currentFile;
-	}
+    /**
+     * If the AEViewer is playing (or has played) a file, then this method
+     * returns it.
+     *
+     * @return the File
+     * @see PlayMode
+     */
+    public File getCurrentFile() {
+        return currentFile;
+    }
 
+    /** Builds the interface menu. Synchronized to avoid clashing with ViewLoop.run() method that is also trying to open devices.
+     * 
+     */
+    synchronized private void buildInterfaceMenu() {
+        buildInterfaceMenu(interfaceMenu);
+    }
 
-
-
-
-	private synchronized void buildInterfaceMenu()
-	{
-		buildInterfaceMenu(interfaceMenu);
-	}
-
-	/** Builds list of attached hardware interfaces by asking the
-	 * hardware interface factories for the interfaces. Populates the Interface menu with these items,
-    and with a "None" item to close and set the chip's HardwareInterface to null.
-	 * Various specialized interfaces customize the code below.
-	 */
-	synchronized void buildInterfaceMenu(JMenu interfaceMenu) {
-		ButtonGroup bg = new ButtonGroup();
-		interfaceMenu.removeAll();
+    /**
+     * Builds list of attached hardware interfaces by asking the hardware
+     * interface factories for the interfaces. Populates the Interface menu with
+     * these items, and with a "None" item to close and set the chip's
+     * HardwareInterface to null. Various specialized interfaces customize the
+     * code below.
+     */
+    public void buildInterfaceMenu(JMenu interfaceMenu) {
+        ButtonGroup bg = new ButtonGroup();
+        interfaceMenu.removeAll();
 
 		//create a list of available hardware interfaces from enumerated devices
+                log.info("finding number of available interfaces");
 		int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable(); // TODO this rebuilds the entire list of hardware
 		//        StringBuilder sb = new StringBuilder("adding menu items for ").append(Integer.toString(n)).append(" interfaces");
+//                log.info("found "+n+" interfaces");
 		boolean choseOneButton = false;
 		JRadioButtonMenuItem interfaceButton = null;
 		for (int i = 0; i < n; i++) {
 			HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(i);
+//                        log.info("found device "+hw);
 			if (hw == null) {
 				continue;
 			} // in case it disappeared
@@ -5399,7 +5405,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_newViewerMenuItemActionPerformed
 
 	private void interfaceMenuMenuSelected(javax.swing.event.MenuEvent evt) {//GEN-FIRST:event_interfaceMenuMenuSelected
-		buildInterfaceMenu();
+            try {
+                setCursor(new Cursor(Cursor.WAIT_CURSOR));
+                buildInterfaceMenu();
+            } finally {
+                setCursor(Cursor.getDefaultCursor());
+            }
 	}//GEN-LAST:event_interfaceMenuMenuSelected
 
     private void clearMarksMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearMarksMIActionPerformed
