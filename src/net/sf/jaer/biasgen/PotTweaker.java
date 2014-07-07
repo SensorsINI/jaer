@@ -106,6 +106,7 @@ public class PotTweaker extends javax.swing.JPanel implements Observer,ChangeLis
         labelTable.put(100,new JLabel(moreDescription));
         labelTable.put(50,new JLabel("Nominal"));
         slider.setLabelTable(labelTable);
+        slider.setPaintLabels(true);
     }
 
     private void reset(){
@@ -186,7 +187,6 @@ public class PotTweaker extends javax.swing.JPanel implements Observer,ChangeLis
         slider.setMinorTickSpacing(10);
         slider.setPaintTicks(true);
         slider.setToolTipText("slide to tweak pot value around the preference value");
-        slider.setValue(50);
         slider.setMinimumSize(new java.awt.Dimension(30, 7));
         slider.setPreferredSize(new java.awt.Dimension(100, 20));
         slider.addMouseListener(new java.awt.event.MouseAdapter() {
