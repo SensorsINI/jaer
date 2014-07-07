@@ -77,6 +77,7 @@ public class UDPInterfaceFactory implements HardwareInterfaceFactoryInterface {
     }
 
     private void buildUdpIoList(){
+        long startTime=System.nanoTime();
         try {
             DatagramSocket socket = new DatagramSocket(SmartEyeTDS.STREAM_PORT);
             socket.setReuseAddress(true);
@@ -101,9 +102,12 @@ public class UDPInterfaceFactory implements HardwareInterfaceFactoryInterface {
         } catch (SocketException ex) {
             //TODO:ugly exception handling
         }
+        long totalTimeNs=System.nanoTime()-startTime;
+//        log.info(String.format("It required %.3fs to find %d UDP interfaces",1e-9f*totalTimeNs,availableInterfaces.size()));
     }
 
-    /** @return the number of compatible monitor/sequencer attached to the driver
+    /** Computes and then returns number of interfaces available. Takes macroscopic time for datagram sockets to time out.
+     * @return the number of compatible monitor/sequencer attached to the driver
      */
     @Override
     synchronized public int getNumInterfacesAvailable() {
