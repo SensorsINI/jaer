@@ -59,14 +59,10 @@ import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import javax.swing.AbstractButton;
-import javax.swing.ButtonGroup;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
-import javax.swing.JRadioButtonMenuItem;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2DVS128HardwareInterface;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasLEDControl;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
 import net.sf.jaer.util.HexString;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
@@ -81,7 +77,7 @@ import net.sf.jaer.util.WarningDialogWithDontShowPreference;
  * @author tobi
  */
 @Description("Binaural AER silicon cochlea with 64 channels and 8 ganglion cells of two types per channel with many fixes to CochleaAMS1b")
-public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer {
+public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSyncEventOutput {
 
     final GLUT glut = new GLUT();
     /** Samples from ADC on CochleaAMS1c PCB */
@@ -93,6 +89,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer {
     /** Creates a new instance of CochleaAMSWithBiasgen */
     public CochleaAMS1c() {
         super();
+        addObserver(this); // we observe ourselves so that when AEViewer adds this chip it can call us back by notifying observers of the chip
         setBiasgen((ams1cbiasgen = new CochleaAMS1c.Biasgen(this)));
         getCanvas().setBorderSpacePixels(40);
         setEventExtractor(new CochleaAMS1c.Extractor(this));
@@ -215,30 +212,22 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer {
      * @param arg the argument (e.g. the HardwareInterface).
      */
     @Override
-	public void update(Observable o, Object arg) {
-        if ((o instanceof AEChip) && (getHardwareInterface() == null)) {
+    public void update(Observable o, Object arg) {
+        if ((o instanceof AEChip) && (o instanceof HasSyncEventOutput)) {
             // if hw interface is not correct type then disable menu items
             if (syncEnabledMenuItem != null) {
                 syncEnabledMenuItem.setEnabled(false);
             }
         } else {
-            if (!(getHardwareInterface() instanceof HasSyncEventOutput)) {
-                if (syncEnabledMenuItem != null) {
-                    syncEnabledMenuItem.setEnabled(false);
-                }
-            } else {
                 syncEnabledMenuItem.setEnabled(true);
-                HasSyncEventOutput hasSync = (HasSyncEventOutput) getHardwareInterface();
-                syncEnabledMenuItem.setSelected(hasSync.isSyncEventEnabled());
-                if (!hasSync.isSyncEventEnabled()) {
+                syncEnabledMenuItem.setSelected(isSyncEventEnabled());
+                if (!isSyncEventEnabled()) {
                     WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(null, false, "Timestamps disabled",
                             "<html>Timestamps may not advance if you are using the DVS128 as a standalone camera. <br>Use CochleaAMS/Timestamp master / Enable sync event output to enable them.");
                     d.setVisible(true);
-                }
             }
-                               // show warning dialog (which can be suppressed) about this setting if special disabled and we are the only camera, since
+            // show warning dialog (which can be suppressed) about this setting if special disabled and we are the only device, since
             // timestamps will not advance in this case
-
         }
     }
 
@@ -272,7 +261,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer {
         help2=getAeViewer().addHelpURLItem("https://svn.ini.uzh.ch/repos/tobi/cochlea/pcbs/CochleaAMS1c_USB/0_README_CochleaAMS1c.pdf", "CochleaAMS1c README", "README file for CochleaAMS1c");
      }
 
-   /**
+    /**
      * Enables or disable DVS128 menu in AEViewer
      *
      * @param yes true to enable it
@@ -288,29 +277,19 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer {
             if (syncEnabledMenuItem == null) {
                 syncEnabledMenuItem = new JCheckBoxMenuItem("Timestamp master / Enable sync event input");
                 syncEnabledMenuItem.setToolTipText("<html>Sets this device as timestamp master and enables sync event generation on external IN pin falling edges (disables slave clock input).<br>Falling edges inject special sync events with bitmask " + HexString.toString(CypressFX2DVS128HardwareInterface.SYNC_EVENT_BITMASK) + " set<br>These events are not rendered but are logged and can be used to synchronize an external signal to the recorded data.<br>If you are only using one camera, enable this option.<br>If you want to synchronize two DVS128, disable this option in one of the cameras and connect the OUT pin of the master to the IN pin of the slave and also connect the two GND pins.");
-                HasSyncEventOutput h = (HasSyncEventOutput) getHardwareInterface();
 
                 syncEnabledMenuItem.addActionListener(new ActionListener() {
 
                     @Override
-					public void actionPerformed(ActionEvent evt) {
+                    public void actionPerformed(ActionEvent evt) {
                         HardwareInterface hw = getHardwareInterface();
-                       if(hw==null){
-                            log.warning("null hardware interface");
-                            return;
-                        }
-                        if (!(hw instanceof HasSyncEventOutput)) {
-                            log.warning("cannot change sync enabled state of " + hw + " (class " + hw.getClass() + "), interface doesn't implement HasSyncEventOutput");
-                            return;
-                        }
                         log.info("setting sync enabled");
-                        ((HasSyncEventOutput) hw).setSyncEventEnabled(((AbstractButton) evt.getSource()).isSelected());
+                        setSyncEventEnabled(((AbstractButton) evt.getSource()).isSelected());
                     }
                 });
                 thisChipMenu.add(syncEnabledMenuItem);
             }
 
-         
             if (getAeViewer() != null) {
                 getAeViewer().setMenu(thisChipMenu);
             }
@@ -425,7 +404,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer {
 
 
 
-    public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements net.sf.jaer.biasgen.ChipControlPanel {
+    public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements net.sf.jaer.biasgen.ChipControlPanel, net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput {
 
         private final short ADC_CONFIG = (short) 0x100;   //normal power mode, single ended, sequencer unused : (short) 0x908;
         private OnChipPreamp onchipPreamp;
@@ -447,7 +426,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer {
         // portA
         private PortBit hostResetTimestamps = new PortBit("a7", "hostResetTimestamps", "High to reset timestamps", false),
                 runAERComm = new PortBit("a3", "runAERComm", "High to run CPLD state machine (send events)- also controls CPLDLED2", true);
-//                timestampMaster = new PortBit("a1", "timestampMaster", "Higher to make this the master AER timing source"); // output from CPLD to signify it is the master
+        private PortBit timestampMasterExternalInputEventsEnabled = new PortBit("a1", "timestampMasterExternalInputEventsEnabled", "High makes this device a timestamp master and enables external input events on the sync IN pin low-going edges. Low makes this device a timestamp slave device.", true);
         // portC
         private PortBit runAdc = new PortBit("c0", "runAdc", "High to run ADC", true);
         // portD
@@ -456,6 +435,16 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer {
         // portE
         // tobi changed config bits on rev1 board since e3/4 control maxim mic preamp attack/release and gain now
         private PortBit cochleaBitLatch = new PortBit("e1", "cochleaBitLatch", "The latch signal for the cochlea address and data SRs; 0 to make latches transparent.", true);
+
+        @Override
+        public void setSyncEventEnabled(boolean yes) {
+            timestampMasterExternalInputEventsEnabled.set(yes);
+        }
+
+        @Override
+        public boolean isSyncEventEnabled() {
+            return timestampMasterExternalInputEventsEnabled.isSet();
+        }
 
         private class PowerDownBit extends PortBit implements Observer {
 
@@ -694,6 +683,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer {
             return offchipPreampARRatio.getArRatio();
         }
 
+  
+        
         @Override
         final public void loadPreferences() {
             super.loadPreferences();
@@ -942,6 +933,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer {
                 update(c, null);
             }
             sendCPLDConfig();
+            
 
         }
 
@@ -2291,6 +2283,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer {
                 return gainkey + "." + ear.toString();
             }
         }// offchip preamp
+        
+        
     } // biasgen
 
     /** Enum for on-chip preamp gain values */
@@ -2502,4 +2496,16 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer {
             return this == Tristate.HiZ;
         }
     }
+
+    public void setSyncEventEnabled(boolean yes) {
+        ams1cbiasgen.setSyncEventEnabled(yes);
+    }
+
+    public boolean isSyncEventEnabled() {
+        return ams1cbiasgen.isSyncEventEnabled();
+    }
+    
+    
+    
+    
 }
