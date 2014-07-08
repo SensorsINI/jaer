@@ -172,6 +172,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         fileMenu = new javax.swing.JMenu();
         loadMenuItem = new javax.swing.JMenuItem();
         saveAsMenuItem = new javax.swing.JMenuItem();
+        prefsEditorMenuItem = new javax.swing.JMenuItem();
         jSeparator2 = new javax.swing.JSeparator();
         exitMenuItem = new javax.swing.JMenuItem();
         viewMenu = new javax.swing.JMenu();
@@ -194,18 +195,15 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         setTitle("FilterControl");
         setMinimumSize(new java.awt.Dimension(150, 37));
         addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override
-			public void windowClosed(java.awt.event.WindowEvent evt) {
+            public void windowClosed(java.awt.event.WindowEvent evt) {
                 formWindowClosed(evt);
             }
         });
         addComponentListener(new java.awt.event.ComponentAdapter() {
-            @Override
-			public void componentMoved(java.awt.event.ComponentEvent evt) {
+            public void componentMoved(java.awt.event.ComponentEvent evt) {
                 formComponentMoved(evt);
             }
-            @Override
-			public void componentResized(java.awt.event.ComponentEvent evt) {
+            public void componentResized(java.awt.event.ComponentEvent evt) {
                 formComponentResized(evt);
             }
         });
@@ -213,8 +211,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         disableFilteringToggleButton.setText("Disable Filters");
         disableFilteringToggleButton.setToolTipText("Temporarily disables all filters");
         disableFilteringToggleButton.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 disableFilteringToggleButtonActionPerformed(evt);
             }
         });
@@ -229,8 +226,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         updateIntervalField.setToolTipText("Sets the maximum update interval for filters that notify observers");
         updateIntervalField.setMaximumSize(new java.awt.Dimension(50, 2147483647));
         updateIntervalField.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 updateIntervalFieldActionPerformed(evt);
             }
         });
@@ -244,8 +240,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         jbuttonSelectFilt.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
         jbuttonSelectFilt.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
         jbuttonSelectFilt.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jbuttonSelectFiltActionPerformed(evt);
             }
         });
@@ -269,8 +264,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         loadMenuItem.setMnemonic('l');
         loadMenuItem.setText("Load settings...");
         loadMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 loadMenuItemActionPerformed(evt);
             }
         });
@@ -278,20 +272,25 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
         saveAsMenuItem.setText("Save settings as...");
         saveAsMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 saveAsMenuItemActionPerformed(evt);
             }
         });
         fileMenu.add(saveAsMenuItem);
 
+        prefsEditorMenuItem.setText("Run Java preferences editor");
+        prefsEditorMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                prefsEditorMenuItemActionPerformed(evt);
+            }
+        });
+        fileMenu.add(prefsEditorMenuItem);
         fileMenu.add(jSeparator2);
 
         exitMenuItem.setMnemonic('x');
         exitMenuItem.setText("Exit");
         exitMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 exitMenuItemActionPerformed(evt);
             }
         });
@@ -306,8 +305,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         customizeMenuItem.setText("Select Filters...");
         customizeMenuItem.setToolTipText("Choose the filters you want to see");
         customizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 customizeMenuItemActionPerformed(evt);
             }
         });
@@ -318,14 +316,11 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         modeMenu.setMnemonic('o');
         modeMenu.setText("Options");
         modeMenu.addMenuListener(new javax.swing.event.MenuListener() {
-            @Override
-			public void menuCanceled(javax.swing.event.MenuEvent evt) {
+            public void menuCanceled(javax.swing.event.MenuEvent evt) {
             }
-            @Override
-			public void menuDeselected(javax.swing.event.MenuEvent evt) {
+            public void menuDeselected(javax.swing.event.MenuEvent evt) {
             }
-            @Override
-			public void menuSelected(javax.swing.event.MenuEvent evt) {
+            public void menuSelected(javax.swing.event.MenuEvent evt) {
                 modeMenuMenuSelected(evt);
             }
         });
@@ -336,8 +331,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         renderingModeMenuItem.setText("Process on rendering cycle");
         renderingModeMenuItem.setToolTipText("Process events on rendering cycle");
         renderingModeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 renderingModeMenuItemActionPerformed(evt);
             }
         });
@@ -348,8 +342,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         acquisitionModeMenuItem.setText("Process on acqusition cycle");
         acquisitionModeMenuItem.setToolTipText("Process events on hardware data acquisition cycle");
         acquisitionModeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 acquisitionModeMenuItemActionPerformed(evt);
             }
         });
@@ -358,10 +351,9 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
         measurePerformanceCheckBoxMenuItem.setMnemonic('p');
         measurePerformanceCheckBoxMenuItem.setText("Measure filter performance");
-        measurePerformanceCheckBoxMenuItem.setToolTipText("Enables instrumentation of filter performance");
+        measurePerformanceCheckBoxMenuItem.setToolTipText("Enables instrumentation of filter performance. Filter processing time statistics are printed to System.out. They appear in netbeans IDE console, for example, but not in built-in jAER console, which does not show System.out.");
         measurePerformanceCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 measurePerformanceCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -371,8 +363,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         resetPerformanceMeasurementMI.setText("Reset performance measurement statistics");
         resetPerformanceMeasurementMI.setToolTipText("Resets the statsitics after next processing cycle");
         resetPerformanceMeasurementMI.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 resetPerformanceMeasurementMIActionPerformed(evt);
             }
         });
@@ -384,8 +375,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         limitTimeCheckBoxMenuItem.setText("Limit processing time");
         limitTimeCheckBoxMenuItem.setToolTipText("Filters that implement limiting will be aborted if they take too longer than the limit time");
         limitTimeCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 limitTimeCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -393,8 +383,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
         setTimeLimitMenuItem.setText(getTimeLimitMenuItemText());
         setTimeLimitMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 setTimeLimitMenuItemActionPerformed(evt);
             }
         });
@@ -404,8 +393,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         restoreFilterEnabledStateCheckBoxMenuItem.setText("Restore filter enabled state");
         restoreFilterEnabledStateCheckBoxMenuItem.setToolTipText("If enabled, filter enabled state is restored on startup");
         restoreFilterEnabledStateCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 restoreFilterEnabledStateCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -418,8 +406,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
         jaerFilterHelpMI.setText("Go to jAER wiki Filter page");
         jaerFilterHelpMI.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jaerFilterHelpMIActionPerformed(evt);
             }
         });
@@ -800,6 +787,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private javax.swing.JCheckBoxMenuItem measurePerformanceCheckBoxMenuItem;
     private javax.swing.ButtonGroup modeButtonGroup;
     private javax.swing.JMenu modeMenu;
+    private javax.swing.JMenuItem prefsEditorMenuItem;
     private javax.swing.JRadioButtonMenuItem renderingModeMenuItem;
     private javax.swing.JMenuItem resetPerformanceMeasurementMI;
     private javax.swing.JCheckBoxMenuItem restoreFilterEnabledStateCheckBoxMenuItem;

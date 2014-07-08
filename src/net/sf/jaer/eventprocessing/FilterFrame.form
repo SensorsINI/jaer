@@ -110,7 +110,7 @@
               <Properties>
                 <Property name="mnemonic" type="int" value="112"/>
                 <Property name="text" type="java.lang.String" value="Measure filter performance"/>
-                <Property name="toolTipText" type="java.lang.String" value="Enables instrumentation of filter performance"/>
+                <Property name="toolTipText" type="java.lang.String" value="Enables instrumentation of filter performance. Filter processing time statistics are printed to System.out. They appear in netbeans IDE console, for example, but not in built-in jAER console, which does not show System.out."/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="measurePerformanceCheckBoxMenuItemActionPerformed"/>
