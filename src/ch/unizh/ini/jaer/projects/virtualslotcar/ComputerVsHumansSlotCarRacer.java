@@ -11,13 +11,13 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**
- * Races computer vs human on slot car track.
+ * Races computer vs humans on slot car track.
  * 
  * @author tobi
  */
-public class ComputerVsHumanSlotCarRacer extends EventFilter2D{
+public class ComputerVsHumansSlotCarRacer extends EventFilter2D{
 
-    public ComputerVsHumanSlotCarRacer(AEChip chip) {
+    public ComputerVsHumansSlotCarRacer(AEChip chip) {
         super(chip);
         setPropertyTooltip("defineHumanTrack", "define the human controlled track by enabling the human TrackHistogramFilter");
     }

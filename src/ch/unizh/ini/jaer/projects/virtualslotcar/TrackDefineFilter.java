@@ -77,6 +77,7 @@ public class TrackDefineFilter extends EventFilter2D implements FrameAnnotater, 
     int numY;
     int numPix;
     // Histogram data
+    private TrackHistogramFilter trackHistogramFilter=new TrackHistogramFilter(chip);
     private float[][] pixData = null;
     // Total sum of histogram points
     float totalSum;

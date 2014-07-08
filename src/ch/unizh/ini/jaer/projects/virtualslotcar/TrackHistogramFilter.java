@@ -10,6 +10,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.Arrays;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
@@ -22,8 +23,6 @@ import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.util.DATFileFilter;
-import net.sf.jaer.util.IndexFileFilter;
 
 /**
  * Allows accumulating a histogram of active pixels during practice rounds of a
@@ -32,15 +31,19 @@ import net.sf.jaer.util.IndexFileFilter;
  *
  * @author tobi
  */
-public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotater {
+public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotater, Serializable {
 
-    private int[][] histogram = null;
+    private static final long serialVersionUID = 8749822155491049760L; // tobi randomly defined
+    private int[][] histogram = null;  // first dim is X, 2nd is Y
     private boolean collect = false;
     private float threshold = getFloat("threshold", 0.5f);
     private int histmax = 0;
     private static final String HISTOGRAM_FILE_NAME = "trackhistogram.dat";
     private boolean showHistogram = getBoolean("showHistogram", false);
-
+    private int numX=0, numY=0, numPix=0;
+    private int erosionSize = getInt("erosionSize", 1);
+    private int totalSum; // sum of histogram values
+ 
     public TrackHistogramFilter(AEChip chip) {
         super(chip);
         setEnclosedFilter(new BackgroundActivityFilter(chip));
@@ -53,6 +56,7 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
         setPropertyTooltip("saveHistogram", "saves current histogram to the fixed filename " + HISTOGRAM_FILE_NAME);
         setPropertyTooltip("loadHistogram", "loads histogram from the fixed filename " + HISTOGRAM_FILE_NAME);
         setPropertyTooltip("collectHistogram", "turns on histogram accumulation");
+        setPropertyTooltip("erosionSize", "Amount in pixels to erode histogram bitmap on erode operation");
     }
 
     @Override
@@ -67,6 +71,7 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
             }
             if (isCollect()) {
                 histogram[e.x][e.y]++;
+                totalSum++;
                 if (histogram[e.x][e.y] > max) {
                     max = histogram[e.x][e.y];
                 }
@@ -87,11 +92,12 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
 
     synchronized public void doClearHistogram() {
         if (histogram != null) {
-            for (int i = 0; i < histogram.length; i++) {
+            for (int i = 0; i < numX; i++) {
                 Arrays.fill(histogram[i], 0);
             }
         }
         setHistmax(0);
+        totalSum=0;
     }
 
     synchronized public void doCollectHistogram() {
@@ -205,8 +211,11 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
     }
 
     private void checkHistogram() {
-        if (histogram == null || histogram.length != getChip().getSizeX() || histogram[0].length != getChip().getSizeY()) {
-            histogram = new int[chip.getSizeX()][chip.getSizeY()];
+        if (histogram == null || numX != getChip().getSizeX() || numY != getChip().getSizeY()) {
+            numX=chip.getSizeX();
+            numY=chip.getSizeY();
+       numPix = numX * numY;
+           histogram = new int[numY][numX];
         }
     }
 
@@ -271,5 +280,72 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
         this.showHistogram = showHistogram;
         putBoolean("showHistogram", showHistogram);
     }
+    
+        // Morphological erosion of track histogram
+    private boolean[][] erode() {
+        boolean[][] bitmap = new boolean[numX][numY];
+        int erSize = getErosionSize();
+        if (erSize <= 0) {
+            // Return original image
+            for (int i = 0; i < numX; i++) {
+                for (int j = 0; j < numY; j++) {
+                    if ((histogram[i][j] * numX*numY / totalSum) > threshold) {
+                        bitmap[i][j] = true;
+                    } else {
+                        bitmap[i][j] = false;
+                    }
+                }
+            }
+            return bitmap;
+        }
+
+
+        for (int i = 0; i < numY; i++) {
+            for (int j = 0; j < numX; j++) {
+                boolean keep = true;
+                for (int k = -erSize; k <= erSize; k++) {
+                    for (int l = -erSize; l <= erSize; l++) {
+                        int pixY = clip(i + k, numY - 1); // limit to size-1 to avoid arrayoutofbounds exceptions
+                        int pixX = clip(j + l, numX - 1);
+                        if ((histogram[pixY][pixX] * numPix / totalSum) < threshold) {
+                            keep = false;
+                            break;
+                        }
+                    }
+                    if (keep == false) {
+                        break;
+                    }
+                }
+                bitmap[i][j] = keep;
+            }
+        }
+
+        return bitmap;
+    }
+
+      private int clip(int val, int limit) {
+        if (val >= limit && limit != 0) {
+            return limit;
+        } else if (val < 0) {
+            return 0;
+        }
+        return val;
+    }
+
+    /**
+     * @return the erosionSize
+     */
+    public int getErosionSize() {
+        return erosionSize;
+    }
+
+    /**
+     * @param erosionSize the erosionSize to set
+     */
+    public void setErosionSize(int erosionSize) {
+        this.erosionSize = erosionSize;
+        putInt("erosionSize",erosionSize);
+    }
+
 
 }
