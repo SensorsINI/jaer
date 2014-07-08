@@ -66,6 +66,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         chip.setFilterFrame(this);
         setName("FilterFrame");
         initComponents();
+        fileMenu.remove(prefsEditorMenuItem); // TODO tobi hack to work around leftover item in form that was edited outside of netbeans
         rebuildContents();
         scrollPane.getVerticalScrollBar().setUnitIncrement(16); // from http://stackoverflow.com/questions/5583495/how-do-i-speed-up-the-scroll-speed-in-a-jscrollpane-when-using-the-mouse-wheel
         setRestoreFilterEnabledStateEnabled(prefs.getBoolean("FilterFrame.restoreFilterEnabledStateEnabled", true)); // sets the menu item state
@@ -150,6 +151,10 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         return String.format("Set time limit. (Currently %d ms)", filterChain.getTimeLimitMs());
     }
 
+    private void prefsEditorMenuItemActionPerformed(ActionEvent evt){
+        // only added to handle leftover prefs editor that was removed by Luca without removing from netbeans FORM
+    }
+    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -277,7 +282,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             }
         });
         fileMenu.add(saveAsMenuItem);
-
         prefsEditorMenuItem.setText("Run Java preferences editor");
         prefsEditorMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
