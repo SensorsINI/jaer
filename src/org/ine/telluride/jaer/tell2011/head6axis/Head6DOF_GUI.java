@@ -17,9 +17,11 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.IOException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
-
 import javax.swing.JPanel;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
  * Allows mouse control of head.
@@ -53,9 +55,14 @@ public class Head6DOF_GUI extends javax.swing.JFrame implements PropertyChangeLi
         eyePanel = new javax.swing.JPanel();
         vergenceSlider = new javax.swing.JSlider();
         headPanel = new javax.swing.JPanel();
+        jPanel1 = new javax.swing.JPanel();
+        txtCommand = new javax.swing.JTextField();
+        labelCommand = new javax.swing.JLabel();
+        btnExecuteCommand = new javax.swing.JButton();
+        labelCaution = new javax.swing.JLabel();
+        txtareaPossibleCommands = new javax.swing.JTextArea();
 
         setTitle("HeadControl");
-        getContentPane().setLayout(new javax.swing.BoxLayout(getContentPane(), javax.swing.BoxLayout.Y_AXIS));
 
         eyePanel.setBackground(new java.awt.Color(255, 255, 255));
         eyePanel.setBorder(javax.swing.BorderFactory.createTitledBorder("eye direction"));
@@ -74,22 +81,20 @@ public class Head6DOF_GUI extends javax.swing.JFrame implements PropertyChangeLi
         eyePanel.setLayout(eyePanelLayout);
         eyePanelLayout.setHorizontalGroup(
             eyePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 388, Short.MAX_VALUE)
+            .addGap(0, 0, Short.MAX_VALUE)
         );
         eyePanelLayout.setVerticalGroup(
             eyePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 111, Short.MAX_VALUE)
+            .addGap(0, 161, Short.MAX_VALUE)
         );
 
-        getContentPane().add(eyePanel);
-
         vergenceSlider.setToolTipText("vergence");
+        vergenceSlider.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
         vergenceSlider.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 vergenceSliderStateChanged(evt);
             }
         });
-        getContentPane().add(vergenceSlider);
 
         headPanel.setBackground(new java.awt.Color(255, 255, 255));
         headPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("head direction"));
@@ -103,14 +108,100 @@ public class Head6DOF_GUI extends javax.swing.JFrame implements PropertyChangeLi
         headPanel.setLayout(headPanelLayout);
         headPanelLayout.setHorizontalGroup(
             headPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 388, Short.MAX_VALUE)
+            .addGap(0, 0, Short.MAX_VALUE)
         );
         headPanelLayout.setVerticalGroup(
             headPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 111, Short.MAX_VALUE)
+            .addGap(0, 161, Short.MAX_VALUE)
         );
 
-        getContentPane().add(headPanel);
+        txtCommand.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtCommandActionPerformed(evt);
+            }
+        });
+
+        labelCommand.setText("Command:");
+
+        btnExecuteCommand.setText("Execute Command");
+        btnExecuteCommand.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnExecuteCommandActionPerformed(evt);
+            }
+        });
+
+        labelCaution.setText("CAUTION: Not protected by pan / tilt limits");
+
+        txtareaPossibleCommands.setEditable(false);
+        txtareaPossibleCommands.setBackground(new java.awt.Color(240, 240, 240));
+        txtareaPossibleCommands.setColumns(20);
+        txtareaPossibleCommands.setFont(new java.awt.Font("Tahoma", 0, 11)); // NOI18N
+        txtareaPossibleCommands.setRows(5);
+        txtareaPossibleCommands.setText("Possible Commands:\n\nsXsYYYY => sets servo X (0-5) to position YYYY\n\ns0 = Head pan: " + Integer.toString(controller.servoOffsets[0] - 450) + " - "  + Integer.toString(controller.servoOffsets[0] + 450) + "\ns1 = Head tilt: " + Integer.toString(controller.servoOffsets[1] - 450) + " - "  + Integer.toString(controller.servoOffsets[1] + 450) + "\ns2 = Left eye pan: " + Integer.toString(controller.servoOffsets[2] - 450) + " - "  + Integer.toString(controller.servoOffsets[2] + 450) + "\ns3 = Left eye tilt: " + Integer.toString(controller.servoOffsets[3] - 450) + " - "  + Integer.toString(controller.servoOffsets[3] + 450) + "\ns4 = Right eye pan: " + Integer.toString(controller.servoOffsets[4] - 450) + " - "  + Integer.toString(controller.servoOffsets[4] + 450) + "\ns5 = Right eye: " + Integer.toString(controller.servoOffsets[5] - 450) + " - "  + Integer.toString(controller.servoOffsets[5] + 450) + "\n\nwith vergence = 0");
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGap(11, 11, 11)
+                        .addComponent(labelCommand)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(txtCommand, javax.swing.GroupLayout.PREFERRED_SIZE, 61, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(btnExecuteCommand, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addComponent(labelCaution, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                .addGap(24, 24, 24))
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(txtareaPossibleCommands, javax.swing.GroupLayout.PREFERRED_SIZE, 242, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGap(55, 55, 55)
+                .addComponent(labelCaution)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(txtCommand, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(labelCommand)
+                    .addComponent(btnExecuteCommand))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(txtareaPossibleCommands, javax.swing.GroupLayout.PREFERRED_SIZE, 193, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(eyePanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(vergenceSlider, javax.swing.GroupLayout.PREFERRED_SIZE, 381, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(headPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(eyePanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(0, 0, 0)
+                        .addComponent(vergenceSlider, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(0, 0, 0)
+                        .addComponent(headPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(0, 0, Short.MAX_VALUE))
+                    .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap())
+        );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
@@ -144,7 +235,7 @@ public class Head6DOF_GUI extends javax.swing.JFrame implements PropertyChangeLi
         float vergence=vergenceFromSlider();
         try {
             controller.setVergence(vergence);
-        } catch (Exception ex) {
+        } catch (HardwareInterfaceException | IOException ex) {
             log.warning(ex.toString());
         }
     }//GEN-LAST:event_vergenceSliderStateChanged
@@ -158,6 +249,24 @@ public class Head6DOF_GUI extends javax.swing.JFrame implements PropertyChangeLi
             log.warning(ex.toString());
         }
     }//GEN-LAST:event_eyePanelMouseClicked
+
+    private void txtCommandActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtCommandActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_txtCommandActionPerformed
+
+    private void btnExecuteCommandActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnExecuteCommandActionPerformed
+        if (!txtCommand.getText().trim().equals("")) {
+            String cmd = this.txtCommand.getText();
+            try {
+                controller.serialPort.writeLn(cmd);
+                log.info("sending " + this.txtCommand.getText() + " to robot head");
+            } catch (IOException ex) {
+                Logger.getLogger(Head6DOF_GUI.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        } else {
+            log.info("Command textfield is empty");
+        }
+    }//GEN-LAST:event_btnExecuteCommandActionPerformed
 
     private float getPan(MouseEvent evt) {
         int x = evt.getX();
@@ -186,6 +295,10 @@ public class Head6DOF_GUI extends javax.swing.JFrame implements PropertyChangeLi
         p2.setLocation((gaze.x + 1) / 2 * w, h-((gaze.y + 1) / 2 * h)); // y starts from top in AWT, so flip y here
         return p2;
     }
+    
+    public void resetVergenceSlider() {
+        vergenceSlider.setValue((int) (vergenceSlider.getMaximum()-vergenceSlider.getMinimum())/2);
+    }
 
     @Override
     public void paint(Graphics g) {
@@ -205,8 +318,14 @@ public class Head6DOF_GUI extends javax.swing.JFrame implements PropertyChangeLi
 
     }
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton btnExecuteCommand;
     private javax.swing.JPanel eyePanel;
     private javax.swing.JPanel headPanel;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JLabel labelCaution;
+    private javax.swing.JLabel labelCommand;
+    private javax.swing.JTextField txtCommand;
+    private javax.swing.JTextArea txtareaPossibleCommands;
     private javax.swing.JSlider vergenceSlider;
     // End of variables declaration//GEN-END:variables
 
