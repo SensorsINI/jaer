@@ -135,8 +135,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 
 			// Send FPGA shift register for configuration.
 			if (cmd == CMD_CPLD_CONFIG) {
-				((net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3) getHardwareInterface())
-					.sendVendorRequest((byte) 0xC2, (short) 0, (short) 0, bytes);
+				// DO NOTHING.
 			}
 
 			// Send single port changes (control signals on/off).

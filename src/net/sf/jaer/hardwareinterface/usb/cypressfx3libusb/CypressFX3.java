@@ -1269,6 +1269,32 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		sendVendorRequest(CypressFX3.VENDOR_REQUEST_DATA_TRANSFER, (short) 1, (short) 0);
 
+		byte[] configBytes = new byte[6];
+
+		configBytes[0] = 0x01;
+		configBytes[1] = 0x01;
+		configBytes[2] = 0x00;
+		configBytes[3] = 0x00;
+		configBytes[4] = 0x00;
+		configBytes[5] = 0x01;
+		sendVendorRequest((byte) 0xC2, (short) 0x00, (short) 0x00, configBytes);
+
+		configBytes[0] = 0x01;
+		configBytes[1] = 0x02;
+		configBytes[2] = 0x00;
+		configBytes[3] = 0x00;
+		configBytes[4] = 0x00;
+		configBytes[5] = 0x01;
+		sendVendorRequest((byte) 0xC2, (short) 0x00, (short) 0x00, configBytes);
+
+		configBytes[0] = 0x02;
+		configBytes[1] = 0x01;
+		configBytes[2] = 0x00;
+		configBytes[3] = 0x00;
+		configBytes[4] = 0x00;
+		configBytes[5] = 0x01;
+		sendVendorRequest((byte) 0xC2, (short) 0x00, (short) 0x00, configBytes);
+
 		inEndpointEnabled = true;
 	}
 
@@ -1279,6 +1305,32 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 */
 	protected synchronized void disableINEndpoint() {
 		try {
+			byte[] configBytes = new byte[6];
+
+			configBytes[0] = 0x02;
+			configBytes[1] = 0x01;
+			configBytes[2] = 0x00;
+			configBytes[3] = 0x00;
+			configBytes[4] = 0x00;
+			configBytes[5] = 0x00;
+			sendVendorRequest((byte) 0xC2, (short) 0x00, (short) 0x00, configBytes);
+
+			configBytes[0] = 0x01;
+			configBytes[1] = 0x02;
+			configBytes[2] = 0x00;
+			configBytes[3] = 0x00;
+			configBytes[4] = 0x00;
+			configBytes[5] = 0x00;
+			sendVendorRequest((byte) 0xC2, (short) 0x00, (short) 0x00, configBytes);
+
+			configBytes[0] = 0x01;
+			configBytes[1] = 0x01;
+			configBytes[2] = 0x00;
+			configBytes[3] = 0x00;
+			configBytes[4] = 0x00;
+			configBytes[5] = 0x00;
+			sendVendorRequest((byte) 0xC2, (short) 0x00, (short) 0x00, configBytes);
+
 			sendVendorRequest(CypressFX3.VENDOR_REQUEST_DATA_TRANSFER, (short) 0, (short) 0);
 		}
 		catch (final HardwareInterfaceException e) {
@@ -1563,8 +1615,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 				cycleCounter++;
 
 				synchronized (aePacketRawPool) {
-					if ((transfer.status() == LibUsb.TRANSFER_COMPLETED)
-						|| (transfer.status() == LibUsb.TRANSFER_CANCELLED)) {
+					if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
 						translateEvents(transfer.buffer());
 
 						if ((chip != null) && (chip.getFilterChain() != null)
@@ -1590,8 +1641,10 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 						CypressFX3.log.warning("ProcessAEData: Bytes transferred: " + transfer.actualLength()
 							+ "  Status: " + LibUsb.errorName(transfer.status()));
 
-						monitor.close(); // watch out, this can call
+						if (transfer.status() != LibUsb.TRANSFER_CANCELLED) {
+							monitor.close(); // watch out, this can call
 											// synchronized method
+						}
 					}
 
 					if (timestampsReset) {
