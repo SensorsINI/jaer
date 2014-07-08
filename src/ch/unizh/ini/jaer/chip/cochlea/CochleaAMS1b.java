@@ -1,5 +1,5 @@
 /*
- * CochleaAMSWithBiasgen.java
+ * CochleaAMS1b.java
  *
  * Created on November 7, 2006, 11:29 AM
  *
@@ -11,6 +11,8 @@
  */
 package ch.unizh.ini.jaer.chip.cochlea;
 
+import com.jogamp.opengl.util.gl2.GLUT;
+import java.awt.BorderLayout;
 import java.awt.Graphics2D;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,13 +20,13 @@ import java.util.Iterator;
 import java.util.Observable;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
-
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
+import javax.swing.JComponent;
 import javax.swing.JPanel;
+import javax.swing.JTabbedPane;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-
 import net.sf.jaer.Description;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.biasgen.ChipControlPanel;
@@ -45,8 +47,6 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 
-import com.jogamp.opengl.util.gl2.GLUT;
-
 /**
  * Extends Shih-Chii's AMS cochlea AER chip to
  * add bias generator interface,
@@ -63,7 +63,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 	//    }
 	final GLUT glut = new GLUT();
 
-	/** Creates a new instance of CochleaAMSWithBiasgen */
+	/** Creates a new instance of CochleaAMS1b */
 	public CochleaAMS1b() {
 		super();
 		setBiasgen(new CochleaAMS1b.Biasgen(this));
@@ -196,7 +196,7 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 		 */
 		public Biasgen(Chip chip) {
 			super(chip);
-			setName("CochleaAMSWithBiasgen");
+			setName("CochleaAMS1b");
 			scanner.addObserver(this);
 			equalizer.addObserver(this);
 			bufferIPot.addObserver(this);
@@ -306,18 +306,37 @@ public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
 		@Override
 		public void storePreferences() {
-			super.storePreferences();
 			ipots.storePreferences();
 			vpots.storePreferences();
 			for (HasPreference hp : hasPreferencesList) {
 				hp.storePreference();
 			}
+			super.storePreferences();
 		}
+                
+                JComponent expertTab, basicTab;
 
 		@Override
-		public JPanel buildControlPanel() {
-			CochleaAMS1bControlPanel myControlPanel = new CochleaAMS1bControlPanel(CochleaAMS1b.this);
-			return myControlPanel;
+		public JPanel buildControlPanel() {     //added new control panel for AMS1b, similiar look as DVS128 control panel @philipp
+                    JPanel panel = new JPanel();
+                    panel.setLayout(new BorderLayout());
+                    final JTabbedPane pane = new JTabbedPane();
+                    pane.addTab("Basic controls", basicTab = new CochleaAMS1bBasicPanel(CochleaAMS1b.this));      //creates a new basic (user friendly) panel
+                    pane.addTab("Expert controls", expertTab = new CochleaAMS1bControlPanel(CochleaAMS1b.this));  //creates a new expert panel with all biases
+                    panel.add(pane, BorderLayout.CENTER);
+                    pane.setSelectedIndex(getPrefs().getInt("CochleaAMS1b.selectedBiasgenControlTab", 0));
+                    pane.addMouseListener(new java.awt.event.MouseAdapter() {
+
+                    @Override
+                    public void mouseClicked(java.awt.event.MouseEvent evt) {
+                         getPrefs().putInt("CochleaAMS1b.selectedBiasgenControlTab", pane.getSelectedIndex());
+                    }
+                    });
+
+                    return panel;
+
+		//	CochleaAMS1bControlPanel myControlPanel = new CochleaAMS1bControlPanel(CochleaAMS1b.this);
+		//	return myControlPanel;
 		}
 
 		@Override

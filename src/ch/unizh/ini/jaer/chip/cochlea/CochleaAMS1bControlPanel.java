@@ -34,8 +34,6 @@ import javax.swing.JRadioButton;
 import javax.swing.JSlider;
 import javax.swing.SpinnerNumberModel;
 import net.sf.jaer.biasgen.BiasgenPanel;
-import net.sf.jaer.biasgen.IPot;
-import net.sf.jaer.biasgen.VDAC.VPot;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
@@ -54,36 +52,6 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
     HashMap<Equalizer.EqualizerChannel, EqualizerControls> eqMap = new HashMap<Equalizer.EqualizerChannel, EqualizerControls>();
     HashMap<ConfigBit, AbstractButton> configBitMap = new HashMap<ConfigBit, AbstractButton>();
     HashMap<TriStateableConfigBit, TristateableConfigBitButtons> tristateableButtonsMap = new HashMap();
-    final IPot Vbias1;
-    final IPot Vbias2;
-    final VPot Vq;
-    final VPot NeuronVLeak;
-    final VPot Vgain;
-    final float Vbias1_MIN = 192976;      //the desired MIN and MAX bit value for each bias
-    final float Vbias1_MAX = 1206109;
-    final float Vbias2_MIN = 10372;
-    final float Vbias2_MAX = 1255156;
-    final float Vq_MIN = 2352;
-    final float Vq_MAX = 2366;
-    final float NeuronVLeak_MIN = 2107;
-    final float NeuronVLeak_MAX = 2149;
-    final float Vgain_MIN = 2149;
-    final float Vgain_MAX = 2171;
-    final float Vbias1_scale;
-    final float Vbias2_scale;
-    final float Vq_scale;
-    final float NeuronVLeak_scale;
-    final float Vgain_scale;
-
-    private float ScalingFactor(float min, float max, int pref) {   //calculates the scaling factor for the sliders for each bias individually
-        float x;
-        if (pref - min >= max - pref) {                             //ensures that the MIN and MAX value are accessible with the slider; the slider might go over the limit on one end 
-            x = pref / (min - 1);
-        } else {
-            x = (max - 1) / pref;
-        }
-        return x;
-    }
 
     class TristateableConfigBitButtons {
 
@@ -124,16 +92,6 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
         this.chip = chip;
         biasgen = (CochleaAMS1b.Biasgen) chip.getBiasgen();
         initComponents();
-        Vbias1 = (IPot) biasgen.ipots.getPotByName("Vbias1");
-        Vbias1_scale = ScalingFactor(Vbias1_MIN, Vbias1_MAX, Vbias1.getPreferedBitValue());
-        Vbias2 = (IPot) biasgen.ipots.getPotByName("Vbias2");
-        Vbias2_scale = ScalingFactor(Vbias2_MIN, Vbias2_MAX, Vbias2.getPreferedBitValue());
-        Vq = (VPot) biasgen.vpots.getPotByName("Vq");
-        Vq_scale = ScalingFactor(Vq_MIN, Vq_MAX, Vq.getPreferedBitValue());
-        NeuronVLeak = (VPot) biasgen.vpots.getPotByName("NeuronVleak");
-        NeuronVLeak_scale = ScalingFactor(NeuronVLeak_MIN, NeuronVLeak_MAX, NeuronVLeak.getPreferedBitValue());
-        Vgain = (VPot) biasgen.vpots.getPotByName("Vgain");
-        Vgain_scale = ScalingFactor(Vgain_MIN, Vgain_MAX, Vgain.getPreferedBitValue());
         Integer value = new Integer(0);
         Integer min = new Integer(0);
         Integer max = new Integer(biasgen.scanner.nstages - 1);
@@ -474,14 +432,6 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
 
         dacPowerButtonGroup = new javax.swing.ButtonGroup();
         tabbedPane = new javax.swing.JTabbedPane();
-        basicControlsPanel = new javax.swing.JPanel();
-        jLabel1 = new javax.swing.JLabel();
-        Vbias1Tweaker = new net.sf.jaer.biasgen.PotTweaker();
-        Vbias2Tweaker = new net.sf.jaer.biasgen.PotTweaker();
-        VqTweaker = new net.sf.jaer.biasgen.PotTweaker();
-        NeuronVLeakTweaker = new net.sf.jaer.biasgen.PotTweaker();
-        VgainTweaker = new net.sf.jaer.biasgen.PotTweaker();
-        ResetBasic = new javax.swing.JButton();
         onchipBiasgenPanel = new javax.swing.JPanel();
         bufferBiasPanel = new javax.swing.JPanel();
         jLabel3 = new javax.swing.JLabel();
@@ -534,80 +484,6 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
                 tabbedPaneMouseClicked(evt);
             }
         });
-
-        basicControlsPanel.setLayout(new java.awt.GridLayout(0, 1));
-
-        jLabel1.setText("<html>This panel allows \"tweaking\" bias values around the nominal ones loaded from the XML file. Change made here are <b>not</b> permanent until the settings are saved to an XML file. On restart, these new settings will then become the nominal settings.");
-        basicControlsPanel.add(jLabel1);
-
-        Vbias1Tweaker.setLessDescription("");
-        Vbias1Tweaker.setMoreDescription("");
-        Vbias1Tweaker.setName("Vbias1"); // NOI18N
-        Vbias1Tweaker.setTweakDescription("Adjusts the High Frequency cut off");
-        Vbias1Tweaker.addChangeListener(new javax.swing.event.ChangeListener() {
-            public void stateChanged(javax.swing.event.ChangeEvent evt) {
-                Vbias1TweakerStateChanged(evt);
-            }
-        });
-        basicControlsPanel.add(Vbias1Tweaker);
-
-        Vbias2Tweaker.setLessDescription("");
-        Vbias2Tweaker.setMoreDescription("");
-        Vbias2Tweaker.setName("Vbias2"); // NOI18N
-        Vbias2Tweaker.setTweakDescription("Adjusts the Low Frequency cut off");
-        Vbias2Tweaker.addChangeListener(new javax.swing.event.ChangeListener() {
-            public void stateChanged(javax.swing.event.ChangeEvent evt) {
-                Vbias2TweakerStateChanged(evt);
-            }
-        });
-        basicControlsPanel.add(Vbias2Tweaker);
-
-        VqTweaker.setLessDescription("");
-        VqTweaker.setMoreDescription("");
-        VqTweaker.setName("Vq"); // NOI18N
-        VqTweaker.setTweakDescription("Adjusts Q of filter - dependent on Vtau");
-        VqTweaker.addChangeListener(new javax.swing.event.ChangeListener() {
-            public void stateChanged(javax.swing.event.ChangeEvent evt) {
-                VqTweakerStateChanged(evt);
-            }
-        });
-        basicControlsPanel.add(VqTweaker);
-
-        NeuronVLeakTweaker.setLessDescription("");
-        NeuronVLeakTweaker.setMoreDescription("");
-        NeuronVLeakTweaker.setName("NeuronVLeak"); // NOI18N
-        NeuronVLeakTweaker.setTweakDescription("Adjusts leak current to neuron");
-        NeuronVLeakTweaker.addChangeListener(new javax.swing.event.ChangeListener() {
-            public void stateChanged(javax.swing.event.ChangeEvent evt) {
-                NeuronVLeakTweakerStateChanged(evt);
-            }
-        });
-        basicControlsPanel.add(NeuronVLeakTweaker);
-
-        VgainTweaker.setLessDescription("");
-        VgainTweaker.setMoreDescription("");
-        VgainTweaker.setName("Vgain"); // NOI18N
-        VgainTweaker.setTweakDescription("Adjusts input current to neuron");
-        VgainTweaker.addChangeListener(new javax.swing.event.ChangeListener() {
-            public void stateChanged(javax.swing.event.ChangeEvent evt) {
-                VgainTweakerStateChanged(evt);
-            }
-        });
-        basicControlsPanel.add(VgainTweaker);
-
-        ResetBasic.setText("Reset");
-        ResetBasic.setToolTipText("Resets all basic bias changes to the loaded values");
-        ResetBasic.setMaximumSize(new java.awt.Dimension(73, 15));
-        ResetBasic.setMinimumSize(new java.awt.Dimension(73, 15));
-        ResetBasic.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                ResetBasicActionPerformed(evt);
-            }
-        });
-        basicControlsPanel.add(ResetBasic);
-        ResetBasic.getAccessibleContext().setAccessibleDescription("Resets all basic bias changes to the loaded values");
-
-        tabbedPane.addTab("basics", basicControlsPanel);
 
         onchipBiasgenPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("On-chip IPot biases"));
         onchipBiasgenPanel.setToolTipText("Set on-chip IPot values");
@@ -1015,131 +891,9 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
 //        }
 //    }
 }//GEN-LAST:event_formAncestorAdded
-    private float highCutOff = 1, lowCutOff = 1, filterQ = 1, neuronLeak = 1, gain = 1;
 
-    private void Vbias1TweakerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_Vbias1TweakerStateChanged
-        float value = Vbias1Tweaker.getValue();
-        if (value > 1) {
-            value = 1;
-        } else if (value < -1) {
-            value = -1;
-        }
-        float old = highCutOff;
-        if (old == value) {
-            return;
-        }
-        highCutOff = value;
-        //final float MAX = (float) 2.5;
-        float ratio = (float) Math.exp(value * Math.log(Vbias1_scale));
-        Vbias1.changeByRatioFromPreferred(ratio);
-        log.info(Vbias1.toString());
-        setFileModified();
-    }//GEN-LAST:event_Vbias1TweakerStateChanged
-
-    private void Vbias2TweakerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_Vbias2TweakerStateChanged
-        float value = Vbias2Tweaker.getValue();
-        if (value > 1) {
-            value = 1;
-        } else if (value < -1) {
-            value = -1;
-        }
-        float old = lowCutOff;
-        if (old == value) {
-            return;
-        }
-        lowCutOff = value;
-        //final float MAX = 11;
-        float ratio = (float) Math.exp(value * Math.log(Vbias2_scale));
-        Vbias2.changeByRatioFromPreferred(ratio);
-        log.info(Vbias2.toString());
-        setFileModified();
-    }//GEN-LAST:event_Vbias2TweakerStateChanged
-
-    private void VqTweakerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_VqTweakerStateChanged
-        float value = VqTweaker.getValue();
-        if (value > 1) {
-            value = 1;
-        } else if (value < -1) {
-            value = -1;
-        }
-        float old = filterQ;
-        if (old == value) {
-            return;
-        }
-        filterQ = value;
-        //final float MAX = (float) 1.003;
-        float ratio = (float) Math.exp(value * Math.log(Vq_scale));   //Calculation to achieve the same changes as changeByRationFromPreferred; function "changeByRationFromPreferred" not implemented in Pot class
-        ratio = (int) Math.round(Vq.getPreferedBitValue() * ratio);     
-        ratio = ratio + (ratio >= 1 ? 1 : -1);
-        Vq.setBitValue((int) ratio);
-        log.info(Vq.toString());
-        setFileModified();
-    }//GEN-LAST:event_VqTweakerStateChanged
-
-    private void NeuronVLeakTweakerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_NeuronVLeakTweakerStateChanged
-        float value = NeuronVLeakTweaker.getValue();
-        if (value > 1) {
-            value = 1;
-        } else if (value < -1) {
-            value = -1;
-        }
-        float old = neuronLeak;
-        if (old == value) {
-            return;
-        }
-        neuronLeak = value;
-        //final float MAX = (float) 1.01;
-        float ratio = (float) Math.exp(value * Math.log(NeuronVLeak_scale));  //Calculation to achieve the same changes as changeByRationFromPreferred; function "changeByRationFromPreferred" not implemented in Pot class
-        ratio = (int) Math.round(NeuronVLeak.getPreferedBitValue() * ratio);
-        ratio = ratio + (ratio >= 1 ? 1 : -1);
-        NeuronVLeak.setBitValue((int) ratio);
-        log.info(NeuronVLeak.toString());
-        setFileModified();
-    }//GEN-LAST:event_NeuronVLeakTweakerStateChanged
-
-    private void VgainTweakerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_VgainTweakerStateChanged
-        float value = VgainTweaker.getValue();
-        if (value > 1) {
-            value = 1;
-        } else if (value < -1) {
-            value = -1;
-        }
-        float old = gain;
-        if (old == value) {
-            return;
-        }
-        gain = value;
-        //final float MAX = (float) 1.005;
-        float ratio = (float) Math.exp(value * Math.log(Vgain_scale));  //Calculation to achieve the same changes as changeByRationFromPreferred; function "changeByRationFromPreferred" not implemented in Pot class
-        ratio = (int) Math.round(Vgain.getPreferedBitValue() * ratio);
-        ratio = ratio + (ratio >= 1 ? 1 : -1);
-        Vgain.setBitValue((int) ratio);
-        log.info(Vgain.toString());
-        setFileModified();
-    }//GEN-LAST:event_VgainTweakerStateChanged
-
-    private void ResetBasicActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ResetBasicActionPerformed
-        VgainTweaker.setValue(0);
-        Vgain.setBitValue(Vgain.getPreferedBitValue());
-        VqTweaker.setValue(0);
-        Vq.setBitValue(Vq.getPreferedBitValue());
-        NeuronVLeakTweaker.setValue(0);
-        NeuronVLeak.setBitValue(NeuronVLeak.getPreferedBitValue());
-        Vbias1Tweaker.setValue(0);
-        Vbias1.setBitValue(Vbias1.getPreferedBitValue());
-        Vbias2Tweaker.setValue(0);
-        Vbias2.setBitValue(Vbias2.getPreferedBitValue());
-        setFileModified();
-    }//GEN-LAST:event_ResetBasicActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private net.sf.jaer.biasgen.PotTweaker NeuronVLeakTweaker;
-    private javax.swing.JButton ResetBasic;
-    private net.sf.jaer.biasgen.PotTweaker Vbias1Tweaker;
-    private net.sf.jaer.biasgen.PotTweaker Vbias2Tweaker;
-    private net.sf.jaer.biasgen.PotTweaker VgainTweaker;
-    private net.sf.jaer.biasgen.PotTweaker VqTweaker;
-    private javax.swing.JPanel basicControlsPanel;
     private javax.swing.JPanel bpfKilledPanel;
     private javax.swing.JPanel bufferBiasPanel;
     private javax.swing.JSlider bufferBiasSlider;
@@ -1158,7 +912,6 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     private javax.swing.JPanel equalizerSlidersPanel;
     private javax.swing.JPanel gainSlidersPanel;
     private javax.swing.JButton initDACButton;
-    private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;

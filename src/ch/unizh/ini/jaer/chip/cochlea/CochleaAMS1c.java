@@ -1,5 +1,5 @@
 /*
- * CochleaAMSWithBiasgen.java
+ * CochleaAMS1c.java
  *
  * Created on November 7, 2006, 11:29 AM
  *
@@ -11,6 +11,13 @@
  */
 package ch.unizh.ini.jaer.chip.cochlea;
 
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.Biasgen.Scanner;
+import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterfaceProxy;
+import ch.unizh.ini.jaer.chip.util.scanner.ScannerHardwareInterfaceProxy;
+import com.jogamp.opengl.util.gl2.GLUT;
+import java.awt.BorderLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -18,15 +25,18 @@ import java.util.Observable;
 import java.util.Observer;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
-
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
+import javax.swing.AbstractButton;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JSeparator;
+import javax.swing.JTabbedPane;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-
 import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
@@ -49,22 +59,11 @@ import net.sf.jaer.graphics.SpaceTimeEventDisplayMethod;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
-import net.sf.jaer.util.RemoteControlCommand;
-import net.sf.jaer.util.RemoteControlled;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c.Biasgen.Scanner;
-import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterfaceProxy;
-import ch.unizh.ini.jaer.chip.util.scanner.ScannerHardwareInterfaceProxy;
-
-import com.jogamp.opengl.util.gl2.GLUT;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import javax.swing.AbstractButton;
-import javax.swing.JCheckBoxMenuItem;
-import javax.swing.JMenu;
-import javax.swing.JMenuItem;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2DVS128HardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
 import net.sf.jaer.util.HexString;
+import net.sf.jaer.util.RemoteControlCommand;
+import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 
 /**
@@ -86,7 +85,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
     private JMenuItem syncEnabledMenuItem = null;
     private JMenu thisChipMenu = null;
 
-    /** Creates a new instance of CochleaAMSWithBiasgen */
+    /** Creates a new instance of CochleaAMS1c */
     public CochleaAMS1c() {
         super();
         addObserver(this); // we observe ourselves so that when AEViewer adds this chip it can call us back by notifying observers of the chip
@@ -703,18 +702,37 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
 
         @Override
         public void storePreferences() {
-            super.storePreferences();
             ipots.storePreferences();
             vpots.storePreferences();
             for (HasPreference hp : hasPreferencesList) {
-                hp.storePreference();
+		hp.storePreference();
             }
+            super.storePreferences();
         }
 
+        JComponent expertTab, basicTab;        
+        
         @Override
         public JPanel buildControlPanel() {
-            CochleaAMS1cControlPanel myControlPanel = new CochleaAMS1cControlPanel(CochleaAMS1c.this);
-            return myControlPanel;
+            JPanel panel = new JPanel();
+            panel.setLayout(new BorderLayout());
+            final JTabbedPane pane = new JTabbedPane();
+            pane.addTab("Basic controls", basicTab = new CochleaAMS1cBasicPanel(CochleaAMS1c.this));      //creates a new basic (user friendly) panel
+            pane.addTab("Expert controls", expertTab = new CochleaAMS1cControlPanel(CochleaAMS1c.this));  //creates a new expert panel with all biases
+            panel.add(pane, BorderLayout.CENTER);
+            pane.setSelectedIndex(getPrefs().getInt("CochleaAMS1c.selectedBiasgenControlTab", 0));
+            pane.addMouseListener(new java.awt.event.MouseAdapter() {
+
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                 getPrefs().putInt("CochleaAMS1c.selectedBiasgenControlTab", pane.getSelectedIndex());
+            }
+            });
+
+                    return panel;
+                    
+           // CochleaAMS1cControlPanel myControlPanel = new CochleaAMS1cControlPanel(CochleaAMS1c.this);
+           // return myControlPanel;
         }
 
         @Override
