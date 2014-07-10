@@ -270,8 +270,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 																	// program
 																	// CPLD or
 																	// FPGA
-	public static final byte VR_SET_DEVICE_NAME = (byte) 0xC2; // set serial
-																// number string
 
 	public static final byte VENDOR_REQUEST_WRITE_CPLD_SR = (byte) 0xCF; // write
 																			// CPLD
@@ -538,7 +536,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		encoder.encode(CharBuffer.wrap(name), buffer, true);
 		encoder.flush(buffer);
 
-		sendVendorRequest(CypressFX3.VR_SET_DEVICE_NAME, (short) 0, (short) 0, buffer);
+		//sendVendorRequest(CypressFX3.VR_SET_DEVICE_NAME, (short) 0, (short) 0, buffer);
 
 		stringDescriptor3 = LibUsb.getStringDescriptor(deviceHandle, (byte) 3);
 		if (stringDescriptor3 == null) {
@@ -1269,31 +1267,25 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		sendVendorRequest(CypressFX3.VENDOR_REQUEST_DATA_TRANSFER, (short) 1, (short) 0);
 
-		byte[] configBytes = new byte[6];
+		byte[] configBytes = new byte[4];
 
-		configBytes[0] = 0x01;
-		configBytes[1] = 0x01;
+		configBytes[0] = 0x00;
+		configBytes[1] = 0x00;
 		configBytes[2] = 0x00;
-		configBytes[3] = 0x00;
-		configBytes[4] = 0x00;
-		configBytes[5] = 0x01;
-		sendVendorRequest((byte) 0xC2, (short) 0x00, (short) 0x00, configBytes);
+		configBytes[3] = 0x01;
+		sendVendorRequest((byte) 0xC2, (short) 0x01, (short) 0x01, configBytes);
 
-		configBytes[0] = 0x01;
-		configBytes[1] = 0x02;
+		configBytes[0] = 0x00;
+		configBytes[1] = 0x00;
 		configBytes[2] = 0x00;
-		configBytes[3] = 0x00;
-		configBytes[4] = 0x00;
-		configBytes[5] = 0x01;
-		sendVendorRequest((byte) 0xC2, (short) 0x00, (short) 0x00, configBytes);
+		configBytes[3] = 0x01;
+		sendVendorRequest((byte) 0xC2, (short) 0x01, (short) 0x02, configBytes);
 
-		configBytes[0] = 0x02;
-		configBytes[1] = 0x01;
+		configBytes[0] = 0x00;
+		configBytes[1] = 0x00;
 		configBytes[2] = 0x00;
-		configBytes[3] = 0x00;
-		configBytes[4] = 0x00;
-		configBytes[5] = 0x01;
-		sendVendorRequest((byte) 0xC2, (short) 0x00, (short) 0x00, configBytes);
+		configBytes[3] = 0x01;
+		sendVendorRequest((byte) 0xC2, (short) 0x02, (short) 0x01, configBytes);
 
 		inEndpointEnabled = true;
 	}
@@ -1305,31 +1297,25 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 */
 	protected synchronized void disableINEndpoint() {
 		try {
-			byte[] configBytes = new byte[6];
+			byte[] configBytes = new byte[4];
 
-			configBytes[0] = 0x02;
-			configBytes[1] = 0x01;
+			configBytes[0] = 0x00;
+			configBytes[1] = 0x00;
 			configBytes[2] = 0x00;
 			configBytes[3] = 0x00;
-			configBytes[4] = 0x00;
-			configBytes[5] = 0x00;
-			sendVendorRequest((byte) 0xC2, (short) 0x00, (short) 0x00, configBytes);
+			sendVendorRequest((byte) 0xC2, (short) 0x02, (short) 0x01, configBytes);
 
-			configBytes[0] = 0x01;
-			configBytes[1] = 0x02;
+			configBytes[0] = 0x00;
+			configBytes[1] = 0x00;
 			configBytes[2] = 0x00;
 			configBytes[3] = 0x00;
-			configBytes[4] = 0x00;
-			configBytes[5] = 0x00;
-			sendVendorRequest((byte) 0xC2, (short) 0x00, (short) 0x00, configBytes);
+			sendVendorRequest((byte) 0xC2, (short) 0x01, (short) 0x02, configBytes);
 
-			configBytes[0] = 0x01;
-			configBytes[1] = 0x01;
+			configBytes[0] = 0x00;
+			configBytes[1] = 0x00;
 			configBytes[2] = 0x00;
 			configBytes[3] = 0x00;
-			configBytes[4] = 0x00;
-			configBytes[5] = 0x00;
-			sendVendorRequest((byte) 0xC2, (short) 0x00, (short) 0x00, configBytes);
+			sendVendorRequest((byte) 0xC2, (short) 0x01, (short) 0x01, configBytes);
 
 			sendVendorRequest(CypressFX3.VENDOR_REQUEST_DATA_TRANSFER, (short) 0, (short) 0);
 		}
