@@ -1,19 +1,10 @@
 package es.us.atc.jaer.chips.FpgaConfig;
 
-import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
-import java.util.Iterator;
-
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-
-import org.usb4java.BufferUtils;
-import org.usb4java.Device;
-import org.usb4java.DeviceDescriptor;
-import org.usb4java.DeviceHandle;
-import org.usb4java.DeviceList;
-import org.usb4java.LibUsb;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 
 public class ATCFpgaConfig extends EventFilter2D {
 	private int trackerId = getInt("trackerId", 1);
@@ -198,11 +189,6 @@ public class ATCFpgaConfig extends EventFilter2D {
 	}
 
 	synchronized public void doConfigureCMCell() {
-		// Verify that we have a USB device to send to.
-		if (devHandle == null) {
-			return;
-		}
-
 		// Convert time into cycles.
 		final int cmCellMaxTimeCycles = getInt("cmCellMaxTime", 0) * CLOCK_SPEED;
 
@@ -247,11 +233,6 @@ public class ATCFpgaConfig extends EventFilter2D {
 	}
 
 	synchronized public void doConfigureBGAFilter() {
-		// Verify that we have a USB device to send to.
-		if (devHandle == null) {
-			return;
-		}
-
 		// Convert time into cycles.
 		final int bgaFilterDeltaTCycles = getInt("bgaFilterDeltaT", 0) * CLOCK_SPEED;
 
@@ -271,123 +252,28 @@ public class ATCFpgaConfig extends EventFilter2D {
 		return (in);
 	}
 
-	// The SiLabs C8051F320 used by ATC has VID=0xC410 and PID=0x0000.
-	private final short VID = (short) 0x10C4;
-	private final short PID = 0x0000;
-
-	private final byte ENDPOINT = 0x02;
-	private final int PACKET_LENGTH = 64;
-
-	private DeviceHandle devHandle = null;
-
-	private void openDevice() {
-		System.out.println("Searching for device.");
-
-		// Already opened.
-		if (devHandle != null) {
-			return;
-		}
-
-		// Search for a suitable device and connect to it.
-		LibUsb.init(null);
-
-		final DeviceList list = new DeviceList();
-		if (LibUsb.getDeviceList(null, list) > 0) {
-			final Iterator<Device> devices = list.iterator();
-			while (devices.hasNext()) {
-				final Device dev = devices.next();
-
-				final DeviceDescriptor devDesc = new DeviceDescriptor();
-				LibUsb.getDeviceDescriptor(dev, devDesc);
-
-				if ((devDesc.idVendor() == VID) && (devDesc.idProduct() == PID)) {
-					// Found matching device, open it.
-					devHandle = new DeviceHandle();
-					if (LibUsb.open(dev, devHandle) != LibUsb.SUCCESS) {
-						devHandle = null;
-						continue;
-					}
-
-					final IntBuffer activeConfig = BufferUtils.allocateIntBuffer();
-					LibUsb.getConfiguration(devHandle, activeConfig);
-
-					if (activeConfig.get() != 1) {
-						LibUsb.setConfiguration(devHandle, 1);
-					}
-
-					LibUsb.claimInterface(devHandle, 0);
-
-					System.out.println("Successfully found device.");
-				}
-			}
-
-			LibUsb.freeDeviceList(list, true);
-		}
-	}
-
-	private void closeDevice() {
-		System.out.println("Shutting down device.");
-
-		// Use reset to close connection.
-		if (devHandle != null) {
-			LibUsb.releaseInterface(devHandle, 0);
-			LibUsb.close(devHandle);
-			devHandle = null;
-
-			LibUsb.exit(null);
-		}
-	}
-
 	private void sendCommand(final byte cmd, final byte data, final boolean spiEnable) {
 		System.out.println(String.format("Sending command - cmd: %X, data: %X", cmd, data));
 
-		// Check for presence of ready device.
-		if (devHandle == null) {
-			return;
-		}
-
-		// Prepare message.
-		final ByteBuffer dataBuffer = BufferUtils.allocateByteBuffer(PACKET_LENGTH);
-
-		dataBuffer.put(0, (byte) 'A');
-		dataBuffer.put(1, (byte) 'T');
-		dataBuffer.put(2, (byte) 'C');
-		dataBuffer.put(3, (byte) 0x01); // Command always 1 for SPI upload.
-		dataBuffer.put(4, (byte) 0x01); // Data length always 1 for 1 byte.
-		dataBuffer.put(5, (byte) 0x00);
-		dataBuffer.put(6, (byte) 0x00);
-		dataBuffer.put(7, (byte) 0x00);
-		dataBuffer.put(8, cmd); // Send actual SPI command (address usually).
-		dataBuffer.put(9, (byte) ((spiEnable) ? (0x00) : (0x01)));
-		// Enable or disable SPI communication.
-
-		// Send bulk transfer request on given endpoint.
-		final IntBuffer transferred = BufferUtils.allocateIntBuffer();
-		LibUsb.bulkTransfer(devHandle, ENDPOINT, dataBuffer, transferred, 0);
-		if (transferred.get(0) != PACKET_LENGTH) {
-			System.out.println("Failed to transfer whole packet.");
-		}
-
-		// Put content in a second packet.
-		dataBuffer.put(0, data);
-
-		// Send second bulk transfer request on given endpoint.
-		LibUsb.bulkTransfer(devHandle, ENDPOINT, dataBuffer, transferred, 0);
-		if (transferred.get(0) != PACKET_LENGTH) {
-			System.out.println("Failed to transfer whole packet.");
+		if ((chip.getHardwareInterface() != null) && (chip.getHardwareInterface() instanceof CypressFX3)) {
+			try {
+				((CypressFX3) chip.getHardwareInterface()).sendVendorRequest((byte) 0xC2,
+					(short) (0x0100 | (cmd & 0xFF)), (short) (data & 0xFF));
+			}
+			catch (HardwareInterfaceException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 
 	@Override
 	public void resetFilter() {
-		// Close any open device, and then open a new one.
-		closeDevice();
-		openDevice();
+		// Empty.
 	}
 
 	@Override
 	public void initFilter() {
-		// Open the device for the first time.
-		openDevice();
+		// Empty.
 	}
 }
