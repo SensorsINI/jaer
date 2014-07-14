@@ -39,21 +39,21 @@ public interface Histogram {
     public float getNormalized(int index);
     
     /**
-     * Gets the number of elements in the histogram.
+     * Gets the number of elements added to the histogram. Incremented by each call to add.
      * 
-     * @return The number of elements in the histogram.
+     * @return The number of elements added to the histogram.
      */
     public int getN();
     
     /**
-     * Gets the size of the histogram.
+     * Gets the size of the histogram in bins.
      * 
-     * @return The size of the histogram.
+     * @return The size of the histogram in bins.
      */
     public int getSize();
     
     /**
-     * Gets the start of the histogram.
+     * Gets the starting value of the histogram; the lower edge of the first bin value.
      * 
      * @return The start of the histogram.
      */
