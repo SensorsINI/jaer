@@ -38,7 +38,7 @@ public abstract class AbstractHistogram implements Histogram {
     /**
      * Creates a new AbstractHistogram.
      * 
-     * @param start The start of the histogram.
+     * @param start The starting value of the histogram, i.e. the lower edge of the first bin value.
      * @param step The step size of the histogram.
      * @param nBins The number of bins used by the histogram.
      * @param window The window specifies how the values are distributed over
