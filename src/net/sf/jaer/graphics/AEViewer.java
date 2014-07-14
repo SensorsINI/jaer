@@ -1794,7 +1794,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 					try{
                                             renderPacket(packet);
                                         }catch(RuntimeException e){
-                                            log.warning("caught "+e.toString()+" caused by "+e.getCause().toString());
+                                            log.warning("caught "+e.toString()+" caused by "+e.getCause()!=null?e.getCause().toString():" unknown cause");
                                         }
                                         if(packet==null){
                                             log.warning("packet became null after rendering");
