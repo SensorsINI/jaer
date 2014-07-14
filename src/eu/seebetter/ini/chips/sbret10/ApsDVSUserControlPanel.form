@@ -456,13 +456,13 @@
         <Component class="javax.swing.JTextField" name="fpsTF">
           <Properties>
             <Property name="editable" type="boolean" value="false"/>
-            <Property name="toolTipText" type="java.lang.String" value="Measured frame rate"/>
+            <Property name="toolTipText" type="java.lang.String" value="Measured frame rate in Hz"/>
           </Properties>
         </Component>
         <Component class="javax.swing.JTextField" name="exposMsTF">
           <Properties>
             <Property name="editable" type="boolean" value="false"/>
-            <Property name="toolTipText" type="java.lang.String" value="Measured exposure time"/>
+            <Property name="toolTipText" type="java.lang.String" value="Measured exposure time in ms"/>
           </Properties>
           <Events>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="exposMsTFActionPerformed"/>

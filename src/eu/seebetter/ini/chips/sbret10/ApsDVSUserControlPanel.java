@@ -426,10 +426,10 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         jLabel5.setText("Expos. (ms)");
 
         fpsTF.setEditable(false);
-        fpsTF.setToolTipText("Measured frame rate");
+        fpsTF.setToolTipText("Measured frame rate in Hz");
 
         exposMsTF.setEditable(false);
-        exposMsTF.setToolTipText("Measured exposure time");
+        exposMsTF.setToolTipText("Measured exposure time in ms");
         exposMsTF.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 exposMsTFActionPerformed(evt);
