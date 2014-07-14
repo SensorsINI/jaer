@@ -59,6 +59,16 @@ public class SimpleHistogram extends AbstractHistogram {
         this.reset();
     }
 
+    /**
+     * Returns the backing float[] of histogram counts. Values are Float to
+     * allow for Gaussian spreading of added values.
+     *
+     * @return the histogram
+     */
+    public float[] getHistogram() {
+        return histogram;
+    }
+
     @Override
     public void add(int value) {
         if (this.start <= value && this.end >= value) {
@@ -84,7 +94,7 @@ public class SimpleHistogram extends AbstractHistogram {
         if (index < 0 && index >= this.nBins) {
             return 0;
         }
-        return this.histogram[index];
+        return this.getHistogram()[index];
     }
 
     @Override
@@ -116,7 +126,7 @@ public class SimpleHistogram extends AbstractHistogram {
 
     @Override
     public void reset() {
-        Arrays.fill(this.histogram, 0);
+        Arrays.fill(this.getHistogram(), 0);
         this.N = 0;
     }
 
@@ -125,64 +135,184 @@ public class SimpleHistogram extends AbstractHistogram {
         return true;
     }
 
-    private Statistics s = new Statistics();
+    private Statistics statistics = new Statistics();
 
-    /** Holds statistics of this SimpleHistogram
-     * 
+    /**
+     * Compute useful statistics of histogram
+     *
+     * @return the computed statistics
+     */
+    public Statistics computeStatistics() {
+        statistics.computeStatistics();
+        return statistics;
+    }
+
+    /**
+     * Returns previously computed Statistics
+     *
+     * @return existing Statistics object, which needs to be explictly computed
+     * with computeStatistics
+     */
+    public Statistics getStatistics() {
+        return statistics;
+    }
+
+    /**
+     * Holds statistics of this SimpleHistogram
+     *
      */
     public class Statistics {
 
-        /** The number of bins; same as size */
+        /**
+         * The number of bins; same as size
+         */
         public int nBins;
-        /** Maximum count in any bin */
+        /**
+         * Maximum count in any bin
+         */
         public float maxCount = Float.NEGATIVE_INFINITY;
-        /** The number of the bin with maximum count value, or nBins/2 if there are no counts in any bin */
+        /**
+         * The number of the bin with maximum count value, or nBins/2 if there
+         * are no counts in any bin
+         */
         public int maxBin = 0;
-        /** The sum of all bin values */
+        /**
+         * The sum of all bin values
+         */
         public float binSum = 0;
-        /** The sum weighted by bin number (not bin value relative to start and step) */
+        /**
+         * The sum weighted by bin number (not bin value relative to start and
+         * step)
+         */
         public float weightedSum = 0;
-        /** The rounded mean bin */
+        /**
+         * The rounded mean bin
+         */
         public int meanBin = 0;
-        /** The maximum bin with any value in it */
-        public int maxNonZeroBin=0;
-        // TODO add median stat
-        
-        public String toString(){
-            return String.format("Exposure statistics: nBins=%d maxCount=%d maxBin=%d meanBin=%d maxNonZeroBin=%d",nBins,maxCount,maxBin,meanBin,maxNonZeroBin);
+        /**
+         * The maximum bin with any value in it
+         */
+        public int maxNonZeroBin = 0;
+        /**
+         * Fraction of values <10% of maxNonZeroBin
+         */
+        public float fracLow = 0;
+        /**
+         * Fraction of values >10% of maxNonZeroBin
+         */
+        public float fracHigh = 0;
+
+        /**
+         * Upper boundary relative to entire range of collected values for
+         * counting values that are considered low
+         */
+        private float lowBoundary = 0.1f;
+        /**
+         * Lower boundary relative to entire range of collected values for
+         * counting values that are considered high
+         */
+        private float highBoundary = .9f;
+
+        // TODO add median stats
+        public String toString() {
+            return String.format("Exposure statistics: nBins=%d maxCount=%.0f maxBin=%d meanBin=%d maxNonZeroBin=%d fracLow (<%%%2.0f)=%.2f fracHigh(>%%%2.0f)=%.2f",
+                    nBins, maxCount, maxBin, meanBin, maxNonZeroBin, lowBoundary * 100, fracLow, highBoundary * 100, fracHigh);
+        }
+
+        /**
+         * Computes the fields in the Statistics object and returns it.
+         *
+         * @return the reference to the built-in Statistics object
+         */
+        public void computeStatistics() {
+            nBins = getSize();
+            maxCount = Float.NEGATIVE_INFINITY;
+            maxBin = 0;
+            binSum = 0;
+            weightedSum = 0;
+//        maxNonZeroBin=0; // DO NOT reset this statistic  because it marks the maximum signal that system can produce with bias values, etc
+            for (int i = 0; i < nBins; i++) {
+                float v = histogram[i];
+                binSum += v;
+                weightedSum += i * v;
+                if (v > maxCount) {
+                    maxBin = i;
+                    maxCount = v;
+                }
+                if (v > 0) {
+                    if (i > maxNonZeroBin) {
+                        maxNonZeroBin = i;
+                    }
+                }
+            }
+
+            meanBin = 0;
+            if (binSum <= 0) {
+                meanBin = nBins / 2;
+                maxBin = (int) meanBin;
+            } else {
+                meanBin = Math.round(weightedSum / binSum);
+            }
+
+            int bin10 = Math.round(getLowBoundary() * maxNonZeroBin), bin90 = Math.round(getHighBoundary() * maxNonZeroBin);
+            float sum10 = 0, sum90 = 0;
+            fracLow = 0;
+            fracHigh = 0;
+            if (binSum > 0) {
+                for (int i = 0; i <= bin10; i++) {
+                    sum10 += histogram[i];
+
+                }
+                for (int i = bin90; i < maxNonZeroBin; i++) {
+                    sum90 += histogram[i];
+
+                }
+
+                fracLow = sum10 / binSum;
+                fracHigh = sum90 / binSum;
+            }
+
+        }
+
+        /**
+         * Upper boundary relative to entire range of collected values for
+         * counting values that are considered low
+         *
+         * @return the lowBoundary
+         */
+        public float getLowBoundary() {
+            return lowBoundary;
+        }
+
+        /**
+         * Upper boundary relative to entire range of collected values for
+         * counting values that are considered low
+         *
+         * @param lowBoundary the lowBoundary to set
+         */
+        public void setLowBoundary(float lowBoundary) {
+            this.lowBoundary = lowBoundary;
+        }
+
+        /**
+         * Lower boundary relative to entire range of collected values for
+         * counting values that are considered high
+         *
+         * @return the highBoundary
+         */
+        public float getHighBoundary() {
+            return highBoundary;
+        }
+
+        /**
+         * Lower boundary relative to entire range of collected values for
+         * counting values that are considered high
+         *
+         * @param highBoundary the highBoundary to set
+         */
+        public void setHighBoundary(float highBoundary) {
+            this.highBoundary = highBoundary;
         }
     }
 
-    /** Computes the fields in the Statistics object and returns it.
-     * 
-     * @return the reference to the built-in Statistics object
-     */
-    public Statistics computeStatistics() {
-        s.nBins = getSize();
-        s.maxCount = Float.NEGATIVE_INFINITY;
-        s.maxBin = 0;
-        s.binSum = 0;
-        s.weightedSum = 0;
-//        s.maxNonZeroBin=0; // DO NOT reset this statistic  because it marks the maximum signal that system can produce with bias values, etc
-        for (int i = 0; i < nBins; i++) {
-            float v = get(i);
-            s.binSum += v;
-            s.weightedSum += i * v;
-            if (v > s.maxCount) {
-                s.maxBin = i;
-                s.maxCount = v;
-            }
-            if(v>0){
-                if(i>s.maxNonZeroBin) s.maxNonZeroBin=i;
-            }
-        }
-        s.meanBin = 0;
-        if (s.binSum <= 0) {
-            s.meanBin = nBins / 2;
-            s.maxBin = (int) s.meanBin;
-        } else {
-            s.meanBin = Math.round(s.weightedSum / s.binSum);
-        }
-        return s;
-    }
 }

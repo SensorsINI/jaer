@@ -23,22 +23,22 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
             XMASK = 1023 << XSHIFT, // 10 bits from bits 12 to 21
             POLSHIFT = 11,
             POLMASK = 1 << POLSHIFT, //,    // 1 bit at bit 11
-            EVENT_TYPE_SHIFT=10,
-            EVENT_TYPE_MASK=3<<EVENT_TYPE_SHIFT, // these 2 bits encode readout type for APS and other event type (IMU/DVS) for
+            EVENT_TYPE_SHIFT = 10,
+            EVENT_TYPE_MASK = 3 << EVENT_TYPE_SHIFT, // these 2 bits encode readout type for APS and other event type (IMU/DVS) for
             EXTERNAL_INPUT_EVENT_ADDR = 1 << EVENT_TYPE_SHIFT, // This special address is is for external pin input events
-            IMU_SAMPLE_VALUE=3<<EVENT_TYPE_SHIFT // this special code is for IMU sample events
+            IMU_SAMPLE_VALUE = 3 << EVENT_TYPE_SHIFT // this special code is for IMU sample events
             ;
-    
+
     // see the files in trunk\doc\data structure\apsDVS 
     // below was original IMU code location, not used anymore (tobi)
 //            IMUSHIFT =31, // 1 bit at bit 31 encodes IMU data
 //            IMUMASK=1<<IMUSHIFT; // adc samples are bits 0-9, with ADC data type at bits 10 to 11 and x and y addresses at DVS x,y bit locations
 
     /* Detects bit indicating a DVS external event of type IMU*/
-    public static final int IMUSHIFT = 0, IMUMASK = 1<<IMUSHIFT;
-                
+    public static final int IMUSHIFT = 0, IMUMASK = 1 << IMUSHIFT;
+
     /* Address-type refers to data if is it an "address". This data is either an AE address or ADC reading or an IMU sample.*/
-    public static final int ADDRESS_TYPE_MASK = 0x80000000, ADDRESS_TYPE_DVS = 0x00000000, ADDRESS_TYPE_APS = 0x80000000, ADDRESS_TYPE_IMU=0x80000C00;
+    public static final int ADDRESS_TYPE_MASK = 0x80000000, ADDRESS_TYPE_DVS = 0x00000000, ADDRESS_TYPE_APS = 0x80000000, ADDRESS_TYPE_IMU = 0x80000C00;
     /**
      * Maximal ADC value
      */
@@ -81,17 +81,26 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
      */
     abstract public float getExposureMs();
 
-      /**
+    /**
      * Triggers the taking of one snapshot, i.e, triggers a frame capture.
      */
     abstract public void takeSnapshot();
 
-    /** Sets threshold for automatically triggers snapshot images
+    /**
+     * Controls exposure value automatically if auto exposure is enabled.
+     *
+     */
+    abstract public void controlExposure();
+
+    /**
+     * Sets threshold for automatically triggers snapshot images
      *
      * @param thresholdEvents set to zero to disable automatic snapshots
      */
     abstract public void setAutoshotThresholdEvents(int thresholdEvents);
-    /** Returns threshold
+
+    /**
+     * Returns threshold
      *
      * @return threshold. Zero means auto-shot is disabled.
      */
@@ -99,35 +108,42 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
 
     /**
      * Sets whether automatic exposure control is enabled
+     *
      * @param yes
      */
     abstract public void setAutoExposureEnabled(boolean yes);
 
     /**
      * Returns if automatic exposure control is enabled.
+     *
      * @return
      */
     abstract public boolean isAutoExposureEnabled();
 
     /**
      * Returns if the image histogram should be displayed.
+     *
      * @return true if it should be displayed.
      */
     abstract public boolean isShowImageHistogram();
 
     /**
      * Sets if the image histogram should be displayed.
+     *
      * @param yes true to show histogram
      */
     abstract public void setShowImageHistogram(boolean yes);
 
     /**
      * Sets whether to display IMU output
+     *
      * @param yes true to show IMU output (if available)
      */
     abstract public void setShowIMU(boolean yes);
+
     /**
      * Returns whether IMU output should be shown.
+     *
      * @return true if it should be shown
      */
     abstract public boolean isShowIMU();

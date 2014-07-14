@@ -6,6 +6,7 @@
  */
 package eu.seebetter.ini.chips.sbret10;
 
+import ch.unizh.ini.jaer.config.cpld.CPLDInt;
 import java.awt.Font;
 import java.util.Iterator;
 import java.util.logging.Level;
@@ -41,6 +42,7 @@ import eu.seebetter.ini.chips.sbret10.IMUSample.IncompleteIMUSampleException;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.geom.Rectangle2D;
+import java.beans.PropertyChangeSupport;
 import java.util.Observable;
 import java.util.Observer;
 import javax.media.opengl.glu.GLU;
@@ -49,25 +51,30 @@ import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.ApsDvsHardwareInterface;
+import net.sf.jaer.util.HasPropertyTooltips;
 import net.sf.jaer.util.HexString;
+import net.sf.jaer.util.PropertyTooltipSupport;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.histogram.AbstractHistogram;
+import net.sf.jaer.util.histogram.SimpleHistogram;
 
 /**
  * <p>
- * SBRet10/20 have 240x180 pixels and are built in 180nm technology. SBRet10 has a rolling
- * shutter APS readout and SBRet20 has global shutter readout (but rolling shutter also possible with SBRet20 with different CPLD logic).
- * Both do APS CDS in digital domain off-chip, on host side, using difference between reset and signal reads.
- *<p>
- * 
+ * SBRet10/20 have 240x180 pixels and are built in 180nm technology. SBRet10 has
+ * a rolling shutter APS readout and SBRet20 has global shutter readout (but
+ * rolling shutter also possible with SBRet20 with different CPLD logic). Both
+ * do APS CDS in digital domain off-chip, on host side, using difference between
+ * reset and signal reads.
+ * <p>
+ *
  * Describes retina and its event extractor and bias generator. Two constructors
  * ara available, the vanilla constructor is used for event playback and the one
  * with a HardwareInterface parameter is useful for live capture.
  * {@link #setHardwareInterface} is used when the hardware interface is
  * constructed after the retina object. The constructor that takes a hardware
  * interface also constructs the biasgen interface.
- * 
+ *
  * @author tobi, christian
  */
 @Description("SBRet10/20 240x180 pixel APS-DVS DAVIS sensor")
@@ -88,7 +95,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
     private int exposure; // internal measured variable, set during rendering
     private int frameTime; // internal measured variable, set during rendering
     /**
-     *holds measured variable in Hz for GUI rendering of rate
+     * holds measured variable in Hz for GUI rendering of rate
      */
     protected float frameRateHz;
     /**
@@ -98,7 +105,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
     /**
      * Holds count of frames obtained by end of frame events
      */
-    private int frameCount=0;
+    private int frameCount = 0;
     private boolean snapshot = false;
     private boolean resetOnReadout = false;
     private SBret10config config;
@@ -106,11 +113,13 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
     public static final short WIDTH = 240;
     public static final short HEIGHT = 180;
     int sx1 = getSizeX() - 1, sy1 = getSizeY() - 1;
-    private int autoshotThresholdEvents=getPrefs().getInt("SBRet10.autoshotThresholdEvents",0);
+    private int autoshotThresholdEvents = getPrefs().getInt("SBRet10.autoshotThresholdEvents", 0);
     private IMUSample imuSample; // latest IMUSample from sensor 
-    private final String CMD_EXPOSURE="exposure";
-    private final String CMD_EXPOSURE_CC="exposureCC";
-    private final String CMD_RS_SETTLE_CC="resetSettleCC";
+    private final String CMD_EXPOSURE = "exposure";
+    private final String CMD_EXPOSURE_CC = "exposureCC";
+    private final String CMD_RS_SETTLE_CC = "resetSettleCC";
+
+    private AutoExposureController autoExposureController = new AutoExposureController();
 
     /**
      * Creates a new instance of cDVSTest20.
@@ -130,7 +139,6 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
         setBiasgen(config = new SBret10config(this));
 
         // hardware interface is ApsDvsHardwareInterface
-
         apsDVSrenderer = new AEFrameChipRenderer(this);
         apsDVSrenderer.setMaxADC(MAX_ADC);
         setRenderer(apsDVSrenderer);
@@ -142,13 +150,13 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
         addDefaultEventFilter(HotPixelFilter.class);
         addDefaultEventFilter(RefractoryFilter.class);
         addDefaultEventFilter(Info.class);
-        
-       if (getRemoteControl() != null) {
+
+        if (getRemoteControl() != null) {
             getRemoteControl().addCommandListener(this, CMD_EXPOSURE, CMD_EXPOSURE + " val - sets exposure. val in ms.");
             getRemoteControl().addCommandListener(this, CMD_EXPOSURE_CC, CMD_EXPOSURE_CC + " val - sets exposure. val in clock cycles");
             getRemoteControl().addCommandListener(this, CMD_RS_SETTLE_CC, CMD_RS_SETTLE_CC + " val - sets reset settling time. val in clock cycles");
         }
-       addObserver(this);  // we observe ourselves so that if hardware interface for example calls notifyListeners we get informed
+        addObserver(this);  // we observe ourselves so that if hardware interface for example calls notifyListeners we get informed
     }
 
     @Override
@@ -173,9 +181,9 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
         String c = command.getCmdName();
         if (c.equals(CMD_EXPOSURE)) {
             config.setExposureDelayMs((int) v);
-        } else if(c.equals(CMD_EXPOSURE_CC)) {
+        } else if (c.equals(CMD_EXPOSURE_CC)) {
             config.exposure.set((int) v);
-        } else if(c.equals(CMD_RS_SETTLE_CC)) {
+        } else if (c.equals(CMD_RS_SETTLE_CC)) {
             config.resSettle.set((int) v);
         } else {
             return input + ": unknown command";
@@ -205,8 +213,17 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
         setHardwareInterface(hardwareInterface);
     }
 
+    @Override
+    public void controlExposure() {
+        getAutoExposureController().controlExposure();
+    }
 
-
+    /**
+     * @return the autoExposureController
+     */
+    public AutoExposureController getAutoExposureController() {
+        return autoExposureController;
+    }
 
 //    int pixcnt=0; // TODO debug
     /**
@@ -223,9 +240,9 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
     public class SBret10Extractor extends RetinaExtractor {
 
         private int firstFrameTs = 0;
-        private int autoshotEventsSinceLastShot=0; // autoshot counter
-        private int warningCount=0;
-        private static final int  WARNING_COUNT_DIVIDER=10000;
+        private int autoshotEventsSinceLastShot = 0; // autoshot counter
+        private int warningCount = 0;
+        private static final int WARNING_COUNT_DIVIDER = 10000;
 
         public SBret10Extractor(SBret10 chip) {
             super(chip);
@@ -238,11 +255,11 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
             }
         }
 
-        private IncompleteIMUSampleException incompleteIMUSampleException=null;
-        private static final int IMU_WARNING_INTERVAL=1000;
-        private int missedImuSampleCounter=0;
-        private int badImuDataCounter=0;
-        
+        private IncompleteIMUSampleException incompleteIMUSampleException = null;
+        private static final int IMU_WARNING_INTERVAL = 1000;
+        private int missedImuSampleCounter = 0;
+        private int badImuDataCounter = 0;
+
         /**
          * extracts the meaning of the raw events.
          *
@@ -267,7 +284,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
             int n = in.getNumEvents(); //addresses.length;
             sx1 = chip.getSizeX() - 1;
             sy1 = chip.getSizeY() - 1;
-            
+
             int[] datas = in.getAddresses();
             int[] timestamps = in.getTimestamps();
             OutputEventIterator outItr = out.outputIterator();
@@ -276,13 +293,11 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
             // at this point the raw data from the USB IN packet has already been digested to extract timestamps, including timestamp wrap events and timestamp resets.
             // The datas array holds the data, which consists of a mixture of AEs and ADC values.
             // Here we extract the datas and leave the timestamps alone.
-
-
             // TODO entire rendering / processing approach is not very efficient now
 //            System.out.println("Extracting new packet "+out);
             for (int i = 0; i < n; i++) {  // TODO implement skipBy/subsampling, but without missing the frame start/end events and still delivering frames
                 int data = datas[i];
-                
+
                 if (incompleteIMUSampleException != null || (ApsDvsChip.ADDRESS_TYPE_IMU & data) == ApsDvsChip.ADDRESS_TYPE_IMU) {
                     if (IMUSample.extractSampleTypeCode(data) == 0) { /// only start getting an IMUSample at code 0, the first sample type
                         try {
@@ -308,7 +323,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
                             continue; // continue because there may be other data
                         }
                     }
-                    
+
                 } else if ((data & ApsDvsChip.ADDRESS_TYPE_MASK) == ApsDvsChip.ADDRESS_TYPE_DVS) {
                     //DVS event
                     ApsDvsEvent e = nextApsDvsEvent(outItr);
@@ -362,30 +377,30 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
                     e.type = (byte) (2);
                     boolean pixZero = (e.x == sx1) && (e.y == sy1);//first event of frame (addresses get flipped)
                     if ((e.readoutType == ApsDvsEvent.ReadoutType.ResetRead) && pixZero) {
-                        createApsFlagEvent(outItr,ApsDvsEvent.ReadoutType.SOF,timestamps[i]);
-                        if(!config.chipConfigChain.configBits[6].isSet()){
+                        createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOF, timestamps[i]);
+                        if (!config.chipConfigChain.configBits[6].isSet()) {
                             //rolling shutter start of exposure (SOE)
-                            createApsFlagEvent(outItr,ApsDvsEvent.ReadoutType.SOE,timestamps[i]);
+                            createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamps[i]);
                             frameTime = e.timestamp - firstFrameTs;
                             firstFrameTs = e.timestamp;
                         }
-                    }    
+                    }
                     if (config.chipConfigChain.configBits[6].isSet() && e.isResetRead() && (e.x == 0) && (e.y == sy1)) {
                         //global shutter start of exposure (SOE)
-                        createApsFlagEvent(outItr,ApsDvsEvent.ReadoutType.SOE,timestamps[i]);
+                        createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamps[i]);
                         frameTime = e.timestamp - firstFrameTs;
                         firstFrameTs = e.timestamp;
                     }
                     //end of exposure
                     if (pixZero && e.isSignalRead()) {
-                        createApsFlagEvent(outItr,ApsDvsEvent.ReadoutType.EOE,timestamps[i]);
+                        createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOE, timestamps[i]);
                         exposure = e.timestamp - firstFrameTs;
                     }
                     if (e.isSignalRead() && (e.x == 0) && (e.y == 0)) {
                         // if we use ResetRead+SignalRead+C readout, OR, if we use ResetRead-SignalRead readout and we are at last APS pixel, then write EOF event
                         lastADCevent();
                         //insert a new "end of frame" event not present in original data
-                        createApsFlagEvent(outItr,ApsDvsEvent.ReadoutType.EOF,timestamps[i]);
+                        createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamps[i]);
                         if (snapshot) {
                             snapshot = false;
                             config.apsReadoutControl.setAdcEnabled(false);
@@ -414,16 +429,20 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
         private ApsDvsEvent nextApsDvsEvent(OutputEventIterator outItr) {
             ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
             e.special = false;
-            if(e instanceof IMUSample) ((IMUSample)e).imuSampleEvent=false;
+            if (e instanceof IMUSample) {
+                ((IMUSample) e).imuSampleEvent = false;
+            }
             return e;
         }
-        
-        /** creates a special ApsDvsEvent in output packet just for flagging APS frame markers such as start of frame, reset, end of frame.
-         * 
+
+        /**
+         * creates a special ApsDvsEvent in output packet just for flagging APS
+         * frame markers such as start of frame, reset, end of frame.
+         *
          * @param outItr
          * @param flag
          * @param timestamp
-         * @return 
+         * @return
          */
         private ApsDvsEvent createApsFlagEvent(OutputEventIterator outItr, ApsDvsEvent.ReadoutType flag, int timestamp) {
             ApsDvsEvent a = nextApsDvsEvent(outItr);
@@ -434,7 +453,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
             a.readoutType = flag;
             return a;
         }
-        
+
         @Override
         public AEPacketRaw reconstructRawPacket(EventPacket packet) {
             if (raw == null) {
@@ -524,8 +543,9 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
      * @author Tobi
      */
     public class SBret10DisplayMethod extends ChipRendererDisplayMethodRGBA {
+
         private static final int FONTSIZE = 10;
-        private static final int FRAME_COUNTER_BAR_LENGTH_FRAMES=10;
+        private static final int FRAME_COUNTER_BAR_LENGTH_FRAMES = 10;
 
         private TextRenderer exposureRenderer = null;
 
@@ -550,51 +570,49 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
                 exposureRender(gl);
             }
             // draw sample histogram
-            if(showImageHistogram && (renderer instanceof AEFrameChipRenderer)){
+            if (showImageHistogram && (renderer instanceof AEFrameChipRenderer)) {
 //                System.out.println("drawing hist");
-                final int size=100;
-                AbstractHistogram hist=((AEFrameChipRenderer)renderer).getAdcSampleValueHistogram();
+                final int size = 100;
+                AbstractHistogram hist = ((AEFrameChipRenderer) renderer).getAdcSampleValueHistogram();
                 hist.draw(drawable,
                         exposureRenderer,
-                        (sizeX/2)-(size/2), (sizeY/2)+(size/2), size, size);
+                        (sizeX / 2) - (size / 2), (sizeY / 2) + (size / 2), size, size);
             }
 
-            if(isShowIMU() && (chip instanceof SBret10)){
-                IMUSample imuSample=((SBret10)chip).getImuSample();
-                if(imuSample!=null){
+            if (isShowIMU() && (chip instanceof SBret10)) {
+                IMUSample imuSample = ((SBret10) chip).getImuSample();
+                if (imuSample != null) {
                     imuRender(drawable, imuSample);
                 }
             }
         }
 
-        TextRenderer imuTextRenderer=new TextRenderer(new Font("SansSerif", Font.PLAIN, 36));
-    GLU glu=null;
-    GLUquadric accelCircle=null;
+        TextRenderer imuTextRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36));
+        GLU glu = null;
+        GLUquadric accelCircle = null;
 
         private void imuRender(GLAutoDrawable drawable, IMUSample imuSample) {
 //            System.out.println("on rendering: "+imuSample.toString());
             GL2 gl = drawable.getGL().getGL2();
             gl.glPushMatrix();
-            gl.glTranslatef(chip.getSizeX()/2,chip.getSizeY()/2,0);
+            gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
             gl.glLineWidth(3);
 
-            final float vectorScale=1.5f;
+            final float vectorScale = 1.5f;
             final float textScale = .2f;
             final float trans = .7f;
-            float x,y;
-
-            
+            float x, y;
 
             //acceleration x,y
-            x = (vectorScale * imuSample.getAccelX() * HEIGHT) / IMUSample.FULL_SCALE_ACCEL_G/2;
-            y = (vectorScale * imuSample.getAccelY() * HEIGHT) / IMUSample.FULL_SCALE_ACCEL_G/2;
+            x = (vectorScale * imuSample.getAccelX() * HEIGHT) / IMUSample.FULL_SCALE_ACCEL_G / 2;
+            y = (vectorScale * imuSample.getAccelY() * HEIGHT) / IMUSample.FULL_SCALE_ACCEL_G / 2;
             gl.glColor3f(0, 1, 0);
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(0, 0);
             gl.glVertex2f(x, y);
             gl.glEnd();
             imuTextRenderer.begin3DRendering();
-            imuTextRenderer.setColor(0,1,0, trans);
+            imuTextRenderer.setColor(0, 1, 0, trans);
             imuTextRenderer.draw3D(String.format("%.2f,%.2f g", imuSample.getAccelX(), imuSample.getAccelY()), x, y, 0, textScale); // x,y,z, scale factor
             imuTextRenderer.end3DRendering();
 
@@ -605,18 +623,18 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
             if (accelCircle == null) {
                 accelCircle = glu.gluNewQuadric();
             }
-            final float az = (vectorScale * imuSample.getAccelZ() * HEIGHT/2) / IMUSample.FULL_SCALE_ACCEL_G/2;
+            final float az = (vectorScale * imuSample.getAccelZ() * HEIGHT / 2) / IMUSample.FULL_SCALE_ACCEL_G / 2;
             final float rim = .5f;
             glu.gluQuadricDrawStyle(accelCircle, GLU.GLU_FILL);
             glu.gluDisk(accelCircle, az - rim, az + rim, 16, 1);
             imuTextRenderer.begin3DRendering();
             imuTextRenderer.setColor(0, 1, 0, trans);
-            final String saz=String.format("%.2f g", imuSample.getAccelZ());
-            Rectangle2D rect=imuTextRenderer.getBounds(saz);
-            imuTextRenderer.draw3D(saz, az, -(float)rect.getHeight()*textScale*0.5f, 0, textScale); // x,y,z, scale factor
+            final String saz = String.format("%.2f g", imuSample.getAccelZ());
+            Rectangle2D rect = imuTextRenderer.getBounds(saz);
+            imuTextRenderer.draw3D(saz, az, -(float) rect.getHeight() * textScale * 0.5f, 0, textScale); // x,y,z, scale factor
             imuTextRenderer.end3DRendering();
-         
-             // gyro pan/tilt
+
+            // gyro pan/tilt
             gl.glColor3f(.3f, 0, 1);
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(0, 0);
@@ -627,7 +645,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
 
             imuTextRenderer.begin3DRendering();
             imuTextRenderer.setColor(.3f, 0, 1, trans);
-            imuTextRenderer.draw3D(String.format("%.2f,%.2f dps", imuSample.getGyroYawY()+5, imuSample.getGyroTiltX()), x, y, 0, textScale); // x,y,z, scale factor
+            imuTextRenderer.draw3D(String.format("%.2f,%.2f dps", imuSample.getGyroYawY() + 5, imuSample.getGyroTiltX()), x, y, 0, textScale); // x,y,z, scale factor
             imuTextRenderer.end3DRendering();
 
             // gyro roll
@@ -640,7 +658,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
             imuTextRenderer.begin3DRendering();
             imuTextRenderer.draw3D(String.format("%.2f dps", imuSample.getGyroRollZ()), x, y, 0, textScale); // x,y,z, scale factor
             imuTextRenderer.end3DRendering();
-            
+
 // color annotation to show what is being rendered
             imuTextRenderer.begin3DRendering();
 //            imuTextRenderer.setColor(1,0,0, trans);
@@ -648,13 +666,13 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
 //            imuTextRenderer.setColor(0,1,0, trans);
 //            imuTextRenderer.draw3D("A", +6, -6,0, textScale); // x,y,z, scale factor
             imuTextRenderer.setColor(1, 1, 1, trans);
-            final String ratestr = String.format("IMU: timestamp=%-+9.3fs last dtMs=%-6.1fms  avg dtMs=%-6.1fms", 1e-6f*imuSample.getTimestampUs(), imuSample.getDeltaTimeUs() * .001f, IMUSample.getAverageSampleIntervalUs() / 1000);
+            final String ratestr = String.format("IMU: timestamp=%-+9.3fs last dtMs=%-6.1fms  avg dtMs=%-6.1fms", 1e-6f * imuSample.getTimestampUs(), imuSample.getDeltaTimeUs() * .001f, IMUSample.getAverageSampleIntervalUs() / 1000);
             Rectangle2D raterect = imuTextRenderer.getBounds(ratestr);
-            imuTextRenderer.draw3D(ratestr, -(float) raterect.getWidth() * textScale * 0.5f *.7f, -12, 0, textScale*.7f); // x,y,z, scale factor
+            imuTextRenderer.draw3D(ratestr, -(float) raterect.getWidth() * textScale * 0.5f * .7f, -12, 0, textScale * .7f); // x,y,z, scale factor
 
             imuTextRenderer.end3DRendering();
-          gl.glPopMatrix();
-         }
+            gl.glPopMatrix();
+        }
 
         private void exposureRender(GL2 gl) {
             gl.glPushMatrix();
@@ -663,14 +681,14 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
                 setFrameRateHz((float) 1000000 / frameTime);
             }
             setExposureMs((float) exposure / 1000);
-            String s=String.format("Frame: %d; Exposure %.2f ms; Frame rate: %.2f Hz", getFrameCount(),exposureMs,frameRateHz);
-            exposureRenderer.draw3D(s, 0, HEIGHT + (FONTSIZE/2), 0, .5f); // x,y,z, scale factor
+            String s = String.format("Frame: %d; Exposure %.2f ms; Frame rate: %.2f Hz", getFrameCount(), exposureMs, frameRateHz);
+            exposureRenderer.draw3D(s, 0, HEIGHT + (FONTSIZE / 2), 0, .5f); // x,y,z, scale factor
             exposureRenderer.end3DRendering();
-            int nframes=frameCount%FRAME_COUNTER_BAR_LENGTH_FRAMES;
-            int rectw=WIDTH/FRAME_COUNTER_BAR_LENGTH_FRAMES;
-            gl.glColor4f(1,1,1,.5f);
-            for(int i=0;i<nframes;i++){
-                gl.glRectf(nframes*rectw, HEIGHT+1, ((nframes+1)*rectw)-3, (HEIGHT+(FONTSIZE/2))-1);
+            int nframes = frameCount % FRAME_COUNTER_BAR_LENGTH_FRAMES;
+            int rectw = WIDTH / FRAME_COUNTER_BAR_LENGTH_FRAMES;
+            gl.glColor4f(1, 1, 1, .5f);
+            for (int i = 0; i < nframes; i++) {
+                gl.glRectf(nframes * rectw, HEIGHT + 1, ((nframes + 1) * rectw) - 3, (HEIGHT + (FONTSIZE / 2)) - 1);
             }
             gl.glPopMatrix();
         }
@@ -727,9 +745,9 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
         return exposureMs;
     }
 
-   /**
-    * Returns the frame counter. This value is set on each end-of-frame sample.
-    *
+    /**
+     * Returns the frame counter. This value is set on each end-of-frame sample.
+     *
      * @return the frameCount
      */
     public int getFrameCount() {
@@ -738,6 +756,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
 
     /**
      * Sets the frame counter.
+     *
      * @param frameCount the frameCount to set
      */
     public void setFrameCount(int frameCount) {
@@ -753,23 +772,26 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
         config.apsReadoutControl.setAdcEnabled(true);
     }
 
-    /** Sets threshold for shooting a frame automatically
+    /**
+     * Sets threshold for shooting a frame automatically
      *
-     * @param thresholdEvents the number of events to trigger shot on. Less than or equal to zero disables auto-shot.
+     * @param thresholdEvents the number of events to trigger shot on. Less than
+     * or equal to zero disables auto-shot.
      */
     @Override
     public void setAutoshotThresholdEvents(int thresholdEvents) {
-        if(thresholdEvents<0) {
-			thresholdEvents=0;
-		}
-        autoshotThresholdEvents=thresholdEvents;
-        getPrefs().putInt("SBret10.autoshotThresholdEvents",thresholdEvents);
-        if(autoshotThresholdEvents==0) {
-			config.runAdc.set(true);
-		}
+        if (thresholdEvents < 0) {
+            thresholdEvents = 0;
+        }
+        autoshotThresholdEvents = thresholdEvents;
+        getPrefs().putInt("SBret10.autoshotThresholdEvents", thresholdEvents);
+        if (autoshotThresholdEvents == 0) {
+            config.runAdc.set(true);
+        }
     }
 
-    /** Returns threshold for auto-shot.
+    /**
+     * Returns threshold for auto-shot.
      *
      * @return events to shoot frame
      */
@@ -780,62 +802,217 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
 
     @Override
     public void setAutoExposureEnabled(boolean yes) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        getAutoExposureController().setAutoExposureEnabled(yes);
     }
 
     @Override
     public boolean isAutoExposureEnabled() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        return getAutoExposureController().isAutoExposureEnabled();
     }
 
-    private boolean showImageHistogram=getPrefs().getBoolean("SBRet10.showImageHistogram", false);
+    private boolean showImageHistogram = getPrefs().getBoolean("SBRet10.showImageHistogram", false);
+
     @Override
-	public boolean isShowImageHistogram(){
+    public boolean isShowImageHistogram() {
         return showImageHistogram;
     }
+
     @Override
-	public void setShowImageHistogram(boolean yes){
-        showImageHistogram=yes;
+    public void setShowImageHistogram(boolean yes) {
+        showImageHistogram = yes;
         getPrefs().putBoolean("SBRet10.showImageHistogram", yes);
     }
 
-    /** Controls exposure automatically to try to optimize captured gray levels
+    /**
+     * Controls exposure automatically to try to optimize captured gray levels
      *
      */
-    private class AutoExposureController { // TODO not implemented yet
+    public class AutoExposureController implements HasPropertyTooltips { // TODO not implemented yet
 
-        public void controlExposure(){
-            AbstractHistogram hist=apsDVSrenderer.getAdcSampleValueHistogram();
+        private boolean autoExposureEnabled = getPrefs().getBoolean("autoExposureEnabled", false);
 
+        private float expDelta = .05f; // exposure change if incorrectly exposed
+        private float underOverFractionThreshold = 0.05f; // threshold for fraction of total pixels that are underexposed or overexposed
+        private PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
+        private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
+        SimpleHistogram hist = null;
+        SimpleHistogram.Statistics stats = null;
+        private float lowBoundary = getPrefs().getFloat("AutoExposureController.lowBoundary", 0.1f);
+        private float highBoundary = getPrefs().getFloat("AutoExposureController.highBoundary", 0.9f);
+
+        public AutoExposureController() {
+            tooltipSupport.setPropertyTooltip("expDelta", "fractional change of exposure when under or overexposed");
+            tooltipSupport.setPropertyTooltip("underOverFractionThreshold", "fraction of pixel values under xor over exposed to trigger exposure change");
+            tooltipSupport.setPropertyTooltip("lowBoundary", "Upper edge of histogram range considered as low values");
+            tooltipSupport.setPropertyTooltip("highBoundary", "Lower edge of histogram range considered as high values");
+            tooltipSupport.setPropertyTooltip("autoExposureEnabled", "Exposure time is automatically controlled when this flag is true");
         }
+
+        @Override
+        public String getPropertyTooltip(String propertyName) {
+            return tooltipSupport.getPropertyTooltip(propertyName);
+        }
+
+        public void setAutoExposureEnabled(boolean yes) {
+            boolean old = this.autoExposureEnabled;
+            this.autoExposureEnabled = yes;
+            propertyChangeSupport.firePropertyChange("autoExposureEnabled", old, yes);
+            getPrefs().putBoolean("autoExposureEnabled", yes);
+//            if (old != yes) {
+//                setChanged();
+//            }
+//            notifyObservers();
+        }
+
+        public boolean isAutoExposureEnabled() {
+            return this.autoExposureEnabled;
+        }
+
+        public void controlExposure() {
+            if (!autoExposureEnabled) {
+                return;
+            }
+            hist = apsDVSrenderer.getAdcSampleValueHistogram();
+            if (hist == null) {
+                return;
+            }
+            stats = hist.getStatistics();
+            if (stats == null) {
+                return;
+            }
+            stats.setLowBoundary(lowBoundary);
+            stats.setHighBoundary(highBoundary);
+            hist.computeStatistics();
+            CPLDInt exposure = config.exposure;
+
+            int currentExposure = exposure.get(), newExposure = 0;
+            if (stats.fracLow >= underOverFractionThreshold && stats.fracHigh < underOverFractionThreshold) {
+                newExposure = Math.round(currentExposure * (1 + expDelta));
+                if (newExposure == currentExposure) {
+                    newExposure++; // ensure increase
+                }
+                if (newExposure > exposure.getMax()) {
+                    newExposure = exposure.getMax();
+                }
+                if (newExposure != currentExposure) {
+                    exposure.set(newExposure);
+                }
+                log.log(Level.INFO, "Underexposed: {0}\n{1}", new Object[]{stats.toString(), String.format("oldExposure=%8d newExposure=%8d", currentExposure, newExposure)});
+            } else if (stats.fracLow < underOverFractionThreshold && stats.fracHigh >= underOverFractionThreshold) {
+                newExposure = Math.round(currentExposure * (1 - expDelta));
+                if (newExposure == currentExposure) {
+                    newExposure--; // ensure decrease even with rounding.
+                }
+                if (newExposure < exposure.getMin()) {
+                    newExposure = exposure.getMin();
+                }
+                if (newExposure != currentExposure) {
+                    exposure.set(newExposure);
+                }
+                log.log(Level.INFO, "Overexposed: {0}\n{1}", new Object[]{stats.toString(), String.format("oldExposure=%8d newExposure=%8d", currentExposure, newExposure)});
+            } else {
+//                log.info(stats.toString());
+            }
+        }
+
+        /**
+         * Gets by what relative amount the exposure is changed on each frame if
+         * under or over exposed.
+         *
+         * @return the expDelta
+         */
+        public float getExpDelta() {
+            return expDelta;
+        }
+
+        /**
+         * Sets by what relative amount the exposure is changed on each frame if
+         * under or over exposed.
+         *
+         * @param expDelta the expDelta to set
+         */
+        public void setExpDelta(float expDelta) {
+            this.expDelta = expDelta;
+            getPrefs().putFloat("expDelta", expDelta);
+        }
+
+        /**
+         * Gets the fraction of pixel values that must be under xor over exposed
+         * to change exposure automatically.
+         *
+         * @return the underOverFractionThreshold
+         */
+        public float getUnderOverFractionThreshold() {
+            return underOverFractionThreshold;
+        }
+
+        /**
+         * Gets the fraction of pixel values that must be under xor over exposed
+         * to change exposure automatically.
+         *
+         * @param underOverFractionThreshold the underOverFractionThreshold to
+         * set
+         */
+        public void setUnderOverFractionThreshold(float underOverFractionThreshold) {
+            this.underOverFractionThreshold = underOverFractionThreshold;
+            getPrefs().putFloat("underOverFractionThreshold", underOverFractionThreshold);
+        }
+
+        public float getLowBoundary() {
+            return stats.getLowBoundary();
+        }
+
+        public void setLowBoundary(float lowBoundary) {
+            this.lowBoundary = lowBoundary;
+            getPrefs().putFloat("AutoExposureController.lowBoundary", lowBoundary);
+        }
+
+        public float getHighBoundary() {
+            return highBoundary;
+        }
+
+        public void setHighBoundary(float highBoundary) {
+            this.highBoundary = highBoundary;
+            getPrefs().putFloat("AutoExposureController.highBoundary", highBoundary);
+        }
+
+        /**
+         * @return the propertyChangeSupport
+         */
+        public PropertyChangeSupport getPropertyChangeSupport() {
+            return propertyChangeSupport;
+        }
+
     }
 
-      /**
+    /**
      * Returns the current Inertial Measurement Unit sample.
+     *
      * @return the imuSample, or null if there is no sample
      */
     public IMUSample getImuSample() {
         return imuSample;
     }
 
-     private boolean showIMU=getPrefs().getBoolean("SBRet10.showIMU", false);
-  @Override
+    private boolean showIMU = getPrefs().getBoolean("SBRet10.showIMU", false);
+
+    @Override
     public void setShowIMU(boolean yes) {
-        showIMU=yes;
-        final byte POWER_MGMT_1=(byte)0x6b; // register 107 decimel
-        
-        getPrefs().putBoolean("SBRet10.showIMU",showIMU);
-        if(hardwareInterface!=null && hardwareInterface instanceof ApsDvsHardwareInterface && hardwareInterface.isOpen()){
-            ApsDvsHardwareInterface apsDvsHardwareInterface=(ApsDvsHardwareInterface)hardwareInterface;
-            try{
-            // disable or enable IMU on device
-            if(yes){
-                apsDvsHardwareInterface.writeImuRegister(POWER_MGMT_1, (byte)(0x02)); // deactivate sleep
-            }else{
-                apsDvsHardwareInterface.writeImuRegister(POWER_MGMT_1, (byte)(0x42)); // activate full sleep
-            }
-            }catch(HardwareInterfaceException e){
-                log.warning("tried to set IMU register but got exception "+e.toString());
+        showIMU = yes;
+        final byte POWER_MGMT_1 = (byte) 0x6b; // register 107 decimel
+
+        getPrefs().putBoolean("SBRet10.showIMU", showIMU);
+        if (hardwareInterface != null && hardwareInterface instanceof ApsDvsHardwareInterface && hardwareInterface.isOpen()) {
+            ApsDvsHardwareInterface apsDvsHardwareInterface = (ApsDvsHardwareInterface) hardwareInterface;
+            try {
+                // disable or enable IMU on device
+                if (yes) {
+                    apsDvsHardwareInterface.writeImuRegister(POWER_MGMT_1, (byte) (0x02)); // deactivate sleep
+                } else {
+                    apsDvsHardwareInterface.writeImuRegister(POWER_MGMT_1, (byte) (0x42)); // activate full sleep
+                }
+            } catch (HardwareInterfaceException e) {
+                log.warning("tried to set IMU register but got exception " + e.toString());
             }
         }
     }
@@ -844,8 +1021,8 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
     public boolean isShowIMU() {
         return showIMU;
     }
-    
-        /**
+
+    /**
      * Updates AEViewer specialized menu items according to capabilities of
      * HardwareInterface.
      *
@@ -861,7 +1038,6 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
         }
     }
 
-
     /**
      * Enables or disable DVS128 menu in AEViewer
      *
@@ -875,7 +1051,6 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
                 chipMenu.setToolTipText("Specialized menu for chip");
             }
 
-
             if (syncEnabledMenuItem == null) {
                 syncEnabledMenuItem = new JCheckBoxMenuItem("Timestamp master / Enable sync event output");
                 syncEnabledMenuItem.setToolTipText("<html>Sets this device as timestamp master and enables sync event generation on external IN pin falling edges (disables slave clock input).<br>Falling edges inject special sync events with bitmask " + HexString.toString(ApsDvsHardwareInterface.SYNC_EVENT_BITMASK) + " set<br>These events are not rendered but are logged and can be used to synchronize an external signal to the recorded data.<br>If you are only using one camera, enable this option.<br>If you want to synchronize two DVS128, disable this option in one of the cameras and connect the OUT pin of the master to the IN pin of the slave and also connect the two GND pins.");
@@ -883,7 +1058,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
                 syncEnabledMenuItem.addActionListener(new ActionListener() {
 
                     public void actionPerformed(ActionEvent evt) {
-                        log.info("setting sync/timestamp master to "+syncEnabledMenuItem.isSelected());
+                        log.info("setting sync/timestamp master to " + syncEnabledMenuItem.isSelected());
                         config.syncTimestampMasterEnabled.set(syncEnabledMenuItem.isSelected());
                     }
                 });
@@ -903,7 +1078,6 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
         }
     }
 
-    
     @Override
     public void onDeregistration() {
         super.onDeregistration();
@@ -922,6 +1096,5 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
         }
         enableChipMenu(true);
     }
-
 
 }

@@ -433,10 +433,12 @@
           <Properties>
             <Property name="text" type="java.lang.String" value="Auto exposure"/>
             <Property name="toolTipText" type="java.lang.String" value="Automatically set pixel exposure delay"/>
-            <Property name="enabled" type="boolean" value="false"/>
             <Property name="horizontalAlignment" type="int" value="11"/>
             <Property name="horizontalTextPosition" type="int" value="2"/>
           </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="autoExpCBActionPerformed"/>
+          </Events>
         </Component>
         <Component class="javax.swing.JLabel" name="jLabel3">
           <Properties>

@@ -41,9 +41,10 @@ public class CPLDInt extends CPLDConfigValue implements ConfigInt, HasPreference
 
     @Override
     public void set(int value) throws IllegalArgumentException {
-        if (value < 0 || value >= 1 << nBits) {
-            throw new IllegalArgumentException("tried to store value=" + value + " which larger than permitted value of " + (1 << nBits) + " or is negative in " + this);
+        if (value < getMin() || value >= getMax()) {
+            log.warning("tried to store value=" + value + " which larger than permitted value of " + ((1 << nBits)-1) + " or is negative in " + this+"; clipped to valid value");
         }
+        if(value<getMin()) value=getMin(); else if(value>getMax())value=getMax();
         if (this.value != value) {
             setChanged();
         }
@@ -82,7 +83,7 @@ public class CPLDInt extends CPLDConfigValue implements ConfigInt, HasPreference
     }
     
     public int getMax(){
-        return 1<<nBits-1;
+        return (1<<nBits)-1;
     }
     
     public int getMin(){

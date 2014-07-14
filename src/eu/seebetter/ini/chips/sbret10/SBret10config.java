@@ -104,7 +104,6 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         this.chip = (AEChip) chip;
         setName("SBret10 Configuration");
 
-
         // port bits
         addConfigValue(nChipReset);
         addConfigValue(powerDown);
@@ -247,13 +246,10 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
             }
         };
 
-
-
         JPanel specialButtons = new JPanel();
         specialButtons.setLayout(new BoxLayout(specialButtons, BoxLayout.X_AXIS));
         specialButtons.add(new JButton(resetChipAction));
         specialButtons.add(new JButton(toggleDebugControlsAction));
-
 
         configTabbedPane = new JTabbedPane();
         setBatchEditOccurring(true); // stop updates on building panel
@@ -292,6 +288,14 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         configTabbedPane.add("APS Readout Control", apsReadoutPanel);
         apsReadoutPanel.add(new ParameterControlPanel(apsReadoutControl));
 
+        // autoexposure
+        if (chip instanceof SBret10) {
+            JPanel autoExposurePanel = new JPanel();
+            autoExposurePanel.setLayout(new BoxLayout(autoExposurePanel, BoxLayout.Y_AXIS));
+            configTabbedPane.add("APS Autoexposure Control", autoExposurePanel);
+            autoExposurePanel.add(new ParameterControlPanel(((SBret10) chip).getAutoExposureController()));
+        }
+
         //chip config
         JPanel chipConfigPanel = chipConfigChain.getChipConfigPanel();
         configTabbedPane.addTab("Chip configuration", chipConfigPanel);
@@ -308,11 +312,11 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
 
         configTabbedPane.addMouseListener(
                 new java.awt.event.MouseAdapter() {
-            @Override
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                tabbedPaneMouseClicked(evt);
-            }
-        });
+                    @Override
+                    public void mouseClicked(java.awt.event.MouseEvent evt) {
+                        tabbedPaneMouseClicked(evt);
+                    }
+                });
         setBatchEditOccurring(false);
         return configPanel;
     }
@@ -330,7 +334,8 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         } else {
             // user friendly control panel
             configTabbedPane.add("User-Friendly Controls", userFriendlyControls);
-            configTabbedPane.setSelectedComponent(userFriendlyControls);        }
+            configTabbedPane.setSelectedComponent(userFriendlyControls);
+        }
     }
 
     /**
@@ -738,10 +743,9 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
      * sent to the device are padded with leading bits (at msbs of first byte)
      * that are finally shifted out of the on-chip shift register.
      *
-     * Therefore
-     * <code>bitString2Bytes</code> should only be called ONCE, after the
-     * complete bit string has been assembled, unless it is known the other bits
-     * are an integral number of bytes.
+     * Therefore <code>bitString2Bytes</code> should only be called ONCE, after
+     * the complete bit string has been assembled, unless it is known the other
+     * bits are an integral number of bytes.
      *
      * @param bitString in msb to lsb order from left end, where msb will be in
      * msb of first output byte
@@ -782,7 +786,6 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
             for (OnchipConfigBit b : configBits) {
                 b.addObserver(this);
             }
-
 
             muxes.addAll(Arrays.asList(bmuxes));
             muxes.addAll(Arrays.asList(dmuxes)); // 4 digital muxes, first in list since at end of chain - bits must be sent first, before any biasgen bits
@@ -1069,7 +1072,7 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
      * @param val -1 to 1 range
      */
     @Override
-	public void setThresholdTweak(float val) {
+    public void setThresholdTweak(float val) {
         if (val > 1) {
             val = 1;
         } else if (val < -1) {

@@ -51,7 +51,7 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
     public LabyrinthHardware(AEChip chip) {
         super(chip);
 
-        panTiltHardware = PanTilt.getLastInstance();
+//        panTiltHardware = PanTilt.getLastInstance();
         panTiltHardware.setPanServoNumber(panServoNumber);
         panTiltHardware.setTiltServoNumber(tiltServoNumber);
         panTiltHardware.setJitterAmplitude(jitterAmplitude);

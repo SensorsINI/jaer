@@ -579,7 +579,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
 
     @Override
     public void initFilter() {
-        panTilt = PanTilt.getLastInstance();
+//        panTilt = PanTilt.getLastInstance();
         resetFilter();
     }
 

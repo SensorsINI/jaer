@@ -47,31 +47,36 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     private float[] onColor, offColor;
     private ApsDvsConfig config;
 
-    /** The linear buffer of RGBA pixel colors of image frame brightness values */
+    /**
+     * The linear buffer of RGBA pixel colors of image frame brightness values
+     */
     protected FloatBuffer pixBuffer;
     protected FloatBuffer onMap, onBuffer;
     protected FloatBuffer offMap, offBuffer;
     // double buffered histogram so we can accumulate new histogram while old one is still being rendered and returned to caller
-    private final int histStep=4;
-    private AbstractHistogram adcSampleValueHistogram1 = new SimpleHistogram(0, histStep, (ApsDvsChip.MAX_ADC + 1) / histStep, 0);
-    private AbstractHistogram adcSampleValueHistogram2 = new SimpleHistogram(0, histStep, (ApsDvsChip.MAX_ADC + 1) / histStep, 0);
-    private AbstractHistogram currentHist = adcSampleValueHistogram1, nextHist = adcSampleValueHistogram2;
+    private final int histStep = 4; // histogram bin step in ADC counts of 1024 levels
+    private SimpleHistogram adcSampleValueHistogram1 = new SimpleHistogram(0, histStep, (ApsDvsChip.MAX_ADC + 1) / histStep, 0);
+    private SimpleHistogram adcSampleValueHistogram2 = new SimpleHistogram(0, histStep, (ApsDvsChip.MAX_ADC + 1) / histStep, 0);
+    private SimpleHistogram currentHist = adcSampleValueHistogram1, nextHist = adcSampleValueHistogram2;
     private boolean computeHistograms = false;
 
-    /** PropertyChange */
+    /**
+     * PropertyChange
+     */
     public static final String AGC_VALUES = "AGCValuesChanged";
 
     public AEFrameChipRenderer(AEChip chip) {
         super(chip);
-        config = (ApsDvsConfig)chip.getBiasgen();
+        config = (ApsDvsConfig) chip.getBiasgen();
         setAGCTauMs(chip.getPrefs().getFloat("agcTauMs", 1000));
         onColor = new float[4];
         offColor = new float[4];
         resetFrame(0.5f);
     }
 
-
-    /** Overridden to make gray buffer special for bDVS array */
+    /**
+     * Overridden to make gray buffer special for bDVS array
+     */
     @Override
     protected void resetPixmapGrayLevel(float value) {
         maxValue = Float.MIN_VALUE;
@@ -87,17 +92,17 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             grayBuffer.rewind();
             for (int y = 0; y < textureWidth; y++) {
                 for (int x = 0; x < textureHeight; x++) {
-                    if(config.isDisplayFrames()){
+                    if (config.isDisplayFrames()) {
                         grayBuffer.put(0);
                         grayBuffer.put(0);
                         grayBuffer.put(0);
                         grayBuffer.put(1.0f);
-                    } else if(colorMode == ColorMode.GrayTime){
+                    } else if (colorMode == ColorMode.GrayTime) {
                         grayBuffer.put(1.0f);
                         grayBuffer.put(1.0f);
                         grayBuffer.put(1.0f);
                         grayBuffer.put(1.0f);
-                    }else {
+                    } else {
                         grayBuffer.put(grayValue);
                         grayBuffer.put(grayValue);
                         grayBuffer.put(grayValue);
@@ -106,7 +111,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 }
             }
         }
-            grayBuffer.rewind();
+        grayBuffer.rewind();
         System.arraycopy(grayBuffer.array(), 0, pixmap.array(), 0, n);
         System.arraycopy(grayBuffer.array(), 0, pixBuffer.array(), 0, n);
         pixmap.rewind();
@@ -143,7 +148,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         setColors();
     }
 
-    private void setColors(){
+    private void setColors() {
         checkPixmapAllocation();
         switch (colorMode) {
             case GrayLevel:
@@ -171,23 +176,23 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
     }
 
-    private int warningCount=0;
-    private static int WARNING_INTERVAL=100;
+    private int warningCount = 0;
+    private static int WARNING_INTERVAL = 100;
 
     @Override
     public synchronized void render(EventPacket pkt) {
 
         if (!(pkt instanceof ApsDvsEventPacket)) {
-            if((warningCount++%WARNING_INTERVAL)==0) {
-				log.info("I only know how to render ApsDvsEventPacket but got "+pkt);
-			}
-               resetEventMaps();
-               resetFrame(0);
+            if ((warningCount++ % WARNING_INTERVAL) == 0) {
+                log.info("I only know how to render ApsDvsEventPacket but got " + pkt);
+            }
+            resetEventMaps();
+            resetFrame(0);
             return;
         }
 
-        if(getChip() instanceof SBret10){
-            computeHistograms=((SBret10)chip).isShowImageHistogram();
+        if (getChip() instanceof SBret10) {
+            computeHistograms = ((SBret10) chip).isShowImageHistogram() || ((ApsDvsChip) chip).isAutoExposureEnabled();
         }
 
         ApsDvsEventPacket packet = (ApsDvsEventPacket) pkt;
@@ -197,22 +202,22 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
         this.packet = packet;
         if (!(packet.getEventPrototype() instanceof ApsDvsEvent)) {
-            if((warningCount++%WARNING_INTERVAL)==0) {
-				log.warning("wrong input event class, got " + packet.getEventPrototype() + " but we need to have " + ApsDvsEvent.class);
-			}
+            if ((warningCount++ % WARNING_INTERVAL) == 0) {
+                log.warning("wrong input event class, got " + packet.getEventPrototype() + " but we need to have " + ApsDvsEvent.class);
+            }
             return;
         }
-        if (!accumulateEnabled){
+        if (!accumulateEnabled) {
 //            resetFrame(0.5f);
             resetEventMaps();
         }
-        boolean displayEvents=config.isDisplayEvents(),
-                displayFrames=config.isDisplayFrames(),
-                paused=chip.getAeViewer().isPaused(), backwards=packet.getDurationUs()<0;
+        boolean displayEvents = config.isDisplayEvents(),
+                displayFrames = config.isDisplayFrames(),
+                paused = chip.getAeViewer().isPaused(), backwards = packet.getDurationUs() < 0;
 
         Iterator allItr = packet.fullIterator();
         setSpecialCount(0);
-        while(allItr.hasNext()){
+        while (allItr.hasNext()) {
             //The iterator only iterates over the DVS events
             ApsDvsEvent e = (ApsDvsEvent) allItr.next();
             if (e.isSpecial()) {
@@ -220,9 +225,9 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 continue;
             }
             int type = e.getType();
-            boolean isAdcSampleFlag=e.isSampleEvent();
-            if(!isAdcSampleFlag){
-                if(displayEvents){
+            boolean isAdcSampleFlag = e.isSampleEvent();
+            if (!isAdcSampleFlag) {
+                if (displayEvents) {
                     if ((xsel >= 0) && (ysel >= 0)) { // find correct mouse pixel interpretation to make sounds for large pixels
                         int xs = xsel, ys = ysel;
                         if ((e.x == xs) && (e.y == ys)) {
@@ -231,7 +236,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                     }
                     updateEventMaps(e);
                 }
-            }else if(!backwards && isAdcSampleFlag && displayFrames && !paused){ // TODO need to handle single step updates here
+            } else if (!backwards && isAdcSampleFlag && displayFrames && !paused) { // TODO need to handle single step updates here
                 updateFrameBuffer(e);
             }
         }
@@ -241,10 +246,10 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 //        offMap.rewind();
     }
 
-    private void updateFrameBuffer(ApsDvsEvent e){
+    private void updateFrameBuffer(ApsDvsEvent e) {
         float[] buf = pixBuffer.array();
         // TODO if playing backwards, then frame will come out white because B sample comes before A
-        if(e.isStartOfFrame()){
+        if (e.isStartOfFrame()) {
             startFrame(e.timestamp);
         } else if (e.isResetRead()) {
             int index = getIndex(e);
@@ -254,13 +259,13 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             float val = e.getAdcSample();
             buf[index] = val;
             buf[index + 1] = val;
-            buf[index+2] = val;
-        }else if(e.isSignalRead()){
+            buf[index + 2] = val;
+        } else if (e.isSignalRead()) {
             int index = getIndex(e);
-            if((index<0) || (index >= buf.length)) {
-				return;
-			}
-            int val = ((int)buf[index]-e.getAdcSample());
+            if ((index < 0) || (index >= buf.length)) {
+                return;
+            }
+            int val = ((int) buf[index] - e.getAdcSample());
             if (val < minValue) {
                 minValue = val;
             } else if (val > maxValue) {
@@ -274,29 +279,31 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             float fval = normalizeFramePixel(val);
 //            fval=.5f;
             buf[index] = fval;
-            buf[index+1] = fval;
-            buf[index+2] = fval;
-            buf[index+3] = 1;
-        }else if(e.isEndOfFrame()){
+            buf[index + 1] = fval;
+            buf[index + 2] = fval;
+            buf[index + 3] = 1;
+        } else if (e.isEndOfFrame()) {
             endFrame();
-            AbstractHistogram tmp = currentHist;
+            SimpleHistogram tmp = currentHist;
             if (computeHistograms) {
                 currentHist = nextHist;
                 nextHist = tmp;
                 nextHist.reset();
             }
+            ((ApsDvsChip) chip).controlExposure();
+
         }
     }
 
-    private void startFrame(int ts){
-        timestamp=ts;
+    private void startFrame(int ts) {
+        timestamp = ts;
         maxValue = Float.MIN_VALUE;
         minValue = Float.MAX_VALUE;
-                System.arraycopy(grayBuffer.array(), 0, pixBuffer.array(), 0, pixBuffer.array().length);
+        System.arraycopy(grayBuffer.array(), 0, pixBuffer.array(), 0, pixBuffer.array().length);
 
     }
 
-    private void endFrame(){
+    private void endFrame() {
         System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
         if ((minValue > 0) && (maxValue > 0)) { // don't adapt to first frame which is all zeros
             java.awt.geom.Point2D.Float filter2d = lowpassFilter.filter2d(minValue, maxValue, timestamp);
@@ -304,21 +311,23 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
     }
 
-    /** changes alpha of ON map
+    /**
+     * changes alpha of ON map
+     *
      * @param index 0-(size of pixel array-1) of pixel
      */
-    private void updateEventMaps(ApsDvsEvent e){
+    private void updateEventMaps(ApsDvsEvent e) {
         float[] map;
         int index = getIndex(e);
-        if(e.polarity == ApsDvsEvent.Polarity.On){
+        if (e.polarity == ApsDvsEvent.Polarity.On) {
             map = onMap.array();
-        }else{
+        } else {
             map = offMap.array();
         }
-        if((index<0) || (index>=map.length)) {
-			return;
-		}
-        if(colorMode == ColorMode.ColorTime){
+        if ((index < 0) || (index >= map.length)) {
+            return;
+        }
+        if (colorMode == ColorMode.ColorTime) {
             int ts0 = packet.getFirstTimestamp();
             float dt = packet.getDurationUs();
             int ind = (int) Math.floor(((NUM_TIME_COLORS - 1) * (e.timestamp - ts0)) / dt);
@@ -331,53 +340,52 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             map[index + 1] = timeColors[ind][1];
             map[index + 2] = timeColors[ind][2];
             map[index + 3] = 0.5f;
-        }else if(colorMode == ColorMode.GrayTime){
+        } else if (colorMode == ColorMode.GrayTime) {
             int ts0 = packet.getFirstTimestamp();
             float dt = packet.getDurationUs();
-            float v = 0.95f-0.95f*((e.timestamp - ts0) / dt);
+            float v = 0.95f - 0.95f * ((e.timestamp - ts0) / dt);
             map[index] = v;
             map[index + 1] = v;
             map[index + 2] = v;
             map[index + 3] = 1.0f;
-        }
-        else{
-            float alpha = map[index+3]+(1.0f/colorScale);
+        } else {
+            float alpha = map[index + 3] + (1.0f / colorScale);
             alpha = normalizeEvent(alpha);
-            if(e.polarity == PolarityEvent.Polarity.On){
+            if (e.polarity == PolarityEvent.Polarity.On) {
                 map[index] = onColor[0];
-                map[index+1] = onColor[1];
-                map[index+2] = onColor[2];
-            }else{
+                map[index + 1] = onColor[1];
+                map[index + 2] = onColor[2];
+            } else {
                 map[index] = offColor[0];
-                map[index+1] = offColor[1];
-                map[index+2] = offColor[2];
+                map[index + 1] = offColor[1];
+                map[index + 2] = offColor[2];
             }
-            map[index+3] = alpha;
+            map[index + 3] = alpha;
         }
     }
 
-    final int INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS=1000;
-    private long lastWarningPrintedTimeMs=Integer.MAX_VALUE;
+    final int INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS = 1000;
+    private long lastWarningPrintedTimeMs = Integer.MAX_VALUE;
 
-    private int getIndex(BasicEvent e){
-        int x=e.x, y=e.y;
+    private int getIndex(BasicEvent e) {
+        int x = e.x, y = e.y;
         if ((x < 0) || (y < 0) || (x >= sizeX) || (y >= sizeY)) {
             if ((System.currentTimeMillis() - lastWarningPrintedTimeMs) > INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS) {
-                log.warning(String.format("Event %s out of bounds and cannot be rendered in bounds sizeX=%d sizeY=%d - delaying next warning for %dms", e.toString(), sizeX, sizeY,INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS));
+                log.warning(String.format("Event %s out of bounds and cannot be rendered in bounds sizeX=%d sizeY=%d - delaying next warning for %dms", e.toString(), sizeX, sizeY, INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS));
                 lastWarningPrintedTimeMs = System.currentTimeMillis();
             }
             return -1;
         }
-        if(textureRendering){
-            return  4* (x + (y * textureWidth));
-        }else{
-            return 4* (x + (y * sizeX));
+        if (textureRendering) {
+            return 4 * (x + (y * textureWidth));
+        } else {
+            return 4 * (x + (y * sizeX));
         }
     }
 
     @Override
     protected void checkPixmapAllocation() {
-        if((sizeX != chip.getSizeX()) || (sizeY != chip.getSizeY())){
+        if ((sizeX != chip.getSizeX()) || (sizeY != chip.getSizeY())) {
             sizeX = chip.getSizeX();
             textureWidth = ceilingPow2(sizeX);
             sizeY = chip.getSizeY();
@@ -392,9 +400,12 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
     }
 
-    /** Overrides color scale setting to NOT update the stored accumulated pixmap when the color scale is changed.
-
-     * */
+    /**
+     * Overrides color scale setting to NOT update the stored accumulated pixmap
+     * when the color scale is changed.
+     *
+     *
+     */
     @Override
     synchronized public void setColorScale(int colorScale) {
         int old = this.colorScale;
@@ -406,53 +417,57 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
         this.colorScale = colorScale;
         prefs.putInt("Chip2DRenderer.colorScale", colorScale);
-       getSupport().firePropertyChange(PROPERTY_COLOR_SCALE, old, colorScale);
+        getSupport().firePropertyChange(PROPERTY_COLOR_SCALE, old, colorScale);
     }
 
-     private static int ceilingPow2(int n) {
+    private static int ceilingPow2(int n) {
         int pow2 = 1;
         while (n > pow2) {
-        pow2 = pow2<<1;
+            pow2 = pow2 << 1;
         }
         return pow2;
     }
 
-     public FloatBuffer getOnMap(){
-         onMap.rewind();
-         checkPixmapAllocation();
-         return onMap;
-     }
+    public FloatBuffer getOnMap() {
+        onMap.rewind();
+        checkPixmapAllocation();
+        return onMap;
+    }
 
-     public FloatBuffer getOffMap(){
-         offMap.rewind();
-         checkPixmapAllocation();
-         return offMap;
-     }
+    public FloatBuffer getOffMap() {
+        offMap.rewind();
+        checkPixmapAllocation();
+        return offMap;
+    }
 
     @Override
     public int getPixMapIndex(int x, int y) {
         return 4 * (x + (y * sizeX));
     }
 
-    /** Returns the buffer holding the image frame brightness values in RGBA order */
-    public FloatBuffer getPixBuffer(){
+    /**
+     * Returns the buffer holding the image frame brightness values in RGBA
+     * order
+     */
+    public FloatBuffer getPixBuffer() {
         return pixBuffer;
     }
 
     @Override
-    public int getWidth(){
+    public int getWidth() {
         return textureWidth;
     }
 
     @Override
-    public int getHeight(){
+    public int getHeight() {
         return textureHeight;
     }
 
-    /** Computes the normalized gray value from an ADC sample value using brightness
-     * (offset), contrast (multiplier), and gamma (power law).
-     * Takes account of the autoContrast setting which attempts to set
-     * value automatically to get image in range of display.
+    /**
+     * Computes the normalized gray value from an ADC sample value using
+     * brightness (offset), contrast (multiplier), and gamma (power law). Takes
+     * account of the autoContrast setting which attempts to set value
+     * automatically to get image in range of display.
      *
      * @param value the ADC value
      * @return the gray value
@@ -461,10 +476,10 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         float v;
         if (!config.isUseAutoContrast()) { // fixed rendering computed here
             float gamma = config.getGamma();
-            if(gamma == 1.0f){
-                v = ((config.getContrast()*value)+config.getBrightness()) / maxADC;
-            }else{
-                v = (float) (Math.pow((((config.getContrast()*value)+config.getBrightness()) / maxADC),gamma));
+            if (gamma == 1.0f) {
+                v = ((config.getContrast() * value) + config.getBrightness()) / maxADC;
+            } else {
+                v = (float) (Math.pow((((config.getContrast() * value) + config.getBrightness()) / maxADC), gamma));
             }
         } else {
             java.awt.geom.Point2D.Float filter2d = lowpassFilter.getValue2d();
@@ -522,45 +537,50 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         return gain;
     }
 
-    public int getMaxADC(){
+    public int getMaxADC() {
         return maxADC;
     }
 
-    public void setMaxADC(int max){
+    public void setMaxADC(int max) {
         maxADC = max;
     }
 
-    public void resetAutoContrast(){
+    public void resetAutoContrast() {
 
     }
 
-    /** @return the gray level of the rendered data; used to determine whether a pixel needs to be drawn */
+    /**
+     * @return the gray level of the rendered data; used to determine whether a
+     * pixel needs to be drawn
+     */
     @Override
     public float getGrayValue() {
-        if(config.isDisplayFrames() || (colorMode==ColorMode.Contrast) || (colorMode==ColorMode.GrayLevel)){
+        if (config.isDisplayFrames() || (colorMode == ColorMode.Contrast) || (colorMode == ColorMode.GrayLevel)) {
             grayValue = 0.5f;
-        }else if(colorMode == ColorMode.GrayTime){
+        } else if (colorMode == ColorMode.GrayTime) {
             grayValue = 1.0f;
-        }else{
+        } else {
             grayValue = 0.0f;
         }
         return this.grayValue;
     }
 
-    public boolean isDisplayFrames(){
+    public boolean isDisplayFrames() {
         return config.isDisplayFrames();
     }
 
-    public boolean isDisplayEvents(){
+    public boolean isDisplayEvents() {
         return config.isDisplayEvents();
     }
 
     /**
-     * Returns the current valid histogram of ADC sample values.
-     * New ADC values are accumulated to another histogram and the histograms are swapped when a new frame has finished being captured.
+     * Returns the current valid histogram of ADC sample values. New ADC values
+     * are accumulated to another histogram and the histograms are swapped when
+     * a new frame has finished being captured.
+     *
      * @return the adcSampleValueHistogram
      */
-    public AbstractHistogram getAdcSampleValueHistogram() {
+    public SimpleHistogram getAdcSampleValueHistogram() {
         return currentHist;
     }
 

@@ -62,6 +62,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         autoshotThresholdSp.setValue(this.chip.getAutoshotThresholdEvents()>>10);
         final int[] vals={10,100,1000}, mults={1,10,100};
         autoshotThresholdSp.addMouseWheelListener(new SpinnerMouseWheelHandler(vals, mults));
+        autoExpCB.setSelected(this.chip.isAutoExposureEnabled());
         fdSp.addMouseWheelListener(new SpinnerMouseWheelHandler(vals, mults));
         edSp.addMouseWheelListener(new SpinnerMouseWheelHandler(vals, mults));
         dvsContSp.addMouseWheelListener(new SpinnerMouseWheelHandler(new int[]{10,20},new int[]{1,2}));
@@ -415,9 +416,13 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
 
         autoExpCB.setText("Auto exposure");
         autoExpCB.setToolTipText("Automatically set pixel exposure delay");
-        autoExpCB.setEnabled(false);
         autoExpCB.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
         autoExpCB.setHorizontalTextPosition(javax.swing.SwingConstants.LEFT);
+        autoExpCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                autoExpCBActionPerformed(evt);
+            }
+        });
 
         jLabel3.setText("Auto-Shot kevents/frame");
 
@@ -708,6 +713,10 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
     private void snapshotButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_snapshotButtonActionPerformed
         chip.takeSnapshot();
     }//GEN-LAST:event_snapshotButtonActionPerformed
+
+    private void autoExpCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_autoExpCBActionPerformed
+        chip.setAutoExposureEnabled(autoExpCB.isSelected());
+    }//GEN-LAST:event_autoExpCBActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel apsPanel;
