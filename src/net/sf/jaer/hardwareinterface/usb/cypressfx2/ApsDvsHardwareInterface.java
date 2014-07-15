@@ -717,13 +717,13 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
             }
             try {
                 UsbIoBuf buf = (UsbIoBuf) evt.getNewValue();
-                try {
                     IMUSample sample = new IMUSample(buf);
+                try {
 //                    System.out.println(sample.getTimestampUs());
                     imuSampleQueue.add(sample);
                 } catch (IllegalStateException ex) {
                     if (putImuSampleToQueueWarningCounter++ % PUT_IMU_WARNING_INTERVAL == 0) {
-                        log.warning("putting IMUSample to queue not possible because queue has" + imuSampleQueue.size() + " samples and was full");
+                        log.warning("putting IMUSample "+imuSample+" to queue not possible because queue has" + imuSampleQueue.size() + " samples and was full");
                     }
                 }
 
