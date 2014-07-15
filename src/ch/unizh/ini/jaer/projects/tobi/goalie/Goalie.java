@@ -758,9 +758,9 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer {
 			if (s == null) {
 				return;
 			}
-			// TODO: BallShooting class is not available.
-			//BallShooting t = new BallShooting();
-			//t.theStartingPoint(durationOfBallShooting, ballShootingSpeed, s);
+
+			BallShooting t = new BallShooting();
+			t.theStartingPoint(durationOfBallShooting, ballShootingSpeed, s);
 		}
 	}
 
