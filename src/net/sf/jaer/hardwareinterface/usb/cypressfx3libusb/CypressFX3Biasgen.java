@@ -49,15 +49,7 @@ public class CypressFX3Biasgen extends CypressFX3 implements BiasgenHardwareInte
 	 */
 	@Override
 	synchronized public void setPowerDown(final boolean powerDown) throws HardwareInterfaceException {
-		setPowerDownSingle(powerDown);
-	}
-
-	synchronized private void setPowerDownSingle(final boolean powerDown) throws HardwareInterfaceException {
-		if (deviceHandle == null) {
-			throw new RuntimeException("device must be opened before sending this vendor request");
-		}
-
-		sendVendorRequest(VENDOR_REQUEST_POWERDOWN, (short) ((powerDown) ? (1) : (0)), (short) 0);
+		// DO NOTHING.
 	}
 
 	/**
@@ -69,52 +61,9 @@ public class CypressFX3Biasgen extends CypressFX3 implements BiasgenHardwareInte
 	@Override
 	synchronized public void sendConfiguration(final net.sf.jaer.biasgen.Biasgen biasgen)
 		throws HardwareInterfaceException {
-		if (deviceHandle == null) {
-			try {
-				open();
-			}
-			catch (final HardwareInterfaceException e) {
-				CypressFX3.log.warning(e.getMessage());
-				return; // may not have been constructed yet.
-			}
-		}
-
-		if (biasgen.getPotArray() == null) {
-			CypressFX3.log.warning("BiasgenUSBInterface.send(): potArray=null");
-			return; // may not have been constructed yet.
-		}
-
-		final byte[] toSend = formatConfigurationBytes(biasgen);
-		sendBiasBytes(toSend);
-		HardwareInterfaceException.clearException();
-
+		// DO NOTHING.
 	}
 
-	/**
-	 * Sends bytes with vendor request that signals these are bias (or other configuration) values.
-	 * These are sent as control transfers which have a maximum data packet size of 64 bytes.
-	 * If there are more than 64 bytes worth of bias data,
-	 * then the transfer must be (and is automatically)
-	 * split up into several control transfers and the
-	 * bias values can only be latched on-chip when all of the bytes have been sent.
-	 *
-	 * @param b
-	 *            bias bytes to clock out SPI interface
-	 * @see CypressFX3#VENDOR_REQUEST_SEND_BIAS_BYTES
-	 */
-	synchronized public void sendBiasBytes(final byte[] b) throws HardwareInterfaceException {
-		if (deviceHandle == null) {
-			CypressFX3.log.warning("null gUsbIo, device must be opened before sending this vendor request");
-			return;
-		}
-
-		if ((b == null) || (b.length == 0)) {
-			CypressFX3.log.warning("null or empty bias byte array supplied");
-			return;
-		}
-
-		//sendVendorRequest(CypressFX3.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) 0, (short) 0, b, 0, b.length);
-	}
 
 	@Override
 	synchronized public void flashConfiguration(final Biasgen biasgen) throws HardwareInterfaceException {
@@ -135,5 +84,4 @@ public class CypressFX3Biasgen extends CypressFX3 implements BiasgenHardwareInte
 		final byte[] b = biasgen.formatConfigurationBytes(biasgen);
 		return b;
 	}
-
 }

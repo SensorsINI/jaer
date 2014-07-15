@@ -39,26 +39,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		"ApsDvsHardwareInterface.translateRowOnlyEvents", false);
 
 	/**
-	 * Overridden to use PortBit powerDown in biasgen
-	 *
-	 * @param powerDown
-	 *            true to power off masterbias
-	 * @throws HardwareInterfaceException
-	 */
-	@Override
-	synchronized public void setPowerDown(final boolean powerDown) throws HardwareInterfaceException {
-		if ((chip != null) && (chip instanceof ApsDvsChip)) {
-			final ApsDvsChip apsDVSchip = (ApsDvsChip) chip;
-			apsDVSchip.setPowerDown(powerDown);
-		}
-	}
-
-	@Override
-	synchronized public void writeCPLDfirmware(final String svfFile) throws HardwareInterfaceException {
-		// Firmware upload via Flashy.
-	}
-
-	/**
 	 * Starts reader buffer pool thread and enables in endpoints for AEs. This
 	 * method is overridden to construct
 	 * our own reader with its translateEvents method
