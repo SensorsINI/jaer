@@ -155,1117 +155,1056 @@ In addition, when A5EViewer is in PLAYBACK PlayMode, users can register as Prope
  */
 public class AEViewer extends javax.swing.JFrame implements PropertyChangeListener, DropTargetListener, ExceptionListener, RemoteControlled {
 
-    /**
-     * PropertyChangeEvent fired from this AEViewer
-     */
+    /** PropertyChangeEvent fired from this AEViewer */
     public static final String EVENT_PLAYMODE = "playmode",
-    /**
-     * PropertyChangeEvent fired from this AEViewer
-     */
 
-    /**
-     * PropertyChangeEvent fired from this AEViewer
-     */
-
-    /**
-     * PropertyChangeEvent fired from this AEViewer
-     */
+    /** PropertyChangeEvent fired from this AEViewer */
     EVENT_FILEOPEN = "fileopen",
 
-    /**
-     * PropertyChangeEvent fired from this AEViewer
-     */
-
-    /**
-     * PropertyChangeEvent fired from this AEViewer
-     */
-
-    /**
-     * PropertyChangeEvent fired from this AEViewer
-     */
+    /** PropertyChangeEvent fired from this AEViewer */
     EVENT_STOPME = "stopme",
 
-    /**
-     * PropertyChangeEvent fired from this AEViewer
-     */
-
-    /**
-     * PropertyChangeEvent fired from this AEViewer
-     */
-
-    /**
-     * PropertyChangeEvent fired from this AEViewer
-     */
+    /** PropertyChangeEvent fired from this AEViewer */
     EVENT_CHIP = "chip",
 
-    /**
-     * PropertyChangeEvent fired from this AEViewer
-     */
-
-    /**
-     * PropertyChangeEvent fired from this AEViewer
-     */
-
-    /**
-     * PropertyChangeEvent fired from this AEViewer
-     */
+    /** PropertyChangeEvent fired from this AEViewer */
     EVENT_PAUSED = "paused",
 
-    /**
-     * PropertyChangeEvent fired from this AEViewer
-     */
-
-    /**
-     * PropertyChangeEvent fired from this AEViewer
-     */
-
-    /**
-     * PropertyChangeEvent fired from this AEViewer
-     */
+    /** PropertyChangeEvent fired from this AEViewer */
     EVENT_TIMESTAMPS_RESET = "timestampsReset",
 
-    /**
-     * PropertyChangeEvent fired from this AEViewer
-     */
-
-    /**
-     * PropertyChangeEvent fired from this AEViewer
-     */
-
-    /**
-     * PropertyChangeEvent fired from this AEViewer
-     */
+    /** PropertyChangeEvent fired from this AEViewer */
     EVENT_CHECK_NONMONOTONIC_TIMESTAMPS = "checkNonMonotonicTimestamps";
-	public static String HELP_URL_USER_GUIDE = "http://jaerproject.net/";
-	public static String HELP_URL_HELP_FORUM = "https://sourceforge.net/projects/jaer/forums/forum/631958";
-	public static String HELP_URL_JAVADOC_WEB = "http://jaer.sourceforge.net/javadoc";
-	public static String HELP_URL_JAVADOC;
-	// note filenames cannot have spaces in them for browser to work easily, some problem with space encoding; %20 doesn't work as advertized.
-	public static String HELP_USER_GUIDE_USB2_MINI = "/doc/USBAERmini2userguide.pdf";
-	public static String HELP_USER_GUIDE_AER_CABLING = "/doc/AERHardwareAndCabling.pdf";
-	private static final String SET_DEFAULT_FIRMWARE_FOR_BLANK_DEVICE = "Set default firmware for blank device...";
+    
+    public static String HELP_URL_USER_GUIDE = "http://jaerproject.net/";
+    public static String HELP_URL_HELP_FORUM = "https://sourceforge.net/projects/jaer/forums/forum/631958";
+    public static String HELP_URL_JAVADOC_WEB = "http://jaer.sourceforge.net/javadoc";
+    public static String HELP_URL_JAVADOC;
+    // note filenames cannot have spaces in them for browser to work easily, some problem with space encoding; %20 doesn't work as advertized.
+    public static String HELP_USER_GUIDE_USB2_MINI = "/doc/USBAERmini2userguide.pdf";
+    public static String HELP_USER_GUIDE_AER_CABLING = "/doc/AERHardwareAndCabling.pdf";
     public static final String HARDWARE_INTERFACE_NUMBER_PROPERTY = "HardwareInterfaceNumber";
     public static final String HARDWARE_INTERFACE_OBJECT_PROPERTY = "hardwareInterfaceObject";
-
-	// set true to force null hardware (None in interface menu) even if only single interface
-	private boolean nullInterface = false;
-
-	/** Utility method to return a URL to a file in the installation.
-	 *
-	 * @param path relative to root of installation, e.g. "/doc/USBAERmini2userguide.pdf"
-	 * @return the URL string pointing to the local file
-	 * @see #addHelpURLItem(java.lang.String, java.lang.String, java.lang.String)
-	 * @throws MalformedURLException if there is something wrong with the URL
-	 */
-	public String pathToURL(String path) throws MalformedURLException {
-		String curDir = System.getProperty("user.dir");
-		File f = new File(curDir);
-		File pf = f.getParentFile().getParentFile();
-		String urlString = "file://" + pf.getPath() + path;
-		URL url = new URL(urlString);
-		return url.toString();
-	}
-
-	/** Adds item above separator/about
-	 *
-	 * @param menuItem item to add
-	 * @see #removeHelpItem(javax.swing.JMenuItem)
-	 * @see #addHelpURLItem(java.lang.String, java.lang.String, java.lang.String)
-	 * @return the component that you added, for later removal
-	 */
-	public JComponent addHelpItem(JComponent menuItem) {
-		int n = helpMenu.getItemCount();
-		if (n <= 2) {
-			n = 0;
-		} else {
-			n = n - 2;
-		}
-		helpMenu.add(menuItem, n);
-		return menuItem;
-	}
-
-	/** Registers a new item in the Help menu.
-	 *
-	 * @param url for the item to be opened in the browser, e.g. pathToURL("docs/board.pdf"), or "http://jaerproject.net/".
-	 * @param title the menu item title
-	 * @param tooltip useful tip about help
-	 * @return the menu item - useful for removing the help item.
-	 * @see #removeHelpItem(javax.swing.JMenuItem)
-	 * @see #pathToURL(java.lang.String)
-	 */
-	final public JComponent addHelpURLItem(final String url, String title, String tooltip) {
-		JMenuItem menuItem = new JMenuItem(title);
-		menuItem.setToolTipText(tooltip);
-
-		menuItem.addActionListener(new java.awt.event.ActionListener() {
-
-			@Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
-				showInBrowser(url);
-				//                try {
-					//                    BrowserLauncher launcher=new BrowserLauncher();
-				//                    launcher.openURLinBrowser(url);
-				////                    BrowserLauncher.openURL(url);
-				//                } catch (Exception e) {
-				//                    log.warning(e.toString());
-				//                    setStatusMessage(e.getMessage());
-				//                }
-			}
-		});
-		addHelpItem(menuItem);
-		return menuItem;
-	}
-
-	private void showInBrowser(String url) {
-		if (!Desktop.isDesktopSupported()) {
-			log.warning("No Desktop support, can't show help from " + url);
-			return;
-		}
-		try {
-			Desktop.getDesktop().browse(new URI(url));
-		} catch (Exception ex) {
-			log.warning("Couldn't show " + url + "; caught " + ex);
-		}
-	}
-
-	/** Unregisters an item from the Help menu.
-	 *
-	 * @param m the menu item originally returns from addHelpURLItem or addHelpItem.
-	 * @see #addHelpURLItem(java.lang.String, java.lang.String, java.lang.String)
-	 * @see #addHelpItem(javax.swing.JMenuItem)
-	 */
-	final public void removeHelpItem(JComponent m) {
-		if (m == null) {
-			return;
-		}
-		helpMenu.remove(m);
-	}
-	/** Default port number for remote control of this AEViewer.
-	 *
-	 */
-	public final int REMOTE_CONTROL_PORT = 8997; // TODO make this the starting port number but find a free one if not available.
-
-	/** Returns the frame for configurating chip. Could be null until user chooses to build it.
-	 *
-	 * @return the frame.
-	 */
-	public BiasgenFrame getBiasgenFrame() {
-		return biasgenFrame;
-	}
-
-	/** Returns the frame holding the event filters. Could be null until user builds it.
-	 *
-	 * @return the frame.
-	 */
-	public FilterFrame getFilterFrame() {
-		return filterFrame;
-	}
-
-	/** Call this method to break the ViewLoop out of a sleep wait, e.g. to force re-rendering of the data. */
-	public void interruptViewloop() {
-		viewLoop.interrupt(); // to break it out of blocking operation such as wait on cyclic barrier or socket
-	}
-
-	public void reopenSocketInputStream() throws HeadlessException {
-		log.info("closing and reopening socket " + aeSocket);
-		if (aeSocket != null) {
-			try {
-				aeSocket.close();
-			} catch (Exception e) {
-				log.warning("closing existing socket: caught " + e);
-			}
-		}
-		try {
-			aeSocket = new AESocket(); // uses preferred settings for port/buffer size, etc.
-			aeSocket.connect();
-			setPlayMode(PlayMode.REMOTE);
-			openSocketInputStreamMenuItem.setText("Close socket input stream from " + aeSocket.getHost() + ":" + aeSocket.getPort());
-			log.info("opened socket input stream " + aeSocket);
-			socketInputEnabled = true;
-		} catch (Exception e) {
-			JOptionPane.showMessageDialog(this, "Exception reopening socket: " + e, "AESocket Exception", JOptionPane.WARNING_MESSAGE);
-		}
-	}
-
-	/** Stores the preferred (startup) AEChip class for the viewer.
-	 * @param clazz the class.
-	 */
-	public void setPreferredAEChipClass(Class clazz) {
-		prefs.put("AEViewer.aeChipClassName", clazz.getName());
-	}
-	public final String REMOTE_START_LOGGING = "startlogging";
-	public final String REMOTE_STOP_LOGGING = "stoplogging";
-	public final String REMOTE_TOGGLE_SYNCHRONIZED_LOGGING = "togglesynclogging";
-
-	/** Processes remote control commands for this AEViewer. A list of commands can be obtained
-	 * from a remote host by sending ? or help. The port number is logged to the console on startup.
-	 * @param command the parsed command (first token)
-	 * @param line the line sent from the remote host.
-	 * @return confirmation of command.
-	 */
-	@Override
-	public String processRemoteControlCommand(RemoteControlCommand command, String line) {
-		String[] tokens = line.split("\\s");
-		log.finer("got command " + command + " with line=\"" + line + "\"");
-		try {
-			if (command.getCmdName().equals(REMOTE_START_LOGGING)) {
-				if (tokens.length < 2) {
-					return "not enough arguments\n";
-				}
-				String filename = line.substring(REMOTE_START_LOGGING.length() + 1);
-				File f = startLogging(filename);
-				if (f == null) {
-					return "Couldn't start logging to filename=" + filename + ", startlogging returned " + f + "\n";
-				} else {
-					return "starting logging to " + f + "\n";
-				}
-			} else if (command.getCmdName().equals(REMOTE_STOP_LOGGING)) {
-				stopLogging(false); // don't confirm filename
-				return "stopped logging\n";
-			} else if (command.getCmdName().equals(REMOTE_TOGGLE_SYNCHRONIZED_LOGGING)) {
-				if ((jaerViewer != null) && jaerViewer.isSyncEnabled() && (jaerViewer.getViewers().size() > 1)) {
-					jaerViewer.toggleSynchronizedLogging();
-					return "toggled synchronized logging\n";
-				} else {
-					return "couldn't toggle synchronized logging because there is only 1 viewer or sync is disbled";
-				}
-			}
-		} catch (Exception e) {
-			return e.toString() + "\n";
-		}
-		return null;
-	}
-
-	/**
-	 * @return the playerControls
-	 */
-	public AePlayerAdvancedControlsPanel getPlayerControls() {
-		return playerControls;
-	}
-
-	/**
-	 * @param playerControls the playerControls to set
-	 */
-	public void setPlayerControls(AePlayerAdvancedControlsPanel playerControls) {
-		this.playerControls = playerControls;
-	}
-
-	/**
-	 * @return the frameRater
-	 */
-	public FrameRater getFrameRater() {
-		return frameRater;
-	}
-
-	/**
-	 * @return the aeFileInputStreamTimestampResetBitmask
-	 */
-	public int getAeFileInputStreamTimestampResetBitmask() {
-		return aeFileInputStreamTimestampResetBitmask;
-	}
-
-	/**
-	 * @return the checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem
-	 */
-	public javax.swing.JCheckBoxMenuItem getCheckNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem() {
-		return checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem;
-	}
-
-	/**
-	 * Returns an ArrayBlockingQueue that may be associated with this viewer; used for inter-viewer communication.
-	 * @return the blockingQueueInput
-	 */
-	public ArrayBlockingQueue getBlockingQueueInput() {
-		return blockingQueueInput;
-	}
-
-	private void closeAESocket() {
-		if (aeSocket != null) {
-			try {
-				aeSocket.close();
-				log.info("closed " + aeSocket);
-			} catch (IOException e) {
-				e.printStackTrace();
-			} finally {
-				openSocketInputStreamMenuItem.setText("Open remote server input stream socket...");
-				aeSocketClient = null;
-			}
-		}
-		socketInputEnabled = false;
-	}
-
-	private void closeAESocketClient() {
-		if (aeSocketClient != null) {
-			try {
-				aeSocketClient.close();
-				log.info("closed " + aeSocketClient);
-			} catch (IOException e) {
-				e.printStackTrace();
-			} finally {
-				openSocketOutputStreamMenuItem.setText("Open remote server iutput stream socket...");
-				aeSocketClient = null;
-			}
-		}
-		socketOutputEnabled = false;
-	}
-
-	private void closeUnicastInput() {
-		if (unicastInput != null) {
-			unicastInput.close();
-			removePropertyChangeListener(unicastInput);
-			log.info("closed " + unicastInput);
-			openUnicastInputMenuItem.setText("Open unicast UDP input...");
-			unicastInput = null;
-		}
-		unicastInputEnabled = false;
-	}
-
-	/**
-	 * Returns the main viewer image display panel where the ChipCanvas is shown.
-	 * DisplayMethod's can use this getter to add their own display controls.
-	 *
-	 * @return the imagePanel
-	 */
-	public javax.swing.JPanel getImagePanel() {
-		return imagePanel;
-	}
-
-	/**
-	 * @return the aeChipClassName
-	 */
-	public String getAeChipClassName() {
-		return aeChipClassName;
-	}
-
-	/**
-	 * @param aeChipClassName the aeChipClassName to set
-	 */
-	public void setAeChipClassName(String aeChipClassName) {
-		this.aeChipClassName = aeChipClassName;
-	}
-
-	/** Modes of viewing: WAITING means waiting for device or for playback or remote, LIVE means showing a hardware interface, PLAYBACK means playing
-	 * back a recorded file, SEQUENCING means sequencing a file out on a sequencer device, REMOTE means playing a remote stream of AEs
-	 */
-	public enum PlayMode {
-
-		WAITING, LIVE, PLAYBACK, SEQUENCING, REMOTE
-	}
-	volatile private PlayMode playMode = PlayMode.WAITING;
-	static Preferences prefs = Preferences.userNodeForPackage(AEViewer.class);
-	Logger log = Logger.getLogger("AEViewer");
-	//    private PropertyChangeSupport support = new PropertyChangeSupport(this); // already has support as Componenent!!!
-	EventExtractor2D extractor = null;
-	private BiasgenFrame biasgenFrame = null;
-	Biasgen biasgen = null;
-	EventFilter2D filter1 = null, filter2 = null;
-	private AEChipRenderer renderer = null;
-	AEMonitorInterface aemon = null;
-	private final ViewLoop viewLoop = new ViewLoop();
-	FilterChain filterChain = null;
-	private FilterFrame filterFrame = null;
-	RecentFiles recentFiles = null;
-	File lastFile = null;
-	public File lastLoggingFolder = null;//changed pol
-	File lastImageFile = null;
-	File currentFile = null;
-	private FrameRater frameRater = new FrameRater();
-	ChipCanvas chipCanvas;
-	volatile boolean loggingEnabled = false;
-	/** The date formatter used by AEViewer for logged data files */
-	private File loggingFile;
-	AEFileOutputStream loggingOutputStream;
-	private boolean activeRenderingEnabled = prefs.getBoolean("AEViewer.activeRenderingEnabled", true);
-	private boolean renderBlankFramesEnabled = prefs.getBoolean("AEViewer.renderBlankFramesEnabled", false);
-	// number of packets to skip over rendering, used to speed up real time processing
-	private int skipPacketsRenderingNumber = prefs.getInt("AEViewer.skipPacketsRenderingNumber", 0);
-	int skipPacketsRenderingCount = 0; // render first packet always
-	DropTarget dropTarget;
-	File draggedFile;
-	private boolean loggingPlaybackImmediatelyEnabled = prefs.getBoolean("AEViewer.loggingPlaybackImmediatelyEnabled", false);
-	private boolean enableFiltersOnStartup = prefs.getBoolean("AEViewer.enableFiltersOnStartup", false);
-	private long loggingTimeLimit = 0, loggingStartTime = System.currentTimeMillis();
-	private boolean stereoModeEnabled = false;
-	private boolean logFilteredEventsEnabled = prefs.getBoolean("AEViewer.logFilteredEventsEnabled", false);
-	private DynamicFontSizeJLabel statisticsLabel;
-	private boolean filterFrameBuilt = false; // flag to signal that the frame should be rebuilt when initially shown or when chip is changed
-	private AEChip chip;
-	/** The default AEChip class. */
-	public static String DEFAULT_CHIP_CLASS = DVS128.class.getName();
-	/** The class name of the aeChipClass */
-	private String aeChipClassName = null;
-	/** The class we are displaying - this is the root object for practically everything display in an AEViewer. */
-	protected Class aeChipClass = null;
-	//    WindowSaver windowSaver;
-	private JAERViewer jaerViewer;
-	// multicast connections
-	private AEMulticastInput aeMulticastInput = null;
-	private AEMulticastOutput aeMulticastOutput = null;
-	private boolean multicastInputEnabled = false, multicastOutputEnabled = false;
-	// blockingQueue input
-	private ArrayBlockingQueue blockingQueueInput = null;
-	private boolean blockingQueueInputEnabled = false;
-	// unicast dataqgram data xfer
-	private volatile AEUnicastOutput unicastOutput = null;
-	private volatile AEUnicastInput unicastInput = null;
-	private boolean unicastInputEnabled = false, unicastOutputEnabled = false;
-	// socket connections
-	private volatile AEServerSocket aeServerSocket = null; // this server socket accepts connections from clients who want events from us
-	private volatile AESocket aeSocket = null; // this socket is used to getString events from a server to us
-	private volatile AESocket aeSocketClient = null; // this socket is used send events to a TCP server
-	private boolean socketInputEnabled = false; // flags that we are using socket input stream
-	private boolean socketOutputEnabled = false; // flags that we are using socket input stream
-	private boolean blankDeviceMessageShown = false; // flags that we have warned about blank device, don't show message again
-	AEViewerLoggingHandler loggingHandler;
-	private RemoteControl remoteControl = null; // TODO move to JAERViewer
-	private int aeFileInputStreamTimestampResetBitmask = prefs.getInt("AEViewer.aeFileInputStreamTimestampResetBitmask", 0);
-	private AePlayerAdvancedControlsPanel playerControls;
-
-	/** Constructs a new AEViewer using a default AEChip.
-	 *
-	 * @param jAERViewer the containing top level JAERViewer
-	 */
-	public AEViewer(JAERViewer jAERViewer) {
-		this(jAERViewer, null);
-	}
-
-	/**
-	 * Constructs a new instance and then sets class name of device to show in it
-	 *
-	 * @param jaerViewer the manager of all viewers
-	 * @param chipClassName the AEChip to use
-	 */
-	public AEViewer(JAERViewer jaerViewer, String chipClassName){
-		loggingHandler = new AEViewerLoggingHandler(this); // handles log messages globally
-		loggingHandler.getSupport().addPropertyChangeListener(this); // logs to Console handler in AEViewer
-		Logger.getLogger("").addHandler(loggingHandler);
-
-		log.info("AEViewer starting up...");
-
-		if (chipClassName == null) {
-			aeChipClassName = prefs.get("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS);
-		} else {
-			aeChipClassName = chipClassName;
-		}
-		log.info("AEChip class name is " + aeChipClassName);
-		try {
-			//                log.info("getting class for "+aeChipClassName);
-			aeChipClass = FastClassFinder.forName(getAeChipClassName()); // throws exception if class not found
-			if (java.lang.reflect.Modifier.isAbstract(aeChipClass.getModifiers())) {
-				log.warning(aeChipClass + " is abstract, setting chip class to default " + DEFAULT_CHIP_CLASS);
-				setAeChipClassName(DEFAULT_CHIP_CLASS);
-				aeChipClass = FastClassFinder.forName(getAeChipClassName());
-			}
-		} catch (ClassNotFoundException e) {
-			log.warning(getAeChipClassName() + " class not found or not a valid AEChip, setting preferred chip class to default " + DEFAULT_CHIP_CLASS+" and using that class");
-			prefs.put("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS);
-			try {
-				prefs.flush();
-			} catch (BackingStoreException ex) {
-				log.warning("couldnt' flush the preferences to save preferred chip class: "+ex.toString());
-			}
-			try {
-				aeChipClass=FastClassFinder.forName(DEFAULT_CHIP_CLASS);
-			} catch (ClassNotFoundException ex) {
-				log.warning("could not even find the default chip class "+DEFAULT_CHIP_CLASS+", exiting");
-				System.exit(1);
-			}
-		}
-		setLocale(Locale.US); // to avoid problems with other language support in JOGL
-		//        try {
-		//            UIManager.setLookAndFeel(
-		//                    UIManager.getCrossPlatformLookAndFeelClassName());
-		////            UIManager.setLookAndFeel(new WindowsLookAndFeel());
-		//        } catch (Exception e) {
-		//            log.warning(e.getMessage());
-		//        }
-		setName("AEViewer");
-
-		initComponents();
-		playerControls = new AePlayerAdvancedControlsPanel(this);
-		playerControlPanel.add(playerControls, BorderLayout.NORTH);
-		this.jaerViewer = jaerViewer;
-		if (jaerViewer != null) {
-			// all stuff having to do with synchronizing player buttons here, binding components
-			// TODO rework binding of jAERViewer player, AEViewer player, and player GUI. The whole MVC idea is too convoluted now.
-			jaerViewer.addViewer(this); // register outselves, build menus here that sync views, e.g. synchronized playback // TODO, dependency, depends on existing player control panel
-			if (jaerViewer.getSyncPlayer() != null) {
-				// now bind player control panel to SyncPlayer and bind jaer sync player to player control panel.
-				playerControls.addPropertyChangeListener(jaerViewer.getSyncPlayer());
-				jaerViewer.getSyncPlayer().getSupport().addPropertyChangeListener(playerControls);
-				if (jaerViewer.isSyncEnabled()) {
-					playerControls.setAePlayer(jaerViewer.getSyncPlayer());
-				}
-			}
-		}
-		validate();
-
-
-
-		statisticsLabel = new DynamicFontSizeJLabel();
-		//        statisticsLabel.setFont(new java.awt.Font("Bitstream Vera Sans Mono 11 Bold", 0, 8));
-		statisticsLabel.setToolTipText("Time slice/Absolute time, NumEvents/NumFiltered, events/sec, Frame rate acheived/desired, Time expansion X contraction /, delay after frame, color scale");
-		statisticsPanel.add(statisticsLabel);
-		PropertyChangeListener[] list = statisticsLabel.getPropertyChangeListeners();
-		for (PropertyChangeListener p : list) {
-			statisticsLabel.removePropertyChangeListener(p);
-		}
-
-		//        HardwareInterfaceException.addExceptionListener(this);
-		int n = menuBar.getMenuCount();
-		for (int i = 0; i < n; i++) {
-			JMenu m = menuBar.getMenu(i);
-			m.getPopupMenu().setLightWeightPopupEnabled(false);
-		}
-		filtersSubMenu.getPopupMenu().setLightWeightPopupEnabled(false); // otherwise can't see on canvas
-		graphicsSubMenu.getPopupMenu().setLightWeightPopupEnabled(false);
-		remoteMenu.getPopupMenu().setLightWeightPopupEnabled(false); // make remote submenu heavy to show over glcanvas
-
-		ToolTipManager.sharedInstance().setLightWeightPopupEnabled(false); // to show menu tips over GLCanvas
-
-		String lastFilePath = prefs.get("AEViewer.lastFile", "");
-		lastFile = new File(lastFilePath);
-
-                // tobi changed to avoid writing always to startup folder, which causes a major problem if this folder is not writeable, e.g. under NFS shared folder
-		String defaultLoggingFolderName = System.getProperty("user.home"); //System.getProperty("user.dir");
-                log.info("using "+defaultLoggingFolderName+" as the defaultLoggingFolderName");
-		// lastLoggingFolder starts off at user.dir which is startup folder "host/java" where .exe launcher lives
-		lastLoggingFolder = new File(prefs.get("AEViewer.lastLoggingFolder", defaultLoggingFolderName));
-
-		// check lastLoggingFolder to see if it really exists, if not, default to user.dir
-		if (!lastLoggingFolder.exists() || !lastLoggingFolder.isDirectory()) {
-			log.warning("lastLoggingFolder " + lastLoggingFolder + " no good, defaulting to " + defaultLoggingFolderName);
-			lastLoggingFolder = new File(defaultLoggingFolderName);
-		}
-
-		// recent files tracks recently used files *and* folders. recentFiles adds the anonymous listener
-		// built here to open the selected file
-		recentFiles = new RecentFiles(prefs, fileMenu, new ActionListener() {
-
-			@Override
-			public void actionPerformed(ActionEvent evt) {
-				File f = new File(evt.getActionCommand());
-				//                log.info("opening "+evt.getActionCommand());
-				try {
-					if ((f != null) && f.isFile()) {
-						getAePlayer().startPlayback(f);
-						recentFiles.addFile(f);
-					} else if ((f != null) && f.isDirectory()) {
-						prefs.put("AEViewer.lastFile", f.getCanonicalPath());
-						aePlayer.openAEInputFileDialog();
-						recentFiles.addFile(f);
-					}
-				} catch (Exception fnf) {
-					fnf.printStackTrace();
-					//                    exceptionOccurred(fnf,this);
-					recentFiles.removeFile(f);
-				}
-			}
-		});
-
-		// additional help
-		try {
-			addHelpURLItem(HELP_URL_USER_GUIDE, "jAER wiki and user guide", "Opens the jAER wiki and user guide");
-			addHelpURLItem(HELP_URL_HELP_FORUM, "jAER help forum", "Opens the Help Forum on sourceforge.  Post your questions and look for answers there.");
-			addHelpURLItem(HELP_URL_JAVADOC_WEB, "jAER javadoc", "jAER online javadoc (probably out of date)");
-
-			addHelpItem(new JSeparator());
-			addHelpURLItem(pathToURL(HELP_USER_GUIDE_USB2_MINI), "USBAERmini2 board", "User guide for USB2AERmini2 AER monitor/sequencer interface board");
-			addHelpURLItem(pathToURL(HELP_USER_GUIDE_AER_CABLING), "AER protocol and cabling guide", "Guide to AER pin assignment and cabling for the Rome and CAVIAR standards");
-			addHelpURLItem(pathToURL("/deviceFirmwarePCBLayout/SiLabsC8051F320/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");
-			addHelpItem(new JSeparator());
-		} catch (Exception e) {
-			log.warning("could register help item: " + e.toString());
-		}
-
-		HardwareInterfaceFactory.instance().buildInterfaceList(); // once only to start
-		buildInterfaceMenu();
-		buildDeviceMenu();
-		// we need to do this after building device menu so that proper menu item radio button can be selected
-		cleanup(); // close sockets if they are open
-		setAeChipClass(aeChipClass);
-
-
-		playerControlPanel.setVisible(false);
-		timestampResetBitmaskMenuItem.setText("Set timestamp reset bitmask... (currently 0x" + Integer.toHexString(aeFileInputStreamTimestampResetBitmask) + ")");
-
-		//        pack(); // seems to make no difference
-
-		// tobi removed following oct 2008 because it was somehow apparently causing deadlock on exit, don't know why
-		//        Runtime.getRuntime().addShutdownHook(new Thread() {
-		//
-		//            public void run() {
-		//                if (aemon != null && aemon.isOpen()) {
-		//                    aemon.close();
-		//                }
-		//            }
-		//        });
-
-		setFocusable(true);
-		requestFocus();
-		//        viewLoop = new ViewLoop(); // declared final for synchronization
-		dropTarget = new DropTarget(getImagePanel(), this);
-
-		fixLoggingControls();
-
-		// init menu items that are checkboxes to correct initial state
-		viewActiveRenderingEnabledMenuItem.setSelected(isActiveRenderingEnabled());
-		loggingPlaybackImmediatelyCheckBoxMenuItem.setSelected(isLoggingPlaybackImmediatelyEnabled());
-		if(chip==null) {
-			log.warning("null chip object - some problem occurred constructing chip instance");
-		}
-		else {
-			subsampleEnabledCheckBoxMenuItem.setSelected(chip.isSubSamplingEnabled());
-		}
-		acccumulateImageEnabledCheckBoxMenuItem.setSelected(getRenderer().isAccumulateEnabled());
-		autoscaleContrastEnabledCheckBoxMenuItem.setSelected(getRenderer().isAutoscaleEnabled());
-		pauseRenderingCheckBoxMenuItem.setSelected(false);// not isPaused because aePlayer doesn't exist yet
-		viewRenderBlankFramesCheckBoxMenuItem.setSelected(isRenderBlankFramesEnabled());
-		logFilteredEventsCheckBoxMenuItem.setSelected(logFilteredEventsEnabled);
-		enableFiltersOnStartupCheckBoxMenuItem.setSelected(enableFiltersOnStartup);
-
-		fixSkipPacketsRenderingMenuItems();
-
-		checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setSelected(prefs.getBoolean("AEViewer.checkNonMonotonicTimeExceptionsEnabled", true));
-
-		// start the server thread for incoming socket connections for remote consumers of events
-		if (aeServerSocket == null) {
-			try {
-				aeServerSocket = new AEServerSocket();
-				aeServerSocket.start();
-			} catch (IOException ex) {
-				log.warning(ex.toString() + ": While constructing AEServerSocket. Another viewer or process has already bound this port or some other error. This viewer will not have a server socket for AE data.");
-				aeServerSocket = null;
-			}
-		}
-		viewLoop.start();
-
-		// add remote control commands
-		// TODO encapsulate all this and command processor
-		try {
-			remoteControl = new RemoteControl(REMOTE_CONTROL_PORT);
-			remoteControl.addCommandListener(this, REMOTE_START_LOGGING + " <filename>", "starts logging ae data to a file");
-			remoteControl.addCommandListener(this, REMOTE_STOP_LOGGING, "stops logging ae data to a file");
-			remoteControl.addCommandListener(this, REMOTE_TOGGLE_SYNCHRONIZED_LOGGING, "starts synchronized logging ae data to a set of files with aeidx filename automatically timstamped"); // TODO allow sync logging to a chosen file - change startLogging to do sync logging if viewers are synchronized
-			log.info("created " + remoteControl + " for remote control of some AEViewer functions");
-		} catch (SocketException ex) {
-			log.warning(ex.toString());
-		}
-		setTitleAccordingToState();
-
-	}
-
-	/** Closes hardware interface and network sockets.
-	 * Register all cleanup here for other classes, e.g. Chip classes that open
-    sockets.
-	 */
-	private void cleanup() {
-		stopLogging(true); // in case logging, make sure we give chance to save file
-		if ((aemon != null) && aemon.isOpen()) {
-			log.info("closing " + aemon);
-			aemon.close();
-		}
-
-		if (aeServerSocket != null) {
-			log.info("closing " + aeServerSocket);
-			try {
-				aeServerSocket.close();
-			} catch (IOException e) {
-				log.warning(e.toString());
-			}
-		}
-		if (unicastInput != null) {
-			log.info("closing unicast input" + unicastInput);
-			unicastInput.close();
-		}
-		if (unicastOutput != null) {
-			log.info("closing unicastOutput " + unicastOutput);
-			unicastOutput.close();
-		}
-		if (aeMulticastInput != null) {
-			log.info("closing aeMulticastInput " + aeMulticastInput);
-			aeMulticastInput.close();
-		}
-		if (aeMulticastOutput != null) {
-			log.info("closing multicastOutput " + aeMulticastOutput);
-			aeMulticastOutput.close();
-		}
-	}
-
-	private boolean isWindows() {
-		String osName = System.getProperty("os.name");
-		if (osName.startsWith("Windows")) {
-			return true;
-		} else {
-			return false;
-		}
-	}
-	private int showMultipleInterfacesMessageCount = 0;
-
-	/** If we are are the only viewer, automatically set
-    interface to the hardware interface if there is only 1 of them and there is not already
-    a hardware interface (e.g. StereoPairHardwareInterface which consists of
-    two interfaces). otherwise force user choice.
-	 */
-	private void openHardwareIfNonambiguous() {
-		// TODO doesn't open an AEMonitor if there is a ServoInterface plugged in.
-		// Should check to see if there is only 1 AEMonitorInterface, but this check is not possible currently without opening the interface.
-		//        HardwareInterfaceFactory.instance().buildInterfaceList(); // TODO this burns up a lot of heap memory because the PnpListeners
-		// check to see if null interface required instead
-		if (nullInterface) {
-			return;
-		}
-
-		int ninterfaces = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
-		if (ninterfaces > 1) {
-			if ((showMultipleInterfacesMessageCount++ % 100) == 0) {
-				log.info("found " + ninterfaces + " hardware interfaces, choose one from Interface menu to connect");
-			}
-		}
-		if ((jaerViewer != null) && (jaerViewer.getViewers().size() == 1) && (chip.getHardwareInterface() == null) && (ninterfaces == 1)) {
-			HardwareInterface hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
-			//UDP interfaces should only be opened if the chip is a NetworkChip
-			if (UDPInterface.class.isInstance(hw)) {
-				if (NetworkChip.class.isInstance(chip)) {
-					log.info("opening unambiguous network device");
-					chip.setHardwareInterface(hw);
-				}
-			} else {
-				if (!NetworkChip.class.isInstance(chip)) {
-					log.info("setting hardware interface for unambiguous device to " + hw.toString());
-					chip.setHardwareInterface(hw); // if blank cypress, returns bare CypressFX2
-				}
-			}
-		}
-	}
-	private ArrayList<String> chipClassNames;
-	private ArrayList<Class> chipClasses;
-
-	@SuppressWarnings("unchecked")
-	void getChipClassPrefs() {
-		// Deserialize from a byte array
-		try {
-			byte[] bytes = prefs.getByteArray("chipClassNames", null);
-			if (bytes != null) {
-				ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
-				chipClassNames = (ArrayList<String>) in.readObject();
-				in.close();
-			} else {
-				log.warning("building list of all AEChip classses - this takes some time. To reduce startup time, use AEChip/Customize to specify desired classes");
-				makeDefaultChipClassNames();
-			}
-		} catch (Exception e) {
-			makeDefaultChipClassNames();
-			putChipClassPrefs(); // added this to cache chip classes to speed startup for subsequent launches
-		}
-	}
-
-	private void makeDefaultChipClassNames() {
-		chipClassNames = SubclassFinder.findSubclassesOf(AEChip.class.getName());
-	}
-
-	private void putChipClassPrefs() {
-		try {
-			// Serialize to a byte array
-			ByteArrayOutputStream bos = new ByteArrayOutputStream();
-			ObjectOutput out = new ObjectOutputStream(bos);
-			out.writeObject(chipClassNames);
-			out.close();
-
-			// Get the bytes of the serialized object
-			byte[] buf = bos.toByteArray();
-			prefs.putByteArray("chipClassNames", buf);
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (IllegalArgumentException e2) {
-			log.warning("too many classes in Preferences, " + chipClassNames.size() + " class names");
-		}
-	}
-
-	private static class FastClassFinder {
-
-		static HashMap<String, Class> map = new HashMap<String, Class>();
-
-		private static Class forName(String name) throws ClassNotFoundException {
-			Class c = null;
-			if ((c = map.get(name)) == null) {
-				c = Class.forName(name);
-				map.put(name, c);
-				return c;
-			} else {
-				return c;
-			}
-		}
-	}
-
-	private void buildDeviceMenu() {
-		ButtonGroup deviceGroup = new ButtonGroup();
-		deviceMenu.removeAll();
-		chipClasses = new ArrayList<Class>();
-		deviceMenu.addSeparator();
-		deviceMenu.add(customizeDevicesMenuItem);
-		getChipClassPrefs();
-		ArrayList<String> notFoundClasses = new ArrayList<String>();
-		for (String deviceClassName : chipClassNames) {
-			try {
-				Class c = FastClassFinder.forName(deviceClassName);
-				chipClasses.add(c);
-				JRadioButtonMenuItem b = new JRadioButtonMenuItem(deviceClassName);
-				deviceMenu.insert(b, deviceMenu.getItemCount() - 2);
-				b.addActionListener(new ActionListener() {
-
-					@Override
-					public void actionPerformed(ActionEvent evt) {
-						try {
-							String name = evt.getActionCommand();
-							Class cl = FastClassFinder.forName(name);
-							try{
-								setCursor(new Cursor(Cursor.WAIT_CURSOR));
-								setAeChipClass(cl);
-							}finally{
-								setCursor(Cursor.getDefaultCursor());
-							}
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-				deviceGroup.add(b);
-			} catch (ClassNotFoundException e) {
-				log.warning("couldn't find device class " + e.getMessage() + ", removing from preferred classes");
-				if (deviceClassName != null) {
-					notFoundClasses.add(deviceClassName);
-				}
-			}
-		}
-		if (notFoundClasses.size() > 0) {
-			chipClassNames.removeAll(notFoundClasses);
-			putChipClassPrefs();
-		}
-		/*
-		 * add scroll arrows to menu
-		 * arguments are: items to show, scrolling interval,
-		 * froozen items top, frozen items bottom
-		 */
-		MenuScroller.setScrollerFor(deviceMenu, 15, 100, 4, 2);
-	}
-
-	/** If the AEMonitor is open, tells it to resetTimestamps, and fires PropertyChange EVENT_TIMESTAMPS_RESET.
-	 * @see AEMonitorInterface#resetTimestamps()
-	 */
-	public void zeroTimestamps() {
-		if ((aemon != null) && aemon.isOpen()) {
-			aemon.resetTimestamps();
-		}
-		firePropertyChange(EVENT_TIMESTAMPS_RESET, null, EVENT_TIMESTAMPS_RESET);
-	}
-
-	/** Gets the AEchip class from the internal aeChipClassName
-	 *
-	 * @return the AEChip subclass. DEFAULT_CHIP_CLASS is returned if there is no stored preference.
-	 */
-	public Class getAeChipClass() {
-
-		return aeChipClass;
-	}
-	private long lastTimeTitleSet = 0;
-	PlayMode lastTitlePlayMode = null;
-
-	/** this sets window title according to actual state */
-	public void setTitleAccordingToState() {
-		if ((lastTitlePlayMode == getPlayMode()) && ((System.currentTimeMillis() - lastTimeTitleSet) < 1000)) {
-			return; // don't bother with this expenive window operation more than 1/second
-		}
-		lastTimeTitleSet = System.currentTimeMillis();
-		lastTitlePlayMode = getPlayMode();
-		String ts = null;
-		switch (getPlayMode()) {
-			case LIVE:
-				ts = "LIVE - " + getAeChipClass().getSimpleName() + " - " + aemon + " - AEViewer";
-				break;
-			case PLAYBACK:
-				ts = "PLAYING - " + currentFile.getName() + " - " + getAeChipClass().getSimpleName() + " - AEViewer";
-				break;
-			case WAITING:
-				ts = "WAITING - " + getAeChipClass().getSimpleName() + " - AEViewer";
-				break;
-			case SEQUENCING:
-				ts = " LIVE SEQUENCE-MONITOR - " + getAeChipClass().getSimpleName() + " - " + aemon + " - AEViewer";
-				break;
-			case REMOTE:
-				ts = "REMOTE - " + getAeChipClass().getSimpleName() + " - AEViewer";
-				break;
-			default:
-				ts = "Unknown state";
-		}
-		final String fts = ts;
-		SwingUtilities.invokeLater(new Runnable() {
-
-			@Override
-			public void run() {
-				setTitle(fts);
-			}
-		});
-	}
-
-	/** Sets the device class, e.g. DVS127, from the
-	 * fully qualified class name which is provided by the menu item itself.
-	 * @param deviceClass the Class of the AEChip to add to the AEChip menu
-	 */
-	public void setAeChipClass(Class deviceClass) {
-		//        log.infox("AEViewer.setAeChipClass("+deviceClass+")");
-		try {
-			if (filterFrame != null) {
-				filterFrame.dispose();
-				filterFrame = null;
-			}
-			filterFrameBuilt = false;
-			filtersToggleButton.setVisible(false);
-			viewFiltersMenuItem.setEnabled(false);
-			showBiasgen(false);
-			cleanup(); // close sockets so they can be reused
-			Constructor<AEChip> constructor = deviceClass.getConstructor();
-			if (constructor == null) {
-				log.warning("null chip constructer, need to select valid chip class");
-				return;
-			}
-			AEChip oldChip = getChip();
-			if (oldChip != null) {
-				oldChip.onDeregistration();
-				if((oldChip.getCanvas()!=null) && (oldChip.getCanvas().getDisplayMethod()!=null)) {
-					oldChip.getCanvas().getDisplayMethod().onDeregistration();
-				}
-			}
-			if (getChip() == null) { // handle initial case
-				constructChip(constructor);
-			} else {
-				synchronized (chip) { // TODO handle live case -- this is not ideal thread programming - better to sync on a lock object in the run loop
-					synchronized (extractor) {
-						synchronized (getRenderer()) {
-							getChip().cleanup();
-							constructChip(constructor);
-						}
-					}
-				}
-			}
-			if (chip == null) {
-				log.warning("null chip, not continuing");
-				return;
-			}
-			aeChipClass = deviceClass;
-			setPreferredAEChipClass(aeChipClass);
-			// chip constructed above, should have renderer already constructed as well
-			if ((chip.getRenderer() != null) && (chip.getRenderer() instanceof Calibratible)) {
-				// begin added by Philipp
-				//            if (aeChipClass.renderer instanceof AdaptiveIntensityRenderer){ // that does not work since the renderer is obviously not defined before a chip gets instanciated
-				//            if (aeChipClass.getName().equals("no.uio.ifi.jaer.chip.foveated.UioFoveatedImager") ||
-				//                    aeChipClass.getName().equals("no.uio.ifi.jaer.chip.staticbiovis.UioStaticBioVis")) {
-				calibrationStartStop.setVisible(true);
-				calibrationStartStop.setEnabled(true);
-			} else {
-				calibrationStartStop.setVisible(false);
-				calibrationStartStop.setEnabled(false);
-			}
-			// end added by Philipp
-			if (aemon != null) { // force reopen
-				aemon.close();
-			}
-			makeCanvas();
-			//            setTitleAccordingToState(); // called anyhow in ViewLoop.run
-			Component[] devMenuComps = deviceMenu.getMenuComponents();
-			for (Component devMenuComp : devMenuComps) {
-				if (devMenuComp instanceof JRadioButtonMenuItem) {
-					JMenuItem item = (JRadioButtonMenuItem) devMenuComp;
-					if (item.getActionCommand().equals(aeChipClass.getName())) {
-						item.setSelected(true);
-						break;
-					}
-				}
-			}
-			fixLoggingControls();
-			filterChain = chip.getFilterChain();
-			if (filterChain == null) {
-				filtersToggleButton.setVisible(false);
-				viewFiltersMenuItem.setEnabled(false);
-			} else {
-				filterChain.reset();
-				filtersToggleButton.setVisible(true);
-				viewFiltersMenuItem.setEnabled(true);
-			}
-			HardwareInterface hw = chip.getHardwareInterface();
-			if (hw != null) {
-				log.info("setting hardware interface of " + chip + " to " + hw);
-				aemon = (AEMonitorInterface) hw;
-			}
-
-			showFilters(enableFiltersOnStartup);
-			if (enableFiltersOnStartup) {
-				getFilterFrame().setState(Frame.ICONIFIED); // set the filter frame iconified at first (but open) so that it doesn't obscure view
-			}            // fix selected radio button for chip class
-			if (deviceMenu.getItemCount() == 0) {
-				log.warning("tried to select device in menu but no device menu has been built yet");
-			}
-			for (int i = 0; i < deviceMenu.getItemCount(); i++) {
-				JMenuItem m = deviceMenu.getItem(i);
-				if ((m != null) && (m instanceof JRadioButtonMenuItem) && (m.getText() == aeChipClass.getName())) {
-					m.setSelected(true);
-					break;
-				}
-			}
-			//            getSupport().firePropertyChange("chip", oldChip, getChip());
-			firePropertyChange(EVENT_CHIP, oldChip, getChip());
-
-			chip.onRegistration();
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	private void constructChip(Constructor<AEChip> constructor) {
-		try {
-			//            System.out.println("AEViewer.constructChip(): constructing chip with constructor "+constructor);
-			setChip(constructor.newInstance((java.lang.Object[]) null));
-
-		} catch (Exception e) {
-			log.warning("AEViewer.constructChip exception " + e.getMessage());
-			e.printStackTrace();
-		}
-	}
-
-	synchronized void makeCanvas() {
-		if (chipCanvas != null) {
-			getImagePanel().remove(chipCanvas.getCanvas());
-		}
-		if (chip == null) {
-			log.warning("null chip, not making canvas");
-			return;
-		}
-		chipCanvas = chip.getCanvas();
-		getImagePanel().add(chipCanvas.getCanvas(), BorderLayout.CENTER);
-
-		//        chipCanvas.getCanvas().invalidate();
-		// find display menu reference and fill it with display menu for this canvas
-		viewMenu.remove(displayMethodMenu);
-		viewMenu.add(chipCanvas.getDisplayMethodMenu());
-		displayMethodMenu = chipCanvas.getDisplayMethodMenu();
-		viewMenu.invalidate();
-
-		//        validate();
-		//        pack();
-		// causes a lot of flashing ... Toolkit.getDefaultToolkit().setDynamicLayout(true); // dynamic resizing  -- see if this bombs!
-	}
-
-	/** This method sets the "current file" which sets the field, the preferences of the last file, and the window title. It does not
+    private static final String SET_DEFAULT_FIRMWARE_FOR_BLANK_DEVICE = "Set default firmware for blank device...";
+    // set true to force null hardware (None in interface menu) even if only single interface
+    private boolean nullInterface = false;
+
+    /** Utility method to return a URL to a file in the installation.
+     *
+     * @param path relative to root of installation, e.g. "/doc/USBAERmini2userguide.pdf"
+     * @return the URL string pointing to the local file
+     * @see #addHelpURLItem(java.lang.String, java.lang.String, java.lang.String)
+     * @throws MalformedURLException if there is something wrong with the URL
+     */
+    public String pathToURL(String path) throws MalformedURLException {
+            String curDir = System.getProperty("user.dir");
+            File f = new File(curDir);
+            File pf = f.getParentFile().getParentFile();
+            String urlString = "file://" + pf.getPath() + path;
+            URL url = new URL(urlString);
+            return url.toString();
+    }
+
+    /** Adds item above separator/about
+     *
+     * @param menuItem item to add
+     * @see #removeHelpItem(javax.swing.JMenuItem)
+     * @see #addHelpURLItem(java.lang.String, java.lang.String, java.lang.String)
+     * @return the component that you added, for later removal
+     */
+    public JComponent addHelpItem(JComponent menuItem) {
+            int n = helpMenu.getItemCount();
+            if (n <= 2) {
+                    n = 0;
+            } else {
+                    n = n - 2;
+            }
+            helpMenu.add(menuItem, n);
+            return menuItem;
+    }
+
+    /** Registers a new item in the Help menu.
+     *
+     * @param url for the item to be opened in the browser, e.g. pathToURL("docs/board.pdf"), or "http://jaerproject.net/".
+     * @param title the menu item title
+     * @param tooltip useful tip about help
+     * @return the menu item - useful for removing the help item.
+     * @see #removeHelpItem(javax.swing.JMenuItem)
+     * @see #pathToURL(java.lang.String)
+     */
+    final public JComponent addHelpURLItem(final String url, String title, String tooltip) {
+            JMenuItem menuItem = new JMenuItem(title);
+            menuItem.setToolTipText(tooltip);
+
+            menuItem.addActionListener(new java.awt.event.ActionListener() {
+
+                    @Override
+                    public void actionPerformed(java.awt.event.ActionEvent evt) {
+                            showInBrowser(url);
+                            //                try {
+                                    //                    BrowserLauncher launcher=new BrowserLauncher();
+                            //                    launcher.openURLinBrowser(url);
+                            ////                    BrowserLauncher.openURL(url);
+                            //                } catch (Exception e) {
+                            //                    log.warning(e.toString());
+                            //                    setStatusMessage(e.getMessage());
+                            //                }
+                    }
+            });
+            addHelpItem(menuItem);
+            return menuItem;
+    }
+
+    private void showInBrowser(String url) {
+            if (!Desktop.isDesktopSupported()) {
+                    log.warning("No Desktop support, can't show help from " + url);
+                    return;
+            }
+            try {
+                    Desktop.getDesktop().browse(new URI(url));
+            } catch (Exception ex) {
+                    log.warning("Couldn't show " + url + "; caught " + ex);
+            }
+    }
+
+    /** Unregisters an item from the Help menu.
+     *
+     * @param m the menu item originally returns from addHelpURLItem or addHelpItem.
+     * @see #addHelpURLItem(java.lang.String, java.lang.String, java.lang.String)
+     * @see #addHelpItem(javax.swing.JMenuItem)
+     */
+    final public void removeHelpItem(JComponent m) {
+            if (m == null) {
+                    return;
+            }
+            helpMenu.remove(m);
+    }
+    /** Default port number for remote control of this AEViewer.
+     *
+     */
+    public final int REMOTE_CONTROL_PORT = 8997; // TODO make this the starting port number but find a free one if not available.
+
+    /** Returns the frame for configurating chip. Could be null until user chooses to build it.
+     *
+     * @return the frame.
+     */
+    public BiasgenFrame getBiasgenFrame() {
+            return biasgenFrame;
+    }
+
+    /** Returns the frame holding the event filters. Could be null until user builds it.
+     *
+     * @return the frame.
+     */
+    public FilterFrame getFilterFrame() {
+            return filterFrame;
+    }
+
+    /** Call this method to break the ViewLoop out of a sleep wait, e.g. to force re-rendering of the data. */
+    public void interruptViewloop() {
+            viewLoop.interrupt(); // to break it out of blocking operation such as wait on cyclic barrier or socket
+    }
+
+    public void reopenSocketInputStream() throws HeadlessException {
+            log.info("closing and reopening socket " + aeSocket);
+            if (aeSocket != null) {
+                    try {
+                            aeSocket.close();
+                    } catch (Exception e) {
+                            log.warning("closing existing socket: caught " + e);
+                    }
+            }
+            try {
+                    aeSocket = new AESocket(); // uses preferred settings for port/buffer size, etc.
+                    aeSocket.connect();
+                    setPlayMode(PlayMode.REMOTE);
+                    openSocketInputStreamMenuItem.setText("Close socket input stream from " + aeSocket.getHost() + ":" + aeSocket.getPort());
+                    log.info("opened socket input stream " + aeSocket);
+                    socketInputEnabled = true;
+            } catch (Exception e) {
+                    JOptionPane.showMessageDialog(this, "Exception reopening socket: " + e, "AESocket Exception", JOptionPane.WARNING_MESSAGE);
+            }
+    }
+
+    /** Stores the preferred (startup) AEChip class for the viewer.
+     * @param clazz the class.
+     */
+    public void setPreferredAEChipClass(Class clazz) {
+            prefs.put("AEViewer.aeChipClassName", clazz.getName());
+    }
+    public final String REMOTE_START_LOGGING = "startlogging";
+    public final String REMOTE_STOP_LOGGING = "stoplogging";
+    public final String REMOTE_TOGGLE_SYNCHRONIZED_LOGGING = "togglesynclogging";
+
+    /** Processes remote control commands for this AEViewer. A list of commands can be obtained
+     * from a remote host by sending ? or help. The port number is logged to the console on startup.
+     * @param command the parsed command (first token)
+     * @param line the line sent from the remote host.
+     * @return confirmation of command.
+     */
+    @Override
+    public String processRemoteControlCommand(RemoteControlCommand command, String line) {
+            String[] tokens = line.split("\\s");
+            log.finer("got command " + command + " with line=\"" + line + "\"");
+            try {
+                    if (command.getCmdName().equals(REMOTE_START_LOGGING)) {
+                            if (tokens.length < 2) {
+                                    return "not enough arguments\n";
+                            }
+                            String filename = line.substring(REMOTE_START_LOGGING.length() + 1);
+                            File f = startLogging(filename);
+                            if (f == null) {
+                                    return "Couldn't start logging to filename=" + filename + ", startlogging returned " + f + "\n";
+                            } else {
+                                    return "starting logging to " + f + "\n";
+                            }
+                    } else if (command.getCmdName().equals(REMOTE_STOP_LOGGING)) {
+                            stopLogging(false); // don't confirm filename
+                            return "stopped logging\n";
+                    } else if (command.getCmdName().equals(REMOTE_TOGGLE_SYNCHRONIZED_LOGGING)) {
+                            if ((jaerViewer != null) && jaerViewer.isSyncEnabled() && (jaerViewer.getViewers().size() > 1)) {
+                                    jaerViewer.toggleSynchronizedLogging();
+                                    return "toggled synchronized logging\n";
+                            } else {
+                                    return "couldn't toggle synchronized logging because there is only 1 viewer or sync is disbled";
+                            }
+                    }
+            } catch (Exception e) {
+                    return e.toString() + "\n";
+            }
+            return null;
+    }
+
+    /**
+     * @return the playerControls
+     */
+    public AePlayerAdvancedControlsPanel getPlayerControls() {
+            return playerControls;
+    }
+
+    /**
+     * @param playerControls the playerControls to set
+     */
+    public void setPlayerControls(AePlayerAdvancedControlsPanel playerControls) {
+            this.playerControls = playerControls;
+    }
+
+    /**
+     * @return the frameRater
+     */
+    public FrameRater getFrameRater() {
+            return frameRater;
+    }
+
+    /**
+     * @return the aeFileInputStreamTimestampResetBitmask
+     */
+    public int getAeFileInputStreamTimestampResetBitmask() {
+            return aeFileInputStreamTimestampResetBitmask;
+    }
+
+    /**
+     * @return the checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem
+     */
+    public javax.swing.JCheckBoxMenuItem getCheckNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem() {
+            return checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem;
+    }
+
+    /**
+     * Returns an ArrayBlockingQueue that may be associated with this viewer; used for inter-viewer communication.
+     * @return the blockingQueueInput
+     */
+    public ArrayBlockingQueue getBlockingQueueInput() {
+            return blockingQueueInput;
+    }
+
+    private void closeAESocket() {
+            if (aeSocket != null) {
+                    try {
+                            aeSocket.close();
+                            log.info("closed " + aeSocket);
+                    } catch (IOException e) {
+                            e.printStackTrace();
+                    } finally {
+                            openSocketInputStreamMenuItem.setText("Open remote server input stream socket...");
+                            aeSocketClient = null;
+                    }
+            }
+            socketInputEnabled = false;
+    }
+
+    private void closeAESocketClient() {
+            if (aeSocketClient != null) {
+                    try {
+                            aeSocketClient.close();
+                            log.info("closed " + aeSocketClient);
+                    } catch (IOException e) {
+                            e.printStackTrace();
+                    } finally {
+                            openSocketOutputStreamMenuItem.setText("Open remote server iutput stream socket...");
+                            aeSocketClient = null;
+                    }
+            }
+            socketOutputEnabled = false;
+    }
+
+    private void closeUnicastInput() {
+            if (unicastInput != null) {
+                    unicastInput.close();
+                    removePropertyChangeListener(unicastInput);
+                    log.info("closed " + unicastInput);
+                    openUnicastInputMenuItem.setText("Open unicast UDP input...");
+                    unicastInput = null;
+            }
+            unicastInputEnabled = false;
+    }
+
+    /**
+     * Returns the main viewer image display panel where the ChipCanvas is shown.
+     * DisplayMethod's can use this getter to add their own display controls.
+     *
+     * @return the imagePanel
+     */
+    public javax.swing.JPanel getImagePanel() {
+            return imagePanel;
+    }
+
+    /**
+     * @return the aeChipClassName
+     */
+    public String getAeChipClassName() {
+            return aeChipClassName;
+    }
+
+    /**
+     * @param aeChipClassName the aeChipClassName to set
+     */
+    public void setAeChipClassName(String aeChipClassName) {
+            this.aeChipClassName = aeChipClassName;
+    }
+
+    /** Modes of viewing: WAITING means waiting for device or for playback or remote, LIVE means showing a hardware interface, PLAYBACK means playing
+     * back a recorded file, SEQUENCING means sequencing a file out on a sequencer device, REMOTE means playing a remote stream of AEs
+     */
+    public enum PlayMode {
+
+            WAITING, LIVE, PLAYBACK, SEQUENCING, REMOTE
+    }
+    volatile private PlayMode playMode = PlayMode.WAITING;
+    static Preferences prefs = Preferences.userNodeForPackage(AEViewer.class);
+    Logger log = Logger.getLogger("AEViewer");
+    //    private PropertyChangeSupport support = new PropertyChangeSupport(this); // already has support as Componenent!!!
+    EventExtractor2D extractor = null;
+    private BiasgenFrame biasgenFrame = null;
+    Biasgen biasgen = null;
+    EventFilter2D filter1 = null, filter2 = null;
+    private AEChipRenderer renderer = null;
+    AEMonitorInterface aemon = null;
+    private final ViewLoop viewLoop = new ViewLoop();
+    FilterChain filterChain = null;
+    private FilterFrame filterFrame = null;
+    RecentFiles recentFiles = null;
+    File lastFile = null;
+    public File lastLoggingFolder = null;//changed pol
+    File lastImageFile = null;
+    File currentFile = null;
+    private FrameRater frameRater = new FrameRater();
+    ChipCanvas chipCanvas;
+    volatile boolean loggingEnabled = false;
+    /** The date formatter used by AEViewer for logged data files */
+    private File loggingFile;
+    AEFileOutputStream loggingOutputStream;
+    private boolean activeRenderingEnabled = prefs.getBoolean("AEViewer.activeRenderingEnabled", true);
+    private boolean renderBlankFramesEnabled = prefs.getBoolean("AEViewer.renderBlankFramesEnabled", false);
+    // number of packets to skip over rendering, used to speed up real time processing
+    private int skipPacketsRenderingNumber = prefs.getInt("AEViewer.skipPacketsRenderingNumber", 0);
+    int skipPacketsRenderingCount = 0; // render first packet always
+    DropTarget dropTarget;
+    File draggedFile;
+    private boolean loggingPlaybackImmediatelyEnabled = prefs.getBoolean("AEViewer.loggingPlaybackImmediatelyEnabled", false);
+    private boolean enableFiltersOnStartup = prefs.getBoolean("AEViewer.enableFiltersOnStartup", false);
+    private long loggingTimeLimit = 0, loggingStartTime = System.currentTimeMillis();
+    private boolean stereoModeEnabled = false;
+    private boolean logFilteredEventsEnabled = prefs.getBoolean("AEViewer.logFilteredEventsEnabled", false);
+    private DynamicFontSizeJLabel statisticsLabel;
+    private boolean filterFrameBuilt = false; // flag to signal that the frame should be rebuilt when initially shown or when chip is changed
+    private AEChip chip;
+    /** The default AEChip class. */
+    public static String DEFAULT_CHIP_CLASS = DVS128.class.getName();
+    /** The class name of the aeChipClass */
+    private String aeChipClassName = null;
+    /** The class we are displaying - this is the root object for practically everything display in an AEViewer. */
+    protected Class aeChipClass = null;
+    //    WindowSaver windowSaver;
+    private JAERViewer jaerViewer;
+    // multicast connections
+    private AEMulticastInput aeMulticastInput = null;
+    private AEMulticastOutput aeMulticastOutput = null;
+    private boolean multicastInputEnabled = false, multicastOutputEnabled = false;
+    // blockingQueue input
+    private ArrayBlockingQueue blockingQueueInput = null;
+    private boolean blockingQueueInputEnabled = false;
+    // unicast dataqgram data xfer
+    private volatile AEUnicastOutput unicastOutput = null;
+    private volatile AEUnicastInput unicastInput = null;
+    private boolean unicastInputEnabled = false, unicastOutputEnabled = false;
+    // socket connections
+    private volatile AEServerSocket aeServerSocket = null; // this server socket accepts connections from clients who want events from us
+    private volatile AESocket aeSocket = null; // this socket is used to getString events from a server to us
+    private volatile AESocket aeSocketClient = null; // this socket is used send events to a TCP server
+    private boolean socketInputEnabled = false; // flags that we are using socket input stream
+    private boolean socketOutputEnabled = false; // flags that we are using socket input stream
+    private boolean blankDeviceMessageShown = false; // flags that we have warned about blank device, don't show message again
+    AEViewerLoggingHandler loggingHandler;
+    private RemoteControl remoteControl = null; // TODO move to JAERViewer
+    private int aeFileInputStreamTimestampResetBitmask = prefs.getInt("AEViewer.aeFileInputStreamTimestampResetBitmask", 0);
+    private AePlayerAdvancedControlsPanel playerControls;
+
+    /** Constructs a new AEViewer using a default AEChip.
+     *
+     * @param jAERViewer the containing top level JAERViewer
+     */
+    public AEViewer(JAERViewer jAERViewer) {
+            this(jAERViewer, null);
+    }
+
+    /**
+     * Constructs a new instance and then sets class name of device to show in it
+     *
+     * @param jaerViewer the manager of all viewers
+     * @param chipClassName the AEChip to use
+     */
+    public AEViewer(JAERViewer jaerViewer, String chipClassName){
+            loggingHandler = new AEViewerLoggingHandler(this); // handles log messages globally
+            loggingHandler.getSupport().addPropertyChangeListener(this); // logs to Console handler in AEViewer
+            Logger.getLogger("").addHandler(loggingHandler);
+
+            log.info("AEViewer starting up...");
+
+            if (chipClassName == null) {
+                    aeChipClassName = prefs.get("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS);
+            } else {
+                    aeChipClassName = chipClassName;
+            }
+            log.info("AEChip class name is " + aeChipClassName);
+            try {
+                    //                log.info("getting class for "+aeChipClassName);
+                    aeChipClass = FastClassFinder.forName(getAeChipClassName()); // throws exception if class not found
+                    if (java.lang.reflect.Modifier.isAbstract(aeChipClass.getModifiers())) {
+                            log.warning(aeChipClass + " is abstract, setting chip class to default " + DEFAULT_CHIP_CLASS);
+                            setAeChipClassName(DEFAULT_CHIP_CLASS);
+                            aeChipClass = FastClassFinder.forName(getAeChipClassName());
+                    }
+            } catch (ClassNotFoundException e) {
+                    log.warning(getAeChipClassName() + " class not found or not a valid AEChip, setting preferred chip class to default " + DEFAULT_CHIP_CLASS+" and using that class");
+                    prefs.put("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS);
+                    try {
+                            prefs.flush();
+                    } catch (BackingStoreException ex) {
+                            log.warning("couldnt' flush the preferences to save preferred chip class: "+ex.toString());
+                    }
+                    try {
+                            aeChipClass=FastClassFinder.forName(DEFAULT_CHIP_CLASS);
+                    } catch (ClassNotFoundException ex) {
+                            log.warning("could not even find the default chip class "+DEFAULT_CHIP_CLASS+", exiting");
+                            System.exit(1);
+                    }
+            }
+            setLocale(Locale.US); // to avoid problems with other language support in JOGL
+            //        try {
+            //            UIManager.setLookAndFeel(
+            //                    UIManager.getCrossPlatformLookAndFeelClassName());
+            ////            UIManager.setLookAndFeel(new WindowsLookAndFeel());
+            //        } catch (Exception e) {
+            //            log.warning(e.getMessage());
+            //        }
+            setName("AEViewer");
+
+            initComponents();
+            playerControls = new AePlayerAdvancedControlsPanel(this);
+            playerControlPanel.add(playerControls, BorderLayout.NORTH);
+            this.jaerViewer = jaerViewer;
+            if (jaerViewer != null) {
+                    // all stuff having to do with synchronizing player buttons here, binding components
+                    // TODO rework binding of jAERViewer player, AEViewer player, and player GUI. The whole MVC idea is too convoluted now.
+                    jaerViewer.addViewer(this); // register outselves, build menus here that sync views, e.g. synchronized playback // TODO, dependency, depends on existing player control panel
+                    if (jaerViewer.getSyncPlayer() != null) {
+                            // now bind player control panel to SyncPlayer and bind jaer sync player to player control panel.
+                            playerControls.addPropertyChangeListener(jaerViewer.getSyncPlayer());
+                            jaerViewer.getSyncPlayer().getSupport().addPropertyChangeListener(playerControls);
+                            if (jaerViewer.isSyncEnabled()) {
+                                    playerControls.setAePlayer(jaerViewer.getSyncPlayer());
+                            }
+                    }
+            }
+            validate();
+
+
+
+            statisticsLabel = new DynamicFontSizeJLabel();
+            //        statisticsLabel.setFont(new java.awt.Font("Bitstream Vera Sans Mono 11 Bold", 0, 8));
+            statisticsLabel.setToolTipText("Time slice/Absolute time, NumEvents/NumFiltered, events/sec, Frame rate acheived/desired, Time expansion X contraction /, delay after frame, color scale");
+            statisticsPanel.add(statisticsLabel);
+            PropertyChangeListener[] list = statisticsLabel.getPropertyChangeListeners();
+            for (PropertyChangeListener p : list) {
+                    statisticsLabel.removePropertyChangeListener(p);
+            }
+
+            //        HardwareInterfaceException.addExceptionListener(this);
+            int n = menuBar.getMenuCount();
+            for (int i = 0; i < n; i++) {
+                    JMenu m = menuBar.getMenu(i);
+                    m.getPopupMenu().setLightWeightPopupEnabled(false);
+            }
+            filtersSubMenu.getPopupMenu().setLightWeightPopupEnabled(false); // otherwise can't see on canvas
+            graphicsSubMenu.getPopupMenu().setLightWeightPopupEnabled(false);
+            remoteMenu.getPopupMenu().setLightWeightPopupEnabled(false); // make remote submenu heavy to show over glcanvas
+
+            ToolTipManager.sharedInstance().setLightWeightPopupEnabled(false); // to show menu tips over GLCanvas
+
+            String lastFilePath = prefs.get("AEViewer.lastFile", "");
+            lastFile = new File(lastFilePath);
+
+            // tobi changed to avoid writing always to startup folder, which causes a major problem if this folder is not writeable, e.g. under NFS shared folder
+            String defaultLoggingFolderName = System.getProperty("user.home"); //System.getProperty("user.dir");
+            log.info("using "+defaultLoggingFolderName+" as the defaultLoggingFolderName");
+            // lastLoggingFolder starts off at user.dir which is startup folder "host/java" where .exe launcher lives
+            lastLoggingFolder = new File(prefs.get("AEViewer.lastLoggingFolder", defaultLoggingFolderName));
+
+            // check lastLoggingFolder to see if it really exists, if not, default to user.dir
+            if (!lastLoggingFolder.exists() || !lastLoggingFolder.isDirectory()) {
+                    log.warning("lastLoggingFolder " + lastLoggingFolder + " no good, defaulting to " + defaultLoggingFolderName);
+                    lastLoggingFolder = new File(defaultLoggingFolderName);
+            }
+
+            // recent files tracks recently used files *and* folders. recentFiles adds the anonymous listener
+            // built here to open the selected file
+            recentFiles = new RecentFiles(prefs, fileMenu, new ActionListener() {
+
+                    @Override
+                    public void actionPerformed(ActionEvent evt) {
+                            File f = new File(evt.getActionCommand());
+                            //                log.info("opening "+evt.getActionCommand());
+                            try {
+                                    if ((f != null) && f.isFile()) {
+                                            getAePlayer().startPlayback(f);
+                                            recentFiles.addFile(f);
+                                    } else if ((f != null) && f.isDirectory()) {
+                                            prefs.put("AEViewer.lastFile", f.getCanonicalPath());
+                                            aePlayer.openAEInputFileDialog();
+                                            recentFiles.addFile(f);
+                                    }
+                            } catch (Exception fnf) {
+                                    fnf.printStackTrace();
+                                    //                    exceptionOccurred(fnf,this);
+                                    recentFiles.removeFile(f);
+                            }
+                    }
+            });
+
+            // additional help
+            try {
+                    addHelpURLItem(HELP_URL_USER_GUIDE, "jAER wiki and user guide", "Opens the jAER wiki and user guide");
+                    addHelpURLItem(HELP_URL_HELP_FORUM, "jAER help forum", "Opens the Help Forum on sourceforge.  Post your questions and look for answers there.");
+                    addHelpURLItem(HELP_URL_JAVADOC_WEB, "jAER javadoc", "jAER online javadoc (probably out of date)");
+
+                    addHelpItem(new JSeparator());
+                    addHelpURLItem(pathToURL(HELP_USER_GUIDE_USB2_MINI), "USBAERmini2 board", "User guide for USB2AERmini2 AER monitor/sequencer interface board");
+                    addHelpURLItem(pathToURL(HELP_USER_GUIDE_AER_CABLING), "AER protocol and cabling guide", "Guide to AER pin assignment and cabling for the Rome and CAVIAR standards");
+                    addHelpURLItem(pathToURL("/deviceFirmwarePCBLayout/SiLabsC8051F320/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");
+                    addHelpItem(new JSeparator());
+            } catch (Exception e) {
+                    log.warning("could register help item: " + e.toString());
+            }
+
+            HardwareInterfaceFactory.instance().buildInterfaceList(); // once only to start
+            buildInterfaceMenu();
+            buildDeviceMenu();
+            // we need to do this after building device menu so that proper menu item radio button can be selected
+            cleanup(); // close sockets if they are open
+            setAeChipClass(aeChipClass);
+
+
+            playerControlPanel.setVisible(false);
+            timestampResetBitmaskMenuItem.setText("Set timestamp reset bitmask... (currently 0x" + Integer.toHexString(aeFileInputStreamTimestampResetBitmask) + ")");
+
+            //        pack(); // seems to make no difference
+
+            // tobi removed following oct 2008 because it was somehow apparently causing deadlock on exit, don't know why
+            //        Runtime.getRuntime().addShutdownHook(new Thread() {
+            //
+            //            public void run() {
+            //                if (aemon != null && aemon.isOpen()) {
+            //                    aemon.close();
+            //                }
+            //            }
+            //        });
+
+            setFocusable(true);
+            requestFocus();
+            //        viewLoop = new ViewLoop(); // declared final for synchronization
+            dropTarget = new DropTarget(getImagePanel(), this);
+
+            fixLoggingControls();
+
+            // init menu items that are checkboxes to correct initial state
+            viewActiveRenderingEnabledMenuItem.setSelected(isActiveRenderingEnabled());
+            loggingPlaybackImmediatelyCheckBoxMenuItem.setSelected(isLoggingPlaybackImmediatelyEnabled());
+            if(chip==null) {
+                    log.warning("null chip object - some problem occurred constructing chip instance");
+            }
+            else {
+                    subsampleEnabledCheckBoxMenuItem.setSelected(chip.isSubSamplingEnabled());
+            }
+            acccumulateImageEnabledCheckBoxMenuItem.setSelected(getRenderer().isAccumulateEnabled());
+            autoscaleContrastEnabledCheckBoxMenuItem.setSelected(getRenderer().isAutoscaleEnabled());
+            pauseRenderingCheckBoxMenuItem.setSelected(false);// not isPaused because aePlayer doesn't exist yet
+            viewRenderBlankFramesCheckBoxMenuItem.setSelected(isRenderBlankFramesEnabled());
+            logFilteredEventsCheckBoxMenuItem.setSelected(logFilteredEventsEnabled);
+            enableFiltersOnStartupCheckBoxMenuItem.setSelected(enableFiltersOnStartup);
+
+            fixSkipPacketsRenderingMenuItems();
+
+            checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setSelected(prefs.getBoolean("AEViewer.checkNonMonotonicTimeExceptionsEnabled", true));
+
+            // start the server thread for incoming socket connections for remote consumers of events
+            if (aeServerSocket == null) {
+                    try {
+                            aeServerSocket = new AEServerSocket();
+                            aeServerSocket.start();
+                    } catch (IOException ex) {
+                            log.warning(ex.toString() + ": While constructing AEServerSocket. Another viewer or process has already bound this port or some other error. This viewer will not have a server socket for AE data.");
+                            aeServerSocket = null;
+                    }
+            }
+            viewLoop.start();
+
+            // add remote control commands
+            // TODO encapsulate all this and command processor
+            try {
+                    remoteControl = new RemoteControl(REMOTE_CONTROL_PORT);
+                    remoteControl.addCommandListener(this, REMOTE_START_LOGGING + " <filename>", "starts logging ae data to a file");
+                    remoteControl.addCommandListener(this, REMOTE_STOP_LOGGING, "stops logging ae data to a file");
+                    remoteControl.addCommandListener(this, REMOTE_TOGGLE_SYNCHRONIZED_LOGGING, "starts synchronized logging ae data to a set of files with aeidx filename automatically timstamped"); // TODO allow sync logging to a chosen file - change startLogging to do sync logging if viewers are synchronized
+                    log.info("created " + remoteControl + " for remote control of some AEViewer functions");
+            } catch (SocketException ex) {
+                    log.warning(ex.toString());
+            }
+            setTitleAccordingToState();
+
+    }
+
+    /** Closes hardware interface and network sockets.
+     * Register all cleanup here for other classes, e.g. Chip classes that open
+sockets.
+     */
+    private void cleanup() {
+            stopLogging(true); // in case logging, make sure we give chance to save file
+            if ((aemon != null) && aemon.isOpen()) {
+                    log.info("closing " + aemon);
+                    aemon.close();
+            }
+
+            if (aeServerSocket != null) {
+                    log.info("closing " + aeServerSocket);
+                    try {
+                            aeServerSocket.close();
+                    } catch (IOException e) {
+                            log.warning(e.toString());
+                    }
+            }
+            if (unicastInput != null) {
+                    log.info("closing unicast input" + unicastInput);
+                    unicastInput.close();
+            }
+            if (unicastOutput != null) {
+                    log.info("closing unicastOutput " + unicastOutput);
+                    unicastOutput.close();
+            }
+            if (aeMulticastInput != null) {
+                    log.info("closing aeMulticastInput " + aeMulticastInput);
+                    aeMulticastInput.close();
+            }
+            if (aeMulticastOutput != null) {
+                    log.info("closing multicastOutput " + aeMulticastOutput);
+                    aeMulticastOutput.close();
+            }
+    }
+
+    private boolean isWindows() {
+            String osName = System.getProperty("os.name");
+            if (osName.startsWith("Windows")) {
+                    return true;
+            } else {
+                    return false;
+            }
+    }
+    private int showMultipleInterfacesMessageCount = 0;
+
+    /** If we are are the only viewer, automatically set
+interface to the hardware interface if there is only 1 of them and there is not already
+a hardware interface (e.g. StereoPairHardwareInterface which consists of
+two interfaces). otherwise force user choice.
+     */
+    private void openHardwareIfNonambiguous() {
+            // TODO doesn't open an AEMonitor if there is a ServoInterface plugged in.
+            // Should check to see if there is only 1 AEMonitorInterface, but this check is not possible currently without opening the interface.
+            //        HardwareInterfaceFactory.instance().buildInterfaceList(); // TODO this burns up a lot of heap memory because the PnpListeners
+            // check to see if null interface required instead
+            if (nullInterface) {
+                    return;
+            }
+
+            int ninterfaces = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
+            if (ninterfaces > 1) {
+                    if ((showMultipleInterfacesMessageCount++ % 100) == 0) {
+                            log.info("found " + ninterfaces + " hardware interfaces, choose one from Interface menu to connect");
+                    }
+            }
+            if ((jaerViewer != null) && (jaerViewer.getViewers().size() == 1) && (chip.getHardwareInterface() == null) && (ninterfaces == 1)) {
+                    HardwareInterface hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
+                    //UDP interfaces should only be opened if the chip is a NetworkChip
+                    if (UDPInterface.class.isInstance(hw)) {
+                            if (NetworkChip.class.isInstance(chip)) {
+                                    log.info("opening unambiguous network device");
+                                    chip.setHardwareInterface(hw);
+                            }
+                    } else {
+                            if (!NetworkChip.class.isInstance(chip)) {
+                                    log.info("setting hardware interface for unambiguous device to " + hw.toString());
+                                    chip.setHardwareInterface(hw); // if blank cypress, returns bare CypressFX2
+                            }
+                    }
+            }
+    }
+    private ArrayList<String> chipClassNames;
+    private ArrayList<Class> chipClasses;
+
+    @SuppressWarnings("unchecked")
+    void getChipClassPrefs() {
+            // Deserialize from a byte array
+            try {
+                    byte[] bytes = prefs.getByteArray("chipClassNames", null);
+                    if (bytes != null) {
+                            ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
+                            chipClassNames = (ArrayList<String>) in.readObject();
+                            in.close();
+                    } else {
+                            log.warning("building list of all AEChip classses - this takes some time. To reduce startup time, use AEChip/Customize to specify desired classes");
+                            makeDefaultChipClassNames();
+                    }
+            } catch (Exception e) {
+                    makeDefaultChipClassNames();
+                    putChipClassPrefs(); // added this to cache chip classes to speed startup for subsequent launches
+            }
+    }
+
+    private void makeDefaultChipClassNames() {
+            chipClassNames = SubclassFinder.findSubclassesOf(AEChip.class.getName());
+    }
+
+    private void putChipClassPrefs() {
+            try {
+                    // Serialize to a byte array
+                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                    ObjectOutput out = new ObjectOutputStream(bos);
+                    out.writeObject(chipClassNames);
+                    out.close();
+
+                    // Get the bytes of the serialized object
+                    byte[] buf = bos.toByteArray();
+                    prefs.putByteArray("chipClassNames", buf);
+            } catch (IOException e) {
+                    e.printStackTrace();
+            } catch (IllegalArgumentException e2) {
+                    log.warning("too many classes in Preferences, " + chipClassNames.size() + " class names");
+            }
+    }
+
+    private static class FastClassFinder {
+
+            static HashMap<String, Class> map = new HashMap<String, Class>();
+
+            private static Class forName(String name) throws ClassNotFoundException {
+                    Class c = null;
+                    if ((c = map.get(name)) == null) {
+                            c = Class.forName(name);
+                            map.put(name, c);
+                            return c;
+                    } else {
+                            return c;
+                    }
+            }
+    }
+
+    private void buildDeviceMenu() {
+            ButtonGroup deviceGroup = new ButtonGroup();
+            deviceMenu.removeAll();
+            chipClasses = new ArrayList<Class>();
+            deviceMenu.addSeparator();
+            deviceMenu.add(customizeDevicesMenuItem);
+            getChipClassPrefs();
+            ArrayList<String> notFoundClasses = new ArrayList<String>();
+            for (String deviceClassName : chipClassNames) {
+                    try {
+                            Class c = FastClassFinder.forName(deviceClassName);
+                            chipClasses.add(c);
+                            JRadioButtonMenuItem b = new JRadioButtonMenuItem(deviceClassName);
+                            deviceMenu.insert(b, deviceMenu.getItemCount() - 2);
+                            b.addActionListener(new ActionListener() {
+
+                                    @Override
+                                    public void actionPerformed(ActionEvent evt) {
+                                            try {
+                                                    String name = evt.getActionCommand();
+                                                    Class cl = FastClassFinder.forName(name);
+                                                    try{
+                                                            setCursor(new Cursor(Cursor.WAIT_CURSOR));
+                                                            setAeChipClass(cl);
+                                                    }finally{
+                                                            setCursor(Cursor.getDefaultCursor());
+                                                    }
+                                            } catch (Exception e) {
+                                                    e.printStackTrace();
+                                            }
+                                    }
+                            });
+                            deviceGroup.add(b);
+                    } catch (ClassNotFoundException e) {
+                            log.warning("couldn't find device class " + e.getMessage() + ", removing from preferred classes");
+                            if (deviceClassName != null) {
+                                    notFoundClasses.add(deviceClassName);
+                            }
+                    }
+            }
+            if (notFoundClasses.size() > 0) {
+                    chipClassNames.removeAll(notFoundClasses);
+                    putChipClassPrefs();
+            }
+            /*
+             * add scroll arrows to menu
+             * arguments are: items to show, scrolling interval,
+             * froozen items top, frozen items bottom
+             */
+            MenuScroller.setScrollerFor(deviceMenu, 15, 100, 4, 2);
+    }
+
+    /** If the AEMonitor is open, tells it to resetTimestamps, and fires PropertyChange EVENT_TIMESTAMPS_RESET.
+     * @see AEMonitorInterface#resetTimestamps()
+     */
+    public void zeroTimestamps() {
+            if ((aemon != null) && aemon.isOpen()) {
+                    aemon.resetTimestamps();
+            }
+            firePropertyChange(EVENT_TIMESTAMPS_RESET, null, EVENT_TIMESTAMPS_RESET);
+    }
+
+    /** Gets the AEchip class from the internal aeChipClassName
+     *
+     * @return the AEChip subclass. DEFAULT_CHIP_CLASS is returned if there is no stored preference.
+     */
+    public Class getAeChipClass() {
+
+            return aeChipClass;
+    }
+    private long lastTimeTitleSet = 0;
+    PlayMode lastTitlePlayMode = null;
+
+    /** this sets window title according to actual state */
+    public void setTitleAccordingToState() {
+            if ((lastTitlePlayMode == getPlayMode()) && ((System.currentTimeMillis() - lastTimeTitleSet) < 1000)) {
+                    return; // don't bother with this expenive window operation more than 1/second
+            }
+            lastTimeTitleSet = System.currentTimeMillis();
+            lastTitlePlayMode = getPlayMode();
+            String ts = null;
+            switch (getPlayMode()) {
+                    case LIVE:
+                            ts = "LIVE - " + getAeChipClass().getSimpleName() + " - " + aemon + " - AEViewer";
+                            break;
+                    case PLAYBACK:
+                            ts = "PLAYING - " + currentFile.getName() + " - " + getAeChipClass().getSimpleName() + " - AEViewer";
+                            break;
+                    case WAITING:
+                            ts = "WAITING - " + getAeChipClass().getSimpleName() + " - AEViewer";
+                            break;
+                    case SEQUENCING:
+                            ts = " LIVE SEQUENCE-MONITOR - " + getAeChipClass().getSimpleName() + " - " + aemon + " - AEViewer";
+                            break;
+                    case REMOTE:
+                            ts = "REMOTE - " + getAeChipClass().getSimpleName() + " - AEViewer";
+                            break;
+                    default:
+                            ts = "Unknown state";
+            }
+            final String fts = ts;
+            SwingUtilities.invokeLater(new Runnable() {
+
+                    @Override
+                    public void run() {
+                            setTitle(fts);
+                    }
+            });
+    }
+
+    /** Sets the device class, e.g. DVS127, from the
+     * fully qualified class name which is provided by the menu item itself.
+     * @param deviceClass the Class of the AEChip to add to the AEChip menu
+     */
+    public void setAeChipClass(Class deviceClass) {
+            //        log.infox("AEViewer.setAeChipClass("+deviceClass+")");
+            try {
+                    if (filterFrame != null) {
+                            filterFrame.dispose();
+                            filterFrame = null;
+                    }
+                    filterFrameBuilt = false;
+                    filtersToggleButton.setVisible(false);
+                    viewFiltersMenuItem.setEnabled(false);
+                    showBiasgen(false);
+                    cleanup(); // close sockets so they can be reused
+                    Constructor<AEChip> constructor = deviceClass.getConstructor();
+                    if (constructor == null) {
+                            log.warning("null chip constructer, need to select valid chip class");
+                            return;
+                    }
+                    AEChip oldChip = getChip();
+                    if (oldChip != null) {
+                            oldChip.onDeregistration();
+                            if((oldChip.getCanvas()!=null) && (oldChip.getCanvas().getDisplayMethod()!=null)) {
+                                    oldChip.getCanvas().getDisplayMethod().onDeregistration();
+                            }
+                    }
+                    if (getChip() == null) { // handle initial case
+                            constructChip(constructor);
+                    } else {
+                            synchronized (chip) { // TODO handle live case -- this is not ideal thread programming - better to sync on a lock object in the run loop
+                                    synchronized (extractor) {
+                                            synchronized (getRenderer()) {
+                                                    getChip().cleanup();
+                                                    constructChip(constructor);
+                                            }
+                                    }
+                            }
+                    }
+                    if (chip == null) {
+                            log.warning("null chip, not continuing");
+                            return;
+                    }
+                    aeChipClass = deviceClass;
+                    setPreferredAEChipClass(aeChipClass);
+                    // chip constructed above, should have renderer already constructed as well
+                    if ((chip.getRenderer() != null) && (chip.getRenderer() instanceof Calibratible)) {
+                            // begin added by Philipp
+                            //            if (aeChipClass.renderer instanceof AdaptiveIntensityRenderer){ // that does not work since the renderer is obviously not defined before a chip gets instanciated
+                            //            if (aeChipClass.getName().equals("no.uio.ifi.jaer.chip.foveated.UioFoveatedImager") ||
+                            //                    aeChipClass.getName().equals("no.uio.ifi.jaer.chip.staticbiovis.UioStaticBioVis")) {
+                            calibrationStartStop.setVisible(true);
+                            calibrationStartStop.setEnabled(true);
+                    } else {
+                            calibrationStartStop.setVisible(false);
+                            calibrationStartStop.setEnabled(false);
+                    }
+                    // end added by Philipp
+                    if (aemon != null) { // force reopen
+                            aemon.close();
+                    }
+                    makeCanvas();
+                    //            setTitleAccordingToState(); // called anyhow in ViewLoop.run
+                    Component[] devMenuComps = deviceMenu.getMenuComponents();
+                    for (Component devMenuComp : devMenuComps) {
+                            if (devMenuComp instanceof JRadioButtonMenuItem) {
+                                    JMenuItem item = (JRadioButtonMenuItem) devMenuComp;
+                                    if (item.getActionCommand().equals(aeChipClass.getName())) {
+                                            item.setSelected(true);
+                                            break;
+                                    }
+                            }
+                    }
+                    fixLoggingControls();
+                    filterChain = chip.getFilterChain();
+                    if (filterChain == null) {
+                            filtersToggleButton.setVisible(false);
+                            viewFiltersMenuItem.setEnabled(false);
+                    } else {
+                            filterChain.reset();
+                            filtersToggleButton.setVisible(true);
+                            viewFiltersMenuItem.setEnabled(true);
+                    }
+                    HardwareInterface hw = chip.getHardwareInterface();
+                    if (hw != null) {
+                            log.info("setting hardware interface of " + chip + " to " + hw);
+                            aemon = (AEMonitorInterface) hw;
+                    }
+
+                    showFilters(enableFiltersOnStartup);
+                    if (enableFiltersOnStartup) {
+                            getFilterFrame().setState(Frame.ICONIFIED); // set the filter frame iconified at first (but open) so that it doesn't obscure view
+                    }            // fix selected radio button for chip class
+                    if (deviceMenu.getItemCount() == 0) {
+                            log.warning("tried to select device in menu but no device menu has been built yet");
+                    }
+                    for (int i = 0; i < deviceMenu.getItemCount(); i++) {
+                            JMenuItem m = deviceMenu.getItem(i);
+                            if ((m != null) && (m instanceof JRadioButtonMenuItem) && (m.getText() == aeChipClass.getName())) {
+                                    m.setSelected(true);
+                                    break;
+                            }
+                    }
+                    //            getSupport().firePropertyChange("chip", oldChip, getChip());
+                    firePropertyChange(EVENT_CHIP, oldChip, getChip());
+
+                    chip.onRegistration();
+
+            } catch (Exception e) {
+                    e.printStackTrace();
+            }
+    }
+
+    private void constructChip(Constructor<AEChip> constructor) {
+            try {
+                    //            System.out.println("AEViewer.constructChip(): constructing chip with constructor "+constructor);
+                    setChip(constructor.newInstance((java.lang.Object[]) null));
+
+            } catch (Exception e) {
+                    log.warning("AEViewer.constructChip exception " + e.getMessage());
+                    e.printStackTrace();
+            }
+    }
+
+    synchronized void makeCanvas() {
+            if (chipCanvas != null) {
+                    getImagePanel().remove(chipCanvas.getCanvas());
+            }
+            if (chip == null) {
+                    log.warning("null chip, not making canvas");
+                    return;
+            }
+            chipCanvas = chip.getCanvas();
+            getImagePanel().add(chipCanvas.getCanvas(), BorderLayout.CENTER);
+
+            //        chipCanvas.getCanvas().invalidate();
+            // find display menu reference and fill it with display menu for this canvas
+            viewMenu.remove(displayMethodMenu);
+            viewMenu.add(chipCanvas.getDisplayMethodMenu());
+            displayMethodMenu = chipCanvas.getDisplayMethodMenu();
+            viewMenu.invalidate();
+
+            //        validate();
+            //        pack();
+            // causes a lot of flashing ... Toolkit.getDefaultToolkit().setDynamicLayout(true); // dynamic resizing  -- see if this bombs!
+    }
+
+    /** This method sets the "current file" which sets the field, the preferences of the last file, and the window title. It does not
     actually start playing the file.
-	 */
-	protected void setCurrentFile(File f) {
-		currentFile = new File(f.getPath());
-		lastFile = currentFile;
-		prefs.put("AEViewer.lastFile", lastFile.toString());
-		//        System.out.println("putString AEViewer.lastFile="+lastFile);
-		setTitleAccordingToState();
-	}
+     */
+    protected void setCurrentFile(File f) {
+            currentFile = new File(f.getPath());
+            lastFile = currentFile;
+            prefs.put("AEViewer.lastFile", lastFile.toString());
+            //        System.out.println("putString AEViewer.lastFile="+lastFile);
+            setTitleAccordingToState();
+    }
 
     /**
      * If the AEViewer is playing (or has played) a file, then this method
@@ -5943,23 +5882,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 		}
 	}
 
-
-
-
-
-
-
-
-
-
-
-	// AEViewer is a Swing Component and already has PropertyChangeSupport!!!
-	//    /** AEViewer supports property change events. See the class description for supported events
-	//    @return the support
-	//     */
-	//    public PropertyChangeSupport getSupport() {
-	//        return support;
-	//    }
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenuItem aboutMenuItem;
     private javax.swing.JCheckBoxMenuItem acccumulateImageEnabledCheckBoxMenuItem;

@@ -178,7 +178,7 @@ public class CalibrationPanTiltScreen {
                 }
                 isCalibrated          = true;
                 setCalibrationName(name);
-                log.info("Calibration successfuly loaded!");
+                log.info("Calibration >>" + name + "<< successfuly loaded!");
                 return true;
             } catch( IOException | ClassNotFoundException e) {
                 log.warning(e.getMessage());

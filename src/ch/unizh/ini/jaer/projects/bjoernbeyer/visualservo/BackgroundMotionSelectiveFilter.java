@@ -1,6 +1,7 @@
 
 package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
 
+import ch.unizh.ini.jaer.projects.bjoernbeyer.stimulusdisplay.StimulusDipslayGUI;
 import net.sf.jaer.util.Vector2D;
 import java.util.Observable;
 import java.util.Observer;
@@ -14,6 +15,8 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.label.SmoothOpticalFlowLabeler;
 import net.sf.jaer.graphics.FrameAnnotater;
 import javax.media.opengl.GL2;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.util.DrawGL;
 
@@ -21,6 +24,8 @@ import net.sf.jaer.util.DrawGL;
  *
  * @author Bjoern
  */
+@Description("Labels global and object motion based on OMS-type information from the motionDirection")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class BackgroundMotionSelectiveFilter extends EventFilter2D implements Observer, FrameAnnotater {
     
     /** ticks per ms of input time */
@@ -62,7 +67,7 @@ public class BackgroundMotionSelectiveFilter extends EventFilter2D implements Ob
     
     private int x,y;
     
-    private CalibratedStimulusGUI StimGUI;
+    private StimulusDipslayGUI StimGUI;
     
     //TODO: make sure that everytime a raidus changes we calculate the new circle.
     //TODO: Das wird jetzt alles nicht funktionieren wenn man subsampled im anderen Filter oder?

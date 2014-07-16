@@ -11,12 +11,16 @@ import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import javax.media.opengl.GL2;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.event.PolarityEvent;
 
 /**
  *
  * @author Bjoern
  */
+@Description("Labels global and object motion based on OMS-type information from polarity events")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class BackgroundActivitySelectiveFilter extends EventFilter2D implements Observer, FrameAnnotater {
     
     /** ticks per ms of input time */

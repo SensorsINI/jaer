@@ -80,86 +80,85 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     // this "prior" on initial cluster velocityPPT
     private final float AVERAGE_VELOCITY_MIXING_FACTOR = 0.001f;
 
+    protected static final float FULL_BRIGHTNESS_LIFETIME = 100000;
+
+    /** amount each event moves COM of cluster towards itself. */
+    protected float   mixingFactor                       = getFloat("mixingFactor", 0.05f);
+    private boolean   useEllipticalClusters              = getBoolean("useEllipticalClusters", false);
+    private float     surround                           = getFloat("surround", 2f);
+    private boolean   dynamicSizeEnabled                 = getBoolean("dynamicSizeEnabled", false);
+    private boolean   dynamicAspectRatioEnabled          = getBoolean("dynamicAspectRatioEnabled", false);
+    private boolean   dynamicAngleEnabled                = getBoolean("dynamicAngleEnabled", false);
+    private boolean   pathsEnabled                       = getBoolean("pathsEnabled", true);
+    private int       pathLength                         = getInt("pathLength", 100);
+    private boolean   colorClustersDifferentlyEnabled    = getBoolean("colorClustersDifferentlyEnabled", false);
+    private boolean   useOnePolarityOnlyEnabled          = getBoolean("useOnePolarityOnlyEnabled", false);
+    private boolean   useOffPolarityOnlyEnabled          = getBoolean("useOffPolarityOnlyEnabled", false);
+    private float     aspectRatio                        = getFloat("aspectRatio", 1f);
+    private float     clusterSize                        = getFloat("clusterSize", 0.1f);
+    protected boolean growMergedSizeEnabled              = getBoolean("growMergedSizeEnabled", false);
+    protected boolean useVelocity                        = getBoolean("useVelocity", true); // enabling this enables both computation and rendering of cluster velocities
+    private boolean   logDataEnabled                     = false;
+    protected boolean showAllClusters                    = getBoolean("showAllClusters", false);
+    protected boolean useNearestCluster                  = getBoolean("useNearestCluster", false); // use the nearest cluster to an event, not the first containing it
+    protected float   predictiveVelocityFactor           = getFloat("predictiveVelocityFactor", 1);// making this M=10, for example, will cause cluster to substantially lead the events, then slow down, speed up, etc.
+    protected boolean highwayPerspectiveEnabled          = getBoolean("highwayPerspectiveEnabled", false);
+    protected int     thresholdMassForVisibleCluster     = getInt("thresholdMassForVisibleCluster", 10);
+    protected float   thresholdVelocityForVisibleCluster = getFloat("thresholdVelocityForVisibleCluster", 0);
+    protected int     clusterMassDecayTauUs              = getInt("clusterMassDecayTauUs", 10000);
+    protected boolean enableClusterExitPurging           = getBoolean("enableClusterExitPurging", true);
+    protected float   velAngDiffDegToNotMerge            = getFloat("velAngDiffDegToNotMerge", 60);
+    protected boolean showClusterNumber                  = getBoolean("showClusterNumber", false);
+    protected boolean showClusterEps                     = getBoolean("showClusterEps", false);
+    private boolean   showClusterRadius                  = getBoolean("showClusterRadius", false);
+    protected boolean showClusterVelocity                = getBoolean("showClusterVelocity", false);
+    private boolean   showClusterMass                    = getBoolean("showClusterMass", false);
+    private boolean   showPaths                          = getBoolean("showPaths",true);
+    protected float   velocityVectorScaling              = getFloat("velocityVectorScaling", 1);
+    protected int     loggingIntervalUs                  = getInt("loggingIntervalUs", 1000);
+    private int       logFrameNumber                     = 0;
+    private boolean   initializeVelocityToAverage        = getBoolean("initializeVelocityToAverage", false);
+    protected boolean filterEventsEnabled                = getBoolean("filterEventsEnabled", false); // enables filtering events so that output events only belong to clustera and point to the clusters.
+    protected float   velocityTauMs                      = getFloat("velocityTauMs", 100);
+    protected float   frictionTauMs                      = getFloat("frictionTauMs", Float.NaN);
+    private int       maxNumClusters                     = getInt("maxNumClusters", 10);
+    private boolean   surroundInhibitionEnabled          = getBoolean("surroundInhibitionEnabled", false);
+    private boolean   dontMergeEver                      = getBoolean("dontMergeEver", false);
+    private boolean   angleFollowsVelocity               = getBoolean("angleFollowsVelocity", false);
+    public boolean    smoothMove                         = getBoolean("smoothMove",false);
+    private float     smoothWeight                       = getFloat("smoothWeight",100);
+    private float     smoothPosition                     = getFloat("smoothPosition",.001f);
+    private float     smoothIntegral                     = getFloat("smoothIntegral",.001f);
+    private float     surroundInhibitionCost             = getFloat("surroundInhibitionCost",1);
+
     /** The list of clusters (visible and invisible). */
-    volatile protected java.util.List<Cluster> clusters = new LinkedList<>();
+    volatile protected LinkedList<Cluster> clusters = new LinkedList<>();
 
     /** The list of visible clusters. */
-    private LinkedList<Cluster> visibleClusters=new LinkedList<>();
-
+    protected LinkedList<Cluster> visibleClusters = new LinkedList<>();
+    
+    protected LinkedList<Cluster> pruneList = new LinkedList<>();
+    
     private int numVisibleClusters = 0;
 
     protected float   defaultClusterRadius;
-    /** amount each event moves COM of cluster towards itself. */
-    protected float   mixingFactor              = getFloat("mixingFactor", 0.05f);
-    private boolean   useEllipticalClusters     = getBoolean("useEllipticalClusters", false);
-    private float     surround                  = getFloat("surround", 2f);
-    private boolean   dynamicSizeEnabled        = getBoolean("dynamicSizeEnabled", false);
-    private boolean   dynamicAspectRatioEnabled = getBoolean("dynamicAspectRatioEnabled", false);
-    private boolean   dynamicAngleEnabled       = getBoolean("dynamicAngleEnabled", false);
-    private boolean   pathsEnabled              = getBoolean("pathsEnabled", true);
-    private int       pathLength                = getInt("pathLength", 100);
-    private boolean   colorClustersDifferentlyEnabled = getBoolean("colorClustersDifferentlyEnabled", false);
-    private boolean   useOnePolarityOnlyEnabled = getBoolean("useOnePolarityOnlyEnabled", false);
-    private boolean   useOffPolarityOnlyEnabled = getBoolean("useOffPolarityOnlyEnabled", false);
-    private float     aspectRatio               = getFloat("aspectRatio", 1f);
-    private float     clusterSize               = getFloat("clusterSize", 0.1f);
-    protected boolean growMergedSizeEnabled     = getBoolean("growMergedSizeEnabled", false);
-    protected boolean useVelocity               = getBoolean("useVelocity", true); // enabling this enables both computation and rendering of cluster velocities
-    private boolean   logDataEnabled            = false;
-    protected boolean showAllClusters           = getBoolean("showAllClusters", false);
-    protected boolean useNearestCluster         = getBoolean("useNearestCluster", false); // use the nearest cluster to an event, not the first containing it
-    protected float   predictiveVelocityFactor  = getFloat("predictiveVelocityFactor", 1);// making this M=10, for example, will cause cluster to substantially lead the events, then slow down, speed up, etc.
-    protected boolean highwayPerspectiveEnabled = getBoolean("highwayPerspectiveEnabled", false);
-    protected int     thresholdMassForVisibleCluster = getInt("thresholdMassForVisibleCluster", 10);
-    protected float   thresholdVelocityForVisibleCluster = getFloat("thresholdVelocityForVisibleCluster", 0);
-    protected int     clusterMassDecayTauUs     = getInt("clusterMassDecayTauUs", 10000);
-    protected boolean enableClusterExitPurging  = getBoolean("enableClusterExitPurging", true);
-    protected float   velAngDiffDegToNotMerge   = getFloat("velAngDiffDegToNotMerge", 60);
-    protected boolean showClusterNumber         = getBoolean("showClusterNumber", false);
-    protected boolean showClusterEps            = getBoolean("showClusterEps", false);
-    private boolean   showClusterRadius         = getBoolean("showClusterRadius", false);
-    protected boolean showClusterVelocity       = getBoolean("showClusterVelocity", false);
-    protected float   velocityVectorScaling     = getFloat("velocityVectorScaling", 1);
-    protected int     loggingIntervalUs         = getInt("loggingIntervalUs", 1000);
-    private int       logFrameNumber            = 0;
-    private boolean   initializeVelocityToAverage = getBoolean("initializeVelocityToAverage", false);
-    private boolean   showClusterMass           = getBoolean("showClusterMass", false);
-    protected boolean filterEventsEnabled       = getBoolean("filterEventsEnabled", false); // enables filtering events so that output events only belong to clustera and point to the clusters.
-    protected float   velocityTauMs             = getFloat("velocityTauMs", 100);
-    protected float   frictionTauMs             = getFloat("frictionTauMs", Float.NaN);
-    private int       maxNumClusters            = getInt("maxNumClusters", 10);
-    private boolean   surroundInhibitionEnabled = getBoolean("surroundInhibitionEnabled", false);
-    private boolean   dontMergeEver             = getBoolean("dontMergeEver", false);
-    private boolean   angleFollowsVelocity      = getBoolean("angleFollowsVelocity", false);
-    private boolean   showPaths                 = getBoolean("showPaths",true);
+    
     private Point2D.Float averageVelocityPPT    = new Point2D.Float();
     protected ClusterLogger clusterLogger       = new ClusterLogger();
 
-    private float smoothWeight   = getFloat("smoothWeight",100);
-    private float smoothPosition = getFloat("smoothPosition",.001f);
-    private float smoothIntegral = getFloat("smoothIntegral",.001f);
-
     private float initialAngle = 0;
-
-    private float surroundInhibitionCost = getFloat("surroundInhibitionCost",1);
 
     // for mouse selection of vanishing point
     private GLCanvas glCanvas;
     private ChipCanvas canvas;
 
-    public boolean smoothMove = getBoolean("smoothMove",false);
-
     /** The vanishing point for perspective object sizing */
     protected Point vanishingPoint = null;
-    
-//    ArrayList<Cluster> pruneList=new ArrayList<Cluster>(1);
-    protected LinkedList<Cluster> pruneList = new LinkedList<>();
-    
+ 
     protected int lastTimestamp=0;
     
     protected int clusterCounter = 0; // keeps track of absolute cluster number
     
-    protected static final float FULL_BRIGHTNESS_LIFETIME = 100000;
     /** Useful for subclasses. */
     protected Random random = new Random();
     
@@ -318,9 +317,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 logStream.println(String.format("case %d", logNumber));
                 logStream.println(String.format("particles=["));
                 for (Cluster c : clusters) {
-                    if (!c.isVisible()) {
-						continue;
-					}
+                    if (!c.isVisible()) continue;
                     writeCluster(c);
 //                    logStream.println(String.format("%d %d %f %f %f",c.getClusterNumber(),c.lastEventTimestamp,c.location.x,c.location.y,c.averageEventDistance));
                     if (logStream.checkError()) {
@@ -436,9 +433,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     you start with. each time we merge two clusters, we start over, until there are no more merges on iteration.
     for each cluster, if it is close to another cluster then merge them and start over. */
     protected void mergeClusters() {
-        if (isDontMergeEver()) {
-            return;
-        }
+        if (isDontMergeEver()) return;
+
         boolean mergePending;
         Cluster c1 = null;
         Cluster c2 = null;
@@ -607,6 +603,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         // for each event, see which cluster it is closest to and add it to this cluster.
         // if its too far from any cluster, make a new cluster if we have not jet
         // reached maxNumClusters
+        // This will also update the Position, Mass, EventRate and AverageDistance
         for (BasicEvent ev : in) {
             if(ev.isSpecial()) continue;
             Cluster closest = fastClusterFinder.findClusterNear(ev);
@@ -621,29 +618,21 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 Cluster newCluster;
                 if (filterEventsEnabled) {
                     newCluster = createCluster(ev, outItr); 
-                 } else {
+                } else {
                     newCluster = createCluster(ev);
                 }
                 clusters.add(newCluster);
            }
 
             updatedClusterList = maybeCallUpdateObservers(in, (lastTimestamp=ev.timestamp)); // callback to update()
-//            if (!updateTimeInitialized) {
-//                nextUpdateTimeUs = (int) (ev.timestamp + updateIntervalMs * 1000 / AEConstants.TICK_DEFAULT_US);
-//                updateTimeInitialized = true;
-//            }
-//            // ensure cluster list is scanned at least every updateIntervalMs
-//            if (ev.timestamp >= nextUpdateTimeUs) {
-//                nextUpdateTimeUs = (int) (ev.timestamp + updateIntervalMs * 1000 / AEConstants.TICK_DEFAULT_US);
-//                updateClusterList(in, ev.timestamp);
-//                updatedClusterList = true;
-//            }
+
             if (logDataEnabled) {
                 logData(ev, (EventPacket<BasicEvent>)in);
             }
         }
         // TODO update here again, relying on the fact that lastEventTimestamp was set by possible previous update according to
         // schedule; we have have double update of velocityPPT using same dt otherwise
+        // Once a Packet we update the ClusterPath, ClusterPosition(speed based) and check if the cluster is visible
         if (!updatedClusterList) {
             updateClusterList(lastTimestamp); // at laest once per packet update list
         }
@@ -892,7 +881,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             float hue = random.nextFloat();
             Color c = Color.getHSBColor(hue, 1f, 1f);
             setColor(c);
-            setClusterNumber(clusterCounter++);
+            setClusterNumber(++clusterCounter);
             setAspectRatio(RectangularClusterTracker.this.getAspectRatio());
             vxFilter.setTauMs(velocityTauMs);
             vyFilter.setTauMs(velocityTauMs);
@@ -2137,7 +2126,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 
     /** Returns list of all cluster, visible and invisible
      * @return list of clusters */
-    @Override public java.util.List<RectangularClusterTracker.Cluster> getClusters() {
+    @Override public LinkedList<RectangularClusterTracker.Cluster> getClusters() {
         return this.clusters;
     }
         

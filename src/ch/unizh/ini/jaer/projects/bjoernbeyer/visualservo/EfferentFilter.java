@@ -29,6 +29,8 @@ import net.sf.jaer.eventprocessing.label.AbstractDirectionSelectiveFilter;
 import net.sf.jaer.eventprocessing.label.DvsDirectionSelectiveFilter;
 import net.sf.jaer.util.Matrix;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTiltAimerGUI;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  *
@@ -47,6 +49,8 @@ import ch.unizh.ini.jaer.hardware.pantilt.PanTiltAimerGUI;
 //        not trivial to fix and takes a long time to occour
 //      - For this filter to work properly the panTilt->Retina transform is artificially 
 //        rectified, as the filter is very suscepitble to small deviations in the transformation
+@Description("Filters motion events into self-motion and object-motion based on live pan-tilt motion")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class EfferentFilter extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
     
     /** ticks per ms of input time */

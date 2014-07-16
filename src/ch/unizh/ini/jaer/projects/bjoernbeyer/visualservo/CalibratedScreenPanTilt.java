@@ -6,6 +6,7 @@
 
 package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
 
+import ch.unizh.ini.jaer.projects.bjoernbeyer.stimulusdisplay.ScreenActionCanvas;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.chip.AEChip;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
@@ -22,11 +23,16 @@ import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.Matrix;
 import java.util.TimerTask;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  *
  * @author Bjoern
  */
+@Description("Allows calibrating the 'DVS mounted on the PanTilt' system as "+ 
+             "well as calibrating the panTilt and a Display for quantitative tracking results.")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class CalibratedScreenPanTilt extends EventFilter2D implements PropertyChangeListener, FrameAnnotater {
     
     RectangularClusterTracker tracker;
@@ -149,8 +155,6 @@ public class CalibratedScreenPanTilt extends EventFilter2D implements PropertyCh
         
         screenPTCalib = new CalibrationPanTiltScreen("screenPTCalib");
         retinaPTCalib = new CalibrationPanTiltScreen("retinaPTCalib");
-        System.out.println(getClass()+"  ,ScreenPT--> "+screenPTCalib.isCalibrated());
-        System.out.println(getClass()+"  ,RetinaPT--> "+retinaPTCalib.isCalibrated());
         
         setEnclosedFilter(tracker);
     }
