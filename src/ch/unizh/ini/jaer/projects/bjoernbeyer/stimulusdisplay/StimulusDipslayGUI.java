@@ -1,0 +1,850 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+package ch.unizh.ini.jaer.projects.bjoernbeyer.stimulusdisplay;
+
+import java.awt.Color;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.Rectangle2D;
+import java.beans.PropertyChangeEvent;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FilenameFilter;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.util.List;
+import java.util.ArrayList;
+import javax.swing.DefaultListModel;
+import java.beans.PropertyChangeListener;
+
+/**
+ *
+ * @author Bjoern
+ */
+public class StimulusDipslayGUI extends javax.swing.JFrame {
+
+    private ScreenActionCanvas ActionGUI;
+    private StimulusFrame StimFrame;
+
+    private DefaultListModel listModelStim, listModelSet;
+    
+    private static final String[] STIM_LIST = {"oval","rectangle"};
+    private static final String[] PAINT_LIST = {"no fill","black","sine grating(vert)","sine grating(horz)","stripes(vert)","stripes(horz)"};
+    private static final String FILE_NAME_PREFIX = "jAER1.5_StimSet_";
+
+    
+    /**
+     * Creates new form StimulusGUI
+     * @param actionGui
+     */
+    public StimulusDipslayGUI(ScreenActionCanvas actionGui){
+        initComponents();
+        StimFrame = new StimulusFrame();
+
+        //This GUI is split into two parts. The actual ActionPanel and the control panel.
+        // This is because the ActionPanel is supposed to be displayed on a seperate display that might 
+        // be out of sight of the primary display. Hence the control can be on the main
+        // display while the calibration/stimulus can still be displayed on the secondary.
+        ActionGUI = actionGui;
+        ActionGUI.setContentPane(StimFrame);
+        
+        
+        SelectStimCBOX.setSelectedIndex(0);
+        SelectPaintCBOX.setSelectedIndex(0);
+        
+        listModelStim = new DefaultListModel();
+        listModelSet  = new DefaultListModel();
+        avlbStimLIST.setModel(listModelStim);
+        avlbSetLIST.setModel(listModelSet);
+        
+        //When the Filter is starting up we look for files that have the naming format of the stimulus sets.
+        // We preload those into an array such that we can access them later.
+        File f = new File(System.getProperty("user.home"));
+        File[] matchingFiles = f.listFiles(new FilenameFilter() {
+            @Override public boolean accept(File dir, String name) {
+                return name.startsWith(FILE_NAME_PREFIX) && name.endsWith("txt");
+            }
+        });
+        for(File g : matchingFiles){
+            int lastDot  = g.getName().lastIndexOf(".");
+            int lastDash = g.getName().lastIndexOf("_");
+            listModelSet.addElement(g.getName().substring(lastDash+1, lastDot));
+        }
+    }
+    
+    public StimulusDipslayGUI() {
+        this(new ScreenActionCanvas());
+    }
+    
+    @Override public void dispose() {
+        ActionGUI.dispose(); // The two windows should behave as if they where one
+        super.dispose();
+    }
+    
+    
+    @Override public void setVisible(boolean visible) {
+        //If the Action GUI is not displayable it means 
+        // it is either disposed or not realized
+        if(!ActionGUI.isShowing()) { 
+            ActionGUI.setVisible(true);
+            ActionGUI.requestFocus();
+        }
+        super.setVisible(visible);
+    }
+    
+    public PaintableObject getListedStimulus(Object listValue) {
+        return StimFrame.getObject(getListedStimulusIndex(listValue));
+    }
+    
+    public int getListedStimulusIndex(Object listValue) {
+        if(listValue == null) throw new IllegalArgumentException("The passed listValue is null!");
+        String[] parts = ((String) listValue).split(":");
+        
+        return Integer.parseInt(parts[0]);
+    }
+            
+    public PaintableObject getCurrentListedStimulus() {
+        return getListedStimulus(avlbStimLIST.getSelectedValue());
+    }
+    
+    public int getCurrentListedStimulusIndex() {
+        return getListedStimulusIndex(avlbStimLIST.getSelectedValue());
+    }
+    
+    public void addObjectToFrameAndList(PaintableObject objToAdd) {
+        int currentIndex = StimFrame.addObject(objToAdd);
+        rebuiltStimList();
+        avlbStimLIST.setSelectedIndex(currentIndex);
+    }
+    
+    private void rebuiltStimList() {
+        listModelStim.clear();
+        for(int i=0;i<StimFrame.getObjectListSize();i++) {
+            listModelStim.addElement(StimFrame.getObjectNameAtIndex(i));
+        }
+    }
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
+
+        buttonGroup1 = new javax.swing.ButtonGroup();
+        buttonGroup2 = new javax.swing.ButtonGroup();
+        ExceptionLabel = new javax.swing.JLabel();
+        jPanel6 = new javax.swing.JPanel();
+        SelectStimCBOX = new javax.swing.JComboBox(STIM_LIST);
+        AddStimBUT = new javax.swing.JButton();
+        recordPathTOGBUT = new javax.swing.JToggleButton();
+        NameTXT = new javax.swing.JTextField();
+        nameLBL = new javax.swing.JLabel();
+        widthLBL = new javax.swing.JLabel();
+        widthTXT = new javax.swing.JTextField();
+        prop2TXT = new javax.swing.JTextField();
+        prop2LBL = new javax.swing.JLabel();
+        prop3TXT = new javax.swing.JTextField();
+        prop3LBL = new javax.swing.JLabel();
+        heightTXT = new javax.swing.JTextField();
+        heightLBL = new javax.swing.JLabel();
+        prop5TXT = new javax.swing.JTextField();
+        prop5LBL = new javax.swing.JLabel();
+        prop6TXT = new javax.swing.JTextField();
+        prop6LBL = new javax.swing.JLabel();
+        origYTXT = new javax.swing.JTextField();
+        origYLBL = new javax.swing.JLabel();
+        origXTXT = new javax.swing.JTextField();
+        origXLBL = new javax.swing.JLabel();
+        SelectPaintCBOX = new javax.swing.JComboBox(PAINT_LIST);
+        FlashFreqTXT = new javax.swing.JTextField();
+        FlashFreqLBL = new javax.swing.JLabel();
+        strokeTXT = new javax.swing.JTextField();
+        strokeLBL = new javax.swing.JLabel();
+        jPanel2 = new javax.swing.JPanel();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        avlbStimLIST = new javax.swing.JList();
+        delStimBUT = new javax.swing.JButton();
+        playPathBUT = new javax.swing.JButton();
+        loopPathTOGBUT = new javax.swing.JToggleButton();
+        showPathTOGBUT = new javax.swing.JToggleButton();
+        flashStimTOGBUT = new javax.swing.JToggleButton();
+        jPanel3 = new javax.swing.JPanel();
+        jScrollPane2 = new javax.swing.JScrollPane();
+        avlbSetLIST = new javax.swing.JList();
+        saveSetBUT = new javax.swing.JButton();
+        loadSetBUT = new javax.swing.JButton();
+        setNameLBL = new javax.swing.JLabel();
+        setNameTXT = new javax.swing.JTextField();
+        avlbSetLBL = new javax.swing.JLabel();
+        deleteStimBUT = new javax.swing.JButton();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setMaximumSize(new java.awt.Dimension(537, 2147483647));
+        setMinimumSize(new java.awt.Dimension(545, 480));
+        setPreferredSize(new java.awt.Dimension(545, 480));
+
+        ExceptionLabel.setText(" ");
+        ExceptionLabel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+
+        jPanel6.setBorder(javax.swing.BorderFactory.createTitledBorder("Stimulus creation"));
+
+        SelectStimCBOX.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                SelectStimCBOXActionPerformed(evt);
+            }
+        });
+
+        AddStimBUT.setText("Add Stimulus");
+        AddStimBUT.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                AddStimBUTActionPerformed(evt);
+            }
+        });
+
+        recordPathTOGBUT.setText("record path");
+        recordPathTOGBUT.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                recordPathTOGBUTActionPerformed(evt);
+            }
+        });
+
+        nameLBL.setText("Name:");
+
+        widthLBL.setText("width:");
+
+        widthTXT.setText(".1");
+        widthTXT.setPreferredSize(new java.awt.Dimension(50, 20));
+
+        prop2TXT.setText("init...");
+        prop2TXT.setPreferredSize(new java.awt.Dimension(50, 20));
+
+        prop2LBL.setText("init...");
+        prop2LBL.setToolTipText("");
+
+        prop3TXT.setText("init...");
+        prop3TXT.setPreferredSize(new java.awt.Dimension(50, 20));
+
+        prop3LBL.setText("init...");
+
+        heightTXT.setText(".1");
+        heightTXT.setPreferredSize(new java.awt.Dimension(50, 20));
+
+        heightLBL.setText("height:");
+
+        prop5TXT.setText("init...");
+        prop5TXT.setPreferredSize(new java.awt.Dimension(50, 20));
+
+        prop5LBL.setText("init...");
+
+        prop6TXT.setText("init...");
+        prop6TXT.setPreferredSize(new java.awt.Dimension(50, 20));
+
+        prop6LBL.setText("init...");
+
+        origYTXT.setText("0");
+        origYTXT.setPreferredSize(new java.awt.Dimension(50, 20));
+
+        origYLBL.setText("origY:");
+
+        origXTXT.setText("0");
+        origXTXT.setPreferredSize(new java.awt.Dimension(50, 20));
+
+        origXLBL.setText("origX:");
+
+        SelectPaintCBOX.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                SelectPaintCBOXActionPerformed(evt);
+            }
+        });
+
+        FlashFreqTXT.setText("20");
+        FlashFreqTXT.setPreferredSize(new java.awt.Dimension(50, 20));
+        FlashFreqTXT.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                FlashFreqTXTActionPerformed(evt);
+            }
+        });
+
+        FlashFreqLBL.setText("FlashFreq:");
+
+        strokeTXT.setText("4");
+        strokeTXT.setPreferredSize(new java.awt.Dimension(50, 20));
+
+        strokeLBL.setText("stroke:");
+
+        javax.swing.GroupLayout jPanel6Layout = new javax.swing.GroupLayout(jPanel6);
+        jPanel6.setLayout(jPanel6Layout);
+        jPanel6Layout.setHorizontalGroup(
+            jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel6Layout.createSequentialGroup()
+                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel6Layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel6Layout.createSequentialGroup()
+                                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addGroup(jPanel6Layout.createSequentialGroup()
+                                        .addGap(2, 2, 2)
+                                        .addComponent(origXLBL))
+                                    .addComponent(nameLBL))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED))
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel6Layout.createSequentialGroup()
+                                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(prop2LBL)
+                                    .addComponent(prop3LBL))
+                                .addGap(1, 1, 1))
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel6Layout.createSequentialGroup()
+                                .addComponent(widthLBL)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED))
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel6Layout.createSequentialGroup()
+                                .addComponent(strokeLBL)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)))
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addGroup(jPanel6Layout.createSequentialGroup()
+                                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(strokeTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(widthTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(origXTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(prop2TXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(prop3TXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(origYLBL, javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(prop5LBL)
+                                        .addComponent(prop6LBL))
+                                    .addComponent(heightLBL, javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(FlashFreqLBL, javax.swing.GroupLayout.Alignment.TRAILING))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(origYTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(heightTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(FlashFreqTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(prop5TXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(prop6TXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addComponent(NameTXT)))
+                    .addGroup(jPanel6Layout.createSequentialGroup()
+                        .addGap(10, 10, 10)
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(AddStimBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(SelectStimCBOX, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addGap(18, 18, 18)
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(recordPathTOGBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(SelectPaintCBOX, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+        jPanel6Layout.setVerticalGroup(
+            jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel6Layout.createSequentialGroup()
+                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(AddStimBUT)
+                    .addComponent(recordPathTOGBUT))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(SelectStimCBOX, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(SelectPaintCBOX, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(NameTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(nameLBL))
+                .addGap(4, 4, 4)
+                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(origYLBL)
+                    .addComponent(origYTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(origXLBL)
+                    .addComponent(origXTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(heightLBL)
+                        .addComponent(heightTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(widthLBL)
+                        .addComponent(widthTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(FlashFreqLBL)
+                    .addComponent(FlashFreqTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(strokeLBL)
+                    .addComponent(strokeTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(prop5LBL)
+                        .addComponent(prop5TXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(prop2LBL)
+                        .addComponent(prop2TXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(prop6LBL)
+                        .addComponent(prop6TXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(prop3LBL)
+                        .addComponent(prop3TXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
+        );
+
+        jPanel2.setBorder(javax.swing.BorderFactory.createTitledBorder("Current stimuli"));
+
+        avlbStimLIST.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        avlbStimLIST.addListSelectionListener(new javax.swing.event.ListSelectionListener() {
+            public void valueChanged(javax.swing.event.ListSelectionEvent evt) {
+                avlbStimLISTValueChanged(evt);
+            }
+        });
+        jScrollPane1.setViewportView(avlbStimLIST);
+
+        delStimBUT.setText("remove Stimulus");
+        delStimBUT.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                delStimBUTActionPerformed(evt);
+            }
+        });
+
+        playPathBUT.setText("play Path");
+        playPathBUT.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                playPathBUTActionPerformed(evt);
+            }
+        });
+
+        loopPathTOGBUT.setText("loop Path");
+        loopPathTOGBUT.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                loopPathTOGBUTActionPerformed(evt);
+            }
+        });
+
+        showPathTOGBUT.setText("show Path");
+        showPathTOGBUT.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                showPathTOGBUTActionPerformed(evt);
+            }
+        });
+
+        flashStimTOGBUT.setText("flash Stim");
+        flashStimTOGBUT.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                flashStimTOGBUTActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
+        jPanel2.setLayout(jPanel2Layout);
+        jPanel2Layout.setHorizontalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 118, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(delStimBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(playPathBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(loopPathTOGBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(showPathTOGBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(flashStimTOGBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(19, Short.MAX_VALUE))
+        );
+        jPanel2Layout.setVerticalGroup(
+            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel2Layout.createSequentialGroup()
+                        .addComponent(delStimBUT)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(playPathBUT)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(loopPathTOGBUT)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(showPathTOGBUT)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(flashStimTOGBUT)
+                        .addGap(0, 0, Short.MAX_VALUE))
+                    .addComponent(jScrollPane1))
+                .addContainerGap())
+        );
+
+        jPanel3.setBorder(javax.swing.BorderFactory.createTitledBorder("Stimulus sets"));
+
+        avlbSetLIST.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        jScrollPane2.setViewportView(avlbSetLIST);
+
+        saveSetBUT.setText("save stimulus set");
+        saveSetBUT.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                saveSetBUTActionPerformed(evt);
+            }
+        });
+
+        loadSetBUT.setText("load stimulus set");
+        loadSetBUT.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                loadSetBUTActionPerformed(evt);
+            }
+        });
+
+        setNameLBL.setText("setName:");
+
+        avlbSetLBL.setText("available stimulus sets:");
+
+        deleteStimBUT.setText("delete stimulus set");
+        deleteStimBUT.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                deleteStimBUTActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
+        jPanel3.setLayout(jPanel3Layout);
+        jPanel3Layout.setHorizontalGroup(
+            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel3Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(avlbSetLBL)
+                    .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 159, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(setNameLBL)
+                    .addComponent(saveSetBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(deleteStimBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(loadSetBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(setNameTXT))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+        jPanel3Layout.setVerticalGroup(
+            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel3Layout.createSequentialGroup()
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(setNameLBL)
+                    .addComponent(avlbSetLBL))
+                .addGap(5, 5, 5)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel3Layout.createSequentialGroup()
+                        .addComponent(setNameTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(saveSetBUT)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(loadSetBUT)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(deleteStimBUT)
+                        .addGap(0, 0, Short.MAX_VALUE))
+                    .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 131, Short.MAX_VALUE))
+                .addContainerGap())
+        );
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(jPanel6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(ExceptionLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jPanel3, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap())
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jPanel6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jPanel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(ExceptionLabel)
+                .addContainerGap())
+        );
+
+        pack();
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void recordPathTOGBUTActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_recordPathTOGBUTActionPerformed
+        StimFrame.setRecordMousePathEnabled(recordPathTOGBUT.isSelected());
+    }//GEN-LAST:event_recordPathTOGBUTActionPerformed
+
+    private void AddStimBUTActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_AddStimBUTActionPerformed
+        float origX = Float.parseFloat(origXTXT.getText()), origY  = Float.parseFloat(origYTXT.getText());
+        float width = Float.parseFloat(widthTXT.getText()), height = Float.parseFloat(heightTXT.getText());
+        
+        PaintableObject objToAdd;
+        switch (SelectStimCBOX.getSelectedIndex()) {
+            case 0://"oval"
+                objToAdd = new PaintableObject(NameTXT.getText(),new Ellipse2D.Double(),width,height);
+                break;
+            case 1://"rectangle"
+                objToAdd = new PaintableObject(NameTXT.getText(),new Rectangle2D.Double(),width,height);
+                break;
+            default: 
+                //By default the object will be an ellipse. This is just to make errorHandling easier.
+                ExceptionLabel.setText("StimulusType not detected!");
+                objToAdd = new PaintableObject(NameTXT.getText(),new Ellipse2D.Double(),width,height);
+        }
+        
+        objToAdd.setOrigXY(origX, origY);
+        objToAdd.setFlashFreqHz(Integer.parseInt(FlashFreqTXT.getText()));
+        objToAdd.setObjectPath(StimFrame.getMousePath());
+        objToAdd.setStroke(Float.parseFloat(strokeTXT.getText()));
+
+        switch (SelectPaintCBOX.getSelectedIndex()) {
+            case 0://"no fill"
+                objToAdd.setObjectColor(Color.white);
+                break;
+            case 1://"black"
+                objToAdd.setObjectColor(Color.black);
+                break;
+            case 2://"sine grating(vert)"
+                objToAdd.setPaintGradient(Integer.parseInt(prop5TXT.getText()), 0f, 0f, 1f, 0f, Color.black);
+                break;
+            case 3://"sine grating(horz)"
+                objToAdd.setPaintGradient(Integer.parseInt(prop5TXT.getText()), 0f, 0f, 0f, 1f, Color.black);
+                break;
+            case 4://"stripes(vert)"
+                objToAdd.setPaintStripes(Integer.parseInt(prop5TXT.getText()), 0f, 0f, 1f, 0f, Color.black, Color.white);
+                break;
+            case 5://"stripes(horz)"
+                objToAdd.setPaintStripes(Integer.parseInt(prop5TXT.getText()), 0f, 0f, 0f, 1f, Color.black, Color.white);
+                break;
+            default: ExceptionLabel.setText("PaintType not detected");    
+        }
+
+        addObjectToFrameAndList(objToAdd);
+        recordPathTOGBUT.setSelected(false);
+    }//GEN-LAST:event_AddStimBUTActionPerformed
+
+    private void SelectStimCBOXActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_SelectStimCBOXActionPerformed
+        prop2LBL.setVisible(false);
+        prop2TXT.setVisible(false);
+        prop3LBL.setVisible(false);
+        prop3TXT.setVisible(false);
+        switch (SelectStimCBOX.getSelectedIndex()) {
+            //This method of switching allows to use two textboxes as variable
+            // input if needed by more ellaborate stimuli
+        }
+    }//GEN-LAST:event_SelectStimCBOXActionPerformed
+
+    private void avlbStimLISTValueChanged(javax.swing.event.ListSelectionEvent evt) {//GEN-FIRST:event_avlbStimLISTValueChanged
+        if(avlbStimLIST.getSelectedValue() == null) {
+            //This means that the current selected stim has been deleted. Reset all the buttons
+            showPathTOGBUT.setSelected(false);
+            loopPathTOGBUT.setSelected(false);
+            flashStimTOGBUT.setSelected(false);
+            return;
+        }
+        
+        PaintableObject foo = getCurrentListedStimulus();
+        showPathTOGBUT.setSelected(foo.isPathPaintEnabled());
+        loopPathTOGBUT.setSelected(foo.isPathLoop());
+        flashStimTOGBUT.setSelected(foo.isFlashEnabled());
+    }//GEN-LAST:event_avlbStimLISTValueChanged
+
+    private void showPathTOGBUTActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showPathTOGBUTActionPerformed
+        if(avlbStimLIST.getSelectedValue() == null) {
+            showPathTOGBUT.setSelected(false);
+            return;
+        }
+        if(showPathTOGBUT.isSelected()){
+            getCurrentListedStimulus().setPathPaintEnabled(true);
+        } else {
+            getCurrentListedStimulus().setPathPaintEnabled(false);
+        }
+        StimFrame.repaint();
+    }//GEN-LAST:event_showPathTOGBUTActionPerformed
+
+    private void delStimBUTActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_delStimBUTActionPerformed
+        if(avlbStimLIST.getSelectedValue() == null) return;
+        int index = getCurrentListedStimulusIndex();
+        StimFrame.removeObject(index);
+        rebuiltStimList();
+        if(!(avlbStimLIST.getModel().getSize() == 0)) avlbStimLIST.setSelectedIndex(avlbStimLIST.getModel().getSize()-1);
+    }//GEN-LAST:event_delStimBUTActionPerformed
+
+    private void playPathBUTActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_playPathBUTActionPerformed
+        if(avlbStimLIST.getSelectedValue() == null) return;
+        getCurrentListedStimulus().playPathOnce();
+    }//GEN-LAST:event_playPathBUTActionPerformed
+
+    private void loopPathTOGBUTActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loopPathTOGBUTActionPerformed
+        if(avlbStimLIST.getSelectedValue() == null) return;
+        getCurrentListedStimulus().playPathLoopToggle();   
+    }//GEN-LAST:event_loopPathTOGBUTActionPerformed
+
+    private void flashStimTOGBUTActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_flashStimTOGBUTActionPerformed
+        if(avlbStimLIST.getSelectedValue() == null) return;
+        if(flashStimTOGBUT.isSelected()){
+            getCurrentListedStimulus().startFlashing();
+        } else {
+            getCurrentListedStimulus().stopFlashing();
+        } 
+    }//GEN-LAST:event_flashStimTOGBUTActionPerformed
+
+    private void FlashFreqTXTActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_FlashFreqTXTActionPerformed
+        if(Integer.parseInt(FlashFreqTXT.getText()) < 1){
+            FlashFreqTXT.setText("1");
+        } else if(Integer.parseInt(FlashFreqTXT.getText()) > 100){
+            FlashFreqTXT.setText("100");
+        }
+    }//GEN-LAST:event_FlashFreqTXTActionPerformed
+
+    private void saveSetBUTActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveSetBUTActionPerformed
+        if(setNameTXT.getText() == null | setNameTXT.getText().equals("")) {
+            setNameTXT.requestFocus();
+            return;
+        }
+        
+        // We cant save this to preferences, as when the objects have a path attached
+        // the byteStream would be far to large. Hence we write to a file.
+        File writeFile = new File(System.getProperty("user.home")+"/"+FILE_NAME_PREFIX+setNameTXT.getText()+".txt");
+        if (writeFile.exists()) writeFile.delete();
+        
+        
+        try (FileOutputStream fileOut = new FileOutputStream(writeFile); 
+             ObjectOutputStream    oos = new ObjectOutputStream(fileOut);) 
+        {
+            writeFile.createNewFile();
+            oos.writeObject(StimFrame.getObjectList()); 
+        } catch(IOException ex) {
+            ex.printStackTrace();
+            return;
+//            ExceptionLabel.setText(ex.getMessage());
+        }
+        listModelSet.addElement(setNameTXT.getText());
+        avlbSetLIST.setSelectedIndex(listModelSet.indexOf(setNameTXT.getText()));
+        setNameTXT.setText("");
+    }//GEN-LAST:event_saveSetBUTActionPerformed
+
+    private void loadSetBUTActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loadSetBUTActionPerformed
+        String loadFile;
+        //If no loadString is entered and no know set is selected we can not load
+        if((setNameTXT.getText() == null | setNameTXT.getText().equals("")) && (avlbSetLIST.getSelectedIndex() == -1)) {
+            setNameTXT.requestFocus();
+            return;
+        } else if(!(setNameTXT.getText() == null | setNameTXT.getText().equals(""))) {
+            //If a fileName is entered in the textbox we load that instead of a selected element from the list
+            avlbSetLIST.clearSelection();
+            loadFile = setNameTXT.getText();
+        } else {
+            setNameTXT.setText("");
+            loadFile = (String) avlbSetLIST.getSelectedValue();
+        }
+            
+        
+        ArrayList<PaintableObject> objectImportList;
+        try (FileInputStream fileIn = new FileInputStream(System.getProperty("user.home")+"/"+FILE_NAME_PREFIX+loadFile+".txt");
+             ObjectInputStream in = new ObjectInputStream(fileIn)) 
+        {
+            objectImportList = (ArrayList<PaintableObject>) in.readObject();
+
+            for( PaintableObject o : objectImportList) {
+                addObjectToFrameAndList(o);
+            }
+        } catch(IOException | ClassNotFoundException ex){
+           ExceptionLabel.setText(ex.getMessage());
+        }
+    }//GEN-LAST:event_loadSetBUTActionPerformed
+
+    private void deleteStimBUTActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deleteStimBUTActionPerformed
+        int itemIndex = avlbSetLIST.getSelectedIndex();
+        if(itemIndex == -1) return;
+        File writeFile = new File(System.getProperty("user.home")+"/"+FILE_NAME_PREFIX+((String) avlbSetLIST.getSelectedValue())+".txt");
+        if (writeFile.exists()) writeFile.delete();
+
+        listModelSet.remove(itemIndex); //If the file does not exist we delete the item from the list,as it is there only by error.
+        avlbSetLIST.setSelectedIndex(listModelSet.getSize()-1);
+    }//GEN-LAST:event_deleteStimBUTActionPerformed
+
+    private void SelectPaintCBOXActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_SelectPaintCBOXActionPerformed
+        prop5LBL.setVisible(false);
+        prop5TXT.setVisible(false);
+        prop6LBL.setVisible(false);
+        prop6TXT.setVisible(false);
+        switch (SelectPaintCBOX.getSelectedIndex()) {
+            case 0:
+            case 1:
+                break;
+            case 2:
+            case 3:
+                prop5LBL.setVisible(true);
+                prop5TXT.setVisible(true);
+                prop5LBL.setText("#gratings:");
+                prop5TXT.setText("1");
+                break;
+            case 4:
+            case 5:
+                prop5LBL.setVisible(true);
+                prop5TXT.setVisible(true);
+                prop5LBL.setText("#stripes:");
+                prop5TXT.setText("1");
+                break;
+            default: ExceptionLabel.setText("PaintType not detected");
+        }
+    }//GEN-LAST:event_SelectPaintCBOXActionPerformed
+
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton AddStimBUT;
+    private javax.swing.JLabel ExceptionLabel;
+    private javax.swing.JLabel FlashFreqLBL;
+    private javax.swing.JTextField FlashFreqTXT;
+    private javax.swing.JTextField NameTXT;
+    private javax.swing.JComboBox SelectPaintCBOX;
+    private javax.swing.JComboBox SelectStimCBOX;
+    private javax.swing.JLabel avlbSetLBL;
+    private javax.swing.JList avlbSetLIST;
+    private javax.swing.JList avlbStimLIST;
+    private javax.swing.ButtonGroup buttonGroup1;
+    private javax.swing.ButtonGroup buttonGroup2;
+    private javax.swing.JButton delStimBUT;
+    private javax.swing.JButton deleteStimBUT;
+    private javax.swing.JToggleButton flashStimTOGBUT;
+    private javax.swing.JLabel heightLBL;
+    private javax.swing.JTextField heightTXT;
+    private javax.swing.JPanel jPanel2;
+    private javax.swing.JPanel jPanel3;
+    private javax.swing.JPanel jPanel6;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JScrollPane jScrollPane2;
+    private javax.swing.JButton loadSetBUT;
+    private javax.swing.JToggleButton loopPathTOGBUT;
+    private javax.swing.JLabel nameLBL;
+    private javax.swing.JLabel origXLBL;
+    private javax.swing.JTextField origXTXT;
+    private javax.swing.JLabel origYLBL;
+    private javax.swing.JTextField origYTXT;
+    private javax.swing.JButton playPathBUT;
+    private javax.swing.JLabel prop2LBL;
+    private javax.swing.JTextField prop2TXT;
+    private javax.swing.JLabel prop3LBL;
+    private javax.swing.JTextField prop3TXT;
+    private javax.swing.JLabel prop5LBL;
+    private javax.swing.JTextField prop5TXT;
+    private javax.swing.JLabel prop6LBL;
+    private javax.swing.JTextField prop6TXT;
+    private javax.swing.JToggleButton recordPathTOGBUT;
+    private javax.swing.JButton saveSetBUT;
+    private javax.swing.JLabel setNameLBL;
+    private javax.swing.JTextField setNameTXT;
+    private javax.swing.JToggleButton showPathTOGBUT;
+    private javax.swing.JLabel strokeLBL;
+    private javax.swing.JTextField strokeTXT;
+    private javax.swing.JLabel widthLBL;
+    private javax.swing.JTextField widthTXT;
+    // End of variables declaration//GEN-END:variables
+
+
+}
