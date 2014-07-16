@@ -102,7 +102,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 	protected DatagramSocket socket = null;
 	int packetSequenceNumber = 0;
 	InetSocketAddress client = null;
-	private int UDP_BUFFER_SIZE = 1024;
+	private int UDP_BUFFER_SIZE = 8192;
 	private ByteBuffer udpBuffer = ByteBuffer.allocateDirect(UDP_BUFFER_SIZE);
 	private boolean printedFirstUdpMessage = false;
 	long lastUdpMsgTime = 0;
@@ -648,6 +648,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                                 ChannelBuffer[] channelBuffers=dataBuffer.getChannelBuffers();
                                 int nSamples = channelBuffers[activeChannelIndices[0]].size();
                                 udpBuffer.putInt(nSamples);
+//                                System.out.println("nSamples="+nSamples);
                                 udpBuffer.putInt(nChannels);
                                 for(int s=0;s<nSamples;s++){
                                     for(int c=0;c<nChannels;c++){
@@ -670,7 +671,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
                     log.warning(udpEx.toString());
                     setSendITD_UDP_Messages(false);
                 } catch (BufferOverflowException boe) {
-                    log.warning(boe.toString() + ": decrease number of histogram bins to fit 1024 byte datagrams");
+                    log.warning(boe.toString() + ": decrease number of histogram bins or increase rendering rate for less ADC samples per UDP packet to fit "+UDP_BUFFER_SIZE+" byte datagrams");
                 }
             }
             return isBeamFormingEnabled() ? out : in;
