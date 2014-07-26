@@ -612,13 +612,13 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			configBytes[1] = 0x00;
 			configBytes[2] = 0x00;
 			configBytes[3] = 0x01;
-			sendVendorRequest(VR_FPGA_CONFIG, (short) 0x01, (short) 0x03, configBytes);
+			sendVendorRequest(VR_FPGA_CONFIG, (short) 0x00, (short) 0x02, configBytes);
 
 			configBytes[0] = 0x00;
 			configBytes[1] = 0x00;
 			configBytes[2] = 0x00;
 			configBytes[3] = 0x00;
-			sendVendorRequest(VR_FPGA_CONFIG, (short) 0x01, (short) 0x03, configBytes);
+			sendVendorRequest(VR_FPGA_CONFIG, (short) 0x00, (short) 0x02, configBytes);
 		}
 		catch (final HardwareInterfaceException e) {
 			CypressFX3.log.warning("CypressFX3.resetTimestamps: couldn't send vendor request to reset timestamps");
@@ -740,19 +740,19 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		configBytes[1] = 0x00;
 		configBytes[2] = 0x00;
 		configBytes[3] = 0x01;
-		sendVendorRequest(VR_FPGA_CONFIG, (short) 0x01, (short) 0x01, configBytes);
+		sendVendorRequest(VR_FPGA_CONFIG, (short) 0x00, (short) 0x00, configBytes);
 
 		configBytes[0] = 0x00;
 		configBytes[1] = 0x00;
 		configBytes[2] = 0x00;
 		configBytes[3] = 0x01;
-		sendVendorRequest(VR_FPGA_CONFIG, (short) 0x01, (short) 0x02, configBytes);
+		sendVendorRequest(VR_FPGA_CONFIG, (short) 0x00, (short) 0x01, configBytes);
 
 		configBytes[0] = 0x00;
 		configBytes[1] = 0x00;
 		configBytes[2] = 0x00;
 		configBytes[3] = 0x01;
-		sendVendorRequest(VR_FPGA_CONFIG, (short) 0x02, (short) 0x01, configBytes);
+		sendVendorRequest(VR_FPGA_CONFIG, (short) 0x01, (short) 0x00, configBytes);
 
 		inEndpointEnabled = true;
 	}
@@ -770,19 +770,19 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			configBytes[1] = 0x00;
 			configBytes[2] = 0x00;
 			configBytes[3] = 0x00;
-			sendVendorRequest(VR_FPGA_CONFIG, (short) 0x02, (short) 0x01, configBytes);
+			sendVendorRequest(VR_FPGA_CONFIG, (short) 0x01, (short) 0x00, configBytes);
 
 			configBytes[0] = 0x00;
 			configBytes[1] = 0x00;
 			configBytes[2] = 0x00;
 			configBytes[3] = 0x00;
-			sendVendorRequest(VR_FPGA_CONFIG, (short) 0x01, (short) 0x02, configBytes);
+			sendVendorRequest(VR_FPGA_CONFIG, (short) 0x00, (short) 0x01, configBytes);
 
 			configBytes[0] = 0x00;
 			configBytes[1] = 0x00;
 			configBytes[2] = 0x00;
 			configBytes[3] = 0x00;
-			sendVendorRequest(VR_FPGA_CONFIG, (short) 0x01, (short) 0x01, configBytes);
+			sendVendorRequest(VR_FPGA_CONFIG, (short) 0x00, (short) 0x00, configBytes);
 		}
 		catch (final HardwareInterfaceException e) {
 			CypressFX3.log
