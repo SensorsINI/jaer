@@ -10,17 +10,22 @@ public class ATCFpgaConfig extends EventFilter2D {
 	private int trackerId = getInt("trackerId", 1);
 	private int cmCellInitX = getInt("cmCellInitX", 64);
 	private int cmCellInitY = getInt("cmCellInitY", 64);
-	private int cmCellRadixStep = getInt("cmCellRadixStep", 1);
+	private int cmCellRadixTh = getInt("cmCellRadixStep", 1);
 	private int cmCellInitRadix = getInt("cmCellInitRadix", 1);
+	private int cmCellRadixStep = getInt("cmCellRadixStep", 1);
+	private int cmCellRadixMax = getInt("cmCellRadixStep", 1);
+	private int cmCellRadixMin = getInt("cmCellRadixStep", 1);
 	private int cmCellMaxTime = getInt("cmCellMaxTime", 200000);
 	private int cmCellNevTh = getInt("cmCellNevTh", 1);
 	private int cmCellAVG = getInt("cmCellAVG", 1);
 	private boolean trackerEnable = getBoolean("trackerEnable", true);
+	private boolean BGAF_OTs_Enable = getBoolean("BGAF_OTs_Enable", true);
+	private boolean OTsEnable = getBoolean("OTsEnable", true);
 
 	private int bgaFilterDeltaT = getInt("bgaFilterDeltaT", 100);
 
 	// FPGA clock speed in MegaHertz (MHz) for time conversion.
-	private final int CLOCK_SPEED = 50;
+	private final int CLOCK_SPEED = 60;
 
 	public ATCFpgaConfig(final AEChip chip) {
 		super(chip);
@@ -39,11 +44,31 @@ public class ATCFpgaConfig extends EventFilter2D {
 		setPropertyTooltip("cmCellAVG",
 			"Amount of CM history involved in calculating the average for the new CM point (2^cmCellAVG).");
 		setPropertyTooltip("trackerEnable", "Enable this tracker.");
+		setPropertyTooltip("BGAF_OTs_Enable", "If unchecked, both bacground filter and trackers are bypassed.");
+		setPropertyTooltip("OTsEnable", "Enable all the trackers.");
 
 		setPropertyTooltip("bgaFilterDeltaT", "Delta time for BackgroundActivity filter (in µs).");
 	}
 
-	public int getTrackerId() {
+	public boolean isBGAF_OTs_Enable() {
+		return BGAF_OTs_Enable;
+	}
+
+	public void setBGAF_OTs_Enable(final boolean Enable) {
+		this.BGAF_OTs_Enable = Enable;
+		putBoolean("BGAF_OTs_Enable", Enable);
+	}
+
+       	public boolean isOTsEnable() {
+		return OTsEnable;
+	}
+
+	public void setOTsEnable(final boolean Enable) {
+		this.OTsEnable = Enable;
+		putBoolean("OTsEnable", Enable);
+	}
+
+        public int getTrackerId() {
 		return trackerId;
 	}
 
@@ -111,7 +136,58 @@ public class ATCFpgaConfig extends EventFilter2D {
 		putInt("cmCellRadixStep", cmCellRadixStep);
 	}
 
-	public int getCmCellInitRadix() {
+	public int getCmCellRadixTh() {
+		return cmCellRadixTh;
+	}
+
+	public static int getMinCmCellRadixTh() {
+		return 0;
+	}
+
+	public static int getMaxCmCellRadixTh() {
+		return 7;
+	}
+
+	public void setCmCellRadixTh(final int cmCellRadixTh) {
+		this.cmCellRadixTh = cmCellRadixTh;
+		putInt("cmCellRadixTh", cmCellRadixTh);
+	}
+
+	public int getCmCellRadixMax() {
+		return cmCellRadixMax;
+	}
+
+	public static int getMinCmCellRadixMax() {
+		return 0;
+	}
+
+	public static int getMaxCmCellRadixMax() {
+		return 7;
+	}
+
+	public void setCmCellRadixMax(final int cmCellRadixMax) {
+		this.cmCellRadixMax = cmCellRadixMax;
+		putInt("cmCellRadixMax", cmCellRadixMax);
+	}
+
+        public int getCmCellRadixMin() {
+		return cmCellRadixMin;
+	}
+
+	public static int getMinCmCellRadixMin() {
+		return 0;
+	}
+
+	public static int getMaxCmCellRadixMin() {
+		return 7;
+	}
+
+	public void setCmCellRadixMin(final int cmCellRadixMin) {
+		this.cmCellRadixMin = cmCellRadixMin;
+		putInt("cmCellRadixMin", cmCellRadixMin);
+	}
+
+        public int getCmCellInitRadix() {
 		return cmCellInitRadix;
 	}
 
@@ -193,26 +269,26 @@ public class ATCFpgaConfig extends EventFilter2D {
 		final int cmCellMaxTimeCycles = getInt("cmCellMaxTime", 0) * CLOCK_SPEED;
 
 		// Select the tracker.
-		sendCommand((byte) 127, (byte) (getInt("trackerId", 0) & 0xFF), true);
+		sendCommand((byte) 127, (byte) (getInt("trackerId", 0) & 0xFF));
 
 		// Send all the tracker configuration.
-		sendCommand((byte) 78, (byte) (getInt("cmCellInitY", 0) & 0xFF), true);
-		sendCommand((byte) 79, (byte) (getInt("cmCellInitX", 0) & 0xFF), true);
-		sendCommand((byte) 80, (byte) (getInt("cmCellRadixStep", 0) & 0xFF), true);
-		sendCommand((byte) 81, (byte) (getInt("cmCellInitRadix", 0) & 0xFF), true);
-		sendCommand((byte) 82, (byte) (cmCellMaxTimeCycles & 0xFF), true);
-		sendCommand((byte) 83, (byte) ((cmCellMaxTimeCycles >>> 8) & 0xFF), true);
-		sendCommand((byte) 84, (byte) ((cmCellMaxTimeCycles >>> 16) & 0xFF), true);
-		sendCommand((byte) 85, (byte) ((cmCellMaxTimeCycles >>> 24) & 0xFF), true);
-		sendCommand((byte) 86, (byte) (getInt("cmCellNevTh", 0) & 0xFF), true);
-		sendCommand((byte) 87, (byte) (getInt("cmCellAVG", 0) & 0xFF), true);
-		sendCommand((byte) 88, (byte) ((getBoolean("trackerEnable", true)) ? (0xFF) : (0x00)), true);
+		sendCommand((byte) 78, (byte) (getInt("cmCellInitY", 0) & 0xFF));
+		sendCommand((byte) 79, (byte) (getInt("cmCellInitX", 0) & 0xFF));
+		sendCommand((byte) 80, (byte) (getInt("cmCellRadixTh", 0) & 0xFF));
+		sendCommand((byte) 81, (byte) (getInt("cmCellInitRadix", 0) & 0xFF));
+		sendCommand((byte) 82, (byte) (cmCellMaxTimeCycles & 0xFF));
+		sendCommand((byte) 83, (byte) ((cmCellMaxTimeCycles >>> 8) & 0xFF));
+		sendCommand((byte) 84, (byte) ((cmCellMaxTimeCycles >>> 16) & 0xFF));
+		sendCommand((byte) 85, (byte) ((cmCellMaxTimeCycles >>> 24) & 0xFF));
+		sendCommand((byte) 86, (byte) (getInt("cmCellNevTh", 0) & 0xFF));
+		sendCommand((byte) 87, (byte) (getInt("cmCellAVG", 0) & 0xFF));
+		sendCommand((byte) 88, (byte) ((getBoolean("trackerEnable", true)) ? (0xFF) : (0x00)));
+		sendCommand((byte) 89, (byte) (getInt("cmCellRadixStep", 0) & 0xFF));
+		sendCommand((byte) 90, (byte) (getInt("cmCellRadixMax", 0) & 0xFF));
+		sendCommand((byte) 91, (byte) (getInt("cmCellRadixMin", 0) & 0xFF));
 
-		// Disable tracker configuration.
-		sendCommand((byte) 127, (byte) 0xFF, true);
-
-		sendCommand((byte) 0, (byte) 0, false);
-
+		// Disable tracker configuration, so CMCell is not under reset
+		sendCommand((byte) 127, (byte) 0);
 	}
 
 	public int getBgaFilterDeltaT() {
@@ -238,12 +314,12 @@ public class ATCFpgaConfig extends EventFilter2D {
 
 		// Send the four bytes that make up the integer to their respective
 		// addresses.
-		sendCommand((byte) 128, (byte) (bgaFilterDeltaTCycles & 0xFF), true);
-		sendCommand((byte) 129, (byte) ((bgaFilterDeltaTCycles >>> 8) & 0xFF), true);
-		sendCommand((byte) 130, (byte) ((bgaFilterDeltaTCycles >>> 16) & 0xFF), true);
-		sendCommand((byte) 131, (byte) ((bgaFilterDeltaTCycles >>> 24) & 0xFF), true);
-
-		sendCommand((byte) 0, (byte) 0, false);
+		sendCommand((byte) 128, (byte) (bgaFilterDeltaTCycles & 0xFF));
+		sendCommand((byte) 129, (byte) ((bgaFilterDeltaTCycles >>> 8) & 0xFF));
+		sendCommand((byte) 130, (byte) ((bgaFilterDeltaTCycles >>> 16) & 0xFF));
+		sendCommand((byte) 131, (byte) ((bgaFilterDeltaTCycles >>> 24) & 0xFF));
+		sendCommand((byte) 133, (byte) ((getBoolean("BGAF_OTs_Enable", true)) ? (0xFF) : (0x00)));
+		sendCommand((byte) 132, (byte) ((getBoolean("OTsEnable", true)) ? (0xFF) : (0x00)));
 	}
 
 	@Override
@@ -252,12 +328,12 @@ public class ATCFpgaConfig extends EventFilter2D {
 		return (in);
 	}
 
-	private void sendCommand(final byte cmd, final byte data, final boolean spiEnable) {
+	private void sendCommand(final byte cmd, final byte data) {
 		System.out.println(String.format("Sending command - cmd: %X, data: %X", cmd, data));
 
 		if ((chip.getHardwareInterface() != null) && (chip.getHardwareInterface() instanceof CypressFX3)) {
 			try {
-				((CypressFX3) chip.getHardwareInterface()).sendVendorRequest((byte) 0xC2,
+				((CypressFX3) chip.getHardwareInterface()).sendVendorRequest((byte) 0xBF,
 					(short) (0x0100 | (cmd & 0xFF)), (short) (data & 0xFF));
 			}
 			catch (HardwareInterfaceException e) {
