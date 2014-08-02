@@ -15,11 +15,11 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class StimulusDisplay extends EventFilter2D{
 
-    private StimulusDipslayGUI gui;
+    private StimulusDisplayGUI gui;
     
     public StimulusDisplay(AEChip chip) {
         super(chip);
-        gui = new StimulusDipslayGUI();
+        gui = new StimulusDisplayGUI();
     }
     
     public void doShowGUI() {
@@ -28,9 +28,9 @@ public class StimulusDisplay extends EventFilter2D{
     
     /**
      * @return the gui */
-    public StimulusDipslayGUI getGui() {
+    public StimulusDisplayGUI getGui() {
         if(gui == null) {
-            gui = new StimulusDipslayGUI();
+            gui = new StimulusDisplayGUI();
         }
         return gui;
     }
@@ -40,9 +40,5 @@ public class StimulusDisplay extends EventFilter2D{
     }
 
     @Override public void resetFilter() { }
-
-    @Override public void initFilter() {
-        resetFilter();
-    }
-    
+    @Override public void initFilter() { } 
 }

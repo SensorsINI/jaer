@@ -1,49 +1,46 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package ch.unizh.ini.jaer.projects.bjoernbeyer.stimulusdisplay;
 
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.LinearGradientPaint;
-import java.awt.Paint;
-import java.awt.Shape;
+import ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo.TrackingSuccessEvaluationPoint;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.geom.Ellipse2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.RectangularShape;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.Serializable;
+import javax.swing.JPanel;
 import javax.swing.Timer;
 
-/**
+/** Basic object for stimulus creation. Can take any Shape and can be decorated 
+ * with a path. Can be flashing. Paints itself when provided a canvas.
  *
  * @author Bjoern
  */
 public class PaintableObject implements ActionListener, Serializable {
     private static int numberObjects;
-            
+    
     private final String objectName;
     private final RectangularShape objectShape;
+    private volatile JPanel canvas;
     private float origX, origY;
     private float width, height;
     private float stroke;
+    private double angle = 0;
     private int halfScreenWidth, halfScreenHeight;
     private int FlashFreqHz = 20;
     private boolean Flash = true;
     private boolean flashEnabled = false;
-    private boolean pathPaintEnabled = false;
+    private boolean requestPathPaintEnabled = false;
     private boolean pathLoop = false;
+    private boolean hasPath = false;
     private boolean hasGradient = false;
     private float[] gradFractions;
     private float[] gradPos;
     private Color[] gradColors;
+    
+    private float lastPaintedOrigX, lastPaintedOrigY;
     
     private Paint objectColor;
     
@@ -57,12 +54,14 @@ public class PaintableObject implements ActionListener, Serializable {
     }
     
     private class TrajectoryPlayer extends Thread implements Serializable{
-        boolean cancelMe = false;
-        private boolean once = false;
+        private boolean cancelMe = false;
+        private int playTimes = 1;
+        private int millisSleepBetweenRuns = 0;
         
-        TrajectoryPlayer(boolean playOnce){
+        TrajectoryPlayer(int playTimes, int millisSleep){
             super();
-            once = playOnce;
+            this.playTimes = playTimes;
+            this.millisSleepBetweenRuns = millisSleep;
         }
         
         void cancel() {
@@ -71,26 +70,36 @@ public class PaintableObject implements ActionListener, Serializable {
         }
 
         @Override public void run() {
+            int currentPlayTime = 0;
             while (!cancelMe) {
-                for (MouseTrajectoryPoint p : objectPath) {
-                    if (cancelMe) break;
-                    try {
+                try {
+                    for (MouseTrajectoryPoint p : objectPath) {
+                        if (cancelMe) break;
+
                         Thread.sleep(p.getDifferenceTimeMillis());
-                    } catch (InterruptedException ex) { 
-                        break; 
+
+                        PaintableObject.this.setRelativeXY(p.getX(),p.getY());
+                        PaintableObject.this.getCanvas().repaint();
                     }
-                    PaintableObject.this.setOrigXY(p.getX(),p.getY());
+                    PaintableObject.this.pcs.firePropertyChange("pathPlayedDone",PaintableObject.this.getObjectName(),null);
+
+                    currentPlayTime++;
+                    if(currentPlayTime >= this.playTimes) cancel();
+                    
+                    Thread.sleep(this.millisSleepBetweenRuns);
+                } catch (InterruptedException ex) { 
+                    break; 
                 }
-                if(once) cancel();
             }
         }
     }
 
-    public PaintableObject(String objectName, RectangularShape objectShape) {
+    public PaintableObject(String objectName, RectangularShape objectShape, JPanel canvas) {
         super();
-        origX = 0; origY = 0;
-        halfScreenWidth = -1; halfScreenHeight = -1; //Initialize this as negative. When we add objects in StimulusFrame we set this
+        origX = 0;  origY  = 0;
+        width = -1; height = -1;
         this.objectShape = objectShape;
+        this.canvas = canvas;
         
         if(objectName.equals("")) {
             this.objectName = "PrintObj"+String.valueOf(numberObjects);
@@ -101,14 +110,16 @@ public class PaintableObject implements ActionListener, Serializable {
         objectPath = new MouseTrajectory();
         
         //Initialize paint and shape to avoid painting errors if user forgets to set those.
-        objectColor = Color.white;
+        objectColor = new Color(0,0,0,0);//totally transparent
+        
+        setHalfScreenDimensions(canvas.getWidth()/2,canvas.getHeight()/2);
         
         numberObjects++;
     }
     
-    public PaintableObject(String objectName, RectangularShape objectShape, float width, float height) {
-        this(objectName, objectShape);
-        this.width = width; this.height = height;
+    public PaintableObject(String objectName, RectangularShape objectShape, JPanel canvas, float width, float height) {
+        this(objectName, objectShape, canvas);
+        setRelativeWidth(width); setRelativeHeight(height);
     }
     
     public void startFlashing(){
@@ -129,12 +140,12 @@ public class PaintableObject implements ActionListener, Serializable {
         
     @Override public void actionPerformed(ActionEvent e) {
         Flash = !Flash;
-        this.pcs.firePropertyChange("repaint", null, null);
+        repaintWholeObjectOnCanvas();
     }
     
     public void playPathOnce() {
         if (player != null) player.cancel();
-        player = new TrajectoryPlayer(true);
+        player = new TrajectoryPlayer(1,0);
         player.start();
     }
     
@@ -142,174 +153,34 @@ public class PaintableObject implements ActionListener, Serializable {
         if (player != null) player.cancel();
         setPathLoop(!isPathLoop());
         if (isPathLoop()) {
-            player = new TrajectoryPlayer(false);
+            player = new TrajectoryPlayer(100,0);
             player.start();
         } else {
             player.cancel();
         }
     }
-
-    public float getOrigX() {
-        return origX;
+    public void playPathNumberTimes(int numberTimes, int waitTimeMillis) {
+        if (player != null) player.cancel();
+        player = new TrajectoryPlayer(numberTimes,waitTimeMillis);
+        player.start();
     }
     
-    public int getOrigXonScreen() {
-        return (int) ((1+getOrigX())*getHalfScreenWidth());
+    public void playPathCancel() {
+        if (player != null) player.cancel();
     }
 
-    public void setOrigX(float origX) {
-        this.origX = origX;
-        this.pcs.firePropertyChange("repaint", null, null);
-    }
-
-    public float getOrigY() {
-        return origY;
-    }
-    
-    public int getOrigYonScreen() {
-        return (int) ((1+getOrigY())*getHalfScreenHeight());
-    }
-
-    public void setOrigY(float origY) {
-        this.origY = origY;
-        this.pcs.firePropertyChange("repaint", null, null);
-    }
-    
-    public void setOrigXY(float origX, float origY) {
-        this.origX = origX;
-        this.origY = origY;
-        this.pcs.firePropertyChange("repaint", null, null);
-    }
-
-    public int getFlashFreqHz() {
-        return FlashFreqHz;
-    }
-
-    public void setFlashFreqHz(int FlashFreqHz) {
-        this.FlashFreqHz = FlashFreqHz;
-    }
-    
-    public boolean getFlash() {
-        return Flash;
-    }
-
-    public float getWidth() {
-        return width;
-    }
-    
-    public int getWidthOnScreen() {
-        return (int) (getWidth()*2*getHalfScreenWidth());
-    }
-
-    public void setWidth(float width) {
-        this.width = width;
-        this.pcs.firePropertyChange("repaint", null, null);
-    }
-
-    public float getHeight() {
-        return height;
-    }
-    
-    public int getHeightOnScreen() {
-        return (int) (getHeight()*2*getHalfScreenHeight());
-    }
-
-    public void setHeight(float height) {
-        this.height = height;
-        this.pcs.firePropertyChange("repaint", null, null);
-    }
-
-    public int getHalfScreenWidth() {
-        return halfScreenWidth;
-    }
-
-    public void setHalfScreenWidth(int halfScreenWidth) {
-        this.halfScreenWidth = halfScreenWidth;
-        this.pcs.firePropertyChange("repaint", null, null);
-    }
-
-    public int getHalfScreenHeight() {
-        return halfScreenHeight;
-    }
-
-    public void setHalfScreenHeight(int halfScreenHeight) {
-        this.halfScreenHeight = halfScreenHeight;
-        this.pcs.firePropertyChange("repaint", null, null);
-    }
-    
-    public void addPropertyChangeListener(PropertyChangeListener listener) {
-        this.pcs.addPropertyChangeListener(listener);
-    }
-
-    public MouseTrajectory getObjectPath() {
-        return objectPath;
-    }
-
-    public void setObjectPath(MouseTrajectory objectPath) {
-        this.objectPath.clear();
-        this.objectPath.addAll(objectPath);
-    }
-    
-    public void paintPath(Graphics2D g2,int width,int height) {
-        if(isPathPaintEnabled()) this.objectPath.paintPath(g2, Color.blue, 1000, width, height);
-    }
-
-    public boolean isPathPaintEnabled() {
-        return pathPaintEnabled;
-    }
-
-    public void setPathPaintEnabled(boolean paintPathEnabled) {
-        this.pathPaintEnabled = paintPathEnabled;
-    }
-
-    public boolean isFlashEnabled() {
-        return flashEnabled;
-    }
-
-    public void setFlashEnabled(boolean flashEnabled) {
-        this.flashEnabled = flashEnabled;
-    }
-
-    public String getObjectName() {
-        return objectName;
-    }
-
-    public boolean isPathLoop() {
-        return pathLoop;
-    }
-
-    public void setPathLoop(boolean loopPath) {
-        this.pathLoop = loopPath;
-    }
-    
-    public Shape getObjectShape() {
-        return objectShape;
-    }
-
-    public float getStroke() {
-        return stroke;
-    }
-
-    public void setStroke(float stroke) {
-        this.stroke = stroke;
-    }
-    
-    private void updateShapeFrame() {
-        int left = (int)(getOrigXonScreen()-getWidthOnScreen()/(float)2);
-        int top  = (int)(getOrigYonScreen()-getHeightOnScreen()/(float)2);
-        
-        this.objectShape.setFrame(left, top, getWidthOnScreen(), getHeightOnScreen());
-    }
-    
     public void setObjectColor(Color color){
         this.hasGradient = false;
         this.objectColor = color;
     }
     
+    protected void updateShapeFrame() {
+        this.objectShape.setFrame(getX() , getY(), getWidth(), getHeight());  
+    }
+    
     /**
      *
      * @param numberCycles
-     * @param samplePoints
      * @param startX startPoint relative to Object. 0 is left, 1 is right end of object
      * @param startY startPoint relative to Object. 0 is top, 1 is bottom end of object
      * @param endX endPoint relative to Object. 0 is left, 1 is right end of object
@@ -354,12 +225,20 @@ public class PaintableObject implements ActionListener, Serializable {
         this.gradPos = new float[] {startX,startY,endX,endY};
     }
     
-    private Paint getUpdatedPaint() {
+    private void repaintWholeObjectOnCanvas() {
+        //If the object is currently displaying a path then we dont want to
+        // repaint the whole object. Instead the path-player is repainting
+        // by itself when necessary and only the specific regions needed.
+        // This method instead paints the WHOLE object, even if it is bigger
+        // then the canvas.
+        if (player != null) return;
+        canvas.repaint();
+    }
+    
+    protected Paint getUpdatedPaint() {
         if(hasGradient){
-            int left = (int)(getOrigXonScreen()-getWidthOnScreen()/(float)2);
-            int top  = (int)(getOrigYonScreen()-getHeightOnScreen()/(float)2);
-            Point2D.Double startP = new Point2D.Double(left-(this.gradPos[0]*getWidthOnScreen()),top-(this.gradPos[1]*getHeightOnScreen()));
-            Point2D.Double endP   = new Point2D.Double(left+(this.gradPos[2]*getWidthOnScreen())  ,top+(this.gradPos[3]*getHeightOnScreen()));
+            Point2D.Double startP = new Point2D.Double(getX()+this.gradPos[0]*getWidth(), getY()+this.gradPos[1]*getHeight());
+            Point2D.Double endP   = new Point2D.Double(getX()+this.gradPos[2]*getWidth(), getY()+this.gradPos[3]*getHeight());
 
             LinearGradientPaint gradient = new LinearGradientPaint(startP, endP, this.gradFractions, this.gradColors);
 
@@ -369,9 +248,20 @@ public class PaintableObject implements ActionListener, Serializable {
         }
     }
     
-    public void paint(Graphics2D g2) {
+    protected void firePropertyChangeIfUpdated() {
+        if(lastPaintedOrigX != getRelativeX() || lastPaintedOrigY != getRelativeY()) {
+            TrackingSuccessEvaluationPoint evaluationPoint = new TrackingSuccessEvaluationPoint(getObjectName(),getRelativeX(),getRelativeY(),System.nanoTime());
+            this.pcs.firePropertyChange("visualObjectChange",evaluationPoint,null);
+        }
+        lastPaintedOrigX = getRelativeX();
+        lastPaintedOrigY = getRelativeY();
+    }
+    
+    public void paint(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        
         if(!getFlash()) return;
-
+        
         updateShapeFrame();
         g2.setStroke(new BasicStroke(stroke));
         if(stroke == 0){
@@ -379,9 +269,211 @@ public class PaintableObject implements ActionListener, Serializable {
         }else{
             g2.setPaint(Color.black);
         }
+
+        g2.rotate(Math.toRadians(getAngle()), getX()+getWidth()/2, getY()+getHeight()/2);
         g2.draw(this.objectShape);
         g2.setPaint(getUpdatedPaint());
         g2.fill(this.objectShape);
+
+        g2.dispose();
+        
+        firePropertyChangeIfUpdated();
     }
     
+    public boolean getFlash() {
+        return Flash;
+    }
+
+    public void addPropertyChangeListener(PropertyChangeListener listener) {
+        this.pcs.addPropertyChangeListener(listener);
+    }
+    
+    public String getObjectName() {
+        return objectName;
+    }
+
+    public RectangularShape getObjectShape() {
+        return objectShape;
+    }
+    
+    public boolean isHasPath() {
+        return this.hasPath;
+    }
+
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --RelativeX/Y and getX/Y and setRelativeXY--">
+    public float getRelativeX() {
+        return origX;
+    }
+    
+    public void setRelativeX(float origX) {
+        this.origX = origX;
+        repaintWholeObjectOnCanvas();
+    }
+    
+    public int getX() {
+        return (int) ((1+getRelativeX())*getHalfScreenWidth()-getWidth()/2);
+    }
+
+    public float getRelativeY() {
+        return origY;
+    }
+    
+    public void setRelativeY(float origY) {
+        this.origY = origY;
+        repaintWholeObjectOnCanvas();
+    }
+
+    public int getY() {
+        return (int) ((1+getRelativeY())*getHalfScreenHeight()-getHeight()/2);
+    }
+
+    public void setRelativeXY(float origX, float origY) {
+        this.origX = origX;
+        this.origY = origY;
+        repaintWholeObjectOnCanvas();
+    }
+
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --relativeWidth-- & getter for Width">
+    public float getRelativeWidth() {
+        return width;
+    }
+    
+    public int getWidth() {
+        return (int) (getRelativeWidth()*2*getHalfScreenWidth()+getStroke());
+    }
+
+    public final void setRelativeWidth(float width) {
+        this.width = width;
+        repaintWholeObjectOnCanvas();
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --relativeHeight-- & getter for Height">
+    public float getRelativeHeight() {
+        return height;
+    }
+    
+    public int getHeight() {
+        return (int) (getRelativeHeight()*2*getHalfScreenHeight()+getStroke());
+    }
+
+    public final void setRelativeHeight(float height) {
+        this.height = height;
+        repaintWholeObjectOnCanvas();
+    }
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --HalfScreenWidth and HelfScreenHeight and setHelfScreenDimensions--">
+    public int getHalfScreenWidth() {
+        return halfScreenWidth;
+    }
+
+    public void setHalfScreenWidth(int halfScreenWidth) {
+        this.halfScreenWidth = halfScreenWidth;
+        repaintWholeObjectOnCanvas();
+    }
+    
+    public int getHalfScreenHeight() {
+        return halfScreenHeight;
+    }
+
+    public void setHalfScreenHeight(int halfScreenHeight) {
+        this.halfScreenHeight = halfScreenHeight;
+        repaintWholeObjectOnCanvas();
+    }
+    
+    public final void setHalfScreenDimensions(int halfScreenWidth,int halfScreenHeight) {
+        this.halfScreenHeight = halfScreenHeight;
+        this.halfScreenWidth = halfScreenWidth;
+        repaintWholeObjectOnCanvas();
+    }
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --Angle--">
+    public double getAngle() {
+        return angle;
+    }
+
+    public void setAngle(double angle) {
+        this.angle = angle;
+        repaintWholeObjectOnCanvas();
+    }
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --FlashFreqHz--">
+    public int getFlashFreqHz() {
+        return FlashFreqHz;
+    }
+
+    public void setFlashFreqHz(int FlashFreqHz) {
+        this.FlashFreqHz = FlashFreqHz;
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --Canvas--">
+    public JPanel getCanvas() {
+        return canvas;
+    }
+    
+    public void setCanavas(JPanel canvas) {
+        this.canvas = canvas;
+        setHalfScreenDimensions(canvas.getWidth()/2,canvas.getHeight()/2);
+    }
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --ObjectPath--">
+    public MouseTrajectory getObjectPath() {
+        return objectPath;
+    }
+
+    public void setObjectPath(MouseTrajectory objectPath) {
+        this.objectPath.clear();
+        this.objectPath.addAll(objectPath);
+        this.hasPath = !objectPath.isEmpty();
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --RequestPathPaintEnabled--">
+    public boolean isRequestPathPaintEnabled() {
+        return requestPathPaintEnabled;
+    }
+
+    public void setRequestPathPaintEnabled(boolean paintPathEnabled) {
+        this.requestPathPaintEnabled = paintPathEnabled;
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --FlashEnabled--">
+    public boolean isFlashEnabled() {
+        return flashEnabled;
+    }
+
+    public void setFlashEnabled(boolean flashEnabled) {
+        this.flashEnabled = flashEnabled;
+    }
+    // </editor-fold>  
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --PathLoop--">
+    public boolean isPathLoop() {
+        return pathLoop;
+    }
+
+    public void setPathLoop(boolean loopPath) {
+        this.pathLoop = loopPath;
+    }
+    // </editor-fold>   
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --Stroke--">
+    public float getStroke() {
+        return stroke;
+    }
+
+    public void setStroke(float stroke) {
+        this.stroke = stroke;
+        repaintWholeObjectOnCanvas();
+    }
+    // </editor-fold>  
+
 }
