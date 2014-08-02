@@ -1,5 +1,5 @@
 
-package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
+package ch.unizh.ini.jaer.projects.bjoernbeyer.pantiltscreencalibration;
 
 import java.awt.geom.Point2D;
 import java.io.Serializable;
@@ -33,8 +33,9 @@ public class CalibrationPanTiltScreenListPoint implements Serializable{
         this.screen.y = screenY;
     }
     
-    @Override
-    public String toString(){
-        return "retina: "+ret.x+","+ret.y+" | panTilt: "+pt.x+","+pt.y+" | screen: "+screen.x+","+screen.y;
+    @Override public String toString(){
+        return "retina: " +String.format("%.2f", ret.x)   +","+String.format("%.2f", ret.y)+" | "
+              +"panTilt: "+String.format("%.2f", pt.x)    +","+String.format("%.2f", pt.y) +" | "
+              +"screen: " +String.format("%.2f", screen.x)+","+String.format("%.2f", screen.y);
     }
 }
