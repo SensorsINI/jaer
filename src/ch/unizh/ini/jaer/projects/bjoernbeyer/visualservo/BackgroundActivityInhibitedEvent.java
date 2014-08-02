@@ -18,8 +18,7 @@ public class BackgroundActivityInhibitedEvent extends PolarityEvent{
     
     /** copies fields from source event src to this event including all super and this fields if possible.
      * @param src the event to copy from */
-    @Override
-    public void copyFrom(BasicEvent src){
+    @Override public void copyFrom(BasicEvent src){
         PolarityEvent e=(PolarityEvent)src;
         super.copyFrom(src);
         if(e instanceof BackgroundMotionInhibitedEvent){
@@ -31,12 +30,10 @@ public class BackgroundActivityInhibitedEvent extends PolarityEvent{
     }
     
     // TODO: THIS IS A HUGE HACK
-    @Override
-    public int getNumCellTypes() {
+    @Override public int getNumCellTypes() {
         return 2;
     }
-    @Override 
-    public int getType(){
+    @Override public int getType(){
 //        return polarity==PolarityEvent.Polarity.Off? 0: 1;
         return hasGlobalMotion;
     }

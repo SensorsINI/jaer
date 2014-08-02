@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
 
@@ -23,8 +18,7 @@ public class SelfMotionEvent extends DvsMotionOrientationEvent {
     
     /** copies fields from source event src to this event including all super and this fields if possible.
      * @param src the event to copy from */
-    @Override
-    public void copyFrom(BasicEvent src){
+    @Override public void copyFrom(BasicEvent src){
         DvsMotionOrientationEvent e=(DvsMotionOrientationEvent)src;
         super.copyFrom(src);
         if(e instanceof SelfMotionEvent){
@@ -35,12 +29,10 @@ public class SelfMotionEvent extends DvsMotionOrientationEvent {
     }
     
     // TODO: THIS IS A HUGE HACK
-    @Override
-    public int getNumCellTypes() {
+    @Override public int getNumCellTypes() {
         return 2;
     }
-    @Override 
-    public int getType(){
+    @Override public int getType(){
 //        return (hasSelfMotion ? 1 : 0) + (hasAlienMotion ? 2 : 0);
         
         return polarity==Polarity.Off? 0: 1;

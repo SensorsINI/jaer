@@ -1,24 +1,18 @@
 
 package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
 
-import ch.unizh.ini.jaer.projects.bjoernbeyer.stimulusdisplay.StimulusDipslayGUI;
 import net.sf.jaer.util.Vector2D;
-import java.util.Observable;
-import java.util.Observer;
 import java.util.logging.Level;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OpticalFlowEvent;
 import net.sf.jaer.event.OutputEventIterator;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.label.SmoothOpticalFlowLabeler;
-import net.sf.jaer.graphics.FrameAnnotater;
 import javax.media.opengl.GL2;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.event.PolarityEvent;
-import net.sf.jaer.util.DrawGL;
 
 /**
  *
@@ -26,56 +20,27 @@ import net.sf.jaer.util.DrawGL;
  */
 @Description("Labels global and object motion based on OMS-type information from the motionDirection")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class BackgroundMotionSelectiveFilter extends EventFilter2D implements Observer, FrameAnnotater {
+public class BackgroundMotionSelectiveFilter extends AbstractBackgroundSelectiveFilter {
     
-    /** ticks per ms of input time */
-    public final int TICK_PER_MS = 1000;
-    private final int MINX = 0, MINY = 0;
-    
-    private int maxX, maxY;
+
     
     private final SmoothOpticalFlowLabeler motionFilter;
     
     private EventPacket motionPacket = null;
      
-    //with outerRadius=30 and innerRadius=20 we have 1576 pixels in the inhibitory
-    // range. Hence roughly 10% of the overall 16'384 pixels.
-    private int inhibitionOuterRadiusPX       = getInt("inhibitionOuterRadius",30); //The outer radius of inhibition in pixel from the current position.
-    private int inhibitionInnerRadiusPX       = getInt("inhibitionInnerRadius",28); //The inner radius of inhibition (meaning pixel closer to current than this will not inhibit) in pixel.
-    //with excitationRadius=5 we average over 80 pixels around the center pixel
-    private int excitationOuterRadiusPX       = getInt("excitationOuterRadius",6); //The excitation radius in pixel from current position. By default the current cell does not self excite.
-    private int excitationInnerRadiusPX       = getInt("excitationOuterRadius",1); //The excitation radius in pixel from current position. By default the current cell does not self excite.
-    private int circleCoarseness              = getInt("circleCoarseness",2);      
-    private float maxDtMs                     = getFloat("maxDtMs",50f); //The maximum temporal distance in milliseconds between the current event and the last event in an inhibiting or exciting location that is taken into acount for the averge inhibition/excitation vector. Events with a dt larger than this will be ignored. Events with half the dt than this will contribute with 50% of their length.
-    private float exciteInhibitRatioThreshold = getFloat("exciteInhibitRatioThreshold",-.3f);
-    private boolean showRawInputEnabled       = getBoolean("showRawInputEnabled",false);
-    private boolean drawInhibitExcitePoints   = getBoolean("drawInhibitExcitePoints",false);
-    private boolean drawCenterCell            = getBoolean("drawCenterCell",false); 
-    private boolean showInhibitedEvents       = getBoolean("showInhibitedEvents", true);
-    private boolean outputPolarityEvents      = getBoolean("outputPolarityEvents", false);
-    
     //Filter Variables
-    private byte hasGlobalMotion;
     private final Vector2D avgExcitatoryDir = new Vector2D();
     private final Vector2D avgInhibitoryDir = new Vector2D();
-    private double exciteInhibitRatio = 0;
     // End filter Variables
     
-    private int[][] inhibitionCirc,excitationCirc;
     private Vector2D[][] lastDirMap;
-    private int[][] lastTimesMap;
-    
-    private int x,y;
-    
-    private StimulusDipslayGUI StimGUI;
+    protected int[][] lastTimesMap;
     
     //TODO: make sure that everytime a raidus changes we calculate the new circle.
     //TODO: Das wird jetzt alles nicht funktionieren wenn man subsampled im anderen Filter oder?
     public BackgroundMotionSelectiveFilter(AEChip chip) {
         super(chip);
-        chip.addObserver(this);
-        resetFilter();
-        
+
         motionFilter = new SmoothOpticalFlowLabeler(chip);
         motionFilter.setAnnotationEnabled(false);
         setEnclosedFilter(motionFilter);
@@ -90,7 +55,7 @@ public class BackgroundMotionSelectiveFilter extends EventFilter2D implements Ob
             log.log(Level.WARNING, "input events are {0}, but they need to be OpticalFlowEvent's", motionPacket.getEventClass());
             return in;
         }  
-        if(outputPolarityEvents) {
+        if(isOutputPolarityEvents()) {
             checkOutputPacketEventType(PolarityEvent.class);
         } else {
             checkOutputPacketEventType(BackgroundMotionInhibitedEvent.class);
@@ -132,7 +97,7 @@ public class BackgroundMotionSelectiveFilter extends EventFilter2D implements Ob
             
             if( exciteInhibitRatio >= exciteInhibitRatioThreshold){// INHIBITION
                 hasGlobalMotion = 1;
-                if(!showInhibitedEvents) continue;
+                if(!isShowInhibitedEvents()) continue;
             } else {// EXCITATION
                 hasGlobalMotion=0;
             }
@@ -140,22 +105,11 @@ public class BackgroundMotionSelectiveFilter extends EventFilter2D implements Ob
             writeEvent(outItr,e);
             //System.out.println("type:"+hasGlobalMotion+" outLength:"+outDir.length()+" inLength:"+centerDir.length()+" ratio:"+saveRatio);
         }
-        return showRawInputEnabled ? in : out;
-    }
-
-    @Override
-    public final void resetFilter() {
-        checkMaps();
-        
-        maxX=chip.getSizeX();
-        maxY=chip.getSizeY();
-        
-        inhibitionCirc = PixelCircle(inhibitionOuterRadiusPX,inhibitionInnerRadiusPX,circleCoarseness);
-        excitationCirc = PixelCircle(excitationOuterRadiusPX,excitationInnerRadiusPX,circleCoarseness);//inner Radius 1 means that the cell does not excite itself.
+        return isShowRawInputEnabled() ? in : out;
     }
 
     private void writeEvent(OutputEventIterator outItr, OpticalFlowEvent e) { 
-        if(outputPolarityEvents) {
+        if(isOutputPolarityEvents()) {
             PolarityEvent oe = (PolarityEvent) outItr.nextOutput();
             oe.copyFrom(e);
         } else {
@@ -168,21 +122,11 @@ public class BackgroundMotionSelectiveFilter extends EventFilter2D implements Ob
         }   
     }
     
-    @Override public void initFilter() { resetFilter(); }
-
-    @Override public void update(Observable o, Object arg) {
-        if (o instanceof AEChip) {
-            if (arg == AEChip.EVENT_SIZEX || arg == AEChip.EVENT_SIZEY) {
-                resetFilter();
-            }
-        }
-    }
-    
     @Override public void annotate(GLAutoDrawable drawable) {
-        if(!outputPolarityEvents){
+        if(!isOutputPolarityEvents()){
             GL2 gl = drawable.getGL().getGL2();
             // draw individual motion vectors
-            if(drawInhibitExcitePoints) {
+            if(isDrawInhibitExcitePoints()) {
                 gl.glPushMatrix();
                 gl.glColor3f(1, 1, 1);
                 gl.glLineWidth(3f);
@@ -198,7 +142,7 @@ public class BackgroundMotionSelectiveFilter extends EventFilter2D implements Ob
                 gl.glPopMatrix();
             }
 
-            if(drawCenterCell) {
+            if(isDrawCenterCell()) {
                 gl.glPushMatrix();
 
                 gl.glPointSize(2);
@@ -241,7 +185,7 @@ public class BackgroundMotionSelectiveFilter extends EventFilter2D implements Ob
         }
     }
     
-    private void checkMaps(){
+    @Override protected void checkMaps(){
         if(lastTimesMap==null || lastTimesMap.length!=maxX || lastTimesMap[0].length!=maxY){
             allocateTimesMap();
         }
@@ -255,6 +199,7 @@ public class BackgroundMotionSelectiveFilter extends EventFilter2D implements Ob
         lastTimesMap=new int[maxX][maxY];
         log.log(Level.INFO,"allocated int[{0}][{1}] array for last event times", new Object[]{maxX,maxY});
     }
+    
     private void allocateLastDirMap() {
         if(!isFilterEnabled()) return;
         lastDirMap=new Vector2D[maxX][maxY];
@@ -314,43 +259,8 @@ public class BackgroundMotionSelectiveFilter extends EventFilter2D implements Ob
         if(n!=0) res.div(n);
         return res;
     }
-    
-    private int[][] PixelCircle(int outerRadius, int innerRadius, int coarseness){
-        //savely oversizing the array, we return only the first n elements anyway
-        // The integer sequence A000328 of pixels in a circle is expansive to compute
-        // All upper bounds involve square roots and potentiation.
-        int[][] pixCirc = new int[(1+4*outerRadius*outerRadius)-(4*innerRadius*innerRadius)][2]; 
-        int n = 0;
-        if(coarseness<1)coarseness=1;
         
-        for(int xCirc = -outerRadius; xCirc<=outerRadius; xCirc+=coarseness) {
-            for(int yCirc = -outerRadius; yCirc<=outerRadius; yCirc+=coarseness) {
-                if(((xCirc*xCirc)+(yCirc*yCirc) <= (outerRadius*outerRadius)) && ((xCirc*xCirc)+(yCirc*yCirc) >= (innerRadius*innerRadius))){
-                    pixCirc[n][0] = xCirc;
-                    pixCirc[n][1] = yCirc;
-                    n++;    
-                }
-            }
-        }
-        int[][] res = new int[n][2];
-        for(int p=0;p<n;p++) {
-            res[p][0] = pixCirc[p][0];
-            res[p][1] = pixCirc[p][1];
-        }
-        return res;
-    }
-
-    public float getExciteInhibitRatioThreshold() {
-        return exciteInhibitRatioThreshold;
-    }
-
-    public void setExciteInhibitRatioThreshold(float exciteInhibitRatioThreshold) {
-        float setValue = exciteInhibitRatioThreshold;
-        if(setValue > 1) setValue = 1;
-        if(setValue < -1)setValue = -1;
-        this.exciteInhibitRatioThreshold = setValue;
-    }
-
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --outputPolarityEvents--">
     public boolean isOutputPolarityEvents() {
         return outputPolarityEvents;
     }
@@ -358,61 +268,20 @@ public class BackgroundMotionSelectiveFilter extends EventFilter2D implements Ob
     public void setOutputPolarityEvents(boolean outputPolarityEvents) {
         this.outputPolarityEvents = outputPolarityEvents;
     }
+    // </editor-fold>
     
-    public int getInhibitionOuterRadius() {
-        return inhibitionOuterRadiusPX;
-    }
-
-    public void setInhibitionOuterRadius(final int inhibitionOuterRadius) {
-        this.inhibitionOuterRadiusPX = inhibitionOuterRadius;
-        resetFilter(); //need to recalculate the circles
-    }
-
-    public int getInhibitionInnerRadius() {
-        return inhibitionInnerRadiusPX;
-    }
-
-    public void setInhibitionInnerRadius(final int inhibitionInnerRadius) {
-        this.inhibitionInnerRadiusPX = inhibitionInnerRadius;
-        resetFilter(); //need to recalculate the circles
-    }
-
-    public int getExcitationOuterRadius() {
-        return excitationOuterRadiusPX;
-    }
-
-    public void setExcitationOuterRadius(final int excitationRadius) {
-        this.excitationOuterRadiusPX = excitationRadius;
-        resetFilter(); //need to recalculate the circles
-    }
-    
-    public int getExcitationInnerRadius() {
-        return excitationInnerRadiusPX;
-    }
-
-    public void setExcitationInnerRadius(final int excitationRadius) {
-        int setValue = excitationRadius;
-        if(excitationRadius <= 1) setValue = 1;
-        this.excitationInnerRadiusPX = setValue;
-        resetFilter(); //need to recalculate the circles
-    }
-
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --showRawInputEnabled--">
     public boolean isShowRawInputEnabled() {
         return showRawInputEnabled;
     }
 
     public void setShowRawInputEnabled(final boolean showRawInputEnabled) {
         this.showRawInputEnabled = showRawInputEnabled;
+        putBoolean("showRawInputEnabled",showRawInputEnabled);
     }
+    // </editor-fold>
     
-    public float getMaxDtMs() {
-      return maxDtMs;
-    }
-
-    public void setMaxDtMs(float maxDtMs) {
-      this.maxDtMs = maxDtMs;
-    }
-
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --drawInhibitExcitePoints--">
     public boolean isDrawInhibitExcitePoints() {
         return drawInhibitExcitePoints;
     }
@@ -420,7 +289,9 @@ public class BackgroundMotionSelectiveFilter extends EventFilter2D implements Ob
     public void setDrawInhibitExcitePoints(boolean drawMotionVectors) {
         this.drawInhibitExcitePoints = drawMotionVectors;
     }
+    // </editor-fold>
     
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --drawCenterCell--">
     public boolean isDrawCenterCell() {
         return drawCenterCell;
     }
@@ -428,7 +299,9 @@ public class BackgroundMotionSelectiveFilter extends EventFilter2D implements Ob
     public void setDrawCenterCell(boolean drawCenterCell) {
         this.drawCenterCell = drawCenterCell;
     }
+    // </editor-fold>
     
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --showInhibitedEvents--">
     public boolean isShowInhibitedEvents() {
         return showInhibitedEvents;
     }
@@ -436,15 +309,5 @@ public class BackgroundMotionSelectiveFilter extends EventFilter2D implements Ob
     public void setShowInhibitedEvents(boolean showTotalInhibitedEvents) {
         this.showInhibitedEvents = showTotalInhibitedEvents;
     }
-
-    public int getCircleCoarseness() {
-        return circleCoarseness;
-    }
-
-    public void setCircleCoarseness(int circleCoarseness) {
-        this.circleCoarseness = circleCoarseness;
-        resetFilter(); //need to recalculate the circles
-    }
-
-    
+    // </editor-fold>
 }

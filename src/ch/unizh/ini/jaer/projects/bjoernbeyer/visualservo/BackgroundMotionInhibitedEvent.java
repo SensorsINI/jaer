@@ -21,8 +21,7 @@ public class BackgroundMotionInhibitedEvent extends OpticalFlowEvent{
     
     /** copies fields from source event src to this event including all super and this fields if possible.
      * @param src the event to copy from */
-    @Override
-    public void copyFrom(BasicEvent src){
+    @Override public void copyFrom(BasicEvent src){
         OpticalFlowEvent e=(OpticalFlowEvent)src;
         super.copyFrom(src);
         if(e instanceof BackgroundMotionInhibitedEvent){
@@ -34,12 +33,10 @@ public class BackgroundMotionInhibitedEvent extends OpticalFlowEvent{
     }
     
     // TODO: THIS IS A HUGE HACK
-    @Override
-    public int getNumCellTypes() {
+    @Override public int getNumCellTypes() {
         return 2;
     }
-    @Override 
-    public int getType(){
+    @Override public int getType(){
 //        return polarity==Polarity.Off? 0: 1;
         return hasGlobalMotion;
     }

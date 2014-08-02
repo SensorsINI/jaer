@@ -1,11 +1,7 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
 
+import ch.unizh.ini.jaer.projects.bjoernbeyer.pantiltscreencalibration.CalibrationPanTiltScreen;
 import net.sf.jaer.util.Vector2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -19,7 +15,6 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTilt.TrajectoryPoint;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
 import java.util.ArrayList;
-import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import java.util.Collections;
 import java.util.List;
@@ -27,7 +22,6 @@ import net.sf.jaer.event.orientation.MotionOrientationEventInterface;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.label.AbstractDirectionSelectiveFilter;
 import net.sf.jaer.eventprocessing.label.DvsDirectionSelectiveFilter;
-import net.sf.jaer.util.Matrix;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTiltAimerGUI;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -62,7 +56,6 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
     private final PanTilt pt;
     
     private EventPacket motionPacket = null;
-//    private EventPacket dirPacket = null; // the output events, also used for rendering output events
     
     private final AbstractDirectionSelectiveFilter dirFilter;
     private CalibrationPanTiltScreen retinaPTCalib;
@@ -81,7 +74,6 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
     private boolean outputAlienMotionEnabled    = getBoolean("outputAlienMotionEnabled",true);
     private boolean outputPolarityEvents        = getBoolean("outputPolarityEvents",false);
     private boolean passAllEvents               = getBoolean("passAllEvents",false);
-    
     
     int delay;
     byte selfType;
@@ -112,8 +104,8 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         pt = PanTilt.getInstance(0); // We initialized the PanTiltAimer to get Instance0, so we want the same instance!
  
         dirFilter = new DvsDirectionSelectiveFilter(chip);
-        dirFilter.setAnnotationEnabled(false);
-        dirFilter.setShowRawInputEnabled(false); //Otherwise this filter crashes if the dirfilter outputs polarityevents
+            dirFilter.setAnnotationEnabled(false);
+            dirFilter.setShowRawInputEnabled(false); //Otherwise this filter crashes if the dirfilter outputs polarityevents
 
         setEnclosedFilter(dirFilter);
         
@@ -155,8 +147,7 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
                 if(alienVelocity.length() > alienVelocityThreshold){
                     if(isOutputAlienMotionEnabled()) writeOutput(outItr,e,false,true,null,alienVelocity);  
                 } else {
-                    if(passAllEvents) writeOutput(outItr,e,false,false,null,null);
-//                    writeOutput(outItr,e,false,false,null,null);    
+                    if(passAllEvents) writeOutput(outItr,e,false,false,null,null); 
                 }
                 continue;
             } 
@@ -170,7 +161,6 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
                     if(isOutputAlienMotionEnabled()) writeOutput(outItr,e,false,true,null,alienVelocity);    
                 } else {
                     if(passAllEvents) writeOutput(outItr,e,false,false,null,null);
-//                    writeOutput(outItr,e,false,false,null,null);    
                 }
                 continue;
             }
@@ -258,6 +248,7 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         PanTiltAimerGUI aimerGui = new PanTiltAimerGUI(PanTilt.getInstance(0));
         aimerGui.setVisible(true);
     }
+    
     //This might look as if we would have possible concurency problems witht the list
     // as code could add items to the list after we determined size. However
     // this is not a problem as long as we do not delete from the list, as new
@@ -317,8 +308,7 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
 
     @Override public void resetFilter() {
         panTiltInducedMotionList.clear();
-        retinaPTCalib = new CalibrationPanTiltScreen("retinaPTCalib");
-        if(!retinaPTCalib.isCalibrated()) {
+        if(!retinaPTCalib.isCalibrated() || !retinaPTCalib.loadCalibration("retinaPTCalib")) {
             log.warning("No retinaPT calibration found. using default instead.");
             retinaPTCalib.setCalibration(CalibrationPanTiltScreen.getRetinaPanTiltDefaultCalibration());
         }
@@ -401,12 +391,11 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
     }
     
     @Override public void propertyChange(PropertyChangeEvent evt) {
-        if(evt.getPropertyName().equals("PanTiltValues") && pt.getPanTiltTrajectory().size() > 1) {
+        if(evt.getPropertyName().equals("PanTiltValues") && pt.getPanTiltTrajectory().size() > 1) { //Sent by PanTilt
             TrajectoryPoint currentVal = pt.getPanTiltTrajectory().get(pt.getPanTiltTrajectory().size()-1);
             TrajectoryPoint pastVal    = pt.getPanTiltTrajectory().get(pt.getPanTiltTrajectory().size()-2);
 
-            //The tilt needs to be inverted
-            float[] ptChange   = {currentVal.getPan() - pastVal.getPan(),currentVal.getTilt() - pastVal.getTilt(),1};//{currentVal.getPan() - pastVal.getPan(),-(currentVal.getTilt() - pastVal.getTilt()),1};
+            float[] ptChange   = {currentVal.getPan() - pastVal.getPan(),currentVal.getTilt() - pastVal.getTilt(),1};
             float[] retChange  = retinaPTCalib.makeInverseTransform(ptChange);
             double timeChangeUS;
             if(useFixedTimeIntervalEnabled){
@@ -422,10 +411,10 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
     }
     
     public void doShowTransform() {
-        Matrix.print(retinaPTCalib.getInverseTransformation(),10);
-        Matrix.print(retinaPTCalib.getTransformation(),10);
+        retinaPTCalib.displayCalibration(10);
     }
 
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --showExpectedMotionEnabled--">
     public boolean isShowExpectedMotionEnabled() {
         return showExpectedMotionEnabled;
     }
@@ -434,7 +423,9 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         putBoolean("showExpectedMotionEnabled",showExpectedMotionEnabled);
         this.showExpectedMotionEnabled = showExpectedMotionEnabled;
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --showSelfMotionEnabled--">
     public boolean isShowSelfMotionEnabled() {
         return showSelfMotionEnabled;
     }
@@ -443,7 +434,9 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         putBoolean("showSelfMotionEnabled",showSelfMotionEnabled);
         this.showSelfMotionEnabled = showFilteredOnlyEnabled;
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --showAlienMotionEnabled--">
     public boolean isShowAlienMotionEnabled() {
         return showAlienMotionEnabled;
     }
@@ -452,7 +445,9 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         putBoolean("showAlienMotionEnabled",showAlienMotionEnabled);
         this.showAlienMotionEnabled = showAlienMotionEnabled;
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --ppsScale--">
     public float getPpsScale() {
         return ppsScale;
     }
@@ -461,7 +456,9 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         putFloat("ppsScale",ppsScale);
         this.ppsScale = ppsScale;
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --showRawInputEnabled--">
     public boolean isShowRawInputEnabled() {
         return showRawInputEnabled;
     }
@@ -470,7 +467,9 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         putBoolean("showRawInputEnabled",showRawInputEnabled);
         this.showRawInputEnabled = showRawInputEnabled;
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --useFixedTimeIntervalEnabled--">
     public boolean isUseFixedTimeIntervalEnabled() {
         return useFixedTimeIntervalEnabled;
     }
@@ -479,7 +478,9 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         putBoolean("useFixedTimeIntervalEnabled",useFixedTimeIntervalEnabled);
         this.useFixedTimeIntervalEnabled = useFixedTimeIntervalEnabled;
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --outputSelfMotionEnabled--">
     public boolean isOutputSelfMotionEnabled() {
         return outputSelfMotionEnabled;
     }
@@ -488,7 +489,9 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         putBoolean("outputSelfMotionEnabled",outputSelfMotionEnabled);
         this.outputSelfMotionEnabled = outputSelfMotionEnabled;
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --outputAlienMotionEnabled--">
     public boolean isOutputAlienMotionEnabled() {
         return outputAlienMotionEnabled;
     }
@@ -497,7 +500,9 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         putBoolean("outputAlienMotionEnabled",outputAlienMotionEnabled);
         this.outputAlienMotionEnabled = outputAlienMotionEnabled;
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --outputPolarityEvents--">
     public boolean isOutputPolarityEvents() {
         return outputPolarityEvents;
     }
@@ -506,7 +511,9 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         putBoolean("outputPolarityEvents",outputPolarityEvents);
         this.outputPolarityEvents = outputPolarityEvents;
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --alienVelocityThreshold--">
     public float getAlienVelocityThreshold() {
         return alienVelocityThreshold;
     }
@@ -515,7 +522,9 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         putFloat("alienVelocityThreshold",alienVelocityThreshold);
         this.alienVelocityThreshold = alienVelocityThreshold;
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --angleThreshold--">
     public float getAngleThreshold() {
         return angleThreshold;
     }
@@ -524,7 +533,9 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         putFloat("angleThreshold",angleThreshold);
         this.angleThreshold = angleThreshold;
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --lengthThreshold--">
     public float getLengthThreshold() {
         return lengthThreshold;
     }
@@ -533,7 +544,9 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         putFloat("lengthThreshold",lengthThreshold);
         this.lengthThreshold = lengthThreshold;
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --delayThresholdMS--">
     public float getDelayThresholdMS() {
         return delayThresholdMS;
     }
@@ -542,7 +555,9 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         putFloat("delayThresholdMS",delayThresholdMS);
         this.delayThresholdMS = delayThresholdMS;
     }
+    // </editor-fold>
 
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --passAllEvents--">
     public boolean isPassAllEvents() {
         return passAllEvents;
     }
@@ -550,5 +565,6 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
     public void setPassAllEvents(boolean passAllEvents) {
         this.passAllEvents = passAllEvents;
     }
+    // </editor-fold>
     
 }
