@@ -18,6 +18,9 @@ public class Vector2D extends Point2D.Float {
     public Vector2D(float x, float y){
         super(x,y);
     }
+    public Vector2D(float[] array){
+        super(array[0],array[1]);
+    }
     
     public void add(Vector2D vec) { add(vec.x, vec.y); }
     public void add(float x, float y) {
@@ -58,6 +61,9 @@ public class Vector2D extends Point2D.Float {
     }
     public void setLocation(Vector2D vec) {
         setLocation(vec.x, vec.y);
+    }
+    public void setLocation(float[] array){
+        setLocation(array[0],array[1]);
     }
     public void setDifference(Vector2D vec1, Vector2D vec2) {
         setLocation(vec1.x - vec2.x,vec1.y - vec2.y);
