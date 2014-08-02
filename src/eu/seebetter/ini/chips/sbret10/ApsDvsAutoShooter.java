@@ -65,6 +65,7 @@ public class ApsDvsAutoShooter extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip(rate,"useEventRateThreshold", "use an event rate criteria");
         setPropertyTooltip(track,"useTracker", "use the object tracker to determine whether to trigger new frame capture");
         setPropertyTooltip(track,"trackerMovementPixelsForNewFrame", "at least one tracker cluster must move this many pixels (or any new visible cluster must be found) to trigger a new frame capture");
+        tracker.setFilterEnabled(useTracker);
     }
 
     @Override
@@ -86,6 +87,7 @@ public class ApsDvsAutoShooter extends EventFilter2D implements FrameAnnotater {
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
+        tracker.setFilterEnabled(useTracker); // have to set again because setting is set by FilterFrame or something
         checkOutputPacketEventType(in);
         getEnclosedFilterChain().filterPacket(in);
         eventsSinceLastShot += eventRateEstimator.getNumEventsInLastPacket();
@@ -192,6 +194,8 @@ public class ApsDvsAutoShooter extends EventFilter2D implements FrameAnnotater {
     public void setUseTracker(boolean useTracker) {
         this.useTracker = useTracker;
         putBoolean("useTracker",useTracker);
+        if(!useTracker && tracker!=null) tracker.resetFilter();
+        if(tracker!=null) tracker.setFilterEnabled(useTracker);
     }
 
     /**
@@ -238,4 +242,13 @@ public class ApsDvsAutoShooter extends EventFilter2D implements FrameAnnotater {
         this.useEventRateThreshold = useEventRateThreshold;
         putBoolean("useEventRateThreshold",useEventRateThreshold);
     }
+
+    @Override
+    public synchronized void setFilterEnabled(boolean yes) {
+        super.setFilterEnabled(yes); 
+        // TODO reenable fixed frame rate capture here
+        
+    }
+    
+    
 }
