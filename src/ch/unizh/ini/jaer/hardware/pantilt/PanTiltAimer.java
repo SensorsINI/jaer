@@ -29,8 +29,9 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
     private int     tiltServoNumber = getInt("tiltServoNumber", 2);
     private boolean invertPan       = getBoolean("invertPan", false);
     private boolean invertTilt      = getBoolean("invertTilt", false);
-    private float   limitOfPan      = getFloat("limitOfPan", 0.25f);
-    private float   limitOfTilt     = getFloat("limitOfTilt", 0.25f);
+    private boolean linearMotion    = getBoolean("linearMotion", false);
+    private float   limitOfPan      = getFloat("limitOfPan", 0.5f);
+    private float   limitOfTilt     = getFloat("limitOfTilt", 0.5f);
     private float   PanValue        = getFloat("panValue", 0.5f);
     private float   tiltValue       = getFloat("tiltValue", 0.5f);
     private float   maxMovePerUpdate= getFloat("maxMovePerUpdate", .1f);
@@ -161,6 +162,7 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
         setPropertyTooltip("CamMove","minMovePerUpdate", "Minimum change in ServoValues per update");
         setPropertyTooltip("CamMove","MoveUpdateFreqHz", "Frequenzy of updating the Servo values");
         setPropertyTooltip("CamMove","followEnabled", "Whether the PanTilt should automatically move towards the target or not");
+        setPropertyTooltip("CamMove","linearMotion","Wheather the panTilt should move linearly or exponentially towards the target");
         
         setPropertyTooltip("center", "centers pan and tilt");
         setPropertyTooltip("disableServos", "disables servo PWM output. Servos should relax but digital servos may store last value and hold it.");
@@ -576,5 +578,21 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
         support.firePropertyChange("panValue",OldValue,PanValue);
         getPanTiltHardware().setTarget(PanValue,this.tiltValue);
     }
+
     // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --linearMotion--">
+    public boolean isLinearMotion() {
+        return getPanTiltHardware().isLinearSpeedEnabled();
+    }
+
+    public void setLinearMotion(boolean linearMotion) {
+        putBoolean("linearMotion",linearMotion);
+        boolean OldValue = isLinearMotion();
+        getPanTiltHardware().setLinearSpeedEnabled(linearMotion);
+        this.linearMotion = linearMotion;
+        getSupport().firePropertyChange("linearMotion", OldValue, linearMotion);
+    }
+    // </editor-fold>
+    
 }

@@ -55,7 +55,9 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     private float   jitterAmplitude = .01f;
     private float   jitterFreqHz    = 10f;
     private boolean jitterEnabled   = false;
+    private boolean linearSpeedEnabled = false;
     private final Trajectory panTiltTrajectory = new Trajectory();
+    private final Trajectory panTiltTargetTrajectory = new Trajectory();
     
     private int checkServoCount = 0;
     
@@ -298,6 +300,7 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     }
     
     public void disableAllServos() throws HardwareInterfaceException {
+        checkServos();
         setJitterEnabled(false);
         stopFollow();
         servo.disableAllServos();
@@ -307,6 +310,7 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
         boolean cancelMe = false;
         float[] MoveVec = {0,0};
         float Distance = 0f;
+        float Speed;
         
         FollowerTask() {
             super();
@@ -328,9 +332,13 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
             if(MoveVec[0] ==0 && MoveVec[1] == 0) stopFollow(); //If target is reached we do not need to continue to follow. If a new target is set the follower will start again
 
             try {
-                // As the servo values are between 0 and 1 the maximum distance
-                // is sqrt(1+1), hence we normalize by sqrt(2)
-                Float Speed = (float) Math.max((Distance/Math.sqrt(2))*MaxMovePerUpdate,Math.min(MinMovePerUpdate,Distance));
+                if(isLinearSpeedEnabled()){
+                    Speed = (float) Math.min(MaxMovePerUpdate,Distance);
+                } else {
+                    // As the servo values are between 0 and 1 the maximum distance
+                    // is sqrt(1+1), hence we normalize by sqrt(2)
+                    Speed = (float) Math.max((Distance/Math.sqrt(2))*MaxMovePerUpdate,Math.min(MinMovePerUpdate,Distance));
+                }
                 setPanTiltValues(Current[0]+MoveVec[0]*Speed,Current[1]+MoveVec[1]*Speed);
             } catch(HardwareInterfaceException ex) {
                log.warning(ex.toString());
@@ -450,14 +458,15 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     /** sets the limit of the pan for the hardware
      * @param PanLimit the PanLimit to set */
     public void setLimitOfPan(float PanLimit) {
-        if (PanLimit < 0) {
-            PanLimit = 0;
+        float setValue = PanLimit;
+        if (setValue < 0) {
+            setValue = 0;
             log.info("The panLimit must be a value between 0 and 0.5");
-        } else if (PanLimit > 0.5f) {
-            PanLimit = 0.5f;
+        } else if (setValue > 0.5f) {
+            setValue = 0.5f;
             log.info("The panLimit must be a value between 0 and 0.5");
         }
-        this.limitOfPan = PanLimit;
+        this.limitOfPan = setValue;
     }
     // </editor-fold>
     
@@ -471,14 +480,15 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     /** sets the limit of the tilt for the hardware
      * @param TiltLimit the TiltLimit to set */
     public void setLimitOfTilt(float TiltLimit) {
-        if (TiltLimit < 0) {
-            TiltLimit = 0;
+        float setValue = TiltLimit;
+        if (setValue < 0) {
+            setValue = 0;
             log.info("The tiltLimit must be a value between 0 and 0.5");
-        } else if (TiltLimit > 0.5f) {
-            TiltLimit = 0.5f;
+        } else if (setValue > 0.5f) {
+            setValue = 0.5f;
             log.info("The tiltLimit must be a value between 0 and 0.5");
         }
-        this.limitOfTilt = TiltLimit;
+        this.limitOfTilt = setValue;
     }
     // </editor-fold>
     
@@ -593,6 +603,7 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
         if(!isJitterEnabled()){ 
             setJitterTarget(PanTarget,TiltTarget);
         }
+        panTiltTargetTrajectory.add(PanTarget,TiltTarget);
         this.pcs.firePropertyChange("Target", oldTarget , new float[] {PanTarget,TiltTarget});
     }
     
@@ -635,6 +646,14 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
 
     // </editor-fold>
     
+    public boolean isLinearSpeedEnabled() {
+        return linearSpeedEnabled;
+    }
+
+    public void setLinearSpeedEnabled(boolean linearSpeedEnabled) {
+        this.linearSpeedEnabled = linearSpeedEnabled;
+    }
+
     public Trajectory getPanTiltTrajectory() {
         return panTiltTrajectory;
     }
@@ -643,4 +662,11 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
         panTiltTrajectory.clear();
     }
     
+    public Trajectory getPanTiltTargetTrajectory() {
+        return panTiltTargetTrajectory;
+    }
+    
+    public void resetPanTiltTargetTrajectory() {
+        panTiltTargetTrajectory.clear();
+    }
 }
