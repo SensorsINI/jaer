@@ -754,6 +754,12 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		configBytes[3] = 0x01;
 		sendVendorRequest(VR_FPGA_CONFIG, (short) 0x01, (short) 0x00, configBytes);
 
+		configBytes[0] = 0x00;
+		configBytes[1] = 0x00;
+		configBytes[2] = 0x00;
+		configBytes[3] = 0x01;
+		sendVendorRequest(VR_FPGA_CONFIG, (short) 0x03, (short) 0x00, configBytes);
+
 		inEndpointEnabled = true;
 	}
 
@@ -765,6 +771,12 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	protected synchronized void disableINEndpoint() {
 		try {
 			byte[] configBytes = new byte[4];
+
+			configBytes[0] = 0x00;
+			configBytes[1] = 0x00;
+			configBytes[2] = 0x00;
+			configBytes[3] = 0x00;
+			sendVendorRequest(VR_FPGA_CONFIG, (short) 0x03, (short) 0x00, configBytes);
 
 			configBytes[0] = 0x00;
 			configBytes[1] = 0x00;

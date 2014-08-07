@@ -17,6 +17,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import org.usb4java.Device;
 
 import eu.seebetter.ini.chips.ApsDvsChip;
+import eu.seebetter.ini.chips.sbret10.IMUSample;
 
 /**
  * Adds functionality of apsDVS sensors to based CypressFX3Biasgen class. The
@@ -73,13 +74,19 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	 * AEPacketRaw
 	 */
 	public class RetinaAEReader extends CypressFX3.AEReader implements PropertyChangeListener {
-		public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
-			super(cypress);
-		}
-
 		private int currentTimestamp, lastTimestamp;
 		private short lastY;
 		private boolean gotY;
+
+		private static final int IMU_DATA_LENGTH = 7;
+		private final short[] currImuSample;
+		private int currImuSamplePosition = 0;
+
+		public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
+			super(cypress);
+
+			currImuSample = new short[RetinaAEReader.IMU_DATA_LENGTH];
+		}
 
 		@Override
 		protected void translateEvents(final ByteBuffer b) {
@@ -143,9 +150,30 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 												.info("Timestamp reset event received on " + super.toString());
 											break;
 
-										case 2: // External trigger
+										case 2: // External trigger (falling
+												// edge)
+										case 3: // External trigger (rising
+												// edge)
+										case 4: // External trigger (pulse)
 											addresses[eventCounter] = ApsDvsChip.EXTERNAL_INPUT_EVENT_ADDR;
 											timestamps[eventCounter++] = currentTimestamp;
+											break;
+
+										case 5: // IMU Start (6 axes), reset IMU
+												// sample position for writing
+											currImuSamplePosition = 0;
+											break;
+
+										case 7: // IMU End, write out IMU sample
+												// to raw packet
+											if (currImuSamplePosition != 14) {
+												// Lost some IMU events in
+												// transit, don't use them.
+												break;
+											}
+
+											final IMUSample imuSample = new IMUSample(currentTimestamp, currImuSample);
+											eventCounter += imuSample.writeToPacket(buffer, eventCounter);
 											break;
 
 										default:
@@ -176,6 +204,43 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									timestamps[eventCounter++] = currentTimestamp;
 
 									gotY = false;
+
+									break;
+
+								case 5: // Misc 8bit data, used currently only
+										// for IMU events in DAViS FX3 boards
+									final byte misc8Code = (byte) ((data & 0x0F00) >> 8);
+									final short misc8Data = (short) (data & 0x00FF);
+
+									switch (misc8Code) {
+										case 0:
+											// Detect missing IMU end events.
+											if (currImuSamplePosition >= 14) {
+												break;
+											}
+
+											// IMU data event.
+											if ((currImuSamplePosition & 0x01) == 0) {
+												// Current position is even, so
+												// we are getting the upper 8
+												// bits of data.
+												currImuSample[currImuSamplePosition >>> 1] = (short) (misc8Data << 8);
+											}
+											else {
+												// Current position is uneven,
+												// so we are getting the lower 8
+												// bits of data.
+												currImuSample[currImuSamplePosition >>> 1] = (short) (currImuSample[currImuSamplePosition >>> 1] | misc8Data);
+											}
+
+											currImuSamplePosition++;
+
+											break;
+
+										default:
+											CypressFX3.log.severe("Caught Misc8 event that can't be handled.");
+											break;
+									}
 
 									break;
 

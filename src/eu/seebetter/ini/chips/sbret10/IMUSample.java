@@ -14,7 +14,6 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.util.filter.LowpassFilter;
 import de.thesycon.usbio.UsbIoBuf;
 import eu.seebetter.ini.chips.ApsDvsChip;
-import java.util.Arrays;
 
 /**
  * Encapsulates data sent from device Invensense Inertial Measurement Unit (IMU)
@@ -271,23 +270,16 @@ public class IMUSample extends ApsDvsEvent {
 	 *
          * @param ts timestamp
 	 * @param buf short array with 7 measurements from IMU Sensor
-	 *            
+	 *
 	 */
         public IMUSample(final int ts, final short[] buf) {
             this();
             setFromShortArrayBuf(ts, buf);
         }
-        
+
         private void setFromShortArrayBuf(final int ts, final short[] buf) {
             timestampUs = ts;
-            data[0] = buf[0];
-            data[1] = buf[1];
-            data[2] = buf[2];
-            data[3] = buf[3];
-            data[4] = buf[4];
-            data[5] = buf[5];
-            data[6] = buf[6];
-            //data = Arrays.copyOf(buf, buf.length); // WHY DOESN'T THIS WORK?!
+            System.arraycopy(buf, 0, data, 0, 7);
         }
 
         private void setFromLibUsbBuf(final ByteBuffer buf) {
@@ -329,7 +321,7 @@ public class IMUSample extends ApsDvsEvent {
 		// System.out.println("on reception: "+this.toString()); // debug
 	}
 
-	final void setFromUsbIoBuf(final UsbIoBuf buf) {
+	private void setFromUsbIoBuf(final UsbIoBuf buf) {
 		if (buf.BytesTransferred != 19) {
 			IMUSample.log.warning("wrong number of bytes transferred, got " + buf.BytesTransferred);
 			return;
