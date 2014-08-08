@@ -169,6 +169,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 											if (currImuSamplePosition != 14) {
 												// Lost some IMU events in
 												// transit, don't use them.
+												currImuSamplePosition = 0;
 												break;
 											}
 
