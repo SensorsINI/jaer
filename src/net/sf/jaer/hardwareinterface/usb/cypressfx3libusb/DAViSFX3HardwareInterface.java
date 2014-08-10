@@ -119,14 +119,16 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 						// Check if timestamp
 						if ((event & 0x8000) != 0) {
-							// Is a timestamp!
+							// Is a timestamp! Expand to 32 bits. (Tick is 1µs
+							// already.)
 							lastTimestamp = currentTimestamp;
 							currentTimestamp = wrapAdd + (event & 0x7FFF);
 
-							if (currentTimestamp < lastTimestamp) {
+							// Check monotonicity of timestamps.
+							if (currentTimestamp <= lastTimestamp) {
 								CypressFX3.log.severe(toString() + ": non-monotonic timestamp: currentTimestamp="
 									+ currentTimestamp + " lastTimestamp=" + lastTimestamp + " difference="
-									+ (currentTimestamp - lastTimestamp));
+									+ (lastTimestamp - currentTimestamp));
 							}
 						}
 						else {
@@ -251,6 +253,17 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									// which is located in the data part of this
 									// event.
 									wrapAdd += (0x8000L * data);
+
+									lastTimestamp = currentTimestamp;
+									currentTimestamp = wrapAdd;
+
+									// Check monotonicity of timestamps.
+									if (currentTimestamp <= lastTimestamp) {
+										CypressFX3.log.severe(toString()
+											+ ": non-monotonic timestamp: currentTimestamp=" + currentTimestamp
+											+ " lastTimestamp=" + lastTimestamp + " difference="
+											+ (lastTimestamp - currentTimestamp));
+									}
 
 									CypressFX3.log.info(String.format(
 										"Timestamp wrap event received on %s with multiplier of %d.", super.toString(),
