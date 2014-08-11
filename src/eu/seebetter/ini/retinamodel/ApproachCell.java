@@ -212,13 +212,19 @@ public class ApproachCell extends AbstractRetinaModelCell {
     public void initFilter() {
         resetFilter();
     }
-    GLU glu = new GLU();
-    GLUquadric quad = glu.gluNewQuadric();
+    GLU glu = null;
+    GLUquadric quad = null;
+
     boolean hasBlendChecked = false;
     boolean hasBlend = false;
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
+    	if (glu == null) {
+    		glu = new GLU();
+    	    quad = glu.gluNewQuadric();
+    	}
+
         GL2 gl = drawable.getGL().getGL2();
         if (!hasBlendChecked) {
             hasBlendChecked = true;
