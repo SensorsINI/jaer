@@ -75,6 +75,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	 */
 	public class RetinaAEReader extends CypressFX3.AEReader implements PropertyChangeListener {
 		private int currentTimestamp, lastTimestamp;
+		private int dvsTimestamp, imuTimestamp, extTriggerTimestamp;
 		private short lastY;
 		private boolean gotY;
 
@@ -148,6 +149,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 											resetTimestamps();
 											currentTimestamp = 0;
 											lastTimestamp = 0;
+											dvsTimestamp = 0;
+											imuTimestamp = 0;
+											extTriggerTimestamp = 0;
+
 											CypressFX3.log
 												.info("Timestamp reset event received on " + super.toString());
 											break;
@@ -157,13 +162,16 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										case 3: // External trigger (rising
 												// edge)
 										case 4: // External trigger (pulse)
+											extTriggerTimestamp = currentTimestamp;
+
 											addresses[eventCounter] = ApsDvsChip.EXTERNAL_INPUT_EVENT_ADDR;
-											timestamps[eventCounter++] = currentTimestamp;
+											timestamps[eventCounter++] = extTriggerTimestamp;
 											break;
 
 										case 5: // IMU Start (6 axes), reset IMU
 												// sample position for writing
 											currImuSamplePosition = 0;
+											imuTimestamp = currentTimestamp;
 											break;
 
 										case 7: // IMU End, write out IMU sample
@@ -175,7 +183,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 												break;
 											}
 
-											final IMUSample imuSample = new IMUSample(currentTimestamp, currImuSample);
+											final IMUSample imuSample = new IMUSample(imuTimestamp, currImuSample);
 											eventCounter += imuSample.writeToPacket(buffer, eventCounter);
 											break;
 
@@ -189,13 +197,14 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									if (gotY) {
 										if (translateRowOnlyEvents) {
 											addresses[eventCounter] = ((lastY << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK);
-											timestamps[eventCounter++] = currentTimestamp;
+											timestamps[eventCounter++] = dvsTimestamp;
 											CypressFX3.log.info("Row only event on " + super.toString());
 										}
 									}
 
 									lastY = data;
 									gotY = true;
+									dvsTimestamp = currentTimestamp;
 
 									break;
 
@@ -204,7 +213,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									addresses[eventCounter] = ((lastY << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
 										| ((data << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
 										| (((code & 0x01) << ApsDvsChip.POLSHIFT) & ApsDvsChip.POLMASK);
-									timestamps[eventCounter++] = currentTimestamp;
+									timestamps[eventCounter++] = dvsTimestamp;
 
 									gotY = false;
 
