@@ -1,8 +1,8 @@
-
+ 
 package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
 
-import ch.unizh.ini.jaer.projects.bjoernbeyer.pantiltscreencalibration.CalibrationPanTiltScreen;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
+import ch.unizh.ini.jaer.projects.bjoernbeyer.pantiltscreencalibration.CalibrationPanTiltScreen;
 import ch.unizh.ini.jaer.projects.bjoernbeyer.stimulusdisplay.PaintableObject;
 import ch.unizh.ini.jaer.projects.bjoernbeyer.stimulusdisplay.StimulusDisplayGUI;
 import java.beans.PropertyChangeEvent;
@@ -12,16 +12,18 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.locks.*;
+import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
  *
  * @author Bjoern
  */
-public class EvaluateTrackingSuccess extends EventFilter2D implements PropertyChangeListener{
+public class TrackingSuccessEvaluator extends EventFilter2D implements PropertyChangeListener, FrameAnnotater{
     private final StimulusDisplayGUI stimDisp;
     private final CalibrationPanTiltScreen screenPtCalib;
     private final PanTilt panTilt;
@@ -33,57 +35,20 @@ public class EvaluateTrackingSuccess extends EventFilter2D implements PropertyCh
     private File writeFile;
     private BufferedWriter outWriter;
     private boolean writeDataToFile = false;
+    private boolean usePanTilt = false;
     private final DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
     private final Date date;
     private int fileNumber = 1;
     private int numberRepeats = 5;
     private int millisBetweenTrials = 1000;
     private String evaluationSetName = "";
-    private final Lock lock = new ReentrantLock();
+    private final Lock lock = new ReentrantLock(), fileLock = new ReentrantLock();
     private final Condition notFinished = lock.newCondition();
     private long nanoStartTime;
     
-    private EvaluationSetPlayer player = null;
+    private EvaluationSetPlayer player = new EvaluationSetPlayer();
     
-    private class EvaluationSetPlayer extends Thread {
-        boolean cancelMe = false;
-        private int numberRepeats = 1;
-        private int millisSleep = 0;
-        
-        EvaluationSetPlayer(int numberRepeats, int millisBetweenStimDisplays){
-            super();
-            this.numberRepeats = numberRepeats;
-            this.millisSleep = millisBetweenStimDisplays;
-        }
-        
-        void cancel() {
-            cancelMe = true;
-            synchronized (this) { interrupt(); }
-        }
-
-        @Override public void run() {
-            int currentPlayTime = 0;
-            while (!cancelMe) {
-                try {
-                    startDisplayStimulus();
-                    lock.lock();
-                    notFinished.await(); //When the path is played once a propertyChangeEvent is fired that we listen to. The propertyChange signals the Condition.
-                    Thread.sleep(this.millisSleep);
-                    System.out.println(nanoStartTime);
-                    closeFile();
-                    
-                    currentPlayTime++;
-                    if(currentPlayTime >= this.numberRepeats) cancel();
-                } catch (InterruptedException ex) { 
-                    log.warning(ex.getMessage());
-                } finally {
-                    lock.unlock();
-                }
-            }
-        }
-    }
-    
-    public EvaluateTrackingSuccess(AEChip chip) {
+    public TrackingSuccessEvaluator(AEChip chip) {
         super(chip);
         
         panTilt       = PanTilt.getInstance(0);
@@ -95,16 +60,6 @@ public class EvaluateTrackingSuccess extends EventFilter2D implements PropertyCh
         setEnclosedFilter((EventFilter2D) tracker);
         
         initFilter();
-        
-        
-        //We need the following trajectories:
-        // Target/JitterTarget --> PanTiltAimer
-        // PanTiltPos --> PanTilt
-        // VisualTarget --> StimulusFrame
-        
-        // We need to hack things... If there is more than one visual target moving
-        // search for the one that is named 'visualTarget' or otherwise cancel.
-
         date = new Date();
     }
     
@@ -121,14 +76,19 @@ public class EvaluateTrackingSuccess extends EventFilter2D implements PropertyCh
             case "visualObjectChange": //Sent by PaintableObject
                 evaluationPoint = (TrackingSuccessEvaluationPoint) evt.getOldValue();
                 if(evaluationPoint.name.equals(VIS_TARGET_NAME)) {
-                    float[] toTransform = {evaluationPoint.newPosX,evaluationPoint.newPosY,0f};
-                    float[] transformed = screenPtCalib.makeInverseTransform(toTransform);
+                    float[] toTransform = {evaluationPoint.newPosX,evaluationPoint.newPosY,1f};
+                    float[] transformed = screenPtCalib.makeTransform(toTransform);
                     writeDataToFile(new TrackingSuccessEvaluationPoint(evaluationPoint.name,transformed[0],transformed[1],evaluationPoint.changeTime));
                 }       
                 break;
             case "PanTiltValues": //Sent by PanTilt
                 float[] newPTvalues = (float[]) evt.getNewValue();
                 evaluationPoint = new TrackingSuccessEvaluationPoint("PanTilt",newPTvalues[0],newPTvalues[1],System.nanoTime());
+                writeDataToFile(evaluationPoint);
+                break;
+            case "trackedTarget": //Sent by a VS tracker indicating that a visual target has changed. If the panTilt is enabled this should be identical with the ptTarget. If the pt is disabled this will still update
+                float[] newVisualTarget = (float[]) evt.getNewValue();
+                evaluationPoint = new TrackingSuccessEvaluationPoint("trackedTarget",newVisualTarget[0],newVisualTarget[1],System.nanoTime());
                 writeDataToFile(evaluationPoint);
                 break;
             case "Target": //Sent by PanTilt
@@ -150,6 +110,7 @@ public class EvaluateTrackingSuccess extends EventFilter2D implements PropertyCh
     private void writeDataToFile(TrackingSuccessEvaluationPoint evaluationPoint) {
         if(!isWriteDataToFile()) return;
         
+        fileLock.lock();
         String message = "";
         try {
             if (writeFile == null) {
@@ -165,17 +126,20 @@ public class EvaluateTrackingSuccess extends EventFilter2D implements PropertyCh
                 FileWriter datawriter = new FileWriter(writeFile);
                 outWriter = new BufferedWriter(datawriter);
             }
-            
+
             if (writeFile.exists()) {
                 switch (evaluationPoint.name) {
                     case VIS_TARGET_NAME:
-                        message = String.valueOf(evaluationPoint.changeTime)+","+String.valueOf(evaluationPoint.newPosX)+","+String.valueOf(evaluationPoint.newPosY)+",,,,";
+                        message = String.valueOf(evaluationPoint.changeTime)+","+String.valueOf(evaluationPoint.newPosX)+","+String.valueOf(evaluationPoint.newPosY)+",nan,nan,nan,nan,nan,nan";
                         break;
                     case "PanTilt":
-                        message = String.valueOf(evaluationPoint.changeTime)+",,,"+String.valueOf(evaluationPoint.newPosX)+","+String.valueOf(evaluationPoint.newPosY)+",,";
+                        message = String.valueOf(evaluationPoint.changeTime)+",nan,nan,"+String.valueOf(evaluationPoint.newPosX)+","+String.valueOf(evaluationPoint.newPosY)+",nan,nan,nan,nan";
+                        break;
+                    case "trackedTarget":
+                        message = String.valueOf(evaluationPoint.changeTime)+",nan,nan,nan,nan,"+String.valueOf(evaluationPoint.newPosX)+","+String.valueOf(evaluationPoint.newPosY)+",nan,nan";
                         break;
                     case "ptTarget":
-                        message = String.valueOf(evaluationPoint.changeTime)+",,,,,"+String.valueOf(evaluationPoint.newPosX)+","+String.valueOf(evaluationPoint.newPosY);
+                        message = String.valueOf(evaluationPoint.changeTime)+",nan,nan,nan,nan,nan,nan,"+String.valueOf(evaluationPoint.newPosX)+","+String.valueOf(evaluationPoint.newPosY);
                         break;
                 }
                 synchronized(this){
@@ -185,6 +149,8 @@ public class EvaluateTrackingSuccess extends EventFilter2D implements PropertyCh
             }
         } catch (IOException e) {
             log.warning("fail to write file: "+e.getMessage());
+        } finally {
+            fileLock.unlock();
         }
     }
     
@@ -197,7 +163,13 @@ public class EvaluateTrackingSuccess extends EventFilter2D implements PropertyCh
         
         closeFile(); //To make sure we start with a clean file
         setWriteDataToFile(true);
-        player = new EvaluationSetPlayer(getNumberRepeats(),1000);
+        System.out.printf("-----Now beginning evaluation set with %d repeats and writing data with evaluationSetName >>%s<<\n",getNumberRepeats(),getEvaluationSetName());
+        if(player.isAlive()){
+            player.cancel();
+        }
+        player = new EvaluationSetPlayer();
+        player.setNumberRepeats(getNumberRepeats());
+        player.setMillisBetweenStimDisplays(1000);
         player.start();
     }
     
@@ -245,26 +217,31 @@ public class EvaluateTrackingSuccess extends EventFilter2D implements PropertyCh
     }
     
     private void closeFile() {
-        if(writeFile == null || !writeFile.exists()) {
-            System.out.println("No file to close!");
-            return;
-        }
-        
+        fileLock.lock();
+
         try {
+            if(writeFile == null || !writeFile.exists()) {
+                System.out.println("No file to close!");
+                return;
+            }
+            
             synchronized(this){
                 //The last line of the file will be the start time of the visual stimulus. 
                 // This allows to center the tracking around the start time of the vis stim.
-                outWriter.append(String.valueOf(nanoStartTime)+",,,,,,");
+                outWriter.append(String.valueOf(nanoStartTime)+",nan,nan,nan,nan,nan,nan,nan,nan");
                 outWriter.newLine();
             }
             
             outWriter.close();
             outWriter = null;
+            
+            System.out.println("File >>"+writeFile.getName()+"<< written to hard drive.");
+            writeFile = null;
         } catch (IOException ex) {
             log.warning(ex.getMessage());
-        }
-        System.out.println("File >>"+writeFile.getName()+"<< written to hard drive.");
-        writeFile = null;
+        } finally {
+            fileLock.unlock();
+        }  
     }
     
     public void doShowStimGUI() {
@@ -272,6 +249,7 @@ public class EvaluateTrackingSuccess extends EventFilter2D implements PropertyCh
     }
     
     @Override public EventPacket<?> filterPacket(EventPacket<?> in) {
+        tracker.filterPacket(in);
         return in;
     }
 
@@ -282,12 +260,25 @@ public class EvaluateTrackingSuccess extends EventFilter2D implements PropertyCh
             log.warning("The panTilt-Screen calibration is not found. The default is loaded instead.");
             screenPtCalib.setCalibration(CalibrationPanTiltScreen.getScreenPanTiltDefaultCalibration());
         }
+        if(player.isAlive()){
+            player.cancel();
+        }
+        fileNumber = 1;
+        writeFile  = null;
+        outWriter  = null;
     }
 
     @Override public final void initFilter() { 
         stimDisp.addPropertyChangeListener(this);
         panTilt.addPropertyChangeListener(this);
+        tracker.addPropertyChangeListener(this);
         resetFilter(); 
+    }
+    
+    @Override public void annotate(GLAutoDrawable drawable) {
+        if(!isFilterEnabled()) return;
+
+        tracker.annotate(drawable);
     }
 
     public int getNumberRepeats() {
@@ -324,6 +315,72 @@ public class EvaluateTrackingSuccess extends EventFilter2D implements PropertyCh
         this.millisBetweenTrials = millisBetweenTrials;
     }
 
+    public boolean isUsePanTilt() {
+        return usePanTilt;
+    }
+
+    public void setUsePanTilt(boolean usePanTilt) {
+        this.usePanTilt = usePanTilt;
+    }
     
-    
+//###################### BEGIN INNER CLASS DEFINITION ##########################
+    private class EvaluationSetPlayer extends Thread {
+        boolean cancelMe = false;
+        private int numberRepeats = 1;
+        private int millisSleep = 0;
+        private int currentPlayTime = 0;
+        
+        EvaluationSetPlayer(){
+            super();
+        }
+        
+        void cancel() {
+            cancelMe = true;
+            synchronized (this) { 
+                if(isUsePanTilt())tracker.doDisableServos();
+                System.out.printf("--->CANCELING the evaluation runner after %d of %d repetitions\n", this.currentPlayTime,this.numberRepeats);
+                interrupt(); 
+                closeFile();
+                fileNumber = 1;
+                writeFile  = null;
+                outWriter  = null;
+            }
+        }
+
+        @Override public void run() {
+            currentPlayTime = 0;
+            tracker.setTrackerEnabled(false);
+            while (!cancelMe) {
+                try {
+                    if(isUsePanTilt())tracker.setTrackerEnabled(true);
+                    startDisplayStimulus();
+                    tracker.resetFilter(); //So that the tracker is set back as it sometimes tracks distractors during the waiting period
+                    lock.lock();
+                    notFinished.await(); //When the path is played once a propertyChangeEvent is fired that we listen to. The propertyChange signals the Condition.
+                    if(isUsePanTilt())tracker.setTrackerEnabled(false);
+                    if(isUsePanTilt())tracker.doCenterPT();
+                    Thread.sleep(this.millisSleep/2);
+                        closeFile();
+                    Thread.sleep(this.millisSleep/2);
+
+                    currentPlayTime++;
+                    System.out.printf("--->Done with %d / %d repetitions\n", currentPlayTime,this.numberRepeats);
+                    if(currentPlayTime >= this.numberRepeats) cancel();
+                } catch (InterruptedException ex) { 
+                    log.warning(ex.getMessage());
+                } finally {
+                    lock.unlock();
+                }
+            }
+        }
+        
+        public void setNumberRepeats(int numberRepeats){
+            this.numberRepeats = numberRepeats;
+        }
+        
+        public void setMillisBetweenStimDisplays(int millisBetweenStimDisplays){
+            this.millisSleep = millisBetweenStimDisplays;
+        }    
+    }
+
 }

@@ -21,7 +21,7 @@ import javax.swing.DefaultListModel;
  */
 public class StimulusDisplayGUI extends javax.swing.JFrame {
 
-    private static final String[] STIM_LIST = {"oval","rectangle","horizontal Stripes", "vertical Stripes"};
+    private static final String[] STIM_LIST = {"oval","rectangle","vertical Stripes", "horizontal Stripes", "random dot Patch"};
     private static final String[] PAINT_LIST = {"no fill","black","sine grating(vert)","sine grating(horz)","stripes(vert)","stripes(horz)"};
     private static final String FILE_NAME_PREFIX = "jAER1.5_StimSet_";
     
@@ -158,16 +158,16 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
         nameLBL = new javax.swing.JLabel();
         widthLBL = new javax.swing.JLabel();
         widthTXT = new javax.swing.JTextField();
+        prop1TXT = new javax.swing.JTextField();
+        prop1LBL = new javax.swing.JLabel();
         prop2TXT = new javax.swing.JTextField();
         prop2LBL = new javax.swing.JLabel();
-        prop3TXT = new javax.swing.JTextField();
-        prop3LBL = new javax.swing.JLabel();
         heightTXT = new javax.swing.JTextField();
         heightLBL = new javax.swing.JLabel();
         angleTXT = new javax.swing.JTextField();
         angleLBL = new javax.swing.JLabel();
-        prop6TXT = new javax.swing.JTextField();
-        prop6LBL = new javax.swing.JLabel();
+        prop3TXT = new javax.swing.JTextField();
+        prop3LBL = new javax.swing.JLabel();
         origYTXT = new javax.swing.JTextField();
         origYLBL = new javax.swing.JLabel();
         origXTXT = new javax.swing.JTextField();
@@ -178,6 +178,8 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
         strokeTXT = new javax.swing.JTextField();
         strokeLBL = new javax.swing.JLabel();
         linPathBUT = new javax.swing.JButton();
+        prop4TXT = new javax.swing.JTextField();
+        prop4LBL = new javax.swing.JLabel();
         jPanel2 = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
         avlbStimLIST = new javax.swing.JList();
@@ -188,43 +190,38 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
         flashStimTOGBUT = new javax.swing.JToggleButton();
         loopAllBUT = new javax.swing.JButton();
         jPanel1 = new javax.swing.JPanel();
-        prop3TXT1 = new javax.swing.JTextField();
         EditOrigXTXT = new javax.swing.JTextField();
-        prop6TXT1 = new javax.swing.JTextField();
         origYLBL1 = new javax.swing.JLabel();
         strokeLBL1 = new javax.swing.JLabel();
         EditHeightTXT = new javax.swing.JTextField();
         EditOrigYTXT = new javax.swing.JTextField();
-        prop2LBL1 = new javax.swing.JLabel();
         EditAngleTXT = new javax.swing.JTextField();
-        prop3LBL1 = new javax.swing.JLabel();
-        prop6LBL1 = new javax.swing.JLabel();
         angleLBL1 = new javax.swing.JLabel();
         widthLBL1 = new javax.swing.JLabel();
         origXLBL1 = new javax.swing.JLabel();
-        prop2TXT1 = new javax.swing.JTextField();
         EditFlashFreqTXT = new javax.swing.JTextField();
         EditWidthTXT = new javax.swing.JTextField();
         heightLBL1 = new javax.swing.JLabel();
         EditStrokeTXT = new javax.swing.JTextField();
         FlashFreqLBL1 = new javax.swing.JLabel();
         EditObjectPathBUT = new javax.swing.JButton();
+        copyPathBUT = new javax.swing.JButton();
         jPanel3 = new javax.swing.JPanel();
         jScrollPane2 = new javax.swing.JScrollPane();
         avlbSetLIST = new javax.swing.JList();
-        saveSetBUT = new javax.swing.JButton();
-        loadSetBUT = new javax.swing.JButton();
         setNameLBL = new javax.swing.JLabel();
         setNameTXT = new javax.swing.JTextField();
         avlbSetLBL = new javax.swing.JLabel();
+        loadSetBUT = new javax.swing.JButton();
         deleteStimBUT = new javax.swing.JButton();
+        saveSetBUT = new javax.swing.JButton();
         jScrollPane3 = new javax.swing.JScrollPane();
         ExceptionTXTAREA = new javax.swing.JTextArea();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
-        setMaximumSize(new java.awt.Dimension(610, 1000));
-        setMinimumSize(new java.awt.Dimension(600, 550));
-        setPreferredSize(new java.awt.Dimension(600, 550));
+        setMaximumSize(new java.awt.Dimension(1000, 1000));
+        setMinimumSize(new java.awt.Dimension(550, 650));
+        setPreferredSize(new java.awt.Dimension(550, 650));
 
         jPanel6.setBorder(javax.swing.BorderFactory.createTitledBorder("Stimulus creation"));
 
@@ -255,16 +252,16 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
         widthTXT.setText(".1");
         widthTXT.setPreferredSize(new java.awt.Dimension(50, 20));
 
+        prop1TXT.setText("init...");
+        prop1TXT.setPreferredSize(new java.awt.Dimension(50, 20));
+
+        prop1LBL.setText("init...");
+        prop1LBL.setToolTipText("");
+
         prop2TXT.setText("init...");
         prop2TXT.setPreferredSize(new java.awt.Dimension(50, 20));
 
         prop2LBL.setText("init...");
-        prop2LBL.setToolTipText("");
-
-        prop3TXT.setText("init...");
-        prop3TXT.setPreferredSize(new java.awt.Dimension(50, 20));
-
-        prop3LBL.setText("init...");
 
         heightTXT.setText(".1");
         heightTXT.setPreferredSize(new java.awt.Dimension(50, 20));
@@ -276,10 +273,10 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
 
         angleLBL.setText("angle:");
 
-        prop6TXT.setText("init...");
-        prop6TXT.setPreferredSize(new java.awt.Dimension(50, 20));
+        prop3TXT.setText("init...");
+        prop3TXT.setPreferredSize(new java.awt.Dimension(50, 20));
 
-        prop6LBL.setText("init...");
+        prop3LBL.setText("init...");
 
         origYTXT.setText("0");
         origYTXT.setPreferredSize(new java.awt.Dimension(50, 20));
@@ -319,58 +316,18 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
             }
         });
 
+        prop4TXT.setText("init...");
+        prop4TXT.setPreferredSize(new java.awt.Dimension(50, 20));
+
+        prop4LBL.setText("init...");
+
         javax.swing.GroupLayout jPanel6Layout = new javax.swing.GroupLayout(jPanel6);
         jPanel6.setLayout(jPanel6Layout);
         jPanel6Layout.setHorizontalGroup(
             jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel6Layout.createSequentialGroup()
-                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel6Layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel6Layout.createSequentialGroup()
-                                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addGroup(jPanel6Layout.createSequentialGroup()
-                                        .addGap(2, 2, 2)
-                                        .addComponent(origXLBL))
-                                    .addComponent(nameLBL))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED))
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel6Layout.createSequentialGroup()
-                                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(prop2LBL)
-                                    .addComponent(prop3LBL))
-                                .addGap(1, 1, 1))
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel6Layout.createSequentialGroup()
-                                .addComponent(widthLBL)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED))
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel6Layout.createSequentialGroup()
-                                .addComponent(strokeLBL)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)))
-                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addGroup(jPanel6Layout.createSequentialGroup()
-                                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(strokeTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(widthTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(origXTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(prop2TXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(prop3TXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(origYLBL, javax.swing.GroupLayout.Alignment.TRAILING)
-                                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                        .addComponent(angleLBL)
-                                        .addComponent(prop6LBL))
-                                    .addComponent(heightLBL, javax.swing.GroupLayout.Alignment.TRAILING)
-                                    .addComponent(FlashFreqLBL, javax.swing.GroupLayout.Alignment.TRAILING))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(origYTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(heightTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(FlashFreqTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(angleTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(prop6TXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                            .addComponent(NameTXT)))
-                    .addGroup(jPanel6Layout.createSequentialGroup()
+                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel6Layout.createSequentialGroup()
                         .addGap(10, 10, 10)
                         .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(AddStimBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
@@ -379,62 +336,105 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
                         .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(linPathBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(recordPathTOGBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(SelectPaintCBOX, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                            .addComponent(SelectPaintCBOX, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                    .addGroup(jPanel6Layout.createSequentialGroup()
+                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(nameLBL, javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(origXLBL, javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(widthLBL, javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(strokeLBL, javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(prop1LBL, javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(prop2LBL, javax.swing.GroupLayout.Alignment.TRAILING))
+                        .addGap(4, 4, 4)
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addGroup(jPanel6Layout.createSequentialGroup()
+                                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(origXTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(widthTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(strokeTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(prop1TXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(prop2TXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(origYLBL, javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(heightLBL, javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(FlashFreqLBL, javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(angleLBL, javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(prop3LBL, javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(prop4LBL, javax.swing.GroupLayout.Alignment.TRAILING))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(prop4TXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(prop3TXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(angleTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(FlashFreqTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(heightTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(origYTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addComponent(NameTXT))))
+                .addContainerGap())
         );
         jPanel6Layout.setVerticalGroup(
             jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel6Layout.createSequentialGroup()
-                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(AddStimBUT)
-                    .addComponent(recordPathTOGBUT))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(linPathBUT)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(SelectStimCBOX, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(SelectPaintCBOX, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(NameTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(nameLBL))
-                .addGap(4, 4, 4)
-                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(origYLBL)
-                    .addComponent(origYTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(origXLBL)
-                    .addComponent(origXTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(heightLBL)
-                        .addComponent(heightTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(widthLBL)
-                        .addComponent(widthTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(FlashFreqLBL)
-                    .addComponent(FlashFreqTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(strokeLBL)
-                    .addComponent(strokeTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(angleLBL)
-                        .addComponent(angleTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(prop2LBL)
-                        .addComponent(prop2TXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(prop6LBL)
-                        .addComponent(prop6TXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(prop3LBL)
-                        .addComponent(prop3TXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addGap(25, 25, 25))
+                    .addGroup(jPanel6Layout.createSequentialGroup()
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(AddStimBUT)
+                            .addComponent(recordPathTOGBUT))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(linPathBUT)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(SelectStimCBOX, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(SelectPaintCBOX, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(NameTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(nameLBL))
+                        .addGap(4, 4, 4)
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(origYLBL)
+                            .addComponent(origYTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(origXLBL)
+                            .addComponent(origXTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                .addComponent(heightLBL)
+                                .addComponent(heightTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                .addComponent(widthLBL)
+                                .addComponent(widthTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(FlashFreqLBL)
+                            .addComponent(FlashFreqTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(strokeLBL)
+                            .addComponent(strokeTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jPanel6Layout.createSequentialGroup()
+                                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                    .addComponent(angleLBL)
+                                    .addComponent(angleTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                    .addComponent(prop3LBL)
+                                    .addComponent(prop3TXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(25, 25, 25))
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel6Layout.createSequentialGroup()
+                                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                    .addComponent(prop1LBL)
+                                    .addComponent(prop1TXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                    .addComponent(prop2LBL)
+                                    .addComponent(prop2TXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel6Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(prop4LBL)
+                        .addComponent(prop4TXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         jPanel2.setBorder(javax.swing.BorderFactory.createTitledBorder("Current stimuli"));
@@ -447,7 +447,7 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
         });
         jScrollPane1.setViewportView(avlbStimLIST);
 
-        delStimBUT.setText("remove Stimulus");
+        delStimBUT.setText("remove stim");
         delStimBUT.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 delStimBUTActionPerformed(evt);
@@ -491,26 +491,21 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
 
         jPanel1.setBorder(javax.swing.BorderFactory.createTitledBorder("Edit stimulus"));
 
-        prop3TXT1.setText("init...");
-        prop3TXT1.setPreferredSize(new java.awt.Dimension(50, 20));
-
         EditOrigXTXT.setText("0");
-        EditOrigXTXT.setPreferredSize(new java.awt.Dimension(50, 20));
+        EditOrigXTXT.setPreferredSize(new java.awt.Dimension(30, 20));
         EditOrigXTXT.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 EditOrigXTXTActionPerformed(evt);
             }
         });
 
-        prop6TXT1.setText("init...");
-        prop6TXT1.setPreferredSize(new java.awt.Dimension(50, 20));
-
         origYLBL1.setText("origY:");
 
         strokeLBL1.setText("stroke:");
 
         EditHeightTXT.setText(".1");
-        EditHeightTXT.setPreferredSize(new java.awt.Dimension(50, 20));
+        EditHeightTXT.setMinimumSize(new java.awt.Dimension(6, 15));
+        EditHeightTXT.setPreferredSize(new java.awt.Dimension(30, 20));
         EditHeightTXT.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 EditHeightTXTActionPerformed(evt);
@@ -518,27 +513,22 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
         });
 
         EditOrigYTXT.setText("0");
-        EditOrigYTXT.setPreferredSize(new java.awt.Dimension(50, 20));
+        EditOrigYTXT.setMinimumSize(new java.awt.Dimension(6, 15));
+        EditOrigYTXT.setPreferredSize(new java.awt.Dimension(30, 20));
         EditOrigYTXT.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 EditOrigYTXTActionPerformed(evt);
             }
         });
 
-        prop2LBL1.setText("init...");
-        prop2LBL1.setToolTipText("");
-
         EditAngleTXT.setText("0");
-        EditAngleTXT.setPreferredSize(new java.awt.Dimension(50, 20));
+        EditAngleTXT.setMinimumSize(new java.awt.Dimension(6, 15));
+        EditAngleTXT.setPreferredSize(new java.awt.Dimension(30, 20));
         EditAngleTXT.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 EditAngleTXTActionPerformed(evt);
             }
         });
-
-        prop3LBL1.setText("init...");
-
-        prop6LBL1.setText("init...");
 
         angleLBL1.setText("angle:");
 
@@ -546,11 +536,10 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
 
         origXLBL1.setText("origX:");
 
-        prop2TXT1.setText("init...");
-        prop2TXT1.setPreferredSize(new java.awt.Dimension(50, 20));
-
         EditFlashFreqTXT.setText("20");
-        EditFlashFreqTXT.setPreferredSize(new java.awt.Dimension(50, 20));
+        EditFlashFreqTXT.setMaximumSize(new java.awt.Dimension(30, 20));
+        EditFlashFreqTXT.setMinimumSize(new java.awt.Dimension(30, 20));
+        EditFlashFreqTXT.setPreferredSize(new java.awt.Dimension(30, 20));
         EditFlashFreqTXT.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 EditFlashFreqTXTActionPerformed(evt);
@@ -558,7 +547,7 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
         });
 
         EditWidthTXT.setText(".1");
-        EditWidthTXT.setPreferredSize(new java.awt.Dimension(50, 20));
+        EditWidthTXT.setPreferredSize(new java.awt.Dimension(30, 20));
         EditWidthTXT.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 EditWidthTXTActionPerformed(evt);
@@ -568,7 +557,7 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
         heightLBL1.setText("height:");
 
         EditStrokeTXT.setText("4");
-        EditStrokeTXT.setPreferredSize(new java.awt.Dimension(50, 20));
+        EditStrokeTXT.setPreferredSize(new java.awt.Dimension(30, 20));
         EditStrokeTXT.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 EditStrokeTXTActionPerformed(evt);
@@ -589,47 +578,34 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
         jPanel1Layout.setHorizontalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                        .addComponent(origXLBL1)
-                        .addGap(5, 5, 5))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(prop2LBL1)
-                            .addComponent(prop3LBL1))
-                        .addGap(1, 1, 1))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                        .addComponent(widthLBL1)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                        .addComponent(strokeLBL1)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)))
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(EditStrokeTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(EditWidthTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(EditOrigXTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(prop2TXT1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(prop3TXT1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(EditObjectPathBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addComponent(EditObjectPathBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel1Layout.createSequentialGroup()
+                        .addGap(6, 6, 6)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(strokeLBL1)
+                            .addComponent(origXLBL1)
+                            .addComponent(widthLBL1))
+                        .addGap(4, 4, 4)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(EditOrigXTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(EditWidthTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(EditStrokeTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(10, 10, 10)
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(origYLBL1, javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                .addComponent(angleLBL1)
-                                .addComponent(prop6LBL1))
                             .addComponent(heightLBL1, javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(FlashFreqLBL1, javax.swing.GroupLayout.Alignment.TRAILING))
+                            .addComponent(FlashFreqLBL1, javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(angleLBL1, javax.swing.GroupLayout.Alignment.TRAILING))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(EditOrigYTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(EditHeightTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(EditFlashFreqTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(EditAngleTXT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(prop6TXT1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                .addContainerGap(21, Short.MAX_VALUE))
+                            .addComponent(EditAngleTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(EditFlashFreqTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(EditHeightTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(EditOrigYTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                .addGap(6, 6, 6))
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -637,49 +613,42 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
                 .addComponent(EditObjectPathBUT)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(origYLBL1)
-                    .addComponent(EditOrigYTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(EditOrigXTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(origXLBL1)
-                    .addComponent(EditOrigXTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(heightLBL1)
-                        .addComponent(EditHeightTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(widthLBL1)
-                        .addComponent(EditWidthTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addComponent(origYLBL1)
+                    .addComponent(EditOrigYTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(FlashFreqLBL1)
-                    .addComponent(EditFlashFreqTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(EditWidthTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(widthLBL1)
+                    .addComponent(heightLBL1)
+                    .addComponent(EditHeightTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(EditStrokeTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(strokeLBL1)
-                    .addComponent(EditStrokeTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(FlashFreqLBL1)
+                    .addComponent(EditFlashFreqTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(angleLBL1)
-                        .addComponent(EditAngleTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(prop2LBL1)
-                        .addComponent(prop2TXT1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(prop6LBL1)
-                        .addComponent(prop6TXT1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(prop3LBL1)
-                        .addComponent(prop3TXT1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(51, Short.MAX_VALUE))
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(angleLBL1)
+                    .addComponent(EditAngleTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
+
+        copyPathBUT.setText("copy path");
+        copyPathBUT.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                copyPathBUTActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
         jPanel2Layout.setHorizontalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel2Layout.createSequentialGroup()
-                .addContainerGap()
+                .addGap(6, 6, 6)
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 197, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
@@ -688,16 +657,17 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
                     .addComponent(loopPathTOGBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(showPathTOGBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(flashStimTOGBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(loopAllBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addGap(29, 29, 29)
+                    .addComponent(loopAllBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(copyPathBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(25, Short.MAX_VALUE))
+                .addContainerGap())
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel2Layout.createSequentialGroup()
+            .addComponent(jScrollPane1)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jScrollPane1)
                     .addGroup(jPanel2Layout.createSequentialGroup()
                         .addComponent(delStimBUT)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -709,10 +679,10 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(flashStimTOGBUT)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(loopAllBUT)
-                        .addGap(0, 0, Short.MAX_VALUE)))
-                .addContainerGap())
-            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(loopAllBUT))
+                    .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(copyPathBUT))
         );
 
         jPanel3.setBorder(javax.swing.BorderFactory.createTitledBorder("Stimulus sets"));
@@ -720,28 +690,28 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
         avlbSetLIST.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
         jScrollPane2.setViewportView(avlbSetLIST);
 
-        saveSetBUT.setText("save stimulus set");
-        saveSetBUT.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                saveSetBUTActionPerformed(evt);
-            }
-        });
+        setNameLBL.setText("setName:");
 
-        loadSetBUT.setText("load stimulus set");
+        avlbSetLBL.setText("available stimulus sets:");
+
+        loadSetBUT.setText("load stimset");
         loadSetBUT.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 loadSetBUTActionPerformed(evt);
             }
         });
 
-        setNameLBL.setText("setName:");
-
-        avlbSetLBL.setText("available stimulus sets:");
-
-        deleteStimBUT.setText("delete stimulus set");
+        deleteStimBUT.setText("delete stimset");
         deleteStimBUT.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 deleteStimBUTActionPerformed(evt);
+            }
+        });
+
+        saveSetBUT.setText("save stimset");
+        saveSetBUT.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                saveSetBUTActionPerformed(evt);
             }
         });
 
@@ -751,37 +721,35 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel3Layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(avlbSetLBL)
-                    .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 159, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(avlbSetLBL)
                     .addComponent(setNameLBL)
-                    .addComponent(saveSetBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(deleteStimBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(loadSetBUT, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(jPanel3Layout.createSequentialGroup()
+                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                            .addComponent(deleteStimBUT, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(saveSetBUT, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(loadSetBUT, javax.swing.GroupLayout.PREFERRED_SIZE, 99, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
                     .addComponent(setNameTXT))
-                .addContainerGap(51, Short.MAX_VALUE))
+                .addContainerGap(27, Short.MAX_VALUE))
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel3Layout.createSequentialGroup()
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(setNameLBL)
-                    .addComponent(avlbSetLBL))
+                .addComponent(setNameLBL)
                 .addGap(5, 5, 5)
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jScrollPane2)
-                    .addGroup(jPanel3Layout.createSequentialGroup()
-                        .addComponent(setNameTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(saveSetBUT)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(loadSetBUT)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(deleteStimBUT)
-                        .addGap(0, 0, Short.MAX_VALUE)))
-                .addContainerGap())
+                .addComponent(setNameTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(avlbSetLBL)
+                .addGap(5, 5, 5)
+                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 165, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(saveSetBUT)
+                    .addComponent(loadSetBUT))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(deleteStimBUT))
         );
 
         jScrollPane3.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
@@ -801,27 +769,24 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jScrollPane3)
-                    .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                            .addComponent(jPanel2, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
-                                .addComponent(jPanel6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                        .addGap(0, 0, Short.MAX_VALUE)))
-                .addContainerGap())
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                        .addComponent(jPanel6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jScrollPane3))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(jPanel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jPanel6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGap(6, 6, 6)
                 .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 46, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
@@ -847,18 +812,25 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
             case 1://"rectangle"
                 objToAdd = new PaintableObject(NameTXT.getText(),new Rectangle2D.Double(),StimFrame,width,height);
                 break;
-            case 2:
+            case 2: //"horizontal Stripes"
                 //Theoretically the PaintableGridObjects class could paint any shape in a grid, but we want to use it 
                 // to create Stripes, so we do it directly with Rectangles. This grid idea started, because using 
                 // the painting method to create stripes is computationally expensive
-                objToAdd = new PaintableGridObjects(NameTXT.getText(),new Rectangle2D.Double(),StimFrame,width,height);
-                ((PaintableGridObjects)objToAdd).setNumberGridColumns(Integer.parseInt(prop2TXT.getText()));
-                ((PaintableGridObjects)objToAdd).setNumberGridRows(1);
+                objToAdd = new PaintableGridObject(NameTXT.getText(),new Rectangle2D.Double(),StimFrame,width,height,1,Integer.parseInt(prop1TXT.getText()));
                 break;
-            case 3:
-                objToAdd = new PaintableGridObjects(NameTXT.getText(),new Rectangle2D.Double(),StimFrame,width,height);
-                ((PaintableGridObjects)objToAdd).setNumberGridColumns(1);
-                ((PaintableGridObjects)objToAdd).setNumberGridRows(Integer.parseInt(prop2TXT.getText()));
+            case 3: //"vertical Stripes"
+                objToAdd = new PaintableGridObject(NameTXT.getText(),new Rectangle2D.Double(),StimFrame,width,height,Integer.parseInt(prop1TXT.getText()),1);
+                break;
+            case 4: //"random dot patch"
+                objToAdd = new PaintableRandomPatch(NameTXT.getText(), new Ellipse2D.Double(),StimFrame,width,height);
+                if(!prop1TXT.getText().equals("rand")){
+                    ((PaintableRandomPatch)objToAdd).setNumberPatchObjects(Integer.parseInt(prop1TXT.getText()));
+                    ((PaintableRandomPatch)objToAdd).setRandomObjectSize();
+                    ((PaintableRandomPatch)objToAdd).setRandomObjectLocations(0f,1f);
+                }
+                if(!prop2TXT.getText().equals("rand") && !prop4TXT.getText().equals("rand")){
+                    ((PaintableRandomPatch)objToAdd).setUniformObjectSize(Float.parseFloat(prop2TXT.getText()), Float.parseFloat(prop4TXT.getText()));
+                }
                 break;
             default: 
                 //By default the object will be an ellipse. This is just to make errorHandling easier.
@@ -901,27 +873,50 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
     }//GEN-LAST:event_AddStimBUTActionPerformed
 
     private void SelectStimCBOXActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_SelectStimCBOXActionPerformed
+        prop1LBL.setVisible(false);
+        prop1TXT.setVisible(false);
         prop2LBL.setVisible(false);
         prop2TXT.setVisible(false);
+        prop4LBL.setVisible(false);
+        prop4TXT.setVisible(false);
         switch (SelectStimCBOX.getSelectedIndex()) {
             //This method of switching allows to use two textboxes as variable
             // input if needed by more ellaborate stimuli
             case 0:
             case 1:
                 strokeTXT.setText("4");
+                SelectPaintCBOX.getModel().setSelectedItem("no fill");
                 break;
             case 2:
-                prop2LBL.setText("number columns:");
-                prop2TXT.setText("1");
-                prop2LBL.setVisible(true);
-                prop2TXT.setVisible(true);
+                prop1LBL.setText("number columns:");
+                prop1TXT.setText("1");
+                prop1LBL.setVisible(true);
+                prop1TXT.setVisible(true);
                 strokeTXT.setText("0");
+                SelectPaintCBOX.getModel().setSelectedItem("black");
                 break;
             case 3:
-                prop2LBL.setText("number rows:");
-                prop2TXT.setText("1");
+                prop1LBL.setText("number rows:");
+                prop1TXT.setText("1");
+                prop1LBL.setVisible(true);
+                prop1TXT.setVisible(true);
+                strokeTXT.setText("0");
+                SelectPaintCBOX.getModel().setSelectedItem("black");
+                break;
+            case 4:
+                prop1LBL.setText("number objects:");
+                prop1TXT.setText("rand");
+                prop1LBL.setVisible(true);
+                prop1TXT.setVisible(true);
+                prop2LBL.setText("object width:");
+                prop2TXT.setText("rand");
                 prop2LBL.setVisible(true);
                 prop2TXT.setVisible(true);
+                prop4LBL.setText("object height:");
+                prop4TXT.setText("rand");
+                prop4LBL.setVisible(true);
+                prop4TXT.setVisible(true);
+                SelectPaintCBOX.getModel().setSelectedItem("black");
                 strokeTXT.setText("0");
                 break;
             default: ExceptionTXTAREA.setText("StimulusType not detected");        
@@ -1077,8 +1072,6 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
         ExceptionTXTAREA.setText("");
         prop3LBL.setVisible(false);
         prop3TXT.setVisible(false);
-        prop6LBL.setVisible(false);
-        prop6TXT.setVisible(false);
         switch (SelectPaintCBOX.getSelectedIndex()) {
             case 0:
             case 1:
@@ -1166,6 +1159,11 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
         StimFrame.repaint();
     }//GEN-LAST:event_EditObjectPathBUTActionPerformed
 
+    private void copyPathBUTActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_copyPathBUTActionPerformed
+       StimFrame.setMousePath(getCurrentListedStimulus().getObjectPath());
+       StimFrame.repaint();
+    }//GEN-LAST:event_copyPathBUTActionPerformed
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton AddStimBUT;
@@ -1192,6 +1190,7 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
     private javax.swing.JList avlbStimLIST;
     private javax.swing.ButtonGroup buttonGroup1;
     private javax.swing.ButtonGroup buttonGroup2;
+    private javax.swing.JButton copyPathBUT;
     private javax.swing.JButton delStimBUT;
     private javax.swing.JButton deleteStimBUT;
     private javax.swing.JToggleButton flashStimTOGBUT;
@@ -1217,18 +1216,14 @@ public class StimulusDisplayGUI extends javax.swing.JFrame {
     private javax.swing.JLabel origYLBL1;
     private javax.swing.JTextField origYTXT;
     private javax.swing.JButton playPathBUT;
+    private javax.swing.JLabel prop1LBL;
+    private javax.swing.JTextField prop1TXT;
     private javax.swing.JLabel prop2LBL;
-    private javax.swing.JLabel prop2LBL1;
     private javax.swing.JTextField prop2TXT;
-    private javax.swing.JTextField prop2TXT1;
     private javax.swing.JLabel prop3LBL;
-    private javax.swing.JLabel prop3LBL1;
     private javax.swing.JTextField prop3TXT;
-    private javax.swing.JTextField prop3TXT1;
-    private javax.swing.JLabel prop6LBL;
-    private javax.swing.JLabel prop6LBL1;
-    private javax.swing.JTextField prop6TXT;
-    private javax.swing.JTextField prop6TXT1;
+    private javax.swing.JLabel prop4LBL;
+    private javax.swing.JTextField prop4TXT;
     private javax.swing.JToggleButton recordPathTOGBUT;
     private javax.swing.JButton saveSetBUT;
     private javax.swing.JLabel setNameLBL;

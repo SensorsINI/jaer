@@ -1,21 +1,22 @@
 
 package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
 
-import java.awt.geom.Point2D;
+import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
+import ch.unizh.ini.jaer.hardware.pantilt.PanTiltAimerGUI;
+import ch.unizh.ini.jaer.projects.bjoernbeyer.pantiltscreencalibration.CalibrationPanTiltScreen;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.util.Vector2D;
-
-import net.sf.jaer.eventprocessing.label.*;
-import net.sf.jaer.graphics.FrameAnnotater;
-import ch.unizh.ini.jaer.hardware.pantilt.*;
-import ch.unizh.ini.jaer.projects.bjoernbeyer.pantiltscreencalibration.CalibrationPanTiltScreen;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
+import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.label.DvsDirectionSelectiveFilter;
+import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.util.Vector2D;
 
 /**
  *
@@ -25,19 +26,20 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class SimpleVS_GlobalOpticFlow extends EventFilter2D implements FrameAnnotater, SimpleVStrackerInterface {
     
+    private final PropertyChangeSupport pcs = new PropertyChangeSupport(this);
+    
     private float   ThreshDir      = getFloat("threshDir", 10f);
-    private float   MaxMove        = getFloat("maxMove",0.5f);
-    private float   mixingFactor      = getFloat("mixingFactor",0.1f);
+    private float   mixingFactor   = getFloat("mixingFactor",0.1f);
     private boolean TrackerEnabled = getBoolean("trackerEnabled", false);
     private final PanTilt panTilt;
     private final CalibrationPanTiltScreen retinaPTCalib;
     
-//    private final Point2D.Float GlobalDir; 
-    private Vector2D velocityPPS = new Vector2D();
-    private Vector2D smoothVelocityPPS = new Vector2D();
-    private float[] retChange = new float[3];
+    private final Vector2D velocityPPS = new Vector2D(),
+                           smoothVelocityPPS = new Vector2D(),
+                           ptSpeedPerSecond = new Vector2D();
+    private final float[] retChange = new float[3];
     private float[] curPos;
-    private Vector2D ptSpeedPerSecond = new Vector2D();
+    
     
     DvsDirectionSelectiveFilter DirFilter;
     
@@ -48,38 +50,31 @@ public class SimpleVS_GlobalOpticFlow extends EventFilter2D implements FrameAnno
         DirFilter = new DvsDirectionSelectiveFilter(chip);
             DirFilter.setAnnotationEnabled(false);
             DirFilter.setShowRawInputEnabled(false);
+            DirFilter.setShowGlobalEnabled(true);
         panTilt = PanTilt.getInstance(0);
             panTilt.setLimitOfPan(retinaPTCalib.getLimitOfPan());
             panTilt.setLimitOfTilt(retinaPTCalib.getLimitOfTilt());
             panTilt.setLinearSpeedEnabled(true); //we need the speed to be linear so that we are able to set a target speed instead of a fraction of the distance that should be covered.
-            
-            
-//        GlobalDir = new Point2D.Float(0,0);
         
         setEnclosedFilter(DirFilter);
 
         setPropertyTooltip("threshDir", "Threshold when a global motion should be taken into account");
-        setPropertyTooltip("maxMove", "maximum distance the pantilt moves per event");
-        setPropertyTooltip("factorDec", "forgetfullness of old global motions");
+        setPropertyTooltip("mixingFactor", "mixing factor for taking older velocities into account");
         setPropertyTooltip("trackerEnabled", "Move the PanTilt to the target");
-        
         setPropertyTooltip("switchTracking","switches the tracking of the pantilt.");
     }
     
     @Override public EventPacket<?> filterPacket(EventPacket<?> in) {
         if(!isFilterEnabled()) return in;
         
-        getEnclosedFilter().filterPacket(in);
+        DirFilter.filterPacket(in);
         
         velocityPPS.setLocation(DirFilter.getTranslationVector());
-        
-         System.out.println("velocity: "+velocityPPS.toString());
 
         if(velocityPPS.length() > getThreshDir()) { //distance to origin gives absolut value which needs to be larger threshold for the direction to register
             //smoothing the velocity with a mixing factor from the last averaged value
             smoothVelocityPPS.mult(getMixingFactor());
             smoothVelocityPPS.addFraction(velocityPPS, (1-getMixingFactor()));
-            System.out.println("SmoothVelocity: "+smoothVelocityPPS.toString());
             //As the retina-PanTilt calibration is a differential calibration we
             // need to give it the change vector in retinal coordinates and it will
             // give the corresponding change vector in panTilt coordinates.
@@ -98,40 +93,18 @@ public class SimpleVS_GlobalOpticFlow extends EventFilter2D implements FrameAnno
             // by transforming the detected retinal optic flow velocity with the 
             // calibration.
             ptSpeedPerSecond.setLocation(retinaPTCalib.makeTransform(retChange)); 
-            System.out.println("ptSpeed: "+ptSpeedPerSecond.toString());
             if(isTrackerEnabled()) {
                 //By dividing the length with the update frequency of the panTilt 
                 panTilt.setMaxMovePerUpdate((float) ptSpeedPerSecond.length()/panTilt.getMoveUpdateFreqHz());
+                //We want the target to be far out into the direction of the 
+                // optic flow. Hence we just set the speed very high here as 
+                // it is in the direction of the flow. For the next event it will
+                // be reset again.
+                ptSpeedPerSecond.unify();
+                ptSpeedPerSecond.mult(1000);
                 curPos = panTilt.getPanTiltValues();
                 panTilt.setTarget(curPos[0]+ptSpeedPerSecond.x, curPos[1]+ptSpeedPerSecond.y);
             }
-//            GlobalDir.x = GlobalDir.x*getMixingFactor() + velocityPPS.x/2000; 
-//            GlobalDir.y = GlobalDir.y*getMixingFactor() + velocityPPS.y/2000;
-//            float GlobalSpeed = (float)GlobalDir.distance(0,0);
-//            
-//            Point2D.Float Move = new Point2D.Float(0,0);
-//            
-//            //        UnitVector        *Min of absolute speed and maxmove
-//            Move.x = (GlobalDir.x/GlobalSpeed)*Math.min(GlobalSpeed, MaxMove);
-//            Move.y = (GlobalDir.y/GlobalSpeed)*Math.min(GlobalSpeed, MaxMove);
-//            
-//            //System.out.println(Float.toString(GlobalSpeed));
-//            //System.out.println(Float.toString(Math.min(GlobalSpeed, MaxMove)));
-//            //System.out.println(Move.toString());
-//            
-//            if(isTrackerEnabled()) {
-//                float[] PanTiltPos = panTilt.getPanTiltValues();
-//                float[] NewPos = {0.5f,0.5f};
-//                NewPos[0] = PanTiltPos[0]-Move.x; 
-//                NewPos[1] = PanTiltPos[1]+Move.y;
-//                //We dont need to pay attention to weather the new values
-//                // are larger 1 or smaller 0 as the values are clipped by
-//                // 'setPanTiltValues' anyway.
-//                
-//               panTilt.setTarget(NewPos[0],NewPos[1]); 
-//                //float[] NewPanTiltPos = PTAimer.getPanTiltValues();
-//                //System.out.println(Float.toString(NewPanTiltPos[0])+" - "+Float.toString(NewPanTiltPos[1]));
-//            }
         }
         return in;
     }
@@ -160,10 +133,12 @@ public class SimpleVS_GlobalOpticFlow extends EventFilter2D implements FrameAnno
     public void doSwitchTracking() {
         setTrackerEnabled(!isTrackerEnabled());
     }
+
     
-    public void doCenterPT() {
+    @Override public void doCenterPT() {
         setTrackerEnabled(false);
         panTilt.setTarget(.5f, .5f);
+        System.out.println(panTilt.getMaxMovePerUpdate());
     }
     
     public void doCheckCalibration() {
@@ -174,13 +149,17 @@ public class SimpleVS_GlobalOpticFlow extends EventFilter2D implements FrameAnno
         }
     }
     
-    public void doDisableServos() {
+    @Override public void doDisableServos() {
         setTrackerEnabled(false);
         try {
             panTilt.disableAllServos();
         } catch (HardwareInterfaceException ex) {
             log.warning(ex.getMessage());
         }
+    }
+    
+    @Override public void addPropertyChangeListener(PropertyChangeListener listener) {
+        this.pcs.addPropertyChangeListener(listener);
     }
     
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --FactorDec--">
@@ -209,28 +188,15 @@ public class SimpleVS_GlobalOpticFlow extends EventFilter2D implements FrameAnno
     }
     // </editor-fold>
     
-    // <editor-fold defaultstate="collapsed" desc="getter-setter for --MaxMove--">
-    public float getMaxMove(){
-        return MaxMove;
-    }
-    
-    public void setMaxMove(float MaxMove) {
-        putFloat("maxMove",MaxMove);
-        float OldValue = this.MaxMove;
-        this.MaxMove = MaxMove;
-        support.firePropertyChange("maxMove",OldValue,MaxMove);
-    }
-    // </editor-fold>
-    
     // <editor-fold defaultstate="collapsed" desc="checker-setter for --TrackerEnabled--">
-    public boolean isTrackerEnabled() {
+    @Override public boolean isTrackerEnabled() {
         return TrackerEnabled;
     }
 
     /**
      * @param EnableTracker
      */
-    public void setTrackerEnabled(boolean EnableTracker) {
+    @Override public void setTrackerEnabled(boolean EnableTracker) {
         putBoolean("trackerEnabled", EnableTracker);
         boolean OldValue = this.TrackerEnabled;
         this.TrackerEnabled = EnableTracker;

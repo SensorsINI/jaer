@@ -30,8 +30,8 @@ public class CalibrationPanTiltScreen {
     
     public static CalibrationPanTiltScreen getRetinaPanTiltDefaultCalibration() {
         CalibrationPanTiltScreen def = new CalibrationPanTiltScreen(null);
-        float[][] trafo    = {{-471.2072f    ,0,0},{0,460.00894f   ,0},{0,0,1f}};
-        float[][] invTrafo = {{-0.0021130797f,0,0},{0,0.0021632595f,0},{0,0,1f}};
+        float[][] trafo    = {{-0.0021130797f,0,0},{0,0.0021632595f,0},{0,0,1f}};
+        float[][] invTrafo = {{-471.2072f    ,0,0},{0,460.00894f   ,0},{0,0,1f}};
 
         def.setTransformation(trafo);
         def.setInverseTransformation(invTrafo);
@@ -43,8 +43,8 @@ public class CalibrationPanTiltScreen {
     
     public static CalibrationPanTiltScreen getScreenPanTiltDefaultCalibration() {
         CalibrationPanTiltScreen def = new CalibrationPanTiltScreen(null);
-        float[][] trafo    = {{0.409643f   ,-0.005999f,0},{0.019306f,0.284783f  ,0},{0,0,1f}};
-        float[][] invTrafo = {{-437.672302f,0         ,0},{0        ,458.332123f,0},{0,0,1f}};
+        float[][] trafo    = {{0.409643f,-0.005999f,0.493012f} ,{0.019306f ,0.284783f,0.509727f} ,{0,0,1f}};
+        float[][] invTrafo = {{2.659199f,0.007740f ,-1.314963f},{-0.078289f,3.611534f,-1.802297f},{0,0,1f}};
 
         def.setTransformation(trafo);
         def.setInverseTransformation(invTrafo);

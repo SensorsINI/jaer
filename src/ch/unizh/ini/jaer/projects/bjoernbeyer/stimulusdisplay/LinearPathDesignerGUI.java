@@ -22,6 +22,7 @@ public class LinearPathDesignerGUI extends javax.swing.JFrame {
         this.stimFrame = stimFrame;
         pathTableModel = (DefaultTableModel) pathPointTable.getModel();
         linearPath = new MouseTrajectory();
+        PasteFromClipboard myAd = new PasteFromClipboard(pathPointTable); //For Copy/Past functionality
     }
     
     public LinearPathDesignerGUI() {
@@ -32,6 +33,9 @@ public class LinearPathDesignerGUI extends javax.swing.JFrame {
         Vector2D dist       = new Vector2D(),
                  curPoint   = new Vector2D();
         dist.setDifference(endPoint, startPoint);
+        
+        if(dist.length()==0)return;
+        
         curPoint.setLocation(startPoint);
         
         float timeSeconds  = (float) dist.length()/speed;
@@ -156,20 +160,19 @@ public class LinearPathDesignerGUI extends javax.swing.JFrame {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(infoTXT)
                     .addGroup(layout.createSequentialGroup()
-                        .addGap(515, 515, 515)
-                        .addComponent(periodicCHECK))
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                        .addComponent(infoTXT, javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(layout.createSequentialGroup()
-                            .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 509, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                .addComponent(clearBUT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addComponent(addRowBUT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addComponent(deleteRowBUT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addComponent(saveCloseBUT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))))
+                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 509, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(clearBUT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(addRowBUT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(deleteRowBUT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(saveCloseBUT, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(periodicCHECK)
+                                .addGap(0, 0, Short.MAX_VALUE)))))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -179,6 +182,7 @@ public class LinearPathDesignerGUI extends javax.swing.JFrame {
                 .addComponent(infoTXT, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(clearBUT)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -187,12 +191,10 @@ public class LinearPathDesignerGUI extends javax.swing.JFrame {
                         .addComponent(deleteRowBUT)
                         .addGap(18, 18, 18)
                         .addComponent(saveCloseBUT)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(periodicCHECK)
-                        .addGap(0, 64, Short.MAX_VALUE))
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
-                        .addContainerGap())))
+                        .addGap(0, 58, Short.MAX_VALUE)))
+                .addContainerGap())
         );
 
         pack();
@@ -238,8 +240,12 @@ public class LinearPathDesignerGUI extends javax.swing.JFrame {
             endPoint.setLocation((float) pathTableModel.getValueAt(i+1, 0),(float) pathTableModel.getValueAt(i+1, 1));
             
             float speed = (float) pathTableModel.getValueAt(i, 2);
-            int fps     = (int)   pathTableModel.getValueAt(i, 3);
-            
+            int fps;
+            if(pathTableModel.getValueAt(i, 3) instanceof Integer){
+                fps = (int) pathTableModel.getValueAt(i, 3);
+            } else {
+                fps = Math.round((float)pathTableModel.getValueAt(i, 3));
+            } 
             addLinearPathBetweenPoints(startPoint,endPoint,speed,fps);
         }
         if(periodicCHECK.isSelected()){
@@ -257,7 +263,12 @@ public class LinearPathDesignerGUI extends javax.swing.JFrame {
                 endPoint.setLocation((float) pathTableModel.getValueAt(0, 0),(float) pathTableModel.getValueAt(0, 1));
 
                 float speed = (float) pathTableModel.getValueAt(i, 2);
-                int fps     = (int)   pathTableModel.getValueAt(i, 3);
+                int fps;
+                if(pathTableModel.getValueAt(i, 3) instanceof Integer){
+                    fps = (int) pathTableModel.getValueAt(i, 3);
+                } else {
+                    fps = Math.round((float)pathTableModel.getValueAt(i, 3));
+                }
 
                 addLinearPathBetweenPoints(startPoint,endPoint,speed,fps);
                 break;

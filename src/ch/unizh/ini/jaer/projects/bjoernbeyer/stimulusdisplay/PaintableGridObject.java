@@ -7,22 +7,28 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.geom.RectangularShape;
 import javax.swing.JPanel;
+import java.io.Serializable;
 
 /** Allows painting of any Shape in a Grid of arbitrary rows and columns.
  *
  * @author Bjoern
  */
-public class PaintableGridObjects extends PaintableObject{
+public class PaintableGridObject extends PaintableObject implements Serializable{
+    private static final long serialVersionUID = 43L;
     private int numberGridColumns = 0, numberGridRows = 0;
     private float[] columnFractions, rowFractions;
     private float gridObjectWidth = 0f, gridObjectHeight = 0f;
 
-    public PaintableGridObjects(String objectName, RectangularShape objectShape, JPanel canvas) {
+    public PaintableGridObject(String objectName, RectangularShape objectShape, JPanel canvas, int numberRows, int numberColumns) {
         super(objectName, objectShape, canvas);
+        setNumberGridRows(numberRows);
+        setNumberGridColumns(numberColumns);
     }
     
-    public PaintableGridObjects(String objectName, RectangularShape objectShape, JPanel canvas, float width, float height) {
+    public PaintableGridObject(String objectName, RectangularShape objectShape, JPanel canvas, float width, float height, int numberRows, int numberColumns) {
         super(objectName, objectShape, canvas, width, height);
+        setNumberGridRows(numberRows);
+        setNumberGridColumns(numberColumns);
     }
     
     @Override public void paint(Graphics g) {
@@ -60,7 +66,7 @@ public class PaintableGridObjects extends PaintableObject{
         return numberGridColumns;
     }
 
-    public void setNumberGridColumns(int numberStripes) {
+    public final void setNumberGridColumns(int numberStripes) {
         int setValue = numberStripes;
         if(setValue<1)setValue=1;
         
@@ -79,7 +85,7 @@ public class PaintableGridObjects extends PaintableObject{
         return numberGridRows;
     }
 
-    public void setNumberGridRows(int numberGridRows) {
+    public final void setNumberGridRows(int numberGridRows) {
         int setValue = numberGridRows;
         if(setValue<1)setValue=1;
         
@@ -102,4 +108,5 @@ public class PaintableGridObjects extends PaintableObject{
         return gridObjectHeight;
     }
     // </editor-fold>
+    
 }

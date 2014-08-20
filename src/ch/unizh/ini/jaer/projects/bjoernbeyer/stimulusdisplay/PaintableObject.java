@@ -19,6 +19,7 @@ import javax.swing.Timer;
  * @author Bjoern
  */
 public class PaintableObject implements ActionListener, Serializable {
+    private static final long serialVersionUID = 42L;
     private static int numberObjects;
     
     private final String objectName;
@@ -153,7 +154,7 @@ public class PaintableObject implements ActionListener, Serializable {
         if (player != null) player.cancel();
         setPathLoop(!isPathLoop());
         if (isPathLoop()) {
-            player = new TrajectoryPlayer(100,0);
+            player = new TrajectoryPlayer(Integer.MAX_VALUE,0); //technically not a real loop, but close enough
             player.start();
         } else {
             player.cancel();

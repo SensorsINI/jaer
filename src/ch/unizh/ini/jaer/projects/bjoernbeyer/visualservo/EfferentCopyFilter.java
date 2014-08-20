@@ -45,7 +45,7 @@ import net.sf.jaer.DevelopmentStatus;
 //        rectified, as the filter is very suscepitble to small deviations in the transformation
 @Description("Filters motion events into self-motion and object-motion based on live pan-tilt motion")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class EfferentFilter extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
+public class EfferentCopyFilter extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
     
     /** ticks per ms of input time */
     public final double NS_PER_US = 1e3;
@@ -98,11 +98,12 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
         }
     }
     
-    public EfferentFilter(AEChip chip) {
+    public EfferentCopyFilter(AEChip chip) {
         super(chip);
 
         pt = PanTilt.getInstance(0); // We initialized the PanTiltAimer to get Instance0, so we want the same instance!
- 
+        retinaPTCalib = new CalibrationPanTiltScreen("retinaPTCalib");
+        
         dirFilter = new DvsDirectionSelectiveFilter(chip);
             dirFilter.setAnnotationEnabled(false);
             dirFilter.setShowRawInputEnabled(false); //Otherwise this filter crashes if the dirfilter outputs polarityevents
@@ -308,6 +309,9 @@ public class EfferentFilter extends EventFilter2D implements FrameAnnotater, Pro
 
     @Override public void resetFilter() {
         panTiltInducedMotionList.clear();
+        if(retinaPTCalib == null) {
+            retinaPTCalib = new CalibrationPanTiltScreen("retinaPTCalib");
+        }
         if(!retinaPTCalib.isCalibrated() || !retinaPTCalib.loadCalibration("retinaPTCalib")) {
             log.warning("No retinaPT calibration found. using default instead.");
             retinaPTCalib.setCalibration(CalibrationPanTiltScreen.getRetinaPanTiltDefaultCalibration());

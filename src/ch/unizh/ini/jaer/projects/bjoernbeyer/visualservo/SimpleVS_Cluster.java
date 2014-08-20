@@ -12,32 +12,46 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.FrameAnnotater;
 import ch.unizh.ini.jaer.hardware.pantilt.*;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
+import net.sf.jaer.util.DrawGL;
+import java.awt.Color;
 import java.util.LinkedList;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import javax.media.opengl.GL2;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 /**
  *
  * @author Bjoern
  */
-//EXTENDS EventFilter2D as we deal with asynchroneous pixel data
-//IMPLEMENTS FrameAnnotater so that we can show clusters
 @Description("Moves the DVS towards a target based on the cluster tracker")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class SimpleVS_Cluster extends EventFilter2D implements FrameAnnotater, SimpleVStrackerInterface {
 
+    private final PropertyChangeSupport pcs = new PropertyChangeSupport(this);
+    
     private boolean TrackerEnabled = getBoolean("trackerEnabled", false);
     private final CalibrationPanTiltScreen retinaPTCalib;
-    private final Vector2D clusterLoc = new Vector2D();
-    private float currentClusterAdvantage = 1.5f;
-    private float targetFactor = .1f;
-    private Cluster followCluster = null;
+    private Cluster followCluster       = null;
+    private int   waitingTimeMS         = getInt("waitingTimeMS",200);
+    private int   numberAllowedClusters = getInt("numberAllowedClusters",1);
+    private float movementThresholdPt   = getFloat("movementThreshold",.03f);
+    private float saccadeThresholdPx    = getFloat("saccadeThresholdPx",10f);
+    private float saccadeSpeedPt        = getFloat("saccadeSpeed",.1f);
+    private float pursuitSpeedPt        = getFloat("pursuitSpeed",.01f);
+    private long  clusterLostTime       = 0;
     
-    private float[] retChange = new float[3];
-    private float[] newTarget = new float[2];
-    private float[] ptChange  = new float[3];
-    private float[] curTarget = new float[2];
+    
+    private final float[] deltaRet = new float[3];
+    private final float[] newTarget = new float[2];
+    private final Vector2D deltaPtReq  = new Vector2D(),
+                           deltaPtAct  = new Vector2D(),
+                           curPtTarget = new Vector2D(),   
+                           curPtPos    = new Vector2D(),
+                           clusterPos  = new Vector2D(),
+                           ptChange    = new Vector2D();
+    private LinkedList<Cluster> clusterList, visibleClusterList;
     
     RectangularClusterTracker tracker;
     PanTilt panTilt;
@@ -47,16 +61,19 @@ public class SimpleVS_Cluster extends EventFilter2D implements FrameAnnotater, S
         
         retinaPTCalib = new CalibrationPanTiltScreen("retinaPTCalib");
         tracker       = new RectangularClusterTracker(chip);
-            tracker.setAnnotationEnabled(true);//we WANT to see trackers annotations!
+            tracker.setAnnotationEnabled(false);
+            tracker.setColorClustersDifferentlyEnabled(true);
             tracker.setClusterMassDecayTauUs(200000);
             tracker.setThresholdMassForVisibleCluster(50);
             tracker.setPathLength(300);
             tracker.setUseVelocity(false);
-            tracker.setMaxNumClusters(1);
+            tracker.setMaxNumClusters(getNumberAllowedClusters());
         panTilt       = PanTilt.getInstance(0);
             panTilt.setLimitOfPan(retinaPTCalib.getLimitOfPan());
             panTilt.setLimitOfTilt(retinaPTCalib.getLimitOfTilt());
             panTilt.setLinearSpeedEnabled(false);
+            panTilt.setMaxMovePerUpdate(getPursuitSpeed());
+            panTilt.setMoveUpdateFreqHz(100);
 
         setEnclosedFilter(tracker);
         
@@ -72,66 +89,78 @@ public class SimpleVS_Cluster extends EventFilter2D implements FrameAnnotater, S
         getEnclosedFilter().filterPacket(in);
         
         if(tracker.getNumVisibleClusters() > 0) {
-            LinkedList<Cluster> visibleList = tracker.getVisibleClusters();
- 
-//TODO: maybe we should wait for a given amount of time after we lost a cluster.
-// this could reduce the manic behaviour of this tracker somewhat. It would also
-// reduce the self motion and hence made tracking more realistic! Maybe like 200ms            
-            followCluster = updateFollowCluster(visibleList, followCluster, getCurrentClusterAdvantage());
-
+            visibleClusterList = tracker.getVisibleClusters();
+            clusterList = (LinkedList<Cluster>)tracker.getClusters().clone();      
+            
+//TODO: For some reason, when more than one clusters are allowed the Cluster Location
+// Does not update as long as the cluster is not changed. This means if there are
+// two clusters allowed but only one cluster is visible, the .getLocation of this
+// cluster will stay the same, even though it actually is not anymore. This is not
+// the case when only one cluster is allowed.            
+            followCluster = updateFollowCluster(visibleClusterList, followCluster);
+            if(followCluster == null) return in;
+            
+            curPtTarget.setLocation(panTilt.getTarget());
+               curPtPos.setLocation(panTilt.getPanTiltValues());
+             clusterPos.setLocation(followCluster.getLocation());
+            
+            //If we are in saccadic region set the maximum speed very high so that
+            // the tracker can catch up with the target
+            if((chip.getSizeX() - clusterPos.x) < saccadeThresholdPx || clusterPos.x < saccadeThresholdPx || 
+               (chip.getSizeY() - clusterPos.y) < saccadeThresholdPx || clusterPos.y < saccadeThresholdPx){
+                panTilt.setMaxMovePerUpdate(saccadeSpeedPt);
+            } else {
+                panTilt.setMaxMovePerUpdate(pursuitSpeedPt);
+            }
+//             System.out.printf("ClusterLoc: (%.3f,%.3f), curPtTarget: (%.3f,%.3f), curPtPos: (%.3f,%.3f)\n", clusterPos.x,clusterPos.y,curPtTarget.x,curPtTarget.y,curPtPos.x,curPtPos.y);
+           
             //As the retina-PanTilt calibration is a differential calibration we
             // need to give it the change vector in retinal coordinates and it will
-            // give the corresponding change vesctor in panTilt coordinates.
+            // give the corresponding change vector in panTilt coordinates.
             // We want to keep the detected Cluster in the center of the screen,
             // hence the change vector is the current detected cluster position minus the desired center position.
-            retChange[0] = (chip.getSizeX()/2)-followCluster.getLocation().x;
-            retChange[1] = (chip.getSizeY()/2)-followCluster.getLocation().y;
-            retChange[2] = 0f;
+            deltaRet[0] = (chip.getSizeX()/2)-clusterPos.x;
+            deltaRet[1] = (chip.getSizeY()/2)-clusterPos.y;
+            deltaRet[2] = 0f;
             
-            ptChange  = retinaPTCalib.makeTransform(retChange);
-            curTarget = panTilt.getTarget();
-            newTarget[0] = (curTarget[0]+getTargetFactor()*ptChange[0]);
-            newTarget[1] = (curTarget[1]+getTargetFactor()*ptChange[1]);
-            System.out.println(newTarget[0]+" -- " +newTarget[1]);
-            if(newTarget[0] > 1) {
-                newTarget[0]  = 1;
-            }else if(newTarget[0] < 0) {
-                newTarget[0] =0;
-            }
-
-            if(newTarget[1] > 1) {
-                newTarget[1]  = 1;
-            }else if(newTarget[1] < 0){
-                newTarget[1] = 0;
-            }
-
-            System.out.printf("current: (%.2f,%.2f) ; ptchange: (%.2f,%.2f) ; clusterLoc: (%.2f,%.2f)\n",curTarget[0],curTarget[1],ptChange[0],ptChange[1],clusterLoc.x,clusterLoc.y);
-            if(isTrackerEnabled()) {
-                panTilt.setTarget(newTarget[0],newTarget[1]);
-
+            deltaPtReq.setLocation(retinaPTCalib.makeTransform(deltaRet));
+            deltaPtAct.setDifference(curPtTarget, curPtPos); 
+              ptChange.setDifference(deltaPtReq, deltaPtAct);
+//            System.out.printf("measured delta: (%.2f,%.2f), actual delta: (%.2f,%.2f) --> ptChange: (%.4f,%.4f)\n",deltaPtReq.x,deltaPtReq.y,deltaPtAct.x,deltaPtAct.y,ptChange.x,ptChange.y);
+            
+            newTarget[0] = curPtTarget.x+ptChange.x;
+            newTarget[1] = curPtTarget.y+ptChange.y;
+            this.pcs.firePropertyChange("trackedTarget", null, newTarget);
+            if(Math.abs(ptChange.x) > movementThresholdPt || Math.abs(ptChange.y) > movementThresholdPt ) {
+                // We only actually move the PanTilt if the ptChange is above a
+                // Threshold. This avoids oscillations around the target.
+                // However we always report the actually measured target, including oscialltions.
+                if(isTrackerEnabled()) {
+                    panTilt.setTarget(newTarget[0],newTarget[1]);
+                }
             }
         }
         return in;
     }
     
-    private Cluster updateFollowCluster(LinkedList<Cluster> visibleList, Cluster currentCluster, float currentClusterAdvantage) {
+    private Cluster updateFollowCluster(LinkedList<Cluster> visibleList, Cluster currentCluster) {
         float maxMass = 0f;
         Cluster maxCluster = null;
         
-        //Only if there is a current non-null cluster AND if it is still visible
-        // we can give this cluster more weight in the comparison. This is to
-        // discourage fast switching of clusters just because the mass of one cluster
-        // is slightly higher than that of another cluster.
-        if(currentCluster != null &&  visibleList.contains(currentCluster)) {
-            return currentCluster;
-//            maxMass = currentClusterAdvantage*currentCluster.getMass();
-//            maxCluster = currentCluster;
+        if(currentCluster != null){
+            if(visibleList.contains(currentCluster)){
+                return visibleList.get(visibleList.indexOf(currentCluster));
+            } else {
+                clusterLostTime = System.nanoTime();
+            }
         }
-        
-        for(Cluster c : visibleList) {
-            if(c.getMass()>maxMass) {
-                maxMass = c.getMass();
-                maxCluster = c;
+
+        if(System.nanoTime() - clusterLostTime > getWaitingTimeMS()*1e6){
+            for(Cluster c : visibleList) {
+                if(c.getMass()>maxMass) {
+                    maxMass = c.getMass();
+                    maxCluster = c;
+                }
             }
         }
         return maxCluster;
@@ -159,12 +188,12 @@ public class SimpleVS_Cluster extends EventFilter2D implements FrameAnnotater, S
         }
     }
     
-    public void doCenterPT() {
+    @Override public void doCenterPT() {
         setTrackerEnabled(false);
         panTilt.setTarget(.5f, .5f);
     }
     
-    public void doDisableServos() {
+    @Override public void doDisableServos() {
         setTrackerEnabled(false);
         try {
             panTilt.disableAllServos();
@@ -180,9 +209,47 @@ public class SimpleVS_Cluster extends EventFilter2D implements FrameAnnotater, S
     
     @Override public void annotate(GLAutoDrawable drawable) {
         if(!isFilterEnabled()) return;
-
+        if(clusterList == null) return;
+        
+        GL2 gl = drawable.getGL().getGL2(); // when we getString this we are already set up with updateShape 1=1 pixel, at LL corner
+        if (gl == null) {
+            log.warning("null GL in SimpleVS_Cluster.annotate");
+            return;
+        }
+        
+        //Draw a box for the saccadic region so that user knows where the speed will be increased
+        gl.glPushMatrix();
+            int sizeX = chip.getSizeX();
+            int sizeY = chip.getSizeY();
+            gl.glColor3f(1,0,0);
+            DrawGL.drawBox(gl, sizeX/2, sizeY/2, sizeX-getSaccadeThresholdPx(), sizeY-getSaccadeThresholdPx(), 0);
+        gl.glPopMatrix();
+        
+        try{
+            gl.glPushMatrix();
+            for(Cluster c : clusterList) {
+                if(!c.isVisible()){
+                    c.setColor(new Color(.3f, .3f, .3f));
+                } else {
+                    if(c.equals(followCluster)) {
+                        c.setColor(Color.red);
+                    } else {
+                        c.setColor(Color.blue);
+                    }
+                }
+            }
+        } catch (java.util.ConcurrentModificationException e) {
+            // this is in case cluster list is modified by real time filter during rendering of clusters
+            log.warning("concurrent modification of cluster list while drawing clusters");
+        } finally {
+            gl.glPopMatrix();
+        }
         tracker.annotate(drawable);
-     }
+    }
+    
+    @Override public void addPropertyChangeListener(PropertyChangeListener listener) {
+        this.pcs.addPropertyChangeListener(listener);
+    }
     
     // <editor-fold defaultstate="collapsed" desc="getter-setter for --trackerEnabled--">
     @Override public boolean isTrackerEnabled() {
@@ -200,25 +267,61 @@ public class SimpleVS_Cluster extends EventFilter2D implements FrameAnnotater, S
     }
     // </editor-fold>
     
-    // <editor-fold defaultstate="collapsed" desc="getter-setter for --currentClusterAdvantage--">
-    public float getCurrentClusterAdvantage() {
-        return currentClusterAdvantage;
+    public float getMovementThreshold() {
+        return movementThresholdPt;
     }
 
-    public void setCurrentClusterAdvantage(float currentClusterAdvantage) {
-        this.currentClusterAdvantage = currentClusterAdvantage;
+    public void setMovementThreshold(float movementThreshold) {
+        this.movementThresholdPt = movementThreshold;
+        putFloat("movementThreshold",movementThreshold);
     }
 
-    // </editor-fold>
-    
-    // <editor-fold defaultstate="collapsed" desc="getter-setter for --targetFactor--">
-    public float getTargetFactor() {
-        return targetFactor;
+    public final int getNumberAllowedClusters() {
+        return numberAllowedClusters;
     }
 
-    public void setTargetFactor(float targetFactor) {
-        this.targetFactor = targetFactor;
+    public void setNumberAllowedClusters(int numberAllowedClusters) {
+        this.numberAllowedClusters = numberAllowedClusters;
+        tracker.setMaxNumClusters(getNumberAllowedClusters());
+        putInt("numberAllowedClusters",numberAllowedClusters);
     }
-    // </editor-fold>
+
+    public float getSaccadeThresholdPx() {
+        return saccadeThresholdPx;
+    }
+
+    public void setSaccadeThresholdPx(float saccadeThreshold) {
+        this.saccadeThresholdPx = saccadeThreshold;
+        putFloat("saccadeThresholdPx",saccadeThreshold);
+    }
+
+    public float getSaccadeSpeed() {
+        return saccadeSpeedPt;
+    }
+
+    public void setSaccadeSpeed(float saccadeSpeed) {
+        this.saccadeSpeedPt = saccadeSpeed;
+        putFloat("saccadeSpeed",saccadeSpeed);
+    }
+
+    public final float getPursuitSpeed() {
+        return pursuitSpeedPt;
+    }
+
+    public void setPursuitSpeed(float pursuitSpeed) {
+        this.pursuitSpeedPt = pursuitSpeed;
+        putFloat("pursuitSpeed",pursuitSpeed);
+    }
+
+    public int getWaitingTimeMS() {
+        return waitingTimeMS;
+    }
+
+    public void setWaitingTimeMS(int waitingTimeMS) {
+        int setValue = waitingTimeMS;
+        if(setValue<0)setValue=0;
+        this.waitingTimeMS = setValue;
+        putInt("waitingTimeMS",waitingTimeMS);
+    }
     
 }

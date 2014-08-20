@@ -3,16 +3,16 @@ package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
 
 import net.sf.jaer.util.Vector2D;
 import java.util.logging.Level;
-import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OpticalFlowEvent;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.label.SmoothOpticalFlowLabeler;
-import javax.media.opengl.GL2;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.eventprocessing.label.DvsDirectionSelectiveFilter;
+import net.sf.jaer.eventprocessing.label.DvsOrientationFilter;
 
 /**
  *
@@ -22,27 +22,32 @@ import net.sf.jaer.event.PolarityEvent;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class BackgroundMotionSelectiveFilter extends AbstractBackgroundSelectiveFilter {
     
-
-    
     private final SmoothOpticalFlowLabeler motionFilter;
+    private boolean showExcitatoryAverageMotion = false;
+    protected float exciteInhibitRatioThreshold = getFloat("exciteInhibitRatioThreshold",.45f);
     
     private EventPacket motionPacket = null;
      
     //Filter Variables
     private final Vector2D avgExcitatoryDir = new Vector2D();
     private final Vector2D avgInhibitoryDir = new Vector2D();
+    protected double exciteInhibitRatio = 0;
+    int curTime = 0;
     // End filter Variables
     
     private Vector2D[][] lastDirMap;
     protected int[][] lastTimesMap;
-    
-    //TODO: make sure that everytime a raidus changes we calculate the new circle.
-    //TODO: Das wird jetzt alles nicht funktionieren wenn man subsampled im anderen Filter oder?
+
+    //TODO: If subsampling is used as input for this filter the regions that are used for updating are currently not subsampled
     public BackgroundMotionSelectiveFilter(AEChip chip) {
         super(chip);
 
         motionFilter = new SmoothOpticalFlowLabeler(chip);
-        motionFilter.setAnnotationEnabled(false);
+            motionFilter.setAnnotationEnabled(false);
+            //We need to make sure that the enclosed orientation as well as the enclosed
+            // directionselective Filter output all their events.
+            ((DvsDirectionSelectiveFilter) motionFilter.getEnclosedFilter()).setPassAllEvents(true);
+            ((DvsOrientationFilter) ((DvsDirectionSelectiveFilter) motionFilter.getEnclosedFilter()).getEnclosedFilter()).setPassAllEvents(true);
         setEnclosedFilter(motionFilter);
     }
 
@@ -55,10 +60,10 @@ public class BackgroundMotionSelectiveFilter extends AbstractBackgroundSelective
             log.log(Level.WARNING, "input events are {0}, but they need to be OpticalFlowEvent's", motionPacket.getEventClass());
             return in;
         }  
-        if(isOutputPolarityEvents()) {
+        if(getOutputPolarityEvents()) {
             checkOutputPacketEventType(PolarityEvent.class);
         } else {
-            checkOutputPacketEventType(BackgroundMotionInhibitedEvent.class);
+            checkOutputPacketEventType(BackgroundInhibitedEvent.class);
         }
         
         checkMaps();
@@ -79,12 +84,17 @@ public class BackgroundMotionSelectiveFilter extends AbstractBackgroundSelective
             
             x = e.x;
             y = e.y;
-
-            lastDirMap[x][y].setLocation(e.optFlowVelPPS);
-            lastTimesMap[x][y] = e.timestamp;
+            curTime = e.timestamp;
+            //We only need to fill the HistoryMaps if the event has a valid direction
+            // If not we can not use it to average anyway. However wwe can still
+            // process this event, as there might be directions in the receptive field
+            if(e.isHasDirection()){
+                lastDirMap[x][y].setLocation(e.optFlowVelPPS);
+                lastTimesMap[x][y] = curTime;
+            }
             
-            avgExcitatoryDir.setLocation(getAvgDir(x,y,excitationCirc));
-            avgInhibitoryDir.setLocation(getAvgDir(x,y,inhibitionCirc));
+            avgExcitatoryDir.setLocation(getAvgDir(x,y,curTime,excitationCirc));
+            avgInhibitoryDir.setLocation(getAvgDir(x,y,curTime,inhibitionCirc));
             //System.out.println("excecDir:"+avgExcitatoryDir + " inhibitDir:"+avgInhibitoryDir);
 
             if(avgExcitatoryDir.length() != 0) avgExcitatoryDir.unify(); 
@@ -97,7 +107,7 @@ public class BackgroundMotionSelectiveFilter extends AbstractBackgroundSelective
             
             if( exciteInhibitRatio >= exciteInhibitRatioThreshold){// INHIBITION
                 hasGlobalMotion = 1;
-                if(!isShowInhibitedEvents()) continue;
+                if(!getShowInhibitedEvents()) continue;
             } else {// EXCITATION
                 hasGlobalMotion=0;
             }
@@ -105,84 +115,18 @@ public class BackgroundMotionSelectiveFilter extends AbstractBackgroundSelective
             writeEvent(outItr,e);
             //System.out.println("type:"+hasGlobalMotion+" outLength:"+outDir.length()+" inLength:"+centerDir.length()+" ratio:"+saveRatio);
         }
-        return isShowRawInputEnabled() ? in : out;
+        return getShowRawInputEnabled() ? in : out;
     }
 
     private void writeEvent(OutputEventIterator outItr, OpticalFlowEvent e) { 
-        if(isOutputPolarityEvents()) {
+        if(getOutputPolarityEvents()) {
             PolarityEvent oe = (PolarityEvent) outItr.nextOutput();
             oe.copyFrom(e);
         } else {
-            BackgroundMotionInhibitedEvent oe = (BackgroundMotionInhibitedEvent) outItr.nextOutput();
+            BackgroundInhibitedEvent oe = (BackgroundInhibitedEvent) outItr.nextOutput();
             oe.copyFrom(e);
-            oe.avgExcitationVel.setLocation(avgExcitatoryDir);
-            oe.avgInhibitionVel.setLocation(avgInhibitoryDir);
-            oe.exciteInhibitionRatio = exciteInhibitRatio;
             oe.hasGlobalMotion = hasGlobalMotion;
         }   
-    }
-    
-    @Override public void annotate(GLAutoDrawable drawable) {
-        if(!isOutputPolarityEvents()){
-            GL2 gl = drawable.getGL().getGL2();
-            // draw individual motion vectors
-            if(isDrawInhibitExcitePoints()) {
-                gl.glPushMatrix();
-                gl.glColor3f(1, 1, 1);
-                gl.glLineWidth(3f);
-                gl.glPointSize(2);
-                for (Object o : out) {
-                    BackgroundMotionInhibitedEvent e = (BackgroundMotionInhibitedEvent) o;
-                    float[][] c=chip.getRenderer().makeTypeColors(2);
-                    gl.glColor3fv(c[e.hasGlobalMotion],0);
-                    gl.glBegin(GL2.GL_POINTS);
-                        gl.glVertex2d(e.x, e.y);
-                    gl.glEnd();
-                }
-                gl.glPopMatrix();
-            }
-
-            if(isDrawCenterCell()) {
-                gl.glPushMatrix();
-
-                gl.glPointSize(2);
-                gl.glLineWidth(4f);
-
-                //Draw regions of average
-                gl.glBegin(GL2.GL_POINTS);
-                    gl.glColor3f(1, 1, 0);
-                    for (int[] circ1 : inhibitionCirc) {
-                        gl.glVertex2d(circ1[0]+maxX/2, circ1[1]+maxY/2);
-                    }
-                    gl.glColor3f(0, 1, 1);
-                    for (int[] circ1 : excitationCirc) {
-                        gl.glVertex2d(circ1[0]+maxX/2, circ1[1]+maxY/2);
-                    }
-                gl.glEnd();
-                gl.glPopMatrix();
-                
-                int xOffset = maxX/2,yOffset = maxY/2;
-                int scale=20;
-                for(Object o : out) {
-                    BackgroundMotionInhibitedEvent e = (BackgroundMotionInhibitedEvent) o;
-                    if(e.x == maxX/2 && e.y == maxY/2){
-                        gl.glPushMatrix();
-                        gl.glColor3f(0, 1, 0);
-                        e.avgExcitationVel.drawVector(gl, xOffset+20, yOffset, 1, scale);
-                        gl.glPopMatrix();
-                        
-                        gl.glPushMatrix();
-                        gl.glColor3f(1, 0, 0);
-                        e.avgInhibitionVel.drawVector(gl, xOffset-20, yOffset, 1, scale);
-                        gl.glPopMatrix();
-
-                        gl.glColor3f(1, 1, 1);
-                        gl.glRectf(-10, 0, -5,  100*(float)e.exciteInhibitionRatio);
-                        gl.glRectf(-10.5f, 0, -10, 100);
-                    }
-                }
-            }
-        }
     }
     
     @Override protected void checkMaps(){
@@ -227,15 +171,15 @@ public class BackgroundMotionSelectiveFilter extends AbstractBackgroundSelective
      *  [n][1] is the y component of the point to be averaged.
      * @return the averaged vector. If no Event in the Testregion passed the 
      * significanceTest a (0,0) vector is returned.*/
-    private Vector2D getAvgDir(int x, int y, int[][] xyPixelList) {
+    private Vector2D getAvgDir(int x, int y, int curTime, int[][] xyPixelList) {
         Vector2D res = new Vector2D(0,0);
         int n = 0,dt = 0,xLoc,yLoc;
-        float fac;
+        float foo = 0f;
 
         for (int[] xyItem : xyPixelList) {
             xLoc = xyItem[0] + x;
             yLoc = xyItem[1] + y;
-            if(xLoc < MINX || xLoc >= maxX || yLoc < MINY || yLoc >= maxY) {
+            if(xLoc < minX || xLoc >= maxX || yLoc < minY || yLoc >= maxY) {
                 //We are 'out of bounds' of the sensor. Nothing we can do here.
                 // This DOES mean that we get some boundary effects, where the
                 // average is not as meaningful as in the middle of the sensor,
@@ -244,70 +188,44 @@ public class BackgroundMotionSelectiveFilter extends AbstractBackgroundSelective
                 continue;
             }
             
-            dt = lastTimesMap[x][y]-lastTimesMap[xLoc][yLoc];
-            fac = 1-(dt/(maxDtMs*TICK_PER_MS));
+            dt = curTime - lastTimesMap[xLoc][yLoc];
             
-            if(fac <= 0){
-                continue; 
-                //This means that dt >= maxDtMs
-                //No need to add zero and also dont increment n as nothing was added.
-            }
-            res.addFraction(lastDirMap[xLoc][yLoc],fac);
+            if(dt <0) continue;//just to make sure
+            foo = -4*(dt/(float)(maxDtUs));//When dt is larger than maxDtUs we want to reject it. AND we want to use the exp approx in the range -4:0 so we factor the 4 here. this does not matter, as theresult returned is just compared and does not carry internal meaning
+            if(foo < -4) continue; //Saves computation time: exp(-4) ~ 0.01
+            
+            //Approximating the Exponential function as exp(x) = lim(1+x/n)^n for n->infinity.
+            // Sufficiently good for small values for n==4 this is at least 20times cheaper than actually doing exp.
+            foo = 1f+foo/4f;
+            foo *= foo; foo *= foo;
+
+            res.addFraction(lastDirMap[xLoc][yLoc],foo);
             n++;
         }
         
         if(n!=0) res.div(n);
         return res;
     }
+
+    public boolean isShowExcitatoryAverageMotion() {
+        return showExcitatoryAverageMotion;
+    }
+
+    public void setShowExcitatoryAverageMotion(boolean showExcitatoryAverageMotion) {
+        this.showExcitatoryAverageMotion = showExcitatoryAverageMotion;
+    }
         
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --outputPolarityEvents--">
-    public boolean isOutputPolarityEvents() {
-        return outputPolarityEvents;
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --exciteInhibitionRatioThreshold--">
+    public float getExciteInhibitRatioThreshold() {
+        return exciteInhibitRatioThreshold;
     }
 
-    public void setOutputPolarityEvents(boolean outputPolarityEvents) {
-        this.outputPolarityEvents = outputPolarityEvents;
-    }
-    // </editor-fold>
-    
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --showRawInputEnabled--">
-    public boolean isShowRawInputEnabled() {
-        return showRawInputEnabled;
-    }
-
-    public void setShowRawInputEnabled(final boolean showRawInputEnabled) {
-        this.showRawInputEnabled = showRawInputEnabled;
-        putBoolean("showRawInputEnabled",showRawInputEnabled);
-    }
-    // </editor-fold>
-    
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --drawInhibitExcitePoints--">
-    public boolean isDrawInhibitExcitePoints() {
-        return drawInhibitExcitePoints;
-    }
-
-    public void setDrawInhibitExcitePoints(boolean drawMotionVectors) {
-        this.drawInhibitExcitePoints = drawMotionVectors;
-    }
-    // </editor-fold>
-    
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --drawCenterCell--">
-    public boolean isDrawCenterCell() {
-        return drawCenterCell;
-    }
-
-    public void setDrawCenterCell(boolean drawCenterCell) {
-        this.drawCenterCell = drawCenterCell;
-    }
-    // </editor-fold>
-    
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --showInhibitedEvents--">
-    public boolean isShowInhibitedEvents() {
-        return showInhibitedEvents;
-    }
-
-    public void setShowInhibitedEvents(boolean showTotalInhibitedEvents) {
-        this.showInhibitedEvents = showTotalInhibitedEvents;
+    public void setExciteInhibitRatioThreshold(float exciteInhibitRatioThreshold) {
+        float setValue = exciteInhibitRatioThreshold;
+        if(setValue > 1) setValue = 1;
+        if(setValue < -1)setValue = -1;
+        this.exciteInhibitRatioThreshold = setValue;
+        putFloat("exciteInhibitRatioThreshold",setValue);
     }
     // </editor-fold>
 }

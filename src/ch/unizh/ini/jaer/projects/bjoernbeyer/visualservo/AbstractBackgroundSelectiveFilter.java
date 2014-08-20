@@ -1,13 +1,10 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
 
 import java.util.Observable;
 import java.util.Observer;
+import javax.media.opengl.GL2;
+import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -20,8 +17,8 @@ import net.sf.jaer.graphics.FrameAnnotater;
 abstract class AbstractBackgroundSelectiveFilter extends EventFilter2D implements Observer, FrameAnnotater {
     
     /** ticks per ms of input time */
-    protected final int TICK_PER_MS = 1000;
-    protected final int MINX = 0, MINY = 0;
+    protected final int US_PER_MS = 1000;
+    protected final int minX = 0, minY = 0;
     
     protected int maxX, maxY;
      
@@ -31,10 +28,10 @@ abstract class AbstractBackgroundSelectiveFilter extends EventFilter2D implement
     protected int inhibitionInnerRadiusPX       = getInt("inhibitionInnerRadius",28); //The inner radius of inhibition (meaning pixel closer to current than this will not inhibit) in pixel.
     //with excitationRadius=5 we average over 80 pixels around the center pixel
     protected int excitationOuterRadiusPX       = getInt("excitationOuterRadius",6); //The excitation radius in pixel from current position. By default the current cell does not self excite.
-    protected int excitationInnerRadiusPX       = getInt("excitationOuterRadius",1); //The excitation radius in pixel from current position. By default the current cell does not self excite.
-    protected int circleCoarseness              = getInt("circleCoarseness",2);      
-    protected float maxDtMs                     = getFloat("maxDtMs",50f); //The maximum temporal distance in milliseconds between the current event and the last event in an inhibiting or exciting location that is taken into acount for the averge inhibition/excitation vector. Events with a dt larger than this will be ignored. Events with half the dt than this will contribute with 50% of their length.
-    protected float exciteInhibitRatioThreshold = getFloat("exciteInhibitRatioThreshold",.45f);
+    protected int excitationInnerRadiusPX       = getInt("excitationInnerRadius",1); //The excitation radius in pixel from current position. By default the current cell does not self excite.
+    protected int inhibitoryCoarseness          = getInt("inhibitoryCoarseness",2);     
+    protected int excitatoryCoarseness          = getInt("excitatoryCoarseness",1);
+    protected float maxDtUs                     = getFloat("maxDtUs",50000f); //The maximum temporal distance in microseconds between the current event and the last event in an inhibiting or exciting location that is taken into acount for the averge inhibition/excitation vector. Events with a dt larger than this will be ignored. Events with half the dt than this will contribute with 50% of their length.
     protected boolean showRawInputEnabled       = getBoolean("showRawInputEnabled",false);
     protected boolean drawInhibitExcitePoints   = getBoolean("drawInhibitExcitePoints",false);
     protected boolean drawCenterCell            = getBoolean("drawCenterCell",false); 
@@ -43,35 +40,84 @@ abstract class AbstractBackgroundSelectiveFilter extends EventFilter2D implement
     
     //Filter Variables
     protected byte hasGlobalMotion;
-    protected double exciteInhibitRatio = 0;
     // End filter Variables
     
     protected int[][] inhibitionCirc,excitationCirc;
-    
     protected int x,y;
     
     
     public AbstractBackgroundSelectiveFilter(AEChip chip) {
         super(chip);
-        chip.addObserver(this);
-        resetFilter();
+        initFilter();
+        
+        final String Inhib = "InhibitoryRegion", excite = "ExcitatoryRegion";
+        setPropertyTooltip(Inhib,"inhibitionInnerRadius","");
+        setPropertyTooltip(Inhib,"inhibitionOuterRadius","");
+        setPropertyTooltip(Inhib,"inhibitoryCoarseness","");
+        setPropertyTooltip(excite,"excitationInnerRadius","");
+        setPropertyTooltip(excite,"excitationOuterRadius","");
+        setPropertyTooltip(excite,"excitatoryCoarseness","");
     }
     
-    @Override abstract public EventPacket<?> filterPacket(EventPacket<?> in);
-    
+    @Override abstract public EventPacket<?> filterPacket(EventPacket<?> in); 
     abstract protected void checkMaps();
     
+    @Override public void annotate(GLAutoDrawable drawable){
+        if(!getOutputPolarityEvents()){
+            GL2 gl = drawable.getGL().getGL2();
+            gl.glLineWidth(3f);
+            gl.glPointSize(2);
+
+            if(getDrawInhibitExcitePoints()) {
+                // <editor-fold defaultstate="collapsed" desc="-- annotate Pixels that where associated with global motion --">
+                gl.glPushMatrix();
+                    for (Object o : out) {
+                        BackgroundInhibitedEvent e = (BackgroundInhibitedEvent) o;
+                        float[][] c=chip.getRenderer().makeTypeColors(2);
+                        gl.glColor3fv(c[e.hasGlobalMotion],0);
+                        gl.glBegin(GL2.GL_POINTS);
+                        gl.glVertex2d(e.x, e.y);
+                        gl.glEnd();
+                    }
+                gl.glPopMatrix();
+                // </editor-fold>
+            }
+
+            if(getDrawCenterCell()) {
+                // <editor-fold defaultstate="collapsed" desc="-- annotates a exemplatory Center cell with inhibitory and excitatory region & the average activity in those regions --">
+                gl.glPushMatrix();
+                
+                //Draw regions of average
+                gl.glBegin(GL2.GL_POINTS);
+                    gl.glColor3f(1, 1, 0);
+                    for (int[] circ1 : inhibitionCirc) {
+                        gl.glVertex2d(circ1[0]+maxX/2, circ1[1]+maxY/2);
+                    }
+                    gl.glColor3f(0, 1, 1);
+                    for (int[] circ1 : excitationCirc) {
+                        gl.glVertex2d(circ1[0]+maxX/2, circ1[1]+maxY/2);
+                    }
+                gl.glEnd();
+                gl.glPopMatrix();
+                // </editor-fold>
+            }
+        }
+    }
+ 
     @Override public final void resetFilter() {
         checkMaps();
         
         maxX=chip.getSizeX();
         maxY=chip.getSizeY();
         
-        inhibitionCirc = PixelCircle(inhibitionOuterRadiusPX,inhibitionInnerRadiusPX,circleCoarseness);
-        excitationCirc = PixelCircle(excitationOuterRadiusPX,excitationInnerRadiusPX,circleCoarseness);//inner Radius 1 means that the cell does not excite itself.
+        inhibitionCirc = PixelCircle(inhibitionOuterRadiusPX,inhibitionInnerRadiusPX,inhibitoryCoarseness);
+        excitationCirc = PixelCircle(excitationOuterRadiusPX,excitationInnerRadiusPX,excitatoryCoarseness);//inner Radius 1 means that the cell does not excite itself.
     }
     
-    @Override public void initFilter() { resetFilter(); }
+    @Override public void initFilter() { 
+        chip.addObserver(this);
+        resetFilter(); 
+    }
 
     @Override public void update(Observable o, Object arg) {
         if (o instanceof AEChip) {
@@ -107,19 +153,6 @@ abstract class AbstractBackgroundSelectiveFilter extends EventFilter2D implement
         }
         return res;
     }
-    
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --exciteInhibitionRatioThreshold--">
-    public float getExciteInhibitRatioThreshold() {
-        return exciteInhibitRatioThreshold;
-    }
-
-    public void setExciteInhibitRatioThreshold(float exciteInhibitRatioThreshold) {
-        float setValue = exciteInhibitRatioThreshold;
-        if(setValue > 1) setValue = 1;
-        if(setValue < -1)setValue = -1;
-        this.exciteInhibitRatioThreshold = setValue;
-    }
-    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --inhibitionOuterRadius--">
     public int getInhibitionOuterRadius() {
@@ -127,7 +160,13 @@ abstract class AbstractBackgroundSelectiveFilter extends EventFilter2D implement
     }
 
     public void setInhibitionOuterRadius(final int inhibitionOuterRadius) {
-        this.inhibitionOuterRadiusPX = inhibitionOuterRadius;
+        int setValue = inhibitionOuterRadius;
+        if(setValue<=getInhibitionInnerRadius()){
+            setValue = getInhibitionInnerRadius()+1;
+        }
+        support.firePropertyChange("inhibitionOuterRadius",this.inhibitionOuterRadiusPX,setValue);
+        this.inhibitionOuterRadiusPX = setValue;
+        putInt("inhibitionOuterRadius",setValue);
         resetFilter(); //need to recalculate the circles
     }
     // </editor-fold>
@@ -138,7 +177,13 @@ abstract class AbstractBackgroundSelectiveFilter extends EventFilter2D implement
     }
 
     public void setInhibitionInnerRadius(final int inhibitionInnerRadius) {
-        this.inhibitionInnerRadiusPX = inhibitionInnerRadius;
+        int setValue = inhibitionInnerRadius;
+        if(setValue>=getInhibitionOuterRadius()){
+            setValue = getInhibitionOuterRadius()-1;
+        }
+        support.firePropertyChange("inhibitionInnerRadius",this.inhibitionInnerRadiusPX,setValue);
+        this.inhibitionInnerRadiusPX = setValue;
+        putInt("inhibitionInnerRadius",setValue);
         resetFilter(); //need to recalculate the circles
     }
     // </editor-fold>
@@ -149,7 +194,13 @@ abstract class AbstractBackgroundSelectiveFilter extends EventFilter2D implement
     }
 
     public void setExcitationOuterRadius(final int excitationRadius) {
-        this.excitationOuterRadiusPX = excitationRadius;
+        int setValue = excitationRadius;
+        if(setValue<=getExcitationInnerRadius()){
+            setValue = getExcitationInnerRadius()+1;
+        }
+        support.firePropertyChange("excitationOuterRadius",this.excitationOuterRadiusPX,setValue);
+        this.excitationOuterRadiusPX = setValue;
+        putInt("excitationOuterRadius",setValue);
         resetFilter(); //need to recalculate the circles
     }
     // </editor-fold>
@@ -161,34 +212,113 @@ abstract class AbstractBackgroundSelectiveFilter extends EventFilter2D implement
 
     public void setExcitationInnerRadius(final int excitationRadius) {
         int setValue = excitationRadius;
-        if(excitationRadius <= 1) setValue = 1;
+        if(setValue>=getExcitationOuterRadius()){
+            setValue = getExcitationOuterRadius()-1;
+        }
+        support.firePropertyChange("excitationInnerRadius",this.excitationInnerRadiusPX,setValue);
         this.excitationInnerRadiusPX = setValue;
+        putInt("excitationInnerRadius",setValue);
         resetFilter(); //need to recalculate the circles
     }
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --maxDtMs--">
     public float getMaxDtMs() {
-      return maxDtMs;
+      return maxDtUs/US_PER_MS;
     }
 
     public void setMaxDtMs(float maxDtMs) {
-      this.maxDtMs = maxDtMs;
+      float setValue = maxDtMs*US_PER_MS;
+      if(setValue < 0)setValue=0;
+      this.maxDtUs = setValue;
+      putFloat("maxDtUs",setValue);
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --circleCoarseness--">
-    public int getCircleCoarseness() {
-        return circleCoarseness;
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --InhibitoryCoarseness--">
+    public int getInhibitoryCoarseness() {
+        return inhibitoryCoarseness;
     }
 
-    public void setCircleCoarseness(int circleCoarseness) {
-        if(circleCoarseness<1){
-            this.circleCoarseness = 1;
-        } else this.circleCoarseness = circleCoarseness;
+    public void setInhibitoryCoarseness(int InhibitoryCoarseness) {
+        int setValue = InhibitoryCoarseness;
+        if(setValue<1){
+            setValue = 1;
+        }
+        this.inhibitoryCoarseness = setValue;
+        putInt("inhibitoryCoarseness",setValue);
         resetFilter(); //need to recalculate the circles
     }
-
     // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --ExcitatoryCoarseness--">
+    public int getExcitatoryCoarseness() {
+        return excitatoryCoarseness;
+    }
 
+    public void setExcitatoryCoarseness(int excitatoryCoarseness) {
+        int setValue = excitatoryCoarseness;
+        if(setValue<1){
+            setValue = 1;
+        }
+        this.excitatoryCoarseness = setValue;
+        putInt("excitatoryCoarseness",setValue);
+        resetFilter(); //need to recalculate the circles
+    }
+    // </editor-fold>
+        
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --outputPolarityEvents--">
+    public boolean getOutputPolarityEvents() {
+        return outputPolarityEvents;
+    }
+
+    public void setOutputPolarityEvents(boolean outputPolarityEvents) {
+        this.outputPolarityEvents = outputPolarityEvents;
+        putBoolean("outputPolarityEvents",outputPolarityEvents);
+    }
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --showRawInputEnabled--">
+    public boolean getShowRawInputEnabled() {
+        return showRawInputEnabled;
+    }
+
+    public void setShowRawInputEnabled(final boolean showRawInputEnabled) {
+        this.showRawInputEnabled = showRawInputEnabled;
+        putBoolean("showRawInputEnabled",showRawInputEnabled);
+    }
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --drawInhibitExcitePoints--">
+    public boolean getDrawInhibitExcitePoints() {
+        return drawInhibitExcitePoints;
+    }
+
+    public void setDrawInhibitExcitePoints(boolean drawMotionVectors) {
+        this.drawInhibitExcitePoints = drawMotionVectors;
+        putBoolean("drawInhibitExcitePoints",drawMotionVectors);
+    }
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --drawCenterCell--">
+    public boolean getDrawCenterCell() {
+        return drawCenterCell;
+    }
+
+    public void setDrawCenterCell(boolean drawCenterCell) {
+        this.drawCenterCell = drawCenterCell;
+        putBoolean("drawCenterCell",drawCenterCell);
+    }
+    // </editor-fold>
+    
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --showInhibitedEvents--">
+    public boolean getShowInhibitedEvents() {
+        return showInhibitedEvents;
+    }
+
+    public void setShowInhibitedEvents(boolean showTotalInhibitedEvents) {
+        this.showInhibitedEvents = showTotalInhibitedEvents;
+        putBoolean("showInhibitedEvents",showTotalInhibitedEvents);
+    }
+    // </editor-fold>
 }
