@@ -347,8 +347,8 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
     private void writeOutput(OutputEventIterator outItr, PolarityEvent e, boolean hasOrientation, byte orientation){
         OrientationEventInterface eout = (OrientationEventInterface) outItr.nextOutput();
         eout.copyFrom(e);
-        eout.setHasOrientation(hasOrientation);
         eout.setOrientation(orientation);
+        eout.setHasOrientation(hasOrientation);
     }
   
 }
