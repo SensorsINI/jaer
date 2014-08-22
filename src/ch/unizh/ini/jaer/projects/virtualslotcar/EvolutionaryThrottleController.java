@@ -518,8 +518,13 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        String s = String.format("EvolutionaryThrottleController\nState: %s\nLearning %s\ncurrentTrackPos: %d/%d\nThrottle: %8.3f\n%s", state.toString(), learningEnabled ? "Enabled" : "Disabled", currentTrackPos, getTrack().getNumPoints(), throttle.throttle, lapTimer.toString());
-		//       if(state.getString()==State.CRASHED){
+        String s=null;
+        if(getTrack()==null){
+            s="Null track";
+        }else{
+            s = String.format("EvolutionaryThrottleController\nState: %s\nLearning %s\ncurrentTrackPos: %d/%d\nThrottle: %8.3f\n%s", state.toString(), learningEnabled ? "Enabled" : "Disabled", currentTrackPos, getTrack().getNumPoints(), throttle.throttle, lapTimer.toString());
+        }
+//       if(state.getString()==State.CRASHED){
         //
         //       }else if(state.getString()==State.RUNNING){
         //

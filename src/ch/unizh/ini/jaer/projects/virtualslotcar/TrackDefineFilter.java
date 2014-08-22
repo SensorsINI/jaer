@@ -749,8 +749,10 @@ public class TrackDefineFilter extends EventFilter2D implements FrameAnnotater, 
     }
 
     public void setDisplayTrack(boolean displayTrack) {
+        boolean old=this.displayTrack;
         this.displayTrack = displayTrack;
         prefs().putBoolean("TrackdefineFilter.displayTrack", displayTrack);
+        getSupport().firePropertyChange("displayTrack", old, displayTrack);
     }
 
     public float getStepSize() {
@@ -875,6 +877,7 @@ public class TrackDefineFilter extends EventFilter2D implements FrameAnnotater, 
      */
     synchronized public void doExtractTrack() {
         boolean[][] trackPoints = erosion();
+        setDisplayTrack(true);
 
         // Find starting point
         int maxX = -1, maxY = -1;

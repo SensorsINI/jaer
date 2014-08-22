@@ -22,13 +22,13 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 import com.jogamp.opengl.util.gl2.GLUT;
+import net.sf.jaer.aemonitor.AEPacket;
 import net.sf.jaer.util.DrawGL;
 
 /**
@@ -179,7 +179,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
     synchronized protected EventPacket track(EventPacket in) {
         boolean updatedClusterList = false;
         crashedCar = null; // before possible prune operation that could set this field to non-null
-        in = getEnclosedFilterChain().filterPacket(in);
+        EventPacket filtered = getEnclosedFilterChain().filterPacket(in);
 
         // record cluster locations before packet is processed
         for (Cluster c : clusters) {
@@ -188,7 +188,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
 
 		// for each event, assign events to each cluster according probabalistically to the distance of the event from the cluster
         // if its too far from any cluster, make a new cluster if we can
-        for (Object o : in) {
+        for (Object o : filtered) {
             BasicEvent ev = (BasicEvent) o;
             if (ev.isSpecial()) {
                 continue;
@@ -203,14 +203,14 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
 		// TODO update here again, relying on the fact that lastEventTimestamp was set by possible previous update according to
         // schedule; we have have double update of velocityPPT using same dt otherwise
         if (!updatedClusterList && (in.getSize() > 0)) { // make sure we have at least one event here to getString a timestamp
-            updateClusterList(in.getLastTimestamp()); // at laest once per packet update list
+            updateClusterList(filtered.getLastTimestamp()); // at laest once per packet update list
         }
 
         if (track == null) {
-            if ((warnedNullTrackerCounter % WARNED_NULL_TRACK_INTERVAL) == 0) {
+            if ((warnedNullTrackerCounter++ % WARNED_NULL_TRACK_INTERVAL) == 0) {
                 log.warning("null track - perhaps deserialization failed or no track was saved?");
             }
-            return in;
+            return filtered;
         }
         for (ClusterInterface c : clusters) {
             if (!c.isVisible()) {
@@ -223,7 +223,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
         }
         currentCarCluster = computerControlledCarCluster;
         computerControlledCarCluster = currentCarCluster;
-        return in;
+        return filtered;
     }
 
     /**

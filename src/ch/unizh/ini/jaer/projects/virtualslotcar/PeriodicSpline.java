@@ -462,7 +462,7 @@ public class PeriodicSpline implements java.io.Serializable {
      * index is out of bounds.
      */
     public float getParam(int idx) {
-        if ((idx < 0) || (idx > this.numXY))
+        if ((idx < 0) || (idx > this.numXY) || Tdata==null)
             return Float.NaN;
         else {
             return this.Tdata[idx];
