@@ -57,7 +57,9 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
         setPropertyTooltip("loadHistogram", "loads histogram from the fixed filename " + HISTOGRAM_FILE_NAME);
         setPropertyTooltip("collectHistogram", "turns on histogram accumulation");
         setPropertyTooltip("erosionSize", "Amount in pixels to erode histogram bitmap on erode operation");
-    }
+        String lastFile=getString("lastFile",null);
+        if(lastFile!=null) loadHistogramFromFile(new File(lastFile));
+   }
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -76,7 +78,7 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
                     max = histogram[e.x][e.y];
                 }
             } else { // filter out events that are not coming from pixels that have collected enough events
-                if (histmax > 0 && histogram[e.x][e.y] < getThreshold()) {
+                if (histmax > 0 && histogram[e.x][e.y] < threshold) {
                     e.setFilteredOut(true);
                 } else {
                     e.setFilteredOut(false);
@@ -110,7 +112,7 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
     }
 
     synchronized public void doSaveHistogram() {
-        if (histmax == 00 || histogram == null) {
+        if (histmax == 0 || histogram == null) {
             log.warning("no histogram to save");
             return;
         }
@@ -145,7 +147,7 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
 
     final synchronized public void doLoadHistogram() {
         JFileChooser fileChooser = new JFileChooser();
-        String lastFilePath = getString("lastFile", "");
+        String lastFilePath = getString("lastFile", System.getProperty("user.dir") );
         // get the last folder
 //            fileChooser.setFileFilter(datFileFilter);
         fileChooser.setCurrentDirectory(new File(lastFilePath));
@@ -154,6 +156,7 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
             return;
         }
         File file = fileChooser.getSelectedFile();
+        putString("lastFile",file.getPath());
         loadHistogramFromFile(file);
 
     }
@@ -164,6 +167,14 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
             ObjectInputStream ois = new ObjectInputStream(fis);
             setHistmax((Integer) ois.readObject());
             histogram = (int[][]) ois.readObject();
+            numX=0; numY=0;
+            if(histogram!=null){
+                numX=histogram.length;
+                if(histogram[0]!=null){
+                    numY=histogram[0].length;
+                }
+            }
+            numPix=numX*numY;
             ois.close();
             fis.close();
             log.info("histogram loaded from (usually host/java) file " + file.getPath() + "; histmax=" + histmax);
@@ -191,13 +202,15 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
         for (int y = 0; y < numY; y++) {
             for (int x = 0; x < numX; x++) {
                 float v1 = (float) histogram[x][y];
-                float v2 = v1 / histmax;
+                float v2 = v1 / threshold;
                 if(v1>threshold){
-                    gl.glColor4f(v2, v2, 0, 0.5f);
-                }else{
-                    gl.glColor4f(0, v2, v2, 0.5f);
+                    gl.glColor4f(v2, v2, 0, .5f);
+                     gl.glRectf(x, y, x + 1, y + 1);
+                }else if(v1>0){
+                    gl.glColor4f(0, v2, v2, .5f);
+                     gl.glRectf(x, y, x + 1, y + 1);
                 }
-                gl.glRectf(x, y, x + 1, y + 1);
+               
             }
         }
     }
@@ -215,7 +228,7 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
             numX=chip.getSizeX();
             numY=chip.getSizeY();
        numPix = numX * numY;
-           histogram = new int[numY][numX];
+           histogram = new int[numX][numY];
         }
     }
 

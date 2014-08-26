@@ -206,9 +206,8 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             currentTrackPos = car.getSegmentIdx();
         }
 
-		// choose state & copyFrom throttle
+	// choose state & throttle
         if (state.get() == State.OVERRIDDEN) {
-            //            throttle.throttle = getStartingThrottleValue();
 
         } else if (state.get() == State.STARTING) {
             //            throttle.throttle = getStartingThrottleValue();
@@ -221,8 +220,10 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                     log.warning("Track not defined yet. Use the TrackdefineFilter to extract the slot car track or load the track from a file.");
                 }
                 showedMissingTrackWarning = true;
-            } else {
-                if (car != null && !car.isCrashed()) {
+            }  else {
+                if(car==null || !car.isVisible() || car.isCrashed()){
+                    state.set(State.STARTING);
+                }else if (car != null && car.isVisible() && !car.isCrashed()) {
                     // did we lap?
                     boolean lapped = lapTimer.update(currentTrackPos, car.getLastEventTimestamp());
 
@@ -279,7 +280,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                     lastRewardLap = lapTimer.lapCounter; // don't reward until we make some laps from here
                 } else if (car != null) {
                     throttle = currentProfile.getThrottle(car.getSegmentIdx());
-                }
+                } 
             }
         } else if (state.get() == State.CRASHED) {
             //            throttle.throttle = getStartingThrottleValue();
@@ -522,7 +523,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         if(getTrack()==null){
             s="Null track";
         }else{
-            s = String.format("EvolutionaryThrottleController\nState: %s\nLearning %s\ncurrentTrackPos: %d/%d\nThrottle: %8.3f\n%s", state.toString(), learningEnabled ? "Enabled" : "Disabled", currentTrackPos, getTrack().getNumPoints(), throttle.throttle, lapTimer.toString());
+            s = String.format("EvolutionaryThrottleController\nMouse+Shift: Increase throttle\nMouse+Ctl: Decrease Throttle\nMouse+Alt: Add braking point\nMouse+Shfit+Alt: Remove braking point\nState: %s\nLearning %s\ncurrentTrackPos: %d/%d\nThrottle: %8.3f\n%s", state.toString(), learningEnabled ? "Enabled" : "Disabled", currentTrackPos, getTrack().getNumPoints(), throttle.throttle, lapTimer.toString());
         }
 //       if(state.getString()==State.CRASHED){
         //
@@ -666,8 +667,10 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
      * @param learning the learning to copyFrom
      */
     public void setLearningEnabled(boolean learning) {
+        boolean old=this.learningEnabled;
         learningEnabled = learning;
         putBoolean("learningEnabled", learningEnabled);
+        getSupport().firePropertyChange("learningEnabled", old, this.learningEnabled);
     }
 
     /**

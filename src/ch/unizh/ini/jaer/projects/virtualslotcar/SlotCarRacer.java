@@ -29,10 +29,10 @@ licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_Genera
  */
 @Description("Slot car racer project, Telluride 2010")
 public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
-    private boolean overrideThrottle = prefs().getBoolean("SlotCarRacer.overrideThrottle", true);
-    private float overriddenThrottleSetting = prefs().getFloat("SlotCarRacer.overriddenThrottleSetting", 0);
-    private float maxThrottle = prefs().getFloat("SlotCarRacer.maxThrottle", 1);
-    private boolean playThrottleSound = prefs().getBoolean("SlotCarRacer.playThrottleSound", true);
+    private boolean overrideThrottle = getBoolean("overrideThrottle", true);
+    private float overriddenThrottleSetting = getFloat("overriddenThrottleSetting", 0);
+    private float maxThrottle = getFloat("maxThrottle", 1);
+    private boolean playThrottleSound =getBoolean("playThrottleSound", false);
     private TobiLogger tobiLogger;
     private SlotCarHardwareInterface hw;
     private CarTracker.CarCluster car = null;
@@ -43,25 +43,43 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     private float lastSoundThrottleValue = 0;
     private long lastTimeSoundPlayed;
     private ThrottleBrake lastThrottle = new ThrottleBrake();
+    private boolean playBrakeSound=getBoolean("playBrakeSound",false);
 
     private void playThrottleSounds() {
-        if(playThrottleSound && lastThrottle.brake){
-                 if (spikeSound == null) {
-                    spikeSound = new SpikeSound();
-                }
-                 spikeSound.play(0);
+        long now;
+        if ((now = System.currentTimeMillis()) - lastTimeSoundPlayed < 10) {
+            return; // don't play too many
+        }
+        if (spikeSound == null) {
+            spikeSound = new SpikeSound();
+        }
+        if (playBrakeSound && lastThrottle.brake) {
+
+            spikeSound.play(0);
+            lastTimeSoundPlayed = now;
         }
         if (playThrottleSound && Math.abs(lastThrottle.throttle - lastSoundThrottleValue) > playSoundThrottleChangeThreshold) {
-            long now;
-            if (lastThrottle.throttle > lastSoundThrottleValue && (now = System.currentTimeMillis()) - lastTimeSoundPlayed > 5) {
-                if (spikeSound == null) {
-                    spikeSound = new SpikeSound();
-                }
+            if (lastThrottle.throttle > lastSoundThrottleValue) {
                 spikeSound.play(1);
                 lastTimeSoundPlayed = now;
             }
             lastSoundThrottleValue = lastThrottle.throttle;
         }
+    }
+
+    /**
+     * @return the playBrakeSound
+     */
+    public boolean isPlayBrakeSound() {
+        return playBrakeSound;
+    }
+
+    /**
+     * @param playBrakeSound the playBrakeSound to set
+     */
+    public void setPlayBrakeSound(boolean playBrakeSound) {
+        this.playBrakeSound = playBrakeSound;
+        putBoolean("playBrakeSound",playBrakeSound);
     }
 
     public enum ControllerToUse {
@@ -119,6 +137,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
         setPropertyTooltip(lg, "logRacerDataEnabled", "enables logging of racer data");
         setPropertyTooltip(con, "controllerToUse", "Which controller to use to control car throttle");
         setPropertyTooltip("playThrottleSound", "plays a spike when throttle is increased to indicate controller active");
+        setPropertyTooltip("playBrakeSound", "plays a spike when brake is active");
         setPropertyTooltip("playSoundThrottleChangeThreshold", "threshold change in throttle to play sound");
 
     }
@@ -155,7 +174,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
             lastThrottle.throttle=0;
             lastThrottle.brake=false;
             hw.setThrottle(lastThrottle);
-            hw.close();
+//            hw.close();
         }
         filterChain.reset();
     }

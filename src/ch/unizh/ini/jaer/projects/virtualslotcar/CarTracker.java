@@ -212,6 +212,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
             }
             return filtered;
         }
+        computerControlledCarCluster=null;
         for (ClusterInterface c : clusters) {
             if (!c.isVisible()) {
                 continue;
@@ -349,7 +350,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
         private int lastSegmentChangeTimestamp = 0;
         int segmentHistoryPointer = 0; // ring pointer, points to next location in ring buffer
         LowpassFilter distFilter = new LowpassFilter(distanceFromTrackMetricTauMs);
-        boolean computerControlledCar = false;
+        boolean computerControlledCar = true;
         /**
          * segments per second traversed of the track
          */
@@ -586,9 +587,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
         @Override
         protected void prune() {
             super.prune();
-            if (wasRunningSuccessfully && computerControlledCar) {
-                determineIfcrashed();
-            }
+            determineIfcrashed();
         }
 
         private void determineIfcrashed() {
@@ -603,6 +602,10 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
             //                }
             //            }
             //         final float SPEED_FOR_CRASH = 10;
+            if (!computerControlledCar) {
+                crashed = false;
+                return;
+            }
             if (!wasRunningSuccessfully) {
                 crashed = false;
                 return;
