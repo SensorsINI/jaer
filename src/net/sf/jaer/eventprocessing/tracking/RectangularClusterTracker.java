@@ -513,10 +513,17 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 //                }
 //            }
             int lifetime=c.getLifetime();
+            
+            //TODO patch to handle clusters that are not hit with events
+            if(t>c.getLastEventTimestamp()) {
+                lifetime=t-c.getBirthTime();
+            }
+            
             float massThreshold=thresholdMassForVisibleCluster;
             if(highwayPerspectiveEnabled){
                 massThreshold*=c.getPerspectiveScaleFactor();
             }
+            // do not kill off clusters that were just born or  have not lived at least their clusterMassDecayTauUs
             if (((lifetime==0) || (lifetime>=clusterMassDecayTauUs)) && (c.getMassNow(t) < massThreshold)) {
                 massTooSmall = true;
             }
@@ -1645,7 +1652,9 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             return hasObtainedSupport;
         }
 
-        /** @return lifetime of cluster in timestamp ticks, measured as lastUpdateTime-firstEventTimestamp. */
+        /** @return lifetime of cluster in timestamp ticks, measured as lastUpdateTime-firstEventTimestamp. Note that lifetime only is increased with updates, so a cluster that is never updated 
+         never increases its lifetime.
+         */
         final public int getLifetime() {
             return lastUpdateTime - firstEventTimestamp;
         }
