@@ -26,6 +26,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 /**
  * Allows mouse control of head.
  * @author tobi
+ * @editor philipp
  */
 public class Head6DOF_GUI extends javax.swing.JFrame implements PropertyChangeListener {
 

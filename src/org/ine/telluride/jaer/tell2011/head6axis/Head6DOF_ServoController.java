@@ -39,6 +39,7 @@ import net.sf.jaer.hardwareinterface.serial.HWP_UART;
  * </pre>
  *
  * @author tobi
+ * @editor philipp
  */
 
 /**
@@ -86,6 +87,34 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
      * some position.
      */
     public static final int SERVO_QUEUE_LENGTH = 30; // was 20 originally
+
+    /**
+     * @return the EYE_PAN_LIMIT
+     */
+    public float getEYE_PAN_LIMIT() {
+        return EYE_PAN_LIMIT;
+    }
+
+    /**
+     * @return the EYE_TILT_LIMIT
+     */
+    public float getEYE_TILT_LIMIT() {
+        return EYE_TILT_LIMIT;
+    }
+
+    /**
+     * @return the HEAD_PAN_LIMIT
+     */
+    public float getHEAD_PAN_LIMIT() {
+        return HEAD_PAN_LIMIT;
+    }
+
+    /**
+     * @return the HEAD_TILT_LIMIT
+     */
+    public float getHEAD_TILT_LIMIT() {
+        return HEAD_TILT_LIMIT;
+    }
 
     public class GazeDirection implements Cloneable, Serializable {
 
@@ -369,7 +398,7 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
         }
         servoValues[servo] = value;
 //        serialPort.writeLn(String.format("%s%d=%d", CMD_SERVO, servo, float2servo(value))); // eg !S3=6000
-        String cmd = String.format("s%ds%d", servo, float2servo(servo, value));
+        String cmd = String.format("s%ds%d", servo, float2servo(servo, value)); //"servo" defines which servo is addressed; "float2servo" transforms the desired position into a PWM value
         if (!servoQueue.offer(cmd)) {
             log.warning("command \"" + cmd + "\" could not be queued for transmission");
         }
@@ -460,13 +489,13 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
     }
 
     public void setHeadDirection(float pan, float tilt) throws HardwareInterfaceException, UnsupportedEncodingException, IOException {
-        pan = clip(pan + headPanOffset, HEAD_PAN_LIMIT);
+        pan = clip(pan + headPanOffset, getHEAD_PAN_LIMIT());
         setServoValue(HEAD_PAN, gaze2servo(pan));
         gazeDirection.headDirection.x = pan;
-        tilt = clip(tilt + headTiltOffset, HEAD_TILT_LIMIT);
+        tilt = clip(tilt + headTiltOffset, getHEAD_TILT_LIMIT());
         setServoValue(HEAD_TILT, gaze2servo(-tilt));  // set -tilt for not inverted gui control
         gazeDirection.headDirection.y = tilt;
-     //   log.info("headDirection pan=" + pan + " tilt=" + tilt);
+    //    log.info("headDirection pan=" + pan + " tilt=" + tilt);
 //        getSupport().firePropertyChange("gazeDirection", null, gazeDirection);
     }
 
@@ -489,8 +518,8 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
      * @throws IOException
      */
     public void setEyeGazeDirection(float pan, float tilt) throws HardwareInterfaceException, UnsupportedEncodingException, IOException {
-        pan = clip(pan, EYE_PAN_LIMIT);
-        tilt = clip(tilt, EYE_TILT_LIMIT);
+        pan = clip(pan, getEYE_PAN_LIMIT());
+        tilt = clip(tilt, getEYE_TILT_LIMIT());
         setServoValue(EYE_LEFT_PAN, gaze2servo(pan + gazeDirection.vergence));
         gazeDirection.leftEyeGazeDirection.x = pan;
         setServoValue(EYE_RIGHT_PAN, gaze2servo(pan - gazeDirection.vergence));
@@ -500,7 +529,7 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
         setServoValue(EYE_RIGHT_TILT, gaze2servo(-tilt)); // servo is flipped over
         gazeDirection.rightEyeGazeDirection.y = tilt;
         gazeDirection.gazeDirection.setLocation(pan, tilt);
-     //   log.info("eyeDirection pan=" + pan + " tilt=" + tilt);
+  //      log.info("eyeDirection pan=" + pan + " tilt=" + tilt);
 //        getSupport().firePropertyChange("gazeDirection", null, gazeDirection);
     }
 
@@ -534,7 +563,7 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
         vergence = clip(vergence + vergenceOffset, VERGENCE_LIMIT);
         gazeDirection.vergence = vergence;
         setEyeGazeDirection(gazeDirection.gazeDirection.x, gazeDirection.gazeDirection.y);
-        log.info("eyeDirection vergence=" + vergence);
+        //log.info("eyeDirection vergence=" + vergence);
         //getSupport().firePropertyChange("gazeDirection", null, gazeDirection);
     }
 
