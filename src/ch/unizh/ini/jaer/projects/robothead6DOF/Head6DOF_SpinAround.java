@@ -87,7 +87,7 @@ public class Head6DOF_SpinAround extends EventFilter2D { // extends EventFilter 
             while (!stop) {
                 for (; eyeSpinCounter <= 70; eyeSpinCounter = eyeSpinCounter + 1) {
                     try {
-                        headControl.setEyeGazeDirection(-headControl.EYE_PAN_LIMIT + (eyeSpinValue), -headControl.EYE_TILT_LIMIT);
+                        headControl.setEyeGazeDirection(-headControl.getEYE_PAN_LIMIT() + (eyeSpinValue), -headControl.getEYE_TILT_LIMIT());
                         eyeSpinValue = eyeSpinValue + .01f;
                         Thread.sleep(SpinAround_SleepTime);
                     } catch (Exception e) {
@@ -96,7 +96,7 @@ public class Head6DOF_SpinAround extends EventFilter2D { // extends EventFilter 
                 }
                 for (; eyeSpinCounter > 70 && eyeSpinCounter <= 115; eyeSpinCounter = eyeSpinCounter + 1) {
                     try {
-                        headControl.setEyeGazeDirection(headControl.EYE_PAN_LIMIT, -headControl.EYE_TILT_LIMIT + (eyeSpinValue - .7f));
+                        headControl.setEyeGazeDirection(headControl.getEYE_PAN_LIMIT(),-headControl.getEYE_TILT_LIMIT() + (eyeSpinValue - .7f));
                         eyeSpinValue = eyeSpinValue + .01f;
                         Thread.sleep(SpinAround_SleepTime);
                     } catch (Exception e) {
@@ -105,7 +105,7 @@ public class Head6DOF_SpinAround extends EventFilter2D { // extends EventFilter 
                 }
                 for (; eyeSpinCounter > 115 && eyeSpinCounter <= 185; eyeSpinCounter = eyeSpinCounter + 1) {
                     try {
-                        headControl.setEyeGazeDirection(headControl.EYE_PAN_LIMIT - (eyeSpinValue - 1.15f), headControl.EYE_TILT_LIMIT);
+                        headControl.setEyeGazeDirection(headControl.getEYE_PAN_LIMIT() - (eyeSpinValue - 1.15f), headControl.getEYE_TILT_LIMIT());
                         eyeSpinValue = eyeSpinValue + .01f;
                         Thread.sleep(SpinAround_SleepTime);
                     } catch (Exception e) {
@@ -114,7 +114,7 @@ public class Head6DOF_SpinAround extends EventFilter2D { // extends EventFilter 
                 }
                 for (; eyeSpinCounter > 185 && eyeSpinCounter <= 230; eyeSpinCounter = eyeSpinCounter + 1) {
                     try {
-                        headControl.setEyeGazeDirection(-headControl.EYE_PAN_LIMIT, headControl.EYE_TILT_LIMIT - (eyeSpinValue - 1.85f));
+                        headControl.setEyeGazeDirection(-headControl.getEYE_PAN_LIMIT(), headControl.getEYE_TILT_LIMIT() - (eyeSpinValue - 1.85f));
                         eyeSpinValue = eyeSpinValue + .01f;
                         Thread.sleep(SpinAround_SleepTime);
                     } catch (Exception e) {

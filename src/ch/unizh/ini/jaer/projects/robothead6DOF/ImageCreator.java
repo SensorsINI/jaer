@@ -5,13 +5,13 @@
  */
 package ch.unizh.ini.jaer.projects.robothead6DOF;
 
-import org.ine.telluride.jaer.tell2011.head6axis.Head6DOF_ServoController;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.io.*;
 import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
+import java.util.TimerTask;
 import java.util.logging.Logger;
 import javax.swing.JFrame;
 import net.sf.jaer.chip.AEChip;
@@ -24,6 +24,7 @@ import net.sf.jaer.eventprocessing.filter.RotateFilter;
 import net.sf.jaer.eventprocessing.freme.Freme;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import org.ine.telluride.jaer.tell2011.head6axis.Head6DOF_ServoController;
 
 /**
  *
@@ -32,29 +33,38 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 public class ImageCreator extends FremeExtractor implements Observer {
 
     protected static final Logger log = Logger.getLogger("ImageCreator");
-    int currentRow = getInt("currentRow", 0);
-    int currentColumn = getInt("currentColumn", 0);
+    int currentRow = 0;
+    int currentColumn = 0;
     int warningCount = 10;
-    
+
     // pixel allocation after movement
-    private final float step = .01f;
-    final protected float startX = -.5f, startY = -.5f;
-    final protected float endX = .5f, endY = .5f;
-    private final int numRows = (int) ((endY - startY) / step); //-.5f bis +.5f
-    private final int numColumns = (int) ((endX - startX) / step); //-.5f bis +.5f
-    private final int offsetScale = (int) (1f * (step * 100));
-    final protected int sizeX, sizeY, size;
-    final protected float[] startGrayValues; 
-    final protected int startXpixel = (int) (offsetScale * startX);
-    final protected int startYpixel = (int) (offsetScale * startY);
-    volatile int columnOffset = 0;
-    volatile int rowOffset = 0;
-    
-    
+    private final float stepSize;
+    public final float eyeRangeX;
+    public final float eyeRangeY;
+    public final float headRangeX;
+    public final float headRangeY;
+    private final int numRows; //-.5f bis +.5f
+    private final int numColumns; //-.5f bis +.5f
+    private final int offsetScale;
+    public final int sizeX;
+    public final int sizeY;
+    public final int size;
+    //final protected float[] startGrayValues; 
+    float xOffset;
+    float yOffset;
+    public float grayValueScaling;
+    public boolean invert = false;
+    public boolean standAlone = true;
+    boolean jitteringActive = false;
+    java.util.Timer jitterTimer;
+    public float[] startPosition = new float[2];
+    public float jitterAmplitude = .0133f;
+    public float jitterFreqHz = 3.5f;
+    public boolean jitterEnabled = false;
+
     protected Freme<Float> freme;
     CaptureImage capture = null;
-    boolean gettingImage = false;
-    boolean capturing = true;
+    public boolean gettingImage = false;
     FilterChain filterChain = null;
     Head6DOF_ServoController headControl = null;
 
@@ -68,12 +78,29 @@ public class ImageCreator extends FremeExtractor implements Observer {
         filterChain.add(headControl);
         setEnclosedFilterChain(filterChain);
         this.chip = chip;
-        sizeX = chip.getSizeX() + (numColumns * offsetScale);
-        sizeY = chip.getSizeX() + (numRows * offsetScale);
+        final String jitt = "Jitter Options";
+        setPropertyTooltip(jitt, "jitterAmplitude", "the amplitude of the jitter; higher value results in larger circle");
+        setPropertyTooltip(jitt, "jitterFreqHz", "defines the jitter frequency");
+        setPropertyTooltip("Reset", "resets the image frame and fills it with the initial gray value again");
+        setPropertyTooltip("StartCaptureImage", "starts the rasterscan and the paiting on the image frame");
+        setPropertyTooltip("ToggleJittering", "toggles between constant jitter motion of the Eyes or no motion");
+        setPropertyTooltip("StopCaptureImage", "stops the rasterscan and the paiting on the image frame");
+        setPropertyTooltip("standAlone", "indicates if this filter is standalone or called by the ITDImageCreator filter");
+        headRangeX = headControl.getHEAD_PAN_LIMIT();
+        headRangeY = headControl.getHEAD_TILT_LIMIT();
+        eyeRangeX = headControl.getEYE_PAN_LIMIT();
+        eyeRangeY = headControl.getEYE_TILT_LIMIT();
+        stepSize = .01f;
+        numRows = (int) ((2 * headRangeY) / stepSize);
+        numColumns = (int) ((2 * headRangeX) / stepSize);
+        offsetScale = (int) (1f * (stepSize * 100));
+        sizeX = (int) (128 + (numColumns * offsetScale) + (((2 * eyeRangeX) / stepSize) * offsetScale));
+        sizeY = (int) (128 + (numRows * offsetScale) + (((2 * eyeRangeY) / stepSize) * offsetScale));
         size = sizeX * sizeY;
-        startGrayValues = new float[size];
-        freme = new Freme<Float>(sizeX, sizeY);
-        Arrays.fill(startGrayValues, .5f);
+        grayValueScaling = 0.001f;
+        freme = new Freme<Float>(getSizeX(), getSizeY());
+
+        //Arrays.fill(startGrayValues, .5f);
     }
 
     @Override
@@ -99,21 +126,24 @@ public class ImageCreator extends FremeExtractor implements Observer {
         }
         checkFreme();
         for (Object ein : out) {
-            PolarityEvent e = (PolarityEvent) ein;
-            int x = e.x + columnOffset;
-            int y = e.y + rowOffset;
-            int idx = getIndex(x, y);
-            boolean isOn = e.getPolaritySignum() > 0;
-            if (gettingImage && capturing) {
+            if (isGettingImage()) {
+                PolarityEvent e = (PolarityEvent) ein;
+                int x = (int) (e.x + getxOffset());  //getxOffset defines the x position of the pixel in the global picture
+                int y = (int) (e.y + getyOffset());  //getyOffset defines the y position of the pixel in the global picture
+                int idx = getIndex(x, y);
+                boolean isOn = e.getPolaritySignum() > 0;
+                if (invert == true) {
+                    isOn = !isOn;
+                }
                 float value = get(idx);
                 if (isOn) {
-                    set(idx, value + 0.001f);
+                    set(idx, value + getGrayValueScaling());
                 } else {
-                    set(idx, value - 0.001f);
+                    set(idx, value - getGrayValueScaling());
                 }
             }
         }
-        if (gettingImage) {
+        if (isGettingImage()) {
             repaintFreme();
         }
         return out;
@@ -121,7 +151,7 @@ public class ImageCreator extends FremeExtractor implements Observer {
 
     @Override
     public int getIndex(int x, int y) {
-        return (y * sizeX + x);
+        return (y * getSizeX() + x);
     }
 
     /**
@@ -130,15 +160,15 @@ public class ImageCreator extends FremeExtractor implements Observer {
      */
     @Override
     public void checkDisplay() {
-        if (rgbValues == null || rgbValues.length != 3 * size) {
-            rgbValues = new float[3 * size];
+        if (rgbValues == null || rgbValues.length != 3 * getSize()) {
+            rgbValues = new float[3 * getSize()];
         }
-        if (frame == null || display == null || display.getSizeX() != sizeX || display.getSizeY() != sizeY) {
+        if (frame == null || display == null || display.getSizeX() != getSizeX() || display.getSizeY() != getSizeY()) {
             display = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
-            display.setImageSize(sizeX, sizeY); // set dimensions of image      
+            display.setImageSize(getSizeX(), getSizeY()); // set dimensions of image      
 
             frame = new JFrame(getClass().getSimpleName());  // make a JFrame to hold it
-            frame.setPreferredSize(new Dimension(sizeX * 4, sizeY * 4));  // set the window size
+            frame.setPreferredSize(new Dimension(getSizeX() * 4, getSizeY() * 4));  // set the window size
             frame.getContentPane().add(display, BorderLayout.CENTER); // add the GLCanvas to the center of the window
             frame.pack(); // otherwise it wont fill up the display
         }
@@ -164,8 +194,8 @@ public class ImageCreator extends FremeExtractor implements Observer {
     @Override
     public void checkFreme() {
         checkDisplay();
-        if (freme == null || freme.size() != size) {
-            freme = new Freme<Float>(sizeX, sizeY);
+        if (freme == null || freme.size() != getSize()) {
+            freme = new Freme<Float>(getSizeX(), getSizeY());
             freme.fill(.5f);
             Arrays.fill(rgbValues, .5f);
             //repaintFreme();
@@ -194,22 +224,25 @@ public class ImageCreator extends FremeExtractor implements Observer {
     }
 
     public void doReset() throws HardwareInterfaceException, IOException {
-        headControl.setHeadDirection(0f, 0f);
-        headControl.setVergence(0f);
-        headControl.setEyeGazeDirection(0f, 0f);
+        checkFreme();
+        checkDisplay();
+        freme.fill(.5f);
+        Arrays.fill(rgbValues, .5f);
     }
 
     public void doStartCaptureImage() {
-        if (gettingImage == false) {
+        if (isGettingImage() == false) {
             checkFreme();
             checkDisplay();
             try {
                 freme.fill(.5f);
-                headControl.setHeadDirection(currentColumn * step, currentRow * step);
+                headControl.setHeadDirection(currentColumn * stepSize, currentRow * stepSize);
                 headControl.setVergence(.0f);
                 headControl.setEyeGazeDirection(.0f, .0f);
-                capture = new CaptureImage();
-                capture.start(); // starts the thread
+                if (isStandAlone() == true) {
+                    capture = new CaptureImage();
+                    capture.start(); // starts the thread
+                }
                 gettingImage = true;
             } catch (HardwareInterfaceException | IOException ex) {
                 log.severe("can not set robothead direction: " + ex.toString());
@@ -219,13 +252,228 @@ public class ImageCreator extends FremeExtractor implements Observer {
         }
     }
 
+    public void doToggleJittering() {
+        if (isJitteringActive() != true) {
+            setJitteringActive(true);
+        } else {
+            setJitteringActive(false);
+        }
+    }
+
     public void doStopCaptureImage() {
-        if (gettingImage == true) {
+        if (isGettingImage() == true) {
             capture.stopThread();
         } else {
             log.info("no active CaptureImage Thread");
         }
     }
+
+    /**
+     * @return the invert
+     */
+    boolean isInvert() {
+        return invert;
+    }
+
+    /**
+     * @param invert the invert to set
+     */
+    public void setInvert(boolean invert) {
+        this.invert = invert;
+    }
+
+    /**
+     * @return the xOffset
+     */
+    float getxOffset() {
+        return xOffset;
+    }
+
+    /**
+     * @param xOffset the xOffset to set
+     */
+    void setxOffset(float head, float eyes) {
+        this.xOffset = ((head + getHeadRangeX() + eyes + getEyeRangeX()) * 100);
+    }
+
+    /**
+     * @return the yOffset
+     */
+    float getyOffset() {
+        return yOffset;
+    }
+
+    /**
+     * @param yOffset the yOffset to set
+     */
+    void setyOffset(float head, float eyes) {
+        this.yOffset = ((head + getHeadRangeY() + eyes + getEyeRangeY()) * 100);
+    }
+
+    /**
+     * @return the eyeRangeX
+     */
+    public float getEyeRangeX() {
+        return eyeRangeX;
+    }
+
+    /**
+     * @return the eyeRangeY
+     */
+    public float getEyeRangeY() {
+        return eyeRangeY;
+    }
+
+    /**
+     * @return the headRangeX
+     */
+    public float getHeadRangeX() {
+        return headRangeX;
+    }
+
+    /**
+     * @return the headRangeY
+     */
+    public float getHeadRangeY() {
+        return headRangeY;
+    }
+
+    /**
+     * @return the sizeX
+     */
+    public int getSizeX() {
+        return sizeX;
+    }
+
+    /**
+     * @return the sizeY
+     */
+    public int getSizeY() {
+        return sizeY;
+    }
+
+    /**
+     * @return the size
+     */
+    public int getSize() {
+        return size;
+    }
+
+    /**
+     * @return the grayValueScaling
+     */
+    public float getGrayValueScaling() {
+        return grayValueScaling;
+    }
+
+    /**
+     * @return the standAlone
+     */
+    public boolean isStandAlone() {
+        return standAlone;
+    }
+
+    /**
+     * @param standAlone the standAlone to set
+     */
+    public void setStandAlone(boolean standAlone) {
+        this.standAlone = standAlone;
+    }
+
+    /**
+     * @return the gettingImage
+     */
+    public boolean isGettingImage() {
+        return gettingImage;
+    }
+
+    private class JittererTask extends TimerTask {
+
+        long startTime = System.currentTimeMillis();
+
+        JittererTask() {
+            super();
+        }
+
+        @Override
+        public void run() {
+            long t = System.currentTimeMillis() - startTime;
+            double phase = Math.PI * 2 * (double) t / 1000 * jitterFreqHz;
+            float dx = (float) (jitterAmplitude * Math.sin(phase));
+            float dy = (float) (jitterAmplitude * Math.cos(phase));
+            try {
+                headControl.setEyeGazeDirection(startPosition[0] + dx, startPosition[1] + dy);
+                if (headControl.gazeDirection.getGazeDirection().getX() + dx - headControl.gazeDirection.getGazeDirection().getX() < 0 || headControl.gazeDirection.getGazeDirection().getY() + dy - headControl.gazeDirection.getGazeDirection().getY() < 0) {
+                    setInvert(true);
+                    setxOffset((float) headControl.getGazeDirection().getHeadDirection().getX(), (float) headControl.getGazeDirection().getGazeDirection().getX());
+                    setyOffset((float) headControl.getGazeDirection().getHeadDirection().getY(), (float) headControl.getGazeDirection().getGazeDirection().getY());
+                } else {
+                    setInvert(false);
+                    setxOffset((float) headControl.getGazeDirection().getHeadDirection().getX(), (float) headControl.getGazeDirection().getGazeDirection().getX());
+                    setyOffset((float) headControl.getGazeDirection().getHeadDirection().getY(), (float) headControl.getGazeDirection().getGazeDirection().getY());
+                }
+            } catch (HardwareInterfaceException | IOException ex) {
+                log.severe(ex.toString());
+            }
+        }
+    }
+
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --JitterFreqHz--">
+    public float getJitterFreqHz() {
+        return jitterFreqHz;
+    }
+
+    /**
+     * Sets the frequency of the jitter.
+     *
+     * @param jitterFreqHz in Hz.
+     */
+    public void setJitterFreqHz(float jitterFreqHz) {
+        this.jitterFreqHz = jitterFreqHz;
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --JitterAmplitude--">
+    public float getJitterAmplitude() {
+        return jitterAmplitude;
+    }
+
+    /**
+     * Sets the amplitude (1/2 of peak to peak) of circular jitter of pan tilt
+     * during jittering
+     *
+     * @param jitterAmplitude the amplitude
+     */
+    public void setJitterAmplitude(float jitterAmplitude) {
+        this.jitterAmplitude = jitterAmplitude;
+    }
+    // </editor-fold>
+
+    // <editor-fold defaultstate="collapsed" desc="is/setter for JitteringAcitve">
+    /**
+     * @return the jitteringActive
+     */
+    boolean isJitteringActive() {
+        return jitteringActive;
+    }
+
+    /**
+     * @param jitteringActive the jitteringActive to set
+     */
+    void setJitteringActive(boolean jitteringActive) {
+        if (jitteringActive == true) {
+            setStandAlone(false);
+            jitterTimer = new java.util.Timer();
+            // Repeat the JitterTask without delay and with 20ms between executions
+            startPosition[0] = (float) headControl.gazeDirection.getGazeDirection().getX();
+            startPosition[1] = (float) headControl.gazeDirection.getGazeDirection().getY();
+            jitterTimer.scheduleAtFixedRate(new JittererTask(), 0, 20);
+        } else {
+            jitterTimer.cancel();
+            jitterTimer = null;
+        }
+        this.jitteringActive = jitteringActive;
+    }// </editor-fold>
 
     private class CaptureImage extends Thread {
 
@@ -246,8 +494,10 @@ public class ImageCreator extends FremeExtractor implements Observer {
             for (; currentRow < numRows;) {
                 if (currentColumn <= numColumns) {
                     try {
-                        headControl.setHeadDirection(startX + (currentColumn * step), startY + (currentRow * step));   //step = 0.16 == 20px; step = 0.02 == 2.5px
-                        columnOffset = currentColumn * offsetScale;
+                        headControl.setHeadDirection(-getHeadRangeX() + (currentColumn * stepSize), -getHeadRangeY() + (currentRow * stepSize));   //step = 0.16 == 20px; stepSize = 0.02 == 2.5px
+                        //columnOffset = currentColumn * offsetScale;
+                        setxOffset((float) headControl.getGazeDirection().getHeadDirection().getX(), (float) headControl.getGazeDirection().getGazeDirection().getX());
+                        setyOffset((float) headControl.getGazeDirection().getHeadDirection().getY(), (float) headControl.getGazeDirection().getGazeDirection().getY());
                         Thread.sleep(12);
                     } catch (HardwareInterfaceException | IOException | InterruptedException ex) {
                         log.severe(ex.toString());
@@ -255,13 +505,13 @@ public class ImageCreator extends FremeExtractor implements Observer {
                     currentColumn = currentColumn + 1;
                 } else {
                     currentRow = currentRow + 1;
-                    rowOffset = currentRow * offsetScale;
+                    //rowOffset = currentRow * offsetScale;
                     currentColumn = 0;
                     try {
-                        capturing = false;
-                        headControl.setHeadDirection(startX + (currentColumn * step), startY + (currentRow * step));
-                        Thread.sleep(500);
-                        capturing = true;
+                        gettingImage = false;
+                        headControl.setHeadDirection(-getHeadRangeX() + (currentColumn * stepSize), -getHeadRangeY() + (currentRow * stepSize));
+                        Thread.sleep(1500);
+                        gettingImage = true;
                     } catch (HardwareInterfaceException | IOException | InterruptedException ex) {
                         log.severe(ex.toString());
                     }

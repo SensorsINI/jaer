@@ -19,6 +19,7 @@ import org.ine.telluride.jaer.tell2011.head6axis.Head6DOF_ServoController;
  * communication between the panTiltThread and the AdressEvent-Filters.
  *
  * @author Holger
+ * see original at ch.unizh.ini.jaer.projects.cochsoundloc
  */
 public class PanTilt_robothead6DOF {
 

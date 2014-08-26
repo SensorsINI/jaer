@@ -9,6 +9,7 @@ package ch.unizh.ini.jaer.projects.robothead6DOF;
  * This object is used to send control commands to the ITDFilter
  *
  * @author Holger
+ * see original at ch.unizh.ini.jaer.projects.cochsoundloc
  */
 public class CommObjForITDFilter_robothead6DOF {
     private int command = 0; // 0=noJob, 1=startChannelCalibrationWithGivenITD, 2=StopThisChannelCalibration, 3=CalibratingAuditoryMap

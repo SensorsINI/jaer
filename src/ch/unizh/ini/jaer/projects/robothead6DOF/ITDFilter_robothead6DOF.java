@@ -53,55 +53,56 @@ import org.ine.telluride.jaer.tell2011.head6axis.Head6DOF_ServoController;
  * Extracts interaural time difference (ITD) from a binaural cochlea input.
  *
  * @author Holger
+ * see original at ch.unizh.ini.jaer.projects.cochsoundloc
  *
- * edited pollITDEvent() for the robothead @author Philipp
+ * @editor Philipp
  */
 @Description("Measures ITD (Interaural time difference) using a variety of methods")
 public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, FrameAnnotater, RemoteControlled {
     
     protected static final Logger log = Logger.getLogger("ITDFilter_robothead6DOF");
     private ITDCalibrationGaussians calibration = null;
-    private float averagingDecay = getPrefs().getFloat("ITDFilter.averagingDecay", 1);
-    private int maxITD = getPrefs().getInt("ITDFilter.maxITD", 800);
-    private int numOfBins = getPrefs().getInt("ITDFilter.numOfBins", 16);
-    private int maxWeight = getPrefs().getInt("ITDFilter.maxWeight", 5);
-    private int dimLastTs = getPrefs().getInt("ITDFilter.dimLastTs", 4);
-    private int maxWeightTime = getPrefs().getInt("ITDFilter.maxWeightTime", 500000);
-    private boolean display = getPrefs().getBoolean("ITDFilter.display", false);
-    private boolean displayNormalize = getPrefs().getBoolean("ITDFilter.displayNormalize", true);
-    private boolean displaySoundDetected = getPrefs().getBoolean("ITDFilter.displaySoundDetected", true);
-    private boolean useLaterSpikeForWeight = getPrefs().getBoolean("ITDFilter.useLaterSpikeForWeight", true);
-    private boolean usePriorSpikeForWeight = getPrefs().getBoolean("ITDFilter.usePriorSpikeForWeight", true);
-    private boolean computeMeanInLoop = getPrefs().getBoolean("ITDFilter.computeMeanInLoop", true);
-    private boolean writeAvgITD2File = getPrefs().getBoolean("ITDFilter.writeAvgITD2File", false);
-    private boolean writeITD2File = getPrefs().getBoolean("ITDFilter.writeITD2File", false);
-    private boolean sendITDsToOtherThread = getPrefs().getBoolean("ITDFilter.sendITDsToOtherThread", false);
-    private int itdEventQueueSize = getPrefs().getInt("ITDFilter.itdEventQueueSize", 1000);
-    private int timeLocalExtremaDetection = getPrefs().getInt("ITDFilter.timeLocalExtremaDetection", 200000);
-    private boolean writeBin2File = getPrefs().getBoolean("ITDFilter.writeBin2File", false);
-    private boolean saveFrequenciesSeperately = getPrefs().getBoolean("ITDFilter.saveFrequenciesSeperately", false);
-    private boolean invert = getPrefs().getBoolean("ITDFilter.invert", false);
-    private boolean write2FileForEverySpike = getPrefs().getBoolean("ITDFilter.write2FileForEverySpike", false);
-    private boolean weightFrequencies = getPrefs().getBoolean("ITDFilter.weightFrequencies", false);
-    private boolean useRidgeRegression = getPrefs().getBoolean("ITDFilter.useRidgeRegression", false);
-    private boolean use1DRegression = getPrefs().getBoolean("ITDFilter.use1DRegression", false);
-    private boolean normToConfThresh = getPrefs().getBoolean("ITDFilter.normToConfThresh", false);
-    private boolean showAnnotations = getPrefs().getBoolean("ITDFilter.showAnnotations", false);
-    private int confidenceThreshold = getPrefs().getInt("ITDFilter.confidenceThreshold", 30);
-    private int activityThreshold = getPrefs().getInt("ITDFilter.activityThreshold", 30);
-    private int numLoopMean = getPrefs().getInt("ITDFilter.numLoopMean", 2);
-    private int useLowerChannel = getPrefs().getInt("ITDFilter.useLowerChannel", 0);
-    private int useUpperChannel = getPrefs().getInt("ITDFilter.useUpperChannel", 63);
-    private int numOfCochleaChannels = useUpperChannel + 1 - useLowerChannel;
-    private boolean useCalibration = getPrefs().getBoolean("ITDFilter.useCalibration", false);
-    private String calibrationFilePath = getPrefs().get("ITDFilter.calibrationFilePath", null);
+    private float averagingDecay = getPrefs().getFloat("ITDFilter_robothead6DOF.averagingDecay", 1);
+    private int maxITD = getPrefs().getInt("ITDFilter_robothead6DOF.maxITD", 800);
+    private int numOfBins = getPrefs().getInt("ITDFilter_robothead6DOF.numOfBins", 16);
+    private int maxWeight = getPrefs().getInt("ITDFilter_robothead6DOF.maxWeight", 5);
+    private int dimLastTs = getPrefs().getInt("ITDFilter_robothead6DOF.dimLastTs", 4);
+    private int maxWeightTime = getPrefs().getInt("ITDFilter_robothead6DOF.maxWeightTime", 500000);
+    private boolean display = getPrefs().getBoolean("ITDFilter_robothead6DOF.display", false);
+    private boolean displayNormalize = getPrefs().getBoolean("ITDFilter_robothead6DOF.displayNormalize", true);
+    private boolean displaySoundDetected = getPrefs().getBoolean("ITDFilter_robothead6DOF.displaySoundDetected", true);
+    private boolean useLaterSpikeForWeight = getPrefs().getBoolean("ITDFilter_robothead6DOF.useLaterSpikeForWeight", true);
+    private boolean usePriorSpikeForWeight = getPrefs().getBoolean("ITDFilter_robothead6DOF.usePriorSpikeForWeight", true);
+    private boolean computeMeanInLoop = getPrefs().getBoolean("ITDFilter_robothead6DOF.computeMeanInLoop", true);
+    private boolean writeAvgITD2File = getPrefs().getBoolean("ITDFilter_robothead6DOF.writeAvgITD2File", false);
+    private boolean writeITD2File = getPrefs().getBoolean("ITDFilter_robothead6DOF.writeITD2File", false);
+    private boolean sendITDsToOtherThread = getPrefs().getBoolean("ITDFilter_robothead6DOF.sendITDsToOtherThread", false);
+    private int itdEventQueueSize = getPrefs().getInt("ITDFilter_robothead6DOF.itdEventQueueSize", 1000);
+    private int timeLocalExtremaDetection = getPrefs().getInt("ITDFilter_robothead6DOF.timeLocalExtremaDetection", 200000);
+    private boolean writeBin2File = getPrefs().getBoolean("ITDFilter_robothead6DOF.writeBin2File", false);
+    private boolean saveFrequenciesSeperately = getPrefs().getBoolean("ITDFilter_robothead6DOF.saveFrequenciesSeperately", false);
+    private boolean invert = getPrefs().getBoolean("ITDFilter_robothead6DOF.invert", false);
+    private boolean write2FileForEverySpike = getPrefs().getBoolean("ITDFilter_robothead6DOF.write2FileForEverySpike", false);
+    private boolean weightFrequencies = getPrefs().getBoolean("ITDFilter_robothead6DOF.weightFrequencies", false);
+    private boolean useRidgeRegression = getPrefs().getBoolean("ITDFilter_robothead6DOF.useRidgeRegression", false);
+    private boolean use1DRegression = getPrefs().getBoolean("ITDFilter_robothead6DOF.use1DRegression", false);
+    private boolean normToConfThresh = getPrefs().getBoolean("ITDFilter_robothead6DOF.normToConfThresh", false);
+    private boolean showAnnotations = getPrefs().getBoolean("ITDFilter_robothead6DOF.showAnnotations", false);
+    private int confidenceThreshold = getPrefs().getInt("ITDFilter_robothead6DOF.confidenceThreshold", 30);
+    private int activityThreshold = getPrefs().getInt("ITDFilter_robothead6DOF.activityThreshold", 30);
+    private int numLoopMean = getPrefs().getInt("ITDFilter_robothead6DOF.numLoopMean", 2);
+    private int useLowerChannel = getPrefs().getInt("ITDFilter_robothead6DOF.useLowerChannel", 0);
+    private int useUpperChannel = getPrefs().getInt("ITDFilter_robothead6DOF.useUpperChannel", 63);
+    private int numOfCochleaChannels = 64;
+    private boolean useCalibration = getPrefs().getBoolean("ITDFilter_robothead6DOF.useCalibration", false);
+    private String calibrationFilePath = getPrefs().get("ITDFilter_robothead6DOF.calibrationFilePath", null);
     /// beamforming
-    private boolean beamFormingEnabled = getBoolean("beamFormingEnabled", false);
-    private int beamFormingRangeUs = getInt("beamFormingRangeUs", 100);
-    private float beamFormingITDUs = getFloat("beamFormingITDUs", Float.NaN);
+    private boolean beamFormingEnabled = getBoolean("ITDFilter_robothead6DOF.beamFormingEnabled", false);
+    private int beamFormingRangeUs = getInt("ITDFilter_robothead6DOF.beamFormingRangeUs", 100);
+    private float beamFormingITDUs = getFloat("ITDFilter_robothead6DOF.beamFormingITDUs", Float.NaN);
     // UDP messages
-    private String sendITD_UDP_port = getString("sendITD_UDP_port", "localhost:9999");
-    private boolean sendITD_UDP_Messages = getBoolean("sendITD_UDP_Messages", false);
+    private String sendITD_UDP_port = getString("ITDFilter_robothead6DOF.sendITD_UDP_port", "localhost:9999");
+    private boolean sendITD_UDP_Messages = getBoolean("ITDFilter_robothead6DOF.sendITD_UDP_Messages", false);
     protected DatagramChannel channel = null;
     protected DatagramSocket socket = null;
     int packetSequenceNumber = 0;
@@ -240,8 +241,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
         fstream = new FileWriter(path);
         AvgITDFile = new BufferedWriter(fstream);
         AvgITDFile.write("time\tITD\tconf\n");
-        getPrefs().putBoolean("ITDFilter.writeAvgITD2File", true);
-        getSupport().firePropertyChange("writeAvgITD2File", writeAvgITD2File, true);
+        getPrefs().putBoolean("ITDFilter_robothead6DOF.writeAvgITD2File", true);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.writeAvgITD2File", writeAvgITD2File, true);
         writeAvgITD2File = true;
     }
 
@@ -260,8 +261,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
         }
         titles += "\n";
         freqBinFile.write(titles);
-        getPrefs().putBoolean("ITDFilter.saveFrequenciesSeperately", true);
-        getSupport().firePropertyChange("saveFrequenciesSeperately", saveFrequenciesSeperately, true);
+        getPrefs().putBoolean("ITDFilter_robothead6DOF.saveFrequenciesSeperately", true);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.saveFrequenciesSeperately", saveFrequenciesSeperately, true);
         saveFrequenciesSeperately = true;
     }
 
@@ -344,17 +345,17 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
 
         useMedian, useMean, useMax
     };
-    private EstimationMethod estimationMethod = EstimationMethod.valueOf(getPrefs().get("ITDFilter.estimationMethod", "useMax"));
+    private EstimationMethod estimationMethod = EstimationMethod.valueOf(getPrefs().get("ITDFilter_robothead6DOF.estimationMethod", "useMax"));
 
     public enum AMSprocessingMethod {
 
         NeuronsIndividually, AllNeuronsTogether, StoreSeparetlyCompareEvery
     };
-    private AMSprocessingMethod amsProcessingMethod = AMSprocessingMethod.valueOf(getPrefs().get("ITDFilter.amsProcessingMethod", "NeuronsIndividually"));
+    private AMSprocessingMethod amsProcessingMethod = AMSprocessingMethod.valueOf(getPrefs().get("ITDFilter_robothead6DOF.amsProcessingMethod", "NeuronsIndividually"));
     //    public enum UseGanglionCellType {
     //        LPF, BPF
     //    };
-    private CochleaAMSEvent.FilterType useGanglionCellType = CochleaAMSEvent.FilterType.valueOf(getPrefs().get("ITDFilter.useGanglionCellType", "LPF"));
+    private CochleaAMSEvent.FilterType useGanglionCellType = CochleaAMSEvent.FilterType.valueOf(getPrefs().get("ITDFilter_robothead6DOF.useGanglionCellType", "LPF"));
     private boolean hasMultipleGanglionCellTypes = false;
     //    private ActionListener updateBinFrame = new ActionListener() {
     //
@@ -428,7 +429,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
         setPropertyTooltip(bf, "beamFormingITDUs", "explicit ITD to pass through; set to NaN to pass around peak measured ITD");
 
         if (chip.getRemoteControl() != null) {
-            chip.getRemoteControl().addCommandListener(this, "itdfilter", "Testing remotecontrol of itdfilter.");
+            chip.getRemoteControl().addCommandListener(this, "ITDFilter_robothead6DOF.itdfilter", "Testing remotecontrol of itdfilter.");
         }
 
         setSendITD_UDP_port(sendITD_UDP_port);
@@ -501,7 +502,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
                 }
 
                 if (i.x < useLowerChannel || i.x > useUpperChannel)  {
-                    log.warning("there was a BasicEvent i with i.x=" + i.x + " that was outside of the selceted channel range. Therefore this event gets discarded");
+                  //  log.warning("there was a BasicEvent i with i.x=" + i.x + " that was outside of the selceted channel range. Therefore this event gets discarded");
                 } else {
                     int cursor = lastTsCursor[i.x][ganglionCellThreshold][1 - ear];
                     do {
@@ -558,7 +559,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
                                     ITDEventQueue = new ArrayBlockingQueue(itdEventQueueSize);
                                 }
                                 ITDEvent itdEvent = new ITDEvent(diff, i.timestamp, i.x, lastWeight);
-                                boolean success = ITDEventQueue.offer(itdEvent);
+                                boolean success = ITDEventQueue.offer(bestITD);
                                 if (success == false) {
 //                                   ITDEventQueue.clear();
                                     ITDEventQueue.take();
@@ -566,6 +567,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
 //                                    log.warning("Could not add ITD-Event to the ITDEventQueue. Probably itdEventQueueSize is too small!!!");
                                 } else {
                                     ITDEventQueueFull = false;
+                                    //log.info("added ITD Event: " + Integer.toString(itdEvent.getITD()) + " on channel: " + Integer.toString(i.x));
                                 }
                             }
 
@@ -799,7 +801,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
 
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
-        //        log.info("ITDFilter.setFilterEnabled() is called");
+        //        log.info("ITDFilter_robothead6DOF.setFilterEnabled() is called");
         super.setFilterEnabled(yes);
         if (yes) {
             //            try {
@@ -808,7 +810,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
             //                log.warning("In genBins() caught exception " + e);
             //                e.printStackTrace();
             //            }
-            //            display = getPrefs().getBoolean("ITDFilter.display", false);
+            //            display = getPrefs().getBoolean("ITDFilter_robothead6DOF.display", false);
             //            setDisplay(display);
             initFilter();
         }
@@ -817,7 +819,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     @Override
     public void update(Observable o, Object arg) {
         if (arg != null) {
-            //            log.info("ITDFilter.update() is called from " + o + " with arg=" + arg);
+            //            log.info("ITDFilter_robothead6DOF.update() is called from " + o + " with arg=" + arg);
             if (arg.equals("eventClass")) {
                 if (chip.getEventClass() == CochleaAMSEvent.class) {
                     hasMultipleGanglionCellTypes = true;
@@ -836,8 +838,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setMaxITD(int maxITD) {
-        getPrefs().putInt("ITDFilter.maxITD", maxITD);
-        getSupport().firePropertyChange("maxITD", this.maxITD, maxITD);
+        getPrefs().putInt("ITDFilter_robothead6DOF.maxITD", maxITD);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.maxITD", this.maxITD, maxITD);
         this.maxITD = maxITD;
         createBins();
     }
@@ -847,8 +849,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setNumOfBins(int numOfBins) {
-        getPrefs().putInt("ITDFilter.numOfBins", numOfBins);
-        getSupport().firePropertyChange("numOfBins", this.numOfBins, numOfBins);
+        getPrefs().putInt("ITDFilter_robothead6DOF.numOfBins", numOfBins);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.numOfBins", this.numOfBins, numOfBins);
         this.numOfBins = numOfBins;
         createBins();
     }
@@ -858,8 +860,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setMaxWeight(int maxWeight) {
-        getPrefs().putInt("ITDFilter.maxWeight", maxWeight);
-        getSupport().firePropertyChange("maxWeight", this.maxWeight, maxWeight);
+        getPrefs().putInt("ITDFilter_robothead6DOF.maxWeight", maxWeight);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.maxWeight", this.maxWeight, maxWeight);
         this.maxWeight = maxWeight;
         if (!isFilterEnabled()) {
             return;
@@ -872,8 +874,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setConfidenceThreshold(int confidenceThreshold) {
-        getPrefs().putInt("ITDFilter.confidenceThreshold", confidenceThreshold);
-        getSupport().firePropertyChange("confidenceThreshold", this.confidenceThreshold, confidenceThreshold);
+        getPrefs().putInt("ITDFilter_robothead6DOF.confidenceThreshold", confidenceThreshold);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.confidenceThreshold", this.confidenceThreshold, confidenceThreshold);
         this.confidenceThreshold = confidenceThreshold;
     }
 
@@ -882,8 +884,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setActivityThreshold(int activityThreshold) {
-        getPrefs().putInt("ITDFilter.activityThreshold", activityThreshold);
-        getSupport().firePropertyChange("activityThreshold", this.activityThreshold, activityThreshold);
+        getPrefs().putInt("ITDFilter_robothead6DOF.activityThreshold", activityThreshold);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.activityThreshold", this.activityThreshold, activityThreshold);
         this.activityThreshold = activityThreshold;
     }
 
@@ -892,8 +894,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setItdEventQueueSize(int itdEventQueueSize) {
-        getPrefs().putInt("ITDFilter.itdEventQueueSize", itdEventQueueSize);
-        getSupport().firePropertyChange("itdEventQueueSize", this.itdEventQueueSize, itdEventQueueSize);
+        getPrefs().putInt("ITDFilter_robothead6DOF.itdEventQueueSize", itdEventQueueSize);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.itdEventQueueSize", this.itdEventQueueSize, itdEventQueueSize);
         this.itdEventQueueSize = itdEventQueueSize;
         if (sendITDsToOtherThread) {
             ITDEventQueue = new ArrayBlockingQueue(itdEventQueueSize);
@@ -905,8 +907,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setTimeLocalExtremaDetection(int timeLocalExtremaDetection) {
-        getPrefs().putInt("ITDFilter.timeLocalExtremaDetection", timeLocalExtremaDetection);
-        getSupport().firePropertyChange("timeLocalExtremaDetection", this.timeLocalExtremaDetection, timeLocalExtremaDetection);
+        getPrefs().putInt("ITDFilter_robothead6DOF.timeLocalExtremaDetection", timeLocalExtremaDetection);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.timeLocalExtremaDetection", this.timeLocalExtremaDetection, timeLocalExtremaDetection);
         this.timeLocalExtremaDetection = timeLocalExtremaDetection;
     }
 
@@ -915,8 +917,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setMaxWeightTime(int maxWeightTime) {
-        getPrefs().putInt("ITDFilter.maxWeightTime", maxWeightTime);
-        getSupport().firePropertyChange("maxWeightTime", this.maxWeightTime, maxWeightTime);
+        getPrefs().putInt("ITDFilter_robothead6DOF.maxWeightTime", maxWeightTime);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.maxWeightTime", this.maxWeightTime, maxWeightTime);
         this.maxWeightTime = maxWeightTime;
         if (!isFilterEnabled()) {
             return;
@@ -929,8 +931,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setDimLastTs(int dimLastTs) {
-        getPrefs().putInt("ITDFilter.dimLastTs", dimLastTs);
-        getSupport().firePropertyChange("dimLastTs", this.dimLastTs, dimLastTs);
+        getPrefs().putInt("ITDFilter_robothead6DOF.dimLastTs", dimLastTs);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.dimLastTs", this.dimLastTs, dimLastTs);
         this.dimLastTs = dimLastTs;
         initFilter();
     }
@@ -940,8 +942,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setNumLoopMean(int numLoopMean) {
-        getPrefs().putInt("ITDFilter.numLoopMean", numLoopMean);
-        getSupport().firePropertyChange("numLoopMean", this.numLoopMean, numLoopMean);
+        getPrefs().putInt("ITDFilter_robothead6DOF.numLoopMean", numLoopMean);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.numLoopMean", this.numLoopMean, numLoopMean);
         this.numLoopMean = numLoopMean;
         if (!isFilterEnabled() || (computeMeanInLoop == false)) {
             return;
@@ -958,10 +960,10 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setUseLowerChannel(int useLowerChannel) {
-        getPrefs().putInt("ITDFilter.useLowerChannel", useLowerChannel);
-        getSupport().firePropertyChange("useLowerChannel", this.useLowerChannel, useLowerChannel);
+        getPrefs().putInt("ITDFilter_robothead6DOF.useLowerChannel", useLowerChannel);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.useLowerChannel", this.useLowerChannel, useLowerChannel);
         this.useLowerChannel = useLowerChannel;       
-        numOfCochleaChannels = useUpperChannel + 1 - useLowerChannel;
+        numOfCochleaChannels = 64;
         lastTs = new int[numOfCochleaChannels][numNeuronTypes][2][dimLastTs];
         lastTsCursor = new int[numOfCochleaChannels][numNeuronTypes][2];
     }
@@ -971,10 +973,10 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setUseUpperChannel(int useUpperChannel) {
-        getPrefs().putInt("ITDFilter.numOfCochleaChannels", useUpperChannel);
-        getSupport().firePropertyChange("numOfCochleaChannels", this.useUpperChannel, useUpperChannel);
+        getPrefs().putInt("ITDFilter_robothead6DOF.numOfCochleaChannels", useUpperChannel);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.numOfCochleaChannels", this.useUpperChannel, useUpperChannel);
         this.useUpperChannel = useUpperChannel;
-        numOfCochleaChannels = useUpperChannel + 1 - useLowerChannel;
+        numOfCochleaChannels = 64;
         lastTs = new int[numOfCochleaChannels][numNeuronTypes][2][dimLastTs];
         lastTsCursor = new int[numOfCochleaChannels][numNeuronTypes][2];
     }
@@ -985,8 +987,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setAveragingDecay(float averagingDecay) {
-        getPrefs().putDouble("ITDFilter.averagingDecay", averagingDecay);
-        getSupport().firePropertyChange("averagingDecay", this.averagingDecay, averagingDecay);
+        getPrefs().putDouble("ITDFilter_robothead6DOF.averagingDecay", averagingDecay);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.averagingDecay", this.averagingDecay, averagingDecay);
         this.averagingDecay = averagingDecay;
         if (!isFilterEnabled()) {
             return;
@@ -1004,7 +1006,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     public void doToggleITDDisplay() {
         boolean old = isDisplay();
         setDisplay(!isDisplay());
-        getSupport().firePropertyChange("display", old, display);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.display", old, display);
     }
 
     /**
@@ -1059,8 +1061,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setDisplay(boolean display) {
-        getPrefs().putBoolean("ITDFilter.display", display);
-        getSupport().firePropertyChange("display", this.display, display);
+        getPrefs().putBoolean("ITDFilter_robothead6DOF.display", display);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.display", this.display, display);
         this.display = display;
         if (!isFilterEnabled()) {
             return;
@@ -1086,7 +1088,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
                     //                            log.info("disposing of " + frame);
                     //                            frame.dispose(); // close ITD frame if filter frame is closed.
                     //                            frame = null;
-                    //                            ITDFilter.this.display = false; // set this so we know that itdframe has been disposed so that next button press on doToggleITDDisplay works correctly
+                    //                            ITDFilter_robothead6DOF.this.display = false; // set this so we know that itdframe has been disposed so that next button press on doToggleITDDisplay works correctly
                     //                        }
                     //                    });
                     log.info("ITD-Jframe created with height=" + frame.getHeight() + " and width:" + frame.getWidth());
@@ -1111,8 +1113,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setUseLaterSpikeForWeight(boolean useLaterSpikeForWeight) {
-        getPrefs().putBoolean("ITDFilter.useLaterSpikeForWeight", useLaterSpikeForWeight);
-        getSupport().firePropertyChange("useLaterSpikeForWeight", this.useLaterSpikeForWeight, useLaterSpikeForWeight);
+        getPrefs().putBoolean("ITDFilter_robothead6DOF.useLaterSpikeForWeight", useLaterSpikeForWeight);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.useLaterSpikeForWeight", this.useLaterSpikeForWeight, useLaterSpikeForWeight);
         this.useLaterSpikeForWeight = useLaterSpikeForWeight;
         if (!isFilterEnabled()) {
             return;
@@ -1125,8 +1127,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setUsePriorSpikeForWeight(boolean usePriorSpikeForWeight) {
-        getPrefs().putBoolean("ITDFilter.usePriorSpikeForWeight", usePriorSpikeForWeight);
-        getSupport().firePropertyChange("usePriorSpikeForWeight", this.usePriorSpikeForWeight, usePriorSpikeForWeight);
+        getPrefs().putBoolean("ITDFilter_robothead6DOF.usePriorSpikeForWeight", usePriorSpikeForWeight);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.usePriorSpikeForWeight", this.usePriorSpikeForWeight, usePriorSpikeForWeight);
         this.usePriorSpikeForWeight = usePriorSpikeForWeight;
         if (!isFilterEnabled()) {
             return;
@@ -1160,8 +1162,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
                 log.warning("Error: " + e.getMessage());
             }
         }
-        getPrefs().putBoolean("ITDFilter.writeBin2File", writeBin2File);
-        getSupport().firePropertyChange("writeBin2File", this.writeBin2File, writeBin2File);
+        getPrefs().putBoolean("ITDFilter_robothead6DOF.writeBin2File", writeBin2File);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.writeBin2File", this.writeBin2File, writeBin2File);
         this.writeBin2File = writeBin2File;
     }
 
@@ -1193,8 +1195,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
             }
             freqBins = null;
         }
-        getPrefs().putBoolean("ITDFilter.saveFrequenciesSeperately", saveFrequenciesSeperately);
-        getSupport().firePropertyChange("saveFrequenciesSeperately", this.saveFrequenciesSeperately, saveFrequenciesSeperately);
+        getPrefs().putBoolean("ITDFilter_robothead6DOF.saveFrequenciesSeperately", saveFrequenciesSeperately);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.saveFrequenciesSeperately", this.saveFrequenciesSeperately, saveFrequenciesSeperately);
         this.saveFrequenciesSeperately = saveFrequenciesSeperately;
     }
 
@@ -1221,8 +1223,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
                 //Close the output stream
                 AvgITDFile.close();
                 AvgITDFile = null;
-                getPrefs().putBoolean("ITDFilter.writeAvgITD2File", writeAvgITD2File);
-                getSupport().firePropertyChange("writeAvgITD2File", this.writeAvgITD2File, writeAvgITD2File);
+                getPrefs().putBoolean("ITDFilter_robothead6DOF.writeAvgITD2File", writeAvgITD2File);
+                getSupport().firePropertyChange("ITDFilter_robothead6DOF.writeAvgITD2File", this.writeAvgITD2File, writeAvgITD2File);
                 this.writeAvgITD2File = writeAvgITD2File;
             } catch (Exception e) {//Catch exception if any
                 log.warning("Error: " + e.getMessage());
@@ -1235,8 +1237,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setWriteITD2File(boolean writeITD2File) {
-        getPrefs().putBoolean("ITDFilter.writeITD2File", writeITD2File);
-        getSupport().firePropertyChange("writeITD2File", this.writeITD2File, writeITD2File);
+        getPrefs().putBoolean("ITDFilter_robothead6DOF.writeITD2File", writeITD2File);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.writeITD2File", this.writeITD2File, writeITD2File);
         this.writeITD2File = writeITD2File;
 
         if (writeITD2File == true) {
@@ -1252,8 +1254,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
                     ITDFile = new BufferedWriter(fstream);
                     ITDFile.write("time\tITD\tchan\tweight\n");
 
-                    getPrefs().putBoolean("ITDFilter.writeITD2File", writeITD2File);
-                    getSupport().firePropertyChange("writeITD2File", this.writeITD2File, writeITD2File);
+                    getPrefs().putBoolean("ITDFilter_robothead6DOF.writeITD2File", writeITD2File);
+                    getSupport().firePropertyChange("ITDFilter_robothead6DOF.writeITD2File", this.writeITD2File, writeITD2File);
                     this.writeITD2File = writeITD2File;
                 }
             } catch (Exception e) {//Catch exception if any
@@ -1275,8 +1277,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setSendITDsToOtherThread(boolean sendITDsToOtherThread) {
-        getPrefs().putBoolean("ITDFilter.sendITDsToOtherThread", sendITDsToOtherThread);
-        getSupport().firePropertyChange("sendITDsToOtherThread", this.sendITDsToOtherThread, sendITDsToOtherThread);
+        getPrefs().putBoolean("ITDFilter_robothead6DOF.sendITDsToOtherThread", sendITDsToOtherThread);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.sendITDsToOtherThread", this.sendITDsToOtherThread, sendITDsToOtherThread);
         this.sendITDsToOtherThread = sendITDsToOtherThread;
         if (sendITDsToOtherThread == true) {
             ITDEventQueue = new ArrayBlockingQueue(itdEventQueueSize);
@@ -1290,8 +1292,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setDisplaySoundDetected(boolean displaySoundDetected) {
-        getPrefs().putBoolean("ITDFilter.displaySoundDetected", displaySoundDetected);
-        getSupport().firePropertyChange("displaySoundDetected", this.displaySoundDetected, displaySoundDetected);
+        getPrefs().putBoolean("ITDFilter_robothead6DOF.displaySoundDetected", displaySoundDetected);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.displaySoundDetected", this.displaySoundDetected, displaySoundDetected);
         this.displaySoundDetected = displaySoundDetected;
         if (frame != null) {
             frame.binsPanel.setDisplaySoundDetected(displaySoundDetected);
@@ -1303,8 +1305,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setDisplayNormalize(boolean displayNormalize) {
-        getPrefs().putBoolean("ITDFilter.displayNormalize", displayNormalize);
-        getSupport().firePropertyChange("displayNormalize", this.displayNormalize, displayNormalize);
+        getPrefs().putBoolean("ITDFilter_robothead6DOF.displayNormalize", displayNormalize);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.displayNormalize", this.displayNormalize, displayNormalize);
         this.displayNormalize = displayNormalize;
         if (frame != null) {
             frame.binsPanel.setDisplayNormalize(displayNormalize);
@@ -1316,8 +1318,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setWrite2FileForEverySpike(boolean write2FileForEverySpike) {
-        getPrefs().putBoolean("ITDFilter.write2FileForEverySpike", write2FileForEverySpike);
-        getSupport().firePropertyChange("write2FileForEverySpike", this.write2FileForEverySpike, write2FileForEverySpike);
+        getPrefs().putBoolean("ITDFilter_robothead6DOF.write2FileForEverySpike", write2FileForEverySpike);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.write2FileForEverySpike", this.write2FileForEverySpike, write2FileForEverySpike);
         this.write2FileForEverySpike = write2FileForEverySpike;
     }
 
@@ -1326,8 +1328,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setWeightFrequencies(boolean weightFrequencies) {
-        getPrefs().putBoolean("ITDFilter.weightFrequencies", weightFrequencies);
-        getSupport().firePropertyChange("weightFrequencies", this.weightFrequencies, weightFrequencies);
+        getPrefs().putBoolean("ITDFilter_robothead6DOF.weightFrequencies", weightFrequencies);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.weightFrequencies", this.weightFrequencies, weightFrequencies);
         this.weightFrequencies = weightFrequencies;
         if (weightFrequencies) {
             JFileChooser fc = new JFileChooser();
@@ -1382,8 +1384,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
                 }
             }
         }
-        getPrefs().putBoolean("ITDFilter.use1DRegression", use1DRegression);
-        getSupport().firePropertyChange("use1DRegression", this.use1DRegression, use1DRegression);
+        getPrefs().putBoolean("ITDFilter_robothead6DOF.use1DRegression", use1DRegression);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.use1DRegression", this.use1DRegression, use1DRegression);
         this.use1DRegression = use1DRegression;
     }
 
@@ -1419,8 +1421,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
                 }
             }
         }
-        getPrefs().putBoolean("ITDFilter.useRidgeRegression", useRidgeRegression);
-        getSupport().firePropertyChange("useRidgeRegression", this.useRidgeRegression, useRidgeRegression);
+        getPrefs().putBoolean("ITDFilter_robothead6DOF.useRidgeRegression", useRidgeRegression);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.useRidgeRegression", this.useRidgeRegression, useRidgeRegression);
         this.useRidgeRegression = useRidgeRegression;
     }
 
@@ -1429,8 +1431,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setNormToConfThresh(boolean normToConfThresh) {
-        getPrefs().putBoolean("ITDFilter.normToConfThresh", normToConfThresh);
-        getSupport().firePropertyChange("normToConfThresh", this.normToConfThresh, normToConfThresh);
+        getPrefs().putBoolean("ITDFilter_robothead6DOF.normToConfThresh", normToConfThresh);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.normToConfThresh", this.normToConfThresh, normToConfThresh);
         this.normToConfThresh = normToConfThresh;
     }
 
@@ -1439,8 +1441,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setShowAnnotations(boolean showAnnotations) {
-        getPrefs().putBoolean("ITDFilter.showAnnotations", showAnnotations);
-        getSupport().firePropertyChange("showAnnotations", this.showAnnotations, showAnnotations);
+        getPrefs().putBoolean("ITDFilter_robothead6DOF.showAnnotations", showAnnotations);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.showAnnotations", this.showAnnotations, showAnnotations);
         this.showAnnotations = showAnnotations;
     }
 
@@ -1449,8 +1451,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setComputeMeanInLoop(boolean computeMeanInLoop) {
-        getPrefs().putBoolean("ITDFilter.computeMeanInLoop", computeMeanInLoop);
-        getSupport().firePropertyChange("computeMeanInLoop", this.computeMeanInLoop, computeMeanInLoop);
+        getPrefs().putBoolean("ITDFilter_robothead6DOF.computeMeanInLoop", computeMeanInLoop);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.computeMeanInLoop", this.computeMeanInLoop, computeMeanInLoop);
         this.computeMeanInLoop = computeMeanInLoop;
         if (!isFilterEnabled()) {
             return;
@@ -1475,8 +1477,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setUseCalibration(boolean useCalibration) {
-        getPrefs().putBoolean("ITDFilter.useCalibration", useCalibration);
-        getSupport().firePropertyChange("useCalibration", this.useCalibration, useCalibration);
+        getPrefs().putBoolean("ITDFilter_robothead6DOF.useCalibration", useCalibration);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.useCalibration", this.useCalibration, useCalibration);
         this.useCalibration = useCalibration;
         createBins();
     }
@@ -1486,8 +1488,8 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     public void setInvert(boolean invert) {
-        getPrefs().putBoolean("ITDFilter.invert", invert);
-        getSupport().firePropertyChange("invert", this.invert, invert);
+        getPrefs().putBoolean("ITDFilter_robothead6DOF.invert", invert);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.invert", this.invert, invert);
         this.invert = invert;
     }
 
@@ -1533,9 +1535,9 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
      * @param calibrationFilePath the calibrationFilePath to set
      */
     public void setCalibrationFilePath(String calibrationFilePath) {
-        getSupport().firePropertyChange("calibrationFilePath", this.calibrationFilePath, calibrationFilePath);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.calibrationFilePath", this.calibrationFilePath, calibrationFilePath);
         this.calibrationFilePath = calibrationFilePath;
-        getPrefs().put("ITDFilter.calibrationFilePath", calibrationFilePath);
+        getPrefs().put("ITDFilter_robothead6DOF.calibrationFilePath", calibrationFilePath);
     }
 
     public EstimationMethod getEstimationMethod() {
@@ -1543,7 +1545,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     synchronized public void setEstimationMethod(EstimationMethod estimationMethod) {
-        getSupport().firePropertyChange("estimationMethod", this.estimationMethod, estimationMethod);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.estimationMethod", this.estimationMethod, estimationMethod);
         getPrefs().put("ITDfilter.estimationMethod", estimationMethod.toString());
         this.estimationMethod = estimationMethod;
     }
@@ -1553,7 +1555,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     synchronized public void setAmsProcessingMethod(AMSprocessingMethod amsProcessingMethod) {
-        getSupport().firePropertyChange("amsProcessingMethod", this.amsProcessingMethod, amsProcessingMethod);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.amsProcessingMethod", this.amsProcessingMethod, amsProcessingMethod);
         getPrefs().put("ITDfilter.amsProcessingMethod", amsProcessingMethod.toString());
         this.amsProcessingMethod = amsProcessingMethod;
         initFilter();
@@ -1564,7 +1566,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     }
 
     synchronized public void setUseGanglionCellType(CochleaAMSEvent.FilterType useGanglionCellType) {
-        getSupport().firePropertyChange("useGanglionCellType", this.useGanglionCellType, useGanglionCellType);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.useGanglionCellType", this.useGanglionCellType, useGanglionCellType);
         getPrefs().put("ITDfilter.useGanglionCellType", useGanglionCellType.toString());
         this.useGanglionCellType = useGanglionCellType;
     }
@@ -1573,13 +1575,13 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
         return (ITDEvent) ITDEventQueue.take();
     }
 
-    public static ITDEvent pollITDEvent() {
+    public static Integer pollITDEvent() {
         if (ITDEventQueue != null) {
             ITDEventQueue.clear();
-            log.info("Queue cleared");
         }
         try {
-            return (ITDEvent) ITDEventQueue.poll(100, TimeUnit.SECONDS); //wait "forever" for new ITD Event     
+            //return (ITDEvent) ITDEventQueue.poll(100, TimeUnit.SECONDS); //wait "forever" for new ITD Event
+            return (Integer) ITDEventQueue.poll(100, TimeUnit.SECONDS); //wait "forever" for new ITD Event
         } catch (InterruptedException ex) {
             log.severe("no ITD event to poll: " + ex.toString());
         }
@@ -1600,7 +1602,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
             if (calibration == null) {
                 calibration = new ITDCalibrationGaussians();
                 calibration.loadCalibrationFile(calibrationFilePath);
-                getSupport().firePropertyChange("numOfBins", numOfBins, calibration.getNumOfBins());
+                getSupport().firePropertyChange("ITDFilter_robothead6DOF.numOfBins", numOfBins, calibration.getNumOfBins());
                 numOfBins = calibration.getNumOfBins();
             }
             //log.info("create Bins with averagingDecay=" + averagingDecay + " and calibration file");
@@ -1665,7 +1667,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
      */
     public void setBeamFormingEnabled(boolean beamFormingEnabled) {
         this.beamFormingEnabled = beamFormingEnabled;
-        putBoolean("beamFormingEnabled", beamFormingEnabled);
+        putBoolean("ITDFilter_robothead6DOF.beamFormingEnabled", beamFormingEnabled);
     }
 
     /**
@@ -1680,7 +1682,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
      */
     public void setBeamFormingRangeUs(int beamFormingRangeUs) {
         this.beamFormingRangeUs = beamFormingRangeUs;
-        putFloat("beamFormingRangeUs", beamFormingRangeUs);
+        putFloat("ITDFilter_robothead6DOF.beamFormingRangeUs", beamFormingRangeUs);
     }
 
     /**
@@ -1695,7 +1697,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
      */
     public void setBeamFormingITDUs(float beamFormingITDUs) {
         this.beamFormingITDUs = beamFormingITDUs;
-        putFloat("beamFormingITDUs", beamFormingITDUs);
+        putFloat("ITDFilter_robothead6DOF.beamFormingITDUs", beamFormingITDUs);
     }
 
     /**
@@ -1748,7 +1750,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
                 channel = DatagramChannel.open();
                 socket = channel.socket(); // bind to any available port because we will be sending datagrams with included host:port info
                 this.sendITD_UDP_Messages = sendITD_UDP_Messages;
-                putBoolean("sendITD_UDP_Messages", sendITD_UDP_Messages);
+                putBoolean("ITDFilter_robothead6DOF.sendITD_UDP_Messages", sendITD_UDP_Messages);
                 packetSequenceNumber = 0;
 
             } catch (IOException ex) {
@@ -1768,7 +1770,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
                 log.warning(ex.toString());
             }
         }
-        getSupport().firePropertyChange("sendITD_UDP_Messages", old, this.sendITD_UDP_Messages);
+        getSupport().firePropertyChange("ITDFilter_robothead6DOF.sendITD_UDP_Messages", old, this.sendITD_UDP_Messages);
         printedFirstUdpMessage = false;
     }
 }

@@ -11,6 +11,12 @@ import java.util.logging.Logger;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import org.ine.telluride.jaer.tell2011.head6axis.Head6DOF_ServoController;
 
+/**
+ * 
+ * 
+ * @author philipp
+ */
+
 
 public class PanTiltThread_robothead6DOF extends Thread {
 
@@ -44,7 +50,8 @@ public class PanTiltThread_robothead6DOF extends Thread {
                 if (filterOutput.isFromCochlea()) {
                     boolean x = true;
                     if (headControl.isConnected() && x == true) {
-                        try {
+                        //itdEvent = ITDFilter_robothead6DOF.pollITDEvent();                        
+                        /*  try {
                             for (int i = 0; i < 4; i++) {
                                 itdEvent = ITDFilter_robothead6DOF.pollITDEvent();
                                 itdValue = itdValue + itdEvent.getITD();
@@ -52,8 +59,10 @@ public class PanTiltThread_robothead6DOF extends Thread {
                         } catch (Exception e) {
                             log.warning(e.toString());
                         }
-                        itdValue = itdValue / 4;
-                        if (itdEvent != null) {
+                        itdValue = itdValue / 4; */
+                        itdValue = ITDFilter_robothead6DOF.pollITDEvent();
+                        if (true) {
+                            //itdValue = itdEvent.getITD();
                             if (Math.abs(itdValue) > 60) {
                                 currentHeadPan = headControl.getGazeDirection().getHeadDirection().x;
                                 currentHeadTilt = headControl.getGazeDirection().getHeadDirection().y;
@@ -79,12 +88,6 @@ public class PanTiltThread_robothead6DOF extends Thread {
                                 } catch (InterruptedException ex) {
                                     log.severe("can not set PanTiltThread_robothead6DOF to sleep: " + ex.toString());
                                 }
-                            }
-                        } else {
-                            try {
-                                log.warning("there is no new ITDEvent to receive, check if ITDFilter with sendITDsToOtherThread is active or wait for new ITD Events");
-                            } catch (Exception e) {
-                                log.warning(e.toString());
                             }
                         }
                     }
