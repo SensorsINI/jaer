@@ -194,7 +194,25 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         enabledCheckBox.setSelected(getFilter().isFilterEnabled());
         addIntrospectedControls();
         // when filter fires a property change event, we getString called here and we update all our controls
-        getFilter().getPropertyChangeSupport().addPropertyChangeListener(this);
+        getFilter().getSupport().addPropertyChangeListener(this);
+        // add ourselves to listen for all enclosed filter property changes as well
+        EventFilter enclosed = getFilter().getEnclosedFilter();
+        while (enclosed != null) {
+            enclosed.getSupport().addPropertyChangeListener(this);
+            enclosed = enclosed.getEnclosedFilter();
+        }
+        FilterChain chain = getFilter().getEnclosedFilterChain();
+        if (chain != null) {
+            for (EventFilter f2 : chain) {
+                EventFilter f3=f2;
+                while (f3 != null) {
+                    f3.getSupport().addPropertyChangeListener(this);
+                    f3 = f3.getEnclosedFilter(); // for some very baroque arrangement
+                }
+            }
+        }
+
+
         ToolTipManager.sharedInstance().setDismissDelay(10000); // to show tips
         setToolTipText(f.getDescription());
         helpBut.setToolTipText("<html>"+f.getDescription()+"<p>Click to show/create wiki page");
@@ -1319,8 +1337,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         enabledCheckBox.setToolTipText("Enable or disable the filter");
         enabledCheckBox.setMargin(new java.awt.Insets(1, 1, 1, 1));
         enabledCheckBox.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 enabledCheckBoxActionPerformed(evt);
             }
         });
@@ -1331,8 +1348,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         resetButton.setToolTipText("Resets the filter");
         resetButton.setMargin(new java.awt.Insets(1, 5, 1, 5));
         resetButton.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 resetButtonActionPerformed(evt);
             }
         });
@@ -1346,12 +1362,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         org.jdesktop.beansbinding.Binding binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${controlsVisible}"), showControlsToggleButton, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
 
-        showControlsToggleButton.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
-                showControlsToggleButtonActionPerformed(evt);
-            }
-        });
         jPanel1.add(showControlsToggleButton);
 
         helpBut.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
@@ -1359,8 +1369,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         helpBut.setToolTipText("Shows help on jAER wiki");
         helpBut.setMargin(new java.awt.Insets(1, 5, 1, 5));
         helpBut.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
                 helpButActionPerformed(evt);
             }
         });
@@ -1499,10 +1508,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
         getFilter().setSelected(true);
     }//GEN-LAST:event_resetButtonActionPerformed
-
-    private void showControlsToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showControlsToggleButtonActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_showControlsToggleButtonActionPerformed
 
     private void helpButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_helpButActionPerformed
               if(getFilter()!=null) {

@@ -157,12 +157,6 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
         this.chip = chip;
     }
 
-    /** Fires PropertyChangeEvents when filter is enabled or disabled with key "filterEnabled"
-     * @return change support */
-    public PropertyChangeSupport getPropertyChangeSupport() {
-        return support;
-    }
-
     /** Gets the enclosed filter
      * @return the enclosed filter */
     public EventFilter getEnclosedFilter() {
@@ -233,7 +227,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
             log.warning("replacing existing enclosedFilterChain= " + this.enclosedFilterChain + " with new enclosedFilterChain= " + enclosedFilterChain);
         }
         if(enclosedFilterChain.isEmpty()){
-            log.warning("empty filter chain - you should set the filter chain after all filters have been added to it so that enclosed filters can be processed");
+            log.warning("empty filter chain in "+ this +" - you should set the filter chain after all filters have been added to it so that enclosed filters can be processed");
         }
         this.enclosedFilterChain = enclosedFilterChain;
         for (EventFilter f : enclosedFilterChain) {

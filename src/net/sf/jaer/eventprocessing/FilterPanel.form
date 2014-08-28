@@ -81,9 +81,6 @@
           <BindingProperties>
             <BindingProperty name="selected" source="Form" sourcePath="${controlsVisible}" target="showControlsToggleButton" targetPath="selected" updateStrategy="0" immediately="false"/>
           </BindingProperties>
-          <Events>
-            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="showControlsToggleButtonActionPerformed"/>
-          </Events>
         </Component>
         <Component class="javax.swing.JButton" name="helpBut">
           <Properties>
