@@ -51,7 +51,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
     // vars
     private SlotcarTrack track;
     private CarCluster currentCarCluster = null, crashedCar = null;
-    private NearbyTrackEventFilter nearbyTrackFilter = null;
+//    private NearbyTrackEventFilter nearbyTrackFilter = null;
     private TrackHistogramFilter trackHistogramFilter = null;
     private CarCluster computerControlledCarCluster = null;
     private int warnedNullTrackerCounter = 0;
@@ -128,7 +128,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
 
         FilterChain filterChain = new FilterChain(chip);
 //        filterChain.add(new BackgroundActivityFilter(chip));
-        nearbyTrackFilter = new NearbyTrackEventFilter(chip);
+//        nearbyTrackFilter = new NearbyTrackEventFilter(chip);
         trackHistogramFilter = new TrackHistogramFilter(chip);
         filterChain.add(trackHistogramFilter);
 
@@ -313,12 +313,12 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
         return crashedCar;
     }
 
-    /**
-     * @return the nearbyTrackFilter
-     */
-    public NearbyTrackEventFilter getNearbyTrackFilter() {
-        return nearbyTrackFilter;
-    }
+//    /**
+//     * @return the nearbyTrackFilter
+//     */
+//    public NearbyTrackEventFilter getNearbyTrackFilter() {
+//        return nearbyTrackFilter;
+//    }
 
     /**
      * The cluster used for tracking cars. It extends the
@@ -747,7 +747,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
     public final void setTrack(SlotcarTrack track) {
         SlotcarTrack old = this.track;
         this.track = track;
-        nearbyTrackFilter.setTrack(track);
+//        nearbyTrackFilter.setTrack(track);
         if (this.track != old) {
             if (this.track != null) {
                 this.track.setPointTolerance(maxDistanceFromTrackPoint);
@@ -864,5 +864,19 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
             ((CarCluster) c).segmentSpeedFilter.setTauMs(segmentSpeedTauMs);
         }
         putFloat("segmentSpeedTauMs", segmentSpeedTauMs);
+    }
+
+    /**
+     * @return the trackHistogramFilter
+     */
+    public TrackHistogramFilter getTrackHistogramFilter() {
+        return trackHistogramFilter;
+    }
+
+    /**
+     * @param trackHistogramFilter the trackHistogramFilter to set
+     */
+    public void setTrackHistogramFilter(TrackHistogramFilter trackHistogramFilter) {
+        this.trackHistogramFilter = trackHistogramFilter;
     }
 }

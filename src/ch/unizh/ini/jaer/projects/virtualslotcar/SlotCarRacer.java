@@ -4,6 +4,8 @@
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import javax.media.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
@@ -28,7 +30,7 @@ import net.sf.jaer.util.TobiLogger;
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 @Description("Slot car racer project, Telluride 2010")
-public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
+public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, PropertyChangeListener{
     private boolean overrideThrottle = getBoolean("overrideThrottle", true);
     private float overriddenThrottleSetting = getFloat("overriddenThrottleSetting", 0);
     private float maxThrottle = getFloat("maxThrottle", 1);
@@ -43,6 +45,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
     private float lastSoundThrottleValue = 0;
     private long lastTimeSoundPlayed;
     private ThrottleBrake lastThrottle = new ThrottleBrake();
+    private TrackDefineFilter trackDefineFilter;
     private boolean playBrakeSound=getBoolean("playBrakeSound",false);
 
     private void playThrottleSounds() {
@@ -67,6 +70,11 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
         }
     }
 
+    @Override
+    public void propertyChange(PropertyChangeEvent pce) {
+        // TODO track changed events
+    }
+
     /**
      * @return the playBrakeSound
      */
@@ -84,7 +92,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
 
     public enum ControllerToUse {
 
-        SimpleSpeedController, CurvatureBasedController, LookUpBasedTrottleController, EvolutionaryThrottleController
+        SimpleSpeedController, CurvatureBasedController, LookUpBasedTrottleController, EvolutionaryThrottleController, HumanVsComputerThrottleController
     };
     private ControllerToUse controllerToUse = ControllerToUse.valueOf(prefs().get("SlotCarRacer.controllerToUse", ControllerToUse.SimpleSpeedController.toString()));
 
@@ -120,6 +128,10 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
 
 
         filterChain = new FilterChain(chip);
+       trackDefineFilter = new TrackDefineFilter(chip);
+        trackDefineFilter.setEnclosed(true, this);
+       trackDefineFilter.getSupport().addPropertyChangeListener(SlotcarTrack.EVENT_TRACK_CHANGED, this);
+
 
         setControllerToUse(controllerToUse);
 
@@ -324,6 +336,12 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
                         throttleController = new EvolutionaryThrottleController(chip);
                     }
                     break;
+                case HumanVsComputerThrottleController:
+                    if (throttleController == null || !(throttleController instanceof HumanVsComputerThrottleController)) {
+                        filterChain.remove(throttleController);
+                        throttleController = new HumanVsComputerThrottleController(chip);
+                    }
+                    break;
                 default:
                     throw new RuntimeException("Unknown controller " + controllerToUse);
             }
@@ -352,7 +370,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater{
      */
     public void setPlayThrottleSound(boolean playThrottleSound) {
         this.playThrottleSound = playThrottleSound;
-        prefs().putBoolean("SlotCarRacer.playThrottleSound", playThrottleSound);
+        putBoolean("playThrottleSound", playThrottleSound);
     }
 
     /**
