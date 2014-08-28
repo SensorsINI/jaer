@@ -128,7 +128,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
      * @param arg the argument (e.g. the HardwareInterface).
      */
     @Override
-	public void update(Observable o, Object arg) {
+    public void update(Observable o, Object arg) {
         if ((o instanceof AEChip) && (getHardwareInterface() == null)) {
             // if hw interface is not correct type then disable menu items
             if (arrayResetMenuItem != null) {

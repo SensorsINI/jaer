@@ -832,7 +832,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
         private boolean autoExposureEnabled = getPrefs().getBoolean("autoExposureEnabled", false);
 
         private float expDelta = .05f; // exposure change if incorrectly exposed
-        private float underOverFractionThreshold = 0.05f; // threshold for fraction of total pixels that are underexposed or overexposed
+        private float underOverFractionThreshold = 0.2f; // threshold for fraction of total pixels that are underexposed or overexposed
         private PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
         private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
         SimpleHistogram hist = null;

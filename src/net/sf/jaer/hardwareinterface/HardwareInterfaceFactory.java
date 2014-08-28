@@ -89,7 +89,7 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 				final HardwareInterfaceFactoryInterface inst = (HardwareInterfaceFactoryInterface) m.invoke(factorie);
 				final int num = inst.getNumInterfacesAvailable(); // ask it how many devices are out there
 
-				// if(num>0) System.out.println("interface "+inst+" has "+num+" devices available"); // TODO comment
+//				 if(num>0) System.out.println("interface "+inst+" has "+num+" devices available"); // TODO comment
 				for (int j = 0; j < num; j++) {
 					u = inst.getInterface(j); // for each one, construct the HardwareInterface and put it in a list
 

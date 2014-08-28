@@ -2371,7 +2371,7 @@ two interfaces). otherwise force user choice.
 				if (statusTimer != null) {
 					statusTimer.stop();
 				}
-				statusTimer = new javax.swing.Timer(5000, new ActionListener() {
+				statusTimer = new javax.swing.Timer(2000, new ActionListener() {
 
 					@Override
 					public void actionPerformed(ActionEvent e) {

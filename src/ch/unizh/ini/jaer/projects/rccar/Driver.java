@@ -100,11 +100,11 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
             lineFilter.setEnclosed(true, this);
             rotateFilter.setEnclosed(true, this);
 
-            xyTypeFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled", this);
-            oriFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled", this);
-            backgroundFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled", this);
-            lineFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled", this);
-            rotateFilter.getPropertyChangeSupport().addPropertyChangeListener("filterEnabled", this);
+            xyTypeFilter.getSupport().addPropertyChangeListener("filterEnabled", this);
+            oriFilter.getSupport().addPropertyChangeListener("filterEnabled", this);
+            backgroundFilter.getSupport().addPropertyChangeListener("filterEnabled", this);
+            lineFilter.getSupport().addPropertyChangeListener("filterEnabled", this);
+            rotateFilter.getSupport().addPropertyChangeListener("filterEnabled", this);
 
             filterChain.add(rotateFilter);
             filterChain.add(xyTypeFilter);
@@ -575,7 +575,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
 //            String key=prefsEnabledKey();
 //            getPrefs().putBoolean(key, yes);
 //        }
-//        getPropertyChangeSupport().firePropertyChange("filterEnabled",new Boolean(filterEnabled),new Boolean(yes));
+//        getSupport().firePropertyChange("filterEnabled",new Boolean(filterEnabled),new Boolean(yes));
 ////        setEnclosedFilterEnabledAccordingToPref(xyTypeFilter,null);
 ////        setEnclosedFilterEnabledAccordingToPref(oriFilter,null);
 ////        setEnclosedFilterEnabledAccordingToPref(backgroundFilter,null);

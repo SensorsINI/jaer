@@ -127,7 +127,6 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         filterChain = new FilterChain(chip);
 
 
-        setEnclosedFilterChain(filterChain);
         chip.addObserver(this); // to get pixel array size updates
         addObserver(this); // we add ourselves as observer so that our update() can be called during packet iteration periodically according to global FilterFrame update interval settting
 
@@ -176,6 +175,9 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         panCalibrator = new CalibrationFilter();
         tiltCalibrator = new CalibrationFilter();
         rollCalibrator = new CalibrationFilter();
+        
+        setEnclosedFilterChain(filterChain);
+ 
     }
 
     @Override
