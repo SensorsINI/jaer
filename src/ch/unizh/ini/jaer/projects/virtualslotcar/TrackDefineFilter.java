@@ -580,10 +580,6 @@ public class TrackDefineFilter extends EventFilter2D implements FrameAnnotater, 
             glCanvas.removeMouseListener(this);
             glCanvas.removeMouseMotionListener(this);
         }
-        if(tracker!=null){
-            tracker.getNearbyTrackFilter().setFilterEnabled(!yes); // stop filtering out events that are not near track model if defiining a new track
-//            tracker.setOnlyFollowTrack(!yes); // if not defining track, then only follow the track model
-        }
     }
 
     public float getMinDistance() {

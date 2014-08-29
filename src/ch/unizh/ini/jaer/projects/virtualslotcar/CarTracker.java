@@ -28,6 +28,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 import com.jogamp.opengl.util.gl2.GLUT;
+import java.awt.Color;
 import net.sf.jaer.aemonitor.AEPacket;
 import net.sf.jaer.util.DrawGL;
 
@@ -59,13 +60,14 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
 
     public CarTracker(AEChip chip) {
         super(chip);
-        final String s = "TwoCarTracker";
+        final String s = "CarTracker";
         setPropertyTooltip(s, "onlyFollowTrack", "If set, clusters will only follow the track. If false, clusters can follow car off the track or even jump to another part of the track. Recommended setting is true.");
         setPropertyTooltip(s, "relaxToTrackFactor", "Tracking will normally only parallel the track. This factor control how much the cluster converges onto the track, i.e., the allowed normal motion as fraction of the parallel motion.");
         setPropertyTooltip(s, "distanceFromTrackMetricTauMs", "Each car cluster distance from track model is lowpass filtered with this time constant in ms; the closest one is chosen as the computer controlled car");
         setPropertyTooltip(s, "minSegmentsToBeCarCluster", "a CarCluster needs to pass at least this many segments to be marked as the car cluster");
         setPropertyTooltip(s, "maxDistanceFromTrackPoint", "Maximum allowed distance in pixels from track spline point to find nearest spline point; if currentTrackPos=-1 increase maxDistanceFromTrackPoint");
         setPropertyTooltip(s, "segmentSpeedTauMs", "time constant in ms for filtering segment speeed along track");
+        setPropertyTooltip(s, "showHistogram", "Show the histogram mask (here for convenience; delegated from TrackHistogramFilter)");
 
         // set reasonable defaults
         if (!isPreferenceStored("maxNumClusters")) {
@@ -136,6 +138,22 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
 
     }
 
+    // convenience
+    public boolean isShowHistogram() {
+        return trackHistogramFilter.isShowHistogram();
+    }
+
+    public void setShowHistogram(boolean showHistogram) {
+        trackHistogramFilter.setShowHistogram(showHistogram);
+    }
+    
+    
+    public void setCarColor(Color color){
+        if(currentCarCluster!=null){
+            currentCarCluster.setColor(color);
+        }
+    }
+    
     //    @Override
     public Cluster createCluster() {
         return new CarCluster();
@@ -189,6 +207,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
 		// for each event, assign events to each cluster according probabalistically to the distance of the event from the cluster
         // if its too far from any cluster, make a new cluster if we can
         for (Object o : filtered) {
+            if(o==null) continue; // TODO happens with ApsDvsEventPacket sometimes, don't know why
             BasicEvent ev = (BasicEvent) o;
             if (ev.isSpecial()) {
                 continue;
@@ -224,7 +243,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
         }
         currentCarCluster = computerControlledCarCluster;
         computerControlledCarCluster = currentCarCluster;
-        return filtered;
+        return in;
     }
 
     /**
@@ -420,14 +439,18 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
             final float BOX_LINE_WIDTH = 10f; // in chip
             final float VEL_LINE_WIDTH = 4f;
             GL2 gl = drawable.getGL().getGL2();
-
+        
+ 
             // set color and line width of cluster annotation
             if (computerControlledCar) {
                 float x = getLocation().x;
                 float y = getLocation().y;
                 float sy = radiusY; // sx sy are (half) size of rectangle
                 float sx = radiusX;
-                gl.glColor4f(.8f, .8f, .8f, .5f);
+                
+                float[] rgb=null;
+                rgb = getColor().getRGBComponents(null);
+                gl.glColor3fv(rgb, 0);
                 gl.glLineWidth(BOX_LINE_WIDTH);
                 // draw cluster rectangle
                 gl.glPushMatrix();
@@ -873,10 +896,4 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
         return trackHistogramFilter;
     }
 
-    /**
-     * @param trackHistogramFilter the trackHistogramFilter to set
-     */
-    public void setTrackHistogramFilter(TrackHistogramFilter trackHistogramFilter) {
-        this.trackHistogramFilter = trackHistogramFilter;
-    }
 }

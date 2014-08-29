@@ -195,22 +195,22 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         addIntrospectedControls();
         // when filter fires a property change event, we getString called here and we update all our controls
         getFilter().getSupport().addPropertyChangeListener(this);
-        // add ourselves to listen for all enclosed filter property changes as well
-        EventFilter enclosed = getFilter().getEnclosedFilter();
-        while (enclosed != null) {
-            enclosed.getSupport().addPropertyChangeListener(this);
-            enclosed = enclosed.getEnclosedFilter();
-        }
-        FilterChain chain = getFilter().getEnclosedFilterChain();
-        if (chain != null) {
-            for (EventFilter f2 : chain) {
-                EventFilter f3=f2;
-                while (f3 != null) {
-                    f3.getSupport().addPropertyChangeListener(this);
-                    f3 = f3.getEnclosedFilter(); // for some very baroque arrangement
-                }
-            }
-        }
+//        // add ourselves to listen for all enclosed filter property changes as well
+//        EventFilter enclosed = getFilter().getEnclosedFilter();
+//        while (enclosed != null) {
+//            enclosed.getSupport().addPropertyChangeListener(this);
+//            enclosed = enclosed.getEnclosedFilter();
+//        }
+//        FilterChain chain = getFilter().getEnclosedFilterChain();
+//        if (chain != null) {
+//            for (EventFilter f2 : chain) {
+//                EventFilter f3=f2;
+//                while (f3 != null) {
+//                    f3.getSupport().addPropertyChangeListener(this);
+//                    f3 = f3.getEnclosedFilter(); // for some very baroque arrangement
+//                }
+//            }
+//        }
 
 
         ToolTipManager.sharedInstance().setDismissDelay(10000); // to show tips

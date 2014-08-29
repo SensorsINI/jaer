@@ -4,6 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
+import ch.unizh.ini.jaer.projects.virtualslotcar.SlotCarRacer.State;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Point;
@@ -100,7 +101,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     private RacerState state = new RacerState();
     // vars
     private ThrottleBrake throttle = new ThrottleBrake(); // last output throttle setting
-    private int currentTrackPos; // position in spline parameter of track
+    private int computerTrackPosition, humanTrackPosition; // position in spline parameter of track
     private int lastRewardLap = 0;
     private ThrottleProfile currentProfile, lastSuccessfulProfile, lastSuccessfulProfileEvenOlder;
     private Random random = new Random();
@@ -109,7 +110,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     private int prevLapTime;
     private FilterChain filterChain;
     private CarTracker computerCarTracker, humanCarTracker;
-    private CarTracker.CarCluster car = null;
+    private CarTracker.CarCluster computerCar = null, humanCar=null;
     private boolean showedMissingTrackWarning = false;
     private SlotcarSoundEffects sounds = null;
     private int lastCrashLocation = -1;
@@ -119,10 +120,10 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     private SlotcarTrack track=new SlotcarTrack();
     private String trackFileName=getString("trackFileName",null);
 
-    TrackHistogramFilter computerMask = new TrackHistogramFilter(chip), humanMask = new TrackHistogramFilter(chip);
+    TrackHistogramFilter computerMask = null, humanMask = null; // later refer to enclosed filters in CarTrackers
     private String computerTrackHistogramFilePath = getString("computerTrackHistogramFilePath", "computerTrackHistogramMask.dat");
     private String humanTrackHistogramFilePath = getString("humanTrackHistogramFilePath", "humanTrackHistogramMask.dat");
-    
+    BackgroundActivityFilter backgroundActivityFilter=null;
  
     
     public HumanVsComputerThrottleController(AEChip chip) {
@@ -169,7 +170,8 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         doLoadThrottleSettings();
 
         filterChain = new FilterChain(chip);
-        filterChain.add(new BackgroundActivityFilter(chip));
+        backgroundActivityFilter=new BackgroundActivityFilter(chip);
+        filterChain.add(backgroundActivityFilter);
         
         // load existing last track if it is in preferences
         if(trackFileName!=null) {
@@ -181,18 +183,22 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
             }
         }
         
-        computerMask.loadHistogramFromFile(new File(computerTrackHistogramFilePath));
-        humanMask.loadHistogramFromFile(new File(humanTrackHistogramFilePath));
-
+ 
         computerCarTracker = new CarTracker(chip);
+        computerMask=computerCarTracker.getTrackHistogramFilter();
         computerCarTracker.setTrack(track);
         computerCarTracker.setEnclosed(true, this);
-        computerCarTracker.setTrackHistogramFilter(computerMask);
+        computerCarTracker.setColorClustersDifferentlyEnabled(true);
+
         
         humanCarTracker=new CarTracker(chip);
+        humanMask=humanCarTracker.getTrackHistogramFilter();
         humanCarTracker.setTrack(track);
         humanCarTracker.setEnclosed(true, this);
-        humanCarTracker.setTrackHistogramFilter(humanMask);
+        humanCarTracker.setColorClustersDifferentlyEnabled(true);
+
+        computerMask.loadHistogramFromFile(new File(computerTrackHistogramFilePath));
+        humanMask.loadHistogramFromFile(new File(humanTrackHistogramFilePath));
 
         filterChain.add(computerCarTracker);
         filterChain.add(humanCarTracker);
@@ -241,11 +247,19 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
             log.info("made a new ThrottleProfile :" + currentProfile);
         }
 
-        out = getEnclosedFilterChain().filterPacket(in); // does cartracker and maybe trackdefinefilter
+        EventPacket filtered=backgroundActivityFilter.filterPacket(in);
+        computerCarTracker.filterPacket(in);
+        humanCarTracker.filterPacket(in);
+        
+//        out = getEnclosedFilterChain().filterPacket(in); // does cartracker and maybe trackdefinefilter
 
-        car = computerCarTracker.findCarCluster();
-        if (car != null) {
-            currentTrackPos = car.getSegmentIdx();
+        computerCar = computerCarTracker.findCarCluster();
+        if (computerCar != null) {
+            computerTrackPosition = computerCar.getSegmentIdx();
+        }
+       humanCar = humanCarTracker.findCarCluster();
+        if (humanCar != null) {
+            humanTrackPosition = humanCar.getSegmentIdx();
         }
 
 		// choose state & copyFrom throttle
@@ -254,7 +268,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
 
         } else if (state.get() == State.STARTING) {
             //            throttle.throttle = getStartingThrottleValue();
-            if ((car != null) && car.isRunning()) {
+            if ((computerCar != null) && computerCar.isRunning()) {
                 state.set(State.RUNNING);
             }
         } else if (state.get() == State.RUNNING) {
@@ -264,9 +278,9 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
                 }
                 showedMissingTrackWarning = true;
             } else {
-                if (car != null && !car.isCrashed()) {
+                if (computerCar != null && !computerCar.isCrashed()) {
                     // did we lap?
-                    boolean lapped = lapTimer.update(currentTrackPos, car.getLastEventTimestamp());
+                    boolean lapped = lapTimer.update(computerTrackPosition, computerCar.getLastEventTimestamp());
 
                     if (lapped) {
                         lapTime = lapTimer.getLastLap().laptimeUs;
@@ -319,8 +333,8 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
                         }
                     }
                     lastRewardLap = lapTimer.lapCounter; // don't reward until we make some laps from here
-                } else if (car != null) {
-                    throttle = currentProfile.getThrottle(car.getSegmentIdx());
+                } else if (computerCar != null) {
+                    throttle = currentProfile.getThrottle(computerCar.getSegmentIdx());
                 }
             }
         } else if (state.get() == State.CRASHED) {
@@ -328,9 +342,22 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
             state.set(State.STARTING);
         }
 
-        setBigStatusText(state.toString(), bigStatusColor);
+        int computerLead=computerTrackPosition-humanTrackPosition;
+        String stateString = null;
+        if (state.get() == State.RUNNING) {
+            String who=null;
+            if(computerLead>0){
+                who="Computer";
+            }else if(computerLead<0){
+                who="Human";
+            }else who="Tied";
+            stateString = String.format("%s: %s Lead is %d", state.toString(), who, computerLead);
+        } else {
+            stateString = state.toString();
+        }
+        setBigStatusText(stateString, bigStatusColor);
 
-        return out;
+        return in;
     }
     private TextRenderer statusRenderer = null;
     private Color bigStatusColor = new Color(1, 0, 0, .4f);
@@ -498,7 +525,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
 
     @Override
     public String logControllerState() {
-        return String.format("%d\t%s\t%d\t%s\t%s", lastTimestamp, state, currentTrackPos, throttle, car);
+        return String.format("%d\t%s\t%d\t%s\t%s", lastTimestamp, state, computerTrackPosition, throttle, computerCar);
     }
 
     @Override
@@ -559,7 +586,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        String s = String.format("HumanVsComputerThrottleController\nDefine track with TrackDefineFilter and load that track here.\nState: %s\nLearning %s\ncurrentTrackPos: %d/%d\nThrottle: %8.3f\n%s", state.toString(), learningEnabled ? "Enabled" : "Disabled", currentTrackPos, getTrack().getNumPoints(), throttle.throttle, lapTimer.toString());
+        String s = String.format("HumanVsComputerThrottleController\nDefine track with TrackDefineFilter and load that track here.\nState: %s\nLearning %s\ncomputer/human trackPosition: %d|%d/%d\nThrottle: %8.3f\n%s", state.toString(), learningEnabled ? "Enabled" : "Disabled", computerTrackPosition, humanTrackPosition, getTrack().getNumPoints(), throttle.throttle, lapTimer.toString());
 		//       if(state.getString()==State.CRASHED){
         //
         //       }else if(state.getString()==State.RUNNING){
@@ -567,6 +594,9 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         //       }else{
         //       }
         chip.getCanvas().checkGLError(drawable.getGL().getGL2(), glu, "in TrackdefineFilter.drawThrottleProfile");
+
+        computerCarTracker.setCarColor(Color.RED);
+        humanCarTracker.setCarColor(Color.GREEN);
 
         MultilineAnnotationTextRenderer.renderMultilineString(s);
         if(showTrack&&track!=null){
@@ -653,11 +683,11 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     private TextRenderer textRenderer = null;
 
     private void drawCurrentTrackPoint(GL2 gl) {
-        if ((currentTrackPos == -1) || (getTrack() == null)) {
+        if ((computerTrackPosition == -1) || (getTrack() == null)) {
             return;
         }
         gl.glColor4f(1, 0, 0, .5f);
-        Point2D p = getTrack().getPoint(currentTrackPos);
+        Point2D p = getTrack().getPoint(computerTrackPosition);
         gl.glRectd(p.getX() - 1, p.getY() - 1, p.getX() + 1, p.getY() + 1);
     }
 

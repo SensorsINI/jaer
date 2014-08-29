@@ -189,7 +189,8 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
                     numY=histogram[0].length;
                 }
             }
-            numPix=numX*numY;
+            numPix = numX * numY;
+            computeTotalSum(); // in case loaded from file
             ois.close();
             fis.close();
             log.info("histogram loaded from (usually host/java) file " + file.getPath() + "; histmax=" + histmax);
@@ -224,6 +225,8 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
     public void initFilter() {
     }
 
+    private boolean blendChecked=false;
+    
     @Override
     public void annotate(GLAutoDrawable drawable) {
         if ((!showHistogram && !showBitmap) || histogram == null || histmax == 0) {
@@ -231,14 +234,17 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
         }
         GL2 gl = drawable.getGL().getGL2();
         try {
-            gl.glEnable(GL.GL_BLEND);
-            gl.glBlendFunc(GL.GL_ONE, GL.GL_ONE);
-            gl.glBlendEquation(GL.GL_FUNC_ADD);
+            if (true) { // TODO must set every time, don't know why
+                gl.glEnable(GL.GL_BLEND);
+                gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+                gl.glBlendEquation(GL.GL_FUNC_ADD);
+            }
         } catch (GLException e) {
             log.warning("tried to use glBlend which is supposed to be available but got following exception");
             gl.glDisable(GL.GL_BLEND);
             e.printStackTrace();
         }
+        blendChecked=true;
         int numX = chip.getSizeX(), numY = chip.getSizeY();
         final float bmbrightness=.4f;
         for (int y = 0; y < numY; y++) {
@@ -250,7 +256,7 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
                         gl.glColor4f(v2, v2, 0, 0.25f);
                         gl.glRectf(x, y, x + 1, y + 1);
                     } else if (v1 > 0) {
-                        gl.glColor4f(0, v2, v2, .5f);
+                        gl.glColor4f(0, v2, v2, .25f);
                         gl.glRectf(x, y, x + 1, y + 1);
                     }
                 }
@@ -351,7 +357,7 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
      * @return boolean[][] where first dimension is x and second is y, or null if there is no data yet
      */
     synchronized public boolean[][] computeErodedBitmap() {
-        if(totalSum==0) return null;
+       if(totalSum==0) return null;
         bitmap = new boolean[numX][numY];
         int erSize = getErosionSize();
         if (erSize <= 0) {
@@ -463,6 +469,16 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
         this.filePath = filePath;
         putString("filePath",filePath);
         getSupport().firePropertyChange("filePath", old, this.filePath);
+    }
+
+    private void computeTotalSum() {
+        int sum=0;
+        for(int i=0;i<histogram.length;i++){
+            for(int j=0;j<histogram[0].length;j++){
+                sum+=histogram[i][j];
+            }
+        }
+        totalSum=sum;
     }
 
 
