@@ -356,7 +356,6 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
         public int highestSegment = -1; // highwater mark for segment, for counting increases
         public boolean crashed = false; // flag that we crashed
         public boolean wasRunningSuccessfully = false; // marked true when car has been running successfully over segments for a while
-        public float lastDistanceFromTrack = 0, avgDistanceFromTrack = 0; // instantaneous and lowpassed distance from track model
         public int birthSegmentIdx = -1; // which segment we were born on
         public int numSegmentIncreases = 0; // how many times segment number increased
         public int crashSegment = -1; // where we crashed
@@ -368,7 +367,6 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
         //        private float relaxToTrackFactor; // how fast the cluster relaxes onto the track model compared with following along it, when the onlyFollowTrack option is selected
         private int lastSegmentChangeTimestamp = 0;
         int segmentHistoryPointer = 0; // ring pointer, points to next location in ring buffer
-        LowpassFilter distFilter = new LowpassFilter(distanceFromTrackMetricTauMs);
         boolean computerControlledCar = true;
         /**
          * segments per second traversed of the track
@@ -436,7 +434,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
         @Override
         public void draw(GLAutoDrawable drawable) {
             super.draw(drawable);
-            final float BOX_LINE_WIDTH = 10f; // in chip
+            final float BOX_LINE_WIDTH = 4f; // in chip
             final float VEL_LINE_WIDTH = 4f;
             GL2 gl = drawable.getGL().getGL2();
         
@@ -480,7 +478,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
             gl.glRasterPos3f(location.x, location.y - 4, 0);
             chip.getCanvas().getGlut().glutBitmapString(
                     GLUT.BITMAP_HELVETICA_18,
-                    String.format("dist=%.1f segSp=%.1f", distFilter.getValue(), segmentSpeedSPS));
+                    String.format("segSp=%.1f", segmentSpeedSPS));
 
         }
 
@@ -734,13 +732,6 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
         } // determineCrashLocation
 
         private void updateState() {
-            lastDistanceFromTrack = track.findDistanceToTrack(getLocation());
-            if (Float.isNaN(avgDistanceFromTrack)) {
-                distFilter.reset();
-            }
-            avgDistanceFromTrack = distFilter.filter(lastDistanceFromTrack, getLastEventTimestamp());
-            //            determineIfcrashed();
-
         }
 
         /**

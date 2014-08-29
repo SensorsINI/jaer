@@ -24,6 +24,8 @@ class LapTimer implements PropertyChangeListener {
     int quarters = 0;
     private static final int MAX_LAPS_TO_STORE = 3;
     private int lapStartTime = 0;
+    int totalSegmentsCompleted=0;
+    boolean startedFirstLap=false;
 
     /**
      * Constructs a new LapTimer for a track with numSegments points.
@@ -39,6 +41,12 @@ class LapTimer implements PropertyChangeListener {
         if (evt.getPropertyName().equals(SlotcarTrack.EVENT_TRACK_CHANGED)) {
             track = (SlotcarTrack) evt.getNewValue();
         }
+    }
+
+    int computeLeadInSegments(LapTimer otherTimer) {
+        int lapsAhead=lapCounter-otherTimer.lapCounter;
+        int segmentsAhead=totalSegmentsCompleted-otherTimer.totalSegmentsCompleted;
+        return segmentsAhead;
     }
 
     class Lap {
@@ -63,14 +71,14 @@ class LapTimer implements PropertyChangeListener {
 
         @Override
         public String toString() {
-            return String.format("%6.2f %6.2f %6.2f %6.2f : %7.3fs", split(0), split(1), split(2), split(3), laptime());
+            return String.format("%6.2f %6.2f %6.2f %6.2f : %7.3fs", split(0), split(1), split(2), split(3), laptimeSec());
         }
 
-        private float t(int t) {
+        private float timeUs(int t) {
             return (float) t * 1e-6f;
         }
 
-        float laptime() {
+        float laptimeSec() {
             return 1e-6f * laptimeUs;
         }
 
@@ -129,6 +137,7 @@ class LapTimer implements PropertyChangeListener {
                             }
                             lastUpdateTime = timeUs;
                             ret = true;
+                            startedFirstLap=true;
                         }
                     }
                     quarters = 1; //  next, look to pass 1st quarter of track
@@ -147,6 +156,11 @@ class LapTimer implements PropertyChangeListener {
                     quarters++;
                 }
             }
+            int segmentDiff=newSegment-lastSegment;
+            if(segmentDiff<-n/4){ // crossed start line so we went from e.g. 100 to 2
+                segmentDiff+=n;
+            }
+            if(startedFirstLap) totalSegmentsCompleted+=segmentDiff;
             lastSegment = newSegment;
             return ret;
         }
@@ -167,6 +181,8 @@ class LapTimer implements PropertyChangeListener {
         sumTime = 0;
         bestTime = Integer.MAX_VALUE;
         quarters = 0;
+        totalSegmentsCompleted=0;
+        startedFirstLap=false;
     }
 
     public String toString() {
