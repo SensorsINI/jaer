@@ -69,6 +69,9 @@ abstract public class EventFilter2D extends EventFilter {
      * @param in the input packet
      * @see #out */
     protected void checkOutputPacketEventType(EventPacket in) {
+        if(out==in){
+            log.warning("output packet is the same as input packet; this call will clear input packet which is probably not what you want");
+        }
         if (out != null && out.getEventClass() == in.getEventClass() && out.getClass() == in.getClass()) {
             out.systemModificationTimeNs=in.systemModificationTimeNs;
             out.clear();
