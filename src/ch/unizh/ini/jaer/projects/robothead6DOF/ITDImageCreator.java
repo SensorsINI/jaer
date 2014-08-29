@@ -392,14 +392,14 @@ public class ITDImageCreator extends EventFilter2D {
             float dy = (float) (jitterAmplitude * Math.cos(phase));
             try {
                 headControl.setEyeGazeDirection(startPosition[0] + dx, startPosition[1] + dy);
-                if (headControl.gazeDirection.getGazeDirection().getX() + dx - headControl.gazeDirection.getGazeDirection().getX() < 0 || headControl.gazeDirection.getGazeDirection().getY() + dy - headControl.gazeDirection.getGazeDirection().getY() < 0) {
+                if (headControl.gazeDirection.getEyeDirection().getX() + dx - headControl.gazeDirection.getEyeDirection().getX() < 0 || headControl.gazeDirection.getEyeDirection().getY() + dy - headControl.gazeDirection.getEyeDirection().getY() < 0) {
                     imageCreator.setInvert(true);
-                    imageCreator.setxOffset((float) headControl.getGazeDirection().getHeadDirection().getX(), (float) headControl.getGazeDirection().getGazeDirection().getX());
-                    imageCreator.setyOffset((float) headControl.getGazeDirection().getHeadDirection().getY(), (float) headControl.getGazeDirection().getGazeDirection().getY());
+                    imageCreator.setxOffset((float) headControl.getGazeDirection().getHeadDirection().getX(), (float) headControl.getGazeDirection().getEyeDirection().getX());
+                    imageCreator.setyOffset((float) headControl.getGazeDirection().getHeadDirection().getY(), (float) headControl.getGazeDirection().getEyeDirection().getY());
                 } else {
                     imageCreator.setInvert(false);
-                    imageCreator.setxOffset((float) headControl.getGazeDirection().getHeadDirection().getX(), (float) headControl.getGazeDirection().getGazeDirection().getX());
-                    imageCreator.setyOffset((float) headControl.getGazeDirection().getHeadDirection().getY(), (float) headControl.getGazeDirection().getGazeDirection().getY());
+                    imageCreator.setxOffset((float) headControl.getGazeDirection().getHeadDirection().getX(), (float) headControl.getGazeDirection().getEyeDirection().getX());
+                    imageCreator.setyOffset((float) headControl.getGazeDirection().getHeadDirection().getY(), (float) headControl.getGazeDirection().getEyeDirection().getY());
                 }
             } catch (HardwareInterfaceException | IOException ex) {
                 log.severe(ex.toString());
@@ -453,8 +453,8 @@ public class ITDImageCreator extends EventFilter2D {
         if (jitteringActive == true) {
             jitterTimer = new java.util.Timer();
             // Repeat the JitterTask without delay and with 20ms between executions
-            startPosition[0] = (float) headControl.gazeDirection.getGazeDirection().getX();
-            startPosition[1] = (float) headControl.gazeDirection.getGazeDirection().getY();
+            startPosition[0] = (float) headControl.gazeDirection.getEyeDirection().getX();
+            startPosition[1] = (float) headControl.gazeDirection.getEyeDirection().getY();
             jitterTimer.scheduleAtFixedRate(new JittererTask(), 0, 20);
         } else {
             jitterTimer.cancel();

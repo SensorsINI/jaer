@@ -36,8 +36,8 @@ public class PanTiltThread_robothead6DOF extends Thread {
         setName("PanTiltThread_robothead6DOF");
         this.panTilt = panTilt;
         //this.panTiltFrame = new PanTiltFrame_robothead6DOF(this.panTilt);
-        currentHeadPan = headControl.getGazeDirection().getHeadDirection().x;
-        currentHeadTilt = headControl.getGazeDirection().getHeadDirection().y;
+        currentHeadPan = (float) headControl.getGazeDirection().getHeadDirection().getX();
+        currentHeadTilt = (float) headControl.getGazeDirection().getHeadDirection().getY();
     }
 
     @Override
@@ -64,8 +64,8 @@ public class PanTiltThread_robothead6DOF extends Thread {
                         if (true) {
                             //itdValue = itdEvent.getITD();
                             if (Math.abs(itdValue) > 60) {
-                                currentHeadPan = headControl.getGazeDirection().getHeadDirection().x;
-                                currentHeadTilt = headControl.getGazeDirection().getHeadDirection().y;
+                                currentHeadPan = (float) headControl.getGazeDirection().getHeadDirection().getX();
+                                currentHeadTilt = (float) headControl.getGazeDirection().getHeadDirection().getY();
                                 if (itdValue >= 0) {
                                     float movement = (float) (itdValue * -0.0010545358 + 0.0055380434);
                                     try {

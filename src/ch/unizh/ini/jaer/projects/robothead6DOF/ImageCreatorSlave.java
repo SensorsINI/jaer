@@ -43,7 +43,7 @@ public class ImageCreatorSlave extends FremeExtractor implements Observer {
     public boolean invert = false;
     boolean imageCreatorAlive = false;
 
-    protected Freme<Float> freme;
+    protected Freme<Float> freme = null;
     static public ImageCreator imageCreator = null;
     public boolean gettingImage = false;
     FilterChain filterChain = null;
@@ -68,11 +68,11 @@ public class ImageCreatorSlave extends FremeExtractor implements Observer {
         sizeY = imageCreator.getSizeY();
         size = imageCreator.getSize();
         grayValueScaling = imageCreator.getGrayValueScaling();
-        freme = new Freme<Float>(sizeX, sizeY);
+       // freme = new Freme<Float>(sizeX, sizeY);
         checkFreme();
-        checkDisplay();
-        Arrays.fill(rgbValues, .5f);
-        freme.fill(.5f);
+        //checkDisplay();
+        //Arrays.fill(rgbValues, .5f);
+        //freme.fill(.5f);
     }
 
     @Override
@@ -96,10 +96,10 @@ public class ImageCreatorSlave extends FremeExtractor implements Observer {
         if (out == null) {
             return null;
         }
-        if (imageCreatorAlive == true) {
-            checkFreme();
-        }
         for (Object ein : out) {
+            if (imageCreatorAlive == true) {
+                checkFreme();
+            }
             if (imageCreatorAlive == true && imageCreator.isGettingImage()) {
                 PolarityEvent e = (PolarityEvent) ein;
                 int x = (int) (e.x + imageCreator.getxOffset());  //getxOffset defines the x position of the pixel in the global picture
@@ -179,7 +179,7 @@ public class ImageCreatorSlave extends FremeExtractor implements Observer {
             freme = new Freme<Float>(sizeX, sizeY);
             freme.fill(.5f);
             Arrays.fill(rgbValues, .5f);
-            //repaintFreme();
+            repaintFreme();
         }
     }
 

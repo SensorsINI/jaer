@@ -308,7 +308,7 @@ public class Head6DOF_GUI extends javax.swing.JFrame implements PropertyChangeLi
         Head6DOF_ServoController.GazeDirection gaze = controller.gazeDirection; // current state of all servos in -1:1 coordinates
 
         g= eyePanel.getGraphics();
-        Point p = gaze2pix(eyePanel, gaze.gazeDirection);
+        Point p = gaze2pix(eyePanel, gaze.eyeDirection);
         g.drawLine(p.x, p.y + r, p.x,  p.y - r);
         g.drawLine(p.x - r, p.y, p.x + r, p.y);
 

@@ -122,7 +122,7 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
          * monocular gaze direction accounting for head pan/tilt and average eye
          * direction, 0,0 is centered, limits +-1
          */
-        Point2D.Float gazeDirection = new Point2D.Float(0, 0);
+        Point2D.Float eyeDirection = new Point2D.Float(0, 0);
         Point2D.Float leftEyeGazeDirection = new Point2D.Float();
         Point2D.Float rightEyeGazeDirection = new Point2D.Float();
         Point2D.Float[] eyeGazeDirections = {leftEyeGazeDirection, rightEyeGazeDirection};
@@ -132,7 +132,7 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
         @Override
         protected Object clone() throws CloneNotSupportedException {
             GazeDirection newGaze = (GazeDirection) (super.clone());
-            newGaze.gazeDirection.setLocation(gazeDirection);
+            newGaze.eyeDirection.setLocation(eyeDirection);
             newGaze.leftEyeGazeDirection.setLocation(leftEyeGazeDirection);
             newGaze.rightEyeGazeDirection.setLocation(rightEyeGazeDirection);
             newGaze.eyeGazeDirections[0] = newGaze.leftEyeGazeDirection;
@@ -148,8 +148,8 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
             return headDirection;
         }
         
-        public Point2D.Float getGazeDirection(){
-            return gazeDirection;
+        public Point2D.Float getEyeDirection(){
+            return eyeDirection;
         }
     }
     public GazeDirection gazeDirection = new GazeDirection(), memorizedGazeDirection = new GazeDirection();
@@ -194,7 +194,7 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
         try {
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             ObjectOutputStream oos = new ObjectOutputStream(bos);
-            oos.writeObject(memorizedGazeDirection.gazeDirection);
+            oos.writeObject(memorizedGazeDirection.eyeDirection);
             oos.writeObject(memorizedGazeDirection.headDirection);
             oos.writeObject(memorizedGazeDirection.leftEyeGazeDirection);
             oos.writeObject(memorizedGazeDirection.rightEyeGazeDirection);
@@ -212,7 +212,7 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
         try {
             loadMemorizedGazeDirection();
             setVergence(memorizedGazeDirection.vergence);
-            setEyeGazeDirection(memorizedGazeDirection.gazeDirection.x, memorizedGazeDirection.gazeDirection.y);
+            setEyeGazeDirection(memorizedGazeDirection.eyeDirection.x, memorizedGazeDirection.eyeDirection.y);
             setHeadDirection(memorizedGazeDirection.headDirection.x, memorizedGazeDirection.headDirection.y);
             // TODO implement Head when head is fixed
 
@@ -232,7 +232,7 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
             }
             ByteArrayInputStream bis = new ByteArrayInputStream(b);
             ObjectInputStream ois = new ObjectInputStream(bis);
-            memorizedGazeDirection.gazeDirection = (Point2D.Float) ois.readObject();
+            memorizedGazeDirection.eyeDirection = (Point2D.Float) ois.readObject();
             memorizedGazeDirection.headDirection = (Point2D.Float) ois.readObject();
             memorizedGazeDirection.leftEyeGazeDirection = (Point2D.Float) ois.readObject();
             memorizedGazeDirection.rightEyeGazeDirection = (Point2D.Float) ois.readObject();
@@ -496,7 +496,7 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
         setServoValue(HEAD_TILT, gaze2servo(-tilt));  // set -tilt for not inverted gui control
         gazeDirection.headDirection.y = tilt;
     //    log.info("headDirection pan=" + pan + " tilt=" + tilt);
-//        getSupport().firePropertyChange("gazeDirection", null, gazeDirection);
+//        getSupport().firePropertyChange("eyeDirection", null, eyeDirection);
     }
 
     public float clip(float in, float limit) {
@@ -528,9 +528,9 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
         gazeDirection.leftEyeGazeDirection.y = tilt;
         setServoValue(EYE_RIGHT_TILT, gaze2servo(-tilt)); // servo is flipped over
         gazeDirection.rightEyeGazeDirection.y = tilt;
-        gazeDirection.gazeDirection.setLocation(pan, tilt);
+        gazeDirection.eyeDirection.setLocation(pan, tilt);
   //      log.info("eyeDirection pan=" + pan + " tilt=" + tilt);
-//        getSupport().firePropertyChange("gazeDirection", null, gazeDirection);
+//        getSupport().firePropertyChange("eyeDirection", null, eyeDirection);
     }
 
     /**
@@ -562,9 +562,9 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
     public void setVergence(float vergence) throws HardwareInterfaceException, UnsupportedEncodingException, IOException {
         vergence = clip(vergence + vergenceOffset, VERGENCE_LIMIT);
         gazeDirection.vergence = vergence;
-        setEyeGazeDirection(gazeDirection.gazeDirection.x, gazeDirection.gazeDirection.y);
+        setEyeGazeDirection(gazeDirection.eyeDirection.x, gazeDirection.eyeDirection.y);
         //log.info("eyeDirection vergence=" + vergence);
-        //getSupport().firePropertyChange("gazeDirection", null, gazeDirection);
+        //getSupport().firePropertyChange("eyeDirection", null, eyeDirection);
     }
 
     public GazeDirection getGazeDirection() {

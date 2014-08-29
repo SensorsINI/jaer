@@ -62,7 +62,7 @@ public class ImageCreator extends FremeExtractor implements Observer {
     public float jitterFreqHz = 3.5f;
     public boolean jitterEnabled = false;
 
-    protected Freme<Float> freme;
+    protected Freme<Float> freme = null;
     CaptureImage capture = null;
     public boolean gettingImage = false;
     FilterChain filterChain = null;
@@ -98,8 +98,8 @@ public class ImageCreator extends FremeExtractor implements Observer {
         sizeY = (int) (128 + (numRows * offsetScale) + (((2 * eyeRangeY) / stepSize) * offsetScale));
         size = sizeX * sizeY;
         grayValueScaling = 0.001f;
-        freme = new Freme<Float>(getSizeX(), getSizeY());
-
+     //   freme = new Freme<Float>(getSizeX(), getSizeY());
+            
         //Arrays.fill(startGrayValues, .5f);
     }
 
@@ -198,7 +198,7 @@ public class ImageCreator extends FremeExtractor implements Observer {
             freme = new Freme<Float>(getSizeX(), getSizeY());
             freme.fill(.5f);
             Arrays.fill(rgbValues, .5f);
-            //repaintFreme();
+            repaintFreme();
         }
     }
 
@@ -403,14 +403,14 @@ public class ImageCreator extends FremeExtractor implements Observer {
             float dy = (float) (jitterAmplitude * Math.cos(phase));
             try {
                 headControl.setEyeGazeDirection(startPosition[0] + dx, startPosition[1] + dy);
-                if (headControl.gazeDirection.getGazeDirection().getX() + dx - headControl.gazeDirection.getGazeDirection().getX() < 0 || headControl.gazeDirection.getGazeDirection().getY() + dy - headControl.gazeDirection.getGazeDirection().getY() < 0) {
+                if (headControl.gazeDirection.getEyeDirection().getX() + dx - headControl.gazeDirection.getEyeDirection().getX() < 0 || headControl.gazeDirection.getEyeDirection().getY() + dy - headControl.gazeDirection.getEyeDirection().getY() < 0) {
                     setInvert(true);
-                    setxOffset((float) headControl.getGazeDirection().getHeadDirection().getX(), (float) headControl.getGazeDirection().getGazeDirection().getX());
-                    setyOffset((float) headControl.getGazeDirection().getHeadDirection().getY(), (float) headControl.getGazeDirection().getGazeDirection().getY());
+                    setxOffset((float) headControl.getGazeDirection().getHeadDirection().getX(), (float) headControl.getGazeDirection().getEyeDirection().getX());
+                    setyOffset((float) headControl.getGazeDirection().getHeadDirection().getY(), (float) headControl.getGazeDirection().getEyeDirection().getY());
                 } else {
                     setInvert(false);
-                    setxOffset((float) headControl.getGazeDirection().getHeadDirection().getX(), (float) headControl.getGazeDirection().getGazeDirection().getX());
-                    setyOffset((float) headControl.getGazeDirection().getHeadDirection().getY(), (float) headControl.getGazeDirection().getGazeDirection().getY());
+                    setxOffset((float) headControl.getGazeDirection().getHeadDirection().getX(), (float) headControl.getGazeDirection().getEyeDirection().getX());
+                    setyOffset((float) headControl.getGazeDirection().getHeadDirection().getY(), (float) headControl.getGazeDirection().getEyeDirection().getY());
                 }
             } catch (HardwareInterfaceException | IOException ex) {
                 log.severe(ex.toString());
@@ -465,8 +465,8 @@ public class ImageCreator extends FremeExtractor implements Observer {
             setStandAlone(false);
             jitterTimer = new java.util.Timer();
             // Repeat the JitterTask without delay and with 20ms between executions
-            startPosition[0] = (float) headControl.gazeDirection.getGazeDirection().getX();
-            startPosition[1] = (float) headControl.gazeDirection.getGazeDirection().getY();
+            startPosition[0] = (float) headControl.gazeDirection.getEyeDirection().getX();
+            startPosition[1] = (float) headControl.gazeDirection.getEyeDirection().getY();
             jitterTimer.scheduleAtFixedRate(new JittererTask(), 0, 20);
         } else {
             jitterTimer.cancel();
@@ -485,7 +485,7 @@ public class ImageCreator extends FremeExtractor implements Observer {
 
         public void stopThread() {
             stop = true;
-            freme = null;
+            //freme = null;
             interrupt();
         }
 
@@ -496,8 +496,8 @@ public class ImageCreator extends FremeExtractor implements Observer {
                     try {
                         headControl.setHeadDirection(-getHeadRangeX() + (currentColumn * stepSize), -getHeadRangeY() + (currentRow * stepSize));   //step = 0.16 == 20px; stepSize = 0.02 == 2.5px
                         //columnOffset = currentColumn * offsetScale;
-                        setxOffset((float) headControl.getGazeDirection().getHeadDirection().getX(), (float) headControl.getGazeDirection().getGazeDirection().getX());
-                        setyOffset((float) headControl.getGazeDirection().getHeadDirection().getY(), (float) headControl.getGazeDirection().getGazeDirection().getY());
+                        setxOffset((float) headControl.getGazeDirection().getHeadDirection().getX(), (float) headControl.getGazeDirection().getEyeDirection().getX());
+                        setyOffset((float) headControl.getGazeDirection().getHeadDirection().getY(), (float) headControl.getGazeDirection().getEyeDirection().getY());
                         Thread.sleep(12);
                     } catch (HardwareInterfaceException | IOException | InterruptedException ex) {
                         log.severe(ex.toString());
