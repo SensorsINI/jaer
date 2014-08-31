@@ -629,38 +629,39 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 			             try {
                     udpBuffer.clear();
                     udpBuffer.putInt(packetSequenceNumber++);
+ //                   System.out.println("packetSeqNumber="+packetSequenceNumber);
                     udpBuffer.putLong(now);
                     udpBuffer.putInt(maxITD);
                     float[] bins = getITDBins().getBins();
                     for (float f : bins) {
                         udpBuffer.putFloat(f);
                     }
-                    if (sendADCSamples) {
-                        // get ADC samples from chip object, put to udpBuffer 
-                        CochleaAMS1c coch = (CochleaAMS1c) chip;
-                        CochleaAMS1cADCSamples samples = coch.getAdcSamples();  // should have only new ADC samples obtained from this packet if we are running in the AEViewer.ViewLoop.run thread
-                        try {
-                            samples.acquire();
-                            DataBuffer dataBuffer = samples.getCurrentReadingDataBuffer();
-                            int nChannels = dataBuffer.getNumActiveChannelBuffers();
-                            if (nChannels > 0) {
-                                int[] activeChannelIndices = dataBuffer.getActiveChannelIndices();
-                                ChannelBuffer[] channelBuffers=dataBuffer.getChannelBuffers();
-                                int nSamples = channelBuffers[activeChannelIndices[0]].size();
-                                udpBuffer.putInt(nSamples);
-//                                System.out.println("nSamples="+nSamples);
-                                udpBuffer.putInt(nChannels);
-                                for(int s=0;s<nSamples;s++){
-                                    for(int c=0;c<nChannels;c++){
-                                        udpBuffer.putShort((short)channelBuffers[activeChannelIndices[c]].samples[s].data);
-                                    }
-                                }
-                            }
-                        } finally {
-                            samples.release();
-                        }
-
-                    }
+//                    if (sendADCSamples) {
+//                        // get ADC samples from chip object, put to udpBuffer 
+//                        CochleaAMS1c coch = (CochleaAMS1c) chip;
+//                        CochleaAMS1cADCSamples samples = coch.getAdcSamples();  // should have only new ADC samples obtained from this packet if we are running in the AEViewer.ViewLoop.run thread
+//                        try {
+//                            samples.acquire();
+//                            DataBuffer dataBuffer = samples.getCurrentReadingDataBuffer();
+//                            int nChannels = dataBuffer.getNumActiveChannelBuffers();
+//                            if (nChannels > 0) {
+//                                int[] activeChannelIndices = dataBuffer.getActiveChannelIndices();
+//                                ChannelBuffer[] channelBuffers=dataBuffer.getChannelBuffers();
+//                                int nSamples = channelBuffers[activeChannelIndices[0]].size();
+//                                udpBuffer.putInt(nSamples);
+////                                System.out.println("nSamples="+nSamples);
+//                                udpBuffer.putInt(nChannels);
+//                                for(int s=0;s<nSamples;s++){
+//                                    for(int c=0;c<nChannels;c++){
+//                                        udpBuffer.putShort((short)channelBuffers[activeChannelIndices[c]].samples[s].data);
+//                                    }
+//                                }
+//                            }
+//                        } finally {
+//                            samples.release();
+//                        }
+//
+//                    }
                     if (!printedFirstUdpMessage) {
                         log.info("sending buf=" + udpBuffer + " to client=" + client);
                         printedFirstUdpMessage = true;
