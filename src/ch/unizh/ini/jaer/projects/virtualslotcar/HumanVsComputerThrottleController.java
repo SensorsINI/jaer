@@ -70,8 +70,10 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     private boolean showTrack = getBoolean("showTrack", true);
 
     // speed controller
-    private boolean racingEnabled = getBoolean("racingEnabled", false);
+    private boolean racingEnabled = false; // user enables explicitly to start race getBoolean("racingEnabled", false);
     private float raceControllerSegmentsAheadForConstantThrottle = getFloat("raceControllerSegmentsAheadForConstantThrottle", 30);
+    private int raceLengthLaps = getInt("raceLengthLaps", 5);
+    private int raceLapsRemaining=raceLengthLaps;
 
     // racing
     private int lastTimestamp = 0;
@@ -114,7 +116,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     private CarTracker computerCarTracker, humanCarTracker;
     private CarTracker.CarCluster computerCar = null, humanCar = null;
     private boolean showedMissingTrackWarning = false;
-    private SlotcarSoundEffects sounds = null;
+    private SlotcarSoundEffects crashSound = null, winnerSound=null;
     private int lastCrashLocation = -1;
     private GLCanvas glCanvas;
     private ChipCanvas canvas;
@@ -213,9 +215,10 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
 
         setEnclosedFilterChain(filterChain);
         try {
-            sounds = new SlotcarSoundEffects(0);
+            crashSound = new SlotcarSoundEffects(0); // whoops
+            winnerSound = new SlotcarSoundEffects(2); // woo-hoo
         } catch (Exception ex) {
-            log.warning("No sound effects available: " + ex.toString());
+            log.warning("Sound effect not available: " + ex.toString());
         }
 
         if ((chip.getCanvas() != null) && (chip.getCanvas().getCanvas() != null)) {
@@ -240,6 +243,9 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
             setTrackFileName(track.getTrackName());
         }
     }
+    
+    private static enum Winner {Computer, Human, Tie,NoneSoFar};
+    Winner winner=Winner.NoneSoFar;
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -274,10 +280,10 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         if (humanCar != null) {
             humanTrackPosition = humanCar.getSegmentIdx();
         }
+        boolean computerCarCompletedLap = false, humanCarCompletedLap=false;
         if (humanCar != null) {
-            boolean humanCarCompletedLap = humanLapTimer.update(humanTrackPosition, humanCar.getLastEventTimestamp());
+            humanCarCompletedLap = humanLapTimer.update(humanTrackPosition, humanCar.getLastEventTimestamp());
         }
-        boolean computerCarCompletedLap = false;
         if (computerCar != null) {
             computerCarCompletedLap = computerLapTimer.update(computerTrackPosition, computerCar.getLastEventTimestamp());
         }
@@ -306,11 +312,11 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         } else if (state.get() == State.CRASHED) {
             state.set(State.STARTING);
         } else if (state.get() == State.RACING) {
+                int computerLead = computerLapTimer.computeLeadInTotalSegments(humanLapTimer);
             if (computerCar != null && !computerCar.isCrashed() && humanCar != null && humanCar.isRunning()) {
                 throttle = new ThrottleBrake();
                 ThrottleBrake maxThrottle = currentProfile.getThrottle(computerCar.getSegmentIdx());
                 throttle.copyFrom(maxThrottle);
-                int computerLead = computerLapTimer.computeLeadInTotalSegments(humanLapTimer);
                 if (!throttle.brake) {
                     if (computerLead > 0) { // computer ahead, slow down computer car
                         float reductionFactor = computerLead / raceControllerSegmentsAheadForConstantThrottle;
@@ -323,6 +329,21 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
                         } else if (throttle.throttle > maxThrottle.throttle) {
                             throttle.throttle = maxThrottle.throttle;
                         }
+                    }
+                }
+                if((computerLead<=0 && humanCarCompletedLap) || (computerLead>=0 &&computerCarCompletedLap)){
+                    raceLapsRemaining--;
+                    if(raceLapsRemaining==0){ // winner!
+                        if(computerLead>0){
+                            winner=Winner.Computer;
+                        }else if(computerLead<0){
+                            winner=Winner.Human;
+                        }else{
+                            winner=Winner.Tie;
+                        }
+                        log.info("Winner is "+winner.toString()+" by "+(int)Math.abs(computerLead));
+                        if(winnerSound!=null) winnerSound.play();
+                        setRacingEnabled(false);
                     }
                 }
                 if (computerLead > 0) {
@@ -378,8 +399,8 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
             state.set(State.CRASHED);
             lastCrashLocation = computerCarTracker.getCrashedCar().crashSegment;
             //                    throttle.throttle = getStartingThrottleValue(); // don't actually change profile, starting comes from getThrottle
-            if (sounds != null) {
-                sounds.play();
+            if (crashSound != null) {
+                crashSound.play();
             } else {
                 log.warning("null sounds object");
             }
@@ -484,9 +505,9 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     }
 
     synchronized public void doStartRace() {
-        humanLapTimer.reset();
-        computerLapTimer.reset();
+       resetRace();
         state.set(State.RACING);
+        setRacingEnabled(true);
     }
 
     public final synchronized void doLoadThrottleSettings() {
@@ -592,8 +613,14 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         }
         lastRewardLap = 0;
         state.set(State.STARTING);
+        resetRace();
+    }
+
+    private void resetRace() {
         humanLapTimer.reset();
         computerLapTimer.reset();
+        raceLapsRemaining=raceLengthLaps;
+        winner=Winner.NoneSoFar;
     }
 
     @Override
@@ -642,7 +669,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         humanCarTracker.setCarColor(Color.GREEN);
 
         String s;
-        s = String.format("HumanVsComputerThrottleController\nDefine track with TrackDefineFilter and load that track here.\nState: %s\nLearning %s\ncomputer/human trackPosition: %d|%d/%d\nThrottle: %8.3f\nComputer %s\nHuman %s\n%s", state.toString(), learningEnabled ? "Enabled" : "Disabled", computerTrackPosition, humanTrackPosition, track == null ? 0 : getTrack().getNumPoints(), throttle.throttle, computerLapTimer.toString(), humanLapTimer.toString(),standings());
+        s = String.format("HumanVsComputerThrottleController\nDefine track with TrackDefineFilter and load that track here.\nState: %s\nLearning %s\ncomputer/human trackPosition: %d|%d/%d\nThrottle: %8.3f\nComputer %s\nHuman %s\n%s\n%d laps remaining\nLast Winner: %s", state.toString(), learningEnabled ? "Enabled" : "Disabled", computerTrackPosition, humanTrackPosition, track == null ? 0 : getTrack().getNumPoints(), throttle.throttle, computerLapTimer.toString(), humanLapTimer.toString(),standings(),raceLapsRemaining,winner.toString());
         MultilineAnnotationTextRenderer.renderMultilineString(s);
         if (showTrack && track != null) {
             track.draw(drawable);
@@ -1570,8 +1597,10 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
      * @param racingEnabled the racingEnabled to set
      */
     public void setRacingEnabled(boolean racingEnabled) {
+        boolean old=this.racingEnabled;
         this.racingEnabled = racingEnabled;
-        putBoolean("racingEnabled", racingEnabled);
+//        putBoolean("racingEnabled", racingEnabled);
+        getSupport().firePropertyChange("racingEnabled", old, this.racingEnabled);
     }
 
     /**
@@ -1591,5 +1620,21 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
             raceControllerSegmentsAheadForConstantThrottle = 1;
         }
         putFloat("raceControllerSegmentsAheadForConstantThrottle", raceControllerSegmentsAheadForConstantThrottle);
+    }
+
+    /**
+     * @return the raceLengthLaps
+     */
+    public int getRaceLengthLaps() {
+        return raceLengthLaps;
+    }
+
+    /**
+     * @param raceLengthLaps the raceLengthLaps to set
+     */
+    public void setRaceLengthLaps(int raceLengthLaps) {
+        if(raceLengthLaps<1) raceLengthLaps=1;
+        this.raceLengthLaps = raceLengthLaps;
+        putInt("raceLengthLaps",raceLengthLaps);
     }
 }
