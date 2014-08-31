@@ -48,7 +48,8 @@ import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 
 /**
  * Controls slot car adaptively according to speed of humanMask controlled car
- * @author  Tobi
+ *
+ * @author Tobi
  */
 @Description("Controls slot car adaptively according to speed of human controlled car")
 public class HumanVsComputerThrottleController extends AbstractSlotCarController implements SlotCarControllerInterface, FrameAnnotater, MouseListener, MouseMotionListener, PropertyChangeListener {
@@ -66,14 +67,13 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     private int numSuccessfulLapsToReward = getInt("numSuccessfulLapsToReward", 2);
     private float startingThrottleValue = getFloat("startingThrottleValue", .1f);
     private boolean showThrottleProfile = getBoolean("showThrottleProfile", true);
-    private boolean showTrack=getBoolean("showTrack", true);
-    
+    private boolean showTrack = getBoolean("showTrack", true);
+
     // speed controller
-    private boolean raceEnabled=getBoolean("raceEnabled",false);
-    private float raceControllerGain=getFloat("raceControllerGain",1f);
+    private boolean raceEnabled = getBoolean("raceEnabled", false);
+    private float raceControllerSegmentsAheadForConstantThrottle = getFloat("raceControllerSegmentsAheadForConstantThrottle", 30);
 
     // racing
-    
     private int lastTimestamp = 0;
 
     /**
@@ -82,9 +82,9 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
      * <li> STARTING means no car is tracked or tracker has not found a car
      * cluster near the track model,
      * <li> SOLO is the active state,
- <li> CRASHED is the state if we were SOLO and the car tracker has
- tracked the car sufficiently far away from the track model,
- <li> STALLED is the state if the car has stopped being tracked but the
+     * <li> CRASHED is the state if we were SOLO and the car tracker has tracked
+     * the car sufficiently far away from the track model,
+     * <li> STALLED is the state if the car has stopped being tracked but the
      * last tracked position was on the track because it has stalled out and
      * stopped moving. is after there have not been any definite balls for a
      * while and we are waiting for a clear ball directed
@@ -111,27 +111,26 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     private int lastRewardLap = 0;
     private ThrottleProfile currentProfile, lastSuccessfulProfile, lastSuccessfulProfileEvenOlder;
     private Random random = new Random();
-    private LapTimer computerLapTimer = null, humanLapTimer=null;
+    private LapTimer computerLapTimer = null, humanLapTimer = null;
     private int lapTime;
     private int prevLapTime;
     private FilterChain filterChain;
     private CarTracker computerCarTracker, humanCarTracker;
-    private CarTracker.CarCluster computerCar = null, humanCar=null;
+    private CarTracker.CarCluster computerCar = null, humanCar = null;
     private boolean showedMissingTrackWarning = false;
     private SlotcarSoundEffects sounds = null;
     private int lastCrashLocation = -1;
     private GLCanvas glCanvas;
     private ChipCanvas canvas;
     TobiLogger learningLogger = new TobiLogger("HumanVsComputerThrottleController", "throttle settings log for slot car racer during learning");
-    private SlotcarTrack track=new SlotcarTrack();
-    private String trackFileName=getString("trackFileName",null);
+    private SlotcarTrack track = new SlotcarTrack();
+    private String trackFileName = getString("trackFileName", null);
 
     TrackHistogramFilter computerMask = null, humanMask = null; // later refer to enclosed filters in CarTrackers
     private String computerTrackHistogramFilePath = getString("computerTrackHistogramFilePath", "computerTrackHistogramMask.dat");
     private String humanTrackHistogramFilePath = getString("humanTrackHistogramFilePath", "humanTrackHistogramMask.dat");
-    BackgroundActivityFilter backgroundActivityFilter=null;
- 
-    
+    BackgroundActivityFilter backgroundActivityFilter = null;
+
     public HumanVsComputerThrottleController(AEChip chip) {
         super(chip);
         final String s = "EvolutionaryThrottleController";
@@ -145,25 +144,21 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         setPropertyTooltip(s, "numSegmentsSpacingFromCrashToBrakingPoint", "number track segments before crash that braking segments start");
         setPropertyTooltip(s, "fractionOfTrackToSpeedUp", "fraction of track spline points to increase throttle on after successful laps");
         setPropertyTooltip(s, "fractionOfTrackToSlowDownPreCrash", "fraction of track spline points before crash point to reduce throttle on");
-        
-        String misc="Misc. control";
+
+        String misc = "Misc. control";
         setPropertyTooltip(misc, "startingThrottleValue", "throttle value when starting (no car cluster detected)");
         setPropertyTooltip(misc, "showThrottleProfile", "displays the throttle profile, with dot size reprenting the throttle value");
         setPropertyTooltip(misc, "showTrack", "displays the track");
-        
 
-         
-        
-        final String s2="HumanVsComputer Configuration";
+        final String s2 = "HumanVsComputer Configuration";
         setPropertyTooltip(s2, "humanTrackHistogramFilePath", "path to histogram mask for human track");
         setPropertyTooltip(s2, "computerTrackHistogramFilePath", "path to histogram mask for computer track");
-        setPropertyTooltip(s2,"trackFileName", "file name (full path) to track file produced by TrackDefineFilter");
+        setPropertyTooltip(s2, "trackFileName", "file name (full path) to track file produced by TrackDefineFilter");
         // do methods
-        setPropertyTooltip(s2,"loadComputerTrackHistogramMask","load the histogram mask for computer track");
-        setPropertyTooltip(s2,"loadHumanTrackHistogramMask","load the histogram mask for human track");
-        
-        
-       // do methods
+        setPropertyTooltip(s2, "loadComputerTrackHistogramMask", "load the histogram mask for computer track");
+        setPropertyTooltip(s2, "loadHumanTrackHistogramMask", "load the histogram mask for human track");
+
+        // do methods
         setPropertyTooltip(s, "guessThrottleFromTrackModel", "guess initial throttle profile from track model");
         setPropertyTooltip(s, "resetAllThrottleValues", "reset all profile points to defaultThrottle");
         setPropertyTooltip(s, "loadThrottleSettings", "load profile from preferences");
@@ -174,41 +169,39 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         setPropertyTooltip("enableLearning", "turns on learning so the successful laps store the throttle profile, and crash laps remove the last change in profile");
         setPropertyTooltip("disableLearning", "turns off learning");
         setPropertyTooltip("loadTrack", "Load a track from disk that was extracted by TrackDefineFilter");
-        
+
         // racing
-        String racingString="Racing";
-        setPropertyTooltip(racingString, "raceLengthLaps","number of laps for a race");
+        String racingString = "Racing";
+        setPropertyTooltip(racingString, "raceLengthLaps", "number of laps for a race");
         setPropertyTooltip(racingString, "startRace", "Reset lap timers and start race");
-        final String s3="HumanVsComputer Controller";
-        setPropertyTooltip(s3,"raceControllerGain","gain applied to modulation of computer throttle profile relative to fastest profile");
-        setPropertyTooltip(s3,"raceEnabled","enable modulation of computer throttle based on lead or lag of computer relative to human");
-        
+        final String s3 = "HumanVsComputer Controller";
+        setPropertyTooltip(s3, "raceControllerGain", "gain applied to modulation of computer throttle profile relative to fastest profile");
+        setPropertyTooltip(s3, "raceEnabled", "enable modulation of computer throttle based on lead or lag of computer relative to human");
+
         doLoadThrottleSettings();
 
         filterChain = new FilterChain(chip);
-        backgroundActivityFilter=new BackgroundActivityFilter(chip);
+        backgroundActivityFilter = new BackgroundActivityFilter(chip);
         filterChain.add(backgroundActivityFilter);
-        
+
         // load existing last track if it is in preferences
-        if(trackFileName!=null) {
-            try{
-                SlotcarTrack newTrack=SlotcarTrack.loadFromFile(new File(trackFileName));
-                track=newTrack;
-            }catch(Exception e){
+        if (trackFileName != null) {
+            try {
+                SlotcarTrack newTrack = SlotcarTrack.loadFromFile(new File(trackFileName));
+                track = newTrack;
+            } catch (Exception e) {
                 log.warning(e.toString());
             }
         }
-        
- 
+
         computerCarTracker = new CarTracker(chip);
-        computerMask=computerCarTracker.getTrackHistogramFilter();
+        computerMask = computerCarTracker.getTrackHistogramFilter();
         computerCarTracker.setTrack(track);
         computerCarTracker.setEnclosed(true, this);
         computerCarTracker.setColorClustersDifferentlyEnabled(true);
 
-        
-        humanCarTracker=new CarTracker(chip);
-        humanMask=humanCarTracker.getTrackHistogramFilter();
+        humanCarTracker = new CarTracker(chip);
+        humanMask = humanCarTracker.getTrackHistogramFilter();
         humanCarTracker.setTrack(track);
         humanCarTracker.setEnclosed(true, this);
         humanCarTracker.setColorClustersDifferentlyEnabled(true);
@@ -233,53 +226,64 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
             glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
         }
 
-        
     }
 
-    public void doLoadComputerTrackHistogramMask(){
+    public void doLoadComputerTrackHistogramMask() {
         computerMask.doLoadHistogram();
         setComputerTrackHistogramFilePath(computerMask.getFilePath());
     }
-    
-    public void doLoadHumanTrackHistogramMask(){
+
+    public void doLoadHumanTrackHistogramMask() {
         humanMask.doLoadHistogram();
         setHumanTrackHistogramFilePath(humanMask.getFilePath());
     }
-    
-    public void doLoadTrack(){
-        track=SlotcarTrack.doLoadTrack();
-        if(track!=null) setTrackFileName(track.getTrackName());
+
+    public void doLoadTrack() {
+        track = SlotcarTrack.doLoadTrack();
+        if (track != null) {
+            setTrackFileName(track.getTrackName());
+        }
     }
-    
+
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-
+        setBigStatusText(state.toString(), bigStatusColor);
         if (in.getSize() > 0) {
             lastTimestamp = in.getLastTimestamp(); // for logging
         }
 
-        if (( getTrack() != null) && ((currentProfile == null) || (currentProfile.getNumPoints() != getTrack().getNumPoints()))) {
+        if ((getTrack() != null) && ((currentProfile == null) || (currentProfile.getNumPoints() != getTrack().getNumPoints()))) {
             currentProfile = new ThrottleProfile(getTrack().getNumPoints());
             currentProfile.log();
             log.info("made a new ThrottleProfile :" + currentProfile);
         }
 
-        EventPacket filtered=backgroundActivityFilter.filterPacket(in);
+        EventPacket filtered = backgroundActivityFilter.filterPacket(in);
+        if (track == null) {
+            if (!showedMissingTrackWarning) {
+                log.warning("Track not defined yet. Use the TrackdefineFilter to extract the slot car track or load the track from a file.");
+            }
+            showedMissingTrackWarning = true;
+            return in;
+        }
         computerCarTracker.filterPacket(in);
         humanCarTracker.filterPacket(in);
-        
-//        out = getEnclosedFilterChain().filterPacket(in); // does cartracker and maybe trackdefinefilter
 
+//        out = getEnclosedFilterChain().filterPacket(in); // does cartracker and maybe trackdefinefilter
         computerCar = computerCarTracker.findCarCluster();
         if (computerCar != null) {
             computerTrackPosition = computerCar.getSegmentIdx();
         }
-       humanCar = humanCarTracker.findCarCluster();
+        humanCar = humanCarTracker.findCarCluster();
         if (humanCar != null) {
             humanTrackPosition = humanCar.getSegmentIdx();
         }
         if (humanCar != null) {
             boolean humanCarCompletedLap = humanLapTimer.update(humanTrackPosition, humanCar.getLastEventTimestamp());
+        }
+        boolean computerCarCompletedLap=false;
+        if(computerCar!=null){
+               computerCarCompletedLap = computerLapTimer.update(computerTrackPosition, computerCar.getLastEventTimestamp());
         }
         // choose state & copyFrom throttle
         if (state.get() == State.OVERRIDDEN) {
@@ -288,105 +292,116 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         } else if (state.get() == State.STARTING) {
             //            throttle.throttle = getStartingThrottleValue();
             if ((computerCar != null) && computerCar.isRunning()) {
-                state.set(State.SOLO);
+                if (humanCar != null && humanCar.isRunning()) {
+                    state.set(State.RACING);
+                } else {
+                    state.set(State.SOLO);
+                }
             }
         } else if (state.get() == State.SOLO) {
-            if (track == null) {
-                if (!showedMissingTrackWarning) {
-                    log.warning("Track not defined yet. Use the TrackdefineFilter to extract the slot car track or load the track from a file.");
-                }
-                showedMissingTrackWarning = true;
-            } else {
-                if (computerCar != null && !computerCar.isCrashed()) {
-                    // did we lap?
-                    boolean computerCarCompletedLap = computerLapTimer.update(computerTrackPosition, computerCar.getLastEventTimestamp());
-
-                    if (computerCarCompletedLap) {
-                        lapTime = computerLapTimer.getLastLap().laptimeUs;
-                        int dt = lapTime - prevLapTime;
-                        if (dt < 0) {
-                            log.info("lap time improved by " + (dt / 1000) + " ms");
-                        } else if (dt > 0) {
-                            log.info("lap time worsened by " + (dt / 1000) + " ms");
-                        }
-                        prevLapTime = lapTime;
-                    }
-                    if (learningEnabled && ((computerLapTimer.lapCounter - lastRewardLap) > numSuccessfulLapsToReward)) {
-                        try {
-                            log.info("successfully drove " + computerLapTimer.lapCounter + " laps; cloning this profile and rewarding currentProfile");
-                            if (lastSuccessfulProfile != null) {
-                                lastSuccessfulProfileEvenOlder = (ThrottleProfile) lastSuccessfulProfile.clone(); // save backup copy of last successfull
-                            }
-                            if (currentProfile != null) {
-                                lastSuccessfulProfile = (ThrottleProfile) currentProfile.clone(); // save current as successful
-                            }
-                        } catch (CloneNotSupportedException e) {
-                            throw new RuntimeException("couldn't clone the current throttle profile: " + e);
-                        }
-                        currentProfile.addBump();
-                        currentProfile.log();
-                        lastRewardLap = computerLapTimer.lapCounter;
-                    }
-                }
-                if (computerCarTracker.getCrashedCar() != null) {
-                    state.set(State.CRASHED);
-                    lastCrashLocation = computerCarTracker.getCrashedCar().crashSegment;
-                    //                    throttle.throttle = getStartingThrottleValue(); // don't actually change profile, starting comes from getThrottle
-                    if (sounds != null) {
-                        sounds.play();
-                    } else {
-                        log.warning("null sounds object");
-                    }
-                    if (learningEnabled) {
-                        if ((lastSuccessfulProfile != null) && (currentProfile != lastSuccessfulProfile)) {
-                            log.info("crashed at segment" + lastCrashLocation + ", switching back to previous profile");
-                            currentProfile = lastSuccessfulProfile;
-                            currentProfile.log();
-                        }
-                        if (numSegmentsToBrakeBeforeCrash > 0) {
-                            currentProfile.addBrake(computerCarTracker.getCrashedCar().crashSegment);
-                            currentProfile.log();
-                        } else {
-                            currentProfile.subtractBump(computerCarTracker.getCrashedCar().crashSegment);
-                            currentProfile.log();
-                        }
-                    }
-                    lastRewardLap = computerLapTimer.lapCounter; // don't reward until we make some laps from here
-                } else if (computerCar != null) {
-                    throttle = currentProfile.getThrottle(computerCar.getSegmentIdx());
+            if (computerCar != null && !computerCar.isCrashed()) {
+                computeLearning(computerCarCompletedLap);
+                throttle = currentProfile.getThrottle(computerCar.getSegmentIdx());
+                if(humanCar!=null){
+                    state.set(State.RACING);
                 }
             }
-        } else if (state.get() == State.CRASHED) {
-            //            throttle.throttle = getStartingThrottleValue();
-            state.set(State.STARTING);
-        } else if(state.get()==State.RACING){
             
-        }
+        } else if (state.get() == State.CRASHED) {
+            state.set(State.STARTING);
+        } else if (state.get() == State.RACING) {
+            if (computerCar != null && !computerCar.isCrashed() && humanCar != null && humanCar.isRunning()) {
+                throttle=new ThrottleBrake();
+                ThrottleBrake maxThrottle=currentProfile.getThrottle(computerCar.getSegmentIdx());
+                throttle.copyFrom(maxThrottle);
+                int computerLead = computerLapTimer.computeLeadInSegments(humanLapTimer);
+                if (!throttle.brake) {
+                    if (computerLead > 0) { // computer ahead, slow down computer car
+                        float reductionFactor= computerLead/raceControllerSegmentsAheadForConstantThrottle;
+                        if(reductionFactor>1) reductionFactor=1;
+                        throttle.throttle *= (1-reductionFactor);
+                        if (throttle.throttle < startingThrottleValue) {
+                            throttle.throttle = startingThrottleValue;
+                        } else if (throttle.throttle > maxThrottle.throttle) {
+                            throttle.throttle = maxThrottle.throttle;
+                        }
+                    }
+                }
+                String who = null;
+                if (computerLead > 0) {
+                    who = "Computer";
+                } else if (computerLead < 0) {
+                    who = "Human";
+                } else {
+                    who = "Tied";
+                }
+                setBigStatusText(String.format("%s: %s Lead is %d", state.toString(), who, (int)Math.abs(computerLead)), bigStatusColor);
+                // control speed of computer car
+            }else{
+                state.set(State.STARTING);
+            }
 
-        int computerLead=computerLapTimer.computeLeadInSegments(humanLapTimer);
-        
-        
-        String stateString = state.toString();
-        if (state.get() == State.SOLO || state.get()==State.RACING) {
-            String who=null;
-            if(computerLead>0){
-                who="Computer";
-            }else if(computerLead<0){
-                who="Human";
-            }else who="Tied";
-            stateString = String.format("%s: %s Lead is %d", state.toString(), who, computerLead);
-        } else {
-            stateString = state.toString();
         }
-        setBigStatusText(stateString, bigStatusColor);
-        
-        // control speed of computer car
-        
-        
 
         return in;
     }
-    
+
+    private void computeLearning(boolean completedLap) throws RuntimeException {
+        if (computerCar == null || completedLap == false) {
+            return;
+        }
+        // did we lap?
+        lapTime = computerLapTimer.getLastLap().laptimeUs;
+        int dt = lapTime - prevLapTime;
+        if (dt < 0) {
+            log.info("lap time improved by " + (dt / 1000) + " ms");
+        } else if (dt > 0) {
+            log.info("lap time worsened by " + (dt / 1000) + " ms");
+        }
+        prevLapTime = lapTime;
+        if (learningEnabled && ((computerLapTimer.lapCounter - lastRewardLap) > numSuccessfulLapsToReward)) {
+            try {
+                log.info("successfully drove " + computerLapTimer.lapCounter + " laps; cloning this profile and rewarding currentProfile");
+                if (lastSuccessfulProfile != null) {
+                    lastSuccessfulProfileEvenOlder = (ThrottleProfile) lastSuccessfulProfile.clone(); // save backup copy of last successfull
+                }
+                if (currentProfile != null) {
+                    lastSuccessfulProfile = (ThrottleProfile) currentProfile.clone(); // save current as successful
+                }
+            } catch (CloneNotSupportedException e) {
+                throw new RuntimeException("couldn't clone the current throttle profile: " + e);
+            }
+            currentProfile.addBump();
+            currentProfile.log();
+            lastRewardLap = computerLapTimer.lapCounter;
+        }
+        if (computerCarTracker.getCrashedCar() != null) {
+            state.set(State.CRASHED);
+            lastCrashLocation = computerCarTracker.getCrashedCar().crashSegment;
+            //                    throttle.throttle = getStartingThrottleValue(); // don't actually change profile, starting comes from getThrottle
+            if (sounds != null) {
+                sounds.play();
+            } else {
+                log.warning("null sounds object");
+            }
+            if (learningEnabled) {
+                if ((lastSuccessfulProfile != null) && (currentProfile != lastSuccessfulProfile)) {
+                    log.info("crashed at segment" + lastCrashLocation + ", switching back to previous profile");
+                    currentProfile = lastSuccessfulProfile;
+                    currentProfile.log();
+                }
+                if (numSegmentsToBrakeBeforeCrash > 0) {
+                    currentProfile.addBrake(computerCarTracker.getCrashedCar().crashSegment);
+                    currentProfile.log();
+                } else {
+                    currentProfile.subtractBump(computerCarTracker.getCrashedCar().crashSegment);
+                    currentProfile.log();
+                }
+            }
+            lastRewardLap = computerLapTimer.lapCounter; // don't reward until we make some laps from here
+        }
+    }
+
     private TextRenderer statusRenderer = null;
     private Color bigStatusColor = new Color(1, 0, 0, .4f);
     private String bigStatusText = null;
@@ -468,10 +483,11 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     public void doDisableLearning() {
         setLearningEnabled(false);
     }
-    
-    synchronized public void doStartRace(){
+
+    synchronized public void doStartRace() {
         humanLapTimer.reset();
         computerLapTimer.reset();
+        state.set(State.RACING);
     }
 
     public final synchronized void doLoadThrottleSettings() {
@@ -543,7 +559,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     @Override
     public ThrottleBrake getThrottle() {
         Enum s = state.get();
-        if (s == State.SOLO) {
+        if (s == State.SOLO || s == State.RACING) {
             return throttle;
         } else if ((s == State.CRASHED) || (s == State.STARTING)) {
             startingThrottle.throttle = startingThrottleValue;
@@ -619,27 +635,28 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        String s = String.format("HumanVsComputerThrottleController\nDefine track with TrackDefineFilter and load that track here.\nState: %s\nLearning %s\ncomputer/human trackPosition: %d|%d/%d\nThrottle: %8.3f\n%s", state.toString(), learningEnabled ? "Enabled" : "Disabled", computerTrackPosition, humanTrackPosition, getTrack().getNumPoints(), throttle.throttle, computerLapTimer.toString());
-		//       if(state.getString()==State.CRASHED){
+        String s = String.format("HumanVsComputerThrottleController\nDefine track with TrackDefineFilter and load that track here.\nState: %s\nLearning %s\ncomputer/human trackPosition: %d|%d/%d\nThrottle: %8.3f\n%s", state.toString(), learningEnabled ? "Enabled" : "Disabled", computerTrackPosition, humanTrackPosition, track == null ? 0 : getTrack().getNumPoints(), throttle.throttle, computerLapTimer.toString());
+        //       if(state.getString()==State.CRASHED){
         //
         //       }else if(state.getString()==State.SOLO){
         //
         //       }else{
         //       }
-        chip.getCanvas().checkGLError(drawable.getGL().getGL2(), glu, "in TrackdefineFilter.drawThrottleProfile");
-
+        GL2 gl = drawable.getGL().getGL2();
+        chip.getCanvas().checkGLError(gl, glu, "in TrackdefineFilter.drawThrottleProfile");
         computerCarTracker.setCarColor(Color.RED);
         humanCarTracker.setCarColor(Color.GREEN);
 
         MultilineAnnotationTextRenderer.renderMultilineString(s);
-        if(showTrack&&track!=null){
+        if (showTrack && track != null) {
             track.draw(drawable);
         }
         if (showThrottleProfile) {
             drawThrottleProfile(drawable.getGL().getGL2());
         }
-        drawCurrentTrackPoint(drawable.getGL().getGL2());
-        drawLastCrashLocation(drawable.getGL().getGL2());
+        highLightTrackPoint(gl, computerTrackPosition, Color.RED, 3, "computer");
+        highLightTrackPoint(gl, humanTrackPosition, Color.GREEN, 3, "human");
+        highLightTrackPoint(gl, lastCrashLocation, Color.PINK, 3, "last computer crash");
 
         canvas = chip.getCanvas();
         glCanvas = (GLCanvas) canvas.getCanvas();
@@ -715,32 +732,29 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     }
     private TextRenderer textRenderer = null;
 
-    private void drawCurrentTrackPoint(GL2 gl) {
-        if ((computerTrackPosition == -1) || (getTrack() == null)) {
+    private void highLightTrackPoint(GL2 gl, int segment, Color color, float size, String label) {
+        if ((getTrack() == null) || (segment < 0) || (segment >= getTrack().getNumPoints())) {
             return;
         }
-        gl.glColor4f(1, 0, 0, .5f);
-        Point2D p = getTrack().getPoint(computerTrackPosition);
-        gl.glRectd(p.getX() - 1, p.getY() - 1, p.getX() + 1, p.getY() + 1);
-    }
 
-    private void drawLastCrashLocation(GL2 gl) {
-        if (lastCrashLocation == -1) {
+        float[] rgb = color.getRGBComponents(null);
+        gl.glColor3fv(rgb, 0);
+        Point2D p = getTrack().getPoint(segment);
+        if (p == null) {
             return;
         }
-        if (textRenderer == null) {
-            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
+        final float h = size / 2;
+        gl.glRectd(p.getX() - h, p.getY() - h, p.getX() + h, p.getY() + h);
+        if (label != null) {
+            if (textRenderer == null) {
+                textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
+            }
+            textRenderer.setColor(color);
+            textRenderer.begin3DRendering();
+            final int offset = 5;
+            textRenderer.draw3D(label, (float) p.getX() + offset, (float) p.getY() + offset, 0, .2f);
+            textRenderer.end3DRendering();
         }
-        textRenderer.setColor(Color.yellow);
-        textRenderer.begin3DRendering();
-        Point2D p = getTrack().getPoint(lastCrashLocation);
-        textRenderer.draw3D("last crash", (float) p.getX(), (float) p.getY(), 0, .2f);
-        textRenderer.end3DRendering();
-        gl.glPointSize(10);
-        gl.glColor3f(1, 0, 0);
-        gl.glBegin(GL.GL_POINTS);
-        gl.glVertex2d(p.getX(), p.getY());
-        gl.glEnd();
     }
 
     /**
@@ -1146,10 +1160,10 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
             resetMarkedSegments();
         }
 
-		// chooses next spot to add throttle, based on previous throttle throttleValues.
+        // chooses next spot to add throttle, based on previous throttle throttleValues.
         // The higher the previous throttle, the less likely to choose it.
         private int getNextThrottleBumpPoint() {
-			// do accept/reject sampling to getString next throttle bump center point, such that
+            // do accept/reject sampling to getString next throttle bump center point, such that
             // the higher the throttle is now, the smaller the chance we increase the throttle there.
             // So, we treat (1-throttleValues[i]) as a likehood of choosing a new throttle.
             // We uniformly pick a bin from B in 1:numPoints and a value V in 0:1 and see if that particular
@@ -1477,8 +1491,8 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     public void setComputerTrackHistogramFilePath(String path) {
         String old = computerTrackHistogramFilePath;
         this.computerTrackHistogramFilePath = path;
-         putString("computerTrackHistogramFilePath",computerTrackHistogramFilePath);
-       getSupport().firePropertyChange("computerTrackHistogramFilePath", old, computerTrackHistogramFilePath);
+        putString("computerTrackHistogramFilePath", computerTrackHistogramFilePath);
+        getSupport().firePropertyChange("computerTrackHistogramFilePath", old, computerTrackHistogramFilePath);
     }
 
     /**
@@ -1492,14 +1506,14 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
      * @param path the humanTrackHistogramFilePath to set
      */
     public void setHumanTrackHistogramFilePath(String path) {
-        String old=humanTrackHistogramFilePath;
+        String old = humanTrackHistogramFilePath;
         this.humanTrackHistogramFilePath = path;
-        putString("humanTrackHistogramFilePath",humanTrackHistogramFilePath);
-        getSupport().firePropertyChange("humanTrackHistogramFilePath",old,humanTrackHistogramFilePath);
+        putString("humanTrackHistogramFilePath", humanTrackHistogramFilePath);
+        getSupport().firePropertyChange("humanTrackHistogramFilePath", old, humanTrackHistogramFilePath);
     }
 
     // delegated
-     public void setDisplayClosestPointMap(boolean displayClosestPointMap) {
+    public void setDisplayClosestPointMap(boolean displayClosestPointMap) {
         track.setDisplayClosestPointMap(displayClosestPointMap);
     }
 
@@ -1518,11 +1532,11 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
      * @param trackFileName the trackFileName to set
      */
     public void setTrackFileName(String trackFileName) {
-        String old=this.trackFileName;
+        String old = this.trackFileName;
         this.trackFileName = trackFileName;
-        putString("trackFileName",trackFileName);
-        getSupport().firePropertyChange("trackFileName",old,this.trackFileName);
-        
+        putString("trackFileName", trackFileName);
+        getSupport().firePropertyChange("trackFileName", old, this.trackFileName);
+
     }
 
     /**
@@ -1538,5 +1552,33 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     public void setShowTrack(boolean showTrack) {
         this.showTrack = showTrack;
         putBoolean("showTrack", showTrack);
+    }
+
+    /**
+     * @return the raceEnabled
+     */
+    public boolean isRaceEnabled() {
+        return raceEnabled;
+    }
+
+    /**
+     * @param raceEnabled the raceEnabled to set
+     */
+    public void setRaceEnabled(boolean raceEnabled) {
+        this.raceEnabled = raceEnabled;
+    }
+
+    /**
+     * @return the raceControllerSegmentsAheadForConstantThrottle
+     */
+    public float getRaceControllerSegmentsAheadForConstantThrottle() {
+        return raceControllerSegmentsAheadForConstantThrottle;
+    }
+
+    /**
+     * @param raceControllerSegmentsAheadForConstantThrottle the raceControllerSegmentsAheadForConstantThrottle to set
+     */
+    public void setRaceControllerSegmentsAheadForConstantThrottle(float raceControllerSegmentsAheadForConstantThrottle) {
+        this.raceControllerSegmentsAheadForConstantThrottle = raceControllerSegmentsAheadForConstantThrottle;
     }
 }

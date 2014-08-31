@@ -26,6 +26,7 @@ class LapTimer implements PropertyChangeListener {
     private int lapStartTime = 0;
     int totalSegmentsCompleted=0;
     boolean startedFirstLap=false;
+    private int n,n14,n34;
 
     /**
      * Constructs a new LapTimer for a track with numSegments points.
@@ -34,18 +35,32 @@ class LapTimer implements PropertyChangeListener {
      */
     public LapTimer(SlotcarTrack track) {
         this.track = track;
+        computeConstants(track);
+    }
+
+    private void computeConstants(SlotcarTrack track) {
+        n=track.getNumPoints();
+        n14=n/4;
+        n34=(3*n)/4;
     }
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getPropertyName().equals(SlotcarTrack.EVENT_TRACK_CHANGED)) {
             track = (SlotcarTrack) evt.getNewValue();
+            computeConstants(track);
         }
     }
 
-    int computeLeadInSegments(LapTimer otherTimer) {
+    public int computeLeadInSegments(LapTimer otherTimer) {
         int lapsAhead=lapCounter-otherTimer.lapCounter;
-        int segmentsAhead=totalSegmentsCompleted-otherTimer.totalSegmentsCompleted;
+//        int segmentsAhead=totalSegmentsCompleted-otherTimer.totalSegmentsCompleted;
+        int segmentsAhead=lastSegment-otherTimer.lastSegment;
+        if(lastSegment<n14 && otherTimer.lastSegment>n34){
+            segmentsAhead+=n;
+        }else if(lastSegment>n34 && otherTimer.lastSegment<n14){
+            segmentsAhead-=n;
+        }
         return segmentsAhead;
     }
 
@@ -108,7 +123,6 @@ class LapTimer implements PropertyChangeListener {
      * @return true if we just crossed finish line.
      */
     boolean update(int newSegment, int timeUs) {
-        int n = track.getNumPoints();
         boolean ret = false;
         if (track == null) {
             return false;
@@ -122,6 +136,7 @@ class LapTimer implements PropertyChangeListener {
                 return false;
             } else if (quarters == 0 || quarters == 4) { // if we haven't passed segment zero, then check if we have
                 if (lastSegment >= (3 * n) / 4 && newSegment < n / 4) { // passed segment 0 (the start segment)
+                            startedFirstLap=true;
                     if (currentLap != null) {
                         currentLap.storeSplit(3, timeUs - lapStartTime);
                         lapCounter++;
@@ -137,7 +152,6 @@ class LapTimer implements PropertyChangeListener {
                             }
                             lastUpdateTime = timeUs;
                             ret = true;
-                            startedFirstLap=true;
                         }
                     }
                     quarters = 1; //  next, look to pass 1st quarter of track

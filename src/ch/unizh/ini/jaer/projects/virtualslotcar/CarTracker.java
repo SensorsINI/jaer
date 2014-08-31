@@ -221,7 +221,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
         }
 		// TODO update here again, relying on the fact that lastEventTimestamp was set by possible previous update according to
         // schedule; we have have double update of velocityPPT using same dt otherwise
-        if (!updatedClusterList && (in.getSize() > 0)) { // make sure we have at least one event here to getString a timestamp
+        if (!updatedClusterList && (filtered.getSize() > 0)) { // make sure we have at least one event here to getString a timestamp
             updateClusterList(filtered.getLastTimestamp()); // at laest once per packet update list
         }
 

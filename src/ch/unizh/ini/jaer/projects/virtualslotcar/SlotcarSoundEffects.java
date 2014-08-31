@@ -28,6 +28,7 @@ import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.swing.JFrame;
 
 import ch.unizh.ini.jaer.projects.gesture.virtualdrummer.SoundPlayerInterface;
+import java.io.BufferedInputStream;
 
 /**
  * Plays a sampled sound card name on the speaker.
@@ -171,9 +172,12 @@ public class SlotcarSoundEffects implements SoundPlayerInterface {
         if (inputStream == null) {
             inputStream = new FileInputStream(filename);
         }
-        audioInputStream = AudioSystem.getAudioInputStream(inputStream);
+        InputStream bufferedIn=new BufferedInputStream(inputStream);
+        audioInputStream = AudioSystem.getAudioInputStream(bufferedIn);
         audioFormat = audioInputStream.getFormat();
-        if (audioInputStream.markSupported()) {
+        abData = new byte[audioInputStream.available()];
+       if (audioInputStream.markSupported()) {
+           audioInputStream.mark(abData.length);
             return true;
         }
         samples = new byte[audioInputStream.available()]; // hopefully we get entire

@@ -1172,7 +1172,7 @@ public class SlotcarTrack implements java.io.Serializable {
     }
 
     static private File getLastFilePrefs() {
-        return new File(prefs.get("TrackdefineFilter.lastFile", System.getProperty("user.dir")));
+        return new File(prefs.get("SlotcarTrack.lastFile", System.getProperty("user.dir")));
     }
 
     /**
