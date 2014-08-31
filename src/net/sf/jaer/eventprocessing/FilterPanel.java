@@ -27,9 +27,12 @@ import java.beans.PropertyDescriptor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.logging.Logger;
+import javax.swing.AbstractButton;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -269,6 +272,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             // first add buttons when the method name starts with "do". These methods are by convention associated with actions.
             // these methods, e.g. "void doDisableServo()" do an action.
             Insets butInsets = new Insets(0, 0, 0, 0);
+            ArrayList<JButton> doButList=new ArrayList();
             for (Method m : methods) {
                 if (m.getName().startsWith("do")
                         && (m.getParameterTypes().length == 0)
@@ -295,10 +299,22 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         }
                     });
                     addTip(f, button);
-                    control.add(button);
+                    doButList.add(button);
                 }
             }
 
+            Comparator<AbstractButton> butComp=new Comparator<AbstractButton>() {
+
+                @Override
+                public int compare(AbstractButton o1, AbstractButton o2) {
+                    if(o1==null || o2==null || o1.getText()==null || o2.getText()==null) return 0;
+                    return o1.getText().compareToIgnoreCase(o2.getText());
+                }
+            };
+            
+            Collections.sort(doButList,butComp);
+            for(AbstractButton b:doButList) control.add(b);
+            
             //if at least one button then we show the actions panel
             if (control.getComponentCount() > 0) {
                 TitledBorder tb = new TitledBorder("Filter Actions");
@@ -374,7 +390,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
             if (getFilter().hasPropertyGroups()) {
                 Set<String> groupSet = getFilter().getPropertyGroupSet();
-                for (String s : groupSet) {
+
+                ArrayList<String> setList=new ArrayList();
+                setList.addAll(groupSet);
+                Collections.sort(setList);
+                for (String s : setList) {
                     JPanel groupPanel = new JPanel();
                     groupPanel.setName(s);
                     groupPanel.setBorder(new TitledBorder(s));
