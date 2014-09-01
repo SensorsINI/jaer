@@ -16,10 +16,10 @@
                 <entry key="FilterChain.timeLimitEnabled" value="false"/>
                 <entry key="FilterChain.timeLimitMs" value="10"/>
                 <entry key="agcTauMs" value="1000.0"/>
-                <entry key="SBret10.bgTabbedPaneSelectedIndex" value="0"/>
+                <entry key="SBret10.bgTabbedPaneSelectedIndex" value="4"/>
                 <entry key="displayLogIntensityChangeEvents" value="true"/>
                 <entry key="displayIntensity" value="true"/>
-                <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="C:\PROJ\jAER\deviceFirmwarePCBLayout\CypressFX2\firmware_FX2LP_SBret10\SBret10.bix"/>
+                <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="..\1-jaer-all\trunk\deviceFirmwarePCBLayout\CypressFX2\firmware_FX2LP_SBret10_Gyro_2\SBret10.bix"/>
                 <entry key="SBret10.AddressedIPotCF.DiffBn.BitValueCoarse" value="3"/>
                 <entry key="SBret10.AddressedIPotCF.DiffBn.BitValueFine" value="39"/>
                 <entry key="SBret10.AddressedIPotCF.DiffBn.Enabled" value="true"/>
@@ -27,13 +27,13 @@
                 <entry key="SBret10.AddressedIPotCF.DiffBn.Sex" value="N"/>
                 <entry key="SBret10.AddressedIPotCF.DiffBn.Type" value="NORMAL"/>
                 <entry key="SBret10.AddressedIPotCF.OnBn.BitValueCoarse" value="2"/>
-                <entry key="SBret10.AddressedIPotCF.OnBn.BitValueFine" value="168"/>
+                <entry key="SBret10.AddressedIPotCF.OnBn.BitValueFine" value="255"/>
                 <entry key="SBret10.AddressedIPotCF.OnBn.Enabled" value="true"/>
                 <entry key="SBret10.AddressedIPotCF.OnBn.LowCurrent" value="false"/>
                 <entry key="SBret10.AddressedIPotCF.OnBn.Sex" value="N"/>
                 <entry key="SBret10.AddressedIPotCF.OnBn.Type" value="NORMAL"/>
                 <entry key="SBret10.AddressedIPotCF.OffBn.BitValueCoarse" value="3"/>
-                <entry key="SBret10.AddressedIPotCF.OffBn.BitValueFine" value="1"/>
+                <entry key="SBret10.AddressedIPotCF.OffBn.BitValueFine" value="0"/>
                 <entry key="SBret10.AddressedIPotCF.OffBn.Enabled" value="true"/>
                 <entry key="SBret10.AddressedIPotCF.OffBn.LowCurrent" value="false"/>
                 <entry key="SBret10.AddressedIPotCF.OffBn.Sex" value="N"/>
@@ -69,13 +69,13 @@
                 <entry key="SBret10.AddressedIPotCF.PixInvBn.Sex" value="N"/>
                 <entry key="SBret10.AddressedIPotCF.PixInvBn.Type" value="NORMAL"/>
                 <entry key="SBret10.AddressedIPotCF.PrBp.BitValueCoarse" value="5"/>
-                <entry key="SBret10.AddressedIPotCF.PrBp.BitValueFine" value="63"/>
+                <entry key="SBret10.AddressedIPotCF.PrBp.BitValueFine" value="58"/>
                 <entry key="SBret10.AddressedIPotCF.PrBp.Enabled" value="true"/>
                 <entry key="SBret10.AddressedIPotCF.PrBp.LowCurrent" value="false"/>
                 <entry key="SBret10.AddressedIPotCF.PrBp.Sex" value="P"/>
                 <entry key="SBret10.AddressedIPotCF.PrBp.Type" value="NORMAL"/>
                 <entry key="SBret10.AddressedIPotCF.PrSFBp.BitValueCoarse" value="6"/>
-                <entry key="SBret10.AddressedIPotCF.PrSFBp.BitValueFine" value="18"/>
+                <entry key="SBret10.AddressedIPotCF.PrSFBp.BitValueFine" value="16"/>
                 <entry key="SBret10.AddressedIPotCF.PrSFBp.Enabled" value="true"/>
                 <entry key="SBret10.AddressedIPotCF.PrSFBp.LowCurrent" value="false"/>
                 <entry key="SBret10.AddressedIPotCF.PrSFBp.Sex" value="P"/>
@@ -98,7 +98,7 @@
                 <entry key="SBret10.AddressedIPotCF.AERxEBn.LowCurrent" value="false"/>
                 <entry key="SBret10.AddressedIPotCF.AERxEBn.Sex" value="N"/>
                 <entry key="SBret10.AddressedIPotCF.AERxEBn.Type" value="NORMAL"/>
-                <entry key="SBret10.AddressedIPotCF.AEPuXBp.BitValueCoarse" value="7"/>
+                <entry key="SBret10.AddressedIPotCF.AEPuXBp.BitValueCoarse" value="3"/>
                 <entry key="SBret10.AddressedIPotCF.AEPuXBp.BitValueFine" value="80"/>
                 <entry key="SBret10.AddressedIPotCF.AEPuXBp.Enabled" value="true"/>
                 <entry key="SBret10.AddressedIPotCF.AEPuXBp.LowCurrent" value="false"/>
@@ -145,7 +145,7 @@
                 <entry key="Masterbias.internalResistorUsed" value="false"/>
                 <entry key="SBret10.nChipReset" value="true"/>
                 <entry key="SBret10.powerDown" value="false"/>
-                <entry key="SBret10.runAdc" value="true"/>
+                <entry key="SBret10.runAdc" value="false"/>
                 <entry key="SBret10.runCpld" value="true"/>
                 <entry key="SBret10.resetTestpixel" value="true"/>
                 <entry key="CPLDInt.exposureB" value="39"/>
@@ -158,7 +158,7 @@
                 <entry key="SBret10.useC" value="false"/>
                 <entry key="SBret10.resetCalib" value="true"/>
                 <entry key="SBret10.typePCalib" value="false"/>
-                <entry key="SBret10.hotPixelSuppression" value="true"/>
+                <entry key="SBret10.hotPixelSuppression" value="false"/>
                 <entry key="SBret10.nArow" value="false"/>
                 <entry key="SBret10.useAout" value="false"/>
                 <entry key="SBret10.ShiftedSourceBias.SSP.RefValue" value="1"/>
@@ -189,7 +189,7 @@
                 <entry key="XYTypeFilter.filterEnabled" value="false"/>
                 <entry key="RotateFilter.filterEnabled" value="false"/>
                 <entry key="BackgroundActivityFilter.filterEnabled" value="false"/>
-                <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAEdwQAAAAEdAA0bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5BcHNEdnNFdmVudEZpbHRlcnQALW9yZy5jYXBvY2FjY2lhLmNuZS5qYWVyLmNuZTIwMTIudm9yLlN0ZWFkaWNhbXQANmNoLnVuaXpoLmluaS5qYWVyLnByb2plY3RzLnZpcnR1YWxzbG90Y2FyLlNsb3RDYXJSYWNlcnQAO2NoLnVuaXpoLmluaS5qYWVyLnByb2plY3RzLnZpcnR1YWxzbG90Y2FyLlRyYWNrRGVmaW5lRmlsdGVyeA=="/>
+                <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAMdwQAAAAMdAA0bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5BcHNEdnNFdmVudEZpbHRlcnQAL25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuWFlUeXBlRmlsdGVydAAvbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5Sb3RhdGVGaWx0ZXJ0ADtuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLkJhY2tncm91bmRBY3Rpdml0eUZpbHRlcnQAM25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuUmVmcmFjdG9yeUZpbHRlcnQAPm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy50cmFja2luZy5SZWN0YW5ndWxhckNsdXN0ZXJUcmFja2VydAAybmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5DZWxsU3RhdHNQcm9iZXJ0ACduZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLkluZm90ADZjaC51bml6aC5pbmkuamFlci5wcm9qZWN0cy52aXJ0dWFsc2xvdGNhci5TbG90Q2FyUmFjZXJ0ADRjaC51bml6aC5pbmkuamFlci5wcm9qZWN0cy52aXJ0dWFsc2xvdGNhci5DYXJUcmFja2VydAA7Y2gudW5pemguaW5pLmphZXIucHJvamVjdHMudmlydHVhbHNsb3RjYXIuVHJhY2tEZWZpbmVGaWx0ZXJ0AD5jaC51bml6aC5pbmkuamFlci5wcm9qZWN0cy52aXJ0dWFsc2xvdGNhci5UcmFja0hpc3RvZ3JhbUZpbHRlcng="/>
                 <entry key="RefractoryFilter.filterEnabled" value="false"/>
                 <entry key="invertADCvalues" value="false"/>
                 <entry key="SBret10.AddressedIPotCF.ApsROSFBn.BitValueCoarse" value="1"/>
@@ -206,31 +206,6 @@
                 <entry key="CPLDInt.pad" value="0"/>
                 <entry key="FilterFrame.lastFilterSelected" value="class ch.unizh.ini.jaer.projects.virtualslotcar.SlotCarRacer"/>
                 <entry key="BackgroundActivityFilter.dt" value="10762"/>
-                <entry key="BackgroundActivityFilter.subsampleBy" value="0"/>
-                <entry key="class eu.seebetter.ini.chips.sbret10.SBret10old.preferredDisplayMethod" value="eu.seebetter.ini.chips.sbret10.SBret10old$SBret10DisplayMethod"/>
-                <entry key="ApsEventFilter.filterEnabled" value="true"/>
-                <entry key="ApsEventFilter.filterAPSEvents" value="true"/>
-                <entry key="ApsEventFilter.filterDVSEvents" value="false"/>
-                <entry key="VideoControl.displayEvents" value="true"/>
-                <entry key="VideoControl.displayFrames" value="false"/>
-                <entry key="VideoControl.useAutoContrast" value="false"/>
-                <entry key="VideoControl.brightness" value="0.0"/>
-                <entry key="VideoControl.contrast" value="2.872"/>
-                <entry key="ApproachCell.filterEnabled" value="false"/>
-                <entry key="useMismatchCorrection" value="true"/>
-                <entry key="EdgeFragments.filterEnabled" value="false"/>
-                <entry key="EdgeConstructor.filterEnabled" value="true"/>
-                <entry key="ApsFrameExtractor.filterEnabled" value="false"/>
-                <entry key="ApsFrameExtractor.edgePixelMethod" value="SignalFrame"/>
-                <entry key="ApsFrameExtractor.displayGain" value="2.526948"/>
-                <entry key="ApsFrameExtractor.displayOffset" value="0.0"/>
-                <entry key="ApsFrameExtractor.invertIntensity" value="false"/>
-                <entry key="ApsFeatureExtractor.filterEnabled" value="false"/>
-                <entry key="ApsFeatureExtractor.detectionThreshold" value="25"/>
-                <entry key="FilterChain.processingMode" value="RENDERING"/>
-                <entry key="SBret10.typeNCalib" value="false"/>
-                <entry key="RotateFilter.invertX" value="false"/>
-                <entry key="RotateFilter.invertY" value="false"/>
                 <entry key="XYTypeFilter.startX" value="134"/>
                 <entry key="XYTypeFilter.xEnabled" value="true"/>
                 <entry key="XYTypeFilter.endX" value="139"/>
@@ -240,12 +215,34 @@
                 <entry key="XYTypeFilter.invertEnabled" value="false"/>
                 <entry key="RectangularClusterTracker.clusterLifetimeWithoutSupport" value="35561"/>
                 <entry key="RectangularClusterTracker.maxNumClusters" value="10"/>
-                <entry key="RectangularClusterTracker.clusterSize" value="0.114"/>
+                <entry key="RectangularClusterTracker.clusterSize" value="0.048"/>
                 <entry key="RectangularClusterTracker.numEventsStoredInCluster" value="100"/>
                 <entry key="RectangularClusterTracker.thresholdEventsForVisibleCluster" value="331"/>
                 <entry key="RectangularClusterTracker.filterEnabled" value="false"/>
+                <entry key="useMismatchCorrection" value="true"/>
+                <entry key="EdgeFragments.filterEnabled" value="false"/>
+                <entry key="EdgeConstructor.filterEnabled" value="true"/>
+                <entry key="ApsEventFilter.filterEnabled" value="true"/>
+                <entry key="ApsEventFilter.filterAPSEvents" value="true"/>
+                <entry key="SBret10.typeNCalib" value="false"/>
+                <entry key="BackgroundActivityFilter.subsampleBy" value="0"/>
+                <entry key="ApsFrameExtractor.filterEnabled" value="false"/>
+                <entry key="ApsFrameExtractor.edgePixelMethod" value="SignalFrame"/>
+                <entry key="ApsFrameExtractor.displayGain" value="2.526948"/>
+                <entry key="ApsFrameExtractor.displayOffset" value="0.0"/>
+                <entry key="ApsFrameExtractor.invertIntensity" value="false"/>
+                <entry key="ApsFeatureExtractor.filterEnabled" value="false"/>
+                <entry key="ApsFeatureExtractor.detectionThreshold" value="25"/>
+                <entry key="FilterChain.processingMode" value="RENDERING"/>
+                <entry key="RotateFilter.invertX" value="false"/>
+                <entry key="RotateFilter.invertY" value="false"/>
                 <entry key="displayEvents" value="true"/>
                 <entry key="displayFrames" value="true"/>
+                <entry key="VideoControl.useAutoContrast" value="false"/>
+                <entry key="VideoControl.displayFrames" value="true"/>
+                <entry key="VideoControl.displayEvents" value="true"/>
+                <entry key="VideoControl.contrast" value="1.0"/>
+                <entry key="VideoControl.brightness" value="0.0"/>
                 <entry key="ApsFrameExtrapolation.filterEnabled" value="false"/>
                 <entry key="ApsFrameExtrapolation.useOpenCV" value="false"/>
                 <entry key="ApsFrameExtrapolation.extrapolationMethod" value="Accum"/>
@@ -254,161 +251,206 @@
                 <entry key="ApsFrameExtrapolation.manualOffGain" value="-0.06837005"/>
                 <entry key="ApsFrameExtrapolation.lowPassTimeConst" value="1.0"/>
                 <entry key="ApsFrameExtrapolation.averagingWindow" value="10"/>
+                <entry key="ApsEventFilter.filterDVSEvents" value="false"/>
+                <entry key="class eu.seebetter.ini.chips.sbret10.SBret10old.preferredDisplayMethod" value="eu.seebetter.ini.chips.sbret10.SBret10old$SBret10DisplayMethod"/>
                 <entry key="BinaryFeatureDetector.filterEnabled" value="false"/>
+                <entry key="ApproachCell.filterEnabled" value="false"/>
                 <entry key="SpatioTemporalFusion.filterEnabled" value="true"/>
-                <entry key="RefractoryFilter.refractoryPeriodUs" value="586"/>
+                <entry key="SBret10.sbret10" value="false"/>
+                <entry key="SBret10.globalShutter" value="true"/>
+                <entry key="VideoControl.gamma" value="1.0"/>
                 <entry key="DirectionSelectiveFilter.filterEnabled" value="false"/>
-                <entry key="Info.useLocalTimeZone" value="true"/>
-                <entry key="DepressingSynapseFilter.filterEnabled" value="false"/>
+                <entry key="ApsDvsEventFilter.filterAPSEvents" value="false"/>
+                <entry key="ApsDvsEventFilter.filterEnabled" value="false"/>
                 <entry key="SimpleOrientationFilter.filterEnabled" value="false"/>
+                <entry key="HotPixelSupressor.filterEnabled" value="false"/>
+                <entry key="HotPixelSupressor.baselineProbability" value="1.5237124E-4"/>
+                <entry key="HotPixelSupressor.numHotPixels" value="24"/>
+                <entry key="HotPixelSupressor.showHotPixels" value="false"/>
+                <entry key="HotPixelSupressor.thresholdEventRate" value="43219.35"/>
+                <entry key="DepressingSynapseFilter.filterEnabled" value="false"/>
+                <entry key="HotPixelSupressor.HotPixelSet" value="rO0ABXVyABNbTGphdmEubGFuZy5PYmplY3Q7kM5YnxBzKWwCAAB4cAAAACBzcgA5ZXUuc2VlYmV0dGVyLmluaS5jaGlwcy5zYnJldDEwLkhvdFBpeGVsU3VwcmVzc29yJEhvdFBpeGVsXkZNlO9FccICAARJAAdhZGRyZXNzSQAFY291bnRJAAF4SQABeXhwEwd4AAAAAAAAAAB4AAAATHNxAH4AAgtOuAAAAAAAAAAABAAAAC1zcQB+AAIRDNAAAAAAAAAAACIAAABEc3EAfgACDIzIAAAAAAAAAAAjAAAAMnNxAH4AAgtO2AAAAAAAAAAAAgAAAC1zcQB+AAIGjJgAAAAAAAAAACYAAAAac3EAfgACDY1YAAAAAAAAAAAaAAAANnNxAH4AAhNHeAAAAAAAAAAAeAAAAE1zcQB+AAIQzpgAAAAAAAAAAAYAAABDc3EAfgACDE74AAAAAAAAAAAAAAAAMXNxAH4AAgAAAQAAAAAAAAAA7wAAAABzcQB+AAIMTtgAAAAAAAAAAAIAAAAxc3EAfgACEY4gAAAAAAAAAAANAAAARnNxAH4AAhDOOAAAAAAAAAAADAAAAENzcQB+AAIMDvgAAAAAAAAAAAAAAAAwc3EAfgACDA7YAAAAAAAAAAACAAAAMHNxAH4AAgNOKAAAAAAAAAAADQAAAA1zcQB+AAILTsgAAAAAAAAAAAMAAAAtc3EAfgACC07oAAAAAAAAAAABAAAALXNxAH4AAhKHeAAAAAAAAAAAeAAAAEpzcQB+AAIbgLgAAAAAAAAAAOQAAABuc3EAfgACDE7oAAAAAAAAAAABAAAAMXNxAH4AAgxOyAAAAAAAAAAAAwAAADFzcQB+AAIQzqgAAAAAAAAAAAUAAABDc3EAfgACDQrQAAAAAAAAAABCAAAANHNxAH4AAhEOeAAAAAAAAAAACAAAAERzcQB+AAIHjJgAAAAAAAAAACYAAAAec3EAfgACDA7oAAAAAAAAAAABAAAAMHNxAH4AAhJHeAAAAAAAAAAAeAAAAElzcQB+AAIaQ7gAAAAAAAAAALQAAABpc3EAfgACDU4QAAAAAAAAAAAOAAAANXNxAH4AAhDOaAAAAAAAAAAACQAAAEM="/>
+                <entry key="SimpleOrientationFilter.passAllEvents" value="false"/>
+                <entry key="SimpleOrientationFilter.showVectorsEnabled" value="true"/>
+                <entry key="SimpleOrientationFilter.minDtThreshold" value="26762"/>
+                <entry key="SimpleOrientationFilter.useAverageDtEnabled" value="false"/>
+                <entry key="SimpleOrientationFilter.searchDistance" value="3"/>
+                <entry key="SimpleOrientationFilter.oriHistoryEnabled" value="false"/>
+                <entry key="SimpleOrientationFilter.subSampleShift" value="2"/>
+                <entry key="DirectionSelectiveFilter.showVectorsEnabled" value="true"/>
+                <entry key="DirectionSelectiveFilter.excessSpeedRejectFactor" value="1"/>
+                <entry key="DirectionSelectiveFilter.maxDtThreshold" value="5587"/>
+                <entry key="DirectionSelectiveFilter.useAvgDtEnabled" value="true"/>
+                <entry key="DirectionSelectiveFilter.minDtThreshold" value="228"/>
+                <entry key="DirectionSelectiveFilter.searchDistance" value="4"/>
+                <entry key="RotateFilter.rotate90deg" value="false"/>
+                <entry key="DirectionSelectiveFilter.showGlobalEnabled" value="false"/>
+                <entry key="RefractoryFilter.refractoryPeriodUs" value="586"/>
+                <entry key="DirectionSelectiveFilter.showRawInputEnabled" value="false"/>
+                <entry key="DirectionSelectiveFilter.speedControlEnabled" value="true"/>
+                <entry key="DirectionSelectiveFilter.jitterAmountPixels" value="1.7214754"/>
+                <entry key="Info.useLocalTimeZone" value="true"/>
+                <entry key="DepressingSynapseFilter.weight" value="2.313778E-4"/>
+                <entry key="DepressingSynapseFilter.tauMs" value="2785.9604"/>
+                <entry key="Info.filterEnabled" value="false"/>
+                <entry key="CellStatsProber.filterEnabled" value="false"/>
+                <entry key="CellStatsProber.individualISIsEnabled" value="true"/>
+                <entry key="CellStatsProber.showIndividualISIHistograms" value="false"/>
+                <entry key="CellStatsProber.spikeSoundEnabled" value="false"/>
+                <entry key="CellStatsProber.isiAutoScalingEnabled" value="true"/>
+                <entry key="CellStatsProber.logISIEnabled" value="true"/>
+                <entry key="CellStatsProber.isiMaxUs" value="8931152"/>
+                <entry key="ApsDvsEventFilter.filterDVSEvents" value="false"/>
+                <entry key="EventRateEstimator.eventRateTauMs" value="100.0"/>
+                <entry key="EventRateEstimator.maxRate" value="1.0E7"/>
+                <entry key="debugControls" value="false"/>
+                <entry key="Info.eventRateScaleMax" value="1049999.9"/>
                 <entry key="RectangularClusterTracker.colorClustersDifferentlyEnabled" value="true"/>
                 <entry key="FilterChain.updateIntervalMs" value="1.0"/>
-                <entry key="RectangularClusterTracker.mixingFactor" value="6.734244E-4"/>
+                <entry key="RectangularClusterTracker.mixingFactor" value="0.0072000003"/>
                 <entry key="RectangularClusterTracker.showAllClusters" value="false"/>
                 <entry key="RectangularClusterTracker.showClusterMass" value="false"/>
                 <entry key="RectangularClusterTracker.dontMergeEver" value="false"/>
                 <entry key="RectangularClusterTracker.enableClusterExitPurging" value="false"/>
-                <entry key="DepressingSynapseFilter.tauMs" value="2785.9604"/>
-                <entry key="DepressingSynapseFilter.weight" value="2.313778E-4"/>
-                <entry key="RotateFilter.rotate90deg" value="false"/>
-                <entry key="SBret10.sbret10" value="false"/>
-                <entry key="SBret10.globalShutter" value="true"/>
                 <entry key="Steadicam.positionComputer" value="VORSensor"/>
                 <entry key="Steadicam.cornerFreqHz" value="0.1"/>
                 <entry key="Steadicam.filterEnabled" value="false"/>
                 <entry key="Steadicam.panTiltEnabled" value="false"/>
-                <entry key="ApsDvsEventFilter.filterEnabled" value="false"/>
-                <entry key="ApsDvsEventFilter.filterAPSEvents" value="true"/>
-                <entry key="RectangularClusterTracker.dynamicSizeEnabled" value="true"/>
+                <entry key="RectangularClusterTracker.thresholdVelocityForVisibleCluster" value="0.0"/>
+                <entry key="RectangularClusterTracker.filterEventsEnabled" value="false"/>
                 <entry key="ObjectMotionCell.filterEnabled" value="false"/>
-                <entry key="ObjectMotionCell.subunitSubsamplingBits" value="4"/>
-                <entry key="ObjectMotionCell.subunitDecayTimeconstantMs" value="4.3657465"/>
-                <entry key="ObjectMotionCell.showSubunits" value="true"/>
-                <entry key="ObjectMotionCell.subunitActivityBlobRadiusScale" value="0.78502727"/>
-                <entry key="CellStatsProber.filterEnabled" value="false"/>
-                <entry key="HotPixelSupressor.filterEnabled" value="false"/>
-                <entry key="HotPixelSupressor.showHotPixels" value="false"/>
-                <entry key="HotPixelSupressor.thresholdEventRate" value="43219.35"/>
-                <entry key="HotPixelSupressor.baselineProbability" value="1.5237124E-4"/>
-                <entry key="HotPixelSupressor.numHotPixels" value="24"/>
-                <entry key="Info.filterEnabled" value="false"/>
-                <entry key="CellStatsProber.individualISIsEnabled" value="true"/>
-                <entry key="CellStatsProber.rateEnabled" value="true"/>
-                <entry key="CellStatsProber.spikeSoundEnabled" value="false"/>
-                <entry key="CellStatsProber.isiAutoScalingEnabled" value="true"/>
-                <entry key="CellStatsProber.logISIEnabled" value="true"/>
-                <entry key="CellStatsProber.showIndividualISIHistograms" value="false"/>
-                <entry key="CellStatsProber.isiMaxUs" value="100000"/>
-                <entry key="CellStatsProber.showAverageISIHistogram" value="true"/>
-                <entry key="HotPixelSupressor.learnTimeMs" value="30"/>
-                <entry key="HotPixelSupressor.HotPixelSet" value="rO0ABXVyABNbTGphdmEubGFuZy5PYmplY3Q7kM5YnxBzKWwCAAB4cAAAACBzcgA5ZXUuc2VlYmV0dGVyLmluaS5jaGlwcy5zYnJldDEwLkhvdFBpeGVsU3VwcmVzc29yJEhvdFBpeGVsXkZNlO9FccICAARJAAdhZGRyZXNzSQAFY291bnRJAAF4SQABeXhwEwd4AAAAAAAAAAB4AAAATHNxAH4AAgtOuAAAAAAAAAAABAAAAC1zcQB+AAIRDNAAAAAAAAAAACIAAABEc3EAfgACDIzIAAAAAAAAAAAjAAAAMnNxAH4AAgtO2AAAAAAAAAAAAgAAAC1zcQB+AAIGjJgAAAAAAAAAACYAAAAac3EAfgACDY1YAAAAAAAAAAAaAAAANnNxAH4AAhNHeAAAAAAAAAAAeAAAAE1zcQB+AAIQzpgAAAAAAAAAAAYAAABDc3EAfgACDE74AAAAAAAAAAAAAAAAMXNxAH4AAgAAAQAAAAAAAAAA7wAAAABzcQB+AAIMTtgAAAAAAAAAAAIAAAAxc3EAfgACEY4gAAAAAAAAAAANAAAARnNxAH4AAhDOOAAAAAAAAAAADAAAAENzcQB+AAIMDvgAAAAAAAAAAAAAAAAwc3EAfgACDA7YAAAAAAAAAAACAAAAMHNxAH4AAgNOKAAAAAAAAAAADQAAAA1zcQB+AAILTsgAAAAAAAAAAAMAAAAtc3EAfgACC07oAAAAAAAAAAABAAAALXNxAH4AAhKHeAAAAAAAAAAAeAAAAEpzcQB+AAIbgLgAAAAAAAAAAOQAAABuc3EAfgACDE7oAAAAAAAAAAABAAAAMXNxAH4AAgxOyAAAAAAAAAAAAwAAADFzcQB+AAIQzqgAAAAAAAAAAAUAAABDc3EAfgACDQrQAAAAAAAAAABCAAAANHNxAH4AAhEOeAAAAAAAAAAACAAAAERzcQB+AAIHjJgAAAAAAAAAACYAAAAec3EAfgACDA7oAAAAAAAAAAABAAAAMHNxAH4AAhJHeAAAAAAAAAAAeAAAAElzcQB+AAIaQ7gAAAAAAAAAALQAAABpc3EAfgACDU4QAAAAAAAAAAAOAAAANXNxAH4AAhDOaAAAAAAAAAAACQAAAEM="/>
                 <entry key="EventRateEstimator.filterEnabled" value="false"/>
-                <entry key="EventRateEstimator.eventRateTauMs" value="100.0"/>
-                <entry key="EventRateEstimator.maxRate" value="1.0E7"/>
-                <entry key="debugControls" value="false"/>
+                <entry key="RectangularClusterTracker.aspectRatio" value="1.0"/>
+                <entry key="RectangularClusterTracker.dynamicSizeEnabled" value="false"/>
+                <entry key="RectangularClusterTracker.dynamicAngleEnabled" value="false"/>
+                <entry key="RectangularClusterTracker.useEllipticalClusters" value="false"/>
+                <entry key="SBRet10.showImageHistogram" value="false"/>
+                <entry key="CPLDInt.exposure" value="42995"/>
+                <entry key="Info.absoluteTime" value="true"/>
+                <entry key="Info.analogClock" value="true"/>
+                <entry key="Info.digitalClock" value="true"/>
+                <entry key="Info.maxSamples" value="450"/>
+                <entry key="Info.eventRate" value="true"/>
+                <entry key="RectangularClusterTracker.showPaths" value="true"/>
+                <entry key="RectangularClusterTracker.pathLength" value="124"/>
+                <entry key="RectangularClusterTracker.useNearestCluster" value="true"/>
+                <entry key="DirectionSelectiveFilter.subSampleShift" value="0"/>
+                <entry key="ApsDvsAutoShooter.filterEnabled" value="false"/>
+                <entry key="ApsDvsAutoShooter.eventRateThresholdHz" value="184736.56"/>
+                <entry key="ApsDvsAutoShooter.eventCountThresholdKEvents" value="89"/>
+                <entry key="RectangularClusterTracker.clusterMassDecayTauUs" value="67054"/>
+                <entry key="RectangularClusterTracker.thresholdMassForVisibleCluster" value="57"/>
+                <entry key="ApproachCell.enableSpikeSound" value="true"/>
+                <entry key="ApproachCell.maxSpikeRateHz" value="66.22517"/>
+                <entry key="ApproachCell.subunitDecayTimeconstantMs" value="60.000008"/>
+                <entry key="ApproachCell.surroundSuppressionEnabled" value="true"/>
+                <entry key="ApproachCell.synapticWeight" value="11.872029"/>
+                <entry key="SBret10.autoshotThresholdEvents" value="0"/>
+                <entry key="SBRet10.showIMU" value="false"/>
+                <entry key="VORSensorForSteadicam.filterEnabled" value="false"/>
+                <entry key="Steadicam.annotateEnclosedEnabled" value="false"/>
+                <entry key="Info.showRateTrace" value="false"/>
+                <entry key="RectangularClusterTracker.showClusterVelocity" value="false"/>
+                <entry key="RectangularClusterTracker.useVelocity" value="false"/>
+                <entry key="RectangularClusterTracker.highwayPerspectiveEnabled" value="false"/>
+                <entry key="RectangularClusterTracker.useOffPolarityOnlyEnabled" value="true"/>
+                <entry key="RectangularClusterTracker.initializeVelocityToAverage" value="true"/>
+                <entry key="RectangularClusterTracker.velocityVectorScaling" value="0.952381"/>
+                <entry key="RectangularClusterTracker.pathsEnabled" value="false"/>
+                <entry key="RectangularClusterTracker.velocityTauMs" value="307.15207"/>
+                <entry key="RectangularClusterTracker.showClusterEps" value="false"/>
+                <entry key="RectangularClusterTracker.showClusterNumber" value="false"/>
+                <entry key="RectangularClusterTracker.showClusterRadius" value="false"/>
+                <entry key="SimpleOrientationFilter.showGlobalEnabled" value="false"/>
                 <entry key="ApsFrameExtractor.logCompress" value="false"/>
                 <entry key="ApsFrameExtractor.deltaBufferSize" value="1000.0"/>
                 <entry key="ApsFrameExtractor.displayBrightness" value="0.0"/>
                 <entry key="ApsFrameExtractor.displayContrast" value="1.0"/>
                 <entry key="ApsFrameExtractor.extrapolateIntesity" value="false"/>
-                <entry key="VideoControl.gamma" value="1.0"/>
                 <entry key="StatisticsCalculator.filterEnabled" value="false"/>
-                <entry key="Info.eventRateScaleMax" value="1049999.9"/>
-                <entry key="RectangularClusterTracker.thresholdVelocityForVisibleCluster" value="0.0"/>
-                <entry key="RectangularClusterTracker.filterEventsEnabled" value="false"/>
-                <entry key="ApsDvsEventFilter.filterDVSEvents" value="false"/>
-                <entry key="RectangularClusterTracker.aspectRatio" value="1.15"/>
-                <entry key="RectangularClusterTracker.dynamicAngleEnabled" value="true"/>
-                <entry key="RectangularClusterTracker.useEllipticalClusters" value="false"/>
-                <entry key="SimpleOrientationFilter.showVectorsEnabled" value="true"/>
-                <entry key="SimpleOrientationFilter.searchDistance" value="3"/>
-                <entry key="SimpleOrientationFilter.subSampleShift" value="2"/>
-                <entry key="SimpleOrientationFilter.minDtThreshold" value="26762"/>
-                <entry key="SimpleOrientationFilter.useAverageDtEnabled" value="false"/>
                 <entry key="ApsDvsFaceTracker.filterEnabled" value="false"/>
                 <entry key="ApsFaceDetector.filterEnabled" value="false"/>
                 <entry key="ApsFeatureExtractor.pullFrames" value="true"/>
                 <entry key="ApsFeatureExtractor.detectionMethod" value="BRISK"/>
-                <entry key="CPLDInt.exposure" value="32956"/>
-                <entry key="SBret10.autoshotThresholdEvents" value="0"/>
-                <entry key="ApsDvsAutoShooter.filterEnabled" value="false"/>
-                <entry key="ApsDvsAutoShooter.eventRateThresholdHz" value="369833.84"/>
-                <entry key="ApsDvsAutoShooter.eventCountThresholdKEvents" value="74"/>
-                <entry key="SBRet10.showImageHistogram" value="false"/>
-                <entry key="Info.analogClock" value="true"/>
-                <entry key="Info.digitalClock" value="true"/>
-                <entry key="RectangularClusterTracker.pathLength" value="733"/>
-                <entry key="RectangularClusterTracker.clusterMassDecayTauUs" value="52539"/>
-                <entry key="RectangularClusterTracker.thresholdMassForVisibleCluster" value="14"/>
-                <entry key="ApsNoiseStatistics.filterEnabled" value="false"/>
-                <entry key="ApsNoiseStatistics.histNumBins" value="151"/>
                 <entry key="ApsDvsFaceTracker.octaves" value="4"/>
                 <entry key="ApsDvsFaceTracker.scale" value="1.0"/>
-                <entry key="SBRet10.showIMU" value="true"/>
-                <entry key="RefractoryFilter.subsampleBy" value="0"/>
-                <entry key="Steadicam.lensFocalLengthMm" value="5.969725"/>
-                <entry key="Steadicam.highpassTauMsTranslation" value="1297.6129"/>
-                <entry key="Steadicam.highpassTauMsRotation" value="539.1855"/>
-                <entry key="Steadicam.transformResetLimitDegrees" value="63"/>
-                <entry key="NoOpFilter.filterEnabled" value="true"/>
-                <entry key="Steadicam.panOffset" value="-1.3738928"/>
-                <entry key="Steadicam.tiltOffset" value="0.6139887"/>
-                <entry key="Steadicam.rollOffset" value="-0.14837778"/>
-                <entry key="Steadicam.disableTranslation" value="false"/>
-                <entry key="Steadicam.disableRotation" value="false"/>
-                <entry key="Steadicam.electronicStabilizationEnabled" value="true"/>
-                <entry key="Steadicam.annotateEnclosedEnabled" value="false"/>
-                <entry key="Steadicam.showAnnotation" value="false"/>
-                <entry key="SBret10.syncTimestampMaster" value="true"/>
+                <entry key="Steadicam.lensFocalLengthMm" value="6.3428326"/>
+                <entry key="Steadicam.highpassTauMsRotation" value="5253.34"/>
+                <entry key="Steadicam.gainPanTiltServos" value="6.385466"/>
+                <entry key="Steadicam.highpassTauMsTranslation" value="5253.34"/>
+                <entry key="Steadicam.panOffset" value="-0.49976134"/>
+                <entry key="Steadicam.tiltOffset" value="2.0607157"/>
+                <entry key="Steadicam.rollOffset" value="-0.2584446"/>
+                <entry key="Steadicam.transformResetLimitDegrees" value="88"/>
                 <entry key="Steadicam.flipContrast" value="true"/>
-                <entry key="Steadicam.showTransformRectangle" value="true"/>
-                <entry key="SlowResponse.filterEnabled" value="false"/>
-                <entry key="HotPixelFilter.filterEnabled" value="false"/>
-                <entry key="HotPixelFilter.HotPixelSet" value="rO0ABXVyABNbTGphdmEubGFuZy5PYmplY3Q7kM5YnxBzKWwCAAB4cAAAAA5zcgA2ZXUuc2VlYmV0dGVyLmluaS5jaGlwcy5zYnJldDEwLkhvdFBpeGVsRmlsdGVyJEhvdFBpeGVsEVYvuhffIqsCAARJAAdhZGRyZXNzSQAFY291bnRJAAF4SQABeXhwBIaoAAAAAAAAAACFAAAAEnNxAH4AAhlFCAAAAAAAAAAAnwAAAGVzcQB+AAIhBEgAAAAAAAAAAKsAAACEc3EAfgACHAo4AAAAAAAAAABMAAAAcHNxAH4AAhsN2AAAAAAAAAAAEgAAAGxzcQB+AAIMxmgAAAAAAAAAAIkAAAAzc3EAfgACCIo4AAAAAAAAAABMAAAAInNxAH4AAgaI2AAAAAAAAAAAYgAAABpzcQB+AAIPh7gAAAAAAAAAAHQAAAA+c3EAfgACIwa4AAAAAAAAAACEAAAAjHNxAH4AAiCOmAAAAAAAAAAABgAAAIJzcQB+AAIMQ9gAAAAAAAAAALIAAAAxc3EAfgACJARIAAAAAAAAAACrAAAAkHNxAH4AAhsIaAAAAAAAAAAAaQAAAGw="/>
-                <entry key="RefractoryFilter.passShortISIsEnabled" value="false"/>
-                <entry key="ApsFrameExtrapolationISCAS.filterEnabled" value="false"/>
-                <entry key="ApsFrameExtrapolationISCAS.onTimeBinsLength" value="10"/>
-                <entry key="ApsFrameExtrapolationISCAS.onTimeBins0" value="0.003764909"/>
-                <entry key="ApsFrameExtrapolationISCAS.onTimeBins1" value="0.0037636221"/>
-                <entry key="ApsFrameExtrapolationISCAS.onTimeBins2" value="0.0039941426"/>
-                <entry key="ApsFrameExtrapolationISCAS.onTimeBins3" value="0.004022673"/>
-                <entry key="ApsFrameExtrapolationISCAS.onTimeBins4" value="0.003952106"/>
-                <entry key="ApsFrameExtrapolationISCAS.onTimeBins5" value="0.004060117"/>
-                <entry key="ApsFrameExtrapolationISCAS.onTimeBins6" value="0.0040908367"/>
-                <entry key="ApsFrameExtrapolationISCAS.onTimeBins7" value="0.004094781"/>
-                <entry key="ApsFrameExtrapolationISCAS.onTimeBins8" value="0.0040494"/>
-                <entry key="ApsFrameExtrapolationISCAS.onTimeBins9" value="0.0034451142"/>
-                <entry key="ApsFrameExtrapolationISCAS.offTimeBinsLength" value="10"/>
-                <entry key="ApsFrameExtrapolationISCAS.offTimeBins0" value="-0.0024643193"/>
-                <entry key="ApsFrameExtrapolationISCAS.offTimeBins1" value="-0.0024125818"/>
-                <entry key="ApsFrameExtrapolationISCAS.offTimeBins2" value="-0.0023803385"/>
-                <entry key="ApsFrameExtrapolationISCAS.offTimeBins3" value="-0.0023660918"/>
-                <entry key="ApsFrameExtrapolationISCAS.offTimeBins4" value="-0.00233222"/>
-                <entry key="ApsFrameExtrapolationISCAS.offTimeBins5" value="-0.0023375966"/>
-                <entry key="ApsFrameExtrapolationISCAS.offTimeBins6" value="-0.0023322736"/>
-                <entry key="ApsFrameExtrapolationISCAS.offTimeBins7" value="-0.0023125398"/>
-                <entry key="ApsFrameExtrapolationISCAS.offTimeBins8" value="-0.0023837346"/>
-                <entry key="ApsFrameExtrapolationISCAS.offTimeBins9" value="-0.0026179622"/>
-                <entry key="ApsFrameExtrapolationISCAS.displayError" value="false"/>
-                <entry key="ApsFrameExtractor.showAPSFrameDisplay" value="true"/>
-                <entry key="ApsFrameExtrapolationISCAS.lowpassFilterTime" value="0.14357708"/>
-                <entry key="ApsFrameExtrapolationISCAS.manualOnGain" value="0.0041161296"/>
-                <entry key="ApsFrameExtrapolationISCAS.manualOffGain" value="-0.002292016"/>
-                <entry key="ApsFrameExtrapolationISCAS.learningRate" value="1.0E-6"/>
-                <entry key="ApsDvsDirectionSelectiveFilter.filterEnabled" value="false"/>
-                <entry key="ApsDvsOrientationFilter.filterEnabled" value="false"/>
+                <entry key="Steadicam.showAnnotation" value="true"/>
+                <entry key="SmoothOpticalFlowLabeler.filterEnabled" value="false"/>
+                <entry key="ClusterBasedOpticalFlow.filterEnabled" value="false"/>
+                <entry key="ClusterBasedOpticalFlow.vectorScalingPixelsPerPPS" value="0.061391346"/>
+                <entry key="ClusterBasedOpticalFlow.pixelsPerBin" value="8"/>
+                <entry key="ClusterBasedOpticalFlow.clusterSize" value="0.045"/>
+                <entry key="ClusterBasedOpticalFlow.mixingFactor" value="0.0034"/>
+                <entry key="ClusterBasedOpticalFlow.dontMergeEver" value="true"/>
+                <entry key="SBret10.syncTimestampMaster" value="true"/>
+                <entry key="HotPixelFilter.filterEnabled" value="true"/>
+                <entry key="HotPixelFilter.HotPixelSet" value="rO0ABXVyABNbTGphdmEubGFuZy5PYmplY3Q7kM5YnxBzKWwCAAB4cAAAABZzcgA2ZXUuc2VlYmV0dGVyLmluaS5jaGlwcy5zYnJldDEwLkhvdFBpeGVsRmlsdGVyJEhvdFBpeGVsEVYvuhffIqsCAARJAAdhZGRyZXNzSQAFY291bnRJAAF4SQABeXhwJ8voAAAAAAAAAAAxAAAAn3NxAH4AAiPHKAAAAAAAAAAAfQAAAI9zcQB+AAIii/AAAAAAAAAAADAAAACKc3EAfgACKAvIAAAAAAAAAAAzAAAAoHNxAH4AAigMOAAAAAAAAAAALAAAAKBzcQB+AAIoDLgAAAAAAAAAACQAAACgc3EAfgACJQloAAAAAAAAAABZAAAAlHNxAH4AAifL+AAAAAAAAAAAMAAAAJ9zcQB+AAIny7gAAAAAAAAAADQAAACfc3EAfgACKAvYAAAAAAAAAAAyAAAAoHNxAH4AAisOkAAAAAAAAAAABgAAAKxzcQB+AAIoDKgAAAAAAAAAACUAAACgc3EAfgACKAwYAAAAAAAAAAAuAAAAoHNxAH4AAihMuAAAAAAAAAAAJAAAAKFzcQB+AAIiS/AAAAAAAAAAADAAAACJc3EAfgACKEw4AAAAAAAAAAAsAAAAoXNxAH4AAifL2AAAAAAAAAAAMgAAAJ9zcQB+AAITh+AAAAAAAAAAAHEAAABOc3EAfgACJgMoAAAAAAAAAAC9AAAAmHNxAH4AAigL+AAAAAAAAAAAMAAAAKBzcQB+AAIoTKgAAAAAAAAAACUAAAChc3EAfgACDoeYAAAAAAAAAAB2AAAAOg=="/>
+                <entry key="HotPixelFilter.numHotPixels" value="22"/>
+                <entry key="ATCFpgaConfig.trackerEnable" value="false"/>
+                <entry key="ATCFpgaConfig.bgaFilterDeltaT" value="1000000"/>
+                <entry key="ATCFpgaConfig.BGAF_OTs_Enable" value="true"/>
+                <entry key="ATCFpgaConfig.OTsEnable" value="true"/>
+                <entry key="ATCFpgaConfig.trackerId" value="1"/>
+                <entry key="ATCFpgaConfig.cmCellMaxTime" value="129033"/>
+                <entry key="ATCFpgaConfig.cmCellNevTh" value="6"/>
+                <entry key="ATCFpgaConfig.cmCellRadixMax" value="7"/>
+                <entry key="ATCFpgaConfig.cmCellRadixMin" value="7"/>
+                <entry key="ATCFpgaConfig.cmCellRadixStep" value="7"/>
+                <entry key="ATCFpgaConfig.cmCellRadixTh" value="7"/>
+                <entry key="autoExposureEnabled" value="true"/>
                 <entry key="SlotCarRacer.controllerToUse" value="HumanVsComputerThrottleController"/>
-                <entry key="HumanVsComputerThrottleController.filterEnabled" value="true"/>
-                <entry key="HumanVsComputerThrottleController.trackFileName" value="F:\data\SBRet20\eccv slot car\eccv1.track"/>
-                <entry key="HumanVsComputerThrottleController.computerTrackHistogramFilePath" value="F:\data\SBRet20\eccv slot car\computer.hist"/>
-                <entry key="HumanVsComputerThrottleController.humanTrackHistogramFilePath" value="F:\data\SBRet20\eccv slot car\human.hist"/>
+                <entry key="EvolutionaryThrottleController.filterEnabled" value="true"/>
                 <entry key="SlotCarRacer.filterEnabled" value="true"/>
+                <entry key="SlotCarRacer.maxThrottle" value="1.0"/>
+                <entry key="SlotCarRacer.overriddenThrottleSetting" value="0.07256237"/>
+                <entry key="SlotCarRacer.overrideThrottle" value="false"/>
+                <entry key="CarTracker.maxNumClusters" value="1"/>
+                <entry key="CarTracker.highwayPerspectiveEnabled" value="false"/>
+                <entry key="CarTracker.enableClusterExitPurging" value="false"/>
+                <entry key="CarTracker.dynamicSizeEnabled" value="false"/>
+                <entry key="CarTracker.aspectRatio" value="1.0"/>
+                <entry key="CarTracker.clusterSize" value="0.09"/>
+                <entry key="CarTracker.dontMergeEver" value="true"/>
+                <entry key="CarTracker.angleFollowsVelocity" value="false"/>
+                <entry key="CarTracker.pathsEnabled" value="true"/>
+                <entry key="CarTracker.useVelocity" value="true"/>
+                <entry key="CarTracker.useNearestCluster" value="true"/>
+                <entry key="CarTracker.pathLength" value="100"/>
+                <entry key="CarTracker.velocityTauMs" value="30.0"/>
+                <entry key="CarTracker.mixingFactor" value="0.016"/>
+                <entry key="CarTracker.showClusterVelocity" value="true"/>
+                <entry key="CarTracker.velocityVectorScaling" value="0.016"/>
+                <entry key="CarTracker.colorClustersDifferentlyEnabled" value="true"/>
+                <entry key="CarTracker.onlyFollowTrack" value="true"/>
+                <entry key="CarTracker.relaxToTrackFactor" value="0.1"/>
+                <entry key="CarTracker.filterEnabled" value="false"/>
                 <entry key="TrackdefineFilter.stepSize" value="0.05"/>
                 <entry key="TrackDefineFilter.filterEnabled" value="false"/>
-                <entry key="TrackdefineFilter.lastFile" value="F:\data\SBRet20\eccv slot car\eccv3.track"/>
-                <entry key="TrackdefineFilter.scalePointsCurvature" value="false"/>
-                <entry key="SlotCarRacer.overrideThrottle" value="false"/>
-                <entry key="SlotCarRacer.overriddenThrottleSetting" value="0.12"/>
+                <entry key="TrackdefineFilter.drawHist" value="true"/>
+                <entry key="TrackdefineFilter.erosionSize" value="1"/>
+                <entry key="TrackdefineFilter.minDistance" value="2.2035983"/>
+                <entry key="TrackdefineFilter.refineDistance" value="4.319189"/>
+                <entry key="TrackdefineFilter.maxDistance" value="73.87274"/>
+                <entry key="TrackdefineFilter.scalePointsCurvature" value="true"/>
+                <entry key="TrackdefineFilter.histThresh" value="1.6243871"/>
+                <entry key="TrackdefineFilter.lastFile" value="C:\Users\tobi\Documents\jAER_1.5\computer large track 1.track"/>
+                <entry key="TrackdefineFilter.displayTrack" value="true"/>
+                <entry key="TrackHistogramFilter.filterEnabled" value="false"/>
+                <entry key="SlotCarRacer.playThrottleSound" value="false"/>
+                <entry key="SlotCarRacer.playBrakeSound" value="false"/>
+                <entry key="HumanVsComputerThrottleController.filterEnabled" value="true"/>
+                <entry key="HumanVsComputerThrottleController.trackFileName" value="C:\Users\tobi\Documents\jAER_1.5\src\ch\unizh\ini\jaer\projects\virtualslotcar\resources\eccv3.track"/>
+                <entry key="HumanVsComputerThrottleController.humanTrackHistogramFilePath" value="C:\Users\tobi\Documents\jAER_1.5\src\ch\unizh\ini\jaer\projects\virtualslotcar\resources\human.hist"/>
+                <entry key="HumanVsComputerThrottleController.computerTrackHistogramFilePath" value="C:\Users\tobi\Documents\jAER_1.5\src\ch\unizh\ini\jaer\projects\virtualslotcar\resources\computer.hist"/>
               </map>
               <node name="ch">
                 <map/>
@@ -420,30 +462,57 @@
                       <map/>
                       <node name="projects">
                         <map/>
-                        <node name="davis">
-                          <map/>
-                          <node name="frames">
-                            <map/>
-                            <node name="ApsFrameExtrapolationISCAS">
-                              <map>
-                                <entry key="ApsFrameExtractor.logCompress" value="true"/>
-                                <entry key="ApsFrameExtractor.logDecompress" value="true"/>
-                                <entry key="ApsFrameExtractor.preBufferFrame" value="true"/>
-                                <entry key="ApsFrameExtractor.showAPSFrameDisplay" value="true"/>
-                                <entry key="ApsFrameExtractor.edgePixelMethod" value="CDSframe"/>
-                                <entry key="BackgroundActivityFilter.dt" value="8611"/>
-                              </map>
-                            </node>
-                          </node>
-                        </node>
                         <node name="virtualslotcar">
                           <map/>
                           <node name="CarTracker">
                             <map>
-                              <entry key="TrackHistogramFilter.lastFile" value="F:\data\SBRet20\eccv slot car\computer.hist"/>
+                              <entry key="TrackHistogramFilter.showHistogram" value="false"/>
                               <entry key="TrackHistogramFilter.threshold" value="6.0203705"/>
-                              <entry key="TrackHistogramFilter.filePath" value="F:\data\SBRet20\eccv slot car\human.hist"/>
-                              <entry key="TrackHistogramFilter.showHistogram" value="true"/>
+                              <entry key="TrackHistogramFilter.lastFile" value="C:\Users\tobi\Documents\jAER_1.5\src\ch\unizh\ini\jaer\projects\virtualslotcar\resources\computer.hist"/>
+                              <entry key="TrackHistogramFilter.filePath" value="C:\Users\tobi\Documents\jAER_1.5\src\ch\unizh\ini\jaer\projects\virtualslotcar\resources\computer.hist"/>
+                            </map>
+                          </node>
+                          <node name="EvolutionaryThrottleController">
+                            <map>
+                              <entry key="TrackdefineFilter.stepSize" value="0.05"/>
+                              <entry key="RectangularClusterTracker.clusterMassDecayTauUs" value="10000"/>
+                              <entry key="RectangularClusterTracker.maxNumClusters" value="10"/>
+                              <entry key="RectangularClusterTracker.clusterSize" value="0.15f"/>
+                              <entry key="RectangularClusterTracker.numEventsStoredInCluster" value="100"/>
+                              <entry key="RectangularClusterTracker.thresholdMassForVisibleCluster" value="30"/>
+                              <entry key="CarTracker.maxNumClusters" value="1"/>
+                              <entry key="CarTracker.highwayPerspectiveEnabled" value="false"/>
+                              <entry key="CarTracker.enableClusterExitPurging" value="false"/>
+                              <entry key="CarTracker.dynamicSizeEnabled" value="false"/>
+                              <entry key="CarTracker.aspectRatio" value="1.0"/>
+                              <entry key="CarTracker.clusterSize" value="0.057"/>
+                              <entry key="CarTracker.dontMergeEver" value="true"/>
+                              <entry key="CarTracker.angleFollowsVelocity" value="false"/>
+                              <entry key="CarTracker.pathsEnabled" value="true"/>
+                              <entry key="CarTracker.useVelocity" value="false"/>
+                              <entry key="CarTracker.useNearestCluster" value="true"/>
+                              <entry key="CarTracker.pathLength" value="100"/>
+                              <entry key="CarTracker.velocityTauMs" value="30.0"/>
+                              <entry key="CarTracker.mixingFactor" value="0.02"/>
+                              <entry key="CarTracker.showClusterVelocity" value="false"/>
+                              <entry key="CarTracker.velocityVectorScaling" value="0.016"/>
+                              <entry key="CarTracker.colorClustersDifferentlyEnabled" value="true"/>
+                              <entry key="CarTracker.onlyFollowTrack" value="true"/>
+                              <entry key="CarTracker.relaxToTrackFactor" value="0.1"/>
+                              <entry key="CarTracker.filterEventsEnabled" value="false"/>
+                              <entry key="TrackdefineFilter.drawHist" value="false"/>
+                              <entry key="TrackdefineFilter.lastFile" value="C:\Users\tobi\Documents\jAER_1.5\computer large track 1.track"/>
+                              <entry key="CarTracker.showPaths" value="false"/>
+                              <entry key="CarTracker.minSegmentsToBeCarCluster" value="20"/>
+                              <entry key="CarTracker.segmentSpeedTauMs" value="440.99994"/>
+                              <entry key="CarTracker.clusterMassDecayTauUs" value="73927"/>
+                              <entry key="CarTracker.showClusterNumber" value="true"/>
+                              <entry key="CarTracker.showClusterMass" value="true"/>
+                              <entry key="TrackdefineFilter.minDistance" value="1.9035512"/>
+                              <entry key="TrackdefineFilter.refineDistance" value="5.0"/>
+                              <entry key="TrackdefineFilter.displayTrack" value="true"/>
+                              <entry key="CarTracker.thresholdMassForVisibleCluster" value="63"/>
+                              <entry key="CarTracker.showAllClusters" value="true"/>
                             </map>
                           </node>
                           <node name="HumanVsComputerThrottleController">
@@ -457,51 +526,61 @@
                               <entry key="CarTracker.highwayPerspectiveEnabled" value="false"/>
                               <entry key="CarTracker.enableClusterExitPurging" value="false"/>
                               <entry key="CarTracker.dynamicSizeEnabled" value="false"/>
-                              <entry key="CarTracker.aspectRatio" value="0.84999996"/>
-                              <entry key="CarTracker.clusterSize" value="0.054000005"/>
+                              <entry key="CarTracker.aspectRatio" value="1.0"/>
+                              <entry key="CarTracker.clusterSize" value="0.075"/>
                               <entry key="CarTracker.dontMergeEver" value="true"/>
                               <entry key="CarTracker.angleFollowsVelocity" value="false"/>
                               <entry key="CarTracker.pathsEnabled" value="true"/>
                               <entry key="CarTracker.useVelocity" value="true"/>
                               <entry key="CarTracker.useNearestCluster" value="true"/>
                               <entry key="CarTracker.pathLength" value="100"/>
-                              <entry key="CarTracker.velocityTauMs" value="101.59053"/>
+                              <entry key="CarTracker.velocityTauMs" value="30.0"/>
                               <entry key="CarTracker.mixingFactor" value="0.016"/>
                               <entry key="CarTracker.showClusterVelocity" value="true"/>
-                              <entry key="CarTracker.velocityVectorScaling" value="0.87426025"/>
+                              <entry key="CarTracker.velocityVectorScaling" value="0.016"/>
                               <entry key="CarTracker.colorClustersDifferentlyEnabled" value="true"/>
                               <entry key="CarTracker.onlyFollowTrack" value="true"/>
-                              <entry key="CarTracker.relaxToTrackFactor" value="1.0"/>
-                              <entry key="CarTracker.clusterMassDecayTauUs" value="126439"/>
+                              <entry key="CarTracker.relaxToTrackFactor" value="0.1"/>
+                              <entry key="CarTracker.clusterMassDecayTauUs" value="99069"/>
                               <entry key="CarTracker.showClusterMass" value="true"/>
-                              <entry key="CarTracker.thresholdMassForVisibleCluster" value="12"/>
-                              <entry key="CarTracker.showPaths" value="false"/>
-                              <entry key="CarTracker.showClusterNumber" value="true"/>
-                              <entry key="CarTracker.showAllClusters" value="false"/>
-                              <entry key="CarTracker.showClusterRadius" value="false"/>
-                              <entry key="CarTracker.useEllipticalClusters" value="false"/>
-                              <entry key="CarTracker.showClusterEps" value="false"/>
-                              <entry key="CarTracker.maxDistanceFromTrackPoint" value="31.183897"/>
-                              <entry key="CarTracker.minSegmentsToBeCarCluster" value="9"/>
-                              <entry key="CarTracker.segmentSpeedTauMs" value="284.27264"/>
-                              <entry key="CarTracker.initializeVelocityToAverage" value="false"/>
+                              <entry key="BackgroundActivityFilter.dt" value="21513"/>
+                              <entry key="CarTracker.minSegmentsToBeCarCluster" value="11"/>
                             </map>
                           </node>
                           <node name="SlotCarRacer">
                             <map>
-                              <entry key="TrackdefineFilter.stepSize" value="0.05"/>
                               <entry key="SimpleSpeedController.filterEnabled" value="true"/>
+                              <entry key="EvolutionaryThrottleController.filterEnabled" value="true"/>
+                              <entry key="EvolutionaryThrottleController.learningEnabled" value="false"/>
+                              <entry key="EvolutionaryThrottleController.editThrottleChange" value="0.02225935"/>
+                              <entry key="EvolutionaryThrottleController.defaultThrottle" value="0.07106816"/>
+                              <entry key="EvolutionaryThrottleController.startingThrottleValue" value="0.07835264"/>
+                              <entry key="EvolutionaryThrottleController.throttleProfile" value="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"/>
+                              <entry key="EvolutionaryThrottleController.throttleChange" value="0.062367797"/>
+                              <entry key="EvolutionaryThrottleController.fractionOfTrackToSpeedUp" value="0.08437232"/>
+                              <entry key="EvolutionaryThrottleController.numSuccessfulLapsToReward" value="1"/>
+                              <entry key="EvolutionaryThrottleController.numSegmentsToBrakeBeforeCrash" value="0"/>
+                              <entry key="TrackdefineFilter.stepSize" value="0.05"/>
                               <entry key="HumanVsComputerThrottleController.filterEnabled" value="true"/>
-                              <entry key="HumanVsComputerThrottleController.showTrack" value="false"/>
-                              <entry key="HumanVsComputerThrottleController.trackFileName" value="F:\data\SBRet20\eccv slot car\eccv3.track"/>
-                              <entry key="HumanVsComputerThrottleController.humanTrackHistogramFilePath" value="F:\data\SBRet20\eccv slot car\human.hist"/>
-                              <entry key="HumanVsComputerThrottleController.computerTrackHistogramFilePath" value="F:\data\SBRet20\eccv slot car\computer.hist"/>
-                              <entry key="HumanVsComputerThrottleController.racingEnabled" value="true"/>
-                              <entry key="HumanVsComputerThrottleController.raceLengthLaps" value="1"/>
+                              <entry key="HumanVsComputerThrottleController.trackFileName" value="C:\Users\tobi\Documents\jAER_1.5\src\ch\unizh\ini\jaer\projects\virtualslotcar\resources\eccv3.track"/>
+                              <entry key="HumanVsComputerThrottleController.humanTrackHistogramFilePath" value="C:\Users\tobi\Documents\jAER_1.5\src\ch\unizh\ini\jaer\projects\virtualslotcar\resources\human.hist"/>
+                              <entry key="HumanVsComputerThrottleController.computerTrackHistogramFilePath" value="C:\Users\tobi\Documents\jAER_1.5\src\ch\unizh\ini\jaer\projects\virtualslotcar\resources\computer.hist"/>
+                              <entry key="HumanVsComputerThrottleController.startingThrottleValue" value="0.07462157"/>
+                              <entry key="HumanVsComputerThrottleController.editThrottleChange" value="0.032887187"/>
+                              <entry key="HumanVsComputerThrottleController.defaultThrottle" value="0.06446092"/>
+                              <entry key="HumanVsComputerThrottleController.raceLengthLaps" value="15"/>
+                              <entry key="HumanVsComputerThrottleController.throttleProfile" value="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"/>
+                              <entry key="HumanVsComputerThrottleController.raceFeedbackThrottleControlEnabled" value="true"/>
+                              <entry key="HumanVsComputerThrottleController.raceControllerSegmentsAheadForConstantThrottle" value="21.212872"/>
                             </map>
                           </node>
                           <node name="TrackDefineFilter">
                             <map/>
+                          </node>
+                          <node name="TrackHistogramFilter">
+                            <map>
+                              <entry key="BackgroundActivityFilter.dt" value="20438"/>
+                            </map>
                           </node>
                         </node>
                       </node>
@@ -523,9 +602,7 @@
                           <map/>
                         </node>
                         <node name="HotPixelSupressor">
-                          <map>
-                            <entry key="EventRateEstimator.eventRateTauMs" value="1.1235344"/>
-                          </map>
+                          <map/>
                         </node>
                       </node>
                     </node>
@@ -542,25 +619,27 @@
                       <map/>
                       <node name="filter">
                         <map/>
-                        <node name="ApsNoiseStatistics">
-                          <map/>
-                        </node>
                         <node name="Info">
                           <map>
-                            <entry key="EventRateEstimator.eventRateTauMs" value="31.006824"/>
-                            <entry key="TypedEventRateEstimator.eventRateTauMs" value="9.614233"/>
+                            <entry key="TypedEventRateEstimator.measureIndividualTypesEnabled" value="true"/>
+                            <entry key="TypedEventRateEstimator.eventRateTauMs" value="1.6326827"/>
                           </map>
                         </node>
                       </node>
                       <node name="label">
                         <map/>
-                        <node name="ApsDvsDirectionSelectiveFilter">
+                        <node name="DirectionSelectiveFilter">
                           <map>
-                            <entry key="ApsDvsOrientationFilter.showRawInputEnabled" value="false"/>
+                            <entry key="SimpleOrientationFilter.useAverageDtEnabled" value="false"/>
+                            <entry key="SimpleOrientationFilter.searchDistance" value="2"/>
+                            <entry key="SimpleOrientationFilter.minDtThreshold" value="2451"/>
+                            <entry key="SimpleOrientationFilter.showVectorsEnabled" value="false"/>
                           </map>
                         </node>
-                        <node name="DirectionSelectiveFilter">
-                          <map/>
+                        <node name="SmoothOpticalFlowLabeler">
+                          <map>
+                            <entry key="DirectionSelectiveFilter.filterEnabled" value="false"/>
+                          </map>
                         </node>
                       </node>
                     </node>
@@ -582,20 +661,16 @@
                           <node name="Steadicam">
                             <map>
                               <entry key="DirectionSelectiveFilter.filterEnabled" value="false"/>
-                              <entry key="RectangularClusterTracker.clusterLifetimeWithoutSupport" value="10000"/>
+                              <entry key="RectangularClusterTracker.clusterMassDecayTauUs" value="10000"/>
                               <entry key="RectangularClusterTracker.maxNumClusters" value="10"/>
                               <entry key="RectangularClusterTracker.clusterSize" value="0.15f"/>
                               <entry key="RectangularClusterTracker.numEventsStoredInCluster" value="100"/>
-                              <entry key="RectangularClusterTracker.thresholdEventsForVisibleCluster" value="30"/>
-                              <entry key="VORSensor.lensFocalLengthMm" value="4.5077343"/>
-                              <entry key="VORSensor.sampleIntervalMs" value="4"/>
-                              <entry key="VORSensor.highpassTauMsTranslation" value="3920.1245"/>
-                              <entry key="VORSensor.highpassTauMsRotation" value="3386.3516"/>
-                              <entry key="RectangularClusterTracker.clusterMassDecayTauUs" value="10000"/>
                               <entry key="RectangularClusterTracker.thresholdMassForVisibleCluster" value="30"/>
-                              <entry key="VORSensorForSteadicam.lensFocalLengthMm" value="6.0407915"/>
-                              <entry key="VORSensorForSteadicam.highpassTauMsRotation" value="1288.399"/>
-                              <entry key="VORSensorForSteadicam.highpassTauMsTranslation" value="1420.4598"/>
+                              <entry key="VORSensorForSteadicam.lensFocalLengthMm" value="6.0"/>
+                              <entry key="VORSensorForSteadicam.highpassTauMsTranslation" value="3460.946"/>
+                              <entry key="VORSensorForSteadicam.highpassTauMsRotation" value="3225.097"/>
+                              <entry key="RectangularClusterTracker.clusterLifetimeWithoutSupport" value="10000"/>
+                              <entry key="RectangularClusterTracker.thresholdEventsForVisibleCluster" value="30"/>
                             </map>
                           </node>
                         </node>
