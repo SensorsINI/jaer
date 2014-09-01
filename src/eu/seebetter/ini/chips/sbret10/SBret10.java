@@ -959,9 +959,8 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
         }
 
         public float getLowBoundary() {
-            return stats.getLowBoundary();
+            return lowBoundary;
         }
-
         public void setLowBoundary(float lowBoundary) {
             this.lowBoundary = lowBoundary;
             getPrefs().putFloat("AutoExposureController.lowBoundary", lowBoundary);
