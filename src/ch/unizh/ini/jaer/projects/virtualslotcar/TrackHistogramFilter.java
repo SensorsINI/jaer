@@ -72,7 +72,7 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
    }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<?> filterPacket(EventPacket<?> in) { // removed synchronized because it causes a deadlock between annotating CarTracker and processing it
         checkOutputPacketEventType(in);
         checkHistogram();
         int max = getHistmax();
