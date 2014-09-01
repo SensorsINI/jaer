@@ -32,14 +32,14 @@ import java.io.BufferedInputStream;
 
 /**
  * Plays a sampled sound card name on the speaker.
- * Use it by constructing a new {@link SlotcarSoundEffects}, then calling the {@link #play} method.
+ * Use it by constructing a new {@link SlotCarSoundSample}, then calling the {@link #play} method.
  * The sounds are stored in the resources folder and a file named "sounds.txt" holds the filenames
  * of the sound files, which should be wav files.
  *
  * @author  tobi
  * @version $Revision: 1.8 $
  */
-public class SlotcarSoundEffects implements SoundPlayerInterface {
+public class SlotCarSoundSample implements SoundPlayerInterface {
 
     /** Path header to sounds files. */
     static public final String PATH_HEADER = "ch/unizh/ini/jaer/projects/virtualslotcar/resources/";
@@ -58,8 +58,9 @@ public class SlotcarSoundEffects implements SoundPlayerInterface {
     // used for buffering in to out in play()...
     private byte[] abData = null;
     private FloatControl panControl = null, volumeControl = null;
-    private int cardNumber = 0;
-
+    
+    
+    
     /** Creates new SlotcarSoundEffects labeled number i, using sampled sound stored as preference for this number.
      *
      * @param soundNumber an index, used to look up the preferred sound file.
@@ -67,12 +68,11 @@ public class SlotcarSoundEffects implements SoundPlayerInterface {
      * @throws LineUnavailableException
      * @throws UnsupportedAudioFileException
      */
-    public SlotcarSoundEffects(int soundNumber) throws IOException, UnsupportedAudioFileException, LineUnavailableException {
-        this.cardNumber = soundNumber;
-        if (soundNumber >= SlotcarSoundEffects.getSoundFilePaths().size()) {
-            throw new IOException("There is no sound number " + soundNumber + " available");
-        }
-        setFile(soundNumber);
+    public SlotCarSoundSample(String filename) throws IOException, UnsupportedAudioFileException, LineUnavailableException {
+//        if (soundNumber >= SlotCarSoundSample.getSoundFilePaths().size()) {
+//            throw new IOException("There is no sound number " + soundNumber + " available");
+//        }
+        setFile(filename);
         open();
     }
 
@@ -134,7 +134,7 @@ public class SlotcarSoundEffects implements SoundPlayerInterface {
         nameList = new ArrayList<String>();
         try {
             InputStream inputStream;
-            inputStream = SlotcarSoundEffects.class.getResourceAsStream(PATH_HEADER + INDEX_FILE_NAME);
+            inputStream = SlotCarSoundSample.class.getResourceAsStream(PATH_HEADER + INDEX_FILE_NAME);
             String pathHeader = PATH_HEADER;
             if (inputStream == null) {
                 pathHeader = SRC_HEADER + PATH_HEADER;
@@ -161,16 +161,16 @@ public class SlotcarSoundEffects implements SoundPlayerInterface {
      * If the file is not found in the resources (jars or classes on classpath) then the file system is checked.
      *@param soundNumber the file number of the available files
      **/
-    public final synchronized boolean setFile(int soundNumber) throws UnsupportedAudioFileException, FileNotFoundException, IOException {
-        if (soundNumber >= getSoundFilePaths().size()) {
-            throw new FileNotFoundException("invalid file index");
-        }
-        this.filename = getSoundFilePaths().get(soundNumber);
+    public final synchronized boolean setFile(String filename) throws UnsupportedAudioFileException, FileNotFoundException, IOException {
+//        if (soundNumber >= getSoundFilePaths().size()) {
+//            throw new FileNotFoundException("invalid file index");
+//        }
+        this.filename = SRC_HEADER + PATH_HEADER+ filename; // getSoundFilePaths().get(soundNumber);
         InputStream inputStream;
         // load firmware file (this is binary file of 8051 firmware)
-        inputStream = getClass().getResourceAsStream(filename);
+        inputStream = getClass().getResourceAsStream(this.filename);
         if (inputStream == null) {
-            inputStream = new FileInputStream(filename);
+            inputStream = new FileInputStream(this.filename);
         }
         InputStream bufferedIn=new BufferedInputStream(inputStream);
         audioInputStream = AudioSystem.getAudioInputStream(bufferedIn);
@@ -184,7 +184,7 @@ public class SlotcarSoundEffects implements SoundPlayerInterface {
         bufferLength = audioInputStream.read(samples);
         abData = new byte[bufferLength / 8];
         audioInputStream = new AudioInputStream(new ByteArrayInputStream(samples), audioFormat, bufferLength);
-        log.info("for cardNumber=" + cardNumber + " loaded sound number " + soundNumber + " named " + filename + " with " + bufferLength + " samples at sample rate " + audioFormat.getSampleRate());
+        log.info("loaded sound named " + filename + " with " + bufferLength + " samples at sample rate " + audioFormat.getSampleRate());
         return false;
     }
 
@@ -204,13 +204,7 @@ public class SlotcarSoundEffects implements SoundPlayerInterface {
         panControl.setValue((f * (max - min)) + min);
     }
 
-    /**
-     * @return the cardNumber
-     */
-    public int getSoundNumber() {
-        return cardNumber;
-    }
-
+    
     private class SlotcarSoundEffectsThread extends Thread {
 
         public SlotcarSoundEffectsThread() {
@@ -257,14 +251,14 @@ public class SlotcarSoundEffects implements SoundPlayerInterface {
 
     static class SSTest extends JFrame {
 
-        SlotcarSoundEffects ss = null;
+        SlotCarSoundSample ss = null;
         float pan = 0.5f, vol = 1f;
 
         public SSTest() throws HeadlessException {
             super("SSTest");
             try {
                 Random r = new Random();
-                ss = new SlotcarSoundEffects(r.nextInt(SlotcarSoundEffects.getSoundFilePaths().size()));
+                ss = new SlotCarSoundSample("finalLap.wav");
             } catch (Exception e) {
                 e.printStackTrace();
                 System.exit(1);

@@ -14,7 +14,7 @@ class LapTimer implements PropertyChangeListener {
     private static Logger log = Logger.getLogger("LapTimer");
 
     SlotcarTrack track;
-    int lastSegment = Integer.MAX_VALUE;
+    int lastSegment = 0;
     int startSegment = 0;
     int lastUpdateTime = 0;
     int lapCounter = 0;
@@ -235,7 +235,7 @@ class LapTimer implements PropertyChangeListener {
         lapCounter = 0;
         initialized = false;
         laps.clear();
-        lastSegment = Integer.MAX_VALUE;
+        lastSegment = 0;
         sumTime = 0;
         bestTime = Integer.MAX_VALUE;
         quarters = 0;

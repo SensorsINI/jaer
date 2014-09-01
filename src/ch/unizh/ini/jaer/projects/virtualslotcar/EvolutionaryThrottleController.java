@@ -121,7 +121,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     private CarTracker carTracker;
     private CarTracker.CarCluster car = null;
     private boolean showedMissingTrackWarning = false;
-    private SlotcarSoundEffects sounds = null;
+    private SlotCarSoundSample sounds = null;
     private int lastCrashLocation = -1;
     private GLCanvas glCanvas;
     private ChipCanvas canvas;
@@ -175,7 +175,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
 
         setEnclosedFilterChain(filterChain);
         try {
-            sounds = new SlotcarSoundEffects(0);
+            sounds = new SlotCarSoundSample("wipeout2.wav");
         } catch (Exception ex) {
             log.warning("No sound effects available: " + ex.toString());
         }
