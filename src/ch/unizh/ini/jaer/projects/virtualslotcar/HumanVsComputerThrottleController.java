@@ -79,7 +79,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     private boolean soundEffectsEnabled = getBoolean("soundEffectsEnabled", true);
     private int raceLengthLaps = getInt("raceLengthLaps", 5);
     private int raceLapsRemaining = raceLengthLaps;
-    private int RACE_SETUP_TIME_MS = 7000, RACE_GO_TIME_MS = 2000;
+    private int RACE_SETUP_TIME_MS = 7000, RACE_GO_TIME_MS = 2000, REACTION_TIME_MS=500;
     private long prepareToRaceStartedTimeMs = 0;
 
     // logging
@@ -97,7 +97,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
      */
     public enum State {
 
-        OVERRIDDEN, STARTING, SOLO, CRASHED, RACING, STOPPED, PREPARE_TO_RACE, WAITING_FOR_GO
+        OVERRIDDEN, STARTING, SOLO, CRASHED, RACING, STOPPED, PREPARE_TO_RACE, WAITING_FOR_GO, WAITING_ADDITIONAL_REACTION_TIME
     }
 
     protected class RacerState extends StateMachineStates {
@@ -334,6 +334,8 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
                     state.set(State.RACING);
                 }
             }
+             int computerLead=computerLapTimer.computeLeadInSegmentsNotCountingLaps(humanLapTimer);
+             computeRacingThrottle(computerLead);
 
         } else if (state.get() == State.CRASHED) {
             state.set(State.STARTING);
@@ -355,32 +357,20 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
                 if (soundEffectsEnabled && sound_go != null) {
                     sound_go.play();
                 }
+                state.set(State.WAITING_ADDITIONAL_REACTION_TIME);
+            }
+            throttle = stoppedThrottle;
+        }else if(state.get()==State.WAITING_ADDITIONAL_REACTION_TIME){
+            if(state.timeSinceChanged()<REACTION_TIME_MS){
+                state.set(State.WAITING_ADDITIONAL_REACTION_TIME);
+            }else{
                 state.set(State.RACING);
             }
+            throttle = stoppedThrottle;
         } else if (state.get() == State.RACING) {
             int computerLead = computerLapTimer.computeLeadInTotalSegments(humanLapTimer);
             if (computerCar != null && computerCar.isRunning()) {
-                throttle = new ThrottleBrake();
-                ThrottleBrake maxThrottle = currentProfile.getThrottle(computerCar.getSegmentIdx());
-                throttle.copyFrom(maxThrottle);
-                if (raceFeedbackThrottleControlEnabled && !throttle.brake && humanCar != null && humanCar.isRunning()) {
-                    if (computerLead > 0) { // computer ahead, slow down computer car
-                        float reductionFactor = computerLead / raceControllerSegmentsAheadForConstantThrottle;
-                        if (reductionFactor > 1) {
-                            reductionFactor = 1;
-                        }
-                        throttle.throttle *= (1 - reductionFactor);
-                        if (throttle.throttle < startingThrottleValue) {
-                            throttle.throttle = startingThrottleValue;
-                        } else if (throttle.throttle > maxThrottle.throttle) {
-                            throttle.throttle = maxThrottle.throttle;
-                        }
-                    }
-                }
-
-//                float computerLeadSec=(float)Math.abs(computerLapTimer.computeLeadInSeconds(humanLapTimer));
-//                setBigStatusText(String.format("%s: %s Lead is %d segments (%.2fs)", state.toString(), who, (int)Math.abs(computerLead), computerLeadSec), bigStatusColor);
-                // control speed of computer car
+                computeRacingThrottle(computerLead);
             } else {
                 throttle = startingThrottle;
             }
@@ -424,6 +414,34 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         }
 
         return in;
+    }
+
+    private void computeRacingThrottle(int computerLead) {
+        if(computerCar==null) {
+            throttle=startingThrottle;
+            return;
+        }
+        ThrottleBrake maxThrottle = currentProfile.getThrottle(computerCar.getSegmentIdx());
+        if(!raceFeedbackThrottleControlEnabled){
+            throttle=maxThrottle;
+            return;
+        }
+        throttle = new ThrottleBrake();
+        throttle.copyFrom(maxThrottle);
+        if (!throttle.brake && humanCar != null && humanCar.isRunning()) {
+            if (computerLead > 0) { // computer ahead, slow down computer car
+                float reductionFactor = computerLead / raceControllerSegmentsAheadForConstantThrottle;
+                if (reductionFactor > 1) {
+                    reductionFactor = 1;
+                }
+                throttle.throttle *= (1 - reductionFactor);
+                if (throttle.throttle < startingThrottleValue) {
+                    throttle.throttle = startingThrottleValue;
+                } else if (throttle.throttle > maxThrottle.throttle) {
+                    throttle.throttle = maxThrottle.throttle;
+                }
+            }
+        }
     }
 
     private void computeLearning(boolean completedLap) throws RuntimeException {
@@ -668,7 +686,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
             startingThrottle.throttle = defaultThrottleValue;
             return startingThrottle;
         }
-        if (s == State.STOPPED  || s==State.PREPARE_TO_RACE || s==State.WAITING_FOR_GO) {
+        if (s == State.STOPPED  || s==State.PREPARE_TO_RACE || s==State.WAITING_FOR_GO || s==State.WAITING_ADDITIONAL_REACTION_TIME) {
             return stoppedThrottle;
         } else {
             throw new Error("state not found for RacerState, shouldn't happen");
