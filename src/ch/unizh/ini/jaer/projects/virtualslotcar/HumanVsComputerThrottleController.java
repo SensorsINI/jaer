@@ -70,15 +70,19 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     private boolean showThrottleProfile = getBoolean("showThrottleProfile", true);
     private boolean showTrack = getBoolean("showTrack", true);
 
-    // speed controller
+    // racing, speed controller
     private boolean racingEnabled = false; // user enables explicitly to start race getBoolean("racingEnabled", false);
     private float raceControllerSegmentsAheadForConstantThrottle = getFloat("raceControllerSegmentsAheadForConstantThrottle", 40);
-    private int raceLengthLaps = getInt("raceLengthLaps", 5);
-    private int raceLapsRemaining = raceLengthLaps;
     private boolean raceFeedbackThrottleControlEnabled = getBoolean("raceFeedbackThrottleControlEnabled", true);
-    private boolean soundEffectsEnabled = getBoolean("soundEffectsEnabled", true);
 
     // racing
+    private boolean soundEffectsEnabled = getBoolean("soundEffectsEnabled", true);
+    private int raceLengthLaps = getInt("raceLengthLaps", 5);
+    private int raceLapsRemaining = raceLengthLaps;
+    private int RACE_SETUP_TIME_MS = 7000, RACE_GO_TIME_MS = 2000;
+    private long prepareToRaceStartedTimeMs = 0;
+
+    // logging
     private int lastTimestamp = 0;
 
     /**
@@ -93,7 +97,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
      */
     public enum State {
 
-        OVERRIDDEN, STARTING, SOLO, CRASHED, RACING, STOPPED
+        OVERRIDDEN, STARTING, SOLO, CRASHED, RACING, STOPPED, PREPARE_TO_RACE, WAITING_FOR_GO
     }
 
     protected class RacerState extends StateMachineStates {
@@ -119,7 +123,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     private CarTracker computerCarTracker, humanCarTracker;
     private CarTracker.CarCluster computerCar = null, humanCar = null;
     private boolean showedMissingTrackWarning = false;
-    private SlotCarSoundSample sound_crash = null, sound_computer_winner = null, sound_human_winner = null, sound_go = null, sound_get_ready_to_race = null, sound_laps_to_go[] = null, sound_tie_race = null, sound_on_your_marks=null;
+    private SlotCarSoundSample sound_crash = null, sound_computer_winner = null, sound_human_winner = null, sound_go = null, sound_get_ready_to_race = null, sound_laps_to_go[] = null, sound_tie_race = null, sound_on_your_marks = null;
     private int lastCrashLocation = -1;
     private GLCanvas glCanvas;
     private ChipCanvas canvas;
@@ -333,6 +337,26 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
 
         } else if (state.get() == State.CRASHED) {
             state.set(State.STARTING);
+        } else if (state.get() == State.PREPARE_TO_RACE) {
+            if (state.timeSinceChanged() < RACE_SETUP_TIME_MS) {
+                state.set(State.PREPARE_TO_RACE);
+            } else {
+                if (soundEffectsEnabled && sound_on_your_marks != null) {
+                    sound_on_your_marks.play();
+                }
+                state.set(State.WAITING_FOR_GO);
+            }
+            throttle = stoppedThrottle;
+        } else if (state.get() == State.WAITING_FOR_GO) {
+            throttle = stoppedThrottle;
+            if (state.timeSinceChanged() < RACE_GO_TIME_MS) {
+                state.set(State.WAITING_FOR_GO);
+            } else {
+                if (soundEffectsEnabled && sound_go != null) {
+                    sound_go.play();
+                }
+                state.set(State.RACING);
+            }
         } else if (state.get() == State.RACING) {
             int computerLead = computerLapTimer.computeLeadInTotalSegments(humanLapTimer);
             if (computerCar != null && computerCar.isRunning()) {
@@ -544,24 +568,8 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         if (soundEffectsEnabled && sound_get_ready_to_race != null) {
             sound_get_ready_to_race.play();
         }
-        if (soundEffectsEnabled && sound_go != null) {
-            Thread t = new Thread() {
-                @Override
-                public void run() {
-                    try {
-                        Thread.sleep(4000);
-                        sound_on_your_marks.play();
-                        Thread.sleep(2000);
-                        sound_go.play();
-                    } catch (InterruptedException e) {
-                    }
-
-                }
-            };
-            t.start();
-        }
         resetRace();
-        state.set(State.RACING);
+        state.set(State.PREPARE_TO_RACE);
         setRacingEnabled(true);
     }
 
@@ -660,7 +668,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
             startingThrottle.throttle = defaultThrottleValue;
             return startingThrottle;
         }
-        if (s == State.STOPPED) {
+        if (s == State.STOPPED  || s==State.PREPARE_TO_RACE || s==State.WAITING_FOR_GO) {
             return stoppedThrottle;
         } else {
             throw new Error("state not found for RacerState, shouldn't happen");
