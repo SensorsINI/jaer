@@ -268,7 +268,16 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         }
     }
 
-    /** Handles loggging clusters to a file for later analysis. */
+    /** Updates mass field of all clusters using time t as update time.
+     * 
+     * @param t the timestamp to use
+     */
+    protected void updateClusterMasses(int t) {
+        for(Cluster c:clusters)
+            c.updateMass(t);
+    }
+
+    /** Handles logging clusters to a file for later analysis. */
     protected class ClusterLogger {
         String dateString = null;
         String filename = null;
@@ -565,6 +574,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         mergeClusters();
         updateClusterLocations(t);
         updateClusterPaths(t);
+        updateClusterMasses(t);
         visibleClusters.clear();
         for(Cluster c:clusters){
             if(c.checkAndSetClusterVisibilityFlag(t)){
@@ -1144,17 +1154,17 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         /**Increments mass of cluster by one after decaying it away since the {@link #lastEventTimestamp} according
         to exponential decay with time constant {@link #clusterMassDecayTauUs}.
         @param event used for event timestamp. */
-        protected void updateMass(BasicEvent event) {
+        protected void updateMass(int t) {
             if (surroundInhibitionEnabled) {
                 // if the event is in the surround, we decrement the mass, if inside cluster, we increment
                 float normDistance = distanceToLastEvent / radius;
                 //float dmass = normDistance <= 1 ? 1 : -1;
                 float dmass = normDistance <= 1 ? 1 : -surroundInhibitionCost;
-                mass = dmass + (mass * (float) Math.exp((float) (lastEventTimestamp - event.timestamp) / clusterMassDecayTauUs));
+                mass = dmass + (mass * (float) Math.exp((float) (lastEventTimestamp - t) / clusterMassDecayTauUs));
             } else {
                 boolean wasInfinite=Float.isInfinite(mass);
                 // don't worry about distance, just increment
-                int dt=lastEventTimestamp - event.timestamp;
+                int dt=lastEventTimestamp - t;
                 if(dt<0){
                     mass = 1 + (mass * (float) Math.exp((float) dt/ clusterMassDecayTauUs));
                     if (!wasInfinite && Float.isInfinite(mass)) {
@@ -1359,7 +1369,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 }
             }
 
-            updateMass(event);
+            updateMass(event.timestamp);
 
             float m = mixingFactor;
             updatePosition(event, m);
@@ -1620,7 +1630,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
 // TODO: In the tooltip it is pormissed that the thresholdMassForVisibleCluster is
 // checking the MASS of the cluster to determine if its visible. However as far
 // as I see here this is not the case! Instead we check only for the number of Events this cluster has gathered            
-            if (numEvents < thresholdMassForVisibleCluster) {
+            if (numEvents < thresholdMassForVisibleCluster  || (numEvents>thresholdMassForVisibleCluster && getMass()<thresholdMassForVisibleCluster)) {
                 ret = false;
             }
             double speed = (Math.sqrt((velocityPPT.x * velocityPPT.x) + (velocityPPT.y * velocityPPT.y)) * 1e6) / AEConstants.TICK_DEFAULT_US; // speed is in pixels/sec
