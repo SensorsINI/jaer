@@ -44,6 +44,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 import java.io.File;
 import java.io.IOException;
 import javax.media.opengl.GL;
+import javax.swing.SwingUtilities;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 
 /**
@@ -118,7 +119,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     private CarTracker computerCarTracker, humanCarTracker;
     private CarTracker.CarCluster computerCar = null, humanCar = null;
     private boolean showedMissingTrackWarning = false;
-    private SlotCarSoundSample sound_crash = null, sound_computer_winner = null, sound_human_winner = null, sound_go = null, sound_get_ready_to_race = null, sound_laps_to_go[] = null, sound_tie_race = null;
+    private SlotCarSoundSample sound_crash = null, sound_computer_winner = null, sound_human_winner = null, sound_go = null, sound_get_ready_to_race = null, sound_laps_to_go[] = null, sound_tie_race = null, sound_on_your_marks=null;
     private int lastCrashLocation = -1;
     private GLCanvas glCanvas;
     private ChipCanvas canvas;
@@ -227,6 +228,8 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
             sound_human_winner = new SlotCarSoundSample("congratsHuman3.wav");
             sound_tie_race = new SlotCarSoundSample("tie.wav");
             sound_get_ready_to_race = new SlotCarSoundSample("getReadyToRace2.wav");
+            sound_go = new SlotCarSoundSample("go2.wav");
+            sound_on_your_marks = new SlotCarSoundSample("onYourMarks2.wav");
             sound_laps_to_go = new SlotCarSoundSample[10];
             sound_laps_to_go[1] = new SlotCarSoundSample("finalLap.wav");
             for (int k = 1; k <= 8; k++) {
@@ -538,6 +541,25 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     }
 
     synchronized public void doStartRace() {
+        if (soundEffectsEnabled && sound_get_ready_to_race != null) {
+            sound_get_ready_to_race.play();
+        }
+        if (soundEffectsEnabled && sound_go != null) {
+            Thread t = new Thread() {
+                @Override
+                public void run() {
+                    try {
+                        Thread.sleep(4000);
+                        sound_on_your_marks.play();
+                        Thread.sleep(2000);
+                        sound_go.play();
+                    } catch (InterruptedException e) {
+                    }
+
+                }
+            };
+            t.start();
+        }
         resetRace();
         state.set(State.RACING);
         setRacingEnabled(true);
