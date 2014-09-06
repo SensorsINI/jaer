@@ -181,8 +181,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public static String HELP_URL_JAVADOC_WEB = "http://jaer.sourceforge.net/javadoc";
     public static String HELP_URL_JAVADOC;
     // note filenames cannot have spaces in them for browser to work easily, some problem with space encoding; %20 doesn't work as advertized.
-    public static String HELP_USER_GUIDE_USB2_MINI = "/doc/USBAERmini2userguide.pdf";
-    public static String HELP_USER_GUIDE_AER_CABLING = "/doc/AERHardwareAndCabling.pdf";
+    public static String HELP_USER_GUIDE_USB2_MINI = "/trunk/doc/USBAERmini2userguide.pdf";
+    public static String HELP_USER_GUIDE_AER_CABLING = "/trunk/doc/AERHardwareAndCabling.pdf";
     public static final String HARDWARE_INTERFACE_NUMBER_PROPERTY = "HardwareInterfaceNumber";
     public static final String HARDWARE_INTERFACE_OBJECT_PROPERTY = "hardwareInterfaceObject";
     private static final String SET_DEFAULT_FIRMWARE_FOR_BLANK_DEVICE = "Set default firmware for blank device...";
@@ -263,6 +263,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             try {
                     Desktop.getDesktop().browse(new URI(url));
             } catch (Exception ex) {
+                    ex.printStackTrace();
                     log.warning("Couldn't show " + url + "; caught " + ex);
             }
     }
@@ -711,7 +712,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     addHelpItem(new JSeparator());
                     addHelpURLItem(pathToURL(HELP_USER_GUIDE_USB2_MINI), "USBAERmini2 board", "User guide for USB2AERmini2 AER monitor/sequencer interface board");
                     addHelpURLItem(pathToURL(HELP_USER_GUIDE_AER_CABLING), "AER protocol and cabling guide", "Guide to AER pin assignment and cabling for the Rome and CAVIAR standards");
-                    addHelpURLItem(pathToURL("/deviceFirmwarePCBLayout/SiLabsC8051F320/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");
+                    addHelpURLItem(pathToURL("/trunk/deviceFirmwarePCBLayout/SiLabsC8051F320/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");
                     addHelpItem(new JSeparator());
             } catch (Exception e) {
                     log.warning("could register help item: " + e.toString());
