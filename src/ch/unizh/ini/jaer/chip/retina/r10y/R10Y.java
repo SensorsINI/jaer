@@ -57,9 +57,6 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
     public static final String CMD_TWEAK_THESHOLD = "threshold", CMD_TWEAK_ONOFF_BALANCE = "balance", CMD_TWEAK_BANDWIDTH = "bandwidth", CMD_TWEAK_MAX_FIRING_RATE = "maxfiringrate";
     private R10YBiasgen biasgen;
     JComponent helpMenuItem1 = null, helpMenuItem2 = null, helpMenuItem3 = null;
-    public static final String HELP_URL_RETINA = "http://siliconretina.ini.uzh.ch";
-    public static final String USER_GUIDE_URL_RETINA = "http://siliconretina.ini.uzh.ch/wiki/doku.php?id=userguide";
-    public static final String FIRMWARE_CHANGELOG = "http://jaer.svn.sourceforge.net/viewvc/jaer/trunk/deviceFirmwarePCBLayout/CypressFX2/firmware_FX2LP_DVS128/CHANGELOG.txt?revision=HEAD&view=markup";
 
     /**
      * Creates a new instance of DVS128. No biasgen is constructed for this
@@ -180,9 +177,6 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
         if (getAeViewer() == null) {
             return;
         }
-        helpMenuItem1 = getAeViewer().addHelpURLItem(HELP_URL_RETINA, "DVS128 wiki", "Opens wiki for DVS128 silicon retina");
-        helpMenuItem2 = getAeViewer().addHelpURLItem(USER_GUIDE_URL_RETINA, "DVS128 user guide", "Opens user guide wiki for DVS128 silicon retina");
-        helpMenuItem3 = getAeViewer().addHelpURLItem(FIRMWARE_CHANGELOG, "DVS128 Firmware Change Log", "Displays the head version of the DVS128 firmware change log");
     }
 
     /**
