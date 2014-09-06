@@ -76,8 +76,8 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
     public static final String CMD_TWEAK_THESHOLD = "threshold", CMD_TWEAK_ONOFF_BALANCE = "balance", CMD_TWEAK_BANDWIDTH = "bandwidth", CMD_TWEAK_MAX_FIRING_RATE = "maxfiringrate";
     private Biasgen dvs128Biasgen;
     JComponent helpMenuItem1 = null, helpMenuItem2 = null, helpMenuItem3 = null;
-    public static final String HELP_URL_RETINA = "http://siliconretina.ini.uzh.ch";
-    public static final String USER_GUIDE_URL_RETINA = "http://siliconretina.ini.uzh.ch/wiki/doku.php?id=userguide";
+    public static final String HELP_URL_RETINA = "http://inilabs.com/support/overview-of-dynamic-vision-sensors";
+    public static final String USER_GUIDE_URL_RETINA = "http://inilabs.com/support/dvs128";
     public static final String FIRMWARE_CHANGELOG = "http://sourceforge.net/p/jaer/code/HEAD/tree/trunk/deviceFirmwarePCBLayout/CypressFX2/firmware_FX2LP_DVS128/CHANGELOG.txt";
 
     /**
