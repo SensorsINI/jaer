@@ -168,8 +168,9 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
             c.addObserver(this);
         }
         biasgen.equalizer.addObserver(this);
-
-        tabbedPane.setSelectedIndex(prefs.getInt("CochleaAMS1bControlPanel.selectedPaneIndex", 0));
+        int prevTab=prefs.getInt("CochleaAMS1bControlPanel.selectedPaneIndex", 0);
+        if(prevTab>=tabbedPane.getTabCount()) prevTab=0;
+        tabbedPane.setSelectedIndex(prevTab);
     }
     final Dimension sliderDimPref = new Dimension(2, 200), sliderDimMin = new Dimension(1, 35), killDimPref = new Dimension(2, 15), killDimMax = new Dimension(6, 15), killDimMin = new Dimension(1, 8);
     final Insets zeroInsets = new Insets(0, 0, 0, 0);
