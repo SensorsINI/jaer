@@ -25,17 +25,15 @@ import java.util.LinkedList;
 import java.util.ListIterator;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
-import javax.media.opengl.GL2;
 
+import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLEventListener;
-import javax.media.opengl.glu.GLU;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileFilter;
-import static net.sf.jaer.eventprocessing.EventFilter.log;
 
 import net.sf.jaer.graphics.ImageDisplay;
 
@@ -343,7 +341,7 @@ public class SlotcarTrack implements java.io.Serializable {
      * @throws IllegalArgumentException if newStartIndex is invalid
      */
     public void moveStartIndexToIndex(int newStartIndex) throws IllegalArgumentException {
-        if (newStartIndex < 0 || newStartIndex >= getNumPoints()) {
+        if ((newStartIndex < 0) || (newStartIndex >= getNumPoints())) {
             throw new IllegalArgumentException("invalid new starting index " + newStartIndex + "; only " + getNumPoints() + " in track");
         }
         LinkedList<Point2D.Float> newTrackPoints = new LinkedList<Point2D.Float>();
@@ -1140,28 +1138,19 @@ public class SlotcarTrack implements java.io.Serializable {
         for (Point2D p : trackPoints) {
 
             gl.glPointSize(minSize);
-            gl.glBegin(gl.GL_POINTS);
+            gl.glBegin(GL.GL_POINTS);
             gl.glVertex2d(p.getX(), p.getY());
             gl.glEnd();
             idx++;
         }
 
-        if (startPoint != null) {
-            gl.glColor3f(0, 1.0f, 0.0f);
-            gl.glPointSize(startSize);
-            gl.glBegin(gl.GL_POINTS);
-            gl.glVertex2d(startPoint.getX(), startPoint.getY());
-            gl.glEnd();
-        }
-
         // Plot lines
         gl.glPointSize(1.0f);
-        gl.glBegin(gl.GL_LINE_STRIP);
+        gl.glBegin(GL.GL_LINE_STRIP);
         for (Point2D p : trackPoints) {
             gl.glVertex2d(p.getX(), p.getY());
         }
         gl.glEnd();
-
     }
 
     static private void putLastFilePrefs(File file) {
