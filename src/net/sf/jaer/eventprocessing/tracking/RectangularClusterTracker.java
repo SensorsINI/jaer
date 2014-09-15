@@ -153,7 +153,15 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     private ChipCanvas canvas;
 
     /** The vanishing point for perspective object sizing */
-    protected Point vanishingPoint = null;
+    private Point2D vanishingPoint = null;
+    {
+        float x=getFloat("vanishingPoint.x",Float.NaN), y=getFloat("vanishingPoint.y",Float.NaN);
+        if(Float.isNaN(x)|| Float.isNaN(y)){
+            setVanishingPoint(null);
+        }else{
+            vanishingPoint=new Point2D.Float(x,y);
+        }
+    }
  
     protected int lastTimestamp=0;
     
@@ -202,6 +210,8 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         setPropertyTooltip(sizing, "clusterSize", "size (starting) in fraction of chip max size");
         setPropertyTooltip(sizing, "highwayPerspectiveEnabled", "Cluster size depends on perspective location; mouse click defines horizon");
         setPropertyTooltip(sizing, "angleFollowsVelocity", "cluster angle is set by velocity vector angle; requires that useVelocity is on");
+        setPropertyTooltip(sizing,"selectVanishingPoint", "Select using a mouse click a particular location in the scene as the vanishing point on the horizon");
+        setPropertyTooltip(sizing,"vanishingPoint", "The particular location in the scene as the vanishing point on the horizon");
         setPropertyTooltip(disp, "pathLength", "paths are at most this many packets long");
         setPropertyTooltip(disp, "colorClustersDifferentlyEnabled", "each cluster gets assigned a random color, otherwise color indicates ages");
         setPropertyTooltip(disp, "useEllipticalClusters", "true uses elliptical rather than rectangular clusters - distance based on elliptical distance including cluster angle");
@@ -228,7 +238,6 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         setPropertyTooltip(pi, "smoothWeight","If smoothmove is checked, the 'weight' of a cluster");
         setPropertyTooltip(pi, "smoothPosition","Position Coefficient");
         setPropertyTooltip(pi, "smoothIntegral","Integral Coefficient");
-        setPropertyTooltip("selectVanishingPoint", "Select using a mouse click a particular location in the scene as the vanishing point on the horizon");
         // </editor-fold>
     }
     
@@ -275,6 +284,29 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     protected void updateClusterMasses(int t) {
         for(Cluster c:clusters)
             c.updateMass(t);
+    }
+
+    /**
+     * @return the vanishingPoint
+     */
+    public Point2D getVanishingPoint() {
+        return vanishingPoint;
+    }
+
+    /**
+     * @param vanishingPoint the vanishingPoint to set
+     */
+    public void setVanishingPoint(Point2D vanishingPoint) {
+        Point2D old=this.vanishingPoint;
+        this.vanishingPoint = vanishingPoint;
+        if(vanishingPoint!=null){
+            putFloat("vanishingPoint.x", (float)vanishingPoint.getX());
+            putFloat("vanishingPoint.y", (float)vanishingPoint.getY());
+        }else{
+            putFloat("vanishingPoint.x", Float.NaN);
+            putFloat("vanishingPoint.y", Float.NaN);
+        }
+        getSupport().firePropertyChange("vanishingPoint",old,vanishingPoint);
     }
 
     /** Handles logging clusters to a file for later analysis. */
@@ -1320,7 +1352,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
                 return 1;
             }
             final float MIN_SCALE = 0.1f; // to prevent microclusters that hold only a single pixel
-            if (vanishingPoint==null) {
+            if (getVanishingPoint()==null) {
                 float scale = 1f - (location.y / chip.getSizeY()); // yfrac grows to 1 at bottom of image
                 if (scale < MIN_SCALE) {
                     scale = MIN_SCALE;
@@ -1329,7 +1361,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             } else {
                 // updateShape is MIN_SCALE at vanishing point or above and grows linearly to 1 at max size of chip
                 int size = chip.getMaxSize();
-                float d = (float) location.distance(vanishingPoint.x, vanishingPoint.y);
+                float d = (float) location.distance(getVanishingPoint().getX(), getVanishingPoint().getY());
                 float scale = d / size;
                 if (scale < MIN_SCALE) {
                     scale = MIN_SCALE;
@@ -2207,7 +2239,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             gl.glColor3f(0,0,1);
             gl.glPointSize(10);
             gl.glBegin(GL.GL_POINTS);
-            gl.glVertex2f(vanishingPoint.x, vanishingPoint.y);
+            gl.glVertex2f((float)vanishingPoint.getX(), (float)vanishingPoint.getY());
             gl.glEnd();
         }
         // clusters
@@ -2234,7 +2266,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     @Override public void mouseEntered(MouseEvent e) { }
     @Override public void mouseExited(MouseEvent e) { }
     @Override public void mouseClicked(MouseEvent e) {
-        vanishingPoint = canvas.getPixelFromMouseEvent(e);
+        setVanishingPoint(canvas.getPixelFromMouseEvent(e));
         if(glCanvas!=null){
             glCanvas.removeMouseListener(this);
         }
