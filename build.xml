@@ -78,7 +78,7 @@
     </target>
 
     <!-- makes sure that the build version is written to the jar -->
-    <target name="-pre-jar" depends="setBuildVersion,copySplashImage" >
+    <target name="-pre-jar" depends="jaer-setBuildVersion,jaer-copySplashImage" >
         <echo message="build.xml project opened"/>
         <echo> Having trouble building or running?
             See the Help Forum for jAER at https://sourceforge.net/p/jaer/discussion/631958/
@@ -94,30 +94,31 @@
 
 
     <!--    copy splash image to src tree so that it gets into main jar-->
-    <target name="copySplashImage">
+    <target name="jaer-copySplashImage">
         <copy file="SplashScreen.gif" todir="build/classes"/>
     </target>
 
     <!--    The exe4j launcher target to build jAERViewer.exe with integrated java 6 splash screen.
             http://www.ej-technologies.com/products/exe4j/overview.html
     -->
-    <target name="exe4j">
-        <subant failonerror="false" target="exe4jx86">
+    <target name="jaer-exe4j">
+        <echo message="Building Windows .exe. launchers using exe4j (https://www.ej-technologies.com/download/exe4j/files). ${line.separator} Note that depending on 32- or 64-bit installed JDKs, ${line.separator} you may not be able to build one or the other of these launchers. ${line.separator} Don't worry about this."/>
+        <subant failonerror="false" target="jaer-exe4jx86">
             <fileset dir="." includes="build.xml"/>
         </subant>
-       <subant failonerror="false" target="exe4jx64">
+       <subant failonerror="false" target="jaer-exe4jx64">
             <fileset dir="." includes="build.xml"/>
         </subant>
     </target>
     
-    <target name="exe4jx86" depends="checkos" if="isWindows" >
-        <echo message="Building exe4j jAERViewer.exe 32-bit Windows launcher - embedding ico and setting SplashScreen in jAERViewer.exe. ${line.separator} Don't worry if this task fails for you unless you have changed the classpath. ${line.separator}jAERViewer.exe does not normally need to be rebuilt."/>
-        <taskdef name="exe4j" classname="com.exe4j.Exe4JTask" classpath="../../trunk/exe4j_x86/bin/ant.jar" onerror="ignore" />
+    <target name="jaer-exe4jx86" depends="checkos" if="isWindows" >
+        <echo message="Building jaer-exe4j jAERViewer.exe 32-bit Windows launcher for 32-bit Java Virtual Machines - embedding ico and setting SplashScreen in jAERViewer.exe. ${line.separator} Don't worry if this task fails for you unless you have changed the classpath. ${line.separator}jAERViewer.exe does not normally need to be rebuilt."/>
+        <taskdef name="jaer-exe4j" classname="com.jaer-exe4j.Exe4JTask" classpath="../../trunk/exe4j_x86/bin/ant.jar" onerror="ignore" />
         <exe4j projectfile="../../branches/jAER_1.5/jaer1.5_win_jre_x86.exe4j" requirelicense="true"/>
     </target>
 
-    <target name="exe4jx64" depends="checkos" if="isWindows">
-        <echo message="Building exe4j jAERViewer.exe 64-bit Windows launcher - embedding ico and setting SplashScreen in jAERViewer.exe. ${line.separator} Don't worry if this task fails for you unless you have changed the classpath. ${line.separator}jAERViewer.exe does not normally need to be rebuilt."/>
+    <target name="jaer-exe4jx64" depends="checkos" if="isWindows">
+        <echo message="Building exe4j jAERViewer.exe 64-bit Windows launcher for 64-bit Java Virtual Machines - embedding ico and setting SplashScreen in jAERViewer.exe. ${line.separator} Don't worry if this task fails for you unless you have changed the classpath. ${line.separator}jAERViewer.exe does not normally need to be rebuilt."/>
         <taskdef name="exe4j" classname="com.exe4j.Exe4JTask" classpath="../../trunk/exe4j_x64/bin/ant.jar" onerror="report"/>
         <exe4j projectfile="../../branches/jAER_1.5/jaer1.5_win_jre_x64.exe4j" requirelicense="true"/>
     </target>
@@ -125,12 +126,12 @@
  
 
     <!-- builds the windows executable .exe launcher files -->
-    <target name="-post-jar" depends="exe4j">
+    <target name="-post-jar" depends="jaer-exe4j">
         
      </target>
 
     <!-- builds a zip of all the javadoc -->
-    <target name="archive-javadoc" depends="javadoc">
+    <target name="jaer-archive-javadoc" depends="javadoc">
         <tstamp/>
         <delete file="../../jaer-javadoc-*.zip" />
       <property name="javadocZipFileName" value="../../jaer-javadoc-${DSTAMP}.zip" />
@@ -140,7 +141,7 @@
     </target>
 
     <!-- builds a runtime archive for end users who don't want to develop -->
-    <target name="runtime-archive" depends="jar">
+    <target name="jaer-runtime-archive" depends="jar">
         <tstamp/>
        <delete file="../../jaer-runtime-*.zip" />
         <property name="runtimeZipFileName" value="../../jaer-runtime-${DSTAMP}.zip"/>
@@ -157,8 +158,8 @@
         </zip>
     </target>
 
-    <!--depends="runtime-archive"-->
-    <target name="runtime-release-upload"   >
+    <!--depends="jaer-runtime-archive"-->
+    <target name="jaer-runtime-release-upload"   >
         <tstamp/>
             <ftp
             server="upload.sourceforge.net"
@@ -187,7 +188,7 @@
     The key can be generated under linux with ssh-keygen -t dsa -Cusername@shell.sf.net
     and then must be uploaded via SF's key managment system.
     -->
-    <target name="javadoc-upload" depends="init">
+    <target name="jaer-javadoc-upload" depends="init">
         <echo message="first run javadoc-archive target to build javadoc and zip archive of javadoc"/>
         <input message="SourceForge username?" addproperty="javadoc.upload.username"/>
         <!--        <input message="SourceForge password?" addproperty="javadoc.upload.password"/> -->
@@ -203,7 +204,7 @@
     </target>
 
     <!-- builds a file with the output of svnversion that is used for the About dialogs -->
-    <target name="setBuildVersion" depends="init">
+    <target name="jaer-setBuildVersion" depends="init">
         <tstamp/>
         <echo message="Making build version file ${buildversion.outputfile} - you can ignore any error ${line.separator}generated here since it will only affect the Help/About... dialog. ${line.separator}To remove this error, you need to install a command line svn client ${line.separator}and make svnversion available on the PATH." />
         <delete file="${buildversion.outputfile}"/>
@@ -228,7 +229,7 @@
     </target>
 
 
-   <target name="sign-jaer-jar" depends="jar">
+   <target name="jaer-sign-jar" depends="jar">
        <echo message="Self-signing jar"/>
        <signjar jar="${dist.jar}" alias="jaer" keystore="keystore" storepass="jaerjaer"/>
    </target>
