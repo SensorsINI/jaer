@@ -595,13 +595,16 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         }
     }
 
+//    private int lastUpdateClusterListTime=Integer.MIN_VALUE;
     /** This method updates the list of clusters, pruning and
      * merging clusters and updating positions based on cluster velocities.
      * It also updates the optical gyro if enabled.
      *
      * @param t the global timestamp of the update. */
     protected void updateClusterList(int t) {
-//        logg.info("updating cluster list at time="+t);
+//        int dt=t-lastUpdateClusterListTime;
+//        System.out.println("updateClusterList dt = "+dt);
+//        lastUpdateClusterListTime=t;
         pruneClusters(t);
         mergeClusters();
         updateClusterLocations(t);
@@ -682,9 +685,9 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         // TODO update here again, relying on the fact that lastEventTimestamp was set by possible previous update according to
         // schedule; we have have double update of velocityPPT using same dt otherwise
         // Once a Packet we update the ClusterPath, ClusterPosition(speed based) and check if the cluster is visible
-        if (!updatedClusterList) {
-            updateClusterList(lastTimestamp); // at laest once per packet update list
-        }
+//        if (!updatedClusterList) {
+//            updateClusterList(lastTimestamp); // at laest once per packet update list
+//        }
 //        for (Cluster c : clusters) {
 //            if (!c.isVisible()) {
 //                continue;
