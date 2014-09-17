@@ -20,6 +20,7 @@ import java.beans.PropertyChangeListener;
 import javax.swing.ProgressMonitor;
 import java.io.*;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.concurrent.ArrayBlockingQueue;
 import static net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2.PROPERTY_CHANGE_ASYNC_STATUS_MSG;
 import static net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2.STATUS_ENDPOINT_ADDRESS;
@@ -432,11 +433,44 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
         private int countIMUEvents = 0;
         private short[] dataIMUEvents = new short[7];
         
+        private class Stats{
+            long lastBufTime=0;
+            final int maxLength=50;
+            LinkedList<BufInfo> list=new LinkedList<BufInfo>();
+            void addBuf(UsbIoBuf b){
+                list.add(new BufInfo(b.BytesTransferred));
+                if(list.size()>maxLength)list.removeFirst();
+            }
+            public String toString(){
+                StringBuilder sb=new StringBuilder("buffer stats: ");
+                for(BufInfo b:list){
+                    sb.append(String.format("%s, ",b.toString()));
+                }
+                return sb.toString();
+            }
+            private class BufInfo{
+                long dtNs; int numBytes;
+
+                public BufInfo(int numEvents) {
+                    this.numBytes = numEvents;
+                    long now=System.nanoTime();
+                    dtNs=now-lastBufTime;
+                    lastBufTime=now;
+                }
+                
+                public String toString(){
+                    return String.format("%d ns %d bytes",dtNs,numBytes);
+                }
+                
+            }
+        }
+        private Stats stats=new Stats();
+        
         @Override
         protected void translateEvents(UsbIoBuf b) {
             // TODO debug
 //            if(imuSample!=null) System.out.println(imuSample);
-
+            //stats.addBuf(b);
             try {
                 // data from cDVS is stateful. 2 bytes sent for each word of data can consist of either timestamp, y address, x address, or ADC value.
                 // The type of data is determined from bits in these two bytes.
