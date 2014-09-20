@@ -9,6 +9,7 @@ import java.beans.PropertyChangeListener;
 import javax.media.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -30,6 +31,7 @@ import net.sf.jaer.util.TobiLogger;
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 @Description("Slot car racer project, Telluride 2010")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, PropertyChangeListener{
     private boolean overrideThrottle = getBoolean("overrideThrottle", true);
     private float overriddenThrottleSetting = getFloat("overriddenThrottleSetting", 0);

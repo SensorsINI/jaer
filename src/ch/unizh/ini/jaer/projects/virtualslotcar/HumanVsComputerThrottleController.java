@@ -79,7 +79,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     private boolean soundEffectsEnabled = getBoolean("soundEffectsEnabled", true);
     private int raceLengthLaps = getInt("raceLengthLaps", 5);
     private int raceLapsRemaining = raceLengthLaps;
-    private int RACE_SETUP_TIME_MS = 7000, RACE_GO_TIME_MS = 2000, REACTION_TIME_MS=500;
+    private int RACE_SETUP_TIME_MS = 4000, RACE_GO_TIME_MS = 1500, REACTION_TIME_MS=500;
     private long prepareToRaceStartedTimeMs = 0;
 
     // logging
@@ -415,6 +415,8 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
 
         return in;
     }
+    
+    private float throttleReductionFactor=1;
 
     private void computeRacingThrottle(int computerLead) {
         if(computerCar==null) {
@@ -428,7 +430,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         }
         throttle = new ThrottleBrake();
         throttle.copyFrom(maxThrottle);
-        if (!throttle.brake && humanCar != null && humanCar.isRunning()) {
+        if (!throttle.brake && throttle.throttle>startingThrottleValue && humanCar != null && humanCar.isRunning()) {
             if (computerLead > 0) { // computer ahead, slow down computer car
                 float reductionFactor = computerLead / raceControllerSegmentsAheadForConstantThrottle;
                 if (reductionFactor > 1) {
@@ -442,6 +444,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
                 }
             }
         }
+        throttleReductionFactor=throttle.throttle/maxThrottle.throttle;
     }
 
     private void computeLearning(boolean completedLap) throws RuntimeException {
@@ -770,7 +773,8 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         humanCarTracker.setCarColor(Color.GREEN);
 
         String s;
-        s = String.format("HumanVsComputerThrottleController\nDefine track with TrackDefineFilter and load that track here.\nState: %s\nLearning %s\ncomputer/human trackPosition: %d|%d/%d\nThrottle: %8.3f\nComputer %s\nHuman %s\n%s\n%d laps remaining\nLast Winner: %s", state.toString(), learningEnabled ? "Enabled" : "Disabled", computerTrackPosition, humanTrackPosition, track == null ? 0 : getTrack().getNumPoints(), throttle.throttle, computerLapTimer.toString(), humanLapTimer.toString(), standings(), raceLapsRemaining, winner.toString());
+        s = String.format("HumanVsComputerThrottleController\nDefine track with TrackDefineFilter and load that track here.\nState: %s\nLearning %s\ncomputer/human trackPosition: %d|%d/%d\nComuter lead: %d\nThrottle: %8.3f\nLast throttle reduction factor: %.2f\nComputer %s\nHuman %s\n%s\n%d laps remaining\nLast Winner: %s", state.toString(), learningEnabled ? "Enabled" : "Disabled", computerTrackPosition, humanTrackPosition, track == null ? 0 : getTrack().getNumPoints(), throttle.throttle, throttleReductionFactor,computerLapTimer.toString(), humanLapTimer.toString(), standings(),  raceLapsRemaining, winner.toString());
+        MultilineAnnotationTextRenderer.setScale(.25f);
         MultilineAnnotationTextRenderer.renderMultilineString(s);
         if (showTrack && track != null) {
             track.draw(drawable);
