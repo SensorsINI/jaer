@@ -129,7 +129,7 @@ class LapTimer implements PropertyChangeListener {
         }
 
         float splitTimeSec(int splitNumber) {
-            if (splitNumber < 0 || splitNumber > quartersCompleted) {
+            if (splitNumber < 0 || splitNumber >= quartersCompleted) {
                 return Float.NaN;
             } else if (splitNumber == 0) {
                 return S2US * (splitsUs[0]);
@@ -139,7 +139,7 @@ class LapTimer implements PropertyChangeListener {
         }
 
         void storeSplit(int quarter, int splitTimeUs, int thisSplitAbsStartTimeUs) {
-            quartersCompleted = quarter;
+            quartersCompleted = quarter+1;
             splitsUs[quarter] = splitTimeUs;
             absTimeUs[quarter] = thisSplitAbsStartTimeUs;
         }
@@ -255,6 +255,7 @@ class LapTimer implements PropertyChangeListener {
         Iterator<Lap> itr = laps.descendingIterator();
         while (itr.hasNext()) {
             Lap l = itr.next();
+//            if(l.quartersCompleted<1) continue;
             sb.append(String.format("\n%6d: %s", -(count++), l.toString()));
         }
         return sb.toString();
