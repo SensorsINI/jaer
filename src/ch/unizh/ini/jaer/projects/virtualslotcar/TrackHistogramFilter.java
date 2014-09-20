@@ -81,7 +81,7 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
             if (e.isSpecial()) {
                 continue;
             }
-            if(e.x>=numX || e.y>=numY){
+            if(e.x>=numX || e.y>=numY || e.x<0 || e.y<0){ // ignore special events, e.g. with negative address
                 continue;
             }
             if (isCollect()) {
