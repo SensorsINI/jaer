@@ -26,7 +26,7 @@ public class MultilineAnnotationTextRenderer {
 	private static TextRenderer renderer;
 	private static float yshift=0;
 	private static float xposition=1;
-	private static final float scale = .15f;
+	private static float scale = .15f;
 	private static final Logger log=Logger.getLogger("MultilineAnnotationTextRenderer");
 
 	/** Call to reset to origin.
@@ -89,5 +89,25 @@ public class MultilineAnnotationTextRenderer {
 		}
 		yshift -= additionalSpace;  // add additional space between multiline strings
 	}
+
+    /**
+     * Returns overall text scaling (0.15 by default)
+     * @return the scale
+     */
+    public static float getScale() {
+        return scale;
+    }
+
+    /** Sets overall text scaling (0.15 by default)
+     * @param aScale the scale to set
+     */
+    public static void setScale(float aScale) {
+        scale = aScale;
+    }
+    
+    public static void setDefaultScale(){
+        scale=0.15f;
+    }
+        
 
 }
