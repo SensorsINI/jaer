@@ -304,7 +304,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
             if (isShowAllClusters() || cc.isVisible()) {
                 cc.draw(drawable);
                 gl.glColor3f(0, 0, 1);
-                gl.glRectf(offset, 0, offset + w, (chip.getSizeY() * cc.segmentSpeedSPS) / 300);
+                gl.glRectf(offset, 0, offset + w, (chip.getSizeY() * cc.getSegmentSpeedSPS()) / 300);
                 offset += 2 * w;
             }
         }
@@ -371,7 +371,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
         /**
          * segments per second traversed of the track
          */
-        protected float segmentSpeedSPS = 0;
+        private float segmentSpeedSPS = 0;
         private LowpassFilter segmentSpeedFilter = new LowpassFilter(segmentSpeedTauMs); // lowpass filter for segment speed
 
         public CarCluster(BasicEvent ev, OutputEventIterator outItr) {
@@ -753,6 +753,15 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
             updateSegmentInfo(t);
             lastUpdateTime = t;
         }
+
+        /**
+         * Returns speed of car in track model vertices (segments) per second: SPS
+         * @return the segmentSpeedSPS
+         */
+        public float getSegmentSpeedSPS() {
+            return segmentSpeedSPS;
+        }
+
     } // CarCluster
 
     /**

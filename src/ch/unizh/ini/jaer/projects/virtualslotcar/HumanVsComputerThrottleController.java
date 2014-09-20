@@ -69,6 +69,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     private float startingThrottleValue = getFloat("startingThrottleValue", .1f);
     private boolean showThrottleProfile = getBoolean("showThrottleProfile", true);
     private boolean showTrack = getBoolean("showTrack", true);
+    private float minSegsPerSecToAllowBraking=getFloat("minSegsPerSecToAllowBraking",2);
 
     // racing, speed controller
     private boolean racingEnabled = false; // user enables explicitly to start race getBoolean("racingEnabled", false);
@@ -149,6 +150,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         setPropertyTooltip(s, "numSegmentsSpacingFromCrashToBrakingPoint", "number track segments before crash that braking segments start");
         setPropertyTooltip(s, "fractionOfTrackToSpeedUp", "fraction of track spline points to increase throttle on after successful laps");
         setPropertyTooltip(s, "fractionOfTrackToSlowDownPreCrash", "fraction of track spline points before crash point to reduce throttle on");
+        setPropertyTooltip(s, "minSegsPerSecToAllowBraking", "Electronic braking is disabled when car speed drops below this value in track segments per second to avoid stalling cars.  Set to 0 to always use braking.");
 
         String misc = "Misc. control";
         setPropertyTooltip(misc, "startingThrottleValue", "throttle value when starting (no car cluster detected)");
@@ -412,6 +414,31 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
                 setBigStatusText(String.format("%s:  Tied                        ", state.toString()), bigStatusColor);
             }
         }
+     
+        switch ((State)state.get()) {
+            case SOLO:
+            case RACING:
+                if (computerCar == null || !computerCar.isVisible() || computerCar.getSegmentSpeedSPS()<getMinSegsPerSecToAllowBraking()) {
+                    throttle = startingThrottle;
+                }
+                break;
+            case CRASHED:
+            case STARTING:
+                throttle = startingThrottle;
+                break;
+            case OVERRIDDEN:
+                throttle = defaultThrottle;
+                break;
+
+            case STOPPED:
+            case PREPARE_TO_RACE:
+            case WAITING_FOR_GO:
+            case WAITING_ADDITIONAL_REACTION_TIME:
+                throttle = stoppedThrottle;
+                break;
+            default:
+                throw new Error("state " + state.state + " not found for RacerState, shouldn't happen: cannot set ThrottleBrake");
+        }
 
         return in;
     }
@@ -674,26 +701,13 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
 
     final ThrottleBrake startingThrottle = new ThrottleBrake(startingThrottleValue, false), stoppedThrottle = new ThrottleBrake(0, false);
 
+    /** Returns the throttle value based on mixture of which state we are in and other criteria
+     * 
+     * @return current throttle/brake settings
+     */
     @Override
     public ThrottleBrake getThrottle() {
-        Enum s = state.get();
-        if (s == State.SOLO || s == State.RACING) {
-            if (computerCar == null || !computerCar.isVisible()) {
-                return startingThrottle;
-            }
-            return throttle;
-        } else if ((s == State.CRASHED) || (s == State.STARTING)) {
-            startingThrottle.throttle = startingThrottleValue;
-            return startingThrottle;
-        } else if (s == State.OVERRIDDEN) {
-            startingThrottle.throttle = defaultThrottleValue;
-            return startingThrottle;
-        }
-        if (s == State.STOPPED  || s==State.PREPARE_TO_RACE || s==State.WAITING_FOR_GO || s==State.WAITING_ADDITIONAL_REACTION_TIME) {
-            return stoppedThrottle;
-        } else {
-            throw new Error("state not found for RacerState, shouldn't happen");
-        }
+        return throttle;
     }
 
     @Override
@@ -773,7 +787,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         humanCarTracker.setCarColor(Color.GREEN);
 
         String s;
-        s = String.format("HumanVsComputerThrottleController\nDefine track with TrackDefineFilter and load that track here.\nState: %s\nLearning %s\ncomputer/human trackPosition: %d|%d/%d\nComuter lead: %d\nThrottle: %8.3f\nLast throttle reduction factor: %.2f\nComputer %s\nHuman %s\n%s\n%d laps remaining\nLast Winner: %s", state.toString(), learningEnabled ? "Enabled" : "Disabled", computerTrackPosition, humanTrackPosition, track == null ? 0 : getTrack().getNumPoints(), throttle.throttle, throttleReductionFactor,computerLapTimer.toString(), humanLapTimer.toString(), standings(),  raceLapsRemaining, winner.toString());
+        s = String.format("HumanVsComputerThrottleController\nDefine track with TrackDefineFilter and load that track here.\nState: %s\nLearning %s\ncomputer/human trackPosition: %d|%d/%d\nThrottle: %8.3f\nLast throttle reduction factor: %.2f\nComputer %s\nHuman %s\n%s\n%d laps remaining\nLast Winner: %s", state.toString(), learningEnabled ? "Enabled" : "Disabled", computerTrackPosition, humanTrackPosition, track == null ? 0 : getTrack().getNumPoints(), throttle.throttle, throttleReductionFactor,computerLapTimer.toString(), humanLapTimer.toString(), standings(),  raceLapsRemaining, winner.toString());
         MultilineAnnotationTextRenderer.setScale(.25f);
         MultilineAnnotationTextRenderer.renderMultilineString(s);
         if (showTrack && track != null) {
@@ -794,7 +808,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     }
 
     private String standings() {
-        int lead = computerLapTimer.computeLeadInTotalSegments(humanLapTimer);
+        int lead = computerLapTimer.computeLeadInSegmentsNotCountingLaps(humanLapTimer);
         if (lead >= 0) {
             return String.format("Computer   --\nHuman     %d", -lead);
         } else {
@@ -1774,5 +1788,20 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     public void setSoundEffectsEnabled(boolean soundEffectsEnabled) {
         this.soundEffectsEnabled = soundEffectsEnabled;
         putBoolean("soundEffectsEnabled", soundEffectsEnabled);
+    }
+
+    /**
+     * @return the minSegsPerSecToAllowBraking
+     */
+    public float getMinSegsPerSecToAllowBraking() {
+        return minSegsPerSecToAllowBraking;
+    }
+
+    /**
+     * @param minSegsPerSecToAllowBraking the minSegsPerSecToAllowBraking to set
+     */
+    public void setMinSegsPerSecToAllowBraking(float minSegsPerSecToAllowBraking) {
+        this.minSegsPerSecToAllowBraking = minSegsPerSecToAllowBraking;
+        putFloat("minSegsPerSecToAllowBraking",minSegsPerSecToAllowBraking);
     }
 }
