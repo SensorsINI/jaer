@@ -188,7 +188,7 @@
                 <entry key="agcEnabled" value="false"/>
                 <entry key="XYTypeFilter.filterEnabled" value="false"/>
                 <entry key="RotateFilter.filterEnabled" value="false"/>
-                <entry key="BackgroundActivityFilter.filterEnabled" value="false"/>
+                <entry key="BackgroundActivityFilter.filterEnabled" value="true"/>
                 <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAMdwQAAAAMdAA0bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5BcHNEdnNFdmVudEZpbHRlcnQAL25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuWFlUeXBlRmlsdGVydAAvbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5Sb3RhdGVGaWx0ZXJ0ADtuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLkJhY2tncm91bmRBY3Rpdml0eUZpbHRlcnQAM25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuUmVmcmFjdG9yeUZpbHRlcnQAPm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy50cmFja2luZy5SZWN0YW5ndWxhckNsdXN0ZXJUcmFja2VydAAybmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5DZWxsU3RhdHNQcm9iZXJ0ACduZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLkluZm90ADZjaC51bml6aC5pbmkuamFlci5wcm9qZWN0cy52aXJ0dWFsc2xvdGNhci5TbG90Q2FyUmFjZXJ0ADRjaC51bml6aC5pbmkuamFlci5wcm9qZWN0cy52aXJ0dWFsc2xvdGNhci5DYXJUcmFja2VydAA7Y2gudW5pemguaW5pLmphZXIucHJvamVjdHMudmlydHVhbHNsb3RjYXIuVHJhY2tEZWZpbmVGaWx0ZXJ0AD5jaC51bml6aC5pbmkuamFlci5wcm9qZWN0cy52aXJ0dWFsc2xvdGNhci5UcmFja0hpc3RvZ3JhbUZpbHRlcng="/>
                 <entry key="RefractoryFilter.filterEnabled" value="false"/>
                 <entry key="invertADCvalues" value="false"/>
@@ -233,7 +233,7 @@
                 <entry key="ApsFrameExtractor.invertIntensity" value="false"/>
                 <entry key="ApsFeatureExtractor.filterEnabled" value="false"/>
                 <entry key="ApsFeatureExtractor.detectionThreshold" value="25"/>
-                <entry key="FilterChain.processingMode" value="RENDERING"/>
+                <entry key="FilterChain.processingMode" value="ACQUISITION"/>
                 <entry key="RotateFilter.invertX" value="false"/>
                 <entry key="RotateFilter.invertY" value="false"/>
                 <entry key="displayEvents" value="true"/>
@@ -406,12 +406,12 @@
                 <entry key="ATCFpgaConfig.cmCellRadixMin" value="7"/>
                 <entry key="ATCFpgaConfig.cmCellRadixStep" value="7"/>
                 <entry key="ATCFpgaConfig.cmCellRadixTh" value="7"/>
-                <entry key="autoExposureEnabled" value="true"/>
+                <entry key="autoExposureEnabled" value="false"/>
                 <entry key="SlotCarRacer.controllerToUse" value="HumanVsComputerThrottleController"/>
                 <entry key="EvolutionaryThrottleController.filterEnabled" value="true"/>
                 <entry key="SlotCarRacer.filterEnabled" value="true"/>
                 <entry key="SlotCarRacer.maxThrottle" value="1.0"/>
-                <entry key="SlotCarRacer.overriddenThrottleSetting" value="0.07256237"/>
+                <entry key="SlotCarRacer.overriddenThrottleSetting" value="0.06578659"/>
                 <entry key="SlotCarRacer.overrideThrottle" value="false"/>
                 <entry key="CarTracker.maxNumClusters" value="1"/>
                 <entry key="CarTracker.highwayPerspectiveEnabled" value="false"/>
@@ -446,11 +446,19 @@
                 <entry key="TrackdefineFilter.displayTrack" value="true"/>
                 <entry key="TrackHistogramFilter.filterEnabled" value="false"/>
                 <entry key="SlotCarRacer.playThrottleSound" value="false"/>
-                <entry key="SlotCarRacer.playBrakeSound" value="false"/>
+                <entry key="SlotCarRacer.playBrakeSound" value="true"/>
                 <entry key="HumanVsComputerThrottleController.filterEnabled" value="true"/>
                 <entry key="HumanVsComputerThrottleController.trackFileName" value="C:\Users\tobi\Documents\jAER_1.5\src\ch\unizh\ini\jaer\projects\virtualslotcar\resources\eccv3.track"/>
                 <entry key="HumanVsComputerThrottleController.humanTrackHistogramFilePath" value="C:\Users\tobi\Documents\jAER_1.5\src\ch\unizh\ini\jaer\projects\virtualslotcar\resources\human.hist"/>
                 <entry key="HumanVsComputerThrottleController.computerTrackHistogramFilePath" value="C:\Users\tobi\Documents\jAER_1.5\src\ch\unizh\ini\jaer\projects\virtualslotcar\resources\computer.hist"/>
+                <entry key="TrackHistogramFilter.showHistogram" value="true"/>
+                <entry key="TrackHistogramFilter.threshold" value="18.140594"/>
+                <entry key="TrackHistogramFilter.filePath" value="C:\Users\tobi\Documents\jAER_1.5\src\ch\unizh\ini\jaer\projects\virtualslotcar\resources\human.hist"/>
+                <entry key="TrackHistogramFilter.lastFile" value="C:\Users\tobi\Documents\jAER_1.5\src\ch\unizh\ini\jaer\projects\virtualslotcar\resources\human.hist"/>
+                <entry key="RectangularClusterTracker.vanishingPoint.x" value="NaN"/>
+                <entry key="RectangularClusterTracker.vanishingPoint.y" value="NaN"/>
+                <entry key="CarTracker.vanishingPoint.x" value="NaN"/>
+                <entry key="CarTracker.vanishingPoint.y" value="NaN"/>
               </map>
               <node name="ch">
                 <map/>
@@ -466,8 +474,8 @@
                           <map/>
                           <node name="CarTracker">
                             <map>
-                              <entry key="TrackHistogramFilter.showHistogram" value="false"/>
-                              <entry key="TrackHistogramFilter.threshold" value="6.0203705"/>
+                              <entry key="TrackHistogramFilter.showHistogram" value="true"/>
+                              <entry key="TrackHistogramFilter.threshold" value="11.693594"/>
                               <entry key="TrackHistogramFilter.lastFile" value="C:\Users\tobi\Documents\jAER_1.5\src\ch\unizh\ini\jaer\projects\virtualslotcar\resources\computer.hist"/>
                               <entry key="TrackHistogramFilter.filePath" value="C:\Users\tobi\Documents\jAER_1.5\src\ch\unizh\ini\jaer\projects\virtualslotcar\resources\computer.hist"/>
                             </map>
@@ -545,6 +553,9 @@
                               <entry key="CarTracker.showClusterMass" value="true"/>
                               <entry key="BackgroundActivityFilter.dt" value="21513"/>
                               <entry key="CarTracker.minSegmentsToBeCarCluster" value="11"/>
+                              <entry key="CarTracker.thresholdMassForVisibleCluster" value="39"/>
+                              <entry key="CarTracker.vanishingPoint.x" value="NaN"/>
+                              <entry key="CarTracker.vanishingPoint.y" value="NaN"/>
                             </map>
                           </node>
                           <node name="SlotCarRacer">
@@ -565,13 +576,15 @@
                               <entry key="HumanVsComputerThrottleController.trackFileName" value="C:\Users\tobi\Documents\jAER_1.5\src\ch\unizh\ini\jaer\projects\virtualslotcar\resources\eccv3.track"/>
                               <entry key="HumanVsComputerThrottleController.humanTrackHistogramFilePath" value="C:\Users\tobi\Documents\jAER_1.5\src\ch\unizh\ini\jaer\projects\virtualslotcar\resources\human.hist"/>
                               <entry key="HumanVsComputerThrottleController.computerTrackHistogramFilePath" value="C:\Users\tobi\Documents\jAER_1.5\src\ch\unizh\ini\jaer\projects\virtualslotcar\resources\computer.hist"/>
-                              <entry key="HumanVsComputerThrottleController.startingThrottleValue" value="0.07462157"/>
+                              <entry key="HumanVsComputerThrottleController.startingThrottleValue" value="0.08638378"/>
                               <entry key="HumanVsComputerThrottleController.editThrottleChange" value="0.032887187"/>
-                              <entry key="HumanVsComputerThrottleController.defaultThrottle" value="0.06446092"/>
-                              <entry key="HumanVsComputerThrottleController.raceLengthLaps" value="15"/>
-                              <entry key="HumanVsComputerThrottleController.throttleProfile" value="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"/>
+                              <entry key="HumanVsComputerThrottleController.defaultThrottle" value="0.08227026"/>
+                              <entry key="HumanVsComputerThrottleController.raceLengthLaps" value="3"/>
+                              <entry key="HumanVsComputerThrottleController.throttleProfile" value="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"/>
                               <entry key="HumanVsComputerThrottleController.raceFeedbackThrottleControlEnabled" value="true"/>
-                              <entry key="HumanVsComputerThrottleController.raceControllerSegmentsAheadForConstantThrottle" value="21.212872"/>
+                              <entry key="HumanVsComputerThrottleController.raceControllerSegmentsAheadForConstantThrottle" value="723.47974"/>
+                              <entry key="HumanVsComputerThrottleController.learningEnabled" value="false"/>
+                              <entry key="HumanVsComputerThrottleController.minSegsPerSecToAllowBraking" value="23.70782"/>
                             </map>
                           </node>
                           <node name="TrackDefineFilter">
