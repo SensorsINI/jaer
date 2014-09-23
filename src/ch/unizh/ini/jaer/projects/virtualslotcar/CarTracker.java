@@ -593,6 +593,10 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
             return crashed;
         }
 
+        /** Returns !crashed && (numSegmentIncreases > NUM_SEGMENTS_TO_BE_MARKED_RUNNING).
+         * 
+         * @return true if car is running according to the test.
+         */
         public boolean isRunning() {
             return !crashed && (numSegmentIncreases > NUM_SEGMENTS_TO_BE_MARKED_RUNNING);
         }

@@ -75,6 +75,8 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     private boolean racingEnabled = false; // user enables explicitly to start race getBoolean("racingEnabled", false);
     private float raceControllerSegmentsAheadForConstantThrottle = getFloat("raceControllerSegmentsAheadForConstantThrottle", 40);
     private boolean raceFeedbackThrottleControlEnabled = getBoolean("raceFeedbackThrottleControlEnabled", true);
+    private boolean onlyRunWhenHumanRunning = getBoolean("onlyRunWhenHumanRunning", false);
+    
 
     // racing
     private boolean soundEffectsEnabled = getBoolean("soundEffectsEnabled", true);
@@ -87,18 +89,33 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     private int lastTimestamp = 0;
 
     /**
+     * @return the onlyRunWhenHumanRunning
+     */
+    public boolean isOnlyRunWhenHumanRunning() {
+        return onlyRunWhenHumanRunning;
+    }
+
+    /**
+     * @param onlyRunWhenHumanRunning the onlyRunWhenHumanRunning to set
+     */
+    public void setOnlyRunWhenHumanRunning(boolean onlyRunWhenHumanRunning) {
+        this.onlyRunWhenHumanRunning = onlyRunWhenHumanRunning;
+        putBoolean("onlyRunWhenHumanRunning", onlyRunWhenHumanRunning);
+    }
+
+    /**
      * possible states,
      * <ol>
      * <li> STARTING means no car is tracked or tracker has not found a car
      * cluster near the track model,
-     * <li> SOLO is the active state,
-     * <li> CRASHED is the state if we were SOLO and the car tracker has tracked
-     * the car sufficiently far away from the track model,
-     * </ol>
+     * <li> PRACTICE is the active state,
+ <li> CRASHED is the state if we were PRACTICE and the car tracker has tracked
+ the car sufficiently far away from the track model,
+ </ol>
      */
     public enum State {
 
-        OVERRIDDEN, STARTING, SOLO, CRASHED, RACING, STOPPED, PREPARE_TO_RACE, WAITING_FOR_GO, WAITING_ADDITIONAL_REACTION_TIME
+        OVERRIDDEN, STARTING, PRACTICE, CRASHED, RACING, STOPPED, PREPARE_TO_RACE, WAITING_FOR_GO, WAITING_ADDITIONAL_REACTION_TIME
     }
 
     protected class RacerState extends StateMachineStates {
@@ -153,7 +170,6 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         setPropertyTooltip(s, "minSegsPerSecToAllowBraking", "Electronic braking is disabled when car speed drops below this value in track segments per second to avoid stalling cars.  Set to 0 to always use braking.");
 
         String misc = "Misc. control";
-        setPropertyTooltip(misc, "startingThrottleValue", "throttle value when starting (no car cluster detected)");
         setPropertyTooltip(misc, "showThrottleProfile", "displays the throttle profile, with dot size reprenting the throttle value");
         setPropertyTooltip(misc, "showTrack", "displays the track");
         setPropertyTooltip(misc, "displayClosestPointMap", "displays the 2d matrix of distances to track points in a separate JFrame");
@@ -161,7 +177,8 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         setPropertyTooltip(misc, "stop", "stop computer car by setting throttle to zero");
         setPropertyTooltip(misc, "start", "start comuputer car (stop any existing race also) with existing profile; set state to State.STARTING");
 
-        final String hvc = "HumanVsComputer Configuration";
+        final String hvc = "HumanVsComputer + Throttle config.";
+        setPropertyTooltip(hvc, "startingThrottleValue", "throttle value when starting (no car cluster detected)");
         setPropertyTooltip(hvc, "humanTrackHistogramFilePath", "path to histogram mask for human track");
         setPropertyTooltip(hvc, "computerTrackHistogramFilePath", "path to histogram mask for computer track");
         setPropertyTooltip(hvc, "trackFileName", "file name (full path) to track file produced by TrackDefineFilter");
@@ -177,6 +194,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         setPropertyTooltip(hvc, "stopRace", "stop race");
         setPropertyTooltip(hvc, "raceFeedbackThrottleControlEnabled", "enable adaptive control of computer throttle to slow down computer car if ahead of human");
         setPropertyTooltip(hvc, "soundEffectsEnabled", "play sound effects for racing");
+        setPropertyTooltip(hvc, "onlyRunWhenHumanRunning", "only run the computer car when human car is running");
 
         // do methods
         setPropertyTooltip(s, "guessThrottleFromTrackModel", "guess initial throttle profile from track model");
@@ -325,10 +343,10 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
                 if (racingEnabled && humanCar != null && humanCar.isRunning()) {
                     state.set(State.RACING);
                 } else {
-                    state.set(State.SOLO);
+                    state.set(State.PRACTICE);
                 }
             }
-        } else if (state.get() == State.SOLO) {
+        } else if (state.get() == State.PRACTICE) {
             if (computerCar != null && !computerCar.isCrashed()) {
                 computeLearning(computerCarCompletedLap);
                 throttle = currentProfile.getThrottle(computerCar.getSegmentIdx());
@@ -416,7 +434,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         }
      
         switch ((State)state.get()) {
-            case SOLO:
+            case PRACTICE:
             case RACING:
                 if (computerCar == null || !computerCar.isVisible() || computerCar.getSegmentSpeedSPS()<getMinSegsPerSecToAllowBraking()) {
                     throttle = startingThrottle;
@@ -448,6 +466,10 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     private void computeRacingThrottle(int computerLead) {
         if(computerCar==null) {
             throttle=startingThrottle;
+            return;
+        }
+        if(onlyRunWhenHumanRunning && (humanCar==null || !humanCar.isVisible())){
+            throttle=stoppedThrottle;
             return;
         }
         ThrottleBrake maxThrottle = currentProfile.getThrottle(computerCar.getSegmentIdx());

@@ -71,11 +71,14 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
         if(lastFile!=null) loadHistogramFromFile(new File(lastFile)); // load last file by default; user can overwrite with some other file
    }
 
+    
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) { // removed synchronized because it causes a deadlock between annotating CarTracker and processing it
         checkOutputPacketEventType(in);
         checkHistogram();
         int max = getHistmax();
+        int lastTimeStampInPacket=in.getLastTimestamp();
+        int nOut=0;
         OutputEventIterator outItr=getOutputPacket().getOutputIterator();
         for (BasicEvent e : in) {
             if (e.isSpecial()) {
@@ -98,12 +101,17 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
                 } else {
 //                    e.setFilteredOut(false);
                     outItr.nextOutput().copyFrom(e);
+                    nOut++;
                 }
             }
 
         }
         if (isCollect()) {
             setHistmax(max);
+        }
+        if(nOut==0 && in.getSize()>0){  // ensure at least one event with address 0,0 in output packet to avoid trackers not being updated peridically
+            BasicEvent e=outItr.nextOutput();
+            e.setX((short)0); e.setY((short)0); e.setTimestamp(in.getLastTimestamp());
         }
         return isCollect()? in:getOutputPacket();
     }
