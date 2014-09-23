@@ -108,7 +108,8 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
 //        private Scanner scanner;
     protected ApsReadoutControl apsReadoutControl;
     private int autoShotThreshold; // threshold for triggering a new frame snapshot automatically
-
+    protected ImuControl imuControl;
+    
     /**
      * Creates a new instance of chip configuration
      *
@@ -204,6 +205,9 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
 
         // control of log readout
         apsReadoutControl = new ApsReadoutControl();
+        
+        // imuControl
+        imuControl = new ImuControl();
 
         setBatchEditOccurring(true);
         loadPreference();
@@ -321,7 +325,13 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         apsReadoutPanel.setLayout(new BoxLayout(apsReadoutPanel, BoxLayout.Y_AXIS));
         configTabbedPane.add("APS Readout Control", apsReadoutPanel);
         apsReadoutPanel.add(new ParameterControlPanel(apsReadoutControl));
-
+        
+        // IMU control 
+        JPanel imuControlPanel = new JPanel();
+        imuControlPanel.setLayout(new BoxLayout(imuControlPanel, BoxLayout.Y_AXIS));
+        configTabbedPane.add("IMU Control", imuControlPanel);
+        imuControlPanel.add(new ParameterControlPanel(imuControl));
+        
         // autoexposure
         if (chip instanceof SBret10) {
             JPanel autoExposurePanel = new JPanel();
@@ -463,6 +473,90 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         return nChipReset.isSet();
     }
 
+      /**
+     * Controls the APS intensity readout by wrapping the relevant bits
+     */
+    public class ImuControl extends Observable implements Observer, HasPropertyTooltips {
+
+        public final String EVENT_IMU_ENABLED = "imuEnabled", EVENT_IMU_DISPLAY_ENABLED = "imuDisplayEnabled";
+        private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
+        PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
+
+        public ImuControl() {
+            imu0PowerMgmtClkRegConfig.addObserver(this);
+            imu1DLPFConfig.addObserver(this);
+            imu2SamplerateDividerConfig.addObserver(this);
+            imu3GyroConfig.addObserver(this);
+            imu4AccelConfig.addObserver(this);
+            // TODO awkward renaming of properties here due to wrongly named delegator methods
+            tooltipSupport.setPropertyTooltip("imu0", imu0PowerMgmtClkRegConfig.getDescription());
+            tooltipSupport.setPropertyTooltip("imu1", imu1DLPFConfig.getDescription());
+            tooltipSupport.setPropertyTooltip("imu2", imu2SamplerateDividerConfig.getDescription());
+            tooltipSupport.setPropertyTooltip("imu3", imu3GyroConfig.getDescription());
+            tooltipSupport.setPropertyTooltip("imu4", imu4AccelConfig.getDescription());
+        }
+
+        public void setImu0(int value) throws IllegalArgumentException {
+            imu0PowerMgmtClkRegConfig.set(value);
+        }
+
+        public int getImu0() {
+            return imu0PowerMgmtClkRegConfig.get();
+        }
+
+        public void setImu1(int value) throws IllegalArgumentException {
+            imu1DLPFConfig.set(value);
+        }
+
+        public int getImu1() {
+            return imu1DLPFConfig.get();
+        }
+ public void setImu2(int value) throws IllegalArgumentException {
+            imu2SamplerateDividerConfig.set(value);
+        }
+
+        public int getImu2() {
+            return imu2SamplerateDividerConfig.get();
+        }
+
+        public void setImu3(int value) throws IllegalArgumentException {
+            imu3GyroConfig.set(value);
+        }
+
+        public int getImu3() {
+            return imu3GyroConfig.get();
+        }
+
+        public void setImu4(int value) throws IllegalArgumentException {
+            imu4AccelConfig.set(value);
+        }
+
+        public int getImu4() {
+            return imu4AccelConfig.get();
+        }
+
+        @Override
+        public void update(Observable o, Object arg) {
+            if (o == imu0PowerMgmtClkRegConfig) {
+                propertyChangeSupport.firePropertyChange(EVENT_IMU_ENABLED, null, imu0PowerMgmtClkRegConfig.get());
+            } // TODO
+            setChanged();
+            notifyObservers(o);
+        }
+
+        /**
+         * @return the propertyChangeSupport
+         */
+        public PropertyChangeSupport getPropertyChangeSupport() {
+            return propertyChangeSupport;
+        }
+
+        @Override
+        public String getPropertyTooltip(String propertyName) {
+            return tooltipSupport.getPropertyTooltip(propertyName);
+        }
+    }
+    
      /**
      * Controls the APS intensity readout by wrapping the relevant bits
      */
@@ -560,10 +654,6 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         }
     }
     
-//    public class ImuControl extends Observable implements Observer, HasPreference, HasPropertyTooltips{
-//        
-//    }
-
     public class VideoControl extends Observable implements Observer, HasPreference, HasPropertyTooltips {
 
         private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
