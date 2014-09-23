@@ -436,7 +436,9 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         switch ((State)state.get()) {
             case PRACTICE:
             case RACING:
-                if (computerCar == null || !computerCar.isVisible() || computerCar.getSegmentSpeedSPS()<getMinSegsPerSecToAllowBraking()) {
+                if (onlyRunWhenHumanRunning && (humanCar == null || !humanCar.isVisible())) {
+                    throttle = stoppedThrottle;
+                }else  if (computerCar == null || !computerCar.isVisible() || computerCar.getSegmentSpeedSPS()<getMinSegsPerSecToAllowBraking()) {
                     throttle = startingThrottle;
                 }
                 break;
@@ -468,11 +470,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
             throttle=startingThrottle;
             return;
         }
-        if(onlyRunWhenHumanRunning && (humanCar==null || !humanCar.isVisible())){
-            throttle=stoppedThrottle;
-            return;
-        }
-        ThrottleBrake maxThrottle = currentProfile.getThrottle(computerCar.getSegmentIdx());
+         ThrottleBrake maxThrottle = currentProfile.getThrottle(computerCar.getSegmentIdx());
         if(!raceFeedbackThrottleControlEnabled){
             throttle=maxThrottle;
             return;
