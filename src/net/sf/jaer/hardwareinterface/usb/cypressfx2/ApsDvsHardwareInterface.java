@@ -361,7 +361,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
      * This reader understands the format of raw USB data and translates to the
      * AEPacketRaw
      */
-    public class RetinaAEReader extends CypressFX2.AEReader implements PropertyChangeListener {
+    public class RetinaAEReader extends CypressFX2.AEReader /*implements PropertyChangeListener*/ {
 
         private static final int NONMONOTONIC_WARNING_COUNT = 30; // how many warnings to print after start or timestamp reset
         public static final int IMU_POLLING_INTERVAL_EVENTS = 100; // tobi changed to 100 from 1000
@@ -369,7 +369,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
         public RetinaAEReader(CypressFX2 cypress) throws HardwareInterfaceException {
             super(cypress);
             resetFrameAddressCounters();
-            getSupport().addPropertyChangeListener(CypressFX2.PROPERTY_CHANGE_ASYNC_STATUS_MSG, this);
+//            getSupport().addPropertyChangeListener(CypressFX2.PROPERTY_CHANGE_ASYNC_STATUS_MSG, this);
         }
         /**
          * Method to translate the UsbIoBuffer for the DVS320 sensor which uses
@@ -743,131 +743,131 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
         private int putImuSampleToQueueWarningCounter = 0;
         private static final int PUT_IMU_WARNING_INTERVAL = 10000;
 
-        @Override
-        public void propertyChange(PropertyChangeEvent evt) {
-            // we come here because the IMUDataReader has generated a PropertyChangeEvent and we are subscribed to this object.
-            if (evt.getPropertyName() != PROPERTY_CHANGE_ASYNC_STATUS_MSG) {
-                return;
-            }
-            try {
-                UsbIoBuf buf = (UsbIoBuf) evt.getNewValue();
-                    IMUSample sample = new IMUSample(buf);
-                try {
-//                    System.out.println(sample.getTimestampUs());
-                    imuSampleQueue.add(sample);
-                } catch (IllegalStateException ex) {
-                    if (putImuSampleToQueueWarningCounter++ % PUT_IMU_WARNING_INTERVAL == 0) {
-                        log.warning("putting IMUSample "+imuSample+" to queue not possible because queue has" + imuSampleQueue.size() + " samples and was full");
-                    }
-                }
-
-            } catch (ClassCastException e) {
-                log.warning("receieved wrong type of data for the IMU: " + e.toString());
-            }
-        }
+//        @Override
+//        public void propertyChange(PropertyChangeEvent evt) {
+//            // we come here because the IMUDataReader has generated a PropertyChangeEvent and we are subscribed to this object.
+//            if (evt.getPropertyName() != PROPERTY_CHANGE_ASYNC_STATUS_MSG) {
+//                return;
+//            }
+//            try {
+//                UsbIoBuf buf = (UsbIoBuf) evt.getNewValue();
+//                    IMUSample sample = new IMUSample(buf);
+//                try {
+////                    System.out.println(sample.getTimestampUs());
+//                    imuSampleQueue.add(sample);
+//                } catch (IllegalStateException ex) {
+//                    if (putImuSampleToQueueWarningCounter++ % PUT_IMU_WARNING_INTERVAL == 0) {
+//                        log.warning("putting IMUSample "+imuSample+" to queue not possible because queue has" + imuSampleQueue.size() + " samples and was full");
+//                    }
+//                }
+//
+//            } catch (ClassCastException e) {
+//                log.warning("receieved wrong type of data for the IMU: " + e.toString());
+//            }
+//        }
     }
-    /**
-     * Status messages sent by device. This header byte identifies the message
-     * type.
-     */
-    public static final byte STATUS_MSG_IMU_DATA = (byte) 0xff;
-    /**
-     * Property change fired when a new message is received on the asynchronous
-     * status endpoint.
-     *
-     * @see AsyncStatusThread
-     */
-    public static final String PROPERTY_CHANGE_IMU_DATA = "IMUData";
+//    /**
+//     * Status messages sent by device. This header byte identifies the message
+//     * type.
+//     */
+//    public static final byte STATUS_MSG_IMU_DATA = (byte) 0xff;
+//    /**
+//     * Property change fired when a new message is received on the asynchronous
+//     * status endpoint.
+//     *
+//     * @see AsyncStatusThread
+//     */
+//    public static final String PROPERTY_CHANGE_IMU_DATA = "IMUData";
 
-    /**
-     * This threads reads IMU data from the camera on endpoint 2 - currently not used.
-     *
-     * @author tobi delbruck
-     * @see #getSupport()
-     */
-    protected class IMUDataReader extends UsbIoReader { // not used yet, still reading IMU samples in AsyncStatusThread
-
-        UsbIoPipe pipe;
-        CypressFX2 monitor;
-        boolean stop = false;
-        byte msg;
-        public static final int STATUS_PRIORITY = Thread.MAX_PRIORITY; // Thread.NORM_PRIORITY+2
-
-        public IMUDataReader(CypressFX2 monitor) {
-            super();
-            this.monitor = monitor;
-
-            int status;
-            status = bind(monitor.getInterfaceNumber(), (byte) 0x82, gDevList, GUID); // bind to this interface, using endpoint 2 which is an IN endpoint
-            if (status != USBIO_ERR_SUCCESS) {
-                log.warning("error binding to pipe for EP2 for device status: " + UsbIo.errorText(status) + ", not starting IMUDataReader");
-                return;
-            }
-            USBIO_PIPE_PARAMETERS pipeParams = new USBIO_PIPE_PARAMETERS();
-            pipeParams.Flags = UsbIoInterface.USBIO_SHORT_TRANSFER_OK;
-            status = setPipeParameters(pipeParams);
-            if (status != USBIO_ERR_SUCCESS) {
-                log.warning("can't set pipe parameters: " + UsbIo.errorText(status) + ": IMUDataReader may not function properly");
-            }
-        }
-
-        @Override
-        public void startThread(int MaxIoErrorCount) {
-            allocateBuffers(64, 4); // 64-byte buffers, 4 of them on host side
-            super.startThread(MaxIoErrorCount);
-            T.setPriority(STATUS_PRIORITY); // very important that this thread have priority or the acquisition will stall on device side for substantial amounts of time!
-            T.setName("IMUDataReader");
-        }
-
-        @Override
-        public void processData(UsbIoBuf buffer) {
-            if (buffer.BytesTransferred > 0) {
-                msg = buffer.BufferMem[0];
-
-                switch (msg) {
-
-                    case STATUS_MSG_IMU_DATA:
-                    default:
-                        UsbIoBuf newbuf = new UsbIoBuf(64);
-
-                        // Copy data to new buffer, this one is resubmitted right away.
-                        System.arraycopy(buffer.BufferMem, 0, newbuf.BufferMem, 0, buffer.BytesTransferred);
-                        newbuf.BytesTransferred = buffer.BytesTransferred;
-                        newbuf.Status = buffer.Status;
-
-                        support.firePropertyChange(PROPERTY_CHANGE_IMU_DATA, null, newbuf); // tobi - send message to listeners
-                    }
-            } // we getString 0 byte read on stopping device
-        }
-
-        // called before buffer is submitted to driver
-        @Override
-        public void processBuffer(UsbIoBuf Buf) {
-            Buf.NumberOfBytesToTransfer = Buf.Size;
-            Buf.BytesTransferred = 0;
-            Buf.OperationFinished = false;
-        }
-
-        @Override
-        public void bufErrorHandler(UsbIoBuf Buf) {
-            if (Buf.Status != USBIO_ERR_SUCCESS) {
-                // print error
-                // suppress CANCELED because it is caused by ABORT_PIPE
-                if (Buf.Status != USBIO_ERR_CANCELED) {
-                    log.warning("CypressFX2.IMUDataReader.bufErrorHandler(): USB buffer error: " + UsbIo.errorText(Buf.Status));
-                }
-                if (Buf.Status == USBIO_ERR_DEVICE_GONE) {
-                    log.warning("CypressFX2.IMUDataReader.bufErrorHandler(): device gone, shutting down buffer pool thread");
-                    monitor.close();
-                }
-            }
-        }
-
-        @Override
-        public void onThreadExit() {
-            freeBuffers();
-        }
-    }
+//    /**
+//     * This threads reads IMU data from the camera on endpoint 2 - currently not used.
+//     *
+//     * @author tobi delbruck
+//     * @see #getSupport()
+//     */
+//    protected class IMUDataReader extends UsbIoReader { // not used yet, still reading IMU samples in AsyncStatusThread
+//
+//        UsbIoPipe pipe;
+//        CypressFX2 monitor;
+//        boolean stop = false;
+//        byte msg;
+//        public static final int STATUS_PRIORITY = Thread.MAX_PRIORITY; // Thread.NORM_PRIORITY+2
+//
+//        public IMUDataReader(CypressFX2 monitor) {
+//            super();
+//            this.monitor = monitor;
+//
+//            int status;
+//            status = bind(monitor.getInterfaceNumber(), (byte) 0x82, gDevList, GUID); // bind to this interface, using endpoint 2 which is an IN endpoint
+//            if (status != USBIO_ERR_SUCCESS) {
+//                log.warning("error binding to pipe for EP2 for device status: " + UsbIo.errorText(status) + ", not starting IMUDataReader");
+//                return;
+//            }
+//            USBIO_PIPE_PARAMETERS pipeParams = new USBIO_PIPE_PARAMETERS();
+//            pipeParams.Flags = UsbIoInterface.USBIO_SHORT_TRANSFER_OK;
+//            status = setPipeParameters(pipeParams);
+//            if (status != USBIO_ERR_SUCCESS) {
+//                log.warning("can't set pipe parameters: " + UsbIo.errorText(status) + ": IMUDataReader may not function properly");
+//            }
+//        }
+//
+//        @Override
+//        public void startThread(int MaxIoErrorCount) {
+//            allocateBuffers(64, 4); // 64-byte buffers, 4 of them on host side
+//            super.startThread(MaxIoErrorCount);
+//            T.setPriority(STATUS_PRIORITY); // very important that this thread have priority or the acquisition will stall on device side for substantial amounts of time!
+//            T.setName("IMUDataReader");
+//        }
+//
+//        @Override
+//        public void processData(UsbIoBuf buffer) {
+//            if (buffer.BytesTransferred > 0) {
+//                msg = buffer.BufferMem[0];
+//
+//                switch (msg) {
+//
+//                    case STATUS_MSG_IMU_DATA:
+//                    default:
+//                        UsbIoBuf newbuf = new UsbIoBuf(64);
+//
+//                        // Copy data to new buffer, this one is resubmitted right away.
+//                        System.arraycopy(buffer.BufferMem, 0, newbuf.BufferMem, 0, buffer.BytesTransferred);
+//                        newbuf.BytesTransferred = buffer.BytesTransferred;
+//                        newbuf.Status = buffer.Status;
+//
+//                        support.firePropertyChange(PROPERTY_CHANGE_IMU_DATA, null, newbuf); // tobi - send message to listeners
+//                    }
+//            } // we getString 0 byte read on stopping device
+//        }
+//
+//        // called before buffer is submitted to driver
+//        @Override
+//        public void processBuffer(UsbIoBuf Buf) {
+//            Buf.NumberOfBytesToTransfer = Buf.Size;
+//            Buf.BytesTransferred = 0;
+//            Buf.OperationFinished = false;
+//        }
+//
+//        @Override
+//        public void bufErrorHandler(UsbIoBuf Buf) {
+//            if (Buf.Status != USBIO_ERR_SUCCESS) {
+//                // print error
+//                // suppress CANCELED because it is caused by ABORT_PIPE
+//                if (Buf.Status != USBIO_ERR_CANCELED) {
+//                    log.warning("CypressFX2.IMUDataReader.bufErrorHandler(): USB buffer error: " + UsbIo.errorText(Buf.Status));
+//                }
+//                if (Buf.Status == USBIO_ERR_DEVICE_GONE) {
+//                    log.warning("CypressFX2.IMUDataReader.bufErrorHandler(): device gone, shutting down buffer pool thread");
+//                    monitor.close();
+//                }
+//            }
+//        }
+//
+//        @Override
+//        public void onThreadExit() {
+//            freeBuffers();
+//        }
+//    }
 //    
 //           /** This threads reads asynchronous status or other data from the device.
 //     * It handles timestamp reset messages from the device and possibly other types of data.
