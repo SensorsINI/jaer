@@ -46,6 +46,7 @@ import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
 import ch.unizh.ini.jaer.config.MuxControlPanel;
 import ch.unizh.ini.jaer.config.OutputMap;
 import ch.unizh.ini.jaer.config.boards.LatticeLogicConfig;
+import ch.unizh.ini.jaer.config.cpld.CPLDByte;
 import ch.unizh.ini.jaer.config.cpld.CPLDConfigValue;
 import ch.unizh.ini.jaer.config.cpld.CPLDInt;
 import ch.unizh.ini.jaer.config.fx2.PortBit;
@@ -86,6 +87,20 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
     protected CPLDInt rowSettle = new CPLDInt(chip, 47, 32, "rowSettle", "time in 30MHz clock cycles for pixel source follower to settle after each pixel's row select before ADC conversion; this is the fastest process of readout", 0);
     protected CPLDInt resSettle = new CPLDInt(chip, 63, 48, "resSettle", "time in 30MHz clock cycles  to settle after column reset before readout; allows all pixels in column to drive in parallel the row readout lines (like colSettle)", 0);
     protected CPLDInt frameDelay = new CPLDInt(chip, 79, 64, "frameDelay", "time between two frames; scaling of this parameter depends on readout logic used", 0);
+    /* IMU registers, defined in logic IMUStateMachine
+    constant IMUInitAddr0 : std_logic_vector(7 downto 0) := "01101011"; -- ADDR: (0x6b) IMU power management register and clock selection
+    constant IMUInitAddr1 : std_logic_vector(7 downto 0) := "00011010"; -- ADDR: (0x1A) DLPF (digital low pass filter)
+    constant IMUInitAddr2 : std_logic_vector(7 downto 0) := "00011001"; -- ADDR: (0x19) Sample rate divider
+    constant IMUInitAddr3 : std_logic_vector(7 downto 0) := "00011011"; -- ADDR: (0x1B) Gyro Configuration: Full Scale Range / Sensitivity
+    constant IMUInitAddr4 : std_logic_vector(7 downto 0) := "00011100"; -- ADDR: (0x1C) Accel Configuration: Full Scale Range / Sensitivity
+    */
+    protected CPLDByte imuRunReg = new CPLDByte(chip, 87, 80, "imu_RUN", "RUN flat (not on IMU, but in camera logic); bit 0=1 sets IMU running ", (byte)0);
+    // See Invensense MPU-6100 IMU datasheet RM-MPU-6100A.pdf
+    protected CPLDByte imu0PowerMgmtClkRegConfig = new CPLDByte(chip, 95, 88, "imu0_PWR_MGMT_1", "2=Disable sleep, select x axis gyro as clock source", (byte)0x02); // PWR_MGMT_1
+    protected CPLDByte imu1DLPFConfig = new CPLDByte(chip, 103, 96, "imu1_CONFIG", "1=digital low pass filter DLPF: FS=1kHz, Gyro 188Hz, 1.9ms delay ", (byte)1); // CONFIG 
+    protected CPLDByte imu2SamplerateDividerConfig = new CPLDByte(chip, 111, 104, "imu2_SMPLRT_DIV", "0=sample rate divider: 1 Khz sample rate when DLPF is enabled", (byte)0); // SMPLRT_DIV 
+    protected CPLDByte imu3GyroConfig = new CPLDByte(chip, 119, 112, "imu3_GYRO_CONFIG", "8=500 deg/s, 65.5 LSB per deg/s ", (byte)8); // GYRO_CONFIG: 
+    protected CPLDByte imu4AccelConfig = new CPLDByte(chip, 127, 120, "imu4_ACCEL_CONFIG", "8=4g, 8192 LSB per g", (byte)8); // ACCEL_CONFIG: 
     // DVSTweaks
     private AddressedIPotCF diffOn, diffOff, refr, pr, sf, diff;
     // graphic options for rendering
@@ -118,6 +133,14 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         addConfigValue(rowSettle);
         addConfigValue(colSettle);
         addConfigValue(frameDelay);
+        
+        //imu config values
+        addConfigValue(imuRunReg);
+        addConfigValue(imu0PowerMgmtClkRegConfig);
+        addConfigValue(imu1DLPFConfig);
+        addConfigValue(imu2SamplerateDividerConfig);
+        addConfigValue(imu3GyroConfig);
+        addConfigValue(imu4AccelConfig);
 
         // masterbias
         getMasterbias().setKPrimeNFet(55e-3f); // estimated from tox=42A, mu_n=670 cm^2/Vs // TODO fix for UMC18 process
@@ -194,6 +217,17 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         syncTimestampMasterEnabled.set(true); // normally set this true despite preference value because slave mode should be set by user or by plug insertion to slave input 3.5mm plug
     }
 
+    @Override
+    public boolean isCaptureFramesEnabled() {
+        return apsReadoutControl.isAdcEnabled();
+    }
+
+    @Override
+    public void setCaptureFramesEnabled(boolean yes) {
+        apsReadoutControl.setAdcEnabled(yes);
+    }
+
+    
     /**
      * Momentarily puts the pixels and on-chip AER logic in reset and then
      * releases the reset.
@@ -394,7 +428,42 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         chip.getPrefs().putInt("SBret10.bgTabbedPaneSelectedIndex", configTabbedPane.getSelectedIndex());
     }
 
-    /**
+    @Override
+    public boolean isImuEnabled() {
+        return (imuRunReg.get()&1)==1;
+    }
+
+    @Override
+    public void setImuEnabled(boolean yes) {
+        imuRunReg.set(yes?1:0);
+    }
+    
+    private boolean displayImuEnabled=chip.getPrefs().getBoolean("IMU.displayEnabled",true);
+    
+     @Override
+    public boolean isDisplayImu() {
+        return displayImuEnabled;
+    }
+
+    @Override
+    public void setDisplayImu(boolean yes) {
+        boolean old=this.displayImuEnabled;
+        this.displayImuEnabled=yes;
+        chip.getPrefs().putBoolean("IMU.displayEnabled",yes);
+        getSupport().firePropertyChange("displayImuEnabled",old,displayImuEnabled);
+    }
+
+    @Override
+    public void setCaptureEvents(boolean selected) {
+        nChipReset.set(selected);
+    }
+
+    @Override
+    public boolean isCaptureEventsEnabled() {
+        return nChipReset.isSet();
+    }
+
+     /**
      * Controls the APS intensity readout by wrapping the relevant bits
      */
     public class ApsReadoutControl extends Observable implements Observer, HasPropertyTooltips {
@@ -490,6 +559,10 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
             return tooltipSupport.getPropertyTooltip(propertyName);
         }
     }
+    
+//    public class ImuControl extends Observable implements Observer, HasPreference, HasPropertyTooltips{
+//        
+//    }
 
     public class VideoControl extends Observable implements Observer, HasPreference, HasPropertyTooltips {
 

@@ -134,18 +134,5 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
      */
     abstract public void setShowImageHistogram(boolean yes);
 
-    /**
-     * Sets whether to display IMU output
-     *
-     * @param yes true to show IMU output (if available)
-     */
-    abstract public void setShowIMU(boolean yes);
-
-    /**
-     * Returns whether IMU output should be shown.
-     *
-     * @return true if it should be shown
-     */
-    abstract public boolean isShowIMU();
-
+  
 }

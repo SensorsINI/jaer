@@ -579,7 +579,8 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
                         (sizeX / 2) - (size / 2), (sizeY / 2) + (size / 2), size, size);
             }
 
-            if (isShowIMU() && (chip instanceof SBret10)) {
+            // Draw last IMU output
+            if (config.isDisplayImu() && (chip instanceof SBret10)) {
                 IMUSample imuSample = ((SBret10) chip).getImuSample();
                 if (imuSample != null) {
                     imuRender(drawable, imuSample);
@@ -991,34 +992,6 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
      */
     public IMUSample getImuSample() {
         return imuSample;
-    }
-
-    private boolean showIMU = getPrefs().getBoolean("SBRet10.showIMU", false);
-
-    @Override
-    public void setShowIMU(boolean yes) {
-        showIMU = yes;
-        final byte POWER_MGMT_1 = (byte) 0x6b; // register 107 decimel
-
-        getPrefs().putBoolean("SBRet10.showIMU", showIMU);
-        if (hardwareInterface != null && hardwareInterface instanceof ApsDvsHardwareInterface && hardwareInterface.isOpen()) {
-            ApsDvsHardwareInterface apsDvsHardwareInterface = (ApsDvsHardwareInterface) hardwareInterface;
-            try {
-                // disable or enable IMU on device
-                if (yes) {
-                    apsDvsHardwareInterface.writeImuRegister(POWER_MGMT_1, (byte) (0x02)); // deactivate sleep
-                } else {
-                    apsDvsHardwareInterface.writeImuRegister(POWER_MGMT_1, (byte) (0x42)); // activate full sleep
-                }
-            } catch (HardwareInterfaceException e) {
-                log.warning("tried to set IMU register but got exception " + e.toString());
-            }
-        }
-    }
-
-    @Override
-    public boolean isShowIMU() {
-        return showIMU;
     }
 
     /**
