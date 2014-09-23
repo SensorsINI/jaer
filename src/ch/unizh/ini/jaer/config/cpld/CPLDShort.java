@@ -10,13 +10,13 @@ import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.Chip;
 import ch.unizh.ini.jaer.config.ConfigInt;
 
-/** A long integer (64-bit) configuration value on CPLD shift register.
+/** A short integer (16-bit) configuration value on CPLD shift register.
  * @author tobi
  */
-public class CPLDLong extends CPLDConfigValue implements ConfigInt, HasPreference {
+public class CPLDShort extends CPLDConfigValue implements ConfigInt, HasPreference {
 
-    volatile long value;
-    int def;
+    volatile short value;
+    short def;
 
     /** Makes a new int value on the CPLD shift register.  The int has up to 32 bits. It occupies some bit positions.
      * 
@@ -27,40 +27,45 @@ public class CPLDLong extends CPLDConfigValue implements ConfigInt, HasPreferenc
      * @param tip tool-tip
      * @param def default value
      */
-    public CPLDLong(Chip chip, int msb, int lsb, String name, String tip, int def) {
+    public CPLDShort(Chip chip, int msb, int lsb, String name, String tip, short def) {
         super(chip, lsb, msb, name, tip);
         this.lsb = lsb;
         this.msb = msb;
         this.def = def;
-        this.nBits = msb-lsb + 1;
-        key = "CPLDInt." + name;
-        if (msb - lsb != 63) {
-            log.warning("only counted " + (msb - lsb + 1) + " bits, but there should usually be 64 in a CPLDLong like we are (" + this+")");
+        key = "CPLDShort." + name;
+        if (msb - lsb != 15) {
+            log.warning("only counted " + (msb - lsb + 1) + " bits, but there should usually be 16 in a CPLDShort like we are (" + this+")");
         }
         loadPreference();
     }
 
+    /** Sets the byte value.
+     * 
+     * @param value the value to be set for the short. The int argument is masked with 0xFFFF to treat it as unsigned bits.
+     * @throws IllegalArgumentException 
+     */
     @Override
     public void set(int value) throws IllegalArgumentException {
-        if (value < 0 || value >= (long)1 << nBits) {
-            throw new IllegalArgumentException("tried to store value=" + value + " which larger than permitted value of " + (1 << nBits) + " ("+nBits+") or is negative in " + this);
+        if (value < getMin() || value > getMax()) {
+            log.warning("tried to store value=" + value + " which larger than permitted value of " + ((1 << nBits)-1) + " or is negative in " + this+"; clipped to valid value");
         }
+        if(value<getMin()) value=getMin(); else if(value>getMax())value=getMax();
         if (this.value != value) {
             setChanged();
         }
-        this.value = value;
+        this.value = (short)(value&0xFFFF);
         //                log.info("set " + this + " to value=" + value+" notifying "+countObservers()+" observers");
         notifyObservers();
     }
 
     @Override
     public int get() {
-        return (int)value;
+        return value;
     }
 
     @Override
     public String toString() {
-        return String.format("CPLDLong (%d bits %d to %d) name=%s value=%d", msb-lsb+1, lsb, msb, name, value);
+        return String.format("CPLDShort (%d bits %d to %d) name=%s value=%d", msb-lsb+1, lsb, msb, name, value);
     }
 
     @Override
@@ -74,16 +79,16 @@ public class CPLDLong extends CPLDConfigValue implements ConfigInt, HasPreferenc
 
     @Override
     public void loadPreference() {
-        set((int)prefs.getLong(key, def));
+        set(prefs.getInt(key, def));
     }
 
     @Override
     public void storePreference() {
-        prefs.putLong(key, value); // will eventually call pref change listener which will call set again
+        prefs.putInt(key, value); // will eventually call pref change listener which will call set again
     }
     
     public int getMax(){
-        return 1<<nBits-1;
+        return (1<<nBits)-1;
     }
     
     public int getMin(){

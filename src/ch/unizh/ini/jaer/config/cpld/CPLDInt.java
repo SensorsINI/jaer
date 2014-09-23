@@ -10,7 +10,7 @@ import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.chip.Chip;
 import ch.unizh.ini.jaer.config.ConfigInt;
 
-/** A integer configuration value on CPLD shift register.
+/** A integer (32-bit) configuration value on CPLD shift register.
  * @author tobi
  */
 public class CPLDInt extends CPLDConfigValue implements ConfigInt, HasPreference {
@@ -33,8 +33,8 @@ public class CPLDInt extends CPLDConfigValue implements ConfigInt, HasPreference
         this.msb = msb;
         this.def = def;
         key = "CPLDInt." + name;
-        if (msb - lsb != 15) {
-            log.warning("only counted " + (msb - lsb + 1) + " bits, but there should usually be 16 in a CPLDInt like we are (" + this+")");
+        if (msb - lsb != 31) {
+            log.warning("only counted " + (msb - lsb + 1) + " bits, but there should usually be 32 in a CPLDInt like we are (" + this+")");
         }
         loadPreference();
     }
