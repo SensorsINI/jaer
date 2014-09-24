@@ -605,8 +605,8 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
             float x, y;
 
             //acceleration x,y
-            x = (vectorScale * imuSample.getAccelX() * HEIGHT) / IMUSample.FULL_SCALE_ACCEL_G / 2;
-            y = (vectorScale * imuSample.getAccelY() * HEIGHT) / IMUSample.FULL_SCALE_ACCEL_G / 2;
+            x = (vectorScale * imuSample.getAccelX() * HEIGHT) / IMUSample.getFullScaleAccelG() / 2;
+            y = (vectorScale * imuSample.getAccelY() * HEIGHT) / IMUSample.getFullScaleAccelG() / 2;
             gl.glColor3f(0, 1, 0);
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(0, 0);
@@ -624,7 +624,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
             if (accelCircle == null) {
                 accelCircle = glu.gluNewQuadric();
             }
-            final float az = (vectorScale * imuSample.getAccelZ() * HEIGHT / 2) / IMUSample.FULL_SCALE_ACCEL_G / 2;
+            final float az = (vectorScale * imuSample.getAccelZ() * HEIGHT / 2) / IMUSample.getFullScaleAccelG() / 2;
             final float rim = .5f;
             glu.gluQuadricDrawStyle(accelCircle, GLU.GLU_FILL);
             glu.gluDisk(accelCircle, az - rim, az + rim, 16, 1);
@@ -639,8 +639,8 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
             gl.glColor3f(.3f, 0, 1);
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(0, 0);
-            x = (vectorScale * imuSample.getGyroYawY() * HEIGHT) / IMUSample.FULL_SCALE_GYRO_DEG_PER_SEC;
-            y = (vectorScale * imuSample.getGyroTiltX() * HEIGHT) / IMUSample.FULL_SCALE_GYRO_DEG_PER_SEC;
+            x = (vectorScale * imuSample.getGyroYawY() * HEIGHT) / IMUSample.getFullScaleGyroDegPerSec();
+            y = (vectorScale * imuSample.getGyroTiltX() * HEIGHT) / IMUSample.getFullScaleGyroDegPerSec();
             gl.glVertex2f(x, y);
             gl.glEnd();
 
@@ -650,7 +650,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
             imuTextRenderer.end3DRendering();
 
             // gyro roll
-            x = (vectorScale * imuSample.getGyroRollZ() * HEIGHT) / IMUSample.FULL_SCALE_GYRO_DEG_PER_SEC;
+            x = (vectorScale * imuSample.getGyroRollZ() * HEIGHT) / IMUSample.getFullScaleGyroDegPerSec();
             y = chip.getSizeY() * .25f;
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(0, y);

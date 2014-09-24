@@ -245,7 +245,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 	 * This reader understands the format of raw USB data and translates to the
 	 * AEPacketRaw
 	 */
-	public class RetinaAEReader extends CypressFX2.AEReader implements PropertyChangeListener {
+	public class RetinaAEReader extends CypressFX2.AEReader {
 		private static final int NONMONOTONIC_WARNING_COUNT = 30; // how many
 																	// warnings
 																	// to print
@@ -257,7 +257,6 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 		public RetinaAEReader(final CypressFX2 cypress) throws HardwareInterfaceException {
 			super(cypress);
 			resetFrameAddressCounters();
-			getSupport().addPropertyChangeListener(CypressFX2.PROPERTY_CHANGE_ASYNC_STATUS_MSG, this);
 		}
 
 		/**
@@ -631,24 +630,6 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 			}
 			Arrays.fill(countX, 0, numReadoutTypes, (short) 0);
 			Arrays.fill(countY, 0, numReadoutTypes, (short) 0);
-		}
-
-		@Override
-		public void propertyChange(final PropertyChangeEvent evt) {
-			try {
-				final ByteBuffer buf = (ByteBuffer) evt.getNewValue();
-				try {
-					final IMUSample sample = new IMUSample(buf);
-					imuSampleQueue.put(sample);
-				}
-				catch (final InterruptedException ex) {
-					CypressFX2.log.warning("putting IMUSample to queue was interrupted");
-				}
-
-			}
-			catch (final ClassCastException e) {
-				CypressFX2.log.warning("receieved wrong type of data for the IMU: " + e.toString());
-			}
 		}
 	}
 }

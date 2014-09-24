@@ -54,7 +54,6 @@ import ch.unizh.ini.jaer.config.fx2.TriStateablePortBit;
 import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
 import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
 import ch.unizh.ini.jaer.config.onchip.OutputMux;
-import java.util.HashSet;
 
 /**
  * Bias generator, On-chip diagnostic readout, video acquisition and rendering
@@ -89,19 +88,19 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
     protected CPLDInt resSettle = new CPLDInt(chip, 63, 48, "resSettle", "time in 30MHz clock cycles  to settle after column reset before readout; allows all pixels in column to drive in parallel the row readout lines (like colSettle)", 0);
     protected CPLDInt frameDelay = new CPLDInt(chip, 79, 64, "frameDelay", "time between two frames; scaling of this parameter depends on readout logic used", 0);
     /* IMU registers, defined in logic IMUStateMachine
-    constant IMUInitAddr0 : std_logic_vector(7 downto 0) := "01101011"; -- ADDR: (0x6b) IMU power management register and clock selection
-    constant IMUInitAddr1 : std_logic_vector(7 downto 0) := "00011010"; -- ADDR: (0x1A) DLPF (digital low pass filter)
-    constant IMUInitAddr2 : std_logic_vector(7 downto 0) := "00011001"; -- ADDR: (0x19) Sample rate divider
-    constant IMUInitAddr3 : std_logic_vector(7 downto 0) := "00011011"; -- ADDR: (0x1B) Gyro Configuration: Full Scale Range / Sensitivity
-    constant IMUInitAddr4 : std_logic_vector(7 downto 0) := "00011100"; -- ADDR: (0x1C) Accel Configuration: Full Scale Range / Sensitivity
-    */
-    protected CPLDByte imuRunReg = new CPLDByte(chip, 87, 80, "imu_RUN", "RUN flat (not on IMU, but in camera logic); bit 0=1 sets IMU running ", (byte)0);
+     constant IMUInitAddr0 : std_logic_vector(7 downto 0) := "01101011"; -- ADDR: (0x6b) IMU power management register and clock selection
+     constant IMUInitAddr1 : std_logic_vector(7 downto 0) := "00011010"; -- ADDR: (0x1A) DLPF (digital low pass filter)
+     constant IMUInitAddr2 : std_logic_vector(7 downto 0) := "00011001"; -- ADDR: (0x19) Sample rate divider
+     constant IMUInitAddr3 : std_logic_vector(7 downto 0) := "00011011"; -- ADDR: (0x1B) Gyro Configuration: Full Scale Range / Sensitivity
+     constant IMUInitAddr4 : std_logic_vector(7 downto 0) := "00011100"; -- ADDR: (0x1C) Accel Configuration: Full Scale Range / Sensitivity
+     */
+    protected CPLDByte miscControlBits = new CPLDByte(chip, 87, 80, "miscControlBits", "Bit0: IMU run (0=stop, 1=run). Bit1: Rolling shutter (0=global shutter, 1=rolling shutter). Bits2-7: unused ", (byte) 1);
     // See Invensense MPU-6100 IMU datasheet RM-MPU-6100A.pdf
-    protected CPLDByte imu0PowerMgmtClkRegConfig = new CPLDByte(chip, 95, 88, "imu0_PWR_MGMT_1", "2=Disable sleep, select x axis gyro as clock source", (byte)0x02); // PWR_MGMT_1
-    protected CPLDByte imu1DLPFConfig = new CPLDByte(chip, 103, 96, "imu1_CONFIG", "1=digital low pass filter DLPF: FS=1kHz, Gyro 188Hz, 1.9ms delay ", (byte)1); // CONFIG 
-    protected CPLDByte imu2SamplerateDividerConfig = new CPLDByte(chip, 111, 104, "imu2_SMPLRT_DIV", "0=sample rate divider: 1 Khz sample rate when DLPF is enabled", (byte)0); // SMPLRT_DIV 
-    protected CPLDByte imu3GyroConfig = new CPLDByte(chip, 119, 112, "imu3_GYRO_CONFIG", "8=500 deg/s, 65.5 LSB per deg/s ", (byte)8); // GYRO_CONFIG: 
-    protected CPLDByte imu4AccelConfig = new CPLDByte(chip, 127, 120, "imu4_ACCEL_CONFIG", "8=4g, 8192 LSB per g", (byte)8); // ACCEL_CONFIG: 
+    protected CPLDByte imu0PowerMgmtClkRegConfig = new CPLDByte(chip, 95, 88, "imu0_PWR_MGMT_1", "2=Disable sleep, select x axis gyro as clock source", (byte) 0x02); // PWR_MGMT_1
+    protected CPLDByte imu1DLPFConfig = new CPLDByte(chip, 103, 96, "imu1_CONFIG", "1=digital low pass filter DLPF: FS=1kHz, Gyro 188Hz, 1.9ms delay ", (byte) 1); // CONFIG 
+    protected CPLDByte imu2SamplerateDividerConfig = new CPLDByte(chip, 111, 104, "imu2_SMPLRT_DIV", "0=sample rate divider: 1 Khz sample rate when DLPF is enabled", (byte) 0); // SMPLRT_DIV 
+    protected CPLDByte imu3GyroConfig = new CPLDByte(chip, 119, 112, "imu3_GYRO_CONFIG", "8=500 deg/s, 65.5 LSB per deg/s ", (byte) 8); // GYRO_CONFIG: 
+    protected CPLDByte imu4AccelConfig = new CPLDByte(chip, 127, 120, "imu4_ACCEL_CONFIG", "ACCEL_CONFIG: Bits 4:3 code AFS_SEL. 8=4g, 8192 LSB per g", (byte) 8); // ACCEL_CONFIG: 
     // DVSTweaks
     private AddressedIPotCF diffOn, diffOff, refr, pr, sf, diff;
     // graphic options for rendering
@@ -110,7 +109,7 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
     protected ApsReadoutControl apsReadoutControl;
     private int autoShotThreshold; // threshold for triggering a new frame snapshot automatically
     protected ImuControl imuControl;
-    
+
     /**
      * Creates a new instance of chip configuration
      *
@@ -135,9 +134,10 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         addConfigValue(rowSettle);
         addConfigValue(colSettle);
         addConfigValue(frameDelay);
-        
+
+        addConfigValue(miscControlBits);
+ 
         //imu config values
-        addConfigValue(imuRunReg);
         addConfigValue(imu0PowerMgmtClkRegConfig);
         addConfigValue(imu1DLPFConfig);
         addConfigValue(imu2SamplerateDividerConfig);
@@ -206,7 +206,7 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
 
         // control of log readout
         apsReadoutControl = new ApsReadoutControl();
-        
+
         // imuControl
         imuControl = new ImuControl();
 
@@ -232,7 +232,6 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         apsReadoutControl.setAdcEnabled(yes);
     }
 
-    
     /**
      * Momentarily puts the pixels and on-chip AER logic in reset and then
      * releases the reset.
@@ -326,13 +325,13 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         apsReadoutPanel.setLayout(new BoxLayout(apsReadoutPanel, BoxLayout.Y_AXIS));
         configTabbedPane.add("APS Readout Control", apsReadoutPanel);
         apsReadoutPanel.add(new ParameterControlPanel(apsReadoutControl));
-        
+
         // IMU control 
         JPanel imuControlPanel = new JPanel();
         imuControlPanel.setLayout(new BoxLayout(imuControlPanel, BoxLayout.Y_AXIS));
         configTabbedPane.add("IMU Control", imuControlPanel);
-        imuControlPanel.add(new ParameterControlPanel(imuControl));
-        
+        imuControlPanel.add(new ImuControlPanel(this));
+
         // autoexposure
         if (chip instanceof SBret10) {
             JPanel autoExposurePanel = new JPanel();
@@ -441,27 +440,22 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
 
     @Override
     public boolean isImuEnabled() {
-        return (imuRunReg.get()&1)==1;
+        return imuControl.isImuEnabled();
     }
 
     @Override
     public void setImuEnabled(boolean yes) {
-        imuRunReg.set(yes?1:0);
+        imuControl.setImuEnabled(yes);
     }
-    
-    private boolean displayImuEnabled=chip.getPrefs().getBoolean("IMU.displayEnabled",true);
-    
-     @Override
+
+    @Override
     public boolean isDisplayImu() {
-        return displayImuEnabled;
+        return imuControl.isDisplayImu();
     }
 
     @Override
     public void setDisplayImu(boolean yes) {
-        boolean old=this.displayImuEnabled;
-        this.displayImuEnabled=yes;
-        chip.getPrefs().putBoolean("IMU.displayEnabled",yes);
-        getSupport().firePropertyChange("displayImuEnabled",old,displayImuEnabled);
+        imuControl.setDisplayImu(yes);
     }
 
     @Override
@@ -473,42 +467,74 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
     public boolean isCaptureEventsEnabled() {
         return nChipReset.isSet();
     }
-  
-    /** see PS-MPU-6100A
+
+    /**
+     * see PS-MPU-6100A
      */
     public enum ImuGyroScale {
 
         GyroFullScaleDegPerSec250(250, 0, 131), GyroFullScaleDegPerSec500(500, 1, 63.5f), GyroFullScaleDegPerSec1000(1000, 2, 32.8f), GyroFullScaleDegPerSec2000(2000, 3, 16.4f);
-        private float fullScaleG;
-        private int fs_sel;
-        private float scaleFactorLSBPerG;
+        public float fullScaleDegPerSec;
+        public int fs_sel;
+        public float scaleFactorLsbPerDegPerSec;
+        public String fullScaleString;
 
-        private ImuGyroScale(float fullScaleG, int fs_sel, float scaleFactorLSBPerG) {
-            this.fullScaleG = fullScaleG;
+        private ImuGyroScale(float fullScaleDegPerSec, int fs_sel, float scaleFactorLsbPerG) {
+            this.fullScaleDegPerSec = fullScaleDegPerSec;
             this.fs_sel = fs_sel;
-            this.scaleFactorLSBPerG = scaleFactorLSBPerG;
+            this.scaleFactorLsbPerDegPerSec = scaleFactorLsbPerG;
+            fullScaleString = String.format("%f deg/s", fullScaleDegPerSec);
         }
+
+        public String[] choices() {
+            String[] s = new String[ImuGyroScale.values().length];
+            for (int i = 0; i < ImuGyroScale.values().length; i++) {
+                s[i] = ImuGyroScale.values()[i].fullScaleString;
+            }
+            return s;
+        }
+
     }
 
-  
+    /**
+     * see PS-MPU-6100A
+     */
+    public enum ImuAccelScale {
+
+        ImuAccelScaleG2(2, 0, 16384), ImuAccelScaleG4(4, 1, 8192), ImuAccelScaleG8(8, 2, 4096), ImuAccelScaleG16(16, 3, 2048);
+        public float fullScaleG;
+        public int afs_sel;
+        public float scaleFactorLsbPerG;
+        public String fullScaleString;
+
+        private ImuAccelScale(float fullScaleDegPerSec, int afs_sel, float scaleFactorLsbPerG) {
+            this.fullScaleG = fullScaleDegPerSec;
+            this.afs_sel = afs_sel;
+            this.scaleFactorLsbPerG = scaleFactorLsbPerG;
+            fullScaleString = String.format("%f g", fullScaleDegPerSec);
+        }
+
+        public String[] choices() {
+            String[] s = new String[ImuAccelScale.values().length];
+            for (int i = 0; i < ImuAccelScale.values().length; i++) {
+                s[i] = ImuAccelScale.values()[i].fullScaleString;
+            }
+            return s;
+        }
+    }
     
     /**
-     * Controls the APS intensity readout by wrapping the relevant bits
+     * IMU control of Invensense IMU-6100A, encapsulated here.
      */
     public class ImuControl extends Observable implements Observer, HasPropertyTooltips {
 
         public final String EVENT_IMU_ENABLED = "imuEnabled", EVENT_IMU_DISPLAY_ENABLED = "imuDisplayEnabled";
         private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
         PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
+        ImuGyroScale imuGyroScale = ImuGyroScale.valueOf(chip.getPrefs().get("ImuGyroScale", ImuGyroScale.GyroFullScaleDegPerSec1000.toString()));
+        private ImuAccelScale imuAccelScale = ImuAccelScale.valueOf(chip.getPrefs().get("ImuAccelScale", ImuAccelScale.ImuAccelScaleG8.toString()));
         
-         public final float[] SAMPLE_RATES_HZ={1000, 5000, 250}; // TODO check
-         public final float[] ACCEL_FULL_SCALE_G={2,4,8,16}; // TODO check
-         
-         public final float[] GYRO_FULL_SCALE_DEG_PER_SEC={250,500,1000,2000};
-         private final int[] GYRO_FS_SEL={0,1,2,3};
-         
-        
-         public ImuControl() {
+        public ImuControl() {
             imu0PowerMgmtClkRegConfig.addObserver(this);
             imu1DLPFConfig.addObserver(this);
             imu2SamplerateDividerConfig.addObserver(this);
@@ -520,45 +546,152 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
             tooltipSupport.setPropertyTooltip("imu2", imu2SamplerateDividerConfig.getDescription());
             tooltipSupport.setPropertyTooltip("imu3", imu3GyroConfig.getDescription());
             tooltipSupport.setPropertyTooltip("imu4", imu4AccelConfig.getDescription());
+            IMUSample.setFullScaleGyroDegPerSec(imuGyroScale.fullScaleDegPerSec);
+            IMUSample.setGyroSensitivityScaleFactorDegPerSecPerLsb(1/imuGyroScale.scaleFactorLsbPerDegPerSec);
+            IMUSample.setFullScaleAccelG(imuAccelScale.fullScaleG);
+            IMUSample.setAccelSensitivityScaleFactorGPerLsb(1/imuAccelScale.scaleFactorLsbPerG);
+        }
+
+        public boolean isImuEnabled() {
+            return (miscControlBits.get() & 1) == 1;
+        }
+
+        public void setImuEnabled(boolean yes) {
+            int oldval=miscControlBits.get();
+            int newval=(oldval&(~1))|(yes ? 1 : 0);
+            miscControlBits.set(newval);
+        }
+
+        /** Register 26: CONFIG, digital low pass filter setting
+         DLPF_CFG 
+        */
+        public void setDLPF(int dlpf){
+            if(dlpf<0 || dlpf>6) throw new IllegalArgumentException("dlpf="+dlpf+" is outside allowed range 0-6");
+            int oldval=imu1DLPFConfig.get();
+            int newval=(oldval&(~7))|(dlpf);
+            imu1DLPFConfig.set(newval);
+            activateNewRegisterValues();
         }
         
-        public void setImu0(int value) throws IllegalArgumentException {
-            imu0PowerMgmtClkRegConfig.set(value);
+        public int getDLPF(){
+            return imu1DLPFConfig.get()&7;
         }
-
-        public int getImu0() {
-            return imu0PowerMgmtClkRegConfig.get();
+        
+          /** Register 27: Sample rate divider */
+        public void setSampleRateDivider(int srd){
+            if(srd<0 || srd>255) throw new IllegalArgumentException("sampleRateDivider="+srd+" is outside allowed range 0-255");
+            imu1DLPFConfig.set((srd&0xFF));
+            activateNewRegisterValues();
         }
-
-        public void setImu1(int value) throws IllegalArgumentException {
-            imu1DLPFConfig.set(value);
-        }
-
-        public int getImu1() {
+        
+        public int getSampleRateDivider(){
             return imu1DLPFConfig.get();
         }
         
-        public void setImu2(int value) throws IllegalArgumentException {
-            imu2SamplerateDividerConfig.set(value);
+        
+        
+        public ImuGyroScale getGyroScale() {
+            return imuGyroScale;
         }
 
-        public int getImu2() {
+        public void setGyroScale(ImuGyroScale scale) {
+            this.imuGyroScale = scale;
+            chip.getPrefs().put("ImuGyroScale", imuGyroScale.toString());
+            setFS_SEL(scale.fs_sel);
+            IMUSample.setFullScaleGyroDegPerSec(imuGyroScale.fullScaleDegPerSec);
+            IMUSample.setGyroSensitivityScaleFactorDegPerSecPerLsb(1/imuGyroScale.scaleFactorLsbPerDegPerSec);
+        }
+
+       
+        /**
+         * @return the imuAccelScale
+         */
+        public ImuAccelScale getAccelScale() {
+            return imuAccelScale;
+        }
+
+        /**
+         * @param imuAccelScale the imuAccelScale to set
+         */
+        public void setAccelScale(ImuAccelScale imuAccelScale) {
+            this.imuAccelScale = imuAccelScale;
+            chip.getPrefs().put("ImuAccelScale", imuAccelScale.toString());
+            setAFS_SEL(imuAccelScale.afs_sel);
+            IMUSample.setFullScaleAccelG(imuAccelScale.fullScaleG);
+            IMUSample.setAccelSensitivityScaleFactorGPerLsb(1/imuAccelScale.scaleFactorLsbPerG);
+        }
+        
+        // accel scale bits
+         private void setAFS_SEL(int val){ // AFS_SEL bits are bits 4:3 in accel register
+            if(val<0||val>3) throw new IllegalArgumentException("value "+val+" is outside range 0-3");
+            int oldval=imu4AccelConfig.get();
+            int newval=oldval&(~(3<<3))|(val<<3);
+            setImu4(newval);
+        }
+         
+         // gyro scale bits
+         private void setFS_SEL(int val){ // AFS_SEL bits are bits 4:3 in accel register
+            if(val<0||val>3) throw new IllegalArgumentException("value "+val+" is outside range 0-3");
+            int oldval=imu3GyroConfig.get();
+            int newval=oldval&(~(3<<3))|(val<<3);
+            setImu3(newval);
+        }
+         
+        private boolean displayImuEnabled = chip.getPrefs().getBoolean("IMU.displayEnabled", true);
+
+        public boolean isDisplayImu() {
+            return displayImuEnabled;
+        }
+
+        public void setDisplayImu(boolean yes) {
+            boolean old = this.displayImuEnabled;
+            this.displayImuEnabled = yes;
+            chip.getPrefs().putBoolean("IMU.displayEnabled", yes);
+            getSupport().firePropertyChange("displayImuEnabled", old, displayImuEnabled);
+        }
+
+        private void setImu0(int value) throws IllegalArgumentException {
+            imu0PowerMgmtClkRegConfig.set(value);
+            activateNewRegisterValues();
+        }
+
+        private int getImu0() {
+            return imu0PowerMgmtClkRegConfig.get();
+        }
+
+        private void setImu1(int value) throws IllegalArgumentException {
+            imu1DLPFConfig.set(value);
+            activateNewRegisterValues();
+        }
+
+        private int getImu1() {
+            return imu1DLPFConfig.get();
+        }
+
+        private void setImu2(int value) throws IllegalArgumentException {
+            imu2SamplerateDividerConfig.set(value);
+            activateNewRegisterValues();
+        }
+
+        private int getImu2() {
             return imu2SamplerateDividerConfig.get();
         }
 
-        public void setImu3(int value) throws IllegalArgumentException {
+        private void setImu3(int value) throws IllegalArgumentException {
             imu3GyroConfig.set(value);
+            activateNewRegisterValues();
         }
 
-        public int getImu3() {
+        private int getImu3() {
             return imu3GyroConfig.get();
         }
 
-        public void setImu4(int value) throws IllegalArgumentException {
+        private void setImu4(int value) throws IllegalArgumentException {
             imu4AccelConfig.set(value);
+            activateNewRegisterValues();
         }
 
-        public int getImu4() {
+        private int getImu4() {
             return imu4AccelConfig.get();
         }
 
@@ -569,6 +702,14 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
             } // TODO
             setChanged();
             notifyObservers(o);
+        }
+
+        private void activateNewRegisterValues() {
+            if (isImuEnabled()) {
+                setImuEnabled(false);
+                try{Thread.sleep(100);}catch(InterruptedException e){}
+                setImuEnabled(true);
+            }
         }
 
         /**
@@ -583,8 +724,8 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
             return tooltipSupport.getPropertyTooltip(propertyName);
         }
     }
-    
-     /**
+
+    /**
      * Controls the APS intensity readout by wrapping the relevant bits
      */
     public class ApsReadoutControl extends Observable implements Observer, HasPropertyTooltips {
@@ -617,6 +758,18 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
 
         public void setAdcEnabled(boolean yes) {
             runAdc.set(yes);
+        }
+        
+        public boolean isGlobalShutterMode(){
+            return (miscControlBits.get()&2)!=0;
+        }
+        
+        public void setGlobalShutterMode(boolean yes){
+            int oldval=miscControlBits.get();
+            int newval=(oldval&(~2))|(yes?0:2); // set bit1=1 to select rolling shutter mode, 0 for global shutter mode
+            miscControlBits.set(newval);
+            try{Thread.sleep(100);}catch(InterruptedException e){}// TODO fix firmware/logic to deal with sequential VRs
+            ((SBRet10ChipConfigChain)chipConfigChain).globalShutter.set(yes);
         }
 
         public void setColSettleCC(int cc) {
@@ -680,7 +833,7 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
             return tooltipSupport.getPropertyTooltip(propertyName);
         }
     }
-    
+
     public class VideoControl extends Observable implements Observer, HasPreference, HasPropertyTooltips {
 
         private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
@@ -950,7 +1103,7 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
                 hotPixelSuppression = new OnchipConfigBit(chip, "hotPixelSuppression", 3, "<html>SBRet10: turns on the hot pixel suppression. <p>SBRet20: enables test pixel stripes on right side of array", false),
                 nArow = new OnchipConfigBit(chip, "nArow", 4, "use nArow in the AER state machine", false),
                 useAout = new OnchipConfigBit(chip, "useAout", 5, "turn the pads for the analog MUX outputs on", true),
-                globalShutter = new OnchipConfigBit(chip, "globalShutter", 6, "use the global shutter or not", false);
+                globalShutter = new OnchipConfigBit(chip, "globalShutter", 6, "Use the global shutter or not, only has effect on SBRet20 chip on DAVIS240b cameras. No effect on SBRet10 chip in DAVIS240a cameras. On-chip control bit that is looded into on-chip shift register.", false);
         //Muxes
         OutputMux[] amuxes = {new AnalogOutputMux(1), new AnalogOutputMux(2), new AnalogOutputMux(3)};
         OutputMux[] dmuxes = {new DigitalOutputMux(1), new DigitalOutputMux(2), new DigitalOutputMux(3), new DigitalOutputMux(4)};

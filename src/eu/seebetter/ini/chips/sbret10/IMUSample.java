@@ -55,6 +55,77 @@ public class IMUSample extends ApsDvsEvent {
 
 	/** Size of IMUSample in events written or read from AEPacketRaw */
 	public static final int SIZE_EVENTS = 7;
+        
+        /**
+	 * IMU sensitivity scaling: The IMU 16-bit values are scaled by this amount
+	 * to result in either deg/s, g, or deg C
+	 */
+	private static float accelSensitivityScaleFactorGPerLsb = 1f / 8192, gyroSensitivityScaleFactorDegPerSecPerLsb = 1f / 65.5f, temperatureScaleFactorDegCPerLsb = 1f / 340,
+		temperatureOffsetDegC = 35;
+
+	/** Full scale values */
+	private static float fullScaleAccelG = 4f;
+	/** Full scale values */
+	private static float fullScaleGyroDegPerSec = 1000f;
+
+
+    /**
+     * @return the fullScaleAccelG
+     */
+    public static float getFullScaleAccelG() {
+        return fullScaleAccelG;
+    }
+
+    /**
+     * Changes full scale value constant. Note that this only changes scaling, not the IMU itself.
+     * @param aFullScaleAccelG the fullScaleAccelG to set
+     */
+    public static void setFullScaleAccelG(float aFullScaleAccelG) {
+        fullScaleAccelG = aFullScaleAccelG;
+    }
+
+    /**
+     * @return the fullScaleGyroDegPerSec
+     */
+    public static float getFullScaleGyroDegPerSec() {
+        return fullScaleGyroDegPerSec;
+    }
+
+    /**
+     * Changes full scale value constant. Note that this only changes scaling, not the IMU itself.
+     * @param aFullScaleGyroDegPerSec the fullScaleGyroDegPerSec to set
+     */
+    public static void setFullScaleGyroDegPerSec(float aFullScaleGyroDegPerSec) {
+        fullScaleGyroDegPerSec = aFullScaleGyroDegPerSec;
+    }
+
+    /**
+     * @return the accelSensitivityScaleFactorGPerLsb
+     */
+    public static float getAccelSensitivityScaleFactorGPerLsb() {
+        return accelSensitivityScaleFactorGPerLsb;
+    }
+
+    /**
+     * @param aAccelSensitivityScaleFactorGPerLsb the accelSensitivityScaleFactorGPerLsb to set
+     */
+    public static void setAccelSensitivityScaleFactorGPerLsb(float aAccelSensitivityScaleFactorGPerLsb) {
+        accelSensitivityScaleFactorGPerLsb = aAccelSensitivityScaleFactorGPerLsb;
+    }
+
+    /**
+     * @return the gyroSensitivityScaleFactorDegPerSecPerLsb
+     */
+    public static float getGyroSensitivityScaleFactorDegPerSecPerLsb() {
+        return gyroSensitivityScaleFactorDegPerSecPerLsb;
+    }
+
+    /**
+     * @param aGyroSensitivityScaleFactorDegPerSecPerLsb the gyroSensitivityScaleFactorDegPerSecPerLsb to set
+     */
+    public static void setGyroSensitivityScaleFactorDegPerSecPerLsb(float aGyroSensitivityScaleFactorDegPerSecPerLsb) {
+        gyroSensitivityScaleFactorDegPerSecPerLsb = aGyroSensitivityScaleFactorDegPerSecPerLsb;
+    }
 
 	/** The IMU data */
 	private final short[] data = new short[IMUSample.SIZE_EVENTS];
@@ -81,37 +152,11 @@ public class IMUSample extends ApsDvsEvent {
 	private static int lastTimestampUs = 0;
 	private static boolean firstSampleDone = false;
 
-	// /** Used to track when last sample was acquired in host System.nanoTime
-	// units */
-	// private static long lastSampleTimeSystemNs=System.nanoTime();
-	/**
-	 * values are from datasheet for reset settings
-	 */
-	// final float accelScale = 2f / ((1 << 16)-1), gyroScale = 250f / ((1 <<
-	// 16)-1), temperatureScale = 1f/340;
-	/**
-	 * IMU sensitivity scaling: The IMU 16-bit values are scaled by this amount
-	 * to result in either deg/s, g, or deg C
-	 */
-	public static final float accelScale = 1f / 8192, gyroScale = 1f / 65.5f, temperatureScale = 1f / 340,
-		temperatureOffset = 35;
-
-	/** Full scale values */
-	public static final float FULL_SCALE_ACCEL_G = 4f, FULL_SCALE_GYRO_DEG_PER_SEC = 1000f;
-
+	
+	
 	/** Used to track sample rate */
 	private static LowpassFilter sampleIntervalFilter = new LowpassFilter(100); // time
 																				// constant
-																				// in
-																				// ms
-
-	// public class IncompleteIMUSampleException extends Exception{
-	//
-	// public IncompleteIMUSampleException(String message) {
-	// super(message);
-	// }
-	// }
-
 	/**
 	 * Holds incomplete IMUSample and completion status
 	 *
@@ -249,21 +294,6 @@ public class IMUSample extends ApsDvsEvent {
 		return code;
 	}
 
-	/**
-	 * Creates a new IMUSample collection from the byte buffer sent from device.
-	 *
-	 * @param buf
-	 *            the buffer sent on the endpoint from the device
-	 */
-	public IMUSample(final UsbIoBuf buf) {
-		this();
-		setFromUsbIoBuf(buf);
-	}
-
-	public IMUSample(final ByteBuffer buf) {
-		this();
-		setFromLibUsbBuf(buf);
-	}
 
        /**
 	 * Creates a new IMUSample collection from the short buffer of 7 measurements
@@ -321,49 +351,6 @@ public class IMUSample extends ApsDvsEvent {
 		// System.out.println("on reception: "+this.toString()); // debug
 	}
 
-	private void setFromUsbIoBuf(final UsbIoBuf buf) {
-		if (buf.BytesTransferred != 19) {
-			IMUSample.log.warning("wrong number of bytes transferred, got " + buf.BytesTransferred);
-			return;
-		}
-		final byte[] b = buf.BufferMem;
-		if (b[0] != IMUSample.IMU_SAMPLE_CODE) {
-			IMUSample.log.warning("got IMU_Sample message with wrong first byte code. Should be "
-				+ IMUSample.IMU_SAMPLE_CODE + " but got " + b[0]);
-			return;
-		}
-		final int[] tsBuf = new int[1];
-		ByteBuffer.wrap(b, 1, 4).asIntBuffer().get(tsBuf, 0, 1); // interpret
-																	// the data
-																	// in buffer
-																	// bytes 1-4
-																	// as
-																	// timestamp
-		timestampUs = tsBuf[0]; // timestamp on device increments every 100us
-		// System.out.println(String.format("timestamp=\t%12d",timestampUs));
-		ByteBuffer.wrap(b, 5, 14).asShortBuffer().get(data, 0, 7); // from
-																	// http://stackoverflow.com/questions/5625573/byte-array-to-short-array-and-back-again-in-java
-		// see page 7 of RM-MPU-6100A.pdf (register map for MPU6150 IMU)
-		// data is sent big-endian (MSB first for each sample).
-		// data is scaled according to product specification datasheet
-		// PS-MPU-6100A.pdf
-		// data[IMUSampleType.ax.code] = extractS16(b, 1);
-		// data[IMUSampleType.ay.code] = extractS16(b, 3);
-		// data[IMUSampleType.az.code] = extractS16(b, 5);
-		// data[IMUSampleType.temp.code] = extractS16(b, 7);
-		// data[IMUSampleType.gx.code] = extractS16(b, 9);
-		// data[IMUSampleType.gy.code] = extractS16(b, 11);
-		// data[IMUSampleType.gz.code] = extractS16(b, 13); // TODO remove
-		// temperature
-		// this.timestampUs = ts;
-		// long nowNs=System.nanoTime();
-		// deltaTimeUs=(int)((nowNs-lastSampleTimeSystemNs)>>10);
-		// sampleIntervalFilter.filter(deltaTimeUs, ts);
-		// lastSampleTimeSystemNs=nowNs;
-		// System.out.println("on reception: "+this.toString()); // debug
-		// updateStatistics(timestampUs);
-	}
-
 	/**
 	 * Computes deltaTimeUs and average sample rate
 	 *
@@ -402,7 +389,7 @@ public class IMUSample extends ApsDvsEvent {
 	 * @return the acceleration along x axis
 	 */
 	final public float getAccelX() {
-		return -data[IMUSampleType.ax.code] * IMUSample.accelScale;
+		return -data[IMUSampleType.ax.code] * IMUSample.accelSensitivityScaleFactorGPerLsb;
 	}
 
 	/**
@@ -413,7 +400,7 @@ public class IMUSample extends ApsDvsEvent {
 	 * @return the accelY
 	 */
 	final public float getAccelY() {
-		return (data[IMUSampleType.ay.code] * IMUSample.accelScale);
+		return (data[IMUSampleType.ay.code] * IMUSample.accelSensitivityScaleFactorGPerLsb);
 	}
 
 	/**
@@ -423,7 +410,7 @@ public class IMUSample extends ApsDvsEvent {
 	 * @return the accelZ
 	 */
 	final public float getAccelZ() {
-		return data[IMUSampleType.az.code] * IMUSample.accelScale; // TODO sign
+		return data[IMUSampleType.az.code] * IMUSample.accelSensitivityScaleFactorGPerLsb; // TODO sign
 																	// not
 		// checked
 	}
@@ -434,7 +421,7 @@ public class IMUSample extends ApsDvsEvent {
 	 * @return the rotational velocity in deg/s
 	 */
 	final public float getGyroRollZ() {
-		return -data[IMUSampleType.gz.code] * IMUSample.gyroScale;
+		return -data[IMUSampleType.gz.code] * IMUSample.gyroSensitivityScaleFactorDegPerSecPerLsb;
 	}
 
 	/**
@@ -443,7 +430,7 @@ public class IMUSample extends ApsDvsEvent {
 	 * @return the rotational velocity in deg/s
 	 */
 	final public float getGyroTiltX() {
-		return -data[IMUSampleType.gx.code] * IMUSample.gyroScale;
+		return -data[IMUSampleType.gx.code] * IMUSample.gyroSensitivityScaleFactorDegPerSecPerLsb;
 	}
 
 	/**
@@ -452,7 +439,7 @@ public class IMUSample extends ApsDvsEvent {
 	 * @return the rotational velocity in deg/s
 	 */
 	final public float getGyroYawY() {
-		return data[IMUSampleType.gy.code] * IMUSample.gyroScale;
+		return data[IMUSampleType.gy.code] * IMUSample.gyroSensitivityScaleFactorDegPerSecPerLsb;
 	}
 
 	/**
@@ -461,7 +448,7 @@ public class IMUSample extends ApsDvsEvent {
 	 * @return the temperature
 	 */
 	final public float getTemperature() {
-		return (data[IMUSampleType.temp.code] * IMUSample.temperatureScale) + IMUSample.temperatureOffset;
+		return (data[IMUSampleType.temp.code] * IMUSample.temperatureScaleFactorDegCPerLsb) + IMUSample.temperatureOffsetDegC;
 	}
 
 	/**
