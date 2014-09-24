@@ -259,7 +259,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, Prope
     }
 
     public synchronized void logRacerData(String s) {
-        tobiLogger.log(lastThrottle+" "+s);
+        tobiLogger.log(s);
     }
 
     public boolean isLogRacerDataEnabled() {

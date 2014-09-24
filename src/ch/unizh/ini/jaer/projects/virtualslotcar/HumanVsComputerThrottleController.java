@@ -732,7 +732,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
 
     @Override
     public String logControllerState() {
-        return String.format("%d\t%s\t%d\t%s\t%s", lastTimestamp, state, computerTrackPosition, throttle, computerCar);
+        return String.format("lastTimeStamp=%d\tstate=%s\tthrottle=%f\tbrake=%s\tcomputerCar=%s\thumanCar=%s", lastTimestamp, state, throttle.throttle, throttle.brake, computerCar, humanCar);
     }
 
     @Override
