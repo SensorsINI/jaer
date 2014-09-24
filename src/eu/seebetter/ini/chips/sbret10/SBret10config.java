@@ -54,6 +54,7 @@ import ch.unizh.ini.jaer.config.fx2.TriStateablePortBit;
 import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
 import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
 import ch.unizh.ini.jaer.config.onchip.OutputMux;
+import java.util.HashSet;
 
 /**
  * Bias generator, On-chip diagnostic readout, video acquisition and rendering
@@ -472,8 +473,26 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
     public boolean isCaptureEventsEnabled() {
         return nChipReset.isSet();
     }
+  
+    /** see PS-MPU-6100A
+     */
+    public enum ImuGyroScale {
 
-      /**
+        GyroFullScaleDegPerSec250(250, 0, 131), GyroFullScaleDegPerSec500(500, 1, 63.5f), GyroFullScaleDegPerSec1000(1000, 2, 32.8f), GyroFullScaleDegPerSec2000(2000, 3, 16.4f);
+        private float fullScaleG;
+        private int fs_sel;
+        private float scaleFactorLSBPerG;
+
+        private ImuGyroScale(float fullScaleG, int fs_sel, float scaleFactorLSBPerG) {
+            this.fullScaleG = fullScaleG;
+            this.fs_sel = fs_sel;
+            this.scaleFactorLSBPerG = scaleFactorLSBPerG;
+        }
+    }
+
+  
+    
+    /**
      * Controls the APS intensity readout by wrapping the relevant bits
      */
     public class ImuControl extends Observable implements Observer, HasPropertyTooltips {
@@ -481,8 +500,15 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         public final String EVENT_IMU_ENABLED = "imuEnabled", EVENT_IMU_DISPLAY_ENABLED = "imuDisplayEnabled";
         private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
         PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
-
-        public ImuControl() {
+        
+         public final float[] SAMPLE_RATES_HZ={1000, 5000, 250}; // TODO check
+         public final float[] ACCEL_FULL_SCALE_G={2,4,8,16}; // TODO check
+         
+         public final float[] GYRO_FULL_SCALE_DEG_PER_SEC={250,500,1000,2000};
+         private final int[] GYRO_FS_SEL={0,1,2,3};
+         
+        
+         public ImuControl() {
             imu0PowerMgmtClkRegConfig.addObserver(this);
             imu1DLPFConfig.addObserver(this);
             imu2SamplerateDividerConfig.addObserver(this);
@@ -495,7 +521,7 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
             tooltipSupport.setPropertyTooltip("imu3", imu3GyroConfig.getDescription());
             tooltipSupport.setPropertyTooltip("imu4", imu4AccelConfig.getDescription());
         }
-
+        
         public void setImu0(int value) throws IllegalArgumentException {
             imu0PowerMgmtClkRegConfig.set(value);
         }
@@ -511,7 +537,8 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         public int getImu1() {
             return imu1DLPFConfig.get();
         }
- public void setImu2(int value) throws IllegalArgumentException {
+        
+        public void setImu2(int value) throws IllegalArgumentException {
             imu2SamplerateDividerConfig.set(value);
         }
 
