@@ -48,6 +48,7 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
      * first read, 2 second read, which is deprecated and not used).
      */
     public static final int ADC_DATA_MASK = MAX_ADC, ADC_READCYCLE_SHIFT = 10, ADC_READCYCLE_MASK = 0xC00;
+    
     /**
      * Property change events fired when these properties change
      */
@@ -134,5 +135,4 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
      */
     abstract public void setShowImageHistogram(boolean yes);
 
-  
 }

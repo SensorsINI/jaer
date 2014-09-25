@@ -5,17 +5,21 @@
  */
 package eu.seebetter.ini.chips.sbret10;
 
+import eu.seebetter.ini.chips.ApsDvsChip;
 import eu.seebetter.ini.chips.sbret10.SBret10config.ImuAccelScale;
 import eu.seebetter.ini.chips.sbret10.SBret10config.ImuControl;
 import eu.seebetter.ini.chips.sbret10.SBret10config.ImuGyroScale;
 import java.awt.Color;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.logging.Logger;
+import net.sf.jaer.config.ApsDvsConfig;
 
 /**
  *
  * @author tobi
  */
-public class ImuControlPanel extends javax.swing.JPanel {
+public class ImuControlPanel extends javax.swing.JPanel implements PropertyChangeListener {
 
     private static final Logger log = Logger.getLogger("ImuControlPanel");
     private ImuControl imuControl;
@@ -44,6 +48,7 @@ public class ImuControlPanel extends javax.swing.JPanel {
         dontProcess = false;
         dlpfTF.setText(Integer.toString(imuControl.getDLPF()));
         sampleRateDividerTF.setText(Integer.toString(imuControl.getSampleRateDivider()));
+        config.getChip().getSupport().addPropertyChangeListener(this);
     }
 
     /**
@@ -255,4 +260,28 @@ public class ImuControlPanel extends javax.swing.JPanel {
     private javax.swing.JLabel jLabel4;
     private javax.swing.JTextField sampleRateDividerTF;
     // End of variables declaration//GEN-END:variables
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        switch (evt.getPropertyName()) {
+            case ApsDvsConfig.IMU_ENABLED:
+                imuEnabledCB.setSelected((boolean) evt.getNewValue());
+                break;
+            case ApsDvsConfig.IMU_DISPLAY_ENABLED:
+                imuVisibleCB.setSelected((boolean) evt.getNewValue());
+                break;
+            case ApsDvsConfig.IMU_ACCEL_SCALE_CHANGED:
+                dontProcess = true;
+                accelFullScaleComboBox.setSelectedItem(evt.getNewValue());
+                dontProcess = false;
+                break;
+            case ApsDvsConfig.IMU_GYRO_SCALE_CHANGED:
+                dontProcess = true;
+                gyroFullScaleComboBox.setSelectedItem(evt.getNewValue());
+                dontProcess = false;
+                break;
+            default:
+                log.warning("unhandled event " + evt);
+        }
+    }
 }
