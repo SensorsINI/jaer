@@ -48,7 +48,7 @@ public class ImuControlPanel extends javax.swing.JPanel implements PropertyChang
         dontProcess = false;
         dlpfTF.setText(Integer.toString(imuControl.getDLPF()));
         sampleRateDividerTF.setText(Integer.toString(imuControl.getSampleRateDivider()));
-        config.getChip().getSupport().addPropertyChangeListener(this);
+        config.getChip().getBiasgen().getSupport().addPropertyChangeListener(this);
     }
 
     /**
@@ -281,7 +281,7 @@ public class ImuControlPanel extends javax.swing.JPanel implements PropertyChang
                 dontProcess = false;
                 break;
             default:
-                log.warning("unhandled event " + evt);
+                
         }
     }
 }

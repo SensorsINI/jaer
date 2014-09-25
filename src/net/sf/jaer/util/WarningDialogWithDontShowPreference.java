@@ -5,6 +5,7 @@
  */
 package net.sf.jaer.util;
 
+import java.util.StringTokenizer;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
@@ -193,4 +194,5 @@ private void optionPanePropertyChange (java.beans.PropertyChangeEvent evt) {//GE
     private javax.swing.JOptionPane optionPane;
     // End of variables declaration//GEN-END:variables
     private int returnStatus = RET_CANCEL;
+
 }

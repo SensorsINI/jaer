@@ -757,7 +757,9 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         }
 
         public void setAdcEnabled(boolean yes) {
+            boolean oldval=runAdc.isSet();
             runAdc.set(yes);
+            getSupport().firePropertyChange(ApsDvsConfig.ADC_ENABLED, oldval, runAdc.isSet());
         }
         
         public boolean isGlobalShutterMode(){
