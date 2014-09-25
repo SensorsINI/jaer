@@ -11,6 +11,9 @@ package net.sf.jaer.config;
  */
 public interface ApsDvsConfig {
     
+       public static final String IMU_DISPLAY_ENABLED = "IMU_DISPLAY_ENABLED", IMU_ENABLED="IMU_ENABLED", IMU_DLPF_CHANGED="IMU_DLPF_CHANGED", IMU_SAMPLE_RATE_CHANGED="IMU_SAMPLE_RATE_CHANGED", IMU_GYRO_SCALE_CHANGED="IMU_GYRO_SCALE_CHANGED", IMU_ACCEL_SCALE_CHANGED="IMU_ACCEL_SCALE_CHANGED";
+
+    
     public abstract boolean isDisplayFrames();
     
     public abstract void setDisplayFrames(boolean displayFrames);
