@@ -20,6 +20,7 @@ import de.thesycon.usbio.PnPNotify;
 import de.thesycon.usbio.PnPNotifyInterface;
 import de.thesycon.usbio.UsbIo;
 import de.thesycon.usbio.UsbIoErrorCodes;
+import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 
 /**
  * Static methods and flags for USBIO to help build code that will run on non-windows platforms even though Thesycon USBIO
@@ -63,7 +64,10 @@ public class UsbIoUtilities {
                 }
 //                log.info("USBIOJAVA is avaiable");
             } catch (UnsatisfiedLinkError e) {
-                log.warning(e.getMessage() + ": usbiojava libary not found; either you are not running Windows, the UsbIoJava.jar is not on the classpath, or the native DLL is not on java.library.path");
+                String s=e.getMessage() + ": usbiojava libary not found; either you are not running Windows, the UsbIoJava.jar is not on the classpath, or the native DLL is not on java.library.path. It could also be that you are using a runtime configuration that sets the java.library.path to point to 64-bit DLLs but are using a 32-bit JVM, or vice versa.";
+                log.warning(s);
+                s="<html>"+e.getMessage() + "<br>: usbiojava libary not found; <br>either you are not running Windows, the UsbIoJava.jar is not on the classpath, <br>or the native DLL is not on java.library.path. <br>It could also be that you are using a runtime configuration that sets <nr>java.library.path to point to 64-bit DLLs but are using a 32-bit JVM, or vice versa.<br>In Netbeans, choose either <em>win 32-bit JVM</em> or <em>win 64-bit JVM</em> runtime configuraton depending on your runtime JVM";
+                new WarningDialogWithDontShowPreference(null, false, "Usbio Library warning", s).setVisible(true);
                 setLibraryLoaded(false);
             }
         }
