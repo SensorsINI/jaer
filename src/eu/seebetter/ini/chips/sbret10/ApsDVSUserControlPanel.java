@@ -185,6 +185,8 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
             }else if(name==AEChipRenderer.PROPERTY_COLOR_SCALE){
                 dvsContSp.setValue(renderer.getColorScale());
             }
+            
+            // TODO handle IMU changes here
         } catch (Exception e) {
             log.warning("responding to property change, caught " + e.toString());
             e.printStackTrace();

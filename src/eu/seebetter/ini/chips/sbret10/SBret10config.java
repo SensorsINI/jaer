@@ -526,8 +526,9 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
     /**
      * IMU control of Invensense IMU-6100A, encapsulated here.
      */
-    public class ImuControl extends Observable implements Observer, HasPropertyTooltips {
+    public class ImuControl extends Observable implements /*Observer,*/ HasPropertyTooltips {
 
+        public static final String IMU_DISPLAY_ENABLED = "IMU_DISPLAY_ENABLED", IMU_ENABLED="IMU_ENABLED", IMU_DLPF_CHANGED="IMU_DLPF_CHANGED", IMU_SAMPLE_RATE_CHANGED="IMU_SAMPLE_RATE_CHANGED", IMU_GYRO_SCALE_CHANGED="IMU_GYRO_SCALE_CHANGED", IMU_ACCEL_SCALE_CHANGED="IMU_ACCEL_SCALE_CHANGED";
         public final String EVENT_IMU_ENABLED = "imuEnabled", EVENT_IMU_DISPLAY_ENABLED = "imuDisplayEnabled";
         private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
         PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
@@ -535,11 +536,11 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         private ImuAccelScale imuAccelScale = ImuAccelScale.valueOf(chip.getPrefs().get("ImuAccelScale", ImuAccelScale.ImuAccelScaleG8.toString()));
         
         public ImuControl() {
-            imu0PowerMgmtClkRegConfig.addObserver(this);
-            imu1DLPFConfig.addObserver(this);
-            imu2SamplerateDividerConfig.addObserver(this);
-            imu3GyroConfig.addObserver(this);
-            imu4AccelConfig.addObserver(this);
+//            imu0PowerMgmtClkRegConfig.addObserver(this);
+//            imu1DLPFConfig.addObserver(this);
+//            imu2SamplerateDividerConfig.addObserver(this);
+//            imu3GyroConfig.addObserver(this);
+//            imu4AccelConfig.addObserver(this);
             // TODO awkward renaming of properties here due to wrongly named delegator methods
             tooltipSupport.setPropertyTooltip("imu0", imu0PowerMgmtClkRegConfig.getDescription());
             tooltipSupport.setPropertyTooltip("imu1", imu1DLPFConfig.getDescription());
@@ -557,9 +558,11 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         }
 
         public void setImuEnabled(boolean yes) {
+            boolean old=(miscControlBits.get()&1)==1;
             int oldval=miscControlBits.get();
             int newval=(oldval&(~1))|(yes ? 1 : 0);
             miscControlBits.set(newval);
+            getSupport().firePropertyChange(IMU_ENABLED, old,yes);
         }
 
         /** Register 26: CONFIG, digital low pass filter setting
@@ -567,10 +570,12 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         */
         public void setDLPF(int dlpf){
             if(dlpf<0 || dlpf>6) throw new IllegalArgumentException("dlpf="+dlpf+" is outside allowed range 0-6");
+            int old=imu2SamplerateDividerConfig.get()&7;
             int oldval=imu1DLPFConfig.get();
             int newval=(oldval&(~7))|(dlpf);
             imu1DLPFConfig.set(newval);
             activateNewRegisterValues();
+            getSupport().firePropertyChange(IMU_DLPF_CHANGED, old,dlpf);
         }
         
         public int getDLPF(){
@@ -580,8 +585,10 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
           /** Register 27: Sample rate divider */
         public void setSampleRateDivider(int srd){
             if(srd<0 || srd>255) throw new IllegalArgumentException("sampleRateDivider="+srd+" is outside allowed range 0-255");
-            imu1DLPFConfig.set((srd&0xFF));
+            int old=imu2SamplerateDividerConfig.get();
+            imu2SamplerateDividerConfig.set((srd&0xFF));
             activateNewRegisterValues();
+            getSupport().firePropertyChange(IMU_SAMPLE_RATE_CHANGED, old,srd);
         }
         
         public int getSampleRateDivider(){
@@ -595,11 +602,13 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         }
 
         public void setGyroScale(ImuGyroScale scale) {
+            ImuGyroScale old=this.imuGyroScale;
             this.imuGyroScale = scale;
             chip.getPrefs().put("ImuGyroScale", imuGyroScale.toString());
             setFS_SEL(scale.fs_sel);
             IMUSample.setFullScaleGyroDegPerSec(imuGyroScale.fullScaleDegPerSec);
             IMUSample.setGyroSensitivityScaleFactorDegPerSecPerLsb(1/imuGyroScale.scaleFactorLsbPerDegPerSec);
+            getSupport().firePropertyChange(IMU_GYRO_SCALE_CHANGED, old, this.imuGyroScale);
         }
 
        
@@ -614,11 +623,13 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
          * @param imuAccelScale the imuAccelScale to set
          */
         public void setAccelScale(ImuAccelScale imuAccelScale) {
+            ImuAccelScale old=this.imuAccelScale;
             this.imuAccelScale = imuAccelScale;
             chip.getPrefs().put("ImuAccelScale", imuAccelScale.toString());
             setAFS_SEL(imuAccelScale.afs_sel);
             IMUSample.setFullScaleAccelG(imuAccelScale.fullScaleG);
             IMUSample.setAccelSensitivityScaleFactorGPerLsb(1/imuAccelScale.scaleFactorLsbPerG);
+            getSupport().firePropertyChange(IMU_ACCEL_SCALE_CHANGED, old, this.imuAccelScale);
         }
         
         // accel scale bits
@@ -647,7 +658,7 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
             boolean old = this.displayImuEnabled;
             this.displayImuEnabled = yes;
             chip.getPrefs().putBoolean("IMU.displayEnabled", yes);
-            getSupport().firePropertyChange("displayImuEnabled", old, displayImuEnabled);
+            getSupport().firePropertyChange(IMU_DISPLAY_ENABLED, old, displayImuEnabled);
         }
 
         private void setImu0(int value) throws IllegalArgumentException {
@@ -693,15 +704,6 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
 
         private int getImu4() {
             return imu4AccelConfig.get();
-        }
-
-        @Override
-        public void update(Observable o, Object arg) {
-            if (o == imu0PowerMgmtClkRegConfig) {
-                propertyChangeSupport.firePropertyChange(EVENT_IMU_ENABLED, null, imu0PowerMgmtClkRegConfig.get());
-            } // TODO
-            setChanged();
-            notifyObservers(o);
         }
 
         private void activateNewRegisterValues() {
