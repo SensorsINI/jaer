@@ -54,6 +54,7 @@ import ch.unizh.ini.jaer.config.fx2.TriStateablePortBit;
 import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
 import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
 import ch.unizh.ini.jaer.config.onchip.OutputMux;
+import javax.swing.JLabel;
 
 /**
  * Bias generator, On-chip diagnostic readout, video acquisition and rendering
@@ -305,13 +306,15 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
 
         //graphics
         JPanel videoControlPanel = new JPanel();
+        videoControlPanel.add(new JLabel("<html>Controls display of APS video frame data"));
         videoControlPanel.setLayout(new BoxLayout(videoControlPanel, BoxLayout.Y_AXIS));
         configTabbedPane.add("Video Control", videoControlPanel);
         videoControlPanel.add(new ParameterControlPanel(videoControl));
 
         //biasgen
         JPanel combinedBiasShiftedSourcePanel = new JPanel();
-        combinedBiasShiftedSourcePanel.setLayout(new BoxLayout(combinedBiasShiftedSourcePanel, BoxLayout.Y_AXIS));
+      videoControlPanel.add(new JLabel("<html>Low-level control of on-chip bias currents and voltages. <p>These are only for experts!"));
+         combinedBiasShiftedSourcePanel.setLayout(new BoxLayout(combinedBiasShiftedSourcePanel, BoxLayout.Y_AXIS));
         combinedBiasShiftedSourcePanel.add(super.buildControlPanel());
         combinedBiasShiftedSourcePanel.add(new ShiftedSourceControlsCF(ssn));
         combinedBiasShiftedSourcePanel.add(new ShiftedSourceControlsCF(ssp));
@@ -322,12 +325,14 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
 
         //aps readout
         JPanel apsReadoutPanel = new JPanel();
+      apsReadoutPanel.add(new JLabel("<html>Low-level control of APS frame readout. <p>Hover over value fields to see explanations. <b>Incorrect settings will result in unusable output."));
         apsReadoutPanel.setLayout(new BoxLayout(apsReadoutPanel, BoxLayout.Y_AXIS));
         configTabbedPane.add("APS Readout Control", apsReadoutPanel);
         apsReadoutPanel.add(new ParameterControlPanel(apsReadoutControl));
 
         // IMU control 
         JPanel imuControlPanel = new JPanel();
+      imuControlPanel.add(new JLabel("<html>Low-level control of integrated inertial measurement unit."));
         imuControlPanel.setLayout(new BoxLayout(imuControlPanel, BoxLayout.Y_AXIS));
         configTabbedPane.add("IMU Control", imuControlPanel);
         imuControlPanel.add(new ImuControlPanel(this));
@@ -335,6 +340,7 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         // autoexposure
         if (chip instanceof SBret10) {
             JPanel autoExposurePanel = new JPanel();
+      autoExposurePanel.add(new JLabel("<html>Automatic exposure control.<p>The settings here determine when and by how much the exposure value should be changed. <p> The strategy followed attempts to avoid a sitation <b> where too many pixels are under- or over-exposed. Hover over entry fields to see explanations."));
             autoExposurePanel.setLayout(new BoxLayout(autoExposurePanel, BoxLayout.Y_AXIS));
             configTabbedPane.add("APS Autoexposure Control", autoExposurePanel);
             autoExposurePanel.add(new ParameterControlPanel(((SBret10) chip).getAutoExposureController()));
