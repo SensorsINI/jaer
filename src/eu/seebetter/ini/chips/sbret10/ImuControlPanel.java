@@ -31,20 +31,20 @@ public class ImuControlPanel extends javax.swing.JPanel implements PropertyChang
     public ImuControlPanel(SBret10config config) {
         imuControl = config.imuControl;
         initComponents();
+        dontProcess = true;
         gyroFullScaleComboBox.removeAllItems();
         for (ImuGyroScale scale : ImuGyroScale.values()) {
-            gyroFullScaleComboBox.addItem(scale.toString());
+            gyroFullScaleComboBox.addItem(scale.fullScaleString);
         }
         accelFullScaleComboBox.removeAllItems();
         for (ImuAccelScale scale : ImuAccelScale.values()) {
-            accelFullScaleComboBox.addItem(scale.toString());
+            accelFullScaleComboBox.addItem(scale.fullScaleString);
         }
-        dontProcess = true;
         imuEnabledCB.setSelected(imuControl.isImuEnabled());
         imuVisibleCB.setSelected(imuControl.isDisplayImu());
 
-        gyroFullScaleComboBox.setSelectedItem(imuControl.getGyroScale());
-        accelFullScaleComboBox.setSelectedItem(imuControl.getAccelScale());
+        gyroFullScaleComboBox.setSelectedIndex(imuControl.getGyroScale().ordinal());
+        accelFullScaleComboBox.setSelectedIndex(imuControl.getAccelScale().ordinal());
         dontProcess = false;
         dlpfTF.setText(Integer.toString(imuControl.getDLPF()));
         sampleRateDividerTF.setText(Integer.toString(imuControl.getSampleRateDivider()));
@@ -207,11 +207,8 @@ public class ImuControlPanel extends javax.swing.JPanel implements PropertyChang
         if (dontProcess) {
             return;
         }
-        Object o = gyroFullScaleComboBox.getSelectedItem();
-        if (o == null) {
-            return;
-        }
-        ImuGyroScale scale = ImuGyroScale.valueOf((String) o);
+        int index=gyroFullScaleComboBox.getSelectedIndex();
+        ImuGyroScale scale = ImuGyroScale.values()[index];
         imuControl.setGyroScale(scale);
     }//GEN-LAST:event_gyroFullScaleComboBoxActionPerformed
 
@@ -219,11 +216,8 @@ public class ImuControlPanel extends javax.swing.JPanel implements PropertyChang
         if (dontProcess) {
             return;
         }
-        Object o = accelFullScaleComboBox.getSelectedItem();
-        if (o == null) {
-            return;
-        }
-        ImuAccelScale scale = ImuAccelScale.valueOf((String) o);
+        int index=accelFullScaleComboBox.getSelectedIndex();
+        ImuAccelScale scale = ImuAccelScale.values()[index];
         imuControl.setAccelScale(scale);
     }//GEN-LAST:event_accelFullScaleComboBoxActionPerformed
 
