@@ -27,6 +27,7 @@ import static net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2.STATUS_END
 import static net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2.VR_DOWNLOAD_FIRMWARE;
 import static net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2.log;
 import static net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2.GUID;
+import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * Adds functionality of apsDVS sensors to based CypressFX2Biasgen class. The
@@ -437,6 +438,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
             long lastBufTime=0;
             final int maxLength=50;
             LinkedList<BufInfo> list=new LinkedList<BufInfo>();
+            EngineeringFormat fmt=new EngineeringFormat();
             void addBuf(UsbIoBuf b){
                 list.add(new BufInfo(b.BytesTransferred));
                 if(list.size()>maxLength)list.removeFirst();
@@ -459,7 +461,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                 }
                 
                 public String toString(){
-                    return String.format("%d ns %d bytes",dtNs,numBytes);
+                    return String.format("%ss %d bytes",fmt.format(1e-9f*dtNs),numBytes);
                 }
                 
             }
@@ -470,7 +472,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
         protected void translateEvents(UsbIoBuf b) {
             // TODO debug
 //            if(imuSample!=null) System.out.println(imuSample);
-            //stats.addBuf(b);
+//            stats.addBuf(b);
             try {
                 // data from cDVS is stateful. 2 bytes sent for each word of data can consist of either timestamp, y address, x address, or ADC value.
                 // The type of data is determined from bits in these two bytes.
