@@ -101,6 +101,7 @@ public class ImuControlPanel extends javax.swing.JPanel implements PropertyChang
         jLabel2.setText("Accelerometer full scale range (g)");
 
         jLabel3.setText("Sample rate divider (0-255)");
+        jLabel3.setToolTipText("The basic sample rate when DLPF is disabled (DLPF=0) is 8kHz (1kHz when DLPF>0) for gyro and 1kHz for accelerometer. This divider reduces the sample rate by the selected factor.");
 
         accelFullScaleComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
         accelFullScaleComboBox.addActionListener(new java.awt.event.ActionListener() {
@@ -118,6 +119,7 @@ public class ImuControlPanel extends javax.swing.JPanel implements PropertyChang
         });
 
         jLabel4.setText("Digital Low Pass Filter Setting (0-6)");
+        jLabel4.setToolTipText("The DLPF is integrated to the IMU.  See Sec. 4.3 Configruation CONFIG. With DLPF=0, Accel BW=260Hz with delay=0 and Gyro BW=256Hz with 0.96ms delay, if Fs=8kHz.");
 
         dlpfTF.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
         dlpfTF.setText("jTextField2");
@@ -264,18 +266,18 @@ public class ImuControlPanel extends javax.swing.JPanel implements PropertyChang
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         switch (evt.getPropertyName()) {
-            case ApsDvsConfig.IMU_ENABLED:
+            case ApsDvsConfig.PROPERTY_IMU_ENABLED:
                 imuEnabledCB.setSelected((boolean) evt.getNewValue());
                 break;
-            case ApsDvsConfig.IMU_DISPLAY_ENABLED:
+            case ApsDvsConfig.PROPERTY_IMU_DISPLAY_ENABLED:
                 imuVisibleCB.setSelected((boolean) evt.getNewValue());
                 break;
-            case ApsDvsConfig.IMU_ACCEL_SCALE_CHANGED:
+            case ApsDvsConfig.PROPERTY_IMU_ACCEL_SCALE_CHANGED:
                 dontProcess = true;
                 accelFullScaleComboBox.setSelectedItem(evt.getNewValue());
                 dontProcess = false;
                 break;
-            case ApsDvsConfig.IMU_GYRO_SCALE_CHANGED:
+            case ApsDvsConfig.PROPERTY_IMU_GYRO_SCALE_CHANGED:
                 dontProcess = true;
                 gyroFullScaleComboBox.setSelectedItem(evt.getNewValue());
                 dontProcess = false;

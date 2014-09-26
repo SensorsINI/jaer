@@ -138,6 +138,7 @@
     <Component class="javax.swing.JLabel" name="jLabel3">
       <Properties>
         <Property name="text" type="java.lang.String" value="Sample rate divider (0-255)"/>
+        <Property name="toolTipText" type="java.lang.String" value="The basic sample rate when DLPF is disabled (DLPF=0) is 8kHz (1kHz when DLPF&gt;0) for gyro and 1kHz for accelerometer. This divider reduces the sample rate by the selected factor."/>
       </Properties>
     </Component>
     <Component class="javax.swing.JComboBox" name="accelFullScaleComboBox">
@@ -167,6 +168,7 @@
     <Component class="javax.swing.JLabel" name="jLabel4">
       <Properties>
         <Property name="text" type="java.lang.String" value="Digital Low Pass Filter Setting (0-6)"/>
+        <Property name="toolTipText" type="java.lang.String" value="The DLPF is integrated to the IMU.  See Sec. 4.3 Configruation CONFIG. With DLPF=0, Accel BW=260Hz with delay=0 and Gyro BW=256Hz with 0.96ms delay, if Fs=8kHz."/>
       </Properties>
     </Component>
     <Component class="javax.swing.JTextField" name="dlpfTF">

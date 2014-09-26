@@ -333,9 +333,9 @@
                               </Group>
                               <Group type="102" alignment="0" attributes="0">
                                   <EmptySpace max="-2" attributes="0"/>
-                                  <Component id="captureImagesCB" min="-2" max="-2" attributes="0"/>
+                                  <Component id="captureFramesCheckBox" min="-2" max="-2" attributes="0"/>
                                   <EmptySpace max="-2" attributes="0"/>
-                                  <Component id="diCB" min="-2" max="-2" attributes="0"/>
+                                  <Component id="displayFramesCheckBox" min="-2" max="-2" attributes="0"/>
                               </Group>
                           </Group>
                           <Group type="103" groupAlignment="0" attributes="0">
@@ -379,8 +379,8 @@
               <Group type="102" alignment="0" attributes="0">
                   <EmptySpace min="-2" pref="4" max="-2" attributes="0"/>
                   <Group type="103" groupAlignment="3" attributes="0">
-                      <Component id="captureImagesCB" alignment="3" min="-2" max="-2" attributes="0"/>
-                      <Component id="diCB" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="captureFramesCheckBox" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="displayFramesCheckBox" alignment="3" min="-2" max="-2" attributes="0"/>
                       <Component id="snapshotButton" alignment="3" min="-2" max="-2" attributes="0"/>
                   </Group>
                   <EmptySpace max="-2" attributes="0"/>
@@ -526,13 +526,13 @@
             <BindingProperty name="selected" source="Form" sourcePath="${apsDvsConfig.useAutoContrast}" target="autoContrastCB" targetPath="selected" updateStrategy="0" immediately="false"/>
           </BindingProperties>
         </Component>
-        <Component class="javax.swing.JCheckBox" name="diCB">
+        <Component class="javax.swing.JCheckBox" name="displayFramesCheckBox">
           <Properties>
             <Property name="text" type="java.lang.String" value="Display Frames"/>
             <Property name="toolTipText" type="java.lang.String" value="Enables display of APS imager output"/>
           </Properties>
           <Events>
-            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="diCBActionPerformed"/>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="displayFramesCheckBoxActionPerformed"/>
           </Events>
         </Component>
         <Component class="javax.swing.JCheckBox" name="histCB">
@@ -558,13 +558,13 @@
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="snapshotButtonActionPerformed"/>
           </Events>
         </Component>
-        <Component class="javax.swing.JCheckBox" name="captureImagesCB">
+        <Component class="javax.swing.JCheckBox" name="captureFramesCheckBox">
           <Properties>
             <Property name="text" type="java.lang.String" value="Capture Frames"/>
             <Property name="toolTipText" type="java.lang.String" value="Enables capture of APS imager output (turns on ADC state machine)"/>
           </Properties>
           <Events>
-            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="captureImagesCBActionPerformed"/>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="captureFramesCheckBoxActionPerformed"/>
           </Events>
         </Component>
       </SubComponents>

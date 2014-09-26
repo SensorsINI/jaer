@@ -59,8 +59,8 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         fdSp.setValue(apsDvsConfig.getFrameDelayMs());
         edSp.setValue(apsDvsConfig.getExposureDelayMs());
         deCB.setSelected(apsDvsConfig.isDisplayEvents());
-        diCB.setSelected(apsDvsConfig.isDisplayFrames());
-        captureImagesCB.setSelected(apsDvsConfig.isCaptureFramesEnabled());
+        displayFramesCheckBox.setSelected(apsDvsConfig.isDisplayFrames());
+        captureFramesCheckBox.setSelected(apsDvsConfig.isCaptureFramesEnabled());
         captureEventsCB.setSelected(apsDvsConfig.isCaptureEventsEnabled());
         autoshotThresholdSp.setValue(this.chip.getAutoshotThresholdEvents()>>10);
         final int[] vals={10,100,1000}, mults={1,10,100};
@@ -185,12 +185,14 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
                 setDvsColorModeRadioButtons();
             }else if(name==AEChipRenderer.PROPERTY_COLOR_SCALE){
                 dvsContSp.setValue(renderer.getColorScale());
-            }else if(name==ApsDvsConfig.IMU_ENABLED){
+            }else if(name==ApsDvsConfig.PROPERTY_IMU_ENABLED){
                 imuEnabledCB.setSelected((boolean)evt.getNewValue());
-            }else if(name==ApsDvsConfig.IMU_DISPLAY_ENABLED){
+            }else if(name==ApsDvsConfig.PROPERTY_IMU_DISPLAY_ENABLED){
                 imuVisibleCB.setSelected((boolean)evt.getNewValue());
-            }else if(name==ApsDvsConfig.ADC_ENABLED){
-                diCB.setSelected((boolean)evt.getNewValue());
+            }else if(name==ApsDvsConfig.PROPERTY_DISPLAY_FRAMES_ENABLED){
+                displayFramesCheckBox.setSelected((boolean)evt.getNewValue());
+            }else if(name==ApsDvsConfig.PROPERTY_CAPTURE_FRAMES_ENABLED){
+                captureFramesCheckBox.setSelected((boolean)evt.getNewValue());
             }
             
             // TODO handle IMU changes here
@@ -240,10 +242,10 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         autoshotThresholdSp = new javax.swing.JSpinner();
         contrastSp = new javax.swing.JSpinner();
         autoContrastCB = new javax.swing.JCheckBox();
-        diCB = new javax.swing.JCheckBox();
+        displayFramesCheckBox = new javax.swing.JCheckBox();
         histCB = new javax.swing.JCheckBox();
         snapshotButton = new javax.swing.JButton();
-        captureImagesCB = new javax.swing.JCheckBox();
+        captureFramesCheckBox = new javax.swing.JCheckBox();
         imuPanel = new javax.swing.JPanel();
         imuVisibleCB = new javax.swing.JCheckBox();
         imuEnabledCB = new javax.swing.JCheckBox();
@@ -493,11 +495,11 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${apsDvsConfig.useAutoContrast}"), autoContrastCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
         bindingGroup.addBinding(binding);
 
-        diCB.setText("Display Frames");
-        diCB.setToolTipText("Enables display of APS imager output");
-        diCB.addActionListener(new java.awt.event.ActionListener() {
+        displayFramesCheckBox.setText("Display Frames");
+        displayFramesCheckBox.setToolTipText("Enables display of APS imager output");
+        displayFramesCheckBox.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                diCBActionPerformed(evt);
+                displayFramesCheckBoxActionPerformed(evt);
             }
         });
 
@@ -519,11 +521,11 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
             }
         });
 
-        captureImagesCB.setText("Capture Frames");
-        captureImagesCB.setToolTipText("Enables capture of APS imager output (turns on ADC state machine)");
-        captureImagesCB.addActionListener(new java.awt.event.ActionListener() {
+        captureFramesCheckBox.setText("Capture Frames");
+        captureFramesCheckBox.setToolTipText("Enables capture of APS imager output (turns on ADC state machine)");
+        captureFramesCheckBox.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                captureImagesCBActionPerformed(evt);
+                captureFramesCheckBoxActionPerformed(evt);
             }
         });
 
@@ -555,9 +557,9 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
                                 .addComponent(fdSp, javax.swing.GroupLayout.PREFERRED_SIZE, 54, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addGroup(apsPanelLayout.createSequentialGroup()
                                 .addContainerGap()
-                                .addComponent(captureImagesCB)
+                                .addComponent(captureFramesCheckBox)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(diCB)))
+                                .addComponent(displayFramesCheckBox)))
                         .addGroup(apsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(apsPanelLayout.createSequentialGroup()
                                 .addGap(9, 9, 9)
@@ -588,8 +590,8 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
             .addGroup(apsPanelLayout.createSequentialGroup()
                 .addGap(4, 4, 4)
                 .addGroup(apsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(captureImagesCB)
-                    .addComponent(diCB)
+                    .addComponent(captureFramesCheckBox)
+                    .addComponent(displayFramesCheckBox)
                     .addComponent(snapshotButton))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(apsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
@@ -727,9 +729,9 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         }
     }//GEN-LAST:event_edSpStateChanged
 
-    private void diCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_diCBActionPerformed
-        apsDvsConfig.setDisplayFrames(diCB.isSelected());
-    }//GEN-LAST:event_diCBActionPerformed
+    private void displayFramesCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_displayFramesCheckBoxActionPerformed
+        apsDvsConfig.setDisplayFrames(displayFramesCheckBox.isSelected());
+    }//GEN-LAST:event_displayFramesCheckBoxActionPerformed
 
     private void deCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deCBActionPerformed
         apsDvsConfig.setDisplayEvents(deCB.isSelected());
@@ -771,9 +773,9 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         chip.setAutoExposureEnabled(autoExpCB.isSelected());
     }//GEN-LAST:event_autoExpCBActionPerformed
 
-    private void captureImagesCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_captureImagesCBActionPerformed
-        apsDvsConfig.setCaptureFramesEnabled(captureImagesCB.isSelected());
-    }//GEN-LAST:event_captureImagesCBActionPerformed
+    private void captureFramesCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_captureFramesCheckBoxActionPerformed
+        apsDvsConfig.setCaptureFramesEnabled(captureFramesCheckBox.isSelected());
+    }//GEN-LAST:event_captureFramesCheckBoxActionPerformed
 
     private void captureEventsCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_captureEventsCBActionPerformed
         apsDvsConfig.setCaptureEvents(captureEventsCB.isSelected());
@@ -790,10 +792,10 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
     private javax.swing.JSpinner autoshotThresholdSp;
     private net.sf.jaer.biasgen.PotTweaker bandwidthTweaker;
     private javax.swing.JCheckBox captureEventsCB;
-    private javax.swing.JCheckBox captureImagesCB;
+    private javax.swing.JCheckBox captureFramesCheckBox;
     private javax.swing.JSpinner contrastSp;
     private javax.swing.JCheckBox deCB;
-    private javax.swing.JCheckBox diCB;
+    private javax.swing.JCheckBox displayFramesCheckBox;
     private javax.swing.ButtonGroup dvsColorButGrp;
     private javax.swing.JLabel dvsContLabel;
     private javax.swing.JSpinner dvsContSp;
@@ -859,7 +861,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         }else if(o==videoControl){
             contrastSp.setValue(apsDvsConfig.getContrast());
             autoContrastCB.setSelected(apsDvsConfig.isUseAutoContrast());
-            diCB.setSelected(apsDvsConfig.isDisplayFrames());
+            displayFramesCheckBox.setSelected(apsDvsConfig.isDisplayFrames());
             deCB.setSelected(apsDvsConfig.isDisplayEvents());
         }else if(o==apsReadoutControl){
             edSp.setValue(apsDvsConfig.getExposureDelayMs());
