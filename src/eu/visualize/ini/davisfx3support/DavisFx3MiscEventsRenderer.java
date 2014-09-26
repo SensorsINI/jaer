@@ -30,23 +30,35 @@ public class DavisFx3MiscEventsRenderer extends EventFilter2D implements FrameAn
     }
     
     private ArrayList<ApsDvsEvent> drawList=null;
+    private int myeventcounter;
 
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
         GL2 gl=drawable.getGL().getGL2();
         for(ApsDvsEvent e:drawList){
-            gl.glColor3f(0,0,1);
-            gl.glRectf(e.x-1, e.y-1, e.x+1, e.y+1);
+            if((e.address&0x7ff)>>8==6) {
+                gl.glColor3f(0,0,(e.address&0x3)+1);
+                gl.glRectf(e.x-2, e.y-2, e.x+2, e.y+2);
+            }
+            else if((e.address&0x7ff)>>8==7){
+                gl.glColor3f((e.address&0x3)+1,0,(e.address&0x3)+1);
+                gl.glRectf(e.x-2, e.y-2, e.x+2, e.y+2);
+            }
+            else e.special=false; // this is to do nothing but make a breakpoint to stop.
+       
         }
         drawList.clear();
+        myeventcounter = 0;
     }
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         for(BasicEvent o:in){
             ApsDvsEvent e=(ApsDvsEvent)o;
-            if((e.address&0x7ff)==0) continue;
-            drawList.add(e);
+            if(e.isDVSEvent() && (e.address&0x7ff)!=0) {
+                drawList.add(e);
+                myeventcounter++;
+            }
         }       
         return in;
     }
@@ -63,10 +75,11 @@ public class DavisFx3MiscEventsRenderer extends EventFilter2D implements FrameAn
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes); 
         if(yes){
-            drawList=new ArrayList(1000);
+            drawList=new ArrayList(100000);
         }else{
             drawList=null;
         }
+        myeventcounter = 0;
     }
     
     

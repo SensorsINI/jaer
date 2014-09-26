@@ -632,8 +632,20 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                     //           log.info("received timestamp");
                                     break;
                                 case 2: // wrap
-                                    wrapAdd += 0x4000L;
-                                    NumberOfWrapEvents++;
+                                    lastwrap = currentwrap;
+                                    currentwrap = (0xff & buf[i]);
+                                    int kk = currentwrap - lastwrap;
+                                    if (kk<0) 
+                                        kk = 256-lastwrap + currentwrap;
+                                    if (kk==1) wrapAdd += 0x4000L;
+                                    else if (kk>1){
+                                        log.warning(this.toString()+": detected " + (kk-1) + " missing wrap events.");
+                                        //while (kk-->0){
+                                            wrapAdd += kk*0x4000L;
+                                            NumberOfWrapEvents+=kk;
+                                        //}
+                                        
+                                    }
                                     //   log.info("wrap");
                                     break;
                                 case 3: // ts reset event

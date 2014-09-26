@@ -1440,6 +1440,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         final int WRAP_START = 0; //(int)(0xFFFFFFFFL&(2147483648L-0x400000L)); // set high to test big wrap 1<<30;
         /** wrapAdd is the time to add to short timestamp to unwrap it */
         protected int wrapAdd = WRAP_START; //0;
+        protected int lastwrap = WRAP_START; //0;
+        protected int currentwrap = WRAP_START; //0;
         protected int lastWrapAdd = 0;
         /** used to indicate a 32 bit timestamp wrap */
         protected boolean wrappedBig = false;  // indicates that wrapAdd has just wrapped itself, so that we should allow nonmonotonic timestamp

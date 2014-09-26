@@ -26,7 +26,10 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
             EVENT_TYPE_SHIFT = 10,
             EVENT_TYPE_MASK = 3 << EVENT_TYPE_SHIFT, // these 2 bits encode readout type for APS and other event type (IMU/DVS) for
             EXTERNAL_INPUT_EVENT_ADDR = 1 << EVENT_TYPE_SHIFT, // This special address is is for external pin input events
-            IMU_SAMPLE_VALUE = 3 << EVENT_TYPE_SHIFT // this special code is for IMU sample events
+            IMU_SAMPLE_VALUE = 3 << EVENT_TYPE_SHIFT, // this special code is for IMU sample events
+            HW_BGAF = 5,
+            HW_TRACKER_CM = 6,
+            HW_TRACKER_CLUSTER = 7
             ;
 
     // see the files in trunk\doc\data structure\apsDVS 

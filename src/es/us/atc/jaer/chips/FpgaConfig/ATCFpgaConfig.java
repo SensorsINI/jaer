@@ -21,6 +21,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 	private boolean trackerEnable = getBoolean("trackerEnable", true);
 	private boolean BGAF_OTs_Enable = getBoolean("BGAF_OTs_Enable", true);
 	private boolean OTsEnable = getBoolean("OTsEnable", true);
+        private boolean DAVIS_Enable = getBoolean("DAVIS_Enable", true);
 
 	private int bgaFilterDeltaT = getInt("bgaFilterDeltaT", 100);
 
@@ -66,6 +67,15 @@ public class ATCFpgaConfig extends EventFilter2D {
 	public void setOTsEnable(final boolean Enable) {
 		this.OTsEnable = Enable;
 		putBoolean("OTsEnable", Enable);
+	}
+        
+       	public boolean isDAVIS_Enable() {
+		return DAVIS_Enable;
+	}
+
+	public void setDAVIS_Enable(final boolean Enable) {
+		this.DAVIS_Enable = Enable;
+		putBoolean("DAVIS_Enable", Enable);
 	}
 
         public int getTrackerId() {
@@ -162,7 +172,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 	}
 
 	public static int getMaxCmCellRadixMax() {
-		return 7;
+		return 63;
 	}
 
 	public void setCmCellRadixMax(final int cmCellRadixMax) {
@@ -179,7 +189,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 	}
 
 	public static int getMaxCmCellRadixMin() {
-		return 7;
+		return 63;
 	}
 
 	public void setCmCellRadixMin(final int cmCellRadixMin) {
@@ -320,6 +330,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 		sendCommand((byte) 131, (byte) ((bgaFilterDeltaTCycles >>> 24) & 0xFF));
 		sendCommand((byte) 133, (byte) ((getBoolean("BGAF_OTs_Enable", true)) ? (0xFF) : (0x00)));
 		sendCommand((byte) 132, (byte) ((getBoolean("OTsEnable", true)) ? (0xFF) : (0x00)));
+		sendCommand((byte) 134, (byte) ((getBoolean("DAVIS_Enable", true)) ? (0xFF) : (0x00)));
 	}
 
 	@Override
