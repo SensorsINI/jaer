@@ -58,7 +58,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         histCB.setSelected(this.chip.isShowImageHistogram());
         fdSp.setValue(apsDvsConfig.getFrameDelayMs());
         edSp.setValue(apsDvsConfig.getExposureDelayMs());
-        deCB.setSelected(apsDvsConfig.isDisplayEvents());
+        displayEventsCheckBox.setSelected(apsDvsConfig.isDisplayEvents());
         displayFramesCheckBox.setSelected(apsDvsConfig.isDisplayFrames());
         captureFramesCheckBox.setSelected(apsDvsConfig.isCaptureFramesEnabled());
         captureEventsCB.setSelected(apsDvsConfig.isCaptureEventsEnabled());
@@ -193,6 +193,11 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
                 displayFramesCheckBox.setSelected((boolean)evt.getNewValue());
             }else if(name==ApsDvsConfig.PROPERTY_CAPTURE_FRAMES_ENABLED){
                 captureFramesCheckBox.setSelected((boolean)evt.getNewValue());
+            }else if(name==ApsDvsConfig.PROPERTY_CAPTURE_EVENTS_ENABLED){
+                captureEventsCB.setSelected((boolean)evt.getNewValue());
+            }else if(name==ApsDvsConfig.PROPERTY_DISPLAY_EVENTS_ENABLED){
+                displayEventsCheckBox.setSelected((boolean)evt.getNewValue());
+                
             }
             
             // TODO handle IMU changes here
@@ -216,7 +221,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         dvsColorButGrp = new javax.swing.ButtonGroup();
         jPanel1 = new javax.swing.JPanel();
         dvsPanel = new javax.swing.JPanel();
-        deCB = new javax.swing.JCheckBox();
+        displayEventsCheckBox = new javax.swing.JCheckBox();
         dvsPixControl = new javax.swing.JPanel();
         bandwidthTweaker = new net.sf.jaer.biasgen.PotTweaker();
         thresholdTweaker = new net.sf.jaer.biasgen.PotTweaker();
@@ -264,11 +269,11 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         dvsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "DVS", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 1, 11))); // NOI18N
         dvsPanel.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
 
-        deCB.setText("Display events");
-        deCB.setToolTipText("Enables rendering of DVS events");
-        deCB.addActionListener(new java.awt.event.ActionListener() {
+        displayEventsCheckBox.setText("Display events");
+        displayEventsCheckBox.setToolTipText("Enables rendering of DVS events");
+        displayEventsCheckBox.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                deCBActionPerformed(evt);
+                displayEventsCheckBoxActionPerformed(evt);
             }
         });
 
@@ -375,7 +380,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
                 .addContainerGap()
                 .addComponent(captureEventsCB, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(deCB, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(displayEventsCheckBox, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(dvsContLabel)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -402,7 +407,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
                 .addGap(0, 7, Short.MAX_VALUE)
                 .addGroup(dvsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(captureEventsCB)
-                    .addComponent(deCB)
+                    .addComponent(displayEventsCheckBox)
                     .addComponent(dvsContLabel)
                     .addComponent(dvsContSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(dvsGrayRB)
@@ -733,9 +738,9 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         apsDvsConfig.setDisplayFrames(displayFramesCheckBox.isSelected());
     }//GEN-LAST:event_displayFramesCheckBoxActionPerformed
 
-    private void deCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deCBActionPerformed
-        apsDvsConfig.setDisplayEvents(deCB.isSelected());
-    }//GEN-LAST:event_deCBActionPerformed
+    private void displayEventsCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_displayEventsCheckBoxActionPerformed
+        apsDvsConfig.setDisplayEvents(displayEventsCheckBox.isSelected());
+    }//GEN-LAST:event_displayEventsCheckBoxActionPerformed
 
     private void autoshotThresholdSpStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_autoshotThresholdSpStateChanged
         try{
@@ -794,7 +799,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
     private javax.swing.JCheckBox captureEventsCB;
     private javax.swing.JCheckBox captureFramesCheckBox;
     private javax.swing.JSpinner contrastSp;
-    private javax.swing.JCheckBox deCB;
+    private javax.swing.JCheckBox displayEventsCheckBox;
     private javax.swing.JCheckBox displayFramesCheckBox;
     private javax.swing.ButtonGroup dvsColorButGrp;
     private javax.swing.JLabel dvsContLabel;
@@ -862,7 +867,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
             contrastSp.setValue(apsDvsConfig.getContrast());
             autoContrastCB.setSelected(apsDvsConfig.isUseAutoContrast());
             displayFramesCheckBox.setSelected(apsDvsConfig.isDisplayFrames());
-            deCB.setSelected(apsDvsConfig.isDisplayEvents());
+            displayEventsCheckBox.setSelected(apsDvsConfig.isDisplayEvents());
         }else if(o==apsReadoutControl){
             edSp.setValue(apsDvsConfig.getExposureDelayMs());
             fdSp.setValue(apsDvsConfig.getFrameDelayMs());

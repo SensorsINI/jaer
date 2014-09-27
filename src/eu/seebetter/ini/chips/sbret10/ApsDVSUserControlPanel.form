@@ -87,7 +87,7 @@
                   <EmptySpace max="-2" attributes="0"/>
                   <Component id="captureEventsCB" max="32767" attributes="0"/>
                   <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                  <Component id="deCB" max="32767" attributes="0"/>
+                  <Component id="displayEventsCheckBox" max="32767" attributes="0"/>
                   <EmptySpace type="unrelated" max="-2" attributes="0"/>
                   <Component id="dvsContLabel" min="-2" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
@@ -118,7 +118,7 @@
                   <EmptySpace min="0" pref="7" max="32767" attributes="0"/>
                   <Group type="103" groupAlignment="3" attributes="0">
                       <Component id="captureEventsCB" alignment="3" min="-2" max="-2" attributes="0"/>
-                      <Component id="deCB" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="displayEventsCheckBox" alignment="3" min="-2" max="-2" attributes="0"/>
                       <Component id="dvsContLabel" alignment="3" min="-2" max="-2" attributes="0"/>
                       <Component id="dvsContSp" alignment="3" min="-2" max="-2" attributes="0"/>
                       <Component id="dvsGrayRB" alignment="3" min="-2" max="-2" attributes="0"/>
@@ -143,13 +143,13 @@
         </DimensionLayout>
       </Layout>
       <SubComponents>
-        <Component class="javax.swing.JCheckBox" name="deCB">
+        <Component class="javax.swing.JCheckBox" name="displayEventsCheckBox">
           <Properties>
             <Property name="text" type="java.lang.String" value="Display events"/>
             <Property name="toolTipText" type="java.lang.String" value="Enables rendering of DVS events"/>
           </Properties>
           <Events>
-            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="deCBActionPerformed"/>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="displayEventsCheckBoxActionPerformed"/>
           </Events>
         </Component>
         <Container class="javax.swing.JPanel" name="dvsPixControl">

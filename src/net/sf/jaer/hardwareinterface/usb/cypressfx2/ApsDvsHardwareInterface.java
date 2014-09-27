@@ -10,23 +10,17 @@ import eu.seebetter.ini.chips.*;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import de.thesycon.usbio.*;
-import static de.thesycon.usbio.UsbIoErrorCodes.USBIO_ERR_CANCELED;
-import static de.thesycon.usbio.UsbIoErrorCodes.USBIO_ERR_DEVICE_GONE;
 import static de.thesycon.usbio.UsbIoErrorCodes.USBIO_ERR_SUCCESS;
 import de.thesycon.usbio.structs.*;
 import eu.seebetter.ini.chips.sbret10.IMUSample;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import javax.swing.ProgressMonitor;
 import java.io.*;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.concurrent.ArrayBlockingQueue;
-import static net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2.PROPERTY_CHANGE_ASYNC_STATUS_MSG;
-import static net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2.STATUS_ENDPOINT_ADDRESS;
+import net.sf.jaer.config.ApsDvsConfig;
 import static net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2.VR_DOWNLOAD_FIRMWARE;
 import static net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2.log;
-import static net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2.GUID;
 import net.sf.jaer.util.EngineeringFormat;
 
 /**
@@ -48,7 +42,6 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
      * being consumed here by merging with event stream
      */
     public static final int IMU_SAMPLE_QUEUE_LENGTH = 128;
-    private boolean translateRowOnlyEvents = prefs.getBoolean("ApsDvsHardwareInterface.translateRowOnlyEvents", false);
     private ArrayBlockingQueue<IMUSample> imuSampleQueue; // this queue is used for holding imu samples sent to aeReader
 //     private long imuLastSystemTimeNano=System.nanoTime();
 //     private LowpassFilter imuSampleIntervalFilterNs=new LowpassFilter(100);
@@ -67,7 +60,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
      */
     public ApsDvsHardwareInterface(int devNumber) {
         super(devNumber);
-        imuSampleQueue = new ArrayBlockingQueue<IMUSample>(IMU_SAMPLE_QUEUE_LENGTH);
+        imuSampleQueue = new ArrayBlockingQueue<IMUSample>(IMU_SAMPLE_QUEUE_LENGTH); // TODO not needed
 
     }
 
@@ -283,26 +276,11 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
     }
     boolean gotY = false; // TODO  hack for debugging state machine
 
-    /**
-     * If set, then row-only events are transmitted to raw packets from USB
-     * interface
-     *
-     * @param translateRowOnlyEvents true to translate these parasitic events.
-     */
-    public void setTranslateRowOnlyEvents(boolean translateRowOnlyEvents) {
-        this.translateRowOnlyEvents = translateRowOnlyEvents;
-        prefs.putBoolean("ApsDvsHardwareInterface.translateRowOnlyEvents", translateRowOnlyEvents);
-    }
-
-    public boolean isTranslateRowOnlyEvents() {
-        return translateRowOnlyEvents;
-    }
-
-    @Override
+     @Override
     public synchronized void resetTimestamps() {
         super.resetTimestamps();
         if (imuSampleQueue != null) {
-            imuSampleQueue.clear();
+            imuSampleQueue.clear();  // TODO not needed
         }
     }
     
@@ -370,7 +348,8 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
         public RetinaAEReader(CypressFX2 cypress) throws HardwareInterfaceException {
             super(cypress);
             resetFrameAddressCounters();
-//            getSupport().addPropertyChangeListener(CypressFX2.PROPERTY_CHANGE_ASYNC_STATUS_MSG, this);
+            setAEReaderFifoSize(((ApsDvsConfig)(chip.getBiasgen())).getAeReaderFifoSize()); // TODO awkward, should move all this USB buffer size stuff to AEchip preferences and out of the hardware interface, which should not have any preference values!
+            setAEReaderNumBuffers(((ApsDvsConfig)(chip.getBiasgen())).getAeReaderNumBuffers());
         }
         /**
          * Method to translate the UsbIoBuffer for the DVS320 sensor which uses
@@ -473,6 +452,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
             // TODO debug
 //            if(imuSample!=null) System.out.println(imuSample);
 //            stats.addBuf(b);
+            boolean translateRowOnlyEvents=((ApsDvsConfig)(chip.getBiasgen())).isTranslateRowOnlyEvents();
             try {
                 // data from cDVS is stateful. 2 bytes sent for each word of data can consist of either timestamp, y address, x address, or ADC value.
                 // The type of data is determined from bits in these two bytes.
@@ -603,7 +583,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                             // see if there are any IMU samples to add to packet
                                             // merge the IMUSamples to the packet, attempting to maintain timestamp monotonicity, 
                                             // even if the timestamp is on a different origin that is not related to the data on this endpoint.
-                                            if (imuSample == null) {
+                                            if (imuSample == null) { // TODO not needed anymore
                                                 imuSample = imuSampleQueue.poll();
                                             }
 

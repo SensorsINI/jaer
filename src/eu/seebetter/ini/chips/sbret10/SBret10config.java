@@ -54,7 +54,10 @@ import ch.unizh.ini.jaer.config.fx2.TriStateablePortBit;
 import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
 import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
 import ch.unizh.ini.jaer.config.onchip.OutputMux;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import javax.swing.JLabel;
+import net.sf.jaer.biasgen.Biasgen.HasPreference;
 
 /**
  * Bias generator, On-chip diagnostic readout, video acquisition and rendering
@@ -62,7 +65,7 @@ import javax.swing.JLabel;
  *
  * @author Christian/Tobi
  */
-public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, ApsDvsTweaks {
+public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, ApsDvsTweaks, HasPreference {
 
     private static final float EXPOSURE_CONTROL_CLOCK_FREQ_HZ = 30000000 / 1025; // this is actual clock freq in Hz of clock that controls timing of inter-frame delay and exposure delay
     protected ShiftedSourceBiasCF ssn, ssp;
@@ -110,6 +113,10 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
     protected ApsReadoutControl apsReadoutControl;
     private int autoShotThreshold; // threshold for triggering a new frame snapshot automatically
     protected ImuControl imuControl;
+
+    private int aeReaderFifoSize;
+    private int aeReaderNumBuffers;
+    private boolean translateRowOnlyEvents;
 
     /**
      * Creates a new instance of chip configuration
@@ -210,9 +217,9 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
 
         // imuControl
         imuControl = new ImuControl();
-      
+
         setBatchEditOccurring(true);
-        loadPreference();
+        loadPreferences();
         setBatchEditOccurring(false);
         try {
             sendConfiguration(this);
@@ -221,15 +228,39 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         }
 
         syncTimestampMasterEnabled.set(true); // normally set this true despite preference value because slave mode should be set by user or by plug insertion to slave input 3.5mm plug
+
+    }
+
+    @Override
+    public void storePreference() {
+        super.storePreference(); //To change body of generated methods, choose Tools | Templates.
+        getChip().getPrefs().putInt("aeReaderFifoSize", aeReaderFifoSize);
+        getChip().getPrefs().putInt("aeReaderNumBuffers", aeReaderNumBuffers);
+        getChip().getPrefs().putBoolean("translateRowOnlyEvents", translateRowOnlyEvents);
+
+    }
+
+    @Override
+    public void loadPreference() {
+        super.loadPreference(); //To change body of generated methods, choose Tools | Templates.
+        setAeReaderFifoSize(getChip().getPrefs().getInt("aeReaderFifoSize", 32384));
+        setAeReaderNumBuffers(getChip().getPrefs().getInt("aeReaderNumBuffers", 4));
+        setTranslateRowOnlyEvents(getChip().getPrefs().getBoolean("translateRowOnlyEvents", false));
+        setCaptureEvents(isCaptureEventsEnabled()); // just to call propertyChangeListener that sets GUI buttons
+        setDisplayEvents(isDisplayEvents()); // just to call propertyChangeListener that sets GUI buttons
+        setCaptureFramesEnabled(isCaptureFramesEnabled());
+        setDisplayFrames(isDisplayFrames()); // calls GUI update listeners
     }
 
     @Override
     public boolean isCaptureFramesEnabled() {
+        if(apsReadoutControl==null) return false;
         return apsReadoutControl.isAdcEnabled();
     }
 
     @Override
     public void setCaptureFramesEnabled(boolean yes) {
+        if(apsReadoutControl==null) return;
         apsReadoutControl.setAdcEnabled(yes);
     }
 
@@ -440,6 +471,22 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         }
     }
 
+    /**
+     * If set, then row-only events are transmitted to raw packets from USB
+     * interface
+     *
+     * @param translateRowOnlyEvents true to translate these parasitic events.
+     */
+    public void setTranslateRowOnlyEvents(boolean translateRowOnlyEvents) {
+        boolean old = this.translateRowOnlyEvents;
+        this.translateRowOnlyEvents = translateRowOnlyEvents;
+        getSupport().firePropertyChange(ApsDvsConfig.PROPERTY_TRANSLATE_ROW_ONLY_EVENTS, old, this.translateRowOnlyEvents);
+    }
+
+    public boolean isTranslateRowOnlyEvents() {
+        return translateRowOnlyEvents;
+    }
+
     private void tabbedPaneMouseClicked(java.awt.event.MouseEvent evt) {
         chip.getPrefs().putInt("SBret10.bgTabbedPaneSelectedIndex", configTabbedPane.getSelectedIndex());
     }
@@ -466,11 +513,19 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
 
     @Override
     public void setCaptureEvents(boolean selected) {
+        if (nChipReset == null) {
+            return;
+        }
+        boolean old = nChipReset.isSet();
         nChipReset.set(selected);
+        getSupport().firePropertyChange(ApsDvsConfig.PROPERTY_CAPTURE_EVENTS_ENABLED, null, selected); // TODO have to set null for old value because nChipReset is a bit but it is not linked to listeners like button, so when preferences are loaded and new value is set, then it may be that the button is not updated
     }
 
     @Override
     public boolean isCaptureEventsEnabled() {
+        if (nChipReset == null) {
+            return false; // only to handle initial call before we are fully constructed, when propertyChangeListeners are called
+        }
         return nChipReset.isSet();
     }
 
@@ -547,8 +602,8 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
 //            imu3GyroConfig.addObserver(this);
 //            imu4AccelConfig.addObserver(this);
             // TODO awkward renaming of properties here due to wrongly named delegator methods
-              hasPreferenceList.add(this);
-              loadPreference();
+            hasPreferenceList.add(this);
+            loadPreference();
             tooltipSupport.setPropertyTooltip("imu0", imu0PowerMgmtClkRegConfig.getDescription());
             tooltipSupport.setPropertyTooltip("imu1", imu1DLPFConfig.getDescription());
             tooltipSupport.setPropertyTooltip("imu2", imu2SamplerateDividerConfig.getDescription());
@@ -741,9 +796,9 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         @Override
         final public void loadPreference() {
             try {
-                imuGyroScale = ImuGyroScale.valueOf(chip.getPrefs().get("ImuGyroScale", ImuGyroScale.GyroFullScaleDegPerSec1000.toString()));
-                imuAccelScale = ImuAccelScale.valueOf(chip.getPrefs().get("ImuAccelScale", ImuAccelScale.ImuAccelScaleG8.toString()));
-                this.displayImuEnabled = chip.getPrefs().getBoolean("IMU.displayEnabled", true);
+                setGyroScale(ImuGyroScale.valueOf(chip.getPrefs().get("ImuGyroScale", ImuGyroScale.GyroFullScaleDegPerSec1000.toString())));
+                setAccelScale(ImuAccelScale.valueOf(chip.getPrefs().get("ImuAccelScale", ImuAccelScale.ImuAccelScaleG8.toString())));
+                setDisplayImu(chip.getPrefs().getBoolean("IMU.displayEnabled", true));
             } catch (Exception e) {
                 log.warning(e.toString());
             }
@@ -788,11 +843,13 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         public void setAdcEnabled(boolean yes) {
             boolean oldval = runAdc.isSet();
             runAdc.set(yes);
-            getSupport().firePropertyChange(ApsDvsConfig.PROPERTY_CAPTURE_FRAMES_ENABLED, oldval, runAdc.isSet());
-            if (oldval != yes) {
+            // TODO we must always call listeners because by loading prefs, we maybe have changed runAdc but not been informed of those changes, because
+            // we are not registered directly as listeners on the bit itself.... 
+            getSupport().firePropertyChange(ApsDvsConfig.PROPERTY_CAPTURE_FRAMES_ENABLED, null, runAdc.isSet());
+//            if (oldval != yes) {
                 setChanged();
                 notifyObservers(); // inform ParameterControlPanel
-            }
+//            }
         }
 
         public boolean isGlobalShutterMode() {
@@ -904,7 +961,9 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
             boolean old = this.displayFrames;
             this.displayFrames = displayFrames;
             chip.getPrefs().putBoolean("VideoControl.displayFrames", displayFrames);
-            chip.getAeViewer().interruptViewloop();
+            if (chip.getAeViewer() != null) {
+                chip.getAeViewer().interruptViewloop();
+            }
             getSupport().firePropertyChange(ApsDvsConfig.PROPERTY_DISPLAY_FRAMES_ENABLED, old, displayFrames);
             if (old != displayFrames) {
                 setChanged();
@@ -926,7 +985,9 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
             boolean old = this.displayEvents;
             this.displayEvents = displayEvents;
             chip.getPrefs().putBoolean("VideoControl.displayEvents", displayEvents);
-            chip.getAeViewer().interruptViewloop();
+            if (chip.getAeViewer() != null) {
+                chip.getAeViewer().interruptViewloop();
+            }
             getSupport().firePropertyChange(ApsDvsConfig.PROPERTY_DISPLAY_EVENTS_ENABLED, old, displayEvents);
             if (old != displayEvents) {
                 setChanged();
@@ -942,7 +1003,9 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
             boolean old = this.useAutoContrast;
             this.useAutoContrast = useAutoContrast;
             chip.getPrefs().putBoolean("VideoControl.useAutoContrast", useAutoContrast);
-            chip.getAeViewer().interruptViewloop();
+            if (chip.getAeViewer() != null) {
+                chip.getAeViewer().interruptViewloop();
+            }
             getSupport().firePropertyChange(ApsDvsConfig.PROPERTY_AUTO_CONTRAST_ENABLED, old, this.useAutoContrast);
             if (old != useAutoContrast) {
                 setChanged();
@@ -964,7 +1027,9 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
             float old = this.contrast;
             this.contrast = contrast;
             chip.getPrefs().putFloat("VideoControl.contrast", contrast);
-            chip.getAeViewer().interruptViewloop();
+            if (chip.getAeViewer() != null) {
+                chip.getAeViewer().interruptViewloop();
+            }
             getSupport().firePropertyChange(ApsDvsConfig.PROPERTY_CONTRAST, old, contrast);
             if (old != contrast) {
                 setChanged();
@@ -986,7 +1051,9 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
             float old = this.brightness;
             this.brightness = brightness;
             chip.getPrefs().putFloat("VideoControl.brightness", brightness);
-            chip.getAeViewer().interruptViewloop();
+            if (chip.getAeViewer() != null) {
+                chip.getAeViewer().interruptViewloop();
+            }
             getSupport().firePropertyChange(ApsDvsConfig.PROPERTY_BRIGHTNESS, old, this.brightness);
             if (old != brightness) {
                 setChanged();
@@ -1008,7 +1075,9 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
             float old = this.gamma;
             this.gamma = gamma;
             chip.getPrefs().putFloat("VideoControl.gamma", gamma);
-            chip.getAeViewer().interruptViewloop();
+            if (chip.getAeViewer() != null) {
+                chip.getAeViewer().interruptViewloop();
+            }
             notifyObservers();
             getSupport().firePropertyChange(ApsDvsConfig.PROPERTY_GAMMA, old, this.gamma);
             if (old != gamma) {
@@ -1035,12 +1104,12 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
 
         @Override
         public void loadPreference() {
-            displayFrames = chip.getPrefs().getBoolean("VideoControl.displayFrames", true);
-            displayEvents = chip.getPrefs().getBoolean("VideoControl.displayEvents", true);
-            useAutoContrast = chip.getPrefs().getBoolean("VideoControl.useAutoContrast", false);
-            contrast = chip.getPrefs().getFloat("VideoControl.contrast", 1.0f);
-            brightness = chip.getPrefs().getFloat("VideoControl.brightness", 0.0f);
-            gamma = chip.getPrefs().getFloat("VideoControl.gamma", 1f);
+            setDisplayFrames(chip.getPrefs().getBoolean("VideoControl.displayFrames", true)); // use setter to make sure GUIs are updated by property changes
+            setDisplayEvents(chip.getPrefs().getBoolean("VideoControl.displayEvents", true));
+            setUseAutoContrast(chip.getPrefs().getBoolean("VideoControl.useAutoContrast", false));
+            setContrast(chip.getPrefs().getFloat("VideoControl.contrast", 1.0f));
+            setBrightness(chip.getPrefs().getFloat("VideoControl.brightness", 0.0f));
+            setGamma(chip.getPrefs().getFloat("VideoControl.gamma", 1f));
         }
 
         @Override
@@ -1061,61 +1130,97 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
 
     @Override
     public boolean isDisplayFrames() {
+        if (videoControl == null) {
+            return false;
+        }
         return videoControl.isDisplayFrames();
     }
 
     @Override
     public void setDisplayFrames(boolean displayFrames) {
+        if (videoControl == null) {
+            return;
+        }
         videoControl.setDisplayFrames(displayFrames);
     }
 
     @Override
     public boolean isDisplayEvents() {
+        if (videoControl == null) {
+            return false;
+        }
         return videoControl.isDisplayEvents();
     }
 
     @Override
     public void setDisplayEvents(boolean displayEvents) {
+        if (videoControl == null) {
+            return;
+        }
         videoControl.setDisplayEvents(displayEvents);
     }
 
     @Override
     public boolean isUseAutoContrast() {
+        if (videoControl == null) {
+            return false;
+        }
         return videoControl.isUseAutoContrast();
     }
 
     @Override
     public void setUseAutoContrast(boolean useAutoContrast) {
+        if (videoControl == null) {
+            return;
+        }
         videoControl.setUseAutoContrast(useAutoContrast);
     }
 
     @Override
     public float getContrast() {
+        if (videoControl == null) {
+            return 1;
+        }
         return videoControl.getContrast();
     }
 
     @Override
     public void setContrast(float contrast) {
+        if (videoControl == null) {
+            return;
+        }
         videoControl.setContrast(contrast);
     }
 
     @Override
     public float getBrightness() {
+        if (videoControl == null) {
+            return 0;
+        }
         return videoControl.getBrightness();
     }
 
     @Override
     public void setBrightness(float brightness) {
+        if (videoControl == null) {
+            return;
+        }
         videoControl.setBrightness(brightness);
     }
 
     @Override
     public float getGamma() {
+        if (videoControl == null) {
+            return 1;
+        }
         return videoControl.getGamma();
     }
 
     @Override
     public void setGamma(float gamma) {
+        if (videoControl == null) {
+            return;
+        }
         videoControl.setGamma(gamma);
     }
 
@@ -1376,26 +1481,23 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
                             "<html>Controls whether row-only events (row request but no column request) "
                             + "<br>are captured from USB data stream in ApsDvsHardwareInterface. "
                             + "<p>These events are rendered as OFF events at x=239");
+                    putValue(Action.SELECTED_KEY, translateRowOnlyEvents);
                 }
 
                 @Override
                 public void actionPerformed(ActionEvent evt) {
-                    if (getHardwareInterface() != null) {
-                        if (getHardwareInterface() instanceof ApsDvsHardwareInterface) {
-                            ((ApsDvsHardwareInterface) getHardwareInterface()).setTranslateRowOnlyEvents(((AbstractButton) evt.getSource()).isSelected());
-                        }
-
-                        if (getHardwareInterface() instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.ApsDvsHardwareInterface) {
-                            ((net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.ApsDvsHardwareInterface) getHardwareInterface()).setTranslateRowOnlyEvents(((AbstractButton) evt.getSource()).isSelected());
-                        }
-
-                        if (getHardwareInterface() instanceof net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DAViSFX3HardwareInterface) {
-                            ((net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DAViSFX3HardwareInterface) getHardwareInterface()).setTranslateRowOnlyEvents(((AbstractButton) evt.getSource()).isSelected());
-                        }
-                    };
+                    setTranslateRowOnlyEvents(!isTranslateRowOnlyEvents());
                 }
             };
-            eventTranslationControlPanel.add(new JRadioButton(translateRowOnlyEventsAction));
+            final JRadioButton translateRowOnlyEventsButton = new JRadioButton(translateRowOnlyEventsAction);
+            eventTranslationControlPanel.add(translateRowOnlyEventsButton);
+            getSupport().addPropertyChangeListener(ApsDvsConfig.PROPERTY_TRANSLATE_ROW_ONLY_EVENTS, new PropertyChangeListener() {
+
+                @Override
+                public void propertyChange(PropertyChangeEvent evt) {
+                    translateRowOnlyEventsButton.setSelected((boolean) evt.getNewValue());
+                }
+            });
             chipConfigPanel.add(eventTranslationControlPanel);
 
             return chipConfigPanel;
@@ -1555,5 +1657,37 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
     @Override
     public int getAutoShotEventThreshold() {
         return autoShotThreshold;
+    }
+
+    /**
+     * @return the aeReaderFifoSize
+     */
+    @Override
+    public int getAeReaderFifoSize() {
+        return aeReaderFifoSize;
+    }
+
+    /**
+     * @param aeReaderFifoSize the aeReaderFifoSize to set
+     */
+    @Override
+    public void setAeReaderFifoSize(int aeReaderFifoSize) {
+        this.aeReaderFifoSize = aeReaderFifoSize;
+    }
+
+    /**
+     * @return the aeReaderNumBuffers
+     */
+    @Override
+    public int getAeReaderNumBuffers() {
+        return aeReaderNumBuffers;
+    }
+
+    /**
+     * @param aeReaderNumBuffers the aeReaderNumBuffers to set
+     */
+    @Override
+    public void setAeReaderNumBuffers(int aeReaderNumBuffers) {
+        this.aeReaderNumBuffers = aeReaderNumBuffers;
     }
 }

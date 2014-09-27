@@ -21,6 +21,7 @@ public interface ApsDvsConfig {
        public static String PROPERTY_GAMMA="PROPERTY_GAMMA";
        public static String PROPERTY_AUTO_CONTRAST_ENABLED="PROPERTY_AUTO_CONTRAST_ENABLED";
        public static String PROPERTY_GLOBAL_SHUTTER_MODE_ENABLED="PROPERTY_GLOBAL_SHUTTER_MODE_ENABLED";
+       public static String PROPERTY_TRANSLATE_ROW_ONLY_EVENTS="PROPERTY_TRANSLATE_ROW_ONLY_EVENTS";
 
     
     public abstract boolean isDisplayFrames();
@@ -100,6 +101,34 @@ public interface ApsDvsConfig {
      */
     public boolean isCaptureEventsEnabled();
     
+      /**
+     * @return the aeReaderFifoSize
+     */
+    public int getAeReaderFifoSize();
+    /**
+     * @param aeReaderFifoSize the aeReaderFifoSize to set
+     */
+    public void setAeReaderFifoSize(int aeReaderFifoSize);
+
+    /**
+     * @return the aeReaderNumBuffers
+     */
+    public int getAeReaderNumBuffers();
+
+    /**
+     * @param aeReaderNumBuffers the aeReaderNumBuffers to set
+     */
+    public void setAeReaderNumBuffers(int aeReaderNumBuffers);
     
+       /**
+     * If set, then row-only events are transmitted to raw packets from USB
+     * interface
+     *
+     * @param translateRowOnlyEvents true to translate these parasitic events.
+     */
+    public void setTranslateRowOnlyEvents(boolean translateRowOnlyEvents);
+
+    public boolean isTranslateRowOnlyEvents();
+
     
 }
