@@ -332,7 +332,7 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         } else {
 
             // user friendly control panel
-            configTabbedPane.add("User-Friendly Controls", userFriendlyControls);
+            configTabbedPane.add("<html><strong><font color=\"red\">User-Friendly Controls", userFriendlyControls);
         }
 
         //graphics
