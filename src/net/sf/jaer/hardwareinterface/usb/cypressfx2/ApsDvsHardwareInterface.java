@@ -446,6 +446,30 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
             }
         }
         private Stats stats=new Stats();
+
+        @Override
+        public void setNumBuffers(int numBuffers) {
+            super.setNumBuffers(numBuffers); 
+            ((ApsDvsConfig)(chip.getBiasgen())).setAeReaderNumBuffers(numBuffers);
+        }
+
+        @Override
+        public int getNumBuffers() {
+            return ((ApsDvsConfig)(chip.getBiasgen())).getAeReaderNumBuffers(); 
+        }
+
+        @Override
+        public void setFifoSize(int fifoSize) {
+            super.setFifoSize(fifoSize);
+            ((ApsDvsConfig)(chip.getBiasgen())).setAeReaderFifoSize(fifoSize);
+        }
+
+        @Override
+        public int getFifoSize() {
+            return ((ApsDvsConfig)(chip.getBiasgen())).getAeReaderFifoSize();
+        }
+        
+        
         
         @Override
         protected void translateEvents(UsbIoBuf b) {

@@ -243,7 +243,7 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
     @Override
     public void loadPreference() {
         super.loadPreference(); //To change body of generated methods, choose Tools | Templates.
-        setAeReaderFifoSize(getChip().getPrefs().getInt("aeReaderFifoSize", 32384));
+        setAeReaderFifoSize(getChip().getPrefs().getInt("aeReaderFifoSize", 1<<15));
         setAeReaderNumBuffers(getChip().getPrefs().getInt("aeReaderNumBuffers", 4));
         setTranslateRowOnlyEvents(getChip().getPrefs().getBoolean("translateRowOnlyEvents", false));
         setCaptureEvents(isCaptureEventsEnabled()); // just to call propertyChangeListener that sets GUI buttons
@@ -1672,6 +1672,12 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
      */
     @Override
     public void setAeReaderFifoSize(int aeReaderFifoSize) {
+        if(aeReaderFifoSize< 1<<8)aeReaderFifoSize=1<<8;
+        else if( ((aeReaderFifoSize) & (aeReaderFifoSize-1))!=0){
+            int newval=Integer.highestOneBit(aeReaderFifoSize-1);
+            log.warning("tried to set a non-power-of-two value "+aeReaderFifoSize+"; rounding down to nearest power of two which is "+newval);
+            aeReaderFifoSize=newval;
+        }
         this.aeReaderFifoSize = aeReaderFifoSize;
     }
 
