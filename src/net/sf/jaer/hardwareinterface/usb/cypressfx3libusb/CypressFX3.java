@@ -597,8 +597,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	@Override
 	synchronized public void resetTimestamps() {
 		CypressFX3.log.info(this + ".resetTimestamps(): zeroing timestamps");
-		dontwrap = true; // this is a flag that is reset in translateEvents
-							// method
 
 		// send vendor request for device to reset timestamps
 		if (deviceHandle == null) {
@@ -622,14 +620,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 		catch (final HardwareInterfaceException e) {
 			CypressFX3.log.warning("CypressFX3.resetTimestamps: couldn't send vendor request to reset timestamps");
-		}
-
-		if (getAeReader() != null) {
-			getAeReader().resetTimestamps(); // reset wrap counter and flush
-												// buffers
-		}
-		else {
-			CypressFX3.log.warning("CypressFX3.resetTimestamps(): reader not yet started, can't reset timestamps");
 		}
 	}
 
@@ -905,8 +895,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 	}
 
-	volatile boolean dontwrap = false; // used for resetTimestamps
-
 	private int aeReaderFifoSize = CypressFX3.prefs.getInt("CypressFX3.AEReader.fifoSize", 8192);
 
 	/**
@@ -942,11 +930,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 */
 	public class AEReader implements ReaderBufferControl {
 		public final int MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT = 10;
-		private int resetTimestampWarningCount = 0;
 		int cycleCounter = 0;
-		volatile boolean timestampsReset = false; // used to tell processData
-													// that another thread has
-													// reset timestamps
 		final int BAD_WRAP_PRINT_INTERVAL = 100; // only print a warning every
 													// this many to avoid
 													// slowing down
@@ -977,9 +961,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		 * rendering loops.
 		 */
 		private int fifoSize;
-
-		private final int RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT = 10;
-		private final int RESET_TIMESTAMPS_WARNING_INTERVAL = 100000;
 
 		USBTransferThread usbTransfer;
 		CypressFX3 monitor;
@@ -1038,28 +1019,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			CypressFX3.log.severe("Error: This method should never be called, it must be overridden!");
 		}
 
-		/**
-		 * Resets the timestamp unwrap value, resets the USBIO pipe, and resets
-		 * the AEPacketRawPool.
-		 */
-		synchronized public void resetTimestamps() {
-			if ((resetTimestampWarningCount < RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT)
-				|| ((resetTimestampWarningCount % RESET_TIMESTAMPS_WARNING_INTERVAL) == 0)) {
-				CypressFX3.log.info(CypressFX3.this + ": wrapAdd=" + wrapAdd + ", zeroing it");
-			}
-			if (resetTimestampWarningCount == RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT) {
-				CypressFX3.log
-					.warning("will only print reset timestamps message every "
-						+ RESET_TIMESTAMPS_WARNING_INTERVAL
-						+ " times now\nCould it be that you are trying to inject sync events using the DVS128 IN pin?\nIf so, select the  \"Enable sync events output\"  option in the DVS128 menu");
-			}
-			resetTimestampWarningCount++;
-
-			wrapAdd = 0;
-			timestampsReset = true; // will inform reader thread that timestamps
-									// are reset
-		}
-
 		class ProcessAEData implements RestrictedTransferCallback {
 			@Override
 			public void prepareTransfer(final RestrictedTransfer transfer) {
@@ -1108,12 +1067,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 							monitor.close(); // watch out, this can call
 											// synchronized method
 						}
-					}
-
-					if (timestampsReset) {
-						// don't flush, just let the old data through since it
-						// is still data
-						timestampsReset = false;
 					}
 				}
 			}

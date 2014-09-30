@@ -150,7 +150,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 											break;
 
 										case 1: // Timetamp reset
-											resetTimestamps();
+											wrapAdd = 0;
 											currentTimestamp = 0;
 											lastTimestamp = 0;
 											dvsTimestamp = 0;
