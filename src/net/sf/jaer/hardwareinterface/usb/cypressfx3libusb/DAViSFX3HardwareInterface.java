@@ -77,11 +77,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private int currentTimestamp, lastTimestamp;
 		private int dvsTimestamp, imuTimestamp, extTriggerTimestamp;
 		private short lastY;
-                private short misc8Data;
+		private short misc8Data;
 		private boolean gotY;
 		private boolean gotCMevent;
-      		private boolean gotClusterEvent;
-      		private boolean gotBGAFevent;
+		private boolean gotClusterEvent;
+		private boolean gotBGAFevent;
 
 		private static final int IMU_DATA_LENGTH = 7;
 		private final short[] currImuSample;
@@ -217,16 +217,16 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									addresses[eventCounter] = ((lastY << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
 										| ((data << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
 										| (((code & 0x01) << ApsDvsChip.POLSHIFT) & ApsDvsChip.POLMASK)
-                                                                                | (((gotBGAFevent ? ApsDvsChip.HW_BGAF : 0) & 0x7)<<8 | misc8Data) 
-                                                                                | (((gotCMevent ? ApsDvsChip.HW_TRACKER_CM : 0) & 0x07)<<8 | misc8Data) 
-                                                                                | (((gotClusterEvent ? ApsDvsChip.HW_TRACKER_CLUSTER : 0) & 0x07)<<8 | misc8Data);
+										| ((((gotBGAFevent ? ApsDvsChip.HW_BGAF : 0) & 0x7) << 8) | misc8Data)
+										| ((((gotCMevent ? ApsDvsChip.HW_TRACKER_CM : 0) & 0x07) << 8) | misc8Data)
+										| ((((gotClusterEvent ? ApsDvsChip.HW_TRACKER_CLUSTER : 0) & 0x07) << 8) | misc8Data);
 									timestamps[eventCounter++] = dvsTimestamp;
 
 									gotY = false;
-                                                                        gotBGAFevent = false;
-                                                                        gotCMevent = false;
-                                                                        gotClusterEvent = false;
-                                                                        misc8Data =0;
+									gotBGAFevent = false;
+									gotCMevent = false;
+									gotClusterEvent = false;
+									misc8Data = 0;
 
 									break;
 
@@ -259,10 +259,25 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 											currImuSamplePosition++;
 
 											break;
-                                                                                case 5: gotBGAFevent = true; break;
-                                                                                case 6: gotCMevent = true; break; // misc8data is from 0 to 3. But if misc8data is 128, then this is an ON BGAF output event.
-                                                                                case 7: gotClusterEvent = true; break; //misc8data is from 16 to 19 to identify the tracker. But if misc8data is 128, then this is an OFF BGAF output event.
-                                                                                        
+
+										case 5:
+											gotBGAFevent = true;
+											break;
+
+										case 6:
+											gotCMevent = true;
+											break; // misc8data is from 0 to 3.
+													// But if misc8data is 128,
+													// then this is an ON BGAF
+													// output event.
+
+										case 7:
+											gotClusterEvent = true;
+											break; // misc8data is from 16 to 19
+													// to identify the tracker.
+													// But if misc8data is 128,
+													// then this is an OFF BGAF
+													// output event.
 
 										default:
 											CypressFX3.log.severe("Caught Misc8 event that can't be handled.");

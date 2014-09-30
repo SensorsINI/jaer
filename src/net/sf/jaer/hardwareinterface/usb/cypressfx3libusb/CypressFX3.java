@@ -1536,8 +1536,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		// start the thread that listens for device status information (e.g.
 		// timestamp reset)
-		asyncStatusThread = new AsyncStatusThread(this);
-		asyncStatusThread.startThread();
+		//asyncStatusThread = new AsyncStatusThread(this);
+		//asyncStatusThread.startThread();
 	}
 
 	/**

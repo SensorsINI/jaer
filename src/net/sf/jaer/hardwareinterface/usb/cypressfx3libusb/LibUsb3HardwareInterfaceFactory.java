@@ -36,6 +36,8 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
 		// HardwareInterfaces.
 		addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID, DAViSFX3HardwareInterface.class);
 
+		addDeviceToMap(CypressFX3.VID, (short) 0x841B, DAViSFX3HardwareInterface.class);
+
 		// Add blank device for flashing.
 		addDeviceToMap(CypressFX3.VID_BLANK, CypressFX3.PID_BLANK, CypressFX3.class);
 
