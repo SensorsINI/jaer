@@ -74,7 +74,7 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
     //*********** FX2 *********************
     // portA
     protected PortBit runCpld = new PortBit(chip, "a3", "runCpld", "(A3) Set high to run CPLD which enables event capture, low to hold logic in reset", true);
-    protected PortBit extTrigger = new PortBit(chip, "a1", "extTrigger", "(A1) External trigger to debug APS statemachine", false);
+//  incorrect, same as syncTimestampMaster!!! (tobi)    protected PortBit extTrigger = new PortBit(chip, "a1", "extTrigger", "(A1) External trigger to debug APS statemachine", false);
     // portC
     protected PortBit runAdc = new PortBit(chip, "c0", "runAdc", "(C0) High to run ADC. Bound together with adcEnabled.", true);
     // portE
@@ -133,7 +133,7 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         addConfigValue(powerDown);
         addConfigValue(runAdc);
         addConfigValue(runCpld);
-        addConfigValue(extTrigger);
+//        addConfigValue(extTrigger); // unused now, and specified as fx2 port A1, same as syncTimestampMaster pin, which is connected to H1 on CPLD
         addConfigValue(syncTimestampMasterEnabled);
 
         // cpld shift register stuff
