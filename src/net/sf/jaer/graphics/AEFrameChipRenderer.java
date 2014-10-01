@@ -21,7 +21,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.util.filter.LowpassFilter2d;
 import eu.seebetter.ini.chips.ApsDvsChip;
-import eu.seebetter.ini.chips.sbret10.SBret10;
+import eu.seebetter.ini.chips.DAViS.SBret10;
 import net.sf.jaer.util.histogram.AbstractHistogram;
 import net.sf.jaer.util.histogram.SimpleHistogram;
 

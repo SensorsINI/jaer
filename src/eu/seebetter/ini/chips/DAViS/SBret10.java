@@ -4,9 +4,10 @@
  * adapted 25 oct 2011 for SeeBetter10/11 chips by tobi
  *
  */
-package eu.seebetter.ini.chips.sbret10;
+package eu.seebetter.ini.chips.DAViS;
 
 import ch.unizh.ini.jaer.config.cpld.CPLDInt;
+
 import java.awt.Font;
 import java.util.Iterator;
 import java.util.logging.Level;
@@ -38,18 +39,21 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.ApsDvsChip;
-import eu.seebetter.ini.chips.sbret10.IMUSample.IncompleteIMUSampleException;
+import eu.seebetter.ini.chips.DAViS.IMUSample.IncompleteIMUSampleException;
+
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeSupport;
 import java.util.Observable;
 import java.util.Observer;
+
 import javax.media.opengl.glu.GLU;
 import javax.media.opengl.glu.GLUquadric;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
+
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.ApsDvsHardwareInterface;
 import net.sf.jaer.util.HasPropertyTooltips;
 import net.sf.jaer.util.HexString;

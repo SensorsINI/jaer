@@ -3,16 +3,18 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package eu.seebetter.ini.chips.sbret10;
+package eu.seebetter.ini.chips.DAViS;
 
 import eu.seebetter.ini.chips.ApsDvsChip;
-import eu.seebetter.ini.chips.sbret10.SBret10config.ImuAccelScale;
-import eu.seebetter.ini.chips.sbret10.SBret10config.ImuControl;
-import eu.seebetter.ini.chips.sbret10.SBret10config.ImuGyroScale;
+import eu.seebetter.ini.chips.DAViS.SBret10config.ImuAccelScale;
+import eu.seebetter.ini.chips.DAViS.SBret10config.ImuControl;
+import eu.seebetter.ini.chips.DAViS.SBret10config.ImuGyroScale;
+
 import java.awt.Color;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.logging.Logger;
+
 import net.sf.jaer.config.ApsDvsConfig;
 
 /**

@@ -41,7 +41,7 @@ import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 
-import eu.seebetter.ini.chips.sbret10.IMUSample;
+import eu.seebetter.ini.chips.DAViS.IMUSample;
 
 /**
  * This "vestibular-ocular Steadicam" tries to compensate global image motion by

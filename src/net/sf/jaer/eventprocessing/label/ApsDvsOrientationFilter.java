@@ -4,10 +4,12 @@
  * Created on November 2, 2005, 8:24 PM */
 package net.sf.jaer.eventprocessing.label;
 
-import eu.seebetter.ini.chips.sbret10.IMUSample;
+import eu.seebetter.ini.chips.DAViS.IMUSample;
 import net.sf.jaer.event.orientation.ApsDvsOrientationEvent;
 import net.sf.jaer.event.orientation.BinocularOrientationEvent;
+
 import java.util.logging.Level;
+
 import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.Description;

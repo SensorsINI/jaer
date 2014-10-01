@@ -12,12 +12,15 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import de.thesycon.usbio.*;
 import static de.thesycon.usbio.UsbIoErrorCodes.USBIO_ERR_SUCCESS;
 import de.thesycon.usbio.structs.*;
-import eu.seebetter.ini.chips.sbret10.IMUSample;
+import eu.seebetter.ini.chips.DAViS.IMUSample;
+
 import javax.swing.ProgressMonitor;
+
 import java.io.*;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.concurrent.ArrayBlockingQueue;
+
 import net.sf.jaer.config.ApsDvsConfig;
 import static net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2.VR_DOWNLOAD_FIRMWARE;
 import static net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2.log;

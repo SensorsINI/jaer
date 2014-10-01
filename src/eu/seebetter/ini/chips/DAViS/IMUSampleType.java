@@ -1,4 +1,4 @@
-package eu.seebetter.ini.chips.sbret10;
+package eu.seebetter.ini.chips.DAViS;
 
 import eu.seebetter.ini.chips.ApsDvsChip;
 
