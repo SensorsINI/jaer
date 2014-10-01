@@ -635,8 +635,8 @@ public class StdpFeatureLearningIV extends RectangularClusterTracker implements 
 				GL2 gl = drawable.getGL().getGL2();
 				// Creates and scales drawing matrix so that each integer unit represents any given pixel
 				gl.glLoadIdentity();
-				gl.glScalef(drawable.getWidth() / (float) pixelsPerRow,
-					drawable.getHeight() / (float) pixelsPerColumn, 1);
+				gl.glScalef(drawable.getSurfaceWidth() / (float) pixelsPerRow,
+					drawable.getSurfaceHeight() / (float) pixelsPerColumn, 1);
 				// Sets the background color for when glClear is called
 				gl.glClearColor(0, 0, 0, 0);
 				gl.glClear(GL.GL_COLOR_BUFFER_BIT);
@@ -724,7 +724,7 @@ public class StdpFeatureLearningIV extends RectangularClusterTracker implements 
 				final int border = 10;
 				gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
 				gl.glLoadIdentity();
-				gl.glOrtho(-border, drawable.getWidth() + border, -border, drawable.getHeight() + border, 10000, -10000);
+				gl.glOrtho(-border, drawable.getSurfaceWidth() + border, -border, drawable.getSurfaceHeight() + border, 10000, -10000);
 				gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
 				gl.glViewport(0, 0, width, height);
 			} // END METHOD

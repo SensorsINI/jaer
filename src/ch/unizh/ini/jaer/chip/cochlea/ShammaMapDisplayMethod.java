@@ -199,7 +199,7 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
 		gl.glDrawBuffer(GL.GL_BACK);
 		gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
 		gl.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
-		gl.glOrtho(-BORDER,drawable.getWidth()+BORDER,-BORDER,drawable.getHeight()+BORDER,10000,-10000);
+		gl.glOrtho(-BORDER,drawable.getSurfaceWidth()+BORDER,-BORDER,drawable.getSurfaceHeight()+BORDER,10000,-10000);
 		gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
 		gl.glClearColor(0,0,0,0f);
 		gl.glClear(GL.GL_COLOR_BUFFER_BIT);
@@ -207,7 +207,7 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
 		// translate origin to this point
 		gl.glTranslatef(0,0,0);
 		// scale everything by rastergram scale
-		float ys=(drawable.getHeight())/(float)chip.getSizeX();// scale vertical is draableHeight/numPixels
+		float ys=(drawable.getSurfaceHeight())/(float)chip.getSizeX();// scale vertical is draableHeight/numPixels
 		float xs=ys;
 		gl.glScalef(xs,ys,1);
 

@@ -462,8 +462,8 @@ public class OpticalFlowIntegrator
 	protected boolean broaderThanHigh; // means there is space on left/right of pixel display
 	public synchronized void glTransform(GLAutoDrawable drawable,GL2 gl) {
 
-		drawableWidth = drawable.getWidth ();
-		drawableHeight= drawable.getHeight();
+		drawableWidth = drawable.getSurfaceWidth ();
+		drawableHeight= drawable.getSurfaceHeight();
 
 		//FIXME scale better when trace is wider than high
 

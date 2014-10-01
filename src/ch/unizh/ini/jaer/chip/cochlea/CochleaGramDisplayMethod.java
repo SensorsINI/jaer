@@ -29,7 +29,7 @@ import com.jogamp.opengl.util.gl2.GLUT;
  * Time increases to the right and covers one time slice of events
  * as passed to the rendering.
  * Channel increases upwards. Channels are the event x addresses.
- * 
+ *
  * @author tobi
  */
 public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMethod2D, HasSelectedCochleaChannel {
@@ -84,7 +84,7 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
 
 		gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
 		gl.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
-		gl.glOrtho(-BORDER, drawable.getWidth() + BORDER, -BORDER, drawable.getHeight() + BORDER, 10000, -10000);
+		gl.glOrtho(-BORDER, drawable.getSurfaceWidth() + BORDER, -BORDER, drawable.getSurfaceHeight() + BORDER, 10000, -10000);
 		gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
 		gl.glClearColor(0, 0, 0, 0f);
 		gl.glClear(GL.GL_COLOR_BUFFER_BIT);
@@ -92,8 +92,8 @@ public class CochleaGramDisplayMethod extends DisplayMethod implements DisplayMe
 		// translate origin to this point
 		gl.glTranslatef(0, 0, 0);
 		// scale everything by rastergram scale
-		float ys = (drawable.getHeight()) / (float) chip.getSizeX();// scale vertical is draableHeight/numPixels
-		float xs = (drawable.getWidth()); // scale horizontal is draw
+		float ys = (drawable.getSurfaceHeight()) / (float) chip.getSizeX();// scale vertical is draableHeight/numPixels
+		float xs = (drawable.getSurfaceWidth()); // scale horizontal is draw
 		gl.glScalef(xs, ys, 1);
 		// make sure we're drawing back buffer (this is probably true anyhow)
 		//        gl.glDrawBuffer(GL.GL_BACK);

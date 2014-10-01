@@ -71,7 +71,7 @@ public class OnsetFilter extends RepetitiousFilter implements FrameAnnotater{
 				gl.glPushMatrix();
 				gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
 				gl.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
-				gl.glOrtho(-CochleaGramDisplayMethod.BORDER,drawable.getWidth() + CochleaGramDisplayMethod.BORDER,-CochleaGramDisplayMethod.BORDER,drawable.getHeight() + CochleaGramDisplayMethod.BORDER,10000,-10000);
+				gl.glOrtho(-CochleaGramDisplayMethod.BORDER,drawable.getSurfaceWidth() + CochleaGramDisplayMethod.BORDER,-CochleaGramDisplayMethod.BORDER,drawable.getSurfaceHeight() + CochleaGramDisplayMethod.BORDER,10000,-10000);
 				gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
 				//                gl.glClearColor(0,0,0,0f);
 				//                gl.glClear(GL2.GL_COLOR_BUFFER_BIT);
@@ -79,8 +79,8 @@ public class OnsetFilter extends RepetitiousFilter implements FrameAnnotater{
 				// translate origin to this point
 				gl.glTranslatef(0,0,0);
 				// scale everything by rastergram scale
-				float ys = ( drawable.getHeight() ) / (float)chip.getSizeX();// scale vertical is draableHeight/numPixels
-				float xs = ( drawable.getWidth() ); // scale horizontal is draw
+				float ys = ( drawable.getSurfaceHeight() ) / (float)chip.getSizeX();// scale vertical is draableHeight/numPixels
+				float xs = ( drawable.getSurfaceWidth() ); // scale horizontal is draw
 				gl.glScalef(xs,ys,1);
 
 				//draw avg ISIs

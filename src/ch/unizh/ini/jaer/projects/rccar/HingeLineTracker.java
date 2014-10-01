@@ -30,7 +30,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- * 
+ *
  * @author braendch
  * The hingeLaneTracker tries to approximate a more or less vertical line by setting hinges at different heights
  * The incomming events activate the AccumArray which contains row cells that subsample the vertical lines
@@ -39,7 +39,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * values of a line approximation
  * To make the algorithm more stable, already set hinges produce an attention which makes events wihin this attetion
  * more excite the row cells
- * 
+ *
  */
 public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, Observer, HingeDetector {
 
@@ -484,7 +484,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
 				}
 				GL2 gl=drawable.getGL().getGL2();
 				gl.glLoadIdentity();
-				gl.glScalef((width*drawable.getWidth())/sx,drawable.getHeight()/sy,1);
+				gl.glScalef((width*drawable.getSurfaceWidth())/sx,drawable.getSurfaceHeight()/sy,1);
 				gl.glClearColor(0,0,0,0);
 				gl.glClear(GL.GL_COLOR_BUFFER_BIT);
 				//iteration through the AccumArray
@@ -514,7 +514,7 @@ public class HingeLineTracker extends EventFilter2D implements FrameAnnotater, O
 				final int B=10;
 				gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
 				gl.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
-				gl.glOrtho(-B,drawable.getWidth()+B,-B,drawable.getHeight()+B,10000,-10000);
+				gl.glOrtho(-B,drawable.getSurfaceWidth()+B,-B,drawable.getSurfaceHeight()+B,10000,-10000);
 				gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
 				gl.glViewport(0,0,width,height);
 			}

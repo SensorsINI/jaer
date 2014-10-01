@@ -564,7 +564,7 @@ public class LowPassFilterEventGenerator extends EventFilter2D{
 				final int B=10;
 				gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
 				gl.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
-				gl.glOrtho(-B,drawable.getWidth()+B,-B,drawable.getHeight()+B,10000,-10000);
+				gl.glOrtho(-B,drawable.getSurfaceWidth()+B,-B,drawable.getSurfaceHeight()+B,10000,-10000);
 				gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
 				gl.glViewport(0,0,width,height);
 			}

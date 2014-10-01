@@ -30,7 +30,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- * 
+ *
  * @author braendch
  * The HingeLaneTracker is a version of the HingeLineTracker that is able to track two lines by seperating the image into two parts:
  * One part left and one right of a separator. To understand what it does one should first study the HingeLineTracker and than examine
@@ -38,7 +38,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * In the HingeLaneTracker the hingeNumber describes the number of total hinges -left AND right, so it has to be twice as big as in the
  * hingeLineTracker. hinges on the right side of the image carry a even number and on the left they have an odd one (especially important
  * to understand the arrays) --> the x-coordinate is 0 on the right border
- * 
+ *
  */
 public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, Observer, HingeDetector {
 
@@ -560,7 +560,7 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
 				}
 				GL2 gl=drawable.getGL().getGL2();
 				gl.glLoadIdentity();
-				gl.glScalef((width*drawable.getWidth())/sx,drawable.getHeight()/sy,1);
+				gl.glScalef((width*drawable.getSurfaceWidth())/sx,drawable.getSurfaceHeight()/sy,1);
 				gl.glClearColor(0,0,0,0);
 				gl.glClear(GL.GL_COLOR_BUFFER_BIT);
 				//left
@@ -606,7 +606,7 @@ public class HingeLaneTracker extends EventFilter2D implements FrameAnnotater, O
 				final int B=10;
 				gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
 				gl.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
-				gl.glOrtho(-B,drawable.getWidth()+B,-B,drawable.getHeight()+B,10000,-10000);
+				gl.glOrtho(-B,drawable.getSurfaceWidth()+B,-B,drawable.getSurfaceHeight()+B,10000,-10000);
 				gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
 				gl.glViewport(0,0,width,height);
 			}

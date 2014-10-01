@@ -317,7 +317,7 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
 				}
 				GL2 gl = drawable.getGL().getGL2();
 				gl.glLoadIdentity();
-				gl.glScalef(drawable.getWidth() / nTheta, drawable.getHeight() / nRho, 1);
+				gl.glScalef(drawable.getSurfaceWidth() / nTheta, drawable.getSurfaceHeight() / nRho, 1);
 				gl.glClearColor(0, 0, 0, 0);
 				gl.glClear(GL.GL_COLOR_BUFFER_BIT);
 				for (int i = 0; i < nTheta; i++) {
@@ -348,7 +348,7 @@ public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, L
 				final int B = 10;
 				gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
 				gl.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
-				gl.glOrtho(-B, drawable.getWidth() + B, -B, drawable.getHeight() + B, 10000, -10000);
+				gl.glOrtho(-B, drawable.getSurfaceWidth() + B, -B, drawable.getSurfaceHeight() + B, 10000, -10000);
 				gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
 				gl.glViewport(0, 0, width, height);
 			}

@@ -79,7 +79,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
 		GL2 gl = drawable.getGL().getGL2();
 		gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
 		gl.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
-		gl.glOrtho(-BORDER, drawable.getWidth() + BORDER, -BORDER, drawable.getHeight() + BORDER, 10000, -10000);
+		gl.glOrtho(-BORDER, drawable.getSurfaceWidth() + BORDER, -BORDER, drawable.getSurfaceHeight() + BORDER, 10000, -10000);
 		gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
 		// blend may not be available depending on graphics mode or opengl version.
 		if (!hasBlendChecked) {
@@ -105,7 +105,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
 		// translate origin to this point
 		gl.glTranslatef(0, 0, 0);
 		// scale everything by rastergram scale
-		float yScale = (drawable.getHeight()) / (float) ntaps;// scale vertical is draableHeight/numPixels
+		float yScale = (drawable.getSurfaceHeight()) / (float) ntaps;// scale vertical is draableHeight/numPixels
 		// timewidth comes from render contrast setting
 		// width starts with colorScale=1 to be the standard refresh rate
 		// so that a raster will refresh every frame and reduces by powers of two
@@ -119,7 +119,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
 			frameRate = ((AEChip) chip).getAeViewer().getFrameRate();
 		}
 		timeWidthUs = (1e6f / frameRate) * (1 << colorScale); // set horizontal scale so that we can just use relative timestamp for x
-		drawTimeScale = (drawable.getWidth() / timeWidthUs); // scale horizontal is draw
+		drawTimeScale = (drawable.getSurfaceWidth() / timeWidthUs); // scale horizontal is draw
 		gl.glScalef(drawTimeScale, yScale, 1);
 		// make sure we're drawing back buffer (this is probably true anyhow)
 		gl.glDrawBuffer(GL.GL_FRONT_AND_BACK);

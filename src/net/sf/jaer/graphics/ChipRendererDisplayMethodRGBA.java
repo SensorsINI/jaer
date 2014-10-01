@@ -244,7 +244,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
         getChipCanvas().checkGLError(gl, glu, "before pixmap");
 //        Zoom zoom = chip.getCanvas().getZoom();
         if (!zoom.isZoomEnabled()) {
-            final int wi = drawable.getWidth(),  hi = drawable.getHeight();
+            final int wi = drawable.getSurfaceWidth(),  hi = drawable.getSurfaceHeight();
             float scale = 1;
 //            float ar=(float)hi/wi;
             final float border=chip.getCanvas().getBorderSpacePixels();

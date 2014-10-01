@@ -1382,8 +1382,8 @@ public class ChipCanvas implements GLEventListener, Observer {
 	 */
 	void grabImage(final GLAutoDrawable d) {
 		final GL2 gl = d.getGL().getGL2();
-		final int width = d.getWidth();
-		final int height = d.getHeight();
+		final int width = d.getSurfaceWidth();
+		final int height = d.getSurfaceHeight();
 
 		// Allocate a buffer for the pixels
 		final ByteBuffer rgbData = Buffers.newDirectByteBuffer(width * height * 3);

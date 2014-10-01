@@ -182,7 +182,7 @@ public class EyeTarget extends GLCanvas implements GLEventListener {
 		gl.glPushMatrix();
 		gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
 		gl.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
-		gl.glOrtho(0,drawable.getWidth() ,0,drawable.getHeight(),10000,-10000);
+		gl.glOrtho(0,drawable.getSurfaceWidth() ,0,drawable.getSurfaceHeight(),10000,-10000);
 		gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
 		gl.glPopMatrix();
 		gl.glPushMatrix();

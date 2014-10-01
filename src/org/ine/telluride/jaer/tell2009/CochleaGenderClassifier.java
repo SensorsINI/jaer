@@ -122,7 +122,7 @@ public class CochleaGenderClassifier extends ISIHistogrammer implements FrameAnn
 //        gl.glRasterPos3f(10,10,0);
 //        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18,gender.toString());
         // title
-        titleRenderer.beginRendering(drawable.getWidth(), drawable.getHeight());
+        titleRenderer.beginRendering(drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
         switch (gender) {
             case Male:
                 titleRenderer.setColor(Color.RED);
@@ -138,7 +138,7 @@ public class CochleaGenderClassifier extends ISIHistogrammer implements FrameAnn
         titleRenderer.endRendering();
         gl.glPushMatrix();
         gl.glLoadIdentity();
-        gl.glTranslatef(drawable.getWidth() / 2,drawable.getHeight() / 2,0);
+        gl.glTranslatef(drawable.getSurfaceWidth() / 2,drawable.getSurfaceHeight() / 2,0);
         switch ( gender ){
             case Male:
                 gl.glColor3f(1,0,0);
@@ -150,7 +150,7 @@ public class CochleaGenderClassifier extends ISIHistogrammer implements FrameAnn
                 gl.glColor3f(1,1,1);
                 break;
         }
-        float w = drawable.getWidth() * genderDotProduct*5;
+        float w = drawable.getSurfaceWidth() * genderDotProduct*5;
         gl.glRectf(0,-10,w,10);
 
         gl.glPopMatrix();

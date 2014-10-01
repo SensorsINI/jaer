@@ -532,7 +532,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 		ChipCanvas.Borders borders=chip.getCanvas().getBorders();
 
 		// get screen width in screen pixels, subtract borders in screen pixels to find width of drawn chip area in screen pixels
-		float /*h = drawable.getHeight(), */ w = drawable.getWidth()-(2*borders.leftRight*chip.getCanvas().getScale());
+		float /*h = drawable.getHeight(), */ w = drawable.getSurfaceWidth()-(2*borders.leftRight*chip.getCanvas().getScale());
 		int ntypes = eventRateFilter.getNumCellTypes();
 		final int sx = chip.getSizeX(), sy = chip.getSizeY();
 		final float yorig = .9f * sy, xpos = 0, ystep = Math.max(.03f * sy, 6), barh = .03f * sy;
@@ -579,7 +579,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 		}
 		final int sx = chip.getSizeX(), sy = chip.getSizeY();
 		final float yorig = .95f * sy, xpos = 0, barh = .03f * sy;
-		int h = drawable.getHeight(), w = drawable.getWidth();
+		int h = drawable.getSurfaceHeight(), w = drawable.getSurfaceWidth();
 		GL2 gl = drawable.getGL().getGL2();
 
 		gl.glPushMatrix();

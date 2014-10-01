@@ -277,7 +277,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 		}
 
 		checkGLError(gl, "before pixmap");
-		final int wi = drawable.getWidth(), hi = drawable.getHeight();
+		final int wi = drawable.getSurfaceWidth(), hi = drawable.getSurfaceHeight();
 		float scale = 1;
 		if (fillsVertically) {// tall chip, use chip height
 			scale = ((float) hi - (2 * borderPixels)) / getSizeY();
@@ -365,7 +365,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 	}
 
 	/** Sets the pixel RGB value.
-	 * 
+	 *
 	 * @param x row
 	 * @param y column
 	 * @param r red value, 0-1 range.
@@ -883,7 +883,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 	}
 
 	/** Draws a string centered at x,y.
-	 * 
+	 *
 	 * @param x horizontal coordinate in image units.
 	 * @param y coordinate in image units.
 	 * @param string the string to draw.
@@ -1064,7 +1064,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 	 *
 	 * @param evt a  mouse event
 	 * @return the image location, with 0,0 at the lower left corner.
-	 * 
+	 *
 	 */
 	public Point2D.Float getMouseImagePosition(MouseEvent evt) {
 		Point2D.Float p = new Point2D.Float(evt.getPoint().x, evt.getPoint().y);

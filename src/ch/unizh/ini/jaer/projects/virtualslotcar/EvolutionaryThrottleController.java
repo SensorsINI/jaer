@@ -22,6 +22,7 @@ import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Random;
 
+import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLException;
@@ -40,7 +41,6 @@ import net.sf.jaer.util.StateMachineStates;
 import net.sf.jaer.util.TobiLogger;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
-import javax.media.opengl.GL;
 
 /**
  * Learns the throttle at different part of the track.
@@ -221,9 +221,9 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                 }
                 showedMissingTrackWarning = true;
             }  else {
-                if(car==null || !car.isVisible() || car.isCrashed()){
+                if((car==null) || !car.isVisible() || car.isCrashed()){
                     state.set(State.STARTING);
-                }else if (car != null && car.isVisible() && !car.isCrashed()) {
+                }else if ((car != null) && car.isVisible() && !car.isCrashed()) {
                     // did we lap?
                     boolean lapped = lapTimer.update(currentTrackPos, car.getLastEventTimestamp());
 
@@ -280,7 +280,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                     lastRewardLap = lapTimer.lapCounter; // don't reward until we make some laps from here
                 } else if (car != null) {
                     throttle = currentProfile.getThrottle(car.getSegmentIdx());
-                } 
+                }
             }
         } else if (state.get() == State.CRASHED) {
             //            throttle.throttle = getStartingThrottleValue();
@@ -309,8 +309,8 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
         }
         statusRenderer.setColor(bigStatusColor);
         Rectangle2D bounds = statusRenderer.getBounds(bigStatusText);
-        statusRenderer.beginRendering(drawable.getWidth(), drawable.getHeight());
-        statusRenderer.draw(bigStatusText, (int) ((drawable.getWidth() / 2) - (bounds.getWidth() / 2)), (int) ((drawable.getHeight() / 2) - (bounds.getHeight() / 2)));
+        statusRenderer.beginRendering(drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
+        statusRenderer.draw(bigStatusText, (int) ((drawable.getSurfaceWidth() / 2) - (bounds.getWidth() / 2)), (int) ((drawable.getSurfaceHeight() / 2) - (bounds.getHeight() / 2)));
         statusRenderer.endRendering();
     }
 
@@ -321,7 +321,8 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
      * @param track
      * @return the throttle from 0-1.
      */
-    synchronized public ThrottleBrake computeControl(CarTrackerInterface tracker, SlotcarTrack track) {
+    @Override
+	synchronized public ThrottleBrake computeControl(CarTrackerInterface tracker, SlotcarTrack track) {
         return throttle;
 
     }
