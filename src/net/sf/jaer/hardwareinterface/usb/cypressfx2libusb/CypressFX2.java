@@ -1660,6 +1660,8 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		final int WRAP_START = 0;
 		/** wrapAdd is the time to add to short timestamp to unwrap it */
 		protected int wrapAdd = WRAP_START; // 0;
+		protected int lastwrap = WRAP_START; // 0;
+		protected int currentwrap = WRAP_START; // 0;
 		protected int lastWrapAdd = 0;
 		/** used to indicate a 32 bit timestamp wrap */
 		protected boolean wrappedBig = false;

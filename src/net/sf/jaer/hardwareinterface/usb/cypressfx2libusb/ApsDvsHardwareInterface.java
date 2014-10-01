@@ -5,8 +5,6 @@
  */
 package net.sf.jaer.hardwareinterface.usb.cypressfx2libusb;
 
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.LineNumberReader;
@@ -455,7 +453,26 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 									else if ((b.get(i + 1) & EXTERNAL_PIN_EVENT) == EXTERNAL_PIN_EVENT) {
 										addr = ApsDvsChip.EXTERNAL_INPUT_EVENT_ADDR;
 										timestamp = currentts;
-                                                                                 haveEvent=false; // don't write for now; these events are flagged as special events but are not distinguished currently from IMU events;  they appear without any external input on SBRet10_Gyro camera with default CPLD global shutter logic for unknown reason, even with nothing plugged into IN sync connector
+										haveEvent = false; // don't write for
+															// now; these events
+															// are flagged as
+															// special events
+															// but are not
+															// distinguished
+															// currently from
+															// IMU events; they
+															// appear without
+															// any external
+															// input on
+															// SBRet10_Gyro
+															// camera with
+															// default CPLD
+															// global shutter
+															// logic for unknown
+															// reason, even with
+															// nothing plugged
+															// into IN sync
+															// connector
 										// haveEvent = true; // TODO don't write
 										// out the external pin events for now,
 										// because they mess up the IMU special
@@ -592,9 +609,23 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 								// log.info("received timestamp");
 								break;
 							case 2: // wrap
-								wrapAdd += 0x4000L;
-								NumberOfWrapEvents++;
-								// log.info("wrap");
+								lastwrap = currentwrap;
+								currentwrap = (0xff & b.get(i));
+								int kk = currentwrap - lastwrap;
+								if (kk < 0) {
+									kk = (256 - lastwrap) + currentwrap;
+								}
+								if (kk == 1) {
+									wrapAdd += 0x4000L;
+								}
+								else if (kk > 1) {
+									log.warning(this.toString() + ": detected " + (kk - 1) + " missing wrap events.");
+									// while (kk-->0){
+									wrapAdd += kk * 0x4000L;
+									NumberOfWrapEvents += kk;
+									// }
+
+								}
 								break;
 							case 3: // ts reset event
 								nonmonotonicTimestampWarningCount = NONMONOTONIC_WARNING_COUNT;
