@@ -6,17 +6,26 @@
  */
 package eu.seebetter.ini.chips.DAViS;
 
-import ch.unizh.ini.jaer.config.cpld.CPLDInt;
-
 import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.geom.Rectangle2D;
+import java.beans.PropertyChangeSupport;
 import java.util.Iterator;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
+import javax.media.opengl.glu.GLU;
+import javax.media.opengl.glu.GLUquadric;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -35,25 +44,6 @@ import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-
-import com.jogamp.opengl.util.awt.TextRenderer;
-
-import eu.seebetter.ini.chips.ApsDvsChip;
-import eu.seebetter.ini.chips.DAViS.IMUSample.IncompleteIMUSampleException;
-
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.geom.Rectangle2D;
-import java.beans.PropertyChangeSupport;
-import java.util.Observable;
-import java.util.Observer;
-
-import javax.media.opengl.glu.GLU;
-import javax.media.opengl.glu.GLUquadric;
-import javax.swing.JCheckBoxMenuItem;
-import javax.swing.JMenu;
-import javax.swing.JMenuItem;
-
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.ApsDvsHardwareInterface;
 import net.sf.jaer.util.HasPropertyTooltips;
 import net.sf.jaer.util.HexString;
@@ -62,12 +52,18 @@ import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.histogram.AbstractHistogram;
 import net.sf.jaer.util.histogram.SimpleHistogram;
+import ch.unizh.ini.jaer.config.cpld.CPLDInt;
+
+import com.jogamp.opengl.util.awt.TextRenderer;
+
+import eu.seebetter.ini.chips.ApsDvsChip;
+import eu.seebetter.ini.chips.DAViS.IMUSample.IncompleteIMUSampleException;
 
 /**
  * <p>
- * SBRet10/20 have 240x180 pixels and are built in 180nm technology. SBRet10 has
- * a rolling shutter APS readout and SBRet20 has global shutter readout (but
- * rolling shutter also possible with SBRet20 with different CPLD logic). Both
+ * DAViS240a/b have 240x180 pixels and are built in 180nm technology. DAViS240a has
+ * a rolling shutter APS readout and DAViS240b has global shutter readout (but
+ * rolling shutter also possible with DAViS240b with different CPLD logic). Both
  * do APS CDS in digital domain off-chip, on host side, using difference between
  * reset and signal reads.
  * <p>
@@ -81,7 +77,7 @@ import net.sf.jaer.util.histogram.SimpleHistogram;
  *
  * @author tobi, christian
  */
-@Description("SBRet10/20 240x180 pixel APS-DVS DAVIS sensor")
+@Description("DAViS240a/b 240x180 pixel APS-DVS DAVIS sensor")
 public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 
     private JMenu chipMenu = null;
@@ -94,7 +90,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
     /**
      * bit masks/shifts for cDVS AE data
      */
-    private SBret10DisplayMethod sbretDisplayMethod = null;
+    private DAViS240DisplayMethod davisDisplayMethod = null;
     private AEFrameChipRenderer apsDVSrenderer;
     private int exposure; // internal measured variable, set during rendering
     private int frameTime; // internal measured variable, set during rendering
@@ -117,8 +113,8 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
     public static final short WIDTH = 240;
     public static final short HEIGHT = 180;
     int sx1 = getSizeX() - 1, sy1 = getSizeY() - 1;
-    private int autoshotThresholdEvents = getPrefs().getInt("SBRet10.autoshotThresholdEvents", 0);
-    private IMUSample imuSample; // latest IMUSample from sensor 
+    private int autoshotThresholdEvents = getPrefs().getInt("DAViS240.autoshotThresholdEvents", 0);
+    private IMUSample imuSample; // latest IMUSample from sensor
     private final String CMD_EXPOSURE = "exposure";
     private final String CMD_EXPOSURE_CC = "exposureCC";
     private final String CMD_RS_SETTLE_CC = "resetSettleCC";
@@ -129,8 +125,8 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
      * Creates a new instance of cDVSTest20.
      */
     public DAViS240() {
-        setName("SBret10");
-        setDefaultPreferencesFile("../../biasgenSettings/sbret10/SBRet10.xml");
+        setName("DAViS240");
+        setDefaultPreferencesFile("../../biasgenSettings/Davis240a/David240aBasic.xml");
         setEventClass(ApsDvsEvent.class);
         setSizeX(WIDTH);
         setSizeY(HEIGHT);
@@ -138,7 +134,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
         setPixelHeightUm(18.5f);
         setPixelWidthUm(18.5f);
 
-        setEventExtractor(new SBret10Extractor(this));
+        setEventExtractor(new DAViS240Extractor(this));
 
         setBiasgen(config = new DAViS240Config(this));
 
@@ -147,9 +143,9 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
         apsDVSrenderer.setMaxADC(MAX_ADC);
         setRenderer(apsDVSrenderer);
 
-        sbretDisplayMethod = new SBret10DisplayMethod(this);
-        getCanvas().addDisplayMethod(sbretDisplayMethod);
-        getCanvas().setDisplayMethod(sbretDisplayMethod);
+        davisDisplayMethod = new DAViS240DisplayMethod(this);
+        getCanvas().addDisplayMethod(davisDisplayMethod);
+        getCanvas().setDisplayMethod(davisDisplayMethod);
         addDefaultEventFilter(ApsDvsEventFilter.class);
         addDefaultEventFilter(HotPixelFilter.class);
         addDefaultEventFilter(RefractoryFilter.class);
@@ -173,7 +169,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
         if (tokens.length < 2) {
             return input + ": unknown command - did you forget the argument?";
         }
-        if (tokens[1] == null || tokens[1].length() == 0) {
+        if ((tokens[1] == null) || (tokens[1].length() == 0)) {
             return input + ": argument too short - need a number";
         }
         float v = 0;
@@ -206,7 +202,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
     }
 
     /**
-     * Creates a new instance of SBRet10
+     * Creates a new instance of DAViS240
      *
      * @param hardwareInterface an existing hardware interface. This constructor
      * is preferred. It makes a new cDVSTest10Biasgen object to talk to the
@@ -241,14 +237,14 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
      * Bits 10-17 are y address (max value 240) <br>
      * <p>
      */
-    public class SBret10Extractor extends RetinaExtractor {
+    public class DAViS240Extractor extends RetinaExtractor {
 
         private int firstFrameTs = 0;
         private int autoshotEventsSinceLastShot = 0; // autoshot counter
         private int warningCount = 0;
         private static final int WARNING_COUNT_DIVIDER = 10000;
 
-        public SBret10Extractor(DAViS240 chip) {
+        public DAViS240Extractor(DAViS240 chip) {
             super(chip);
         }
 
@@ -302,7 +298,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
             for (int i = 0; i < n; i++) {  // TODO implement skipBy/subsampling, but without missing the frame start/end events and still delivering frames
                 int data = datas[i];
 
-                if (incompleteIMUSampleException != null || (ApsDvsChip.ADDRESS_TYPE_IMU & data) == ApsDvsChip.ADDRESS_TYPE_IMU) {
+                if ((incompleteIMUSampleException != null) || ((ApsDvsChip.ADDRESS_TYPE_IMU & data) == ApsDvsChip.ADDRESS_TYPE_IMU)) {
                     if (IMUSample.extractSampleTypeCode(data) == 0) { /// only start getting an IMUSample at code 0, the first sample type
                         try {
                             IMUSample possibleSample = IMUSample.constructFromAEPacketRaw(in, i, incompleteIMUSampleException);
@@ -311,16 +307,16 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
                             imuSample = possibleSample;  // asking for sample from AEChip now gives this value, but no access to intermediate IMU samples
                             imuSample.imuSampleEvent = true;
                             outItr.writeToNextOutput(imuSample); // also write the event out to the next output event slot
-//                           System.out.println("at position "+(out.size-1)+" put "+imuSample); 
+//                           System.out.println("at position "+(out.size-1)+" put "+imuSample);
                             continue;
                         } catch (IMUSample.IncompleteIMUSampleException ex) {
                             incompleteIMUSampleException = ex;
-                            if (missedImuSampleCounter++ % IMU_WARNING_INTERVAL == 0) {
+                            if ((missedImuSampleCounter++ % IMU_WARNING_INTERVAL) == 0) {
                                 log.warning(String.format("%s (obtained %d partial samples so far)", ex.toString(), missedImuSampleCounter));
                             }
                             break; // break out of loop because this packet only contained part of an IMUSample and formed the end of the packet anyhow. Next time we come back here we will complete the IMUSample
                         } catch (IMUSample.BadIMUDataException ex2) {
-                            if (badImuDataCounter++ % IMU_WARNING_INTERVAL == 0) {
+                            if ((badImuDataCounter++ % IMU_WARNING_INTERVAL) == 0) {
                                 log.warning(String.format("%s (%d bad samples so far)", ex2.toString(), badImuDataCounter));
                             }
                             incompleteIMUSampleException = null;
@@ -546,14 +542,14 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
      *
      * @author Tobi
      */
-    public class SBret10DisplayMethod extends ChipRendererDisplayMethodRGBA {
+    public class DAViS240DisplayMethod extends ChipRendererDisplayMethodRGBA {
 
         private static final int FONTSIZE = 10;
         private static final int FRAME_COUNTER_BAR_LENGTH_FRAMES = 10;
 
         private TextRenderer exposureRenderer = null;
 
-        public SBret10DisplayMethod(DAViS240 chip) {
+        public DAViS240DisplayMethod(DAViS240 chip) {
             super(chip.getCanvas());
         }
 
@@ -628,7 +624,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
             if (accelCircle == null) {
                 accelCircle = glu.gluNewQuadric();
             }
-            final float az = (vectorScale * imuSample.getAccelZ() * HEIGHT / 2) / IMUSample.getFullScaleAccelG() / 2;
+            final float az = ((vectorScale * imuSample.getAccelZ() * HEIGHT) / 2) / IMUSample.getFullScaleAccelG() / 2;
             final float rim = .5f;
             glu.gluQuadricDrawStyle(accelCircle, GLU.GLU_FILL);
             glu.gluDisk(accelCircle, az - rim, az + rim, 16, 1);
@@ -789,7 +785,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
             thresholdEvents = 0;
         }
         autoshotThresholdEvents = thresholdEvents;
-        getPrefs().putInt("SBret10.autoshotThresholdEvents", thresholdEvents);
+        getPrefs().putInt("DAViS240.autoshotThresholdEvents", thresholdEvents);
         if (autoshotThresholdEvents == 0) {
             config.runAdc.set(true);
         }
@@ -815,7 +811,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
         return getAutoExposureController().isAutoExposureEnabled();
     }
 
-    private boolean showImageHistogram = getPrefs().getBoolean("SBRet10.showImageHistogram", false);
+    private boolean showImageHistogram = getPrefs().getBoolean("DAViS240.showImageHistogram", false);
 
     @Override
     public boolean isShowImageHistogram() {
@@ -825,7 +821,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
     @Override
     public void setShowImageHistogram(boolean yes) {
         showImageHistogram = yes;
-        getPrefs().putBoolean("SBRet10.showImageHistogram", yes);
+        getPrefs().putBoolean("DAViS240.showImageHistogram", yes);
     }
 
     /**
@@ -891,7 +887,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
             CPLDInt exposure = config.exposure;
 
             int currentExposure = exposure.get(), newExposure = 0;
-            if (stats.fracLow >= underOverFractionThreshold && stats.fracHigh < underOverFractionThreshold) {
+            if ((stats.fracLow >= underOverFractionThreshold) && (stats.fracHigh < underOverFractionThreshold)) {
                 newExposure = Math.round(currentExposure * (1 + expDelta));
                 if (newExposure == currentExposure) {
                     newExposure++; // ensure increase
@@ -903,7 +899,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
                     exposure.set(newExposure);
                 }
                 log.log(Level.INFO, "Underexposed: {0}\n{1}", new Object[]{stats.toString(), String.format("oldExposure=%8d newExposure=%8d", currentExposure, newExposure)});
-            } else if (stats.fracLow < underOverFractionThreshold && stats.fracHigh >= underOverFractionThreshold) {
+            } else if ((stats.fracLow < underOverFractionThreshold) && (stats.fracHigh >= underOverFractionThreshold)) {
                 newExposure = Math.round(currentExposure * (1 - expDelta));
                 if (newExposure == currentExposure) {
                     newExposure--; // ensure decrease even with rounding.
@@ -1033,7 +1029,8 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 
                 syncEnabledMenuItem.addActionListener(new ActionListener() {
 
-                    public void actionPerformed(ActionEvent evt) {
+                    @Override
+					public void actionPerformed(ActionEvent evt) {
                         log.info("setting sync/timestamp master to " + syncEnabledMenuItem.isSelected());
                         config.syncTimestampMasterEnabled.set(syncEnabledMenuItem.isSelected());
                     }

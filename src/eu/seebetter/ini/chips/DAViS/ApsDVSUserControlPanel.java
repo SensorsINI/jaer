@@ -160,7 +160,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
     public void propertyChange(PropertyChangeEvent evt) {
        String name=evt.getPropertyName();
         try {
-            if (name == DVSTweaks.THRESHOLD) { // fired from SBRet10config setBandwidthTweak
+            if (name == DVSTweaks.THRESHOLD) { // fired from DAViS240Config setBandwidthTweak
                 float v = (Float) evt.getNewValue();
                 thresholdTweaker.setValue(v);
 
@@ -851,7 +851,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         return apsDvsTweaks;
     }
 
-    /** Handles Observable updates from SBRet10config, and inner classes VideoControl and ApsReadoutControl
+    /** Handles Observable updates from DAViS240Config, and inner classes VideoControl and ApsReadoutControl
      * 
      * @param o
      * @param arg 

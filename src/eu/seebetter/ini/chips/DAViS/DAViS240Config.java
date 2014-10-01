@@ -6,6 +6,8 @@ package eu.seebetter.ini.chips.DAViS;
 
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,10 +17,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.swing.AbstractAction;
-import javax.swing.AbstractButton;
 import javax.swing.Action;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JTabbedPane;
@@ -26,6 +28,7 @@ import javax.swing.border.TitledBorder;
 
 import net.sf.jaer.biasgen.AddressedIPot;
 import net.sf.jaer.biasgen.AddressedIPotArray;
+import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.biasgen.IPot;
 import net.sf.jaer.biasgen.Masterbias;
 import net.sf.jaer.biasgen.Pot;
@@ -38,7 +41,6 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.config.ApsDvsConfig;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.ApsDvsHardwareInterface;
 import net.sf.jaer.util.HasPropertyTooltips;
 import net.sf.jaer.util.ParameterControlPanel;
 import net.sf.jaer.util.PropertyTooltipSupport;
@@ -54,10 +56,6 @@ import ch.unizh.ini.jaer.config.fx2.TriStateablePortBit;
 import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
 import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
 import ch.unizh.ini.jaer.config.onchip.OutputMux;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import javax.swing.JLabel;
-import net.sf.jaer.biasgen.Biasgen.HasPreference;
 
 /**
  * Bias generator, On-chip diagnostic readout, video acquisition and rendering
@@ -101,10 +99,10 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
     protected CPLDByte miscControlBits = new CPLDByte(chip, 87, 80, "miscControlBits", "Bit0: IMU run (0=stop, 1=run). Bit1: Rolling shutter (0=global shutter, 1=rolling shutter). Bits2-7: unused ", (byte) 1);
     // See Invensense MPU-6100 IMU datasheet RM-MPU-6100A.pdf
     protected CPLDByte imu0PowerMgmtClkRegConfig = new CPLDByte(chip, 95, 88, "imu0_PWR_MGMT_1", "2=Disable sleep, select x axis gyro as clock source", (byte) 0x02); // PWR_MGMT_1
-    protected CPLDByte imu1DLPFConfig = new CPLDByte(chip, 103, 96, "imu1_CONFIG", "1=digital low pass filter DLPF: FS=1kHz, Gyro 188Hz, 1.9ms delay ", (byte) 1); // CONFIG 
-    protected CPLDByte imu2SamplerateDividerConfig = new CPLDByte(chip, 111, 104, "imu2_SMPLRT_DIV", "0=sample rate divider: 1 Khz sample rate when DLPF is enabled", (byte) 0); // SMPLRT_DIV 
-    protected CPLDByte imu3GyroConfig = new CPLDByte(chip, 119, 112, "imu3_GYRO_CONFIG", "8=500 deg/s, 65.5 LSB per deg/s ", (byte) 8); // GYRO_CONFIG: 
-    protected CPLDByte imu4AccelConfig = new CPLDByte(chip, 127, 120, "imu4_ACCEL_CONFIG", "ACCEL_CONFIG: Bits 4:3 code AFS_SEL. 8=4g, 8192 LSB per g", (byte) 8); // ACCEL_CONFIG: 
+    protected CPLDByte imu1DLPFConfig = new CPLDByte(chip, 103, 96, "imu1_CONFIG", "1=digital low pass filter DLPF: FS=1kHz, Gyro 188Hz, 1.9ms delay ", (byte) 1); // CONFIG
+    protected CPLDByte imu2SamplerateDividerConfig = new CPLDByte(chip, 111, 104, "imu2_SMPLRT_DIV", "0=sample rate divider: 1 Khz sample rate when DLPF is enabled", (byte) 0); // SMPLRT_DIV
+    protected CPLDByte imu3GyroConfig = new CPLDByte(chip, 119, 112, "imu3_GYRO_CONFIG", "8=500 deg/s, 65.5 LSB per deg/s ", (byte) 8); // GYRO_CONFIG:
+    protected CPLDByte imu4AccelConfig = new CPLDByte(chip, 127, 120, "imu4_ACCEL_CONFIG", "ACCEL_CONFIG: Bits 4:3 code AFS_SEL. 8=4g, 8192 LSB per g", (byte) 8); // ACCEL_CONFIG:
     // DVSTweaks
     private AddressedIPotCF diffOn, diffOff, refr, pr, sf, diff;
     // graphic options for rendering
@@ -126,7 +124,7 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
     public DAViS240Config(Chip chip) {
         super(chip);
         this.chip = (AEChip) chip;
-        setName("SBret10 Configuration");
+        setName("DAViS240 Configuration");
 
         // port bits
         addConfigValue(nChipReset);
@@ -209,7 +207,7 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
         videoControl.addObserver(this);
 
         // on-chip configuration chain
-        chipConfigChain = new SBRet10ChipConfigChain(chip);
+        chipConfigChain = new DAViS240ChipConfigChain(chip);
         chipConfigChain.addObserver(this);
 
         // control of log readout
@@ -254,13 +252,17 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
 
     @Override
     public boolean isCaptureFramesEnabled() {
-        if(apsReadoutControl==null) return false;
+        if(apsReadoutControl==null) {
+			return false;
+		}
         return apsReadoutControl.isAdcEnabled();
     }
 
     @Override
     public void setCaptureFramesEnabled(boolean yes) {
-        if(apsReadoutControl==null) return;
+        if(apsReadoutControl==null) {
+			return;
+		}
         apsReadoutControl.setAdcEnabled(yes);
     }
 
@@ -280,7 +282,7 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
     /**
      *
      * Overrides the default to built the custom control panel for configuring
-     * the SBret10 output multiplexers and many other chip, board and display
+     * the DAViS240 output multiplexers and many other chip, board and display
      * controls.
      *
      * @return a new panel for controlling this chip and board configuration
@@ -361,7 +363,7 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
         configTabbedPane.add("APS Readout Control", apsReadoutPanel);
         apsReadoutPanel.add(new ParameterControlPanel(apsReadoutControl));
 
-        // IMU control 
+        // IMU control
         JPanel imuControlPanel = new JPanel();
         imuControlPanel.add(new JLabel("<html>Low-level control of integrated inertial measurement unit."));
         imuControlPanel.setLayout(new BoxLayout(imuControlPanel, BoxLayout.Y_AXIS));
@@ -385,7 +387,7 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
         // only select panel after all added
 
         try {
-            configTabbedPane.setSelectedIndex(chip.getPrefs().getInt("SBret10.bgTabbedPaneSelectedIndex", 0));
+            configTabbedPane.setSelectedIndex(chip.getPrefs().getInt("DAViS240.bgTabbedPaneSelectedIndex", 0));
         } catch (IndexOutOfBoundsException e) {
             configTabbedPane.setSelectedIndex(0);
         }
@@ -447,7 +449,7 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
                 sendOnChipConfigChain();
             } else if (observable instanceof ShiftedSourceBiasCF) {
                 sendOnChipConfig();
-            } else if (observable instanceof SBRet10ChipConfigChain) {
+            } else if (observable instanceof DAViS240ChipConfigChain) {
                 sendOnChipConfigChain();
             } else if (observable instanceof Masterbias) {
                 powerDown.set(getMasterbias().isPowerDownEnabled());
@@ -477,18 +479,20 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
      *
      * @param translateRowOnlyEvents true to translate these parasitic events.
      */
-    public void setTranslateRowOnlyEvents(boolean translateRowOnlyEvents) {
+    @Override
+	public void setTranslateRowOnlyEvents(boolean translateRowOnlyEvents) {
         boolean old = this.translateRowOnlyEvents;
         this.translateRowOnlyEvents = translateRowOnlyEvents;
         getSupport().firePropertyChange(ApsDvsConfig.PROPERTY_TRANSLATE_ROW_ONLY_EVENTS, old, this.translateRowOnlyEvents);
     }
 
-    public boolean isTranslateRowOnlyEvents() {
+    @Override
+	public boolean isTranslateRowOnlyEvents() {
         return translateRowOnlyEvents;
     }
 
     private void tabbedPaneMouseClicked(java.awt.event.MouseEvent evt) {
-        chip.getPrefs().putInt("SBret10.bgTabbedPaneSelectedIndex", configTabbedPane.getSelectedIndex());
+        chip.getPrefs().putInt("DAViS240.bgTabbedPaneSelectedIndex", configTabbedPane.getSelectedIndex());
     }
 
     @Override
@@ -631,7 +635,7 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
          * Register 26: CONFIG, digital low pass filter setting DLPF_CFG
          */
         public void setDLPF(int dlpf) {
-            if (dlpf < 0 || dlpf > 6) {
+            if ((dlpf < 0) || (dlpf > 6)) {
                 throw new IllegalArgumentException("dlpf=" + dlpf + " is outside allowed range 0-6");
             }
             int old = imu2SamplerateDividerConfig.get() & 7;
@@ -650,7 +654,7 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
          * Register 27: Sample rate divider
          */
         public void setSampleRateDivider(int srd) {
-            if (srd < 0 || srd > 255) {
+            if ((srd < 0) || (srd > 255)) {
                 throw new IllegalArgumentException("sampleRateDivider=" + srd + " is outside allowed range 0-255");
             }
             int old = imu2SamplerateDividerConfig.get();
@@ -697,21 +701,21 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
 
         // accel scale bits
         private void setAFS_SEL(int val) { // AFS_SEL bits are bits 4:3 in accel register
-            if (val < 0 || val > 3) {
+            if ((val < 0) || (val > 3)) {
                 throw new IllegalArgumentException("value " + val + " is outside range 0-3");
             }
             int oldval = imu4AccelConfig.get();
-            int newval = oldval & (~(3 << 3)) | (val << 3);
+            int newval = (oldval & (~(3 << 3))) | (val << 3);
             setImu4(newval);
         }
 
         // gyro scale bits
         private void setFS_SEL(int val) { // AFS_SEL bits are bits 4:3 in accel register
-            if (val < 0 || val > 3) {
+            if ((val < 0) || (val > 3)) {
                 throw new IllegalArgumentException("value " + val + " is outside range 0-3");
             }
             int oldval = imu3GyroConfig.get();
-            int newval = oldval & (~(3 << 3)) | (val << 3);
+            int newval = (oldval & (~(3 << 3))) | (val << 3);
             setImu3(newval);
         }
 
@@ -844,7 +848,7 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
             boolean oldval = runAdc.isSet();
             runAdc.set(yes);
             // TODO we must always call listeners because by loading prefs, we maybe have changed runAdc but not been informed of those changes, because
-            // we are not registered directly as listeners on the bit itself.... 
+            // we are not registered directly as listeners on the bit itself....
             getSupport().firePropertyChange(ApsDvsConfig.PROPERTY_CAPTURE_FRAMES_ENABLED, null, runAdc.isSet());
 //            if (oldval != yes) {
                 setChanged();
@@ -865,7 +869,7 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
                 Thread.sleep(100);
             } catch (InterruptedException e) {
             }// TODO fix firmware/logic to deal with sequential VRs
-            ((SBRet10ChipConfigChain) chipConfigChain).globalShutter.set(yes);
+            ((DAViS240ChipConfigChain) chipConfigChain).globalShutter.set(yes);
             getSupport().firePropertyChange(ApsDvsConfig.PROPERTY_GLOBAL_SHUTTER_MODE_ENABLED, oldbool, yes);
             if (oldbool != yes) {
                 setChanged();
@@ -1241,16 +1245,16 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
      * msb of first output byte
      * @return array of bytes to send
      */
-    public class SBRet10ChipConfigChain extends ChipConfigChain {
+    public class DAViS240ChipConfigChain extends ChipConfigChain {
 
         //Config Bits
         OnchipConfigBit resetCalib = new OnchipConfigBit(chip, "resetCalib", 0, "turns the bias generator integrate and fire calibration neuron off", true),
                 typeNCalib = new OnchipConfigBit(chip, "typeNCalib", 1, "make the bias generator intgrate and fire calibration neuron configured to measure N type biases; otherwise measures P-type currents", false),
                 resetTestpixel = new OnchipConfigBit(chip, "resetTestpixel", 2, "keeps the test pixel in reset", true),
-                hotPixelSuppression = new OnchipConfigBit(chip, "hotPixelSuppression", 3, "<html>SBRet10: turns on the hot pixel suppression. <p>SBRet20: enables test pixel stripes on right side of array", false),
+                hotPixelSuppression = new OnchipConfigBit(chip, "hotPixelSuppression", 3, "<html>DAViS240a: turns on the hot pixel suppression. <p>DAViS240b: enables test pixel stripes on right side of array", false),
                 nArow = new OnchipConfigBit(chip, "nArow", 4, "use nArow in the AER state machine", false),
                 useAout = new OnchipConfigBit(chip, "useAout", 5, "turn the pads for the analog MUX outputs on", true),
-                globalShutter = new OnchipConfigBit(chip, "globalShutter", 6, "Use the global shutter or not, only has effect on SBRet20 chip on DAVIS240b cameras. No effect on SBRet10 chip in DAVIS240a cameras. On-chip control bit that is looded into on-chip shift register.", false);
+                globalShutter = new OnchipConfigBit(chip, "globalShutter", 6, "Use the global shutter or not, only has effect on DAVIS240b cameras. No effect in DAVIS240a cameras. On-chip control bit that is looded into on-chip shift register.", false);
         //Muxes
         OutputMux[] amuxes = {new AnalogOutputMux(1), new AnalogOutputMux(2), new AnalogOutputMux(3)};
         OutputMux[] dmuxes = {new DigitalOutputMux(1), new DigitalOutputMux(2), new DigitalOutputMux(3), new DigitalOutputMux(4)};
@@ -1258,7 +1262,7 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
         ArrayList<OutputMux> muxes = new ArrayList();
         MuxControlPanel controlPanel = null;
 
-        public SBRet10ChipConfigChain(Chip chip) {
+        public DAViS240ChipConfigChain(Chip chip) {
             super(chip);
             this.sbChip = chip;
 
@@ -1672,8 +1676,10 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
      */
     @Override
     public void setAeReaderFifoSize(int aeReaderFifoSize) {
-        if(aeReaderFifoSize< 1<<8)aeReaderFifoSize=1<<8;
-        else if( ((aeReaderFifoSize) & (aeReaderFifoSize-1))!=0){
+        if(aeReaderFifoSize< (1<<8)) {
+			aeReaderFifoSize=1<<8;
+		}
+		else if( ((aeReaderFifoSize) & (aeReaderFifoSize-1))!=0){
             int newval=Integer.highestOneBit(aeReaderFifoSize-1);
             log.warning("tried to set a non-power-of-two value "+aeReaderFifoSize+"; rounding down to nearest power of two which is "+newval);
             aeReaderFifoSize=newval;
