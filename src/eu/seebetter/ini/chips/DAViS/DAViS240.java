@@ -112,7 +112,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
     private int frameCount = 0;
     private boolean snapshot = false;
     private boolean resetOnReadout = false;
-    private SBret10config config;
+    private DAViS240Config config;
     JFrame controlFrame = null;
     public static final short WIDTH = 240;
     public static final short HEIGHT = 180;
@@ -140,7 +140,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 
         setEventExtractor(new SBret10Extractor(this));
 
-        setBiasgen(config = new SBret10config(this));
+        setBiasgen(config = new DAViS240Config(this));
 
         // hardware interface is ApsDvsHardwareInterface
         apsDVSrenderer = new AEFrameChipRenderer(this);
@@ -526,10 +526,10 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
     @Override
     public void setHardwareInterface(final HardwareInterface hardwareInterface) {
         this.hardwareInterface = hardwareInterface;
-        SBret10config config;
+        DAViS240Config config;
         try {
             if (getBiasgen() == null) {
-                setBiasgen(config = new SBret10config(this));
+                setBiasgen(config = new DAViS240Config(this));
                 // now we can addConfigValue the control panel
 
             } else {

@@ -6,9 +6,9 @@
 package eu.seebetter.ini.chips.DAViS;
 
 import eu.seebetter.ini.chips.ApsDvsChip;
-import eu.seebetter.ini.chips.DAViS.SBret10config.ImuAccelScale;
-import eu.seebetter.ini.chips.DAViS.SBret10config.ImuControl;
-import eu.seebetter.ini.chips.DAViS.SBret10config.ImuGyroScale;
+import eu.seebetter.ini.chips.DAViS.DAViS240Config.ImuAccelScale;
+import eu.seebetter.ini.chips.DAViS.DAViS240Config.ImuControl;
+import eu.seebetter.ini.chips.DAViS.DAViS240Config.ImuGyroScale;
 
 import java.awt.Color;
 import java.beans.PropertyChangeEvent;
@@ -30,7 +30,7 @@ public class ImuControlPanel extends javax.swing.JPanel implements PropertyChang
     /**
      * Creates new form ImuControlPanel
      */
-    public ImuControlPanel(SBret10config config) {
+    public ImuControlPanel(DAViS240Config config) {
         imuControl = config.imuControl;
         initComponents();
         dontProcess = true;

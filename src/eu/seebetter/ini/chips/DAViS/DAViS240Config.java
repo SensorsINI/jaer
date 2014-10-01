@@ -65,7 +65,7 @@ import net.sf.jaer.biasgen.Biasgen.HasPreference;
  *
  * @author Christian/Tobi
  */
-public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, ApsDvsTweaks, HasPreference {
+public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, ApsDvsTweaks, HasPreference {
 
     private static final float EXPOSURE_CONTROL_CLOCK_FREQ_HZ = 30000000 / 1025; // this is actual clock freq in Hz of clock that controls timing of inter-frame delay and exposure delay
     protected ShiftedSourceBiasCF ssn, ssp;
@@ -123,7 +123,7 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
      *
      * @param chip the chip this configuration belongs to
      */
-    public SBret10config(Chip chip) {
+    public DAViS240Config(Chip chip) {
         super(chip);
         this.chip = (AEChip) chip;
         setName("SBret10 Configuration");

@@ -32,8 +32,8 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
     protected ApsDvsChip chip=null;
     protected ApsDvsTweaks apsDvsTweaks;
     protected ApsDvsConfig apsDvsConfig;
-    SBret10config.VideoControl videoControl;
-    SBret10config.ApsReadoutControl apsReadoutControl;
+    DAViS240Config.VideoControl videoControl;
+    DAViS240Config.ApsReadoutControl apsReadoutControl;
          AEChipRenderer renderer=null;
    
     private static final Logger log = Logger.getLogger("DVSFunctionalControlPanel");
@@ -72,9 +72,9 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         dvsContSp.setValue(renderer.getColorScale());
         setDvsColorModeRadioButtons();
         renderer.getSupport().addPropertyChangeListener(this);
-        if (apsDvsConfig instanceof SBret10config) {
+        if (apsDvsConfig instanceof DAViS240Config) {
             // add us as observer for various property changes 
-            SBret10config config=(SBret10config)apsDvsConfig;
+            DAViS240Config config=(DAViS240Config)apsDvsConfig;
             exposureCPLDInt=config.exposure;
             frameDelayCPLDInt=config.frameDelay;
             videoControl=config.videoControl;
