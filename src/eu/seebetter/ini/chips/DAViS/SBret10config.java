@@ -224,7 +224,7 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         try {
             sendConfiguration(this);
         } catch (HardwareInterfaceException ex) {
-            Logger.getLogger(SBret10.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(DAViS240.class.getName()).log(Level.SEVERE, null, ex);
         }
 
         syncTimestampMasterEnabled.set(true); // normally set this true despite preference value because slave mode should be set by user or by plug insertion to slave input 3.5mm plug
@@ -369,12 +369,12 @@ public class SBret10config extends LatticeLogicConfig implements ApsDvsConfig, A
         imuControlPanel.add(new ImuControlPanel(this));
 
         // autoexposure
-        if (chip instanceof SBret10) {
+        if (chip instanceof DAViS240) {
             JPanel autoExposurePanel = new JPanel();
             autoExposurePanel.add(new JLabel("<html>Automatic exposure control.<p>The settings here determine when and by how much the exposure value should be changed. <p> The strategy followed attempts to avoid a sitation <b> where too many pixels are under- or over-exposed. Hover over entry fields to see explanations."));
             autoExposurePanel.setLayout(new BoxLayout(autoExposurePanel, BoxLayout.Y_AXIS));
             configTabbedPane.add("APS Autoexposure Control", autoExposurePanel);
-            autoExposurePanel.add(new ParameterControlPanel(((SBret10) chip).getAutoExposureController()));
+            autoExposurePanel.add(new ParameterControlPanel(((DAViS240) chip).getAutoExposureController()));
         }
 
         //chip config

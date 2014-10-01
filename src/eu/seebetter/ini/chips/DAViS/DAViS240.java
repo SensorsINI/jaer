@@ -82,7 +82,7 @@ import net.sf.jaer.util.histogram.SimpleHistogram;
  * @author tobi, christian
  */
 @Description("SBRet10/20 240x180 pixel APS-DVS DAVIS sensor")
-public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
+public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 
     private JMenu chipMenu = null;
     private JMenuItem syncEnabledMenuItem = null;
@@ -128,7 +128,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
     /**
      * Creates a new instance of cDVSTest20.
      */
-    public SBret10() {
+    public DAViS240() {
         setName("SBret10");
         setDefaultPreferencesFile("../../biasgenSettings/sbret10/SBRet10.xml");
         setEventClass(ApsDvsEvent.class);
@@ -201,7 +201,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
         try {
             config.sendOnChipConfigChain();
         } catch (HardwareInterfaceException ex) {
-            Logger.getLogger(SBret10.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(DAViS240.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
@@ -212,7 +212,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
      * is preferred. It makes a new cDVSTest10Biasgen object to talk to the
      * on-chip biasgen.
      */
-    public SBret10(HardwareInterface hardwareInterface) {
+    public DAViS240(HardwareInterface hardwareInterface) {
         this();
         setHardwareInterface(hardwareInterface);
     }
@@ -248,7 +248,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
         private int warningCount = 0;
         private static final int WARNING_COUNT_DIVIDER = 10000;
 
-        public SBret10Extractor(SBret10 chip) {
+        public SBret10Extractor(DAViS240 chip) {
             super(chip);
         }
 
@@ -553,7 +553,7 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
 
         private TextRenderer exposureRenderer = null;
 
-        public SBret10DisplayMethod(SBret10 chip) {
+        public SBret10DisplayMethod(DAViS240 chip) {
             super(chip.getCanvas());
         }
 
@@ -584,8 +584,8 @@ public class SBret10 extends ApsDvsChip implements RemoteControlled, Observer {
             }
 
             // Draw last IMU output
-            if (config.isDisplayImu() && (chip instanceof SBret10)) {
-                IMUSample imuSample = ((SBret10) chip).getImuSample();
+            if (config.isDisplayImu() && (chip instanceof DAViS240)) {
+                IMUSample imuSample = ((DAViS240) chip).getImuSample();
                 if (imuSample != null) {
                     imuRender(drawable, imuSample);
                 }

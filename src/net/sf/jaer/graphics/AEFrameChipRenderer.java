@@ -21,7 +21,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.util.filter.LowpassFilter2d;
 import eu.seebetter.ini.chips.ApsDvsChip;
-import eu.seebetter.ini.chips.DAViS.SBret10;
+import eu.seebetter.ini.chips.DAViS.DAViS240;
 import net.sf.jaer.util.histogram.AbstractHistogram;
 import net.sf.jaer.util.histogram.SimpleHistogram;
 
@@ -191,8 +191,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             return;
         }
 
-        if (getChip() instanceof SBret10) {
-            computeHistograms = ((SBret10) chip).isShowImageHistogram() || ((ApsDvsChip) chip).isAutoExposureEnabled();
+        if (getChip() instanceof DAViS240) {
+            computeHistograms = ((DAViS240) chip).isShowImageHistogram() || ((ApsDvsChip) chip).isAutoExposureEnabled();
         }
 
         ApsDvsEventPacket packet = (ApsDvsEventPacket) pkt;
