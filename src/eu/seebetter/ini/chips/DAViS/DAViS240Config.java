@@ -98,7 +98,7 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
      */
     protected CPLDByte miscControlBits = new CPLDByte(chip, 87, 80, "miscControlBits", "Bit0: IMU run (0=stop, 1=run). Bit1: Rolling shutter (0=global shutter, 1=rolling shutter). Bits2-7: unused ", (byte) 1);
     // See Invensense MPU-6100 IMU datasheet RM-MPU-6100A.pdf
-    protected CPLDByte imu0PowerMgmtClkRegConfig = new CPLDByte(chip, 95, 88, "imu0_PWR_MGMT_1", "2=Disable sleep, select x axis gyro as clock source", (byte) 0x02); // PWR_MGMT_1
+    protected CPLDByte imu0PowerMgmtClkRegConfig = new CPLDByte(chip, 95, 88, "imu0_PWR_MGMT_1", "1=Disable sleep, select x axis gyro as clock source", (byte) 1); // PWR_MGMT_1
     protected CPLDByte imu1DLPFConfig = new CPLDByte(chip, 103, 96, "imu1_CONFIG", "1=digital low pass filter DLPF: FS=1kHz, Gyro 188Hz, 1.9ms delay ", (byte) 1); // CONFIG
     protected CPLDByte imu2SamplerateDividerConfig = new CPLDByte(chip, 111, 104, "imu2_SMPLRT_DIV", "0=sample rate divider: 1 Khz sample rate when DLPF is enabled", (byte) 0); // SMPLRT_DIV
     protected CPLDByte imu3GyroConfig = new CPLDByte(chip, 119, 112, "imu3_GYRO_CONFIG", "8=500 deg/s, 65.5 LSB per deg/s ", (byte) 8); // GYRO_CONFIG:
