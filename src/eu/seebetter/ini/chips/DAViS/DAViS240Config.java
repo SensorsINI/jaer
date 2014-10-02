@@ -872,7 +872,10 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
             } catch (InterruptedException e) {
             }// TODO fix firmware/logic to deal with sequential VRs
 
-            ((DAViS240ChipConfigChain) chipConfigChain).globalShutter.set(yes);
+            // FIXME: Currently also rolling shutter mode, with the rolling shutter logic, needs
+            // the globalShutter bit in the chip config chain to be 1, so as to get a good image.
+            // It is unclear why this is, chip internals will need to be explored.
+            ((DAViS240ChipConfigChain) chipConfigChain).globalShutter.set(true);
 
             getSupport().firePropertyChange(ApsDvsConfig.PROPERTY_GLOBAL_SHUTTER_MODE_ENABLED, oldbool, yes);
 
