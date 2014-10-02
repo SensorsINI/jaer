@@ -862,19 +862,23 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
 
         public void setGlobalShutterMode(boolean yes) {
             int oldval = miscControlBits.get();
-            boolean oldbool = (oldval & 2) != 0;
+            boolean oldbool = isGlobalShutterMode();
+
             int newval = (oldval & (~2)) | (yes ? 0 : 2); // set bit1=1 to select rolling shutter mode, 0 for global shutter mode
             miscControlBits.set(newval);
+
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
             }// TODO fix firmware/logic to deal with sequential VRs
+
             ((DAViS240ChipConfigChain) chipConfigChain).globalShutter.set(yes);
+
             getSupport().firePropertyChange(ApsDvsConfig.PROPERTY_GLOBAL_SHUTTER_MODE_ENABLED, oldbool, yes);
-            if (oldbool != yes) {
-                setChanged();
-                notifyObservers(); // inform ParameterControlPanel
-            }
+
+
+            setChanged();
+            notifyObservers(); // inform ParameterControlPanel
         }
 
         public void setColSettleCC(int cc) {
