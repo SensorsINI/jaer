@@ -381,7 +381,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		encoder.encode(CharBuffer.wrap(name), buffer, true);
 		encoder.flush(buffer);
 
-		//sendVendorRequest(CypressFX3.VR_SET_DEVICE_NAME, (short) 0, (short) 0, buffer);
+		// sendVendorRequest(CypressFX3.VR_SET_DEVICE_NAME, (short) 0, (short)
+		// 0, buffer);
 
 		stringDescriptor3 = LibUsb.getStringDescriptor(deviceHandle, (byte) 3);
 		if (stringDescriptor3 == null) {
@@ -604,19 +605,19 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 
 		try {
-			byte[] configBytes = new byte[4];
+			final byte[] configBytes = new byte[4];
 
 			configBytes[0] = 0x00;
 			configBytes[1] = 0x00;
 			configBytes[2] = 0x00;
 			configBytes[3] = 0x01;
-			sendVendorRequest(VR_FPGA_CONFIG, (short) 0x00, (short) 0x02, configBytes);
+			sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, (short) 0x00, (short) 0x02, configBytes);
 
 			configBytes[0] = 0x00;
 			configBytes[1] = 0x00;
 			configBytes[2] = 0x00;
 			configBytes[3] = 0x00;
-			sendVendorRequest(VR_FPGA_CONFIG, (short) 0x00, (short) 0x02, configBytes);
+			sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, (short) 0x00, (short) 0x02, configBytes);
 		}
 		catch (final HardwareInterfaceException e) {
 			CypressFX3.log.warning("CypressFX3.resetTimestamps: couldn't send vendor request to reset timestamps");
@@ -724,31 +725,46 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			return;
 		}
 
-		byte[] configBytes = new byte[4];
+		final byte[] configBytes = new byte[4];
 
 		configBytes[0] = 0x00;
 		configBytes[1] = 0x00;
 		configBytes[2] = 0x00;
 		configBytes[3] = 0x01;
-		sendVendorRequest(VR_FPGA_CONFIG, (short) 0x00, (short) 0x00, configBytes);
+		sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, (short) 0x00, (short) 0x00, configBytes);
 
 		configBytes[0] = 0x00;
 		configBytes[1] = 0x00;
 		configBytes[2] = 0x00;
 		configBytes[3] = 0x01;
-		sendVendorRequest(VR_FPGA_CONFIG, (short) 0x00, (short) 0x01, configBytes);
+		sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, (short) 0x00, (short) 0x01, configBytes);
+
+		// Set delays to minimum for small board cameras (they are slower).
+		if (getPID() == (short) 0x841B) {
+			configBytes[0] = 0x00;
+			configBytes[1] = 0x00;
+			configBytes[2] = 0x00;
+			configBytes[3] = 0x01;
+			sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, (short) 0x01, (short) 0x01, configBytes);
+
+			configBytes[0] = 0x00;
+			configBytes[1] = 0x00;
+			configBytes[2] = 0x00;
+			configBytes[3] = 0x01;
+			sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, (short) 0x01, (short) 0x02, configBytes);
+		}
 
 		configBytes[0] = 0x00;
 		configBytes[1] = 0x00;
 		configBytes[2] = 0x00;
 		configBytes[3] = 0x01;
-		sendVendorRequest(VR_FPGA_CONFIG, (short) 0x01, (short) 0x00, configBytes);
+		sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, (short) 0x01, (short) 0x00, configBytes);
 
 		configBytes[0] = 0x00;
 		configBytes[1] = 0x00;
 		configBytes[2] = 0x00;
 		configBytes[3] = 0x01;
-		sendVendorRequest(VR_FPGA_CONFIG, (short) 0x03, (short) 0x00, configBytes);
+		sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, (short) 0x03, (short) 0x00, configBytes);
 
 		inEndpointEnabled = true;
 	}
@@ -760,31 +776,31 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 */
 	protected synchronized void disableINEndpoint() {
 		try {
-			byte[] configBytes = new byte[4];
+			final byte[] configBytes = new byte[4];
 
 			configBytes[0] = 0x00;
 			configBytes[1] = 0x00;
 			configBytes[2] = 0x00;
 			configBytes[3] = 0x00;
-			sendVendorRequest(VR_FPGA_CONFIG, (short) 0x03, (short) 0x00, configBytes);
+			sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, (short) 0x03, (short) 0x00, configBytes);
 
 			configBytes[0] = 0x00;
 			configBytes[1] = 0x00;
 			configBytes[2] = 0x00;
 			configBytes[3] = 0x00;
-			sendVendorRequest(VR_FPGA_CONFIG, (short) 0x01, (short) 0x00, configBytes);
+			sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, (short) 0x01, (short) 0x00, configBytes);
 
 			configBytes[0] = 0x00;
 			configBytes[1] = 0x00;
 			configBytes[2] = 0x00;
 			configBytes[3] = 0x00;
-			sendVendorRequest(VR_FPGA_CONFIG, (short) 0x00, (short) 0x01, configBytes);
+			sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, (short) 0x00, (short) 0x01, configBytes);
 
 			configBytes[0] = 0x00;
 			configBytes[1] = 0x00;
 			configBytes[2] = 0x00;
 			configBytes[3] = 0x00;
-			sendVendorRequest(VR_FPGA_CONFIG, (short) 0x00, (short) 0x00, configBytes);
+			sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, (short) 0x00, (short) 0x00, configBytes);
 		}
 		catch (final HardwareInterfaceException e) {
 			CypressFX3.log
@@ -1065,7 +1081,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 						if (transfer.status() != LibUsb.TRANSFER_CANCELLED) {
 							monitor.close(); // watch out, this can call
-											// synchronized method
+												// synchronized method
 						}
 					}
 				}
@@ -1488,9 +1504,11 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 
 		// start the thread that listens for device status information (e.g.
-		// timestamp reset)
-		//asyncStatusThread = new AsyncStatusThread(this);
-		//asyncStatusThread.startThread();
+		// timestamp reset), only on devices that support it.
+		if (getPID() == DAViSFX3HardwareInterface.PID) {
+			asyncStatusThread = new AsyncStatusThread(this);
+			asyncStatusThread.startThread();
+		}
 	}
 
 	/**
