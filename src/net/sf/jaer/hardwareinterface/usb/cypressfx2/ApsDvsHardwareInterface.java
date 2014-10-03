@@ -631,7 +631,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                     break;
                                 case 1: // timestamp
                                     lastts = currentts;
-                                    currentts = ((0x3f & buf[i + 1]) << 8) | (buf[i] & 0xff);
+                                    currentts = ((0x3f & (int)buf[i + 1]) << 8) | ((int)buf[i] & 0xff);
                                     currentts = (TICK_US * (currentts + wrapAdd));
                                     if (lastts > currentts && nonmonotonicTimestampWarningCount-- > 0) {
                                         log.warning(this.toString()+": non-monotonic timestamp: currentts=" + currentts + " lastts=" + lastts + " currentts-lastts=" + (currentts - lastts));
@@ -659,6 +659,8 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                     nonmonotonicTimestampWarningCount = NONMONOTONIC_WARNING_COUNT;
                                     this.resetTimestamps();
                                     log.info("timestamp reset event received on "+super.toString());
+                                    lastts =0;
+                                    currentts =0;
                                     break;
                             }
                             

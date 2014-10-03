@@ -20,7 +20,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 	private int[] AcmCellMaxTime = new int[Ntrackers]; // = getInt("cmCellMaxTime", 200000);
 	private int[] AcmCellNevTh = new int[Ntrackers]; // = getInt("cmCellNevTh", 1);
 	private int[] AcmCellAVG = new int[Ntrackers]; // = getInt("cmCellAVG", 1);
-	private boolean trackerEnable = getBoolean("trackerEnable", true);
+	private boolean[] AtrackerEnable = new boolean[Ntrackers]; //getBoolean("trackerEnable", true);
 	private boolean BGAF_OTs_Enable = getBoolean("BGAF_OTs_Enable", true);
 	private boolean OTsEnable = getBoolean("OTsEnable", true);
         private boolean DAVIS_Enable = getBoolean("DAVIS_Enable", true);
@@ -95,6 +95,17 @@ public class ATCFpgaConfig extends EventFilter2D {
 	public void setTrackerId(final int trackerId) {
 		this.trackerId = trackerId;
                 putInt("trackerId", trackerId);
+                setCmCellInitX(getCmCellInitX());
+                setCmCellInitY(getCmCellInitY());
+                setCmCellRadixStep(getCmCellRadixStep());
+                setCmCellRadixTh(getCmCellRadixTh());
+                setCmCellRadixMax(getCmCellRadixMax());
+                setCmCellRadixMin(getCmCellRadixMin());
+                setCmCellInitRadix(getCmCellInitRadix());
+                setCmCellMaxTime(getCmCellMaxTime());
+                setCmCellNevTh(getCmCellNevTh());
+                setCmCellAVG(getCmCellAVG());
+                setTrackerEnable(isTrackerEnable());
 	}
 
 	public int getCmCellInitX() {
@@ -110,6 +121,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 	}
 
 	public void setCmCellInitX(final int cmCellInitX) {
+            support.firePropertyChange("cmCellInitX", 0, cmCellInitX);
 		this.AcmCellInitX[trackerId - 1] = cmCellInitX;
 		putInt("cmCellInitX_" + (trackerId - 1), cmCellInitX);
 	}
@@ -127,8 +139,9 @@ public class ATCFpgaConfig extends EventFilter2D {
 	}
 
 	public void setCmCellInitY(final int cmCellInitY) {
-		this.AcmCellInitY[trackerId - 1] = cmCellInitY;
-		putInt("cmCellInitY_" + (trackerId - 1), cmCellInitY);
+            support.firePropertyChange("cmCellInitY", 0, cmCellInitY);
+            this.AcmCellInitY[trackerId - 1] = cmCellInitY;
+            putInt("cmCellInitY_" + (trackerId - 1), cmCellInitY);
 	}
 
 	public int getCmCellRadixStep() {
@@ -144,6 +157,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 	}
 
 	public void setCmCellRadixStep(final int cmCellRadixStep) {
+            support.firePropertyChange("cmCellRadixStep", 0, cmCellRadixStep);
 		this.AcmCellRadixStep[trackerId - 1] = cmCellRadixStep;
 		putInt("cmCellRadixStep_" + (trackerId - 1), cmCellRadixStep);
 	}
@@ -161,6 +175,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 	}
 
 	public void setCmCellRadixTh(final int cmCellRadixTh) {
+            support.firePropertyChange("cmCellRadixTh", 0, cmCellRadixTh);
 		this.AcmCellRadixTh[trackerId - 1] = cmCellRadixTh;
 		putInt("cmCellRadixTh_" + (trackerId - 1), cmCellRadixTh);
 	}
@@ -178,6 +193,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 	}
 
 	public void setCmCellRadixMax(final int cmCellRadixMax) {
+            support.firePropertyChange("cmCellRadixMax", 0, cmCellRadixMax);
 		this.AcmCellRadixMax[trackerId - 1] = cmCellRadixMax;
 		putInt("cmCellRadixMax_" + (trackerId - 1), cmCellRadixMax);
 	}
@@ -195,6 +211,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 	}
 
 	public void setCmCellRadixMin(final int cmCellRadixMin) {
+            support.firePropertyChange("cmCellRadixMin", 0, cmCellRadixMin);
 		this.AcmCellRadixMin[trackerId - 1] = cmCellRadixMin;
 		putInt("cmCellRadixMin_" + (trackerId - 1), cmCellRadixMin);
 	}
@@ -212,6 +229,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 	}
 
 	public void setCmCellInitRadix(final int cmCellInitRadix) {
+            support.firePropertyChange("cmCellInitRadix", 0, cmCellInitRadix);
 		this.AcmCellInitRadix[trackerId - 1] = cmCellInitRadix;
 		putInt("cmCellInitRadix_" + (trackerId - 1), cmCellInitRadix);
 	}
@@ -229,6 +247,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 	}
 
 	public void setCmCellMaxTime(final int cmCellMaxTime) {
+            support.firePropertyChange("cmCellMaxTime", 0, cmCellMaxTime);
 		this.AcmCellMaxTime[trackerId - 1] = cmCellMaxTime;
 		putInt("cmCellMaxTime_" + (trackerId - 1), cmCellMaxTime);
 	}
@@ -246,6 +265,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 	}
 
 	public void setCmCellNevTh(final int cmCellNevTh) {
+            support.firePropertyChange("cmCellNevTh", 0, cmCellNevTh);
 		this.AcmCellNevTh[trackerId - 1] = cmCellNevTh;
 		putInt("cmCellNevTh_" + (trackerId - 1), cmCellNevTh);
 	}
@@ -263,17 +283,19 @@ public class ATCFpgaConfig extends EventFilter2D {
 	}
 
 	public void setCmCellAVG(final int cmCellAVG) {
+            support.firePropertyChange("cmCellAVG", 0, cmCellAVG);
 		this.AcmCellAVG[trackerId - 1] = cmCellAVG;
 		putInt("cmCellAVG_" + (trackerId - 1), cmCellAVG);
 	}
 
 	public boolean isTrackerEnable() {
-		return trackerEnable;
+		return AtrackerEnable[trackerId];
 	}
 
 	public void setTrackerEnable(final boolean trackerEnable) {
-		this.trackerEnable = trackerEnable;
-		putBoolean("trackerEnable", trackerEnable);
+            support.firePropertyChange("trackerEnable",0,trackerEnable);
+		this.AtrackerEnable[trackerId-1] = trackerEnable;
+		putBoolean("trackerEnable_" + (trackerId-1), trackerEnable);
 	}
 
 	synchronized public void doConfigureCMCell() {
@@ -294,7 +316,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 		sendCommand((byte) 85, (byte) ((cmCellMaxTimeCycles >>> 24) & 0xFF));
 		sendCommand((byte) 86, (byte) (getInt("cmCellNevTh_" + (trackerId - 1), 0) & 0xFF));
 		sendCommand((byte) 87, (byte) (getInt("cmCellAVG_" + (trackerId - 1), 0) & 0xFF));
-		sendCommand((byte) 88, (byte) ((getBoolean("trackerEnable", true)) ? (0xFF) : (0x00)));
+		sendCommand((byte) 88, (byte) ((getBoolean("trackerEnable_" + (trackerId-1), true)) ? (0xFF) : (0x00)));
 		sendCommand((byte) 89, (byte) (getInt("cmCellRadixStep_" + (trackerId - 1), 0) & 0xFF));
 		sendCommand((byte) 90, (byte) (getInt("cmCellRadixMax_" + (trackerId - 1), 0) & 0xFF));
 		sendCommand((byte) 91, (byte) (getInt("cmCellRadixMin_" + (trackerId - 1), 0) & 0xFF));
