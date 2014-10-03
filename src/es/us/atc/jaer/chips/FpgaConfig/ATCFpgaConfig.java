@@ -93,6 +93,7 @@ public class ATCFpgaConfig extends EventFilter2D {
 	}
 
 	public void setTrackerId(final int trackerId) {
+            support.firePropertyChange("trackerId", 0, trackerId);
 		this.trackerId = trackerId;
                 putInt("trackerId", trackerId);
                 setCmCellInitX(getCmCellInitX());
@@ -382,34 +383,59 @@ public class ATCFpgaConfig extends EventFilter2D {
 	public void resetFilter() {
 		// Empty.
             for (int i=0;i<Ntrackers;i++) {
-                AcmCellInitX[i] = getInt("cmCellInitX", 64);
-                AcmCellInitY[i] = getInt("cmCellInitY", 64);
-                AcmCellRadixTh[i] = getInt("cmCellRadixStep", 1);
-                AcmCellInitRadix[i] = getInt("cmCellInitRadix", 1);
-                AcmCellRadixStep[i] = getInt("cmCellRadixStep", 1);
-                AcmCellRadixMax[i] = getInt("cmCellRadixStep", 1);
-                AcmCellRadixMin[i] = getInt("cmCellRadixStep", 1);
+                AcmCellInitX[i] = getInt("cmCellInitX", 64 + (i%2)*64);
+                AcmCellInitY[i] = getInt("cmCellInitY", 64 + (i%2)*64);
+                AcmCellRadixTh[i] = getInt("cmCellRadixTh", 7);
+                AcmCellInitRadix[i] = getInt("cmCellInitRadix", 63);
+                AcmCellRadixStep[i] = getInt("cmCellRadixStep", 7);
+                AcmCellRadixMax[i] = getInt("AcmCellRadixMax", 7);
+                AcmCellRadixMin[i] = getInt("AcmCellRadixMin", 1);
                 AcmCellMaxTime[i] = getInt("cmCellMaxTime", 200000);
-                AcmCellNevTh[i] = getInt("cmCellNevTh", 1);
+                AcmCellNevTh[i] = getInt("cmCellNevTh", 5);
                 AcmCellAVG[i] = getInt("cmCellAVG", 1);
+                AtrackerEnable[i] = getBoolean("trackerEnable", (i%2)==0);
             }
+            trackerId = 1;
+                setCmCellInitX(AcmCellInitX[trackerId-1]);
+                setCmCellInitY(AcmCellInitY[trackerId-1]);
+                setCmCellRadixStep(AcmCellRadixStep[trackerId-1]);
+                setCmCellRadixTh(AcmCellRadixTh[trackerId-1]);
+                setCmCellRadixMax(AcmCellRadixMax[trackerId-1]);
+                setCmCellRadixMin(AcmCellRadixMin[trackerId-1]);
+                setCmCellInitRadix(AcmCellInitRadix[trackerId-1]);
+                setCmCellMaxTime(AcmCellMaxTime[trackerId-1]);
+                setCmCellNevTh(AcmCellNevTh[trackerId-1]);
+                setCmCellAVG(AcmCellAVG[trackerId-1]);
+                setTrackerEnable(AtrackerEnable[trackerId-1]);
 	}
 
 	@Override
 	public void initFilter() {
 		// Empty.
             for (int i=0;i<Ntrackers;i++) {
-                AcmCellInitX[i] = getInt("cmCellInitX", 64);
-                AcmCellInitY[i] = getInt("cmCellInitY", 64);
-                AcmCellRadixTh[i] = getInt("cmCellRadixStep", 1);
-                AcmCellInitRadix[i] = getInt("cmCellInitRadix", 1);
-                AcmCellRadixStep[i] = getInt("cmCellRadixStep", 1);
-                AcmCellRadixMax[i] = getInt("cmCellRadixStep", 1);
-                AcmCellRadixMin[i] = getInt("cmCellRadixStep", 1);
+                AcmCellInitX[i] = getInt("cmCellInitX", 64 + (i%2)*64);
+                AcmCellInitY[i] = getInt("cmCellInitY", 64 + (i%2)*64);
+                AcmCellRadixTh[i] = getInt("cmCellRadixTh", 7);
+                AcmCellInitRadix[i] = getInt("cmCellInitRadix", 63);
+                AcmCellRadixStep[i] = getInt("cmCellRadixStep", 7);
+                AcmCellRadixMax[i] = getInt("AcmCellRadixMax", 7);
+                AcmCellRadixMin[i] = getInt("AcmCellRadixMin", 1);
                 AcmCellMaxTime[i] = getInt("cmCellMaxTime", 200000);
-                AcmCellNevTh[i] = getInt("cmCellNevTh", 1);
+                AcmCellNevTh[i] = getInt("cmCellNevTh", 5);
                 AcmCellAVG[i] = getInt("cmCellAVG", 1);
+                AtrackerEnable[i] = getBoolean("trackerEnable", (i%2)==0);
             }
-
+            trackerId = 1;
+                setCmCellInitX(AcmCellInitX[trackerId-1]);
+                setCmCellInitY(AcmCellInitY[trackerId-1]);
+                setCmCellRadixStep(AcmCellRadixStep[trackerId-1]);
+                setCmCellRadixTh(AcmCellRadixTh[trackerId-1]);
+                setCmCellRadixMax(AcmCellRadixMax[trackerId-1]);
+                setCmCellRadixMin(AcmCellRadixMin[trackerId-1]);
+                setCmCellInitRadix(AcmCellInitRadix[trackerId-1]);
+                setCmCellMaxTime(AcmCellMaxTime[trackerId-1]);
+                setCmCellNevTh(AcmCellNevTh[trackerId-1]);
+                setCmCellAVG(AcmCellAVG[trackerId-1]);
+                setTrackerEnable(AtrackerEnable[trackerId-1]);
 	}
 }
