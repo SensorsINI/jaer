@@ -74,7 +74,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	 * AEPacketRaw
 	 */
 	public class RetinaAEReader extends CypressFX3.AEReader implements PropertyChangeListener {
-		private int currentTimestamp, lastTimestamp;
+		private int currentTimestamp, lastTimestamp, wrapAdd;
 		private int dvsTimestamp, imuTimestamp, extTriggerTimestamp;
 		private short lastY;
 		private short misc8Data;

@@ -744,7 +744,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			configBytes[0] = 0x00;
 			configBytes[1] = 0x00;
 			configBytes[2] = 0x00;
-			configBytes[3] = 0x01;
+			configBytes[3] = 0x06;
 			sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, (short) 0x01, (short) 0x01, configBytes);
 
 			configBytes[0] = 0x00;
@@ -945,12 +945,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * synchronized so are thread safe.
 	 */
 	public class AEReader implements ReaderBufferControl {
-		public final int MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT = 10;
-		int cycleCounter = 0;
-		final int BAD_WRAP_PRINT_INTERVAL = 100; // only print a warning every
-													// this many to avoid
-													// slowing down
-
 		/**
 		 * the priority for this monitor acquisition thread. This should be set
 		 * high (e.g. Thread.MAX_PRIORITY) so that
@@ -1050,8 +1044,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			 */
 			@Override
 			public void processTransfer(final RestrictedTransfer transfer) {
-				cycleCounter++;
-
 				synchronized (aePacketRawPool) {
 					if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
 						translateEvents(transfer.buffer());
@@ -1087,14 +1079,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 				}
 			}
 		}
-
-		/** wrapAdd is the time to add to short timestamp to unwrap it */
-		protected int wrapAdd = 0;
-		protected int lastWrapAdd = 0;
-		/** used to indicate a 32 bit timestamp wrap */
-		protected boolean wrappedBig = false;
-		// indicates that wrapAdd has just wrapped itself, so that we should
-		// allow overridden to change priority
 
 		/** size of CypressFX3 USB fifo's in bytes. */
 		public static final int CYPRESS_FIFO_SIZE = 512;
