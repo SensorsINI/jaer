@@ -190,7 +190,7 @@ public class SimpleHistogram extends AbstractHistogram {
          */
         public int meanBin = 0;
         /**
-         * The maximum bin with any value in it
+         * The maximum bin with any value in it. Persistent. Use reset() to reset to zero, which is needed when bogus value causes very high value to be stored for max value.
          */
         public int maxNonZeroBin = 0;
         /**
@@ -312,6 +312,11 @@ public class SimpleHistogram extends AbstractHistogram {
          */
         public void setHighBoundary(float highBoundary) {
             this.highBoundary = highBoundary;
+        }
+
+        public void reset() {
+            maxNonZeroBin=0;
+            maxCount=0;
         }
     }
 
