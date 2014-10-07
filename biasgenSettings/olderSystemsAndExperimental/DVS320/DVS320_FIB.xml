@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE preferences SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<preferences EXTERNAL_XML_VERSION="1.0">
+  <root type="user">
+    <map/>
+    <node name="ch">
+      <map/>
+      <node name="unizh">
+        <map/>
+        <node name="ini">
+          <map/>
+          <node name="jaer">
+            <map/>
+            <node name="chip">
+              <map/>
+              <node name="dvs320">
+                <map>
+                  <entry key="FilterChain.timeLimitEnabled" value="false"/>
+                  <entry key="FilterChain.timeLimitMs" value="0"/>
+                  <entry key="DVS320.ConfigurableIPot.pr.BitValue" value="3236"/>
+                  <entry key="DVS320.ConfigurableIPot.pr.BufferBitValue" value="6"/>
+                  <entry key="DVS320.ConfigurableIPot.pr.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.pr.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.pr.Sex" value="P"/>
+                  <entry key="DVS320.ConfigurableIPot.pr.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.cas.BitValue" value="171"/>
+                  <entry key="DVS320.ConfigurableIPot.cas.BufferBitValue" value="10"/>
+                  <entry key="DVS320.ConfigurableIPot.cas.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.cas.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.cas.Sex" value="P"/>
+                  <entry key="DVS320.ConfigurableIPot.cas.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.foll.BitValue" value="4068"/>
+                  <entry key="DVS320.ConfigurableIPot.foll.BufferBitValue" value="6"/>
+                  <entry key="DVS320.ConfigurableIPot.foll.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.foll.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.foll.Sex" value="P"/>
+                  <entry key="DVS320.ConfigurableIPot.foll.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.bulk.BitValue" value="8587"/>
+                  <entry key="DVS320.ConfigurableIPot.bulk.BufferBitValue" value="12"/>
+                  <entry key="DVS320.ConfigurableIPot.bulk.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.bulk.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.bulk.Sex" value="N"/>
+                  <entry key="DVS320.ConfigurableIPot.bulk.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.diff.BitValue" value="126"/>
+                  <entry key="DVS320.ConfigurableIPot.diff.BufferBitValue" value="11"/>
+                  <entry key="DVS320.ConfigurableIPot.diff.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.diff.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.diff.Sex" value="N"/>
+                  <entry key="DVS320.ConfigurableIPot.diff.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.on.BitValue" value="7373"/>
+                  <entry key="DVS320.ConfigurableIPot.on.BufferBitValue" value="11"/>
+                  <entry key="DVS320.ConfigurableIPot.on.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.on.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.on.Sex" value="N"/>
+                  <entry key="DVS320.ConfigurableIPot.on.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.off.BitValue" value="8"/>
+                  <entry key="DVS320.ConfigurableIPot.off.BufferBitValue" value="11"/>
+                  <entry key="DVS320.ConfigurableIPot.off.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.off.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.off.Sex" value="N"/>
+                  <entry key="DVS320.ConfigurableIPot.off.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.refr.BitValue" value="28"/>
+                  <entry key="DVS320.ConfigurableIPot.refr.BufferBitValue" value="6"/>
+                  <entry key="DVS320.ConfigurableIPot.refr.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.refr.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.refr.Sex" value="P"/>
+                  <entry key="DVS320.ConfigurableIPot.refr.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.lowpower.BitValue" value="2385"/>
+                  <entry key="DVS320.ConfigurableIPot.lowpower.BufferBitValue" value="6"/>
+                  <entry key="DVS320.ConfigurableIPot.lowpower.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.lowpower.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.lowpower.Sex" value="N"/>
+                  <entry key="DVS320.ConfigurableIPot.lowpower.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.pux.BitValue" value="1000299"/>
+                  <entry key="DVS320.ConfigurableIPot.pux.BufferBitValue" value="17"/>
+                  <entry key="DVS320.ConfigurableIPot.pux.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.pux.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.pux.Sex" value="P"/>
+                  <entry key="DVS320.ConfigurableIPot.pux.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.puy.BitValue" value="926865"/>
+                  <entry key="DVS320.ConfigurableIPot.puy.BufferBitValue" value="16"/>
+                  <entry key="DVS320.ConfigurableIPot.puy.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.puy.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.puy.Sex" value="P"/>
+                  <entry key="DVS320.ConfigurableIPot.puy.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.pd.BitValue" value="4194303"/>
+                  <entry key="DVS320.ConfigurableIPot.pd.BufferBitValue" value="17"/>
+                  <entry key="DVS320.ConfigurableIPot.pd.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.pd.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.pd.Sex" value="N"/>
+                  <entry key="DVS320.ConfigurableIPot.pd.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.padfoll.BitValue" value="22104"/>
+                  <entry key="DVS320.ConfigurableIPot.padfoll.BufferBitValue" value="17"/>
+                  <entry key="DVS320.ConfigurableIPot.padfoll.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.padfoll.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.padfoll.Sex" value="P"/>
+                  <entry key="DVS320.ConfigurableIPot.padfoll.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.ifthr.BitValue" value="913"/>
+                  <entry key="DVS320.ConfigurableIPot.ifthr.BufferBitValue" value="17"/>
+                  <entry key="DVS320.ConfigurableIPot.ifthr.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.ifthr.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.ifthr.Sex" value="N"/>
+                  <entry key="DVS320.ConfigurableIPot.ifthr.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.test.BitValue" value="7"/>
+                  <entry key="DVS320.ConfigurableIPot.test.BufferBitValue" value="3"/>
+                  <entry key="DVS320.ConfigurableIPot.test.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.test.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.test.Sex" value="N"/>
+                  <entry key="DVS320.ConfigurableIPot.test.Type" value="NORMAL"/>
+                  <entry key="Masterbias.rx" value="8200.0"/>
+                  <entry key="Masterbias.rint" value="46000.0"/>
+                  <entry key="Masterbias.internalResistorUsed" value="false"/>
+                  <entry key="DVS320.VoltageOutputMux.AnaMux2.selectedChannel" value="1"/>
+                  <entry key="DVS320.VoltageOutputMux.AnaMux1.selectedChannel" value="3"/>
+                  <entry key="DVS320.VoltageOutputMux.AnaMux0.selectedChannel" value="0"/>
+                  <entry key="DVS320.LogicMux.DigMux4.selectedChannel" value="3"/>
+                  <entry key="DVS320.LogicMux.DigMux3.selectedChannel" value="1"/>
+                  <entry key="DVS320.LogicMux.DigMux2.selectedChannel" value="10"/>
+                  <entry key="DVS320.LogicMux.DigMux1.selectedChannel" value="0"/>
+                  <entry key="DVS320.LogicMux.DigMux0.selectedChannel" value="3"/>
+                  <entry key="DVS320.CurrentOutputMux.Currents.selectedChannel" value="2"/>
+                  <entry key="DVS320.ConfigurableIPot.Pr.BitValue" value="92682"/>
+                  <entry key="DVS320.ConfigurableIPot.Pr.BufferBitValue" value="63"/>
+                  <entry key="DVS320.ConfigurableIPot.Pr.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.Pr.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.Pr.Sex" value="P"/>
+                  <entry key="DVS320.ConfigurableIPot.Pr.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.diffOn.BitValue" value="445789"/>
+                  <entry key="DVS320.ConfigurableIPot.diffOn.BufferBitValue" value="63"/>
+                  <entry key="DVS320.ConfigurableIPot.diffOn.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.diffOn.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.diffOn.Sex" value="N"/>
+                  <entry key="DVS320.ConfigurableIPot.diffOn.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.diffOff.BitValue" value="1629"/>
+                  <entry key="DVS320.ConfigurableIPot.diffOff.BufferBitValue" value="63"/>
+                  <entry key="DVS320.ConfigurableIPot.diffOff.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.diffOff.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.diffOff.Sex" value="N"/>
+                  <entry key="DVS320.ConfigurableIPot.diffOff.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.puY.BitValue" value="144229"/>
+                  <entry key="DVS320.ConfigurableIPot.puY.BufferBitValue" value="63"/>
+                  <entry key="DVS320.ConfigurableIPot.puY.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.puY.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.puY.Sex" value="P"/>
+                  <entry key="DVS320.ConfigurableIPot.puY.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.puX.BitValue" value="129626"/>
+                  <entry key="DVS320.ConfigurableIPot.puX.BufferBitValue" value="63"/>
+                  <entry key="DVS320.ConfigurableIPot.puX.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.puX.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.puX.Sex" value="P"/>
+                  <entry key="DVS320.ConfigurableIPot.puX.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.pdY.BitValue" value="1629"/>
+                  <entry key="DVS320.ConfigurableIPot.pdY.BufferBitValue" value="63"/>
+                  <entry key="DVS320.ConfigurableIPot.pdY.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.pdY.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.pdY.Sex" value="N"/>
+                  <entry key="DVS320.ConfigurableIPot.pdY.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.puReq.BitValue" value="201721"/>
+                  <entry key="DVS320.ConfigurableIPot.puReq.BufferBitValue" value="63"/>
+                  <entry key="DVS320.ConfigurableIPot.puReq.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.puReq.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.puReq.Sex" value="P"/>
+                  <entry key="DVS320.ConfigurableIPot.puReq.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.pdX.BitValue" value="941"/>
+                  <entry key="DVS320.ConfigurableIPot.pdX.BufferBitValue" value="63"/>
+                  <entry key="DVS320.ConfigurableIPot.pdX.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.pdX.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.pdX.Sex" value="N"/>
+                  <entry key="DVS320.ConfigurableIPot.pdX.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.IFThr.BitValue" value="124"/>
+                  <entry key="DVS320.ConfigurableIPot.IFThr.BufferBitValue" value="63"/>
+                  <entry key="DVS320.ConfigurableIPot.IFThr.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.IFThr.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.IFThr.Sex" value="N"/>
+                  <entry key="DVS320.ConfigurableIPot.IFThr.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.padFoll.BitValue" value="140"/>
+                  <entry key="DVS320.ConfigurableIPot.padFoll.BufferBitValue" value="63"/>
+                  <entry key="DVS320.ConfigurableIPot.padFoll.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.padFoll.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.padFoll.Sex" value="N"/>
+                  <entry key="DVS320.ConfigurableIPot.padFoll.Type" value="NORMAL"/>
+                  <entry key="DVS320.ConfigurableIPot.aePdLimit.BitValue" value="552"/>
+                  <entry key="DVS320.ConfigurableIPot.aePdLimit.BufferBitValue" value="63"/>
+                  <entry key="DVS320.ConfigurableIPot.aePdLimit.Enabled" value="true"/>
+                  <entry key="DVS320.ConfigurableIPot.aePdLimit.LowCurrent" value="false"/>
+                  <entry key="DVS320.ConfigurableIPot.aePdLimit.Sex" value="N"/>
+                  <entry key="DVS320.ConfigurableIPot.aePdLimit.Type" value="NORMAL"/>
+                  <entry key="XYTypeFilter.filterEnabled" value="false"/>
+                  <entry key="RotateFilter.filterEnabled" value="false"/>
+                  <entry key="BackgroundActivityFilter.filterEnabled" value="false"/>
+                  <entry key="AEChip.subSamplingEnabled" value="false"/>
+                </map>
+              </node>
+            </node>
+          </node>
+        </node>
+      </node>
+    </node>
+  </root>
+</preferences>

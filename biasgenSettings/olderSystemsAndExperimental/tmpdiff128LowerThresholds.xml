@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE preferences SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<preferences EXTERNAL_XML_VERSION="1.0">
+  <root type="user">
+    <map/>
+    <node name="ch">
+      <map/>
+      <node name="unizh">
+        <map/>
+        <node name="ini">
+          <map/>
+          <node name="jaer">
+            <map/>
+            <node name="chip">
+              <map/>
+              <node name="retina">
+                <map>
+                  <entry key="Tmpdiff128.IPot.cas" value="1966"/>
+                  <entry key="Tmpdiff128.IPot.injGnd" value="22703"/>
+                  <entry key="Tmpdiff128.IPot.reqPd" value="16777215"/>
+                  <entry key="Tmpdiff128.IPot.puX" value="7585671"/>
+                  <entry key="Tmpdiff128.IPot.diffOff" value="5824"/>
+                  <entry key="Tmpdiff128.IPot.req" value="111347"/>
+                  <entry key="Tmpdiff128.IPot.refr" value="0"/>
+                  <entry key="Tmpdiff128.IPot.puY" value="16777215"/>
+                  <entry key="Tmpdiff128.IPot.diffOn" value="229033"/>
+                  <entry key="Tmpdiff128.IPot.diff" value="28995"/>
+                  <entry key="Tmpdiff128.IPot.foll" value="19"/>
+                  <entry key="Tmpdiff128.IPot.Pr" value="8"/>
+                  <entry key="Masterbias.rx" value="8200.0"/>
+                  <entry key="Masterbias.rint" value="46000.0"/>
+                  <entry key="Masterbias.internalResistorUsed" value="false"/>
+                </map>
+              </node>
+            </node>
+          </node>
+        </node>
+      </node>
+    </node>
+  </root>
+</preferences>

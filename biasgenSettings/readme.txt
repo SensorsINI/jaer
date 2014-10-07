@@ -1,0 +1,1 @@
+These are nominal bias values for some chips.

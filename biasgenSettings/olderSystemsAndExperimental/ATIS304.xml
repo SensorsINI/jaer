@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE preferences SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<preferences EXTERNAL_XML_VERSION="1.0">
+  <root type="user">
+    <map/>
+    <node name="at">
+      <map/>
+      <node name="ait">
+        <map/>
+        <node name="dss">
+          <map/>
+          <node name="sni">
+            <map/>
+            <node name="jaer">
+              <map/>
+              <node name="chip">
+                <map/>
+                <node name="atis">
+                  <map>
+                    <entry key="FilterChain.timeLimitEnabled" value="false"/>
+                    <entry key="FilterChain.timeLimitMs" value="10"/>
+                    <entry key="XYTypeFilter.filterEnabled" value="false"/>
+                    <entry key="RotateFilter.filterEnabled" value="false"/>
+                    <entry key="BackgroundActivityFilter.filterEnabled" value="true"/>
+                    <entry key="BackgroundActivityFilter.dt" value="7536"/>
+                    <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAKdwQAAAAKdAAvbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5YWVR5cGVGaWx0ZXJ0AC9uZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlJvdGF0ZUZpbHRlcnQAO25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuQmFja2dyb3VuZEFjdGl2aXR5RmlsdGVydAA0bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5SZXBldGl0aW91c0ZpbHRlcnQAM25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuUmVmcmFjdG9yeUZpbHRlcnQAMG5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuQm9yZWRvbUZpbHRlcnQAMW5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuSGFybW9uaWNGaWx0ZXJ0ADpuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcubGFiZWwuRGlyZWN0aW9uU2VsZWN0aXZlRmlsdGVydAA5bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmxhYmVsLlNpbXBsZU9yaWVudGF0aW9uRmlsdGVydAAnbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5JbmZveA=="/>
+                    <entry key="BoredomFilter.filterEnabled" value="false"/>
+                    <entry key="DirectionSelectiveFilter.filterEnabled" value="false"/>
+                    <entry key="RepetitiousFilter.filterEnabled" value="true"/>
+                    <entry key="RefractoryFilter.filterEnabled" value="false"/>
+                    <entry key="HarmonicFilter.filterEnabled" value="false"/>
+                    <entry key="SimpleOrientationFilter.filterEnabled" value="false"/>
+                    <entry key="RefractoryFilter.refractoryPeriodUs" value="1613"/>
+                    <entry key="RepetitiousFilter.minDtToStore" value="3863"/>
+                    <entry key="RepetitiousFilter.averagingSamples" value="5"/>
+                    <entry key="RepetitiousFilter.ratioLonger" value="5"/>
+                    <entry key="RepetitiousFilter.ratioShorter" value="5"/>
+                    <entry key="RepetitiousFilter.passRepetitiousEvents" value="false"/>
+                    <entry key="HarmonicFilter.threshold" value="0.20789267"/>
+                    <entry key="SimpleOrientationFilter.minDtThreshold" value="47699"/>
+                    <entry key="SimpleOrientationFilter.passAllEvents" value="true"/>
+                    <entry key="SimpleOrientationFilter.showGlobalEnabled" value="false"/>
+                    <entry key="SimpleOrientationFilter.searchDistance" value="6"/>
+                    <entry key="SimpleOrientationFilter.subSampleShift" value="2"/>
+                    <entry key="SimpleOrientationFilter.oriHistoryEnabled" value="false"/>
+                    <entry key="SimpleOrientationFilter.showVectorsEnabled" value="true"/>
+                    <entry key="class at.ait.dss.sni.jaer.chip.atis.ATIS304.preferredDisplayMethod" value="net.sf.jaer.graphics.ChipRendererDisplayMethod"/>
+                    <entry key="ATIS304.VPot.Pr" value="3691"/>
+                    <entry key="Masterbias.rx" value="8200.0"/>
+                    <entry key="Masterbias.rint" value="46000.0"/>
+                    <entry key="Masterbias.internalResistorUsed" value="false"/>
+                    <entry key="ATIS304.VPot.Sf" value="3593"/>
+                    <entry key="ATIS304.VPot.cas" value="2490"/>
+                    <entry key="ATIS304.VPot.inv" value="938"/>
+                    <entry key="ATIS304.VPot.diffOff" value="432"/>
+                    <entry key="ATIS304.VPot.diffOn" value="779"/>
+                    <entry key="ATIS304.VPot.diff" value="562"/>
+                    <entry key="ATIS304.VPot.foll" value="3753"/>
+                    <entry key="ATIS304.VPot.refr" value="2563"/>
+                    <entry key="ATIS304.VPot.pr" value="3782"/>
+                    <entry key="ATIS304.VPot.bulk" value="3863"/>
+                    <entry key="ATIS304_Biasgen.port" value="20010"/>
+                    <entry key="ATIS304_Biasgen..host" value="tobi"/>
+                    <entry key="ATIS304_Biasgen.host" value="172.25.48.35"/>
+                    <entry key="Info.useLocalTimeZone" value="true"/>
+                    <entry key="Info.filterEnabled" value="true"/>
+                    <entry key="BackgroundActivityFilter.subsampleBy" value="1"/>
+                    <entry key="DirectionSelectiveFilter.searchDistance" value="5"/>
+                    <entry key="DirectionSelectiveFilter.showVectorsEnabled" value="true"/>
+                    <entry key="DirectionSelectiveFilter.excessSpeedRejectFactor" value="5"/>
+                    <entry key="DirectionSelectiveFilter.minDtThreshold" value="1788"/>
+                    <entry key="DirectionSelectiveFilter.ppsScale" value="0.021928862"/>
+                    <entry key="DirectionSelectiveFilter.subSampleShift" value="1"/>
+                  </map>
+                </node>
+              </node>
+            </node>
+          </node>
+        </node>
+      </node>
+    </node>
+  </root>
+</preferences>

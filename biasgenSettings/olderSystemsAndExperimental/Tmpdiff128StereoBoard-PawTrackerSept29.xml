@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE preferences SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<preferences EXTERNAL_XML_VERSION="1.0">
+	<root type="user">
+		<map/>
+		<node name="ch">
+			<map/>
+			<node name="unizh">
+				<map/>
+				<node name="ini">
+					<map/>
+					<node name="jaer">
+						<map/>
+						<node name="chip">
+							<map/>
+							<node name="stereopsis">
+								<map>
+									<entry key="SubSampler.bits" value="1"/>
+									<entry key="GlobalDisparityFilter.showMatchingMatrix" value="false"/>
+									<entry key="RectangularClusterTracker.clusterLifetimeWithoutSupport" value="32255"/>
+									<entry key="RectangularClusterTracker.maxNumClusters" value="10"/>
+									<entry key="RectangularClusterTracker.clusterSize" value="0.111932345"/>
+									<entry key="RectangularClusterTracker.numEventsStoredInCluster" value="100"/>
+									<entry key="RectangularClusterTracker.thresholdEventsForVisibleCluster" value="30"/>
+									<entry key="Batter.swapServos" value="false"/>
+									<entry key="Tmpdiff128StereoPair.IPot.cas" value="0"/>
+									<entry key="Tmpdiff128StereoPair.IPot.injGnd" value="0"/>
+									<entry key="Tmpdiff128StereoPair.IPot.reqPd" value="0"/>
+									<entry key="Tmpdiff128StereoPair.IPot.puX" value="0"/>
+									<entry key="Tmpdiff128StereoPair.IPot.diffOff" value="0"/>
+									<entry key="Tmpdiff128StereoPair.IPot.req" value="0"/>
+									<entry key="Tmpdiff128StereoPair.IPot.refr" value="0"/>
+									<entry key="Tmpdiff128StereoPair.IPot.puY" value="0"/>
+									<entry key="Tmpdiff128StereoPair.IPot.diffOn" value="0"/>
+									<entry key="Tmpdiff128StereoPair.IPot.diff" value="0"/>
+									<entry key="Tmpdiff128StereoPair.IPot.foll" value="0"/>
+									<entry key="Tmpdiff128StereoPair.IPot.Pr" value="0"/>
+									<entry key="Masterbias.rx" value="8200.0"/>
+									<entry key="Masterbias.rint" value="46000.0"/>
+									<entry key="Masterbias.internalResistorUsed" value="false"/>
+									<entry key="XYTypeFilter.filterEnabled" value="false"/>
+									<entry key="RotateFilter.filterEnabled" value="false"/>
+									<entry key="RepetitiousFilter.filterEnabled" value="false"/>
+									<entry key="BackgroundActivityFilter.filterEnabled" value="false"/>
+									<entry key="SubSampler.filterEnabled" value="false"/>
+									<entry key="Tmpdiff128StereoBoard.IPot.cas" value="1966"/>
+									<entry key="Tmpdiff128StereoBoard.IPot.injGnd" value="22703"/>
+									<entry key="Tmpdiff128StereoBoard.IPot.reqPd" value="16777215"/>
+									<entry key="Tmpdiff128StereoBoard.IPot.puX" value="5579732"/>
+									<entry key="Tmpdiff128StereoBoard.IPot.diffOff" value="2648"/>
+									<entry key="Tmpdiff128StereoBoard.IPot.req" value="111347"/>
+									<entry key="Tmpdiff128StereoBoard.IPot.refr" value="3"/>
+									<entry key="Tmpdiff128StereoBoard.IPot.puY" value="16777215"/>
+									<entry key="Tmpdiff128StereoBoard.IPot.diffOn" value="634059"/>
+									<entry key="Tmpdiff128StereoBoard.IPot.diff" value="26358"/>
+									<entry key="Tmpdiff128StereoBoard.IPot.foll" value="15"/>
+									<entry key="Tmpdiff128StereoBoard.IPot.Pr" value="11"/>
+									<entry key="AEChip.subSamplingEnabled" value="false"/>
+									<entry key="Tmpdiff128RateController.rateFilter3dBFreqHz" value="0.16036813"/>
+									<entry key="ch.unizh.ini.caviar.chip.retina.Tmpdiff128RateController.upperThreshKEPS" value="212"/>
+									<entry key="ch.unizh.ini.caviar.chip.retina.Tmpdiff128RateController.lowerThreshKEPS" value="10"/>
+									<entry key="ch.unizh.ini.caviar.chip.retina.Tmpdiff128RateController.hysteresisKEPS" value="21"/>
+									<entry key="ch.unizh.ini.caviar.chip.retina.Tmpdiff128RateController.midThreshKEPS" value="118"/>
+									<entry key="Tmpdiff128RateController.rateLow" value="12"/>
+									<entry key="Tmpdiff128RateController.rateHigh" value="299"/>
+									<entry key="Tmpdiff128RateController.hysteresisFactor" value="1.1831249"/>
+									<entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAMdwQAAAAMdAA3Y2gudW5pemguaW5pLmNhdmlhci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlhZVHlwZUZpbHRlcnQAN2NoLnVuaXpoLmluaS5jYXZpYXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5Sb3RhdGVGaWx0ZXJ0ADxjaC51bml6aC5pbmkuY2F2aWFyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuUmVwZXRpdGlvdXNGaWx0ZXJ0AENjaC51bml6aC5pbmkuY2F2aWFyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuQmFja2dyb3VuZEFjdGl2aXR5RmlsdGVydAA1Y2gudW5pemguaW5pLmNhdmlhci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlN1YlNhbXBsZXJ0AEFjaC51bml6aC5pbmkuY2F2aWFyLmV2ZW50cHJvY2Vzc2luZy5sYWJlbC5TaW1wbGVPcmllbnRhdGlvbkZpbHRlcnQAQmNoLnVuaXpoLmluaS5jYXZpYXIuZXZlbnRwcm9jZXNzaW5nLmxhYmVsLkRpcmVjdGlvblNlbGVjdGl2ZUZpbHRlcnQAOGNoLnVuaXpoLmluaS5jYXZpYXIuY2hpcC5yZXRpbmEuVG1wZGlmZjEyOFJhdGVDb250cm9sbGVydAAzY2gudW5pemguaW5pLmNhdmlhci5jaGlwLnJldGluYS5zZW5zb3J5bW90b3IuR29hbGlldABEY2gudW5pemguaW5pLmNhdmlhci5ldmVudHByb2Nlc3NpbmcudHJhY2tpbmcuTXVsdGlMaW5lQ2x1c3RlclRyYWNrZXJ0ADNjaC51bml6aC5pbmkuY2F2aWFyLnN0ZXJlb3BzaXMuU3RlcmVvQ2x1c3RlclRyYWNrZXJ0AEZjaC51bml6aC5pbmkuY2F2aWFyLmV2ZW50cHJvY2Vzc2luZy50cmFja2luZy5SZWN0YW5ndWxhckNsdXN0ZXJUcmFja2VyeA=="/>
+									<entry key="PawTrackerStereoBoard3.resetPawTracking" value="false"/>
+									<entry key="PawTrackerStereoBoard3.filterEnabled" value="false"/>
+									<entry key="PawTrackerStereoBoard3.yCurveFactor" value="0.0010"/>
+									<entry key="PawTrackerStereoBoard3.brightness" value="2.0"/>
+									<entry key="PawTrackerStereoBoard3.cube_size" value="15"/>
+									<entry key="PawTrackerStereoBoard3.event_strength" value="1.0"/>
+									<entry key="PawTrackerStereoBoard3.finger_surround" value="3"/>
+									<entry key="PawTrackerStereoBoard3.goThroughMode" value="true"/>
+									<entry key="PawTrackerStereoBoard3.intensity" value="5.0"/>
+									<entry key="PawTrackerStereoBoard3.intensityZoom" value="4"/>
+									<entry key="PawTrackerStereoBoard3.retina_angle" value="20.0"/>
+									<entry key="PawTrackerStereoBoard3.retina_height" value="112.0"/>
+									<entry key="PawTrackerStereoBoard3.retina_tilt_angle" value="26.0"/>
+									<entry key="PawTrackerStereoBoard3.retinae_distance" value="80.0"/>
+									<entry key="PawTrackerStereoBoard3.scaleAcc" value="false"/>
+									<entry key="PawTrackerStereoBoard3.show2DWindow" value="true"/>
+									<entry key="PawTrackerStereoBoard3.showAcc" value="true"/>
+									<entry key="PawTrackerStereoBoard3.showAll" value="false"/>
+									<entry key="PawTrackerStereoBoard3.showFingers" value="false"/>
+									<entry key="PawTrackerStereoBoard3.max_finger_clusters" value="0"/>
+									<entry key="PawTrackerStereoBoard3.showYColor" value="true"/>
+									<entry key="PawTrackerStereoBoard3.showXColor" value="true"/>
+									<entry key="PawTrackerStereoBoard3.showZColor" value="true"/>
+									<entry key="PawTrackerStereoBoard3.showZones" value="false"/>
+									<entry key="PawTrackerStereoBoard3.showRetina" value="true"/>
+									<entry key="PawTrackerStereoBoard3.showRLColors" value="true"/>
+									<entry key="PawTrackerStereoBoard3.useFilter" value="true"/>
+									<entry key="PawTrackerStereoBoard3.useGroups" value="false"/>
+									<entry key="PawTrackerStereoBoard3.useFastMatching" value="true"/>
+									<entry key="PawTrackerStereoBoard3.useCorrections" value="false"/>
+									<entry key="PawTrackerStereoBoard3.tracker_timeLife" value="5000"/>
+									<entry key="PawTrackerStereoBoard3.valueMargin" value="1.0"/>
+									<entry key="PawTrackerStereoBoard3.valueThreshold" value="0.18749405"/>
+									<entry key="PawTrackerStereoBoard3.showCage" value="false"/>
+									<entry key="DirectionSelectiveFilter.searchDistance" value="1"/>
+									<entry key="DirectionSelectiveFilter.filterEnabled" value="false"/>
+									<entry key="SimpleOrientationFilter.filterEnabled" value="false"/>
+									<entry key="Tmpdiff128RateController.filterEnabled" value="false"/>
+									<entry key="Goalie.filterEnabled" value="false"/>
+									<entry key="ClassTracker.filterEnabled" value="false"/>
+									<entry key="MultiLineClusterTracker.filterEnabled" value="false"/>
+									<entry key="MultiLineClusterTracker.colorClustersDifferentlyEnabled" value="true"/>
+									<entry key="MultiLineClusterTracker.clusterLifetimeIncreasesWithAge" value="true"/>
+									<entry key="SimpleOrientationFilter.showGlobalEnabled" value="false"/>
+									<entry key="SimpleOrientationFilter.passAllEvents" value="false"/>
+									<entry key="StereoClusterTracker.filterEnabled" value="false"/>
+									<entry key="RectangularClusterTracker.filterEnabled" value="false"/>
+									<entry key="RectangularClusterTracker.colorClustersDifferentlyEnabled" value="true"/>
+									<entry key="RectangularClusterTracker.highwayPerspectiveEnabled" value="true"/>
+									<entry key="RectangularClusterTracker.showVelocity" value="false"/>
+									<entry key="RectangularClusterTracker.mixingFactor" value="0.36959875"/>
+									<entry key="RectangularClusterTracker.showAllClusters" value="false"/>
+									<entry key="RectangularClusterTracker.dynamicAngleEnabled" value="true"/>
+									<entry key="PawTrackerStereoBoard3.cage_distance" value="135.0"/>
+									<entry key="PawTrackerStereoBoard3.cage_door_height" value="80.0"/>
+									<entry key="PawTrackerStereoBoard3.cage_platform_length" value="70.0"/>
+									<entry key="PawTrackerStereoBoard3.cage_width" value="260.0"/>
+									<entry key="PawTrackerStereoBoard3.cage_height" value="370.0"/>
+									<entry key="PawTrackerStereoBoard3.decayTimeLimit" value="10000"/>
+									<entry key="PawTrackerStereoBoard3.colorizePeriod" value="20"/>
+									<entry key="PawTrackerStereoBoard3.trackFingers" value="true"/>
+									<entry key="PawTrackerStereoBoard3.finger_mix" value="0.6700477"/>
+									<entry key="PawTrackerStereoBoard3.restart" value="false"/>
+								</map>
+							</node>
+						</node>
+					</node>
+				</node>
+			</node>
+		</node>
+	</root>
+</preferences>
