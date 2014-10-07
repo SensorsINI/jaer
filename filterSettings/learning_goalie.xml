@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE preferences SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<preferences EXTERNAL_XML_VERSION="1.0">
+  <root type="user">
+    <map/>
+    <node name="ch">
+      <map/>
+      <node name="unizh">
+        <map/>
+        <node name="ini">
+          <map/>
+          <node name="caviar">
+            <map/>
+            <node name="chip">
+              <map/>
+              <node name="retina">
+                <map>
+                  <entry key="BackgroundActivityFilter.filterEnabled" value="true"/>
+                  <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAADdwQAAAADdAA3Y2gudW5pemguaW5pLmNhdmlhci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlhZVHlwZUZpbHRlcnQAQ2NoLnVuaXpoLmluaS5jYXZpYXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5CYWNrZ3JvdW5kQWN0aXZpdHlGaWx0ZXJ0ADNjaC51bml6aC5pbmkuY2F2aWFyLmNoaXAucmV0aW5hLnNlbnNvcnltb3Rvci5Hb2FsaWV4"/>
+                  <entry key="Goalie.filterEnabled" value="false"/>
+                  <entry key="Goalie.rowsFromBottomToGoal" value="30"/>
+                  <entry key="Goalie.pixelsToEdgeOfGoal" value="45"/>
+                  <entry key="Goalie.blindspotDelayMs" value="127"/>
+                  <entry key="ServoArm.filterEnabled" value="false"/>
+                  <entry key="Goalie.learnTimeMs" value="100000"/>
+                  <entry key="RectangularClusterTracker.clusterLifetimeWithoutSupport" value="10000"/>
+                  <entry key="RectangularClusterTracker.maxNumClusters" value="10"/>
+                  <entry key="RectangularClusterTracker.clusterSize" value="0.15f"/>
+                  <entry key="RectangularClusterTracker.numEventsStoredInCluster" value="100"/>
+                  <entry key="RectangularClusterTracker.thresholdEventsForVisibleCluster" value="30"/>
+                  <entry key="Goalie.learnDelayMS" value="500"/>
+                  <entry key="Goalie.topRowsToIgnore" value="0"/>
+                  <entry key="Goalie.useSoonest" value="false"/>
+                  <entry key="Goalie.useVelocityForGoalie" value="false"/>
+                  <entry key="XYTypeFilter.xEnabled" value="true"/>
+                  <entry key="XYTypeFilter.yEnabled" value="true"/>
+                  <entry key="XYTypeFilter.endX" value="90"/>
+                  <entry key="XYTypeFilter.endY" value="100"/>
+                  <entry key="XYTypeFilter.startX" value="30"/>
+                  <entry key="XYTypeFilter.startY" value="80"/>
+                </map>
+                <node name="ch">
+                  <map/>
+                  <node name="unizh">
+                    <map/>
+                    <node name="ini">
+                      <map/>
+                      <node name="caviar">
+                        <map/>
+                        <node name="ballshooter">
+                          <map/>
+                          <node name="BallShooter">
+                            <map>
+                              <entry key="RectangularClusterTracker.clusterLifetimeWithoutSupport" value="3000"/>
+                              <entry key="RectangularClusterTracker.maxNumClusters" value="1"/>
+                              <entry key="RectangularClusterTracker.clusterSize" value="0.058"/>
+                              <entry key="RectangularClusterTracker.numEventsStoredInCluster" value="100"/>
+                              <entry key="RectangularClusterTracker.thresholdEventsForVisibleCluster" value="45"/>
+                              <entry key="filterEnabled" value="false"/>
+                              <entry key="RectangularClusterTracker.aspectRatio" value="1.0"/>
+                              <entry key="RectangularClusterTracker.pathsEnabled" value="true"/>
+                              <entry key="TargetDetector.RectangularClusterTracker.filterEnabled" value="true"/>
+                              <entry key="TargetDetector.MultipleXYTypeFilter.filterEnabled" value="true"/>
+                            </map>
+                          </node>
+                          <node name="BallShooter$TargetDetector">
+                            <map>
+                              <entry key="RectangularClusterTracker.clusterLifetimeWithoutSupport" value="10000"/>
+                              <entry key="RectangularClusterTracker.maxNumClusters" value="10"/>
+                              <entry key="RectangularClusterTracker.clusterSize" value="0.15f"/>
+                              <entry key="RectangularClusterTracker.numEventsStoredInCluster" value="100"/>
+                              <entry key="RectangularClusterTracker.thresholdEventsForVisibleCluster" value="30"/>
+                              <entry key="RectangularClusterTracker.filterEnabled" value="false"/>
+                              <entry key="XYTypeFilter.xEnabled" value="true"/>
+                              <entry key="XYTypeFilter.yEnabled" value="true"/>
+                              <entry key="RectangularClusterTracker.dynamicSizeEnabled" value="true"/>
+                              <entry key="MultipleXYTypeFilter.maxBoxNum" value="10"/>
+                            </map>
+                          </node>
+                        </node>
+                        <node name="chip">
+                          <map/>
+                          <node name="retina">
+                            <map/>
+                            <node name="sensorymotor">
+                              <map/>
+                              <node name="Goalie">
+                                <map>
+                                  <entry key="RectangularClusterTracker.clusterLifetimeWithoutSupport" value="10000"/>
+                                  <entry key="RectangularClusterTracker.maxNumClusters" value="20"/>
+                                  <entry key="RectangularClusterTracker.clusterSize" value="0.06544457"/>
+                                  <entry key="RectangularClusterTracker.numEventsStoredInCluster" value="100"/>
+                                  <entry key="RectangularClusterTracker.thresholdEventsForVisibleCluster" value="10"/>
+                                  <entry key="RectangularClusterTracker.filterEnabled" value="false"/>
+                                  <entry key="XYTypeFilter.filterEnabled" value="false"/>
+                                  <entry key="XYTypeFilter.xEnabled" value="true"/>
+                                  <entry key="XYTypeFilter.yEnabled" value="true"/>
+                                  <entry key="XYTypeFilter.typeEnabled" value="false"/>
+                                  <entry key="XYTypeFilter.startY" value="45"/>
+                                  <entry key="XYTypeFilter.endY" value="128"/>
+                                  <entry key="XYTypeFilter.startX" value="0"/>
+                                  <entry key="XYTypeFilter.endX" value="128"/>
+                                  <entry key="ServoArm.filterEnabled" value="false"/>
+                                  <entry key="ServoArm.learned_k" value="0.0058201877"/>
+                                  <entry key="ServoArm.learned_d" value="0.28987062"/>
+                                  <entry key="RectangularClusterTracker.classifierThreshold" value="0.15"/>
+                                  <entry key="RectangularClusterTracker.velocityMixingFactor" value="0.0050506834"/>
+                                  <entry key="RectangularClusterTracker.surround" value="2.4310122"/>
+                                  <entry key="XYTypeFilter.endType" value="0"/>
+                                  <entry key="RectangularClusterTracker.mixingFactor" value="0.01628894"/>
+                                  <entry key="ServoArm.learningLeftSamplingBoundary" value="0.2"/>
+                                  <entry key="ServoArm.learningRightSamplingBoundary" value="0.8"/>
+                                  <entry key="RectangularClusterTracker.showAllClusters" value="false"/>
+                                </map>
+                              </node>
+                              <node name="ServoArm">
+                                <map>
+                                  <entry key="RectangularClusterTracker.clusterLifetimeWithoutSupport" value="10000"/>
+                                  <entry key="RectangularClusterTracker.maxNumClusters" value="1"/>
+                                  <entry key="RectangularClusterTracker.clusterSize" value="0.2"/>
+                                  <entry key="RectangularClusterTracker.numEventsStoredInCluster" value="100"/>
+                                  <entry key="RectangularClusterTracker.thresholdEventsForVisibleCluster" value="30"/>
+                                  <entry key="XYTypeFilter.xEnabled" value="true"/>
+                                  <entry key="XYTypeFilter.yEnabled" value="true"/>
+                                  <entry key="XYTypeFilter.typeEnabled" value="false"/>
+                                  <entry key="XYTypeFilter.startY" value="0"/>
+                                  <entry key="XYTypeFilter.endY" value="45"/>
+                                  <entry key="XYTypeFilter.startX" value="0"/>
+                                  <entry key="XYTypeFilter.endX" value="128"/>
+                                  <entry key="RectangularClusterTracker.aspectRatio" value="1.2"/>
+                                  <entry key="RectangularClusterTracker.classifierThreshold" value="0.29549092"/>
+                                  <entry key="RectangularClusterTracker.showAllClusters" value="true"/>
+                                  <entry key="RectangularClusterTracker.mixingFactor" value="0.0278596"/>
+                                  <entry key="RectangularClusterTracker.dynamicAspectRatioEnabled" value="false"/>
+                                  <entry key="RectangularClusterTracker.dynamicSizeEnabled" value="false"/>
+                                  <entry key="RectangularClusterTracker.showVelocity" value="false"/>
+                                  <entry key="XYTypeFilter.endType" value="0"/>
+                                  <entry key="RectangularClusterTracker.pathsEnabled" value="false"/>
+                                </map>
+                              </node>
+                            </node>
+                          </node>
+                        </node>
+                      </node>
+                    </node>
+                  </node>
+                </node>
+              </node>
+            </node>
+          </node>
+        </node>
+      </node>
+    </node>
+  </root>
+</preferences>
