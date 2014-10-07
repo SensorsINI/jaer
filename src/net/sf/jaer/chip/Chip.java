@@ -272,7 +272,7 @@ public class Chip extends Observable {
     /**
     * This file, if not null, is used to import preferences if they have not been initialized.
     * A Chip can set this path relative to the startup folder (in jAER the startup folder is host/java) to
-    * automatically have preferences imported on first use. For example set the file path to "../../biasgenSettings/dvs128/DVS128Fast.xml".
+    * automatically have preferences imported on first use. For example set the file path to "biasgenSettings/DVS128/DVS128Fast.xml".
     *
      * @return the defaultPreferencesFile
      */

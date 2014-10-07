@@ -26,7 +26,7 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
     /**
      * The path relative to starting folder of CypressFX2 firmware files
      */
-    public static final String DEFAULT_RELATIVE_FIRMWARE_PATH = "../../deviceFirmwarePCBLayout/CypressFX2";
+    public static final String DEFAULT_RELATIVE_FIRMWARE_PATH = "../../devices/firmware/CypressFX2/";
     static Logger log = Logger.getLogger("CypressFX2FirmwareFilennameChooserOkCancelDialog");
     static Preferences prefs = Preferences.userNodeForPackage(CypressFX2FirmwareFilennameChooserOkCancelDialog.class);
     /**
@@ -53,7 +53,7 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
         this.chip = chip;
         filenameTextField.setText(chip.getDefaultFirmwareBixFileForBlankDevice());
         File f = new File(filenameTextField.getText());
-        if (!filenameTextField.getText().isEmpty() && f != null && !f.exists()) {
+        if (!filenameTextField.getText().isEmpty() && (f != null) && !f.exists()) {
             filenameTextField.setForeground(Color.RED);
             filenameTextField.setToolTipText("File or path does not exist or is not readable");
         } else {
@@ -86,21 +86,24 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
 
         setTitle("CypressFX2 firmware file chooser");
         addWindowListener(new java.awt.event.WindowAdapter() {
-            public void windowClosing(java.awt.event.WindowEvent evt) {
+            @Override
+			public void windowClosing(java.awt.event.WindowEvent evt) {
                 closeDialog(evt);
             }
         });
 
         okButton.setText("OK");
         okButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 okButtonActionPerformed(evt);
             }
         });
 
         cancelButton.setText("Cancel");
         cancelButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cancelButtonActionPerformed(evt);
             }
         });
@@ -109,7 +112,8 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
 
         filenameTextField.setText("The chosen file");
         filenameTextField.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 filenameTextFieldActionPerformed(evt);
             }
         });
@@ -117,7 +121,8 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
         chooseButton.setText("Choose...");
         chooseButton.setToolTipText("Browses for a firmware file");
         chooseButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 chooseButtonActionPerformed(evt);
             }
         });
@@ -189,7 +194,7 @@ private void filenameTextFieldActionPerformed(java.awt.event.ActionEvent evt) {/
 private void chooseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chooseButtonActionPerformed
 
     String startFolder = filenameTextField.getText();
-    if (startFolder == null || !(new File(startFolder).exists())) {
+    if ((startFolder == null) || !(new File(startFolder).exists())) {
         startFolder = System.getProperty("user.dir") + File.separator + DEFAULT_RELATIVE_FIRMWARE_PATH;
     }
     JFileChooser chooser = new JFileChooser(startFolder);
@@ -214,7 +219,7 @@ private void chooseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-
         setVisible(false);
         dispose();
     }
- 
+
     /**
      * Computes the path for a file relative to a given base, or fails if the
      * only shared directory is the root and the absolute form is better.
@@ -252,10 +257,12 @@ private void chooseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-
      */
     public static void main(String args[]) {
         java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
+            @Override
+			public void run() {
                 CypressFX2FirmwareFilennameChooserOkCancelDialog dialog = new CypressFX2FirmwareFilennameChooserOkCancelDialog(new javax.swing.JFrame(), true, new Chip());
                 dialog.addWindowListener(new java.awt.event.WindowAdapter() {
-                    public void windowClosing(java.awt.event.WindowEvent e) {
+                    @Override
+					public void windowClosing(java.awt.event.WindowEvent e) {
                         System.exit(0);
                     }
                 });

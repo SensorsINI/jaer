@@ -126,7 +126,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
      */
     public DAViS240() {
         setName("DAViS240");
-        setDefaultPreferencesFile("../../biasgenSettings/Davis240a/David240aBasic.xml");
+        setDefaultPreferencesFile("biasgenSettings/Davis240a/David240aBasic.xml");
         setEventClass(ApsDvsEvent.class);
         setSizeX(WIDTH);
         setSizeY(HEIGHT);

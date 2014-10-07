@@ -64,7 +64,6 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
      */
     public R10Y() {
         setName("R10Y");
-        setDefaultPreferencesFile("../../biasgenSettings/r10y/R10Y-Default.xml");
         setSizeX(128);
         setSizeY(128);
         setNumCellTypes(2);
@@ -98,17 +97,19 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
      * @param o the observable, i.e. this Chip.
      * @param arg the argument (e.g. the HardwareInterface).
      */
-    public void update(Observable o, Object arg) {
+    @Override
+	public void update(Observable o, Object arg) {
         if (!(arg instanceof HardwareInterface)) {
             return;
         }
-        if (arrayResetMenuItem == null && getHardwareInterface() != null && getHardwareInterface() instanceof HasResettablePixelArray) {
+        if ((arrayResetMenuItem == null) && (getHardwareInterface() != null) && (getHardwareInterface() instanceof HasResettablePixelArray)) {
             arrayResetMenuItem = new JMenuItem("Momentarily reset pixel array");
             arrayResetMenuItem.setToolTipText("Applies a momentary reset to the pixel array");
             arrayResetMenuItem.addActionListener(new ActionListener() {
-                public void actionPerformed(ActionEvent evt) {
+                @Override
+				public void actionPerformed(ActionEvent evt) {
                     HardwareInterface hw = getHardwareInterface();
-                    if (hw == null || !(hw instanceof HasResettablePixelArray)) {
+                    if ((hw == null) || !(hw instanceof HasResettablePixelArray)) {
                         log.warning("cannot reset pixels with hardware interface=" + hw + " (class " + (hw != null ? hw.getClass() : null) + "), interface doesn't implement HasResettablePixelArray");
                         return;
                     }
@@ -122,9 +123,10 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
             setArrayResetMenuItem = new JCheckBoxMenuItem("Hold array in reset");
             setArrayResetMenuItem.setToolTipText("Sets the entire pixel array in reset");
             setArrayResetMenuItem.addActionListener(new ActionListener() {
-                public void actionPerformed(ActionEvent evt) {
+                @Override
+				public void actionPerformed(ActionEvent evt) {
                     HardwareInterface hw = getHardwareInterface();
-                    if (hw == null || !(hw instanceof HasResettablePixelArray)) {
+                    if ((hw == null) || !(hw instanceof HasResettablePixelArray)) {
                         log.warning("cannot reset pixels with hardware interface=" + hw + " (class " + hw.getClass() + "), interface doesn't implement HasResettablePixelArray");
                         return;
                     }
@@ -257,7 +259,7 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
 
             int skipBy = 1;
             if (isSubSamplingEnabled()) {
-                while (n / skipBy > getSubsampleThresholdEventCount()) {
+                while ((n / skipBy) > getSubsampleThresholdEventCount()) {
                     skipBy++;
                 }
             }
@@ -286,7 +288,7 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
                     }
                 } else {
                     e.setSpecial(false);
-                    e.type = (byte) (1 - addr & 1);
+                    e.type = (byte) ((1 - addr) & 1);
                     e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
                     e.x = (short) (sxm - ((short) ((addr & XMASK) >>> XSHIFT)));
                     e.y = (short) ((addr & YMASK) >>> YSHIFT);
@@ -379,7 +381,7 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
      * POWERDOWN   ---->    PDA_PD
      *
      * </pre>
-     *     
+     *
 * Biases are as follows:
      * <pre>
      * (Total 35) 	Default 	Default (Variation/step) 	MAX/MIM 	Real BIAS (
@@ -470,7 +472,7 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
                 IPot pot = i.next();
                 // for each pot, get the number of bits and then write the bits of the bias a binary string
                 String fmt = String.format("%%%ds", pot.getNumBits()); // e.g. %3s for regular bias, %4s for IRefTune
-                String bits = String.format(fmt, Integer.toBinaryString(pot.getBitValue())).replace(" ", "0"); // e.g. "001" for bit value 1 
+                String bits = String.format(fmt, Integer.toBinaryString(pot.getBitValue())).replace(" ", "0"); // e.g. "001" for bit value 1
                 sb.append(" ").append(bits);
             }
             // turn all the bits into bytes padded with zero bits at msb of first bias if needed.
@@ -515,7 +517,8 @@ public class R10Y extends AETemporalConstastRetina implements Serializable, Obse
      *
      * @return the support
      */
-    public PropertyChangeSupport getSupport() {
+    @Override
+	public PropertyChangeSupport getSupport() {
         return support;
     }
 }

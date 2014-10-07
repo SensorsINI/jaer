@@ -1,6 +1,6 @@
 /*
  * CypressFX2FirmwareFilennameChooserOkCancelDialog.java
- * 
+ *
  * Created on October 20, 2008, 4:03 PM
  */
 package net.sf.jaer.hardwareinterface.usb.cypressfx2libusb;
@@ -18,19 +18,19 @@ import net.sf.jaer.chip.Chip;
 
 /**
  * A dialog for choosing a firmware file.
- * 
+ *
  * @author tobi
  */
 public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swing.JDialog {
 
 	/**
-	 * 
+	 *
 	 */
 	private static final long serialVersionUID = 3094975364945203710L;
 	/**
 	 * The path relative to starting folder of CypressFX2 firmware files
 	 */
-	public static final String DEFAULT_RELATIVE_FIRMWARE_PATH = "../../deviceFirmwarePCBLayout/CypressFX2";
+	public static final String DEFAULT_RELATIVE_FIRMWARE_PATH = "../../devices/firmware/CypressFX2/";
 	static Logger log = Logger.getLogger("CypressFX2FirmwareFilennameChooserOkCancelDialog");
 	static Preferences prefs = Preferences.userNodeForPackage(CypressFX2FirmwareFilennameChooserOkCancelDialog.class);
 	/**
@@ -44,7 +44,7 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
 
 	/**
 	 * Creates new form CypressFX2FirmwareFilennameChooserOkCancelDialog.
-	 * 
+	 *
 	 * @param parent
 	 *            enclosing Frame.
 	 * @param modal
@@ -246,7 +246,7 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
 	/**
 	 * Computes the path for a file relative to a given base, or fails if the
 	 * only shared directory is the root and the absolute form is better.
-	 * 
+	 *
 	 * @param base
 	 *            File that is the base for the result
 	 * @param name
@@ -314,7 +314,7 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
 
 	/**
 	 * Returns the chosen file path
-	 * 
+	 *
 	 * @return the full path to the file
 	 */
 	public String getChosenFile() {

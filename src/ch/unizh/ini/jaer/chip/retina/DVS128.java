@@ -86,7 +86,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
      */
     public DVS128() {
         setName("DVS128");
-        setDefaultPreferencesFile("../../biasgenSettings/dvs128/DVS128Slow.xml");
+        setDefaultPreferencesFile("biasgenSettings/DVS128/DVS128Slow.xml");
         setSizeX(128);
         setSizeY(128);
         setNumCellTypes(2);
