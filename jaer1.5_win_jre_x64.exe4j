@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <exe4j version="4.6" transformSequenceNumber="1">
-  <directoryPresets config="E:/JAER_SVN/branches/jAER_1.5/jars" />
+  <directoryPresets config="./jars/win64" />
   <application name="jaer1.5_win_x64" distributionSourceDir=".">
     <languages>
       <principalLanguage id="en" customLocalizationFile="" />
