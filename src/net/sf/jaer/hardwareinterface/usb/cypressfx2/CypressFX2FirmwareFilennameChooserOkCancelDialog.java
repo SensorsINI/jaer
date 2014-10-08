@@ -188,6 +188,7 @@ private void filenameTextFieldActionPerformed(java.awt.event.ActionEvent evt) {/
         filenameTextField.setBackground(Color.RED);
     } else {
         filenameTextField.setForeground(Color.BLACK);
+        filenameTextField.setBackground(Color.WHITE);
     }
 }//GEN-LAST:event_filenameTextFieldActionPerformed
 
