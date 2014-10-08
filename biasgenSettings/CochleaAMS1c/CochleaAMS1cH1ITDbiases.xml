@@ -29,7 +29,7 @@
                   <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAFdwQAAAAFdAA7bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5CYWNrZ3JvdW5kQWN0aXZpdHlGaWx0ZXJ0ADRuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlJlcGV0aXRpb3VzRmlsdGVydAAxY2gudW5pemguaW5pLmphZXIucHJvamVjdHMuY29jaHNvdW5kbG9jLklUREZpbHRlcnQAU2NoLnVuaXpoLmluaS5qYWVyLnByb2plY3RzLmNvY2hzb3VuZGxvYy5tdWx0aWNoaXB2aWV3ZXIuTXVsdGljaGlwQU1TMWJFdmVudFByb2R1Y2VydAA3b3JnLmluZS50ZWxsdXJpZGUuamFlci50ZWxsMjAwOS5Db2NobGVhR2VuZGVyQ2xhc3NpZmllcng="/>
                   <entry key="ITDFilter.sendITD_UDP_port" value="localhost:9999"/>
                   <entry key="Info.useLocalTimeZone" value="true"/>
-                  <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="..\..\deviceFirmwarePCBLayout\CypressFX2\firmware_FX2LP_Cochleaams1c\firmwareFX2_Cochleaams1c.bix"/>
+                  <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="..\..\devices\firmware\CypressFX2\firmware_FX2LP_Cochleaams1c\firmwareFX2_Cochleaams1c.bix"/>
                   <entry key="CochleaAMS1b.Biasgen.DAC.powered" value="true"/>
                   <entry key="class ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1b.preferredDisplayMethod" value="ch.unizh.ini.jaer.chip.cochlea.CochleaGramDisplayMethod"/>
                   <entry key="CochleaAMS1bControlPanel.selectedPaneIndex" value="1"/>
