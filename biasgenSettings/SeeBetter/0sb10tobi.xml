@@ -344,9 +344,7 @@
                 <entry key="class eu.seebetter.ini.chips.seebetter1011.SeeBetter1011.preferredDisplayMethod" value="eu.seebetter.ini.chips.seebetter1011.SeeBetter1011$SeeBetter1011DisplayMethod"/>
                 <entry key="ScannerHardwareInterface.scanY" value="0"/>
                 <entry key="logIntensityOffset" value="2180"/>
-                <entry key="CypressFX2.defaultFirmwareBixFileForBlankDevice" value="C:\Users\tobi\Documents\1jAERsourceForge\trunk\deviceFirmwarePCBLayout\CypressFX2\firmware_FX2LP_SeeBetter\SeeBetter.bix"/>
                 <entry key="ADC.channel" value="3"/>
-                <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="C:\Users\tobi\Documents\1jAERsourceForge\trunk\deviceFirmwarePCBLayout\CypressFX2\firmware_FX2LP_SeeBetter\SeeBetter.bix"/>
                 <entry key="intensityDisplayEnabled" value="true"/>
                 <entry key="SeeBetter1011.runCpld" value="true"/>
                 <entry key="SeeBetter1011.runAdc" value="true"/>

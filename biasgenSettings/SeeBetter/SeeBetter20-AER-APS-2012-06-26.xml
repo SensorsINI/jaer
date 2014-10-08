@@ -186,7 +186,6 @@
                 <entry key="LogicMux.BiasOutMux.selectedChannel" value="0"/>
                 <entry key="SeeBetter20.testPixel" value="false"/>
                 <entry key="intensityDisplayEnabled" value="false"/>
-                <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="C:\PROJ\jAER\deviceFirmwarePCBLayout\CypressFX2\firmware_FX2LP_SeeBetter20\SeeBetter20.bix"/>
                 <entry key="XYTypeFilter.filterEnabled" value="false"/>
                 <entry key="RotateFilter.filterEnabled" value="false"/>
                 <entry key="BackgroundActivityFilter.filterEnabled" value="false"/>

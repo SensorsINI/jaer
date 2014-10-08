@@ -359,7 +359,6 @@
                 <entry key="SeeBetter1011.delaySM0" value="false"/>
                 <entry key="SeeBetter1011.delaySM1" value="false"/>
                 <entry key="SeeBetter1011.delaySM2" value="false"/>
-                <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="D:\Users\tobi\Documents\1jaer\trunk\deviceFirmwarePCBLayout\CypressFX2\firmware_FX2LP_SeeBetter\SeeBetter.bix"/>
                 <entry key="ADCHardwareInterfaceProxy.adcChannel" value="1"/>
                 <entry key="cDVSTestHardwareInterface.Select5Tbuffer" value="false"/>
                 <entry key="cDVSTestHardwareInterface.ADCchannel" value="3"/>
@@ -391,7 +390,6 @@
                 <entry key="ADCHardwareInterfaceProxy.sequencingEnabled" value="false"/>
                 <entry key="ADCHardwareInterfaceProxy.adcEnabled" value="false"/>
                 <entry key="ScannerHardwareInterface.scanY" value="0"/>
-                <entry key="CypressFX2.defaultFirmwareBixFileForBlankDevice" value="C:\Users\tobi\Documents\1jAERsourceForge\trunk\deviceFirmwarePCBLayout\CypressFX2\firmware_FX2LP_SeeBetter\SeeBetter.bix"/>
                 <entry key="ADC.channel" value="1"/>
                 <entry key="intensityDisplayEnabled" value="true"/>
                 <entry key="intensityScale" value="3.8000002"/>

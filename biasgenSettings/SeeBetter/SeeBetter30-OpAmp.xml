@@ -18,7 +18,6 @@
                 <entry key="agcTauMs" value="1000.0"/>
                 <entry key="SeeBetter30.bgTabbedPaneSelectedIndex" value="0"/>
                 <entry key="DAViS240.bgTabbedPaneSelectedIndex" value="0"/>
-                <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="C:\Users\Minhao\Documents\jaer\deviceFirmwarePCBLayout\CypressFX2\firmware_FX2LP_SeeBetter30\SeeBetter20.bix"/>
                 <entry key="SeeBetter30.AddressedIPotCF.VBP0.BitValueCoarse" value="7"/>
                 <entry key="SeeBetter30.AddressedIPotCF.VBP0.BitValueFine" value="0"/>
                 <entry key="SeeBetter30.AddressedIPotCF.VBP0.Enabled" value="true"/>
