@@ -1,6 +1,6 @@
 /*
  * CypressFX2EEPROM.java
- * 
+ *
  * Created on December 9, 2005, 5:08 PM
  */
 package net.sf.jaer.hardwareinterface.usb.cypressfx2libusb;
@@ -36,13 +36,13 @@ import net.sf.jaer.util.HexString;
  * file or an Intel hex file that has 'records' telling what bytes to write where, exactly.
  * <p>
  * This tool is not very well-developed but can do the job for knowledgable users, at least for the retina.
- * 
+ *
  * @author tobi
  */
 public class CypressFX2EEPROM extends javax.swing.JFrame {
 
 	/**
-	 * 
+	 *
 	 */
 	private static final long serialVersionUID = 571774071517253588L;
 	Logger log = Logger.getLogger("CypressFX2EEPROM");
@@ -747,7 +747,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame {
 
 	private void chooseFileButtonActionPerformed(final java.awt.event.ActionEvent evt) {// GEN-FIRST:event_chooseFileButtonActionPerformed
 		final String defaultPath = System.getProperty("user.dir") + File.separatorChar
-			+ "deviceFirmwarePCBLayout/CypressFX2";
+			+ "devices/firmware/CypressFX2";
 		final String startDir = prefs.get("CypressFX2EEPROM.filepath", defaultPath);
 		final JFileChooser chooser = new JFileChooser(startDir);
 		// JFileChooser chooser=new JFileChooser();

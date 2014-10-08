@@ -84,7 +84,7 @@
     </Component>
     <Component class="javax.swing.JLabel" name="infoLabel">
       <Properties>
-        <Property name="text" type="java.lang.String" value="&lt;html&gt;Choose the .bix firmware file you wish to download to this device.&lt;p&gt;These files are usually located in either the folder &lt;em&gt;deviceFirmwarePCBLayout&lt;/em&gt; or the package &lt;em&gt;net.sf.jaer.hardwareinterface.usb&lt;/em&gt;&lt;html&gt;"/>
+        <Property name="text" type="java.lang.String" value="&lt;html&gt;Choose the .bix firmware file you wish to download to this device.&lt;p&gt;These files are usually located in either the folder &lt;em&gt;devices/firmware/&lt;/em&gt; or the package &lt;em&gt;net.sf.jaer.hardwareinterface.usb&lt;/em&gt;&lt;html&gt;"/>
       </Properties>
     </Component>
     <Component class="javax.swing.JTextField" name="filenameTextField">

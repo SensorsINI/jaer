@@ -15,17 +15,16 @@ package org.ine.telluride.jaer.wowwee;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController;
 
 /**
- * For controlling WowWee Alive toys (specifically the WowWee Alive Chimp toy) 
+ * For controlling WowWee Alive toys (specifically the WowWee Alive Chimp toy)
  using the USB Servo board using UsbIo interface to USB. For Telluride 2007.
  Note that the Chimp definitely uses a different code than the Robosapiens. The Robosapiens uses
  a 12 bit code based on 1200 baud 4T/1T long/short 0/1 bits and an 8T start bit. The Chimp uses an 11 bit code
  with equal-length 0/1 bit codes.
- <p> 
+ <p>
  To use WowWeeAliveHardwareInterface, construct this type directly because ServoInterfaceFactory will not make these objects for you yet.
  <p>
- The byte codes for control of the WowWee Alive chimp can be found in the 
- <code>deviceFirmwarePCBLayout\SiLabsC8051F320\wowweeControlFirmware</code>
- folder in the file <code>Wowwee Chimp codes.txt</code>. This file is reproduced here
+ The byte codes for control of the WowWee Alive chimp can be found in the
+ INI jAER archives or by searching old SVN revisions. This file is also reproduced here
  <pre>
  Control Code Modulation
 
@@ -43,7 +42,7 @@ The RF radio control is modulated with a simple digital code to specify the diff
         The first kind is a simple button press (eg: Demo), the second kind is on of the 6 skits (depends on mood).
         For the first two modes, when you press a button, the code is usually sent 8 times by the RF transmitter (the remote) to make sure it gets through.
 
-LSB first in controller, codes assume MSB first!!!!!!!!!!!!!!!!! 
+LSB first in controller, codes assume MSB first!!!!!!!!!!!!!!!!!
 
 
               Simple Controls (same regardless of mood switches)
@@ -92,12 +91,12 @@ LSB first in controller, codes assume MSB first!!!!!!!!!!!!!!!!!
             * 6 = joystick up and right
             * 7 = joystick down and left
             * 8 = joystick down and right
- 
+
 ****************
 Addendum by Ping Wang - 7/2007
 
 We were not able to get the codes above to work using the wowwee.java class object.
-Instead, we did a complete remapping of the behaviors through a systematic test of its reactions.  
+Instead, we did a complete remapping of the behaviors through a systematic test of its reactions.
 
 Some of the codes are:
 b, c, d, f, 2, 4, 6, 8 - various crys and laughs
@@ -106,26 +105,26 @@ b, c, d, f, 2, 4, 6, 8 - various crys and laughs
 
 Here are the codes that were used for the gesture tracking demo:
 "909" - nose sniff
-"904" - happy laughing  
+"904" - happy laughing
 "102" - happy chrip
 "906" - angry cry
 
 
 
 </pre>
- 
+
  * @author tobi delbruck, christina savin, ping wang, Telluride 2007
  */
 public class WowWeeAliveHardwareInterface extends SiLabsC8051F320_USBIO_ServoController {
-    
+
     public final byte CMD_WOWWEE=(byte)15; // vendor command to sent command to toy
 
     /** Creates a new instance of WowWeeAliveHardwareInterface */
     public WowWeeAliveHardwareInterface() {
     }
-    
-        
-     /** send command to toy. The first byte (0x3) of command is sent by default and does not need to 
+
+
+     /** send command to toy. The first byte (0x3) of command is sent by default and does not need to
      * be included in the cmd array.
      * @param command last 2 bytes of the command.
      */
@@ -139,5 +138,5 @@ public class WowWeeAliveHardwareInterface extends SiLabsC8051F320_USBIO_ServoCon
         b[2]=(byte)(command>>>8);
         submitCommand(cmd);
     }
-    
+
 }

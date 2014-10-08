@@ -175,14 +175,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /** PropertyChangeEvent fired from this AEViewer */
     EVENT_CHECK_NONMONOTONIC_TIMESTAMPS = "checkNonMonotonicTimestamps";
-    
+
     public static String HELP_URL_USER_GUIDE = "http://jaerproject.net/";
     public static String HELP_URL_HELP_FORUM = "https://sourceforge.net/projects/jaer/forums/forum/631958";
     public static String HELP_URL_JAVADOC_WEB = "http://jaer.sourceforge.net/javadoc";
     public static String HELP_URL_JAVADOC;
     // note filenames cannot have spaces in them for browser to work easily, some problem with space encoding; %20 doesn't work as advertized.
-    public static String HELP_USER_GUIDE_USB2_MINI = "/trunk/doc/USBAERmini2userguide.pdf";
-    public static String HELP_USER_GUIDE_AER_CABLING = "/trunk/doc/AERHardwareAndCabling.pdf";
+    public static String HELP_USER_GUIDE_USB2_MINI = "/docs/USBAERmini2userguide.pdf";
+    public static String HELP_USER_GUIDE_AER_CABLING = "/docs/AERHardwareAndCabling.pdf";
     public static final String HARDWARE_INTERFACE_NUMBER_PROPERTY = "HardwareInterfaceNumber";
     public static final String HARDWARE_INTERFACE_OBJECT_PROPERTY = "hardwareInterfaceObject";
     private static final String SET_DEFAULT_FIRMWARE_FOR_BLANK_DEVICE = "Set default firmware for blank device...";
@@ -712,7 +712,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     addHelpItem(new JSeparator());
                     addHelpURLItem(pathToURL(HELP_USER_GUIDE_USB2_MINI), "USBAERmini2 board", "User guide for USB2AERmini2 AER monitor/sequencer interface board");
                     addHelpURLItem(pathToURL(HELP_USER_GUIDE_AER_CABLING), "AER protocol and cabling guide", "Guide to AER pin assignment and cabling for the Rome and CAVIAR standards");
-                    addHelpURLItem(pathToURL("/trunk/deviceFirmwarePCBLayout/SiLabsC8051F320/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");
+                    addHelpURLItem(pathToURL("/devices/pcbs/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");
                     addHelpItem(new JSeparator());
             } catch (Exception e) {
                     log.warning("could register help item: " + e.toString());
@@ -1219,7 +1219,7 @@ two interfaces). otherwise force user choice.
     }
 
     /** Builds the interface menu. Synchronized to avoid clashing with ViewLoop.run() method that is also trying to open devices.
-     * 
+     *
      */
     synchronized private void buildInterfaceMenu() {
         buildInterfaceMenu(interfaceMenu);
@@ -1734,7 +1734,7 @@ two interfaces). otherwise force user choice.
 					try{
                                             renderPacket(packet);
                                         }catch(RuntimeException e){
-                                            log.warning("caught "+e.toString()+" caused by "+e.getCause()!=null?e.getCause().toString():" unknown cause");
+                                            log.warning(("caught "+e.toString()+" caused by "+e.getCause())!=null?e.getCause().toString():" unknown cause");
                                         }
                                         if(packet==null){
                                             log.warning("packet became null after rendering");
@@ -2786,7 +2786,8 @@ two interfaces). otherwise force user choice.
         setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
         setTitle("AEViewer");
         addWindowListener(new java.awt.event.WindowAdapter() {
-            public void windowClosing(java.awt.event.WindowEvent evt) {
+            @Override
+			public void windowClosing(java.awt.event.WindowEvent evt) {
                 formWindowClosing(evt);
             }
         });
@@ -2799,7 +2800,8 @@ two interfaces). otherwise force user choice.
         imagePanel.setFocusable(false);
         imagePanel.setPreferredSize(new java.awt.Dimension(200, 200));
         imagePanel.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
-            public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
+            @Override
+			public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
                 imagePanelMouseWheelMoved(evt);
             }
         });
@@ -2817,7 +2819,8 @@ two interfaces). otherwise force user choice.
         biasesToggleButton.setAlignmentY(0.0F);
         biasesToggleButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
         biasesToggleButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 biasesToggleButtonActionPerformed(evt);
             }
         });
@@ -2829,7 +2832,8 @@ two interfaces). otherwise force user choice.
         filtersToggleButton.setAlignmentY(0.0F);
         filtersToggleButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
         filtersToggleButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 filtersToggleButtonActionPerformed(evt);
             }
         });
@@ -2841,7 +2845,8 @@ two interfaces). otherwise force user choice.
         dontRenderToggleButton.setAlignmentY(0.0F);
         dontRenderToggleButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
         dontRenderToggleButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 dontRenderToggleButtonActionPerformed(evt);
             }
         });
@@ -2862,7 +2867,8 @@ two interfaces). otherwise force user choice.
         multiModeButton.setAlignmentY(0.0F);
         multiModeButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
         multiModeButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 multiModeButtonActionPerformed(evt);
             }
         });
@@ -2892,7 +2898,8 @@ two interfaces). otherwise force user choice.
         showConsoleOutputButton.setMargin(new java.awt.Insets(2, 2, 2, 2));
         showConsoleOutputButton.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
         showConsoleOutputButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 showConsoleOutputButtonActionPerformed(evt);
             }
         });
@@ -2909,18 +2916,22 @@ two interfaces). otherwise force user choice.
         new TriangleSquareWindowsCornerIcon();
         resizeLabel.setToolTipText("Resizes window");
         resizeLabel.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
+            @Override
+			public void mouseEntered(java.awt.event.MouseEvent evt) {
                 resizeLabelMouseEntered(evt);
             }
-            public void mouseExited(java.awt.event.MouseEvent evt) {
+            @Override
+			public void mouseExited(java.awt.event.MouseEvent evt) {
                 resizeLabelMouseExited(evt);
             }
-            public void mousePressed(java.awt.event.MouseEvent evt) {
+            @Override
+			public void mousePressed(java.awt.event.MouseEvent evt) {
                 resizeLabelMousePressed(evt);
             }
         });
         resizeLabel.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
-            public void mouseDragged(java.awt.event.MouseEvent evt) {
+            @Override
+			public void mouseDragged(java.awt.event.MouseEvent evt) {
                 resizeLabelMouseDragged(evt);
             }
         });
@@ -2938,7 +2949,8 @@ two interfaces). otherwise force user choice.
         newViewerMenuItem.setText("New viewer");
         newViewerMenuItem.setToolTipText("Opens a new viewer");
         newViewerMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 newViewerMenuItemActionPerformed(evt);
             }
         });
@@ -2949,7 +2961,8 @@ two interfaces). otherwise force user choice.
         openMenuItem.setText("Open logged data file...");
         openMenuItem.setToolTipText("Opens a logged data file for playback");
         openMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 openMenuItemActionPerformed(evt);
             }
         });
@@ -2960,7 +2973,8 @@ two interfaces). otherwise force user choice.
         closeMenuItem.setText("Close");
         closeMenuItem.setToolTipText("Closes this viewer or the playing data file");
         closeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 closeMenuItemActionPerformed(evt);
             }
         });
@@ -2970,7 +2984,8 @@ two interfaces). otherwise force user choice.
         timestampResetBitmaskMenuItem.setText("dummy, set in constructor");
         timestampResetBitmaskMenuItem.setToolTipText("Setting a bitmask here will memorize and subtract timestamps when address  & bitmask != 0");
         timestampResetBitmaskMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 timestampResetBitmaskMenuItemActionPerformed(evt);
             }
         });
@@ -2985,7 +3000,8 @@ two interfaces). otherwise force user choice.
         loggingPlaybackImmediatelyCheckBoxMenuItem.setText("Playback logged data immediately after logging enabled");
         loggingPlaybackImmediatelyCheckBoxMenuItem.setToolTipText("If enabled, logged data plays back immediately");
         loggingPlaybackImmediatelyCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 loggingPlaybackImmediatelyCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -2994,7 +3010,8 @@ two interfaces). otherwise force user choice.
         loggingSetTimelimitMenuItem.setText("Set logging time limit...");
         loggingSetTimelimitMenuItem.setToolTipText("Sets a time limit for logging");
         loggingSetTimelimitMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 loggingSetTimelimitMenuItemActionPerformed(evt);
             }
         });
@@ -3003,7 +3020,8 @@ two interfaces). otherwise force user choice.
         logFilteredEventsCheckBoxMenuItem.setText("Enable filtering of logged or network output events");
         logFilteredEventsCheckBoxMenuItem.setToolTipText("Logging or network writes apply active filters first (reduces file size or network traffi)");
         logFilteredEventsCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 logFilteredEventsCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3017,7 +3035,8 @@ two interfaces). otherwise force user choice.
         openSocketInputStreamMenuItem.setText("Open remote server input stream socket...");
         openSocketInputStreamMenuItem.setToolTipText("Opens a remote connection for stream (TCP) packets of  events ");
         openSocketInputStreamMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 openSocketInputStreamMenuItemActionPerformed(evt);
             }
         });
@@ -3026,7 +3045,8 @@ two interfaces). otherwise force user choice.
         openSocketOutputStreamMenuItem.setText("Open remote server output stream socket...");
         openSocketOutputStreamMenuItem.setToolTipText("Opens a remote connection for stream (TCP) packets of  events ");
         openSocketOutputStreamMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 openSocketOutputStreamMenuItemActionPerformed(evt);
             }
         });
@@ -3036,7 +3056,8 @@ two interfaces). otherwise force user choice.
         reopenSocketInputStreamMenuItem.setText("Reopen last or preferred stream socket input stream");
         reopenSocketInputStreamMenuItem.setToolTipText("After an input socket has been opened (and preferences set), this quickly closes and reopens it");
         reopenSocketInputStreamMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 reopenSocketInputStreamMenuItemActionPerformed(evt);
             }
         });
@@ -3045,7 +3066,8 @@ two interfaces). otherwise force user choice.
         serverSocketOptionsMenuItem.setText("Stream socket server options...");
         serverSocketOptionsMenuItem.setToolTipText("Sets options for server sockets");
         serverSocketOptionsMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 serverSocketOptionsMenuItemActionPerformed(evt);
             }
         });
@@ -3056,7 +3078,8 @@ two interfaces). otherwise force user choice.
         multicastOutputEnabledCheckBoxMenuItem.setText("Enable Multicast (UDP) AE Output");
         multicastOutputEnabledCheckBoxMenuItem.setToolTipText("<html>Enable multicast AE output (datagrams)<br><strong>Warning! Will flood network if there are no listeners.</strong></html>");
         multicastOutputEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 multicastOutputEnabledCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3066,7 +3089,8 @@ two interfaces). otherwise force user choice.
         openMulticastInputMenuItem.setText("Enable Multicast (UDP) AE input");
         openMulticastInputMenuItem.setToolTipText("Enable multicast AE input (datagrams)");
         openMulticastInputMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 openMulticastInputMenuItemActionPerformed(evt);
             }
         });
@@ -3077,7 +3101,8 @@ two interfaces). otherwise force user choice.
         unicastOutputEnabledCheckBoxMenuItem.setText("Enable unicast datagram (UDP) output...");
         unicastOutputEnabledCheckBoxMenuItem.setToolTipText("Enables unicast datagram (UDP) outputs to a single receiver");
         unicastOutputEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 unicastOutputEnabledCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3087,7 +3112,8 @@ two interfaces). otherwise force user choice.
         openUnicastInputMenuItem.setText("Open Unicast (UDP) remote AE input...");
         openUnicastInputMenuItem.setToolTipText("Opens a remote UDP unicast AE input");
         openUnicastInputMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 openUnicastInputMenuItemActionPerformed(evt);
             }
         });
@@ -3096,7 +3122,8 @@ two interfaces). otherwise force user choice.
 
         openBlockingQueueInputMenuItem.setText("Enable BlockingQueue input from another viewer");
         openBlockingQueueInputMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 openBlockingQueueInputMenuItemActionPerformed(evt);
             }
         });
@@ -3109,7 +3136,8 @@ two interfaces). otherwise force user choice.
         syncEnabledCheckBoxMenuItem.setText("Synchronized logging/playback enabled");
         syncEnabledCheckBoxMenuItem.setToolTipText("All viwers start/stop logging in synchrony and playback times are synchronized");
         syncEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 syncEnabledCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3120,7 +3148,8 @@ two interfaces). otherwise force user choice.
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setText("Check for non-monotonic time in input streams");
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setToolTipText("If enabled, nonmonotonic time stamps are checked for in input streams from file or network");
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3132,7 +3161,8 @@ two interfaces). otherwise force user choice.
         exitMenuItem.setText("Exit");
         exitMenuItem.setToolTipText("Exits all viewers");
         exitMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 exitMenuItemActionPerformed(evt);
             }
         });
@@ -3148,7 +3178,8 @@ two interfaces). otherwise force user choice.
         viewBiasesMenuItem.setText("Biases/HW Configuration");
         viewBiasesMenuItem.setToolTipText("Shows chip or board configuration controls");
         viewBiasesMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 viewBiasesMenuItemActionPerformed(evt);
             }
         });
@@ -3157,7 +3188,8 @@ two interfaces). otherwise force user choice.
         dataWindowMenu.setText("Data Window");
         dataWindowMenu.setToolTipText("Shows a general purpose data window (including log output)");
         dataWindowMenu.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 dataWindowMenuActionPerformed(evt);
             }
         });
@@ -3171,7 +3203,8 @@ two interfaces). otherwise force user choice.
         viewFiltersMenuItem.setText("Filters");
         viewFiltersMenuItem.setToolTipText("Shows filter controls");
         viewFiltersMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 viewFiltersMenuItemActionPerformed(evt);
             }
         });
@@ -3180,7 +3213,8 @@ two interfaces). otherwise force user choice.
         enableFiltersOnStartupCheckBoxMenuItem.setText("Enable filters on startup");
         enableFiltersOnStartupCheckBoxMenuItem.setToolTipText("Enables creation of event processing filters on startup");
         enableFiltersOnStartupCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 enableFiltersOnStartupCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3195,7 +3229,8 @@ two interfaces). otherwise force user choice.
         viewActiveRenderingEnabledMenuItem.setText("Active rendering enabled");
         viewActiveRenderingEnabledMenuItem.setToolTipText("Enables active display of each rendered frame if enabled.\nIf disabled, then  chipCanvas.repaint(1000 / frameRater.getDesiredFPS()) is called for repaint.");
         viewActiveRenderingEnabledMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 viewActiveRenderingEnabledMenuItemActionPerformed(evt);
             }
         });
@@ -3204,7 +3239,8 @@ two interfaces). otherwise force user choice.
         viewRenderBlankFramesCheckBoxMenuItem.setText("Render blank frames");
         viewRenderBlankFramesCheckBoxMenuItem.setToolTipText("If enabled, frames without events are rendered");
         viewRenderBlankFramesCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 viewRenderBlankFramesCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3214,7 +3250,8 @@ two interfaces). otherwise force user choice.
         skipPacketsRenderingCheckBoxMenuItem.setText("Skip packets rendering enabled...");
         skipPacketsRenderingCheckBoxMenuItem.setToolTipText("Enables skipping rendering of packets to speed up processing");
         skipPacketsRenderingCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 skipPacketsRenderingCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3223,7 +3260,8 @@ two interfaces). otherwise force user choice.
         subsampleEnabledCheckBoxMenuItem.setText("Enable subsample rendering");
         subsampleEnabledCheckBoxMenuItem.setToolTipText("use to speed up rendering");
         subsampleEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 subsampleEnabledCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3232,7 +3270,8 @@ two interfaces). otherwise force user choice.
         subSampleSizeMenuItem.setText("Choose rendering subsample limit...");
         subSampleSizeMenuItem.setToolTipText("Sets the number of events rendered in subsampling mode");
         subSampleSizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 subSampleSizeMenuItemActionPerformed(evt);
             }
         });
@@ -3245,7 +3284,8 @@ two interfaces). otherwise force user choice.
         cycleColorRenderingMethodMenuItem.setText("Cycle color rendering mode");
         cycleColorRenderingMethodMenuItem.setToolTipText("Changes rendering mode (gray, contrast, RG, color-time)");
         cycleColorRenderingMethodMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cycleColorRenderingMethodMenuItemActionPerformed(evt);
             }
         });
@@ -3254,7 +3294,8 @@ two interfaces). otherwise force user choice.
         increaseContrastMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_UP, 0));
         increaseContrastMenuItem.setText("Increase contrast");
         increaseContrastMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 increaseContrastMenuItemActionPerformed(evt);
             }
         });
@@ -3263,7 +3304,8 @@ two interfaces). otherwise force user choice.
         decreaseContrastMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_DOWN, 0));
         decreaseContrastMenuItem.setText("Decrease contrast");
         decreaseContrastMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 decreaseContrastMenuItemActionPerformed(evt);
             }
         });
@@ -3273,7 +3315,8 @@ two interfaces). otherwise force user choice.
         autoscaleContrastEnabledCheckBoxMenuItem.setText("Autoscale contrast enabled");
         autoscaleContrastEnabledCheckBoxMenuItem.setToolTipText("Tries to autoscale histogram values");
         autoscaleContrastEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 autoscaleContrastEnabledCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3283,7 +3326,8 @@ two interfaces). otherwise force user choice.
         calibrationStartStop.setText("Start Calibration");
         calibrationStartStop.setToolTipText("Hold uniform surface in front of lens and start calibration. Wait a few seconds and stop calibration.");
         calibrationStartStop.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 calibrationStartStopActionPerformed(evt);
             }
         });
@@ -3294,7 +3338,8 @@ two interfaces). otherwise force user choice.
         cycleDisplayMethodButton.setText("Cycle display method");
         cycleDisplayMethodButton.setToolTipText("Cycles the display method");
         cycleDisplayMethodButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cycleDisplayMethodButtonActionPerformed(evt);
             }
         });
@@ -3308,7 +3353,8 @@ two interfaces). otherwise force user choice.
         acccumulateImageEnabledCheckBoxMenuItem.setText("Accumulate image");
         acccumulateImageEnabledCheckBoxMenuItem.setToolTipText("Rendered data accumulates over 2d hisograms");
         acccumulateImageEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 acccumulateImageEnabledCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3317,7 +3363,8 @@ two interfaces). otherwise force user choice.
         viewIgnorePolarityCheckBoxMenuItem.setText("Ignore cell type");
         viewIgnorePolarityCheckBoxMenuItem.setToolTipText("Throws away cells type for rendering");
         viewIgnorePolarityCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 viewIgnorePolarityCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3327,7 +3374,8 @@ two interfaces). otherwise force user choice.
         increaseFrameRateMenuItem.setText("Increase rendering frame rate");
         increaseFrameRateMenuItem.setToolTipText("Increases frames/second target for rendering");
         increaseFrameRateMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 increaseFrameRateMenuItemActionPerformed(evt);
             }
         });
@@ -3337,7 +3385,8 @@ two interfaces). otherwise force user choice.
         decreaseFrameRateMenuItem.setText("Decrease rendering frame rate");
         decreaseFrameRateMenuItem.setToolTipText("Decreases frames/second target for rendering");
         decreaseFrameRateMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 decreaseFrameRateMenuItemActionPerformed(evt);
             }
         });
@@ -3346,7 +3395,8 @@ two interfaces). otherwise force user choice.
         pauseRenderingCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_SPACE, 0));
         pauseRenderingCheckBoxMenuItem.setText("Paused");
         pauseRenderingCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 pauseRenderingCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3355,7 +3405,8 @@ two interfaces). otherwise force user choice.
         viewSingleStepMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PERIOD, 0));
         viewSingleStepMenuItem.setText("Single step");
         viewSingleStepMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 viewSingleStepMenuItemActionPerformed(evt);
             }
         });
@@ -3364,7 +3415,8 @@ two interfaces). otherwise force user choice.
         zeroTimestampsMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_0, 0));
         zeroTimestampsMenuItem.setText("Zero timestamps");
         zeroTimestampsMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 zeroTimestampsMenuItemActionPerformed(evt);
             }
         });
@@ -3376,7 +3428,8 @@ two interfaces). otherwise force user choice.
         increasePlaybackSpeedMenuItem.setToolTipText("Makes the time slice longer");
         increasePlaybackSpeedMenuItem.setEnabled(false);
         increasePlaybackSpeedMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 increasePlaybackSpeedMenuItemActionPerformed(evt);
             }
         });
@@ -3387,7 +3440,8 @@ two interfaces). otherwise force user choice.
         decreasePlaybackSpeedMenuItem.setToolTipText("Makes the time slice shorter");
         decreasePlaybackSpeedMenuItem.setEnabled(false);
         decreasePlaybackSpeedMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 decreasePlaybackSpeedMenuItemActionPerformed(evt);
             }
         });
@@ -3397,7 +3451,8 @@ two interfaces). otherwise force user choice.
         rewindPlaybackMenuItem.setText("Rewind");
         rewindPlaybackMenuItem.setEnabled(false);
         rewindPlaybackMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 rewindPlaybackMenuItemActionPerformed(evt);
             }
         });
@@ -3408,7 +3463,8 @@ two interfaces). otherwise force user choice.
         flextimePlaybackEnabledCheckBoxMenuItem.setToolTipText("Enables playback with constant number of events");
         flextimePlaybackEnabledCheckBoxMenuItem.setEnabled(false);
         flextimePlaybackEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 flextimePlaybackEnabledCheckBoxMenuItemActionPerformed(evt);
             }
         });
@@ -3418,7 +3474,8 @@ two interfaces). otherwise force user choice.
         togglePlaybackDirectionMenuItem.setText("Toggle playback direction");
         togglePlaybackDirectionMenuItem.setEnabled(false);
         togglePlaybackDirectionMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 togglePlaybackDirectionMenuItemActionPerformed(evt);
             }
         });
@@ -3428,7 +3485,8 @@ two interfaces). otherwise force user choice.
         clearMarksMI.setText("Clear IN and OUT markers");
         clearMarksMI.setToolTipText("Clears the IN and OUT markers for playing back a section of a recording");
         clearMarksMI.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 clearMarksMIActionPerformed(evt);
             }
         });
@@ -3438,7 +3496,8 @@ two interfaces). otherwise force user choice.
         setMarkInMI.setText("Set IN marker");
         setMarkInMI.setToolTipText("If playing back file, it rewinds to this position");
         setMarkInMI.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 setMarkInMIActionPerformed(evt);
             }
         });
@@ -3448,7 +3507,8 @@ two interfaces). otherwise force user choice.
         setMarkOutMI.setText("Set OUT marker");
         setMarkOutMI.setToolTipText("If playing back recording, it plays to this marker");
         setMarkOutMI.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 setMarkOutMIActionPerformed(evt);
             }
         });
@@ -3459,7 +3519,8 @@ two interfaces). otherwise force user choice.
         zoomInMenuItem.setText("Zoom in");
         zoomInMenuItem.setToolTipText("Zooms in around mouse point");
         zoomInMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 zoomInMenuItemActionPerformed(evt);
             }
         });
@@ -3469,7 +3530,8 @@ two interfaces). otherwise force user choice.
         zoomOutMenuItem.setText("Zoom out");
         zoomOutMenuItem.setToolTipText("Zooms out around mouse point");
         zoomOutMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 zoomOutMenuItemActionPerformed(evt);
             }
         });
@@ -3479,7 +3541,8 @@ two interfaces). otherwise force user choice.
         zoomCenterMenuItem.setText("Center display here");
         zoomCenterMenuItem.setToolTipText("Centers display on mouse point");
         zoomCenterMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 zoomCenterMenuItemActionPerformed(evt);
             }
         });
@@ -3489,7 +3552,8 @@ two interfaces). otherwise force user choice.
         unzoomMenuItem.setText("Unzoom");
         unzoomMenuItem.setToolTipText("Goes to default display zooming");
         unzoomMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 unzoomMenuItemActionPerformed(evt);
             }
         });
@@ -3506,7 +3570,8 @@ two interfaces). otherwise force user choice.
         customizeDevicesMenuItem.setText("Customize...");
         customizeDevicesMenuItem.setToolTipText("Let's you customize which AEChip's are available");
         customizeDevicesMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 customizeDevicesMenuItemActionPerformed(evt);
             }
         });
@@ -3518,23 +3583,28 @@ two interfaces). otherwise force user choice.
         interfaceMenu.setText("Interface");
         interfaceMenu.setToolTipText("Select the HW interface to use");
         interfaceMenu.addMenuListener(new javax.swing.event.MenuListener() {
-            public void menuDeselected(javax.swing.event.MenuEvent evt) {
+            @Override
+			public void menuDeselected(javax.swing.event.MenuEvent evt) {
             }
-            public void menuCanceled(javax.swing.event.MenuEvent evt) {
+            @Override
+			public void menuCanceled(javax.swing.event.MenuEvent evt) {
             }
-            public void menuSelected(javax.swing.event.MenuEvent evt) {
+            @Override
+			public void menuSelected(javax.swing.event.MenuEvent evt) {
                 interfaceMenuMenuSelected(evt);
             }
         });
 
         refreshInterfaceMenuItem.setText("Refresh");
         refreshInterfaceMenuItem.addComponentListener(new java.awt.event.ComponentAdapter() {
-            public void componentShown(java.awt.event.ComponentEvent evt) {
+            @Override
+			public void componentShown(java.awt.event.ComponentEvent evt) {
                 refreshInterfaceMenuItemComponentShown(evt);
             }
         });
         refreshInterfaceMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 refreshInterfaceMenuItemActionPerformed(evt);
             }
         });
@@ -3549,7 +3619,8 @@ two interfaces). otherwise force user choice.
         increaseBufferSizeMenuItem.setText("Increase hardware buffer size");
         increaseBufferSizeMenuItem.setToolTipText("Increases the host USB fifo size");
         increaseBufferSizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 increaseBufferSizeMenuItemActionPerformed(evt);
             }
         });
@@ -3558,7 +3629,8 @@ two interfaces). otherwise force user choice.
         decreaseBufferSizeMenuItem.setText("Decrease hardware buffer size");
         decreaseBufferSizeMenuItem.setToolTipText("Decreases the host USB fifo size");
         decreaseBufferSizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 decreaseBufferSizeMenuItemActionPerformed(evt);
             }
         });
@@ -3567,7 +3639,8 @@ two interfaces). otherwise force user choice.
         increaseNumBuffersMenuItem.setText("Increase number of hardware buffers");
         increaseNumBuffersMenuItem.setToolTipText("Increases the host number of USB read buffers");
         increaseNumBuffersMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 increaseNumBuffersMenuItemActionPerformed(evt);
             }
         });
@@ -3576,7 +3649,8 @@ two interfaces). otherwise force user choice.
         decreaseNumBuffersMenuItem.setText("Decrease num hardware buffers");
         decreaseNumBuffersMenuItem.setToolTipText("Decreases the host number of USB read buffers");
         decreaseNumBuffersMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 decreaseNumBuffersMenuItemActionPerformed(evt);
             }
         });
@@ -3587,7 +3661,8 @@ two interfaces). otherwise force user choice.
         changeAEBufferSizeMenuItem.setText("Set rendering AE buffer size");
         changeAEBufferSizeMenuItem.setToolTipText("sets size of host raw event buffers used for render/capture data exchnage");
         changeAEBufferSizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 changeAEBufferSizeMenuItemActionPerformed(evt);
             }
         });
@@ -3598,7 +3673,8 @@ two interfaces). otherwise force user choice.
         updateFirmwareMenuItem.setText("Update firmware...");
         updateFirmwareMenuItem.setToolTipText("Updates device firmware with confirm dialog");
         updateFirmwareMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 updateFirmwareMenuItemActionPerformed(evt);
             }
         });
@@ -3608,7 +3684,8 @@ two interfaces). otherwise force user choice.
         cypressFX2EEPROMMenuItem.setText("(Advanced users only) CypressFX2 EEPPROM Utility");
         cypressFX2EEPROMMenuItem.setToolTipText("(advanced users) Opens dialog to download device firmware ");
         cypressFX2EEPROMMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cypressFX2EEPROMMenuItemActionPerformed(evt);
             }
         });
@@ -3618,12 +3695,14 @@ two interfaces). otherwise force user choice.
         setDefaultFirmwareMenuItem.setText("Set default firmware for blank device...");
         setDefaultFirmwareMenuItem.setToolTipText("Sets the firmware that is downloaded to a blank CypressFX2");
         setDefaultFirmwareMenuItem.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
+            @Override
+			public void mouseEntered(java.awt.event.MouseEvent evt) {
                 setDefaultFirmwareMenuItemMouseEntered(evt);
             }
         });
         setDefaultFirmwareMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 setDefaultFirmwareMenuItemActionPerformed(evt);
             }
         });
@@ -3641,7 +3720,8 @@ two interfaces). otherwise force user choice.
         sequenceMenuItem.setActionCommand("start");
         sequenceMenuItem.setEnabled(false);
         sequenceMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 sequenceMenuItemActionPerformed(evt);
             }
         });
@@ -3650,7 +3730,8 @@ two interfaces). otherwise force user choice.
         enableMissedEventsCheckBox.setText("Enable Missed Events");
         enableMissedEventsCheckBox.setEnabled(false);
         enableMissedEventsCheckBox.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 enableMissedEventsCheckBoxActionPerformed(evt);
             }
         });
@@ -3660,7 +3741,8 @@ two interfaces). otherwise force user choice.
         monSeqMissedEventsMenuItem.setToolTipText("If the device is a monitor, this will show how many events were missed");
         monSeqMissedEventsMenuItem.setEnabled(false);
         monSeqMissedEventsMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 monSeqMissedEventsMenuItemActionPerformed(evt);
             }
         });
@@ -3673,7 +3755,8 @@ two interfaces). otherwise force user choice.
         monSeqOpMode0.setSelected(true);
         monSeqOpMode0.setText("1 microsecond ");
         monSeqOpMode0.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 monSeqOpMode0ActionPerformed(evt);
             }
         });
@@ -3682,7 +3765,8 @@ two interfaces). otherwise force user choice.
         monSeqOpModeButtonGroup.add(monSeqOpMode1);
         monSeqOpMode1.setText("0.2 microsecond");
         monSeqOpMode1.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 monSeqOpMode1ActionPerformed(evt);
             }
         });
@@ -3699,7 +3783,8 @@ two interfaces). otherwise force user choice.
         aboutMenuItem.setText("About");
         aboutMenuItem.setToolTipText("Version information");
         aboutMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 aboutMenuItemActionPerformed(evt);
             }
         });

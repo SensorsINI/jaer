@@ -86,7 +86,7 @@
                   <entry key="RectangularClusterTracker.thresholdMassForVisibleCluster" value="30"/>
                   <entry key="TopologyTracker.filterEnabled" value="false"/>
                   <entry key="TopologyTracker.showStatus" value="false"/>
-                  <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="..\..\deviceFirmwarePCBLayout\CypressFX2\firmware_FX2LP_SBret10\SBret10.bix"/>
+                  <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="..\..\devices\firmware\CypressFX2\firmware_FX2LP_DAViS_FX2V4\SBret10.bix"/>
                   <entry key="Head6DOF_ServoController.filterEnabled" value="false"/>
                   <entry key="ServoReaction.goalieMode" value="false"/>
                   <entry key="ServoArm.filterEnabled" value="false"/>

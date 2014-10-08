@@ -78,7 +78,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
     JComponent helpMenuItem1 = null, helpMenuItem2 = null, helpMenuItem3 = null;
     public static final String HELP_URL_RETINA = "http://inilabs.com/support/overview-of-dynamic-vision-sensors";
     public static final String USER_GUIDE_URL_RETINA = "http://inilabs.com/support/dvs128";
-    public static final String FIRMWARE_CHANGELOG = "http://sourceforge.net/p/jaer/code/HEAD/tree/trunk/deviceFirmwarePCBLayout/CypressFX2/firmware_FX2LP_DVS128/CHANGELOG.txt";
+    public static final String FIRMWARE_CHANGELOG = "https://sourceforge.net/p/jaer/code/HEAD/tree/devices/firmware/CypressFX2/firmware_FX2LP_DVS128/CHANGELOG.txt";
 
     /**
      * Creates a new instance of DVS128. No biasgen is constructed for this

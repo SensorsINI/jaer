@@ -133,7 +133,7 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
             this.sendVendorRequest(this.VENDOR_REQUEST_LED, cmd, (byte) 0);
             ledState = state;
         } catch (HardwareInterfaceException e) {
-            log.warning(e.toString()+": LED control request ignored. Probably your DVS128 firmware version is too old; LED control was added at revision 12. See \\deviceFirmwarePCBLayout\\CypressFX2\\firmware_FX2LP_DVS128\\CHANGELOG.txt");
+            log.warning(e.toString()+": LED control request ignored. Probably your DVS128 firmware version is too old; LED control was added at revision 12. See \\devices\\firmware\\CypressFX2\\firmware_FX2LP_DVS128\\CHANGELOG.txt");
         }
 
     }

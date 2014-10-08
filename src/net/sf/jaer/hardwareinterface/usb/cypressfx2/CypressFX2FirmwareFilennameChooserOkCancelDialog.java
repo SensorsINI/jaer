@@ -108,7 +108,7 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
             }
         });
 
-        infoLabel.setText("<html>Choose the .bix firmware file you wish to download to this device.<p>These files are usually located in either the folder <em>deviceFirmwarePCBLayout</em> or the package <em>net.sf.jaer.hardwareinterface.usb</em><html>");
+        infoLabel.setText("<html>Choose the .bix firmware file you wish to download to this device.<p>These files are usually located in either the folder <em>devices/firmware/</em> or the package <em>net.sf.jaer.hardwareinterface.usb</em><html>");
 
         filenameTextField.setText("The chosen file");
         filenameTextField.addActionListener(new java.awt.event.ActionListener() {

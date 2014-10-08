@@ -740,7 +740,7 @@ public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCo
     }//GEN-LAST:event_writeEEPROMRadioButtonActionPerformed
 
     private void chooseFileButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chooseFileButtonActionPerformed
-        String defaultPath = System.getProperty("user.dir") + File.separatorChar + "deviceFirmwarePCBLayout/CypressFX2";
+        String defaultPath = System.getProperty("user.dir") + File.separatorChar + "devices/firmware/CypressFX2";
         String startDir = prefs.get("CypressFX2EEPROM.filepath", defaultPath);
         JFileChooser chooser = new JFileChooser(startDir);
 //        JFileChooser chooser=new JFileChooser();

@@ -31,6 +31,7 @@ import java.util.Calendar;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import javax.swing.SwingConstants;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -38,14 +39,14 @@ import javax.swing.event.ChangeListener;
  * simple GUI for playing around with <code>StreamCommand</code> that
  * lets you send text commands via a text field and shows the answers
  * <br /><br />
- * 
+ *
  * additionally, the streamed messages can be displayed live; at the moment,
  * this is done by RetinaPanel, but the program can easily be extended to
  * show other streamed content. this example here should work with
- * https://jaer.svn.sourceforge.net/svnroot/jaer/trunk/deviceFirmwarePCBLayout/dsPICserial/uart_MDC2D
+ * https://sourceforge.net/p/jaer/code/HEAD/tree/devices/firmware/dsPICserial_MDC2D/
  * version 6.2
  * <br /><br />
- * 
+ *
  * <b>TROUBLE SHOOTING</b>
  * <ul>
  *  <li>    If not connection can be established, double-check the baudrate
@@ -53,19 +54,19 @@ import javax.swing.event.ChangeListener;
  *  <li>    If still no connection can be established, try a "standard" baudrate
  *          setting, such as 115.2 kbaud (and change the firmware accordingly) </li>
  * </ul>
- * 
+ *
  * @see StreamCommand
  * @author andstein
  */
 public class StreamCommandTest extends javax.swing.JFrame
         implements StreamCommandListener,ChangeListener {
-    
+
     // defines the message type that in turn affects how the message
     // is interpreted
     public final static int MSG_RESET			=0x0000;
     public final static int MSG_FRAME_MOTION            =0x0005;
     public final static int MSG_ANSWER                  =0x2020;
-    
+
     private StreamCommand streamer;
     private RetinaPanel retinaPanel;
     private boolean checkingVersion;
@@ -77,14 +78,15 @@ public class StreamCommandTest extends javax.swing.JFrame
         // initialize available ports
         streamer= new StreamCommand(this,Integer.parseInt(baudText.getText()));
         portsCombo.removeAllItems();
-        for(String portName : streamer.getPortNames())
-            portsCombo.addItem(portName);
+        for(String portName : streamer.getPortNames()) {
+			portsCombo.addItem(portName);
+		}
 
         // add display
         retinaPanel= new RetinaPanel(20,20);
         imagePane.setLayout(new BorderLayout());
         imagePane.add(retinaPanel,BorderLayout.CENTER);
-        
+
         vectorScalingSlider.addChangeListener(this);
 
         // initialize other elements with streamer
@@ -92,7 +94,8 @@ public class StreamCommandTest extends javax.swing.JFrame
 
         // automatically update messages/s display
         new Timer().scheduleAtFixedRate(new TimerTask() {
-            public void run()
+            @Override
+			public void run()
             {
                 StreamCommandTest.this.updateMps();
             }
@@ -119,28 +122,32 @@ public class StreamCommandTest extends javax.swing.JFrame
         logString("> " + cmd);
     }
 
-    public void answerReceived(String cmd,String answer) {
+    @Override
+	public void answerReceived(String cmd,String answer) {
         if (checkingVersion)
         {
-            if (answer.charAt(0)!='!' && answer.contains("version")) {
+            if ((answer.charAt(0)!='!') && answer.contains("version")) {
                 portStatusText.setText("(verified)");
                 cmdText.setEnabled(true);
-            } else
-                portStatusText.setText("ERROR");
+            }
+			else {
+				portStatusText.setText("ERROR");
+			}
             checkingVersion= false;
         }
 
         // make help message more readable
-        if (answer.contains("help"))
-            answer = answer.replace("; ", "\n\t");
-        
+        if (answer.contains("help")) {
+			answer = answer.replace("; ", "\n\t");
+		}
+
         logString("("+cmd+")< " + answer);
     }
 
     public void updateMps() {
         mpsText.setText(Double.toString(streamer.getMps()) + "/s");
     }
-    
+
     private String exactTimeString() {
         Calendar x= Calendar.getInstance();
         return String.format("%02d:%02d:%02d.%03d",
@@ -148,35 +155,43 @@ public class StreamCommandTest extends javax.swing.JFrame
                 x.get(Calendar.SECOND),x.get(Calendar.MILLISECOND));
     }
 
-    public void messageReceived(StreamCommandMessage message) {
+    @Override
+	public void messageReceived(StreamCommandMessage message) {
 //        logString("[" + values.length + "x" + values[0].length + "]");
-        
-        if (logMessageCB.isSelected())
-            logString(String.format("%s: type=0x%02x length=%d",
+
+        if (logMessageCB.isSelected()) {
+			logString(String.format("%s: type=0x%02x length=%d",
                     exactTimeString(),message.getType(),message.getLength()));
+		}
 
         // char array of pixel values
         if (RetinaMessage.canParse(message)) {
             RetinaMessage rmsg= new RetinaMessage(message);
             retinaPanel.setDataFromMessage(rmsg);
             retinaStatusPanel.setText(rmsg.getErrorInformation());
-        } else
-            retinaStatusPanel.setText("");
+        }
+		else {
+			retinaStatusPanel.setText("");
+		}
 
-        
+
         updateMps();
     }
 
-    public void streamingError(int error,String msg) {
+    @Override
+	public void streamingError(int error,String msg) {
         logString("*** " + msg);
     }
 
     private String hex4(char c) {
-        if (c>=10) return Character.toString((char) (c - 10 + 'a'));
+        if (c>=10) {
+			return Character.toString((char) ((c - 10) + 'a'));
+		}
         return Character.toString((char) (c + '0'));
     }
 
-    public void unsyncedChar(char c) {
+    @Override
+	public void unsyncedChar(char c) {
         if (hexCB.isSelected())
         {
             logText.append(hex4((char) (c >> 4)) + hex4((char) (c & 0xf)) + " ");
@@ -238,14 +253,16 @@ public class StreamCommandTest extends javax.swing.JFrame
         cmdText.setFont(new java.awt.Font("Monospaced", 0, 11));
         cmdText.setEnabled(false);
         cmdText.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cmdTextActionPerformed(evt);
             }
         });
 
         clearButton.setText("clear");
         clearButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 clearButtonActionPerformed(evt);
             }
         });
@@ -256,7 +273,8 @@ public class StreamCommandTest extends javax.swing.JFrame
 
         portsCombo.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "error!" }));
         portsCombo.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 portsComboActionPerformed(evt);
             }
         });
@@ -265,7 +283,8 @@ public class StreamCommandTest extends javax.swing.JFrame
         portStatusText.setFont(new java.awt.Font("Monospaced", 0, 11));
         portStatusText.setText("status");
         portStatusText.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 portStatusTextActionPerformed(evt);
             }
         });
@@ -274,10 +293,11 @@ public class StreamCommandTest extends javax.swing.JFrame
         checkBox.setText("check");
 
         baudText.setFont(new java.awt.Font("Monospaced", 0, 11));
-        baudText.setHorizontalAlignment(javax.swing.JTextField.RIGHT);
+        baudText.setHorizontalAlignment(SwingConstants.RIGHT);
         baudText.setText("618964");
         baudText.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 baudTextActionPerformed(evt);
             }
         });
@@ -339,28 +359,32 @@ public class StreamCommandTest extends javax.swing.JFrame
 
         syncCB.setText("sync");
         syncCB.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 syncCBActionPerformed(evt);
             }
         });
 
         resetCode.setText("reset");
         resetCode.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 resetCodeActionPerformed(evt);
             }
         });
 
         dumpButton.setText("dump");
         dumpButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 dumpButtonActionPerformed(evt);
             }
         });
 
         autogainCB.setText("autogain");
         autogainCB.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 autogainCBActionPerformed(evt);
             }
         });
@@ -428,7 +452,8 @@ public class StreamCommandTest extends javax.swing.JFrame
 
         multiButton.setText("multi !");
         multiButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
+            @Override
+			public void actionPerformed(java.awt.event.ActionEvent evt) {
                 multiButtonActionPerformed(evt);
             }
         });
@@ -518,14 +543,16 @@ public class StreamCommandTest extends javax.swing.JFrame
 }//GEN-LAST:event_portStatusTextActionPerformed
 
     private void portsComboActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_portsComboActionPerformed
-        if (portsCombo.getItemCount() <1)
-            return;
+        if (portsCombo.getItemCount() <1) {
+			return;
+		}
 
         String portName= (String) portsCombo.getSelectedItem();
         logString("\nCONNECTING TO "+portName+"...");
 
-        if (streamer.isConnected())
-            streamer.close();
+        if (streamer.isConnected()) {
+			streamer.close();
+		}
 
         try {
             streamer.connect(portName);
@@ -539,7 +566,7 @@ public class StreamCommandTest extends javax.swing.JFrame
                 streamer.sendCommand("version");
                 cmdText.setEnabled(false);
             }
-            
+
         } catch (PortInUseException ex) {
             portStatusText.setText("port in use");
             cmdText.setEnabled(false);
@@ -570,7 +597,8 @@ public class StreamCommandTest extends javax.swing.JFrame
     */
     public static void main(String args[]) {
         java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
+            @Override
+			public void run() {
                 new StreamCommandTest().setVisible(true);
             }
         });
@@ -603,7 +631,8 @@ public class StreamCommandTest extends javax.swing.JFrame
     private javax.swing.JSlider vectorScalingSlider;
     // End of variables declaration//GEN-END:variables
 
-    public void commandTimeout(String cmd) {
+    @Override
+	public void commandTimeout(String cmd) {
         if (checkingVersion)
         {
             portStatusText.setText("timeout");
