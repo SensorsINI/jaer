@@ -13,7 +13,7 @@ import java.util.Observer;
 import java.util.Arrays;
 import java.util.Random;
 
-@Description("Filters out uncorrelated background activity")
+@Description("Models the AerCorr chip which detects and can be used to filter out uncorrelated activity")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class AerCorrFilter extends EventFilter2D implements Observer {
 
