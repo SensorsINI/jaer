@@ -4,8 +4,10 @@
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
+import de.thesycon.usbio.UsbIoBuf;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.LinkedList;
 import javax.media.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
@@ -16,6 +18,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.SpikeSound;
 import net.sf.jaer.util.StateMachineStates;
 import net.sf.jaer.util.TobiLogger;
@@ -27,16 +30,18 @@ import net.sf.jaer.util.TobiLogger;
  * @author tobi
  *
  * This is part of jAER
-<a href="http://jaerproject.net/">jaerproject.net</a>,
-licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
+ * <a href="http://jaerproject.net/">jaerproject.net</a>, licensed under the
+ * LGPL
+ * (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 @Description("Slot car racer project, Telluride 2010")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, PropertyChangeListener{
+public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
+
     private boolean overrideThrottle = getBoolean("overrideThrottle", true);
     private float overriddenThrottleSetting = getFloat("overriddenThrottleSetting", 0);
     private float maxThrottle = getFloat("maxThrottle", 1);
-    private boolean playThrottleSound =getBoolean("playThrottleSound", false);
+    private boolean playThrottleSound = getBoolean("playThrottleSound", false);
     private TobiLogger tobiLogger;
     private SlotCarHardwareInterface hw;
     private CarTracker.CarCluster car = null;
@@ -48,7 +53,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, Prope
     private long lastTimeSoundPlayed;
     private ThrottleBrake lastThrottle = new ThrottleBrake();
     private TrackDefineFilter trackDefineFilter;
-    private boolean playBrakeSound=getBoolean("playBrakeSound",false);
+    private boolean playBrakeSound = getBoolean("playBrakeSound", false);
 
     private void playThrottleSounds() {
         long now;
@@ -89,7 +94,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, Prope
      */
     public void setPlayBrakeSound(boolean playBrakeSound) {
         this.playBrakeSound = playBrakeSound;
-        putBoolean("playBrakeSound",playBrakeSound);
+        putBoolean("playBrakeSound", playBrakeSound);
     }
 
     public enum ControllerToUse {
@@ -98,14 +103,18 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, Prope
     };
     private ControllerToUse controllerToUse = ControllerToUse.valueOf(prefs().get("SlotCarRacer.controllerToUse", ControllerToUse.SimpleSpeedController.toString()));
 
-    /** possible states,
+    /**
+     * possible states,
      * <ol>
-     * <li> STARTING means no car is tracked or tracker has not found a car cluster near the track model,
+     * <li> STARTING means no car is tracked or tracker has not found a car
+     * cluster near the track model,
      * <li> RUNNING is the active state,
-     * <li> CRASHED is the state if we were RUNNING and the car tracker has tracked the car
-     * sufficiently far away from the track model,
-     * <li> STALLED is the state if the car has stopped being tracked but the last tracked position was on the track
-     * because it has stalled out and stopped moving. is after there have not been any definite balls for a while and we are waiting for a clear ball directed
+     * <li> CRASHED is the state if we were RUNNING and the car tracker has
+     * tracked the car sufficiently far away from the track model,
+     * <li> STALLED is the state if the car has stopped being tracked but the
+     * last tracked position was on the track because it has stalled out and
+     * stopped moving. is after there have not been any definite balls for a
+     * while and we are waiting for a clear ball directed
      * </ol>
      */
     public enum State {
@@ -128,18 +137,16 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, Prope
         super(chip);
         hw = new SlotCarHardwareInterface();
 
-
         filterChain = new FilterChain(chip);
-       trackDefineFilter = new TrackDefineFilter(chip);
+        trackDefineFilter = new TrackDefineFilter(chip);
         trackDefineFilter.setEnclosed(true, this);
-       trackDefineFilter.getSupport().addPropertyChangeListener(SlotcarTrack.EVENT_TRACK_CHANGED, this);
-
+        trackDefineFilter.getSupport().addPropertyChangeListener(SlotcarTrack.EVENT_TRACK_CHANGED, this);
 
         setControllerToUse(controllerToUse);
 
         setEnclosedFilterChain(filterChain);
 
-        tobiLogger = new TobiLogger("SlotCarRacer", "racer data " + throttleController==null?null:throttleController.logContents());
+        tobiLogger = new TobiLogger("SlotCarRacer", "racer data " + throttleController == null ? null : throttleController.logContents());
 
         // tooltips for properties
         final String con = "Controller", dis = "Display", ov = "Override", vir = "Virtual car", lg = "Logging";
@@ -156,18 +163,17 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, Prope
 
     }
 
- 
-
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
+        stats.addSample(in);
         out = getEnclosedFilterChain().filterPacket(in);
-        
+
         lastThrottle.copyFrom(throttleController.getThrottle()); // copy from profile for example
         // clip and apply override
         lastThrottle.throttle = lastThrottle.throttle > maxThrottle ? maxThrottle : lastThrottle.throttle;
-        if(isOverrideThrottle()){
-            lastThrottle.throttle=getOverriddenThrottleSetting();
-            lastThrottle.brake=false;
+        if (isOverrideThrottle()) {
+            lastThrottle.throttle = getOverriddenThrottleSetting();
+            lastThrottle.brake = false;
         }
 
         // send to hardware
@@ -181,12 +187,11 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, Prope
         return out;
     }
 
-
     @Override
     public void resetFilter() {
         if (hw.isOpen()) {
-            lastThrottle.throttle=0;
-            lastThrottle.brake=false;
+            lastThrottle.throttle = 0;
+            lastThrottle.brake = false;
             hw.setThrottle(lastThrottle);
 //            hw.close();
         }
@@ -201,7 +206,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, Prope
     public synchronized void annotate(GLAutoDrawable drawable) { // TODO may not want to synchronize here since this will block filtering durring annotation
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY());
 
-        String s = "SlotCarRacer\nstate: " + state.toString() + "\nthrottle: " + lastThrottle ;
+        String s = "SlotCarRacer\nstate: " + state.toString() + "\nthrottle: " + lastThrottle;
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
 
@@ -237,7 +242,8 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, Prope
     /**
      * Sets the value of the throttle override throttle.
      *
-     * @param overriddenThrottleSetting the overriddenThrottleSetting to copyFrom
+     * @param overriddenThrottleSetting the overriddenThrottleSetting to
+     * copyFrom
      */
     public void setOverriddenThrottleSetting(float overriddenThrottleSetting) {
         this.overriddenThrottleSetting = overriddenThrottleSetting;
@@ -277,7 +283,8 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, Prope
     }
 
     /**
-     *  Sets the failsafe maximum throttle that overrides any controller action.
+     * Sets the failsafe maximum throttle that overrides any controller action.
+     *
      * @param maxThrottle the maxThrottle to copyFrom
      */
     public void setMaxThrottle(float maxThrottle) {
@@ -383,10 +390,54 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, Prope
     }
 
     /**
-     * @param playSoundThrottleChangeThreshold the playSoundThrottleChangeThreshold to copyFrom
+     * @param playSoundThrottleChangeThreshold the
+     * playSoundThrottleChangeThreshold to copyFrom
      */
     public void setPlaySoundThrottleChangeThreshold(float playSoundThrottleChangeThreshold) {
         this.playSoundThrottleChangeThreshold = playSoundThrottleChangeThreshold;
     }
+
+    private class Stats {
+
+        long lastBufTime = 0;
+        final int maxLength = 50;
+       
+        LinkedList<Sample> list = new LinkedList<Sample>();
+        EngineeringFormat fmt = new EngineeringFormat();
+
+        void addSample(EventPacket b) {
+            list.add(new Sample(b.getSize()));
+            if (list.size() > maxLength) {
+                list.removeFirst();
+            }
+        }
+
+        public String toString() {
+            StringBuilder sb = new StringBuilder("buffer stats: ");
+            for (Sample b : list) {
+                sb.append(String.format("%s, ", b.toString()));
+            }
+            return sb.toString();
+        }
+
+        private class Sample {
+
+            long dtNs;
+            int numBytes;
+
+            public Sample(int numEvents) {
+                this.numBytes = numEvents;
+                long now = System.nanoTime();
+                dtNs = now - lastBufTime;
+                lastBufTime = now;
+            }
+
+            public String toString() {
+                return String.format("%ss %d bytes", fmt.format(1e-9f * dtNs), numBytes);
+            }
+
+        }
+    }
+    private Stats stats = new Stats();
 
 }
