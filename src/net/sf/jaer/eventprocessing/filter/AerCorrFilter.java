@@ -20,7 +20,7 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
     final int MAX_Ileak = 1000000, MIN_Ileak = 1;
     final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
 
-    private int iLeak = getInt("iLeak", 100);
+    private float iLeakPicoAmps = getFloat("iLeakPicoAmps", 100);
 
     private int subsampleBy = getInt("subsampleBy", 0);
 
@@ -40,9 +40,9 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
         super(chip);
         chip.addObserver(this);
         initFilter();
-        setPropertyTooltip("Ileak", "Set Leaking current for variable dT in picoamps");
+        setPropertyTooltip("iLeakPicoAmps", "Set capacitor leak current in picoamps");
         setPropertyTooltip("subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
-        setPropertyTooltip("iLeakCOV", "The leak rates vary by this coefficient of variation (1-sigma) per correlation cell detector");
+        setPropertyTooltip("iLeakCOV", "The leak currents vary by this coefficient of variation (1 sigma)");
     }
 
     @Override
@@ -63,15 +63,18 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
 
             ts = e.timestamp;
             int lastT = lastTimesMap[x][y];
-            int deltaT = (ts - lastT);
-            if(deltaT<0) {
+            int dtUs = (ts - lastT);
+            if(dtUs<0) {
 //                log.warning("negative deltaT");
 //                resetFilter();
+                e.setFilteredOut(true); // filter out this first event (which occurs when lastTimesMap has been initialized and not event has come yet)
+                lastTimesMap[x][y] = ts;
                 continue;
             }
-            float deltaV = ((iLeakRealpA[x][y] / cap[x][y]) * deltaT * 1e-6f);
+            float deltaV = ((iLeakRealpA[x][y] / cap[x][y]) * dtUs * 1e-6f);
             vCap[x][y] -= deltaV;  ///&& lastT != DEFAULT_TIMESTAMP)
-            if (!(vCap[x][y] > 0.6f && lastT != DEFAULT_TIMESTAMP)) {
+            if(vCap[x][y]<0)vCap[x][y]=0; // it cannot go negative voltage
+            if (!(vCap[x][y] > 0.6f/* && lastT != DEFAULT_TIMESTAMP*/)) { // don't let any event through unless the cap is really charged up still
                 e.setFilteredOut(true);
             } else {
                 //System.out.println(e.x+" "+e.y);
@@ -141,7 +144,7 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
             for (float[] arrayRow : iLeakRealpA) {
                 for (int i = 0; i < arrayRow.length; i++) {
                     //arrayRow[i] = (float)(getIleak())*1e-13;
-                    arrayRow[i] = (float) (iLeak * (r.nextGaussian() * iLeakCOV + 1f)) * 1e-12f;//should have different sigma and u for different iLeak values
+                    arrayRow[i] = (float) (iLeakPicoAmps * (r.nextGaussian() * iLeakCOV + 1f)) * 1e-12f;//should have different sigma and u for different iLeak values
                 }
             }
         }
@@ -180,8 +183,8 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
     /**
      * @return the iLeak
      */
-    public int getIleak() {
-        return (int) iLeak;
+    public float getIleakPicoAmps() {
+        return iLeakPicoAmps;
     }
 
     public int getMinIleak() {
@@ -195,9 +198,9 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
     /**
      * @param Ileak the iLeak to set
      */
-    public void setIleak(int Ileak) {
-        this.iLeak = Ileak;
-        putInt("iLeak", this.iLeak);
+    public void setIleakPicoAmps(float Ileak) {
+        this.iLeakPicoAmps = Ileak;
+        putFloat("iLeakPicoAmps", this.iLeakPicoAmps);
         allocateMaps(chip);
     }
 
