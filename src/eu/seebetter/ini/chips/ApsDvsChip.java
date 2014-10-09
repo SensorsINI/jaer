@@ -29,8 +29,8 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
             IMU_SAMPLE_VALUE = 3 << EVENT_TYPE_SHIFT, // this special code is for IMU sample events
             HW_BGAF = 5,
             HW_TRACKER_CM = 6,
-            HW_TRACKER_CLUSTER = 7
-            ;
+            HW_TRACKER_CLUSTER = 7,
+            HW_OMC_EVENT = 8;
 
     // see the files in trunk\doc\data structure\apsDVS 
     // below was original IMU code location, not used anymore (tobi)
