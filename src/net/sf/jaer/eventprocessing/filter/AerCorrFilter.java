@@ -27,7 +27,7 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
     private int subsampleBy = getInt("subsampleBy", 0);
 
     private double[][] Vcap;
-    private double Vth = 1.2;
+    // private double Vth = 0.6;
     int[][] lastTimesMap;
     private double[][] Cap;
     private double[][] Vrs;
@@ -56,14 +56,16 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
             if (e.special) continue;
                         
             short x = (short) (e.x >>> subsampleBy), y = (short) (e.y >>> subsampleBy);
-            if (x < 0 || x > sx || y < 0 || y > sy) continue;
             
             ts = e.timestamp;
             int lastT = lastTimesMap[x][y];
             int deltaT = (ts - lastT);
-            Vcap[x][y] += - IleakReal[x][y]/Cap[x][y] * deltaT;
-            if (!(Vcap[x][y] > Vth && lastT != DEFAULT_TIMESTAMP)){
+            double deltaV = ((IleakReal[x][y]/Cap[x][y]) * deltaT*1e-6);
+            Vcap[x][y] -= deltaV;  ///&& lastT != DEFAULT_TIMESTAMP)
+            if (!(Vcap[x][y] > 0.6 && lastT != DEFAULT_TIMESTAMP)){
                 e.setFilteredOut(true);
+            }else{
+                //System.out.println(e.x+" "+e.y);
             }
             Vcap[x][y]= Vrs[x][y];
              
@@ -106,6 +108,7 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
             for (double[] arrayRow : Cap) {
                 for (int i = 0; i < arrayRow.length; i++) {
                     arrayRow[i] = 165e-15*(r.nextGaussian()*0.03+1);
+                    //arrayRow[i] = 165e-15;
                 }
             }
 
@@ -123,14 +126,15 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
                 for (int
                         i = 0; i < arrayRow.length; i++) {
                     arrayRow[i] = (r.nextGaussian()*0.005+1.197);
+                    //arrayRow[i] = 1.2;
                 }
             }
             IleakReal = new double[chip.getSizeX()][chip.getSizeY()];
             // Initialize two dimensional array, by first getting the rows and then setting their values.
             for (double[] arrayRow : IleakReal) {
-                for (int
-                        i = 0; i < arrayRow.length; i++) {
-                    arrayRow[i] = getIleak()*(r.nextGaussian()*0.04+1.004)*1e-12;//should have different sigma and u for different Ileak values
+                for (int i = 0; i < arrayRow.length; i++) {
+                    //arrayRow[i] = (double)(getIleak())*1e-13;
+                    arrayRow[i] = (double)(getIleak()*(r.nextGaussian()*0.04+1.004))*1e-13;//should have different sigma and u for different Ileak values
                 }
             }
         }
@@ -185,6 +189,7 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
      */
     public void setIleak(int Ileak) {
         this.Ileak = Ileak;
+        allocateMaps(chip);
     }
 
   
