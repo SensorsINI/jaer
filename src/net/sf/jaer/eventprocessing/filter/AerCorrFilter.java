@@ -13,68 +13,77 @@ import java.util.Observer;
 import java.util.Arrays;
 import java.util.Random;
 
-
 @Description("Filters out uncorrelated background activity")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class AerCorrFilter extends EventFilter2D implements Observer {
 
     final int MAX_Ileak = 1000000, MIN_Ileak = 1;
     final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
-    
-  
-    private int Ileak = getInt("Ileak", 100);
+
+    private int iLeak = getInt("iLeak", 100);
 
     private int subsampleBy = getInt("subsampleBy", 0);
 
-    private double[][] Vcap;
-    // private double Vth = 0.6;
+    private float[][] vCap;
+    // private float Vth = 0.6;
     int[][] lastTimesMap;
-    private double[][] Cap;
-    private double[][] Vrs;
-    private double [][] IleakReal;
+    private float[][] cap;
+    private float[][] vRs;
+    private float[][] iLeakRealpA;
     private int ts = 0; // used to reset filter
-    private int sx; 
+    private int sx;
     private int sy;
     private Random r;
-    
+    private float iLeakCOV = getFloat("iLeakCOV", 0.04f);
+
     public AerCorrFilter(AEChip chip) {
         super(chip);
         chip.addObserver(this);
         initFilter();
-        setPropertyTooltip("Ileak", "Set Leaking current for variable dT");
+        setPropertyTooltip("Ileak", "Set Leaking current for variable dT in picoamps");
         setPropertyTooltip("subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
-   }
+        setPropertyTooltip("iLeakCOV", "The leak rates vary by this coefficient of variation (1-sigma) per correlation cell detector");
+    }
 
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
-        if (lastTimesMap == null) allocateMaps(chip);
+        if (lastTimesMap == null) {
+            allocateMaps(chip);
+        }
 
- 
         for (Object eIn : in) {
-            if(eIn == null) break;  
+            if (eIn == null) {
+                break;
+            }
             BasicEvent e = (BasicEvent) eIn;
-            if (e.special) continue;
-                        
+            if (e.isSpecial()) {
+                continue; // skip IMU, etc
+            }
             short x = (short) (e.x >>> subsampleBy), y = (short) (e.y >>> subsampleBy);
-            
+
             ts = e.timestamp;
             int lastT = lastTimesMap[x][y];
             int deltaT = (ts - lastT);
-            double deltaV = ((IleakReal[x][y]/Cap[x][y]) * deltaT*1e-6);
-            Vcap[x][y] -= deltaV;  ///&& lastT != DEFAULT_TIMESTAMP)
-            if (!(Vcap[x][y] > 0.6 && lastT != DEFAULT_TIMESTAMP)){
+            if(deltaT<0) {
+//                log.warning("negative deltaT");
+//                resetFilter();
+                continue;
+            }
+            float deltaV = ((iLeakRealpA[x][y] / cap[x][y]) * deltaT * 1e-6f);
+            vCap[x][y] -= deltaV;  ///&& lastT != DEFAULT_TIMESTAMP)
+            if (!(vCap[x][y] > 0.6f && lastT != DEFAULT_TIMESTAMP)) {
                 e.setFilteredOut(true);
-            }else{
+            } else {
                 //System.out.println(e.x+" "+e.y);
             }
-            Vcap[x][y]= Vrs[x][y];
-             
-            lastTimesMap[x][y]=ts;
+            vCap[x][y] = vRs[x][y];
+
+            lastTimesMap[x][y] = ts;
         }
 
         return in;
     }
-    
+
     @Override
     public synchronized final void resetFilter() {
         initFilter();
@@ -94,47 +103,45 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
     }
-    
-    private void allocateMaps(AEChip chip) {
+
+    synchronized private void allocateMaps(AEChip chip) {
         if (chip != null && chip.getNumCells() > 0) {
             lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()];
             for (int[] arrayRow : lastTimesMap) {
                 Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
             }
-            
-            Vcap = new double[chip.getSizeX()][chip.getSizeY()];
-            Cap = new double[chip.getSizeX()][chip.getSizeY()];
-             // Initialize two dimensional array, by first getting the rows and then setting their values.
-            for (double[] arrayRow : Cap) {
+
+            vCap = new float[chip.getSizeX()][chip.getSizeY()];
+            cap = new float[chip.getSizeX()][chip.getSizeY()];
+            // Initialize two dimensional array, by first getting the rows and then setting their values.
+            for (float[] arrayRow : cap) {
                 for (int i = 0; i < arrayRow.length; i++) {
-                    arrayRow[i] = 165e-15*(r.nextGaussian()*0.03+1);
+                    arrayRow[i] = 165e-15f * ((float) r.nextGaussian() * 0.03f + 1f);
                     //arrayRow[i] = 165e-15;
                 }
             }
 
-           /* Vth = new double[chip.getSizeX()][chip.getSizeY()];
+            /* Vth = new float[chip.getSizeX()][chip.getSizeY()];
+             // Initialize two dimensional array, by first getting the rows and then setting their values.
+             for (float[] arrayRow : Vth) {
+             for (int i = 0; i < arrayRow.length; i++) {
+             arrayRow[i] = 1.2;
+             }
+             }*/
+            vRs = new float[chip.getSizeX()][chip.getSizeY()];
             // Initialize two dimensional array, by first getting the rows and then setting their values.
-            for (double[] arrayRow : Vth) {
+            for (float[] arrayRow : vRs) {
                 for (int i = 0; i < arrayRow.length; i++) {
-                    arrayRow[i] = 1.2;
-                }
-            }*/
-            
-            Vrs = new double[chip.getSizeX()][chip.getSizeY()];
-            // Initialize two dimensional array, by first getting the rows and then setting their values.
-            for (double[] arrayRow : Vrs) {
-                for (int
-                        i = 0; i < arrayRow.length; i++) {
-                    arrayRow[i] = (r.nextGaussian()*0.005+1.197);
+                    arrayRow[i] = (float) (r.nextGaussian() * 0.005f + 1.197f);
                     //arrayRow[i] = 1.2;
                 }
             }
-            IleakReal = new double[chip.getSizeX()][chip.getSizeY()];
+            iLeakRealpA = new float[chip.getSizeX()][chip.getSizeY()];
             // Initialize two dimensional array, by first getting the rows and then setting their values.
-            for (double[] arrayRow : IleakReal) {
+            for (float[] arrayRow : iLeakRealpA) {
                 for (int i = 0; i < arrayRow.length; i++) {
-                    //arrayRow[i] = (double)(getIleak())*1e-13;
-                    arrayRow[i] = (double)(getIleak()*(r.nextGaussian()*0.04+1.004))*1e-13;//should have different sigma and u for different Ileak values
+                    //arrayRow[i] = (float)(getIleak())*1e-13;
+                    arrayRow[i] = (float) (iLeak * (r.nextGaussian() * iLeakCOV + 1f)) * 1e-12f;//should have different sigma and u for different iLeak values
                 }
             }
         }
@@ -143,21 +150,22 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
     public Object getFilterState() {
         return lastTimesMap;
     }
-    
-    // </editor-fold>
 
+    // </editor-fold>
     // <editor-fold defaultstate="collapsed" desc="getter-setter for --SubsampleBy--">
     public int getSubsampleBy() {
         return subsampleBy;
     }
 
-    /** Sets the number of bits to subsample by when storing events into the 
-     * map of past events.
-     * Increasing this value will increase the number of events that pass 
-     * through and will also allow passing events from small sources that 
-     * do not stimulate every pixel. 
-     * @param subsampleBy the number of bits, 0 means no subsampling, 
-     *        1 means cut event time map resolution by a factor of two in x and in y */
+    /**
+     * Sets the number of bits to subsample by when storing events into the map
+     * of past events. Increasing this value will increase the number of events
+     * that pass through and will also allow passing events from small sources
+     * that do not stimulate every pixel.
+     *
+     * @param subsampleBy the number of bits, 0 means no subsampling, 1 means
+     * cut event time map resolution by a factor of two in x and in y
+     */
     public void setSubsampleBy(int subsampleBy) {
         if (subsampleBy < 0) {
             subsampleBy = 0;
@@ -170,28 +178,43 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
     // </editor-fold>
 
     /**
-     * @return the Ileak
+     * @return the iLeak
      */
     public int getIleak() {
-        return (int) Ileak;
+        return (int) iLeak;
     }
-    
+
     public int getMinIleak() {
         return (int) MIN_Ileak;
     }
-    
-     public int getMaxIleak() {
+
+    public int getMaxIleak() {
         return (int) MAX_Ileak;
     }
 
     /**
-     * @param Ileak the Ileak to set
+     * @param Ileak the iLeak to set
      */
     public void setIleak(int Ileak) {
-        this.Ileak = Ileak;
+        this.iLeak = Ileak;
+        putInt("iLeak", this.iLeak);
         allocateMaps(chip);
     }
 
-  
-    
+    /**
+     * @return the iLeakCOV
+     */
+    public float getiLeakCOV() {
+        return iLeakCOV;
+    }
+
+    /**
+     * @param iLeakCOV the iLeakCOV to set
+     */
+    public void setiLeakCOV(float iLeakCOV) {
+        this.iLeakCOV = iLeakCOV;
+        putFloat("iLeakCOV", iLeakCOV);
+        allocateMaps(chip);
+    }
+
 }
