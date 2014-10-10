@@ -6,25 +6,26 @@
  */
 package net.sf.jaer.hardwareinterface.usb.cypressfx2;
 
-import eu.seebetter.ini.chips.*;
-import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import de.thesycon.usbio.*;
-import static de.thesycon.usbio.UsbIoErrorCodes.USBIO_ERR_SUCCESS;
-import de.thesycon.usbio.structs.*;
-import eu.seebetter.ini.chips.DAViS.IMUSample;
-
-import javax.swing.ProgressMonitor;
-
-import java.io.*;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.LineNumberReader;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.concurrent.ArrayBlockingQueue;
 
+import javax.swing.ProgressMonitor;
+
+import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.config.ApsDvsConfig;
-import static net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2.VR_DOWNLOAD_FIRMWARE;
-import static net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2.log;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.EngineeringFormat;
+import de.thesycon.usbio.UsbIo;
+import de.thesycon.usbio.UsbIoBuf;
+import de.thesycon.usbio.UsbIoInterface;
+import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
+import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
+import eu.seebetter.ini.chips.ApsDvsChip;
+import eu.seebetter.ini.chips.DAViS.IMUSample;
 
 /**
  * Adds functionality of apsDVS sensors to based CypressFX2Biasgen class. The
@@ -50,7 +51,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 //     private LowpassFilter imuSampleIntervalFilterNs=new LowpassFilter(100);
 //     private int imuSampleCounter=0;
 //     private static final int IMU_SAMPLE_RATE_PRINT_INTERVAL=5000;
-    
+
     private boolean syncEventEnabled = prefs.getBoolean("ApsDvsHardwareInterface.syncEventEnabled", true); // default is true so that device is the timestamp master by default, necessary after firmware rev 11
     /** SYNC events are detected when this bit mask is detected in the input event stream.
     @see HasSyncEventOutput
@@ -75,7 +76,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
      */
     @Override
     synchronized public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
-        if (chip != null && chip instanceof ApsDvsChip) {
+        if ((chip != null) && (chip instanceof ApsDvsChip)) {
             ApsDvsChip apsDVSchip = (ApsDvsChip) chip;
             apsDVSchip.setPowerDown(powerDown);
         }
@@ -286,8 +287,8 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
             imuSampleQueue.clear();  // TODO not needed
         }
     }
-    
-    /** 
+
+    /**
         #define VR_IMU 0xC6 // this VR is for dealing with IMU
         #define IMU_CMD_WRITE_REGISTER 1 // arguments are 8-bit bit register address and 8-bit value to write
         #define IMU_CMD_READ_REGISTER 2 // argument is 9-bit register address to read
@@ -302,7 +303,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
      */
     public synchronized void writeImuRegister(byte imuRegister, byte imuRegisterValue) throws HardwareInterfaceException {
         //                setup1              setup3,setup2                   setup4                setup5
-        sendVendorRequest(VR_IMU,  (short) IMU_CMD_WRITE_REGISTER, (short)(0xffff & (0xff & imuRegister | ((0xff & imuRegisterValue) << 8))));
+        sendVendorRequest(VR_IMU,  IMU_CMD_WRITE_REGISTER, (short)(0xffff & ((0xff & imuRegister) | ((0xff & imuRegisterValue) << 8))));
 //        sendVendorRequest(byte request, short value, short index)
 }
 
@@ -415,7 +416,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
         private boolean readingIMUEvents = false; // Indicates that we are reading in IMU Events from the buffer to switch reading mode
         private int countIMUEvents = 0;
         private short[] dataIMUEvents = new short[7];
-        
+
         private class Stats{
             long lastBufTime=0;
             final int maxLength=50;
@@ -423,9 +424,12 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
             EngineeringFormat fmt=new EngineeringFormat();
             void addBuf(UsbIoBuf b){
                 list.add(new BufInfo(b.BytesTransferred));
-                if(list.size()>maxLength)list.removeFirst();
+                if(list.size()>maxLength) {
+					list.removeFirst();
+				}
             }
-            public String toString(){
+            @Override
+			public String toString(){
                 StringBuilder sb=new StringBuilder("buffer stats: ");
                 for(BufInfo b:list){
                     sb.append(String.format("%s, ",b.toString()));
@@ -441,24 +445,25 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                     dtNs=now-lastBufTime;
                     lastBufTime=now;
                 }
-                
-                public String toString(){
+
+                @Override
+				public String toString(){
                     return String.format("%ss %d bytes",fmt.format(1e-9f*dtNs),numBytes);
                 }
-                
+
             }
         }
         private Stats stats=new Stats();
 
         @Override
         public void setNumBuffers(int numBuffers) {
-            super.setNumBuffers(numBuffers); 
+            super.setNumBuffers(numBuffers);
             ((ApsDvsConfig)(chip.getBiasgen())).setAeReaderNumBuffers(numBuffers);
         }
 
         @Override
         public int getNumBuffers() {
-            return ((ApsDvsConfig)(chip.getBiasgen())).getAeReaderNumBuffers(); 
+            return ((ApsDvsConfig)(chip.getBiasgen())).getAeReaderNumBuffers();
         }
 
         @Override
@@ -471,9 +476,9 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
         public int getFifoSize() {
             return ((ApsDvsConfig)(chip.getBiasgen())).getAeReaderFifoSize();
         }
-        
-        
-        
+
+
+
         @Override
         protected void translateEvents(UsbIoBuf b) {
             // TODO debug
@@ -493,7 +498,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 
                     byte[] buf = b.BufferMem;
                     int bytesSent = b.BytesTransferred;
-                    if (bytesSent % 2 != 0) {
+                    if ((bytesSent % 2) != 0) {
                         System.err.println("warning: " + bytesSent + " bytes sent, which is not multiple of 2");
                         bytesSent = (bytesSent / 2) * 2; // truncate off any extra part-event
                     }
@@ -513,7 +518,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                         // Check that we are not reading IMU Events which have a different encoding scheme
                         // START IF readingIMUEvents
                         if (readingIMUEvents == false) {
-                                
+
                             final int code = (buf[i + 1] & 0xC0) >> 6; // gets two bits at XX00 0000 0000 0000. (val&0xC000)>>>14;
                             //  log.info("code " + code);
                             int xmask = (ApsDvsChip.XMASK | ApsDvsChip.POLMASK) >>> ApsDvsChip.POLSHIFT;
@@ -528,6 +533,18 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                     // To simplify data structure handling in AEPacketRaw and AEPacketRawPool,
                                     // ADC events are timestamped just like address-events. ADC events get the timestamp of the most recently preceeding address-event.
                                     // NOTE2: unmasked bits are read as 1's from the hardware. Therefore it is crucial to properly mask bits.
+
+                                	// We first need to see if any special IMU
+									// event series is coming in.
+									// If it is, we need to switch to reading
+									// it. Also, checks for buffer
+									// overruns need to happen in both places.
+									if (((buf[i + 1] & EXTERNAL_PIN_EVENT) == EXTERNAL_PIN_EVENT)
+										&& ((buf[i] & ApsDvsChip.IMUMASK) == ApsDvsChip.IMUMASK)) {
+										readingIMUEvents = true;
+										break;
+									}
+
                                     if ((eventCounter >= aeBufferSize) || (buffer.overrunOccuredFlag)) {
                                         buffer.overrunOccuredFlag = true; // throw away events if we have overrun the output arrays
                                     } else {
@@ -564,20 +581,20 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                             timestamp = currentts;  // ADC event gets last timestamp
                                             haveEvent = true;
     //                                              System.out.println("ADC word: " + (dataword&SeeBetter20.ADC_DATA_MASK));
-                                        
+
                                         // Detects Special Events which can be of type IMUEvents
                                         } else if ((buf[i + 1] & EXTERNAL_PIN_EVENT) == EXTERNAL_PIN_EVENT) {
                                             addr = ApsDvsChip.EXTERNAL_INPUT_EVENT_ADDR;
                                             timestamp = currentts;
                                             haveEvent = false; // TODO set false for now
     //                                        haveEvent = true; // TODO don't write out the external pin events for now, because they mess up the IMU special events
-                                            
+
                                             // Detect Special / External Event of Type IMU, and set flag to start reading subsequent pairs of bytes as IMUEvents
                                             if ((buf[i] & ApsDvsChip.IMUMASK) == ApsDvsChip.IMUMASK) {
                                                 readingIMUEvents = true;
                                                 //if (bytesSent - i < 20) System.out.println(bytesSent - i);
                                             }
-                                            
+
                                         } else if ((buf[i + 1] & XBIT) == XBIT) {//  received an X address, write out event to addresses/timestamps output arrays
 
                                             // x/column part of DVS event
@@ -608,18 +625,18 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                         }
                                         if (haveEvent) {
                                             // see if there are any IMU samples to add to packet
-                                            // merge the IMUSamples to the packet, attempting to maintain timestamp monotonicity, 
+                                            // merge the IMUSamples to the packet, attempting to maintain timestamp monotonicity,
                                             // even if the timestamp is on a different origin that is not related to the data on this endpoint.
                                             if (imuSample == null) { // TODO not needed anymore
                                                 imuSample = imuSampleQueue.poll();
                                             }
 
-                                            while (imuSample != null && imuSample.getTimestampUs() < timestamp) {
+                                            while ((imuSample != null) && (imuSample.getTimestampUs() < timestamp)) {
                                                 eventCounter += imuSample.writeToPacket(buffer, eventCounter);
     //                                            System.out.println(imuSample.toString());
                                                 imuSample = imuSampleQueue.poll();
                                             }
-                                            while (imuSample != null && imuSample.getTimestampUs() > timestamp + 10000) {
+                                            while ((imuSample != null) && (imuSample.getTimestampUs() > (timestamp + 10000))) {
                                                 imuSample = imuSampleQueue.poll(); // drain out imu samples that are too far in future
                                             }
                                             addresses[eventCounter] = addr;
@@ -631,9 +648,9 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                     break;
                                 case 1: // timestamp
                                     lastts = currentts;
-                                    currentts = ((0x3f & (int)buf[i + 1]) << 8) | ((int)buf[i] & 0xff);
+                                    currentts = ((0x3f & buf[i + 1]) << 8) | (buf[i] & 0xff);
                                     currentts = (TICK_US * (currentts + wrapAdd));
-                                    if (lastts > currentts && nonmonotonicTimestampWarningCount-- > 0) {
+                                    if ((lastts > currentts) && (nonmonotonicTimestampWarningCount-- > 0)) {
                                         log.warning(this.toString()+": non-monotonic timestamp: currentts=" + currentts + " lastts=" + lastts + " currentts-lastts=" + (currentts - lastts));
                                     }
                                     //           log.info("received timestamp");
@@ -642,16 +659,19 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                     lastwrap = currentwrap;
                                     currentwrap = (0xff & buf[i]);
                                     int kk = currentwrap - lastwrap;
-                                    if (kk<0) 
-                                        kk = 256-lastwrap + currentwrap;
-                                    if (kk==1) wrapAdd += 0x4000L;
-                                    else if (kk>1){
+                                    if (kk<0) {
+										kk = (256-lastwrap) + currentwrap;
+									}
+                                    if (kk==1) {
+										wrapAdd += 0x4000L;
+									}
+									else if (kk>1){
                                         log.warning(this.toString()+": detected " + (kk-1) + " missing wrap events.");
                                         //while (kk-->0){
                                             wrapAdd += kk*0x4000L;
                                             NumberOfWrapEvents+=kk;
                                         //}
-                                        
+
                                     }
                                     //   log.info("wrap");
                                     break;
@@ -663,10 +683,12 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                     currentts =0;
                                     break;
                             }
-                            
+
                         // Code to read IMUEvents
                         } else {
-                            
+                        	if ((eventCounter >= aeBufferSize) || (buffer.overrunOccuredFlag)) {
+                                buffer.overrunOccuredFlag = true; // throw away events if we have overrun the output arrays
+                            } else {
                             ///*
                             // Populate array containing IMU Events
                             dataIMUEvents[countIMUEvents] = (short) dataword;
@@ -684,7 +706,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                     imuSampleQueue.add(sample);
                                     // Update buf counter to iterate through next word
                                 } catch (IllegalStateException ex) {
-                                    if (putImuSampleToQueueWarningCounter++ % PUT_IMU_WARNING_INTERVAL == 0) {
+                                    if ((putImuSampleToQueueWarningCounter++ % PUT_IMU_WARNING_INTERVAL) == 0) {
                                         log.warning("putting IMUSample to queue not possible because queue has" + imuSampleQueue.size() + " samples and was full");
                                     }
                                 }
@@ -692,51 +714,12 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                 readingIMUEvents = false;
                                 // Reset counter
                                 countIMUEvents = 0;
-                            
-                            }
-                            
-                            
-                            //*/
-                            //REALLY UGLY CODE! DON"T LOOK!
-                            /*
-                            int dataword1 = (0xff & buf[i]) | (0xff00 & (buf[i + 1] << 8));  // data sent little endian
-                            int dataword2 = (0xff & buf[i + 2]) | (0xff00 & (buf[i + 3] << 8));  // data sent little endian
-                            int dataword3 = (0xff & buf[i + 4]) | (0xff00 & (buf[i + 5] << 8));  // data sent little endian
-                            int dataword4 = (0xff & buf[i + 6]) | (0xff00 & (buf[i + 7] << 8));  // data sent little endian
-                            int dataword5 = (0xff & buf[i + 8]) | (0xff00 & (buf[i + 9] << 8));  // data sent little endian
-                            int dataword6 = (0xff & buf[i + 10]) | (0xff00 & (buf[i + 11] << 8));  // data sent little endian
-                            int dataword7 = (0xff & buf[i + 12]) | (0xff00 & (buf[i + 13] << 8));  // data sent little endian
-                            
-                            short[] imuDataShortA = new short[7];
-                            imuDataShortA[0] = (short) dataword1; 
-                            imuDataShortA[1] = (short) dataword2;
-                            imuDataShortA[2] = (short) dataword3;
-                            imuDataShortA[3] = (short) dataword4;
-                            imuDataShortA[4] = (short) dataword5;
-                            imuDataShortA[5] = (short) dataword6;
-                            imuDataShortA[6] = (short) dataword7;
-                            
-                            try {
-                                // Read in buf and convert to IMUSample
-                                IMUSample sample = new IMUSample(currentts, imuDataShortA);
-                                // Add to IMU Sample Queue
-                                imuSampleQueue.add(sample);
-                                // Update buf counter to iterate through next word
-                            } catch (IllegalStateException ex) {
-                                if (putImuSampleToQueueWarningCounter++ % PUT_IMU_WARNING_INTERVAL == 0) {
-                                    log.warning("putting IMUSample to queue not possible because queue has" + imuSampleQueue.size() + " samples and was full");
-                                }
-                            }
-                            i = i+12;
-                            readingIMUEvents = false;
-                            //REALLY UGLY CODE!!!!! JUST GET IT WORKING 
-                            // 
-*/
 
-                            
+                            }
+                            }
                         } // END IF readingIMUEvents
-                        
-                        
+
+
                     } // end loop over usb data buffer
 
                     buffer.setNumEvents(eventCounter);
@@ -755,7 +738,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
         }
 
         private void resetFrameAddressCounters() {
-            if (countX == null || countY == null) {
+            if ((countX == null) || (countY == null)) {
                 countX = new int[numReadoutTypes];
                 countY = new int[numReadoutTypes];
             }
@@ -891,12 +874,12 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 //            freeBuffers();
 //        }
 //    }
-//    
+//
 //           /** This threads reads asynchronous status or other data from the device.
 //     * It handles timestamp reset messages from the device and possibly other types of data.
 //     It fires PropertyChangeEvent {@link #PROPERTY_CHANGE_ASYNC_STATUS_MSG} on receiving a message
 //     @author tobi delbruck
-//     * @see #getSupport() 
+//     * @see #getSupport()
 //     */
 //    protected class IMUDataThread extends UsbIoReader {
 //
@@ -909,7 +892,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 //        public IMUDataThread(net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2 monitor) {
 //            super();
 //            this.monitor = monitor;
-//            
+//
 //            int status;
 //            status = bind(monitor.getInterfaceNumber(), STATUS_ENDPOINT_ADDRESS, gDevList, GUID);
 //            if (status != USBIO_ERR_SUCCESS) {
@@ -936,7 +919,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 //        public void processData(UsbIoBuf buffer) {
 //               if (buffer.BytesTransferred > 0) {
 //                    msg = buffer.BufferMem[0];
-//                    
+//
 //                    switch (msg) {
 //                        case STATUS_MSG_TIMESTAMPS_RESET:
 //                            net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2.AEReader rd = getAeReader();
@@ -947,11 +930,11 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 //                                log.info("Received timestamp external reset message, but monitor is not running");
 //                            }
 //                            break;
-//                            
+//
 //                        case STATUS_MSG_OTHER:
 //                        default:
 //                                UsbIoBuf newbuf = new UsbIoBuf(64);
-//                        
+//
 //                        	// Copy data to new buffer, this one is resubmitted right away.
 //                        	System.arraycopy(buffer.BufferMem, 0, newbuf.BufferMem, 0, buffer.BytesTransferred);
 //                        	newbuf.BytesTransferred = buffer.BytesTransferred;
@@ -961,7 +944,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 //                    }
 //                } // we getString 0 byte read on stopping device
 //        }
-//        
+//
 //        // called before buffer is submitted to driver
 //        @Override
 //        public void processBuffer(UsbIoBuf Buf) {
@@ -990,7 +973,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 //            freeBuffers();
 //        }
 //
-//    }   
-    
- 
+//    }
+
+
 }

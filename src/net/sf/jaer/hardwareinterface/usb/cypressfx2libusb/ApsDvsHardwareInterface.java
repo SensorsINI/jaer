@@ -413,6 +413,18 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 									// hardware. Therefore it is crucial to
 									// properly
 									// mask bits.
+
+									// We first need to see if any special IMU
+									// event series is coming in.
+									// If it is, we need to switch to reading
+									// it. Also, checks for buffer
+									// overruns need to happen in both places.
+									if (((b.get(i + 1) & EXTERNAL_PIN_EVENT) == EXTERNAL_PIN_EVENT)
+										&& ((b.get(i) & ApsDvsChip.IMUMASK) == ApsDvsChip.IMUMASK)) {
+										readingIMUEvents = true;
+										break;
+									}
+
 									if ((eventCounter >= aeBufferSize) || (buffer.overrunOccuredFlag)) {
 										buffer.overrunOccuredFlag = true; // throw
 																			// away
@@ -696,33 +708,46 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 							// Code to read IMUEvents
 						}
 						else {
-
-							// Populate array containing IMU Events
-							dataIMUEvents[countIMUEvents] = (short) dataword;
-
-							// Increment Counter
-							if (countIMUEvents < 6) {
-								countIMUEvents++;
-
-								// When have a full set of IMU Events
+							if ((eventCounter >= aeBufferSize) || (buffer.overrunOccuredFlag)) {
+								buffer.overrunOccuredFlag = true; // throw
+																	// away
+																	// events
+																	// if
+																	// we
+																	// have
+																	// overrun
+																	// the
+																	// output
+																	// arrays
 							}
 							else {
-								try {
-									// Convert IMU Events array and current
-									// timestamp to an IMUSample
-									IMUSample sample = new IMUSample(currentts, dataIMUEvents);
-									// Add to IMU Sample Queue
-									imuSampleQueue.add(sample);
-									// Update buf counter to iterate through
-									// next word
-								}
-								catch (IllegalStateException ex) {
-								}
-								// Stop reading data as IMU
-								readingIMUEvents = false;
-								// Reset counter
-								countIMUEvents = 0;
+								// Populate array containing IMU Events
+								dataIMUEvents[countIMUEvents] = (short) dataword;
 
+								// Increment Counter
+								if (countIMUEvents < 6) {
+									countIMUEvents++;
+
+									// When have a full set of IMU Events
+								}
+								else {
+									try {
+										// Convert IMU Events array and current
+										// timestamp to an IMUSample
+										IMUSample sample = new IMUSample(currentts, dataIMUEvents);
+										// Add to IMU Sample Queue
+										imuSampleQueue.add(sample);
+										// Update buf counter to iterate through
+										// next word
+									}
+									catch (IllegalStateException ex) {
+									}
+									// Stop reading data as IMU
+									readingIMUEvents = false;
+									// Reset counter
+									countIMUEvents = 0;
+
+								}
 							}
 						} // END IF readingIMUEvents
 					} // end loop over usb data buffer
