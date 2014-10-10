@@ -30,7 +30,7 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
             HW_BGAF = 5,
             HW_TRACKER_CM = 6,
             HW_TRACKER_CLUSTER = 7,
-            HW_OMC_EVENT = 8;
+            HW_OMC_EVENT = 4; // event code cannot be higher than 7 in 3 bits
 
     // see the files in trunk\doc\data structure\apsDVS 
     // below was original IMU code location, not used anymore (tobi)

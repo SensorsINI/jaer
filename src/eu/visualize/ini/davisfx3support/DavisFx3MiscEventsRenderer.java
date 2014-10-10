@@ -32,13 +32,15 @@ public class DavisFx3MiscEventsRenderer extends EventFilter2D implements FrameAn
 	private boolean ShowDVS = getBoolean("ShowDVS", true);
 	private boolean ShowTrackerCM = getBoolean("ShowTrackerCM", true);
 	private boolean ShowTrackerCluster = getBoolean("ShowTrackerCluster", true);
-
+        private boolean ShowOMCevent = getBoolean("ShowOMCevent", true);
+        
 	public DavisFx3MiscEventsRenderer(AEChip chip) {
 		super(chip);
 		setPropertyTooltip("ShowDVS", "Show or hide DVS output.");
 		setPropertyTooltip("ShowTrackerCM", "Show or hide Center of Mass output from Tracker filters.");
 		setPropertyTooltip("ShowTrackerCluster", "Show or hide highlighted events in the Cluster of the Tracker.");
-	}
+		setPropertyTooltip("ShowOMCevent", "Show or hide Object Motion Cell output.");
+        }
 
 	public boolean isShowDVS() {
 		return ShowDVS;
@@ -67,6 +69,15 @@ public class DavisFx3MiscEventsRenderer extends EventFilter2D implements FrameAn
 		putBoolean("ShowTrackerCluster", ShowTrackerCluster);
 	}
 
+        public boolean isShowOMCevent() {
+        	return ShowOMCevent;
+	}
+
+	public void setShowOMCevent(final boolean ShowOMCevent) {
+		this.ShowOMCevent = ShowOMCevent;
+		putBoolean("ShowOMCevent", ShowOMCevent);
+	}
+        
 	@Override
 	synchronized public void annotate(GLAutoDrawable drawable) {
 		GL2 gl = drawable.getGL().getGL2();
@@ -79,9 +90,17 @@ public class DavisFx3MiscEventsRenderer extends EventFilter2D implements FrameAn
 			}
 			else if (((e.address & 0x7ff) >> 8) == ApsDvsChip.HW_TRACKER_CLUSTER) {
 				if (isShowTrackerCluster()) {
-					gl.glColor3f((e.address & 0x3) + 1, 0, (e.address & 0x3) + 1);
+					gl.glColor3f((e.address & 0x3) + 1, 0, (e.address & 0x3) + 1); // Tracker color depending on number of tracker
 					gl.glRectf(e.x - 2, e.y - 2, e.x + 2, e.y + 2);
 				}
+			}
+                        else if (((e.address & 0x7ff) >> 8) == ApsDvsChip.HW_OMC_EVENT) {
+				if (isShowOMCevent()) {
+                                        if ((e.address & 0x1) == 1) { // Look  at first bit (if Object Motion Cell fires)
+                                            gl.glColor3f(0, 0, 1);
+                                            gl.glRectf(e.x - 2, e.y - 2, e.x + 2, e.y + 2);
+                                         }
+                                }
 			}
 			else {
 				e.special = false; // this is to do nothing but make a

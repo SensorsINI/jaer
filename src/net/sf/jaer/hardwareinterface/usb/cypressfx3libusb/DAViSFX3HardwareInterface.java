@@ -221,7 +221,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										| ((((gotBGAFevent ? ApsDvsChip.HW_BGAF : 0) & 0x7) << 8) | misc8Data)
 										| ((((gotCMevent ? ApsDvsChip.HW_TRACKER_CM : 0) & 0x07) << 8) | misc8Data)
 										| ((((gotClusterEvent ? ApsDvsChip.HW_TRACKER_CLUSTER : 0) & 0x07) << 8) | misc8Data)
-										| ((((gotOMCevent ? ApsDvsChip.HW_OMC_EVENT : 0) & 0x07) << 8) | misc8Data); // OMC event
+										| ((((gotOMCevent ? ApsDvsChip.HW_OMC_EVENT : 0) & 0x07) << 8) | misc8Data); // OMC event add 3 bits with code of event type and 8 bits of misc event (fill in the 11 empty bits)
 									timestamps[eventCounter++] = dvsTimestamp;
 
 									gotY = false;
