@@ -686,10 +686,6 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 
                         // Code to read IMUEvents
                         } else {
-                        	if ((eventCounter >= aeBufferSize) || (buffer.overrunOccuredFlag)) {
-                                buffer.overrunOccuredFlag = true; // throw away events if we have overrun the output arrays
-                            } else {
-                            ///*
                             // Populate array containing IMU Events
                             dataIMUEvents[countIMUEvents] = (short) dataword;
 
@@ -715,7 +711,6 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                 // Reset counter
                                 countIMUEvents = 0;
 
-                            }
                             }
                         } // END IF readingIMUEvents
 
