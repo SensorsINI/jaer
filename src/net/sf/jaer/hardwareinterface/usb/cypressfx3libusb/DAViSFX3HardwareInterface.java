@@ -82,9 +82,9 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private boolean gotCMevent;
 		private boolean gotClusterEvent;
 		private boolean gotBGAFevent;
-                private boolean gotOMCevent;
-		
-                private static final int IMU_DATA_LENGTH = 7;
+		private boolean gotOMCevent;
+
+		private static final int IMU_DATA_LENGTH = 7;
 		private final short[] currImuSample;
 		private int currImuSamplePosition = 0;
 
@@ -221,14 +221,14 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										| ((((gotBGAFevent ? ApsDvsChip.HW_BGAF : 0) & 0x7) << 8) | misc8Data)
 										| ((((gotCMevent ? ApsDvsChip.HW_TRACKER_CM : 0) & 0x07) << 8) | misc8Data)
 										| ((((gotClusterEvent ? ApsDvsChip.HW_TRACKER_CLUSTER : 0) & 0x07) << 8) | misc8Data)
-                                                                                | ((((gotOMCevent ? ApsDvsChip.HW_OMC_EVENT : 0) & 0x07) << 8) | misc8Data); //OMC event
+										| ((((gotOMCevent ? ApsDvsChip.HW_OMC_EVENT : 0) & 0x07) << 8) | misc8Data); // OMC event
 									timestamps[eventCounter++] = dvsTimestamp;
 
 									gotY = false;
 									gotBGAFevent = false;
 									gotCMevent = false;
 									gotClusterEvent = false;
-                                                                        gotOMCevent = false;
+									gotOMCevent = false;
 									misc8Data = 0;
 
 									break;
@@ -282,10 +282,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 													// then this is an OFF BGAF
 													// output event.
 
-                                                                                case 8:
-                                                                                        gotOMCevent = true;
-                                                                                        break; // OMC cell's output
-                                                                                    
+										case 8:
+											gotOMCevent = true;
+											break; // OMC cell's output
+
 										default:
 											CypressFX3.log.severe("Caught Misc8 event that can't be handled.");
 											break;
