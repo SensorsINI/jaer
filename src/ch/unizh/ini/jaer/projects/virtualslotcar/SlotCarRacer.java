@@ -433,7 +433,7 @@ public class SlotCarRacer extends EventFilter2D implements FrameAnnotater, Prope
             }
 
             public String toString() {
-                return String.format("%ss %d bytes", fmt.format(1e-9f * dtNs), numBytes);
+                return String.format("%ss %d events", fmt.format(1e-9f * dtNs), numBytes);
             }
 
         }
