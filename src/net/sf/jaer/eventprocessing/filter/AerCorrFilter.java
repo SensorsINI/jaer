@@ -25,7 +25,7 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
     private int subsampleBy = getInt("subsampleBy", 0);
 
     private float[][] vCap;
-    // private float Vth = 0.6;
+    private float[][] vTh;
     int[][] lastTimesMap;
     private float[][] cap;
     private float[][] vRs;
@@ -35,6 +35,9 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
     private int sy;
     private Random r;
     private float iLeakCOV = getFloat("iLeakCOV", 0.04f);
+    private float capCOV = getFloat("CapCOV", 0.04f);
+    private float vRsCOV = getFloat("VrsCOV", 0.04f);
+    private float vThCOV = getFloat("VthCOV", 0.04f);
 
     public AerCorrFilter(AEChip chip) {
         super(chip);
@@ -43,6 +46,10 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
         setPropertyTooltip("iLeakPicoAmps", "Set capacitor leak current in picoamps");
         setPropertyTooltip("subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
         setPropertyTooltip("iLeakCOV", "The leak currents vary by this coefficient of variation (1 sigma)");
+        setPropertyTooltip("vRsCOV", "The reset voltage vary by this coefficient of variation (1 sigma)");
+        setPropertyTooltip("vThCOV", "The threshold voltage vary by this coefficient of variation (1 sigma)");
+        setPropertyTooltip("capCOV", "The capacitance vary by this coefficient of variation (1 sigma)");
+        
     }
 
     @Override
@@ -74,7 +81,7 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
             float deltaV = ((iLeakRealpA[x][y] / cap[x][y]) * dtUs * 1e-6f);
             vCap[x][y] -= deltaV;  ///&& lastT != DEFAULT_TIMESTAMP)
             if(vCap[x][y]<0)vCap[x][y]=0; // it cannot go negative voltage
-            if (!(vCap[x][y] > 0.6f/* && lastT != DEFAULT_TIMESTAMP*/)) { // don't let any event through unless the cap is really charged up still
+            if (!(vCap[x][y] > vTh[x][y]/* && lastT != DEFAULT_TIMESTAMP*/)) { // don't let any event through unless the cap is really charged up still
                 e.setFilteredOut(true);
             } else {
                 //System.out.println(e.x+" "+e.y);
@@ -84,7 +91,7 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
             lastTimesMap[x][y] = ts;
         }
 
-        return in;
+        return in;////return in?
     }
 
     @Override
@@ -106,7 +113,7 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
     }
-
+//why synchronized?
     synchronized private void allocateMaps(AEChip chip) {
         if (chip != null && chip.getNumCells() > 0) {
             lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()];
@@ -124,13 +131,13 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
                 }
             }
 
-            /* Vth = new float[chip.getSizeX()][chip.getSizeY()];
+            vTh = new float[chip.getSizeX()][chip.getSizeY()];
              // Initialize two dimensional array, by first getting the rows and then setting their values.
-             for (float[] arrayRow : Vth) {
-             for (int i = 0; i < arrayRow.length; i++) {
-             arrayRow[i] = 1.2;
+             for (float[] arrayRow : vTh) {
+                for (int i = 0; i < arrayRow.length; i++) {
+                     arrayRow[i] = (float)(0.6*(r.nextGaussian() * 0.005f + 1.197f));
              }
-             }*/
+             }
             vRs = new float[chip.getSizeX()][chip.getSizeY()];
             // Initialize two dimensional array, by first getting the rows and then setting their values.
             for (float[] arrayRow : vRs) {
@@ -217,6 +224,54 @@ public class AerCorrFilter extends EventFilter2D implements Observer {
     public void setiLeakCOV(float iLeakCOV) {
         this.iLeakCOV = iLeakCOV;
         putFloat("iLeakCOV", iLeakCOV);
+        allocateMaps(chip);
+    }
+
+    /**
+     * @return the capCOV
+     */
+    public float getCapCOV() {
+        return capCOV;
+    }
+
+    /**
+     * @param capCOV the capCOV to set
+     */
+    public void setCapCOV(float capCOV) {
+        this.capCOV = capCOV;
+        putFloat("capCOV", capCOV);
+        allocateMaps(chip);
+    }
+
+    /**
+     * @return the vRsCOV
+     */
+    public float getvRsCOV() {
+        return vRsCOV;
+    }
+
+    /**
+     * @param vRsCOV the vRsCOV to set
+     */
+    public void setvRsCOV(float vRsCOV) {
+        this.vRsCOV = vRsCOV;
+        putFloat("vRsCOV", vRsCOV);
+        allocateMaps(chip);
+    }
+
+    /**
+     * @return the vThCOV
+     */
+    public float getvThCOV() {
+        return vThCOV;
+    }
+
+    /**
+     * @param vThCOV the vThCOV to set
+     */
+    public void setvThCOV(float vThCOV) {
+        this.vThCOV = vThCOV;
+        putFloat("vThCOV", vThCOV);
         allocateMaps(chip);
     }
 
