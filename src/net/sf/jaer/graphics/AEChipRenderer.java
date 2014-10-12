@@ -8,33 +8,41 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.*;
 import net.sf.jaer.util.SpikeSound;
 import java.awt.Color;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.HashMap;
 import java.util.logging.Logger;
 import javax.swing.JButton;
+import net.sf.jaer.eventio.AEInputStream;
 
-/** Superclass for classes that render AEs to a memory buffer so that they can 
- * be painted on the screen.
- * Note these classes do not actually render to the graphics device; 
- * They take AEPacket's and render them to a pixmap memory buffer that later 
- * gets painted by a ChipCanvas. The method chosen (by user cycling 
- * method from GUI) chooses how the events are painted. In effect the events 
- * are histogrammed for most rendering methods except for "color-time", and 
- * even there they are histogrammed or averaged.
- * For methods that render polarized events (such as ON-OFF) then ON events 
- * increase the rendered value while OFF events decreases it.
- * Thus the rendered image fr can be drawn in 3-d if desired and it will 
- * represent a histogram, although the default method using for drawing 
- * the rendered frame is to paint the cell brightness.
+/**
+ * Superclass for classes that render AEs to a memory buffer so that they can be
+ * painted on the screen. Note these classes do not actually render to the
+ * graphics device; They take AEPacket's and render them to a pixmap memory
+ * buffer that later gets painted by a ChipCanvas. The method chosen (by user
+ * cycling method from GUI) chooses how the events are painted. In effect the
+ * events are histogrammed for most rendering methods except for "color-time",
+ * and even there they are histogrammed or averaged. For methods that render
+ * polarized events (such as ON-OFF) then ON events increase the rendered value
+ * while OFF events decreases it. Thus the rendered image fr can be drawn in 3-d
+ * if desired and it will represent a histogram, although the default method
+ * using for drawing the rendered frame is to paint the cell brightness.
  *
  * @author tobi
- * @see ChipRendererDisplayMethod */
-public class AEChipRenderer extends Chip2DRenderer {
+ * @see ChipRendererDisplayMethod
+ */
+public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeListener {
 
-     /** PropertyChange events */
+    private boolean addedPropertyChangeListener = false;
+
+    /**
+     * PropertyChange events
+     */
     public static final String PROPERTY_COLOR_SCALE = "colorScale",
-
-    /** PropertyChange events */
-    PROPERTY_COLOR_MODE = "colorMode";
+            /**
+             * PropertyChange events
+             */
+            PROPERTY_COLOR_MODE = "colorMode";
 
     /**
      * @return the specialCount
@@ -51,18 +59,21 @@ public class AEChipRenderer extends Chip2DRenderer {
     }
 
     public enum ColorMode {
+
         GrayLevel("Each event causes linear change in brightness"),
         Contrast("Each event causes multiplicative change in brightness to produce logarithmic scale"),
-                RedGreen("ON events are green; OFF events are red"),
-                ColorTime("Events are colored according to time within displayed slice, with red coding old events and green coding new events"),
-                GrayTime("Events are colored according to time within displayed slice, with white coding old events and black coding new events");
+        RedGreen("ON events are green; OFF events are red"),
+        ColorTime("Events are colored according to time within displayed slice, with red coding old events and green coding new events"),
+        GrayTime("Events are colored according to time within displayed slice, with white coding old events and black coding new events");
         public String description;
-        ColorMode(String description){
-            this.description=description;
+
+        ColorMode(String description) {
+            this.description = description;
         }
+
         @Override
-		public String toString(){
-            return super.toString()+": "+description;
+        public String toString() {
+            return super.toString() + ": " + description;
         }
     };
 
@@ -71,10 +82,10 @@ public class AEChipRenderer extends Chip2DRenderer {
 
     {
         ColorMode oldMode;
-        try{
+        try {
             oldMode = ColorMode.valueOf(prefs.get("ChipRenderer.colorMode", ColorMode.GrayLevel.name()));
-        }catch(IllegalArgumentException e){
-            oldMode=ColorMode.GrayLevel;
+        } catch (IllegalArgumentException e) {
+            oldMode = ColorMode.GrayLevel;
         }
         for (ColorMode c : colorModes) {
             if (c == oldMode) {
@@ -82,7 +93,9 @@ public class AEChipRenderer extends Chip2DRenderer {
             }
         }
     }
-    /** perceptually separated hues - as estimated quickly by tobi */
+    /**
+     * perceptually separated hues - as estimated quickly by tobi
+     */
     protected static final int[] HUES = {
         0,
         36,
@@ -96,27 +109,43 @@ public class AEChipRenderer extends Chip2DRenderer {
         229,
         298,
         318,};
-    /** the number of rendering methods implemented */
+    /**
+     * the number of rendering methods implemented
+     */
     public static int NUM_METHODS = 4;
-    /** number of colors used to represent time of event */
+    /**
+     * number of colors used to represent time of event
+     */
     public static final int NUM_TIME_COLORS = 255;
-    /** chip shadows Chip2D's chip to declare it as AEChip */
+    /**
+     * chip shadows Chip2D's chip to declare it as AEChip
+     */
     protected AEChip chip;
 //    protected AEPacket2D ae = null;
     protected EventPacket packet = null;
-    /** the chip rendered for */
+    /**
+     * the chip rendered for
+     */
     protected boolean ignorePolarityEnabled = false;
     protected Logger log = Logger.getLogger("net.sf.jaer.graphics");
-    /** The Colors that different cell types are painted. checkTypeColors should populate this array. */
+    /**
+     * The Colors that different cell types are painted. checkTypeColors should
+     * populate this array.
+     */
     protected Color[] typeColors;
-    /** Used for rendering multiple cell types in different RGB colors. checkTypeColors should populate this array of [numTypes][3] size.
-     Each 3-vector are the RGB color components for that cell type.*/
+    /**
+     * Used for rendering multiple cell types in different RGB colors.
+     * checkTypeColors should populate this array of [numTypes][3] size. Each
+     * 3-vector are the RGB color components for that cell type.
+     */
     protected float[][] typeColorRGBComponents;
     protected SpikeSound spikeSound;
     protected float step;  // this is last step of RGB value used in rendering
     protected boolean stereoEnabled = false;
     protected int subsampleThresholdEventCount = prefs.getInt("ChipRenderer.subsampleThresholdEventCount", 50000);
-    /** determines subSampling of rendered events (for speed) */
+    /**
+     * determines subSampling of rendered events (for speed)
+     */
     protected boolean subsamplingEnabled = prefs.getBoolean("ChipRenderer.subsamplingEnabled", false);
     protected float[][] timeColors;
     protected int specialCount = 0;
@@ -132,18 +161,21 @@ public class AEChipRenderer extends Chip2DRenderer {
         float s = 1f / NUM_TIME_COLORS;
         for (int i = 0; i < NUM_TIME_COLORS; i++) {
             int rgb = Color.HSBtoRGB((0.66f * (NUM_TIME_COLORS - i)) / NUM_TIME_COLORS, 1f, 1f);
-			Color c = new Color(rgb);
-			float[] comp = c.getRGBColorComponents(null);
-			timeColors[i][0] = comp[0];
-			timeColors[i][2] = comp[2];
-			timeColors[i][1] = comp[1];
+            Color c = new Color(rgb);
+            float[] comp = c.getRGBColorComponents(null);
+            timeColors[i][0] = comp[0];
+            timeColors[i][2] = comp[2];
+            timeColors[i][1] = comp[1];
 //                System.out.println(String.format("%.2f %.2f %.2f",comp[0],comp[1],comp[2]));
         }
     }
 
-    /** Overrides color scale setting to update the stored accumulated pixmap when the color scale is changed.
-
-     * */
+    /**
+     * Overrides color scale setting to update the stored accumulated pixmap
+     * when the color scale is changed.
+     *
+     *
+     */
     @Override
     synchronized public void setColorScale(int colorScale) {
         int old = this.colorScale;
@@ -192,6 +224,15 @@ public class AEChipRenderer extends Chip2DRenderer {
      * @see #setColorMode
      */
     public synchronized void render(EventPacket packet) {
+        if (!addedPropertyChangeListener) {
+            if (chip instanceof AEChip) {
+                AEChip aeChip = (AEChip) chip;
+                if (aeChip.getAeViewer() != null) {
+                    aeChip.getAeViewer().addPropertyChangeListener(this);
+                    addedPropertyChangeListener = true;
+                }
+            }
+        }
         if (packet == null) {
             return;
         }
@@ -208,7 +249,7 @@ public class AEChipRenderer extends Chip2DRenderer {
         float a;
         resetSelectedPixelEventCount(); // init it for this packet
         boolean ignorePolarity = isIgnorePolarityEnabled();
-                setSpecialCount(0);
+        setSpecialCount(0);
         try {
             if (packet.getNumCellTypes() > 2) {
                 checkTypeColors(packet.getNumCellTypes());
@@ -386,14 +427,19 @@ public class AEChipRenderer extends Chip2DRenderer {
         pixmap.rewind();
     }
 
-    /** Autoscales frame data so that max value is 1. If autoscale is disabled, then values are just clipped to 0-1 range.
-    If autoscale is enabled, then gray is mapped back to gray and following occurs:
-    <p>
-    Global normalizer is tricky because we want to map max value to 1 OR min value to 0, whichever is greater magnitude, max or min.
-    ALSO, max and min are distances from gray level in positive and negative directions. After global normalizer is computed, all values
-     *are divided by normalizer in order to keep gray level constant.
-    @param fr the frame rgb data [y][x][rgb]
-    @param gray the gray level
+    /**
+     * Autoscales frame data so that max value is 1. If autoscale is disabled,
+     * then values are just clipped to 0-1 range. If autoscale is enabled, then
+     * gray is mapped back to gray and following occurs:
+     * <p>
+     * Global normalizer is tricky because we want to map max value to 1 OR min
+     * value to 0, whichever is greater magnitude, max or min. ALSO, max and min
+     * are distances from gray level in positive and negative directions. After
+     * global normalizer is computed, all values are divided by normalizer in
+     * order to keep gray level constant.
+     *
+     * @param fr the frame rgb data [y][x][rgb]
+     * @param gray the gray level
      */
     protected void autoScaleFrame(float[][][] fr, float gray) {
         if (!autoscaleEnabled) {
@@ -405,19 +451,19 @@ public class AEChipRenderer extends Chip2DRenderer {
             //               max=max-.5f; // distance of max from gray
             //            min=.5f-min; // distance of min from gray
             for (float[][] element : fr) {
-            for (int j = 0; j
-			    < element.length; j++) {
-			for (int k = 0; k
-			        < 3; k++) {
-			    float f = element[j][k] - gray;
-			    if (f > max) {
-			        max = f;
-			    } else if (f < min) {
-			        min = f;
-			    }
-			}
+                for (int j = 0; j
+                        < element.length; j++) {
+                    for (int k = 0; k
+                            < 3; k++) {
+                        float f = element[j][k] - gray;
+                        if (f > max) {
+                            max = f;
+                        } else if (f < min) {
+                            min = f;
+                        }
+                    }
+                }
             }
-         }
             // global normalizer here
             // this is tricky because we want to map max value to 1 OR min value to 0, whichever is greater magnitude, max or min
             // ALSO, max and min are distances from gray level in positive and negative directions
@@ -463,13 +509,18 @@ public class AEChipRenderer extends Chip2DRenderer {
         }
     }
 
-    /** autoscales frame data so that max value is 1. If autoscale is disabled, then values are just clipped to 0-1 range.
-    If autoscale is enabled, then gray is mapped back to gray and following occurs:
-    <p>
-    Global normalizer is tricky because we want to map max value to 1 OR min value to 0, whichever is greater magnitude, max or min.
-    ALSO, max and min are distances from gray level in positive and negative directions. After global normalizer is computed, all values
-     *are divided by normalizer in order to keep gray level constant.
-    @param fr the frame rgb data pixmap
+    /**
+     * autoscales frame data so that max value is 1. If autoscale is disabled,
+     * then values are just clipped to 0-1 range. If autoscale is enabled, then
+     * gray is mapped back to gray and following occurs:
+     * <p>
+     * Global normalizer is tricky because we want to map max value to 1 OR min
+     * value to 0, whichever is greater magnitude, max or min. ALSO, max and min
+     * are distances from gray level in positive and negative directions. After
+     * global normalizer is computed, all values are divided by normalizer in
+     * order to keep gray level constant.
+     *
+     * @param fr the frame rgb data pixmap
      */
     protected void autoScaleFrame(float[] fr) {
         if (!autoscaleEnabled) {
@@ -480,13 +531,13 @@ public class AEChipRenderer extends Chip2DRenderer {
         //               max=max-.5f; // distance of max from gray
         //            min=.5f-min; // distance of min from gray
         for (float element : fr) {
-         float f = element - grayValue;
-         if (f > max) {
-		max = f;
-         } else if (f < min) {
-		min = f;
-         }
-      }
+            float f = element - grayValue;
+            if (f > max) {
+                max = f;
+            } else if (f < min) {
+                min = f;
+            }
+        }
         // global normalizer here
         // this is tricky because we want to map max value to 1 OR min value to 0, whichever is greater magnitude, max or min
         // ALSO, max and min are distances from gray level in positive and negative directions
@@ -517,23 +568,31 @@ public class AEChipRenderer extends Chip2DRenderer {
         }
     }
 
-    private HashMap<Integer,float[][]> typeColorsMap=new HashMap<Integer,float[][]>();
+    private HashMap<Integer, float[][]> typeColorsMap = new HashMap<Integer, float[][]>();
 
-    /** Creates colors for each cell type (e.g. orientation)
-    so that they are spread over hue space in a manner to attempt to be maximally different in hue.
+    /**
+     * Creates colors for each cell type (e.g. orientation) so that they are
+     * spread over hue space in a manner to attempt to be maximally different in
+     * hue.
      *
      * <p>
-     * Subclasses can override this method to customize the colors drawn but the subclasses should check if the color have been created since checkTypeColors is called on every
-     * rendering cycle. This method should first check if typeColorRGBComponents already exists and has the correct number of elements. If not,
-     * allocate and populate typeColorRGBComponents so that type t corresponds to typeColorRGBComponents[t][0] for red, typeColorRGBComponents[t][1] for green, and
-     * typeColorRGBComponents[t][3] for blue. It should also populate the Color[] typeColors.
+     * Subclasses can override this method to customize the colors drawn but the
+     * subclasses should check if the color have been created since
+     * checkTypeColors is called on every rendering cycle. This method should
+     * first check if typeColorRGBComponents already exists and has the correct
+     * number of elements. If not, allocate and populate typeColorRGBComponents
+     * so that type t corresponds to typeColorRGBComponents[t][0] for red,
+     * typeColorRGBComponents[t][1] for green, and typeColorRGBComponents[t][3]
+     * for blue. It should also populate the Color[] typeColors.
+     *
      * @param numCellTypes the number of colors to generate
      * @see #typeColors
      * @see #typeColorRGBComponents
-     * @deprecated new code should use the #makeTypeColors method which caches the colors in a HashMap by numbers of cell types
+     * @deprecated new code should use the #makeTypeColors method which caches
+     * the colors in a HashMap by numbers of cell types
      */
     @Deprecated
-	protected void checkTypeColors(int numCellTypes) {
+    protected void checkTypeColors(int numCellTypes) {
         if ((typeColorRGBComponents == null) || (typeColorRGBComponents.length != numCellTypes)) {
             typeColorRGBComponents = new float[numCellTypes][3];
             setTypeColors(
@@ -560,26 +619,29 @@ public class AEChipRenderer extends Chip2DRenderer {
         }
     }
 
-    /** Creates colors for each cell type (e.g. orientation) so that they are
-     * spread over hue space in a manner to attempt to be maximally different in hue.
+    /**
+     * Creates colors for each cell type (e.g. orientation) so that they are
+     * spread over hue space in a manner to attempt to be maximally different in
+     * hue.
      * <p>
      * Subclasses can override this method to customize the colors drawn but the
      * subclasses should check if the color have been created since
-     * checkTypeColors is called on every rendering cycle.
-     * This method should first check if typeColorRGBComponents already exists
-     * and has the correct number of elements. If not, allocate and populate
-     * typeColorRGBComponents so that type t corresponds to
-     * typeColorRGBComponents[t][0] for red, typeColorRGBComponents[t][1] for green,
-     * and typeColorRGBComponents[t][3] for blue.
-     * It should also populate the Color[] typeColors.
+     * checkTypeColors is called on every rendering cycle. This method should
+     * first check if typeColorRGBComponents already exists and has the correct
+     * number of elements. If not, allocate and populate typeColorRGBComponents
+     * so that type t corresponds to typeColorRGBComponents[t][0] for red,
+     * typeColorRGBComponents[t][1] for green, and typeColorRGBComponents[t][3]
+     * for blue. It should also populate the Color[] typeColors.
+     *
      * @param numCellTypes the number of colors to generate
-     * @return the float[][] of colors, each row of which is an RGB color triplet in float 0-1 range for a particular cell type
+     * @return the float[][] of colors, each row of which is an RGB color
+     * triplet in float 0-1 range for a particular cell type
      * @see #typeColors
      * @see #typeColorRGBComponents
      */
     public float[][] makeTypeColors(int numCellTypes) {
-        float[][] colors=typeColorsMap.get(numCellTypes);
-        if (colors==null) {
+        float[][] colors = typeColorsMap.get(numCellTypes);
+        if (colors == null) {
             colors = new float[numCellTypes][3];
             setTypeColors(new Color[numCellTypes]);
             for (int i = 0; i < numCellTypes; i++) {
@@ -590,13 +652,15 @@ public class AEChipRenderer extends Chip2DRenderer {
                 colors[i][1] = (float) c.getGreen() / 255;
                 colors[i][2] = (float) c.getBlue() / 255;
             }
-            typeColorsMap.put(numCellTypes,colors);
+            typeColorsMap.put(numCellTypes, colors);
             return colors;
         }
         return typeColorsMap.get(numCellTypes);
     }
 
-    /** go on to next rendering method */
+    /**
+     * go on to next rendering method
+     */
     public synchronized void cycleColorMode() {
         int m = colorMode.ordinal();
         if (++m >= colorModes.length) {
@@ -608,8 +672,10 @@ public class AEChipRenderer extends Chip2DRenderer {
 //        setColorMode(method); // store preferences
     }
 
-    /** returns the last packet rendered
-    @return the last packet that was rendered
+    /**
+     * returns the last packet rendered
+     *
+     * @return the last packet that was rendered
      */
     public EventPacket getPacket() {
         return packet;
@@ -651,7 +717,9 @@ public class AEChipRenderer extends Chip2DRenderer {
         return subsamplingEnabled;
     }
 
-    /** Plays a single spike click and increments the selectedPixelEventCount counter
+    /**
+     * Plays a single spike click and increments the selectedPixelEventCount
+     * counter
      *
      * @param type 0 to play left, 1 to play right
      */
@@ -660,7 +728,9 @@ public class AEChipRenderer extends Chip2DRenderer {
         selectedPixelEventCount++;
     }
 
-    /** Sets whether to ignore event polarity when rendering so that all event types increase brightness
+    /**
+     * Sets whether to ignore event polarity when rendering so that all event
+     * types increase brightness
      *
      * @param ignorePolarityEnabled true to ignore
      */
@@ -668,7 +738,9 @@ public class AEChipRenderer extends Chip2DRenderer {
         this.ignorePolarityEnabled = ignorePolarityEnabled;
     }
 
-    /**@param colorMode the rendering method, e.g. gray, red/green opponency, time encoded.
+    /**
+     * @param colorMode the rendering method, e.g. gray, red/green opponency,
+     * time encoded.
      */
     public synchronized void setColorMode(ColorMode colorMode) {
         ColorMode old = this.colorMode;
@@ -695,27 +767,42 @@ public class AEChipRenderer extends Chip2DRenderer {
         prefs.putBoolean("ChipRenderer.subsamplingEnabled", subsamplingEnabled);
     }
 
-    /** @see AEChipRenderer#typeColorRGBComponents
-     * @return a 2-d float array of color components.
-     * Each row of the array is a 3-vector of RGB color components for rendering a particular cell type.
+    /**
+     * @see AEChipRenderer#typeColorRGBComponents
+     * @return a 2-d float array of color components. Each row of the array is a
+     * 3-vector of RGB color components for rendering a particular cell type.
      */
     public float[][] getTypeColorRGBComponents() {
         checkTypeColors(chip.getNumCellTypes()); // should be efficient
         return typeColorRGBComponents;
     }
 
-    /** @see AEChipRenderer#typeColorRGBComponents */
+    /**
+     * @see AEChipRenderer#typeColorRGBComponents
+     */
     public void setTypeColorRGBComponents(float[][] typeColors) {
         this.typeColorRGBComponents = typeColors;
     }
 
-    /** @see AEChipRenderer#typeColors */
+    /**
+     * @see AEChipRenderer#typeColors
+     */
     public Color[] getTypeColors() {
         return typeColors;
     }
 
-    /** @see AEChipRenderer#typeColors */
+    /**
+     * @see AEChipRenderer#typeColors
+     */
     public void setTypeColors(Color[] typeColors) {
         this.typeColors = typeColors;
     }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent pce) {
+        if (pce.getPropertyName() == AEInputStream.EVENT_REWIND) {
+            resetFrame(grayValue);
+        }
+    }
+
 }

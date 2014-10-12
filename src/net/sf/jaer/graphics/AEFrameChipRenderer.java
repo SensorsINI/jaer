@@ -36,7 +36,8 @@ import net.sf.jaer.util.histogram.SimpleHistogram;
  */
 public class AEFrameChipRenderer extends AEChipRenderer {
 
-    public int textureWidth; //due to hardware acceloration reasons, has to be a 2^x with x a natural number
+    private boolean addedPropertyChangeListener = false;
+   public int textureWidth; //due to hardware acceloration reasons, has to be a 2^x with x a natural number
     public int textureHeight; //due to hardware acceloration reasons, has to be a 2^x with x a natural number
 
     private int sizeX, sizeY, maxADC;
@@ -182,7 +183,16 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     @Override
     public synchronized void render(EventPacket pkt) {
 
-        if (!(pkt instanceof ApsDvsEventPacket)) {
+        if (!addedPropertyChangeListener) {
+            if (chip instanceof AEChip) {
+                AEChip aeChip = (AEChip) chip;
+                if (aeChip.getAeViewer() != null) {
+                    aeChip.getAeViewer().addPropertyChangeListener(this);
+                    addedPropertyChangeListener = true;
+                }
+            }
+        }
+       if (!(pkt instanceof ApsDvsEventPacket)) {
             if ((warningCount++ % WARNING_INTERVAL) == 0) {
                 log.info("I only know how to render ApsDvsEventPacket but got " + pkt);
             }
