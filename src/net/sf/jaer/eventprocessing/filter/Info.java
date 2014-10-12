@@ -80,6 +80,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 	private String maxRateString = engFmt.format(eventRateScaleMax);
 	private boolean logStatistics = false;
 	private TobiLogger tobiLogger = null;
+        private boolean showAccumulateEventCount=getBoolean("showAccumulateEventCount", true);
+        private long accumulatedEventCount=0;
 
 	/**
 	 * computes the absolute time (since 1970) or relative time (in file) given
@@ -194,6 +196,21 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
 	}
 
+    /**
+     * @return the showAccumulateEventCount
+     */
+    public boolean isShowAccumulateEventCount() {
+        return showAccumulateEventCount;
+    }
+
+    /**
+     * @param showAccumulateEventCount the showAccumulateEventCount to set
+     */
+    public void setShowAccumulateEventCount(boolean showAccumulateEventCount) {
+        this.showAccumulateEventCount = showAccumulateEventCount;
+        putBoolean("showAccumulateEventCount", showAccumulateEventCount);
+    }
+    
 	private class RateHistory {
 
 		LinkedList<RateSample> rateSamples = new LinkedList();
@@ -332,6 +349,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 		setPropertyTooltip("showRateTrace", "shows a historical trace of event rate");
 		setPropertyTooltip("maxSamples", "maximum number of samples before clearing rate history");
 		setPropertyTooltip("logStatistics", "<html>enables logging of any activiated statistics (e.g. event rate) to a log file <br>written to the startup folder (host/java). <p>See the logging output for the file location.");
+		setPropertyTooltip("showAccumulateEventCount", "Shows accumulated event count since the last reset or rewind. Use it to Mark a location in a file, and then see how many events have been recieved.");
 	}
 	private boolean increaseWrappingCorrectionOnNextPacket = false;
 
@@ -346,6 +364,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 				log.info("rewind PropertyChangeEvent received by " + this + " from " + evt.getSource());
 				wrappingCorrectionMs = 0;
 				rateHistory.clear();
+                                accumulatedEventCount=0;
 				setLogStatistics(false);
 			} else if (evt.getPropertyName().equals(AEInputStream.EVENT_WRAPPED_TIME)) {
 				increaseWrappingCorrectionOnNextPacket = true;
@@ -411,6 +430,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 			//            System.out.println("In Info, because flag was set, increased wrapping correction by "+(wrappingCorrectionMs-old));
 			log.info("because flag was set, increased wrapping correction by " + (wrappingCorrectionMs - old));
 		}
+                accumulatedEventCount+=in.getSize();
 		return in;
 	}
 
@@ -418,6 +438,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 	synchronized public void resetFilter() {
 		eventRateFilter.resetFilter();
 		rateHistory.clear();
+                accumulatedEventCount=0;
 	}
 
 	@Override
@@ -431,6 +452,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 		GL2 gl = drawable.getGL().getGL2();
 		drawClock(gl, clockTimeMs); // clockTimeMs is updated at the end of each packet, when the clock is displayed
 		drawEventRateBars(drawable);
+                drawAccumulatedEventCount(drawable);
 		if (chip.getAeViewer() != null) {
 			drawTimeScaling(drawable, chip.getAeViewer().getTimeExpansion());
 		}
@@ -563,8 +585,23 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 		gl.glPopMatrix();
 
 	}
+        
+        
 
-	private void drawRateSamples(GL2 gl) {
+    private void drawAccumulatedEventCount(GLAutoDrawable drawable) {
+        GL2 gl = drawable.getGL().getGL2();
+        gl.glColor3f(1, 1, 1);
+        int font = GLUT.BITMAP_9_BY_15;
+        final int sx = chip.getSizeX(), sy = chip.getSizeY();
+        final float yorig = .7f * sy, xpos = 0;
+        GLUT glut = chip.getCanvas().getGlut();
+        gl.glRasterPos3f(xpos, yorig, 0);
+        float c=(float)accumulatedEventCount;
+        String s = String.format("%s events", engFmt.format(accumulatedEventCount));
+        glut.glutBitmapString(font, s);
+    }
+
+   private void drawRateSamples(GL2 gl) {
 		if (!showRateTrace) {
 			return;
 		}
