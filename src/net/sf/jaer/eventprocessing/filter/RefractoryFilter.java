@@ -68,6 +68,7 @@ public class RefractoryFilter extends EventFilter2D implements Observer {
         if (lastTimestamps == null) {
             allocateMaps(chip);
         }
+        int sx=chip.getSizeX(), sy=chip.getSizeY();
         // for each event only write it to the out buffers if it is 
         // more than refractoryPeriodUs after the last time an event happened in neighborhood
 //        OutputEventIterator outItr = getOutputPacket().outputIterator();
@@ -76,6 +77,7 @@ public class RefractoryFilter extends EventFilter2D implements Observer {
         for (Object e : in) {
             BasicEvent i = (BasicEvent) e;
             if(i.isSpecial()) continue;
+            if(i.x>=sx || i.x<0 || i.y>=sy|| i.y<0) continue;
             ts = i.timestamp;
             short x = (short) (i.x >>> subsampleBy), y = (short) (i.y >>> subsampleBy);
             int lastt = lastTimestamps[x][y];
