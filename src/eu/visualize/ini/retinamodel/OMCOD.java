@@ -29,15 +29,18 @@ import net.sf.jaer.util.filter.LowpassFilter;
 @Description("Models object motion cell known from mouse and salamander retina")
 //@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Observer {
-    private OMCODModel OMCODModel = new OMCODModel();
+    private final OMCODModel OMCODModel = new OMCODModel();
     private float synapticWeight = getFloat("synapticWeight", 1f);
     private float centerExcitationToSurroundInhibitionRatio = getFloat("centerExcitationToSurroundInhibitionRatio", 0.4386f);
     private boolean surroundSuppressionEnabled = getBoolean("surroundSuppressionEnabled", false);
     private Subunits subunits;
-    private int nxmax =chip.getSizeX() >> getSubunitSubsamplingBits();
-    private int nymax =chip.getSizeY() >> getSubunitSubsamplingBits();
-    private float[][] inhibitionArray = new float [nxmax-1][nymax-1];
-    private float[][] excitationArray = new float [nxmax-1][nymax-1];
+    private final int nxmax;
+    private final int nymax;
+    private final float[][] inhibitionArray;
+    private final float[][] excitationArray;
+    private final float[][] membraneStateArray;
+    private final float[][] netSynapticInputArray;
+    private final int[][] nSpikesArray; // counts spikes since last rendering cycle
     private float subunitActivityBlobRadiusScale = getFloat("subunitActivityBlobRadiusScale", 0.004f);
     private float integrateAndFireThreshold = getFloat("integrateAndFireThreshold", 1f);
     private float nonLinearityOrder = getFloat("nonLinearityOrder", 2f);
@@ -52,6 +55,13 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 
     public OMCOD(AEChip chip) {
         super(chip);
+        this.nxmax = chip.getSizeX() >> getSubunitSubsamplingBits();
+        this.nymax = chip.getSizeY() >> getSubunitSubsamplingBits();
+        this.nSpikesArray = new int [nxmax-1][nymax-1];
+        this.netSynapticInputArray = new float [nxmax-1][nymax-1];
+        this.membraneStateArray = new float [nxmax-1][nymax-1];
+        this.inhibitionArray = new float [nxmax-1][nymax-1];
+        this.excitationArray = new float [nxmax-1][nymax-1];
         chip.addObserver(this);
         setPropertyTooltip("showSubunits", "Enables showing subunit activity annotation over retina output");
         setPropertyTooltip("showOutputCell", "Enables showing object motion cell activity annotation over retina output");
@@ -121,7 +131,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             showXcoord = 1;
             showYcoord = 1;
         }
-        if (showOutputCell && (OMCODModel.nSpikesArray[showXcoord][showYcoord]!=0)) {
+        if (showOutputCell && (nSpikesArray[showXcoord][showYcoord]!=0)) {
             gl.glColor4f(1, 1, 1, .2f);
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
             float radius = (chip.getMaxSize() * OMCODModel.spikeRateHz) / maxSpikeRateHz / 2;
@@ -394,7 +404,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 for (int y = excludedEdgeSubunits; y < (ny-excludedEdgeSubunits); y++) {
                     gl.glPushMatrix();
                     gl.glTranslatef((x << subunitSubsamplingBits) + off, (y << subunitSubsamplingBits) + off, 5);
-                    if (((x == (nx / 2)) && (y == (ny / 2))) || ((x == ((nx / 2) - 1)) && (y == (ny / 2))) || ((x == ((nx / 2) - 1)) && (y == ((ny / 2) - 1))) || ((x == (nx / 2)) && (y == ((ny / 2) - 1)))) {
+                    if (((x == showXcoord) && (y == showYcoord)) || ((x == showXcoord+1) && (y == showYcoord+1)) || ((x == showXcoord) && (y == showYcoord+1)) || ((x == showXcoord+1) && (y == showYcoord))) {
                         gl.glColor4f(1, 0, 0, alpha);
                     } else {
                         gl.glColor4f(0, 1, 0, alpha);
@@ -485,10 +495,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private class OMCODModel {
         int lastTimestamp = 0;
         Random r = new Random();
-        private float[][] membraneStateArray = new float [nxmax-1][nymax-1];
-        private float[][] netSynapticInputArray = new float [nxmax-1][nymax-1];
-        private int[][] nSpikesArray = new int [nxmax-1][nymax-1]; // counts spikes since last rendering cycle
-        private LowpassFilter isiFilter = new LowpassFilter(300);
+        private final LowpassFilter isiFilter = new LowpassFilter(300);
         private int lastSpikeTimestamp = 0;
         private boolean initialized = false;
         float spikeRateHz = 0;
@@ -567,9 +574,9 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         }
 
         private void resetSpikeCount() {
-            for(int i=0;i<nSpikesArray.length;i++) {
-                for(int j=0;j<nSpikesArray.length;j++) {
-                    nSpikesArray[i][j] = 0;
+            for(int nsx=0;nsx<nxmax-1;nsx++) {
+                for(int nsy=0;nsy<nymax-1;nsy++) {
+                    nSpikesArray[nsx][nsy] = 0;
                 }
             }
         }
