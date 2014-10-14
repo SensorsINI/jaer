@@ -1,3 +1,6 @@
+//****************************************************************************//
+//-- Packages ----------------------------------------------------------------//
+//----------------------------------------------------------------------------//
 package eu.visualize.ini.retinamodel;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -17,22 +20,31 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter;
+//-- end packages ------------------------------------------------------------//
+//****************************************************************************//
 
-/**
- * Models a single object motion cell that is excited by on or off activity
- * within its classical receptive field but is inhibited by synchronous on or
- * off activity in its extended RF, such as that caused by a saccadic eye
- * movement. Also gives direction of movement of object
- *
- * @author diederik
- */
+
+//****************************************************************************//
+//-- Description -------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+// Models multiple object motion cells that are excited by on or off activity
+// within their classical receptive field but are inhibited by synchronous on or
+// off activity in their extended RF, such as that caused by a saccadic eye
+// movement. Also gives direction of movement of object
+// @author diederik
+//-- end description ---------------------------------------------------------//
+//****************************************************************************//
+
+
 @Description("Models object motion cell known from mouse and salamander retina")
 //@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+
+
+//****************************************************************************//
+//-- Main class OMCOD --------------------------------------------------------//
+//----------------------------------------------------------------------------//
 public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Observer {
     private final OMCODModel OMCODModel = new OMCODModel();
-    private float synapticWeight = getFloat("synapticWeight", 1f);
-    private float centerExcitationToSurroundInhibitionRatio = getFloat("centerExcitationToSurroundInhibitionRatio", 0.4386f);
-    private boolean surroundSuppressionEnabled = getBoolean("surroundSuppressionEnabled", false);
     private Subunits subunits;
     private final int nxmax;
     private final int nymax;
@@ -41,6 +53,10 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private final float[][] membraneStateArray;
     private final float[][] netSynapticInputArray;
     private final int[][] nSpikesArray; // counts spikes since last rendering cycle
+//------------------------------------------------------------------------------    
+    private float synapticWeight = getFloat("synapticWeight", 1f);
+    private float centerExcitationToSurroundInhibitionRatio = getFloat("centerExcitationToSurroundInhibitionRatio", 0.4386f);
+    private boolean surroundSuppressionEnabled = getBoolean("surroundSuppressionEnabled", false);
     private float subunitActivityBlobRadiusScale = getFloat("subunitActivityBlobRadiusScale", 0.004f);
     private float integrateAndFireThreshold = getFloat("integrateAndFireThreshold", 1f);
     private float nonLinearityOrder = getFloat("nonLinearityOrder", 2f);
@@ -52,7 +68,11 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private int showYcoord = getInt("showYcoord", 1);
     private int tanhSaturation = getInt("tanhSaturation", 1);
     private boolean exponentialToTanh = getBoolean("exponentialToTanh", false);
-
+//------------------------------------------------------------------------------
+    
+//----------------------------------------------------------------------------//
+//-- Initialise and ToolTip method -------------------------------------------//
+//----------------------------------------------------------------------------//
     public OMCOD(AEChip chip) {
         super(chip);
         this.nxmax = chip.getSizeX() >> getSubunitSubsamplingBits();
@@ -63,6 +83,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         this.inhibitionArray = new float [nxmax-1][nymax-1];
         this.excitationArray = new float [nxmax-1][nymax-1];
         chip.addObserver(this);
+//------------------------------------------------------------------------------
         setPropertyTooltip("showSubunits", "Enables showing subunit activity annotation over retina output");
         setPropertyTooltip("showOutputCell", "Enables showing object motion cell activity annotation over retina output");
         setPropertyTooltip("subunitSubsamplingBits", "Each subunit integrates events from 2^n by 2^n pixels, where n=subunitSubsamplingBits");
@@ -86,8 +107,14 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         setPropertyTooltip("showXcoord", "decide which Object Motion Cell to show by selecting the X coordinate of the center");
         setPropertyTooltip("showYcoord", "decide which Object Motion Cell to show by selecting the Y coordinate of the center");
     }
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+    
     private int lastOMCODSpikeCheckTimestamp = 0;
 
+//----------------------------------------------------------------------------//
+//-- Filter packet method ----------------------------------------------------//
+//----------------------------------------------------------------------------//
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!(in.getEventPrototype() instanceof PolarityEvent)) {
@@ -119,7 +146,12 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //        System.out.println(String.format("spikeRate=%.1g \tonActivity=%.2f \toffActivity=%.1f", OMCODModel.spikeRate, inhibition, offExcitation));
         return in;
     }
-
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+    
+//----------------------------------------------------------------------------//
+//-- Draw bars method --------------------------------------------------------//
+//----------------------------------------------------------------------------//
     @Override
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
@@ -154,33 +186,33 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             subunits.render(gl);
         }
     }
-
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//    
+    
+//----------------------------------------------------------------------------//
+//-- Reset subunits method ---------------------------------------------------//
+//----------------------------------------------------------------------------//
     @Override
     public void resetFilter() {
         subunits = new Subunits();
     }
-
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+    
+//----------------------------------------------------------------------------//
+//-- Initialise filter method ------------------------------------------------//
+//----------------------------------------------------------------------------//
     @Override
     public void initFilter() {
         resetFilter();
     }
-
-    /**
-     * @return the subunitActivityBlobRadiusScale
-     */
-    public float getSubunitActivityBlobRadiusScale() {
-        return subunitActivityBlobRadiusScale;
-    }
-
-    /**
-     * @param subunitActivityBlobRadiusScale the subunitActivityBlobRadiusScale
-     * to set
-     */
-    public void setSubunitActivityBlobRadiusScale(float subunitActivityBlobRadiusScale) {
-        this.subunitActivityBlobRadiusScale = subunitActivityBlobRadiusScale;
-        putFloat("subunitActivityBlobRadiusScale", subunitActivityBlobRadiusScale);
-    }
-
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+    
+    
+//****************************************************************************//
+//-- Subunits class ----------------------------------------------------------//
+//----------------------------------------------------------------------------//
     // handles all subunits on and off
     private class Subunits {
         Subunit[][] subunits;
@@ -188,14 +220,20 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         int ny;
         int ntot;
         int lastUpdateTimestamp;
-
         FileOutputStream out; // declare a file output object
-        PrintStream p; // declare a print stream object
-
+        PrintStream p; // declare a print stream object        
+//----------------------------------------------------------------------------//
+//-- Reset Subunits method ---------------------------------------------------//
+//----------------------------------------------------------------------------//
         public Subunits() {
             reset();
         }
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//        
 
+//----------------------------------------------------------------------------//
+//-- Update events method ----------------------------------------------------//
+//----------------------------------------------------------------------------//
         synchronized public void update(PolarityEvent e) {
             // subsample retina address to clump retina input pixel blocks.
             int x = e.x >> subunitSubsamplingBits, y = e.y >> subunitSubsamplingBits;
@@ -212,7 +250,12 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             }
             maybeDecayAll(e);
         }
-
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+        
+//----------------------------------------------------------------------------//
+//-- Decay subunits method ---------------------------------------------------//
+//----------------------------------------------------------------------------//
         void maybeDecayAll(BasicEvent e) {
             int dt = e.timestamp - lastUpdateTimestamp;
             if (dt < 0) {
@@ -230,10 +273,12 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 }
             }
         }
-
-//------------------------------------------------------------------------------
-//-- Inhibition Calculation ----------------------------------------------------
-//------------------------------------------------------------------------------        
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+        
+//----------------------------------------------------------------------------//
+//-- Inhibition Calculation method -------------------------------------------//
+//----------------------------------------------------------------------------//        
         float[][] computeInhibitionToOutputCell() {
             // For all subunits, excluding the edge ones and the last ones (far right and bottom)
             for (int nsx = excludedEdgeSubunits; nsx < (nx-1-excludedEdgeSubunits); nsx++) {
@@ -290,13 +335,12 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         }
         return inhibitionArray;
         }
-//------------------------------------------------------------------------------
-//------------------------------------------------------------------------------        
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//        
 
-        
-//------------------------------------------------------------------------------
-//-- Excitation Calculation ----------------------------------------------------
-//------------------------------------------------------------------------------
+//----------------------------------------------------------------------------//
+//-- Excitation Calculation method -------------------------------------------//
+//----------------------------------------------------------------------------//
         float[][] computeExcitationToOutputCell() {
             // For all subunits, excluding the edge ones and the last ones (far right and bottom)
             for (int nsx = excludedEdgeSubunits; nsx < (nx-1-excludedEdgeSubunits); nsx++) {
@@ -359,12 +403,13 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             }
             return excitationArray;
         }
-//------------------------------------------------------------------------------
-//------------------------------------------------------------------------------
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
 
-        
+//----------------------------------------------------------------------------//
+//-- Reset method ------------------------------------------------------------//
+//----------------------------------------------------------------------------//
         synchronized private void reset() {
-//------------------------------------------------------------------------------
             // Reset arrays
             float[][] inhibitionArray = new float [nxmax-1][nymax-1];
             for(int i=0;i<inhibitionArray.length;i++) {
@@ -378,14 +423,14 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                     excitationArray[i][j] = 0;
                 }
             }
-//------------------------------------------------------------------------------
+            // Reset size
             nx = (chip.getSizeX() >> getSubunitSubsamplingBits());
             ny = (chip.getSizeY() >> getSubunitSubsamplingBits());
             if (nx < 4) {
                 nx = 4;
             }
             if (ny < 4) {
-                ny = 4; // always at least 4 subunits or computation does not make sense
+                ny = 4; // Always at least 4 subunits or computation does not make sense
             }
             ntot = (nx-excludedEdgeSubunits) * (ny-excludedEdgeSubunits);
             subunits = new Subunit[nx][ny];		
@@ -395,7 +440,12 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 }
             }
         }
-
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+        
+//----------------------------------------------------------------------------//
+//-- Rendering of subunits method --------------------------------------------//
+//----------------------------------------------------------------------------//
         private void render(GL2 gl) {
             final float alpha = .2f;
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
@@ -419,49 +469,69 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             renderer.setColor(0, 1, 0, 1);
             renderer.draw3D("Surround", chip.getSizeX() / 2, chip.getSizeY(), 0, .5f);
             renderer.end3DRendering();
-
-
         }
     }
-
-    // models one single subunit ON or OFF.
-    // polarity is ignored here and only handled on update of objectMotion cell
+//-- end of Subunits class ---------------------------------------------------//
+//****************************************************************************//
+    
+    
+//****************************************************************************//
+//-- Subunit class (to model single subunit and deal with vmem) --------------//
+//----------------------------------------------------------------------------//
+    // polarity is ignored here and only handled on update of object Motion cell
     private class Subunit {
-
         float vmem;
         int x, y;
         Subunit[][] mySubunits;
-
+        
+//----------------------------------------------------------------------------//
+//-- Constructor method ------------------------------------------------------//
+//----------------------------------------------------------------------------//
         public Subunit(int x, int y, Subunit[][] mySubunits) {
             this.x = x;
             this.y = y;
             this.mySubunits = mySubunits;
         }
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
 
+//----------------------------------------------------------------------------//
+//-- Decay method ------------------------------------------------------------//
+//----------------------------------------------------------------------------//
         public void decayBy(float factor) {
             vmem *= factor;
         }
-
+//----------------------------------------------------------------------------//        
+//----------------------------------------------------------------------------//
+        
+//----------------------------------------------------------------------------//
+//-- Update positive events method -------------------------------------------//
+//----------------------------------------------------------------------------//
         public void updatepos(PolarityEvent e) {
             vmem = vmem + 1;
         }
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
 
+//----------------------------------------------------------------------------//
+//-- Update negative events method -------------------------------------------//
+//----------------------------------------------------------------------------//
         public void updateneg (PolarityEvent e) {
             vmem = vmem - 1;
         }
-
-        /**
-         * subunit input is pure rectification
-         */
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+        
+//----------------------------------------------------------------------------//
+//-- Compute input to cell method --------------------------------------------//
+//----------------------------------------------------------------------------//        
+        // subunit input is pure rectification
         public float computeInputToCell() {
             if (!surroundSuppressionEnabled) {
-//                if (vmem < 0) {
-//                    return 0; // actually it cannot be negative since it only gets excitation from DVS events
-//                } else {
-                    return vmem;
-
-            } else { // surround inhibition
-                // here we return the half-rectified local difference between ourselves and our neighbors
+                return vmem;
+            } 
+            else { 
+                // Here we return the half-rectified local difference between ourselves and our neighbors
                 int n = 0;
                 float sum = 0;
                 if ((x + 1) < subunits.nx) {
@@ -489,8 +559,16 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 }
             }
         }
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//        
     }
-
+//-- end Subunit class -------------------------------------------------------//
+//****************************************************************************//
+    
+    
+//****************************************************************************//
+//-- class OMCODModel (OMC model) --------------------------------------------//
+//----------------------------------------------------------------------------//
     // models soma and integration and spiking of objectMotion cell
     private class OMCODModel {
         int lastTimestamp = 0;
@@ -500,7 +578,10 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         private boolean initialized = false;
         float spikeRateHz = 0;
         boolean result = false;
-
+        
+//----------------------------------------------------------------------------//
+//-- Update to check firing method -------------------------------------------//
+//----------------------------------------------------------------------------//
         synchronized private boolean update(int timestamp) {
             // compute subunit input to us
             for(int nsx=0;nsx<(nxmax-1);nsx++) {
@@ -546,7 +627,12 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             }
        return result;
        }
-                
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+        
+//----------------------------------------------------------------------------//
+//-- Spike method ------------------------------------------------------------//
+//----------------------------------------------------------------------------//
      void spike(int timestamp, int x, int y) {
         if (enableSpikeSound) {
             spikeSound.play();
@@ -562,7 +648,12 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         }
         lastSpikeTimestamp = timestamp;
      }
-
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+     
+//----------------------------------------------------------------------------//
+//-- Reset method ------------------------------------------------------------//
+//----------------------------------------------------------------------------//
         void reset() {
             for(int nsx=0;nsx<(nymax-1);nsx++) {
                 for(int nsy=0;nsy<(nymax-1);nsy++) {
@@ -572,7 +663,12 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             isiFilter.reset();
             initialized=false;
         }
-
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+        
+//----------------------------------------------------------------------------//
+//-- Reset spike count method ------------------------------------------------//
+//----------------------------------------------------------------------------//        
         private void resetSpikeCount() {
             for(int nsx=0;nsx<nxmax-1;nsx++) {
                 for(int nsy=0;nsy<nymax-1;nsy++) {
@@ -580,214 +676,162 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 }
             }
         }
-
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
     }
+//-- end class OMCODModel-----------------------------------------------------//    
+//****************************************************************************//    
 
-    /**
-     * @return the subunitDecayTimeconstantMs
-     */
+    
+//----------------------------------------------------------------------------//
+//-- Set and Get methods -----------------------------------------------------//
+//----------------------------------------------------------------------------//
+    // @return the subunitDecayTimeconstantMs
     public float getSubunitDecayTimeconstantMs() {
         return subunitDecayTimeconstantMs;
     }
-
-    /**
-     *
-     * @return the integrateAndFireThreshold
-     *
-     */
+//------------------------------------------------------------------------------
+    // @return the subunitActivityBlobRadiusScale
+    public float getSubunitActivityBlobRadiusScale() {
+        return subunitActivityBlobRadiusScale;
+    }
+    // @param subunitActivityBlobRadiusScale the subunitActivityBlobRadiusScale
+    public void setSubunitActivityBlobRadiusScale(float subunitActivityBlobRadiusScale) {
+        this.subunitActivityBlobRadiusScale = subunitActivityBlobRadiusScale;
+        putFloat("subunitActivityBlobRadiusScale", subunitActivityBlobRadiusScale);
+    }
+//------------------------------------------------------------------------------
+    // @return the integrateAndFireThreshold
     public float getIntegrateAndFireThreshold() {
         return integrateAndFireThreshold;
     }
-
-    /**
-     *
-     * @param integrateAndFireThreshold the integrateAndFireThreshold to set
-     *
-     */
+    // @param integrateAndFireThreshold the integrateAndFireThreshold to set
     public void setIntegrateAndFireThreshold(float integrateAndFireThreshold) {
         this.integrateAndFireThreshold = integrateAndFireThreshold;
         putFloat("integrateAndFireThreshold", integrateAndFireThreshold);
     }
-    
+//------------------------------------------------------------------------------
+    // @return the showXcoord
     public int getShowXcoord() {
         return showXcoord;
     }
-
-    /**
-     *
-     * @param showXcoord the showXcoord to set
-     *
-     */
+    // @param showXcoord the showXcoord to set
     public void setShowXcoord(int showXcoord) {
         this.showXcoord = showXcoord;
         putInt("showXcoord", showXcoord);
     }
-
+//------------------------------------------------------------------------------
+    // @return the showYcoord    
     public int getShowYcoord() {
         return showYcoord;
     }
-
-    /**
-     *
-     * @param showYcoord the showYcoord to set
-     *
-     */
+    // @param showYcoord the showYcoord to set
     public void setShowYcoord(int showYcoord) {
         this.showYcoord = showYcoord;
         putInt("showYcoord", showYcoord);
     }
-    
-    /**
-     *
-     * @return the nonLinearityOrder
-     *
-     */
+//------------------------------------------------------------------------------
+    // @return the nonLinearityOrder
     public float getNonLinearityOrder() {
         return nonLinearityOrder;
     }
-
-    /**
-     *
-     * @param nonLinearityOrder the nonLinearityOrder to set
-     *
-     */
+    // @param nonLinearityOrder the nonLinearityOrder to set
     public void setNonLinearityOrder(float nonLinearityOrder) {
         this.nonLinearityOrder = nonLinearityOrder;
         putFloat("nonLinearityOrder", nonLinearityOrder);
     }
-    
-    /**
-     * @return the synapticWeight
-     */
+//------------------------------------------------------------------------------    
+    // @return the synapticWeight
     public float getSynapticWeight() {
         return synapticWeight;
     }
-
-    /**
-     * @param synapticWeight the synapticWeight to set
-     */
+    // @param synapticWeight the synapticWeight to set
     public void setSynapticWeight(float synapticWeight) {
         this.synapticWeight = synapticWeight;
         putFloat("synapticWeight", synapticWeight);
     }
-    
-    /**
-     * @return the barsHeight
-     */
+//------------------------------------------------------------------------------
+    // @return the barsHeight
     public float getBarsHeight() {
         return barsHeight;
     }
-
-    /**
-     * @param barsHeight the barsHeight to set
-     */
+    // @param barsHeight the barsHeight to set
     public void setBarsHeight(float barsHeight) {
         this.barsHeight = barsHeight;
         putFloat("barsHeight", barsHeight);
     }
-
-    /**
-     * @return the excludedEdgeSubunits
-     */
+//------------------------------------------------------------------------------
+    // @return the excludedEdgeSubunits
     public int getExcludedEdgeSubunits() {
         return excludedEdgeSubunits;
     }
-
-    /**
-     * @param excludedEdgeSubunits the excludedEdgeSubunits to set
-     */
+    // @param excludedEdgeSubunits the excludedEdgeSubunits to set
     public void setExcludedEdgeSubunits(int excludedEdgeSubunits) {
         this.excludedEdgeSubunits = excludedEdgeSubunits;
         putFloat("excludedEdgeSubunits", excludedEdgeSubunits);
     }
-
-    /**
-     * @return the onOffWeightRatio
-     */
+//------------------------------------------------------------------------------
+    // @return the onOffWeightRatio
     public float getCenterExcitationToSurroundInhibitionRatio() {
         return centerExcitationToSurroundInhibitionRatio;
     }
-
-    /**
-     * @param onOffWeightRatio the onOffWeightRatio to set
-     */
+    // @param onOffWeightRatio the onOffWeightRatio to set
     public void setCenterExcitationToSurroundInhibitionRatio(float onOffWeightRatio) {
         this.centerExcitationToSurroundInhibitionRatio = onOffWeightRatio;
         putFloat("centerExcitationToSurroundInhibitionRatio", onOffWeightRatio);
     }
-
-    /**
-     * @return the tanhSaturation
-     */
+//------------------------------------------------------------------------------
+    // @return the tanhSaturation
     public int getTanhSaturation() {
         return tanhSaturation;
     }
-
-    /**
-     * @param tanhSaturation the tanhSaturation to set
-     */
+    // @param tanhSaturation the tanhSaturation to set
     public void setTanhSaturation(int tanhSaturation) {
         this.tanhSaturation = tanhSaturation;
         putInt("tanhSaturation", tanhSaturation);
     }
-    
-    /**
-     * @return the deleteLogging
-     */
+//------------------------------------------------------------------------------
+    // @return the deleteLogging
     public boolean isDeleteLogging() {
         return deleteLogging;
     }
-
-    /**
-     * @param deleteLogging the deleteLogging to set
-     */
+    // @param deleteLogging the deleteLogging to set
     public void setDeleteLogging(boolean deleteLogging) {
         this.deleteLogging = deleteLogging;
         putBoolean("deleteLogging", deleteLogging);
     }
-
-    /**
-     * @return the exponentialToTanh
-     */
+//------------------------------------------------------------------------------
+    // @return the exponentialToTanh
     public boolean isExponentialToTanh() {
         return exponentialToTanh;
     }
-
-    /**
-     * @param exponentialToTanh the exponentialToTanh to set
-     */
+    // @param exponentialToTanh the exponentialToTanh to set
     public void setExponentialToTanh(boolean exponentialToTanh) {
         this.exponentialToTanh = exponentialToTanh;
         putBoolean("exponentialToTanh", exponentialToTanh);
     }
-
-    /**
-     * @return the startLogging
-     */
+//------------------------------------------------------------------------------
+    // return the startLogging
     public boolean isStartLogging() {
         return startLogging;
     }
-
-    /**
-     * @param startLogging the startLogging to set
-     */
+    // @param startLogging the startLogging to set
     public void setStartLogging(boolean startLogging) {
         this.startLogging = startLogging;
         putBoolean("startLogging", startLogging);
     }
-
-    /**
-     * @return the surroundSuppressionEnabled
-     */
+//------------------------------------------------------------------------------
+    // @return the surroundSuppressionEnabled
     public boolean isSurroundSuppressionEnabled() {
         return surroundSuppressionEnabled;
     }
-
-    /**
-     * @param surroundSuppressionEnabled the surroundSuppressionEnabled to set
-     */
+    // @param surroundSuppressionEnabled the surroundSuppressionEnabled to set
     public void setSurroundSuppressionEnabled(boolean surroundSuppressionEnabled) {
         this.surroundSuppressionEnabled = surroundSuppressionEnabled;
         putBoolean("surroundSuppressionEnabled", surroundSuppressionEnabled);
     }
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 }
+//-- Class OMCOD -------------------------------------------------------------//
+//****************************************************************************//
