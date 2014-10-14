@@ -120,7 +120,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         return in;
     }
 
-       @Override
+    @Override
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
         GL2 gl = drawable.getGL().getGL2();
