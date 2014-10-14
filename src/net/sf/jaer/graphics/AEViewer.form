@@ -679,7 +679,7 @@
           <Properties>
             <Property name="mnemonic" type="int" value="97"/>
             <Property name="text" type="java.lang.String" value="AEChip"/>
-            <Property name="toolTipText" type="java.lang.String" value="Specifies which chip is connected"/>
+            <Property name="toolTipText" type="java.lang.String" value="Specifies which AEChip class is used either for playback or live interfacnig to a device"/>
           </Properties>
           <SubComponents>
             <MenuItem class="javax.swing.JSeparator" name="deviceMenuSpparator">
@@ -687,7 +687,7 @@
             <MenuItem class="javax.swing.JMenuItem" name="customizeDevicesMenuItem">
               <Properties>
                 <Property name="mnemonic" type="int" value="67"/>
-                <Property name="text" type="java.lang.String" value="Customize..."/>
+                <Property name="text" type="java.lang.String" value="Customize AEChip Menu..."/>
                 <Property name="toolTipText" type="java.lang.String" value="Let&apos;s you customize which AEChip&apos;s are available"/>
               </Properties>
               <Events>
