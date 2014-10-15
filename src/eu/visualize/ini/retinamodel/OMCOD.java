@@ -63,7 +63,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private boolean startLogging = getBoolean("startLogging", false);
     private boolean deleteLogging = getBoolean("deleteLogging", false);
     private float barsHeight = getFloat("barsHeight", 0.000020f);
-    private int excludedEdgeSubunits = getInt("excludedEdgeSubunits", 1);
+    private int excludedEdgeSubunits = getInt("excludedEdgeSubunits", 0);
     private int showXcoord = getInt("showXcoord", 1);
     private int showYcoord = getInt("showYcoord", 1);
     private int tanhSaturation = getInt("tanhSaturation", 1);
@@ -156,12 +156,11 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
         GL2 gl = drawable.getGL().getGL2();
-
         gl.glPushMatrix();
         gl.glTranslatef(showXcoord, showYcoord, 10);//(chip.getSizeX() / 2, chip.getSizeY() / 2, 10);
         if ((showXcoord<excludedEdgeSubunits) || (showYcoord<excludedEdgeSubunits) || (showXcoord>nxmax-1-excludedEdgeSubunits) || (showYcoord>nymax-1-excludedEdgeSubunits)){
-            showXcoord = 1+excludedEdgeSubunits;
-            showYcoord = 1+excludedEdgeSubunits;
+            showXcoord = excludedEdgeSubunits;
+            showYcoord = excludedEdgeSubunits;
         }
         if (showOutputCell && (nSpikesArray[showXcoord][showYcoord]!=0)) {
             gl.glColor4f(1, 1, 1, .2f);
@@ -290,16 +289,12 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //------------------------------------------------------------------------------
                             // Select computation type
                             if(!exponentialToTanh){// Use non-linear model (given the nonlinearity order)
-                                if (((x == nsx) && (y == nsy)) || ((x == nsx+1) && (y == nsy+1)) || ((x == nsx) && (y == nsy+1)) || ((x == nsx+1) && (y == nsy))) {
-                                } // Ignore center
-                                else {
+                                if (((x != nsx) && (y != nsy)) || ((x != nsx+1) && (y != nsy+1)) || ((x != nsx) && (y != nsy+1)) || ((x != nsx+1) && (y != nsy))) {
                                     inhibitionArray[nsx][nsy] += (float) Math.pow(subunits[x][y].computeInputToCell(),nonLinearityOrder);
                                 }
                             }
                             else{ // Use tanh model (given saturation value): preferred method
-                                if (((x == nsx) && (y == nsy)) || ((x == nsx+1) && (y == nsy+1)) || ((x == nsx) && (y == nsy+1)) || ((x == nsx+1) && (y == nsy))) {
-                                } // Ignore center
-                                else {
+                                if (((x != nsx) && (y != nsy)) || ((x != nsx+1) && (y != nsy+1)) || ((x != nsx) && (y != nsy+1)) || ((x != nsx+1) && (y != nsy))) {
                                     inhibitionArray[nsx][nsy] += tanhSaturation*Math.tanh(subunits[x][y].computeInputToCell());
                                 }                               
                             }
@@ -346,43 +341,43 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             for (int nsx = excludedEdgeSubunits; nsx < (nx-1-excludedEdgeSubunits); nsx++) {
                 for (int nsy = excludedEdgeSubunits; nsy < (nx-1-excludedEdgeSubunits); nsy++) {
 
-                            // Select computation type
-                            if(!exponentialToTanh){// Use non-linear model (given the nonlinearity order)
-                                    // Average of 4 central cells
-                                    excitationArray[nsx][nsy] = (float)((centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[nsx][nsy].computeInputToCell(),nonLinearityOrder))+
-                                    (centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[nsx+1][nsy+1].computeInputToCell(),nonLinearityOrder))+
-                                    (centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[nsx+1][nsy].computeInputToCell(),nonLinearityOrder))+
-                                    (centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[nsx][nsy+1].computeInputToCell(),nonLinearityOrder)))/4;
-                                } // Ignore surround
-                            else{ // Use tanh model (given saturation value): preferred method
-                                // Average of 4 central cells
-                                excitationArray[nsx][nsy] = (float)((tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[nsx][nsy].computeInputToCell()))) + 
-                                (tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[nsx+1][nsy+1].computeInputToCell()))) + 
-                                (tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[nsx+1][nsy].computeInputToCell()))) + 
-                                (tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[nsx][nsy+1].computeInputToCell())))) / 4;
-                            } // Ignore surround            
+                    // Select computation type
+                    if(!exponentialToTanh){// Use non-linear model (given the nonlinearity order)
+                    // Average of 4 central cells
+                        excitationArray[nsx][nsy] = (float)((centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[nsx][nsy].computeInputToCell(),nonLinearityOrder))+
+                        (centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[nsx+1][nsy+1].computeInputToCell(),nonLinearityOrder))+
+                        (centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[nsx+1][nsy].computeInputToCell(),nonLinearityOrder))+
+                        (centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[nsx][nsy+1].computeInputToCell(),nonLinearityOrder)))/4;
+                    } // Ignore surround
+                    else{ // Use tanh model (given saturation value): preferred method
+                        // Average of 4 central cells
+                        excitationArray[nsx][nsy] = (float)((tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[nsx][nsy].computeInputToCell()))) + 
+                        (tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[nsx+1][nsy+1].computeInputToCell()))) + 
+                        (tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[nsx+1][nsy].computeInputToCell()))) + 
+                        (tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[nsx][nsy+1].computeInputToCell())))) / 4;
+                    } // Ignore surround            
 //------------------------------------------------------------------------------
-                            // Log excitationArray
-                            if(startLogging == true){
-                                try {
-                                    // Create a new file output stream.
-                                    FileOutputStream out = new FileOutputStream(new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\excitationArray.txt"), true);
-                                    // Connect print stream to the output stream
-                                    p = new PrintStream(out);
-                                    p.print(excitationArray);
-                                    p.print(", ");
-                                    p.println(lastUpdateTimestamp);
-                                    p.close();
-                                    out.close();
-                                } 
-                                catch (Exception e) {
-                                    System.err.println("Error writing to file");
-                                }
-                            }
-                            if (deleteLogging == true){
-                                File fout = new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\excitationArray.txt");
-                                    fout.delete();
-                            }
+                    // Log excitationArray
+                    if(startLogging == true){
+                        try {
+                            // Create a new file output stream.
+                            FileOutputStream out = new FileOutputStream(new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\excitationArray.txt"), true);
+                            // Connect print stream to the output stream
+                            p = new PrintStream(out);
+                            p.print(excitationArray);
+                            p.print(", ");
+                            p.println(lastUpdateTimestamp);
+                            p.close();
+                            out.close();
+                        } 
+                        catch (Exception e) {
+                            System.err.println("Error writing to file");
+                        }
+                    }
+                    if (deleteLogging == true){
+                        File fout = new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\excitationArray.txt");
+                        fout.delete();
+                    }
                 }
             }
             return excitationArray;
@@ -396,15 +391,15 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         synchronized private void reset() {
             // Reset arrays
             float[][] inhibitionArray = new float [nxmax-1-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits];
-            for(int i=0;i<inhibitionArray.length;i++) {
-                for(int j=0;j<inhibitionArray.length;j++) {
-                    inhibitionArray[i][j] = 0;
+            for(int nsx=0;nsx<nxmax-1;nsx++) {
+                for(int nsy=0;nsy<nymax-1;nsy++) {
+                    inhibitionArray[nsx][nsy] = 0;
                 }
             }
             float[][] excitationArray = new float [nxmax-1-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits];
-            for(int i=0;i<excitationArray.length;i++) {
-                for(int j=0;j<excitationArray.length;j++) {
-                    excitationArray[i][j] = 0;
+            for(int nsx=0;nsx<nxmax-1;nsx++) {
+                for(int nsy=0;nsy<nymax-1;nsy++) {
+                    excitationArray[nsx][nsy] = 0;
                 }
             }
             // Reset size
