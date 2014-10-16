@@ -36,7 +36,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
 //****************************************************************************//
 
 
-@Description("Models object motion cell known from mouse and salamander retina")
+@Description("Models object motion cells known from mouse and salamander retina")
 //@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 
 
@@ -78,6 +78,9 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         if(getSubunitSubsamplingBits()>4){
             subunitSubsamplingBits = 5;
         }       
+        while(chip.getSizeX()!=0){   
+            System.out.println("hey");
+        }
         this.nxmax = chip.getSizeX() >> getSubunitSubsamplingBits();
         this.nymax = chip.getSizeY() >> getSubunitSubsamplingBits();
         this.nSpikesArray = new int [nxmax-1-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits];
@@ -194,7 +197,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 || (showXcoord>nxmax-1-excludedEdgeSubunits) || (showYcoord>nymax-1-excludedEdgeSubunits)){
             showXcoord = excludedEdgeSubunits;
             showYcoord = excludedEdgeSubunits;
-            gl.glTranslatef(showXcoord << getSubunitSubsamplingBits(), showYcoord << getSubunitSubsamplingBits(), 10);//(chip.getSizeX() / 2, chip.getSizeY() / 2, 10);
+            gl.glTranslatef(showXcoord << getSubunitSubsamplingBits(), showYcoord << getSubunitSubsamplingBits(), 10);
         }
         if (showOutputCell && (nSpikesArray[showXcoord][showYcoord]!=0)) {
             System.out.println(2);
