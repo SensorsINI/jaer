@@ -1134,14 +1134,6 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		catch (final HardwareInterfaceException e) {
 			CypressFX2.log.warning("CypressFX2.resetTimestamps: couldn't send vendor request to reset timestamps");
 		}
-
-		if (getAeReader() != null) {
-			getAeReader().resetTimestamps(); // reset wrap counter and flush
-												// buffers
-		}
-		else {
-			CypressFX2.log.warning("CypressFX2.resetTimestamps(): reader not yet started, can't reset timestamps");
-		}
 	}
 
 	/**
