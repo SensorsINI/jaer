@@ -190,11 +190,11 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         super.annotate(drawable);
         GL2 gl = drawable.getGL().getGL2();
         gl.glPushMatrix();
-        gl.glTranslatef(showXcoord, showYcoord, 10);//(chip.getSizeX() / 2, chip.getSizeY() / 2, 10);
         if ((showXcoord<excludedEdgeSubunits) || (showYcoord<excludedEdgeSubunits) 
                 || (showXcoord>nxmax-1-excludedEdgeSubunits) || (showYcoord>nymax-1-excludedEdgeSubunits)){
             showXcoord = excludedEdgeSubunits;
             showYcoord = excludedEdgeSubunits;
+            gl.glTranslatef(showXcoord << getSubunitSubsamplingBits(), showYcoord << getSubunitSubsamplingBits(), 10);//(chip.getSizeX() / 2, chip.getSizeY() / 2, 10);
         }
         if (showOutputCell && (nSpikesArray[showXcoord][showYcoord]!=0)) {
             System.out.println(2);
@@ -456,12 +456,12 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             nx = (chip.getSizeX() >> getSubunitSubsamplingBits());
             ny = (chip.getSizeY() >> getSubunitSubsamplingBits());
             System.out.println(14);
-            if (nx < 4) {
-                nx = 4;
-            }
-            if (ny < 4) {
-                ny = 4; // Always at least 4 subunits or computation does not make sense
-            }
+//            if (nx < 4) {
+//                nx = 4;
+//            }
+//            if (ny < 4) {
+//                ny = 4; // Always at least 4 subunits or computation does not make sense
+//            }
             ntot = (nx-excludedEdgeSubunits) * (ny-excludedEdgeSubunits);
             System.out.println(15);
             subunits = new Subunit[nx-2*excludedEdgeSubunits][ny-2*excludedEdgeSubunits];
@@ -667,11 +667,13 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
 //-- Spike method ------------------------------------------------------------//
 //----------------------------------------------------------------------------//
-     void spike(int timestamp, int x, int y) {
+     void spike(int timestamp, int omcx, int omcy) {
         if (enableSpikeSound) {
-            spikeSound.play();
+            if(omcx == showXcoord && omcy == showYcoord){
+                spikeSound.play();
+            }
         }
-        nSpikesArray[x][y]++;
+        nSpikesArray[omcx][omcy]++;
         int dtUs = timestamp - lastSpikeTimestamp;
         if (initialized && (dtUs>=0)) {
             float avgIsiUs = isiFilter.filter(dtUs, timestamp);
