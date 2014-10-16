@@ -78,16 +78,13 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         if(getSubunitSubsamplingBits()>4){
             subunitSubsamplingBits = 5;
         }       
-        while(chip.getSizeX()!=0){   
-            System.out.println("hey");
-        }
         this.nxmax = chip.getSizeX() >> getSubunitSubsamplingBits();
         this.nymax = chip.getSizeY() >> getSubunitSubsamplingBits();
-        this.nSpikesArray = new int [nxmax-1-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits];
-        this.netSynapticInputArray = new float [nxmax-1-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits];
-        this.membraneStateArray = new float [nxmax-1-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits];
-        this.inhibitionArray = new float [nxmax-1-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits];
-        this.excitationArray = new float [nxmax-1-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits];
+        this.nSpikesArray = new int [nxmax-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits]; // deleted -1 in all
+        this.netSynapticInputArray = new float [nxmax-2*excludedEdgeSubunits][nymax-2*excludedEdgeSubunits];
+        this.membraneStateArray = new float [nxmax-2*excludedEdgeSubunits][nymax-2*excludedEdgeSubunits];
+        this.inhibitionArray = new float [nxmax-2*excludedEdgeSubunits][nymax-2*excludedEdgeSubunits];
+        this.excitationArray = new float [nxmax-2*excludedEdgeSubunits][nymax-2*excludedEdgeSubunits];
         chip.addObserver(this);
         System.out.println(1);
 //------------------------------------------------------------------------------
