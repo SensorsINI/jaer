@@ -88,28 +88,56 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         chip.addObserver(this);
         System.out.println(1);
 //------------------------------------------------------------------------------
-        setPropertyTooltip("showSubunits", "Enables showing subunit activity annotation over retina output");
-        setPropertyTooltip("showOutputCell", "Enables showing object motion cell activity annotation over retina output");
-        setPropertyTooltip("subunitSubsamplingBits", "Each subunit integrates events from 2^n by 2^n pixels, where n=subunitSubsamplingBits");
-        setPropertyTooltip("synapticWeight", "Subunit activity inputs to the objectMotion neuron are weighted this much; use to adjust response magnitude");
-        setPropertyTooltip("subunitDecayTimeconstantMs", "Subunit activity decays with this time constant in ms");
-        setPropertyTooltip("enableSpikeSound", "Enables audio spike output from objectMotion cell");
-        setPropertyTooltip("maxSpikeRateHz", "Maximum spike rate of objectMotion cell in Hz");
-        setPropertyTooltip("centerExcitationToSurroundInhibitionRatio", "Inhibitory ON subunits are weighted by factor more than excitatory OFF subunit activity to the object motion cell");
-        setPropertyTooltip("minUpdateIntervalUs", "subunits activities are decayed to zero at least this often in us, even if they receive no input");
-        setPropertyTooltip("surroundSuppressionEnabled", "subunits are suppressed by surrounding activity of same type; reduces response to global dimming");
-        setPropertyTooltip("subunitActivityBlobRadiusScale", "The blobs represeting subunit activation are scaled by this factor");
-        setPropertyTooltip("integrateAndFireThreshold", "The ganglion cell will fire if the difference between excitation and inhibition overcomes this threshold");
-        setPropertyTooltip("poissonFiringEnabled", "The ganglion cell fires according to Poisson rate model for net synaptic input");
-        setPropertyTooltip("nonLinearityOrder", "The non-linear order of the subunits' value before the total sum");
-        setPropertyTooltip("startLogging", "Start logging inhibition and excitation");
-        setPropertyTooltip("deleteLogging", "Delete the logging of inhibition and excitation");
-        setPropertyTooltip("barsHeight", "set the magnitute of cen and sur if the inhibition and excitation are out of range");
-        setPropertyTooltip("excludedEdgeSubunits", "Set the number of subunits excluded from computation at the edge");
-        setPropertyTooltip("tanhSaturation", "Set the maximum contribution of a single subunit, where it saturates");
-        setPropertyTooltip("exponentialToTanh", "Switch from exponential non-linearity to exponential tangent");
-        setPropertyTooltip("showXcoord", "decide which Object Motion Cell to show by selecting the X coordinate of the center");
-        setPropertyTooltip("showYcoord", "decide which Object Motion Cell to show by selecting the Y coordinate of the center");
+        setPropertyTooltip("showSubunits", "Enables showing subunit activity "
+                + "annotation over retina output");
+        setPropertyTooltip("showOutputCell", "Enables showing object motion cell "
+                + "activity annotation over retina output");
+        setPropertyTooltip("subunitSubsamplingBits", "Each subunit integrates "
+                + "events from 2^n by 2^n pixels, where n=subunitSubsamplingBits");
+        setPropertyTooltip("synapticWeight", "Subunit activity inputs to the "
+                + "objectMotion neuron are weighted this much; use to adjust "
+                + "response magnitude");
+        setPropertyTooltip("subunitDecayTimeconstantMs", "Subunit activity "
+                + "decays with this time constant in ms");
+        setPropertyTooltip("enableSpikeSound", "Enables audio spike output from "
+                + "objectMotion cell");
+        setPropertyTooltip("maxSpikeRateHz", "Maximum spike rate of objectMotion "
+                + "cell in Hz");
+        setPropertyTooltip("centerExcitationToSurroundInhibitionRatio", 
+                "Inhibitory ON subunits are weighted by factor more than "
+                        + "excitatory OFF subunit activity to the object motion "
+                        + "cell");
+        setPropertyTooltip("minUpdateIntervalUs", "subunits activities are "
+                + "decayed to zero at least this often in us, even if they "
+                + "receive no input");
+        setPropertyTooltip("surroundSuppressionEnabled", "subunits are "
+                + "suppressed by surrounding activity of same type; reduces "
+                + "response to global dimming");
+        setPropertyTooltip("subunitActivityBlobRadiusScale", "The blobs "
+                + "represeting subunit activation are scaled by this factor");
+        setPropertyTooltip("integrateAndFireThreshold", "The ganglion cell will "
+                + "fire if the difference between excitation and inhibition "
+                + "overcomes this threshold");
+        setPropertyTooltip("poissonFiringEnabled", "The ganglion cell fires "
+                + "according to Poisson rate model for net synaptic input");
+        setPropertyTooltip("nonLinearityOrder", "The non-linear order of the "
+                + "subunits' value before the total sum");
+        setPropertyTooltip("startLogging", "Start logging inhibition and "
+                + "excitation");
+        setPropertyTooltip("deleteLogging", "Delete the logging of inhibition "
+                + "and excitation");
+        setPropertyTooltip("barsHeight", "set the magnitute of cen and sur if "
+                + "the inhibition and excitation are out of range");
+        setPropertyTooltip("excludedEdgeSubunits", "Set the number of subunits "
+                + "excluded from computation at the edge");
+        setPropertyTooltip("tanhSaturation", "Set the maximum contribution of "
+                + "a single subunit, where it saturates");
+        setPropertyTooltip("exponentialToTanh", "Switch from exponential "
+                + "non-linearity to exponential tangent");
+        setPropertyTooltip("showXcoord", "decide which Object Motion Cell to "
+                + "show by selecting the X coordinate of the center");
+        setPropertyTooltip("showYcoord", "decide which Object Motion Cell to "
+                + "show by selecting the Y coordinate of the center");
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -125,7 +153,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             return in;
         }
         if (in instanceof ApsDvsEventPacket) {
-            checkOutputPacketEventType(in); // make sure memory is allocated to avoid leak. we don't use output packet but it is necesary to iterate over DVS events only
+            checkOutputPacketEventType(in); // make sure memory is allocated to avoid leak. 
+            // we don't use output packet but it is necesary to iterate over DVS events only
         }
         clearOutputPacket();
         if (subunits == null) {
@@ -147,7 +176,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 OMCODModel.update(e.timestamp);
             }
         }
-//        System.out.println(String.format("spikeRate=%.1g \tonActivity=%.2f \toffActivity=%.1f", OMCODModel.spikeRate, inhibition, offExcitation));
+
         return in;
     }
 //----------------------------------------------------------------------------//
@@ -162,7 +191,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         GL2 gl = drawable.getGL().getGL2();
         gl.glPushMatrix();
         gl.glTranslatef(showXcoord, showYcoord, 10);//(chip.getSizeX() / 2, chip.getSizeY() / 2, 10);
-        if ((showXcoord<excludedEdgeSubunits) || (showYcoord<excludedEdgeSubunits) || (showXcoord>nxmax-1-excludedEdgeSubunits) || (showYcoord>nymax-1-excludedEdgeSubunits)){
+        if ((showXcoord<excludedEdgeSubunits) || (showYcoord<excludedEdgeSubunits) 
+                || (showXcoord>nxmax-1-excludedEdgeSubunits) || (showYcoord>nymax-1-excludedEdgeSubunits)){
             showXcoord = excludedEdgeSubunits;
             showYcoord = excludedEdgeSubunits;
         }
@@ -286,22 +316,24 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
 //-- Inhibition Calculation method -------------------------------------------//
 //----------------------------------------------------------------------------//        
-        float computeInhibitionToOutputCell(int nsx, int nsy) {
+        float computeInhibitionToOutputCell(int omcx, int omcy) {
             // For all subunits, excluding the edge ones and the last ones (far right and bottom)
-                    // Find inhibition around center made of [nsx,nsy], [nsx+1,nsy+1], [nsx+1,nsy], [nsx,nsy+1]
+                    // Find inhibition around center made of [omcx,omcy], [omcx+1,omcy+1], [omcx+1,omcy], [omcx,omcy+1]
                     for (int x = excludedEdgeSubunits; x < (nx-excludedEdgeSubunits); x++) {
                         for (int y = excludedEdgeSubunits; y < (ny-excludedEdgeSubunits); y++) {
 //------------------------------------------------------------------------------
                             // Select computation type
                             if(!exponentialToTanh){// Use non-linear model (given the nonlinearity order)
-                                if (((x != nsx) && (y != nsy)) || ((x != nsx+1) && (y != nsy+1)) || ((x != nsx) && (y != nsy+1)) || ((x != nsx+1) && (y != nsy))) {
-                                    inhibitionArray[nsx][nsy] += (float) Math.pow(subunits[x][y].computeInputToCell(),nonLinearityOrder);
+                                if (((x != omcx) && (y != omcy)) || ((x != omcx+1) && (y != omcy+1)) 
+                                        || ((x != omcx) && (y != omcy+1)) || ((x != omcx+1) && (y != omcy))) {
+                                    inhibitionArray[omcx][omcy] += (float) Math.pow(subunits[x][y].computeInputToCell(),nonLinearityOrder);
                                     System.out.println(7);
                                 }
                             }
                             else{ // Use tanh model (given saturation value): preferred method
-                                if (((x != nsx) && (y != nsy)) || ((x != nsx+1) && (y != nsy+1)) || ((x != nsx) && (y != nsy+1)) || ((x != nsx+1) && (y != nsy))) {
-                                    inhibitionArray[nsx][nsy] += tanhSaturation*Math.tanh(subunits[x][y].computeInputToCell());
+                                if (((x != omcx) && (y != omcy)) || ((x != omcx+1) && (y != omcy+1)) 
+                                        || ((x != omcx) && (y != omcy+1)) || ((x != omcx+1) && (y != omcy))) {
+                                    inhibitionArray[omcx][omcy] += tanhSaturation*Math.tanh(subunits[x][y].computeInputToCell());
                                     System.out.println(6);
                                 }                               
                             }
@@ -309,23 +341,23 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         }
                     }
 //------------------------------------------------------------------------------
-                    inhibitionArray[nsx][nsy] /= (ntot - 4); // Divide by the number of subunits to normalise
-                    inhibitionArray[nsx][nsy] = synapticWeight * inhibitionArray[nsx][nsy]; // Give a synaptic weight (a simple scalar value)
+                    inhibitionArray[omcx][omcy] /= (ntot - 4); // Divide by the number of subunits to normalise
+                    inhibitionArray[omcx][omcy] = synapticWeight * inhibitionArray[omcx][omcy]; // Give a synaptic weight (a simple scalar value)
                     System.out.println(8);
 //------------------------------------------------------------------------------
                     // Log inhibitionArray
                     if (startLogging == true){ 
                         try {
-                            if(nsx==0 && nsy == 0){
+                            if(omcx==0 && omcy == 0){
                                 // Create a new file output stream
                                 FileOutputStream out = new FileOutputStream(new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\inhibitionArray1.txt"),true);
                                // Connect print stream to the output stream
                                 p = new PrintStream(out);
-                                p.print(inhibitionArray[nsx][nsy]);
+                                p.print(inhibitionArray[omcx][omcy]);
                                 p.print(", ");
-                                p.print(nsx);
+                                p.print(omcx);
                                 p.print(", ");
-                                p.print(nsy);
+                                p.print(omcy);
                                 p.print(", ");
                                 p.println(lastUpdateTimestamp);
                                 p.close();
@@ -339,7 +371,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                     File fout = new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\inhibitionArray.txt");
                     fout.delete();
                 }
-        return inhibitionArray[nsx][nsy];
+        return inhibitionArray[omcx][omcy];
         }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//        
@@ -347,40 +379,42 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
 //-- Excitation Calculation method -------------------------------------------//
 //----------------------------------------------------------------------------//
-        float computeExcitationToOutputCell(int nsx, int nsy) {
+        float computeExcitationToOutputCell(int omcx, int omcy) {
             // For all subunits, excluding the edge ones and the last ones (far right and bottom)
                     System.out.println(9);
                     // Select computation type
                     if(!exponentialToTanh){// Use non-linear model (given the nonlinearity order)
                     // Average of 4 central cells
                         System.out.println(10);
-                        excitationArray[nsx][nsy] = (float)((centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[nsx][nsy].computeInputToCell(),nonLinearityOrder))+
-                        (centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[nsx+1][nsy+1].computeInputToCell(),nonLinearityOrder))+
-                        (centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[nsx+1][nsy].computeInputToCell(),nonLinearityOrder))+
-                        (centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[nsx][nsy+1].computeInputToCell(),nonLinearityOrder)))/4;
+                        excitationArray[omcx][omcy] = (float)
+                                ((centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[omcx][omcy].computeInputToCell(),nonLinearityOrder))+
+                        (centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[omcx+1][omcy+1].computeInputToCell(),nonLinearityOrder))+
+                        (centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[omcx+1][omcy].computeInputToCell(),nonLinearityOrder))+
+                        (centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[omcx][omcy+1].computeInputToCell(),nonLinearityOrder)))/4;
                     } // Ignore surround
                     else{ // Use tanh model (given saturation value): preferred method
                         // Average of 4 central cells
                         System.out.println(11);
-                        excitationArray[nsx][nsy] = (float)((tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[nsx][nsy].computeInputToCell()))) + 
-                        (tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[nsx+1][nsy+1].computeInputToCell()))) + 
-                        (tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[nsx+1][nsy].computeInputToCell()))) + 
-                        (tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[nsx][nsy+1].computeInputToCell())))) / 4;
+                        excitationArray[omcx][omcy] = (float)
+                                ((tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[omcx][omcy].computeInputToCell()))) + 
+                        (tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[omcx+1][omcy+1].computeInputToCell()))) + 
+                        (tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[omcx+1][omcy].computeInputToCell()))) + 
+                        (tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[omcx][omcy+1].computeInputToCell())))) / 4;
                     } // Ignore surround            
 //------------------------------------------------------------------------------
                     // Log excitationArray
                     if(startLogging == true){
                         try {
-                            if(nsx==0 && nsy == 0){
+                            if(omcx==0 && omcy == 0){
                                 // Create a new file output stream
                                 FileOutputStream out = new FileOutputStream(new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\excitationArray1.txt"),true);
                                // Connect print stream to the output stream
                                 p = new PrintStream(out);
-                                p.print(excitationArray[nsx][nsy]);
+                                p.print(excitationArray[omcx][omcy]);
                                 p.print(", ");
-                                p.print(nsx);
+                                p.print(omcx);
                                 p.print(", ");
-                                p.print(nsy);
+                                p.print(omcy);
                                 p.print(", ");
                                 p.println(lastUpdateTimestamp);
                                 p.close();
@@ -394,7 +428,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         File fout = new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\excitationArray.txt");
                         fout.delete();
                     }
-            return excitationArray[nsx][nsy];
+            return excitationArray[omcx][omcy];
         }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -405,16 +439,16 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         synchronized private void reset() {
             // Reset arrays
             float[][] inhibitionArray = new float [nxmax-1-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits];
-            for(int nsx=excludedEdgeSubunits;nsx<nxmax-1-excludedEdgeSubunits;nsx++) {
-                for(int nsy=excludedEdgeSubunits;nsy<nymax-1-excludedEdgeSubunits;nsy++) {
-                    inhibitionArray[nsx][nsy] = 0;
+            for(int omcx=excludedEdgeSubunits;omcx<nxmax-1-excludedEdgeSubunits;omcx++) {
+                for(int omcy=excludedEdgeSubunits;omcy<nymax-1-excludedEdgeSubunits;omcy++) {
+                    inhibitionArray[omcx][omcy] = 0;
                     System.out.println(12);
                 }
             }
             float[][] excitationArray = new float [nxmax-1-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits];
-            for(int nsx=excludedEdgeSubunits;nsx<nxmax-1-excludedEdgeSubunits;nsx++) {
-                for(int nsy=excludedEdgeSubunits;nsy<nymax-1-excludedEdgeSubunits;nsy++) {
-                    excitationArray[nsx][nsy] = 0;
+            for(int omcx=excludedEdgeSubunits;omcx<nxmax-1-excludedEdgeSubunits;omcx++) {
+                for(int omcy=excludedEdgeSubunits;omcy<nymax-1-excludedEdgeSubunits;omcy++) {
+                    excitationArray[omcx][omcy] = 0;
                     System.out.println(13);
                 }
             }
@@ -430,7 +464,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             }
             ntot = (nx-excludedEdgeSubunits) * (ny-excludedEdgeSubunits);
             System.out.println(15);
-            subunits = new Subunit[nx-2*excludedEdgeSubunits][ny-2*excludedEdgeSubunits];		
+            subunits = new Subunit[nx-2*excludedEdgeSubunits][ny-2*excludedEdgeSubunits];
             for (int x = excludedEdgeSubunits; x < nx-excludedEdgeSubunits; x++) {
                 for (int y = excludedEdgeSubunits; y < ny-excludedEdgeSubunits; y++) {
                     subunits[x][y] = new Subunit(x, y, subunits);
@@ -452,7 +486,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 for (int y = excludedEdgeSubunits; y < (ny-excludedEdgeSubunits); y++) {
                     gl.glPushMatrix();
                     gl.glTranslatef((x << subunitSubsamplingBits) + off, (y << subunitSubsamplingBits) + off, 5);
-                    if (((x == showXcoord) && (y == showYcoord)) || ((x == showXcoord+1) && (y == showYcoord+1)) || ((x == showXcoord) && (y == showYcoord+1)) || ((x == showXcoord+1) && (y == showYcoord))) {
+                    if (((x == showXcoord) && (y == showYcoord)) || ((x == showXcoord+1) && (y == showYcoord+1)) 
+                            || ((x == showXcoord) && (y == showYcoord+1)) || ((x == showXcoord+1) && (y == showYcoord))) {
                         gl.glColor4f(1, 0, 0, alpha);
                         System.out.println(17);
                     } else {
@@ -559,7 +594,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             }
         }
 //----------------------------------------------------------------------------//
-//----------------------------------------------------------------------------//        
+//----------------------------------------------------------------------------//
     }
 //-- end Subunit class -------------------------------------------------------//
 //****************************************************************************//
@@ -583,16 +618,16 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
         synchronized private boolean update(int timestamp) {
             // compute subunit input to us
-            for(int nsx=excludedEdgeSubunits;nsx<(nxmax-1-excludedEdgeSubunits);nsx++) {System.out.println(19);
-                for(int nsy=excludedEdgeSubunits;nsy<(nymax-1-excludedEdgeSubunits);nsy++) {System.out.println(20);
-                    netSynapticInputArray[nsx][nsy] = (subunits.computeExcitationToOutputCell(nsx, nsy) - subunits.computeInhibitionToOutputCell(nsx, nsy));
+            for(int omcx=excludedEdgeSubunits;omcx<(nxmax-1-excludedEdgeSubunits);omcx++) {System.out.println(19);
+                for(int omcy=excludedEdgeSubunits;omcy<(nymax-1-excludedEdgeSubunits);omcy++) {System.out.println(20);
+                    netSynapticInputArray[omcx][omcy] = (subunits.computeExcitationToOutputCell(omcx, omcy) - subunits.computeInhibitionToOutputCell(omcx, omcy));
                     int dtUs = timestamp - lastTimestamp;System.out.println(21);
                     if (dtUs < 0) {
                         dtUs = 0; // to handle negative dt
                     }
                     lastTimestamp = timestamp;
                     if (poissonFiringEnabled) {
-                        float spikeRate = netSynapticInputArray[nsx][nsy];
+                        float spikeRate = netSynapticInputArray[omcx][omcy];
                         if (spikeRate < 0) {
                         result = false;System.out.println(22);
                         }
@@ -600,7 +635,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                             spikeRate = maxSpikeRateHz;
                         }
                         if (r.nextFloat() < (spikeRate * 1e-6f * dtUs)) {
-                            spike(timestamp, nsx, nsy);
+                            spike(timestamp, omcx, omcy);
                             result = true;System.out.println(23);
                         } 
                         else {
@@ -608,14 +643,14 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         }
                     } 
                     else { // IF neuron
-                        membraneStateArray[nsx][nsy] += netSynapticInputArray[nsx][nsy] * dtUs * 1e-6f;
-                        if (membraneStateArray[nsx][nsy] > integrateAndFireThreshold) {
-                            spike(timestamp, nsx, nsy);
-                            membraneStateArray[nsx][nsy] = 0;
+                        membraneStateArray[omcx][omcy] += netSynapticInputArray[omcx][omcy] * dtUs * 1e-6f;
+                        if (membraneStateArray[omcx][omcy] > integrateAndFireThreshold) {
+                            spike(timestamp, omcx, omcy);
+                            membraneStateArray[omcx][omcy] = 0;
                             result = true;System.out.println(24);
                         } 
-                        else if (membraneStateArray[nsx][nsy] < -10) {
-                            membraneStateArray[nsx][nsy] = 0;
+                        else if (membraneStateArray[omcx][omcy] < -10) {
+                            membraneStateArray[omcx][omcy] = 0;
                             result = false;System.out.println(25);
                         } 
                         else {
@@ -654,9 +689,9 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //-- Reset method ------------------------------------------------------------//
 //----------------------------------------------------------------------------//
         void reset() {
-            for(int nsx=excludedEdgeSubunits;nsx<(nymax-1-excludedEdgeSubunits);nsx++) {
-                for(int nsy=excludedEdgeSubunits;nsy<(nymax-1-excludedEdgeSubunits);nsy++) {
-                    membraneStateArray[nsx][nsy] = 0;System.out.println(27);
+            for(int omcx=excludedEdgeSubunits;omcx<(nymax-1-excludedEdgeSubunits);omcx++) {
+                for(int omcy=excludedEdgeSubunits;omcy<(nymax-1-excludedEdgeSubunits);omcy++) {
+                    membraneStateArray[omcx][omcy] = 0;System.out.println(27);
                 }
             }
             isiFilter.reset();
@@ -669,9 +704,9 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //-- Reset spike count method ------------------------------------------------//
 //----------------------------------------------------------------------------//        
         private void resetSpikeCount() {
-            for(int nsx=excludedEdgeSubunits;nsx<(nymax-1-excludedEdgeSubunits);nsx++) {
-                for(int nsy=excludedEdgeSubunits;nsy<(nymax-1-excludedEdgeSubunits);nsy++) {
-                    nSpikesArray[nsx][nsy] = 0;System.out.println(28);
+            for(int omcx=excludedEdgeSubunits;omcx<(nymax-1-excludedEdgeSubunits);omcx++) {
+                for(int omcy=excludedEdgeSubunits;omcy<(nymax-1-excludedEdgeSubunits);omcy++) {
+                    nSpikesArray[omcx][omcy] = 0;System.out.println(28);
                 }
             }
         }
