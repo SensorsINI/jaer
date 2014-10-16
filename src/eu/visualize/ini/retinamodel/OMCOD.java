@@ -52,6 +52,12 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private float[][] excitationArray;
     private float[][] membraneStateArray;
     private float[][] netSynapticInputArray;
+    private int[][] timeStampArray;
+    private int[][] lastTimeStampArray;
+    private int[][] dtUSarray;
+    private int[][] timeStampSpikeArray;
+    private int[][] lastTimeStampSpikeArray;
+    private int[][] dtUSspikeArray;
     private int[][] nSpikesArray; // counts spikes since last rendering cycle
 //------------------------------------------------------------------------------    
     private float synapticWeight = getFloat("synapticWeight", 1f);
@@ -74,10 +80,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //-- Initialise and ToolTip method -------------------------------------------//
 //----------------------------------------------------------------------------//
     public OMCOD(AEChip chip) {
-        super(chip);
-        if(getSubunitSubsamplingBits()>4){
-            subunitSubsamplingBits = 5;
-        }       
+        super(chip); 
         this.nxmax = chip.getSizeX() >> getSubunitSubsamplingBits();
         this.nymax = chip.getSizeY() >> getSubunitSubsamplingBits();
         this.nSpikesArray = new int [nxmax-2*excludedEdgeSubunits][nymax-2*excludedEdgeSubunits]; // deleted -1 in all
@@ -85,6 +88,12 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         this.membraneStateArray = new float [nxmax-2*excludedEdgeSubunits][nymax-2*excludedEdgeSubunits];
         this.inhibitionArray = new float [nxmax-2*excludedEdgeSubunits][nymax-2*excludedEdgeSubunits];
         this.excitationArray = new float [nxmax-2*excludedEdgeSubunits][nymax-2*excludedEdgeSubunits];
+        this.timeStampArray = new int [nxmax-2*excludedEdgeSubunits][nymax-2*excludedEdgeSubunits];
+        this.lastTimeStampArray = new int [nxmax-2*excludedEdgeSubunits][nymax-2*excludedEdgeSubunits];
+        this.dtUSarray = new int [nxmax-2*excludedEdgeSubunits][nymax-2*excludedEdgeSubunits];
+        this.timeStampSpikeArray = new int [nxmax-2*excludedEdgeSubunits][nymax-2*excludedEdgeSubunits];
+        this.lastTimeStampSpikeArray = new int [nxmax-2*excludedEdgeSubunits][nymax-2*excludedEdgeSubunits];
+        this.dtUSspikeArray = new int [nxmax-2*excludedEdgeSubunits][nymax-2*excludedEdgeSubunits];
         chip.addObserver(this);
         // System.out.println(1);
 //------------------------------------------------------------------------------
@@ -237,7 +246,12 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         this.membraneStateArray = new float [nxmax-1-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits];
         this.inhibitionArray = new float [nxmax-1-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits];
         this.excitationArray = new float [nxmax-1-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits];
-        
+        this.timeStampArray = new int [nxmax-1-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits];
+        this.lastTimeStampArray = new int [nxmax-1-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits];
+        this.dtUSarray = new int [nxmax-1-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits];
+        this.timeStampSpikeArray = new int [nxmax-1-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits];
+        this.lastTimeStampSpikeArray = new int [nxmax-1-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits];
+        this.dtUSspikeArray = new int [nxmax-1-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits];
         subunits = new Subunits();
     }
 //----------------------------------------------------------------------------//
@@ -614,7 +628,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
     // models soma and integration and spiking of objectMotion cell
     private class OMCODModel {
-        int lastTimestamp = 0;
         Random r = new Random();
         private final LowpassFilter isiFilter = new LowpassFilter(300);
         private int lastSpikeTimestamp = 0;
@@ -629,12 +642,13 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             // compute subunit input to us
             for(int omcx=excludedEdgeSubunits;omcx<(nxmax-1-excludedEdgeSubunits);omcx++) {// System.out.println(19);
                 for(int omcy=excludedEdgeSubunits;omcy<(nymax-1-excludedEdgeSubunits);omcy++) {// System.out.println(20);
+                    timeStampArray[omcx][omcy]= timestamp;
                     netSynapticInputArray[omcx][omcy] = (subunits.computeExcitationToOutputCell(omcx, omcy) - subunits.computeInhibitionToOutputCell(omcx, omcy));
-                    int dtUs = timestamp - lastTimestamp;// System.out.println(21);
-                    if (dtUs < 0) {
-                        dtUs = 0; // to handle negative dt
+                    dtUSarray[omcx][omcy] = timeStampArray[omcx][omcy] - lastTimeStampArray[omcx][omcy];// System.out.println(21);
+                    if (dtUSarray[omcx][omcy] < 0) {
+                        dtUSarray[omcx][omcy] = 0; // to handle negative dt
                     }
-                    lastTimestamp = timestamp;
+                    lastTimeStampArray[omcx][omcy] = timeStampArray[omcx][omcy];
                     if (poissonFiringEnabled) {
                         float spikeRate = netSynapticInputArray[omcx][omcy];
                         if (spikeRate < 0) {
@@ -643,8 +657,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         if (spikeRate > maxSpikeRateHz) {
                             spikeRate = maxSpikeRateHz;
                         }
-                        if (r.nextFloat() < (spikeRate * 1e-6f * dtUs)) {
-                            spike(timestamp, omcx, omcy);
+                        if (r.nextFloat() < (spikeRate * 1e-6f * dtUSarray[omcx][omcy])) {
+                            spike(timeStampArray[omcx][omcy], omcx, omcy);
                             result = true;// System.out.println(23);
                         } 
                         else {
@@ -652,9 +666,9 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         }
                     } 
                     else { // IF neuron
-                        membraneStateArray[omcx][omcy] += netSynapticInputArray[omcx][omcy] * dtUs * 1e-6f;
+                        membraneStateArray[omcx][omcy] += netSynapticInputArray[omcx][omcy] * dtUSarray[omcx][omcy] * 1e-6f;
                         if (membraneStateArray[omcx][omcy] > integrateAndFireThreshold) {
-                            spike(timestamp, omcx, omcy);
+                            spike(timeStampArray[omcx][omcy], omcx, omcy);
                             membraneStateArray[omcx][omcy] = 0;
                             result = true;// System.out.println(24);
                         } 
@@ -677,21 +691,22 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //-- Spike method ------------------------------------------------------------//
 //----------------------------------------------------------------------------//
      void spike(int timestamp, int omcx, int omcy) {
+        timeStampSpikeArray[omcx][omcy]=timestamp;
         if (enableSpikeSound) {
             if(omcx == showXcoord && omcy == showYcoord){
                 spikeSound.play();
             }
         }
         nSpikesArray[omcx][omcy]++;
-        int dtUs = timestamp - lastSpikeTimestamp;
-        if (initialized && (dtUs>=0)) {
-            float avgIsiUs = isiFilter.filter(dtUs, timestamp);
+        dtUSspikeArray[omcx][omcy] = timeStampSpikeArray[omcx][omcy] - lastTimeStampSpikeArray[omcx][omcy];
+        if (initialized && (dtUSspikeArray[omcx][omcy]>=0)) {
+            float avgIsiUs = isiFilter.filter(dtUSspikeArray[omcx][omcy], timeStampSpikeArray[omcx][omcy]);
             spikeRateHz = 1e6f / avgIsiUs;// System.out.println(26);
         } 
         else {
             initialized = true;
         }
-        lastSpikeTimestamp = timestamp;
+        lastTimeStampSpikeArray[omcx][omcy] = timeStampSpikeArray[omcx][omcy];
      }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
