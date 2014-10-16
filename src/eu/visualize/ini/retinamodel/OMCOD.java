@@ -75,6 +75,9 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
     public OMCOD(AEChip chip) {
         super(chip);
+        if(getSubunitSubsamplingBits()>4){
+            subunitSubsamplingBits = 5;
+        }       
         this.nxmax = chip.getSizeX() >> getSubunitSubsamplingBits();
         this.nymax = chip.getSizeY() >> getSubunitSubsamplingBits();
         this.nSpikesArray = new int [nxmax-1-2*excludedEdgeSubunits][nymax-1-2*excludedEdgeSubunits];
@@ -283,7 +286,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
 //-- Inhibition Calculation method -------------------------------------------//
 //----------------------------------------------------------------------------//        
-        float[][] computeInhibitionToOutputCell(int nsx, int nsy) {
+        float computeInhibitionToOutputCell(int nsx, int nsy) {
             // For all subunits, excluding the edge ones and the last ones (far right and bottom)
                     // Find inhibition around center made of [nsx,nsy], [nsx+1,nsy+1], [nsx+1,nsy], [nsx,nsy+1]
                     for (int x = excludedEdgeSubunits; x < (nx-excludedEdgeSubunits); x++) {
@@ -313,24 +316,30 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                     // Log inhibitionArray
                     if (startLogging == true){ 
                         try {
-                        // Create a new file output stream
-                        FileOutputStream out = new FileOutputStream(new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\inhibitionArray.txt"),true);
-                        // Connect print stream to the output stream
-                        p = new PrintStream(out);
-                        p.print(inhibitionArray);
-                        p.print(", ");
-                        p.println(lastUpdateTimestamp);
-                        p.close();
-                    } 
-                    catch (Exception e) {
-                        System.err.println("Error writing to file");
+                            if(nsx==0 && nsy == 0){
+                                // Create a new file output stream
+                                FileOutputStream out = new FileOutputStream(new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\inhibitionArray1.txt"),true);
+                               // Connect print stream to the output stream
+                                p = new PrintStream(out);
+                                p.print(inhibitionArray[nsx][nsy]);
+                                p.print(", ");
+                                p.print(nsx);
+                                p.print(", ");
+                                p.print(nsy);
+                                p.print(", ");
+                                p.println(lastUpdateTimestamp);
+                                p.close();
+                            }
+                        } 
+                        catch (Exception e) {
+                            System.err.println("Error writing to file");
                     }
                 } // Delete inhibitionArray
                 if (deleteLogging == true){
                     File fout = new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\inhibitionArray.txt");
                     fout.delete();
                 }
-        return inhibitionArray;
+        return inhibitionArray[nsx][nsy];
         }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//        
@@ -338,7 +347,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
 //-- Excitation Calculation method -------------------------------------------//
 //----------------------------------------------------------------------------//
-        float[][] computeExcitationToOutputCell(int nsx, int nsy) {
+        float computeExcitationToOutputCell(int nsx, int nsy) {
             // For all subunits, excluding the edge ones and the last ones (far right and bottom)
                     System.out.println(9);
                     // Select computation type
@@ -362,15 +371,20 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                     // Log excitationArray
                     if(startLogging == true){
                         try {
-                            // Create a new file output stream.
-                            FileOutputStream out = new FileOutputStream(new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\excitationArray.txt"), true);
-                            // Connect print stream to the output stream
-                            p = new PrintStream(out);
-                            p.print(excitationArray);
-                            p.print(", ");
-                            p.println(lastUpdateTimestamp);
-                            p.close();
-                            out.close();
+                            if(nsx==0 && nsy == 0){
+                                // Create a new file output stream
+                                FileOutputStream out = new FileOutputStream(new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\excitationArray1.txt"),true);
+                               // Connect print stream to the output stream
+                                p = new PrintStream(out);
+                                p.print(excitationArray[nsx][nsy]);
+                                p.print(", ");
+                                p.print(nsx);
+                                p.print(", ");
+                                p.print(nsy);
+                                p.print(", ");
+                                p.println(lastUpdateTimestamp);
+                                p.close();
+                            }
                         } 
                         catch (Exception e) {
                             System.err.println("Error writing to file");
@@ -380,7 +394,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         File fout = new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\excitationArray.txt");
                         fout.delete();
                     }
-            return excitationArray;
+            return excitationArray[nsx][nsy];
         }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -571,7 +585,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             // compute subunit input to us
             for(int nsx=excludedEdgeSubunits;nsx<(nxmax-1-excludedEdgeSubunits);nsx++) {System.out.println(19);
                 for(int nsy=excludedEdgeSubunits;nsy<(nymax-1-excludedEdgeSubunits);nsy++) {System.out.println(20);
-                    netSynapticInputArray[nsx][nsy] = (subunits.computeExcitationToOutputCell(nsx, nsy)[nsx][nsy] - subunits.computeInhibitionToOutputCell(nsx, nsy)[nsx][nsy]);
+                    netSynapticInputArray[nsx][nsy] = (subunits.computeExcitationToOutputCell(nsx, nsy) - subunits.computeInhibitionToOutputCell(nsx, nsy));
                     int dtUs = timestamp - lastTimestamp;System.out.println(21);
                     if (dtUs < 0) {
                         dtUs = 0; // to handle negative dt
