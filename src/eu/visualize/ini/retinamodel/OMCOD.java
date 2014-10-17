@@ -62,14 +62,14 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private int[][] nSpikesArray; // counts spikes since last rendering cycle
 //------------------------------------------------------------------------------    
     private float synapticWeight = getFloat("synapticWeight", 1f);
-    private float centerExcitationToSurroundInhibitionRatio = getFloat("centerExcitationToSurroundInhibitionRatio", 0.4386f);
+    private float centerExcitationToSurroundInhibitionRatio = getFloat("centerExcitationToSurroundInhibitionRatio", 0.3f);
     private boolean surroundSuppressionEnabled = getBoolean("surroundSuppressionEnabled", false);
-    private float subunitActivityBlobRadiusScale = getFloat("subunitActivityBlobRadiusScale", 0.004f);
+    private float subunitActivityBlobRadiusScale = getFloat("subunitActivityBlobRadiusScale", 0.0012f);
     private float integrateAndFireThreshold = getFloat("integrateAndFireThreshold", 1f);
     private float nonLinearityOrder = getFloat("nonLinearityOrder", 2f);
     private boolean startLogging = getBoolean("startLogging", false);
     private boolean deleteLogging = getBoolean("deleteLogging", false);
-    private float barsHeight = getFloat("barsHeight", 0.000020f);
+    private float barsHeight = getFloat("barsHeight", 10f);
     private int excludedEdgeSubunits = getInt("excludedEdgeSubunits", 0);
     private int showXcoord = getInt("showXcoord", 1);
     private int showYcoord = getInt("showYcoord", 1);
