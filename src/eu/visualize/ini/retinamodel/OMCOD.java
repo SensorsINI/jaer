@@ -231,9 +231,9 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         }
         if (showSubunits) {
             gl.glColor4f(0, 1, 0, .3f);
-            gl.glRectf(-10, 4, -5, barsHeight*inhibitionArray[getShowXcoord()][getShowYcoord()]);
+            gl.glRectf(-10, 4, -5, 4+barsHeight*inhibitionArray[getShowXcoord()][getShowYcoord()]);
             gl.glColor4f(1, 0, 0, .3f);
-            gl.glRectf(-20, 4, -15, barsHeight*excitationArray[getShowXcoord()][getShowYcoord()]);
+            gl.glRectf(-20, 4, -15, 4+barsHeight*excitationArray[getShowXcoord()][getShowYcoord()]);
             renderer.begin3DRendering();
             renderer.setColor(0, 1, 0, .3f);
             renderer.draw3D("sur", -10, 0, 0, .4f);
@@ -290,8 +290,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     // handles all subunits on and off
     private class Subunits {
         Subunit[][] subunits;
-        int nx;
-        int ny;
         int ntot;
         int lastUpdateTimestamp;
         FileOutputStream out; // declare a file output object
@@ -311,7 +309,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         synchronized public void update(PolarityEvent e) {
             // subsample retina address to clump retina input pixel blocks.
             int x = e.x >> getSubunitSubsamplingBits(), y = e.y >> getSubunitSubsamplingBits();
-            if ((x < nx) && (y < ny)) {
+            if ((x < nxmax) && (y < nymax)) {
                 switch (e.polarity) {
                     case Off: // these subunits are excited by OFF events and in turn excite the approach cell
                         subunits[x][y].updatepos(e);
@@ -340,8 +338,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 lastUpdateTimestamp = e.timestamp;
                 // now update all subunits to RC decay activity toward zero
                 float decayFactor = (float) Math.exp(-dt / (1000 * subunitDecayTimeconstantMs));
-                for (int x = 0; x < nx; x++) {
-                    for (int y = 0; y < ny; y++) {
+                for (int x = 0; x < nxmax; x++) {
+                    for (int y = 0; y < nymax; y++) {
                         subunits[x][y].decayBy(decayFactor);
                     }
                 }
@@ -356,8 +354,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         float computeInhibitionToOutputCell(int omcx, int omcy) {
             // For all subunits, excluding the edge ones and the last ones (far right and bottom)
                     // Find inhibition around center made of [omcx,omcy], [omcx+1,omcy+1], [omcx+1,omcy], [omcx,omcy+1]
-                    for (int x = getExcludedEdgeSubunits(); x < (nx-getExcludedEdgeSubunits()); x++) {
-                        for (int y = getExcludedEdgeSubunits(); y < (ny-getExcludedEdgeSubunits()); y++) {
+                    for (int x = getExcludedEdgeSubunits(); x < (nxmax-getExcludedEdgeSubunits()); x++) {
+                        for (int y = getExcludedEdgeSubunits(); y < (nymax-getExcludedEdgeSubunits()); y++) {
 //------------------------------------------------------------------------------
                             // Select computation type
                             if(!exponentialToTanh){// Use non-linear model (given the nonlinearity order)
@@ -469,12 +467,10 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
         synchronized private void reset() {
             // Reset size
-            nx = (chip.getSizeX() >> getSubunitSubsamplingBits());
-            ny = (chip.getSizeY() >> getSubunitSubsamplingBits());
-            ntot = (nx-getExcludedEdgeSubunits()) * (ny-getExcludedEdgeSubunits());
-            subunits = new Subunit[nx-2*getExcludedEdgeSubunits()][ny-2*getExcludedEdgeSubunits()];
-            for (int x = getExcludedEdgeSubunits(); x < nx-getExcludedEdgeSubunits(); x++) {
-                for (int y = getExcludedEdgeSubunits(); y < ny-getExcludedEdgeSubunits(); y++) {
+            ntot = (nxmax-getExcludedEdgeSubunits()) * (nymax-getExcludedEdgeSubunits());
+            subunits = new Subunit[nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
+            for (int x = getExcludedEdgeSubunits(); x < nxmax-getExcludedEdgeSubunits(); x++) {
+                for (int y = getExcludedEdgeSubunits(); y < nymax-getExcludedEdgeSubunits(); y++) {
                     subunits[x][y] = new Subunit(x, y, subunits);
                 }
             }
@@ -489,8 +485,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             final float alpha = .2f;
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
             int off = (1 << (getSubunitSubsamplingBits())) / 2;
-            for (int x = getExcludedEdgeSubunits(); x < (nx-getExcludedEdgeSubunits()); x++) {
-                for (int y = getExcludedEdgeSubunits(); y < (ny-getExcludedEdgeSubunits()); y++) {
+            for (int x = getExcludedEdgeSubunits(); x < (nxmax-getExcludedEdgeSubunits()); x++) {
+                for (int y = getExcludedEdgeSubunits(); y < (nymax-getExcludedEdgeSubunits()); y++) {
                     gl.glPushMatrix();
                     gl.glTranslatef((x << getSubunitSubsamplingBits()) + off, (y << getSubunitSubsamplingBits()) + off, 5);
                     if (((x == getShowXcoord()) && (y == getShowYcoord())) || ((x == getShowXcoord()+1) && (y == getShowYcoord()+1)) 
@@ -574,7 +570,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 // Here we return the half-rectified local difference between ourselves and our neighbors
                 int n = 0;
                 float sum = 0;
-                if ((x + 1) < subunits.nx) {
+                if ((x + 1) < nxmax) {
                     sum += mySubunits[x + 1][y].vmem;
                     n++;
                 }
@@ -582,7 +578,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                     sum += mySubunits[x - 1][y].vmem;
                     n++;
                 }
-                if ((y + 1) < subunits.ny) {
+                if ((y + 1) < nymax) {
                     sum += mySubunits[x][y + 1].vmem;
                     n++;
                 }
