@@ -48,6 +48,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private Subunits subunits;
     private int nxmax;
     private int nymax;
+    private boolean enableSpikeDraw;
     private float[][] inhibitionArray;
     private float[][] excitationArray;
     private float[][] membraneStateArray;
@@ -81,6 +82,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
     public OMCOD(AEChip chip) {
         super(chip); 
+        this.enableSpikeDraw = false;
         this.nxmax = chip.getSizeX() >> getSubunitSubsamplingBits();
         this.nymax = chip.getSizeY() >> getSubunitSubsamplingBits();
         this.nSpikesArray = new int [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()]; // deleted -1 in all
@@ -198,12 +200,11 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         super.annotate(drawable);
         GL2 gl = drawable.getGL().getGL2();
         gl.glPushMatrix();
-        int off = (1 << (getSubunitSubsamplingBits())) / 2;
         if ((getShowXcoord()<getExcludedEdgeSubunits()) || (getShowYcoord()<getExcludedEdgeSubunits()) 
                 || (getShowXcoord()>nxmax-1-getExcludedEdgeSubunits()) || (getShowYcoord()>nymax-1-getExcludedEdgeSubunits())){
             setShowXcoord(excludedEdgeSubunits);
             setShowYcoord(excludedEdgeSubunits);
-            gl.glTranslatef(getShowXcoord() << getSubunitSubsamplingBits()+off, getShowYcoord() << getSubunitSubsamplingBits()+off, 5);
+            gl.glTranslatef((getShowXcoord()+1) << getSubunitSubsamplingBits(), (getShowYcoord()+1) << getSubunitSubsamplingBits(), 5);
         }
         if (showOutputCell && (nSpikesArray[getShowXcoord()][getShowYcoord()]!=0)) {                
             gl.glColor4f(1, 1, 1, .2f);
@@ -216,27 +217,30 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         if(showOutputCell == false) {
             for(int omcx=getExcludedEdgeSubunits();omcx<(nxmax-1-getExcludedEdgeSubunits());omcx++) {
                 for(int omcy=getExcludedEdgeSubunits();omcy<(nymax-1-getExcludedEdgeSubunits());omcy++) {
-                    if (nSpikesArray[omcx][omcy]!=0) {                
+                    if (enableSpikeDraw||nSpikesArray[omcx][omcy]!=0) {                
                         gl.glColor4f(12, 0, 1, .3f);
-                        gl.glRectf((omcx << getSubunitSubsamplingBits()), (omcy << getSubunitSubsamplingBits()), (omcx << getSubunitSubsamplingBits())+10, (omcy << getSubunitSubsamplingBits())+10);
-                        OMCODModel.resetSpikeCount();
+                        gl.glRectf((omcx << getSubunitSubsamplingBits()), (omcy << getSubunitSubsamplingBits()), 
+                                (omcx+2 << getSubunitSubsamplingBits()), (omcy+2 << getSubunitSubsamplingBits()));
+                        renderer.setColor(12, 0, 1, .3f);
+                        renderer.draw3D("OMC( "+omcx+" , "+omcy+" )", -45, 40, 0, .4f);
+                        enableSpikeDraw = false;
                     }
                 }
             }
+            OMCODModel.resetSpikeCount();
         }
         if (showSubunits) {
             gl.glColor4f(0, 1, 0, .3f);
-            gl.glRectf(-10, 0, -5, barsHeight*inhibitionArray[getShowXcoord()][getShowYcoord()]);
+            gl.glRectf(-10, 4, -5, barsHeight*inhibitionArray[getShowXcoord()][getShowYcoord()]);
             gl.glColor4f(1, 0, 0, .3f);
-            gl.glRectf(-20, 0, -15, barsHeight*excitationArray[getShowXcoord()][getShowYcoord()]);
+            gl.glRectf(-20, 4, -15, barsHeight*excitationArray[getShowXcoord()][getShowYcoord()]);
             renderer.begin3DRendering();
             renderer.setColor(0, 1, 0, .3f);
-            renderer.draw3D("sur", -10, -3, 0, .4f);
+            renderer.draw3D("sur", -10, 0, 0, .4f);
             renderer.setColor(1, 0, 0, .3f);
-            renderer.draw3D("cen", -20, -3, 0, .4f);
+            renderer.draw3D("cen", -20, 0, 0, .4f);
             renderer.setColor(1, 1, 0, .3f);
-            renderer.draw3D("X:"+getShowXcoord(), -40, -3, 0, .4f);
-            renderer.draw3D("Y:"+getShowYcoord(), -30, -3, 0, .4f);
+            renderer.draw3D("OMCshow( "+getShowXcoord()+" , "+getShowYcoord()+" )", -55, 30, 0, .4f); // x y width height
             renderer.end3DRendering();
             // render all the subunits now
             subunits.render(gl);
@@ -670,6 +674,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
      void spike(int timestamp, int omcx, int omcy) {
         timeStampSpikeArray[omcx][omcy]=timestamp;
+        enableSpikeDraw= true;
         if (enableSpikeSound) {
             if(omcx == getShowXcoord() && omcy == getShowYcoord()){
                 spikeSound.play();
