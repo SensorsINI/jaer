@@ -361,7 +361,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         } else {
             float alpha = map[index + 3] + (1.0f / colorScale);
             alpha = normalizeEvent(alpha);
-            if (e.polarity == PolarityEvent.Polarity.On) {
+            if (e.polarity == PolarityEvent.Polarity.On || ignorePolarityEnabled) {
                 map[index] = onColor[0];
                 map[index + 1] = onColor[1];
                 map[index + 2] = onColor[2];
