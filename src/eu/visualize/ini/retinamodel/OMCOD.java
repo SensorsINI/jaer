@@ -79,6 +79,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private boolean exponentialToTanh = getBoolean("exponentialToTanh", false);
     private boolean showQuadrants = getBoolean("showQuadrants", true);
     private int clusterSize = getInt("clusterSize", 10);
+    private float focalLengthM = getFloat("focalLengthM", 0.001f);
+    private float objectRealWidthXM = getFloat("objectRealWidthXM", 0.5f);
 //------------------------------------------------------------------------------
     
 //----------------------------------------------------------------------------//
@@ -156,6 +158,9 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         setPropertyTooltip("clusterSize", "decide how many Object Motion Cells' "
                 + "outputs to integrate to get an envelope of the prey");
         setPropertyTooltip("showQuadrants", "show the quadrants of motion");
+        setPropertyTooltip("objectRealWidthXM", "Object's to be followed real "
+                + "width in meters");
+        setPropertyTooltip("focalLengthM", "Lenses' focal length in meters");
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -271,7 +276,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         
                         renderer.begin3DRendering();
                         renderer.setColor(12, 0, 1, .3f);
-                        renderer.draw3D("OMC( "+omcx+" , "+omcy+" )", -45, 50, 0, .4f);
+                        renderer.draw3D("OMC( "+omcx+" , "+omcy+" )", -45, 60, 0, .4f);
                         renderer.end3DRendering();
                         enableSpikeDraw = false;
                     }
@@ -293,12 +298,62 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             renderer.setColor(1, 1, 0, .3f);
             renderer.draw3D("OMCshow( "+getShowXcoord()+" , "+getShowYcoord()+" )", -55, 30, 0, .4f); // x y width height
             renderer.setColor(1, 1, 0, .3f);
-            renderer.draw3D("Direction: "+directions(findCenterOfMass(findClusterCorners())), -55, 40, 0, .4f); // x y width height
+            renderer.draw3D("Direction: "+directions(findCenterOfMass(findClusterCorners())), -55, 50, 0, .4f); // x y width height
+            renderer.setColor(1, 1, 0, .3f);
+            renderer.draw3D("Object at: "+distanceToTravel(((findClusterCorners()[1]+2)<< getSubunitSubsamplingBits())
+                    -(findClusterCorners()[0]<< getSubunitSubsamplingBits()))+" m", -55, 40, 0, .4f); // x y width height
             renderer.end3DRendering();
             // render all the subunits now
+            gridOn(drawable);
             subunits.render(gl);
         }
+        gl.glPopMatrix();
+    }
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//    
+    
+//----------------------------------------------------------------------------//
+//-- Reset subunits method ---------------------------------------------------//
+//----------------------------------------------------------------------------//
+    @Override
+    public void resetFilter() {
+        this.nxmax = chip.getSizeX() >> getSubunitSubsamplingBits();
+        this.nymax = chip.getSizeY() >> getSubunitSubsamplingBits();
+        
+        this.nSpikesArray = new int [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()]; // deleted -1 in all
+        this.netSynapticInputArray = new float [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
+        this.membraneStateArray = new float [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
+        this.inhibitionArray = new float [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
+        this.excitationArray = new float [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
+        this.timeStampArray = new int [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
+        this.lastTimeStampArray = new int [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
+        this.dtUSarray = new int [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
+        this.timeStampSpikeArray = new int [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
+        this.lastTimeStampSpikeArray = new int [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
+        this.dtUSspikeArray = new int [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
+        this.lastSpikedOMC = new int [2][getClusterSize()];
+        subunits = new Subunits();
+    }
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+    
+//----------------------------------------------------------------------------//
+//-- Initialise filter method ------------------------------------------------//
+//----------------------------------------------------------------------------//
+    @Override
+    public void initFilter() {
+        resetFilter();
+    }
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+
+//----------------------------------------------------------------------------//
+//-- Plot grid method ------------------------------------------------//
+//----------------------------------------------------------------------------//
+    public void gridOn(GLAutoDrawable drawable) {
         if(showQuadrants) {
+            GL2 gl = drawable.getGL().getGL2();
+            gl.glPushMatrix();
             // Quadrants
             int divisionX = (int) (chip.getSizeX()>> getSubunitSubsamplingBits())/3;
             int divisionY = (int) (chip.getSizeY()>> getSubunitSubsamplingBits())/3;
@@ -402,46 +457,10 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             gl.glEnd();
             gl.glPopMatrix();
         }
-        gl.glPopMatrix();
-    }
-//----------------------------------------------------------------------------//
-//----------------------------------------------------------------------------//    
-    
-//----------------------------------------------------------------------------//
-//-- Reset subunits method ---------------------------------------------------//
-//----------------------------------------------------------------------------//
-    @Override
-    public void resetFilter() {
-        this.nxmax = chip.getSizeX() >> getSubunitSubsamplingBits();
-        this.nymax = chip.getSizeY() >> getSubunitSubsamplingBits();
-        
-        this.nSpikesArray = new int [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()]; // deleted -1 in all
-        this.netSynapticInputArray = new float [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
-        this.membraneStateArray = new float [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
-        this.inhibitionArray = new float [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
-        this.excitationArray = new float [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
-        this.timeStampArray = new int [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
-        this.lastTimeStampArray = new int [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
-        this.dtUSarray = new int [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
-        this.timeStampSpikeArray = new int [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
-        this.lastTimeStampSpikeArray = new int [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
-        this.dtUSspikeArray = new int [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
-        this.lastSpikedOMC = new int [2][getClusterSize()];
-        subunits = new Subunits();
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
     
-//----------------------------------------------------------------------------//
-//-- Initialise filter method ------------------------------------------------//
-//----------------------------------------------------------------------------//
-    @Override
-    public void initFilter() {
-        resetFilter();
-    }
-//----------------------------------------------------------------------------//
-//----------------------------------------------------------------------------//
-
 //----------------------------------------------------------------------------//
 //-- Tracker corners method --------------------------------------------------//
 //----------------------------------------------------------------------------// 
@@ -538,6 +557,18 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 
+//----------------------------------------------------------------------------//
+//-- Distance to be travelled method -----------------------------------------//
+//----------------------------------------------------------------------------// 
+        float distanceToTravel (int objectDetectedWidthX) {
+            float pixelSize = 0.000002f; // pixelSize 20 um
+            float distanceToObject = (focalLengthM*objectRealWidthXM)/(objectDetectedWidthX*pixelSize);
+            return distanceToObject;
+        }
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+        
+        
 //****************************************************************************//
 //-- Subunits class ----------------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -1130,6 +1161,26 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         putFloat("centerExcitationToSurroundInhibitionRatio", onOffWeightRatio);
     }
 //------------------------------------------------------------------------------
+    // @return the objectRealWidthXM
+    public float getObjectRealWidthXM() {
+        return objectRealWidthXM;
+    }
+    // @param objectRealWidthXM the objectRealWidthXM to set
+    public void setObjectRealWidthXM(float objectRealWidthXM) {
+        this.objectRealWidthXM = objectRealWidthXM;
+        putFloat("objectRealWidthXM", objectRealWidthXM);
+    }
+//------------------------------------------------------------------------------
+    // @return the focalLengthM
+    public float getFocalLengthM() {
+        return focalLengthM;
+    }
+    // @param focalLengthM the focalLengthM to set
+    public void setFocalLengthM(float focalLengthM) {
+        this.focalLengthM = focalLengthM;
+        putFloat("focalLengthM", focalLengthM);
+    }    
+//------------------------------------------------------------------------------    
     // @return the tanhSaturation
     public int getTanhSaturation() {
         return tanhSaturation;
