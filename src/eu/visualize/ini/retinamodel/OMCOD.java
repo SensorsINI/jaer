@@ -77,6 +77,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private int showYcoord = getInt("showYcoord", 1);
     private int tanhSaturation = getInt("tanhSaturation", 1);
     private boolean exponentialToTanh = getBoolean("exponentialToTanh", false);
+    private boolean showQuadrants = getBoolean("showQuadrants", true);
     private int clusterSize = getInt("clusterSize", 10);
 //------------------------------------------------------------------------------
     
@@ -154,6 +155,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 + "show by selecting the Y coordinate of the center");
         setPropertyTooltip("clusterSize", "decide how many Object Motion Cells' "
                 + "outputs to integrate to get an envelope of the prey");
+        setPropertyTooltip("showQuadrants", "show the quadrants of motion");
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -237,7 +239,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                                 lastSpikedOMC[i][counter] = omcy;
                             }
                         }
-
+                        
                         // Render tracker cluster
                         gl.glColor4f(184, 47, 243, .1f);
                         gl.glRectf(findClusterCorners()[0] << getSubunitSubsamplingBits(), findClusterCorners()[2] << getSubunitSubsamplingBits(), 
@@ -258,8 +260,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         gl.glRectf((omcx << getSubunitSubsamplingBits()), (omcy << getSubunitSubsamplingBits()), 
                                 (omcx+2 << getSubunitSubsamplingBits()), (omcy+2 << getSubunitSubsamplingBits()));
                         
-                        gl.glPushMatrix();
                         // Draw center of mass
+                        gl.glPushMatrix();
                         gl.glTranslatef((findCenterOfMass(findClusterCorners())[0]+1) << getSubunitSubsamplingBits(), 
                                 (findCenterOfMass(findClusterCorners())[1]+1) << getSubunitSubsamplingBits(), 5); 
                         gl.glColor4f(0, 0, 1, .4f);
@@ -269,7 +271,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         
                         renderer.begin3DRendering();
                         renderer.setColor(12, 0, 1, .3f);
-                        renderer.draw3D("OMC( "+omcx+" , "+omcy+" )", -45, 40, 0, .4f);
+                        renderer.draw3D("OMC( "+omcx+" , "+omcy+" )", -45, 50, 0, .4f);
                         renderer.end3DRendering();
                         enableSpikeDraw = false;
                     }
@@ -290,9 +292,115 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             renderer.draw3D("cen", -20, 0, 0, .4f);
             renderer.setColor(1, 1, 0, .3f);
             renderer.draw3D("OMCshow( "+getShowXcoord()+" , "+getShowYcoord()+" )", -55, 30, 0, .4f); // x y width height
+            renderer.setColor(1, 1, 0, .3f);
+            renderer.draw3D("Direction: "+directions(findCenterOfMass(findClusterCorners())), -55, 40, 0, .4f); // x y width height
             renderer.end3DRendering();
             // render all the subunits now
             subunits.render(gl);
+        }
+        if(showQuadrants) {
+            // Quadrants
+            int divisionX = (int) (chip.getSizeX()>> getSubunitSubsamplingBits())/3;
+            int divisionY = (int) (chip.getSizeY()>> getSubunitSubsamplingBits())/3;
+            //1
+            gl.glPushMatrix();        
+            gl.glColor3f(1.0f, 0.0f, 0.0f); 
+            gl.glBegin(gl.GL_LINE_STRIP);
+            gl.glVertex2f((0 << getSubunitSubsamplingBits()), (0 << getSubunitSubsamplingBits()));
+            gl.glVertex2f((divisionX << getSubunitSubsamplingBits()), (0 << getSubunitSubsamplingBits()));
+            gl.glVertex2f((divisionX << getSubunitSubsamplingBits()), (divisionY << getSubunitSubsamplingBits()));
+            gl.glVertex2f((0 << getSubunitSubsamplingBits()), (divisionY << getSubunitSubsamplingBits()));
+            gl.glVertex2f((0 << getSubunitSubsamplingBits()), (0 << getSubunitSubsamplingBits()));
+            gl.glEnd();
+            gl.glPopMatrix();
+            //2
+            gl.glPushMatrix();        
+            gl.glColor3f(1.0f, 0.0f, 0.0f); 
+            gl.glBegin(gl.GL_LINE_STRIP);
+            gl.glVertex2f(divisionX << getSubunitSubsamplingBits(), 0 << getSubunitSubsamplingBits());
+            gl.glVertex2f(nxmax-divisionX << getSubunitSubsamplingBits(), 0 << getSubunitSubsamplingBits());
+            gl.glVertex2f(nxmax-divisionX << getSubunitSubsamplingBits(), divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(0 << getSubunitSubsamplingBits(), divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(0 << getSubunitSubsamplingBits(), 0 << getSubunitSubsamplingBits());
+            gl.glEnd();
+            gl.glPopMatrix();        
+            //3
+            gl.glPushMatrix();        
+            gl.glColor3f(1.0f, 0.0f, 0.0f); 
+            gl.glBegin(gl.GL_LINE_STRIP);
+            gl.glVertex2f(nxmax-divisionX << getSubunitSubsamplingBits(), 0 << getSubunitSubsamplingBits());
+            gl.glVertex2f(nxmax << getSubunitSubsamplingBits(), 0 << getSubunitSubsamplingBits());
+            gl.glVertex2f(nxmax << getSubunitSubsamplingBits(), divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(0 << getSubunitSubsamplingBits(), divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(0 << getSubunitSubsamplingBits(), 0 << getSubunitSubsamplingBits());
+            gl.glEnd();
+            gl.glPopMatrix();        
+            //4
+            gl.glPushMatrix();        
+            gl.glColor3f(1.0f, 0.0f, 0.0f); 
+            gl.glBegin(gl.GL_LINE_STRIP);
+            gl.glVertex2f(0 << getSubunitSubsamplingBits(), divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(divisionX << getSubunitSubsamplingBits(), divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(divisionX << getSubunitSubsamplingBits(), nymax-divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(0 << getSubunitSubsamplingBits(), nymax-divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(0 << getSubunitSubsamplingBits(), divisionY << getSubunitSubsamplingBits());
+            gl.glEnd();
+            gl.glPopMatrix();        
+            //5
+            gl.glPushMatrix();          
+            gl.glColor3f(1.0f, 0.0f, 0.0f); 
+            gl.glBegin(gl.GL_LINE_STRIP);
+            gl.glVertex2f(0 << getSubunitSubsamplingBits(), nymax-divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(divisionX << getSubunitSubsamplingBits(), nymax-divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(divisionX << getSubunitSubsamplingBits(), nymax << getSubunitSubsamplingBits());
+            gl.glVertex2f(0 << getSubunitSubsamplingBits(), nymax << getSubunitSubsamplingBits());
+            gl.glVertex2f(0 << getSubunitSubsamplingBits(), nymax-divisionY << getSubunitSubsamplingBits());
+            gl.glEnd();
+            gl.glPopMatrix();        
+            //6
+            gl.glPushMatrix();        
+            gl.glColor3f(1.0f, 0.0f, 0.0f); 
+            gl.glBegin(gl.GL_LINE_STRIP);
+            gl.glVertex2f(divisionX << getSubunitSubsamplingBits(), divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(nxmax-divisionX << getSubunitSubsamplingBits(), divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(nxmax-divisionX << getSubunitSubsamplingBits(), nymax-divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(divisionX << getSubunitSubsamplingBits(), nymax-divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(divisionX << getSubunitSubsamplingBits(), divisionY << getSubunitSubsamplingBits());
+            gl.glEnd();
+            gl.glPopMatrix(); 
+            //7
+            gl.glPushMatrix();        
+            gl.glColor3f(1.0f, 0.0f, 0.0f); 
+            gl.glBegin(gl.GL_LINE_STRIP);
+            gl.glVertex2f(nxmax-divisionX << getSubunitSubsamplingBits(), divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(nxmax << getSubunitSubsamplingBits(), divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(nxmax << getSubunitSubsamplingBits(), nymax-divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(nxmax-divisionX << getSubunitSubsamplingBits(), nymax-divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(nxmax-divisionX << getSubunitSubsamplingBits(), divisionY << getSubunitSubsamplingBits());
+            gl.glEnd();
+            gl.glPopMatrix();
+            //8
+            gl.glPushMatrix();        
+            gl.glColor3f(1.0f, 0.0f, 0.0f); 
+            gl.glBegin(gl.GL_LINE_STRIP);
+            gl.glVertex2f(divisionX << getSubunitSubsamplingBits(), nymax-divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(nxmax-divisionX << getSubunitSubsamplingBits(), nymax-divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(nxmax-divisionX << getSubunitSubsamplingBits(), nymax << getSubunitSubsamplingBits());
+            gl.glVertex2f(divisionX << getSubunitSubsamplingBits(), nymax << getSubunitSubsamplingBits());
+            gl.glVertex2f(divisionX << getSubunitSubsamplingBits(), nymax-divisionY << getSubunitSubsamplingBits());
+            gl.glEnd();
+            gl.glPopMatrix();
+            //9
+            gl.glPushMatrix();        
+            gl.glColor3f(1.0f, 0.0f, 0.0f); 
+            gl.glBegin(gl.GL_LINE_STRIP);
+            gl.glVertex2f(nxmax-divisionX << getSubunitSubsamplingBits(), nymax-divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(nxmax << getSubunitSubsamplingBits(), nymax-divisionY << getSubunitSubsamplingBits());
+            gl.glVertex2f(nxmax << getSubunitSubsamplingBits(), nymax << getSubunitSubsamplingBits());
+            gl.glVertex2f(nxmax-divisionX << getSubunitSubsamplingBits(), nymax << getSubunitSubsamplingBits());
+            gl.glVertex2f(nxmax-divisionX << getSubunitSubsamplingBits(), nymax-divisionY << getSubunitSubsamplingBits());
+            gl.glEnd();
+            gl.glPopMatrix();
         }
         gl.glPopMatrix();
     }
@@ -337,7 +445,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
 //-- Tracker corners method --------------------------------------------------//
 //----------------------------------------------------------------------------// 
-        int[] findClusterCorners (){
+        int[] findClusterCorners() {
             int minx = lastSpikedOMC[0][0];
             int miny = lastSpikedOMC[1][0];
             int maxx = lastSpikedOMC[0][0];
@@ -371,11 +479,11 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
-        
+
 //----------------------------------------------------------------------------//
 //-- Center of mass finder method --------------------------------------------//
 //----------------------------------------------------------------------------// 
-        int[] findCenterOfMass (int[] corners){
+        int[] findCenterOfMass (int[] corners) {
             int minx = corners[0];
             int maxx = corners[1];
             int miny = corners[2];
@@ -387,7 +495,49 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
-    
+
+//----------------------------------------------------------------------------//
+//-- Directions method -------------------------------------------------------//
+//----------------------------------------------------------------------------// 
+        String directions (int[] centerOfMass) {
+            int CMx = centerOfMass[0];
+            int CMy = centerOfMass[1];
+            String direction = "Thinking";
+            int divisionX = (int) (chip.getSizeX()>> getSubunitSubsamplingBits())/3;
+            int divisionY = (int) (chip.getSizeY()>> getSubunitSubsamplingBits())/3;
+
+            if(CMx > 0 && CMy > 0 && CMx < divisionX && CMy < divisionY){ //1
+                direction = "[1] Bottom-Left: Turn Left";
+            }
+            else if (CMx > divisionX && CMy > 0 && CMx < nxmax-divisionX && CMy < divisionY){ //2
+                direction = "[2] Bottom-Center: Stay still";        
+            }
+            else if (CMx > nxmax-divisionX && CMy > 0 && CMx < nxmax && CMy < divisionY){ //3
+                direction = "[3] Bottom-Right: Turn Right";        
+            }
+            if(CMx > 0 && CMy > divisionY && CMx < divisionX && CMy < nymax-divisionY){ //4
+                direction = "[4] Center-Left: Go + Turn Left";
+            }
+            else if (CMx > divisionX && CMy > divisionY && CMx < nxmax-divisionX && CMy < nymax-divisionY){ //5
+                direction = "[5] Center: Go straight";        
+            }
+            else if (CMx > nxmax-divisionX && CMy > divisionY && CMx < nxmax && CMy < nymax-divisionY){ //6
+                direction = "[6] Center-Right: ? Go + Turn Right";        
+            }
+            if(CMx > 0 && CMy > nymax-divisionY && CMx < divisionX && CMy < nymax){ //7
+                direction = "[7] Top-Left: ? Go more + Turn Left";
+            }
+            else if (CMx > divisionX && CMy > nymax-divisionY && CMx < nxmax-divisionX && CMy < nymax){ //8
+                direction = "[8] Top-Center: ? Go more straight";        
+            }
+            else if (CMx > nxmax-divisionX && CMy > nymax-divisionY && CMx < nxmax && CMy < nymax){ //9
+                direction = "[9] Top-Right: ? Go more + Turn Right";        
+            }
+            return direction;
+        }
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+
 //****************************************************************************//
 //-- Subunits class ----------------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -428,7 +578,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
-        
+
 //----------------------------------------------------------------------------//
 //-- Decay subunits method ---------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -1019,16 +1169,17 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         this.startLogging = startLogging;
         putBoolean("startLogging", startLogging);
     }
+
 //------------------------------------------------------------------------------
-    // @return the surroundSuppressionEnabled
-    public boolean isSurroundSuppressionEnabled() {
-        return surroundSuppressionEnabled;
+    // @return the showQuadrants
+    public boolean isShowQuadrants() {
+        return showQuadrants;
     }
-    // @param surroundSuppressionEnabled the surroundSuppressionEnabled to set
-    public void setSurroundSuppressionEnabled(boolean surroundSuppressionEnabled) {
-        this.surroundSuppressionEnabled = surroundSuppressionEnabled;
-        putBoolean("surroundSuppressionEnabled", surroundSuppressionEnabled);
-    }
+    // @param showQuadrants the showQuadrants to set
+    public void setShowQuadrants(boolean showQuadrants) {
+        this.showQuadrants = showQuadrants;
+        putBoolean("showQuadrants", showQuadrants);
+    }    
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 }
