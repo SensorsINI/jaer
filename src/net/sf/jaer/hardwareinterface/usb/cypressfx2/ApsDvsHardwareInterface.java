@@ -539,7 +539,8 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 									// If it is, we need to switch to reading
 									// it. Also, checks for buffer
 									// overruns need to happen in both places.
-									if (((buf[i + 1] & EXTERNAL_PIN_EVENT) == EXTERNAL_PIN_EVENT)
+									if (!((dataword & ADDRESS_TYPE_BIT) == ADDRESS_TYPE_BIT)
+										&& ((buf[i + 1] & EXTERNAL_PIN_EVENT) == EXTERNAL_PIN_EVENT)
 										&& ((buf[i] & ApsDvsChip.IMUMASK) == ApsDvsChip.IMUMASK)) {
 										readingIMUEvents = true;
 										break;
