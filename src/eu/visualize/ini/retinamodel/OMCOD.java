@@ -62,6 +62,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private int[][] dtUSspikeArray;
     private int[][] nSpikesArray; // counts spikes since last rendering cycle
     private int[][] lastSpikedOMC; // save the OMC cells that last spiked
+    private String direction = "Thinking";
 //------------------------------------------------------------------------------    
     private float synapticWeight = getFloat("synapticWeight", 1f);
     private float centerExcitationToSurroundInhibitionRatio = getFloat("centerExcitationToSurroundInhibitionRatio", 0.3f);
@@ -298,7 +299,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             renderer.setColor(1, 1, 0, .3f);
             renderer.draw3D("OMCshow( "+getShowXcoord()+" , "+getShowYcoord()+" )", -55, 30, 0, .4f); // x y width height
             renderer.setColor(1, 1, 0, .3f);
-            renderer.draw3D("Direction: "+directions(findCenterOfMass(findClusterCorners())), -55, 50, 0, .4f); // x y width height
+            directions(findCenterOfMass(findClusterCorners()));
+            renderer.draw3D("Direction: "+direction, -55, 50, 0, .4f); // x y width height
             renderer.setColor(1, 1, 0, .3f);
             renderer.draw3D("Object at: "+distanceToTravel(((findClusterCorners()[1]+2)<< getSubunitSubsamplingBits())
                     -(findClusterCorners()[0]<< getSubunitSubsamplingBits()))+" m", -55, 40, 0, .4f); // x y width height
@@ -518,10 +520,9 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
 //-- Directions method -------------------------------------------------------//
 //----------------------------------------------------------------------------// 
-        String directions (int[] centerOfMass) {
+        void directions (int[] centerOfMass) {
             int CMx = centerOfMass[0];
             int CMy = centerOfMass[1];
-            String direction = "Thinking";
             int divisionX = (int) (chip.getSizeX()>> getSubunitSubsamplingBits())/3;
             int divisionY = (int) (chip.getSizeY()>> getSubunitSubsamplingBits())/3;
 
@@ -552,7 +553,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             else if (CMx > nxmax-divisionX && CMy > nymax-divisionY && CMx < nxmax && CMy < nymax){ //9
                 direction = "[9] Top-Right: ? Go more + Turn Right";        
             }
-            return direction;
         }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
