@@ -23,7 +23,7 @@
                 <entry key="apsIntensityOffset" value="0"/>
                 <entry key="invertADCvalues" value="false"/>
                 <entry key="displayLogIntensityChangeEvents" value="true"/>
-                <entry key="DAViS240.bgTabbedPaneSelectedIndex" value="4"/>
+                <entry key="DAViS240.bgTabbedPaneSelectedIndex" value="0"/>
                 <entry key="displayIntensity" value="true"/>
                 <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="..\..\devices\firmware\CypressFX2\firmware_FX2LP_DAViS_FX2V4\SBret10.bix"/>
                 <entry key="DAViS240.AddressedIPotCF.DiffBn.BitValueCoarse" value="3"/>
@@ -334,8 +334,8 @@
                 <entry key="MultiLineClusterTracker.mixingFactorTheta" value="0.13938662"/>
                 <entry key="MultiLineClusterTracker.mixingFactorRho" value="0.0110249985"/>
                 <entry key="MultiLineClusterTracker.minDistanceNormalized" value="0.01812906"/>
-                <entry key="DAViS240.showImageHistogram" value="true"/>
-                <entry key="CPLDInt.exposure" value="65535"/>
+                <entry key="DAViS240.showImageHistogram" value="false"/>
+                <entry key="CPLDInt.exposure" value="14561"/>
                 <entry key="ApsFrameExtractor.logCompress" value="false"/>
                 <entry key="ApsFrameExtractor.deltaBufferSize" value="1000.0"/>
                 <entry key="ApsFrameExtractor.displayBrightness" value="0.0"/>
@@ -504,7 +504,7 @@
                 <entry key="ApproachCell.subunitDecayTimeconstantMs" value="60.000008"/>
                 <entry key="ApproachCell.onOffWeightRatio" value="1.5315377"/>
                 <entry key="Info.maxSamples" value="450"/>
-                <entry key="autoExposureEnabled" value="false"/>
+                <entry key="autoExposureEnabled" value="true"/>
                 <entry key="AutomaticReplayPlayer.filterEnabled" value="false"/>
                 <entry key="TrackdefineFilter.displayTrack" value="true"/>
                 <entry key="TrackdefineFilter.minDistance" value="2.2035983"/>
@@ -597,7 +597,8 @@
                 <entry key="CellStatsProber.isiHistEnabled" value="false"/>
                 <entry key="aeReaderFifoSize" value="16384"/>
                 <entry key="aeReaderNumBuffers" value="4"/>
-                <entry key="translateRowOnlyEvents" value="true"/>
+                <entry key="translateRowOnlyEvents" value="false"/>
+                <entry key="Info.timeScaling" value="false"/>
               </map>
             </node>
           </node>
