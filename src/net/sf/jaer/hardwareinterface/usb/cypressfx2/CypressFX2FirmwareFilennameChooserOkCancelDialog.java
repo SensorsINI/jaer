@@ -212,6 +212,7 @@ private void chooseButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-
         }
         filenameTextField.setText(relative);
         filenameTextField.setToolTipText(chooser.getSelectedFile().getPath());
+        filenameTextField.setForeground(Color.BLACK);
     }
 }//GEN-LAST:event_chooseButtonActionPerformed
 
