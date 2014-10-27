@@ -52,6 +52,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private int counter = 0;
     private int operationRange = 10;
     private int lastIndex = 0;
+    private boolean rememberReset1 = false;
+    private boolean rememberReset2 = false;
     private float[][] inhibitionArray;
     private float[][] excitationArray;
     private float[][] membraneStateArray;
@@ -252,12 +254,24 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         else{
                             lastIndex = counter-1;
                         }
+                        if (rememberReset1){ // Start anywhere after reset
+                            for(int j = 0; j<getClusterSize()-1; j++){  
+                                for(int i=0; i<2;i++){
+                                    if(i == 0){
+                                        lastSpikedOMCTracker1[i][j] = omcx;                                    
+                                    }
+                                    else{
+                                        lastSpikedOMCTracker1[i][j] = omcy;
+                                    }
+                                }
+                            }
+                        rememberReset1 = false;
+                        }
                         if((Math.abs((omcx-lastSpikedOMCTracker1[0][lastIndex])) < operationRange) 
                                 && (Math.abs((omcy-lastSpikedOMCTracker1[1][lastIndex])) < operationRange)){ // Spatial correlation
-                            for(int i=0; i<2;i++){System.out.println("close");
+                            for(int i=0; i<2;i++){
                                 if(i == 0){
-                                    lastSpikedOMCTracker1[i][counter] = omcx;
-                                    
+                                    lastSpikedOMCTracker1[i][counter] = omcx;                                    
                                 }
                                 else{
                                     lastSpikedOMCTracker1[i][counter] = omcy;
@@ -265,8 +279,20 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                             }
                             operationRange = 4; // initialise to shorter range
                         }
-                        else{System.out.println("far "+(Math.abs((omcx-lastSpikedOMCTracker2[0][lastIndex])) < operationRange));
-                            operationRange = 4;
+                        else{
+                            if (rememberReset2){ // Start anywhere after reset
+                                for(int j = 0; j<getClusterSize()-1; j++){  
+                                    for(int i=0; i<2;i++){
+                                        if(i == 0){
+                                            lastSpikedOMCTracker2[i][j] = omcx;                                    
+                                        }
+                                        else{
+                                            lastSpikedOMCTracker2[i][j] = omcy;
+                                        }
+                                    }
+                                }
+                            rememberReset2 = false;
+                            }
                             if((Math.abs((omcx-lastSpikedOMCTracker2[0][lastIndex])) < operationRange) 
                                     && (Math.abs((omcy-lastSpikedOMCTracker2[1][lastIndex])) < operationRange)){ // Spatial correlation
                                 for(int i=0; i<2;i++){
@@ -410,6 +436,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         this.lastSpikedOMCTracker1 = new int [2][getClusterSize()];
         this.lastSpikedOMCTracker2 = new int [2][getClusterSize()];
         subunits = new Subunits();
+        rememberReset1 = true;
+        rememberReset2 = true;
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -1112,12 +1140,12 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                     nSpikesArray[omcx][omcy] = 0;
                 }
             }
-            for(int i=0;i<2;i++) {
-                for(int j=0;j<getClusterSize();j++) {
-                    lastSpikedOMCTracker1[i][j] = 0;
-                    lastSpikedOMCTracker2[i][j] = 0;
-                }
-            }
+//            for(int i=0;i<2;i++) {
+//                for(int j=0;j<getClusterSize();j++) {
+//                    lastSpikedOMCTracker1[i][j] = 0;
+//                    lastSpikedOMCTracker2[i][j] = 0;
+//                }
+//            }
             isiFilter.reset();
             initialized=false;
         }
