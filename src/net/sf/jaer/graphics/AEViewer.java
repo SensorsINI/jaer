@@ -174,9 +174,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     EVENT_TIMESTAMPS_RESET = "timestampsReset",
 
     /** PropertyChangeEvent fired from this AEViewer */
-    EVENT_CHECK_NONMONOTONIC_TIMESTAMPS = "checkNonMonotonicTimestamps";
+    EVENT_CHECK_NONMONOTONIC_TIMESTAMPS = "checkNonMonotonicTimestamps",
+            
+   /** PropertyChangeEvent fired when viewer event accumulation mode is changed */
+   EVENT_ACCUMULATE_ENABLED="accumulateEnabled";
 
-    public static String HELP_URL_USER_GUIDE = "http://jaerproject.net/";
+     
+     public static String HELP_URL_USER_GUIDE = "http://jaerproject.net/";
     public static String HELP_URL_HELP_FORUM = "https://sourceforge.net/projects/jaer/forums/forum/631958";
     public static String HELP_URL_JAVADOC_WEB = "http://jaer.sourceforge.net/javadoc";
     public static String HELP_URL_JAVADOC;
@@ -4164,7 +4168,9 @@ two interfaces). otherwise force user choice.
 	}//GEN-LAST:event_autoscaleContrastEnabledCheckBoxMenuItemActionPerformed
 
 	private void acccumulateImageEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_acccumulateImageEnabledCheckBoxMenuItemActionPerformed
-		getRenderer().setAccumulateEnabled(!getRenderer().isAccumulateEnabled());
+            boolean old=getRenderer().isAccumulateEnabled();
+            getRenderer().setAccumulateEnabled(!getRenderer().isAccumulateEnabled());
+                firePropertyChange(AEViewer.EVENT_ACCUMULATE_ENABLED, old, getRenderer().isAccumulateEnabled());
 	}//GEN-LAST:event_acccumulateImageEnabledCheckBoxMenuItemActionPerformed
 
 	private void zeroTimestampsMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zeroTimestampsMenuItemActionPerformed
