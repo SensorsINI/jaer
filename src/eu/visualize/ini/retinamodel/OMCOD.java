@@ -50,6 +50,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private int nymax;
     private boolean enableSpikeDraw;
     private int counter = 0;
+    private int operationRange = 0;
     private int lastIndex = 0;
     private float[][] inhibitionArray;
     private float[][] excitationArray;
@@ -108,6 +109,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         this.dtUSspikeArray = new int [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
         this.lastSpikedOMCTracker1 = new int [2][getClusterSize()];
         this.lastSpikedOMCTracker2 = new int [2][getClusterSize()];
+        operationRange = nxmax; // Include initially all the array
         chip.addObserver(this);
 //------------------------------------------------------------------------------
         setPropertyTooltip("showSubunits", "Enables showing subunit activity "
@@ -250,7 +252,11 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         else{
                             lastIndex = counter-1;
                         }
-                        if((Math.abs((omcx-lastSpikedOMCTracker1[0][lastIndex])) < 3) || (Math.abs((omcy-lastSpikedOMCTracker1[1][lastIndex])) < 3) ){ // Spatial correlation
+                        if((Math.abs((omcx-lastSpikedOMCTracker1[0][lastIndex])) < operationRange) 
+                                && (Math.abs((omcy-lastSpikedOMCTracker1[1][lastIndex])) < operationRange) 
+                                //&& (omcx != 0)
+                                //&& (omcy != 0)
+                                ){ // Spatial correlation
                             for(int i=0; i<2;i++){
                                 if(i == 0){
                                     lastSpikedOMCTracker1[i][counter] = omcx;
@@ -259,9 +265,14 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                                     lastSpikedOMCTracker1[i][counter] = omcy;
                                 }
                             }
+                            operationRange = 10; // initialise to shorter range
                         }
                         else{
-                            if((Math.abs((omcx-lastSpikedOMCTracker2[0][lastIndex])) < 3) || (Math.abs((omcy-lastSpikedOMCTracker2[1][lastIndex])) < 3) ){ // Spatial correlation
+                            if((Math.abs((omcx-lastSpikedOMCTracker2[0][lastIndex])) < operationRange) 
+                                    && (Math.abs((omcy-lastSpikedOMCTracker2[1][lastIndex])) < operationRange) 
+                                    //&& (omcx != 0)
+                                    //&& (omcy != 0)
+                                    ){ // Spatial correlation
                                 for(int i=0; i<2;i++){
                                     if(i == 0){
                                         lastSpikedOMCTracker2[i][counter] = omcx;
@@ -270,6 +281,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                                         lastSpikedOMCTracker2[i][counter] = omcy;
                                     }
                                 }
+                                operationRange = 10; // initialise to shorter range
                             }
                         }
                                                     
