@@ -50,6 +50,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private int nymax;
     private boolean enableSpikeDraw;
     private int counter = 0;
+    private int lastIndex = 0;
     private float[][] inhibitionArray;
     private float[][] excitationArray;
     private float[][] membraneStateArray;
@@ -220,12 +221,14 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             setShowYcoord(excludedEdgeSubunits);
         }
         if (showOutputCell && (nSpikesArray[getShowXcoord()][getShowYcoord()]!=0)) { // Show single output
+            gl.glPushMatrix();
             gl.glTranslatef((getShowXcoord()+1) << getSubunitSubsamplingBits(), (getShowYcoord()+1) << getSubunitSubsamplingBits(), 5);
             gl.glColor4f(1, 1, 1, .2f);
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
             float radius = (chip.getMaxSize() * OMCODModel.spikeRateHz) / maxSpikeRateHz / 2;
             glu.gluDisk(quad, 0, radius, 32, 1);
             OMCODModel.resetSpikeCount();
+            gl.glPopMatrix();
         }
         if(showOutputCell == false) { // Dispaly pink outputs
             for(int omcx=getExcludedEdgeSubunits();omcx<(nxmax-1-getExcludedEdgeSubunits());omcx++) {
@@ -237,15 +240,24 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         else {
                             counter = 0;
                         }
-                        for(int i=0; i<2;i++){
-                            if(i == 0){
-                                lastSpikedOMC[i][counter] = omcx;
-                            }
-                            else{
-                                lastSpikedOMC[i][counter] = omcy;
+                        if(counter == 0){
+                            lastIndex = getClusterSize()-1;
+                        }
+                        else{
+                            lastIndex = counter-1;
+                        }
+                        if((Math.abs((omcx-lastSpikedOMC[0][lastIndex])) < 3) || (Math.abs((omcy-lastSpikedOMC[1][lastIndex])) < 3) ){ // Spatial correlation
+                            for(int i=0; i<2;i++){
+                                if(i == 0){
+                                    lastSpikedOMC[i][counter] = omcx;
+                                }
+                                else{
+                                    lastSpikedOMC[i][counter] = omcy;
+                                }
                             }
                         }
                         
+                            
                         // Render tracker cluster
                         gl.glColor4f(184, 47, 243, .1f);
                         gl.glRectf(findClusterCorners()[0] << getSubunitSubsamplingBits(), findClusterCorners()[2] << getSubunitSubsamplingBits(), 
