@@ -132,6 +132,14 @@ public class SlotcarTrack implements java.io.Serializable {
         return new Point2D.Float(b.x - a.x, b.y - a.y);
     }
 
+    @Override
+    public String toString() {
+        String s=String.format("%s numVertices=%d totalLengthPixels=%.1f",super.toString(),getNumPoints(),getTrackLength());
+        return s; //To change body of generated methods, choose Tools | Templates.
+    }
+
+    
+    
     /**
      * Adds a Point2D2D to the end of the track
      */
