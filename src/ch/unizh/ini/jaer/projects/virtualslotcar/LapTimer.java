@@ -214,16 +214,21 @@ class LapTimer implements PropertyChangeListener {
         }
     }
 
-    // returns current lap, or null if none yet
-    Lap getLastLap() {
+    /** returns current lap, or null if none yet
+     * @return current lap, or null if none yet constructed
+    */
+    public Lap getCurrentLap() {
         if (laps.isEmpty()) {
             return null;
         }
         return laps.getLast();
     }
 
-    // returns last complete lap
-    Lap getPreviousLap() {
+    /** returns last complete lap
+     * 
+     * @return last complete lap
+     */
+    public Lap getPreviousLap() {
         if (laps.size() < 2) {
             return null;
         } else {

@@ -228,7 +228,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                     boolean lapped = lapTimer.update(currentTrackPos, car.getLastEventTimestamp());
 
                     if (lapped) {
-                        lapTime = lapTimer.getLastLap().laptimeUs;
+                        lapTime = lapTimer.getCurrentLap().laptimeUs;
                         int dt = lapTime - prevLapTime;
                         if (dt < 0) {
                             log.info("lap time improved by " + (dt / 1000) + " ms");

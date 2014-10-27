@@ -84,6 +84,8 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
 
     // logging
     private int lastTimestamp = 0;
+    private TobiLogger computerLapTimeLogger=null, humanLapTimeLogger=null;
+    
 
     /**
      * @return the onlyRunWhenHumanRunning
@@ -265,7 +267,9 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
             glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
         }
 
-    }
+        computerLapTimeLogger=new TobiLogger("SlotCarRacerLapTimesComputer","Computer HumanVsComputerThrottleController lap times");
+        humanLapTimeLogger=new TobiLogger("SlotCarRacerLapTimesHuman","Human HumanVsComputerThrottleController lap times");
+   }
 
     public void doLoadComputerTrackHistogramMask() {
         computerMask.doLoadHistogram();
@@ -326,10 +330,16 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         boolean computerCarCompletedLap = false, humanCarCompletedLap = false;
         if (humanCar != null) {
             humanCarCompletedLap = humanLapTimer.update(humanTrackPosition, humanCar.getLastEventTimestamp());
+            if(humanCarCompletedLap && isLoggingEnabled()&&humanLapTimer.getPreviousLap()!=null){
+                humanLapTimeLogger.log(String.format("HumanLap %d %s",humanLapTimer.lapCounter, humanLapTimer.getPreviousLap().toString()));
+            }
         }
         if (computerCar != null) {
             computerCarCompletedLap = computerLapTimer.update(computerTrackPosition, computerCar.getLastEventTimestamp());
-        }
+            if(computerCarCompletedLap && isLoggingEnabled() && computerLapTimer.getPreviousLap()!=null){
+                computerLapTimeLogger.log(String.format("ComputerLap %d %s",computerLapTimer.lapCounter, computerLapTimer.getPreviousLap().toString()));
+            }
+       }
         // choose state & copyFrom throttle
         if (state.get() == State.OVERRIDDEN) {
             //            throttle.throttle = getStartingThrottleValue();
@@ -496,7 +506,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
             return;
         }
         // did we lap?
-        lapTime = computerLapTimer.getLastLap().laptimeUs;
+        lapTime = computerLapTimer.getCurrentLap().laptimeUs;
         int dt = lapTime - prevLapTime;
         if (dt < 0) {
             log.info("lap time improved by " + (dt / 1000) + " ms");
@@ -1645,6 +1655,8 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     public void setLoggingEnabled(boolean loggingEnabled) {
         super.setLoggingEnabled(loggingEnabled);
         learningLogger.setEnabled(loggingEnabled);
+        computerLapTimeLogger.setEnabled(loggingEnabled);
+        humanLapTimeLogger.setEnabled(loggingEnabled);
     }
 
     /**
