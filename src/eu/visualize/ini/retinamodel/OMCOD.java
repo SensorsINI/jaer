@@ -265,20 +265,20 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                             }
                             operationRange = 4; // initialise to shorter range
                         }
-                        //else{System.out.println("far");
-                        //    if((Math.abs((omcx-lastSpikedOMCTracker2[0][lastIndex])) < operationRange) 
-                        //            && (Math.abs((omcy-lastSpikedOMCTracker2[1][lastIndex])) < operationRange)){ // Spatial correlation
-                        //        for(int i=0; i<2;i++){
-                        //            if(i == 0){
-                        //                lastSpikedOMCTracker2[i][counter] = omcx;
-                        //            }
-                        //            else{
-                        //                lastSpikedOMCTracker2[i][counter] = omcy;
-                        //            }
-                        //        }
-                        //        operationRange = 4; // initialise to shorter range
-                        //     }
-                        //}
+                        else{System.out.println("far "+(Math.abs((omcx-lastSpikedOMCTracker2[0][lastIndex])) < operationRange));
+                            operationRange = 4;
+                            if((Math.abs((omcx-lastSpikedOMCTracker2[0][lastIndex])) < operationRange) 
+                                    && (Math.abs((omcy-lastSpikedOMCTracker2[1][lastIndex])) < operationRange)){ // Spatial correlation
+                                for(int i=0; i<2;i++){
+                                    if(i == 0){
+                                        lastSpikedOMCTracker2[i][counter] = omcx;
+                                    }
+                                    else{
+                                        lastSpikedOMCTracker2[i][counter] = omcy;
+                                    }
+                                }
+                             }
+                        }
                                                     
                         // Render tracker cluster 1
                         gl.glPushMatrix();
@@ -572,22 +572,22 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             }
             for (int i = 0; i < getClusterSize(); i++) {
                 if (lastSpikedOMCTracker2[0][i] < minx2) {
-                    minx1 = lastSpikedOMCTracker2[0][i];
+                    minx2 = lastSpikedOMCTracker2[0][i];
                 }
             }
             for (int i = 0; i < getClusterSize(); i++) {
                 if (lastSpikedOMCTracker2[0][i] > maxx2) {
-                    maxx1 = lastSpikedOMCTracker2[0][i];
+                    maxx2 = lastSpikedOMCTracker2[0][i];
                 }
             }
             for (int i = 0; i < getClusterSize(); i++) {
                 if (lastSpikedOMCTracker2[1][i] < miny2) {
-                    miny1 = lastSpikedOMCTracker2[1][i];
+                    miny2 = lastSpikedOMCTracker2[1][i];
                 }
             }
             for (int i = 0; i < getClusterSize(); i++) {
                 if (lastSpikedOMCTracker2[1][i] > maxy2) {
-                    maxy1 = lastSpikedOMCTracker2[1][i];
+                    maxy2 = lastSpikedOMCTracker2[1][i];
                 }
             }
             corners[0] = minx1; 
