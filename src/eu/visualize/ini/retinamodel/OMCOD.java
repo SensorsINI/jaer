@@ -50,7 +50,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private int nymax;
     private boolean enableSpikeDraw;
     private int counter = 0;
-    private int operationRange = 0;
+    private int operationRange = 10;
     private int lastIndex = 0;
     private float[][] inhibitionArray;
     private float[][] excitationArray;
@@ -109,7 +109,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         this.dtUSspikeArray = new int [nxmax-2*getExcludedEdgeSubunits()][nymax-2*getExcludedEdgeSubunits()];
         this.lastSpikedOMCTracker1 = new int [2][getClusterSize()];
         this.lastSpikedOMCTracker2 = new int [2][getClusterSize()];
-        operationRange = nxmax; // Include initially all the array
+        operationRange = 10; // Include initially all the array
         chip.addObserver(this);
 //------------------------------------------------------------------------------
         setPropertyTooltip("showSubunits", "Enables showing subunit activity "
@@ -253,52 +253,51 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                             lastIndex = counter-1;
                         }
                         if((Math.abs((omcx-lastSpikedOMCTracker1[0][lastIndex])) < operationRange) 
-                                && (Math.abs((omcy-lastSpikedOMCTracker1[1][lastIndex])) < operationRange) 
-                                //&& (omcx != 0)
-                                //&& (omcy != 0)
-                                ){ // Spatial correlation
-                            for(int i=0; i<2;i++){
+                                && (Math.abs((omcy-lastSpikedOMCTracker1[1][lastIndex])) < operationRange)){ // Spatial correlation
+                            for(int i=0; i<2;i++){System.out.println("close");
                                 if(i == 0){
                                     lastSpikedOMCTracker1[i][counter] = omcx;
+                                    
                                 }
                                 else{
                                     lastSpikedOMCTracker1[i][counter] = omcy;
                                 }
                             }
-                            operationRange = 10; // initialise to shorter range
+                            operationRange = 4; // initialise to shorter range
                         }
-                        else{
-                            if((Math.abs((omcx-lastSpikedOMCTracker2[0][lastIndex])) < operationRange) 
-                                    && (Math.abs((omcy-lastSpikedOMCTracker2[1][lastIndex])) < operationRange) 
-                                    //&& (omcx != 0)
-                                    //&& (omcy != 0)
-                                    ){ // Spatial correlation
-                                for(int i=0; i<2;i++){
-                                    if(i == 0){
-                                        lastSpikedOMCTracker2[i][counter] = omcx;
-                                    }
-                                    else{
-                                        lastSpikedOMCTracker2[i][counter] = omcy;
-                                    }
-                                }
-                                operationRange = 10; // initialise to shorter range
-                            }
-                        }
+                        //else{System.out.println("far");
+                        //    if((Math.abs((omcx-lastSpikedOMCTracker2[0][lastIndex])) < operationRange) 
+                        //            && (Math.abs((omcy-lastSpikedOMCTracker2[1][lastIndex])) < operationRange)){ // Spatial correlation
+                        //        for(int i=0; i<2;i++){
+                        //            if(i == 0){
+                        //                lastSpikedOMCTracker2[i][counter] = omcx;
+                        //            }
+                        //            else{
+                        //                lastSpikedOMCTracker2[i][counter] = omcy;
+                        //            }
+                        //        }
+                        //        operationRange = 4; // initialise to shorter range
+                        //     }
+                        //}
                                                     
                         // Render tracker cluster 1
+                        gl.glPushMatrix();
                         gl.glColor4f(184, 47, 243, .1f);
                         gl.glRectf(findClusterCorners()[0] << getSubunitSubsamplingBits(), findClusterCorners()[2] << getSubunitSubsamplingBits(), 
                                 (findClusterCorners()[1]+2) << getSubunitSubsamplingBits(), (findClusterCorners()[3]+2) << getSubunitSubsamplingBits());
+                        gl.glPopMatrix();
                         
                         // Yellow contour 1
+                        gl.glPushMatrix();
                         gl.glColor3f(1.0f, 1.0f, 0.0f); 
-                        gl.glBegin(gl.GL_LINE_STRIP);
+                        gl.glBegin(GL2.GL_LINE_STRIP);
                         gl.glVertex2f(findClusterCorners()[0]<< getSubunitSubsamplingBits(), (findClusterCorners()[2])<< getSubunitSubsamplingBits());
                         gl.glVertex2f(findClusterCorners()[1]+2<< getSubunitSubsamplingBits(), (findClusterCorners()[2])<< getSubunitSubsamplingBits());
                         gl.glVertex2f(findClusterCorners()[1]+2<< getSubunitSubsamplingBits(), (findClusterCorners()[3]+2)<< getSubunitSubsamplingBits());
                         gl.glVertex2f(findClusterCorners()[0]<< getSubunitSubsamplingBits(), (findClusterCorners()[3]+2)<< getSubunitSubsamplingBits());
                         gl.glVertex2f(findClusterCorners()[0]<< getSubunitSubsamplingBits(), (findClusterCorners()[2])<< getSubunitSubsamplingBits());
                         gl.glEnd();
+                        gl.glPopMatrix();
                         
                         // Draw center of mass 1
                         gl.glPushMatrix();
@@ -311,11 +310,14 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         
                         if(showTracker2){
                             // Render tracker cluster 2
+                            gl.glPushMatrix();
                             gl.glColor4f(184, 47, 243, .1f);
                             gl.glRectf(findClusterCorners()[4] << getSubunitSubsamplingBits(), findClusterCorners()[6] << getSubunitSubsamplingBits(), 
                                     (findClusterCorners()[5]+2) << getSubunitSubsamplingBits(), (findClusterCorners()[7]+2) << getSubunitSubsamplingBits());
+                            gl.glPopMatrix();
                             
                             // Blue contour 2
+                            gl.glPushMatrix();
                             gl.glColor3f(0.0f, 0.0f, 1.0f); 
                             gl.glBegin(gl.GL_LINE_STRIP);
                             gl.glVertex2f(findClusterCorners()[4]<< getSubunitSubsamplingBits(), (findClusterCorners()[6])<< getSubunitSubsamplingBits());
@@ -324,6 +326,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                             gl.glVertex2f(findClusterCorners()[4]<< getSubunitSubsamplingBits(), (findClusterCorners()[7]+2)<< getSubunitSubsamplingBits());
                             gl.glVertex2f(findClusterCorners()[4]<< getSubunitSubsamplingBits(), (findClusterCorners()[6])<< getSubunitSubsamplingBits());
                             gl.glEnd();
+                            gl.glPopMatrix();
                             
                             // Draw center of mass 2
                             gl.glPushMatrix();
@@ -336,15 +339,19 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         }
                     
                         // Render all outputs
+                        gl.glPushMatrix();
                         gl.glColor4f(12, 0, 1, .3f);
                         gl.glRectf((omcx << getSubunitSubsamplingBits()), (omcy << getSubunitSubsamplingBits()), 
                                 (omcx+2 << getSubunitSubsamplingBits()), (omcy+2 << getSubunitSubsamplingBits()));
+                        gl.glPopMatrix();
                         
+                        gl.glPushMatrix();
                         renderer.begin3DRendering();
                         renderer.setColor(12, 0, 1, .3f);
                         renderer.draw3D("OMC( "+omcx+" , "+omcy+" )", -45, 60, 0, .4f);
                         renderer.end3DRendering();
                         enableSpikeDraw = false;
+                        gl.glPopMatrix();
                     }
                 }
             }
@@ -352,6 +359,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         }
         
         if (showSubunits) { // Show subunits
+            gl.glPushMatrix();
             gl.glColor4f(0, 1, 0, .3f);
             gl.glRectf(-10, 4, -5, 4+barsHeight*inhibitionArray[getShowXcoord()][getShowYcoord()]);
             gl.glColor4f(1, 0, 0, .3f);
@@ -373,6 +381,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             // render all the subunits now
             gridOn(drawable);
             subunits.render(gl);
+            gl.glPopMatrix();
         }
         gl.glPopMatrix();
     }
@@ -421,7 +430,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     public void gridOn(GLAutoDrawable drawable) {
         if(showQuadrants) {
             GL2 gl = drawable.getGL().getGL2();
-            gl.glPushMatrix();
             // Quadrants
             int divisionX = (int) (chip.getSizeX()>> getSubunitSubsamplingBits())/3;
             int divisionY = (int) (chip.getSizeY()>> getSubunitSubsamplingBits())/3;
