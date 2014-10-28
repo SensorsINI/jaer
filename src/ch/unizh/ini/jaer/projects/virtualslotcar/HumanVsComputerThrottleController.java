@@ -814,10 +814,12 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         computerCarTracker.setCarColor(Color.RED);
         humanCarTracker.setCarColor(Color.GREEN);
 
-        String s;
-        s = String.format("HumanVsComputerThrottleController\nDefine track with TrackDefineFilter and load that track here.\nState: %s\nLearning %s\ncomputer/human trackPosition: %d|%d/%d\nThrottle: %8.3f\nLast throttle reduction factor: %.2f\nComputer %s\nHuman %s\n%s\n%d laps remaining\nLast Winner: %s", state.toString(), learningEnabled ? "Enabled" : "Disabled", computerTrackPosition, humanTrackPosition, track == null ? 0 : getTrack().getNumPoints(), throttle.throttle, throttleReductionFactor,computerLapTimer.toString(), humanLapTimer.toString(), standings(),  raceLapsRemaining, winner.toString());
-        MultilineAnnotationTextRenderer.setScale(.25f);
-        MultilineAnnotationTextRenderer.renderMultilineString(s);
+        if (isTextEnabled()) {
+            String s;
+            s = String.format("HumanVsComputerThrottleController\nDefine track with TrackDefineFilter and load that track here.\nState: %s\nLearning %s\ncomputer/human trackPosition: %d|%d/%d\nThrottle: %8.3f\nLast throttle reduction factor: %.2f\nComputer %s\nHuman %s\n%s\n%d laps remaining\nLast Winner: %s", state.toString(), learningEnabled ? "Enabled" : "Disabled", computerTrackPosition, humanTrackPosition, track == null ? 0 : getTrack().getNumPoints(), throttle.throttle, throttleReductionFactor, computerLapTimer.toString(), humanLapTimer.toString(), standings(), raceLapsRemaining, winner.toString());
+            MultilineAnnotationTextRenderer.setScale(.25f);
+            MultilineAnnotationTextRenderer.renderMultilineString(s);
+        }
         if (showTrack && (track != null)) {
             track.draw(drawable);
         }

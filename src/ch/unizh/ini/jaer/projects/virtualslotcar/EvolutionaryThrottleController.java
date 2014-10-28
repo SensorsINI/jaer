@@ -521,20 +521,22 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     @Override
     public void annotate(GLAutoDrawable drawable) {
         String s=null;
-        if(getTrack()==null){
-            s="Null track";
-        }else{
-            s = String.format("EvolutionaryThrottleController\nMouse+Shift: Increase throttle\nMouse+Ctl: Decrease Throttle\nMouse+Alt: Add braking point\nMouse+Shfit+Alt: Remove braking point\nState: %s\nLearning %s\ncurrentTrackPos: %d/%d\nThrottle: %8.3f\n%s", state.toString(), learningEnabled ? "Enabled" : "Disabled", currentTrackPos, getTrack().getNumPoints(), throttle.throttle, lapTimer.toString());
-        }
-//       if(state.getString()==State.CRASHED){
-        //
-        //       }else if(state.getString()==State.RUNNING){
-        //
-        //       }else{
-        //       }
         chip.getCanvas().checkGLError(drawable.getGL().getGL2(), glu, "in TrackdefineFilter.drawThrottleProfile");
+        if (isTextEnabled()) {
+            if (getTrack() == null) {
+                s = "Null track";
+            } else {
+                s = String.format("EvolutionaryThrottleController\nMouse+Shift: Increase throttle\nMouse+Ctl: Decrease Throttle\nMouse+Alt: Add braking point\nMouse+Shfit+Alt: Remove braking point\nState: %s\nLearning %s\ncurrentTrackPos: %d/%d\nThrottle: %8.3f\n%s", state.toString(), learningEnabled ? "Enabled" : "Disabled", currentTrackPos, getTrack().getNumPoints(), throttle.throttle, lapTimer.toString());
+            }
+//       if(state.getString()==State.CRASHED){
+            //
+            //       }else if(state.getString()==State.RUNNING){
+            //
+            //       }else{
+            //       }
 
-        MultilineAnnotationTextRenderer.renderMultilineString(s);
+            MultilineAnnotationTextRenderer.renderMultilineString(s);
+        }
         if (showThrottleProfile) {
             drawThrottleProfile(drawable.getGL().getGL2());
         }

@@ -20,10 +20,12 @@ import net.sf.jaer.graphics.FrameAnnotater;
 abstract public class AbstractSlotCarController extends EventFilter2D implements FrameAnnotater{
 
     private boolean loggingEnabled=false;
+    private boolean textEnabled=getBoolean("textEnabled", true);
 
     public AbstractSlotCarController(AEChip chip) {
         super(chip);
         setPropertyTooltip("loggingEnabled","enables logging of state of this controller to log file in startup folder");
+        setPropertyTooltip("textEnabled","enables rendering of laptimer and other text annotation");
     }
 
 
@@ -88,6 +90,20 @@ abstract public class AbstractSlotCarController extends EventFilter2D implements
         boolean old=this.loggingEnabled;
         this.loggingEnabled = loggingEnabled;
         getSupport().firePropertyChange("loggingEnabled",old, loggingEnabled);
+    }
+
+    /**
+     * @return the textEnabled
+     */
+    public boolean isTextEnabled() {
+        return textEnabled;
+    }
+
+    /**
+     * @param textEnabled the textEnabled to set
+     */
+    public void setTextEnabled(boolean textEnabled) {
+        this.textEnabled = textEnabled;
     }
 
 }
