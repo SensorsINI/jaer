@@ -118,6 +118,9 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
         int index = 0;
         for (Object o : in) {
             BasicEvent e = (BasicEvent) o;
+            if (e.isSpecial()) {
+                continue;
+            }
             xs[index] = e.x;
             ys[index] = e.y;
             index++;
