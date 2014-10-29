@@ -46,7 +46,7 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
 	int spikeList = 1;
 	GLUT glut = null;
 	GLU glu = null;
-	final boolean useCubeEnabled = false; // true is too false or uses GPU improperly
+	final boolean useCubeEnabled = true; // true is too false or uses GPU improperly
 
 	// TODO it doesn't make sense to redraw all data for each mouse drag transform change. All we should have to do is to change the projection matrix.
 
@@ -74,7 +74,7 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
 					spikeList = gl.glGenLists(1);
 					gl.glNewList(spikeList, GL2.GL_COMPILE);
 					{
-						gl.glScalef(1, 1, .1f);
+						gl.glScalef(1, 1, 1); // tobi make it a unit cube so we can see it from the side
 						glut.glutSolidCube(1);
 						spikeListCreated=true;
 						//            gl.glRectf(.5f,.5f, .5f,.5f);
