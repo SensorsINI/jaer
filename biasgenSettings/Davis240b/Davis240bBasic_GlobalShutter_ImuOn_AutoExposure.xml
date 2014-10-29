@@ -204,7 +204,7 @@
                 <entry key="AEChip.subSamplingEnabled" value="false"/>
                 <entry key="useDVSExtrapolation" value="false"/>
                 <entry key="CPLDInt.pad" value="0"/>
-                <entry key="FilterFrame.lastFilterSelected" value="class org.capocaccia.cne.jaer.cne2012.vor.Steadicam"/>
+                <entry key="FilterFrame.lastFilterSelected" value="class ch.unizh.ini.jaer.projects.virtualslotcar.SlotCarRacer"/>
                 <entry key="XYTypeFilter.startX" value="134"/>
                 <entry key="XYTypeFilter.xEnabled" value="true"/>
                 <entry key="XYTypeFilter.endX" value="139"/>
@@ -277,7 +277,7 @@
                 <entry key="DAViS240.globalShutter" value="true"/>
                 <entry key="Steadicam.positionComputer" value="VORSensor"/>
                 <entry key="Steadicam.cornerFreqHz" value="0.1"/>
-                <entry key="Steadicam.filterEnabled" value="true"/>
+                <entry key="Steadicam.filterEnabled" value="false"/>
                 <entry key="Steadicam.panTiltEnabled" value="false"/>
                 <entry key="RectangularClusterTracker.thresholdVelocityForVisibleCluster" value="0.0"/>
                 <entry key="RectangularClusterTracker.filterEventsEnabled" value="false"/>
@@ -335,7 +335,7 @@
                 <entry key="MultiLineClusterTracker.mixingFactorRho" value="0.0110249985"/>
                 <entry key="MultiLineClusterTracker.minDistanceNormalized" value="0.01812906"/>
                 <entry key="DAViS240.showImageHistogram" value="false"/>
-                <entry key="CPLDInt.exposure" value="14561"/>
+                <entry key="CPLDInt.exposure" value="1414"/>
                 <entry key="ApsFrameExtractor.logCompress" value="false"/>
                 <entry key="ApsFrameExtractor.deltaBufferSize" value="1000.0"/>
                 <entry key="ApsFrameExtractor.displayBrightness" value="0.0"/>
