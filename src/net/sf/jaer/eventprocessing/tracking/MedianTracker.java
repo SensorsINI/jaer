@@ -106,15 +106,12 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
     @Override
     public EventPacket filterPacket(EventPacket in) {
         int n = in.getSize();
-        if (n == 0) {
-            return in;
-        }
 
         lastts = in.getLastTimestamp();
         dt = lastts - prevlastts;
         prevlastts = lastts;
 
-        int[] xs = new int[n], ys = new int[n];
+        int[] xs = new int[n], ys = new int[n];// big enough for all events, including IMU and APS events if there are those too
         int index = 0;
         for (Object o : in) {
             BasicEvent e = (BasicEvent) o;
@@ -125,25 +122,28 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
             ys[index] = e.y;
             index++;
         }
-        Arrays.sort(xs, 0, n - 1);
-        Arrays.sort(ys, 0, n - 1);
+        if(index==0)  { // got no actual events
+            return in;
+        }
+        Arrays.sort(xs, 0, index); // only sort up to index because that's all we saved
+        Arrays.sort(ys, 0, index);
         float x, y;
-        if (n % 2 != 0) { // odd number points, take middle one, e.g. n=3, take element 1
-            x = xs[n / 2];
-            y = ys[n / 2];
+        if (index % 2 != 0) { // odd number points, take middle one, e.g. n=3, take element 1
+            x = xs[index / 2];
+            y = ys[index / 2];
         } else { // even num events, take avg around middle one, eg n=4, take avg of elements 1,2
-            x = (float) (((float) xs[n / 2 - 1] + xs[n / 2]) / 2f);
-            y = (float) (((float) ys[n / 2 - 1] + ys[n / 2]) / 2f);
+            x = (float) (((float) xs[index / 2 - 1] + xs[index / 2]) / 2f);
+            y = (float) (((float) ys[index / 2 - 1] + ys[index / 2]) / 2f);
         }
         xmedian = xFilter.filter(x, lastts);
         ymedian = yFilter.filter(y, lastts);
         int xsum = 0, ysum = 0;
-        for (int i = 0; i < n; i++) {
+        for (int i = 0; i < index; i++) {
             xsum += xs[i];
             ysum += ys[i];
         }
-        xmean = xMeanFilter.filter(xsum / n, lastts);
-        ymean = yMeanFilter.filter(ysum / n, lastts);
+        xmean = xMeanFilter.filter(xsum / index, lastts);
+        ymean = yMeanFilter.filter(ysum / index, lastts);
 
         float xvar = 0, yvar = 0;
         float tmp;
@@ -156,8 +156,8 @@ public class MedianTracker extends EventFilter2D implements FrameAnnotater {
             tmp *= tmp;
             yvar += tmp;
         }
-        xvar /= n;
-        yvar /= n;
+        xvar /= index;
+        yvar /= index;
 
         xstd = xStdFilter.filter((float) Math.sqrt(xvar), lastts);
         ystd = yStdFilter.filter((float) Math.sqrt(yvar), lastts);
