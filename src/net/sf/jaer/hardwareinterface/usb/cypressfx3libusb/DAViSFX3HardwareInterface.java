@@ -10,6 +10,7 @@ import java.beans.PropertyChangeListener;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
+import java.util.Arrays;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -75,7 +76,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	 */
 	public class RetinaAEReader extends CypressFX3.AEReader implements PropertyChangeListener {
 		private int currentTimestamp, lastTimestamp, wrapAdd;
-		private int dvsTimestamp, imuTimestamp, extTriggerTimestamp;
+		private int dvsTimestamp, imuTimestamp, extTriggerTimestamp, apsADCTimestamp;
 		private short lastY;
 		private short misc8Data;
 		private boolean gotY;
@@ -83,6 +84,13 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private boolean gotClusterEvent;
 		private boolean gotBGAFevent;
 		private boolean gotOMCevent;
+
+		private static final int APS_NUM_READOUT_TYPES = 2;
+		private static final int APS_READOUT_TYPE_RESET = 0;
+		private static final int APS_READOUT_TYPE_SIGNAL = 1;
+		private int apsCurrentReadoutType;
+		private int[] apsCountX;
+		private int[] apsCountY;
 
 		private static final int IMU_DATA_LENGTH = 7;
 		private final short[] currImuSample;
@@ -92,6 +100,15 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 			super(cypress);
 
 			currImuSample = new short[RetinaAEReader.IMU_DATA_LENGTH];
+			apsCountX = new int[APS_NUM_READOUT_TYPES];
+			apsCountY = new int[APS_NUM_READOUT_TYPES];
+
+			resetFrameAddressCounters();
+		}
+
+		private void resetFrameAddressCounters() {
+			Arrays.fill(apsCountX, 0, APS_NUM_READOUT_TYPES, 0);
+			Arrays.fill(apsCountY, 0, APS_NUM_READOUT_TYPES, 0);
 		}
 
 		@Override
@@ -155,6 +172,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 											currentTimestamp = 0;
 											lastTimestamp = 0;
 											dvsTimestamp = 0;
+											apsADCTimestamp = 0;
 											imuTimestamp = 0;
 											extTriggerTimestamp = 0;
 
@@ -192,6 +210,97 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 											eventCounter += imuSample.writeToPacket(buffer, eventCounter);
 											break;
 
+										case 8: // APS frame start
+											CypressFX3.log.info("APS: got frame start event.");
+
+											resetFrameAddressCounters();
+											apsADCTimestamp = currentTimestamp;
+
+											break;
+
+										case 9: // APS frame end
+											CypressFX3.log.info("APS: got frame end event.");
+
+											if (apsCountX[APS_READOUT_TYPE_SIGNAL] < chip.getSizeX()) {
+												// Incomplete frame, missed
+												// some columns.
+												CypressFX3.log.severe("APS: incomplete frame.");
+											}
+
+											break;
+
+										case 10: // APS reset column start
+											CypressFX3.log.info("APS: got reset column start event.");
+
+											apsCurrentReadoutType = APS_READOUT_TYPE_RESET;
+
+											CypressFX3.log.info("APS: countY is " + apsCountY[apsCurrentReadoutType]);
+											CypressFX3.log.info("APS: countX is " + apsCountX[apsCurrentReadoutType]);
+
+											if (apsCountY[apsCurrentReadoutType] != 0) {
+												// Missed ENDCOL event for last
+												// column.
+												apsCountY[apsCurrentReadoutType] = 0;
+
+												CypressFX3.log.severe("APS: missed last reset end column event.");
+											}
+
+											break;
+
+										case 11: // APS signal column start
+											CypressFX3.log.info("APS: got signal column start event.");
+
+											apsCurrentReadoutType = APS_READOUT_TYPE_SIGNAL;
+
+											CypressFX3.log.info("APS: countY is " + apsCountY[apsCurrentReadoutType]);
+											CypressFX3.log.info("APS: countX is " + apsCountX[apsCurrentReadoutType]);
+
+											if (apsCountY[apsCurrentReadoutType] != 0) {
+												// Missed ENDCOL event for last
+												// column.
+												apsCountY[apsCurrentReadoutType] = 0;
+
+												CypressFX3.log.severe("APS: missed last signal end column event.");
+											}
+
+											break;
+
+										case 12: // APS end column
+											CypressFX3.log.info("APS: got column end event.");
+											CypressFX3.log.info("APS: countY is " + apsCountY[apsCurrentReadoutType]);
+											CypressFX3.log.info("APS: countX is " + apsCountX[apsCurrentReadoutType]);
+
+											if (apsCountY[apsCurrentReadoutType] < chip.getSizeY()) {
+												// Incomplete column, missed
+												// some row samples.
+												CypressFX3.log.severe("APS: incomplete column.");
+											}
+
+											// Reset row count to zero, and jump
+											// to next column.
+											apsCountY[apsCurrentReadoutType] = 0;
+											apsCountX[apsCurrentReadoutType]++;
+											break;
+
+										case 13: // APS ADC overflow
+											int apsXAddr = chip.getSizeX() - 1 - apsCountX[apsCurrentReadoutType];
+											int apsYAddr = chip.getSizeY() - 1 - apsCountY[apsCurrentReadoutType];
+
+											CypressFX3.log.info("APS: got overflow, countY is " + apsCountY[apsCurrentReadoutType]);
+
+											apsCountY[apsCurrentReadoutType]++;
+
+											addresses[eventCounter] = ApsDvsChip.ADDRESS_TYPE_APS
+												| ((apsYAddr << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
+												| ((apsXAddr << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
+												| ((apsCurrentReadoutType << ApsDvsChip.ADC_READCYCLE_SHIFT) & ApsDvsChip.ADC_READCYCLE_MASK)
+												| (0xFFFF & ApsDvsChip.ADC_DATA_MASK);
+											timestamps[eventCounter++] = apsADCTimestamp;
+
+											CypressFX3.log.severe("APS: ADC overflow detected.");
+
+											break;
+
 										default:
 											CypressFX3.log.severe("Caught special event that can't be handled.");
 											break;
@@ -221,7 +330,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										| ((((gotBGAFevent ? ApsDvsChip.HW_BGAF : 0) & 0x7) << 8) | misc8Data)
 										| ((((gotCMevent ? ApsDvsChip.HW_TRACKER_CM : 0) & 0x07) << 8) | misc8Data)
 										| ((((gotClusterEvent ? ApsDvsChip.HW_TRACKER_CLUSTER : 0) & 0x07) << 8) | misc8Data)
-										| ((((gotOMCevent ? ApsDvsChip.HW_OMC_EVENT : 0) & 0x07) << 8) | misc8Data); // OMC event add 3 bits with code of event type and 8 bits of misc event (fill in the 11 empty bits)
+										| ((((gotOMCevent ? ApsDvsChip.HW_OMC_EVENT : 0) & 0x07) << 8) | misc8Data);
+									// OMC event: add 3 bits with code of event
+									// type and 8 bits of misc. event
+									// (fill in the 11 unused bits)
 									timestamps[eventCounter++] = dvsTimestamp;
 
 									gotY = false;
@@ -230,6 +342,23 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									gotClusterEvent = false;
 									gotOMCevent = false;
 									misc8Data = 0;
+
+									break;
+
+								case 4: // APS ADC sample
+									int apsXAddr = chip.getSizeX() - 1 - apsCountX[apsCurrentReadoutType];
+									int apsYAddr = chip.getSizeY() - 1 - apsCountY[apsCurrentReadoutType];
+
+									CypressFX3.log.info("APS: got sample, countY is " + apsCountY[apsCurrentReadoutType]);
+
+									apsCountY[apsCurrentReadoutType]++;
+
+									addresses[eventCounter] = ApsDvsChip.ADDRESS_TYPE_APS
+										| ((apsYAddr << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
+										| ((apsXAddr << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
+										| ((apsCurrentReadoutType << ApsDvsChip.ADC_READCYCLE_SHIFT) & ApsDvsChip.ADC_READCYCLE_MASK)
+										| (data & ApsDvsChip.ADC_DATA_MASK);
+									timestamps[eventCounter++] = apsADCTimestamp;
 
 									break;
 

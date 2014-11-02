@@ -763,6 +763,24 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		configBytes[0] = 0x00;
 		configBytes[1] = 0x00;
 		configBytes[2] = 0x00;
+		configBytes[3] = 0x01; // Global shutter.
+		sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, (short) 0x02, (short) 2, configBytes);
+
+		configBytes[0] = 0x00;
+		configBytes[1] = 0x00;
+		configBytes[2] = 0x00;
+		configBytes[3] = 0x01; // Wait on transfer stall.
+		sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, (short) 0x02, (short) 14, configBytes);
+
+		configBytes[0] = 0x00;
+		configBytes[1] = 0x00;
+		configBytes[2] = 0x00;
+		configBytes[3] = 0x00; // Disabled for now.
+		sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, (short) 0x02, (short) 0x00, configBytes);
+
+		configBytes[0] = 0x00;
+		configBytes[1] = 0x00;
+		configBytes[2] = 0x00;
 		configBytes[3] = 0x01;
 		sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, (short) 0x03, (short) 0x00, configBytes);
 
@@ -783,6 +801,12 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			configBytes[2] = 0x00;
 			configBytes[3] = 0x00;
 			sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, (short) 0x03, (short) 0x00, configBytes);
+
+			configBytes[0] = 0x00;
+			configBytes[1] = 0x00;
+			configBytes[2] = 0x00;
+			configBytes[3] = 0x00;
+			sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, (short) 0x02, (short) 0x00, configBytes);
 
 			configBytes[0] = 0x00;
 			configBytes[1] = 0x00;
