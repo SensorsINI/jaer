@@ -23,13 +23,15 @@ import org.ine.telluride.jaer.tell2011.head6axis.Head6DOF_ServoController;
  */
 public class PanTilt_robothead6DOF {
 
-    private PanTiltThread_robothead6DOF panTiltThread = null;
+    public PanTiltThread_robothead6DOF panTiltThread = null;
     private static final Logger log = Logger.getLogger("PanTilt_robothead6DOF");
     private ArrayBlockingQueue blockingQ;
     private ArrayBlockingQueue blockingQForITDFilter;
     public Head6DOF_ServoController headControl = null;
+    public ITDFilter_robothead6DOF iTDFilter;
 
     public void initPanTilt(ITDFilter_robothead6DOF ITDFilter) {
+        iTDFilter = ITDFilter;
         headControl = ITDFilter.headControl;
         if (panTiltThread == null) {
             panTiltThread = new PanTiltThread_robothead6DOF(this);

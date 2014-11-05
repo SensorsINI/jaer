@@ -55,6 +55,7 @@ import org.ine.telluride.jaer.tell2011.head6axis.Head6DOF_ServoController;
  * @author Holger
  * see original at ch.unizh.ini.jaer.projects.cochsoundloc
  *
+ * changes for the use with the 6DOF robot head from Jörg Conradt
  * @editor Philipp
  */
 @Description("Measures ITD (Interaural time difference) using a variety of methods")
@@ -155,6 +156,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
     private boolean ConfidenceRising = true;
     FilterChain filterChain = null;
     public Head6DOF_ServoController headControl = null;
+    public ITDImageCreator ITDImageCreator;
 
     private String USAGE = "Need at least 2 arguments: itdfilter <command> <args>\nCommands are: saveitd, saveitdandreset, stopsaveitd, savefreqbins <filename>, stopsavefreqbins, savebin <filename>, stopsavebin, resetbins, savebinnow <filename>, zerotimestamps\n";
 
@@ -559,16 +561,19 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
                                     ITDEventQueue = new ArrayBlockingQueue(itdEventQueueSize);
                                 }
                                 ITDEvent itdEvent = new ITDEvent(diff, i.timestamp, i.x, lastWeight);
-                                boolean success = ITDEventQueue.offer(bestITD);
-                                if (success == false) {
+                                if (itdEvent.getChannel() < 38) {      //frequency selective movement of the head, set to 0 for no selectivity
+                                    boolean success = ITDEventQueue.offer(bestITD);
+                                    if (success == false) {
 //                                   ITDEventQueue.clear();
-                                    ITDEventQueue.take();
+                                        ITDEventQueue.take();
 //                                    ITDEventQueueFull = true;
 //                                    log.warning("Could not add ITD-Event to the ITDEventQueue. Probably itdEventQueueSize is too small!!!");
-                                } else {
-                                    ITDEventQueueFull = false;
-                                    //log.info("added ITD Event: " + Integer.toString(itdEvent.getITD()) + " on channel: " + Integer.toString(i.x));
+                                    } else {
+                                        ITDEventQueueFull = false;
+                                        //log.info("added ITD Event: " + Integer.toString(itdEvent.getITD()) + " on channel: " + Integer.toString(i.x));
+                                    }
                                 }
+
                             }
 
                             if (isBeamFormingEnabled()) {
@@ -674,6 +679,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
                 avgITDtemp = myBins.getITDMax();
         }
         avgITDConfidence = myBins.getITDConfidence();
+        bestITD = avgITDtemp;  //set new best ITD without checking for confidence
 
         if (ConfidenceRising) {
             if (avgITDConfidence > ConfidenceRecentMax) {
@@ -1020,10 +1026,11 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
         frame.binsPanel.maxActivity = 0f;
     }
 
-    public void doConnectToPanTiltThread() {
+    public void doConnectToPanTiltThread(ITDImageCreator creator) {  //has to be called from a ITDImageCreator filter
         if(headControl.isConnected() == true){
         panTilt = PanTilt_robothead6DOF.findExistingPanTiltThread(chip.getAeViewer());
         if (panTilt == null) {
+            ITDImageCreator = creator;
             panTilt = new PanTilt_robothead6DOF();
             panTilt.initPanTilt(this);
         }
@@ -1032,7 +1039,7 @@ public class ITDFilter_robothead6DOF extends EventFilter2D implements Observer, 
             log.info("not connected to robothead");
         }
     }
-    
+        
     public void doDisconnectFromPanTiltThread() {
         if(panTilt != null){
             connectToPanTiltThread = false;

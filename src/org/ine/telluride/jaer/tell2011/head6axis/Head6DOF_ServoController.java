@@ -73,7 +73,7 @@ public class Head6DOF_ServoController extends EventFilter2D { // extends EventFi
     private float vergenceOffset = getFloat("vergenceOffset", 0);
     public final float VERGENCE_LIMIT = .18f;   // .2f for tobi's version
     public final float EYE_PAN_LIMIT = .35f, EYE_TILT_LIMIT = .225f, HEAD_PAN_LIMIT = .9f, HEAD_TILT_LIMIT = .5f;   // .4f .3f .25f .25f for tobi's version
-    private float lensFocalLengthMm = getFloat("lensFocalLengthMm", 4.5f);
+    public float lensFocalLengthMm = getFloat("lensFocalLengthMm", 8f);
     private float servoRangeDeg = getFloat("servoRangeDeg", 160);
     ServoCommandWriter servoCommandWriter = null; // this worker thread asynchronously writes to device
     private volatile ArrayBlockingQueue<String> servoQueue; // this queue is used for holding servo commands that must be sent out.
