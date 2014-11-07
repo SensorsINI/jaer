@@ -58,6 +58,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.ApsDvsChip;
 import eu.seebetter.ini.chips.DAViS.IMUSample.IncompleteIMUSampleException;
+import java.awt.Insets;
 
 /**
  * <p>
@@ -555,6 +556,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 
         @Override
         public void display(GLAutoDrawable drawable) {
+            getCanvas().setBorderSpacePixels(50);
             if (exposureRenderer == null) {
                 exposureRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, FONTSIZE), true, true);
                 exposureRenderer.setColor(1, 1, 1, 1);
@@ -604,39 +606,8 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
             final float trans = .7f;
             float x, y;
 
-            //acceleration x,y
-            x = (vectorScale * imuSample.getAccelX() * HEIGHT) / IMUSample.getFullScaleAccelG() / 2;
-            y = (vectorScale * imuSample.getAccelY() * HEIGHT) / IMUSample.getFullScaleAccelG() / 2;
-            gl.glColor3f(0, 1, 0);
-            gl.glBegin(GL.GL_LINES);
-            gl.glVertex2f(0, 0);
-            gl.glVertex2f(x, y);
-            gl.glEnd();
-            imuTextRenderer.begin3DRendering();
-            imuTextRenderer.setColor(0, 1, 0, trans);
-            imuTextRenderer.draw3D(String.format("%.2f,%.2f g", imuSample.getAccelX(), imuSample.getAccelY()), x, y, 0, textScale); // x,y,z, scale factor
-            imuTextRenderer.end3DRendering();
-
-            // acceleration z, drawn as circle
-            if (glu == null) {
-                glu = new GLU();
-            }
-            if (accelCircle == null) {
-                accelCircle = glu.gluNewQuadric();
-            }
-            final float az = ((vectorScale * imuSample.getAccelZ() * HEIGHT) / 2) / IMUSample.getFullScaleAccelG() / 2;
-            final float rim = .5f;
-            glu.gluQuadricDrawStyle(accelCircle, GLU.GLU_FILL);
-            glu.gluDisk(accelCircle, az - rim, az + rim, 16, 1);
-            imuTextRenderer.begin3DRendering();
-            imuTextRenderer.setColor(0, 1, 0, trans);
-            final String saz = String.format("%.2f g", imuSample.getAccelZ());
-            Rectangle2D rect = imuTextRenderer.getBounds(saz);
-            imuTextRenderer.draw3D(saz, az, -(float) rect.getHeight() * textScale * 0.5f, 0, textScale); // x,y,z, scale factor
-            imuTextRenderer.end3DRendering();
-
             // gyro pan/tilt
-            gl.glColor3f(.3f, 0, 1);
+            gl.glColor3f(1f, 0, 1);
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(0, 0);
             x = (vectorScale * imuSample.getGyroYawY() * HEIGHT) / IMUSample.getFullScaleGyroDegPerSec();
@@ -645,7 +616,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
             gl.glEnd();
 
             imuTextRenderer.begin3DRendering();
-            imuTextRenderer.setColor(.3f, 0, 1, trans);
+            imuTextRenderer.setColor(1f, 0, 1, trans);
             imuTextRenderer.draw3D(String.format("%.2f,%.2f dps", imuSample.getGyroYawY() + 5, imuSample.getGyroTiltX()), x, y, 0, textScale); // x,y,z, scale factor
             imuTextRenderer.end3DRendering();
 
@@ -660,6 +631,39 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
             imuTextRenderer.draw3D(String.format("%.2f dps", imuSample.getGyroRollZ()), x, y, 0, textScale); // x,y,z, scale factor
             imuTextRenderer.end3DRendering();
 
+            
+            //acceleration x,y
+            x = (vectorScale * imuSample.getAccelX() * HEIGHT) / IMUSample.getFullScaleAccelG();
+            y = (vectorScale * imuSample.getAccelY() * HEIGHT) / IMUSample.getFullScaleAccelG();
+            gl.glColor3f(0, 1, 0);
+            gl.glBegin(GL.GL_LINES);
+            gl.glVertex2f(0, 0);
+            gl.glVertex2f(x, y);
+            gl.glEnd();
+            imuTextRenderer.begin3DRendering();
+            imuTextRenderer.setColor(0, .5f, 0, trans);
+            imuTextRenderer.draw3D(String.format("%.2f,%.2f g", imuSample.getAccelX(), imuSample.getAccelY()), x, y, 0, textScale); // x,y,z, scale factor
+            imuTextRenderer.end3DRendering();
+
+            // acceleration z, drawn as circle
+            if (glu == null) {
+                glu = new GLU();
+            }
+            if (accelCircle == null) {
+                accelCircle = glu.gluNewQuadric();
+            }
+            final float az = ((vectorScale * imuSample.getAccelZ() * HEIGHT)) / IMUSample.getFullScaleAccelG();
+            final float rim = .5f;
+            glu.gluQuadricDrawStyle(accelCircle, GLU.GLU_FILL);
+            glu.gluDisk(accelCircle, az - rim, az + rim, 16, 1);
+            imuTextRenderer.begin3DRendering();
+            imuTextRenderer.setColor(0, .5f, 0, trans);
+            final String saz = String.format("%.2f g", imuSample.getAccelZ());
+            Rectangle2D rect = imuTextRenderer.getBounds(saz);
+            imuTextRenderer.draw3D(saz, az, -(float) rect.getHeight() * textScale * 0.5f, 0, textScale); // x,y,z, scale factor
+            imuTextRenderer.end3DRendering();
+
+            
 // color annotation to show what is being rendered
             imuTextRenderer.begin3DRendering();
 //            imuTextRenderer.setColor(1,0,0, trans);
