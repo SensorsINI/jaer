@@ -132,7 +132,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 	/** border in screen pixels when in 3d space-time rendering mode */
 	protected final int BORDER3D = 70;
 	/** Insets of the drawn chip canvas in the window */
-	protected Insets insets = new Insets(borderSpacePixels, borderSpacePixels, borderSpacePixels, borderSpacePixels);
+	private Insets insets = new Insets(borderSpacePixels, borderSpacePixels, borderSpacePixels, borderSpacePixels);
 	private boolean fillsHorizontally = false, fillsVertically = false; // filled in in the reshape method to show how
 																		// chip fills drawable space
 	private double ZCLIP = 1;
@@ -1453,4 +1453,22 @@ public class ChipCanvas implements GLEventListener, Observer {
 		// TODO Auto-generated method stub
 
 	}
+
+//    /**
+//     * Returns the insets in pixels for the chip canvas inside the GLCanvas
+//     * @return the insets
+//     */
+//    public Insets getInsets() {
+//        return insets;
+//    }
+//
+//    /**
+//     * Allows setting the insets for the canvas inside the GLCanvas
+//     * 
+//     * 
+//     * @param insets the insets to set, in pixels
+//     */
+//    public void setInsets(Insets insets) {
+//        this.insets = insets;
+//    }
 }
