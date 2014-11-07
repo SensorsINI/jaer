@@ -96,10 +96,26 @@ public class DavisFx3MiscEventsRenderer extends EventFilter2D implements FrameAn
 			}
                         else if (((e.address & 0x7ff) >> 8) == ApsDvsChip.HW_OMC_EVENT) {
 				if (isShowOMCevent()) {
-                                        if ((e.address & 0x1) == 1) { // Look  at first bit (if Object Motion Cell fires)
+                                        if ((e.address & 0x1) == 1) { // Look  at 1st bit (if Object Motion Cell 1 fires)
                                             gl.glColor3f(0, 0, 1);
-                                            gl.glRectf(e.x - 2, e.y - 2, e.x + 2, e.y + 2);
-                                         }
+                                            gl.glRectf(0, 0, chip.getSizeX()/2, chip.getSizeY()/2);
+                                        }
+                                        if ((e.address & 0x2) == 1) { // Look  at 2nd bit (if Object Motion Cell 2 fires)
+                                            gl.glColor3f(0, 0, 1);
+                                            gl.glRectf(chip.getSizeX()/2, 0, chip.getSizeX(), chip.getSizeY()/2);
+                                        }
+                                        if ((e.address & 0x3) == 1) { // Look  at 3rd bit (if Object Motion Cell 3 fires)
+                                            gl.glColor3f(0, 0, 1);
+                                            gl.glRectf(0, chip.getSizeY()/2, chip.getSizeX()/2, chip.getSizeY());
+                                        }
+                                        if ((e.address & 0x4) == 1) { // Look  at 4th bit (if Object Motion Cell 4 fires)
+                                            gl.glColor3f(0, 0, 1);
+                                            gl.glRectf(chip.getSizeX()/2, chip.getSizeY()/2, chip.getSizeX(), chip.getSizeY());
+                                        }
+                                        if ((e.address & 0x5) == 1) { // Look  at 5th bit (if Object Motion Cell 5 fires)
+                                            gl.glColor3f(0, 1, 0);
+                                            gl.glRectf(chip.getSizeX()/4, chip.getSizeY()/4, 3*chip.getSizeX()/4, 3*chip.getSizeY()/4);
+                                        }
                                 }
 			}
 			else {
