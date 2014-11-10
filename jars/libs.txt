@@ -6,7 +6,7 @@ JavaCV - 0.7 - https://github.com/bytedeco/
 javax.comm (comm) - ??? - http://www.oracle.com/technetwork/java/index-jsp-141752.html
 javax.mail - 1.5.0 - https://java.net/projects/javamail/
 jlfgr (Java Look&Feel Graphics Repository) - 1.0 - http://www.oracle.com/technetwork/java/index-138612.html
-JOGL - 2.2.1 - https://jogamp.org/jogl/
+JOGL - 2.2.4 - https://jogamp.org/jogl/
 nrjavaserial - 3.9.3 - https://github.com/NeuronRobotics/nrjavaserial/
 phidget21 - 2.1.8.20130618 - http://www.phidgets.com/docs/Language_-_Java
 svgSalamander-tiny - downloaded on 2013-07-13 - https://svgsalamander.java.net/
