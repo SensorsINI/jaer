@@ -58,7 +58,6 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.ApsDvsChip;
 import eu.seebetter.ini.chips.DAViS.IMUSample.IncompleteIMUSampleException;
-import java.awt.Insets;
 
 /**
  * <p>
@@ -617,7 +616,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 
             imuTextRenderer.begin3DRendering();
             imuTextRenderer.setColor(1f, 0, 1, trans);
-            imuTextRenderer.draw3D(String.format("%.2f,%.2f dps", imuSample.getGyroYawY() + 5, imuSample.getGyroTiltX()), x, y, 0, textScale); // x,y,z, scale factor
+            imuTextRenderer.draw3D(String.format("%.2f,%.2f dps", imuSample.getGyroYawY(), imuSample.getGyroTiltX()), x, y + 5, 0, textScale); // x,y,z, scale factor
             imuTextRenderer.end3DRendering();
 
             // gyro roll
@@ -631,7 +630,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
             imuTextRenderer.draw3D(String.format("%.2f dps", imuSample.getGyroRollZ()), x, y, 0, textScale); // x,y,z, scale factor
             imuTextRenderer.end3DRendering();
 
-            
+
             //acceleration x,y
             x = (vectorScale * imuSample.getAccelX() * HEIGHT) / IMUSample.getFullScaleAccelG();
             y = (vectorScale * imuSample.getAccelY() * HEIGHT) / IMUSample.getFullScaleAccelG();
@@ -663,7 +662,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
             imuTextRenderer.draw3D(saz, az, -(float) rect.getHeight() * textScale * 0.5f, 0, textScale); // x,y,z, scale factor
             imuTextRenderer.end3DRendering();
 
-            
+
 // color annotation to show what is being rendered
             imuTextRenderer.begin3DRendering();
 //            imuTextRenderer.setColor(1,0,0, trans);
