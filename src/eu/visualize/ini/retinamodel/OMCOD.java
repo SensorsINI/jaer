@@ -81,7 +81,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private int excludedEdgeSubunits = getInt("excludedEdgeSubunits", 0);
     private int showXcoord = getInt("showXcoord", 1);
     private int showYcoord = getInt("showYcoord", 1);
-    private int tanhSaturation = getInt("tanhSaturation", 1);
+    private int Saturation = getInt("Saturation", 1);
     private boolean exponentialToTanh = getBoolean("exponentialToTanh", false);
     private boolean showQuadrants = getBoolean("showQuadrants", true);
     private boolean showTracker2 = getBoolean("showTracker2", true);
@@ -156,7 +156,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 + "the inhibition and excitation are out of range");
         setPropertyTooltip("excludedEdgeSubunits", "Set the number of subunits "
                 + "excluded from computation at the edge");
-        setPropertyTooltip("tanhSaturation", "Set the maximum contribution of "
+        setPropertyTooltip("Saturation", "Set the maximum contribution of "
                 + "a single subunit, where it saturates");
         setPropertyTooltip("exponentialToTanh", "Switch from exponential "
                 + "non-linearity to exponential tangent");
@@ -782,13 +782,15 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                             if(!exponentialToTanh){// Use non-linear model (given the nonlinearity order)
                                 if (((x != omcx) && (y != omcy)) || ((x != omcx+1) && (y != omcy+1)) 
                                         || ((x != omcx) && (y != omcy+1)) || ((x != omcx+1) && (y != omcy))) {
-                                    inhibitionArray[omcx][omcy] += (float) Math.pow(subunits[x][y].computeInputToCell(),nonLinearityOrder);
+                                    if(inhibitionArray[omcx][omcy] < Saturation){
+                                        inhibitionArray[omcx][omcy] += (float) Math.pow(subunits[x][y].computeInputToCell(),nonLinearityOrder);
+                                    }
                                 }
                             }
                             else{ // Use tanh model (given saturation value): preferred method
                                 if (((x != omcx) && (y != omcy)) || ((x != omcx+1) && (y != omcy+1)) 
                                         || ((x != omcx) && (y != omcy+1)) || ((x != omcx+1) && (y != omcy))) {
-                                    inhibitionArray[omcx][omcy] += tanhSaturation*Math.tanh(subunits[x][y].computeInputToCell());
+                                    inhibitionArray[omcx][omcy] += Saturation*Math.tanh(subunits[x][y].computeInputToCell());
                                 }                               
                             }
 //------------------------------------------------------------------------------
@@ -837,19 +839,21 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                     // Select computation type
                     if(!exponentialToTanh){// Use non-linear model (given the nonlinearity order)
                     // Average of 4 central cells
-                        excitationArray[omcx][omcy] = (float)
-                                ((centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[omcx][omcy].computeInputToCell(),nonLinearityOrder))+
-                        (centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[omcx+1][omcy+1].computeInputToCell(),nonLinearityOrder))+
-                        (centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[omcx+1][omcy].computeInputToCell(),nonLinearityOrder))+
-                        (centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[omcx][omcy+1].computeInputToCell(),nonLinearityOrder)))/4;
+                        if(excitationArray[omcx][omcy] < Saturation){
+                            excitationArray[omcx][omcy] = (float)
+                                    ((centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[omcx][omcy].computeInputToCell(),nonLinearityOrder))+
+                            (centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[omcx+1][omcy+1].computeInputToCell(),nonLinearityOrder))+
+                            (centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[omcx+1][omcy].computeInputToCell(),nonLinearityOrder))+
+                            (centerExcitationToSurroundInhibitionRatio*Math.pow(synapticWeight * subunits[omcx][omcy+1].computeInputToCell(),nonLinearityOrder)))/4;
+                        }
                     } // Ignore surround
                     else{ // Use tanh model (given saturation value): preferred method
                         // Average of 4 central cells
                         excitationArray[omcx][omcy] = (float)
-                                ((tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[omcx][omcy].computeInputToCell()))) + 
-                        (tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[omcx+1][omcy+1].computeInputToCell()))) + 
-                        (tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[omcx+1][omcy].computeInputToCell()))) + 
-                        (tanhSaturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[omcx][omcy+1].computeInputToCell())))) / 4;
+                                ((Saturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[omcx][omcy].computeInputToCell()))) + 
+                        (Saturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[omcx+1][omcy+1].computeInputToCell()))) + 
+                        (Saturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[omcx+1][omcy].computeInputToCell()))) + 
+                        (Saturation*Math.tanh((centerExcitationToSurroundInhibitionRatio * synapticWeight * subunits[omcx][omcy+1].computeInputToCell())))) / 4;
                     } // Ignore surround            
 //------------------------------------------------------------------------------
                     // Log excitationArray
@@ -1318,14 +1322,14 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         putFloat("focalLengthM", focalLengthM);
     }    
 //------------------------------------------------------------------------------    
-    // @return the tanhSaturation
-    public int getTanhSaturation() {
-        return tanhSaturation;
+    // @return the Saturation
+    public int getSaturation() {
+        return Saturation;
     }
-    // @param tanhSaturation the tanhSaturation to set
-    public void setTanhSaturation(int tanhSaturation) {
-        this.tanhSaturation = tanhSaturation;
-        putInt("tanhSaturation", tanhSaturation);
+    // @param Saturation the Saturation to set
+    public void setSaturation(int Saturation) {
+        this.Saturation = Saturation;
+        putInt("Saturation", Saturation);
     }
 //------------------------------------------------------------------------------
     // @return the deleteLogging
