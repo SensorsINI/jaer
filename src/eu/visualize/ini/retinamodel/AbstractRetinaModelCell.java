@@ -53,15 +53,15 @@ public abstract class AbstractRetinaModelCell extends EventFilter2D implements F
 	public AbstractRetinaModelCell(AEChip chip) {
 		super(chip);
 		chip.addObserver(this);
-		setPropertyTooltip("showSubunits", "Enables showing subunit activity annotation over retina output");
-		setPropertyTooltip("subunitSubsamplingBits",
+		setPropertyTooltip("-showSubunits", "Enables showing subunit activity annotation over retina output");
+		setPropertyTooltip("-subunitSubsamplingBits",
 			"Each subunit integrates events from 2^n by 2^n pixels, where n=subunitSubsamplingBits");
 		setPropertyTooltip("subunitDecayTimeconstantMs", "Subunit activity decays with this time constant in ms");
-		setPropertyTooltip("enableSpikeSound", "Enables audio spike output from approach cell");
-		setPropertyTooltip("maxSpikeRateHz", "Maximum spike rate of approach cell in Hz for Poisson firing model");
-		setPropertyTooltip("minUpdateIntervalUs",
+		setPropertyTooltip("-enableSpikeSound", "Enables audio spike output from approach cell");
+		setPropertyTooltip("-maxSpikeRateHz", "Maximum spike rate of approach cell in Hz for Poisson firing model");
+		setPropertyTooltip("-minUpdateIntervalUs",
 			"subunits activities are decayed to zero at least this often in us, even if they receive no input");
-		setPropertyTooltip("poissonFiringEnabled",
+		setPropertyTooltip("-poissonFiringEnabled",
 			"The ganglion cell fires according to Poisson rate model for net synaptic input");
 	}
 

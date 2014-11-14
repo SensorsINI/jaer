@@ -116,64 +116,64 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         operationRange = 10; // Include initially all the array
         chip.addObserver(this);
 //------------------------------------------------------------------------------
-        setPropertyTooltip("showSubunits", "Enables showing subunit activity "
+        setPropertyTooltip("-showSubunits", "Enables showing subunit activity "
                 + "annotation over retina output");
-        setPropertyTooltip("showOutputCell", "Enables showing object motion cell "
+        setPropertyTooltip("-showOutputCell", "Enables showing object motion cell "
                 + "activity annotation over retina output");
-        setPropertyTooltip("subunitSubsamplingBits", "Each subunit integrates "
+        setPropertyTooltip("-subunitSubsamplingBits", "Each subunit integrates "
                 + "events from 2^n by 2^n pixels, where n=subunitSubsamplingBits");
-        setPropertyTooltip("synapticWeight", "Subunit activity inputs to the "
+        setPropertyTooltip("-synapticWeight", "Subunit activity inputs to the "
                 + "objectMotion neuron are weighted this much; use to adjust "
                 + "response magnitude");
         setPropertyTooltip("subunitDecayTimeconstantMs", "Subunit activity "
                 + "decays with this time constant in ms");
-        setPropertyTooltip("enableSpikeSound", "Enables audio spike output from "
+        setPropertyTooltip("-enableSpikeSound", "Enables audio spike output from "
                 + "objectMotion cell");
-        setPropertyTooltip("maxSpikeRateHz", "Maximum spike rate of objectMotion "
+        setPropertyTooltip("-maxSpikeRateHz", "Maximum spike rate of objectMotion "
                 + "cell in Hz");
-        setPropertyTooltip("centerExcitationToSurroundInhibitionRatio", 
+        setPropertyTooltip("-centerExcitationToSurroundInhibitionRatio", 
                 "Inhibitory ON subunits are weighted by factor more than "
                         + "excitatory OFF subunit activity to the object motion "
                         + "cell");
-        setPropertyTooltip("minUpdateIntervalUs", "subunits activities are "
+        setPropertyTooltip("-minUpdateIntervalUs", "subunits activities are "
                 + "decayed to zero at least this often in us, even if they "
                 + "receive no input");
-        setPropertyTooltip("surroundSuppressionEnabled", "subunits are "
+        setPropertyTooltip("-surroundSuppressionEnabled", "subunits are "
                 + "suppressed by surrounding activity of same type; reduces "
                 + "response to global dimming");
-        setPropertyTooltip("subunitActivityBlobRadiusScale", "The blobs "
+        setPropertyTooltip("-subunitActivityBlobRadiusScale", "The blobs "
                 + "represeting subunit activation are scaled by this factor");
         setPropertyTooltip("integrateAndFireThreshold", "The ganglion cell will "
                 + "fire if the difference between excitation and inhibition "
                 + "overcomes this threshold");
-        setPropertyTooltip("poissonFiringEnabled", "The ganglion cell fires "
+        setPropertyTooltip("-poissonFiringEnabled", "The ganglion cell fires "
                 + "according to Poisson rate model for net synaptic input");
-        setPropertyTooltip("nonLinearityOrder", "The non-linear order of the "
+        setPropertyTooltip("-nonLinearityOrder", "The non-linear order of the "
                 + "subunits' value before the total sum");
-        setPropertyTooltip("startLogging", "Start logging inhibition and "
+        setPropertyTooltip("-startLogging", "Start logging inhibition and "
                 + "excitation");
-        setPropertyTooltip("deleteLogging", "Delete the logging of inhibition "
+        setPropertyTooltip("-deleteLogging", "Delete the logging of inhibition "
                 + "and excitation");
-        setPropertyTooltip("barsHeight", "set the magnitute of cen and sur if "
+        setPropertyTooltip("-barsHeight", "set the magnitute of cen and sur if "
                 + "the inhibition and excitation are out of range");
-        setPropertyTooltip("excludedEdgeSubunits", "Set the number of subunits "
+        setPropertyTooltip("-excludedEdgeSubunits", "Set the number of subunits "
                 + "excluded from computation at the edge");
         setPropertyTooltip("Saturation", "Set the maximum contribution of "
                 + "a single subunit, where it saturates");
-        setPropertyTooltip("exponentialToTanh", "Switch from exponential "
+        setPropertyTooltip("-exponentialToTanh", "Switch from exponential "
                 + "non-linearity to exponential tangent");
-        setPropertyTooltip("showXcoord", "decide which Object Motion Cell to "
+        setPropertyTooltip("-showXcoord", "decide which Object Motion Cell to "
                 + "show by selecting the X coordinate of the center");
-        setPropertyTooltip("showYcoord", "decide which Object Motion Cell to "
+        setPropertyTooltip("-showYcoord", "decide which Object Motion Cell to "
                 + "show by selecting the Y coordinate of the center");
-        setPropertyTooltip("clusterSize", "decide how many Object Motion Cells' "
+        setPropertyTooltip("-clusterSize", "decide how many Object Motion Cells' "
                 + "outputs to integrate to get an envelope of the prey");
-        setPropertyTooltip("showQuadrants", "show the quadrants of motion");
-        setPropertyTooltip("showTracker1", "show tracker 1");
-        setPropertyTooltip("showTracker2", "show tracker 2");
-        setPropertyTooltip("objectRealWidthXM", "Object's to be followed real "
+        setPropertyTooltip("-showQuadrants", "show the quadrants of motion");
+        setPropertyTooltip("-showTracker1", "show tracker 1");
+        setPropertyTooltip("-showTracker2", "show tracker 2");
+        setPropertyTooltip("-objectRealWidthXM", "Object's to be followed real "
                 + "width in meters");
-        setPropertyTooltip("focalLengthM", "Lenses' focal length in meters");
+        setPropertyTooltip("-focalLengthM", "Lenses' focal length in meters");
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
