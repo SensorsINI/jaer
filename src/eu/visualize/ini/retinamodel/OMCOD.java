@@ -20,6 +20,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter;
+import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
 //-- end packages ------------------------------------------------------------//
 //****************************************************************************//
 
@@ -85,6 +86,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private boolean exponentialToTanh = getBoolean("exponentialToTanh", false);
     private boolean showQuadrants = getBoolean("showQuadrants", true);
     private boolean showTracker2 = getBoolean("showTracker2", true);
+    private boolean showTracker1 = getBoolean("showTracker1", true);
     private int clusterSize = getInt("clusterSize", 10);
     private float focalLengthM = getFloat("focalLengthM", 0.001f);
     private float objectRealWidthXM = getFloat("objectRealWidthXM", 0.5f);
@@ -167,6 +169,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         setPropertyTooltip("clusterSize", "decide how many Object Motion Cells' "
                 + "outputs to integrate to get an envelope of the prey");
         setPropertyTooltip("showQuadrants", "show the quadrants of motion");
+        setPropertyTooltip("showTracker1", "show tracker 1");
         setPropertyTooltip("showTracker2", "show tracker 2");
         setPropertyTooltip("objectRealWidthXM", "Object's to be followed real "
                 + "width in meters");
@@ -228,7 +231,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             setShowXcoord(excludedEdgeSubunits);
             setShowYcoord(excludedEdgeSubunits);
         }
-        if (showOutputCell && (nSpikesArray[getShowXcoord()][getShowYcoord()]!=0)) { // Show single output
+        if (showOutputCell == false && (nSpikesArray[getShowXcoord()][getShowYcoord()]!=0)) { // Show single output
             gl.glPushMatrix();
             gl.glTranslatef((getShowXcoord()+1) << getSubunitSubsamplingBits(), (getShowYcoord()+1) << getSubunitSubsamplingBits(), 5);
             gl.glColor4f(1, 1, 1, .2f);
@@ -238,7 +241,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             OMCODModel.resetSpikeCount();
             gl.glPopMatrix();
         }
-        if(showOutputCell == false) { // Dispaly pink outputs
+        if(showOutputCell) { // Dispaly pink outputs
             for(int omcx=getExcludedEdgeSubunits();omcx<(nxmax-1-getExcludedEdgeSubunits());omcx++) {
                 for(int omcy=getExcludedEdgeSubunits();omcy<(nymax-1-getExcludedEdgeSubunits());omcy++) {
                     if (enableSpikeDraw && nSpikesArray[omcx][omcy]!=0) {
@@ -305,34 +308,36 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                                 }
                              }
                         }
-                                                    
-                        // Render tracker cluster 1
-                        gl.glPushMatrix();
-                        gl.glColor4f(184, 47, 243, .1f);
-                        gl.glRectf(findClusterCorners()[0] << getSubunitSubsamplingBits(), findClusterCorners()[2] << getSubunitSubsamplingBits(), 
-                                (findClusterCorners()[1]+2) << getSubunitSubsamplingBits(), (findClusterCorners()[3]+2) << getSubunitSubsamplingBits());
-                        gl.glPopMatrix();
                         
-                        // Yellow contour 1
-                        gl.glPushMatrix();
-                        gl.glColor3f(1.0f, 1.0f, 0.0f); 
-                        gl.glBegin(GL2.GL_LINE_STRIP);
-                        gl.glVertex2f(findClusterCorners()[0]<< getSubunitSubsamplingBits(), (findClusterCorners()[2])<< getSubunitSubsamplingBits());
-                        gl.glVertex2f(findClusterCorners()[1]+2<< getSubunitSubsamplingBits(), (findClusterCorners()[2])<< getSubunitSubsamplingBits());
-                        gl.glVertex2f(findClusterCorners()[1]+2<< getSubunitSubsamplingBits(), (findClusterCorners()[3]+2)<< getSubunitSubsamplingBits());
-                        gl.glVertex2f(findClusterCorners()[0]<< getSubunitSubsamplingBits(), (findClusterCorners()[3]+2)<< getSubunitSubsamplingBits());
-                        gl.glVertex2f(findClusterCorners()[0]<< getSubunitSubsamplingBits(), (findClusterCorners()[2])<< getSubunitSubsamplingBits());
-                        gl.glEnd();
-                        gl.glPopMatrix();
-                        
-                        // Draw center of mass 1
-                        gl.glPushMatrix();
-                        gl.glTranslatef((findCenterOfMass(findClusterCorners())[0]+1) << getSubunitSubsamplingBits(), 
-                                (findCenterOfMass(findClusterCorners())[1]+1) << getSubunitSubsamplingBits(), 5); 
-                        gl.glColor4f(0, 0, 1, .4f);
-                        glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
-                        glu.gluDisk(quad, 0, 3, 32, 1);
-                        gl.glPopMatrix();
+                        if(showTracker1){
+                            // Render tracker cluster 1
+                            gl.glPushMatrix();
+                            gl.glColor4f(184, 47, 243, .1f);
+                            gl.glRectf(findClusterCorners()[0] << getSubunitSubsamplingBits(), findClusterCorners()[2] << getSubunitSubsamplingBits(), 
+                                    (findClusterCorners()[1]+2) << getSubunitSubsamplingBits(), (findClusterCorners()[3]+2) << getSubunitSubsamplingBits());
+                            gl.glPopMatrix();
+
+                            // Yellow contour 1
+                            gl.glPushMatrix();
+                            gl.glColor3f(1.0f, 1.0f, 0.0f); 
+                            gl.glBegin(GL2.GL_LINE_STRIP);
+                            gl.glVertex2f(findClusterCorners()[0]<< getSubunitSubsamplingBits(), (findClusterCorners()[2])<< getSubunitSubsamplingBits());
+                            gl.glVertex2f(findClusterCorners()[1]+2<< getSubunitSubsamplingBits(), (findClusterCorners()[2])<< getSubunitSubsamplingBits());
+                            gl.glVertex2f(findClusterCorners()[1]+2<< getSubunitSubsamplingBits(), (findClusterCorners()[3]+2)<< getSubunitSubsamplingBits());
+                            gl.glVertex2f(findClusterCorners()[0]<< getSubunitSubsamplingBits(), (findClusterCorners()[3]+2)<< getSubunitSubsamplingBits());
+                            gl.glVertex2f(findClusterCorners()[0]<< getSubunitSubsamplingBits(), (findClusterCorners()[2])<< getSubunitSubsamplingBits());
+                            gl.glEnd();
+                            gl.glPopMatrix();
+
+                            // Draw center of mass 1
+                            gl.glPushMatrix();
+                            gl.glTranslatef((findCenterOfMass(findClusterCorners())[0]+1) << getSubunitSubsamplingBits(), 
+                                    (findCenterOfMass(findClusterCorners())[1]+1) << getSubunitSubsamplingBits(), 5); 
+                            gl.glColor4f(0, 0, 1, .4f);
+                            glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
+                            glu.gluDisk(quad, 0, 3, 32, 1);
+                            gl.glPopMatrix();
+                        }
                         
                         if(showTracker2){
                             // Render tracker cluster 2
@@ -1381,6 +1386,16 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     public void setShowTracker2(boolean showTracker2) {
         this.showTracker2 = showTracker2;
         putBoolean("showTracker2", showTracker2);
+    }    
+//------------------------------------------------------------------------------
+    // @return the showTracker1
+    public boolean isShowTracker1() {
+        return showTracker1;
+    }
+    // @param showTracker1 the showTracker1 to set
+    public void setShowTracker1(boolean showTracker1) {
+        this.showTracker1 = showTracker1;
+        putBoolean("showTracker1", showTracker1);
     }    
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
