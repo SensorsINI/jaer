@@ -46,6 +46,7 @@ import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
 //----------------------------------------------------------------------------//
 public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Observer {
     private final OMCODModel OMCODModel = new OMCODModel();
+    private EventRateEstimator eventRateFilter;
     private Subunits subunits;
     private int nxmax;
     private int nymax;
@@ -74,7 +75,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private float centerExcitationToSurroundInhibitionRatio = getFloat("centerExcitationToSurroundInhibitionRatio", 0.3f);
     private boolean surroundSuppressionEnabled = getBoolean("surroundSuppressionEnabled", false);
     private float subunitActivityBlobRadiusScale = getFloat("subunitActivityBlobRadiusScale", 0.0012f);
-    private float integrateAndFireThreshold = getFloat("integrateAndFireThreshold", 1f);
+    private float integrateAndFireThreshold = getFloat("integrateAndFireThreshold", 100f);
+    private float increaseInThreshold = getFloat("increaseInThreshold", 10f);
     private float nonLinearityOrder = getFloat("nonLinearityOrder", 2f);
     private boolean startLogging = getBoolean("startLogging", false);
     private boolean deleteLogging = getBoolean("deleteLogging", false);
@@ -90,6 +92,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private int clusterSize = getInt("clusterSize", 10);
     private float focalLengthM = getFloat("focalLengthM", 0.001f);
     private float objectRealWidthXM = getFloat("objectRealWidthXM", 0.5f);
+    private float eventRateTauMs = getFloat("eventRateTauMs", 100);
 //------------------------------------------------------------------------------
     
 //----------------------------------------------------------------------------//
@@ -114,6 +117,9 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         this.lastSpikedOMCTracker1 = new int [2][getClusterSize()];
         this.lastSpikedOMCTracker2 = new int [2][getClusterSize()];
         operationRange = 10; // Include initially all the array
+        
+        eventRateFilter = new EventRateEstimator(chip);
+	eventRateFilter.setEventRateTauMs(eventRateTauMs);
         chip.addObserver(this);
 //------------------------------------------------------------------------------
         setPropertyTooltip("-showSubunits", "Enables showing subunit activity "
@@ -146,6 +152,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         setPropertyTooltip("integrateAndFireThreshold", "The ganglion cell will "
                 + "fire if the difference between excitation and inhibition "
                 + "overcomes this threshold");
+        setPropertyTooltip("increaseInThreshold","increase in threshold of "
+                + "OMC neuron depending on activity");
         setPropertyTooltip("-poissonFiringEnabled", "The ganglion cell fires "
                 + "according to Poisson rate model for net synaptic input");
         setPropertyTooltip("-nonLinearityOrder", "The non-linear order of the "
@@ -174,6 +182,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         setPropertyTooltip("-objectRealWidthXM", "Object's to be followed real "
                 + "width in meters");
         setPropertyTooltip("-focalLengthM", "Lenses' focal length in meters");
+        setPropertyTooltip("eventRateTauMs","Tau of lowpass of event rate");
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -198,6 +207,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         }
         for (Object o : in) {
             PolarityEvent e = (PolarityEvent) o;
+            eventRateFilter.filterPacket(in);
             if (e.special) {
                 continue;
             }
@@ -402,6 +412,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             renderer.draw3D("cen", -20, 0, 0, .4f);
             renderer.setColor(1, 1, 0, .3f);
             renderer.draw3D("OMCshow( "+getShowXcoord()+" , "+getShowYcoord()+" )", -55, 30, 0, .4f); // x y width height
+            renderer.setColor(1, 1, 0, .3f);
+            renderer.draw3D("Average Event Rate: "+eventRateFilter.getFilteredEventRate()+" Ev/s", -55, 70, 0, .4f); // x y width height
             renderer.setColor(1, 1, 0, .3f);
             directions(findCenterOfMass(findClusterCorners()));
             renderer.draw3D("Direction: "+direction, -55, 50, 0, .4f); // x y width height
@@ -1075,6 +1087,12 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                     } 
                     else { // IF neuron
                         membraneStateArray[omcx][omcy] += netSynapticInputArray[omcx][omcy] * dtUSarray[omcx][omcy] * 1e-6f;
+                        if(eventRateFilter.getFilteredEventRate()> 100000){
+                            setIntegrateAndFireThreshold(integrateAndFireThreshold+increaseInThreshold);
+                        }
+                        else{
+                            setIntegrateAndFireThreshold(integrateAndFireThreshold);
+                        }
                         if (membraneStateArray[omcx][omcy] > integrateAndFireThreshold) {
                             spike(timeStampArray[omcx][omcy], omcx, omcy);
                             membraneStateArray[omcx][omcy] = 0;
@@ -1230,6 +1248,16 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         this.integrateAndFireThreshold = integrateAndFireThreshold;
         putFloat("integrateAndFireThreshold", integrateAndFireThreshold);
     }
+//------------------------------------------------------------------------------
+    // @return the increaseInThreshold
+    public float getIncreaseInThreshold() {
+        return increaseInThreshold;
+    }
+    // @param increaseInThreshold the increaseInThreshold to set
+    public void setIncreaseInThreshold(float increaseInThreshold) {
+        this.increaseInThreshold = increaseInThreshold;
+        putFloat("increaseInThreshold", increaseInThreshold);
+    }    
 //------------------------------------------------------------------------------
     // @return the showXcoord
     public int getShowXcoord() {
@@ -1396,6 +1424,16 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     public void setShowTracker1(boolean showTracker1) {
         this.showTracker1 = showTracker1;
         putBoolean("showTracker1", showTracker1);
+    }    
+//------------------------------------------------------------------------------
+    // @return the eventRateTauMs
+    public float getEventRateTauMs() {
+        return eventRateTauMs;
+    }
+    // @param showTracker1 the eventRateTauMs to set
+    public void setEventRateTauMs(float eventRateTauMs) {
+        this.eventRateTauMs = eventRateTauMs;
+        putFloat("eventRateTauMs", eventRateTauMs);
     }    
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
