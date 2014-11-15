@@ -18,26 +18,41 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  * Enables filtering out of either DVS or APS events from ApsDvsEventPacket
  * @author tobi
  */
-@Description("Enables filtering out of either DVS or APS events from ApsDvsEventPacket")
+@Description("Enables filtering out of either DVS or APS events from ApsDvsEventPacket and also filtering out of transient events caused by frame capture")
 public class ApsDvsEventFilter extends EventFilter2D {
 
     private boolean filterDVSEvents=getBoolean("filterDVSEvents",false);
     private boolean filterAPSEvents=getBoolean("filterAPSEvents",false);
+    private boolean filterFrameTransientEvents=getBoolean("filterFrameTransientEvents",true);
+    private int filterFrameTransientEventsTimeUs=getInt("filterFrameTransientEventsTimeUs",1000);
+    private int lastFrameStartTimestamp=0;
     
     public ApsDvsEventFilter(AEChip chip) {
         super(chip);
+        setPropertyTooltip("filterFrameTransientEventsTimeUs", "Events within this time in us after end-of-frame are filtered out");
+        setPropertyTooltip("filterFrameTransientEvents", "Filter out events caused by global shutter in DAVIS240b");
+        setPropertyTooltip("filterAPSEvents", "Filter out APS intensity samples");
+        setPropertyTooltip("filterDVSEvents", "Filter out DVS events");
     }
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if(!(in instanceof ApsDvsEventPacket) || (!filterAPSEvents && !filterDVSEvents)) return in;
+        if(!(in instanceof ApsDvsEventPacket) || (!filterAPSEvents && !filterDVSEvents && !filterFrameTransientEvents)) return in;
         ApsDvsEventPacket apsDvsEventPacket=(ApsDvsEventPacket)in;
         Iterator fullIterator=apsDvsEventPacket.fullIterator();
         checkOutputPacketEventType(in);
         OutputEventIterator outItr=out.outputIterator();
-        while(fullIterator.hasNext()){
-            ApsDvsEvent event=(ApsDvsEvent)fullIterator.next();
-            if((filterAPSEvents && event.isSampleEvent()) || (filterDVSEvents && !event.isSampleEvent())) continue;
+        while (fullIterator.hasNext()) {
+            ApsDvsEvent event = (ApsDvsEvent) fullIterator.next();
+            if (event.isEndOfFrame()) {
+                lastFrameStartTimestamp = event.getTimestamp();
+            }
+            if(filterFrameTransientEvents && event.getTimestamp()-lastFrameStartTimestamp<filterFrameTransientEventsTimeUs){
+                continue;
+            }
+            if ((filterAPSEvents && event.isSampleEvent()) || (filterDVSEvents && !event.isSampleEvent())) {
+                continue;
+            }
             outItr.nextOutput().copyFrom(event);
         }
         return out;
@@ -81,6 +96,36 @@ public class ApsDvsEventFilter extends EventFilter2D {
     public void setFilterAPSEvents(boolean filterAPSEvents) {
         this.filterAPSEvents = filterAPSEvents;
         putBoolean("filterAPSEvents",filterAPSEvents);
+    }
+
+    /**
+     * @return the filterFrameTransientEvents
+     */
+    public boolean isFilterFrameTransientEvents() {
+        return filterFrameTransientEvents;
+    }
+
+    /**
+     * @param filterFrameTransientEvents the filterFrameTransientEvents to set
+     */
+    public void setFilterFrameTransientEvents(boolean filterFrameTransientEvents) {
+        this.filterFrameTransientEvents = filterFrameTransientEvents;
+        putBoolean("filterFrameTransientEvents",filterFrameTransientEvents);
+    }
+
+    /**
+     * @return the filterFrameTransientEventsTimeUs
+     */
+    public int getFilterFrameTransientEventsTimeUs() {
+        return filterFrameTransientEventsTimeUs;
+    }
+
+    /**
+     * @param filterFrameTransientEventsTimeUs the filterFrameTransientEventsTimeUs to set
+     */
+    public void setFilterFrameTransientEventsTimeUs(int filterFrameTransientEventsTimeUs) {
+        this.filterFrameTransientEventsTimeUs = filterFrameTransientEventsTimeUs;
+        putInt("filterFrameTransientEventsTimeUs",filterFrameTransientEventsTimeUs);
     }
     
 }
