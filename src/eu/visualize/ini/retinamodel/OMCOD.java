@@ -381,7 +381,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                     
                         // Render all outputs
                         gl.glPushMatrix();
-                        gl.glColor4f(12, 0, 1, .3f);
+                        //gl.glColor4f(12, 0, 1, .3f); // pink
+                        gl.glColor4f(1, 0, 0, 1f); // red
                         gl.glRectf((omcx << getSubunitSubsamplingBits()), (omcy << getSubunitSubsamplingBits()), 
                                 (omcx+2 << getSubunitSubsamplingBits()), (omcy+2 << getSubunitSubsamplingBits()));
                         gl.glPopMatrix();
@@ -897,10 +898,10 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             else{ // Use tanh model (given saturation value): preferred method
                 // Average of 4 central cells
                 excitationArray[omcx][omcy] = (float)
-                        ((Saturation*Math.tanh((subunits[omcx][omcy].computeInputToCell()))) + 
-                (Saturation*Math.tanh((subunits[omcx+1][omcy+1].computeInputToCell()))) + 
-                (Saturation*Math.tanh((subunits[omcx+1][omcy].computeInputToCell()))) + 
-                (Saturation*Math.tanh((subunits[omcx][omcy+1].computeInputToCell())))) / 4;
+                        ((Saturation*Math.tanh((synapticWeight * subunits[omcx][omcy].computeInputToCell()))) + 
+                (Saturation*Math.tanh((synapticWeight * subunits[omcx+1][omcy+1].computeInputToCell()))) + 
+                (Saturation*Math.tanh((synapticWeight * subunits[omcx+1][omcy].computeInputToCell()))) + 
+                (Saturation*Math.tanh((synapticWeight * subunits[omcx][omcy+1].computeInputToCell())))) / 4;
             } // Ignore surround            
 //------------------------------------------------------------------------------
             // Log excitationArray
@@ -1093,6 +1094,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             // compute subunit input to us
             for(int omcx=getExcludedEdgeSubunits();omcx<(nxmax-1-getExcludedEdgeSubunits());omcx++) {
                 for(int omcy=getExcludedEdgeSubunits();omcy<(nymax-1-getExcludedEdgeSubunits());omcy++) {
+                    float IFthreshold = 0;
                     timeStampArray[omcx][omcy]= timestamp;
                     netSynapticInputArray[omcx][omcy] = (subunits.computeExcitationToOutputCell(omcx, omcy) - subunits.computeInhibitionToOutputCell(omcx, omcy));
                     dtUSarray[omcx][omcy] = timeStampArray[omcx][omcy] - lastTimeStampArray[omcx][omcy];
@@ -1119,12 +1121,12 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                     else { // IF neuron
                         membraneStateArray[omcx][omcy] += netSynapticInputArray[omcx][omcy] * dtUSarray[omcx][omcy] * 1e-6f;
                         if(eventRateFilter.getFilteredEventRate()> 100000){
-                            setIntegrateAndFireThreshold(integrateAndFireThreshold+increaseInThreshold);
+                            IFthreshold = integrateAndFireThreshold + increaseInThreshold;
                         }
                         else{
-                            setIntegrateAndFireThreshold(integrateAndFireThreshold);
+                            IFthreshold = integrateAndFireThreshold;
                         }
-                        if (membraneStateArray[omcx][omcy] > integrateAndFireThreshold) {
+                        if (membraneStateArray[omcx][omcy] > IFthreshold) {
                             spike(timeStampArray[omcx][omcy], omcx, omcy);
                             membraneStateArray[omcx][omcy] = 0;
                             result = true;
@@ -1455,6 +1457,16 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     public void setShowTracker1(boolean showTracker1) {
         this.showTracker1 = showTracker1;
         putBoolean("showTracker1", showTracker1);
+    }    
+    //------------------------------------------------------------------------------
+    // @return the surroundSuppressionEnabled
+    public boolean isSurroundSuppressionEnabled() {
+        return surroundSuppressionEnabled;
+    }
+    // @param surroundSuppressionEnabled the surroundSuppressionEnabled to set
+    public void setSurroundSuppressionEnabled(boolean surroundSuppressionEnabled) {
+        this.surroundSuppressionEnabled = surroundSuppressionEnabled;
+        putBoolean("surroundSuppressionEnabled", surroundSuppressionEnabled);
     }    
 //------------------------------------------------------------------------------
     // @return the eventRateTauMs
