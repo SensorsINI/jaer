@@ -816,8 +816,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                             //if(Math.pow(subunits[x][y].computeInputToCell(),nonLinearityOrder) < Saturation){ // If squared subunit less than limit
                             //    inhibitionArray[omcx][omcy] += (float) Math.pow(subunits[x][y].computeInputToCell(),nonLinearityOrder);
                             //}
-                            if(subunits[x][y].computeInputToCell()*subunits[x][y].computeInputToCell() < Saturation){ // If squared subunit less than limit
-                                inhibitionArray[omcx][omcy] += (float) subunits[x][y].computeInputToCell()*subunits[x][y].computeInputToCell();
+                            if(synapticWeight * subunits[x][y].computeInputToCell()*subunits[x][y].computeInputToCell() < Saturation){ // If squared subunit less than limit
+                                inhibitionArray[omcx][omcy] += (float) synapticWeight * subunits[x][y].computeInputToCell()*subunits[x][y].computeInputToCell();
                             }
                             else{
                                 inhibitionArray[omcx][omcy] += Saturation;
@@ -827,7 +827,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                     else{ // Use tanh model (given saturation value): preferred method
                         if (((x != omcx) && (y != omcy)) || ((x != omcx+1) && (y != omcy+1)) 
                                 || ((x != omcx) && (y != omcy+1)) || ((x != omcx+1) && (y != omcy))) {
-                            inhibitionArray[omcx][omcy] += Saturation*Math.tanh(subunits[x][y].computeInputToCell());
+                            inhibitionArray[omcx][omcy] += Saturation*Math.tanh(synapticWeight * subunits[x][y].computeInputToCell());
                         }                               
                     }
 //------------------------------------------------------------------------------
@@ -835,7 +835,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             }
 //------------------------------------------------------------------------------
             inhibitionArray[omcx][omcy] /= (ntot - 4); // Divide by the number of subunits to normalise
-            inhibitionArray[omcx][omcy] = synapticWeight * inhibitionArray[omcx][omcy]; // Give a synaptic weight (a simple scalar value)
+            //inhibitionArray[omcx][omcy] = inhibitionArray[omcx][omcy]; // Give a synaptic weight (a simple scalar value)
 //------------------------------------------------------------------------------
             // Log inhibitionArray
             if (startLogging == true){ 
@@ -882,8 +882,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         //if(Math.pow(subunits[x][y].computeInputToCell(),nonLinearityOrder) < Saturation){
                         //    excitationArray[omcx][omcy] += (float) Math.pow(subunits[x][y].computeInputToCell(),nonLinearityOrder);
                         //}
-                        if(subunits[x][y].computeInputToCell()*subunits[x][y].computeInputToCell() < Saturation){
-                            excitationArray[omcx][omcy] += (float) subunits[x][y].computeInputToCell()*subunits[x][y].computeInputToCell();
+                        if(synapticWeight * subunits[x][y].computeInputToCell()*subunits[x][y].computeInputToCell() < Saturation){
+                            excitationArray[omcx][omcy] += (float) synapticWeight * subunits[x][y].computeInputToCell()*subunits[x][y].computeInputToCell();
                             System.out.println("1");
                         }
                         else{
@@ -929,7 +929,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 File fout = new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\excitationArray.txt");
                 fout.delete();
             }
-            excitationArray[omcx][omcy] = centerExcitationToSurroundInhibitionRatio * synapticWeight * excitationArray[omcx][omcy];
+            excitationArray[omcx][omcy] = centerExcitationToSurroundInhibitionRatio * excitationArray[omcx][omcy];
             return excitationArray[omcx][omcy];
         }
 //----------------------------------------------------------------------------//
