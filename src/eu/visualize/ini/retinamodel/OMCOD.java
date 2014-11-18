@@ -69,6 +69,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private int[][] nSpikesArray; // counts spikes since last rendering cycle
     private int[][] lastSpikedOMCTracker1; // save the OMC cells that last spiked
     private int[][] lastSpikedOMCTracker2; // save the OMC cells that last spiked
+    private int[] lastSpikedOMC; // save the OMC cells that last spiked
     private String direction = "Thinking";
 //------------------------------------------------------------------------------    
     private float synapticWeight = getFloat("synapticWeight", 1f);
@@ -90,6 +91,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private boolean showQuadrants = getBoolean("showQuadrants", true);
     private boolean showTracker2 = getBoolean("showTracker2", true);
     private boolean showTracker1 = getBoolean("showTracker1", true);
+    private boolean showTrackerCellsOnly = getBoolean("showTrackerCellsOnly", false);
     private int clusterSize = getInt("clusterSize", 10);
     private float focalLengthM = getFloat("focalLengthM", 0.001f);
     private float objectRealWidthXM = getFloat("objectRealWidthXM", 0.5f);
@@ -118,80 +120,83 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         this.dtUSspikeArray = new int[nxmax - 2 * getExcludedEdgeSubunits()][nymax - 2 * getExcludedEdgeSubunits()];
         this.lastSpikedOMCTracker1 = new int[2][getClusterSize()];
         this.lastSpikedOMCTracker2 = new int[2][getClusterSize()];
+        this.lastSpikedOMC = new int[2];
         operationRange = 10; // Include initially all the array
 
         eventRateFilter = new EventRateEstimator(chip);
         eventRateFilter.setEventRateTauMs(eventRateTauMs);
-        
+
         backgroundActivityFilter = new BackgroundActivityFilter(chip);
         backgroundActivityFilter.setDt((int) dtBackgroundUs);
-                
+        backgroundActivityFilter.setSubsampleBy(0);
+
         chip.addObserver(this);
-        final String use="1) Key Parameters", fix="2) Fixed Parameters", disp="3) Display", log="4) Logging";
+        final String use = "1) Key Parameters", fix = "2) Fixed Parameters", disp = "3) Display", log = "4) Logging";
 //------------------------------------------------------------------------------
-        setPropertyTooltip(disp,"showSubunits", "Enables showing subunit activity "
+        setPropertyTooltip(disp, "showSubunits", "Enables showing subunit activity "
                 + "annotation over retina output");
-        setPropertyTooltip(disp,"showOutputCell", "Enables showing object motion cell "
+        setPropertyTooltip(disp, "showOutputCell", "Enables showing object motion cell "
                 + "activity annotation over retina output");
-        setPropertyTooltip(fix,"subunitSubsamplingBits", "Each subunit integrates "
+        setPropertyTooltip(fix, "subunitSubsamplingBits", "Each subunit integrates "
                 + "events from 2^n by 2^n pixels, where n=subunitSubsamplingBits");
-        setPropertyTooltip(fix,"synapticWeight", "Subunit activity inputs to the "
+        setPropertyTooltip(fix, "synapticWeight", "Subunit activity inputs to the "
                 + "objectMotion neuron are weighted this much; use to adjust "
                 + "response magnitude");
-        setPropertyTooltip(fix,"vmemIncrease", "Increase in vmem per event received");
-        setPropertyTooltip(use,"subunitDecayTimeconstantMs", "Subunit activity "
+        setPropertyTooltip(fix, "vmemIncrease", "Increase in vmem per event received");
+        setPropertyTooltip(use, "subunitDecayTimeconstantMs", "Subunit activity "
                 + "decays with this time constant in ms");
-        setPropertyTooltip(disp,"enableSpikeSound", "Enables audio spike output from "
+        setPropertyTooltip(disp, "enableSpikeSound", "Enables audio spike output from "
                 + "objectMotion cell");
-        setPropertyTooltip(fix,"maxSpikeRateHz", "Maximum spike rate of objectMotion "
+        setPropertyTooltip(fix, "maxSpikeRateHz", "Maximum spike rate of objectMotion "
                 + "cell in Hz");
-        setPropertyTooltip(fix,"centerExcitationToSurroundInhibitionRatio",
+        setPropertyTooltip(fix, "centerExcitationToSurroundInhibitionRatio",
                 "Inhibitory ON subunits are weighted by factor more than "
                 + "excitatory OFF subunit activity to the object motion "
                 + "cell");
-        setPropertyTooltip(fix,"minUpdateIntervalUs", "subunits activities are "
+        setPropertyTooltip(fix, "minUpdateIntervalUs", "subunits activities are "
                 + "decayed to zero at least this often in us, even if they "
                 + "receive no input");
-        setPropertyTooltip(fix,"surroundSuppressionEnabled", "subunits are "
+        setPropertyTooltip(fix, "surroundSuppressionEnabled", "subunits are "
                 + "suppressed by surrounding activity of same type; reduces "
                 + "response to global dimming");
-        setPropertyTooltip(disp,"subunitActivityBlobRadiusScale", "The blobs "
+        setPropertyTooltip(disp, "subunitActivityBlobRadiusScale", "The blobs "
                 + "represeting subunit activation are scaled by this factor");
-        setPropertyTooltip(use,"integrateAndFireThreshold", "The ganglion cell will "
+        setPropertyTooltip(use, "integrateAndFireThreshold", "The ganglion cell will "
                 + "fire if the difference between excitation and inhibition "
                 + "overcomes this threshold");
-        setPropertyTooltip(use,"increaseInThreshold", "increase in threshold of "
+        setPropertyTooltip(use, "increaseInThreshold", "increase in threshold of "
                 + "OMC neuron depending on activity");
-        setPropertyTooltip(fix,"poissonFiringEnabled", "The ganglion cell fires "
+        setPropertyTooltip(fix, "poissonFiringEnabled", "The ganglion cell fires "
                 + "according to Poisson rate model for net synaptic input");
-        setPropertyTooltip(fix,"nonLinearityOrder", "The non-linear order of the "
+        setPropertyTooltip(fix, "nonLinearityOrder", "The non-linear order of the "
                 + "subunits' value before the total sum");
-        setPropertyTooltip(log,"startLogging", "Start logging inhibition and "
+        setPropertyTooltip(log, "startLogging", "Start logging inhibition and "
                 + "excitation");
-        setPropertyTooltip(log,"deleteLogging", "Delete the logging of inhibition "
+        setPropertyTooltip(log, "deleteLogging", "Delete the logging of inhibition "
                 + "and excitation");
-        setPropertyTooltip(disp,"barsHeight", "set the magnitute of cen and sur if "
+        setPropertyTooltip(disp, "barsHeight", "set the magnitute of cen and sur if "
                 + "the inhibition and excitation are out of range");
-        setPropertyTooltip(fix,"excludedEdgeSubunits", "Set the number of subunits "
+        setPropertyTooltip(fix, "excludedEdgeSubunits", "Set the number of subunits "
                 + "excluded from computation at the edge");
-        setPropertyTooltip(fix,"Saturation", "Set the maximum contribution of "
+        setPropertyTooltip(fix, "Saturation", "Set the maximum contribution of "
                 + "a single subunit, where it saturates");
-        setPropertyTooltip(use,"exponentialToTanh", "Switch from exponential "
+        setPropertyTooltip(use, "exponentialToTanh", "Switch from exponential "
                 + "non-linearity to exponential tangent");
-        setPropertyTooltip(disp,"showXcoord", "decide which Object Motion Cell to "
+        setPropertyTooltip(disp, "showXcoord", "decide which Object Motion Cell to "
                 + "show by selecting the X coordinate of the center");
-        setPropertyTooltip(disp,"showYcoord", "decide which Object Motion Cell to "
+        setPropertyTooltip(disp, "showYcoord", "decide which Object Motion Cell to "
                 + "show by selecting the Y coordinate of the center");
-        setPropertyTooltip(fix,"clusterSize", "decide how many Object Motion Cells' "
+        setPropertyTooltip(fix, "clusterSize", "decide how many Object Motion Cells' "
                 + "outputs to integrate to get an envelope of the prey");
-        setPropertyTooltip(disp,"showQuadrants", "show the quadrants of motion");
-        setPropertyTooltip(disp,"showTracker1", "show tracker 1");
-        setPropertyTooltip(disp,"showTracker2", "show tracker 2");
-        setPropertyTooltip(fix,"objectRealWidthXM", "Object's to be followed real "
+        setPropertyTooltip(disp, "showQuadrants", "show the quadrants of motion");
+        setPropertyTooltip(disp, "showTrackerCellsOnly", "show only cells in tracker 1");
+        setPropertyTooltip(disp, "showTracker1", "show tracker 1");
+        setPropertyTooltip(disp, "showTracker2", "show tracker 2");
+        setPropertyTooltip(fix, "objectRealWidthXM", "Object's to be followed real "
                 + "width in meters");
-        setPropertyTooltip(fix,"focalLengthM", "Lenses' focal length in meters");
-        setPropertyTooltip(fix,"eventRateTauMs", "Tau of lowpass of event rate");
-        setPropertyTooltip(use,"dtBackgroundUs", "Tau of Background activity filter");
+        setPropertyTooltip(fix, "focalLengthM", "Lenses' focal length in meters");
+        setPropertyTooltip(fix, "eventRateTauMs", "Tau of lowpass of event rate");
+        setPropertyTooltip(use, "dtBackgroundUs", "Tau of Background activity filter");
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -217,6 +222,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         for (Object o : in) {
             PolarityEvent e = (PolarityEvent) o;
             eventRateFilter.filterPacket(in);
+            backgroundActivityFilter.filterPacket(in);
             if (e.special) {
                 continue;
             }
@@ -238,7 +244,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
 
 //----------------------------------------------------------------------------//
-//-- Draw bars method --------------------------------------------------------//
+//-- Drawing method ----------------------------------------------------------//
 //----------------------------------------------------------------------------//
     @Override
     public void annotate(GLAutoDrawable drawable) {
@@ -261,87 +267,92 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             gl.glPopMatrix();
         }
         if (showOutputCell) { // Dispaly pink outputs
-            for (int omcx = getExcludedEdgeSubunits(); omcx < (nxmax - 1 - getExcludedEdgeSubunits()); omcx++) {
-                for (int omcy = getExcludedEdgeSubunits(); omcy < (nymax - 1 - getExcludedEdgeSubunits()); omcy++) {
-                    if (enableSpikeDraw && nSpikesArray[omcx][omcy] != 0) {
-                        if (counter < getClusterSize() - 1) {
-                            counter++;
-                        } else {
-                            counter = 0;
-                        }
-                        if (counter == 0) {
-                            lastIndex = getClusterSize() - 1;
-                        } else {
-                            lastIndex = counter - 1;
-                        }
-                        if (rememberReset1) { // Start anywhere after reset
-                            for (int j = 0; j < getClusterSize() - 1; j++) {
-                                for (int i = 0; i < 2; i++) {
-                                    if (i == 0) {
-                                        lastSpikedOMCTracker1[i][j] = omcx;
-                                    } else {
-                                        lastSpikedOMCTracker1[i][j] = omcy;
-                                    }
-                                }
+            if (enableSpikeDraw && nSpikesArray[lastSpikedOMC[0]][lastSpikedOMC[1]] != 0) {
+                if (counter < getClusterSize() - 1) {
+                    counter++;
+                } else {
+                    counter = 0;
+                }
+                if (counter == 0) {
+                    lastIndex = getClusterSize() - 1;
+                } else {
+                    lastIndex = counter - 1;
+                }
+                if (rememberReset1) { // Start anywhere after reset
+                    for (int j = 0; j < getClusterSize() - 1; j++) {
+                        for (int i = 0; i < 2; i++) {
+                            if (i == 0) {
+                                lastSpikedOMCTracker1[i][j] = lastSpikedOMC[0];
+                            } else {
+                                lastSpikedOMCTracker1[i][j] = lastSpikedOMC[1];
                             }
-                            rememberReset1 = false;
                         }
-                        if ((Math.abs((omcx - lastSpikedOMCTracker1[0][lastIndex])) < operationRange)
-                                && (Math.abs((omcy - lastSpikedOMCTracker1[1][lastIndex])) < operationRange)) { // Spatial correlation
+                    }
+                    rememberReset1 = false;
+                }
+                if ((Math.abs((lastSpikedOMC[0] - lastSpikedOMCTracker1[0][lastIndex])) < operationRange)
+                        && (Math.abs((lastSpikedOMC[1] - lastSpikedOMCTracker1[1][lastIndex])) < operationRange)) { // Spatial correlation
+                    for (int i = 0; i < 2; i++) {
+                        if (i == 0) {
+                            lastSpikedOMCTracker1[i][counter] = lastSpikedOMC[0];
+                        } else {
+                            lastSpikedOMCTracker1[i][counter] = lastSpikedOMC[1];
+                        }
+                    }
+                    operationRange = 4; // initialise to shorter range
+                } else {
+                    if (rememberReset2) { // Start anywhere after reset
+                        for (int j = 0; j < getClusterSize() - 1; j++) {
                             for (int i = 0; i < 2; i++) {
                                 if (i == 0) {
-                                    lastSpikedOMCTracker1[i][counter] = omcx;
+                                    lastSpikedOMCTracker2[i][j] = lastSpikedOMC[0];
                                 } else {
-                                    lastSpikedOMCTracker1[i][counter] = omcy;
-                                }
-                            }
-                            operationRange = 4; // initialise to shorter range
-                        } else {
-                            if (rememberReset2) { // Start anywhere after reset
-                                for (int j = 0; j < getClusterSize() - 1; j++) {
-                                    for (int i = 0; i < 2; i++) {
-                                        if (i == 0) {
-                                            lastSpikedOMCTracker2[i][j] = omcx;
-                                        } else {
-                                            lastSpikedOMCTracker2[i][j] = omcy;
-                                        }
-                                    }
-                                }
-                                rememberReset2 = false;
-                            }
-                            if ((Math.abs((omcx - lastSpikedOMCTracker2[0][lastIndex])) < operationRange)
-                                    && (Math.abs((omcy - lastSpikedOMCTracker2[1][lastIndex])) < operationRange)) { // Spatial correlation
-                                for (int i = 0; i < 2; i++) {
-                                    if (i == 0) {
-                                        lastSpikedOMCTracker2[i][counter] = omcx;
-                                    } else {
-                                        lastSpikedOMCTracker2[i][counter] = omcy;
-                                    }
+                                    lastSpikedOMCTracker2[i][j] = lastSpikedOMC[1];
                                 }
                             }
                         }
-
-                        // Render all outputs
-                        gl.glPushMatrix();
-                        //gl.glColor4f(12, 0, 1, .3f); // pink
-                        gl.glColor4f(1, 0, 0, 1f); // red
-                        gl.glRectf((omcx << getSubunitSubsamplingBits()), (omcy << getSubunitSubsamplingBits()),
-                                (omcx + 2 << getSubunitSubsamplingBits()), (omcy + 2 << getSubunitSubsamplingBits()));
-                        gl.glPopMatrix();
-
-                        gl.glPushMatrix();
-                        renderer.begin3DRendering();
-                        renderer.setColor(12, 0, 1, .3f);
-                        renderer.draw3D("OMC( " + omcx + " , " + omcy + " )", -45, 60, 0, .4f);
-                        renderer.end3DRendering();
-                        enableSpikeDraw = false;
-                        gl.glPopMatrix();
+                        rememberReset2 = false;
+                    }
+                    if ((Math.abs((lastSpikedOMC[0] - lastSpikedOMCTracker2[0][lastIndex])) < operationRange)
+                            && (Math.abs((lastSpikedOMC[1] - lastSpikedOMCTracker2[1][lastIndex])) < operationRange)) { // Spatial correlation
+                        for (int i = 0; i < 2; i++) {
+                            if (i == 0) {
+                                lastSpikedOMCTracker2[i][counter] = lastSpikedOMC[0];
+                            } else {
+                                lastSpikedOMCTracker2[i][counter] = lastSpikedOMC[1];
+                            }
+                        }
                     }
                 }
+
+                // Render all outputs
+                gl.glPushMatrix();
+                //gl.glColor4f(12, 0, 1, .3f); // pink
+                gl.glColor4f(1, 0, 0, 1f); // red
+                if (!showTrackerCellsOnly) {
+                    gl.glRectf((lastSpikedOMC[0] << getSubunitSubsamplingBits()), (lastSpikedOMC[1] << getSubunitSubsamplingBits()),
+                            (lastSpikedOMC[0] + 2 << getSubunitSubsamplingBits()), (lastSpikedOMC[1] + 2 << getSubunitSubsamplingBits()));
+                } else {
+                    gl.glRectf((lastSpikedOMCTracker1[0][counter] << getSubunitSubsamplingBits()), (lastSpikedOMCTracker1[1][counter] << getSubunitSubsamplingBits()),
+                            (lastSpikedOMCTracker1[0][counter] + 2 << getSubunitSubsamplingBits()), (lastSpikedOMCTracker1[1][counter] + 2 << getSubunitSubsamplingBits()));
+                }
+                gl.glPopMatrix();
+
+                gl.glPushMatrix();
+                renderer.begin3DRendering();
+                renderer.setColor(12, 0, 1, .3f);
+                renderer.draw3D("OMC( " + lastSpikedOMC[0] + " , " + lastSpikedOMC[1] + " )", -55, 60, 0, .4f);
+                renderer.end3DRendering();
+                enableSpikeDraw = false;
+                gl.glPopMatrix();
             }
             OMCODModel.resetSpikeCount();
         }
         if (showTracker1) {
+            if (lastOMCODSpikeCheckTimestamp - lastTimeStampSpikeArray[lastSpikedOMC[0]][lastSpikedOMC[1]] > 1000000) {
+                resetTracker(); // Reset tracker after a second of no OMC events
+            }
+
             // Render tracker cluster 1
             gl.glPushMatrix();
             gl.glColor4f(184, 47, 243, .1f);
@@ -466,6 +477,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         this.dtUSspikeArray = new int[nxmax - 2 * getExcludedEdgeSubunits()][nymax - 2 * getExcludedEdgeSubunits()];
         this.lastSpikedOMCTracker1 = new int[2][getClusterSize()];
         this.lastSpikedOMCTracker2 = new int[2][getClusterSize()];
+        this.lastSpikedOMC = new int[2];
         subunits = new Subunits();
         rememberReset1 = true;
         rememberReset2 = true;
@@ -479,6 +491,16 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     @Override
     public void initFilter() {
         resetFilter();
+    }
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+
+//----------------------------------------------------------------------------//
+//-- Reset tracker anywhere --------------------------------------------------//
+//----------------------------------------------------------------------------//
+    public void resetTracker() {
+        rememberReset1 = true;
+        rememberReset2 = true;
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -1133,6 +1155,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         void spike(int timestamp, int omcx, int omcy) {
             timeStampSpikeArray[omcx][omcy] = timestamp;
             enableSpikeDraw = true;
+            lastSpikedOMC[0] = omcx;
+            lastSpikedOMC[1] = omcy;
             if (enableSpikeSound) {
                 if (omcx == getShowXcoord() && omcy == getShowYcoord()) {
                     spikeSound.play();
@@ -1180,12 +1204,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                     nSpikesArray[omcx][omcy] = 0;
                 }
             }
-//            for(int i=0;i<2;i++) {
-//                for(int j=0;j<getClusterSize();j++) {
-//                    lastSpikedOMCTracker1[i][j] = 0;
-//                    lastSpikedOMCTracker2[i][j] = 0;
-//                }
-//            }
             isiFilter.reset();
             initialized = false;
         }
@@ -1223,7 +1241,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param subunitSubsamplingBits the subunitSubsamplingBits to set
-
     @Override
     public synchronized void setSubunitSubsamplingBits(int subunitSubsamplingBits) {
         this.subunitSubsamplingBits = subunitSubsamplingBits;
@@ -1239,7 +1256,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param clusterSize the clusterSize
-
     public void setClusterSize(int clusterSize) {
         this.clusterSize = clusterSize;
         putInt("clusterSize", clusterSize);
@@ -1254,7 +1270,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param subunitActivityBlobRadiusScale the subunitActivityBlobRadiusScale
-
     public void setSubunitActivityBlobRadiusScale(float subunitActivityBlobRadiusScale) {
         this.subunitActivityBlobRadiusScale = subunitActivityBlobRadiusScale;
         putFloat("subunitActivityBlobRadiusScale", subunitActivityBlobRadiusScale);
@@ -1267,7 +1282,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param integrateAndFireThreshold the integrateAndFireThreshold to set
-
     public void setIntegrateAndFireThreshold(float integrateAndFireThreshold) {
         this.integrateAndFireThreshold = integrateAndFireThreshold;
         putFloat("integrateAndFireThreshold", integrateAndFireThreshold);
@@ -1280,7 +1294,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param increaseInThreshold the increaseInThreshold to set
-
     public void setIncreaseInThreshold(float increaseInThreshold) {
         this.increaseInThreshold = increaseInThreshold;
         putFloat("increaseInThreshold", increaseInThreshold);
@@ -1293,7 +1306,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param showXcoord the showXcoord to set
-
     public void setShowXcoord(int showXcoord) {
         this.showXcoord = showXcoord;
         putInt("showXcoord", showXcoord);
@@ -1308,7 +1320,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param showYcoord the showYcoord to set
-
     public void setShowYcoord(int showYcoord) {
         this.showYcoord = showYcoord;
         putInt("showYcoord", showYcoord);
@@ -1323,7 +1334,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param nonLinearityOrder the nonLinearityOrder to set
-
     public void setNonLinearityOrder(float nonLinearityOrder) {
         this.nonLinearityOrder = nonLinearityOrder;
         putFloat("nonLinearityOrder", nonLinearityOrder);
@@ -1336,7 +1346,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param synapticWeight the synapticWeight to set
-
     public void setSynapticWeight(float synapticWeight) {
         this.synapticWeight = synapticWeight;
         putFloat("synapticWeight", synapticWeight);
@@ -1349,7 +1358,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param vmemIncrease the vmemIncrease to set
-
     public void setVmemIncrease(float vmemIncrease) {
         this.vmemIncrease = vmemIncrease;
         putFloat("vmemIncrease", vmemIncrease);
@@ -1362,7 +1370,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param barsHeight the barsHeight to set
-
     public void setBarsHeight(float barsHeight) {
         this.barsHeight = barsHeight;
         putFloat("barsHeight", barsHeight);
@@ -1375,7 +1382,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param excludedEdgeSubunits the excludedEdgeSubunits to set
-
     public void setExcludedEdgeSubunits(int excludedEdgeSubunits) {
         this.excludedEdgeSubunits = excludedEdgeSubunits;
         putFloat("excludedEdgeSubunits", excludedEdgeSubunits);
@@ -1390,7 +1396,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param onOffWeightRatio the onOffWeightRatio to set
-
     public void setCenterExcitationToSurroundInhibitionRatio(float onOffWeightRatio) {
         this.centerExcitationToSurroundInhibitionRatio = onOffWeightRatio;
         putFloat("centerExcitationToSurroundInhibitionRatio", onOffWeightRatio);
@@ -1403,7 +1408,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param objectRealWidthXM the objectRealWidthXM to set
-
     public void setObjectRealWidthXM(float objectRealWidthXM) {
         this.objectRealWidthXM = objectRealWidthXM;
         putFloat("objectRealWidthXM", objectRealWidthXM);
@@ -1416,7 +1420,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param focalLengthM the focalLengthM to set
-
     public void setFocalLengthM(float focalLengthM) {
         this.focalLengthM = focalLengthM;
         putFloat("focalLengthM", focalLengthM);
@@ -1429,7 +1432,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param Saturation the Saturation to set
-
     public void setSaturation(int Saturation) {
         this.Saturation = Saturation;
         putInt("Saturation", Saturation);
@@ -1442,7 +1444,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param deleteLogging the deleteLogging to set
-
     public void setDeleteLogging(boolean deleteLogging) {
         this.deleteLogging = deleteLogging;
         putBoolean("deleteLogging", deleteLogging);
@@ -1455,7 +1456,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param exponentialToTanh the exponentialToTanh to set
-
     public void setExponentialToTanh(boolean exponentialToTanh) {
         this.exponentialToTanh = exponentialToTanh;
         putBoolean("exponentialToTanh", exponentialToTanh);
@@ -1468,7 +1468,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param startLogging the startLogging to set
-
     public void setStartLogging(boolean startLogging) {
         this.startLogging = startLogging;
         putBoolean("startLogging", startLogging);
@@ -1481,7 +1480,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param showQuadrants the showQuadrants to set
-
     public void setShowQuadrants(boolean showQuadrants) {
         this.showQuadrants = showQuadrants;
         putBoolean("showQuadrants", showQuadrants);
@@ -1494,7 +1492,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param showTracker2 the showTracker2 to set
-
     public void setShowTracker2(boolean showTracker2) {
         this.showTracker2 = showTracker2;
         putBoolean("showTracker2", showTracker2);
@@ -1507,12 +1504,22 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param showTracker1 the showTracker1 to set
-
     public void setShowTracker1(boolean showTracker1) {
         this.showTracker1 = showTracker1;
         putBoolean("showTracker1", showTracker1);
     }
+//------------------------------------------------------------------------------
+    // @return the showTrackerCellsOnly
 
+    public boolean isShowTrackerCellsOnly() {
+        return showTrackerCellsOnly;
+    }
+
+    // @param showTrackerCellsOnly the showTrackerCellsOnly to set
+    public void setShowTrackerCellsOnly(boolean showTrackerCellsOnly) {
+        this.showTrackerCellsOnly = showTrackerCellsOnly;
+        putBoolean("showTrackerCellsOnly", showTrackerCellsOnly);
+    }
     //------------------------------------------------------------------------------
     // @return the surroundSuppressionEnabled
 
@@ -1521,7 +1528,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param surroundSuppressionEnabled the surroundSuppressionEnabled to set
-
     public void setSurroundSuppressionEnabled(boolean surroundSuppressionEnabled) {
         this.surroundSuppressionEnabled = surroundSuppressionEnabled;
         putBoolean("surroundSuppressionEnabled", surroundSuppressionEnabled);
@@ -1534,7 +1540,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param eventRateTauMs the eventRateTauMs to set
-
     public void setEventRateTauMs(float eventRateTauMs) {
         this.eventRateTauMs = eventRateTauMs;
         putFloat("eventRateTauMs", eventRateTauMs);
@@ -1547,7 +1552,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 
     // @param dtBackgroundUs the dtBackgroundUs to set
-
     public void setDtBackgroundUs(float dtBackgroundUs) {
         this.dtBackgroundUs = dtBackgroundUs;
         putFloat("dtBackgroundUs", dtBackgroundUs);
