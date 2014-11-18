@@ -68,7 +68,18 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         initComponents();
 //        fileMenu.remove(prefsEditorMenuItem); // TODO tobi hack to work around leftover item in form that was edited outside of netbeans
         rebuildContents();
+        // from http://stackoverflow.com/questions/11533162/how-to-prevent-jscrollpane-from-scrolling-when-arrow-keys-are-pressed
         scrollPane.getVerticalScrollBar().setUnitIncrement(16); // from http://stackoverflow.com/questions/5583495/how-do-i-speed-up-the-scroll-speed-in-a-jscrollpane-when-using-the-mouse-wheel
+        scrollPane.getActionMap().put("unitScrollDown", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+            }
+        });
+         scrollPane.getActionMap().put("unitScrollUp", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+            }
+        });
         setRestoreFilterEnabledStateEnabled(prefs.getBoolean("FilterFrame.restoreFilterEnabledStateEnabled", true)); // sets the menu item state
         if (chip != null) {
             setTitle(chip.getName() + " - filters");
