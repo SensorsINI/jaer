@@ -22,6 +22,7 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter;
 import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
+import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 //-- end packages ------------------------------------------------------------//
 //****************************************************************************//
 
@@ -45,6 +46,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 
     private final OMCODModel OMCODModel = new OMCODModel();
     private EventRateEstimator eventRateFilter;
+    private BackgroundActivityFilter backgroundActivityFilter;
     private Subunits subunits;
     private int nxmax;
     private int nymax;
@@ -91,7 +93,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private int clusterSize = getInt("clusterSize", 10);
     private float focalLengthM = getFloat("focalLengthM", 0.001f);
     private float objectRealWidthXM = getFloat("objectRealWidthXM", 0.5f);
-    private float eventRateTauMs = getFloat("eventRateTauMs", 100);
+    private float eventRateTauMs = getFloat("eventRateTauMs", 100f);
+    private float dtBackgroundUs = getFloat("dtBackgroundUs", 100f);
 //------------------------------------------------------------------------------
 
 //----------------------------------------------------------------------------//
@@ -119,6 +122,10 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 
         eventRateFilter = new EventRateEstimator(chip);
         eventRateFilter.setEventRateTauMs(eventRateTauMs);
+        
+        backgroundActivityFilter = new BackgroundActivityFilter(chip);
+        backgroundActivityFilter.setDt((int) dtBackgroundUs);
+                
         chip.addObserver(this);
         final String use="1) Key Parameters", fix="2) Fixed Parameters", disp="3) Display", log="4) Logging";
 //------------------------------------------------------------------------------
@@ -128,10 +135,10 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 + "activity annotation over retina output");
         setPropertyTooltip(fix,"subunitSubsamplingBits", "Each subunit integrates "
                 + "events from 2^n by 2^n pixels, where n=subunitSubsamplingBits");
-        setPropertyTooltip(use,"synapticWeight", "Subunit activity inputs to the "
+        setPropertyTooltip(fix,"synapticWeight", "Subunit activity inputs to the "
                 + "objectMotion neuron are weighted this much; use to adjust "
                 + "response magnitude");
-        setPropertyTooltip(use,"vmemIncrease", "Increase in vmem per event received");
+        setPropertyTooltip(fix,"vmemIncrease", "Increase in vmem per event received");
         setPropertyTooltip(use,"subunitDecayTimeconstantMs", "Subunit activity "
                 + "decays with this time constant in ms");
         setPropertyTooltip(disp,"enableSpikeSound", "Enables audio spike output from "
@@ -167,7 +174,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 + "the inhibition and excitation are out of range");
         setPropertyTooltip(fix,"excludedEdgeSubunits", "Set the number of subunits "
                 + "excluded from computation at the edge");
-        setPropertyTooltip(use,"Saturation", "Set the maximum contribution of "
+        setPropertyTooltip(fix,"Saturation", "Set the maximum contribution of "
                 + "a single subunit, where it saturates");
         setPropertyTooltip(use,"exponentialToTanh", "Switch from exponential "
                 + "non-linearity to exponential tangent");
@@ -175,7 +182,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 + "show by selecting the X coordinate of the center");
         setPropertyTooltip(disp,"showYcoord", "decide which Object Motion Cell to "
                 + "show by selecting the Y coordinate of the center");
-        setPropertyTooltip(use,"clusterSize", "decide how many Object Motion Cells' "
+        setPropertyTooltip(fix,"clusterSize", "decide how many Object Motion Cells' "
                 + "outputs to integrate to get an envelope of the prey");
         setPropertyTooltip(disp,"showQuadrants", "show the quadrants of motion");
         setPropertyTooltip(disp,"showTracker1", "show tracker 1");
@@ -184,6 +191,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 + "width in meters");
         setPropertyTooltip(fix,"focalLengthM", "Lenses' focal length in meters");
         setPropertyTooltip(fix,"eventRateTauMs", "Tau of lowpass of event rate");
+        setPropertyTooltip(use,"dtBackgroundUs", "Tau of Background activity filter");
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -882,7 +890,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         + (Saturation * Math.tanh((synapticWeight * subunits[omcx + 1][omcy + 1].computeInputToCell())))
                         + (Saturation * Math.tanh((synapticWeight * subunits[omcx + 1][omcy].computeInputToCell())))
                         + (Saturation * Math.tanh((synapticWeight * subunits[omcx][omcy + 1].computeInputToCell())))) / 4;
-                System.out.println(Saturation * Math.tanh((synapticWeight * subunits[omcx][omcy].computeInputToCell())));
             } // Ignore surround            
 //------------------------------------------------------------------------------
             // Log excitationArray
@@ -1526,11 +1533,24 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         return eventRateTauMs;
     }
 
-    // @param showTracker1 the eventRateTauMs to set
+    // @param eventRateTauMs the eventRateTauMs to set
 
     public void setEventRateTauMs(float eventRateTauMs) {
         this.eventRateTauMs = eventRateTauMs;
         putFloat("eventRateTauMs", eventRateTauMs);
+    }
+//------------------------------------------------------------------------------
+    // @return the dtBackgroundUs
+
+    public float getDtBackgroundUs() {
+        return dtBackgroundUs;
+    }
+
+    // @param dtBackgroundUs the dtBackgroundUs to set
+
+    public void setDtBackgroundUs(float dtBackgroundUs) {
+        this.dtBackgroundUs = dtBackgroundUs;
+        putFloat("dtBackgroundUs", dtBackgroundUs);
     }
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
