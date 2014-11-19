@@ -333,11 +333,15 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 //gl.glColor4f(12, 0, 1, .3f); // pink
                 gl.glColor4f(1, 0, 0, 1f); // red
                 if (!showTrackerCellsOnly) {
-                    gl.glRectf((lastSpikedOMC[0] << getSubunitSubsamplingBits()), (lastSpikedOMC[1] << getSubunitSubsamplingBits()),
-                            (lastSpikedOMC[0] + 2 << getSubunitSubsamplingBits()), (lastSpikedOMC[1] + 2 << getSubunitSubsamplingBits()));
+                    gl.glRectf((lastSpikedOMC[0] << getSubunitSubsamplingBits()),
+                            (lastSpikedOMC[1] << getSubunitSubsamplingBits()),
+                            (lastSpikedOMC[0] + 2 << getSubunitSubsamplingBits()),
+                            (lastSpikedOMC[1] + 2 << getSubunitSubsamplingBits()));
                 } else {
-                    gl.glRectf((lastSpikedOMCTracker1[0][counter] << getSubunitSubsamplingBits()), (lastSpikedOMCTracker1[1][counter] << getSubunitSubsamplingBits()),
-                            (lastSpikedOMCTracker1[0][counter] + 2 << getSubunitSubsamplingBits()), (lastSpikedOMCTracker1[1][counter] + 2 << getSubunitSubsamplingBits()));
+                    gl.glRectf((lastSpikedOMCTracker1[0][counter] << getSubunitSubsamplingBits()),
+                            (lastSpikedOMCTracker1[1][counter] << getSubunitSubsamplingBits()),
+                            (lastSpikedOMCTracker1[0][counter] + 2 << getSubunitSubsamplingBits()),
+                            (lastSpikedOMCTracker1[1][counter] + 2 << getSubunitSubsamplingBits()));
                 }
                 gl.glPopMatrix();
 
@@ -352,8 +356,21 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             OMCODModel.resetSpikeCount();
         }
         if (showTracker1) {
+            // Reset tracker after a second of no OMC events 
+            // (current timestamp - timestamp of last spiked OMC)
             if (lastOMCODSpikeCheckTimestamp - lastTimeStampSpikeArray[lastSpikedOMC[0]][lastSpikedOMC[1]] > 1000000) {
-                resetTracker(); // Reset tracker after a second of no OMC events
+                resetTracker1();
+                resetTracker2();
+            }
+            // Reset tracker after a second of no OMC events in its neighbourhood 
+            // (current timestamp - timestamp of last spiked OMC of tracker, spatially correlated then)
+            if (lastOMCODSpikeCheckTimestamp - lastTimeStampSpikeArray[lastSpikedOMCTracker1[0][counter]][lastSpikedOMCTracker1[1][counter]] > 1000000) {
+                resetTracker1();
+            }
+            // Reset tracker after a second of no OMC events in its neighbourhood 
+            // (current timestamp - timestamp of last spiked OMC of tracker, spatially correlated then)
+            if (lastOMCODSpikeCheckTimestamp - lastTimeStampSpikeArray[lastSpikedOMCTracker2[0][counter]][lastSpikedOMCTracker2[1][counter]] > 1000000) {
+                resetTracker2();
             }
 
             // Render tracker cluster 1
@@ -503,8 +520,16 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
 //-- Reset tracker anywhere --------------------------------------------------//
 //----------------------------------------------------------------------------//
-    public void resetTracker() {
+    public void resetTracker1() {
         rememberReset1 = true;
+    }
+//----------------------------------------------------------------------------//
+//----------------------------------------------------------------------------//
+
+//----------------------------------------------------------------------------//
+//-- Reset tracker anywhere --------------------------------------------------//
+//----------------------------------------------------------------------------//
+    public void resetTracker2() {
         rememberReset2 = true;
     }
 //----------------------------------------------------------------------------//
@@ -1141,10 +1166,9 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         membraneStateArray[omcx][omcy] += netSynapticInputArray[omcx][omcy] * dtUSarray[omcx][omcy] * 1e-6f;
                         if (eventRateFilter.getFilteredEventRate() > 100000) {
                             IFthreshold = integrateAndFireThreshold + increaseInThreshold;
-                        }else if(eventRateFilter.getFilteredEventRate() < 1100){
+                        } else if (eventRateFilter.getFilteredEventRate() < 1100) {
                             IFthreshold = 10000; //Just very high if only noise is present
-                        }
-                        else {
+                        } else {
                             IFthreshold = integrateAndFireThreshold;
                         }
                         if (membraneStateArray[omcx][omcy] > IFthreshold) {

@@ -3,7 +3,6 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-
 package eu.visualize.ini.retinamodel;
 
 import java.awt.Font;
@@ -30,196 +29,188 @@ import com.jogamp.opengl.util.awt.TextRenderer;
  * @author tobi
  */
 public abstract class AbstractRetinaModelCell extends EventFilter2D implements FrameAnnotater, Observer {
-	protected boolean showSubunits = getBoolean("showSubunits", true);
-	protected boolean showOutputCell = getBoolean("showOutputCell", true);
-	protected int subunitSubsamplingBits = getInt("subunitSubsamplingBits", 4); // each
-																				// subunit
-																				// is
-																				// 2^n
-																				// squared
-																				// pixels
-	protected float subunitDecayTimeconstantMs = getFloat("subunitDecayTimeconstantMs", 2);
-	protected float maxSpikeRateHz = getFloat("maxSpikeRateHz", 100);
-	protected int minUpdateIntervalUs = getInt("minUpdateIntervalUs", 10000);
-	protected SpikeSound spikeSound = new SpikeSound();
-	protected TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 10), true, true);
-	GLU glu = null;
-	GLUquadric quad = null;
-	boolean hasBlendChecked = false;
-	boolean hasBlend = false;
-	protected boolean enableSpikeSound = getBoolean("enableSpikeSound", true);
-	protected boolean poissonFiringEnabled = getBoolean("poissonFiringEnabled", true);
 
-	public AbstractRetinaModelCell(AEChip chip) {
-		super(chip);
-		chip.addObserver(this);
-		setPropertyTooltip("-showSubunits", "Enables showing subunit activity annotation over retina output");
-		setPropertyTooltip("-subunitSubsamplingBits",
-			"Each subunit integrates events from 2^n by 2^n pixels, where n=subunitSubsamplingBits");
-		setPropertyTooltip("subunitDecayTimeconstantMs", "Subunit activity decays with this time constant in ms");
-		setPropertyTooltip("-enableSpikeSound", "Enables audio spike output from approach cell");
-		setPropertyTooltip("-maxSpikeRateHz", "Maximum spike rate of approach cell in Hz for Poisson firing model");
-		setPropertyTooltip("-minUpdateIntervalUs",
-			"subunits activities are decayed to zero at least this often in us, even if they receive no input");
-		setPropertyTooltip("-poissonFiringEnabled",
-			"The ganglion cell fires according to Poisson rate model for net synaptic input");
-	}
+    protected boolean showSubunits = getBoolean("showSubunits", true);
+    protected boolean showOutputCell = getBoolean("showOutputCell", true);
+    protected int subunitSubsamplingBits = getInt("subunitSubsamplingBits", 4); // each
+    // subunit
+    // is
+    // 2^n
+    // squared
+    // pixels
+    protected float subunitDecayTimeconstantMs = getFloat("subunitDecayTimeconstantMs", 2);
+    protected float maxSpikeRateHz = getFloat("maxSpikeRateHz", 100);
+    protected int minUpdateIntervalUs = getInt("minUpdateIntervalUs", 10000);
+    protected SpikeSound spikeSound = new SpikeSound();
+    protected TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 10), true, true);
+    GLU glu = null;
+    GLUquadric quad = null;
+    boolean hasBlendChecked = false;
+    boolean hasBlend = false;
+    protected boolean enableSpikeSound = getBoolean("enableSpikeSound", true);
+    protected boolean poissonFiringEnabled = getBoolean("poissonFiringEnabled", true);
 
-	@Override
-	public void annotate(GLAutoDrawable drawable) {
-		if (glu == null) {
-			glu = new GLU();
-			quad = glu.gluNewQuadric();
-		}
+    public AbstractRetinaModelCell(AEChip chip) {
+        super(chip);
+        chip.addObserver(this);
+        setPropertyTooltip("-showSubunits", "Enables showing subunit activity annotation over retina output");
+        setPropertyTooltip("-subunitSubsamplingBits",
+                "Each subunit integrates events from 2^n by 2^n pixels, where n=subunitSubsamplingBits");
+        setPropertyTooltip("subunitDecayTimeconstantMs", "Subunit activity decays with this time constant in ms");
+        setPropertyTooltip("-enableSpikeSound", "Enables audio spike output from approach cell");
+        setPropertyTooltip("-maxSpikeRateHz", "Maximum spike rate of approach cell in Hz for Poisson firing model");
+        setPropertyTooltip("-minUpdateIntervalUs",
+                "subunits activities are decayed to zero at least this often in us, even if they receive no input");
+        setPropertyTooltip("-poissonFiringEnabled",
+                "The ganglion cell fires according to Poisson rate model for net synaptic input");
+    }
 
-		GL gl = drawable.getGL();
-		if (!hasBlendChecked) {
-			hasBlendChecked = true;
-			String glExt = gl.glGetString(GL.GL_EXTENSIONS);
-			if (glExt.indexOf("GL_EXT_blend_color") != -1) {
-				hasBlend = true;
-			}
-		}
-		if (hasBlend) {
-			try {
-				gl.glEnable(GL.GL_BLEND);
-				gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
-				gl.glBlendEquation(GL.GL_FUNC_ADD);
-			}
-			catch (GLException e) {
-				e.printStackTrace();
-				hasBlend = false;
-			}
-		}
-	}
+    @Override
+    public void annotate(GLAutoDrawable drawable) {
+        if (glu == null) {
+            glu = new GLU();
+            quad = glu.gluNewQuadric();
+        }
 
-	@Override
-	public void update(Observable o, Object arg) {
-		if ((arg != null) && ((arg == Chip2D.EVENT_SIZEX) || (arg == Chip2D.EVENT_SIZEY)) && (chip.getNumPixels() > 0)) {
-			initFilter();
-		}
-	}
+        GL gl = drawable.getGL();
+        if (!hasBlendChecked) {
+            hasBlendChecked = true;
+            String glExt = gl.glGetString(GL.GL_EXTENSIONS);
+            if (glExt.indexOf("GL_EXT_blend_color") != -1) {
+                hasBlend = true;
+            }
+        }
+        if (hasBlend) {
+            try {
+                gl.glEnable(GL.GL_BLEND);
+                gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+                gl.glBlendEquation(GL.GL_FUNC_ADD);
+            } catch (GLException e) {
+                e.printStackTrace();
+                hasBlend = false;
+            }
+        }
+    }
 
-	/**
-	 * @return the showSubunits
-	 */
-	public boolean isShowSubunits() {
-		return showSubunits;
-	}
+    @Override
+    public void update(Observable o, Object arg) {
+        if ((arg != null) && ((arg == Chip2D.EVENT_SIZEX) || (arg == Chip2D.EVENT_SIZEY)) && (chip.getNumPixels() > 0)) {
+            initFilter();
+        }
+    }
 
-	/**
-	 * @param showSubunits
-	 *            the showSubunits to set
-	 */
-	public void setShowSubunits(boolean showSubunits) {
-		this.showSubunits = showSubunits;
-		putBoolean("showSubunits", showSubunits);
-	}
+    /**
+     * @return the showSubunits
+     */
+    public boolean isShowSubunits() {
+        return showSubunits;
+    }
 
-	/**
-	 * @return the showobjectMotionCell
-	 */
-	public boolean isShowOutputCell() {
-		return showOutputCell;
-	}
+    /**
+     * @param showSubunits the showSubunits to set
+     */
+    public void setShowSubunits(boolean showSubunits) {
+        this.showSubunits = showSubunits;
+        putBoolean("showSubunits", showSubunits);
+    }
 
-	/**
-	 * @param showobjectMotionCell
-	 *            the showobjectMotionCell to set
-	 */
-	public void setShowOutputCell(boolean showObjectMotionCell) {
-		this.showOutputCell = showObjectMotionCell;
-		putBoolean("showOutputCell", showObjectMotionCell);
-	}
+    /**
+     * @return the showobjectMotionCell
+     */
+    public boolean isShowOutputCell() {
+        return showOutputCell;
+    }
 
-	/**
-	 * @return the subunitSubsamplingBits
-	 */
-	public int getSubunitSubsamplingBits() {
-		return subunitSubsamplingBits;
-	}
+    /**
+     * @param showobjectMotionCell the showobjectMotionCell to set
+     */
+    public void setShowOutputCell(boolean showObjectMotionCell) {
+        this.showOutputCell = showObjectMotionCell;
+        putBoolean("showOutputCell", showObjectMotionCell);
+    }
 
-	/**
-	 * @param subunitSubsamplingBits
-	 *            the subunitSubsamplingBits to set
-	 */
-	public synchronized void setSubunitSubsamplingBits(int subunitSubsamplingBits) {
-		this.subunitSubsamplingBits = subunitSubsamplingBits;
-		putInt("subunitSubsamplingBits", subunitSubsamplingBits);
-		resetFilter();
-	}
+    /**
+     * @return the subunitSubsamplingBits
+     */
+    public int getSubunitSubsamplingBits() {
+        return subunitSubsamplingBits;
+    }
 
-	/**
-	 * @param subunitDecayTimeconstantMs
-	 *            the subunitDecayTimeconstantMs to set
-	 */
-	public void setSubunitDecayTimeconstantMs(float subunitDecayTimeconstantMs) {
-		this.subunitDecayTimeconstantMs = subunitDecayTimeconstantMs;
-		putFloat("subunitDecayTimeconstantMs", subunitDecayTimeconstantMs);
-	}
+    /**
+     * @param subunitSubsamplingBits the subunitSubsamplingBits to set
+     */
+    public synchronized void setSubunitSubsamplingBits(int subunitSubsamplingBits) {
+        this.subunitSubsamplingBits = subunitSubsamplingBits;
+        putInt("subunitSubsamplingBits", subunitSubsamplingBits);
+        resetFilter();
+    }
 
-	/**
-	 * @return the enableSpikeSound
-	 */
-	public boolean isEnableSpikeSound() {
-		return enableSpikeSound;
-	}
+    /**
+     * @param subunitDecayTimeconstantMs the subunitDecayTimeconstantMs to set
+     */
+    public void setSubunitDecayTimeconstantMs(float subunitDecayTimeconstantMs) {
+        this.subunitDecayTimeconstantMs = subunitDecayTimeconstantMs;
+        putFloat("subunitDecayTimeconstantMs", subunitDecayTimeconstantMs);
+    }
 
-	/**
-	 * @param enableSpikeSound
-	 *            the enableSpikeSound to set
-	 */
-	public void setEnableSpikeSound(boolean enableSpikeSound) {
-		this.enableSpikeSound = enableSpikeSound;
-		putBoolean("enableSpikeSound", enableSpikeSound);
-	}
+    /**
+     * @return the enableSpikeSound
+     */
+    public boolean isEnableSpikeSound() {
+        return enableSpikeSound;
+    }
 
-	/**
-	 * @return the maxSpikeRateHz
-	 */
-	public float getMaxSpikeRateHz() {
-		return maxSpikeRateHz;
-	}
+    /**
+     * @param enableSpikeSound the enableSpikeSound to set
+     */
+    public void setEnableSpikeSound(boolean enableSpikeSound) {
+        this.enableSpikeSound = enableSpikeSound;
+        putBoolean("enableSpikeSound", enableSpikeSound);
+    }
 
-	/**
-	 * @param maxSpikeRateHz
-	 *            the maxSpikeRateHz to set
-	 */
-	public void setMaxSpikeRateHz(float maxSpikeRateHz) {
-		this.maxSpikeRateHz = maxSpikeRateHz;
-		putFloat("maxSpikeRateHz", maxSpikeRateHz);
-	}
+    /**
+     * @return the maxSpikeRateHz
+     */
+    public float getMaxSpikeRateHz() {
+        return maxSpikeRateHz;
+    }
 
-	/**
-	 * @return the minUpdateIntervalUs
-	 */
-	public int getMinUpdateIntervalUs() {
-		return minUpdateIntervalUs;
-	}
+    /**
+     * @param maxSpikeRateHz the maxSpikeRateHz to set
+     */
+    public void setMaxSpikeRateHz(float maxSpikeRateHz) {
+        this.maxSpikeRateHz = maxSpikeRateHz;
+        putFloat("maxSpikeRateHz", maxSpikeRateHz);
+    }
 
-	/**
-	 * @param minUpdateIntervalUs
-	 *            the minUpdateIntervalUs to set
-	 */
-	public void setMinUpdateIntervalUs(int minUpdateIntervalUs) {
-		this.minUpdateIntervalUs = minUpdateIntervalUs;
-		putInt("minUpdateIntervalUs", minUpdateIntervalUs);
-	}
+    /**
+     * @return the minUpdateIntervalUs
+     */
+    public int getMinUpdateIntervalUs() {
+        return minUpdateIntervalUs;
+    }
 
-	/**
-	 * @return the poissonFiringEnabled
-	 */
-	public boolean isPoissonFiringEnabled() {
-		return poissonFiringEnabled;
-	}
+    /**
+     * @param minUpdateIntervalUs the minUpdateIntervalUs to set
+     */
+    public void setMinUpdateIntervalUs(int minUpdateIntervalUs) {
+        this.minUpdateIntervalUs = minUpdateIntervalUs;
+        putInt("minUpdateIntervalUs", minUpdateIntervalUs);
+    }
 
-	/**
-	 * @param poissonFiringEnabled
-	 *            the poissonFiringEnabled to set
-	 */
-	public void setPoissonFiringEnabled(boolean poissonFiringEnabled) {
-		this.poissonFiringEnabled = poissonFiringEnabled;
-		putBoolean("poissonFiringEnabled", poissonFiringEnabled);
-	}
+    /**
+     * @return the poissonFiringEnabled
+     */
+    public boolean isPoissonFiringEnabled() {
+        return poissonFiringEnabled;
+    }
+
+    /**
+     * @param poissonFiringEnabled the poissonFiringEnabled to set
+     */
+    public void setPoissonFiringEnabled(boolean poissonFiringEnabled) {
+        this.poissonFiringEnabled = poissonFiringEnabled;
+        putBoolean("poissonFiringEnabled", poissonFiringEnabled);
+    }
 
 }
