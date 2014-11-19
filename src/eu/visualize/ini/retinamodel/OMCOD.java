@@ -50,6 +50,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private Subunits subunits;
     private int nxmax;
     private int nymax;
+    private float IFthreshold;
     private boolean enableSpikeDraw;
     private int counter = 0;
     private int operationRange = 10;
@@ -97,6 +98,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private float objectRealWidthXM = getFloat("objectRealWidthXM", 0.5f);
     private float eventRateTauMs = getFloat("eventRateTauMs", 100f);
     private float dtBackgroundUs = getFloat("dtBackgroundUs", 100f);
+    private int neuronDecayTimeconstantMs = getInt("neuronDecayTimeconstantMs", 100);
 //------------------------------------------------------------------------------
 
 //----------------------------------------------------------------------------//
@@ -145,6 +147,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         setPropertyTooltip(fix, "vmemIncrease", "Increase in vmem per event received");
         setPropertyTooltip(use, "subunitDecayTimeconstantMs", "Subunit activity "
                 + "decays with this time constant in ms");
+        setPropertyTooltip(use, "neuronDecayTimeconstantMs", "decay Tau of IF neuron");
         setPropertyTooltip(disp, "enableSpikeSound", "Enables audio spike output from "
                 + "objectMotion cell");
         setPropertyTooltip(fix, "maxSpikeRateHz", "Maximum spike rate of objectMotion "
@@ -440,6 +443,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         renderer.draw3D("OMCmem: " + membraneStateArray[getShowXcoord()][getShowYcoord()], -55, 100, 0, .4f); // x y width height
         renderer.setColor(1, 1, 0, .3f);
         renderer.draw3D("Average Event Rate: " + eventRateFilter.getFilteredEventRate() + " Ev/s", -55, 70, 0, .4f); // x y width height
+        renderer.setColor(1, 1, 0, .3f);
+        renderer.draw3D("Current Threshold: " + IFthreshold, -55, 110, 0, .4f); // x y width height
         renderer.setColor(1, 1, 0, .3f);
         directions(findCenterOfMass(findClusterCorners()));
         renderer.draw3D("Direction: " + direction, -55, 50, 0, .4f); // x y width height
@@ -805,11 +810,20 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             }
             if (dt > minUpdateIntervalUs) {
                 lastUpdateTimestamp = e.timestamp;
+
+                // update Neuron RGC
+                float decayFactor2 = (float) Math.exp(-dt / (1000 * neuronDecayTimeconstantMs));
+                for (int omcx = getExcludedEdgeSubunits(); omcx < (nymax - 1 - getExcludedEdgeSubunits()); omcx++) {
+                    for (int omcy = getExcludedEdgeSubunits(); omcy < (nymax - 1 - getExcludedEdgeSubunits()); omcy++) {
+                        membraneStateArray[omcx][omcy] *= decayFactor2;
+                    }
+                }
+
                 // now update all subunits to RC decay activity toward zero
-                float decayFactor = (float) Math.exp(-dt / (1000 * subunitDecayTimeconstantMs));
+                float decayFactor1 = (float) Math.exp(-dt / (1000 * subunitDecayTimeconstantMs));
                 for (int x = 0; x < nxmax; x++) {
                     for (int y = 0; y < nymax; y++) {
-                        subunits[x][y].decayBy(decayFactor);
+                        subunits[x][y].decayBy(decayFactor1);
                     }
                 }
             }
@@ -1102,7 +1116,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             // compute subunit input to us
             for (int omcx = getExcludedEdgeSubunits(); omcx < (nxmax - 1 - getExcludedEdgeSubunits()); omcx++) {
                 for (int omcy = getExcludedEdgeSubunits(); omcy < (nymax - 1 - getExcludedEdgeSubunits()); omcy++) {
-                    float IFthreshold = 0;
                     timeStampArray[omcx][omcy] = timestamp;
                     netSynapticInputArray[omcx][omcy] = (subunits.computeExcitationToOutputCell(omcx, omcy) - subunits.computeInhibitionToOutputCell(omcx, omcy));
                     dtUSarray[omcx][omcy] = timeStampArray[omcx][omcy] - lastTimeStampArray[omcx][omcy];
@@ -1128,7 +1141,10 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         membraneStateArray[omcx][omcy] += netSynapticInputArray[omcx][omcy] * dtUSarray[omcx][omcy] * 1e-6f;
                         if (eventRateFilter.getFilteredEventRate() > 100000) {
                             IFthreshold = integrateAndFireThreshold + increaseInThreshold;
-                        } else {
+                        }else if(eventRateFilter.getFilteredEventRate() < 1100){
+                            IFthreshold = 10000; //Just very high if only noise is present
+                        }
+                        else {
                             IFthreshold = integrateAndFireThreshold;
                         }
                         if (membraneStateArray[omcx][omcy] > IFthreshold) {
@@ -1232,6 +1248,17 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     // @return the subunitDecayTimeconstantMs
     public float getSubunitDecayTimeconstantMs() {
         return subunitDecayTimeconstantMs;
+    }
+//------------------------------------------------------------------------------
+
+    public int getNeuronDecayTimeconstantMs() {
+        return neuronDecayTimeconstantMs;
+    }
+
+    // @param neuronDecayTimeconstantMs the neuronDecayTimeconstantMs to set
+    public synchronized void setNeuronDecayTimeconstantMs(int neuronDecayTimeconstantMs) {
+        this.neuronDecayTimeconstantMs = neuronDecayTimeconstantMs;
+        putInt("neuronDecayTimeconstantMs", neuronDecayTimeconstantMs);
     }
 //------------------------------------------------------------------------------
 
