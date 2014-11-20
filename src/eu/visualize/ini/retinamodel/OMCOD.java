@@ -302,7 +302,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                             lastSpikedOMCTracker1[i][counter] = lastSpikedOMC[1];
                         }
                     }
-                    operationRange = 4; // initialise to shorter range
+                    operationRange = 3; // initialise to shorter range
                 } else {
                     if (rememberReset2) { // Start anywhere after reset
                         for (int j = 0; j < getClusterSize() - 1; j++) {
@@ -364,12 +364,12 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             }
             // Reset tracker after a second of no OMC events in its neighbourhood 
             // (current timestamp - timestamp of last spiked OMC of tracker, spatially correlated then)
-            if (lastOMCODSpikeCheckTimestamp - lastTimeStampSpikeArray[lastSpikedOMCTracker1[0][counter]][lastSpikedOMCTracker1[1][counter]] > 1000000) {
+            if (lastOMCODSpikeCheckTimestamp - lastTimeStampSpikeArray[lastSpikedOMCTracker1[0][counter]][lastSpikedOMCTracker1[1][counter]] > 500000) {
                 resetTracker1();
             }
             // Reset tracker after a second of no OMC events in its neighbourhood 
             // (current timestamp - timestamp of last spiked OMC of tracker, spatially correlated then)
-            if (lastOMCODSpikeCheckTimestamp - lastTimeStampSpikeArray[lastSpikedOMCTracker2[0][counter]][lastSpikedOMCTracker2[1][counter]] > 1000000) {
+            if (lastOMCODSpikeCheckTimestamp - lastTimeStampSpikeArray[lastSpikedOMCTracker2[0][counter]][lastSpikedOMCTracker2[1][counter]] > 500000) {
                 resetTracker2();
             }
 
@@ -751,15 +751,13 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             direction = "[2] Bottom-Center: Stay still";
         } else if (CMx > nxmax - divisionX && CMy > 0 && CMx < nxmax && CMy < divisionY) { //3
             direction = "[3] Bottom-Right: Turn Right";
-        }
-        if (CMx > 0 && CMy > divisionY && CMx < divisionX && CMy < nymax - divisionY) { //4
+        } else if (CMx > 0 && CMy > divisionY && CMx < divisionX && CMy < nymax - divisionY) { //4
             direction = "[4] Center-Left: Go + Turn Left";
         } else if (CMx > divisionX && CMy > divisionY && CMx < nxmax - divisionX && CMy < nymax - divisionY) { //5
             direction = "[5] Center: Go straight";
         } else if (CMx > nxmax - divisionX && CMy > divisionY && CMx < nxmax && CMy < nymax - divisionY) { //6
             direction = "[6] Center-Right: ? Go + Turn Right";
-        }
-        if (CMx > 0 && CMy > nymax - divisionY && CMx < divisionX && CMy < nymax) { //7
+        } else if (CMx > 0 && CMy > nymax - divisionY && CMx < divisionX && CMy < nymax) { //7
             direction = "[7] Top-Left: ? Go more + Turn Left";
         } else if (CMx > divisionX && CMy > nymax - divisionY && CMx < nxmax - divisionX && CMy < nymax) { //8
             direction = "[8] Top-Center: ? Go more straight";
@@ -1166,7 +1164,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         membraneStateArray[omcx][omcy] += netSynapticInputArray[omcx][omcy] * dtUSarray[omcx][omcy] * 1e-6f;
                         if (eventRateFilter.getFilteredEventRate() > 100000) {
                             IFthreshold = integrateAndFireThreshold + increaseInThreshold;
-                        } else if (eventRateFilter.getFilteredEventRate() < 1100) {
+                        } else if (eventRateFilter.getFilteredEventRate() < 800) {
                             IFthreshold = 10000; //Just very high if only noise is present
                         } else {
                             IFthreshold = integrateAndFireThreshold;
