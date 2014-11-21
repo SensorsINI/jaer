@@ -42,6 +42,7 @@ import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.DAViS.IMUSample;
+import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 
 /**
  * This "vestibular-ocular Steadicam" tries to compensate global image motion by
@@ -56,9 +57,11 @@ import eu.seebetter.ini.chips.DAViS.IMUSample;
 @Description("Compenstates global scene translation and rotation to stabilize scene like a SteadiCam.")
 public class Steadicam extends EventFilter2D implements FrameAnnotater, Application, Observer, PropertyChangeListener {
 
+  
+
     /**
-     * Classes that compute camera rotation estimate based on scene shift and
-     * maybe rotation around the center of the scene.
+     * Classes that compute camera rotationRad estimate based on scene shift and
+ maybe rotationRad around the center of the scene.
      */
     public enum CameraRotationEstimator {
 
@@ -80,7 +83,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
     private boolean annotateEnclosedEnabled = getBoolean("annotateEnclosedEnabled", true);
     private PanTilt panTilt = null;
     ArrayList<TransformAtTime> transformList = new ArrayList(); // holds list of transforms over update times commputed by enclosed filter update callbacks
-    TransformAtTime lastTransform = null;
+    private TransformAtTime lastTransform = null;
 //    private double[] angular, acceleration;
     private float panRate = 0, tiltRate = 0, rollRate = 0; // in deg/sec
     private float panOffset = getFloat("panOffset", 0), tiltOffset = getFloat("tiltOffset", 0), rollOffset = getFloat("rollOffset", 0);
@@ -118,6 +121,8 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
     private int sxm1;
     private int sym1;
     private int sx2, sy2;
+    private boolean transformImageEnabled=getBoolean("transformImageEnabled",true);
+    
 
     /**
      * Creates a new instance of SceneStabilizer
@@ -157,6 +162,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         setPropertyTooltip("vestibularStabilizationEnabled", "use the gyro/accelometer to provide transform");
         setPropertyTooltip("zeroGyro", "zeros the gyro output. Sensor should be stationary for period of 1-2 seconds during zeroing");
         setPropertyTooltip("eraseGyroZero", "Erases the gyro zero values");
+        setPropertyTooltip("transformImageEnabled", "Transforms rendering of the APS image (note that the APS image data is unaffected; this is only for demo purposes)");
 
         setPropertyTooltip("sampleIntervalMs", "sensor sample interval in ms, min 4ms, powers of two, e.g. 4,8,16,32...");
         setPropertyTooltip(transform,"highpassTauMsTranslation", "highpass filter time constant in ms to relax transform back to zero for translation (pan, tilt) components");
@@ -192,7 +198,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         // this is not the case when using integrated IMU which generates IMUSamples in the event stream.
         getEnclosedFilterChain().filterPacket(in);
 //        System.out.println("new steadicam input packet "+in);
-        if (electronicStabilizationEnabled) { // here we stabilize by using the measured camera rotation to counter-transform the events
+        if (electronicStabilizationEnabled) { // here we stabilize by using the measured camera rotationRad to counter-transform the events
             // transform events in place, no need to copy to output packet
 //            checkOutputPacketEventType(in);
 //            OutputEventIterator outItr = getOutputPacket().outputIterator();// the transformed events output packet
@@ -227,11 +233,11 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
                         lastTransform = transformItr.next();
                 }
 
-                if (lastTransform != null) {
+                if (getLastTransform() != null) {
                     // apply transform Re+T. First center events from middle of array at 0,0, then transform, then move them back to their origin
                     int nx = ev.x - sx2, ny = ev.y - sy2;
-                    ev.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translation.x) + sx2);
-                    ev.y = (short) (((lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny) + lastTransform.translation.y) + sy2);
+                    ev.x = (short) ((((getLastTransform().cosAngle * nx) - (getLastTransform().sinAngle * ny)) + getLastTransform().translationPixels.x) + sx2);
+                    ev.y = (short) (((getLastTransform().sinAngle * nx) + (getLastTransform().cosAngle * ny) + getLastTransform().translationPixels.y) + sy2);
                     ev.address = chip.getEventExtractor().getAddressFromCell(ev.x, ev.y, ev.getType()); // so event is logged properly to disk
                 }
 
@@ -241,7 +247,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
                 }else{
                     ev.setFilteredOut(false);
                 }
-                // deal with flipping contrast of output event depending on direction of motion, to make things appear the same regardless of camera rotation
+                // deal with flipping contrast of output event depending on direction of motion, to make things appear the same regardless of camera rotationRad
 
                 if (flipContrast) {
                     if (evenMotion) {
@@ -249,8 +255,12 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
                         ev.polarity = ev.polarity == PolarityEvent.Polarity.On ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
                     }
                 }
+            } // event iterator
+            if(transformImageEnabled && lastTransform!=null && chip.getAeViewer()!=null && chip.getCanvas()!=null && chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA){
+                ChipRendererDisplayMethodRGBA displayMethod=(ChipRendererDisplayMethodRGBA)chip.getCanvas().getDisplayMethod(); // TODO not ideal (tobi)
+                displayMethod.setImageTransform(lastTransform.translationPixels,lastTransform.rotationRad);
             }
-        }
+        } // electronicStabilizationEnabled
 
         if (isPanTiltEnabled()) { // mechanical pantilt
             try {
@@ -286,7 +296,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
      * enclosing processor.
      *
      * @param timestamp the timestamp in us.
-     * @return the transform object representing the camera rotation
+     * @return the transform object representing the camera rotationRad
      */
     synchronized public TransformAtTime updateTransform(IMUSample imuSample) {
 
@@ -340,7 +350,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         tiltTranslationDeg = tiltTranslationFilter.filter(tiltDC, timestamp);
         rollDeg = rollFilter.filter(rollDC, timestamp);
 
-        // check limits, make limit for rotation a lot higher to avoid reset on big rolls, which are different than pans and tilts
+        // check limits, make limit for rotationRad a lot higher to avoid reset on big rolls, which are different than pans and tilts
         if ((Math.abs(panTranslationDeg) > transformResetLimitDegrees) || (Math.abs(tiltTranslationDeg) > transformResetLimitDegrees) || (Math.abs(rollDeg) > (transformResetLimitDegrees*3))) {
             panDC = 0;
             tiltDC = 0;
@@ -385,8 +395,8 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
     private final void transformEvent(BasicEvent e, TransformAtTime transform) {
         e.x -= sx2;
         e.y -= sy2;
-        short newx = (short) Math.round((((transform.cosAngle * e.x) - (transform.sinAngle * e.y)) + transform.translation.x));
-        short newy = (short) Math.round(((transform.sinAngle * e.x) + (transform.cosAngle * e.y) + transform.translation.y));
+        short newx = (short) Math.round((((transform.cosAngle * e.x) - (transform.sinAngle * e.y)) + transform.translationPixels.x));
+        short newy = (short) Math.round(((transform.sinAngle * e.x) + (transform.cosAngle * e.y) + transform.translationPixels.y));
         e.x = (short) (newx + sx2);
         e.y = (short) (newy + sy2);
         e.address = chip.getEventExtractor().getAddressFromCell(e.x, e.y, e.getType()); // so event is logged properly to disk
@@ -421,9 +431,9 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
  AbstractDirectionSelectiveFilter, the lastTransform is computed by pure
  integration of the motion signal followed by a high-pass filter to remove
  long term DC offsets. <p> Using OpticalGyro, the lastTransform is
-     * computed by the optical gyro which tracks clusters and measures scene
-     * translation (and possibly rotation) from a consensus of the tracked
-     * clusters. <p> Using PhidgetsVORSensor, lastTransform is computed by
+ computed by the optical gyro which tracks clusters and measures scene
+ translationPixels (and possibly rotationRad) from a consensus of the tracked
+ clusters. <p> Using PhidgetsVORSensor, lastTransform is computed by
      * PhidgetsVORSensor using rate gyro sensors.
      *
      *
@@ -480,7 +490,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
             return;
         }
 
-        if ((lastTransform != null) && isElectronicStabilizationEnabled()) { // draw translation frame
+        if ((getLastTransform() != null) && isElectronicStabilizationEnabled()) { // draw translationPixels frame
             // draw transform
             gl.glPushMatrix();
 
@@ -495,8 +505,8 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
             gl.glEnd();
 
             // rectangle around transform
-            gl.glTranslatef(lastTransform.translation.x + sx2, lastTransform.translation.y + sy2, 0);
-            gl.glRotatef((float) ((lastTransform.rotation * 180) / Math.PI), 0, 0, 1);
+            gl.glTranslatef(getLastTransform().translationPixels.x + sx2, getLastTransform().translationPixels.y + sy2, 0);
+            gl.glRotatef((float) ((getLastTransform().rotationRad * 180) / Math.PI), 0, 0, 1);
             gl.glBegin(GL.GL_LINE_LOOP);
             gl.glVertex2f(-sx2, -sy2);
             gl.glVertex2f(sx2, -sy2);
@@ -603,6 +613,10 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
             setPanTiltEnabled(false); // turn off servos, close interface
         } else {
             resetFilter(); // reset on enabled to prevent large timestep anomalies
+            if(chip.getAeViewer()!=null && chip.getCanvas()!=null && chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA){
+                ChipRendererDisplayMethodRGBA displayMethod=(ChipRendererDisplayMethodRGBA)chip.getCanvas().getDisplayMethod(); // TODO not ideal (tobi)
+                displayMethod.setImageTransform(null);
+            }
         }
     }
 
@@ -885,5 +899,28 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         float computeAverage() {
             return sum / count;
         }
+    }
+    
+    /**
+     * Returns the last event transform that was computed.
+     * @return the lastTransform that was computed
+     */
+    public TransformAtTime getLastTransform() {
+        return lastTransform;
+    }
+
+    /**
+     * @return the transformImageEnabled
+     */
+    public boolean isTransformImageEnabled() {
+        return transformImageEnabled;
+    }
+
+    /**
+     * @param transformImageEnabled the transformImageEnabled to set
+     */
+    public void setTransformImageEnabled(boolean transformImageEnabled) {
+        this.transformImageEnabled = transformImageEnabled;
+        putBoolean("transformImageEnabled", transformImageEnabled);
     }
 }

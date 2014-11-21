@@ -7,18 +7,18 @@ package org.capocaccia.cne.jaer.cne2012.vor;
 import java.awt.geom.Point2D;
 
 /**
- * Holds timestamped transform information including translation and rotation,
- * intended for application to the event stream.
+ * Holds timestamped transform information including translationPixels and rotationRad,
+ intended for application to the event stream.
  *
  * @author tobi
  */
-class TransformAtTime {
+public class TransformAtTime {
 
-    /** Inn pixel units */
-    public Point2D.Float translation;
+    /** In pixels */
+    public Point2D.Float translationPixels;
     int timestamp;
     /** In radians, CW from right unit vector. */
-    public float rotation;
+    public float rotationRad;
     public float cosAngle;
     public float sinAngle;
 
@@ -29,7 +29,7 @@ class TransformAtTime {
      * @param rotation in radians, clockwise from zero to right
      */
     public TransformAtTime(int timestamp, Point2D.Float translation, float rotation) {
-        this.translation=translation;
+        this.translationPixels=translation;
         set(timestamp, translation.x, translation.y, rotation);
     }
 
@@ -41,16 +41,16 @@ class TransformAtTime {
      * @param rotation in radians, clockwise from zero to right
      */
     final public void set(int timestamp, float translationX, float translationY, float rotation) {
-        translation.x=translationX;
-        translation.y=translationY;
+        translationPixels.x=translationX;
+        translationPixels.y=translationY;
         this.timestamp = timestamp;
-        this.rotation = rotation;
+        this.rotationRad = rotation;
         cosAngle = (float) Math.cos(rotation);
         sinAngle = (float) Math.sin(rotation);
     }
 
     @Override
     public String toString() {
-        return String.format("timestamp=%.1f ms translation=(%.1f,%.1f) rotation=%.1f", (float) timestamp / 1000, translation.x, translation.y, rotation);
+        return String.format("timestamp=%.1f ms translation=(%.1f,%.1f) rotation=%.1f", (float) timestamp / 1000, translationPixels.x, translationPixels.y, rotationRad);
     }
 }
