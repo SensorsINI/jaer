@@ -92,8 +92,9 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
      */
     private DAViS240DisplayMethod davisDisplayMethod = null;
     private AEFrameChipRenderer apsDVSrenderer;
-    private int exposure; // internal measured variable, set during rendering
-    private int frameTime; // internal measured variable, set during rendering
+    private int frameStartTimestampUs = 0;  // timestamp of first sample from frame
+    private int exposureDurationUs; // internal measured variable, set during rendering. Duration of frame expsosure in us.
+    private int frameIntervalUs; // internal measured variable, set during rendering. Time between this frame and previous one.
     /**
      * holds measured variable in Hz for GUI rendering of rate
      */
@@ -239,7 +240,6 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
      */
     public class DAViS240Extractor extends RetinaExtractor {
 
-        private int firstFrameTs = 0;
         private int autoshotEventsSinceLastShot = 0; // autoshot counter
         private int warningCount = 0;
         private static final int WARNING_COUNT_DIVIDER = 10000;
@@ -381,20 +381,20 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
                         if (!config.chipConfigChain.configBits[6].isSet()) {
                             //rolling shutter start of exposure (SOE)
                             createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamps[i]);
-                            frameTime = e.timestamp - firstFrameTs;
-                            firstFrameTs = e.timestamp;
+                            frameIntervalUs = e.timestamp - frameStartTimestampUs;
+                            frameStartTimestampUs = e.timestamp;
                         }
                     }
                     if (config.chipConfigChain.configBits[6].isSet() && e.isResetRead() && (e.x == 0) && (e.y == sy1)) {
                         //global shutter start of exposure (SOE)
                         createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamps[i]);
-                        frameTime = e.timestamp - firstFrameTs;
-                        firstFrameTs = e.timestamp;
+                        frameIntervalUs = e.timestamp - frameStartTimestampUs;
+                        frameStartTimestampUs = e.timestamp;
                     }
                     //end of exposure
                     if (pixZero && e.isSignalRead()) {
                         createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOE, timestamps[i]);
-                        exposure = e.timestamp - firstFrameTs;
+                        exposureDurationUs = e.timestamp - frameStartTimestampUs;
                     }
                     if (e.isSignalRead() && (e.x == 0) && (e.y == 0)) {
                         // if we use ResetRead+SignalRead+C readout, OR, if we use ResetRead-SignalRead readout and we are at last APS pixel, then write EOF event
@@ -685,10 +685,10 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
         private void exposureRender(GL2 gl) {
             gl.glPushMatrix();
             exposureRenderer.begin3DRendering();  // TODO make string rendering more efficient here using String.format or StringBuilder
-            if (frameTime > 0) {
-                setFrameRateHz((float) 1000000 / frameTime);
+            if (frameIntervalUs > 0) {
+                setFrameRateHz((float) 1000000 / frameIntervalUs);
             }
-            setExposureMs((float) exposure / 1000);
+            setExposureMs((float) exposureDurationUs / 1000);
             String s = String.format("Frame: %d; Exposure %.2f ms; Frame rate: %.2f Hz", getFrameCount(), exposureMs, frameRateHz);
             exposureRenderer.draw3D(s, 0, HEIGHT + (FONTSIZE / 2), 0, .5f); // x,y,z, scale factor
             exposureRenderer.end3DRendering();
@@ -751,6 +751,11 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
     @Override
     public float getExposureMs() {
         return exposureMs;
+    }
+
+    @Override
+    public int getFrameExposureStartTimestampUs() {
+        return frameStartTimestampUs;
     }
 
     /**
