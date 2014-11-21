@@ -85,6 +85,13 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
      */
     abstract public int getFrameExposureStartTimestampUs();
 
+   /** Returns end of exposure time in timestamp tick units (us). Note this is particularly relevant for global shutter mode.
+     * For rolling shutter readout mode, this time is the last value read from last column.
+     * 
+     * @return start of exposure time in timestamp units (us). 
+     */
+    abstract public int getFrameExposureEndTimestampUs();
+
     /**
      * Returns measured exposure time
      *
