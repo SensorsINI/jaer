@@ -152,4 +152,12 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
      */
     abstract public void setShowImageHistogram(boolean yes);
 
+    /**
+     * Returns the frame counter value. This value is set on each end-of-frame sample.
+     *
+     * @return the frameCount
+     */
+    public abstract int getFrameCount();
+
+
 }
