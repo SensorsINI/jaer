@@ -92,8 +92,9 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
      */
     private DAViS240DisplayMethod davisDisplayMethod = null;
     private AEFrameChipRenderer apsDVSrenderer;
-    private int frameStartTimestampUs = 0;  // timestamp of first sample from frame
-    private int exposureDurationUs; // internal measured variable, set during rendering. Duration of frame expsosure in us.
+    private int frameExposureStartTimestampUs = 0;  // timestamp of first sample from frame (first sample read after reset released)
+    private int frameExposureEndTimestampUs; // end of exposure (first events of signal read)
+   private int exposureDurationUs; // internal measured variable, set during rendering. Duration of frame expsosure in us.
     private int frameIntervalUs; // internal measured variable, set during rendering. Time between this frame and previous one.
     /**
      * holds measured variable in Hz for GUI rendering of rate
@@ -381,20 +382,21 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
                         if (!config.chipConfigChain.configBits[6].isSet()) {
                             //rolling shutter start of exposure (SOE)
                             createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamps[i]);
-                            frameIntervalUs = e.timestamp - frameStartTimestampUs;
-                            frameStartTimestampUs = e.timestamp;
+                            frameIntervalUs = e.timestamp - frameExposureStartTimestampUs;
+                            frameExposureStartTimestampUs = e.timestamp;
                         }
                     }
                     if (config.chipConfigChain.configBits[6].isSet() && e.isResetRead() && (e.x == 0) && (e.y == sy1)) {
                         //global shutter start of exposure (SOE)
                         createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamps[i]);
-                        frameIntervalUs = e.timestamp - frameStartTimestampUs;
-                        frameStartTimestampUs = e.timestamp;
+                        frameIntervalUs = e.timestamp - frameExposureStartTimestampUs;
+                        frameExposureStartTimestampUs = e.timestamp;
                     }
                     //end of exposure
                     if (pixZero && e.isSignalRead()) {
                         createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOE, timestamps[i]);
-                        exposureDurationUs = e.timestamp - frameStartTimestampUs;
+                        frameExposureEndTimestampUs=e.timestamp;
+                        exposureDurationUs = e.timestamp - frameExposureStartTimestampUs;
                     }
                     if (e.isSignalRead() && (e.x == 0) && (e.y == 0)) {
                         // if we use ResetRead+SignalRead+C readout, OR, if we use ResetRead-SignalRead readout and we are at last APS pixel, then write EOF event
@@ -755,7 +757,11 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 
     @Override
     public int getFrameExposureStartTimestampUs() {
-        return frameStartTimestampUs;
+        return frameExposureStartTimestampUs;
+    }
+
+    public int getFrameExposureEndTimestampUs() {
+        return frameExposureEndTimestampUs;
     }
 
     /**
