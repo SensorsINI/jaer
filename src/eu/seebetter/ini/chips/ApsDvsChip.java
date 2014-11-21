@@ -77,6 +77,13 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
      * @return frame rate in Hz
      */
     abstract public float getFrameRateHz();
+    
+    /** Returns start of exposure time in timestamp tick units (us). Note this is particularly relevant for global shutter mode.
+     * For rolling shutter readout mode, this time is the start of exposure time of the first column.
+     * 
+     * @return start of exposure time in timestamp units (us). 
+     */
+    abstract public int getFrameExposureStartTimestampUs();
 
     /**
      * Returns measured exposure time
