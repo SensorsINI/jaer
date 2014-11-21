@@ -40,6 +40,7 @@ import net.sf.jaer.util.filter.HighpassFilter;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
+import eu.seebetter.ini.chips.ApsDvsChip;
 
 import eu.seebetter.ini.chips.DAViS.IMUSample;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
@@ -225,6 +226,16 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
                             IMUSample s = (IMUSample) ev;
                             if (s.imuSampleEvent) {
                                 lastTransform = updateTransform(s);
+                                if(transformImageEnabled && lastTransform!=null && chip instanceof ApsDvsChip && chip.getAeViewer()!=null && chip.getCanvas()!=null && chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA){
+                                    int frameTimestamp=((ApsDvsChip)chip).getFrameExposureStartTimestampUs();
+                                    int frameExposureDurationUs=(int)(((ApsDvsChip)chip).getExposureMs()*1000);
+                                    if(lastTransform.timestamp>=frameTimestamp && lastTransform.timestamp<frameTimestamp+frameExposureDurationUs){
+                                        // TODO check logic here. The transform applied is the last one available 
+                                        // with a time just after the exposure start time and before the exposure end time.
+                                       ChipRendererDisplayMethodRGBA displayMethod=(ChipRendererDisplayMethodRGBA)chip.getCanvas().getDisplayMethod(); // TODO not ideal (tobi)
+                                        displayMethod.setImageTransform(lastTransform.translationPixels,lastTransform.rotationRad); 
+                                    }
+                                }
                                 continue; // next event
                             }
                         }
@@ -256,10 +267,10 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
                     }
                 }
             } // event iterator
-            if(transformImageEnabled && lastTransform!=null && chip.getAeViewer()!=null && chip.getCanvas()!=null && chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA){
-                ChipRendererDisplayMethodRGBA displayMethod=(ChipRendererDisplayMethodRGBA)chip.getCanvas().getDisplayMethod(); // TODO not ideal (tobi)
-                displayMethod.setImageTransform(lastTransform.translationPixels,lastTransform.rotationRad);
-            }
+//            if(transformImageEnabled && lastTransform!=null && chip.getAeViewer()!=null && chip.getCanvas()!=null && chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA){
+//                ChipRendererDisplayMethodRGBA displayMethod=(ChipRendererDisplayMethodRGBA)chip.getCanvas().getDisplayMethod(); // TODO not ideal (tobi)
+//                displayMethod.setImageTransform(lastTransform.translationPixels,lastTransform.rotationRad);
+//            }
         } // electronicStabilizationEnabled
 
         if (isPanTiltEnabled()) { // mechanical pantilt
