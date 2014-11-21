@@ -2030,6 +2030,7 @@ two interfaces). otherwise force user choice.
 					packet = filterChain.filterPacket(packet);
 				} catch (Exception e) {
 					log.warning("Caught " + e + ", disabling all filters. See following stack trace.");
+                                        e.printStackTrace();
 					log.log(Level.WARNING, "Filter exception", e);
 					for (EventFilter f : filterChain) {
 						f.setFilterEnabled(false);
