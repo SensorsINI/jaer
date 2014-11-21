@@ -227,11 +227,14 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
                             if (s.imuSampleEvent) {
                                 lastTransform = updateTransform(s);
                                 if(transformImageEnabled && lastTransform!=null && chip instanceof ApsDvsChip && chip.getAeViewer()!=null && chip.getCanvas()!=null && chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA){
-                                    int frameTimestamp=((ApsDvsChip)chip).getFrameExposureStartTimestampUs();
-                                    int frameExposureDurationUs=(int)(((ApsDvsChip)chip).getExposureMs()*1000);
-                                    if(lastTransform.timestamp>=frameTimestamp && lastTransform.timestamp<frameTimestamp+frameExposureDurationUs){
+                                    ApsDvsChip apsDvsChip=(ApsDvsChip)chip;
+                                    int frameStartTimestamp=apsDvsChip.getFrameExposureStartTimestampUs();
+                                    int frameEndTimestamp=apsDvsChip.getFrameExposureEndTimestampUs();
+                                    if(/*frameEndTimestamp>frameStartTimestamp &&*/ lastTransform.timestamp>=frameStartTimestamp && lastTransform.timestamp<frameEndTimestamp){
                                         // TODO check logic here. The transform applied is the last one available 
                                         // with a time just after the exposure start time and before the exposure end time.
+                                        // in addition we have already captured a frame (end>start) and we are applying the transform to THAT frame,
+                                        // which is currently being rendered.
                                        ChipRendererDisplayMethodRGBA displayMethod=(ChipRendererDisplayMethodRGBA)chip.getCanvas().getDisplayMethod(); // TODO not ideal (tobi)
                                         displayMethod.setImageTransform(lastTransform.translationPixels,lastTransform.rotationRad); 
                                     }
