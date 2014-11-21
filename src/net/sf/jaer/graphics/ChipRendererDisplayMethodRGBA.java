@@ -104,7 +104,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
         gl.glEnable (GL.GL_BLEND);
 
         final int nearestFilter=GL.GL_NEAREST; // tobi changed to GL_NEAREST so that pixels are not intepolated but rather are rendered exactly as they come from data not matter what zoom.
-        final int linearFilter=GL.GL_LINEAR; // tobi changed to GL_NEAREST so that pixels are not intepolated but rather are rendered exactly as they come from data not matter what zoom.
+        final int linearFilter=GL.GL_LINEAR; // does linear interpolation of value, to make image that looks smoother
         if(displayFrames){
             gl.glPushMatrix();
             if(imageTransform!=null){
