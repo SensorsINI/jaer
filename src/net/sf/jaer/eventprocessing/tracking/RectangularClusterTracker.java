@@ -644,6 +644,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
     synchronized protected EventPacket<? extends BasicEvent> track(EventPacket<?> in) {
         boolean updatedClusterList = false;
         OutputEventIterator outItr = out.outputIterator();
+        int sx=chip.getSizeX(), sy=chip.getSizeY();
         
         if (in.getSize() == 0) return out; // nothing to do
 
@@ -658,6 +659,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         // This will also update the Position, Mass, EventRate and AverageDistance
         for (BasicEvent ev : in) {
             if(ev.isSpecial()) continue;
+            if(ev.x<0||ev.x>=sx || ev.y<0|| ev.y>=sy) continue ;  // out of bounds from e.g. steadicom transform
             Cluster closest = fastClusterFinder.findClusterNear(ev);
 
             if (closest != null) {
