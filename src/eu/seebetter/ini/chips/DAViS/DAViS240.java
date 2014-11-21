@@ -512,6 +512,10 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
             address = (address & ~YMASK) | (e.y << YSHIFT);
             return address;
         }
+
+        private void setFrameCount(int i) {
+            frameCount=i;
+        }
     } // extractor
 
     /**
@@ -769,18 +773,11 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
      *
      * @return the frameCount
      */
+    @Override
     public int getFrameCount() {
         return frameCount;
     }
 
-    /**
-     * Sets the frame counter.
-     *
-     * @param frameCount the frameCount to set
-     */
-    public void setFrameCount(int frameCount) {
-        this.frameCount = frameCount;
-    }
 
     /**
      * Triggers shot of one APS frame
