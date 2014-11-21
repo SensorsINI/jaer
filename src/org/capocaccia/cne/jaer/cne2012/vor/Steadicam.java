@@ -84,7 +84,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
     private boolean annotateEnclosedEnabled = getBoolean("annotateEnclosedEnabled", true);
     private PanTilt panTilt = null;
     ArrayList<TransformAtTime> transformList = new ArrayList(); // holds list of transforms over update times commputed by enclosed filter update callbacks
-    private TransformAtTime lastTransform = null;
+    private TransformAtTime lastTransform = null, imageTransform=null;
 //    private double[] angular, acceleration;
     private float panRate = 0, tiltRate = 0, rollRate = 0; // in deg/sec
     private float panOffset = getFloat("panOffset", 0), tiltOffset = getFloat("tiltOffset", 0), rollOffset = getFloat("rollOffset", 0);
@@ -123,7 +123,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
     private int sym1;
     private int sx2, sy2;
     private boolean transformImageEnabled=getBoolean("transformImageEnabled",true);
-    
+    private int lastFrameNumber=0;
 
     /**
      * Creates a new instance of SceneStabilizer
@@ -230,13 +230,14 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
                                     ApsDvsChip apsDvsChip=(ApsDvsChip)chip;
                                     int frameStartTimestamp=apsDvsChip.getFrameExposureStartTimestampUs();
                                     int frameEndTimestamp=apsDvsChip.getFrameExposureEndTimestampUs();
-                                    if(/*frameEndTimestamp>frameStartTimestamp &&*/ lastTransform.timestamp>=frameStartTimestamp && lastTransform.timestamp<frameEndTimestamp){
-                                        // TODO check logic here. The transform applied is the last one available 
-                                        // with a time just after the exposure start time and before the exposure end time.
-                                        // in addition we have already captured a frame (end>start) and we are applying the transform to THAT frame,
-                                        // which is currently being rendered.
+                                    int frameCounter=apsDvsChip.getFrameCount();
+                                    if( frameEndTimestamp>=frameStartTimestamp && lastTransform.timestamp>=frameEndTimestamp && frameCounter>lastFrameNumber){
+                                        // if a frame has been read out, then save the last transform to apply to rendering this frame
+                                        imageTransform=lastTransform;
+                                        lastFrameNumber=frameCounter; // only set transfrom once per frame, as soon as we have a tranform for it.
                                        ChipRendererDisplayMethodRGBA displayMethod=(ChipRendererDisplayMethodRGBA)chip.getCanvas().getDisplayMethod(); // TODO not ideal (tobi)
                                         displayMethod.setImageTransform(lastTransform.translationPixels,lastTransform.rotationRad); 
+                                        // immediately set this to be the transform, assuming that next rendering cycle will draw this new frame
                                     }
                                 }
                                 continue; // next event
@@ -921,6 +922,14 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
      */
     public TransformAtTime getLastTransform() {
         return lastTransform;
+    }
+    
+    /**
+     * Returns the transform applicable to last image acquired.
+     * @return the image transform
+     */
+    public TransformAtTime getImageTransform() {
+        return imageTransform;
     }
 
     /**
