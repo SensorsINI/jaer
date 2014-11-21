@@ -199,7 +199,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         setPropertyTooltip(fix, "focalLengthM", "Lenses' focal length in meters");
         setPropertyTooltip(fix, "eventRateTauMs", "Tau of lowpass of event rate");
         setPropertyTooltip(use, "dtBackgroundUs", "Tau of Background activity filter");
-        setPropertyTooltip(use, "operationRange", "Spatial correlation distance" );
+        setPropertyTooltip(use, "operationRange", "Spatial correlation distance");
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -294,7 +294,17 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                     rememberReset1 = false;
                 }
                 if ((Math.abs((lastSpikedOMC[0] - lastSpikedOMCTracker1[0][lastIndex])) < getOperationRange())
-                        && (Math.abs((lastSpikedOMC[1] - lastSpikedOMCTracker1[1][lastIndex])) < getOperationRange())) { // Spatial correlation
+                        && (Math.abs((lastSpikedOMC[1] - lastSpikedOMCTracker1[1][lastIndex])) < getOperationRange())
+                        ||// Spatial correlation with last spike
+                        //spatial correlation with corners
+                        ((Math.abs((lastSpikedOMC[0] - findClusterCorners()[0])) < getOperationRange())
+                        && ((Math.abs((lastSpikedOMC[1] - findClusterCorners()[2])) < getOperationRange()) || (Math.abs((lastSpikedOMC[1] - findClusterCorners()[3])) < getOperationRange())))
+                        || ((Math.abs((lastSpikedOMC[0] - findClusterCorners()[1])) < getOperationRange())
+                        && ((Math.abs((lastSpikedOMC[1] - findClusterCorners()[2])) < getOperationRange()) || (Math.abs((lastSpikedOMC[1] - findClusterCorners()[3])) < getOperationRange())))
+                        || ((Math.abs((lastSpikedOMC[1] - findClusterCorners()[2])) < getOperationRange())
+                        && ((Math.abs((lastSpikedOMC[0] - findClusterCorners()[0])) < getOperationRange()) || (Math.abs((lastSpikedOMC[0] - findClusterCorners()[1])) < getOperationRange())))
+                        || ((Math.abs((lastSpikedOMC[1] - findClusterCorners()[3])) < getOperationRange())
+                        && ((Math.abs((lastSpikedOMC[0] - findClusterCorners()[0])) < getOperationRange()) || (Math.abs((lastSpikedOMC[0] - findClusterCorners()[1])) < getOperationRange())))) {
                     for (int i = 0; i < 2; i++) {
                         if (i == 0) {
                             lastSpikedOMCTracker1[i][counter] = lastSpikedOMC[0];
@@ -316,7 +326,17 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         rememberReset2 = false;
                     }
                     if ((Math.abs((lastSpikedOMC[0] - lastSpikedOMCTracker2[0][lastIndex])) < getOperationRange())
-                            && (Math.abs((lastSpikedOMC[1] - lastSpikedOMCTracker2[1][lastIndex])) < getOperationRange())) { // Spatial correlation
+                            && (Math.abs((lastSpikedOMC[1] - lastSpikedOMCTracker2[1][lastIndex])) < getOperationRange())
+                            ||// Spatial correlation with last spike
+                            //spatial correlation with corners
+                            ((Math.abs((lastSpikedOMC[0] - findClusterCorners()[4])) < getOperationRange())
+                            && ((Math.abs((lastSpikedOMC[1] - findClusterCorners()[6])) < getOperationRange()) || (Math.abs((lastSpikedOMC[1] - findClusterCorners()[7])) < getOperationRange())))
+                            || ((Math.abs((lastSpikedOMC[0] - findClusterCorners()[5])) < getOperationRange())
+                            && ((Math.abs((lastSpikedOMC[1] - findClusterCorners()[6])) < getOperationRange()) || (Math.abs((lastSpikedOMC[1] - findClusterCorners()[7])) < getOperationRange())))
+                            || ((Math.abs((lastSpikedOMC[1] - findClusterCorners()[6])) < getOperationRange())
+                            && ((Math.abs((lastSpikedOMC[0] - findClusterCorners()[4])) < getOperationRange()) || (Math.abs((lastSpikedOMC[0] - findClusterCorners()[5])) < getOperationRange())))
+                            || ((Math.abs((lastSpikedOMC[1] - findClusterCorners()[7])) < getOperationRange())
+                            && ((Math.abs((lastSpikedOMC[0] - findClusterCorners()[4])) < getOperationRange()) || (Math.abs((lastSpikedOMC[0] - findClusterCorners()[5])) < getOperationRange())))) {
                         for (int i = 0; i < 2; i++) {
                             if (i == 0) {
                                 lastSpikedOMCTracker2[i][counter] = lastSpikedOMC[0];
@@ -1179,7 +1199,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         membraneStateArray[omcx][omcy] += netSynapticInputArray[omcx][omcy] * dtUSarray[omcx][omcy] * 1e-6f;
                         if (eventRateFilter.getFilteredEventRate() > 100000) {
                             IFthreshold = integrateAndFireThreshold + increaseInThreshold;
-                        } else if (eventRateFilter.getFilteredEventRate() < 800) {
+                        } else if (eventRateFilter.getFilteredEventRate() < 400) {
                             IFthreshold = 10000; //Just very high if only noise is present
                         } else {
                             IFthreshold = integrateAndFireThreshold;
