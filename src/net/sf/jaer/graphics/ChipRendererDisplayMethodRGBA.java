@@ -22,6 +22,7 @@ import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.fixedfunc.GLMatrixFunc;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
+import java.awt.geom.Point2D;
 
 /**
  * Renders using OpenGL the RGB histogram values from Chip2DRenderer.
@@ -37,6 +38,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
     public final float SPECIAL_BAR_LOCATION_Y = 0;
     public final float SPECIAL_BAR_LINE_WIDTH=8;
     private boolean renderSpecialEvents=true;
+    
 
     /**
      * Creates a new instance of ChipRendererDisplayMethodRGBA
@@ -51,7 +53,8 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
     @Override
     public void display(GLAutoDrawable drawable) {
 //        displayPixmap(drawable);
-        displayQuad(drawable);
+     
+       displayQuad(drawable);
     }
 
     private float clearDisplay(Chip2DRenderer renderer, GL gl) {
@@ -103,6 +106,14 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
         final int nearestFilter=GL.GL_NEAREST; // tobi changed to GL_NEAREST so that pixels are not intepolated but rather are rendered exactly as they come from data not matter what zoom.
         final int linearFilter=GL.GL_LINEAR; // tobi changed to GL_NEAREST so that pixels are not intepolated but rather are rendered exactly as they come from data not matter what zoom.
         if(displayFrames){
+            gl.glPushMatrix();
+            if(imageTransform!=null){
+                int sx=chip.getSizeX()/2, sy=chip.getSizeY()/2;
+//                gl.glTranslatef(chip.getSizeX()/2, chip.getSizeY()/2, 0);
+                gl.glTranslatef(sx,sy, 0);
+                gl.glRotatef((float)(imageTransform.rotationRad*180/Math.PI), 0,0, 1);
+                gl.glTranslatef(imageTransform.translationPixels.x-sx, imageTransform.translationPixels.y-sy, 0);
+            }
             gl.glBindTexture(GL.GL_TEXTURE_2D, 0);
             gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP);
@@ -117,6 +128,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
             gl.glBindTexture (GL.GL_TEXTURE_2D, 0);
             drawPolygon(gl, width, height);
             gl.glDisable(GL.GL_TEXTURE_2D);
+            gl.glPopMatrix();
             getChipCanvas().checkGLError(gl, glu, "after frames");
         }
 
@@ -331,4 +343,52 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
     public void setRenderSpecialEvents(boolean renderSpecialEvents) {
         this.renderSpecialEvents = renderSpecialEvents;
     }
+
+    /**
+     * @return the imageTransform
+     */
+    public ImageTransform getImageTransform() {
+        return imageTransform;
+    }
+
+    /**
+     * @param imageTransform the imageTransform to set
+     */
+    public void setImageTransform(ImageTransform imageTransform) {
+        this.imageTransform = imageTransform;
+    }
+
+    public void setImageTransform(Point2D.Float translationPixels, float rotationRad) {
+        this.imageTransform = new ImageTransform(translationPixels, rotationRad);
+    }
+
+    private ImageTransform imageTransform = null;
+
+    public class ImageTransform {
+
+        /**
+         * In pixels
+         */
+        public Point2D.Float translationPixels = new Point2D.Float(0, 0);
+        /**
+         * In radians, CW from right unit vector.
+         */
+        public float rotationRad = 0;
+
+        public ImageTransform() {
+        }
+
+        public ImageTransform(Point2D.Float translationPixels, float rotationRad) {
+            this.translationPixels = translationPixels;
+            this.rotationRad = rotationRad;
+        }
+
+        public ImageTransform(float translationXPixels, float translationYPixels, float rotationRad) {
+            this.translationPixels.x = translationXPixels;
+            this.translationPixels.y = translationYPixels;
+            this.rotationRad = rotationRad;
+        }
+
+    }
+
 }
