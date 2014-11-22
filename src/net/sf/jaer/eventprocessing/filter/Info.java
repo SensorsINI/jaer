@@ -82,6 +82,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 	private TobiLogger tobiLogger = null;
         private boolean showAccumulateEventCount=getBoolean("showAccumulateEventCount", true);
         private long accumulatedEventCount=0;
+        private long accumulateTimeUs=0;
 
 	/**
 	 * computes the absolute time (since 1970) or relative time (in file) given
@@ -365,6 +366,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 				wrappingCorrectionMs = 0;
 				rateHistory.clear();
                                 accumulatedEventCount=0;
+                                accumulateTimeUs=0;
 				setLogStatistics(false);
 			} else if (evt.getPropertyName().equals(AEInputStream.EVENT_WRAPPED_TIME)) {
 				increaseWrappingCorrectionOnNextPacket = true;
@@ -380,7 +382,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 		} else if (evt.getSource() instanceof AEViewer) {
 			if (evt.getPropertyName().equals(AEViewer.EVENT_FILEOPEN)) { // TODO don't getString this because AEViewer doesn't refire event from AEPlayer and we don't getString this on initial fileopen because this filter has not yet been run so we have not added ourselves to the viewer
 				rateHistory.clear();
-			}
+			}else if(evt.getPropertyName().equals(AEViewer.EVENT_ACCUMULATE_ENABLED)){
+                            accumulatedEventCount=0;
+                            accumulateTimeUs=0;
+                        }
 		}
 	}
 
@@ -431,6 +436,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 			log.info("because flag was set, increased wrapping correction by " + (wrappingCorrectionMs - old));
 		}
                 accumulatedEventCount+=in.getSize();
+                accumulateTimeUs+=in.getDurationUs();
 		return in;
 	}
 
@@ -439,6 +445,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 		eventRateFilter.resetFilter();
 		rateHistory.clear();
                 accumulatedEventCount=0;
+                accumulateTimeUs=0;
 	}
 
 	@Override
@@ -597,7 +604,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         GLUT glut = chip.getCanvas().getGlut();
         gl.glRasterPos3f(xpos, yorig, 0);
         float c=(float)accumulatedEventCount;
-        String s = String.format("%s events", engFmt.format(accumulatedEventCount));
+        float t=1e-6f*(float)accumulateTimeUs;
+        String s = String.format("%s events in %s s", engFmt.format(accumulatedEventCount),engFmt.format(t));
         glut.glutBitmapString(font, s);
     }
 
