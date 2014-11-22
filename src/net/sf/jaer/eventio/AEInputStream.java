@@ -40,7 +40,7 @@ public class AEInputStream implements Closeable {
      * <li>EVENT_NON_MONOTONIC_TIMESTAMP a non-monotonic timestamp was detected
      * </ul>
      */
-     public static final String EVENT_EOF="eof", EVENT_WRAPPED_TIME="wrappedTime", EVENT_POSITION="posiiton", EVENT_REWIND="rewind",
+     public static final String EVENT_EOF="eof", EVENT_WRAPPED_TIME="wrappedTime", EVENT_POSITION="position", EVENT_REWIND="rewind",
              EVENT_MARKSET="markset", EVENT_MARKS_CLEARED="marksCleared",EVENT_MARK_IN_SET="markInSet",EVENT_MARK_OUT_SET="markOutSet", EVENT_INIT="init", EVENT_NON_MONOTONIC_TIMESTAMP="nonMonotonicTimestamp";
 
     private InputStream is;
