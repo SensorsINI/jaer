@@ -366,11 +366,11 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         return tmpEvent;
     }
 
-    /** Uesd to read fixed size packets either forwards or backwards.
-     * Behavior in case of non-monotonic timestamps depends on setting of tim wrapping exception checking.
+    /** Used to read fixed size packets either forwards or backwards.
+     * Behavior in case of non-monotonic timestamps depends on setting of time wrapping exception checking.
      * If exception checking is enabled, then the read will terminate on the first non-monotonic timestamp.
     @param n the number of events to read
-    @return a raw packet of events of a specfied number of events
+    @return a raw packet of events of a specified number of events
     fires a property change "position" on every call, and a property change "wrappedTime" if time wraps around.
      */
     @Override
