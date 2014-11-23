@@ -27,7 +27,26 @@ public class AEInputStream implements Closeable {
 
     /**
      * Property change event. Listeners should check for events using these static String objects.
-     * <ul> 
+     * <p>
+     * In order to use these events, an EventFilter must register itself either with the AEInputStream or with the owning AEViewer. 
+     * But this registration
+     * is only possible after AEViewer is constructed, which is after the
+     * EventFilter is constructed. The registration can occur in the EventFilter
+     * filterPacket() method as in the code snippet below:
+     * <pre><code>
+     *    private boolean addedViewerPropertyChangeListener = false;
+     *
+     * synchronized public EventPacket filterPacket(EventPacket in) { // TODO completely rework this code because IMUSamples are part of the packet now!
+     *  if (!addedViewerPropertyChangeListener) {
+     *      if (chip.getAeViewer() != null) {
+            * chip.getAeViewer().addPropertyChangeListener(this); // AEViewer refires these events for convenience
+            * addedViewerPropertyChangeListener = true;
+            * }
+        * }
+        * }
+     * </code></pre>
+     * <p>
+     * <ul>
      * <li>EVENT_EOF end of input file or stream
      * <li>EVENT_WRAPPED_TIME means timestamp has wrapped around 32-bit value
      * <li>EVENT_POSITION means input stream position has changed (called on
