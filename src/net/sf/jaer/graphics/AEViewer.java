@@ -137,6 +137,7 @@ import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.SubclassFinder;
 import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
 import ch.unizh.ini.jaer.chip.retina.DVS128;
+import net.sf.jaer.eventio.AEInputStream;
 
 /**
  * This is the main jAER interface to the user. The main event loop "ViewLoop" is here; see ViewLoop.run(). AEViewer shows AE chip live view and allows for controlling view and recording and playing back events from files and network connections.
@@ -4353,7 +4354,10 @@ two interfaces). otherwise force user choice.
 		} else if (evt.getPropertyName().equals("cleared")) {
 			setStatusMessage(null);
 		} else if (evt.getSource() instanceof AEFileInputStream) {
-			firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());  // forward/refire events from AEFileInputStream to listeners on AEViewer
+                    if(evt.getPropertyName()==AEInputStream.EVENT_REWIND){
+                        log.info("rewind");
+                    }
+                    firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());  // forward/refire events from AEFileInputStream to listeners on AEViewer
 		} else if (evt.getSource() instanceof AEPlayer) {
 			firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());  // forward/refire events from AEFileInputStream to listeners on AEViewer
 		}
