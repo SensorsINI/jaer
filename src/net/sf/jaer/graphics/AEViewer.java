@@ -151,33 +151,41 @@ AEViewer supports PropertyChangeListener's and fires PropertyChangeEvents on the
  * <li> "paused" - when paused or resumed - old and new booleans are passed to firePropertyChange.
 </ul>
 In addition, when A5EViewer is in PLAYBACK PlayMode, users can register as PropertyChangeListeners on the AEFileInputStream for rewind events, etc.
+* 
+*  * <p>
+     * In order to use this event, an EventFilter must register itself either with the AEViewer. 
+     * But this registration
+     * is only possible after AEViewer is constructed, which is after the
+     * EventFilter is constructed. The registration can occur in the EventFilter
+     * filterPacket() method as in the code snippet below:
+     * <pre><code>
+     *    private boolean addedViewerPropertyChangeListener = false;
+     *
+     * synchronized public EventPacket filterPacket(EventPacket in) { // TODO completely rework this code because IMUSamples are part of the packet now!
+     *  if (!addedViewerPropertyChangeListener) {
+     *      if (chip.getAeViewer() != null) {
+            * chip.getAeViewer().addPropertyChangeListener(this); // AEViewer refires these events for convenience
+            * addedViewerPropertyChangeListener = true;
+            * }
+        * }
+        * }
+     * </code></pre>
+     * <p>
  *
  * @author  tobi
  */
 public class AEViewer extends javax.swing.JFrame implements PropertyChangeListener, DropTargetListener, ExceptionListener, RemoteControlled {
 
-    /** PropertyChangeEvent fired from this AEViewer */
+    /** PropertyChangeEvent fired from this AEViewer 
+        
+     */
     public static final String EVENT_PLAYMODE = "playmode",
-
-    /** PropertyChangeEvent fired from this AEViewer */
     EVENT_FILEOPEN = "fileopen",
-
-    /** PropertyChangeEvent fired from this AEViewer */
     EVENT_STOPME = "stopme",
-
-    /** PropertyChangeEvent fired from this AEViewer */
     EVENT_CHIP = "chip",
-
-    /** PropertyChangeEvent fired from this AEViewer */
     EVENT_PAUSED = "paused",
-
-    /** PropertyChangeEvent fired from this AEViewer */
     EVENT_TIMESTAMPS_RESET = "timestampsReset",
-
-    /** PropertyChangeEvent fired from this AEViewer */
     EVENT_CHECK_NONMONOTONIC_TIMESTAMPS = "checkNonMonotonicTimestamps",
-            
-   /** PropertyChangeEvent fired when viewer event accumulation mode is changed */
    EVENT_ACCUMULATE_ENABLED="accumulateEnabled";
 
      
