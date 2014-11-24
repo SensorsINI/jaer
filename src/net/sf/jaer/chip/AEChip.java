@@ -93,7 +93,6 @@ public class AEChip extends Chip2D {
 //        setName("unnamed AEChip");
         // add canvas before filters so that filters have a canvas to add annotator to
         setRenderer(new AEChipRenderer(this));
-        setCanvas(new ChipCanvas(this));
         // instancing there display methods does NOT add them to the menu automatically
 
         getCanvas().addDisplayMethod(new ChipRendererDisplayMethod(getCanvas()));
