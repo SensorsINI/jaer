@@ -61,9 +61,9 @@ These methods are introspected and a set of controls are built for them.
  * fire PropertyChangeEvent when the property changes. For example, an {@link Class} can implement a setter like this:
  * <pre>
 public void setMapEventsToLearnedTopologyEnabled(boolean mapEventsToLearnedTopologyEnabled) {
-support.firePropertyChange("mapEventsToLearnedTopologyEnabled", this.mapEventsToLearnedTopologyEnabled, mapEventsToLearnedTopologyEnabled); // property, old value, new value
-this.mapEventsToLearnedTopologyEnabled = mapEventsToLearnedTopologyEnabled;
-getPrefs().putBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled);
+    support.firePropertyChange("mapEventsToLearnedTopologyEnabled", this.mapEventsToLearnedTopologyEnabled, mapEventsToLearnedTopologyEnabled); // property, old value, new value
+    this.mapEventsToLearnedTopologyEnabled = mapEventsToLearnedTopologyEnabled;
+    getPrefs().putBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled);
 }
 </pre>
  * Here, <code>support</code> is a protected field of Class. The change event comes here and the appropriate automatically
