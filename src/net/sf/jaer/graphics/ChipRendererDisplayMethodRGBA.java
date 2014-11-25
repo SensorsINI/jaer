@@ -11,18 +11,19 @@
  */
 package net.sf.jaer.graphics;
 
+import com.jogamp.opengl.util.awt.TextRenderer;
 import java.awt.Font;
+import java.awt.geom.Point2D;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
-
 import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GL2ES1;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.fixedfunc.GLMatrixFunc;
-
-import com.jogamp.opengl.util.awt.TextRenderer;
-import java.awt.geom.Point2D;
+import org.bytedeco.javacpp.FloatPointer;
+import org.bytedeco.javacpp.opencv_core;
+import org.bytedeco.javacpp.opencv_core.Mat;
 
 /**
  * Renders using OpenGL the RGB histogram values from Chip2DRenderer.
@@ -74,9 +75,13 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
         return validRaster;
     }
 
+    public boolean isUndistortEnabled = false;
+    public Mat cameraMatrix;
+    public Mat distCoeffs;
+     
     private void displayQuad(GLAutoDrawable drawable){
         Chip2DRenderer renderer = getChipCanvas().getRenderer();
-        FloatBuffer pixmap = renderer.getPixmap();
+        FloatBuffer pixmap = renderer.getPixmap();     
         FloatBuffer onMap = null;
         FloatBuffer offMap = null;
         boolean displayEvents = false;

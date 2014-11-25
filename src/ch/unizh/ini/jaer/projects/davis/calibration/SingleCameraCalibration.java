@@ -31,10 +31,6 @@ import org.bytedeco.javacpp.opencv_highgui;
 import org.bytedeco.javacpp.opencv_imgproc;
 import static org.bytedeco.javacpp.opencv_imgproc.CV_GRAY2RGB;
 import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-
 /**
  *
  * @author marc
@@ -55,6 +51,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private int patternHeight = 7;
     private int rectangleSize = 20; //size in mm
     private boolean showUndistortedFrames = false;
+    private boolean takeImageOnTimestampReset = false;
 
     //opencv matrices
     Mat corners;
@@ -109,7 +106,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             }
 
             //trigger action (on ts reset)
-            if (e.timestamp < lastTimestamp && e.timestamp < 100000) {
+            if (e.timestamp < lastTimestamp && e.timestamp < 100000 && takeImageOnTimestampReset) {
                 log.info("****** ACTION TRIGGRED ******");
                 actionTriggered = true;
                 nAcqFrames = 0;
@@ -352,6 +349,11 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         calibrated = true;
 
     }
+    
+    synchronized public void doTakeImage() {
+        actionTriggered = true;
+        nAcqFrames = nMaxAcqFrames;
+    }
 
     private void printMatD(Mat M) {
         int c = 0;
@@ -418,5 +420,19 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      */
     public void setShowUndistortedFrames(boolean showUndistortedFrames) {
         this.showUndistortedFrames = showUndistortedFrames;
+    }
+
+    /**
+     * @return the takeImageOnTimestampReset
+     */
+    public boolean isTakeImageOnTimestampReset() {
+        return takeImageOnTimestampReset;
+    }
+
+    /**
+     * @param takeImageOnTimestampReset the takeImageOnTimestampReset to set
+     */
+    public void setTakeImageOnTimestampReset(boolean takeImageOnTimestampReset) {
+        this.takeImageOnTimestampReset = takeImageOnTimestampReset;
     }
 }
