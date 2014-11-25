@@ -9,6 +9,7 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import javax.media.opengl.GLException;
 
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
@@ -105,19 +106,24 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         // sets the working directory of the chooser
 //            boolean wasPaused=isPaused();
         setPaused(true);
-        int retValue = fileChooser.showOpenDialog(viewer);
-        if ( retValue == JFileChooser.APPROVE_OPTION ){
-            lastFilter = fileChooser.getFileFilter();
-            try{
-                viewer.lastFile = fileChooser.getSelectedFile();
-                if ( viewer.lastFile != null ){
-                    viewer.recentFiles.addFile(viewer.lastFile);
+        try{
+            int retValue = fileChooser.showOpenDialog(viewer);
+            if ( retValue == JFileChooser.APPROVE_OPTION ){
+                lastFilter = fileChooser.getFileFilter();
+                try{
+                    viewer.lastFile = fileChooser.getSelectedFile();
+                    if ( viewer.lastFile != null ){
+                        viewer.recentFiles.addFile(viewer.lastFile);
+                    }
+                    startPlayback(viewer.lastFile);
+                } catch ( IOException fnf ){
+                    log.warning(fnf.toString());
                 }
-                startPlayback(viewer.lastFile);
-            } catch ( IOException fnf ){
-                log.warning(fnf.toString());
+            } else{
+                preview.showFile(null);
             }
-        } else{
+        }catch(GLException e){
+            log.warning(e.toString());
             preview.showFile(null);
         }
         fileChooser = null;

@@ -35,6 +35,7 @@ import javax.media.opengl.glu.GLU;
 import javax.swing.JFrame;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
+import net.sf.jaer.JAERViewer;
 
 /**
  * OpenGL display of 2d data as color image. See the main method for example of use.
@@ -178,22 +179,31 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 	private float[] textColor = new float[]{1, 1, 1};
 	private ArrayList<Legend> legends = new ArrayList();
 
-	/** Creates a new ImageDisplay, given some Open GL capabilities.
-	 *
-	 * @param caps the capabilities desired. See factory method.
-	 * @see #createOpenGLCanvas() for factory method with predefined capabilities.
-	 */
-	public ImageDisplay(GLCapabilities caps) {
-		super(caps);
+    /**
+     * Creates a new ImageDisplay, given some Open GL capabilities.
+     *
+     * @param caps the capabilities desired. See factory method.
+     * @see #createOpenGLCanvas() for factory method with predefined
+     * capabilities.
+     */
+    public ImageDisplay(GLCapabilities caps) {
+        super(caps);
 
-		setLocale(java.util.Locale.US); // to avoid problems with other language support in JOGL
+        setLocale(java.util.Locale.US); // to avoid problems with other language support in JOGL
 
-		// this.setSize(300,200);
-		setVisible(true);
+        // this.setSize(300,200);
+        setVisible(true);
 
-		addGLEventListener(this);
+        addGLEventListener(this);
+        try {
+            if (JAERViewer.sharedDrawable != null) {
+                setSharedContext(JAERViewer.sharedDrawable.getContext());
+            }
+        } catch (GLException e) {
+            log.warning("While trying to set the shared context to the JAERViewer.sharedDrawable context, caught exception: " + e.toString());
+        }
 
-	}
+    }
 
 	/** Factory method for creating an ImageDisplay with following capabilities:
 	 * <pre>

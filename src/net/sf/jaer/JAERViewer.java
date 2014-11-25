@@ -33,6 +33,11 @@ import java.util.Date;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+import javax.media.opengl.GLAutoDrawable;
+import javax.media.opengl.GLCapabilities;
+import javax.media.opengl.GLCapabilitiesImmutable;
+import javax.media.opengl.GLDrawableFactory;
+import javax.media.opengl.GLProfile;
 
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
@@ -100,6 +105,9 @@ public class JAERViewer {
     // Internal switch: go into multiple-display mode right away?
     boolean multistartmode=false;
     
+    /** This shared GLAutoDrawable is constructed here and is used by all ChipCanvas to set the shared JOGL context. */
+    public static GLAutoDrawable sharedDrawable; // TODO tobi experimental to deal with graphics creation woes.
+    // see also http://forum.jogamp.org/Multiple-GLCanvas-FPSAnimator-Hang-td4030581.html
     
     
     /** Creates a new instance of JAERViewer
@@ -130,7 +138,14 @@ public class JAERViewer {
         Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver, AWTEvent.WINDOW_EVENT_MASK); // adds windowSaver as JVM-wide event handler for window events
 
         SwingUtilities.invokeLater(new RunningThread());
-
+ 
+        // GLProfile and GLCapabilities should be equal across all shared GL drawable/context.
+        // tobi implemented this from user guide for JOGL that suggests a shared drawable context for all uses of JOGL
+        final GLCapabilities caps = new GLCapabilities(GLProfile.getDefault()) ;
+        final GLProfile glp = caps.getGLProfile();
+        final boolean createNewDevice = true; // use 'own' display device!
+        sharedDrawable = GLDrawableFactory.getFactory(glp).createDummyAutoDrawable(null, createNewDevice, caps, null);
+        sharedDrawable.display(); // triggers GLContext object creation and native realization. sharedDrawable is a static variable that can be used by all AEViewers and file preview dialogs
         
         try {
             // Create temp file.

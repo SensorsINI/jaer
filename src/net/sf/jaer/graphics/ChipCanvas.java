@@ -55,8 +55,10 @@ import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
 
 import com.jogamp.common.nio.Buffers;
+import com.jogamp.newt.opengl.GLWindow;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
+import net.sf.jaer.JAERViewer;
 
 /**
  * Superclass for classes that paint rendered AE data to graphics devices.
@@ -187,8 +189,6 @@ public class ChipCanvas implements GLEventListener, Observer {
 		// make the canvas
 		try {
 			drawable = new GLCanvas(); // was new GLCanvas(caps); // but this causes an exception in GLDrawableFactory
-										// in linux running with hardware accelerated OpenGL -tobi
-
 			if (drawable == null) {
 				// Failed to init OpenGL, exit system!
 				System.exit(1);
@@ -234,6 +234,17 @@ public class ChipCanvas implements GLEventListener, Observer {
 		if (displayMethods.isEmpty() && (chip.getCanvas() != null) && (chip.getCanvas().getDisplayMethod() != null)) {
 			displayMethods.add(chip.getCanvas().getDisplayMethod());
 		}
+                
+                drawable.setSharedAutoDrawable(JAERViewer.sharedDrawable); // TODO tobi added to try to use shared context between all viewers and file open dialog previews. 
+                // TODO we now get under windows this exception:
+                // javax.media.opengl.GLException: AWT-EventQueue-0: WindowsWGLContex.createContextImpl ctx !ARB but ARB is used, profile > GL2 requested (OpenGL >= 3.0.1). Requested: GLProfile[GL4bc/GL4bc.hw], current: 1.1 (Compat profile, hardware) - 1.1.0
+                
+                if(drawable!=null){
+                    log.info("GLCanvas="+drawable.toString());
+                    if(drawable.getContext()!=null){
+                         log.info("GLCanvas has GLContext="+drawable.getContext().toString());
+                    }
+                }
 	}
 
 	/** call this method so that next open gl rendering by display(GLAutoDrawable) writes imageOpenGL */
@@ -401,6 +412,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 	@Override
 	public synchronized void display(final GLAutoDrawable drawable) {
 		final GL2 gl = drawable.getGL().getGL2();
+//                GLContext glContext=gl.getContext();
 		gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
 		gl.glLoadIdentity();
 		// log.info("display");
