@@ -23,6 +23,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter;
 import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
+
 //-- end packages ------------------------------------------------------------//
 //****************************************************************************//
 
@@ -45,6 +46,7 @@ import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Observer {
 
     private final OMCODModel OMCODModel = new OMCODModel();
+    public RosNodePublisher RosNodePublisher = new RosNodePublisher();
     private EventRateEstimator eventRateFilter;
     private BackgroundActivityFilter backgroundActivityFilter;
     private Subunits subunits;
@@ -419,6 +421,12 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
             glu.gluDisk(quad, 0, 3, 32, 1);
             gl.glPopMatrix();
+            
+            // Send data to RosNodePublisher
+            RosNodePublisher.setXcoordinate(findCenterOfMass(findClusterCorners())[0] << getSubunitSubsamplingBits());
+            RosNodePublisher.setYcoordinate(findCenterOfMass(findClusterCorners())[1] << getSubunitSubsamplingBits());
+            RosNodePublisher.setZcoordinate(distanceToTravel(((findClusterCorners()[1] + 2) << getSubunitSubsamplingBits())
+                - (findClusterCorners()[0] << getSubunitSubsamplingBits())));
         }
 
         if (showTracker2) {
@@ -807,7 +815,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //-- Distance to be travelled method -----------------------------------------//
 //----------------------------------------------------------------------------// 
     float distanceToTravel(int objectDetectedWidthX) {
-        float pixelSize = 0.000002f; // pixelSize 20 um
+        float pixelSize = 0.00004f; // pixelSize 40 um
         float distanceToObject = (focalLengthM * objectRealWidthXM) / (objectDetectedWidthX * pixelSize);
         return distanceToObject;
     }
