@@ -9,14 +9,16 @@ import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.Arrays;
 import java.util.Iterator;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.ImageDisplay.Legend;
@@ -71,6 +73,11 @@ public class ApsFrameExtractor extends EventFilter2D {
         apsFrame.setPreferredSize(new Dimension(width * 4, height * 4));
         apsFrame.getContentPane().add(apsDisplay, BorderLayout.CENTER);
         apsFrame.pack();
+        apsFrame.addWindowListener(new WindowAdapter() {
+            public void windowClosing(WindowEvent e) {
+                setShowAPSFrameDisplay(false);
+            }
+        });
         apsDisplayLegend = apsDisplay.addLegend("", 0 ,0);
         float[] displayColor = new float[3];
         displayColor[0] = 1.0f;
@@ -463,6 +470,7 @@ public class ApsFrameExtractor extends EventFilter2D {
         this.showAPSFrameDisplay = showAPSFrameDisplay;
         putBoolean("showAPSFrameDisplay", showAPSFrameDisplay);
         if(apsFrame!=null) apsFrame.setVisible(showAPSFrameDisplay);
+        getSupport().firePropertyChange("showAPSFrameDisplay",null,showAPSFrameDisplay);
     }
 
     @Override
