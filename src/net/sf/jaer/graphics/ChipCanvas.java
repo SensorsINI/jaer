@@ -55,9 +55,13 @@ import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
 
 import com.jogamp.common.nio.Buffers;
-import com.jogamp.newt.opengl.GLWindow;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
+import java.util.List;
+import javax.media.opengl.GLCapabilities;
+import javax.media.opengl.GLCapabilitiesImmutable;
+import javax.media.opengl.GLDrawableFactory;
+import javax.media.opengl.GLProfile;
 import net.sf.jaer.JAERViewer;
 
 /**
@@ -186,12 +190,20 @@ public class ChipCanvas implements GLEventListener, Observer {
 
 		glu = new GLU();
 
-		// make the canvas
-		try {
-			drawable = new GLCanvas(); // was new GLCanvas(caps); // but this causes an exception in GLDrawableFactory
-			if (drawable == null) {
-				// Failed to init OpenGL, exit system!
-				System.exit(1);
+            // make the canvas
+            try {
+                List<GLCapabilitiesImmutable> capsAvailable=GLDrawableFactory.getDesktopFactory().getAvailableCapabilities(null);
+                GLCapabilitiesImmutable chosenGLCaps=null;
+                int listnum=0;
+                for(GLCapabilitiesImmutable cap:capsAvailable){
+                    log.info("GLCapabilitiesImmutable #"+listnum+" is "+cap.toString());
+                    if(chosenGLCaps==null) chosenGLCaps=cap;
+                    if(listnum++>=0) break;
+                }
+                drawable = new GLCanvas(chosenGLCaps); // was new GLCanvas(caps); // but this causes an exception in GLDrawableFactory
+                if (drawable == null) {
+                    // Failed to init OpenGL, exit system!
+                    System.exit(1);
 			}
 
 			/*
