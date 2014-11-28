@@ -152,8 +152,10 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                     setArrayResetMenuItem.setEnabled(false);
                 }
             } else {
-                arrayResetMenuItem.setEnabled(true);
-                setArrayResetMenuItem.setEnabled(true);
+                if (arrayResetMenuItem != null) {
+                    arrayResetMenuItem.setEnabled(true);
+                    setArrayResetMenuItem.setEnabled(true);
+                }
             }
             if (!(getHardwareInterface() instanceof HasSyncEventOutput)) {
                 if (syncEnabledMenuItem != null) {
