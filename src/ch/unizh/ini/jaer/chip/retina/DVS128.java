@@ -161,7 +161,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 if (syncEnabledMenuItem != null) {
                     syncEnabledMenuItem.setEnabled(false);
                 }
-            } else {
+            } else if(syncEnabledMenuItem!=null) {
                 syncEnabledMenuItem.setEnabled(true);
                 HasSyncEventOutput hasSync = (HasSyncEventOutput) getHardwareInterface();
                 syncEnabledMenuItem.setSelected(hasSync.isSyncEventEnabled());
@@ -175,7 +175,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 if (ledMenu != null) {
                     ledMenu.setEnabled(false);
                 }
-            } else {
+            } else if(ledMenu!=null) {
                 ledMenu.setEnabled(true);
                 HasLEDControl ledControlled = (HasLEDControl) getHardwareInterface();
                 switch (ledControlled.getLEDState(0)) {
