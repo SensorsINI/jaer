@@ -1,4 +1,6 @@
 package net.sf.jaer.util;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -22,6 +24,12 @@ public class LoggingThreadGroup extends ThreadGroup {
             logger.addHandler(handler);
         }
         logger.log(Level.WARNING, t.getName(), e);
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        e.printStackTrace(pw);
+        pw.flush();
+        String st=sw.toString();
+        logger.log(Level.WARNING,st);
     }
 //    public static void main(String args[]) throws Exception {
 //        Thread.UncaughtExceptionHandler handler = new LoggingThreadGroup("Logger");
