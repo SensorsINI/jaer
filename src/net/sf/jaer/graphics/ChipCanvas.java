@@ -58,9 +58,9 @@ import com.jogamp.common.nio.Buffers;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
 import java.util.List;
-import javax.media.opengl.GLCapabilities;
 import javax.media.opengl.GLCapabilitiesImmutable;
 import javax.media.opengl.GLDrawableFactory;
+import javax.media.opengl.GLCapabilities;
 import javax.media.opengl.GLProfile;
 import net.sf.jaer.JAERViewer;
 
@@ -195,11 +195,18 @@ public class ChipCanvas implements GLEventListener, Observer {
                 List<GLCapabilitiesImmutable> capsAvailable=GLDrawableFactory.getDesktopFactory().getAvailableCapabilities(null);
                 GLCapabilitiesImmutable chosenGLCaps=null;
                 int listnum=0;
-                for(GLCapabilitiesImmutable cap:capsAvailable){
-                    log.info("GLCapabilitiesImmutable #"+listnum+" is "+cap.toString());
-                    if(chosenGLCaps==null) chosenGLCaps=cap;
-                    if(listnum++>=0) break;
+                if(capsAvailable!=null){
+                    for (GLCapabilitiesImmutable cap : capsAvailable) {
+                        log.info("GLCapabilitiesImmutable #" + listnum + " is " + cap.toString());
+                        if (chosenGLCaps == null) {
+                            chosenGLCaps = cap;
+                        }
+                        if (listnum++ >= 0) {
+                            break;
+                        }
+                    }
                 }
+                
                 drawable = new GLCanvas(chosenGLCaps); // was new GLCanvas(caps); // but this causes an exception in GLDrawableFactory
                 if (drawable == null) {
                     // Failed to init OpenGL, exit system!
