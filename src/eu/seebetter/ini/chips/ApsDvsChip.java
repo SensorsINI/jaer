@@ -103,6 +103,13 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
      * Triggers the taking of one snapshot, i.e, triggers a frame capture.
      */
     abstract public void takeSnapshot();
+    
+    /**
+     * Turns on/off ADC
+     * 
+     * @param adcEnabled true to turn on
+     */
+    abstract public void setADCEnabled(boolean adcEnabled);
 
     /**
      * Controls exposure value automatically if auto exposure is enabled.

@@ -202,6 +202,11 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
             Logger.getLogger(DAViS240.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+    
+    @Override
+    public void setADCEnabled(boolean adcEnabled) {
+        config.apsReadoutControl.setAdcEnabled(adcEnabled);
+    }
 
     /**
      * Creates a new instance of DAViS240

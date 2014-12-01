@@ -6,6 +6,7 @@
 package ch.unizh.ini.jaer.projects.davis.calibration;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
+import eu.seebetter.ini.chips.ApsDvsChip;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JFileChooser;
@@ -31,6 +32,7 @@ import org.bytedeco.javacpp.opencv_highgui;
 import org.bytedeco.javacpp.opencv_imgproc;
 import static org.bytedeco.javacpp.opencv_imgproc.CV_GRAY2RGB;
 import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+
 /**
  *
  * @author marc
@@ -52,6 +54,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private int rectangleSize = 20; //size in mm
     private boolean showUndistortedFrames = false;
     private boolean takeImageOnTimestampReset = false;
+    private String fileBaseName = "";
 
     //opencv matrices
     Mat corners;
@@ -185,7 +188,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             if (patternFound) {
                 Mat imgSave = new Mat(sy, sx, CV_8U);
                 opencv_core.flip(imgIn, imgSave, 0);
-                String filename = "davis_" + String.format("%03d", imageCounter) + ".jpg";
+                String filename = "davis" + fileBaseName + "_" + String.format("%03d", imageCounter) + ".jpg";
                 opencv_highgui.imwrite(imagesDirPath + "\\" + filename, imgSave);
                 //store image points
                 if (imageCounter == 0) {
@@ -320,9 +323,14 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     synchronized public void doSetPath() {
         JFileChooser j = new JFileChooser();
-        j.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        //j.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         j.showSaveDialog(null);
-        imagesDirPath = j.getSelectedFile().getAbsolutePath();
+        //imagesDirPath = j.getSelectedFile().getAbsolutePath();
+        imagesDirPath = j.getCurrentDirectory().getAbsolutePath();
+        fileBaseName = j.getSelectedFile().getName();
+        if (!fileBaseName.isEmpty()) {
+            fileBaseName = "_" + fileBaseName;
+        }
         log.info("Changed images path to " + imagesDirPath);
     }
 
@@ -349,7 +357,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         calibrated = true;
 
     }
-    
+
     synchronized public void doTakeImage() {
         actionTriggered = true;
         nAcqFrames = nMaxAcqFrames;

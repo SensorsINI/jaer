@@ -7,6 +7,9 @@ package ch.unizh.ini.jaer.projects.davis.stereo;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import com.jogamp.opengl.util.awt.TextRenderer;
+import eu.seebetter.ini.chips.ApsDvsChip;
+import eu.seebetter.ini.chips.DAViS.DAViS240;
+import eu.seebetter.ini.chips.DAViS.DAViS240Config;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
 import javax.media.opengl.GL2;
@@ -20,6 +23,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.eventprocessing.filter.RefractoryFilter;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2.ApsDvsHardwareInterface;
 
 /**
  *
@@ -30,6 +34,8 @@ public class StereoRecorder extends EventFilter2D implements FrameAnnotater {
     private int sx;
     private int sy;
     private int lastTimestamp = 0;
+    
+    private ApsDvsChip apsChip = null;
 
     //encapsulated fields
     private boolean startLoggingOnTimestampReset = true;
@@ -64,6 +70,7 @@ public class StereoRecorder extends EventFilter2D implements FrameAnnotater {
      * in place in the in packet.
      */
     @Override
+    @SuppressWarnings("empty-statement")
     synchronized public EventPacket filterPacket(EventPacket in) {
         getEnclosedFilterChain().filterPacket(in);
 
@@ -85,6 +92,9 @@ public class StereoRecorder extends EventFilter2D implements FrameAnnotater {
                 //do something
                 actionTriggered = true;
                 actionTime = waitSeconds * 1000000;
+                
+                //sync frame readout
+                apsChip.takeSnapshot();
             }
 
             //delay action for waitSeconds
@@ -95,7 +105,8 @@ public class StereoRecorder extends EventFilter2D implements FrameAnnotater {
                 isRecording = true;
                 recordingTime = recordSeconds * 1000000;
                 chip.getAeViewer().startLogging();
-                
+                apsChip.setADCEnabled(true);
+                     
                 //reset
                 actionTriggered = false;
             } else if (actionTriggered) {
@@ -162,6 +173,9 @@ public class StereoRecorder extends EventFilter2D implements FrameAnnotater {
     public final void initFilter() {
         sx = chip.getSizeX();
         sy = chip.getSizeY();
+        if (ApsDvsChip.class.isAssignableFrom(chip.getClass())) {
+            apsChip = (ApsDvsChip) chip;
+        }
     }
 
     /**
