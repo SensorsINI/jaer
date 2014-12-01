@@ -91,8 +91,10 @@ public class AEChip extends Chip2D {
     /** Creates a new instance of AEChip */
     public AEChip() {
 //        setName("unnamed AEChip");
-        // add canvas before filters so that filters have a canvas to add annotator to
         setRenderer(new AEChipRenderer(this));
+        
+        // add canvas before filters so that filters have a canvas to add annotator to
+        setCanvas(new ChipCanvas(this)); // note that we need to do this again even though Chip2D did it, because the AEChipRenderer here shadows the Chip2D renderer and the renderer will be returned null, preventing installation of mouse listeners
         // instancing there display methods does NOT add them to the menu automatically
 
         getCanvas().addDisplayMethod(new ChipRendererDisplayMethod(getCanvas()));
@@ -161,11 +163,17 @@ public class AEChip extends Chip2D {
         return getClass().getSimpleName() + " sizeX=" + sizeX + " sizeY=" + sizeY + " eventClass=" + eventClassString;
     }
 
+    /** Returns the renderer. Note that this field shadows the Chip2D renderer.
+     * 
+     * @return 
+     */
+    @Override
     public AEChipRenderer getRenderer() {
         return renderer;
     }
 
     /** sets the class that renders the event histograms and notifies Observers with the new Renderer.
+     * @param renderer the AEChipRenderer. Note this field shadows the Chip2D renderer.
      */
     public void setRenderer(AEChipRenderer renderer) {
         this.renderer = renderer;
