@@ -6,10 +6,13 @@
 package ch.unizh.ini.jaer.projects.davis.calibration;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
+import ch.unizh.ini.jaer.projects.davis.stereo.SimpleDepthCameraViewerApplication;
 import eu.seebetter.ini.chips.ApsDvsChip;
+import java.util.List;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -32,6 +35,9 @@ import org.bytedeco.javacpp.opencv_highgui;
 import org.bytedeco.javacpp.opencv_imgproc;
 import static org.bytedeco.javacpp.opencv_imgproc.CV_GRAY2RGB;
 import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
+import org.openni.Device;
+import org.openni.DeviceInfo;
+import org.openni.OpenNI;
 
 /**
  *
@@ -44,6 +50,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private int lastTimestamp = 0;
 
     private double[] lastFrame;
+    
+    SimpleDepthCameraViewerApplication depthViewerThread;
 
     //encapsulated fields
     private boolean realtimePatternDetectionEnabled = true;
@@ -190,6 +198,14 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 opencv_core.flip(imgIn, imgSave, 0);
                 String filename = "davis" + fileBaseName + "_" + String.format("%03d", imageCounter) + ".jpg";
                 opencv_highgui.imwrite(imagesDirPath + "\\" + filename, imgSave);
+                //save depth sensor image if enabled
+                if (depthViewerThread!=null) {
+                    if (depthViewerThread.isFrameCaptureRunning()) {
+                        //save img
+                        String fileSuffix = "_" + String.format("%03d", imageCounter) + ".jpg";
+                        depthViewerThread.saveLastImage(imagesDirPath,fileSuffix);
+                    }
+                }
                 //store image points
                 if (imageCounter == 0) {
                     allImagePoints = new MatVector(100);
@@ -442,5 +458,28 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      */
     public void setTakeImageOnTimestampReset(boolean takeImageOnTimestampReset) {
         this.takeImageOnTimestampReset = takeImageOnTimestampReset;
+    }
+
+    public void doDepthViewer() {
+        try {
+            System.load(System.getProperty("user.dir")+"\\jars\\openni2\\OpenNI2.dll");
+
+            // initialize OpenNI
+            OpenNI.initialize();
+
+            List<DeviceInfo> devicesInfo = OpenNI.enumerateDevices();
+            if (devicesInfo.isEmpty()) {
+                JOptionPane.showMessageDialog(null, "No device is connected", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            Device device = Device.open(devicesInfo.get(0).getUri());
+
+            depthViewerThread = new SimpleDepthCameraViewerApplication(device);
+            depthViewerThread.start();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
