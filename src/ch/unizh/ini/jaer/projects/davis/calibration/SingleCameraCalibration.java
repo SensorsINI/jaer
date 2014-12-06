@@ -57,8 +57,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private boolean realtimePatternDetectionEnabled = true;
     private boolean cornerSubPixRefinement = true;
     private String imagesDirPath = System.getProperty("user.dir");
-    private int patternWidth = 11;
-    private int patternHeight = 7;
+    private int patternWidth = 9;
+    private int patternHeight = 5;
     private int rectangleSize = 20; //size in mm
     private boolean showUndistortedFrames = false;
     private boolean takeImageOnTimestampReset = false;
