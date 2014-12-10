@@ -422,9 +422,9 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             glu.gluDisk(quad, 0, 3, 32, 1);
             gl.glPopMatrix();
             
-            // Send data to RosNodePublisher
-            RosNodePublisher.setXcoordinate(findCenterOfMass(findClusterCorners())[0] << getSubunitSubsamplingBits());
-            RosNodePublisher.setYcoordinate(findCenterOfMass(findClusterCorners())[1] << getSubunitSubsamplingBits());
+            // Send data to RosNodePublisher (-90 to center for davis, -64 for DVS128)
+            RosNodePublisher.setXcoordinate((findCenterOfMass(findClusterCorners())[0] << getSubunitSubsamplingBits())-90);
+            RosNodePublisher.setYcoordinate((findCenterOfMass(findClusterCorners())[1] << getSubunitSubsamplingBits())-90);
             RosNodePublisher.setZcoordinate(distanceToTravel(((findClusterCorners()[1] + 2) << getSubunitSubsamplingBits())
                 - (findClusterCorners()[0] << getSubunitSubsamplingBits())));
         }
@@ -815,8 +815,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //-- Distance to be travelled method -----------------------------------------//
 //----------------------------------------------------------------------------// 
     float distanceToTravel(int objectDetectedWidthX) {
-        float pixelSize = 0.00004f; // pixelSize 40 um
-        float distanceToObject = (focalLengthM * objectRealWidthXM) / (objectDetectedWidthX * pixelSize);
+        float pixelSizeM = 0.000018f; // pixelSize 18 um DAVIS/40 um DVS
+        float distanceToObject = (focalLengthM * objectRealWidthXM) / (objectDetectedWidthX * pixelSizeM);
         return distanceToObject;
     }
 //----------------------------------------------------------------------------//
