@@ -24,7 +24,7 @@ public class RosNodePublisher {
 //----------------------------------------------------------------------------// 
     public void setXcoordinate(int xCoord) {//receive the x pixel coordinate of center of mass
         this.xCoordinate = xCoord;
-        System.out.println(xCoordinate);
+        //System.out.println(xCoordinate);
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -43,7 +43,7 @@ public class RosNodePublisher {
 //----------------------------------------------------------------------------// 
     public void setYcoordinate(int yCoord) {//receive the y pixel coordinate of center of mass
         this.yCoordinate = yCoord;
-        System.out.println(yCoordinate);
+        //System.out.println(yCoordinate);
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -62,7 +62,7 @@ public class RosNodePublisher {
 //----------------------------------------------------------------------------// 
     public void setZcoordinate(float zCoord) {//receive the estimated distance of object
         this.zCoordinate = zCoord;
-        System.out.println(zCoordinate);
+        //System.out.println(zCoordinate);
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
