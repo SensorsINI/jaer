@@ -8,6 +8,8 @@
  */
 package net.sf.jaer;
 
+import com.jogamp.common.util.JogampVersion;
+import com.jogamp.opengl.JoglVersion;
 import java.awt.AWTEvent;
 import java.awt.AlphaComposite;
 import java.awt.Color;
@@ -35,7 +37,6 @@ import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLCapabilities;
-import javax.media.opengl.GLCapabilitiesImmutable;
 import javax.media.opengl.GLDrawableFactory;
 import javax.media.opengl.GLProfile;
 
@@ -135,6 +136,7 @@ public class JAERViewer {
         log.info("java.vm.version=" + System.getProperty("java.vm.version") + " user.dir=" + System.getProperty("user.dir"));
 
         windowSaver = new WindowSaver(this, prefs);
+        // WindowSaver calls for determining screen insets (e.g. Windows Taskbar) could cause problems on different OS's
         Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver, AWTEvent.WINDOW_EVENT_MASK); // adds windowSaver as JVM-wide event handler for window events
 
         SwingUtilities.invokeLater(new RunningThread());
@@ -146,7 +148,7 @@ public class JAERViewer {
         final boolean createNewDevice = true; // use 'own' display device!
         sharedDrawable = GLDrawableFactory.getFactory(glp).createDummyAutoDrawable(null, createNewDevice, caps, null);
         sharedDrawable.display(); // triggers GLContext object creation and native realization. sharedDrawable is a static variable that can be used by all AEViewers and file preview dialogs
-        
+        log.info("JOGL version information: "+JoglVersion.getInstance().toString());
         try {
             // Create temp file.
             File temp = new File("JAERViewerRunning.txt");
