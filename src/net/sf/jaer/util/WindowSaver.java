@@ -94,23 +94,8 @@ public class WindowSaver implements AWTEventListener {
     @param frame JFrame to load settings for
      */
     public void loadSettings(JFrame frame) throws IOException {
-//        Properties settings = new Properties();
-        // if this file does not already exist, create an empty one
-//        try {
-//            settings.load(new FileInputStream("configuration.props"));
-//        } catch (FileNotFoundException fnfe) {
-//            settings.store (new FileOutputStream ("configuration.props"),
-//                            "Window settings");
-//        }
         boolean resize=false; // set true if window is too big for screen
         String name=frame.getTitle().replaceAll(" ", "");
-//        String name=frame.getName();
-        if(!isPreference(name+".x")) {
-            // if the window has not been sized, then don't set its size
-//            log.info("no preference saved for "+name+".x");
-//            log.info("no preference saved for "+name+".x, not restoring position or size");
-//            return;
-        }
 
         int x=preferences.getInt(name+".x", 0);
         int y=preferences.getInt(name+".y", 0);
@@ -124,7 +109,7 @@ public class WindowSaver implements AWTEventListener {
         // determine the height of the windows taskbar by this roundabout proceedure
         // TODO tobi removed this because it was causing a runtime native code exception using NVIDIA 181.22 driver with win xp
         // replaced by hardcoded lowerInset
-//        lowerInset=64;
+        lowerInset=64;
         GraphicsEnvironment ge=GraphicsEnvironment.getLocalGraphicsEnvironment();
         GraphicsDevice[] gs=ge.getScreenDevices(); // TODO it could be that remote session doesn't show screen that used to be used. Should check that we are not offscreen. Otherwise registy edit is required to show window!
 
@@ -132,6 +117,9 @@ public class WindowSaver implements AWTEventListener {
             if(gs.length>1){
 //                log.info("There are "+gs.length+" GraphicsDevice's found; using first one which is "+gs[0].getIDstring());
             }
+            // TODO tobi commented out the calls below because they seems to trigger the OpenGL exceptions in JOGL on context creation; see
+            // http://forum.jogamp.org/Jogl-Using-Wrong-Generic-Graphics-Adapter-td4033216i20.html#a4033747
+            // and https://jogamp.org/bugzilla/show_bug.cgi?id=1105
             GraphicsDevice gd=gs[0];
             GraphicsConfiguration[] gc=gd.getConfigurations();
             if(gc!=null&&gc.length>0) {
