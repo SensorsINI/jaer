@@ -34,8 +34,15 @@ import javax.media.opengl.glu.GLU;
 import javax.swing.JFrame;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
+import java.awt.AWTEvent;
+import java.awt.Toolkit;
+import java.io.IOException;
+import java.util.List;
+import javax.media.opengl.GLCapabilitiesImmutable;
+import javax.media.opengl.GLDrawableFactory;
 import javax.swing.SwingWorker;
 import net.sf.jaer.JAERViewer;
+import net.sf.jaer.util.WindowSaver;
 
 /**
  * OpenGL display of 2d data as color image. See the main method for example of
@@ -154,7 +161,7 @@ import net.sf.jaer.JAERViewer;
  */
 public class ImageDisplay extends GLCanvas implements GLEventListener {
 
-    protected Preferences prefs = Preferences.userNodeForPackage(ImageDisplay.class);
+    private static Preferences prefs = Preferences.userNodeForPackage(ImageDisplay.class);
     static final Logger log = Logger.getLogger("ImageDisplay");
     private int fontSize = 20;
     private int sizeX = 0, sizeY = 0;
@@ -194,7 +201,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
      * @see #createOpenGLCanvas() for factory method with predefined
      * capabilities.
      */
-    public ImageDisplay(GLCapabilities caps) {
+    public ImageDisplay(GLCapabilitiesImmutable caps) {
         super(caps);
 
         setLocale(java.util.Locale.US); // to avoid problems with other language support in JOGL
@@ -227,6 +234,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
      * @return a new ImageDisplay
      */
     public static ImageDisplay createOpenGLCanvas() {
+
         // design capabilities of opengl canvas
         GLCapabilities caps = new GLCapabilities(null);
         caps.setDoubleBuffered(true);
@@ -235,7 +243,6 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         caps.setRedBits(8);
         caps.setGreenBits(8);
         caps.setBlueBits(8);
-
         ImageDisplay trackDisplay = new ImageDisplay(caps);
         return trackDisplay;
     }
@@ -272,6 +279,17 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 
         //        log.info("init");
         GL2 gl = getGL().getGL2();
+
+        log.info("OpenGL implementation is: " + gl.getClass().getName() + "\nGL_VENDOR: "
+                + gl.glGetString(GL.GL_VENDOR) + "\nGL_RENDERER: " + gl.glGetString(GL.GL_RENDERER) + "\nGL_VERSION: "
+                + gl.glGetString(GL.GL_VERSION) // + "\nGL_EXTENSIONS: " + gl.glGetString(GL.GL_EXTENSIONS)
+        );
+        final float glVersion = Float.parseFloat(gl.glGetString(GL.GL_VERSION).substring(0, 3));
+        if (glVersion < 1.3f) {
+            log.warning("\n\n*******************\nOpenGL version "
+                    + glVersion
+                    + " < 1.3, some features may not work and program may crash\nTry switching from 16 to 32 bit color if you have decent graphics card\n\n");
+        }
 
         gl.setSwapInterval(1);
         gl.glShadeModel(GLLightingFunc.GL_FLAT);
@@ -1196,8 +1214,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         return p;
     }
 
-    private static int windowCount=0;
-    
+    private static int windowCount = 0;
+
     private static void makeAndRunNewTestImageDisplay() {
 
         Thread t = new Thread() {
@@ -1205,7 +1223,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
             @Override
             public void run() {
                 final ImageDisplay disp = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
-                JFrame frame = new JFrame("ImageFrame");  // make a JFrame to hold it
+                JFrame frame = new JFrame("ImageFrame " + windowCount);  // make a JFrame to hold it
                 frame.setPreferredSize(new Dimension(400, 400));  // set the window size
                 frame.getContentPane().add(disp, BorderLayout.CENTER); // add the GLCanvas to the center of the window
                 final Point2D.Float mousePoint = new Point2D.Float();
@@ -1337,7 +1355,9 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
                 }
                 frame.dispose();
                 windowCount--;
-                if(windowCount==0) System.exit(0);
+                if (windowCount == 0) {
+                    System.exit(0);
+                }
             }
 
         };
@@ -1353,8 +1373,23 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
      * @param args - no effect.
      */
     public static void main(String[] args) {
+        final WindowSaver windowSaver = new WindowSaver(null, prefs);
+        Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver, AWTEvent.WINDOW_EVENT_MASK); // adds windowSaver as JVM-wide event handler for window events
         makeAndRunNewTestImageDisplay();
+        Runtime.getRuntime().addShutdownHook(new Thread() {
 
+            @Override
+            public void run() {
+                log.info("shutdown hook - saving window settings");
+                if (windowSaver != null) {
+                    try {
+                        windowSaver.saveSettings();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
     }
 
     @Override
