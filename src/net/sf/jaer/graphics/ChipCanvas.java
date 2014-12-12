@@ -230,7 +230,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 			System.exit(1);
 		}
 		drawable.setLocale(Locale.US); // to avoid problems with other language support in JOGL
-
+                drawable.setVisible(true);
 		// will always getString invalid operation here
 		// checkGLError(drawable.getGL(),glu,"before add event listener");
 		// add us as listeners for the canvas. then when the display wants to redraw display() will be called. or we can
@@ -790,7 +790,9 @@ public class ChipCanvas implements GLEventListener, Observer {
 		drawable.repaint();
 	}
 
-	/** calls repaint on the drawable */
+	/** calls repaint on the drawable
+     * @param tm time to repaint within, in ms
+     */
 	public synchronized void repaint(final long tm) {
 		drawable.repaint(tm);
 	}
@@ -1502,4 +1504,5 @@ public class ChipCanvas implements GLEventListener, Observer {
 //    public void setInsets(Insets insets) {
 //        this.insets = insets;
 //    }
+        
 }
