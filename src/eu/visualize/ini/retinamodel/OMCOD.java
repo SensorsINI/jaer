@@ -64,6 +64,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private boolean rememberReset1 = false;
     private boolean rememberReset2 = false;
     private int probabilityOfCorrectness = 5;
+    private int timeStampRosUs;                        
     private float[][] inhibitionArray;
     private float[][] excitationArray;
     private float[][] membraneStateArray;
@@ -108,6 +109,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private float dtBackgroundUs = getFloat("dtBackgroundUs", 100000f);
     private int neuronDecayTimeconstantMs = getInt("neuronDecayTimeconstantMs", 100);
     private int operationRange = getInt("operationRange", 4);
+    private int updateRosEveryUs = getInt("updateRosEveryUs", 100);
 //------------------------------------------------------------------------------
 
 //----------------------------------------------------------------------------//
@@ -209,11 +211,12 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         setPropertyTooltip(fix, "eventRateTauMs", "Tau of lowpass of event rate");
         setPropertyTooltip(use, "dtBackgroundUs", "Tau of Background activity filter");
         setPropertyTooltip(use, "operationRange", "Spatial correlation distance");
+        setPropertyTooltip(use, "updateRosEveryUs", "Update ROS every set us");
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
 
-    private int lastOMCODSpikeCheckTimestamp = 0;
+    private int lastOMCODSpikeCheckTimestampUs = 0;
 
 //----------------------------------------------------------------------------//
 //-- Filter packet method ----------------------------------------------------//
@@ -239,13 +242,13 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 continue;
             }
             subunits.update(e);
-            int dt = e.timestamp - lastOMCODSpikeCheckTimestamp;
+            int dt = e.timestamp - lastOMCODSpikeCheckTimestampUs;
             if (dt < 0) {
-                lastOMCODSpikeCheckTimestamp = e.timestamp;
+                lastOMCODSpikeCheckTimestampUs = e.timestamp;
                 return in;
             }
             if (dt > minUpdateIntervalUs) {
-                lastOMCODSpikeCheckTimestamp = e.timestamp;
+                lastOMCODSpikeCheckTimestampUs = e.timestamp;
                 OMCODModel.update(e.timestamp);
             }
         }
@@ -425,18 +428,18 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         if (showTracker1) {
             // Reset tracker after a second of no OMC events 
             // (current timestamp - timestamp of last spiked OMC)
-            if (lastOMCODSpikeCheckTimestamp - lastTimeStampSpikeArray[lastSpikedOMC[0]][lastSpikedOMC[1]] > 5000000) {
+            if (lastOMCODSpikeCheckTimestampUs - lastTimeStampSpikeArray[lastSpikedOMC[0]][lastSpikedOMC[1]] > 5000000) {
                 resetTracker1();
                 resetTracker2();
             }
             // Reset tracker after a second of no OMC events in its neighbourhood 
             // (current timestamp - timestamp of last spiked OMC of tracker, spatially correlated then)
-            if (lastOMCODSpikeCheckTimestamp - lastTimeStampSpikeArray[lastSpikedOMCTracker1[0][counter1]][lastSpikedOMCTracker1[1][counter1]] > 5000000) {
+            if (lastOMCODSpikeCheckTimestampUs - lastTimeStampSpikeArray[lastSpikedOMCTracker1[0][counter1]][lastSpikedOMCTracker1[1][counter1]] > 5000000) {
                 resetTracker1();
             }
             // Reset tracker after a second of no OMC events in its neighbourhood 
             // (current timestamp - timestamp of last spiked OMC of tracker, spatially correlated then)
-            if (lastOMCODSpikeCheckTimestamp - lastTimeStampSpikeArray[lastSpikedOMCTracker2[0][counter1]][lastSpikedOMCTracker2[1][counter1]] > 500000) {
+            if (lastOMCODSpikeCheckTimestampUs - lastTimeStampSpikeArray[lastSpikedOMCTracker2[0][counter1]][lastSpikedOMCTracker2[1][counter1]] > 500000) {
                 resetTracker2();
             }
 
@@ -467,21 +470,24 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
             glu.gluDisk(quad, 0, 3, 32, 1);
             gl.glPopMatrix();
-            
+
             // Draw median center of mass 
             gl.glPushMatrix();
-            gl.glTranslatef((findMedianCenterOfMass(lastSpikedOMCArray)[0] +1 )<< getSubunitSubsamplingBits(),
-                    (findMedianCenterOfMass(lastSpikedOMCArray)[1] +1) << getSubunitSubsamplingBits(), 5);
+            gl.glTranslatef((findMedianCenterOfMass(lastSpikedOMCArray)[0] + 1) << getSubunitSubsamplingBits(),
+                    (findMedianCenterOfMass(lastSpikedOMCArray)[1] + 1) << getSubunitSubsamplingBits(), 5);
             gl.glColor4f(0, 1, 255, .3f);
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
             glu.gluDisk(quad, 0, 3, 32, 1);
             gl.glPopMatrix();
-            
+
             // Send data to RosNodePublisher (-90 to center for davis, -64 for DVS128)
-            RosNodePublisher.setXcoordinate((findCenterOfMass(findClusterCorners())[0] << getSubunitSubsamplingBits()) - 90);
-            RosNodePublisher.setYcoordinate((findCenterOfMass(findClusterCorners())[1] << getSubunitSubsamplingBits()) - 90);
-            RosNodePublisher.setZcoordinate(distanceToTravel(((findClusterCorners()[1] + 2) << getSubunitSubsamplingBits())
-                    - (findClusterCorners()[0] << getSubunitSubsamplingBits())));
+            if (lastOMCODSpikeCheckTimestampUs - timeStampRosUs > getUpdateRosEveryUs()) {
+                RosNodePublisher.setXcoordinate((findCenterOfMass(findClusterCorners())[0] << getSubunitSubsamplingBits()) - 90);
+                RosNodePublisher.setYcoordinate((findCenterOfMass(findClusterCorners())[1] << getSubunitSubsamplingBits()) - 90);
+                RosNodePublisher.setZcoordinate(distanceToTravel(((findClusterCorners()[1] + 2) << getSubunitSubsamplingBits())
+                        - (findClusterCorners()[0] << getSubunitSubsamplingBits())));
+                timeStampRosUs = lastOMCODSpikeCheckTimestampUs;
+            }
         }
 
         if (showTracker2) {
@@ -890,10 +896,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         } else {
             medianCenterOfMass[1] = (yPosition[(int) pos1y] + yPosition[(int) pos2y]) / 2;
         }
-
-        System.out.println("Median: " + medianCenterOfMass[0] + " , " + medianCenterOfMass[1]);
-        //medianCenterOfMass[0] = (int) medianCMFilter.filter(medianCenterOfMass[0], lastOMCODSpikeCheckTimestamp);
-        //medianCenterOfMass[1] = (int) medianCMFilter.filter(medianCenterOfMass[1], lastOMCODSpikeCheckTimestamp);
         return medianCenterOfMass;
     }
 //----------------------------------------------------------------------------//
@@ -1780,6 +1782,18 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     public void setOperationRange(int operationRange) {
         this.operationRange = operationRange;
         putInt("operationRange", operationRange);
+    }
+//------------------------------------------------------------------------------
+    // @return the updateRosEveryUs
+
+    public int getUpdateRosEveryUs() {
+        return updateRosEveryUs;
+    }
+
+    // @param updateRosEveryUs the updateRosEveryUs to set
+    public void setUpdateRosEveryUs(int updateRosEveryUs) {
+        this.updateRosEveryUs = updateRosEveryUs;
+        putInt("updateRosEveryUs", updateRosEveryUs);
     }
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
