@@ -24,6 +24,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter;
 import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
+import eu.seebetter.ini.chips.DAViS.HotPixelFilter;
 
 //-- end packages ------------------------------------------------------------//
 //****************************************************************************//
@@ -50,6 +51,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     //private final LowpassFilter medianCMFilter = new LowpassFilter(1);
     private EventRateEstimator eventRateFilter;
     private BackgroundActivityFilter backgroundActivityFilter;
+    private HotPixelFilter hotPixelFilter;
     private Subunits subunits;
     private int nxmax;
     private int nymax;
@@ -64,7 +66,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private boolean rememberReset1 = false;
     private boolean rememberReset2 = false;
     private int probabilityOfCorrectness = 5;
-    private int timeStampRosUs;                        
+    private int timeStampRosUs;
     private float[][] inhibitionArray;
     private float[][] excitationArray;
     private float[][] membraneStateArray;
@@ -141,6 +143,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         backgroundActivityFilter = new BackgroundActivityFilter(chip);
         backgroundActivityFilter.setDt((int) dtBackgroundUs);
         backgroundActivityFilter.setSubsampleBy(0);
+        hotPixelFilter = new HotPixelFilter(chip);
 
         chip.addObserver(this);
         final String use = "1) Key Parameters", fix = "2) Fixed Parameters", disp = "3) Display", log = "4) Logging";
@@ -224,20 +227,18 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!(in.getEventPrototype() instanceof PolarityEvent)) {
-            return in;
+            return eventRateFilter.filterPacket(backgroundActivityFilter.filterPacket(hotPixelFilter.filterPacket(in)));
         }
         if (in instanceof ApsDvsEventPacket) {
-            checkOutputPacketEventType(in); // make sure memory is allocated to avoid leak. 
+            checkOutputPacketEventType(eventRateFilter.filterPacket(backgroundActivityFilter.filterPacket(hotPixelFilter.filterPacket(in)))); // make sure memory is allocated to avoid leak. 
             // we don't use output packet but it is necesary to iterate over DVS events only
         }
         clearOutputPacket();
         if (subunits == null) {
             resetFilter();
         }
-        for (Object o : in) {
+        for (Object o : hotPixelFilter.filterPacket(in)) {
             PolarityEvent e = (PolarityEvent) o;
-            eventRateFilter.filterPacket(in);
-            backgroundActivityFilter.filterPacket(in);
             if (e.special) {
                 continue;
             }
@@ -315,6 +316,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                     }
                     rememberReset1 = false;
                 }
+
                 if ((Math.abs((lastSpikedOMC[0] - lastSpikedOMCTracker1[0][lastIndex])) < getOperationRange())
                         && (Math.abs((lastSpikedOMC[1] - lastSpikedOMCTracker1[1][lastIndex])) < getOperationRange())
                         ||// Spatial correlation with last spike
@@ -345,7 +347,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         }
                     }
                     probabilityOfCorrectness = 5;
-                } else {
+                } else { // If outside operation range, reevaluate decision
                     //Probability count
                     probabilityOfCorrectness = probabilityOfCorrectness - 1;
 
@@ -353,47 +355,50 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         resetTracker1();
                         probabilityOfCorrectness = 5;
                     }
-                    //Tracker 2
-                    if (rememberReset2) { // Start anywhere after reset
-                        for (int j = 0; j < getClusterSize(); j++) {
-                            for (int i = 0; i < 2; i++) {
-                                if (i == 0) {
-                                    lastSpikedOMCTracker2[i][j] = lastSpikedOMC[0];
-                                } else {
-                                    lastSpikedOMCTracker2[i][j] = lastSpikedOMC[1];
-                                }
-                            }
-                        }
-                        rememberReset2 = false;
-                    }
-                    if ((Math.abs((lastSpikedOMC[0] - lastSpikedOMCTracker2[0][lastIndex])) < getOperationRange())
-                            && (Math.abs((lastSpikedOMC[1] - lastSpikedOMCTracker2[1][lastIndex])) < getOperationRange())
-                            ||// Spatial correlation with last spike
-                            //spatial correlation with corners
-                            ((Math.abs((lastSpikedOMC[0] - findClusterCorners()[4])) < getOperationRange())
-                            && ((Math.abs((lastSpikedOMC[1] - findClusterCorners()[6])) < getOperationRange()) || (Math.abs((lastSpikedOMC[1] - findClusterCorners()[7])) < getOperationRange())))
-                            || ((Math.abs((lastSpikedOMC[0] - findClusterCorners()[5])) < getOperationRange())
-                            && ((Math.abs((lastSpikedOMC[1] - findClusterCorners()[6])) < getOperationRange()) || (Math.abs((lastSpikedOMC[1] - findClusterCorners()[7])) < getOperationRange())))
-                            || ((Math.abs((lastSpikedOMC[1] - findClusterCorners()[6])) < getOperationRange())
-                            && ((Math.abs((lastSpikedOMC[0] - findClusterCorners()[4])) < getOperationRange()) || (Math.abs((lastSpikedOMC[0] - findClusterCorners()[5])) < getOperationRange())))
-                            || ((Math.abs((lastSpikedOMC[1] - findClusterCorners()[7])) < getOperationRange())
-                            && ((Math.abs((lastSpikedOMC[0] - findClusterCorners()[4])) < getOperationRange()) || (Math.abs((lastSpikedOMC[0] - findClusterCorners()[5])) < getOperationRange())))) {
-                        if (counter2 < getClusterSize() - 1) {
-                            counter2++;
-                        } else {
-                            counter2 = 0;
-                        }
-                        if (counter2 == 0) {
-                            lastIndex2 = getClusterSize() - 1;
-                        } else {
-                            lastIndex2 = counter2 - 1;
-                        }
+
+                }
+
+                //Tracker 2
+                if (rememberReset2) { // Start anywhere after reset
+                    for (int j = 0; j < getClusterSize(); j++) {
                         for (int i = 0; i < 2; i++) {
                             if (i == 0) {
-                                lastSpikedOMCTracker2[i][counter2] = lastSpikedOMC[0];
+                                lastSpikedOMCTracker2[i][j] = lastSpikedOMC[0];
                             } else {
-                                lastSpikedOMCTracker2[i][counter2] = lastSpikedOMC[1];
+                                lastSpikedOMCTracker2[i][j] = lastSpikedOMC[1];
                             }
+                        }
+                    }
+                    rememberReset2 = false;
+                }
+
+                if ((Math.abs((lastSpikedOMC[0] - lastSpikedOMCTracker2[0][lastIndex])) < getOperationRange())
+                        && (Math.abs((lastSpikedOMC[1] - lastSpikedOMCTracker2[1][lastIndex])) < getOperationRange())
+                        ||// Spatial correlation with last spike
+                        //spatial correlation with corners
+                        ((Math.abs((lastSpikedOMC[0] - findClusterCorners()[4])) < getOperationRange())
+                        && ((Math.abs((lastSpikedOMC[1] - findClusterCorners()[6])) < getOperationRange()) || (Math.abs((lastSpikedOMC[1] - findClusterCorners()[7])) < getOperationRange())))
+                        || ((Math.abs((lastSpikedOMC[0] - findClusterCorners()[5])) < getOperationRange())
+                        && ((Math.abs((lastSpikedOMC[1] - findClusterCorners()[6])) < getOperationRange()) || (Math.abs((lastSpikedOMC[1] - findClusterCorners()[7])) < getOperationRange())))
+                        || ((Math.abs((lastSpikedOMC[1] - findClusterCorners()[6])) < getOperationRange())
+                        && ((Math.abs((lastSpikedOMC[0] - findClusterCorners()[4])) < getOperationRange()) || (Math.abs((lastSpikedOMC[0] - findClusterCorners()[5])) < getOperationRange())))
+                        || ((Math.abs((lastSpikedOMC[1] - findClusterCorners()[7])) < getOperationRange())
+                        && ((Math.abs((lastSpikedOMC[0] - findClusterCorners()[4])) < getOperationRange()) || (Math.abs((lastSpikedOMC[0] - findClusterCorners()[5])) < getOperationRange())))) {
+                    if (counter2 < getClusterSize() - 1) {
+                        counter2++;
+                    } else {
+                        counter2 = 0;
+                    }
+                    if (counter2 == 0) {
+                        lastIndex2 = getClusterSize() - 1;
+                    } else {
+                        lastIndex2 = counter2 - 1;
+                    }
+                    for (int i = 0; i < 2; i++) {
+                        if (i == 0) {
+                            lastSpikedOMCTracker2[i][counter2] = lastSpikedOMC[0];
+                        } else {
+                            lastSpikedOMCTracker2[i][counter2] = lastSpikedOMC[1];
                         }
                     }
                 }
@@ -536,29 +541,50 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             subunits.render(gl);
             gl.glPopMatrix();
         }
+
         gl.glPushMatrix();
+
         renderer.begin3DRendering();
-        renderer.setColor(1, 1, 0, .3f);
-        renderer.draw3D("OMCshow( " + getShowXcoord() + " , " + getShowYcoord() + " )", -55, 30, 0, .4f); // x y width height
-        renderer.setColor(1, 1, 0, .3f);
-        renderer.draw3D("OMCini: " + inhibitionArray[getShowXcoord()][getShowYcoord()], -55, 90, 0, .4f); // x y width height
-        renderer.setColor(1, 1, 0, .3f);
-        renderer.draw3D("OMCex: " + excitationArray[getShowXcoord()][getShowYcoord()], -55, 80, 0, .4f); // x y width height
-        renderer.setColor(1, 1, 0, .3f);
-        renderer.draw3D("OMCmem: " + membraneStateArray[getShowXcoord()][getShowYcoord()], -55, 100, 0, .4f); // x y width height
-        renderer.setColor(1, 1, 0, .3f);
-        renderer.draw3D("Average Event Rate: " + eventRateFilter.getFilteredEventRate() + " Ev/s", -55, 70, 0, .4f); // x y width height
-        renderer.setColor(1, 1, 0, .3f);
-        renderer.draw3D("Current Threshold: " + IFthreshold, -55, 110, 0, .4f); // x y width height
-        renderer.setColor(1, 1, 0, .3f);
+
+        renderer.setColor(
+                1, 1, 0, .3f);
+        renderer.draw3D(
+                "OMCshow( " + getShowXcoord() + " , " + getShowYcoord() + " )", -55, 30, 0, .4f); // x y width height
+        renderer.setColor(
+                1, 1, 0, .3f);
+        renderer.draw3D(
+                "OMCini: " + inhibitionArray[getShowXcoord()][getShowYcoord()], -55, 90, 0, .4f); // x y width height
+        renderer.setColor(
+                1, 1, 0, .3f);
+        renderer.draw3D(
+                "OMCex: " + excitationArray[getShowXcoord()][getShowYcoord()], -55, 80, 0, .4f); // x y width height
+        renderer.setColor(
+                1, 1, 0, .3f);
+        renderer.draw3D(
+                "OMCmem: " + membraneStateArray[getShowXcoord()][getShowYcoord()], -55, 100, 0, .4f); // x y width height
+        renderer.setColor(
+                1, 1, 0, .3f);
+        renderer.draw3D(
+                "Average Event Rate: " + eventRateFilter.getFilteredEventRate() + " Ev/s", -55, 70, 0, .4f); // x y width height
+        renderer.setColor(
+                1, 1, 0, .3f);
+        renderer.draw3D(
+                "Current Threshold: " + IFthreshold, -55, 110, 0, .4f); // x y width height
+        renderer.setColor(
+                1, 1, 0, .3f);
         directions(findCenterOfMass(findClusterCorners()));
-        renderer.draw3D("Direction: " + direction, -55, 50, 0, .4f); // x y width height
-        renderer.setColor(1, 1, 0, .3f);
-        renderer.draw3D("Object at: " + distanceToTravel(((findClusterCorners()[1] + 2) << getSubunitSubsamplingBits())
-                - (findClusterCorners()[0] << getSubunitSubsamplingBits())) + " m", -55, 40, 0, .4f); // x y width height
+        renderer.draw3D(
+                "Direction: " + direction, -55, 50, 0, .4f); // x y width height
+        renderer.setColor(
+                1, 1, 0, .3f);
+        renderer.draw3D(
+                "Object at: " + distanceToTravel(((findClusterCorners()[1] + 2) << getSubunitSubsamplingBits())
+                        - (findClusterCorners()[0] << getSubunitSubsamplingBits())) + " m", -55, 40, 0, .4f); // x y width height
         renderer.end3DRendering();
+
         // render all the subunits now
         gridOn(drawable);
+
         gl.glPopMatrix();
         if (showTracker1) {
             // Render probability of Correctness of tracker 1
@@ -940,6 +966,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         float pixelSizeM = 0.000018f; // pixelSize 18 um DAVIS/40 um DVS
         float distanceToObject = (focalLengthM * objectRealWidthXM) / (objectDetectedWidthX * pixelSizeM);
         return distanceToObject;
+
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -1121,7 +1148,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 try {
                     if (omcx == 0 && omcy == 0) {
                         // Create a new file output stream
-                        FileOutputStream out = new FileOutputStream(new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\excitationArray1.txt"), true);
+                        FileOutputStream out = new FileOutputStream(new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\excitationArray.txt"), true);
                         // Connect print stream to the output stream
                         p = new PrintStream(out);
                         p.print(excitationArray[omcx][omcy]);
@@ -1167,29 +1194,31 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //-- Rendering of subunits method --------------------------------------------//
 //----------------------------------------------------------------------------//
         private void render(GL2 gl) {
-            final float alpha = .2f;
-            glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
-            int off = (1 << (getSubunitSubsamplingBits())) / 2;
-            for (int x = getExcludedEdgeSubunits(); x < (nxmax - getExcludedEdgeSubunits()); x++) {
-                for (int y = getExcludedEdgeSubunits(); y < (nymax - getExcludedEdgeSubunits()); y++) {
-                    gl.glPushMatrix();
-                    gl.glTranslatef((x << getSubunitSubsamplingBits()) + off, (y << getSubunitSubsamplingBits()) + off, 5);
-                    if (((x == getShowXcoord()) && (y == getShowYcoord())) || ((x == getShowXcoord() + 1) && (y == getShowYcoord() + 1))
-                            || ((x == getShowXcoord()) && (y == getShowYcoord() + 1)) || ((x == getShowXcoord() + 1) && (y == getShowYcoord()))) {
-                        gl.glColor4f(1, 0, 0, alpha);
-                    } else {
-                        gl.glColor4f(0, 1, 0, alpha);
+            if (showSubunits) {
+                final float alpha = .2f;
+                glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
+                int off = (1 << (getSubunitSubsamplingBits())) / 2;
+                for (int x = getExcludedEdgeSubunits(); x < (nxmax - getExcludedEdgeSubunits()); x++) {
+                    for (int y = getExcludedEdgeSubunits(); y < (nymax - getExcludedEdgeSubunits()); y++) {
+                        gl.glPushMatrix();
+                        gl.glTranslatef((x << getSubunitSubsamplingBits()) + off, (y << getSubunitSubsamplingBits()) + off, 5);
+                        if (((x == getShowXcoord()) && (y == getShowYcoord())) || ((x == getShowXcoord() + 1) && (y == getShowYcoord() + 1))
+                                || ((x == getShowXcoord()) && (y == getShowYcoord() + 1)) || ((x == getShowXcoord() + 1) && (y == getShowYcoord()))) {
+                            gl.glColor4f(1, 0, 0, alpha);
+                        } else {
+                            gl.glColor4f(0, 1, 0, alpha);
+                        }
+                        glu.gluDisk(quad, 0, subunitActivityBlobRadiusScale * subunits[x][y].computeInputToCell(), 16, 1);
+                        gl.glPopMatrix();
                     }
-                    glu.gluDisk(quad, 0, subunitActivityBlobRadiusScale * subunits[x][y].computeInputToCell(), 16, 1);
-                    gl.glPopMatrix();
                 }
+                renderer.begin3DRendering();
+                renderer.setColor(1, 0, 0, 1);
+                renderer.draw3D("Center", 0, chip.getSizeY(), 0, .5f);
+                renderer.setColor(0, 1, 0, 1);
+                renderer.draw3D("Surround", chip.getSizeX() / 2, chip.getSizeY(), 0, .5f);
+                renderer.end3DRendering();
             }
-            renderer.begin3DRendering();
-            renderer.setColor(1, 0, 0, 1);
-            renderer.draw3D("Center", 0, chip.getSizeY(), 0, .5f);
-            renderer.setColor(0, 1, 0, 1);
-            renderer.draw3D("Surround", chip.getSizeX() / 2, chip.getSizeY(), 0, .5f);
-            renderer.end3DRendering();
         }
     }
 //-- end of Subunits class ---------------------------------------------------//
@@ -1198,7 +1227,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //****************************************************************************//
 //-- Subunit class (to model single subunit and deal with vmem) --------------//
 //----------------------------------------------------------------------------//
-    // polarity is ignored here and only handled on update of object Motion cell
+// polarity is ignored here and only handled on update of object Motion cell
     private class Subunit {
 
         float vmem;
@@ -1288,7 +1317,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //****************************************************************************//
 //-- class OMCODModel (OMC model) --------------------------------------------//
 //----------------------------------------------------------------------------//
-    // models soma and integration and spiking of objectMotion cell
+// models soma and integration and spiking of objectMotion cell
     private class OMCODModel {
 
         Random r = new Random();
@@ -1357,6 +1386,28 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
         void spike(int timestamp, int omcx, int omcy) {
             timeStampSpikeArray[omcx][omcy] = timestamp;
+            // Log OMC array
+            if (startLogging == true) {
+                try {
+                    // Create a new file output stream
+                    FileOutputStream out = new FileOutputStream(new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\lastSpikedOMC.txt"), true);
+                    // Connect print stream to the output stream
+                    PrintStream p = new PrintStream(out);
+                    p.print(omcx);
+                    p.print(", ");
+                    p.print(omcy);
+                    p.print(", ");
+                    p.println(timestamp);
+                    p.close();
+
+                } catch (Exception e) {
+                    System.err.println("Error writing to file");
+                }
+            }
+            if (deleteLogging == true) {
+                File fout = new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\lastSpikedOMC.txt");
+                fout.delete();
+            }
             enableSpikeDraw = true;
             lastSpikedOMC[0] = omcx;
             lastSpikedOMC[1] = omcy;
@@ -1433,7 +1484,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
 //-- Set and Get methods -----------------------------------------------------//
 //----------------------------------------------------------------------------//
-    // @return the subunitDecayTimeconstantMs
+// @return the subunitDecayTimeconstantMs
     public float getSubunitDecayTimeconstantMs() {
         return subunitDecayTimeconstantMs;
     }
