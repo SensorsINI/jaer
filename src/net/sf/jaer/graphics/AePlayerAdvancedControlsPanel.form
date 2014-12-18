@@ -54,9 +54,9 @@
                 </Property>
               </Properties>
               <Events>
+                <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="playerSliderStateChanged"/>
                 <EventHandler event="mousePressed" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="playerSliderMousePressed"/>
                 <EventHandler event="mouseReleased" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="playerSliderMouseReleased"/>
-                <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="playerSliderStateChanged"/>
               </Events>
             </Component>
             <Component class="javax.swing.JButton" name="showMoreControlsButton">
