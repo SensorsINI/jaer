@@ -12,11 +12,15 @@ public class OctaveSpinnerNumberModel extends SpinnerNumberModel{
 
     @Override
     public Object getNextValue (){
-        return 2 * (Integer)getValue();
+        int n= 2 * (Integer)getValue();
+        if(n>(Integer)getMaximum()) n=(Integer) getMaximum();
+        return Integer.valueOf(n);
     }
 
     @Override
     public Object getPreviousValue (){
-        return (Integer)getValue() / 2;
+        int n=(Integer)getValue() / 2;
+        if(n<(Integer)getMinimum())n=(int)getMinimum();
+        return n;
     }
 }
