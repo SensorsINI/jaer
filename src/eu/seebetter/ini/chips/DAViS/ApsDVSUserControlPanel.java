@@ -64,12 +64,13 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         captureEventsCB.setSelected(apsDvsConfig.isCaptureEventsEnabled());
         autoshotThresholdSp.setValue(this.chip.getAutoshotThresholdEvents()>>10);
         final int[] vals={10,100,1000}, mults={1,10,100};
-        autoshotThresholdSp.addMouseWheelListener(new SpinnerMouseWheelHandler(vals, mults));
+        autoshotThresholdSp.addMouseWheelListener(new SpinnerMouseWheelIntHandler(vals, mults));
         autoExpCB.setSelected(this.chip.isAutoExposureEnabled());
-        fdSp.addMouseWheelListener(new SpinnerMouseWheelHandler(vals, mults));
-        edSp.addMouseWheelListener(new SpinnerMouseWheelHandler(vals, mults));
-        dvsContSp.addMouseWheelListener(new SpinnerMouseWheelHandler(new int[]{10,20},new int[]{1,2}));
+        fdSp.addMouseWheelListener(new SpinnerMouseWheelIntHandler(vals, mults));
+        edSp.addMouseWheelListener(new SpinnerMouseWheelIntHandler(vals, mults));
+        dvsContSp.addMouseWheelListener(new SpinnerMouseWheelIntHandler(new int[]{10,20},new int[]{1,2}));
         dvsContSp.setValue(renderer.getColorScale());
+        contrastSp.addMouseWheelListener(new SpinnerMouseWheelFloatHandler(new float[]{1,2},new float[]{.05f,.1f}));
         setDvsColorModeRadioButtons();
         renderer.getSupport().addPropertyChangeListener(this);
         if (apsDvsConfig instanceof DAViS240Config) {
@@ -101,7 +102,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         }
     }
 
-    private class SpinnerMouseWheelHandler implements MouseWheelListener {
+    private class SpinnerMouseWheelIntHandler implements MouseWheelListener {
 
         private final int[] vals, mults;
 
@@ -109,7 +110,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
          * Constructs a new instance with defaults of 10,100,1000 and 1,10,100
          * vals and multipliers
          */
-        SpinnerMouseWheelHandler() {
+        SpinnerMouseWheelIntHandler() {
             this(new int[]{10, 100, 1000}, new int[]{1, 10, 100});
         }
 
@@ -120,7 +121,7 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
          * @param mults the multipliers for spinner values less than or equal to
          * that number
          */
-        SpinnerMouseWheelHandler(int[] vals, int[] mults){
+        SpinnerMouseWheelIntHandler(int[] vals, int[] mults){
             if(vals==null || mults==null) throw new RuntimeException("vals or mults is null");
             if(vals.length!=mults.length) throw new RuntimeException("vals and mults array must be same length and they are not: vals.length="+vals.length+" mults.length="+mults.length);
             this.vals=vals;
@@ -146,6 +147,51 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
         }
     }
 
+        private class SpinnerMouseWheelFloatHandler implements MouseWheelListener {
+
+        private final float[] vals, mults;
+
+        /**
+         * Constructs a new instance with defaults of 10,100,1000 and 1,10,100
+         * vals and multipliers
+         */
+        SpinnerMouseWheelFloatHandler() {
+            this(new float[]{.1f, 1, 10}, new float[]{.1f, 10f, 100f});
+        }
+
+        /**
+         * Constructs a new instance
+         *
+         * @param vals the threshold values
+         * @param mults the multipliers for spinner values less than or equal to
+         * that number
+         */
+        SpinnerMouseWheelFloatHandler(float[] vals, float[] mults){
+            if(vals==null || mults==null) throw new RuntimeException("vals or mults is null");
+            if(vals.length!=mults.length) throw new RuntimeException("vals and mults array must be same length and they are not: vals.length="+vals.length+" mults.length="+mults.length);
+            this.vals=vals;
+            this.mults=mults;
+        }
+        public void mouseWheelMoved(MouseWheelEvent mwe) {
+            JSpinner spinner = (JSpinner) mwe.getSource();
+            if (mwe.getScrollType() != MouseWheelEvent.WHEEL_UNIT_SCROLL) {
+                return;
+            }
+            float value = (Float) spinner.getValue();
+            int i=0;
+            for(i=0;i<vals.length;i++){
+                if(value<vals[i]) break;
+            }
+            if(i>=vals.length)i=vals.length-1;
+            float mult=mults[i];
+            value -= mult * mwe.getWheelRotation();
+            if (value < 0) {
+                value = 0;
+            }
+            spinner.setValue(value);
+        }
+    }
+        
     private void setFileModified() {
         if (getChip() != null && getChip().getAeViewer() != null && getChip().getAeViewer().getBiasgenFrame() != null) {
             getChip().getAeViewer().getBiasgenFrame().setFileModified(true);
