@@ -275,17 +275,17 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         playerSlider.setValue(0);
         playerSlider.setMaximumSize(new java.awt.Dimension(800, 25));
         playerSlider.setPreferredSize(new java.awt.Dimension(600, 25));
+        playerSlider.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                playerSliderStateChanged(evt);
+            }
+        });
         playerSlider.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mousePressed(java.awt.event.MouseEvent evt) {
                 playerSliderMousePressed(evt);
             }
             public void mouseReleased(java.awt.event.MouseEvent evt) {
                 playerSliderMouseReleased(evt);
-            }
-        });
-        playerSlider.addChangeListener(new javax.swing.event.ChangeListener() {
-            public void stateChanged(javax.swing.event.ChangeEvent evt) {
-                playerSliderStateChanged(evt);
             }
         });
         sliderPanel.add(playerSlider);
@@ -483,7 +483,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
             }
         });
 
-        timesliceSpinner.setModel(new OctaveSpinnerNumberModel(20000, 1, 300000, 100));
+        timesliceSpinner.setModel(new OctaveSpinnerNumberModel(20000, 1, 3000000, 100));
         timesliceSpinner.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 timesliceSpinnerStateChanged(evt);
@@ -492,7 +492,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 
         msLabel.setText("us");
 
-        packetSizeSpinner.setModel(new OctaveSpinnerNumberModel(256, 1, 300000, 128));
+        packetSizeSpinner.setModel(new OctaveSpinnerNumberModel(256, 1, 1000000, 128));
         packetSizeSpinner.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 packetSizeSpinnerStateChanged(evt);

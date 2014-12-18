@@ -454,7 +454,7 @@
                 <Component class="javax.swing.JSpinner" name="timesliceSpinner">
                   <Properties>
                     <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
-                      <Connection code="new OctaveSpinnerNumberModel(20000, 1, 300000, 100)" type="code"/>
+                      <Connection code="new OctaveSpinnerNumberModel(20000, 1, 3000000, 100)" type="code"/>
                     </Property>
                   </Properties>
                   <Events>
@@ -469,7 +469,7 @@
                 <Component class="javax.swing.JSpinner" name="packetSizeSpinner">
                   <Properties>
                     <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
-                      <Connection code="new OctaveSpinnerNumberModel(256, 1, 300000, 128)" type="code"/>
+                      <Connection code="new OctaveSpinnerNumberModel(256, 1, 1000000, 128)" type="code"/>
                     </Property>
                   </Properties>
                   <Events>
