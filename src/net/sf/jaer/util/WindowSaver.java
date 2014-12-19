@@ -120,15 +120,15 @@ public class WindowSaver implements AWTEventListener {
             // TODO tobi commented out the calls below because they seems to trigger the OpenGL exceptions in JOGL on context creation; see
             // http://forum.jogamp.org/Jogl-Using-Wrong-Generic-Graphics-Adapter-td4033216i20.html#a4033747
             // and https://jogamp.org/bugzilla/show_bug.cgi?id=1105
-            GraphicsDevice gd=gs[0];
-            GraphicsConfiguration[] gc=gd.getConfigurations();
-            if(gc!=null&&gc.length>0) {
-                if(gc.length>1){
-//                    log.info("There are "+gc.length+" GraphicsConfiguration's found; using first one which is "+gc[0].toString());
-                }
-                Insets insets=Toolkit.getDefaultToolkit().getScreenInsets(gc[0]);
-                lowerInset=insets.bottom;
-            }
+//            GraphicsDevice gd=gs[0];
+//            GraphicsConfiguration[] gc=gd.getConfigurations();
+//            if(gc!=null&&gc.length>0) {
+//                if(gc.length>1){
+////                    log.info("There are "+gc.length+" GraphicsConfiguration's found; using first one which is "+gc[0].toString());
+//                }
+//                Insets insets=Toolkit.getDefaultToolkit().getScreenInsets(gc[0]);
+//                lowerInset=insets.bottom;
+//            }
         }
 
         if(x<0){
