@@ -19,6 +19,7 @@ import java.awt.GraphicsEnvironment;
 import java.awt.IllegalComponentStateException;
 import java.awt.Insets;
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.util.logging.Logger;
 
@@ -65,16 +66,27 @@ public class JAERWindowUtilities {
             int h = dim.height;
             Dimension sd=Toolkit.getDefaultToolkit().getScreenSize();
             // determine the height of the windows taskbar by this roundabout proceedure
-            GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-            GraphicsDevice[] gs = ge.getScreenDevices();
-            if(gs!=null && gs.length>0){
-                GraphicsDevice gd = gs[0];
-                GraphicsConfiguration[] gc = gd.getConfigurations();
-                if(gc!=null && gc.length>0){
-                    Insets insets=Toolkit.getDefaultToolkit().getScreenInsets(gc[0]);
-                    lowerInset=insets.bottom*2; // TODO tobi had to make bigger to handle FilterPanel resize
-                }
+            // tobi commented code below because of JOGL or driver or java bug that causes JOGL to drop to GDI rendering.
+            // see WindowSaver for more comments. Insets are now determined by calls below
+            // determine the height of the windows taskbar by this roundabout proceedure
+            // TODO tobi removed this because it was causing a runtime native code exception using NVIDIA 181.22 driver with win xp
+            // replaced by hardcoded lowerInset
+            lowerInset = 64;
+
+            Rectangle windowBounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+            if (windowBounds != null) {
+                lowerInset = sd.height - windowBounds.height;
             }
+//            GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+//            GraphicsDevice[] gs = ge.getScreenDevices();
+//            if(gs!=null && gs.length>0){
+//                GraphicsDevice gd = gs[0];
+//                GraphicsConfiguration[] gc = gd.getConfigurations();
+//                if(gc!=null && gc.length>0){
+//                    Insets insets=Toolkit.getDefaultToolkit().getScreenInsets(gc[0]);
+//                    lowerInset=insets.bottom*2; // TODO tobi had to make bigger to handle FilterPanel resize
+//                }
+//            }
 //        if(x+w>sd.width || y+h>sd.height) {
 //            log.info("window extends over edge of screen, moving back to origin");
 //            x=y=0;
