@@ -21,6 +21,7 @@ import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
 
 /**
  * adapted from O'Reilly book Swing Hacks by Marinacci and Adamson ISBN
@@ -111,9 +112,9 @@ public class WindowSaver implements AWTEventListener {
      *
      * @param frame JFrame to load settings for
      */
-    public void loadSettings(JFrame frame) throws IOException {
+    public void loadSettings(final JFrame frame) throws IOException {
         boolean resize = false; // set true if window is too big for screen
-        String name = frame.getTitle().replaceAll(" ", "");
+        final String name = frame.getTitle().replaceAll(" ", "");
 
         int x = preferences.getInt(name + ".x", 0);
         int y = preferences.getInt(name + ".y", 0);
@@ -128,14 +129,13 @@ public class WindowSaver implements AWTEventListener {
         // TODO tobi removed this because it was causing a runtime native code exception using NVIDIA 181.22 driver with win xp
         // replaced by hardcoded lowerInset
         lowerInset = 64;
-        
-        Rectangle windowBounds=GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
-        if(windowBounds!=null){
-            lowerInset=sd.height-windowBounds.height;
+
+        Rectangle windowBounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+        if (windowBounds != null) {
+            lowerInset = sd.height - windowBounds.height;
         }
-        
+
         // any call to getConfigurations or getConfiguration for GraphicsDevice causes JOGL to drop back to GDI rendering, reason unknown
-        
 //        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
 ////        GraphicsDevice[] gs=ge.getScreenDevices(); // TODO it could be that remote session doesn't show screen that used to be used. Should check that we are not offscreen. Otherwise registy edit is required to show window!
 //        if (ge != null) {
@@ -161,7 +161,6 @@ public class WindowSaver implements AWTEventListener {
 //                }
 //            }
 //        }
-
         if (x < 0) {
             log.info("window x origin is <0, moving back to zero");
             x = 0;
@@ -193,13 +192,21 @@ public class WindowSaver implements AWTEventListener {
             y += offset;//+insets.top;
             lastframemap.put(name, offset);
         }
-        frame.setLocation(x, y);
-        if (resize && !(frame instanceof DontResize)) {
-            frame.setSize(new Dimension(w, h));
-        }
+
+        final boolean resize2 = resize;
+        final int w2=w, h2=h, x2=x, y2=y;
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                frame.setLocation(x2, y2);
+                if (resize2 && !(frame instanceof DontResize)) {
+                    frame.setSize(new Dimension(w2, h2));
+                }
 //        log.info("loaded settings location for "+frame.getName());
-        framemap.put(name, frame);
-        frame.validate();
+                framemap.put(name, frame);
+                frame.validate();
+            }
+        });
+
     }
 
     // returns true if there is a stored preference
