@@ -56,6 +56,8 @@ import ch.unizh.ini.jaer.config.fx2.TriStateablePortBit;
 import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
 import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
 import ch.unizh.ini.jaer.config.onchip.OutputMux;
+import java.util.prefs.PreferenceChangeEvent;
+import java.util.prefs.PreferenceChangeListener;
 
 /**
  * Bias generator, On-chip diagnostic readout, video acquisition and rendering
@@ -241,7 +243,7 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
     @Override
     public void loadPreference() {
         super.loadPreference(); //To change body of generated methods, choose Tools | Templates.
-        setAeReaderFifoSize(getChip().getPrefs().getInt("aeReaderFifoSize", 1<<15));
+        setAeReaderFifoSize(getChip().getPrefs().getInt("aeReaderFifoSize", 1 << 15));
         setAeReaderNumBuffers(getChip().getPrefs().getInt("aeReaderNumBuffers", 4));
         setTranslateRowOnlyEvents(getChip().getPrefs().getBoolean("translateRowOnlyEvents", false));
         setCaptureEvents(isCaptureEventsEnabled()); // just to call propertyChangeListener that sets GUI buttons
@@ -252,17 +254,17 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
 
     @Override
     public boolean isCaptureFramesEnabled() {
-        if(apsReadoutControl==null) {
-			return false;
-		}
+        if (apsReadoutControl == null) {
+            return false;
+        }
         return apsReadoutControl.isAdcEnabled();
     }
 
     @Override
     public void setCaptureFramesEnabled(boolean yes) {
-        if(apsReadoutControl==null) {
-			return;
-		}
+        if (apsReadoutControl == null) {
+            return;
+        }
         apsReadoutControl.setAdcEnabled(yes);
     }
 
@@ -480,14 +482,14 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
      * @param translateRowOnlyEvents true to translate these parasitic events.
      */
     @Override
-	public void setTranslateRowOnlyEvents(boolean translateRowOnlyEvents) {
+    public void setTranslateRowOnlyEvents(boolean translateRowOnlyEvents) {
         boolean old = this.translateRowOnlyEvents;
         this.translateRowOnlyEvents = translateRowOnlyEvents;
         getSupport().firePropertyChange(ApsDvsConfig.PROPERTY_TRANSLATE_ROW_ONLY_EVENTS, old, this.translateRowOnlyEvents);
     }
 
     @Override
-	public boolean isTranslateRowOnlyEvents() {
+    public boolean isTranslateRowOnlyEvents() {
         return translateRowOnlyEvents;
     }
 
@@ -591,7 +593,7 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
     /**
      * IMU control of Invensense IMU-6100A, encapsulated here.
      */
-    public class ImuControl extends Observable implements HasPropertyTooltips, HasPreference {
+    public class ImuControl extends Observable implements HasPropertyTooltips, HasPreference, PreferenceChangeListener {
 
         private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
         PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
@@ -617,6 +619,7 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
             IMUSample.setGyroSensitivityScaleFactorDegPerSecPerLsb(1 / imuGyroScale.scaleFactorLsbPerDegPerSec);
             IMUSample.setFullScaleAccelG(imuAccelScale.fullScaleG);
             IMUSample.setAccelSensitivityScaleFactorGPerLsb(1 / imuAccelScale.scaleFactorLsbPerG);
+            chip.getPrefs().addPreferenceChangeListener(this);
         }
 
         public boolean isImuEnabled() {
@@ -814,6 +817,30 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
             chip.getPrefs().put("ImuAccelScale", imuAccelScale.toString());
             chip.getPrefs().putBoolean("IMU.displayEnabled", this.displayImuEnabled);
         }
+
+        @Override
+        public void preferenceChange(PreferenceChangeEvent e) {
+            if (e.getKey().toLowerCase().contains("imu")) {
+                log.info(this + " preferenceChange(): event=" + e + " key=" + e.getKey() + " newValue=" + e.getNewValue());
+            }
+            if(e.getNewValue()==null) return;
+            try {
+//            log.info(e.toString());
+                switch (e.getKey()) {
+                    case "ImuAccelScale":
+                        setAccelScale(imuAccelScale.valueOf(e.getNewValue()));
+                        break;
+                    case "ImuGyroScale":
+                        setGyroScale(imuGyroScale.valueOf(e.getNewValue()));
+                        break;
+                    case "IMU.displayEnabled":
+                        setDisplayImu(Boolean.valueOf(e.getNewValue()));
+
+                }
+            } catch (IllegalArgumentException iae) {
+                log.warning(iae.toString() + ": Preference value=" + e.getNewValue() + " for the preferenc with key=" + e.getKey() + " is not a proper enum for an IMU setting");
+            }
+        }
     }
 
     /**
@@ -851,8 +878,8 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
             // we are not registered directly as listeners on the bit itself....
             getSupport().firePropertyChange(ApsDvsConfig.PROPERTY_CAPTURE_FRAMES_ENABLED, null, runAdc.isSet());
 //            if (oldval != yes) {
-                setChanged();
-                notifyObservers(); // inform ParameterControlPanel
+            setChanged();
+            notifyObservers(); // inform ParameterControlPanel
 //            }
         }
 
@@ -878,7 +905,6 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
             ((DAViS240ChipConfigChain) chipConfigChain).globalShutter.set(true);
 
             getSupport().firePropertyChange(ApsDvsConfig.PROPERTY_GLOBAL_SHUTTER_MODE_ENABLED, oldbool, yes);
-
 
             setChanged();
             notifyObservers(); // inform ParameterControlPanel
@@ -1683,13 +1709,12 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
      */
     @Override
     public void setAeReaderFifoSize(int aeReaderFifoSize) {
-        if(aeReaderFifoSize< (1<<8)) {
-			aeReaderFifoSize=1<<8;
-		}
-		else if( ((aeReaderFifoSize) & (aeReaderFifoSize-1))!=0){
-            int newval=Integer.highestOneBit(aeReaderFifoSize-1);
-            log.warning("tried to set a non-power-of-two value "+aeReaderFifoSize+"; rounding down to nearest power of two which is "+newval);
-            aeReaderFifoSize=newval;
+        if (aeReaderFifoSize < (1 << 8)) {
+            aeReaderFifoSize = 1 << 8;
+        } else if (((aeReaderFifoSize) & (aeReaderFifoSize - 1)) != 0) {
+            int newval = Integer.highestOneBit(aeReaderFifoSize - 1);
+            log.warning("tried to set a non-power-of-two value " + aeReaderFifoSize + "; rounding down to nearest power of two which is " + newval);
+            aeReaderFifoSize = newval;
         }
         this.aeReaderFifoSize = aeReaderFifoSize;
     }
