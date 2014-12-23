@@ -270,12 +270,12 @@ public class ImuControlPanel extends javax.swing.JPanel implements PropertyChang
                 break;
             case ApsDvsConfig.PROPERTY_IMU_ACCEL_SCALE_CHANGED:
                 dontProcess = true;
-                accelFullScaleComboBox.setSelectedItem(evt.getNewValue());
+                accelFullScaleComboBox.setSelectedItem(ImuAccelScale.valueOf(evt.getNewValue().toString()).fullScaleString);
                 dontProcess = false;
                 break;
             case ApsDvsConfig.PROPERTY_IMU_GYRO_SCALE_CHANGED:
                 dontProcess = true;
-                gyroFullScaleComboBox.setSelectedItem(evt.getNewValue());
+                gyroFullScaleComboBox.setSelectedItem(ImuGyroScale.valueOf(evt.getNewValue().toString()).fullScaleString);
                 dontProcess = false;
                 break;
             default:
