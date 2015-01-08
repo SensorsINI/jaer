@@ -7,6 +7,7 @@ package net.sf.jaer.eventprocessing.filter;
 import java.util.Iterator;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
@@ -19,6 +20,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  * @author tobi
  */
 @Description("Enables filtering out of either DVS or APS events from ApsDvsEventPacket and also filtering out of transient events caused by frame capture")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class ApsDvsEventFilter extends EventFilter2D {
 
     private boolean filterDVSEvents=getBoolean("filterDVSEvents",false);

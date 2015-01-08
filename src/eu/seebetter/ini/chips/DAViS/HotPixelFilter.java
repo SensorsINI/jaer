@@ -36,7 +36,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * @author tobi
  */
 @Description("Cheaply suppresses (filters out) hot pixels from DVS; ie pixels that continuously fire events when when the visual input is idle.")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
 
     private int numHotPixels = getInt("numHotPixels", 30);

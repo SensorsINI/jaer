@@ -37,6 +37,7 @@ import net.sf.jaer.util.SpikeSound;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  * Collects and displays statistics for a selected range of pixels / cells.
@@ -49,6 +50,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
  * href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 @Description("Collects and displays statistics for a selected range of pixels / cells")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class CellStatsProber extends EventFilter2D implements FrameAnnotater, MouseListener, MouseMotionListener, Observer {
 
 	public static DevelopmentStatus getDevelopementStatus() {

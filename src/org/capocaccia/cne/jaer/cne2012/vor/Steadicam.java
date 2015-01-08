@@ -43,6 +43,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.ApsDvsChip;
 
 import eu.seebetter.ini.chips.DAViS.IMUSample;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
@@ -61,6 +62,7 @@ import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
  * @author tobi
  */
 @Description("Compenstates global scene translation and rotation to stabilize scene like a SteadiCam.")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class Steadicam extends EventFilter2D implements FrameAnnotater, Application, Observer, PropertyChangeListener {
 
     /**

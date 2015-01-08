@@ -35,7 +35,7 @@ import net.sf.jaer.graphics.ImageDisplay.Legend;
  * @author Christian Brändli
  */
 @Description("Method to acquire a frame from a stream of APS sample events")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class ApsFrameExtractor extends EventFilter2D {
 
     private JFrame apsFrame = null;

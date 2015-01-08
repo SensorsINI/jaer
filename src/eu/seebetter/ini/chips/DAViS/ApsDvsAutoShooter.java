@@ -22,6 +22,7 @@ import eu.seebetter.ini.chips.ApsDvsChip;
 import java.util.HashMap;
 import java.util.LinkedList;
 import javax.media.opengl.GL2;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 
@@ -31,6 +32,7 @@ import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
  * @author Tobi
  */
 @Description("Triggers snapshots of APS frames based on sensor data stream.")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class ApsDvsAutoShooter extends EventFilter2D implements FrameAnnotater {
 
     private EventRateEstimator eventRateEstimator = new EventRateEstimator(chip);
