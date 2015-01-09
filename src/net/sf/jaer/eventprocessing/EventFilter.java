@@ -245,7 +245,9 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
         this.enclosingFilter = enclosingFilter;
     }
 
-    /** @return the selected */
+    /** Flags this EventFilter as "selected" by exposing the GUI controls for filter parameters.
+     * This is different than "enabled".
+     * @return the selected */
     public boolean isSelected() {
         return selected;
     }
