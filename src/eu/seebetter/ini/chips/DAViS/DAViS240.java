@@ -775,6 +775,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 
     /**
      * Returns the frame counter. This value is set on each end-of-frame sample.
+     * It increases without bound and is not affected by rewinding a played-back recording, for instance.
      *
      * @return the frameCount
      */
