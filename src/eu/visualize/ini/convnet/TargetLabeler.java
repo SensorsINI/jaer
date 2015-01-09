@@ -10,13 +10,22 @@ import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.TreeMap;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
 import javax.media.opengl.glu.GLUquadric;
+import javax.swing.JOptionPane;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -24,7 +33,6 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
-import net.sf.jaer.graphics.ChipCanvas;
 
 /**
  * Labels location of target using mouse GUI in recorded data for later
@@ -48,6 +56,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     private final String LAST_FOLDER_KEY = "lastFolder";
 
     private boolean propertyChangeListenerAdded = false;
+    private String DEFAULT_FILENAME = "locations.txt";
 
     public TargetLabeler(AEChip chip) {
         super(chip);
@@ -62,7 +71,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         if (!isSelected()) {
             return;
         }
-  
+
         Point p = (getMousePixel(e));
         if (p != null) {
             if (mousePoint != null) {
@@ -73,8 +82,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         } else {
             mousePoint = null;
         }
-        System.out.println(e.getPoint()+"    "+glCanvas.getMousePosition()+"      "+p+"        "+mousePoint);
-      }
+        System.out.println(e.getPoint() + "    " + glCanvas.getMousePosition() + "      " + p + "        " + mousePoint);
+    }
 
     @Override
     public void mouseReleased(MouseEvent e) {
@@ -115,11 +124,11 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     synchronized public void doSaveLocations() {
-
+        saveLocations(new File(DEFAULT_FILENAME));
     }
 
     synchronized public void doLoadLocations() {
-
+        loadLocations(new File(DEFAULT_FILENAME));
     }
 
     @Override
@@ -149,7 +158,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         targetLocation = null;
                     }
                     if (mousePoint != null && mousePressed) {
-                        TargetLocation newLocation=new TargetLocation(currentFrameNumber, e.timestamp, mousePoint);
+                        TargetLocation newLocation = new TargetLocation(currentFrameNumber, e.timestamp, mousePoint);
                         targetLocations.put(currentFrameNumber, newLocation);
                     }
                 }
@@ -204,6 +213,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         }
 
         private void draw(GL2 gl) {
+            gl.glPushMatrix();
             if (targetLocation.location == null) {
                 return;
             }
@@ -214,6 +224,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             }
             glu.gluQuadricDrawStyle(mouseQuad, GLU.GLU_LINE);
             glu.gluDisk(mouseQuad, 0, 5, 16, 1);
+            gl.glPopMatrix();
         }
 
         public String toString() {
@@ -222,15 +233,46 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     }
 
-//    private class TargetLocations extends TreeMap<Integer, TargetLocation> {
-//
-//        private TargetLocations(TargetLocationComparator targetLocationComparator) {
-//            super(targetLocationComparator);
-//        }
-//
-//        private void add(TargetLocation location) {
-//            put(location.frame, location);
-//        }
-//
-//    }
+    private void saveLocations(File f) {
+        try {
+            FileWriter writer = new FileWriter(f);
+            writer.write(String.format("# target locations\n"));
+            writer.write(String.format("# written %s\n", new Date().toString()));
+            writer.write(String.format("# frameNumber timestamp x y\n"));
+            for (Map.Entry<Integer, TargetLocation> entry : targetLocations.entrySet()) {
+                TargetLocation l = entry.getValue();
+                writer.write(String.format("%d %d %d %d\n", l.frameNumber, l.timestamp, l.location.x, l.location.y));
+            }
+            writer.close();
+            log.info("wrote locations to file " + f.getAbsolutePath());
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(glCanvas, ex.toString(), "Couldn't save locations", JOptionPane.WARNING_MESSAGE, null);
+            return;
+        }
+    }
+
+    private void loadLocations(File f) {
+        targetLocations.clear();
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(f));
+            String s = reader.readLine();
+            StringBuilder sb = new StringBuilder();
+            while (s != null && s.startsWith("#")) {
+                sb.append(s);
+                s = reader.readLine();
+            }
+            log.info("header lines on " + f.getAbsolutePath() + " are\n" + sb.toString());
+            while (s != null) {
+                Scanner scanner = new Scanner(s);
+                TargetLocation targetLocation = new TargetLocation(scanner.nextInt(), scanner.nextInt(), new Point(scanner.nextInt(), scanner.nextInt()));
+                targetLocations.put(targetLocation.frameNumber, targetLocation);
+                s=reader.readLine();
+            }
+        } catch (FileNotFoundException ex) {
+            JOptionPane.showMessageDialog(glCanvas, ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(glCanvas, ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
+        }
+    }
+
 }
