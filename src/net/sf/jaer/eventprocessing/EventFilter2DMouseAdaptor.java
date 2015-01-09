@@ -164,6 +164,8 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
 
     /**
      * Returns the chip pixel position from the MouseEvent.
+     * Note that any calls that modify the GL model matrix (or viewport, etc) will make the location meaningless.
+     * Make sure that your graphics rendering code wraps transforms inside pushMatrix and popMatrix calls.
      *
      * @param e the mouse event
      * @return the pixel position in the chip object, origin 0,0 in lower left
