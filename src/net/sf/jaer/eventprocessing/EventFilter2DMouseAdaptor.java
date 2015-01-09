@@ -22,14 +22,19 @@ import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- *  Adds a mouse adaptor to the basic EventFilter2D to let subclasses more easily integrate mouse events into their functionality
+ * Adds a mouse adaptor to the basic EventFilter2D to let subclasses more easily
+ * integrate mouse events into their functionality
+ *
  * @author Tobi
  */
 abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements MouseListener, MouseMotionListener, FrameAnnotater {
 
-    private GLCanvas glCanvas;
-    private ChipCanvas canvas;
+    protected GLCanvas glCanvas;
+    protected ChipCanvas chipCanvas;
     private final float CURSOR_SIZE_CHIP_PIXELS = 7;
+    protected GLU glu = new GLU();
+    protected GLUquadric quad = null;
+    private boolean hasBlendChecked = false, hasBlend = false;
 
     public EventFilter2DMouseAdaptor(AEChip chip) {
         super(chip);
@@ -37,28 +42,26 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
             glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
         }
     }
-    protected GLU glu = new GLU();
-    protected GLUquadric quad = null;
-    private boolean hasBlendChecked = false, hasBlend = false;
 
-    /** Annotates the display with the current mouse position to indicate that mouse is being used.
-     * Subclasses can override this functionality.
-     * 
-     * @param drawable 
+    /**
+     * Annotates the display with the current mouse position to indicate that
+     * mouse is being used. Subclasses can override this functionality.
+     *
+     * @param drawable
      */
     public void annotate(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
-        canvas = chip.getCanvas();
-        if (canvas == null) {
+        chipCanvas = chip.getCanvas();
+        if (chipCanvas == null) {
             return;
         }
-        glCanvas = (GLCanvas) canvas.getCanvas();
+        glCanvas = (GLCanvas) chipCanvas.getCanvas();
         if (glCanvas == null) {
             return;
         }
         if (isSelected()) {
             Point mp = glCanvas.getMousePosition();
-            Point p = canvas.getPixelFromPoint(mp);
+            Point p = chipCanvas.getPixelFromPoint(mp);
             if (p == null) {
                 return;
             }
@@ -109,19 +112,20 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
 
     }
 
-    /** When this is selected in the FilterPanel GUI, the mouse listeners will be added.
-     * When this is unselected, the listeners will be removed.
-     * 
+    /**
+     * When this is selected in the FilterPanel GUI, the mouse listeners will be
+     * added. When this is unselected, the listeners will be removed.
+     *
      */
     @Override
     public void setSelected(boolean yes) {
         super.setSelected(yes);
-        canvas = chip.getCanvas();
-        if (canvas == null) {
+        chipCanvas = chip.getCanvas();
+        if (chipCanvas == null) {
             log.warning("null chip canvas, can't add mouse listeners");
             return;
         }
-        glCanvas = (GLCanvas) canvas.getCanvas();
+        glCanvas = (GLCanvas) chipCanvas.getCanvas();
         if (glCanvas == null) {
             log.warning("null chip canvas GL drawable, can't add mouse listeners");
             return;
@@ -158,17 +162,19 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
     public void mouseExited(MouseEvent e) {
     }
 
-    /** Returns the chip pixel position from the MouseEvent.
-     * 
+    /**
+     * Returns the chip pixel position from the MouseEvent.
+     *
      * @param e the mouse event
-     * @return the pixel position in the chip object, origin 0,0 in lower left corner.
+     * @return the pixel position in the chip object, origin 0,0 in lower left
+     * corner.
      */
     protected Point getMousePixel(MouseEvent e) {
-        if (canvas == null) {
+        if (chipCanvas == null) {
             return null;
         }
-        Point p = canvas.getPixelFromMouseEvent(e);
-        if (canvas.wasMousePixelInsideChipBounds()) {
+        Point p = chipCanvas.getPixelFromMouseEvent(e);
+        if (chipCanvas.wasMousePixelInsideChipBounds()) {
             return p;
         } else {
             return null;
