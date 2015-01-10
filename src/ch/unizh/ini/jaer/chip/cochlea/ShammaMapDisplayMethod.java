@@ -22,6 +22,7 @@ import javax.media.opengl.fixedfunc.GLMatrixFunc;
 
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.TypedEvent;
+import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.graphics.DisplayMethod2D;
@@ -269,7 +270,7 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
 
 	@Override
 	public void propertyChange(PropertyChangeEvent evt) {
-		if((evt.getPropertyName()=="position") && (((Integer)evt.getNewValue()).intValue()==0)){
+		if((evt.getPropertyName()==AEInputStream.EVENT_POSITION) && (((Integer)evt.getNewValue()).intValue()==0)){
 			log.info("got rewind event, resetting map");
 			shammaMap.reset();
 		}

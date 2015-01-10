@@ -4347,7 +4347,7 @@ two interfaces). otherwise force user choice.
 	//avoid stateChanged events from slider that is set by player
 	volatile boolean sliderDontProcess = false;
 
-	/** messages come back here from e.g. programmatic state changes, like a new aePlayer file posiiton.
+	/** messages come back here from e.g. programmatic state changes, like a new aePlayer file position.
 	 * This methods sets the GUI components to a consistent state, using a flag to tell the slider that it has not been set by
 	 * a user mouse action
 	 */

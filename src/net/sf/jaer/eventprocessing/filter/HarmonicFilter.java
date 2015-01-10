@@ -132,7 +132,7 @@ public class HarmonicFilter extends EventFilter2D implements Observer,FrameAnnot
 		private float dtlim;
 		private float quality = prefs().getFloat("HarmonicFilter.quality",3); // quality factor
 		private float amplitude;
-		float y = 0, x = 0;  // x =posiiton, y=velocity
+		float y = 0, x = 0;  // x =position, y=velocity
 		private int t = 0;  // present time in timestamp ticks, used for dt in update, then stores this last timestamp
 		float lastx, lasty;
 		float meansq;

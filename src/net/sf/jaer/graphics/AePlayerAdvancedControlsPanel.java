@@ -70,10 +70,11 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
      * @param is the input stream.
      */
     public void addMeToPropertyChangeListeners(AEFileInputStream is) {
-        is.getSupport().addPropertyChangeListener(AEInputStream.EVENT_MARK_IN_SET, this);
-        is.getSupport().addPropertyChangeListener(AEInputStream.EVENT_MARK_OUT_SET, this);
-        is.getSupport().addPropertyChangeListener(AEInputStream.EVENT_MARKS_CLEARED, this);
-        is.getSupport().addPropertyChangeListener(AEInputStream.EVENT_POSITION, this);
+//        is.getSupport().addPropertyChangeListener(AEInputStream.EVENT_MARK_IN_SET, this);
+//        is.getSupport().addPropertyChangeListener(AEInputStream.EVENT_MARK_OUT_SET, this);
+//        is.getSupport().addPropertyChangeListener(AEInputStream.EVENT_MARKS_CLEARED, this);
+//        is.getSupport().addPropertyChangeListener(AEInputStream.EVENT_POSITION, this);
+        is.getSupport().addPropertyChangeListener(this);
     }
 
     /**

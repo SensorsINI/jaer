@@ -96,6 +96,7 @@ import ch.unizh.ini.jaer.projects.opticalflow.io.MotionInputStream;
 import ch.unizh.ini.jaer.projects.opticalflow.io.MotionOutputStream;
 import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.MotionChipInterface;
 import ch.unizh.ini.jaer.projects.opticalflow.usbinterface.OpticalFlowHardwareInterfaceFactory;
+import net.sf.jaer.eventio.AEInputStream;
 
 /**
  * Shows retina live and allows for controlling view and recording and playing back events.
@@ -2047,13 +2048,13 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
     //avoid stateChanged events from slider that is set by player
     volatile boolean sliderDontProcess = false;
 
-    /** messages come back here from e.g. programmatic state changes, like a new aePlayer file posiiton.
+    /** messages come back here from e.g. programmatic state changes, like a new aePlayer file position.
      * This methods sets the GUI components to a consistent state, using a flag to tell the slider that it has not been set by
      * a user mouse action
      */
     @Override
 	public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getPropertyName().equals("position")) {
+        if (evt.getPropertyName().equals(AEInputStream.EVENT_POSITION)) {
 //            System.out.println("slider property change new val="+evt.getNewValue());
             sliderDontProcess = true;
             // note this cool semaphore/flag trick to avoid processing the

@@ -164,7 +164,7 @@ public class ServoReaction extends EventFilter2D implements FrameAnnotater{
                 }
             }else if(tracker.getNumClusters()==2){
                 // if there are two clusters we use the left cluster's y position to control servoLeft
-                // and right cluster's y posiiton to control servoRight
+                // and right cluster's y position to control servoRight
 
                 RectangularClusterTracker.Cluster cluster1=tracker.getClusters().get(0);
                 RectangularClusterTracker.Cluster cluster2=tracker.getClusters().get(1);
