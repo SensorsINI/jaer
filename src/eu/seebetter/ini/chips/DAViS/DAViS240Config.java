@@ -595,7 +595,6 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
      */
     public class ImuControl extends Observable implements HasPropertyTooltips, HasPreference, PreferenceChangeListener {
 
-        private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
         PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
         private ImuGyroScale imuGyroScale;
         private ImuAccelScale imuAccelScale;
@@ -788,13 +787,7 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
             }
         }
 
-        /**
-         * @return the propertyChangeSupport
-         */
-        public PropertyChangeSupport getPropertyChangeSupport() {
-            return propertyChangeSupport;
-        }
-
+  
         @Override
         public String getPropertyTooltip(String propertyName) {
             return tooltipSupport.getPropertyTooltip(propertyName);
@@ -865,6 +858,7 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
             tooltipSupport.setPropertyTooltip("exposureDelayCC", exposure.getDescription());
             tooltipSupport.setPropertyTooltip("resSettleCC", resSettle.getDescription());
             tooltipSupport.setPropertyTooltip("frameDelayCC", frameDelay.getDescription());
+            tooltipSupport.setPropertyTooltip("globalShutterMode", "Has no effect on Davis240a camera. On Davis240b camera, enables global shutter readout. If disabled, enables rolling shutter readout.");
         }
 
         public boolean isAdcEnabled() {

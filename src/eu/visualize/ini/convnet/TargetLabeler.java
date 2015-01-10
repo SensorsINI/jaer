@@ -5,8 +5,12 @@
  */
 package eu.visualize.ini.convnet;
 
+import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.ApsDvsChip;
+import java.awt.Font;
 import java.awt.Point;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -18,6 +22,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.InputMismatchException;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.TreeMap;
@@ -33,6 +38,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
+import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /**
  * Labels location of target using mouse GUI in recorded data for later
@@ -42,9 +48,10 @@ import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
  */
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 @Description("Labels location of target using mouse GUI in recorded data for later supervised learning.")
-public class TargetLabeler extends EventFilter2DMouseAdaptor implements PropertyChangeListener {
+public class TargetLabeler extends EventFilter2DMouseAdaptor implements PropertyChangeListener, KeyListener {
 
     private boolean mousePressed = false;
+    private boolean shiftPressed = false;
     private Point mousePoint = null;
     final float labelRadius = 5f;
     private GLUquadric mouseQuad = null;
@@ -52,8 +59,12 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     private TargetLocation targetLocation = null;
     private ApsDvsChip apsDvsChip = null;
     private int lastFrameNumber = -1;
+    private int lastTimestamp = Integer.MIN_VALUE;
     private int currentFrameNumber = -1;
     private final String LAST_FOLDER_KEY = "lastFolder";
+    TextRenderer textRenderer = null;
+    private int minTargetPointIntervalUs = getInt("minTargetPointIntervalUs", 1000);
+    private int targetRadius = getInt("targetRadius", 10);
 
     private boolean propertyChangeListenerAdded = false;
     private String DEFAULT_FILENAME = "locations.txt";
@@ -63,6 +74,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         if (chip instanceof ApsDvsChip) {
             apsDvsChip = ((ApsDvsChip) chip);
         }
+        setPropertyTooltip("minTargetPointIntervalUs", "minimum interval between target positions in the database in us");
 
     }
 
@@ -82,7 +94,6 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         } else {
             mousePoint = null;
         }
-        System.out.println(e.getPoint() + "    " + glCanvas.getMousePosition() + "      " + p + "        " + mousePoint);
     }
 
     @Override
@@ -96,6 +107,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             return;
         }
         mousePressed = true;
+
         Point p = (getMousePixel(e));
         if (p != null) {
             if (mousePoint != null) {
@@ -111,10 +123,17 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
+        if (textRenderer == null) {
+            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36));
+            textRenderer.setColor(1, 1, 1, 1);
+        }
         GL2 gl = drawable.getGL().getGL2();
-
+        gl.glColor3f(1, 1, 1);
+        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .9f);
+        MultilineAnnotationTextRenderer.setScale(.3f);
+        MultilineAnnotationTextRenderer.renderMultilineString("Shift+Left mouse down: specify target location\nNo Shift+Left mouse: No target visible");
         if (targetLocation != null) {
-            targetLocation.draw(gl);
+            targetLocation.draw(drawable, gl);
         }
 
     }
@@ -124,6 +143,13 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     synchronized public void doSaveLocations() {
+        File f = new File(DEFAULT_FILENAME);
+        if (f.exists()) {
+            int ret = JOptionPane.showConfirmDialog(glCanvas, "File " + f.getAbsolutePath() + " already exists, overwrite it?");
+            if (ret != JOptionPane.OK_OPTION) {
+                return;
+            }
+        }
         saveLocations(new File(DEFAULT_FILENAME));
     }
 
@@ -142,6 +168,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
         for (BasicEvent e : in) {
             if (apsDvsChip != null) {
+
+                // update actual frame number, starting from 0 at start of recording (for playback or after rewind)
+                // this can be messed up by jumping in the file using slider
                 int newFrameNumber = apsDvsChip.getFrameCount();
                 if (newFrameNumber != lastFrameNumber) {
                     if (newFrameNumber > lastFrameNumber) {
@@ -150,22 +179,50 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         currentFrameNumber--;
                     }
                     lastFrameNumber = newFrameNumber;
-                    // find next saved target location
-                    Map.Entry<Integer, TargetLocation> entry = targetLocations.lowerEntry(currentFrameNumber);
+                }
+
+                // show the nearest TargetLocation if at least minTargetPointIntervalUs has passed by,
+                // or "No target" if the location was previously 
+                if ((long) e.timestamp - (long) lastTimestamp > minTargetPointIntervalUs) {
+                    lastTimestamp = e.timestamp;
+                    // find next saved target location that is just before this time (lowerEntry)
+                    Map.Entry<Integer, TargetLocation> entry = targetLocations.lowerEntry(e.timestamp);
                     if (entry != null) {
                         targetLocation = entry.getValue();
                     } else {
                         targetLocation = null;
                     }
-                    if (mousePoint != null && mousePressed) {
+                    if (mousePressed && mousePoint != null && shiftPressed) {
+                        removeLocation(entry, e);
                         TargetLocation newLocation = new TargetLocation(currentFrameNumber, e.timestamp, mousePoint);
-                        targetLocations.put(currentFrameNumber, newLocation);
+                        targetLocations.put(e.timestamp, newLocation);
+
+                    } else if (mousePressed && !shiftPressed) {
+                         removeLocation(entry, e);
+                        TargetLocation newLocation = new TargetLocation(currentFrameNumber, e.timestamp, null);
+                        targetLocations.put(e.timestamp, newLocation);
                     }
                 }
-            }
 
+            }
         }
         return in;
+    }
+
+    private void removeLocation(Map.Entry<Integer, TargetLocation> entry, BasicEvent e) {
+        if (entry != null && e.timestamp - entry.getKey() < minTargetPointIntervalUs) {
+            targetLocations.remove(entry.getKey());
+        }
+    }
+
+    @Override
+    public void setSelected(boolean yes) {
+        super.setSelected(yes); // register/deregister mouse listeners
+        if (yes) {
+            glCanvas.addKeyListener(this);
+        } else {
+            glCanvas.removeKeyListener(this);
+        }
     }
 
     @Override
@@ -177,17 +234,52 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     @Override
-    public void propertyChange(PropertyChangeEvent evt) {
+    public void propertyChange(PropertyChangeEvent evt
+    ) {
         switch (evt.getPropertyName()) {
             case AEInputStream.EVENT_REWIND:
                 log.info("frameNumber reset to -1");
                 lastFrameNumber = -1;
                 currentFrameNumber = 0;
+                lastTimestamp = Integer.MIN_VALUE;
                 break;
             case AEInputStream.EVENT_POSITION:
                 break;
             case AEInputStream.EVENT_EOF:
 
+        }
+    }
+
+    /**
+     * @return the minTargetPointIntervalUs
+     */
+    public int getMinTargetPointIntervalUs() {
+        return minTargetPointIntervalUs;
+    }
+
+    /**
+     * @param minTargetPointIntervalUs the minTargetPointIntervalUs to set
+     */
+    public void setMinTargetPointIntervalUs(int minTargetPointIntervalUs) {
+        this.minTargetPointIntervalUs = minTargetPointIntervalUs;
+        putInt("minTargetPointIntervalUs", minTargetPointIntervalUs);
+    }
+
+    @Override
+    public void keyTyped(KeyEvent ke) {
+    }
+
+    @Override
+    public void keyPressed(KeyEvent ke) {
+        if (ke.getKeyCode() == KeyEvent.VK_SHIFT) {
+            shiftPressed = true;
+        }
+    }
+
+    @Override
+    public void keyReleased(KeyEvent ke) {
+        if (ke.getKeyCode() == KeyEvent.VK_SHIFT) {
+            shiftPressed = false;
         }
     }
 
@@ -209,21 +301,25 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         public TargetLocation(int frameNumber, int timestamp, Point location) {
             this.frameNumber = frameNumber;
             this.timestamp = timestamp;
-            this.location = new Point(location);
+            this.location = location != null ? new Point(location) : null;
         }
 
-        private void draw(GL2 gl) {
-            gl.glPushMatrix();
+        private void draw(GLAutoDrawable drawable, GL2 gl) {
+            
             if (targetLocation.location == null) {
+                textRenderer.beginRendering(drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
+                textRenderer.draw("No target", chip.getSizeX() / 2, chip.getSizeY() / 2);
+                textRenderer.endRendering();
                 return;
             }
+            gl.glPushMatrix();
             gl.glTranslatef(targetLocation.location.x, targetLocation.location.y, 0f);
             gl.glColor4f(0, 1, 0, .5f);
             if (mouseQuad == null) {
                 mouseQuad = glu.gluNewQuadric();
             }
             glu.gluQuadricDrawStyle(mouseQuad, GLU.GLU_LINE);
-            glu.gluDisk(mouseQuad, 0, 5, 16, 1);
+            glu.gluDisk(mouseQuad, targetRadius, targetRadius + 1, 32, 1);
             gl.glPopMatrix();
         }
 
@@ -241,7 +337,11 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             writer.write(String.format("# frameNumber timestamp x y\n"));
             for (Map.Entry<Integer, TargetLocation> entry : targetLocations.entrySet()) {
                 TargetLocation l = entry.getValue();
-                writer.write(String.format("%d %d %d %d\n", l.frameNumber, l.timestamp, l.location.x, l.location.y));
+                if (l.location != null) {
+                    writer.write(String.format("%d %d %d %d\n", l.frameNumber, l.timestamp, l.location.x, l.location.y));
+                } else {
+                    writer.write(String.format("%d %d null\n", l.frameNumber, l.timestamp));
+                }
             }
             writer.close();
             log.info("wrote locations to file " + f.getAbsolutePath());
@@ -258,15 +358,26 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             String s = reader.readLine();
             StringBuilder sb = new StringBuilder();
             while (s != null && s.startsWith("#")) {
-                sb.append(s);
+                sb.append(s + "\n");
                 s = reader.readLine();
             }
             log.info("header lines on " + f.getAbsolutePath() + " are\n" + sb.toString());
             while (s != null) {
                 Scanner scanner = new Scanner(s);
-                TargetLocation targetLocation = new TargetLocation(scanner.nextInt(), scanner.nextInt(), new Point(scanner.nextInt(), scanner.nextInt()));
-                targetLocations.put(targetLocation.frameNumber, targetLocation);
-                s=reader.readLine();
+                try {
+                    TargetLocation targetLocation = new TargetLocation(scanner.nextInt(), scanner.nextInt(), new Point(scanner.nextInt(), scanner.nextInt())); // read target location
+                    targetLocations.put(targetLocation.timestamp, targetLocation);
+                } catch (InputMismatchException ex) {
+                    // infer this line is null target sample
+                    Scanner scanner2 = new Scanner(s);
+                    try {
+                        TargetLocation targetLocation = new TargetLocation(scanner2.nextInt(), scanner2.nextInt(), null);
+                        targetLocations.put(targetLocation.timestamp, targetLocation);
+                    } catch (InputMismatchException ex2) {
+                        throw new IOException("couldn't parse file, got InputMismatchException on line: " + s);
+                    }
+                }
+                s = reader.readLine();
             }
         } catch (FileNotFoundException ex) {
             JOptionPane.showMessageDialog(glCanvas, ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
