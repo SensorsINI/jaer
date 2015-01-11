@@ -55,7 +55,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     private boolean mousePressed = false;
     private boolean shiftPressed = false;
-    private boolean altPressed = false;
+    private boolean ctlPressed = false;
     private Point mousePoint = null;
     final float labelRadius = 5f;
     private GLUquadric mouseQuad = null;
@@ -141,14 +141,14 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         MultilineAnnotationTextRenderer.setColor(Color.BLUE);
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .9f);
         MultilineAnnotationTextRenderer.setScale(.3f);
-        StringBuilder sb = new StringBuilder("Shift + Alt + mouse position: specify target location\nShift: no target seen\n");
+        StringBuilder sb = new StringBuilder("Shift + Ctrl + mouse position: Specify target location\nShift: Specify no target seen\n");
         MultilineAnnotationTextRenderer.renderMultilineString(sb.toString());
 
         MultilineAnnotationTextRenderer.renderMultilineString(String.format("%d TargetLocation samples specified\nFirst sample time: %.1fs, Last sample time: %.1fs", targetLocations.size(), minSampleTimestamp * 1e-6f, maxSampleTimestamp * 1e-6f));
 
-        if (shiftPressed && !altPressed) {
+        if (shiftPressed && !ctlPressed) {
             MultilineAnnotationTextRenderer.renderMultilineString("Specifying no target");
-        } else if (shiftPressed && altPressed) {
+        } else if (shiftPressed && ctlPressed) {
             MultilineAnnotationTextRenderer.renderMultilineString("Specifying target location");
         } else {
             MultilineAnnotationTextRenderer.renderMultilineString("Playing recorded target locations");
@@ -240,13 +240,13 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         targetLocation = mostRecentLocationBeforeThisEvent.getValue();
                     }
                     TargetLocation newTargetLocation = null;
-                    if (shiftPressed && altPressed && mousePoint != null) {
+                    if (shiftPressed && ctlPressed && mousePoint != null) {
                         // add a labeled location sample
                         maybeRemovePreviouslyRecordedSample(mostRecentLocationBeforeThisEvent, e, lastNewTargetLocation);
                         newTargetLocation = new TargetLocation(currentFrameNumber, e.timestamp, mousePoint);
                         targetLocations.put(e.timestamp, newTargetLocation);
 
-                    } else if (shiftPressed && !altPressed) {
+                    } else if (shiftPressed && !ctlPressed) {
                         maybeRemovePreviouslyRecordedSample(mostRecentLocationBeforeThisEvent, e, lastNewTargetLocation);
                         newTargetLocation = new TargetLocation(currentFrameNumber, e.timestamp, null);
                         targetLocations.put(e.timestamp, newTargetLocation);
@@ -337,8 +337,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         int k = ke.getKeyCode();
         if (k == KeyEvent.VK_SHIFT) {
             shiftPressed = true;
-        } else if (k == KeyEvent.VK_ALT) {
-            altPressed = true;
+        } else if (k == KeyEvent.VK_CONTROL) {
+            ctlPressed = true;
         }
     }
 
@@ -347,8 +347,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         int k = ke.getKeyCode();
         if (k == KeyEvent.VK_SHIFT) {
             shiftPressed = false;
-        } else if (k == KeyEvent.VK_ALT) {
-            altPressed = false;
+        } else if (k == KeyEvent.VK_CONTROL) {
+            ctlPressed = false;
         }
     }
 
