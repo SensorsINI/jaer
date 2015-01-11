@@ -13,6 +13,7 @@ import java.util.logging.Logger;
 import javax.media.opengl.GLException;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
+import java.awt.Color;
 
 /**
  * Useful static methods for text rendering in the annotation of an EventFilter chip output display.
@@ -28,6 +29,7 @@ public class MultilineAnnotationTextRenderer {
 	private static float xposition=1;
 	private static float scale = .15f;
 	private static final Logger log=Logger.getLogger("MultilineAnnotationTextRenderer");
+        private static Color color=Color.WHITE;
 
 	/** Call to reset to origin.
 	 * 
@@ -61,7 +63,7 @@ public class MultilineAnnotationTextRenderer {
 	public static void renderMultilineString(String s) {
 		if ( renderer == null ){
 			renderer = new TextRenderer(new Font("SansSerif",Font.PLAIN,24),true,true);
-			renderer.setColor(1, 1, 1, 1);
+			renderer.setColor(color);
 		}
 		String[] lines = s.split("\n");
 		if (lines == null) {
@@ -108,6 +110,23 @@ public class MultilineAnnotationTextRenderer {
     public static void setDefaultScale(){
         scale=0.15f;
     }
+
+    /**
+     * Returns static (global) rendering color
+     * @return the color
+     */
+    public static Color getColor() {
+        return color;
+    }
+
+    /**
+     * Sets the rendering color, which applies to the entire set of strings to be rendered on multiple lines.
+     * @param aColor the color to set
+     */
+    public static void setColor(Color aColor) {
+        color = aColor;
+    }
+    
         
 
 }
