@@ -45,13 +45,15 @@ public class ApsFrameExtractor extends EventFilter2D {
     private float[] resetBuffer, signalBuffer;
     private float[] displayBuffer;
     private float[] apsDisplayPixmapBuffer;
-    private double[] displayFrame;
+    private double[] displayFrame; // format is RGB triplets indexed by 
     public int width, height, maxADC, maxIDX;
     private float grayValue;
     public final float logSafetyOffset = 10000.0f;
     protected boolean showAPSFrameDisplay=getBoolean("showAPSFrameDisplay", true);
     private Legend apsDisplayLegend;
-  
+    /** A PropertyChangeEvent with this value is fired when a new frame has been completely read. The oldValue is null. The newValue is the double[] displayFrame that will be rendered. */
+    public static final String EVENT_NEW_FRAME="newFrame";
+    
 
     public static enum Extraction {
 
@@ -181,6 +183,7 @@ public class ApsFrameExtractor extends EventFilter2D {
                     displayPreBuffer();
                 }
                 newFrame = true;
+                getSupport().firePropertyChange(EVENT_NEW_FRAME, null, displayFrame);
             }
             return;
         }
@@ -286,7 +289,7 @@ public class ApsFrameExtractor extends EventFilter2D {
         return displayFrame;
     }
 
-    /** Returns  the latest float buffer. 
+    /** Returns  a clone of the latest float buffer. 
      * To access a particular pixel, use getIndex()
      * 
      * @return the float[] of pixel values
