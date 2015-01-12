@@ -76,14 +76,17 @@ public class DAVISAVIWriter extends EventFilter2D implements PropertyChangeListe
     public void propertyChange(PropertyChangeEvent evt) {
         if (aviOutputStream != null && evt.getPropertyName() == ApsFrameExtractor.EVENT_NEW_FRAME) {
             double[] frame = apsFrameExtractor.getNewFrame();
-            BufferedImage bufferedImage = new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_USHORT_GRAY);
+            BufferedImage bufferedImage = new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_3BYTE_BGR);
             WritableRaster raster = bufferedImage.getRaster();
             int sx = chip.getSizeX(), sy = chip.getSizeY();
             for (int y = 0; y < sy; y++) {
                 for (int x = 0; x < sx; x++) {
                     int k = apsFrameExtractor.getIndex(x, y);
 //                    bufferedImage.setRGB(x, y, (int) (frame[k] * 1024));
-                    raster.setSample(x, sy - y - 1, 0, frame[k]*256); // must flip image vertially according to java convention that image starts at upper left
+                    int v=(int)(frame[k]*255), yy=sy - y - 1; // must flip image vertially according to java convention that image starts at upper left
+                    raster.setSample(x, yy, 0, v); 
+                    raster.setSample(x, yy, 1, v); 
+                    raster.setSample(x, yy, 2, v); 
                 }
             }
             try {
