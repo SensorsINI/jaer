@@ -24,13 +24,12 @@ import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.ImageDisplay.Legend;
 
 /**
- * Extracts CIS APS frames from SBRet10/20 DAVIS sensors.
- * Use
+ * Extracts CIS APS frames from SBRet10/20 DAVIS sensors. Use
  * <ul>
-<li>hasNewFrame() to check whether a new frame is available
-<li>getDisplayBuffer() to get the latest float buffer displayed
-<li>getNewFrame() to get the latest double buffer
-</ul>
+ * <li>hasNewFrame() to check whether a new frame is available
+ * <li>getDisplayBuffer() to get the latest float buffer displayed
+ * <li>getNewFrame() to get the latest double buffer
+ * </ul>
  *
  * @author Christian Brändli
  */
@@ -41,7 +40,7 @@ public class ApsFrameExtractor extends EventFilter2D {
     private JFrame apsFrame = null;
     public ImageDisplay apsDisplay;
     private ApsDvsChip apsChip = null;
-    private boolean newFrame, useExtRender=false; // useExtRender means using something like OpenCV to render the data. If false, the displayBuffer is displayed
+    private boolean newFrame, useExtRender = false; // useExtRender means using something like OpenCV to render the data. If false, the displayBuffer is displayed
     private float[] resetBuffer, signalBuffer;
     private float[] displayBuffer;
     private float[] apsDisplayPixmapBuffer;
@@ -49,11 +48,15 @@ public class ApsFrameExtractor extends EventFilter2D {
     public int width, height, maxADC, maxIDX;
     private float grayValue;
     public final float logSafetyOffset = 10000.0f;
-    protected boolean showAPSFrameDisplay=getBoolean("showAPSFrameDisplay", true);
+    protected boolean showAPSFrameDisplay = getBoolean("showAPSFrameDisplay", true);
     private Legend apsDisplayLegend;
-    /** A PropertyChangeEvent with this value is fired when a new frame has been completely read. The oldValue is null. The newValue is the double[] displayFrame that will be rendered. */
-    public static final String EVENT_NEW_FRAME="newFrame";
-    
+    /**
+     * A PropertyChangeEvent with this value is fired when a new frame has been
+     * completely read. The oldValue is null. The newValue is the double[]
+     * displayFrame that will be rendered.
+     */
+    public static final String EVENT_NEW_FRAME = "newFrame";
+    private int lastFrameTimestamp=-1;
 
     public static enum Extraction {
 
@@ -67,7 +70,6 @@ public class ApsFrameExtractor extends EventFilter2D {
     private float displayBrightness = getFloat("displayBrightness", 0.0f);
     public Extraction extractionMethod = Extraction.valueOf(getString("extractionMethod", "CDSframe"));
 
-
     public ApsFrameExtractor(AEChip chip) {
         super(chip);
         apsDisplay = ImageDisplay.createOpenGLCanvas();
@@ -80,7 +82,7 @@ public class ApsFrameExtractor extends EventFilter2D {
                 setShowAPSFrameDisplay(false);
             }
         });
-        apsDisplayLegend = apsDisplay.addLegend("", 0 ,0);
+        apsDisplayLegend = apsDisplay.addLegend("", 0, 0);
         float[] displayColor = new float[3];
         displayColor[0] = 1.0f;
         displayColor[1] = 1.0f;
@@ -148,8 +150,8 @@ public class ApsFrameExtractor extends EventFilter2D {
             }
         }
 
-        if(showAPSFrameDisplay){
-        apsDisplay.repaint();
+        if (showAPSFrameDisplay) {
+            apsDisplay.repaint();
         }
         return in;
     }
@@ -183,6 +185,7 @@ public class ApsFrameExtractor extends EventFilter2D {
                     displayPreBuffer();
                 }
                 newFrame = true;
+                lastFrameTimestamp=e.timestamp;
                 getSupport().firePropertyChange(EVENT_NEW_FRAME, null, displayFrame);
             }
             return;
@@ -229,6 +232,14 @@ public class ApsFrameExtractor extends EventFilter2D {
         }
     }
 
+    /** Returns timestamp of last frame, which is the timestamp of the frame end event
+     * 
+     * @return the timestamp (usually in us)
+     */
+    public int getLastFrameTimestamp() {
+        return lastFrameTimestamp;
+    }
+
     private float scaleGrayValue(float value) {
         float v;
         v = (displayContrast * value + displayBrightness) / (float) maxADC;
@@ -248,40 +259,43 @@ public class ApsFrameExtractor extends EventFilter2D {
         }
         apsDisplay.setPixmapGray(xAddr, yAddr, grayValue);
     }
-    
-    public void setPixmapArray(float[] pixmapArray){
+
+    public void setPixmapArray(float[] pixmapArray) {
         apsDisplay.setPixmapArray(pixmapArray);
     }
-    
-    public void displayPreBuffer(){
+
+    public void displayPreBuffer() {
         apsDisplay.setPixmapArray(apsDisplayPixmapBuffer);
     }
 
-    /** returns the index into pixel arrays for a given x,y location where 
-     * x is horizontal address and y is vertical and it starts at lower 
-     * left corner with x,y=0,0 and x and y increase to right and up.
-     * 
+    /**
+     * returns the index into pixel arrays for a given x,y location where x is
+     * horizontal address and y is vertical and it starts at lower left corner
+     * with x,y=0,0 and x and y increase to right and up.
+     *
      * @param x
      * @param y
      * @param idx the array index
-     * @see #getWidth() 
-     * @see #getHeight() 
+     * @see #getWidth()
+     * @see #getHeight()
      */
     public int getIndex(int x, int y) {
         return y * width + x;
     }
 
-    /** Checks if new frame is available.
-     * 
+    /**
+     * Checks if new frame is available.
+     *
      * @return true if new frame is available
      */
     public boolean hasNewFrame() {
         return newFrame;
     }
 
-    /** Returns a double[] buffer of latest frame. 
-     * To access a particular pixel, use getIndex()
-     * 
+    /**
+     * Returns a double[] buffer of latest frame. To access a particular pixel,
+     * use getIndex()
+     *
      * @return the double[] frame
      */
     public double[] getNewFrame() {
@@ -289,34 +303,36 @@ public class ApsFrameExtractor extends EventFilter2D {
         return displayFrame;
     }
 
-    /** Returns  a clone of the latest float buffer. 
-     * To access a particular pixel, use getIndex()
-     * 
+    /**
+     * Returns a clone of the latest float buffer. To access a particular pixel,
+     * use getIndex()
+     *
      * @return the float[] of pixel values
-     * @see #getIndex(int, int) 
+     * @see #getIndex(int, int)
      */
     public float[] getDisplayBuffer() {
         newFrame = false;
         return displayBuffer.clone();
     }
 
-    /** Tell chip to acquire new frame, return immediately.
-     * 
+    /**
+     * Tell chip to acquire new frame, return immediately.
+     *
      */
     public void acquireNewFrame() {
         apsChip.takeSnapshot();
     }
-    
-    public float getMinBufferValue(){
+
+    public float getMinBufferValue() {
         float minBufferValue = 0.0f;
         if (logCompress) {
             minBufferValue = (float) Math.log(minBufferValue + logSafetyOffset);
         }
         return minBufferValue;
     }
-    
-    public float getMaxBufferValue(){
-        float maxBufferValue = (float)maxADC;
+
+    public float getMaxBufferValue() {
+        float maxBufferValue = (float) maxADC;
         if (logCompress) {
             maxBufferValue = (float) Math.log(maxBufferValue + logSafetyOffset);
         }
@@ -326,7 +342,7 @@ public class ApsFrameExtractor extends EventFilter2D {
     public void setExtRender(boolean setExt) {
         this.useExtRender = setExt;
     }
-    
+
     public void setLegend(String legend) {
         this.apsDisplayLegend.s = legend;
     }
@@ -459,7 +475,8 @@ public class ApsFrameExtractor extends EventFilter2D {
         this.extractionMethod = extractionMethod;
         resetFilter();
     }
-      /**
+
+    /**
      * @return the showAPSFrameDisplay
      */
     public boolean isShowAPSFrameDisplay() {
@@ -472,29 +489,34 @@ public class ApsFrameExtractor extends EventFilter2D {
     public void setShowAPSFrameDisplay(boolean showAPSFrameDisplay) {
         this.showAPSFrameDisplay = showAPSFrameDisplay;
         putBoolean("showAPSFrameDisplay", showAPSFrameDisplay);
-        if(apsFrame!=null) apsFrame.setVisible(showAPSFrameDisplay);
-        getSupport().firePropertyChange("showAPSFrameDisplay",null,showAPSFrameDisplay);
+        if (apsFrame != null) {
+            apsFrame.setVisible(showAPSFrameDisplay);
+        }
+        getSupport().firePropertyChange("showAPSFrameDisplay", null, showAPSFrameDisplay);
     }
 
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes); //To change body of generated methods, choose Tools | Templates.
-        if(!isFilterEnabled()){
-            if(apsFrame!=null)apsFrame.setVisible(false);
+        if (!isFilterEnabled()) {
+            if (apsFrame != null) {
+                apsFrame.setVisible(false);
+            }
         }
     }
-    
-    
-       /** returns frame width in pixels.
+
+    /**
+     * returns frame width in pixels.
+     *
      * @return the width
      */
     public int getWidth() {
         return width;
     }
 
- 
     /**
      * returns frame height in pixels
+     *
      * @return the height
      */
     public int getHeight() {
@@ -503,6 +525,7 @@ public class ApsFrameExtractor extends EventFilter2D {
 
     /**
      * returns max ADC value
+     *
      * @return the maxADC
      */
     public int getMaxADC() {
@@ -511,11 +534,11 @@ public class ApsFrameExtractor extends EventFilter2D {
 
     /**
      * returns max index into frame buffer arrays
+     *
      * @return the maxIDX
      */
     public int getMaxIDX() {
         return maxIDX;
     }
 
-    
 }
