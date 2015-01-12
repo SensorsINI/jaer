@@ -27,7 +27,8 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.util.avioutput.AVIOutputStream;
 
 /**
- * Writes AVI file from DAVIS APS frames, using ApsFrameExtractor
+ * Writes AVI file from DAVIS APS frames, using ApsFrameExtractor.
+ * The AVI file is in RAW format with pixel values 0-255 coming from ApsFrameExtractor displayed frames, which are offset and scaled by it.
  *
  * @author Tobi
  */
@@ -50,6 +51,8 @@ public class DAVISAVIWriter extends EventFilter2D implements PropertyChangeListe
         apsFrameExtractor.getSupport().addPropertyChangeListener(this);
         filterChain.add(apsFrameExtractor);
         setEnclosedFilterChain(filterChain);
+        setPropertyTooltip("saveAVIFileAs", "Opens the output file. The AVI file is in RAW format with pixel values 0-255 coming from ApsFrameExtractor displayed frames, which are offset and scaled by it.");
+        setPropertyTooltip("closeFile", "Closes the output file if it is open.");
     }
 
     @Override
