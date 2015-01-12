@@ -89,10 +89,10 @@ public class ApsFrameExtractor extends EventFilter2D {
         setPropertyTooltip("invertIntensity", "Inverts grey scale, e.g. for raw samples of signal level");
         setPropertyTooltip("preBufferFrame", "Only display and use complete frames; otherwise display APS samples as they arrive");
         setPropertyTooltip("logCompress", "Should the displayBuffer be log compressed");
-        setPropertyTooltip("logDecompress", "Should the logComressed displayBuffer be rendered normal");
+        setPropertyTooltip("logDecompress", "Should the logComressed displayBuffer be rendered in log scale (true) or linearly (false)");
         setPropertyTooltip("displayContrast", "Gain for the rendering of the APS display");
         setPropertyTooltip("displayBrightness", "Offset for the rendering of the APS display");
-        setPropertyTooltip("extractionMethod", "Method to extract a frame");
+        setPropertyTooltip("extractionMethod", "Method to extract a frame; CDSframe is the final result after subtracting signal from reset frame. Signal and reset frames are the raw sensor output before correlated double sampling.");
         setPropertyTooltip("showAPSFrameDisplay", "Shows the JFrame frame display if true");
     }
 
