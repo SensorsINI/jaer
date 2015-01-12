@@ -461,6 +461,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     private void loadLocations(File f) {
+        log.info("loading "+f);
         targetLocations.clear();
         minSampleTimestamp = Integer.MAX_VALUE;
         maxSampleTimestamp = Integer.MIN_VALUE;
@@ -498,6 +499,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 }
                 s = reader.readLine();
             }
+            log.info("done loading "+f);
         } catch (FileNotFoundException ex) {
             JOptionPane.showMessageDialog(glCanvas, ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
         } catch (IOException ex) {
