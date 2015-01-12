@@ -11,7 +11,9 @@ import java.awt.image.WritableRaster;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFileChooser;
@@ -27,8 +29,9 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.util.avioutput.AVIOutputStream;
 
 /**
- * Writes AVI file from DAVIS APS frames, using ApsFrameExtractor.
- * The AVI file is in RAW format with pixel values 0-255 coming from ApsFrameExtractor displayed frames, which are offset and scaled by it.
+ * Writes AVI file from DAVIS APS frames, using ApsFrameExtractor. The AVI file
+ * is in RAW format with pixel values 0-255 coming from ApsFrameExtractor
+ * displayed frames, which are offset and scaled by it.
  *
  * @author Tobi
  */
@@ -38,11 +41,15 @@ public class DAVISAVIWriter extends EventFilter2D implements PropertyChangeListe
 
     ApsFrameExtractor apsFrameExtractor;
     AVIOutputStream aviOutputStream = null;
-    private String DEFAULT_FILENAME = "DAVIS_APS.avi";
+    private static final String DEFAULT_FILENAME = "DAVIS_APS.avi";
     private String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
     ApsDvsChip apsDvsChip = null;
     private int framesWritten = 0;
     private final int logEveryThisManyFrames = 30;
+    private boolean writeTimecodeFile = getBoolean("writeTimecodeFile", true);
+    private static final String TIMECODE_SUFFIX = "-timecode.txt";
+    private File timecodeFile = null;
+    private FileWriter timecodeWriter = null;
 
     public DAVISAVIWriter(AEChip chip) {
         super(chip);
@@ -53,6 +60,7 @@ public class DAVISAVIWriter extends EventFilter2D implements PropertyChangeListe
         setEnclosedFilterChain(filterChain);
         setPropertyTooltip("saveAVIFileAs", "Opens the output file. The AVI file is in RAW format with pixel values 0-255 coming from ApsFrameExtractor displayed frames, which are offset and scaled by it.");
         setPropertyTooltip("closeFile", "Closes the output file if it is open.");
+        setPropertyTooltip("writeTimecodeFile", "writes a file alongside AVI file (with suffix " + TIMECODE_SUFFIX + ") that maps from AVI frame to AER timestamp for that frame (the frame end timestamp)");
     }
 
     @Override
@@ -76,6 +84,7 @@ public class DAVISAVIWriter extends EventFilter2D implements PropertyChangeListe
     public void propertyChange(PropertyChangeEvent evt) {
         if (aviOutputStream != null && evt.getPropertyName() == ApsFrameExtractor.EVENT_NEW_FRAME) {
             double[] frame = apsFrameExtractor.getNewFrame();
+
             BufferedImage bufferedImage = new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_3BYTE_BGR);
             WritableRaster raster = bufferedImage.getRaster();
             int sx = chip.getSizeX(), sy = chip.getSizeY();
@@ -83,19 +92,23 @@ public class DAVISAVIWriter extends EventFilter2D implements PropertyChangeListe
                 for (int x = 0; x < sx; x++) {
                     int k = apsFrameExtractor.getIndex(x, y);
 //                    bufferedImage.setRGB(x, y, (int) (frame[k] * 1024));
-                    int v=(int)(frame[k]*255), yy=sy - y - 1; // must flip image vertially according to java convention that image starts at upper left
-                    raster.setSample(x, yy, 0, v); 
-                    raster.setSample(x, yy, 1, v); 
-                    raster.setSample(x, yy, 2, v); 
+                    int v = (int) (frame[k] * 255), yy = sy - y - 1; // must flip image vertially according to java convention that image starts at upper left
+                    raster.setSample(x, yy, 0, v);
+                    raster.setSample(x, yy, 1, v);
+                    raster.setSample(x, yy, 2, v);
                 }
             }
             try {
                 aviOutputStream.writeFrame(bufferedImage);
+                if (timecodeWriter != null) {
+                    int timestamp = apsFrameExtractor.getLastFrameTimestamp();
+                    timecodeWriter.write(String.format("%d %d\n", framesWritten, timestamp));
+
+                }
                 if (++framesWritten % logEveryThisManyFrames == 0) {
                     log.info(String.format("wrote %d frames", framesWritten));
                 }
 
-//        apsFrameExtractor.getIndex(x, y);
             } catch (IOException ex) {
                 Logger.getLogger(DAVISAVIWriter.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -103,6 +116,10 @@ public class DAVISAVIWriter extends EventFilter2D implements PropertyChangeListe
     }
 
     synchronized public void doSaveAVIFileAs() {
+        if (aviOutputStream != null) {
+            JOptionPane.showMessageDialog(null, "AVI output stream is already opened");
+            return;
+        }
         JFileChooser c = new JFileChooser(lastFileName);
         c.setFileFilter(new FileFilter() {
 
@@ -136,6 +153,10 @@ public class DAVISAVIWriter extends EventFilter2D implements PropertyChangeListe
             try {
                 aviOutputStream.close();
                 aviOutputStream = null;
+                if (timecodeWriter != null) {
+                    timecodeWriter.close();
+                    timecodeWriter = null;
+                }
                 log.info("Closed " + lastFileName);
             } catch (IOException ex) {
                 log.warning(ex.toString());
@@ -147,15 +168,43 @@ public class DAVISAVIWriter extends EventFilter2D implements PropertyChangeListe
     private void openAVIOutputStream(File f) {
         try {
             aviOutputStream = new AVIOutputStream(f, AVIOutputStream.VideoFormat.RAW);
-            aviOutputStream.setFrameRate((int) apsDvsChip.getFrameRateHz());
+            int frameRate = (int) apsDvsChip.getFrameRateHz();
+            if (frameRate == 0) {
+                JOptionPane.showMessageDialog(null, "Frame rate is reported as 0, setting to 10 by default.\nEnable the Image Sensor/Display Frames option in HW Configuration panel so that frame rate is computed.", "Couldn't set correct frame rate", JOptionPane.WARNING_MESSAGE, null);
+                frameRate = 10;
+            }
+            aviOutputStream.setFrameRate(frameRate);
 //            aviOutputStream.setVideoDimension(chip.getSizeX(), chip.getSizeY());
             lastFileName = f.toString();
             putString("lastFileName", lastFileName);
+            if (writeTimecodeFile) {
+                String s = f.toString().subSequence(0, f.toString().lastIndexOf(".")).toString() + TIMECODE_SUFFIX;
+                timecodeFile = new File(s);
+                timecodeWriter = new FileWriter(timecodeFile);
+                timecodeWriter.write(String.format("# timecode file relating frames of AVI file to AER timestamps\n"));
+                timecodeWriter.write(String.format("# written %s\n", new Date().toString()));
+                timecodeWriter.write(String.format("# frameNumber timestamp\n"));
+            }
             log.info("Opened " + f.toString());
             framesWritten = 0;
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(null, ex.toString(), "Couldn't create output file stream", JOptionPane.WARNING_MESSAGE, null);
             return;
         }
+    }
+
+    /**
+     * @return the writeTimecodeFile
+     */
+    public boolean isWriteTimecodeFile() {
+        return writeTimecodeFile;
+    }
+
+    /**
+     * @param writeTimecodeFile the writeTimecodeFile to set
+     */
+    public void setWriteTimecodeFile(boolean writeTimecodeFile) {
+        this.writeTimecodeFile = writeTimecodeFile;
+        putBoolean("writeTimecodeFile", writeTimecodeFile);
     }
 }
