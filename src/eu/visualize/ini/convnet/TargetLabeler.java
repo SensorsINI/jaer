@@ -5,9 +5,6 @@
  */
 package eu.visualize.ini.convnet;
 
-import com.jogamp.opengl.util.awt.TextRenderer;
-import com.sun.glass.ui.CommonDialogs;
-import eu.seebetter.ini.chips.ApsDvsChip;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Point;
@@ -28,12 +25,14 @@ import java.util.InputMismatchException;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.TreeMap;
+
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
 import javax.media.opengl.glu.GLUquadric;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -42,6 +41,10 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+
+import com.jogamp.opengl.util.awt.TextRenderer;
+
+import eu.seebetter.ini.chips.ApsDvsChip;
 
 /**
  * Labels location of target using mouse GUI in recorded data for later
@@ -229,18 +232,18 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 }
 
                 // show the nearest TargetLocation if at least minTargetPointIntervalUs has passed by,
-                // or "No target" if the location was previously 
-                if ((long) e.timestamp - (long) lastTimestamp >= minTargetPointIntervalUs) {
+                // or "No target" if the location was previously
+                if (((long) e.timestamp - (long) lastTimestamp) >= minTargetPointIntervalUs) {
                     lastTimestamp = e.timestamp;
                     // find next saved target location that is just before this time (lowerEntry)
                     Map.Entry<Integer, TargetLocation> mostRecentLocationBeforeThisEvent = targetLocations.lowerEntry(e.timestamp);
-                    if (mostRecentLocationBeforeThisEvent == null || (mostRecentLocationBeforeThisEvent != null && (mostRecentLocationBeforeThisEvent.getValue() != null && (e.timestamp - mostRecentLocationBeforeThisEvent.getValue().timestamp) > maxTimeLastTargetLocationValidUs))) {
+                    if ((mostRecentLocationBeforeThisEvent == null) || ((mostRecentLocationBeforeThisEvent != null) && ((mostRecentLocationBeforeThisEvent.getValue() != null) && ((e.timestamp - mostRecentLocationBeforeThisEvent.getValue().timestamp) > maxTimeLastTargetLocationValidUs)))) {
                         targetLocation = null;
                     } else {
                         targetLocation = mostRecentLocationBeforeThisEvent.getValue();
                     }
                     TargetLocation newTargetLocation = null;
-                    if (shiftPressed && ctlPressed && mousePoint != null) {
+                    if (shiftPressed && ctlPressed && (mousePoint != null)) {
                         // add a labeled location sample
                         maybeRemovePreviouslyRecordedSample(mostRecentLocationBeforeThisEvent, e, lastNewTargetLocation);
                         newTargetLocation = new TargetLocation(currentFrameNumber, e.timestamp, mousePoint);
@@ -271,7 +274,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     private void maybeRemovePreviouslyRecordedSample(Map.Entry<Integer, TargetLocation> entry, BasicEvent e, TargetLocation lastSampleAdded) {
-        if (entry != null && entry.getValue() != lastSampleAdded && e.timestamp - entry.getKey() < minTargetPointIntervalUs) {
+        if ((entry != null) && (entry.getValue() != lastSampleAdded) && ((e.timestamp - entry.getKey()) < minTargetPointIntervalUs)) {
             log.info("removing previous " + entry.getValue() + " because entry.getValue()!=lastSampleAdded=" + (entry.getValue() != lastSampleAdded) + " && timestamp difference " + (e.timestamp - entry.getKey()) + " is < " + minTargetPointIntervalUs);
 
             targetLocations.remove(entry.getKey());
@@ -426,7 +429,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             gl.glPopMatrix();
         }
 
-        public String toString() {
+        @Override
+		public String toString() {
             return String.format("TargetLocation frameNumber=%d timestamp=%d location=%s", frameNumber, timestamp, location == null ? "null" : location.toString());
         }
 
@@ -464,7 +468,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             BufferedReader reader = new BufferedReader(new FileReader(f));
             String s = reader.readLine();
             StringBuilder sb = new StringBuilder();
-            while (s != null && s.startsWith("#")) {
+            while ((s != null) && s.startsWith("#")) {
                 sb.append(s + "\n");
                 s = reader.readLine();
             }
