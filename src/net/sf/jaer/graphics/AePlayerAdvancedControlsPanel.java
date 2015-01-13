@@ -658,6 +658,12 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
             }
 
             aeViewer.getJaerViewer().getSyncPlayer().doSingleStep();
+            // inform all listeners on the players that they have been repositioned
+            for (AEViewer v : aeViewer.getJaerViewer().getViewers()) {
+                if(v.getAePlayer()!=null && v.getAePlayer().getAEInputStream()!=null){
+                    v.getAePlayer().getSupport().firePropertyChange(AEInputStream.EVENT_REPOSITIONED, null, v.getAePlayer().getAEInputStream().position());
+                }
+            }
         }
 }//GEN-LAST:event_playerSliderStateChanged
 
