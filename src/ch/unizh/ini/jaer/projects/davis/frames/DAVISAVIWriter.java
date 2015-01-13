@@ -157,7 +157,7 @@ public class DAVISAVIWriter extends EventFilter2D implements PropertyChangeListe
                     timecodeWriter.close();
                     timecodeWriter = null;
                 }
-                log.info("Closed " + lastFileName);
+                log.info("Closed " + lastFileName+ " with "+framesWritten+" frames");
             } catch (IOException ex) {
                 log.warning(ex.toString());
             }
