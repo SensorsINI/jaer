@@ -181,6 +181,10 @@ public class AEChip extends Chip2D {
         notifyObservers(renderer);
     }
 
+    /** The AEFileInputStream currently being fed to the AEChip. Note this field must be set by someone.
+     * 
+     * @return the stream 
+     */
     public AEFileInputStream getAeInputStream() {
         return aeInputStream;
     }
@@ -329,6 +333,8 @@ public class AEChip extends Chip2D {
      * @throws IOException on any IO exception 
      */
     public AEFileInputStream constuctFileInputStream(File file) throws IOException{
-        return new AEFileInputStream(file);
+        AEFileInputStream stream=new AEFileInputStream(file);
+        aeInputStream=stream;
+        return stream;
     }
 }
