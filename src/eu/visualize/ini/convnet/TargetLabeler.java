@@ -141,13 +141,13 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             textRenderer.setColor(1, 1, 1, 1);
         }
         GL2 gl = drawable.getGL().getGL2();
-        MultilineAnnotationTextRenderer.setColor(Color.BLUE);
+        MultilineAnnotationTextRenderer.setColor(Color.CYAN);
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .9f);
         MultilineAnnotationTextRenderer.setScale(.3f);
         StringBuilder sb = new StringBuilder("Shift + Ctrl + mouse position: Specify target location\nShift: Specify no target seen\n");
         MultilineAnnotationTextRenderer.renderMultilineString(sb.toString());
 
-        MultilineAnnotationTextRenderer.renderMultilineString(String.format("%d TargetLocation samples specified\nFirst sample time: %.1fs, Last sample time: %.1fs", targetLocations.size(), minSampleTimestamp * 1e-6f, maxSampleTimestamp * 1e-6f));
+        MultilineAnnotationTextRenderer.renderMultilineString(String.format("%d TargetLocation samples specified\nFirst sample time: %.1fs, Last sample time: %.1fs\nCurrent frame number: %d", targetLocations.size(), minSampleTimestamp * 1e-6f, maxSampleTimestamp * 1e-6f, currentFrameNumber));
 
         if (shiftPressed && !ctlPressed) {
             MultilineAnnotationTextRenderer.renderMultilineString("Specifying no target");
@@ -304,15 +304,28 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     ) {
         switch (evt.getPropertyName()) {
             case AEInputStream.EVENT_REWIND:
-                log.info("frameNumber reset to -1");
-                lastFrameNumber = -1;
-                currentFrameNumber = 0;
-                lastTimestamp = Integer.MIN_VALUE;
-                break;
-            case AEInputStream.EVENT_POSITION:
-                break;
-            case AEInputStream.EVENT_EOF:
-
+            case AEInputStream.EVENT_REPOSITIONED:
+                log.info("rewind to start or mark position or reposition event "+evt.toString());
+                if (evt.getNewValue() instanceof Long) {
+                    long position = (long) evt.getNewValue();
+                    if (chip.getAeInputStream() == null) {
+                        log.warning("AE input stream is null, cannot determine timestamp after rewind");
+                        return;
+                    }
+                    int timestamp = chip.getAeInputStream().getMostRecentTimestamp();
+                    Map.Entry<Integer, TargetLocation> targetBeforeRewind = targetLocations.lowerEntry(timestamp);
+                    if (targetBeforeRewind != null) {
+                        currentFrameNumber = targetBeforeRewind.getValue().frameNumber;
+                        lastFrameNumber = currentFrameNumber - 1;
+                        lastTimestamp = targetBeforeRewind.getValue().timestamp;
+                    } else {
+                        currentFrameNumber = 0;
+                        lastFrameNumber = currentFrameNumber - 1;
+                        lastTimestamp = Integer.MIN_VALUE;
+                    }
+                } else {
+                    log.warning("couldn't determine stream position after rewind from PropertyChangeEvent " + evt.toString());
+                }
         }
     }
 
@@ -387,6 +400,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         }
         this.maxTimeLastTargetLocationValidUs = maxTimeLastTargetLocationValidUs;
         putInt("maxTimeLastTargetLocationValidUs", maxTimeLastTargetLocationValidUs);
+
     }
 
     private class TargetLocationComparator implements Comparator<TargetLocation> {
@@ -430,7 +444,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         }
 
         @Override
-		public String toString() {
+        public String toString() {
             return String.format("TargetLocation frameNumber=%d timestamp=%d location=%s", frameNumber, timestamp, location == null ? "null" : location.toString());
         }
 
@@ -461,7 +475,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     private void loadLocations(File f) {
-        log.info("loading "+f);
+        log.info("loading " + f);
         targetLocations.clear();
         minSampleTimestamp = Integer.MAX_VALUE;
         maxSampleTimestamp = Integer.MIN_VALUE;
@@ -499,7 +513,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 }
                 s = reader.readLine();
             }
-            log.info("done loading "+f);
+            log.info("done loading " + f);
         } catch (FileNotFoundException ex) {
             JOptionPane.showMessageDialog(glCanvas, ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
         } catch (IOException ex) {
