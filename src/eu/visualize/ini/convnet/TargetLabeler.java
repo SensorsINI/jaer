@@ -305,7 +305,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         switch (evt.getPropertyName()) {
             case AEInputStream.EVENT_REWIND:
             case AEInputStream.EVENT_REPOSITIONED:
-                log.info("rewind to start or mark position or reposition event "+evt.toString());
+                log.info("rewind to start or mark position or reposition event " + evt.toString());
                 if (evt.getNewValue() instanceof Long) {
                     long position = (long) evt.getNewValue();
                     if (chip.getAeInputStream() == null) {
@@ -461,7 +461,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 if (l.location != null) {
                     writer.write(String.format("%d %d %d %d\n", l.frameNumber, l.timestamp, l.location.x, l.location.y));
                 } else {
-                    writer.write(String.format("%d %d null\n", l.frameNumber, l.timestamp));
+                    writer.write(String.format("%d %d -1 -1\n", l.frameNumber, l.timestamp));
                 }
             }
             writer.close();
@@ -492,6 +492,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 Scanner scanner = new Scanner(s);
                 try {
                     TargetLocation targetLocation = new TargetLocation(scanner.nextInt(), scanner.nextInt(), new Point(scanner.nextInt(), scanner.nextInt())); // read target location
+                    if (targetLocation.location.x == -1 && targetLocation.location.y == -1) {
+                        targetLocation.location = null;
+                    }
                     targetLocations.put(targetLocation.timestamp, targetLocation);
                     if (targetLocation != null) {
                         if (targetLocation.timestamp > maxSampleTimestamp) {
@@ -501,15 +504,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                             minSampleTimestamp = targetLocation.timestamp;
                         }
                     }
-                } catch (InputMismatchException ex) {
-                    // infer this line is null target sample
-                    Scanner scanner2 = new Scanner(s);
-                    try {
-                        TargetLocation targetLocation = new TargetLocation(scanner2.nextInt(), scanner2.nextInt(), null);
-                        targetLocations.put(targetLocation.timestamp, targetLocation);
-                    } catch (InputMismatchException ex2) {
-                        throw new IOException("couldn't parse file, got InputMismatchException on line: " + s);
-                    }
+                } catch (InputMismatchException ex2) {
+                    throw new IOException("couldn't parse file, got InputMismatchException on line: " + s);
                 }
                 s = reader.readLine();
             }
