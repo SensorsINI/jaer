@@ -6,12 +6,38 @@ package ch.ethz.hest.balgrist.microscopetracker;
  * @author Niklaus Amrein
  */
 public class VTelement {
-	public float velocity;
-	public int time;
+	private float velocity;
+	private int timeNew;
+	private int timeOld;
 
 	// constructor
-	public VTelement(float v, int t){
+	public VTelement(float v, int tNew, int tOld){
 		velocity = v;
-		time = t;
+		timeNew = tNew;
+		timeOld = tOld;
+	}
+
+	public float getVelocity() {
+		return velocity;
+	}
+
+	public void setVelocity(float velocity) {
+		this.velocity = velocity;
+	}
+
+	public int getTimeNew() {
+		return timeNew;
+	}
+
+	public void setTimeNew(int time) {
+		this.timeNew = time;
+	}
+
+	public int getTimeOld() {
+		return timeOld;
+	}
+
+	public void setTimeOld(int told) {
+		this.timeOld = told;
 	}
 }

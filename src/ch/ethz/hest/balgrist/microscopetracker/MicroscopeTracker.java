@@ -12,6 +12,7 @@ import javax.media.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -19,58 +20,98 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
 
 /**
- * calculates the xy-movement of the sample under the microscope and uses TCP to send the vector to LabView
+ * calculates the xy-movement of the sample under the microscope and uses TCP to
+ * send the vector to LabView
  *
  * @author Niklaus Amrein
+ *
+ * TODO the algorithm is working well for slow vertical or slow horizontal movement, the position is a bit slow but that could be due to the median (lots of small values and a few big ones)
+ * 		for diagonal movement, the position moves slower, probably because the diagonal pixels are not calculated as nearest neighbors.
+ * 		for fast movement, the position updates are even slower, probably because not all pixels on the way are updated and that means that the nearest neighbors do not always contain the recent timestamps
+ *
+ * TODO get rid of the "drift"
+ * 		the position tends to drift away, probably because the direction is chosen from either the positive or negative list.
+ * 		This means that the result is either positive or negative and very unlikely to become 0.
+ *
+ * TODO "on" and "off" events are currently not treated differently
+ * 		-> can we gain more precise information from that or not?
+ *
+ * TODO Currently currentTime is just the most recent timestamp, maybe there is a better way to implement this.
+ * 		I implemented it like this so i can be sure that events with an older timestamp do not decrease the currentTime to a lower value than lastTime, which would result in a negative dt.
+ *
+ * TODO The difference currentTime - lastTime is not necessarily the correct time difference to calculate the position.
+ * 		But time - told is not working correctly, position values are too big, probably because the time intervals overlap a lot
+ *
+ * TODO	If recorded data is rewinded, the currentTime is stuck at the highest value from the end of the recording.
+ *		In the RectangularClusterTracker filter, this is not a problem, which
+ *
+ * TODO calculating the position is not using the correct time interval: The chosen median value is valid for the corresponding dt, but (currentTime - lastTime) is not the same.
+ * 		However, if we use the correct dt (could for example be saved in VTelements), the time intervals dt could overlap or have gaps and the position would move a whole pixel per cycle
+ * 		-> not necessarily correct either
+ *
  */
 @Description("calculates the xy-movement of the sample under the microscope and uses TCP to send the vector to LabView")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class MicroscopeTracker extends EventFilter2D implements FrameAnnotater {
 
-	// new functions and parameters (by default they are deactivated when the program is started)
-	private boolean showGlobalAverageVelocity = false;
+	private final float VELPPS_SCALING = 1e6f / AEConstants.TICK_DEFAULT_US;
+
+	// new functions (by default they are deactivated when the program is started)
+	private boolean followGlobalMedianVelocity1 = false;
+	private boolean followGlobalMedianVelocity2 = false;
 	private boolean sendDataToLabview = false;
-	private boolean logDataEnabled = false;
+	private boolean logData = false;
+
+	// new parameters
 	private int thresholdTime = 10;
 	private float percentage = (float) 0.1;
+	private int minNumberOfEvents = 10;
 
 	// construct a logger to record the data
 	Logger txtLog;
-    FileHandler fh;
+	FileHandler txtFH;
 
 	// construct a client for the TCP communication with LabView
-	MicroscopeTrackerTCPclient Client = new MicroscopeTrackerTCPclient();
+	MicroscopeTrackerTCPclient client = new MicroscopeTrackerTCPclient();
 
 	// value for the current time and the last time the timer was updated
-	// TODO	Currently this time is just the most recent timestamp, maybe there is a better way to implement this.
-	//		The difference currentTime - lastTime is not necessarily the correct time difference to calculate the position. See further below for details
-	//		Also if recorded data is rewinded, the currentTime is stuck at the highest value from the end of the recording, this could be avoided if we use some kind of "system time" of the simulation
 	private int currentTime = 0;
-	private int lastUpdateTime = 0;
+	private int lastTime = 0;
 
 	// the global average velocity that is used to calculate the global position
-	private Point2D.Float globalAverageVelocityPPT = new Point2D.Float(0, 0);	// [px/tick]
-	private Point2D.Float globalPosition = new Point2D.Float(0, 0);	// [px]
+	private Point2D.Float globalAverageVelocityPPT = new Point2D.Float(0, 0); // [px/tick]
+	private Point2D.Float globalAverageVelocityPPS = new Point2D.Float(0, 0); // [px/s]
+	private Point2D.Float globalPosition = new Point2D.Float(0, 0); // [px]
 
 	// 128x128 Matrix with all timestamps
 	private int[][] timestamps = new int[128][128];
 
 	// Lists for every direction, used to find the median of the Velocities
-	private ArrayList<VTelement> vx_pos = new ArrayList<>();	// v[px/tick] t[tick]
-	private ArrayList<VTelement> vy_pos = new ArrayList<>();	// v[px/tick] t[tick]
-	private ArrayList<VTelement> vx_neg = new ArrayList<>();	// v[px/tick] t[tick]
-	private ArrayList<VTelement> vy_neg = new ArrayList<>();	// v[px/tick] t[tick]
+	private ArrayList<VTelement> vxPos = new ArrayList<>(); // v[px/tick] t[tick]
+	private ArrayList<VTelement> vyPos = new ArrayList<>(); // v[px/tick] t[tick]
+	private ArrayList<VTelement> vxNeg = new ArrayList<>(); // v[px/tick] t[tick]
+	private ArrayList<VTelement> vyNeg = new ArrayList<>(); // v[px/tick] t[tick]
+
+	// median value for every direction
+	private VTelement vxPosMedian;
+	private VTelement vyPosMedian;
+	private VTelement vxNegMedian;
+	private VTelement vyNegMedian;
 
 	// constructor of the filter class
 	public MicroscopeTracker(AEChip chip) {
 		super(chip);
 		initFilter();
-		String mt = "MicroscropeTracker";
-		setPropertyTooltip(mt, "showGlobalAverageVelocity", "draws the estimated velocity vector");
-		setPropertyTooltip(mt, "sendDataToLabview", "sends estimated position and velocity to LabView via TCP link on \"127.0.0.1\", port 23");
-		setPropertyTooltip(mt, "LogDataEnabled", "log the full list of vectors to a text file");
-		setPropertyTooltip(mt, "thresholdTime", "time after which a timestamp gets ignored");
-		setPropertyTooltip(mt, "percentage", "percentage value");
+		String group1 = "functions";
+		String group2 = "logging";
+		String group3 = "parameters";
+		setPropertyTooltip(group1, "followGlobalMedianVelocity1", "follow the global median velocity vector (currentTime - lastTime)");
+		setPropertyTooltip(group1, "followGlobalMedianVelocity2", "follow the global median velocity vector (time - told)");
+		setPropertyTooltip(group1, "sendDataToLabview",	"sends estimated position and velocity to LabView via TCP link on \"127.0.0.1\", port 23");
+		setPropertyTooltip(group2, "logData", "log data to a text file");
+		setPropertyTooltip(group3, "thresholdTime", "time after which a timestamp gets ignored");
+		setPropertyTooltip(group3, "percentage", "percentage value");
+		setPropertyTooltip(group3, "minNumberOfEvents", "the minimum number of events to calculate the new position");
 	}
 
 	@Override
@@ -79,36 +120,117 @@ public class MicroscopeTracker extends EventFilter2D implements FrameAnnotater {
 	}
 
 	// reset all global variables
-	// (turning off all features doesn't really work because boxes in GUI remain unchanged)
+	// TODO refresh GUI
+	// turning off all features doesn't really work unless the GUI is refreshed, because the displayed values would not update
 	@Override
 	public void resetFilter() {
+		// followGlobalMedianVelocity1 = false;
+		// followGlobalMedianVelocity2 = false;
+		// sendDataToLabview = false;
+		// logDataEnabled = false;
+		// thresholdTime = 100;
+		// percentage = 0.1f;
+		// minNumberOfEvents = 10;
+
+		// refresh GUI now
+
+		resetValues();
+	}
+
+	// method is called when inputs are available and processes them.
+	@Override
+	synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+
+		lastTime = currentTime;
+
+		// update timestamps and currentTime
+		updateTimestamps(in);
+
+		// only used in the first iteration to make sure that dt doesn't get to big
+		if (lastTime == 0) {
+			lastTime = currentTime;
+		}
+
+		// sort out all outdated vectors
+		deleteOldElements(vxPos);
+		deleteOldElements(vyPos);
+		deleteOldElements(vxNeg);
+		deleteOldElements(vyNeg);
+
+		// update velocities and sort in all new elements into the ArrayLists.
+		// this is done after updating all timestamps, to make sure we only use up to date timestamps for all pixels.
+		updateAndSortVelocities(in);
+
+		// find median element for each direction
+		vxPosMedian = findMedian(vxPos);
+		vyPosMedian = findMedian(vyPos);
+		vxNegMedian = findMedian(vxNeg);
+		vyNegMedian = findMedian(vyNeg);
+
+		// calculate Velocity and Position
+		updateVelocityAndPosition();
+
+		// send position vector to LabView if requested
+		if (sendDataToLabview) {
+			client.sendVector(Float.toString(globalPosition.x), Float.toString(globalPosition.y));
+		}
+
+		// log the values to a text file if requested
+		if (logData) {
+			/*
+			String str = "";
+			for (int i = 0; i < vxPos.size(); i++) {
+				str = str + Float.toString(vxPos.get(i).getVelocity()) + " ";
+			}
+			txtLog.info(str);
+			*/
+		}
+
+		return in;
+	}
+
+	// this function has to be overridden to also draw the average speed vector when we activate it
+	@Override
+	public synchronized void annotate(GLAutoDrawable drawable) {
+		// vector and position are always displayed in blue
+		GL2 gl = drawable.getGL().getGL2();
+		gl.glColor3f(0, 0, 1);
+		gl.glPointSize(5f);
+		gl.glBegin(GL.GL_POINTS);
+		gl.glVertex2d(64 + globalPosition.x, 64 + globalPosition.y);
+		gl.glEnd();
+		DrawGL.drawVector(gl, 64, 64, globalAverageVelocityPPS.x, globalAverageVelocityPPS.y);
+	}
+
+	// reset all variables and Lists
+	private void resetValues() {
 		globalPosition.x = 0;
 		globalPosition.y = 0;
 
 		globalAverageVelocityPPT.x = 0;
 		globalAverageVelocityPPT.y = 0;
-
-		// setshowGlobalAverageVelocity(false);
-		// setsendDataToLabview(false);
-		// setthresholdTime(100);
+		globalAverageVelocityPPS.x = 0;
+		globalAverageVelocityPPS.y = 0;
 
 		currentTime = 0;
-		lastUpdateTime = 0;
+		lastTime = 0;
 
 		timestamps = new int[128][128];
 
-		vx_pos = new ArrayList<>();
-		vy_pos = new ArrayList<>();
-		vx_neg = new ArrayList<>();
-		vy_neg = new ArrayList<>();
+		vxPos.clear();
+		vyPos.clear();
+		vxNeg.clear();
+		vyNeg.clear();
 	}
 
-	public void initDefaults() {
-		initDefault("showGlobalAverageVelocity", "false");
+	private void initDefaults() {
+		initDefault("followGlobalMedianVelocity1", "false");
+		initDefault("followGlobalMedianVelocity2", "false");
 		initDefault("sendDataToLabview", "false");
-		initDefault("logDataEnabled", "false");
+		initDefault("logData", "false");
 		initDefault("thresholdTime", "10");
 		initDefault("percentage", "0.1");
+		initDefault("minNumberOfEvents", "10");
 	}
 
 	private void initDefault(String key, String value) {
@@ -117,236 +239,10 @@ public class MicroscopeTracker extends EventFilter2D implements FrameAnnotater {
 		}
 	}
 
-	// method is called when inputs are available and processes them.
-	@Override
-	synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
-
-		lastUpdateTime = currentTime;
-
-		// update timestamps
-		int x;	// horizontal coordinate, by convention starts at left of image
-		int y;	// vertical coordinate, by convention starts at bottom of image
-		int dt;
-		int t1;
-
-		for (int i = 0; i < in.size; i++) {
-			t1 = in.getEvent(i).timestamp;
-			x = in.getEvent(i).x;
-			y = in.getEvent(i).y;
-
-			timestamps[x][y] = t1;	// log.info(Integer.toString(t));
-
-			// update the current Time
-			// TODO maybe not the best way to do it
-			if (t1 > currentTime) {
-				currentTime = t1;
-			}
-		}
-
-		// only used in the first iteration to make sure that dt doesn't get to big
-		if (lastUpdateTime == 0) {
-			lastUpdateTime = currentTime;
-		}
-
-		// sort out all out dated vectors
-		deleteOldElements(vx_pos);	// log.info(Integer.toString(vx_pos.size()));
-		deleteOldElements(vy_pos);	// log.info(Integer.toString(vy_pos.size()));
-		deleteOldElements(vx_neg);	// log.info(Integer.toString(vx_neg.size()));
-		deleteOldElements(vy_neg);	// log.info(Integer.toString(vy_neg.size()));
-
-		// update velocities and sort in all new elements into the ArrayLists. this is done after updating all timestamps, to make sure we only use up to date timestamps for all pixels.
-		int t2;
-		float v2;
-
-		for (int i = 0; i < in.size; i++) {
-			t2 = in.getEvent(i).timestamp;
-			x = in.getEvent(i).x;
-			y = in.getEvent(i).y;
-
-			// to avoid IndexOutOfBounds, the velocity is not calculated for pixels at the edge
-			if ((x > 0) && (y > 0) && (x < 127) && (y < 127)) {
-				dt = t2 - timestamps[x - 1][y];
-				if (dt > 0) {
-					v2 = (float) 1 / dt;
-					VTelement e_x_pos = new VTelement(v2, t2);
-					// log.info("dt = " + Integer.toString(dt) + ", v = " + Float.toString(v2));
-					binaryInsert(vx_pos, e_x_pos, 0, vx_pos.size());
-				}
-
-				dt = t2 - timestamps[x][y - 1];
-				if (dt > 0) {
-					v2 = (float) 1 / dt;
-					VTelement e_y_pos = new VTelement(v2, t2);
-					// log.info("dt = " + Integer.toString(dt) + ", v = " + Float.toString(v2));
-					binaryInsert(vy_pos, e_y_pos, 0, vy_pos.size());
-				}
-
-				dt = t2 - timestamps[x + 1][y];
-				if (dt > 0) {
-					v2 = (float) 1 / dt;
-					VTelement e_x_neg = new VTelement(v2, t2);
-					// log.info("dt = " + Integer.toString(dt) + ", v = " + Float.toString(v2));
-					binaryInsert(vx_neg, e_x_neg, 0, vx_neg.size());
-				}
-
-				dt = t2 - timestamps[x][y + 1];
-				if (dt > 0) {
-					v2 = (float) 1 / dt;
-					VTelement e_y_neg = new VTelement(v2, t2);
-					// log.info("dt = " + Integer.toString(dt) + ", v = " + Float.toString(v2));
-					binaryInsert(vy_neg, e_y_neg, 0, vy_neg.size());
-				}
-			}
-		}
-
-		// choose median value from velocity arrays
-		VTelement vx_pos_median;
-		VTelement vx_neg_median;
-		VTelement vy_pos_median;
-		VTelement vy_neg_median;
-
-		int index;
-		int t3;
-		float v3;
-
-		index = vx_pos.size() / 2;
-		if (index == 0) {
-			vx_pos_median = new VTelement(0,0);
-		} else if ((index % 2) == 0) {
-			v3 = vx_pos.get(index).velocity + vx_pos.get(index + 1).velocity;
-			t3 = vx_pos.get(index).time + vx_pos.get(index + 1).time;
-			vx_pos_median = new VTelement(v3, t3);
-		} else {
-			vx_pos_median = vx_pos.get(vx_pos.size() / 2);
-		}
-
-		index = vy_pos.size() / 2;
-		if (index == 0) {
-			vy_pos_median = new VTelement(0,0);
-		} else if ((index % 2) == 0) {
-			v3 = vy_pos.get(index).velocity + vy_pos.get(index + 1).velocity;
-			t3 = vy_pos.get(index).time + vy_pos.get(index + 1).time;
-			vy_pos_median = new VTelement(v3, t3);
-		} else {
-			vy_pos_median = vy_pos.get(vy_pos.size() / 2);
-		}
-
-		index = vx_neg.size() / 2;
-		if (index == 0) {
-			vx_neg_median = new VTelement(0,0);
-		} else if ((index % 2) == 0) {
-			v3 = vx_neg.get(index).velocity + vx_neg.get(index + 1).velocity;
-			t3 = vx_neg.get(index).time + vx_neg.get(index + 1).time;
-			vx_neg_median = new VTelement(v3, t3);
-		} else {
-			vx_neg_median = vx_neg.get(vx_neg.size() / 2);
-		}
-
-		index = vy_neg.size() / 2;
-		if (index == 0) {
-			vy_neg_median = new VTelement(0,0);
-		} else if ((index % 2) == 0) {
-			v3 = vy_neg.get(index).velocity + vy_neg.get(index + 1).velocity;
-			t3 = vy_neg.get(index).time + vy_neg.get(index + 1).time;
-			vy_neg_median = new VTelement(v3, t3);
-		} else {
-			vy_neg_median = vy_neg.get(vy_neg.size() / 2);
-		}
-
-		// calculate Velocity and Position
-		// TODO	calculating the position is not using the correct time interval:
-		//		The chosen median value is valid for the corresponding dt, but (currentTime - lastUpdateTime) is not the same.
-		//		However, if we use the correct dt (could for example be saved in VTelements), the time intervals dt could overlap or have gaps
-		//		-> not necessarily correct either
-
-		//TODO the position tends to drift away
-		// probably because the direction is chosen to be either positive or negative, but the medians are always != 0
-		// if vx_pos and vx_neg are combined like [-vx_neg, vx_pos], the median is always ~0
-		// Solution?
-		if (vx_pos_median.velocity > ((1 + percentage) * vx_neg_median.velocity)) {
-			// x direction is positive
-			globalAverageVelocityPPT.x = vx_pos_median.velocity;
-			globalPosition.x += (currentTime - lastUpdateTime) * globalAverageVelocityPPT.x;
-		} else if (vx_neg_median.velocity > ((1 + percentage) * vx_pos_median.velocity)) {
-			// x direction is negative
-			globalAverageVelocityPPT.x = -vx_neg_median.velocity;
-			globalPosition.x += (currentTime - lastUpdateTime) * globalAverageVelocityPPT.x;
-		} else {
-			// x velocity is assumed to be 0
-			globalAverageVelocityPPT.x = 0;
-			// globalPosition.x doesn't need to be updated
-		}
-
-		if (vy_pos_median.velocity > ((1 + percentage) * vy_neg_median.velocity)) {
-			// y direction is positive
-			globalAverageVelocityPPT.y = vy_pos_median.velocity;
-			globalPosition.y += (currentTime - lastUpdateTime) * globalAverageVelocityPPT.y;
-		} else if (vy_neg_median.velocity > ((1 + percentage) * vy_pos_median.velocity)) {
-			// y direction is negative
-			globalAverageVelocityPPT.y = -vy_neg_median.velocity;
-			globalPosition.y += (currentTime - lastUpdateTime) * globalAverageVelocityPPT.y;
-		} else {
-			// y velocity is assumed to be 0
-			globalAverageVelocityPPT.y = 0;
-			// globalPosition.x doesn't need to be updated
-		}
-
-		// log the full list of vectors to a text file if requested
-		if (logDataEnabled) {
-			String str = "vx_pos\n";
-			for (int i = 0; i < vx_pos.size(); i++) {
-				str += Float.toString(vx_pos.get(i).velocity) + " " + Integer.toString(vx_pos.get(i).time) + " ";
-			}
-			str = str.substring(0, str.length()-1);
-
-			str += "\n" + "vy_pos\n";
-			for (int i = 0; i < vy_pos.size(); i++) {
-				str += Float.toString(vy_pos.get(i).velocity) + " " + Integer.toString(vy_pos.get(i).time) + " ";
-			}
-			str = str.substring(0, str.length()-1);
-
-			str += "\n" + "vx_neg\n";
-			for (int i = 0; i < vx_neg.size(); i++) {
-				str += Float.toString(vx_neg.get(i).velocity) + " " + Integer.toString(vx_neg.get(i).time) + " ";
-			}
-			str = str.substring(0, str.length()-1);
-
-			str += "\n" + "vy_neg\n";
-			for (int i = 0; i < vy_neg.size(); i++) {
-				str += Float.toString(vy_neg.get(i).velocity) + " " + Integer.toString(vy_neg.get(i).time) + " ";
-			}
-			str = str.substring(0, str.length()-1);
-
-			txtLog.info(str);
-		}
-
-		// send position vector to LabView if requested
-		if (sendDataToLabview) {
-			Client.sendVector(Float.toString(globalPosition.x), Float.toString(globalPosition.y));
-			// Client.sendVector(Float.toString(globalAverageVelocityPPT.x), Float.toString(globalAverageVelocityPPT.y));
-		}
-		return in;
-	}
-
-	// this function has to be overridden to also draw the average speed vector when we activate it
-	@Override
-	public synchronized void annotate(GLAutoDrawable drawable) {
-		if (showGlobalAverageVelocity) {
-			GL2 gl = drawable.getGL().getGL2();
-			gl.glColor3f(1, 1, 0);
-			gl.glPointSize(5f);
-			gl.glBegin(GL.GL_POINTS);
-			gl.glVertex2d(64 + globalPosition.x, 64 + globalPosition.y);
-			gl.glEnd();
-			DrawGL.drawVector(gl, 64, 64, 100000*globalAverageVelocityPPT.x, 100000*globalAverageVelocityPPT.y); // vector is really small, factor 100000 only used to make it visible.
-		}
-	}
-
 	// function to remove all VTelements that are to old
-	// (possible problem: IndexOutOfBounds if size changes during loop execution, but this shouldn't happen since loop condition is updated every iteration)
-	public void deleteOldElements(ArrayList<VTelement> list) {
+	private void deleteOldElements(ArrayList<VTelement> list) {
 		for (int i = 0; i < list.size(); i++) {
-			if (currentTime > (list.get(i).time + thresholdTime)) {
+			if (currentTime > (list.get(i).getTimeNew() + thresholdTime)) {
 				list.remove(i);
 				i--; // when an item gets removed, the next item doesn't get checked unless we decrement the index
 			}
@@ -354,12 +250,12 @@ public class MicroscopeTracker extends EventFilter2D implements FrameAnnotater {
 	}
 
 	// function to insert a new VTelement with binary sort
-	public void binaryInsert(ArrayList<VTelement> list, VTelement e, int index1, int index2) {
+	private void binaryInsert(ArrayList<VTelement> list, VTelement e, int index1, int index2) {
 		if ((index2 - index1) == 0) {
 			// log.info("case 1");
 			list.add(index1, e);
 		}
-		else if (e.velocity > list.get(index1 + ((index2 - index1) / 2)).velocity) {
+		else if (e.getVelocity() > list.get(index1 + ((index2 - index1) / 2)).getVelocity()) {
 			// log.info("case 2");
 			binaryInsert(list, e, index1 + ((index2 - index1) / 2) + 1, index2);
 		}
@@ -369,90 +265,306 @@ public class MicroscopeTracker extends EventFilter2D implements FrameAnnotater {
 		}
 	}
 
-	// check if vector should be shown
-	public boolean getshowGlobalAverageVelocity() {
-		return showGlobalAverageVelocity;
-	}
+	private void updateTimestamps(EventPacket<?> in) {
+		int x; // horizontal coordinate, by convention starts at left of image
+		int y; // vertical coordinate, by convention starts at bottom of image
+		int t;
 
-	// set if vector should be shown
-	public void setshowGlobalAverageVelocity(boolean v) {
-		if (v == true) {
-			log.info("displaying vector");
-			showGlobalAverageVelocity = true;
-		}
-		else {
-			log.info("not displaying vector");
-			showGlobalAverageVelocity = false;
-		}
-	}
+		for (int i = 0; i < in.size; i++) {
+			t = in.getEvent(i).timestamp;
+			x = in.getEvent(i).x;
+			y = in.getEvent(i).y;
 
-	// check threshold time
-		public boolean getlogDataEnabled() {
-			return logDataEnabled;
-		}
+			timestamps[x][y] = t; // log.info(Integer.toString(t));
 
-		// set threshold time
-		public void setlogDataEnabled(boolean v) {
-			if (v == true) {
-				logDataEnabled = true;
-				// create logger
-				txtLog = Logger.getLogger("Niggi");
-
-			    try {
-			        // This block configures the logger with handler and formatter
-			    	fh = new FileHandler("C:/Users/Niggi Amrein/Documents/Retina Camera/Logged Data/log files");
-			        txtLog.addHandler(fh);
-				    txtLog.setUseParentHandlers(false);
-
-			    } catch (SecurityException e) {
-			        e.printStackTrace();
-			    } catch (IOException e) {
-			        e.printStackTrace();
-			    }
-
-			    log.info("logging data enabled");
-			} else {
-				logDataEnabled = false;
-				txtLog.removeHandler(fh);
-				fh.close();
-				log.info("logging data disabled");
+			// update the current Time
+			// TODO maybe not the best way to do it
+			if (t > currentTime) {
+				currentTime = t;
 			}
 		}
+	}
+
+	private void updateAndSortVelocities(EventPacket<?> in) {
+		int x;
+		int y;
+		int dt;
+		int timeNew;
+		int timeOld;
+		float v;
+
+		for (int i = 0; i < in.size; i++) {
+			x = in.getEvent(i).x;
+			y = in.getEvent(i).y;
+
+			// to avoid IndexOutOfBounds, the velocity is not calculated for pixels at the edge
+			if ((x > 0) && (y > 0) && (x < 127) && (y < 127)) {
+
+				timeNew = in.getEvent(i).timestamp;
+
+				timeOld = timestamps[x - 1][y];
+				dt = timeNew - timeOld;
+				if (dt > 0) {
+					v = (float) 1 / dt;
+					VTelement exPos = new VTelement(v, timeNew, timeOld);
+					binaryInsert(vxPos, exPos, 0, vxPos.size());
+				}
+
+				timeOld = timestamps[x][y - 1];
+				dt = timeNew - timeOld;
+				if (dt > 0) {
+					v = (float) 1 / dt;
+					VTelement eyPos = new VTelement(v, timeNew, timeOld);
+					binaryInsert(vyPos, eyPos, 0, vyPos.size());
+				}
+
+				timeOld = timestamps[x + 1][y];
+				dt = timeNew - timeOld;
+				if (dt > 0) {
+					v = (float) 1 / dt;
+					VTelement exNeg = new VTelement(v, timeNew, timeOld);
+					binaryInsert(vxNeg, exNeg, 0, vxNeg.size());
+				}
+
+				timeOld = timestamps[x][y + 1];
+				dt = timeNew - timeOld;
+				if (dt > 0) {
+					v = (float) 1 / dt;
+					VTelement eyNeg = new VTelement(v, timeNew, timeOld);
+					binaryInsert(vyNeg, eyNeg, 0, vyNeg.size());
+				}
+			}
+		}
+	}
+
+	private void updateVelocityAndPosition() {
+		if (followGlobalMedianVelocity1) {
+			int dt = currentTime - lastTime;
+
+			if (vxPosMedian.getVelocity() > ((1 + percentage) * vxNegMedian.getVelocity())) {
+				// x direction is positive
+				globalAverageVelocityPPT.x = vxPosMedian.getVelocity();
+				globalAverageVelocityPPS.x = globalAverageVelocityPPT.x * VELPPS_SCALING;
+				globalPosition.x += (dt) * globalAverageVelocityPPT.x;
+			}
+			else if (vxNegMedian.getVelocity() > ((1 + percentage) * vxPosMedian.getVelocity())) {
+				// x direction is negative
+				globalAverageVelocityPPT.x = -vxNegMedian.getVelocity();
+				globalAverageVelocityPPS.x = globalAverageVelocityPPT.x * VELPPS_SCALING;
+				globalPosition.x += (dt) * globalAverageVelocityPPT.x;
+			}
+			else {
+				// x velocity is assumed to be 0
+				globalAverageVelocityPPT.x = 0;
+				globalAverageVelocityPPS.x = 0;
+				// globalPosition.x doesn't need to be updated
+			}
+
+			if (vyPosMedian.getVelocity() > ((1 + percentage) * vyNegMedian.getVelocity())) {
+				// y direction is positive
+				globalAverageVelocityPPT.y = vyPosMedian.getVelocity();
+				globalAverageVelocityPPS.y = globalAverageVelocityPPT.y * VELPPS_SCALING;
+				globalPosition.y += (dt) * globalAverageVelocityPPT.y;
+			}
+			else if (vyNegMedian.getVelocity() > ((1 + percentage) * vyPosMedian.getVelocity())) {
+				// y direction is negative
+				globalAverageVelocityPPT.y = -vyNegMedian.getVelocity();
+				globalAverageVelocityPPS.y = globalAverageVelocityPPT.y * VELPPS_SCALING;
+				globalPosition.y += (dt) * globalAverageVelocityPPT.y;
+			}
+			else {
+				// y velocity is assumed to be 0
+				globalAverageVelocityPPT.y = 0;
+				globalAverageVelocityPPS.y = 0;
+				// globalPosition.x doesn't need to be updated
+			}
+
+		}
+		else if (followGlobalMedianVelocity2) {
+			if (vxPosMedian.getVelocity() > ((1 + percentage) * vxNegMedian.getVelocity())) {
+				// x direction is positive
+				globalAverageVelocityPPT.x = vxPosMedian.getVelocity();
+				globalAverageVelocityPPS.x = globalAverageVelocityPPT.x * VELPPS_SCALING;
+				globalPosition.x += (vxPosMedian.getTimeNew() - vxPosMedian.getTimeOld()) * globalAverageVelocityPPT.x;
+			}
+			else if (vxNegMedian.getVelocity() > ((1 + percentage) * vxPosMedian.getVelocity())) {
+				// x direction is negative
+				globalAverageVelocityPPT.x = -vxNegMedian.getVelocity();
+				globalAverageVelocityPPS.x = globalAverageVelocityPPT.x * VELPPS_SCALING;
+				globalPosition.x += (vyPosMedian.getTimeNew() - vyPosMedian.getTimeOld()) * globalAverageVelocityPPT.x;
+			}
+			else {
+				// x velocity is assumed to be 0
+				globalAverageVelocityPPT.x = 0;
+				globalAverageVelocityPPS.x = 0;
+				// globalPosition.x doesn't need to be updated
+			}
+
+			if (vyPosMedian.getVelocity() > ((1 + percentage) * vyNegMedian.getVelocity())) {
+				// y direction is positive
+				globalAverageVelocityPPT.y = vyPosMedian.getVelocity();
+				globalAverageVelocityPPS.y = globalAverageVelocityPPT.y * VELPPS_SCALING;
+				globalPosition.y += (vxNegMedian.getTimeNew() - vxNegMedian.getTimeOld()) * globalAverageVelocityPPT.y;
+			}
+			else if (vyNegMedian.getVelocity() > ((1 + percentage) * vyPosMedian.getVelocity())) {
+				// y direction is negative
+				globalAverageVelocityPPT.y = -vyNegMedian.getVelocity();
+				globalAverageVelocityPPS.y = globalAverageVelocityPPT.y * VELPPS_SCALING;
+				globalPosition.y += (vyNegMedian.getTimeNew() - vyNegMedian.getTimeOld()) * globalAverageVelocityPPT.y;
+			}
+			else {
+				// y velocity is assumed to be 0
+				globalAverageVelocityPPT.y = 0;
+				globalAverageVelocityPPS.y = 0;
+				// globalPosition.x doesn't need to be updated
+			}
+		}
+		else {
+			// velocity is zero and position remains unchanged
+			globalAverageVelocityPPT.x = 0;
+			globalAverageVelocityPPT.y = 0;
+			globalAverageVelocityPPS.x = 0;
+			globalAverageVelocityPPS.y = 0;
+		}
+	}
+
+	// function to find median
+	private VTelement findMedian(ArrayList<VTelement> list) {
+		int size;
+		int index;
+
+		size = list.size();
+		if (size < minNumberOfEvents) {
+			// too few elements in list
+			return new VTelement(0, 0, 0);
+		}
+		else if ((size % 2) == 0) {
+			// even number of elements in list -> median is the mean of the two middle elements
+			index = size / 2;
+			float v = (list.get(index-1).getVelocity() + list.get(index).getVelocity()) / 2;
+			int timeNew = (list.get(index-1).getTimeNew() + list.get(index ).getTimeNew()) / 2;
+			int timeOld = (list.get(index-1).getTimeOld() + list.get(index).getTimeOld()) / 2;
+			return new VTelement(v, timeNew, timeOld);
+		}
+		else {
+			// uneven number of elements in list -> median is the middle element
+			index = (size - 1) / 2;
+			return vxPos.get(index / 2);
+		}
+	}
+
+	// check if global Median vector should be calculated by using currentTime - lastTime
+	public boolean getFollowGlobalMedianVelocity1() {
+		return followGlobalMedianVelocity1;
+	}
+
+	// set if global Median vector should be calculated by using currentTime - lastTime
+	public void setFollowGlobalMedianVelocity1(boolean v) {
+		if (v == true) {
+			log.info("using currentTime - lastTime");
+			followGlobalMedianVelocity1 = true;
+		}
+		else {
+			log.info("not using currentTime - lastTime");
+			followGlobalMedianVelocity1 = false;
+		}
+	}
+
+	// check if global Median vector should be calculated by using time - told
+	public boolean getFollowGlobalMedianVelocity2() {
+		return followGlobalMedianVelocity2;
+	}
+
+	// set if global Median vector should be calculated by using time - told
+	public void setFollowGlobalMedianVelocity2(boolean v) {
+		if (v == true) {
+			log.info("using time - told");
+			followGlobalMedianVelocity2 = true;
+		}
+		else {
+			log.info("not using time - told");
+			followGlobalMedianVelocity2 = false;
+		}
+	}
+
+	// check if data should be written to a log file
+	public boolean getLogData() {
+		return logData;
+	}
+
+	// set if data should be written to a log file
+	public void setLogData(boolean v) {
+		if (v == true) {
+			logData = true;
+			// create logger
+			txtLog = Logger.getLogger(MicroscopeTracker.class.getName());
+			txtLog.setUseParentHandlers(false);
+
+			try {
+				// This block configures the logger with handler and formatter
+				txtFH = new FileHandler("C:/Users/Niggi Amrein/Documents/Retina Camera/Logged Data/log files/logfile");
+				txtLog.addHandler(txtFH);
+
+			}
+			catch (SecurityException e) {
+				e.printStackTrace();
+			}
+			catch (IOException e) {
+				e.printStackTrace();
+			}
+
+			log.info("logging data enabled");
+		}
+		else {
+			logData = false;
+			txtFH.close();
+			txtLog.removeHandler(txtFH);
+			log.info("logging data disabled");
+		}
+	}
 
 	// check threshold time
-	public int getthresholdTime() {
+	public int getThresholdTime() {
 		return thresholdTime;
 	}
 
 	// set threshold time
-	public void setthresholdTime(int t) {
+	public void setThresholdTime(int t) {
 		thresholdTime = t;
 	}
 
+	// check threshold time
+	public int getMinNumberOfEvents() {
+		return minNumberOfEvents;
+	}
+
+	// set threshold time
+	public void setMinNumberOfEvents(int n) {
+		minNumberOfEvents = n;
+	}
+
 	// check percentage
-	public float getpercentage() {
+	public float getPercentage() {
 		return percentage;
 	}
 
 	// set percentage
-	public void setpercentage(float p) {
+	public void setPercentage(float p) {
 		percentage = p;
 	}
 
 	// check if data should be sent to LabView
-	public boolean getsendDataToLabview() {
+	public boolean getSendDataToLabview() {
 		return sendDataToLabview;
 	}
 
 	// set if vector should be sent to LabView
-	public void setsendDataToLabview(boolean v) {
-		// reset global position
-		globalPosition.x = 0;
-		globalPosition.y = 0;
+	public void setSendDataToLabview(boolean v) {
+		resetValues();
 
 		if (v == true) {
 			// try to open connection to 127.0.0.1, port 23
-			if (Client.createClient("127.0.0.1", 23) == true) {
+			if (client.createClient("127.0.0.1", 23) == true) {
 				log.info("sending data");
 				sendDataToLabview = true;
 			}
@@ -463,7 +575,7 @@ public class MicroscopeTracker extends EventFilter2D implements FrameAnnotater {
 		}
 		else {
 			// try to close connection
-			if (Client.closeClient() == true) {
+			if (client.closeClient() == true) {
 				log.info("client closed");
 			}
 			else {

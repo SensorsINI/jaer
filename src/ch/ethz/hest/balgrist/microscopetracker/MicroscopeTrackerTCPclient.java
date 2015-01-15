@@ -10,9 +10,9 @@ import java.net.UnknownHostException;
  * class that handles the TCP connection
  *
  * @author Niklaus Amrein
+ *
+ * TODO make sure that filter doesn't throw error when no TCP listener is running
  */
-
-// TODO make sure that filter doesn't throw error when no TCP listener is running
 public class MicroscopeTrackerTCPclient {
 
 	private Socket MTClient;
