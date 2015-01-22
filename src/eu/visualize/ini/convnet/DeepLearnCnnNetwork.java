@@ -38,6 +38,11 @@ public class DeepLearnCnnNetwork {
         float[] biases;
         float[] kernels;
 
+        public String toString() {
+            return String.format("index=%d CNN   layer; inputMaps=%d outputMaps=%d kernelSize=%d biases=float[%d] kernels=float[%d]\n",
+                    index, inputMaps, outputMaps, kernelSize, biases == null ? 0 : biases.length, kernels == null ? 0 : kernels.length);
+        }
+
     }
 
     public class InputLayer extends Layer {
@@ -45,18 +50,32 @@ public class DeepLearnCnnNetwork {
         int dimx;
         int dimy;
         int nUnits;
+
+        public String toString() {
+            return String.format("index=%d Input layer; dimx=%d dimy=%d nUnits=%d\n",
+                    index, dimx, dimy, nUnits);
+        }
     }
 
     public class SubsamplingLayer extends Layer {
 
         int averageOver;
         float[] biases;
+
+        public String toString() {
+            return String.format("index=%d Subsamp layer; averageOver=%d biases=float[%d]\n",
+                    index, averageOver, biases == null ? 0 : biases.length);
+        }
     }
 
     public class OutputLayer {
 
         float[] outputBias;
         float[] outputWeights;
+        
+        public String toString(){
+            return String.format("Output: bias=float[%d] outputWeights=float[%d] \n", outputBias.length, outputWeights.length);
+        }
     }
 
     public void loadFromXMLFile(File f) {
@@ -66,7 +85,6 @@ public class DeepLearnCnnNetwork {
             return;
         }
 
-        StringBuilder sb = new StringBuilder("network information: \n");
         netname = networkReader.getRaw("name");
         notes = networkReader.getRaw("notes");
         dob = networkReader.getRaw("dob");
@@ -74,10 +92,8 @@ public class DeepLearnCnnNetwork {
         if (!nettype.equals("cnn")) {
             log.warning("network type is not cnn");
         }
-        sb.append(String.format("name=%s, dob=%s, type=%s\nnotes=%s\n", netname, dob, nettype, notes));
         nLayers = networkReader.getNodeCount("Layer");
-        sb.append(String.format("nLayers=%d\n", nLayers));
-        layers=new Layer[nLayers];
+        layers = new Layer[nLayers];
 
         for (int i = 0; i < nLayers; i++) {
             EasyXMLReader layerReader = networkReader.getNode("Layer", i);
@@ -85,44 +101,49 @@ public class DeepLearnCnnNetwork {
             String type = layerReader.getRaw("type");
             switch (type) {
                 case "i": {
-                    InputLayer l=new InputLayer();
-                    layers[index]=l;
+                    InputLayer l = new InputLayer();
+                    layers[index] = l;
                     l.dimx = layerReader.getInt("dimx");
                     l.dimy = layerReader.getInt("dimy");
                     l.nUnits = layerReader.getInt("nUnits");
-                    sb.append(String.format("index=%d Input layer; dimx=%d dimy=%d nUnits=%d\n",
-                            index, l.dimx, l.dimy, l.nUnits));
                 }
                 break;
                 case "c": {
-                    ConvLayer l=new ConvLayer();
-                    layers[index]=l;
+                    ConvLayer l = new ConvLayer();
+                    layers[index] = l;
                     l.inputMaps = layerReader.getInt("inputMaps");
                     l.outputMaps = layerReader.getInt("outputMaps");
                     l.kernelSize = layerReader.getInt("kernelSize");
                     l.biases = layerReader.getBase64FloatArr("biases");
                     l.kernels = layerReader.getBase64FloatArr("kernels");
-                    sb.append(String.format("index=%d CNN   layer; inputMaps=%d outputMaps=%d kernelSize=%d biases=float[%d] kernels=float[%d]\n",
-                            index, l.inputMaps, l.outputMaps, l.kernelSize, l.biases.length, l.kernels.length));
                 }
                 break;
                 case "s": {
-                    SubsamplingLayer l=new SubsamplingLayer();
-                    layers[index]=l;
+                    SubsamplingLayer l = new SubsamplingLayer();
+                    layers[index] = l;
                     l.averageOver = layerReader.getInt("averageOver");
                     l.biases = layerReader.getBase64FloatArr("biases");
-                    sb.append(String.format("index=%d Subsamp layer; averageOver=%d biases=float[%d]\n",
-                            index, l.averageOver, l.biases.length));
 
                 }
                 break;
             }
         }
-        OutputLayer outputLayer=new OutputLayer();
+        OutputLayer outputLayer = new OutputLayer();
         outputLayer.outputBias = networkReader.getBase64FloatArr("outputBias");
         outputLayer.outputWeights = networkReader.getBase64FloatArr("outputWeights");
-        sb.append(String.format("Output: bias=float[%d] outputWeights=float[%d] \n", outputLayer.outputBias.length, outputLayer.outputWeights.length));
-        log.info(sb.toString());
+        log.info(toString());
+    }
+
+    public String toString() {
+        StringBuilder sb = new StringBuilder("DeepLearnCnnNetwork: \n");
+        sb.append(String.format("name=%s, dob=%s, type=%s\nnotes=%s\n", netname, dob, nettype, notes));
+        sb.append(String.format("nLayers=%d\n", nLayers));
+        for(Layer l:layers){
+            sb.append((l==null?"null layer":l.toString())+"\n");
+        }
+        sb.append(outputLayer==null?"null outputLayer":toString());
+        return sb.toString();
+
     }
 
 }
