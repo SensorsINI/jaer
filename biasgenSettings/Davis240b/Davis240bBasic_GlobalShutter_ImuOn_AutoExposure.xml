@@ -18,7 +18,7 @@
                 <entry key="VideoControl.displayFrames" value="true"/>
                 <entry key="VideoControl.displayEvents" value="true"/>
                 <entry key="VideoControl.useAutoContrast" value="false"/>
-                <entry key="VideoControl.contrast" value="1.4000001"/>
+                <entry key="VideoControl.contrast" value="1.5"/>
                 <entry key="VideoControl.brightness" value="0.0"/>
                 <entry key="VideoControl.gamma" value="1.0"/>
                 <entry key="agcTauMs" value="1000.0"/>
@@ -29,7 +29,7 @@
                 <entry key="apsIntensityOffset" value="0"/>
                 <entry key="invertADCvalues" value="false"/>
                 <entry key="displayLogIntensityChangeEvents" value="true"/>
-                <entry key="DAViS240.bgTabbedPaneSelectedIndex" value="5"/>
+                <entry key="DAViS240.bgTabbedPaneSelectedIndex" value="0"/>
                 <entry key="displayIntensity" value="true"/>
                 <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="..\..\devices\firmware\CypressFX2\firmware_FX2LP_DAViS_FX2V4\SBret10.bix"/>
                 <entry key="DAViS240.AddressedIPotCF.DiffBn.BitValueCoarse" value="3"/>
@@ -162,10 +162,10 @@
                 <entry key="DAViS240.resetTestpixel" value="true"/>
                 <entry key="CPLDInt.exposureB" value="39"/>
                 <entry key="CPLDInt.exposureC" value="1887"/>
-                <entry key="CPLDInt.resSettle" value="11"/>
-                <entry key="CPLDInt.rowSettle" value="11"/>
-                <entry key="CPLDInt.colSettle" value="11"/>
-                <entry key="CPLDInt.frameDelay" value="88"/>
+                <entry key="CPLDInt.resSettle" value="10"/>
+                <entry key="CPLDInt.rowSettle" value="10"/>
+                <entry key="CPLDInt.colSettle" value="10"/>
+                <entry key="CPLDInt.frameDelay" value="0"/>
                 <entry key="DAViS240.testPixel" value="false"/>
                 <entry key="DAViS240.useC" value="false"/>
                 <entry key="DAViS240.resetCalib" value="true"/>
@@ -198,7 +198,7 @@
                 <entry key="DAViS240.extTrigger" value="false"/>
                 <entry key="DAViS240.testPixAPSread" value="false"/>
                 <entry key="agcEnabled" value="false"/>
-                <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAPdwQAAAAPdAA0bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5BcHNEdnNFdmVudEZpbHRlcnQAL25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuWFlUeXBlRmlsdGVydAAvbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5Sb3RhdGVGaWx0ZXJ0ACtldS5zZWViZXR0ZXIuaW5pLmNoaXBzLkRBVmlTLkhvdFBpeGVsRmlsdGVydAA7bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5CYWNrZ3JvdW5kQWN0aXZpdHlGaWx0ZXJ0ADNuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlJlZnJhY3RvcnlGaWx0ZXJ0AD5uZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcudHJhY2tpbmcuUmVjdGFuZ3VsYXJDbHVzdGVyVHJhY2tlcnQAMm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuQ2VsbFN0YXRzUHJvYmVydAA2Y2gudW5pemguaW5pLmphZXIucHJvamVjdHMudmlydHVhbHNsb3RjYXIuU2xvdENhclJhY2VydAA0Y2gudW5pemguaW5pLmphZXIucHJvamVjdHMudmlydHVhbHNsb3RjYXIuQ2FyVHJhY2tlcnQAO2NoLnVuaXpoLmluaS5qYWVyLnByb2plY3RzLnZpcnR1YWxzbG90Y2FyLlRyYWNrRGVmaW5lRmlsdGVydAA+Y2gudW5pemguaW5pLmphZXIucHJvamVjdHMudmlydHVhbHNsb3RjYXIuVHJhY2tIaXN0b2dyYW1GaWx0ZXJ0AC1vcmcuY2Fwb2NhY2NpYS5jbmUuamFlci5jbmUyMDEyLnZvci5TdGVhZGljYW10ACduZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLkluZm90ADJuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcudHJhY2tpbmcuTWVkaWFuVHJhY2tlcng="/>
+                <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAAdwQAAAAAeA=="/>
                 <entry key="RefractoryFilter.filterEnabled" value="false"/>
                 <entry key="DAViS240.AddressedIPotCF.ApsROSFBn.BitValueCoarse" value="1"/>
                 <entry key="DAViS240.AddressedIPotCF.ApsROSFBn.BitValueFine" value="219"/>
@@ -335,7 +335,7 @@
                 <entry key="MultiLineClusterTracker.mixingFactorRho" value="0.0110249985"/>
                 <entry key="MultiLineClusterTracker.minDistanceNormalized" value="0.01812906"/>
                 <entry key="DAViS240.showImageHistogram" value="false"/>
-                <entry key="CPLDInt.exposure" value="421"/>
+                <entry key="CPLDInt.exposure" value="8041"/>
                 <entry key="ApsFrameExtractor.logCompress" value="false"/>
                 <entry key="ApsFrameExtractor.deltaBufferSize" value="1000.0"/>
                 <entry key="ApsFrameExtractor.displayBrightness" value="0.0"/>
@@ -608,6 +608,7 @@
                 <entry key="HotPixelFilter.learnTimeMs" value="107"/>
                 <entry key="MedianTracker.filterEnabled" value="true"/>
                 <entry key="MedianTracker.tauUs" value="16137"/>
+                <entry key="CPLDInt.nullSettle" value="40"/>
               </map>
             </node>
           </node>
