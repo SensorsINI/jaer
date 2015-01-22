@@ -5,6 +5,9 @@
  */
 package eu.visualize.ini.convnet;
 
+import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
@@ -14,6 +17,7 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.FilterChain;
 
 /**
  * Computes CNN from DAVIS APS frames.
@@ -22,13 +26,18 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  */
 @Description("Computes CNN from DAVIS APS frames")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class DavisDeepLearnCnnProcessor extends EventFilter2D {
+public class DavisDeepLearnCnnProcessor extends EventFilter2D implements PropertyChangeListener{
 
     private String lastFileName = getString("lastFileName", "LCRN_cnn.xml");
     private DeepLearnCnnNetwork net = null;
+    private ApsFrameExtractor frameExtractor=new ApsFrameExtractor(chip);
 
     public DavisDeepLearnCnnProcessor(AEChip chip) {
         super(chip);
+        setPropertyTooltip("loadCNNNetworkFromXML", "Load an XML file containing a CNN exported from DeepLearnToolbox by cnntoxml.m");
+        setEnclosedFilterChain(new FilterChain(chip));
+        getEnclosedFilterChain().add(frameExtractor);
+        frameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);
     }
 
     /**
@@ -55,6 +64,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D {
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
+        frameExtractor.filterPacket(in);
         return in;
     }
 
@@ -65,5 +75,20 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D {
     @Override
     public void initFilter() {
     }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        // new frame is available, process it
+        if(net!=null){
+            float[] frame=frameExtractor.getDisplayBuffer(); // TODO currently a clone of vector, index is y * width + x, i.e. it marches along rows and then up
+            if(frame==null){
+                log.warning("frame is null, disabling filter");
+                setFilterEnabled(false);
+            }
+        }
+       
+    }
+    
+    
 
 }

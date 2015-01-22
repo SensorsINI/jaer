@@ -23,6 +23,18 @@ public class DeepLearnCnnNetwork {
     String nettype;
     Layer[] layers;
     OutputLayer outputLayer;
+    
+    /** Computes the output of the network from an input frame
+     * 
+     * @param frame the image, indexed by y * width + x
+     * @param width the width of image in pixels
+     * @return the vector of output values
+     * @see #getActivations
+     */
+    public float[] compute(float[] frame, int width){
+        if(frame==null || frame.length%width!=0)throw new IllegalArgumentException("input frame is null or frame vector dimension not a multiple of width="+width);
+        throw new UnsupportedOperationException();
+    }
 
     public class Layer {
 
