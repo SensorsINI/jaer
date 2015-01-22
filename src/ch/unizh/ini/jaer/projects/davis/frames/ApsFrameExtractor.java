@@ -42,9 +42,9 @@ public class ApsFrameExtractor extends EventFilter2D {
     private ApsDvsChip apsChip = null;
     private boolean newFrame, useExtRender = false; // useExtRender means using something like OpenCV to render the data. If false, the displayBuffer is displayed
     private float[] resetBuffer, signalBuffer;
-    private float[] displayBuffer;
+    private float[] displayBuffer; // TODO what is this?
     private float[] apsDisplayPixmapBuffer;
-    private double[] displayFrame; // format is RGB triplets indexed by 
+    private double[] displayFrame; // format is RGB triplets indexed by ??? what is this? How different than displayBuffer??? 
     public int width, height, maxADC, maxIDX;
     private float grayValue;
     public final float logSafetyOffset = 10000.0f;
