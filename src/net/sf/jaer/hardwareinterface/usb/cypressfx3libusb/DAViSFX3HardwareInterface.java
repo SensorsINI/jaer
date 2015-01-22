@@ -37,9 +37,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	static public final short PID = (short) 0x841A;
 	static public final short DID = (short) 0x0000;
 
-	private boolean translateRowOnlyEvents = CypressFX3.prefs.getBoolean(
-		"ApsDvsHardwareInterface.translateRowOnlyEvents", false);
-
 	/**
 	 * Starts reader buffer pool thread and enables in endpoints for AEs. This
 	 * method is overridden to construct
@@ -55,411 +52,446 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	}
 
 	/**
-	 * If set, then row-only events are transmitted to raw packets from USB
-	 * interface
-	 *
-	 * @param translateRowOnlyEvents
-	 *            true to translate these parasitic events.
-	 */
-	public void setTranslateRowOnlyEvents(final boolean translateRowOnlyEvents) {
-		this.translateRowOnlyEvents = translateRowOnlyEvents;
-		CypressFX3.prefs.putBoolean("ApsDvsHardwareInterface.translateRowOnlyEvents", translateRowOnlyEvents);
-	}
-
-	public boolean isTranslateRowOnlyEvents() {
-		return translateRowOnlyEvents;
-	}
-
-	/**
 	 * This reader understands the format of raw USB data and translates to the
 	 * AEPacketRaw
 	 */
 	public class RetinaAEReader extends CypressFX3.AEReader implements PropertyChangeListener {
-		private int currentTimestamp, lastTimestamp, wrapAdd;
-		private int dvsTimestamp, imuTimestamp, extTriggerTimestamp, apsADCTimestamp;
-		private short lastY;
-		private short misc8Data;
-		private boolean gotY;
-		private boolean gotCMevent;
-		private boolean gotClusterEvent;
-		private boolean gotBGAFevent;
-		private boolean gotOMCevent;
+		private int wrapAdd;
+		private int lastTimestamp;
+		private int currentTimestamp;
 
-		private static final int APS_NUM_READOUT_TYPES = 2;
-		private static final int APS_READOUT_TYPE_RESET = 0;
-		private static final int APS_READOUT_TYPE_SIGNAL = 1;
+		private int dvsTimestamp;
+		private int dvsLastY;
+		private boolean dvsGotY;
+
+		private static final int APS_READOUT_TYPES_NUM = 2;
+		private static final int APS_READOUT_RESET = 0;
+		private static final int APS_READOUT_SIGNAL = 1;
+		private boolean apsGlobalShutter;
+		private boolean apsResetRead;
 		private int apsCurrentReadoutType;
-		private int[] apsCountX;
-		private int[] apsCountY;
+		private short[] apsCountX;
+		private short[] apsCountY;
+		private int apsTimestamp; // Need to preserve this for later events.
 
 		private static final int IMU_DATA_LENGTH = 7;
-		private final short[] currImuSample;
-		private int currImuSamplePosition = 0;
+		private final short[] imuEvents;
+		private int imuCount;
+		private int imuTmpData;
+		private int imuTimestamp; // Need to preserve this for later events.
 
 		public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
 			super(cypress);
 
-			currImuSample = new short[RetinaAEReader.IMU_DATA_LENGTH];
-			apsCountX = new int[APS_NUM_READOUT_TYPES];
-			apsCountY = new int[APS_NUM_READOUT_TYPES];
+			apsCountX = new short[APS_READOUT_TYPES_NUM];
+			apsCountY = new short[APS_READOUT_TYPES_NUM];
 
-			resetFrameAddressCounters();
+			initFrame();
+
+			imuEvents = new short[IMU_DATA_LENGTH];
 		}
 
-		private void resetFrameAddressCounters() {
-			Arrays.fill(apsCountX, 0, APS_NUM_READOUT_TYPES, 0);
-			Arrays.fill(apsCountY, 0, APS_NUM_READOUT_TYPES, 0);
+		private void checkMonotonicTimestamp() {
+			if (currentTimestamp <= lastTimestamp) {
+				CypressFX3.log.severe(toString() + ": non strictly-monotonic timestamp detected: lastTimestamp="
+					+ lastTimestamp + ", currentTimestamp=" + currentTimestamp + ", difference="
+					+ (lastTimestamp - currentTimestamp) + ".");
+			}
+		}
+
+		private void initFrame() {
+			apsCurrentReadoutType = APS_READOUT_RESET;
+			Arrays.fill(apsCountX, 0, APS_READOUT_TYPES_NUM, (short) 0);
+			Arrays.fill(apsCountY, 0, APS_READOUT_TYPES_NUM, (short) 0);
 		}
 
 		@Override
 		protected void translateEvents(final ByteBuffer b) {
-			try {
-				synchronized (aePacketRawPool) {
-					final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
+			synchronized (aePacketRawPool) {
+				final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
 
-					// Truncate off any extra partial event.
-					if ((b.limit() & 0x01) != 0) {
-						CypressFX3.log.severe(b.limit() + " bytes sent via USB, which is not a multiple of two.");
-						b.limit(b.limit() & ~0x01);
+				// Truncate off any extra partial event.
+				if ((b.limit() & 0x01) != 0) {
+					CypressFX3.log.severe(b.limit() + " bytes received via USB, which is not a multiple of two.");
+					b.limit(b.limit() & ~0x01);
+				}
+
+				buffer.lastCaptureIndex = eventCounter;
+
+				final ShortBuffer sBuf = b.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();
+
+				for (int i = 0; i < sBuf.limit(); i++) {
+					final short event = sBuf.get(i);
+
+					// Check if timestamp
+					if ((event & 0x8000) != 0) {
+						// Is a timestamp! Expand to 32 bits. (Tick is 1us already.)
+						lastTimestamp = currentTimestamp;
+						currentTimestamp = wrapAdd + (event & 0x7FFF);
+
+						// Check monotonicity of timestamps.
+						checkMonotonicTimestamp();
 					}
+					else {
+						// Look at the code, to determine event and data
+						// type
+						final byte code = (byte) ((event & 0x7000) >>> 12);
+						final short data = (short) (event & 0x0FFF);
 
-					final int[] addresses = buffer.getAddresses();
-					final int[] timestamps = buffer.getTimestamps();
+						switch (code) {
+							case 0: // Special event
+								switch (data) {
+									case 0: // Ignore this, but log it.
+										CypressFX3.log.severe("Caught special reserved event!");
+										break;
 
-					buffer.lastCaptureIndex = eventCounter;
+									case 1: // Timetamp reset
+										wrapAdd = 0;
+										lastTimestamp = 0;
+										currentTimestamp = 0;
+										dvsTimestamp = 0;
+										apsTimestamp = 0;
+										imuTimestamp = 0;
 
-					final ShortBuffer sBuf = b.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();
+										CypressFX3.log.info("Timestamp reset event received on " + super.toString());
+										break;
 
-					for (int i = 0; i < sBuf.limit(); i++) {
-						if ((eventCounter >= aeBufferSize) || (buffer.overrunOccuredFlag)) {
-							buffer.overrunOccuredFlag = true;
+									case 2: // External input (falling edge)
+									case 3: // External input (rising edge)
+									case 4: // External input (pulse)
+										CypressFX3.log.fine("External input event received.");
 
-							// Throw away the rest on buffer overrun.
-							continue;
-						}
+										// Check that the buffer has space for this event. Enlarge if needed.
+										buffer.ensureCapacity(eventCounter + 1);
 
-						final short event = sBuf.get(i);
+										buffer.getAddresses()[eventCounter] = ApsDvsChip.EXTERNAL_INPUT_EVENT_ADDR;
+										buffer.getTimestamps()[eventCounter++] = currentTimestamp;
+										break;
 
-						// Check if timestamp
-						if ((event & 0x8000) != 0) {
-							// Is a timestamp! Expand to 32 bits. (Tick is 1µs
-							// already.)
-							lastTimestamp = currentTimestamp;
-							currentTimestamp = wrapAdd + (event & 0x7FFF);
+									case 5: // IMU Start (6 axes)
+										CypressFX3.log.fine("IMU6 Start event received.");
 
-							// Check monotonicity of timestamps.
-							if (currentTimestamp <= lastTimestamp) {
-								CypressFX3.log.severe(toString() + ": non-monotonic timestamp: currentTimestamp="
-									+ currentTimestamp + " lastTimestamp=" + lastTimestamp + " difference="
-									+ (lastTimestamp - currentTimestamp));
-							}
-						}
-						else {
-							// Look at the code, to determine event and data
-							// type
-							final byte code = (byte) ((event & 0x7000) >> 12);
-							final short data = (short) (event & 0x0FFF);
+										imuCount = 0;
+										imuTimestamp = currentTimestamp;
 
-							switch (code) {
-								case 0: // Special event
-									switch (data) {
-										case 0: // Ignore this, but log it.
-											CypressFX3.log.severe("Caught special reserved event!");
-											break;
+										break;
 
-										case 1: // Timetamp reset
-											wrapAdd = 0;
-											currentTimestamp = 0;
-											lastTimestamp = 0;
-											dvsTimestamp = 0;
-											apsADCTimestamp = 0;
-											imuTimestamp = 0;
-											extTriggerTimestamp = 0;
+									case 7: // IMU End
+										CypressFX3.log.fine("IMU End event received.");
 
-											CypressFX3.log
-												.info("Timestamp reset event received on " + super.toString());
-											break;
-
-										case 2: // External trigger (falling
-												// edge)
-										case 3: // External trigger (rising
-												// edge)
-										case 4: // External trigger (pulse)
-											extTriggerTimestamp = currentTimestamp;
-
-											addresses[eventCounter] = ApsDvsChip.EXTERNAL_INPUT_EVENT_ADDR;
-											timestamps[eventCounter++] = extTriggerTimestamp;
-											break;
-
-										case 5: // IMU Start (6 axes), reset IMU
-												// sample position for writing
-											currImuSamplePosition = 0;
-											imuTimestamp = currentTimestamp;
-											break;
-
-										case 7: // IMU End, write out IMU sample
-												// to raw packet
-											if (currImuSamplePosition != 14) {
-												// Lost some IMU events in
-												// transit, don't use them.
-												currImuSamplePosition = 0;
-												break;
-											}
-
-											final IMUSample imuSample = new IMUSample(imuTimestamp, currImuSample);
+										if (imuCount == ((2 * IMU_DATA_LENGTH) + 1)) {
+											// Check for buffer space is done inside writeToPacket().
+											final IMUSample imuSample = new IMUSample(imuTimestamp, imuEvents);
 											eventCounter += imuSample.writeToPacket(buffer, eventCounter);
-											break;
-
-										case 8: // APS frame start
-											CypressFX3.log.info("APS: got frame start event.");
-
-											resetFrameAddressCounters();
-											apsADCTimestamp = currentTimestamp;
-
-											break;
-
-										case 9: // APS frame end
-											CypressFX3.log.info("APS: got frame end event.");
-
-											if (apsCountX[APS_READOUT_TYPE_SIGNAL] < chip.getSizeX()) {
-												// Incomplete frame, missed
-												// some columns.
-												CypressFX3.log.severe("APS: incomplete frame.");
-											}
-
-											break;
-
-										case 10: // APS reset column start
-											CypressFX3.log.info("APS: got reset column start event.");
-
-											apsCurrentReadoutType = APS_READOUT_TYPE_RESET;
-
-											CypressFX3.log.info("APS: countY is " + apsCountY[apsCurrentReadoutType]);
-											CypressFX3.log.info("APS: countX is " + apsCountX[apsCurrentReadoutType]);
-
-											if (apsCountY[apsCurrentReadoutType] != 0) {
-												// Missed ENDCOL event for last
-												// column.
-												apsCountY[apsCurrentReadoutType] = 0;
-
-												CypressFX3.log.severe("APS: missed last reset end column event.");
-											}
-
-											break;
-
-										case 11: // APS signal column start
-											CypressFX3.log.info("APS: got signal column start event.");
-
-											apsCurrentReadoutType = APS_READOUT_TYPE_SIGNAL;
-
-											CypressFX3.log.info("APS: countY is " + apsCountY[apsCurrentReadoutType]);
-											CypressFX3.log.info("APS: countX is " + apsCountX[apsCurrentReadoutType]);
-
-											if (apsCountY[apsCurrentReadoutType] != 0) {
-												// Missed ENDCOL event for last
-												// column.
-												apsCountY[apsCurrentReadoutType] = 0;
-
-												CypressFX3.log.severe("APS: missed last signal end column event.");
-											}
-
-											break;
-
-										case 12: // APS end column
-											CypressFX3.log.info("APS: got column end event.");
-											CypressFX3.log.info("APS: countY is " + apsCountY[apsCurrentReadoutType]);
-											CypressFX3.log.info("APS: countX is " + apsCountX[apsCurrentReadoutType]);
-
-											if (apsCountY[apsCurrentReadoutType] < chip.getSizeY()) {
-												// Incomplete column, missed
-												// some row samples.
-												CypressFX3.log.severe("APS: incomplete column.");
-											}
-
-											// Reset row count to zero, and jump
-											// to next column.
-											apsCountY[apsCurrentReadoutType] = 0;
-											apsCountX[apsCurrentReadoutType]++;
-											break;
-
-										case 13: // APS ADC overflow
-											int apsXAddr = chip.getSizeX() - 1 - apsCountX[apsCurrentReadoutType];
-											int apsYAddr = chip.getSizeY() - 1 - apsCountY[apsCurrentReadoutType];
-
-											CypressFX3.log.info("APS: got overflow, countY is " + apsCountY[apsCurrentReadoutType]);
-
-											apsCountY[apsCurrentReadoutType]++;
-
-											addresses[eventCounter] = ApsDvsChip.ADDRESS_TYPE_APS
-												| ((apsYAddr << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
-												| ((apsXAddr << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
-												| ((apsCurrentReadoutType << ApsDvsChip.ADC_READCYCLE_SHIFT) & ApsDvsChip.ADC_READCYCLE_MASK)
-												| (0xFFFF & ApsDvsChip.ADC_DATA_MASK);
-											timestamps[eventCounter++] = apsADCTimestamp;
-
-											CypressFX3.log.severe("APS: ADC overflow detected.");
-
-											break;
-
-										default:
-											CypressFX3.log.severe("Caught special event that can't be handled.");
-											break;
-									}
-									break;
-
-								case 1: // Y address
-									if (gotY) {
-										if (translateRowOnlyEvents) {
-											addresses[eventCounter] = ((lastY << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK);
-											timestamps[eventCounter++] = dvsTimestamp;
-											CypressFX3.log.info("Row only event on " + super.toString());
 										}
-									}
+										else {
+											CypressFX3.log.info("IMU End: failed to validate IMU sample count ("
+												+ imuCount + "), discarding samples.");
+										}
+										break;
 
-									lastY = data;
-									gotY = true;
-									dvsTimestamp = currentTimestamp;
+									case 8: // APS Global Shutter Frame Start
+										CypressFX3.log.fine("APS GS Frame Start event received.");
+										apsGlobalShutter = true;
+										apsResetRead = true;
 
+										initFrame();
+										apsTimestamp = currentTimestamp;
+
+										break;
+
+									case 9: // APS Rolling Shutter Frame Start
+										CypressFX3.log.fine("APS RS Frame Start event received.");
+										apsGlobalShutter = false;
+										apsResetRead = true;
+
+										initFrame();
+										apsTimestamp = currentTimestamp;
+
+										break;
+
+									case 10: // APS Frame End
+										CypressFX3.log.fine("APS Frame End event received.");
+
+										for (int j = 0; j < APS_READOUT_TYPES_NUM; j++) {
+											int checkValue = chip.getSizeX();
+
+											// Check reset read against zero if
+											// disabled.
+											if ((j == APS_READOUT_RESET) && !apsResetRead) {
+												checkValue = 0;
+											}
+
+											if (apsCountX[j] != checkValue) {
+												CypressFX3.log.severe("APS Frame End: wrong column count [" + j + " - "
+													+ apsCountX[j] + "] detected.");
+											}
+										}
+
+										apsTimestamp = currentTimestamp;
+
+										break;
+
+									case 11: // APS Reset Column Start
+										CypressFX3.log.fine("APS Reset Column Start event received.");
+
+										apsCurrentReadoutType = APS_READOUT_RESET;
+										apsCountY[apsCurrentReadoutType] = 0;
+										apsTimestamp = currentTimestamp;
+
+										break;
+
+									case 12: // APS Signal Column Start
+										CypressFX3.log.fine("APS Signal Column Start event received.");
+
+										apsCurrentReadoutType = APS_READOUT_SIGNAL;
+										apsCountY[apsCurrentReadoutType] = 0;
+										apsTimestamp = currentTimestamp;
+
+										break;
+
+									case 13: // APS Column End
+										CypressFX3.log.fine("APS Column End event received.");
+
+										if (apsCountY[apsCurrentReadoutType] != chip.getSizeY()) {
+											CypressFX3.log.severe("APS Column End: wrong row count ["
+												+ apsCurrentReadoutType + " - " + apsCountY[apsCurrentReadoutType]
+												+ "] detected.");
+										}
+
+										apsCountX[apsCurrentReadoutType]++;
+										apsTimestamp = currentTimestamp;
+
+										break;
+
+									case 14: // APS Global Shutter Frame Start with no Reset Read
+										CypressFX3.log.fine("APS GS NORST Frame Start event received.");
+										apsGlobalShutter = true;
+										apsResetRead = false;
+
+										initFrame();
+										apsTimestamp = currentTimestamp;
+
+										break;
+
+									case 15: // APS Rolling Shutter Frame Start with no Reset Read
+										CypressFX3.log.fine("APS RS NORST Frame Start event received.");
+										apsGlobalShutter = false;
+										apsResetRead = false;
+
+										initFrame();
+										apsTimestamp = currentTimestamp;
+
+										break;
+
+									case 16:
+									case 17:
+									case 18:
+									case 19:
+									case 20:
+									case 21:
+									case 22:
+									case 23:
+									case 24:
+									case 25:
+									case 26:
+									case 27:
+									case 28:
+									case 29:
+									case 30:
+									case 31:
+										CypressFX3.log.fine("IMU Scale Config event (" + data + ") received.");
+
+										// At this point the IMU event count should be zero (reset by start).
+										if (imuCount != 0) {
+											CypressFX3.log
+												.info("IMU Scale Config: previous IMU start event missed, attempting recovery.");
+										}
+
+										// Increase IMU count by one, to a total of one (0+1=1).
+										// This way we can recover from the above error of missing start, and we can
+										// later discover if the IMU Scale Config event actually arrived itself.
+										imuCount = 1;
+
+										break;
+
+									default:
+										CypressFX3.log.severe("Caught special event that can't be handled.");
+										break;
+								}
+								break;
+
+							case 1: // Y address
+								// Check range conformity.
+								if (data >= chip.getSizeY()) {
+									CypressFX3.log.severe("DVS: Y address out of range (0-" + (chip.getSizeY() - 1)
+										+ "): " + data + ".");
+									break; // Skip invalid Y address (don't update lastY).
+								}
+
+								if (dvsGotY) {
+									// Check that the buffer has space for this event. Enlarge if needed.
+									buffer.ensureCapacity(eventCounter + 1);
+
+									buffer.getAddresses()[eventCounter] = ((dvsLastY << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK);
+									buffer.getTimestamps()[eventCounter++] = dvsTimestamp;
+									CypressFX3.log.fine("DVS: row-only event received for address Y=" + dvsLastY + ".");
+								}
+
+								dvsLastY = data;
+								dvsGotY = true;
+								dvsTimestamp = currentTimestamp;
+
+								break;
+
+							case 2: // X address, Polarity OFF
+							case 3: // X address, Polarity ON
+								// Check range conformity.
+								if (data >= chip.getSizeX()) {
+									CypressFX3.log.severe("DVS: X address out of range (0-" + (chip.getSizeX() - 1)
+										+ "): " + data + ".");
+									break; // Skip invalid event.
+								}
+
+								// Check that the buffer has space for this event. Enlarge if needed.
+								buffer.ensureCapacity(eventCounter + 1);
+
+								buffer.getAddresses()[eventCounter] = ((dvsLastY << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
+									| ((data << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
+									| (((code & 0x01) << ApsDvsChip.POLSHIFT) & ApsDvsChip.POLMASK);
+								buffer.getTimestamps()[eventCounter++] = dvsTimestamp;
+
+								dvsGotY = false;
+
+								break;
+
+							case 4: // APS ADC sample
+								// Let's check that apsCountY is not above the maximum. This could happen
+								// if start/end of column events are discarded (no wait on transfer stall).
+								if (apsCountY[apsCurrentReadoutType] >= chip.getSizeY()) {
+									CypressFX3.log
+										.fine("APS ADC sample: row count is at maximum, discarding further samples.");
 									break;
+								}
 
-								case 2: // X address, Polarity OFF
-								case 3: // X address, Polarity ON
-									addresses[eventCounter] = ((lastY << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
-										| ((data << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
-										| (((code & 0x01) << ApsDvsChip.POLSHIFT) & ApsDvsChip.POLMASK)
-										| ((((gotBGAFevent ? ApsDvsChip.HW_BGAF : 0) & 0x7) << 8) | misc8Data)
-										| ((((gotCMevent ? ApsDvsChip.HW_TRACKER_CM : 0) & 0x07) << 8) | misc8Data)
-										| ((((gotClusterEvent ? ApsDvsChip.HW_TRACKER_CLUSTER : 0) & 0x07) << 8) | misc8Data)
-										| ((((gotOMCevent ? ApsDvsChip.HW_OMC_EVENT : 0) & 0x07) << 8) | misc8Data);
-									// OMC event: add 3 bits with code of event
-									// type and 8 bits of misc. event
-									// (fill in the 11 unused bits)
-									timestamps[eventCounter++] = dvsTimestamp;
+								int xPos = chip.getSizeX() - 1 - apsCountX[apsCurrentReadoutType];
+								int yPos = chip.getSizeY() - 1 - apsCountY[apsCurrentReadoutType];
 
-									gotY = false;
-									gotBGAFevent = false;
-									gotCMevent = false;
-									gotClusterEvent = false;
-									gotOMCevent = false;
-									misc8Data = 0;
+								apsCountY[apsCurrentReadoutType]++;
 
-									break;
+								// Check that the buffer has space for this event. Enlarge if needed.
+								buffer.ensureCapacity(eventCounter + 1);
 
-								case 4: // APS ADC sample
-									int apsXAddr = chip.getSizeX() - 1 - apsCountX[apsCurrentReadoutType];
-									int apsYAddr = chip.getSizeY() - 1 - apsCountY[apsCurrentReadoutType];
+								buffer.getAddresses()[eventCounter] = ApsDvsChip.ADDRESS_TYPE_APS
+									| ((yPos << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
+									| ((xPos << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
+									| ((apsCurrentReadoutType << ApsDvsChip.ADC_READCYCLE_SHIFT) & ApsDvsChip.ADC_READCYCLE_MASK)
+									| (data & ApsDvsChip.ADC_DATA_MASK);
+								buffer.getTimestamps()[eventCounter++] = apsTimestamp;
 
-									CypressFX3.log.info("APS: got sample, countY is " + apsCountY[apsCurrentReadoutType]);
+								break;
 
-									apsCountY[apsCurrentReadoutType]++;
+							case 5: // Misc 8bit data, used currently only
+								// for IMU events in DAVIS FX3 boards.
+								final byte misc8Code = (byte) ((data & 0x0F00) >>> 8);
+								final byte misc8Data = (byte) (data & 0x00FF);
 
-									addresses[eventCounter] = ApsDvsChip.ADDRESS_TYPE_APS
-										| ((apsYAddr << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
-										| ((apsXAddr << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
-										| ((apsCurrentReadoutType << ApsDvsChip.ADC_READCYCLE_SHIFT) & ApsDvsChip.ADC_READCYCLE_MASK)
-										| (data & ApsDvsChip.ADC_DATA_MASK);
-									timestamps[eventCounter++] = apsADCTimestamp;
+								switch (misc8Code) {
+									case 0:
+										// Detect missing IMU end events.
+										if (imuCount >= ((2 * IMU_DATA_LENGTH) + 1)) {
+											CypressFX3.log
+												.info("IMU data: IMU samples count is at maximum, discarding further samples.");
+											break;
+										}
 
-									break;
+										// IMU data event.
+										switch (imuCount) {
+											case 0:
+												CypressFX3.log
+													.severe("IMU data: missing IMU Scale Config event. Parsing of IMU events will still be attempted, but be aware that Accel/Gyro scale conversions may be inaccurate.");
+												imuCount = 1;
+												// Fall through to next case, as if imuCount was equal to 1.
 
-								case 5: // Misc 8bit data, used currently only
-										// for IMU events in DAViS FX3 boards
-									final byte misc8Code = (byte) ((data & 0x0F00) >> 8);
-									misc8Data = (short) (data & 0x00FF);
-
-									switch (misc8Code) {
-										case 0:
-											// Detect missing IMU end events.
-											if (currImuSamplePosition >= 14) {
+											case 1:
+											case 3:
+											case 5:
+											case 7:
+											case 9:
+											case 11:
+											case 13:
+												imuTmpData = misc8Data;
 												break;
-											}
 
-											// IMU data event.
-											if ((currImuSamplePosition & 0x01) == 0) {
-												// Current position is even, so
-												// we are getting the upper 8
-												// bits of data.
-												currImuSample[currImuSamplePosition >>> 1] = (short) (misc8Data << 8);
-											}
-											else {
-												// Current position is uneven,
-												// so we are getting the lower 8
-												// bits of data.
-												currImuSample[currImuSamplePosition >>> 1] = (short) (currImuSample[currImuSamplePosition >>> 1] | misc8Data);
-											}
+											case 2: // Accel X
+												imuEvents[0] = (short) ((imuTmpData << 8) | misc8Data);
+												break;
 
-											currImuSamplePosition++;
+											case 4: // Accel Y
+												imuEvents[1] = (short) ((imuTmpData << 8) | misc8Data);
+												break;
 
-											break;
+											case 6: // Accel Z
+												imuEvents[2] = (short) ((imuTmpData << 8) | misc8Data);
+												break;
 
-										case 5:
-											gotBGAFevent = true;
-											break;
+											case 8: // Temperature
+												imuEvents[3] = (short) ((imuTmpData << 8) | misc8Data);
+												break;
 
-										case 6:
-											gotCMevent = true;
-											break; // misc8data is from 0 to 3.
-													// But if misc8data is 128,
-													// then this is an ON BGAF
-													// output event.
+											case 10: // Gyro X
+												imuEvents[4] = (short) ((imuTmpData << 8) | misc8Data);
+												break;
 
-										case 7:
-											gotClusterEvent = true;
-											break; // misc8data is from 16 to 19
-													// to identify the tracker.
-													// But if misc8data is 128,
-													// then this is an OFF BGAF
-													// output event.
+											case 12: // Gyro Y
+												imuEvents[5] = (short) ((imuTmpData << 8) | misc8Data);
+												break;
 
-										case 8:
-											gotOMCevent = true;
-											break; // OMC cell's output
+											case 14: // Gyro Z
+												imuEvents[6] = (short) ((imuTmpData << 8) | misc8Data);
+												break;
+										}
 
-										default:
-											CypressFX3.log.severe("Caught Misc8 event that can't be handled.");
-											break;
-									}
+										imuCount++;
 
-									break;
+										break;
 
-								case 7: // Timestamp wrap
-									// Each wrap is 2^15 µs (~32ms), and we have
-									// to multiply it with the wrap counter,
-									// which is located in the data part of this
-									// event.
-									wrapAdd += (0x8000L * data);
+									default:
+										CypressFX3.log.severe("Caught Misc8 event that can't be handled.");
+										break;
+								}
 
-									lastTimestamp = currentTimestamp;
-									currentTimestamp = wrapAdd;
+								break;
 
-									// Check monotonicity of timestamps.
-									if (currentTimestamp <= lastTimestamp) {
-										CypressFX3.log.severe(toString()
-											+ ": non-monotonic timestamp: currentTimestamp=" + currentTimestamp
-											+ " lastTimestamp=" + lastTimestamp + " difference="
-											+ (lastTimestamp - currentTimestamp));
-									}
+							case 7: // Timestamp wrap
+								// Each wrap is 2^15 us (~32ms), and we have
+								// to multiply it with the wrap counter,
+								// which is located in the data part of this
+								// event.
+								wrapAdd += (0x8000L * data);
 
-									CypressFX3.log.info(String.format(
-										"Timestamp wrap event received on %s with multiplier of %d.", super.toString(),
-										data));
-									break;
+								lastTimestamp = currentTimestamp;
+								currentTimestamp = wrapAdd;
 
-								default:
-									CypressFX3.log.severe("Caught event that can't be handled.");
-									break;
-							}
+								// Check monotonicity of timestamps.
+								checkMonotonicTimestamp();
+
+								CypressFX3.log.fine(String.format(
+									"Timestamp wrap event received on %s with multiplier of %d.", super.toString(),
+									data));
+								break;
+
+							default:
+								CypressFX3.log.severe("Caught event that can't be handled.");
+								break;
 						}
-					} // end loop over usb data buffer
+					}
+				} // end loop over usb data buffer
 
-					buffer.setNumEvents(eventCounter);
-					// write capture size
-					buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
-				} // sync on aePacketRawPool
-			}
-			catch (final java.lang.IndexOutOfBoundsException e) {
-				CypressFX3.log.warning(e.toString());
-			}
+				buffer.setNumEvents(eventCounter);
+				// write capture size
+				buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
+			} // sync on aePacketRawPool
 		}
 
 		@Override

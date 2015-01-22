@@ -4,9 +4,11 @@
  */
 package net.sf.jaer.graphics;
 
+import java.awt.AWTEvent;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Toolkit;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -14,6 +16,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
+import java.io.IOException;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,6 +28,7 @@ import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLCapabilities;
+import javax.media.opengl.GLCapabilitiesImmutable;
 import javax.media.opengl.GLEventListener;
 import javax.media.opengl.GLException;
 import javax.media.opengl.awt.GLCanvas;
@@ -33,16 +37,10 @@ import javax.media.opengl.fixedfunc.GLMatrixFunc;
 import javax.media.opengl.glu.GLU;
 import javax.swing.JFrame;
 
-import com.jogamp.opengl.util.awt.TextRenderer;
-import java.awt.AWTEvent;
-import java.awt.Toolkit;
-import java.io.IOException;
-import java.util.List;
-import javax.media.opengl.GLCapabilitiesImmutable;
-import javax.media.opengl.GLDrawableFactory;
-import javax.swing.SwingWorker;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.util.WindowSaver;
+
+import com.jogamp.opengl.util.awt.TextRenderer;
 
 /**
  * OpenGL display of 2d data as color image. See the main method for example of
@@ -257,6 +255,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     public synchronized void display(GLAutoDrawable drawable) {
 
         GL2 gl = getGL().getGL2();
+        checkGLError(gl, "before display in ID");
         if (reshapePending) {
             reshapePending = false;
             reshape(drawable, 0, 0, getWidth(), getHeight());
@@ -269,6 +268,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         } catch (GLException e) {
             log.warning(e.toString());
         }
+        checkGLError(gl, "after setDefaultProjection in ID");
     }
 
     /**
@@ -276,9 +276,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
      */
     @Override
     public void init(GLAutoDrawable drawable) {
-
-        //        log.info("init");
-        GL2 gl = getGL().getGL2();
+    	GL2 gl = drawable.getGL().getGL2();
 
         log.info("OpenGL implementation is: " + gl.getClass().getName() + "\nGL_VENDOR: "
                 + gl.glGetString(GL.GL_VENDOR) + "\nGL_RENDERER: " + gl.glGetString(GL.GL_RENDERER) + "\nGL_VERSION: "
@@ -305,6 +303,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 
         textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, getFontSize()), true, true);
 
+        checkGLError(gl, "ImageDisplay, after init");
     }
 
     /**
@@ -692,7 +691,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
          */
         final int w = getWidth(), h = getHeight(); // w,h of screen
         float glScale;
-        checkGLError(g, "before setDefaultProjection");
+        checkGLError(g, "before setDefaultProjection in ID");
         g.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
         g.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
         // now we set the clipping volume so that the volume is clipped according to whether the window is tall (ar>1) or wide (ar<1).
@@ -1238,7 +1237,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
                             System.exit(0);
                         } else if (k == KeyEvent.VK_N) {
                             makeAndRunNewTestImageDisplay(); // make another window
-                        } else if (k == KeyEvent.VK_W && ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) == InputEvent.CTRL_DOWN_MASK)) {
+                        } else if ((k == KeyEvent.VK_W) && ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) == InputEvent.CTRL_DOWN_MASK)) {
                             interrupt();
                         } else if (k == KeyEvent.VK_UP) {
                             disp.setSizeY(disp.getSizeY() * 2); // UP arrow incrases vertical dimension

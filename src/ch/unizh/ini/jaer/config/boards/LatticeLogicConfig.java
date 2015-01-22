@@ -4,6 +4,7 @@
  */
 package ch.unizh.ini.jaer.config.boards;
 
+import java.nio.ByteBuffer;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,6 +24,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 import ch.unizh.ini.jaer.config.AbstractConfigValue;
 import ch.unizh.ini.jaer.config.cpld.CPLDConfigValue;
 import ch.unizh.ini.jaer.config.cpld.CPLDShiftRegister;
@@ -37,7 +39,6 @@ import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
  * @author Christian
  */
 public class LatticeLogicConfig extends Biasgen implements HasPreference {
-
 	public AEChip chip;
 	public ChipConfigChain chipConfigChain = null;
 	protected ShiftedSourceBiasCF[] ssBiases = new ShiftedSourceBiasCF[2];
@@ -67,11 +68,18 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 	 */
 	protected ArrayList<PortBit> portBits = new ArrayList();
 
+	// Old logic.
 	public static final byte VR_WRITE_CONFIG = (byte) 0xB8;
+
+	// New SeeBetterLogic.
+	public static final byte VR_CHIP_BIAS = (byte) 0xC0;
+	public static final byte VR_CHIP_DIAG = (byte) 0xC1;
+
+	// Clock cycles per microsecond for ADC logic. It's running at 30MHz.
+	private static final int ADC_CLOCK_FREQ_CYCLES = 30;
 
 	/** Command sent to firmware by vendor request */
 	public class Fx2ConfigCmd {
-
 		short code;
 		String name;
 
@@ -103,8 +111,16 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 		if (bytes == null) {
 			bytes = emptyByteArray;
 		}
-		// log.info(String.format("sending command vendor request cmd=%d, index=%d, and %d bytes",
-		// cmd, index, bytes.length));
+		else {
+			// NullSettle is only understood by SeeBetterLogic new logic devices. So we chop it off when talking
+			// to old devices based on the old logic.
+			if ((getHardwareInterface() != null) && !(getHardwareInterface() instanceof CypressFX3)) {
+				if ((cmd == CMD_CPLD_CONFIG) && (bytes.length == 18)) {
+					bytes = Arrays.copyOfRange(bytes, 2, 18);
+				}
+			}
+		}
+
 		if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX2)) {
 			((CypressFX2) getHardwareInterface()).sendVendorRequest(VR_WRITE_CONFIG, (short) (0xffff & cmd.code),
 				(short) (0xffff & index), bytes); // & to prevent sign extension
@@ -118,29 +134,87 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 		}
 
 		// Support FX3 firmware with its own special Vendor Request.
-		if ((getHardwareInterface() != null)
-			&& (getHardwareInterface() instanceof net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3)) {
+		if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
 			// Send biases to chip (addressed ones, AIPOT).
 			if (cmd == CMD_AIPOT) {
-				((net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3) getHardwareInterface())
-					.sendVendorRequest((byte) 0xC0, (short) (bytes[0] & 0xFFFF), (short) 0,
-						Arrays.copyOfRange(bytes, 1, 3));
+				((CypressFX3) getHardwareInterface()).sendVendorRequest(VR_CHIP_BIAS, (short) (bytes[0] & 0xFFFF),
+					(short) 0, Arrays.copyOfRange(bytes, 1, 3));
 			}
 
 			// Send chip shift register (diagnostic).
 			if (cmd == CMD_CHIP_CONFIG) {
-				((net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3) getHardwareInterface())
-					.sendVendorRequest((byte) 0xC1, (short) 0, (short) 0, bytes);
+				((CypressFX3) getHardwareInterface()).sendVendorRequest(VR_CHIP_DIAG, (short) 0, (short) 0, bytes);
 			}
 
 			// Send FPGA shift register for configuration.
 			if (cmd == CMD_CPLD_CONFIG) {
-				// DO NOTHING.
+				// Break down the big shift register, and send the right configuration commands via SPI.
+				ByteBuffer buf = ByteBuffer.wrap(bytes);
+
+				// Exposure (in cycles, from us)
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 7, buf.getShort(16)
+					* ADC_CLOCK_FREQ_CYCLES);
+
+				// ColSettle
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 10, buf.getShort(14));
+
+				// RowSettle
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 11, buf.getShort(12));
+
+				// ResSettle
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 9, buf.getShort(10));
+
+				// Frame Delay (in cycles, from us)
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 8, buf.getShort(8)
+					* ADC_CLOCK_FREQ_CYCLES);
+
+				// IMU Run
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 0, buf.get(7) & 0x01);
+
+				// RS/GS
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 2,
+					((buf.get(7) & 0x02) != 0) ? (0) : (1));
+
+				// IMU DLPF
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 7, buf.get(5) & 0x07);
+
+				// IMU SampleRateDivider
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 6, buf.get(4));
+
+				// IMU Gyro Scale
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 9,
+					(buf.get(3) >> 3) & 0x03);
+
+				// IMU Accel Scale
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 8,
+					(buf.get(2) >> 3) & 0x03);
+
+				// NulLSettle
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 12, buf.getShort(0));
 			}
 
 			// Send single port changes (control signals on/off).
 			if (cmd == CMD_SETBIT) {
-				// DO NOTHING.
+				// runCpld
+				if (index == 8) {
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_MUX, (short) 0, bytes[0]);
+				}
+
+				// runAdc
+				if (index == 257) {
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 0, bytes[0]);
+				}
+
+				// powerDown
+				if (index == 772) {
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_MUX, (short) 3,
+						(bytes[0] != 0) ? (0) : (1));
+				}
+
+				// nChipReset
+				if (index == 776) {
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_DVS, (short) 0, bytes[0]);
+				}
 			}
 
 			// All other request types are unsupported (SCANNER, VDAC, ...).
@@ -326,9 +400,17 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 
 	protected boolean sendAIPot(AddressedIPot pot) throws HardwareInterfaceException {
 		byte[] bytes = pot.getBinaryRepresentation();
+
+		if ((getHardwareInterface() != null)
+			&& (getHardwareInterface() instanceof net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3)
+			&& (pot instanceof AddressedIPotCF)) {
+			bytes = ((AddressedIPotCF) pot).getCleanBinaryRepresentation();
+		}
+
 		if (bytes == null) {
 			return false; // not ready yet, called by super
 		}
+
 		String hex = String.format("%02X%02X%02X", bytes[2], bytes[1], bytes[0]);
 		// log.info("Send AIPot for "+pot.getName()+" with value "+hex);
 		sendFx2ConfigCommand(CMD_AIPOT, 0, bytes); // the usual packing of ipots
@@ -375,20 +457,15 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 	}
 
 	public boolean sendOnChipConfigChain() throws HardwareInterfaceException {
-
 		String onChipConfigBits = chipConfigChain.getBitString();
 		byte[] onChipConfigBytes = bitString2Bytes(onChipConfigBits);
 		if (onChipConfigBits == null) {
 			return false;
 		}
-		else {
-			// BigInteger bi = new BigInteger(onChipConfigBits);
-			// System.out.println("Send on chip config (length "+onChipConfigBits.length+" bytes): "+String.format("%0"+(onChipConfigBits.length<<1)+"X",
-			// bi));
-			log.info("Send on chip config: " + onChipConfigBits);
-			sendFx2ConfigCommand(CMD_CHIP_CONFIG, 0, onChipConfigBytes);
-			return true;
-		}
+
+		log.info("Send on chip config: " + onChipConfigBits);
+		sendFx2ConfigCommand(CMD_CHIP_CONFIG, 0, onChipConfigBytes);
+		return true;
 	}
 
 	/*************************** General *************************/
@@ -445,7 +522,6 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 	 */
 	@Override
 	public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
-
 		if (isBatchEditOccurring()) {
 			log.info("batch edit occurring, not sending configuration yet");
 			return;
@@ -455,11 +531,10 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 		if (!sendOnChipConfig()) {
 			return;
 		}
+
 		sendFx2Config();
 		sendDACconfig();
 		sendCPLDConfig();
-		sendCPLDConfig();
-
 	}
 
 	@Override
@@ -518,5 +593,4 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 			}
 		}
 	}
-
 }

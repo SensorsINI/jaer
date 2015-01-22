@@ -17,7 +17,7 @@ import net.sf.jaer.biasgen.Pot;
 import net.sf.jaer.util.RemoteControlCommand;
 
 /**
- * An IPot with full configurability. 
+ * An IPot with full configurability.
  * The sex (N/P), type (NORMAL/CASCODE), current level (LOW,NORNAL), enabled state (normal,
  * or weakly tied to rail), buffer bias current, and bias current can
  * all be digitally configured. First implemented on TCVS320, improved on DVS320.
@@ -27,75 +27,75 @@ import net.sf.jaer.util.RemoteControlCommand;
 public class AddressedIPotCF extends AddressedIPot {
 
     /** The nominal (designed for) external resistor on the master bias */
-    public static final float RX=100e3f; 
-    
+    public static final float RX=100e3f;
+
     /** Estimation of the master bias with 100kOhm external resistor (designed value); 389nA */
     public double fixMasterBias = 0.000000389;
-    
+
    /** Operating current level, defines whether to use shifted-source current mirrors for small currents. */
     public enum CurrentLevel {Normal, Low}
-    
+
     /** This enum determines whether low-current mode is enabled. In low-current mode, the bias uses
      * shifted n or p source regulated voltages.
      */
     protected CurrentLevel currentLevel=CurrentLevel.Normal;
-    
+
     /** If enabled=true the bias operates normally, if enabled=false,
      * then the bias is disabled by being weakly tied to the appropriate rail (depending on bias sex, N or P). */
     public enum BiasEnabled {Enabled, Disabled}
     protected BiasEnabled biasEnabled=BiasEnabled.Enabled;
-    
+
     /** The nominal ratio of coarse current between each coarse bias step change. */
     public static final float RATIO_COARSE_CURRENT_STEP=8f;
-    
+
     /** Bit mask for flag bias enabled (normal operation) or disabled (tied weakly to rail) */
     protected static int enabledMask=0x0001;
-    
+
     /** Bit mask for flag for bias sex (N or P) */
     protected static int sexMask=0x0002;
-    
+
     /** Bit mask for flag for bias type (normal or cascode) */
     protected static int typeMask=0x0004;
-    
+
     /** Bit mask for flag low current mode enabled */
     protected static int lowCurrentModeMask=0x0008;
-    
+
     /** Bit mask for fine bias current value bits */
-    protected static int bitFineMask=0x0FF0; // 8 bits 
-    
+    protected static int bitFineMask=0x0FF0; // 8 bits
+
     /** Bit mask for coarse bias current value bits */
-    protected static int bitCoarseMask=0x7000; // 3  bits 
-    
+    protected static int bitCoarseMask=0x7000; // 3  bits
+
     /** Number of bits used for fine bias value */
     protected static int numFineBits=Integer.bitCount(bitFineMask);
-    
+
     /** the current fine value of the ipot in bits loaded into the shift register */
     protected int fineBitValue = 0;
-    
+
     /** Max fine bias bit value */
     public static int maxFineBitValue=(1<<numFineBits)-1;
-    
+
     /** Number of bits used for coarse bias value */
     protected static int numCoarseBits=Integer.bitCount(bitCoarseMask);
-    
+
     /** the current coarse value of the ipot in bits loaded into the shift register */
     protected int coarseBitValue = 0;
-    
+
     /** Max bias bit value */
     public static int maxCoarseBitValue=(1<<numCoarseBits)-1;
-    
+
     /** Number of bits used for bias value */
     protected static int numBiasBits=Integer.bitCount(bitFineMask)+Integer.bitCount(bitCoarseMask);
-    
+
     /** Max bias bit value */
     public static int maxBitValue=(1<<numBiasBits)-1;
-    
+
     protected final String SETIC="setic_", SETIF="setif_", SETSEX="setsex_", SETTYPE="settype_", SETLEVEL="setlevel_", SETENABLED="setenabled_";
 
     public AddressedIPotCF(Biasgen biasgen){
         super(biasgen);
      }
-    
+
     /** Creates a new instance of IPot
      *@param biasgen
      *@param name
@@ -144,7 +144,9 @@ public class AddressedIPotCF extends AddressedIPot {
         for(int i=0;i<a.length;i++){
             Enum e=a[i];
             sb.append(e.toString());
-            if(i<a.length-1) sb.append("|");
+            if(i<(a.length-1)) {
+				sb.append("|");
+			}
         }
         sb.append(">");
         return sb.toString();
@@ -187,7 +189,7 @@ public class AddressedIPotCF extends AddressedIPot {
     }
 
 
-    
+
     /** Builds the component used to control the IPot. This component is the user interface.
      * @return a JComponent that can be added to a GUI
      */
@@ -200,7 +202,7 @@ public class AddressedIPotCF extends AddressedIPot {
     public void setBitValue(int value) {
         log.warning("setting the \"bitValue\" of this coarse-fine pot has no effect");
     }
-    
+
     /** Change fine bit value by ratio from preferred value; can be used for a tweak from a nominal value.
      * If fine bit value is too large, changes coarse bit value as well.
      @param ratio between new current and old value, e.g. 1.1f or 0.9f
@@ -220,13 +222,13 @@ public class AddressedIPotCF extends AddressedIPot {
             setFineBitValue(v);
 //        }
     }
-    
-   
+
+
 
     public int getFineBitValue() {
         return fineBitValue;
     }
-    
+
     /** Set the buffer bias bit value
      * @param bufferBitValue the value which has maxBuffeBitValue as maximum and specifies fraction of master bias
      */
@@ -240,7 +242,7 @@ public class AddressedIPotCF extends AddressedIPot {
         }
         //log.info("set fine bits: "+getFineBitValue());
     }
-    
+
     /** returns clipped value of potential new value for buffer bit value, constrained by limits of hardware.
      *
      * @param o candidate new value.
@@ -248,15 +250,19 @@ public class AddressedIPotCF extends AddressedIPot {
      */
     protected int clippedFineBitValue(int o){
         int n=o; // new value
-        if(o<0) n=0;
-        if(o>maxFineBitValue) n=maxFineBitValue;
+        if(o<0) {
+			n=0;
+		}
+        if(o>maxFineBitValue) {
+			n=maxFineBitValue;
+		}
         return n;
     }
-    
+
     public int getCoarseBitValue() {
         return coarseBitValue;
     }
-    
+
     /** Set the course bias bit value.  Note that because of an initial design error, the value of coarse current *decreases* as the bit value increases.
      * The current is nominally the master current for a bit value of 2.
      * @param bufferBitValue the value which has maxBuffeBitValue as maximum and specifies fraction of master bias
@@ -272,7 +278,7 @@ public class AddressedIPotCF extends AddressedIPot {
         }
         //log.info("coarse bits set: "+getCoarseBitValue());
     }
-    
+
     /** returns clipped value of potential new value for buffer bit value, constrained by limits of hardware.
      *
      * @param o candidate new value.
@@ -280,36 +286,40 @@ public class AddressedIPotCF extends AddressedIPot {
      */
     protected int clippedCoarseBitValue(int o){
         int n=o; // new value
-        if(o<0) n=0;
-        if(o>maxCoarseBitValue) n=maxCoarseBitValue;
+        if(o<0) {
+			n=0;
+		}
+        if(o>maxCoarseBitValue) {
+			n=maxCoarseBitValue;
+		}
         return n;
     }
-    
+
     @Override
     public int getMaxBitValue() {
         return maxBitValue;
     }
-    
+
     public int getMaxCoarseBitValue() {
         return maxCoarseBitValue;
     }
-    
+
     public int getMaxFineBitValue() {
         return maxFineBitValue;
     }
-    
+
     public void updateBitValue(){
-        this.bitValue = fineBitValue+(int)(coarseBitValue << (numFineBits)); 
+        this.bitValue = fineBitValue+(coarseBitValue << (numFineBits));
     }
-    
+
     @Override
     public int getBitValue(){
-        this.bitValue = fineBitValue+(int)(coarseBitValue << (numFineBits));
+        this.bitValue = fineBitValue+(coarseBitValue << (numFineBits));
         //String hex = String.format("%02X",bitValue);
         //log.info("AIPot "+this.getName()+" bit value "+hex);
         return bitValue;
     }
-    
+
     /** sets the bit value based on desired current and {@link #masterbias} current.
      * Observers are notified if value changes.
      *@param current in amps
@@ -317,20 +327,20 @@ public class AddressedIPotCF extends AddressedIPot {
      */
     public float setCoarseCurrent(float current){
         double im=fixMasterBias; //TODO real MasterBias
-        setCoarseBitValue(7-(int)Math.round(Math.log(current/im)/Math.log(8)+5));
+        setCoarseBitValue(7-(int)Math.round((Math.log(current/im)/Math.log(8))+5));
         return getCoarseCurrent();
     }
-    
-    /** Returns estimated coarse current based on master bias current and coarse bit setting 
-     * 
-     * @return current in amperes 
+
+    /** Returns estimated coarse current based on master bias current and coarse bit setting
+     *
+     * @return current in amperes
      */
     public float getCoarseCurrent(){
         double im=fixMasterBias; //TODO real MasterBias
         float i=(float)(im*Math.pow(RATIO_COARSE_CURRENT_STEP, 2-getCoarseBitValue()));
         return i;
     }
-    
+
     /**
      * Increments coarse current
      *
@@ -359,7 +369,7 @@ public class AddressedIPotCF extends AddressedIPot {
         return true;
     }
 
-    
+
     /** TODO: real calculations
      */
     public float setFineCurrent(float current){
@@ -368,16 +378,16 @@ public class AddressedIPotCF extends AddressedIPot {
         setFineBitValue(Math.round(r*(maxFineBitValue+1)));
         return getFineCurrent();
     }
-    
+
     public float getFineCurrent(){
         float im=getCoarseCurrent();
-        float i=im*getFineBitValue()/(maxFineBitValue+1);
+        float i=(im*getFineBitValue())/(maxFineBitValue+1);
         return i;
     }
-    
-    
+
+
      /** Returns enabled via enum
-     * 
+     *
      * @return appropriate BiasEnabled enum
      */
     public BiasEnabled getBiasEnabled() {
@@ -385,32 +395,39 @@ public class AddressedIPotCF extends AddressedIPot {
     }
 
     /** Sets bias enabled via enum
-     * 
+     *
      * @param biasEnabled
      */
     public void setBiasEnabled(BiasEnabled biasEnabled) {
         setEnabled(biasEnabled==BiasEnabled.Enabled);
         setModified(true);
     }
-    
+
     /** returns enabled via boolean
-     * 
+     *
      * @return boolean true if enabled
      */
     public boolean isEnabled() {
         return getBiasEnabled()==BiasEnabled.Enabled;
     }
-    
+
     /** sets enabled via boolean
-     * 
+     *
      * @param enabled
      */
     public void setEnabled(boolean enabled) {
-        if(enabled!=isEnabled()) setChanged();
-        if(enabled) biasEnabled=BiasEnabled.Enabled; else biasEnabled=BiasEnabled.Disabled;
+        if(enabled!=isEnabled()) {
+			setChanged();
+		}
+        if(enabled) {
+			biasEnabled=BiasEnabled.Enabled;
+		}
+		else {
+			biasEnabled=BiasEnabled.Disabled;
+		}
         notifyObservers();
     }
-    
+
     public boolean isLowCurrentModeEnabled() {
         return currentLevel==CurrentLevel.Low;
     }
@@ -420,30 +437,64 @@ public class AddressedIPotCF extends AddressedIPot {
      * @param lowCurrentModeEnabled true to set CurrentMode.LowCurrent
      */
     public void setLowCurrentModeEnabled(boolean lowCurrentModeEnabled) {
-        if(lowCurrentModeEnabled!=isLowCurrentModeEnabled()) setChanged();
+        if(lowCurrentModeEnabled!=isLowCurrentModeEnabled()) {
+			setChanged();
+		}
         this.currentLevel = lowCurrentModeEnabled?CurrentLevel.Low:CurrentLevel.Normal;
         notifyObservers();
     }
-    
+
     /** Computes the actual bit pattern to be sent to chip based on configuration values */
     protected int computeBinaryRepresentation(){
         int ret=0;
-        if(isEnabled()) ret|=enabledMask;
-        if(getType()==Pot.Type.NORMAL) ret|=typeMask;
-        if(getSex()==Pot.Sex.N) ret|=sexMask;
-        if(!isLowCurrentModeEnabled()) ret|=lowCurrentModeMask;
+        if(isEnabled()) {
+			ret|=enabledMask;
+		}
+        if(getType()==Pot.Type.NORMAL) {
+			ret|=typeMask;
+		}
+        if(getSex()==Pot.Sex.N) {
+			ret|=sexMask;
+		}
+        if(!isLowCurrentModeEnabled()) {
+			ret|=lowCurrentModeMask;
+		}
         int sh;
         sh=Integer.numberOfTrailingZeros(bitFineMask);
         ret|=fineBitValue<<sh;
         sh=Integer.numberOfTrailingZeros(bitCoarseMask);
         ret|=computeBinaryInverse(coarseBitValue, numCoarseBits)<<sh; // The coarse bits are reversed (this was a mistake) so we need to mirror them here before we sent them.
-        
+
         //System.out.println(toString() + " byte repres " + Integer.toHexString(ret));
-        
+
         return ret;
     }
-    
-    
+
+    /** Computes the bit pattern to be sent to chip based on configuration values,
+     * without changing the coarse value at all and assuming higher number is higher bias. */
+    protected int computeCleanBinaryRepresentation(){
+        int ret=0;
+        if(isEnabled()) {
+			ret|=enabledMask;
+		}
+        if(getType()==Pot.Type.NORMAL) {
+			ret|=typeMask;
+		}
+        if(getSex()==Pot.Sex.N) {
+			ret|=sexMask;
+		}
+        if(!isLowCurrentModeEnabled()) {
+			ret|=lowCurrentModeMask;
+		}
+        int sh;
+        sh=Integer.numberOfTrailingZeros(bitFineMask);
+        ret|=fineBitValue<<sh;
+        sh=Integer.numberOfTrailingZeros(bitCoarseMask);
+        ret|=(7-coarseBitValue)<<sh;
+
+        return ret;
+    }
+
     protected int computeInverseBinaryRepresentation(){
         int length = 16;
         int ret=computeBinaryRepresentation();
@@ -453,7 +504,7 @@ public class AddressedIPotCF extends AddressedIPot {
         }
         return out;
     }
-    
+
     /** The coarse bits are reversed (this was a mistake) so we need to mirror them here before we sent them.
      * @param value the bits in
      * @param lenth the number of bits
@@ -466,24 +517,39 @@ public class AddressedIPotCF extends AddressedIPot {
         }
         return out;
     }
-    
+
     private byte[] bytes=null;
-    
+
     /** Computes the actual bit pattern to be sent to chip based on configuration values */
-    public byte[] getBinaryRepresentation() {
+    @Override
+	public byte[] getBinaryRepresentation() {
         int n=3;
-        if(bytes==null) bytes=new byte[n];
-        int val=computeBinaryRepresentation();
+        if(bytes==null) {
+			bytes=new byte[n];
+		}
+        int val = computeBinaryRepresentation();
         int k=1;
         for(int i=bytes.length-2;i>=0;i--){
             bytes[k++]=(byte)(0xff&(val>>>(i*8)));
         }
         bytes[0]=(byte)(0xff&address);
         return bytes;
-   }
-    
-    
-    
+    }
+
+    public byte[] getCleanBinaryRepresentation() {
+        int n=3;
+        if(bytes==null) {
+			bytes=new byte[n];
+		}
+        int val = computeCleanBinaryRepresentation();
+        int k=1;
+        for(int i=bytes.length-2;i>=0;i--){
+            bytes[k++]=(byte)(0xff&(val>>>(i*8)));
+        }
+        bytes[0]=(byte)(0xff&address);
+        return bytes;
+	}
+
     /** Returns the String key by which this pot is known in the Preferences. For IPot's, this
      * name is the Chip simple class name followed by IPot.<potName>, e.g. "Tmpdiff128.IPot.Pr".
      * @return preferences key
@@ -492,7 +558,7 @@ public class AddressedIPotCF extends AddressedIPot {
     protected String prefsKey() {
         return biasgen.getChip().getClass().getSimpleName() + ".AddressedIPotCF." + name;
     }
-    
+
     static String KEY_BITVALUE_COARSE="BitValueCoarse",
             KEY_BITVALUE_FINE="BitValueFine",
             KEY_SEX="Sex",
@@ -500,7 +566,7 @@ public class AddressedIPotCF extends AddressedIPot {
             KEY_LOWCURRENT_ENABLED="LowCurrent",
             KEY_ENABLED="Enabled";
     static String SEP=".";
-    
+
     /** stores as a preference the bit value */
     @Override
     public void storePreferences(){
@@ -513,7 +579,7 @@ public class AddressedIPotCF extends AddressedIPot {
         prefs.put(s+KEY_TYPE,getType().toString());
         setModified(false);
     }
-    
+
     /** loads and makes active the preference value. The name should be set before this is called. */
     @Override
     public void loadPreferences(){
@@ -536,7 +602,9 @@ public class AddressedIPotCF extends AddressedIPot {
         try {
             String base = prefsKey() + SEP;
             String key = e.getKey();
-            if(!key.startsWith(base)) return;
+            if(!key.startsWith(base)) {
+				return;
+			}
             String val = e.getNewValue();
 //            log.info("key="+key+" value="+val);
             if (key.equals(base + KEY_BITVALUE_FINE)) {
@@ -570,7 +638,7 @@ public class AddressedIPotCF extends AddressedIPot {
         int v=prefs.getInt(key,0);
         return v;
     }
-    
+
     /** returns the preference value of the bias current.
      */
     public int getPreferedFineBitValue(){
@@ -578,60 +646,89 @@ public class AddressedIPotCF extends AddressedIPot {
         int v=prefs.getInt(key,0);
         return v;
     }
-    
-    public String toString(){
+
+    @Override
+	public String toString(){
         return super.toString()+" Sex="+getSex()+" Type="+getType()+" enabled="+isEnabled()+" lowCurrentModeEnabled="+isLowCurrentModeEnabled()+" coarseBitValue="+coarseBitValue+" fineBitValue="+fineBitValue;
     }
-    
+
     public CurrentLevel getCurrentLevel() {
         return currentLevel;
     }
-    
+
     /** Sets whether this is a normal type or low current bias which uses shifted source */
     public void setCurrentLevel(CurrentLevel currentLevel) {
-        if(currentLevel==null) return;
-        if(currentLevel!=this.currentLevel) setChanged();
+        if(currentLevel==null) {
+			return;
+		}
+        if(currentLevel!=this.currentLevel) {
+			setChanged();
+		}
         this.currentLevel = currentLevel;
         notifyObservers();
     }
-    
+
     /** Overrides super of type (NORNAL or CASCODE) to call observers */
-    @Override 
+    @Override
     public void setType(Type type) {
-        if(type==null) return;
-        if(type!=this.type) setChanged();
+        if(type==null) {
+			return;
+		}
+        if(type!=this.type) {
+			setChanged();
+		}
         this.type = type;
         notifyObservers();
     }
-    
+
     /** Overrides super of setSex (N or P) to call observers */
     @Override
     public void setSex(Sex sex) {
-        if(sex==null) return;
-        if(sex!=this.sex) setChanged();
+        if(sex==null) {
+			return;
+		}
+        if(sex!=this.sex) {
+			setChanged();
+		}
         this.sex = sex;
         notifyObservers();
     }
 
     /** Returns true if all parameters are identical, otherwise false.
-     * 
+     *
      * @param obj another ConfigurableIPotRev0
      * @return true if all parameters are identical, otherwise false.
      */
     @Override
     public boolean equals(Object obj) {
-        if(!(obj instanceof AddressedIPotCF)) return false;
+        if(!(obj instanceof AddressedIPotCF)) {
+			return false;
+		}
         AddressedIPotCF other=(AddressedIPotCF)obj;
-        if(!getName().equals(other.getName())) return false;
-        if(getCoarseBitValue()!=other.getCoarseBitValue()) return false;
-        if(getFineBitValue()!=other.getFineBitValue()) return false;
-        if(getSex()!=other.getSex()) return false;
-        if(getType()!=other.getType()) return false;
-        if(getCurrentLevel()!=other.getCurrentLevel()) return false;
-        if(isEnabled()!=other.isEnabled()) return false;
+        if(!getName().equals(other.getName())) {
+			return false;
+		}
+        if(getCoarseBitValue()!=other.getCoarseBitValue()) {
+			return false;
+		}
+        if(getFineBitValue()!=other.getFineBitValue()) {
+			return false;
+		}
+        if(getSex()!=other.getSex()) {
+			return false;
+		}
+        if(getType()!=other.getType()) {
+			return false;
+		}
+        if(getCurrentLevel()!=other.getCurrentLevel()) {
+			return false;
+		}
+        if(isEnabled()!=other.isEnabled()) {
+			return false;
+		}
         return true;
     }
 
 
-    
+
 }

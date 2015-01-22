@@ -26,6 +26,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Observable;
 import java.util.Observer;
@@ -36,7 +37,9 @@ import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GL2ES2;
 import javax.media.opengl.GLAutoDrawable;
+import javax.media.opengl.GLCapabilitiesImmutable;
 import javax.media.opengl.GLContext;
+import javax.media.opengl.GLDrawableFactory;
 import javax.media.opengl.GLEventListener;
 import javax.media.opengl.GLException;
 import javax.media.opengl.awt.GLCanvas;
@@ -49,20 +52,17 @@ import javax.swing.JComponent;
 import javax.swing.JMenu;
 import javax.swing.JRadioButtonMenuItem;
 
+import net.sf.jaer.JAERViewer;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
 
+import org.apache.commons.lang3.SystemUtils;
+
 import com.jogamp.common.nio.Buffers;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
-import java.util.List;
-import javax.media.opengl.GLCapabilitiesImmutable;
-import javax.media.opengl.GLDrawableFactory;
-import javax.media.opengl.GLCapabilities;
-import javax.media.opengl.GLProfile;
-import net.sf.jaer.JAERViewer;
 
 /**
  * Superclass for classes that paint rendered AE data to graphics devices.
@@ -71,9 +71,9 @@ import net.sf.jaer.JAERViewer;
  * understand Swing layering. Thus care must be taken to ensure Swing components show over it. This component also uses
  * a page-flipping BufferStrategy to eliminate tearing by flipping pages on monitor refresh.
  * <p>
- * The graphics context is obtained here in the component and its origin is the LL corner.
- * The context is translated to center the rendering in the Canvas. This canvas can use OpenGL to render,
- * and it can either actively or passively render.
+ * The graphics context is obtained here in the component and its origin is the LL corner. The context is translated to
+ * center the rendering in the Canvas. This canvas can use OpenGL to render, and it can either actively or passively
+ * render.
  * <p>
  * If 3-d event rendering is enabled, the raw events are painted out in space-time, with time axis defined by duration
  * from first to last event in the packet.
@@ -190,27 +190,34 @@ public class ChipCanvas implements GLEventListener, Observer {
 
 		glu = new GLU();
 
-            // make the canvas
-            try {
-                List<GLCapabilitiesImmutable> capsAvailable=GLDrawableFactory.getDesktopFactory().getAvailableCapabilities(null);
-                GLCapabilitiesImmutable chosenGLCaps=null;
-                int listnum=0;
-                if(capsAvailable!=null){
-                    for (GLCapabilitiesImmutable cap : capsAvailable) {
-                        log.info("GLCapabilitiesImmutable #" + listnum + " is " + cap.toString());
-                        if (chosenGLCaps == null) {
-                            chosenGLCaps = cap;
-                        }
-                        if (listnum++ >= 0) {
-                            break;
-                        }
-                    }
-                }
-                
-                drawable = new GLCanvas(chosenGLCaps); // was new GLCanvas(caps); // but this causes an exception in GLDrawableFactory
-                if (drawable == null) {
-                    // Failed to init OpenGL, exit system!
-                    System.exit(1);
+		// make the canvas
+		try {
+			if (SystemUtils.IS_OS_WINDOWS) {
+				List<GLCapabilitiesImmutable> capsAvailable = GLDrawableFactory.getDesktopFactory()
+					.getAvailableCapabilities(null);
+				GLCapabilitiesImmutable chosenGLCaps = null;
+				int listnum = 0;
+				if (capsAvailable != null) {
+					for (GLCapabilitiesImmutable cap : capsAvailable) {
+						log.info("GLCapabilitiesImmutable #" + listnum + " is " + cap.toString());
+						if (chosenGLCaps == null) {
+							chosenGLCaps = cap;
+						}
+						if (listnum++ >= 0) {
+							break;
+						}
+					}
+				}
+
+				drawable = new GLCanvas(chosenGLCaps);
+			}
+			else {
+				drawable = new GLCanvas();
+			}
+
+			if (drawable == null) {
+				// Failed to init OpenGL, exit system!
+				System.exit(1);
 			}
 
 			/*
@@ -230,7 +237,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 			System.exit(1);
 		}
 		drawable.setLocale(Locale.US); // to avoid problems with other language support in JOGL
-                drawable.setVisible(true);
+		drawable.setVisible(true);
 		// will always getString invalid operation here
 		// checkGLError(drawable.getGL(),glu,"before add event listener");
 		// add us as listeners for the canvas. then when the display wants to redraw display() will be called. or we can
@@ -253,17 +260,21 @@ public class ChipCanvas implements GLEventListener, Observer {
 		if (displayMethods.isEmpty() && (chip.getCanvas() != null) && (chip.getCanvas().getDisplayMethod() != null)) {
 			displayMethods.add(chip.getCanvas().getDisplayMethod());
 		}
-                
-                drawable.setSharedAutoDrawable(JAERViewer.sharedDrawable); // TODO tobi added to try to use shared context between all viewers and file open dialog previews. 
-                // TODO we now get under windows this exception:
-                // javax.media.opengl.GLException: AWT-EventQueue-0: WindowsWGLContex.createContextImpl ctx !ARB but ARB is used, profile > GL2 requested (OpenGL >= 3.0.1). Requested: GLProfile[GL4bc/GL4bc.hw], current: 1.1 (Compat profile, hardware) - 1.1.0
-                
-                if(drawable!=null){
-                    log.info("GLCanvas="+drawable.toString());
-                    if(drawable.getContext()!=null){
-                         log.info("GLCanvas has GLContext="+drawable.getContext().toString());
-                    }
-                }
+
+		drawable.setSharedAutoDrawable(JAERViewer.sharedDrawable); // TODO tobi added to try to use shared context
+																	// between all viewers and file open dialog
+																	// previews.
+		// TODO we now get under windows this exception:
+		// javax.media.opengl.GLException: AWT-EventQueue-0: WindowsWGLContex.createContextImpl ctx !ARB but ARB is
+		// used, profile > GL2 requested (OpenGL >= 3.0.1). Requested: GLProfile[GL4bc/GL4bc.hw], current: 1.1 (Compat
+		// profile, hardware) - 1.1.0
+
+		if (drawable != null) {
+			log.info("GLCanvas=" + drawable.toString());
+			if (drawable.getContext() != null) {
+				log.info("GLCanvas has GLContext=" + drawable.getContext().toString());
+			}
+		}
 	}
 
 	/** call this method so that next open gl rendering by display(GLAutoDrawable) writes imageOpenGL */
@@ -431,7 +442,8 @@ public class ChipCanvas implements GLEventListener, Observer {
 	@Override
 	public synchronized void display(final GLAutoDrawable drawable) {
 		final GL2 gl = drawable.getGL().getGL2();
-//                GLContext glContext=gl.getContext();
+		checkGLError(gl, glu, "start of display");
+
 		gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
 		gl.glLoadIdentity();
 		// log.info("display");
@@ -464,7 +476,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 			&& (((AEChip) chip).getFilterChain().getProcessingMode() == FilterChain.ProcessingMode.ACQUISITION)) {
 			if (renderer == null) {
 				renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
-                                renderer.setUseVertexArrays(false);
+				renderer.setUseVertexArrays(false);
 			}
 			renderer.begin3DRendering();
 			renderer.setColor(0, 0, 1, 0.8f);
@@ -790,9 +802,12 @@ public class ChipCanvas implements GLEventListener, Observer {
 		drawable.repaint();
 	}
 
-	/** calls repaint on the drawable
-     * @param tm time to repaint within, in ms
-     */
+	/**
+	 * calls repaint on the drawable
+	 *
+	 * @param tm
+	 *            time to repaint within, in ms
+	 */
 	public synchronized void repaint(final long tm) {
 		drawable.repaint(tm);
 	}
@@ -805,6 +820,8 @@ public class ChipCanvas implements GLEventListener, Observer {
 	public synchronized void reshape(final GLAutoDrawable drawable, final int x, final int y, final int width,
 		final int height) {
 		final GL2 gl = drawable.getGL().getGL2();
+		checkGLError(gl, glu, "at start of reshape");
+
 		gl.glLoadIdentity();
 		final int chipSizeX = chip.getSizeX();
 		final int chipSizeY = chip.getSizeY();
@@ -832,6 +849,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 				fillsHorizontally = false;
 			}
 		}
+		checkGLError(gl, glu, "before setDefaultProjection in reshape");
 		setDefaultProjection(gl, drawable); // this sets orthographic projection so that chip pixels are scaled to the
 											// drawable area
 		gl.glViewport(0, 0, width, height);
@@ -951,6 +969,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 		 * GLdouble near,
 		 * GLdouble far)
 		 */
+		checkGLError(g, glu, "at start of setDefaultProjection");
 		final int w = drawable.getWidth(), h = drawable.getHeight(); // w,h of screen
 		final int sx = chip.getSizeX(), sy = chip.getSizeY(); // chip size
 		final float border = getBorderSpacePixels(); // desired smallest border in screen pixels
@@ -1487,22 +1506,22 @@ public class ChipCanvas implements GLEventListener, Observer {
 
 	}
 
-//    /**
-//     * Returns the insets in pixels for the chip canvas inside the GLCanvas
-//     * @return the insets
-//     */
-//    public Insets getInsets() {
-//        return insets;
-//    }
-//
-//    /**
-//     * Allows setting the insets for the canvas inside the GLCanvas
-//     * 
-//     * 
-//     * @param insets the insets to set, in pixels
-//     */
-//    public void setInsets(Insets insets) {
-//        this.insets = insets;
-//    }
-        
+	// /**
+	// * Returns the insets in pixels for the chip canvas inside the GLCanvas
+	// * @return the insets
+	// */
+	// public Insets getInsets() {
+	// return insets;
+	// }
+	//
+	// /**
+	// * Allows setting the insets for the canvas inside the GLCanvas
+	// *
+	// *
+	// * @param insets the insets to set, in pixels
+	// */
+	// public void setInsets(Insets insets) {
+	// this.insets = insets;
+	// }
+
 }
