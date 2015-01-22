@@ -6,6 +6,8 @@
 package eu.visualize.ini.convnet;
 
 import java.io.File;
+import java.text.DateFormat;
+import java.util.Date;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -40,10 +42,18 @@ public class DavisCnnProcessor extends EventFilter2D {
             log.warning("No file for reader; file=" + networkReader.getFile());
             return;
         }
-        putString("filename", networkReader.getFile().toString());
+        filename=networkReader.getFile().toString();
+        putString("filename", filename);
 
-        StringBuilder sb = new StringBuilder("CNN network structure: \n");
-
+        StringBuilder sb = new StringBuilder("network information: \n");
+        String netname=networkReader.getRaw("name");
+        String notes=networkReader.getRaw("notes");
+        String dob=networkReader.getRaw("dob");
+        String nettype=networkReader.getRaw("type");
+        if(!nettype.equals("cnn")){
+            log.warning("network type is not cnn");
+        }
+        sb.append(String.format("name=%s, dob=%s, type=%s\nnotes=%s\n",netname,dob,nettype,notes));
         int numLayers = networkReader.getNodeCount("Layer");
         sb.append(String.format("numLayers=%d\n", numLayers));
 
