@@ -287,14 +287,15 @@ public class ApsFrameExtractor extends EventFilter2D {
      * Checks if new frame is available.
      *
      * @return true if new frame is available
+     * @see #getNewFrame() 
      */
     public boolean hasNewFrame() {
         return newFrame;
     }
 
     /**
-     * Returns a double[] buffer of latest frame. To access a particular pixel,
-     * use getIndex()
+     * Returns a double[] buffer of latest frame. The array is indexed by y * width + x. To access a particular pixel,
+     * use getIndex(). 
      *
      * @return the double[] frame
      */
@@ -304,7 +305,7 @@ public class ApsFrameExtractor extends EventFilter2D {
     }
 
     /**
-     * Returns a clone of the latest float buffer. To access a particular pixel,
+     * Returns a clone of the latest float buffer. The array is indexed by y * width + x. To access a particular pixel,
      * use getIndex()
      *
      * @return the float[] of pixel values
