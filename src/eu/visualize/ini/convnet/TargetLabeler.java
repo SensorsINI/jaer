@@ -52,7 +52,7 @@ import eu.seebetter.ini.chips.ApsDvsChip;
  *
  * @author tobi
  */
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 @Description("Labels location of target using mouse GUI in recorded data for later supervised learning.")
 public class TargetLabeler extends EventFilter2DMouseAdaptor implements PropertyChangeListener, KeyListener {
 
