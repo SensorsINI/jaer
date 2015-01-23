@@ -9,6 +9,7 @@ import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
+import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -18,6 +19,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
  * Computes CNN from DAVIS APS frames.
@@ -26,13 +28,13 @@ import net.sf.jaer.eventprocessing.FilterChain;
  */
 @Description("Computes CNN from DAVIS APS frames")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class DavisDeepLearnCnnProcessor extends EventFilter2D implements PropertyChangeListener{
+public class DavisDeepLearnCnnProcessor extends EventFilter2D implements PropertyChangeListener, FrameAnnotater{
 
     private String lastFileName = getString("lastFileName", "LCRN_cnn.xml");
     private DeepLearnCnnNetwork net = null;
     private ApsFrameExtractor frameExtractor=new ApsFrameExtractor(chip);
     private boolean showOutputLayerHistogram=getBoolean("showOutputLayerHistogram", true);
-    
+    private boolean showActivations=getBoolean("showActivations",false);
 
     public DavisDeepLearnCnnProcessor(AEChip chip) {
         super(chip);
@@ -103,6 +105,11 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     public void setShowOutputLayerHistogram(boolean showOutputLayerHistogram) {
         this.showOutputLayerHistogram = showOutputLayerHistogram;
         putBoolean("showOutputLayerHistogram", showOutputLayerHistogram);
+    }
+
+    @Override
+    public void annotate(GLAutoDrawable drawable) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
     
     
