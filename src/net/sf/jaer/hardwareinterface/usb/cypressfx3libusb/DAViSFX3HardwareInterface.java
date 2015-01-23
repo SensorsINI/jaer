@@ -77,7 +77,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private static final int IMU_DATA_LENGTH = 7;
 		private final short[] imuEvents;
 		private int imuCount;
-		private int imuTmpData;
+		private byte imuTmpData;
 		private int imuTimestamp; // Need to preserve this for later events.
 
 		public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
@@ -424,31 +424,31 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 												break;
 
 											case 2: // Accel X
-												imuEvents[0] = (short) ((imuTmpData << 8) | misc8Data);
+												imuEvents[0] = (short) (((imuTmpData & 0x00FF) << 8) | (misc8Data & 0x00FF));
 												break;
 
 											case 4: // Accel Y
-												imuEvents[1] = (short) ((imuTmpData << 8) | misc8Data);
+												imuEvents[1] = (short) (((imuTmpData & 0x00FF) << 8) | (misc8Data & 0x00FF));
 												break;
 
 											case 6: // Accel Z
-												imuEvents[2] = (short) ((imuTmpData << 8) | misc8Data);
+												imuEvents[2] = (short) (((imuTmpData & 0x00FF) << 8) | (misc8Data & 0x00FF));
 												break;
 
 											case 8: // Temperature
-												imuEvents[3] = (short) ((imuTmpData << 8) | misc8Data);
+												imuEvents[3] = (short) (((imuTmpData & 0x00FF) << 8) | (misc8Data & 0x00FF));
 												break;
 
 											case 10: // Gyro X
-												imuEvents[4] = (short) ((imuTmpData << 8) | misc8Data);
+												imuEvents[4] = (short) (((imuTmpData & 0x00FF) << 8) | (misc8Data & 0x00FF));
 												break;
 
 											case 12: // Gyro Y
-												imuEvents[5] = (short) ((imuTmpData << 8) | misc8Data);
+												imuEvents[5] = (short) (((imuTmpData & 0x00FF) << 8) | (misc8Data & 0x00FF));
 												break;
 
 											case 14: // Gyro Z
-												imuEvents[6] = (short) ((imuTmpData << 8) | misc8Data);
+												imuEvents[6] = (short) (((imuTmpData & 0x00FF) << 8) | (misc8Data & 0x00FF));
 												break;
 										}
 

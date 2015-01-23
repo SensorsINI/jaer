@@ -314,6 +314,7 @@ public class IMUSample extends ApsDvsEvent {
 
 	private void setFromShortArrayBuf(final int ts, final short[] buf) {
 		timestampUs = ts;
+		timestamp = ts;
 		System.arraycopy(buf, 0, data, 0, 7);
 	}
 
