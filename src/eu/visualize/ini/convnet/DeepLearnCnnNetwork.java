@@ -144,6 +144,9 @@ public class DeepLearnCnnNetwork {
             if (frame == null || width==0 || frame.length % width != 0) {
                 throw new IllegalArgumentException("input frame is null or frame vector dimension not a multiple of width=" + width);
             }
+            if(a==null) a=new float[nUnits];
+            int height=frame.length/width;
+            // subsample input frame to dimx dimy 
             throw new UnsupportedOperationException();
         // subsample frame to input size
 
