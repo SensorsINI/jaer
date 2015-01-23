@@ -149,6 +149,13 @@ public class DeepLearnCnnNetwork {
 
         }
 
+        @Override
+        public void compute(Layer input) {
+            throw new UnsupportedOperationException("Input layer only computes on input frame, not previous layer output");
+        }
+        
+        
+
         public String toString() {
             return String.format("index=%d Input layer; dimx=%d dimy=%d nUnits=%d",
                     index, dimx, dimy, nUnits);
