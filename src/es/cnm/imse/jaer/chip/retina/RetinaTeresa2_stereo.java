@@ -19,15 +19,15 @@ import net.sf.jaer.event.TypedEvent;
 /**
  * Teresa Serrano's 128x128 DVS sensor, as tested by Juan Antonio Lenoro Bardallo.
  *
- * @author Bernabe Linares-Barranco (committed initially by Tobi)
+ * @author tobi (adapted, probably from rafa paz)
  */
-public class RetinaTeresa2 extends AEChip implements Serializable {
+public class RetinaTeresa2_stereo extends AEChip implements Serializable {
 
 	/** Creates a new instance of Tmpdiff128 */
-	public RetinaTeresa2() {
+	public RetinaTeresa2_stereo() {
 		setName("RetinaTeresa2");
 		setSizeX(128);
-		setSizeY(128);
+		setSizeY(256);
 		setNumCellTypes(2);
 		setEventClass(TypedEvent.class);
 		setEventExtractor(new Extractor(this));
@@ -41,7 +41,7 @@ public class RetinaTeresa2 extends AEChip implements Serializable {
 			setXmask((short) 0x00fe);
 			setXshift((byte) 1);
 			/* setYmask((short)0x3f00); */
-			setYmask((short) 0x7f00);
+			setYmask((short) 0xff00);
 			setYshift((byte) 8);
 			setTypemask((short) 1);
 			/* setTypeshift((byte)7); */
