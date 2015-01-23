@@ -914,7 +914,13 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 			CypressFX3.log.info("Starting AEReader");
 			usbTransfer = new USBTransferThread(monitor.deviceHandle, CypressFX3.AE_MONITOR_ENDPOINT_ADDRESS,
-				LibUsb.TRANSFER_TYPE_BULK, new ProcessAEData(), getNumBuffers(), getFifoSize());
+				LibUsb.TRANSFER_TYPE_BULK, new ProcessAEData(), getNumBuffers(), getFifoSize(), null, null,
+				new Runnable() {
+					@Override
+					public void run() {
+						monitor.close();
+					}
+				});
 			usbTransfer.setPriority(AEReader.MONITOR_PRIORITY);
 			usbTransfer.setName("AEReaderThread");
 			usbTransfer.start();
@@ -990,11 +996,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 					else {
 						CypressFX3.log.warning("ProcessAEData: Bytes transferred: " + transfer.actualLength()
 							+ "  Status: " + LibUsb.errorName(transfer.status()));
-
-						if (transfer.status() != LibUsb.TRANSFER_CANCELLED) {
-							monitor.close(); // watch out, this can call
-												// synchronized method
-						}
 					}
 				}
 			}

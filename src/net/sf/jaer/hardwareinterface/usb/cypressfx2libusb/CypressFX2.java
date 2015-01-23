@@ -57,19 +57,16 @@ import org.usb4java.LibUsb;
  * normally be constructed but rather a subclass that overrides
  * the AEReader should be used.
  * <p>
- * In this class, you can also set the size of the host buffer with
- * {@link #setAEBufferSize}, giving you more time between calls to process the
- * events.
+ * In this class, you can also set the size of the host buffer with {@link #setAEBufferSize}, giving you more time
+ * between calls to process the events.
  * <p>
- * On the device, a timer sends all available events approximately every 10ms --
- * you don't need to wait for a fixed size buffer to be captured to be available
- * to the host. But if events come quickly enough, new events can be available
+ * On the device, a timer sends all available events approximately every 10ms -- you don't need to wait for a fixed size
+ * buffer to be captured to be available to the host. But if events come quickly enough, new events can be available
  * much faster than this.
  * <p>
- * You can also request at any time an early transfer of events with
- * {@link #requestEarlyTransfer}. This will send a vendor request to the device
- * to immediately transfer available events, but they won't be available to the
- * host for a little while, depending on USBIOInterface and driver latency.
+ * You can also request at any time an early transfer of events with {@link #requestEarlyTransfer}. This will send a
+ * vendor request to the device to immediately transfer available events, but they won't be available to the host for a
+ * little while, depending on USBIOInterface and driver latency.
  * <p>
  * See the main() method for an example of use.
  * <p>
@@ -360,8 +357,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * default size of AE buffer for user processes. This is the buffer that is
 	 * written by the hardware capture thread
 	 * that holds events
-	 * that have not yet been transferred via
-	 * {@link #acquireAvailableEventsFromDriver} to another thread
+	 * that have not yet been transferred via {@link #acquireAvailableEventsFromDriver} to another thread
 	 *
 	 * @see #acquireAvailableEventsFromDriver
 	 * @see AEReader
@@ -957,8 +953,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * @param listener
 	 *            the listener. It is called with a PropertyChangeEvent when new
 	 *            events
-	 *            are received by a call to
-	 *            {@link #acquireAvailableEventsFromDriver}.
+	 *            are received by a call to {@link #acquireAvailableEventsFromDriver}.
 	 *            These events may be accessed by calling {@link #getEvents}.
 	 */
 	@Override
@@ -996,8 +991,8 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * <p>
 	 * This method also starts event acquisition if it is not running already.
 	 *
-	 * Not thread safe but does use the thread-safe swap() method of
-	 * AEPacketRawPool to swap data with the acquisition thread.
+	 * Not thread safe but does use the thread-safe swap() method of AEPacketRawPool to swap data with the acquisition
+	 * thread.
 	 *
 	 * @return packet of events acquired.
 	 * @throws HardwareInterfaceException
@@ -1099,8 +1094,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	}
 
 	/**
-	 * Returns the number of events acquired by the last call to
-	 * {@link #acquireAvailableEventsFromDriver }
+	 * Returns the number of events acquired by the last call to {@link #acquireAvailableEventsFromDriver }
 	 *
 	 * @return number of events acquired
 	 */
@@ -1180,15 +1174,13 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	}
 
 	/**
-	 * Is true if an overrun occured in the driver (>
-	 * <code> AE_BUFFER_SIZE</code> events) during the period before the
+	 * Is true if an overrun occured in the driver (> <code> AE_BUFFER_SIZE</code> events) during the period before the
 	 * last time {@link #acquireAvailableEventsFromDriver } was called. This flag
 	 * is cleared by {@link #acquireAvailableEventsFromDriver}, so you need to
 	 * check it before you acquire the events.
 	 * <p>
-	 * If there is an overrun, the events grabbed are the most ancient; events
-	 * after the overrun are discarded. The timestamps continue on but will
-	 * probably be lagged behind what they should be.
+	 * If there is an overrun, the events grabbed are the most ancient; events after the overrun are discarded. The
+	 * timestamps continue on but will probably be lagged behind what they should be.
 	 *
 	 * @return true if there was an overrun.
 	 */
@@ -1532,7 +1524,12 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 			CypressFX2.log.info("Starting AEReader");
 			usbTransfer = new USBTransferThread(monitor.deviceHandle, (byte) 0x86, LibUsb.TRANSFER_TYPE_BULK,
-				new ProcessAEData(), getNumBuffers(), getFifoSize());
+				new ProcessAEData(), getNumBuffers(), getFifoSize(), null, null, new Runnable() {
+					@Override
+					public void run() {
+						monitor.close();
+					}
+				});
 			usbTransfer.setPriority(AEReader.MONITOR_PRIORITY);
 			usbTransfer.setName("AEReaderThread");
 			usbTransfer.start();
@@ -1633,9 +1630,6 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 					else {
 						CypressFX2.log.warning("ProcessAEData: Bytes transferred: " + transfer.actualLength()
 							+ "  Status: " + LibUsb.errorName(transfer.status()));
-
-						monitor.close(); // watch out, this can call
-											// synchronized method
 					}
 
 					if (timestampsReset) {
@@ -1709,10 +1703,9 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		 * used for motor control or other purposes.
 		 * </strong>
 		 * <p>
-		 * TODO: at present this processing is redundant in that the most
-		 * recently captured events are copied to a different AEPacketRaw,
-		 * extracted to an EventPacket, and then processed. This effort is
-		 * duplicated later in rendering. This should be fixed somehow.
+		 * TODO: at present this processing is redundant in that the most recently captured events are copied to a
+		 * different AEPacketRaw, extracted to an EventPacket, and then processed. This effort is duplicated later in
+		 * rendering. This should be fixed somehow.
 		 *
 		 * @param addresses
 		 *            the raw input addresses; these are filtered in place
@@ -2334,14 +2327,12 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * Firmware file is a binary file produced by uVision2 (Keil) from source
 	 * code for firmware.
 	 * <p>
-	 * Firmware that is actually downloaded depends on discovered PID of device.
-	 * If the PID is discovered to be a bare CypressFX2, then a dialog is shown
-	 * that user can use to program the VID/PID of the device.
+	 * Firmware that is actually downloaded depends on discovered PID of device. If the PID is discovered to be a bare
+	 * CypressFX2, then a dialog is shown that user can use to program the VID/PID of the device.
 	 * <p>
-	 * In addition, there is a problem if firmware is downloaded more than once
-	 * to an FX2LP device between hard resets. Therefore if this method detects
-	 * that the device has string identitifers, it assumes the firmware has
-	 * already been downloaded.
+	 * In addition, there is a problem if firmware is downloaded more than once to an FX2LP device between hard resets.
+	 * Therefore if this method detects that the device has string identitifers, it assumes the firmware has already
+	 * been downloaded.
 	 *
 	 *
 	 * Firmware file is loaded as a resource from the jar archive.
@@ -2372,18 +2363,15 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * Firmware file is a binary file produced by uVision2 (Keil) from source
 	 * code for firmware.
 	 * <p>
-	 * Firmware that is actually downloaded depends on discovered PID of device.
-	 * If the PID is discovered to be a bare CypressFX2, then a dialog is shown
-	 * that user can use to program the VID/PID of the device.
+	 * Firmware that is actually downloaded depends on discovered PID of device. If the PID is discovered to be a bare
+	 * CypressFX2, then a dialog is shown that user can use to program the VID/PID of the device.
 	 * <p>
-	 * In addition, there is a problem if firmware is downloaded more than once
-	 * to an FX2LP device between hard resets. Therefore if this method detects
-	 * that the device has string identifiers, it assumes the firmware has
-	 * already been downloaded.
+	 * In addition, there is a problem if firmware is downloaded more than once to an FX2LP device between hard resets.
+	 * Therefore if this method detects that the device has string identifiers, it assumes the firmware has already been
+	 * downloaded.
 	 *
 	 * <p>
-	 * Firmware file is loaded either from the file system or as a resource from
-	 * the jar archive.
+	 * Firmware file is loaded either from the file system or as a resource from the jar archive.
 	 *
 	 * @throws BlankDeviceException
 	 *             if device is blank or firmware file is not found.
