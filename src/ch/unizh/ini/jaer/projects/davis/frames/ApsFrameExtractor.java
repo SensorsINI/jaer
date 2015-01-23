@@ -13,8 +13,9 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Observable;
+import java.util.Observer;
 import javax.swing.JFrame;
-import javax.swing.JOptionPane;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -35,7 +36,7 @@ import net.sf.jaer.graphics.ImageDisplay.Legend;
  */
 @Description("Method to acquire a frame from a stream of APS sample events")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class ApsFrameExtractor extends EventFilter2D {
+public class ApsFrameExtractor extends EventFilter2D implements Observer /* Observer needed to get change events on chip construction */{
 
     private JFrame apsFrame = null;
     public ImageDisplay apsDisplay;
@@ -57,6 +58,14 @@ public class ApsFrameExtractor extends EventFilter2D {
      */
     public static final String EVENT_NEW_FRAME = "newFrame";
     private int lastFrameTimestamp=-1;
+
+    @Override
+    public void update(Observable o, Object arg) {
+        if(o instanceof AEChip && (arg.equals(AEChip.EVENT_SIZEX) || arg.equals(AEChip.EVENT_SIZEY))){
+            initFilter();
+        }
+        
+    }
 
     public static enum Extraction {
 
@@ -98,6 +107,8 @@ public class ApsFrameExtractor extends EventFilter2D {
         setPropertyTooltip("displayBrightness", "Offset for the rendering of the APS display");
         setPropertyTooltip("extractionMethod", "Method to extract a frame; CDSframe is the final result after subtracting signal from reset frame. Signal and reset frames are the raw sensor output before correlated double sampling.");
         setPropertyTooltip("showAPSFrameDisplay", "Shows the JFrame frame display if true");
+        chip.addObserver(this);
+        
     }
 
     @Override
@@ -113,7 +124,7 @@ public class ApsFrameExtractor extends EventFilter2D {
             log.warning("The filter ApsFrameExtractor can only be used for chips that extend the ApsDvsChip class");
         }
         newFrame = false;
-        width = chip.getSizeX();
+        width = chip.getSizeX(); // note that on initial construction width=0 because this constructor is called while chip is still being built
         height = chip.getSizeY();
         maxIDX = width * height;
         maxADC = apsChip.getMaxADC();
