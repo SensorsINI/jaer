@@ -34,15 +34,25 @@ public class DeepLearnCnnNetwork {
     public float[] compute(float[] frame, int width){
         if(frame==null || frame.length%width!=0)throw new IllegalArgumentException("input frame is null or frame vector dimension not a multiple of width="+width);
         throw new UnsupportedOperationException();
+        // subsample frame to input size
+        
     }
 
     public class Layer {
+
+        public Layer(int index) {
+            this.index = index;
+        }
 
         int index;
 
     }
 
     public class ConvLayer extends Layer {
+
+        public ConvLayer(int index) {
+            super(index);
+        }
 
         int inputMaps;
         int outputMaps;
@@ -51,7 +61,7 @@ public class DeepLearnCnnNetwork {
         float[] kernels;
 
         public String toString() {
-            return String.format("index=%d CNN   layer; inputMaps=%d outputMaps=%d kernelSize=%d biases=float[%d] kernels=float[%d]\n",
+            return String.format("index=%d CNN   layer; inputMaps=%d outputMaps=%d kernelSize=%d biases=float[%d] kernels=float[%d]",
                     index, inputMaps, outputMaps, kernelSize, biases == null ? 0 : biases.length, kernels == null ? 0 : kernels.length);
         }
 
@@ -59,34 +69,45 @@ public class DeepLearnCnnNetwork {
 
     public class InputLayer extends Layer {
 
+        public InputLayer(int index) {
+            super(index);
+        }
+
         int dimx;
         int dimy;
         int nUnits;
 
         public String toString() {
-            return String.format("index=%d Input layer; dimx=%d dimy=%d nUnits=%d\n",
+            return String.format("index=%d Input layer; dimx=%d dimy=%d nUnits=%d",
                     index, dimx, dimy, nUnits);
         }
     }
 
     public class SubsamplingLayer extends Layer {
 
+        public SubsamplingLayer(int index) {
+            super(index);
+        }
+
         int averageOver;
         float[] biases;
 
         public String toString() {
-            return String.format("index=%d Subsamp layer; averageOver=%d biases=float[%d]\n",
+            return String.format("index=%d Subsamp layer; averageOver=%d biases=float[%d]",
                     index, averageOver, biases == null ? 0 : biases.length);
         }
     }
 
     public class OutputLayer {
 
+        public OutputLayer() {
+        }
+
         float[] outputBias;
         float[] outputWeights;
         
         public String toString(){
-            return String.format("Output: bias=float[%d] outputWeights=float[%d] \n", outputBias.length, outputWeights.length);
+            return String.format("Output: bias=float[%d] outputWeights=float[%d]", outputBias.length, outputWeights.length);
         }
     }
 
@@ -113,7 +134,7 @@ public class DeepLearnCnnNetwork {
             String type = layerReader.getRaw("type");
             switch (type) {
                 case "i": {
-                    InputLayer l = new InputLayer();
+                    InputLayer l = new InputLayer(index);
                     layers[index] = l;
                     l.dimx = layerReader.getInt("dimx");
                     l.dimy = layerReader.getInt("dimy");
@@ -121,7 +142,7 @@ public class DeepLearnCnnNetwork {
                 }
                 break;
                 case "c": {
-                    ConvLayer l = new ConvLayer();
+                    ConvLayer l = new ConvLayer(index);
                     layers[index] = l;
                     l.inputMaps = layerReader.getInt("inputMaps");
                     l.outputMaps = layerReader.getInt("outputMaps");
@@ -131,7 +152,7 @@ public class DeepLearnCnnNetwork {
                 }
                 break;
                 case "s": {
-                    SubsamplingLayer l = new SubsamplingLayer();
+                    SubsamplingLayer l = new SubsamplingLayer(index);
                     layers[index] = l;
                     l.averageOver = layerReader.getInt("averageOver");
                     l.biases = layerReader.getBase64FloatArr("biases");
@@ -140,7 +161,8 @@ public class DeepLearnCnnNetwork {
                 break;
             }
         }
-        OutputLayer outputLayer = new OutputLayer();
+        outputLayer = new OutputLayer();
+        
         outputLayer.outputBias = networkReader.getBase64FloatArr("outputBias");
         outputLayer.outputWeights = networkReader.getBase64FloatArr("outputWeights");
         log.info(toString());
@@ -153,7 +175,7 @@ public class DeepLearnCnnNetwork {
         for(Layer l:layers){
             sb.append((l==null?"null layer":l.toString())+"\n");
         }
-        sb.append(outputLayer==null?"null outputLayer":toString());
+        sb.append(outputLayer==null?"null outputLayer":outputLayer.toString());
         return sb.toString();
 
     }
