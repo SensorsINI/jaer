@@ -280,7 +280,7 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
     }
 
     /**
-     * returns the index into pixel arrays for a given x,y location where x is
+     * returns the index <code>y * width + x</code> into pixel arrays for a given x,y location where x is
      * horizontal address and y is vertical and it starts at lower left corner
      * with x,y=0,0 and x and y increase to right and up.
      *
@@ -316,8 +316,8 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
     }
 
     /**
-     * Returns a clone of the latest float buffer. The array is indexed by y * width + x. To access a particular pixel,
-     * use getIndex()
+     * Returns a clone of the latest float buffer. The array is indexed by <code>y * width + x</code>. 
+     * To access a particular pixel, use getIndex() for convenience.
      *
      * @return the float[] of pixel values
      * @see #getIndex(int, int)
