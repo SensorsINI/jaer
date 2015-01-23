@@ -37,7 +37,7 @@ import net.sf.jaer.util.avioutput.AVIOutputStream;
  * @author Tobi
  */
 @Description("Writes AVI file from DAVIS APS frames, using ApsFrameExtractor")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DAVISAVIWriter extends EventFilter2D implements PropertyChangeListener {
 
     ApsFrameExtractor apsFrameExtractor;
