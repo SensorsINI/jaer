@@ -31,12 +31,15 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     private String lastFileName = getString("lastFileName", "LCRN_cnn.xml");
     private DeepLearnCnnNetwork net = null;
     private ApsFrameExtractor frameExtractor=new ApsFrameExtractor(chip);
+    private boolean showOutputLayerHistogram=getBoolean("showOutputLayerHistogram", true);
+    
 
     public DavisDeepLearnCnnProcessor(AEChip chip) {
         super(chip);
         setPropertyTooltip("loadCNNNetworkFromXML", "Load an XML file containing a CNN exported from DeepLearnToolbox by cnntoxml.m");
-        setEnclosedFilterChain(new FilterChain(chip));
-        getEnclosedFilterChain().add(frameExtractor);
+        FilterChain chain=new FilterChain(chip);
+        chain.add(frameExtractor);
+        setEnclosedFilterChain(chain);
         frameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);
     }
 
@@ -81,12 +84,25 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         // new frame is available, process it
         if(net!=null){
             float[] frame=frameExtractor.getDisplayBuffer(); // TODO currently a clone of vector, index is y * width + x, i.e. it marches along rows and then up
-            if(frame==null){
-                log.warning("frame is null, disabling filter");
-                setFilterEnabled(false);
-            }
+            if(frame==null || frame.length==0 || frameExtractor.getWidth()==0) return;
+            float[] outputs=net.compute(frame, frameExtractor.getWidth());
         }
        
+    }
+
+    /**
+     * @return the showOutputLayerHistogram
+     */
+    public boolean isShowOutputLayerHistogram() {
+        return showOutputLayerHistogram;
+    }
+
+    /**
+     * @param showOutputLayerHistogram the showOutputLayerHistogram to set
+     */
+    public void setShowOutputLayerHistogram(boolean showOutputLayerHistogram) {
+        this.showOutputLayerHistogram = showOutputLayerHistogram;
+        putBoolean("showOutputLayerHistogram", showOutputLayerHistogram);
     }
     
     
