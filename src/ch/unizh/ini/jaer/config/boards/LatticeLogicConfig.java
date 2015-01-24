@@ -152,21 +152,24 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 				ByteBuffer buf = ByteBuffer.wrap(bytes);
 
 				// Exposure (in cycles, from us)
-				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 7, buf.getShort(16)
-					* ADC_CLOCK_FREQ_CYCLES);
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 7,
+					(buf.getShort(16) & 0xFFFF) * ADC_CLOCK_FREQ_CYCLES);
 
 				// ColSettle
-				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 10, buf.getShort(14));
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 10,
+					buf.getShort(14) & 0xFFFF);
 
 				// RowSettle
-				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 11, buf.getShort(12));
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 11,
+					buf.getShort(12) & 0xFFFF);
 
 				// ResSettle
-				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 9, buf.getShort(10));
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 9,
+					buf.getShort(10) & 0xFFFF);
 
 				// Frame Delay (in cycles, from us)
-				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 8, buf.getShort(8)
-					* ADC_CLOCK_FREQ_CYCLES);
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 8,
+					(buf.getShort(8) & 0xFFFF) * ADC_CLOCK_FREQ_CYCLES);
 
 				// IMU Run
 				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 0, buf.get(7) & 0x01);
@@ -179,7 +182,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 7, buf.get(5) & 0x07);
 
 				// IMU SampleRateDivider
-				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 6, buf.get(4));
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 6, buf.get(4) & 0xFF);
 
 				// IMU Gyro Scale
 				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 9,
@@ -190,7 +193,8 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 					(buf.get(2) >> 3) & 0x03);
 
 				// NulLSettle
-				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 12, buf.getShort(0));
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 12,
+					buf.getShort(0) & 0xFFFF);
 			}
 
 			// Send single port changes (control signals on/off).
