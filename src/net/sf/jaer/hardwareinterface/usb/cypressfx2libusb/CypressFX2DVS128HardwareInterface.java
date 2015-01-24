@@ -12,11 +12,8 @@ package net.sf.jaer.hardwareinterface.usb.cypressfx2libusb;
 import java.nio.ByteBuffer;
 import java.util.prefs.Preferences;
 
-import javax.swing.JOptionPane;
-
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.hardwareinterface.HasUpdatableFirmware;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasLEDControl;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
@@ -28,8 +25,8 @@ import org.usb4java.Device;
  *
  * @author tobi/rapha
  */
-public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen implements HasUpdatableFirmware,
-	HasResettablePixelArray, HasSyncEventOutput, HasLEDControl {
+public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen implements HasResettablePixelArray,
+	HasSyncEventOutput, HasLEDControl {
 
 	public final static String FIRMWARE_FILENAME_DVS128_XSVF = "/net/sf/jaer/hardwareinterface/usb/cypressfx2/dvs128CPLD.xsvf";
 	private static Preferences prefs = Preferences.userNodeForPackage(CypressFX2DVS128HardwareInterface.class);
@@ -343,63 +340,5 @@ public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen impleme
 
 	public boolean isArrayReset() {
 		return arrayResetEnabled;
-	}
-
-	/**
-	 * Updates the firmware by downloading to the board's EEPROM.
-	 * The firmware filename is hardcoded. TODO fix this hardcoding.
-	 * This method starts a background thread which pauses acquisition of data
-	 * and pops up progress monitors.
-	 *
-	 * @throws doesn
-	 *             't actually throw anything, so there's no way for the caller to know if the update succeeded.
-	 */
-	@Override
-	synchronized public void updateFirmware() throws HardwareInterfaceException {
-		// TODO no exceptions thrown
-		final Thread T = new Thread("FirmwareUpdater") {
-
-			@Override
-			public void run() {
-				try {
-					getChip().getAeViewer().setPaused(true);
-					setEventAcquisitionEnabled(false);
-					writeCPLDfirmware(CypressFX2DVS128HardwareInterface.FIRMWARE_FILENAME_DVS128_XSVF);
-					CypressFX2.log.info("New firmware written to CPLD");
-					byte[] fw;
-					try {
-						// TODO fix hardcoded firmware file
-						fw = loadBinaryFirmwareFile(CypressFX2.FIRMWARE_FILENAME_DVS128_IIC);
-					}
-					catch (final java.io.IOException e) {
-						e.printStackTrace();
-						throw new HardwareInterfaceException("Could not load firmware file ");
-					}
-					setEventAcquisitionEnabled(false);
-					writeEEPROM(0, fw);
-					CypressFX2.log.info("New firmware written to EEPROM");
-					close();
-					// setEventAcquisitionEnabled(true);
-					JOptionPane.showMessageDialog(chip.getAeViewer(),
-						"Update successful - unplug and replug the device to activate new firmware",
-						"Firmware update complete", JOptionPane.INFORMATION_MESSAGE);
-
-				}
-				catch (final Exception e) {
-					CypressFX2.log.warning("Firmware update failed: " + e.getMessage());
-					JOptionPane.showMessageDialog(chip.getAeViewer(), "Update failed: " + e.toString(),
-						"Firmware update failed", JOptionPane.WARNING_MESSAGE);
-				}
-				finally {
-					getChip().getAeViewer().setPaused(false);
-				}
-			}
-		};
-		T.start();
-	}
-
-	@Override
-	public int getVersion() {
-		return getDID();
 	}
 }
