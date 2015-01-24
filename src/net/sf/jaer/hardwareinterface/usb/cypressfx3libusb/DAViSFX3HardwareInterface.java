@@ -60,7 +60,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private int lastTimestamp;
 		private int currentTimestamp;
 
-		private int dvsTimestamp;
 		private int dvsLastY;
 		private boolean dvsGotY;
 
@@ -72,13 +71,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private int apsCurrentReadoutType;
 		private short[] apsCountX;
 		private short[] apsCountY;
-		private int apsTimestamp; // Need to preserve this for later events.
 
 		private static final int IMU_DATA_LENGTH = 7;
 		private final short[] imuEvents;
 		private int imuCount;
 		private byte imuTmpData;
-		private int imuTimestamp; // Need to preserve this for later events.
 
 		public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
 			super(cypress);
@@ -149,9 +146,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										wrapAdd = 0;
 										lastTimestamp = 0;
 										currentTimestamp = 0;
-										dvsTimestamp = 0;
-										apsTimestamp = 0;
-										imuTimestamp = 0;
 
 										CypressFX3.log.info("Timestamp reset event received on " + super.toString());
 										break;
@@ -172,7 +166,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										CypressFX3.log.fine("IMU6 Start event received.");
 
 										imuCount = 0;
-										imuTimestamp = currentTimestamp;
 
 										break;
 
@@ -181,7 +174,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 										if (imuCount == ((2 * IMU_DATA_LENGTH) + 1)) {
 											// Check for buffer space is done inside writeToPacket().
-											final IMUSample imuSample = new IMUSample(imuTimestamp, imuEvents);
+											final IMUSample imuSample = new IMUSample(currentTimestamp, imuEvents);
 											eventCounter += imuSample.writeToPacket(buffer, eventCounter);
 										}
 										else {
@@ -196,7 +189,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										apsResetRead = true;
 
 										initFrame();
-										apsTimestamp = currentTimestamp;
 
 										break;
 
@@ -206,7 +198,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										apsResetRead = true;
 
 										initFrame();
-										apsTimestamp = currentTimestamp;
 
 										break;
 
@@ -228,8 +219,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 											}
 										}
 
-										apsTimestamp = currentTimestamp;
-
 										break;
 
 									case 11: // APS Reset Column Start
@@ -237,7 +226,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 										apsCurrentReadoutType = APS_READOUT_RESET;
 										apsCountY[apsCurrentReadoutType] = 0;
-										apsTimestamp = currentTimestamp;
 
 										break;
 
@@ -246,7 +234,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 										apsCurrentReadoutType = APS_READOUT_SIGNAL;
 										apsCountY[apsCurrentReadoutType] = 0;
-										apsTimestamp = currentTimestamp;
 
 										break;
 
@@ -260,7 +247,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										}
 
 										apsCountX[apsCurrentReadoutType]++;
-										apsTimestamp = currentTimestamp;
 
 										break;
 
@@ -270,7 +256,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										apsResetRead = false;
 
 										initFrame();
-										apsTimestamp = currentTimestamp;
 
 										break;
 
@@ -280,7 +265,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										apsResetRead = false;
 
 										initFrame();
-										apsTimestamp = currentTimestamp;
 
 										break;
 
@@ -334,13 +318,12 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									buffer.ensureCapacity(eventCounter + 1);
 
 									buffer.getAddresses()[eventCounter] = ((dvsLastY << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK);
-									buffer.getTimestamps()[eventCounter++] = dvsTimestamp;
+									buffer.getTimestamps()[eventCounter++] = currentTimestamp;
 									CypressFX3.log.fine("DVS: row-only event received for address Y=" + dvsLastY + ".");
 								}
 
 								dvsLastY = data;
 								dvsGotY = true;
-								dvsTimestamp = currentTimestamp;
 
 								break;
 
@@ -359,7 +342,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 								buffer.getAddresses()[eventCounter] = ((dvsLastY << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
 									| ((data << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
 									| (((code & 0x01) << ApsDvsChip.POLSHIFT) & ApsDvsChip.POLMASK);
-								buffer.getTimestamps()[eventCounter++] = dvsTimestamp;
+								buffer.getTimestamps()[eventCounter++] = currentTimestamp;
 
 								dvsGotY = false;
 
@@ -387,7 +370,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									| ((xPos << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
 									| ((apsCurrentReadoutType << ApsDvsChip.ADC_READCYCLE_SHIFT) & ApsDvsChip.ADC_READCYCLE_MASK)
 									| (data & ApsDvsChip.ADC_DATA_MASK);
-								buffer.getTimestamps()[eventCounter++] = apsTimestamp;
+								buffer.getTimestamps()[eventCounter++] = currentTimestamp;
 
 								break;
 
