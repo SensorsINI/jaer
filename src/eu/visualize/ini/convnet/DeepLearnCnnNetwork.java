@@ -10,7 +10,11 @@ import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
+import java.util.Arrays;
+import javax.media.opengl.GL2;
+import javax.media.opengl.GL2GL3;
 import javax.swing.JFrame;
+import net.sf.jaer.event.BasicEvent;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.graphics.ImageDisplay;
 
@@ -76,11 +80,6 @@ public class DeepLearnCnnNetwork {
     InputLayer inputLayer;
     OutputLayer outputLayer;
 
-    private boolean showActivations = false;
-    private JFrame apsFrame = null;
-    public ImageDisplay activationsDisplay;
-    private ImageDisplay.Legend apsDisplayLegend;
-
     /**
      * Computes the output of the network from an input frame
      *
@@ -115,14 +114,20 @@ public class DeepLearnCnnNetwork {
          */
         float[] activations;
 
+        public void initializeConstants() {
+            // override to compute constants for layer
+        }
+
         /**
          * Computes activations from input layer
+         *
+         * @param input the input layer to compute from
          */
         public void compute(Layer input) {
 
         }
 
-        public void display(ImageDisplay imageDisplay) {
+        public void draw(ImageDisplay imageDisplay) {
             imageDisplay.setPixmapGreyArray(activations);
         }
 
@@ -200,6 +205,7 @@ public class DeepLearnCnnNetwork {
             return String.format("index=%d Input layer; dimx=%d dimy=%d nUnits=%d",
                     index, dimx, dimy, nUnits);
         }
+
     }
 
     /**
@@ -213,13 +219,24 @@ public class DeepLearnCnnNetwork {
 
         int nInputMaps;
         int nOutputMaps;
-        int kernelSize;
+        int kernelSize, kernelLength;
         float[] biases;
-        float[][] kernels;
+        float[] kernels;
+        private int inputMapLength; // length of single input map out of input.activations
+        private int inputMapDim; // size of single input map, sqrt of inputMapLength for square input (TODO assumes square input)
+        int outputMapLength; // length of single output map vector; biases.length/nOutputMaps, calculated during compute()
+        int outputMapDim;  // dimension of single output map, calculated during compute()
 
         public String toString() {
             return String.format("index=%d CNN   layer; nInputMaps=%d nOutputMaps=%d kernelSize=%d biases=float[%d] kernels=float[%d]",
                     index, nInputMaps, nOutputMaps, kernelSize, biases == null ? 0 : biases.length, kernels == null ? 0 : kernels.length);
+        }
+
+        @Override
+        public void initializeConstants() {
+            kernelLength = kernelSize * kernelSize;
+            outputMapLength = biases.length / nOutputMaps;
+            outputMapDim = (int) Math.sqrt(outputMapLength);
         }
 
         /**
@@ -230,15 +247,47 @@ public class DeepLearnCnnNetwork {
          */
         @Override
         public void compute(Layer input) {
+            // TODO convolve activations of input with kernels
+            if (input.activations == null) {
+                log.warning("input.activations==null");
+                return;
+            }
+            if (input.activations.length % nInputMaps != 0) {
+                log.warning("input.activations.length=" + input.activations.length + " which is not divisible by nInputMaps=" + nInputMaps);
+            }
+            inputMapLength = input.activations.length / nInputMaps; // for computing indexing to input
+            double sqrtInputMapLength = Math.sqrt(inputMapLength);
+            if (Math.rint(sqrtInputMapLength) != 0) {
+                log.warning("input map is not square; Math.rint(sqrtInputMapLength)=" + Math.rint(sqrtInputMapLength));
+            }
+            inputMapDim = (int) sqrtInputMapLength;
+            if (activations == null || activations.length != biases.length) {
+                activations = new float[biases.length];
+            }
 
             applyBiasAndNonlinearity();
         }
 
         private void applyBiasAndNonlinearity() {
+            if (activations == null) {
+                return;
+            }
             for (int i = 0; i < activations.length; i++) {
                 activations[i] = sigm(activations[i] + biases[i]);
             }
 
+        }
+
+        final int i(int map, int x, int y) {
+            return map * inputMapLength + y * inputMapDim + x; // TODO check x,y
+        }
+
+        final int k(int kernel, int x, int y) {
+            return kernelLength * kernel + kernelSize * y + x;
+        }
+
+        final int o(int outputMap, int x, int y) {
+            return outputMap * outputMapLength + y * outputMapDim + x; // TODO fix
         }
 
     }
@@ -249,12 +298,28 @@ public class DeepLearnCnnNetwork {
             super(index);
         }
 
-        int averageOver;
+        int averageOverDim; // we average over averageOverDim*averageOverDim inputs
         float[] biases;
+        int inputMapLength, inputMapDim;
+
+        @Override
+        public void compute(Layer input) {
+            if (!(input instanceof ConvLayer)) {
+                log.warning("Input to SubsamplingLayer is not ConvLayer; it is actaully " + input.toString());
+                return;
+            }
+            ConvLayer convLayer = (ConvLayer) input;
+//            convLayer.
+
+        }
+
+        final int i(int map, int x, int y) {
+            return map * inputMapLength + y * inputMapDim + x; // TODO check x,y
+        }
 
         public String toString() {
             return String.format("index=%d Subsamp layer; averageOver=%d biases=float[%d]",
-                    index, averageOver, biases == null ? 0 : biases.length);
+                    index, averageOverDim, biases == null ? 0 : biases.length);
         }
     }
 
@@ -270,6 +335,47 @@ public class DeepLearnCnnNetwork {
         public String toString() {
             return String.format("Output: bias=float[%d] outputWeights=float[%d]", outputBias.length, outputWeights.length);
         }
+
+        /**
+         * Draw with default width and color
+         *
+         * @param gl
+         * @param width width of draw (chip) area in gl pixels
+         * @param height of draw (chip) area in gl pixels
+         */
+        public void draw(GL2 gl, int width, int height) { // width and height are of AEchip draw size in pixels of chip (not screen pixels)
+
+            if (activations == null) {
+                return;
+            }
+            float dx = (float) (width) / (activations.length + 2);
+            float sy = (float) (height) / 1;
+
+            gl.glBegin(GL2.GL_LINES);
+            gl.glVertex2f(1, 1);
+            gl.glVertex2f(width - 1, 1);
+            gl.glEnd();
+
+            gl.glBegin(GL2.GL_LINE_STRIP);
+            for (int i = 0; i < activations.length; i++) {
+                float y = 1 + (sy * activations[i]);
+                float x1 = 1 + (dx * i), x2 = x1 + dx;
+                gl.glVertex2f(x1, 1);
+                gl.glVertex2f(x1, y);
+                gl.glVertex2f(x2, y);
+                gl.glVertex2f(x2, 1);
+            }
+            gl.glEnd();
+        }
+
+        public void draw(GL2 gl, int width, int height, float lineWidth, float[] color) {
+            gl.glPushAttrib(GL2GL3.GL_COLOR | GL2.GL_LINE_WIDTH);
+            gl.glLineWidth(lineWidth);
+            gl.glColor4fv(color, 0);
+            draw(gl, width, height);
+            gl.glPopAttrib();
+        }
+
     }
 
     public void loadFromXMLFile(File f) {
@@ -309,21 +415,13 @@ public class DeepLearnCnnNetwork {
                     l.nOutputMaps = layerReader.getInt("outputMaps");
                     l.kernelSize = layerReader.getInt("kernelSize");
                     l.biases = layerReader.getBase64FloatArr("biases");
-                    float[] kflat = layerReader.getBase64FloatArr("kernels");
-                    int kNum = l.kernelSize * l.kernelSize;
-                    l.kernels = new float[l.nOutputMaps][kNum];
-                    int idx = 0;
-                    for (int kn = 0; kn < l.nOutputMaps; kn++) {
-                        for (int kidx = 0; kidx < kNum; kidx++) {
-                            l.kernels[kn][kidx] = kflat[idx];
-                        }
-                    }
+                    l.kernels = layerReader.getBase64FloatArr("kernels");
                 }
                 break;
                 case "s": {
                     SubsamplingLayer l = new SubsamplingLayer(index);
                     layers[index] = l;
-                    l.averageOver = layerReader.getInt("averageOver");
+                    l.averageOverDim = layerReader.getInt("averageOver");
                     l.biases = layerReader.getBase64FloatArr("biases");
 
                 }
@@ -349,40 +447,4 @@ public class DeepLearnCnnNetwork {
 
     }
 
-    //    private void showActivations() {
-//        if (!isShowActivations()) {
-//            return;
-//        }
-//        if (apsFrame == null) {
-//            activationsDisplay = ImageDisplay.createOpenGLCanvas();
-//            apsFrame = new JFrame("APS Frame");
-//            apsFrame.setPreferredSize(new Dimension(200,200));
-//            apsFrame.getContentPane().add(activationsDisplay, BorderLayout.CENTER);
-//            apsFrame.pack();
-//            apsFrame.addWindowListener(new WindowAdapter() {
-//                public void windowClosing(WindowEvent e) {
-//                    setShowActivations(false);
-//                }
-//            });
-//            apsDisplayLegend = activationsDisplay.addLegend("", 0, 0);
-//            float[] displayColor = new float[3];
-//            displayColor[0] = 1.0f;
-//            displayColor[1] = 1.0f;
-//            displayColor[2] = 1.0f;
-//            apsDisplayLegend.color = displayColor;
-//        }
-//    }
-//    /**
-//     * @return the showActivations
-//     */
-//    public boolean isShowActivations() {
-//        return showActivations;
-//    }
-//
-//    /**
-//     * @param showActivations the showActivations to set
-//     */
-//    public void setShowActivations(boolean showActivations) {
-//        this.showActivations = showActivations;
-//    }
 }
