@@ -466,40 +466,19 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		// synchronized(aePacketRawPool){ // synchronize on aeReader so that we
 		// don't try to access the events at the
 		// same time
-		synchronized (aePacketRawPool) {
-			aePacketRawPool.swap();
-			lastEventsAcquired = aePacketRawPool.readBuffer().getPrunedCopy();
-			eventCounter = 0;
-			realTimeEventCounterStart = 0;
-		}
-		// log.info(this+" acquired "+lastEventsAcquired);
-		// addresses=events.getAddresses();
-		// timestamps=events.getTimestamps();
+		aePacketRawPool.swap();
+		lastEventsAcquired = aePacketRawPool.readBuffer();
+
 		nEvents = lastEventsAcquired.getNumEvents();
+		eventCounter = 0;
+		realTimeEventCounterStart = 0;
+
 		computeEstimatedEventRate(lastEventsAcquired);
 		if (nEvents != 0) {
 			support.firePropertyChange(CypressFX3.PROPERTY_CHANGE_NEW_EVENTS, null, lastEventsAcquired); // call
 			// listeners
 		}
 		return lastEventsAcquired;
-
-		// events=new AEPacketRaw(nEvents);
-		// // reuse same packet to avoid constant new'ing
-		// events.allocate(nEvents);
-		// if(nEvents==0){
-		// // log.warning("got zero events from "+this);
-		// computeEstimatedEventRate(null);
-		// events.clear();
-		// return events;
-		// }else{
-		// System.arraycopy(addresses, 0, events.getAddresses(), 0, nEvents);
-		// System.arraycopy(timestamps, 0, events.getTimestamps(), 0, nEvents);
-		// events.setNumEvents(nEvents);
-		// computeEstimatedEventRate(events);
-		// support.firePropertyChaNEW_EVENTS_PROPERTY_CHANGEY_CHANGE); // call
-		// listeners
-		// return events;
-		// }
 	}
 
 	/**
