@@ -45,7 +45,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     private boolean showOutputAsBarChart = getBoolean("showOutputAsBarChart", true);
 
     private JFrame imageDisplayFrame = null;
-    public ImageDisplay inputDisplay;
+    public ImageDisplay inputImageDisplay;
 
     public DavisDeepLearnCnnProcessor(AEChip chip) {
         super(chip);
@@ -54,15 +54,6 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         chain.add(frameExtractor);
         setEnclosedFilterChain(chain);
         frameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);
-        imageDisplayFrame = new JFrame("DavisDeepLearnCnnProcessor");
-        imageDisplayFrame.setPreferredSize(new Dimension(200, 200));
-
-        imageDisplayFrame.addWindowListener(new WindowAdapter() {
-            public void windowClosing(WindowEvent e) {
-                setShowInput(false);
-                setShowActivations(false);
-            }
-        });
 
         initFilter();
     }
@@ -116,7 +107,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     public void propertyChange(PropertyChangeEvent evt) {
         // new frame is available, process it
         if (net != null) {
-            float[] frame = frameExtractor.getDisplayBuffer(); // TODO currently a clone of vector, index is y * width + x, i.e. it marches along rows and then up
+            double[] frame = frameExtractor.getNewFrame(); // TODO currently a clone of vector, index is y * width + x, i.e. it marches along rows and then up
             if (frame == null || frame.length == 0 || frameExtractor.getWidth() == 0) {
                 return;
             }
@@ -144,17 +135,34 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             return;
         }
         net.outputLayer.draw(gl, chip.getSizeX(), chip.getSizeY());
+        System.out.println("maxActivatedUnit=" + net.outputLayer.maxActivatedUnit + " maxActivation=" + net.outputLayer.maxActivation);
     }
 
     private void drawInput(GLAutoDrawable drawable) {
-        if (inputDisplay == null) {
-            inputDisplay = ImageDisplay.createOpenGLCanvas();
-            imageDisplayFrame.getContentPane().add(inputDisplay, BorderLayout.NORTH);
+        if (net.inputLayer.activations == null) {
+            return;
+        }
+        if (inputImageDisplay == null) {
+            inputImageDisplay = ImageDisplay.createOpenGLCanvas();
+            inputImageDisplay.setImageSize(net.inputLayer.dimx, net.inputLayer.dimy);
+
+            imageDisplayFrame = new JFrame("DavisDeepLearnCnnProcessor");
+            imageDisplayFrame.setPreferredSize(new Dimension(200, 200));
+
+            imageDisplayFrame.addWindowListener(new WindowAdapter() {
+                public void windowClosing(WindowEvent e) {
+                    setShowInput(false);
+                    setShowActivations(false);
+                }
+            });
+            imageDisplayFrame.getContentPane().add(inputImageDisplay, BorderLayout.CENTER);
             imageDisplayFrame.pack();
         }
-        net.inputLayer.draw(inputDisplay);
-        inputDisplay.repaint();
-        imageDisplayFrame.setVisible(true);
+        if (!imageDisplayFrame.isVisible()) {
+            imageDisplayFrame.setVisible(true);
+        }
+        inputImageDisplay.setPixmapFromGrayArray(net.inputLayer.activations);
+        inputImageDisplay.display();
     }
 
     private void drawActivations(GLAutoDrawable drawable) {
@@ -186,6 +194,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
      */
     public void setShowInput(boolean showInput) {
         this.showInput = showInput;
+        getSupport().firePropertyChange("showInput", null, showInput);
 
     }
 

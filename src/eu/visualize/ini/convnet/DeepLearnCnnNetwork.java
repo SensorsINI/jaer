@@ -88,7 +88,7 @@ public class DeepLearnCnnNetwork {
      * @return the vector of output values
      * @see #getActivations
      */
-    public float[] compute(float[] frame, int width) {
+    public float[] compute(double[] frame, int width) {
 
         inputLayer.compute(frame, width);
         for (int i = 1; i < nLayers; i++) {
@@ -123,14 +123,9 @@ public class DeepLearnCnnNetwork {
          *
          * @param input the input layer to compute from
          */
-        public void compute(Layer input) {
+        abstract public void compute(Layer input);
 
-        }
-
-        public void draw(ImageDisplay imageDisplay) {
-            imageDisplay.setPixmapGreyArray(activations);
-        }
-
+        
     }
 
     /**
@@ -165,7 +160,7 @@ public class DeepLearnCnnNetwork {
          * @return the vector of output values, which are indexed by y+dimx*x
          * @see #getActivations
          */
-        public float[] compute(float[] frame, int width) {
+        public float[] compute(double[] frame, int width) {
             if (frame == null || width == 0 || frame.length % width != 0) {
                 throw new IllegalArgumentException("input frame is null or frame vector dimension not a multiple of width=" + width);
             }
@@ -177,20 +172,19 @@ public class DeepLearnCnnNetwork {
             // frame has width*height pixels
             // for first pass we just downsample every width/dimx pixel in x and every height/dimy pixel in y
             // TODO change to subsample (averaging)
-            int xstride = (int) Math.ceil((double) width / dimx), ystride = (int) Math.ceil((double) height / dimy);
-            int nx = width / xstride, ny = height / ystride;
+            float xstride = (float) width / dimx, ystride =(float) height / dimy;
             int aidx = 0;
             loop:
-            for (int y = 0; y < height; y += ystride) {
-                for (int x = 0; x < width; x += xstride) {  // take every xstride, ystride pixels as output
-                    int fridx = y * width + x;
+            for (float y = 0; y < height; y += ystride) {
+                for (float x = 0; x < width; x += xstride) {  // take every xstride, ystride pixels as output
+                    int fridx = (int)(Math.floor(y) * width + Math.floor(x));
                     if (fridx >= frame.length) {
                         break loop;
                     }
                     if (aidx >= activations.length) {
                         break loop;
                     }
-                    activations[aidx++] = frame[fridx];
+                    activations[aidx++] = (float)frame[fridx];
                 }
             }
             return activations; //indexed by y+dimx*x in the downsampled image
@@ -441,11 +435,13 @@ public class DeepLearnCnnNetwork {
             super(index);
         }
 
-        float[] outputBias;  //ffb in matlab DeepLearnToolbox
-        float[] outputWeights; // ffW in matlab DeepLearnToolbox
+        float[] biases;  //ffb in matlab DeepLearnToolbox
+        float[] weights; // ffW in matlab DeepLearnToolbox
+        public float maxActivation;
+        public int maxActivatedUnit;
 
         public String toString() {
-            return String.format("Output: bias=float[%d] outputWeights=float[%d]", outputBias.length, outputWeights.length);
+            return String.format("Output: bias=float[%d] outputWeights=float[%d]", biases.length, weights.length);
         }
 
         /**
@@ -463,6 +459,25 @@ public class DeepLearnCnnNetwork {
          */
         @Override
         public void compute(Layer input) {
+            if (activations == null || activations.length != biases.length) {
+                activations = new float[biases.length];
+            } else {
+                Arrays.fill(activations, 0);
+            }
+            maxActivation=Float.NEGATIVE_INFINITY;
+            int numActivationsPerOutput=activations.length/biases.length;
+            int idx=0;
+            for (int unit = 0; unit < biases.length; unit++) {
+                for (int i = 0; i < numActivationsPerOutput; i++) {
+                    activations[unit] += input.activations[idx] * weights[idx];
+                    idx++;
+                }
+                activations[unit]=sigm(activations[unit]);
+                if(activations[unit]>maxActivation){
+                    maxActivatedUnit=unit;
+                    maxActivation=activations[unit];
+                }
+            }
 
         }
 
@@ -561,8 +576,8 @@ public class DeepLearnCnnNetwork {
         }
         outputLayer = new OutputLayer(nLayers);
 
-        outputLayer.outputBias = networkReader.getBase64FloatArr("outputBias");
-        outputLayer.outputWeights = networkReader.getBase64FloatArr("outputWeights");
+        outputLayer.biases = networkReader.getBase64FloatArr("outputBias");
+        outputLayer.weights = networkReader.getBase64FloatArr("outputWeights");
         log.info(toString());
     }
 
