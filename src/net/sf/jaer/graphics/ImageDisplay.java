@@ -532,21 +532,28 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     }
 
     /**
-     * Sets the whole pixmap array in gray values - a float[] of the kind grey1,
-     * grey2,...
+     * Sets the whole pixmap array in gray values - a float[] of the kind gray1,
+     * gray2,...  
      *
-     * @param valueArray
+     * @param src the array of gray values, indexed as in setPixmapGray()
+     * @see #setPixmapGray(int, int, float) 
      */
-    public void setPixmapGreyArray(float[] array) {
+    public void setPixmapFromGrayArray(float[] src) {
         checkPixmapAllocation();
-        final int n = 3 * array.length;
-        System.arraycopy(grayBuffer.array(), 0, array, 0, n);
+        final int n = 3 * src.length;
+        float[] dest=pixmap.array();
+        for(int i=0;i<src.length;i++){
+            float s=src[i];
+            for(int j=0;j<3;j++){
+                dest[3*i+j]=s;
+            }
+        }
         pixmap.rewind();
         pixmap.limit(n);
     }
 
     /**
-     * Position the pixmap buffer at pixel x,y.
+     * Position the pixmap buffer at pixel x,y, i.e. at <code> 3 * (x + (y * sizeX))</code>.
      *
      * @param x row
      * @param y column
@@ -606,11 +613,14 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
                 pixmap = null;
             }
             System.gc();
-            log.info("allocating " + n + " floats for pixmap");
-            pixmap = FloatBuffer.allocate(n); // Buffers.newDirectFloatBuffer(n);
+            if (n > 0) {
+                log.info("allocating " + n + " floats for pixmap");
+                pixmap = FloatBuffer.allocate(n); // Buffers.newDirectFloatBuffer(n);
+                pixmap.rewind();
+                pixmap.limit(n);
+            }
         }
-        pixmap.rewind();
-        pixmap.limit(n);
+       
     }
 
     /**
@@ -772,7 +782,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     }
 
     /**
-     * Sets both horizontal and vertical dimensions of image.
+     * Sets both horizontal and vertical dimensions of image in source pixels.
      *
      * @param sizeX rows
      * @param sizeY columns
