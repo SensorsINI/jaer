@@ -21,7 +21,7 @@ import net.sf.jaer.eventprocessing.FremeExtractor;
  * @author Christian
  */
 @Description("Local orientation by spatio-temporal correlation")
-@DevelopmentStatus(DevelopmentStatus.Status.Stable)
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class OrientationFreme extends FremeExtractor{
     
     protected int[] lastTimesOn, lastTimesOff; 
