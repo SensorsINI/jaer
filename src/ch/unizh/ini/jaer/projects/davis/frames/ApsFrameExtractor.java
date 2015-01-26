@@ -43,8 +43,10 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
     private ApsDvsChip apsChip = null;
     private boolean newFrame, useExtRender = false; // useExtRender means using something like OpenCV to render the data. If false, the displayBuffer is displayed
     private float[] resetBuffer, signalBuffer;
-    private float[] displayBuffer; // TODO what is this?
+    /** Raw pixel values from sensor, before conversion, brightness, etc.*/
+    private float[] displayBuffer; 
     private float[] apsDisplayPixmapBuffer;
+    /** Cooked pixel values, after brightness, contrast, log intensity conversion, etc. */
     private double[] displayFrame; // format is RGB triplets indexed by ??? what is this? How different than displayBuffer??? 
     public int width, height, maxADC, maxIDX;
     private float grayValue;
@@ -305,7 +307,8 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
     }
 
     /**
-     * Returns a double[] buffer of latest frame. The array is indexed by y * width + x. To access a particular pixel,
+     * Returns a double[] buffer of latest displayed frame with adjustments like brightness, contrast, log intensity conversion, etc. 
+     * The array is indexed by y * width + x. To access a particular pixel,
      * use getIndex(). 
      *
      * @return the double[] frame
