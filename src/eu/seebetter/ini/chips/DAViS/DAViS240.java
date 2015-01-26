@@ -397,9 +397,12 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 					e.x = (short) (((data & XMASK) >>> XSHIFT));
 					e.y = (short) ((data & YMASK) >>> YSHIFT);
 					e.type = (byte) (2);
+
 					boolean pixZero = (e.x == sx1) && (e.y == sy1);// first event of frame (addresses get flipped)
-					if ((e.readoutType == ApsDvsEvent.ReadoutType.ResetRead) && pixZero) {
+
+					if (pixZero && e.isResetRead()) {
 						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOF, timestamps[i]);
+
 						if (!config.chipConfigChain.configBits[6].isSet()) {
 							// rolling shutter start of exposure (SOE)
 							createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamps[i]);
@@ -407,27 +410,32 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 							frameExposureStartTimestampUs = e.timestamp;
 						}
 					}
-					if (config.chipConfigChain.configBits[6].isSet() && e.isResetRead() && (e.x == 0) && (e.y == sy1)) {
+
+					if (config.chipConfigChain.configBits[6].isSet() && e.isResetRead() && (e.x == 0) && (e.y == 0)) {
 						// global shutter start of exposure (SOE)
 						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamps[i]);
 						frameIntervalUs = e.timestamp - frameExposureStartTimestampUs;
 						frameExposureStartTimestampUs = e.timestamp;
 					}
-					// end of exposure
+
+					// end of exposure, same for both
 					if (pixZero && e.isSignalRead()) {
 						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOE, timestamps[i]);
 						frameExposureEndTimestampUs = e.timestamp;
 						exposureDurationUs = e.timestamp - frameExposureStartTimestampUs;
 					}
+
 					if (e.isSignalRead() && (e.x == 0) && (e.y == 0)) {
 						// if we use ResetRead+SignalRead+C readout, OR, if we use ResetRead-SignalRead readout and we
 						// are at last APS pixel, then write EOF event
 						// insert a new "end of frame" event not present in original data
 						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamps[i]);
+
 						if (snapshot) {
 							snapshot = false;
 							config.apsReadoutControl.setAdcEnabled(false);
 						}
+
 						setFrameCount(getFrameCount() + 1);
 					}
 				}
