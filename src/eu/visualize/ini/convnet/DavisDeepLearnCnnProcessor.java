@@ -40,10 +40,9 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     private String lastFileName = getString("lastFileName", "LCRN_cnn.xml");
     private DeepLearnCnnNetwork net = null;
     private ApsFrameExtractor frameExtractor = new ApsFrameExtractor(chip);
-    private boolean showOutputLayerHistogram = getBoolean("showOutputLayerHistogram", true);
     private boolean showActivations = getBoolean("showActivations", false);
     private boolean showInput = getBoolean("showInput", false);
-    private boolean showOutputAsHistogram = getBoolean("showOutputAsHistogram", true);
+    private boolean showOutputAsBarChart = getBoolean("showOutputAsBarChart", true);
 
     private JFrame imageDisplayFrame = null;
     public ImageDisplay inputDisplay;
@@ -64,6 +63,8 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
                 setShowActivations(false);
             }
         });
+
+        initFilter();
     }
 
     /**
@@ -100,6 +101,15 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 
     @Override
     public void initFilter() {
+        // if net was loaded before, load it now
+        if (lastFileName != null) {
+            File f = new File(lastFileName);
+            if (f.exists() && f.isFile()) {
+                net = new DeepLearnCnnNetwork();
+                net.loadFromXMLFile(f);
+            }
+        }
+
     }
 
     @Override
@@ -115,21 +125,6 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 
     }
 
-    /**
-     * @return the showOutputLayerHistogram
-     */
-    public boolean isShowOutputLayerHistogram() {
-        return showOutputLayerHistogram;
-    }
-
-    /**
-     * @param showOutputLayerHistogram the showOutputLayerHistogram to set
-     */
-    public void setShowOutputLayerHistogram(boolean showOutputLayerHistogram) {
-        this.showOutputLayerHistogram = showOutputLayerHistogram;
-        putBoolean("showOutputLayerHistogram", showOutputLayerHistogram);
-    }
-
     @Override
     public void annotate(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
@@ -139,10 +134,16 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         if (showActivations) {
             drawActivations(drawable);
         }
-        if (showOutputAsHistogram) {
-            if(net==null || net.outputLayer==null) return;
-            net.outputLayer.draw(gl, chip.getSizeX(), chip.getSizeY());
+        if (showOutputAsBarChart) {
+            drawOutput(gl);
         }
+    }
+
+    private void drawOutput(GL2 gl) {
+        if (net == null || net.outputLayer == null) {
+            return;
+        }
+        net.outputLayer.draw(gl, chip.getSizeX(), chip.getSizeY());
     }
 
     private void drawInput(GLAutoDrawable drawable) {
@@ -189,17 +190,18 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     }
 
     /**
-     * @return the showOutputAsHistogram
+     * @return the showOutputAsBarChart
      */
-    public boolean isShowOutputAsHistogram() {
-        return showOutputAsHistogram;
+    public boolean isShowOutputAsBarChart() {
+        return showOutputAsBarChart;
     }
 
     /**
-     * @param showOutputAsHistogram the showOutputAsHistogram to set
+     * @param showOutputAsBarChart the showOutputAsBarChart to set
      */
-    public void setShowOutputAsHistogram(boolean showOutputAsHistogram) {
-        this.showOutputAsHistogram = showOutputAsHistogram;
+    public void setShowOutputAsBarChart(boolean showOutputAsBarChart) {
+        this.showOutputAsBarChart = showOutputAsBarChart;
+        putBoolean("showOutputAsBarChart", showOutputAsBarChart);
     }
 
     private void checkDisplayFrame() {
