@@ -91,7 +91,7 @@ public class DeepLearnCnnNetwork {
     public float[] compute(float[] frame, int width) {
 
         inputLayer.compute(frame, width);
-        for (int i = 2; i < nLayers; i++) {
+        for (int i = 1; i < nLayers; i++) {
             layers[i].compute(layers[i - 1]);
         }
         outputLayer.compute(layers[nLayers - 2]);
@@ -209,7 +209,27 @@ public class DeepLearnCnnNetwork {
     }
 
     /**
-     * A convolutional layer
+     * A convolutional layer. Does this operation:
+     * <pre>
+     * for j = 1 : net.layers{l}.outputmaps   %  for each output map
+     * %  create temp output map
+     *
+     *
+     * %the output map dimension is reduced from input map dimension by the (dim of kernel-1).
+     * %That is because the kernel starts convolving inset by kernel dim/2, and it ends at kernel dim/2 from other side.
+     *
+     * %Another way to say it is that kernel.0 starts on left at input.0 and kernel.n starts at n.
+     * %kernel.n ends at input.m. Therefore m-n+1 is the number of steps, or m-(n-1) is the number of steps.
+     *
+     * z = zeros(size(net.layers{l - 1}.activations{1}) - [net.layers{l}.kernelsize - 1 net.layers{l}.kernelsize - 1 0]);
+     * for i = 1 : inputmaps   %  for each input map
+     * %  convolve with corresponding kernel and add to temp output map
+     * z = z + convn(net.layers{l - 1}.activations{i}, net.layers{l}.k{i}{j}, 'valid');
+     * end
+     * %  add bias, pass through nonlinearity
+     * net.layers{l}.activations{j} = sigm(z + net.layers{l}.b{j});
+     *
+     * <pre>
      */
     public class ConvLayer extends Layer {
 
@@ -218,14 +238,15 @@ public class DeepLearnCnnNetwork {
         }
 
         int nInputMaps;
-        int nOutputMaps;
-        int kernelSize, kernelLength;
+        int nOutputMaps; // same as number of kernels
+        int kernelSize, kernelLength, halfKernelSize;
         float[] biases;
         float[] kernels;
         private int inputMapLength; // length of single input map out of input.activations
         private int inputMapDim; // size of single input map, sqrt of inputMapLength for square input (TODO assumes square input)
         int outputMapLength; // length of single output map vector; biases.length/nOutputMaps, calculated during compute()
         int outputMapDim;  // dimension of single output map, calculated during compute()
+        int activationsLength;
 
         public String toString() {
             return String.format("index=%d CNN   layer; nInputMaps=%d nOutputMaps=%d kernelSize=%d biases=float[%d] kernels=float[%d]",
@@ -235,8 +256,8 @@ public class DeepLearnCnnNetwork {
         @Override
         public void initializeConstants() {
             kernelLength = kernelSize * kernelSize;
-            outputMapLength = biases.length / nOutputMaps;
-            outputMapDim = (int) Math.sqrt(outputMapLength);
+            halfKernelSize = kernelSize / 2;
+            // output size can only be computed once we know our input 
         }
 
         /**
@@ -257,35 +278,89 @@ public class DeepLearnCnnNetwork {
             }
             inputMapLength = input.activations.length / nInputMaps; // for computing indexing to input
             double sqrtInputMapLength = Math.sqrt(inputMapLength);
-            if (Math.rint(sqrtInputMapLength) != 0) {
+            if (Math.IEEEremainder(sqrtInputMapLength, 1) != 0) {
                 log.warning("input map is not square; Math.rint(sqrtInputMapLength)=" + Math.rint(sqrtInputMapLength));
             }
             inputMapDim = (int) sqrtInputMapLength;
-            if (activations == null || activations.length != biases.length) {
-                activations = new float[biases.length];
+            outputMapDim = inputMapDim - kernelSize + 1;
+            outputMapLength = outputMapDim * outputMapDim;
+            activationsLength = outputMapLength * nOutputMaps;
+
+            if (nOutputMaps != biases.length) {
+                log.warning("nOutputMaps!=biases.length: " + nOutputMaps + "!=" + biases.length);
+            }
+
+            if (activations == null || activations.length != activationsLength) {
+                activations = new float[activationsLength];
+            } else {
+                Arrays.fill(activations, 0);  // clear the output, since results from inputMaps will be accumulated
+            }
+
+            for (int kernel = 0; kernel < nOutputMaps; kernel++) { // for each kernel/outputMap
+                for (int inputMap = 0; inputMap < nInputMaps; inputMap++) { // for each inputMap
+                    conv(input.activations, kernel, inputMap);
+                }
             }
 
             applyBiasAndNonlinearity();
+        }
+
+        // convolves a given kernel over the inputMap and accumulates output to activations
+        private void conv(float[] input, int kernel, int inputMap) {
+            int startx = halfKernelSize, starty = halfKernelSize, endx = outputMapDim - halfKernelSize, endy = outputMapDim - halfKernelSize;
+            for (int xo = startx; xo < endx; xo++) { // index to outputMap
+                for (int yo = starty; yo < endy; yo++) {
+                    activations[o(kernel, xo, yo)] += convsingle(input, kernel, inputMap, xo, yo);
+                }
+            }
+        }
+
+        // computes single kernal location summed result centered on x,y in inputMap
+        private float convsingle(float[] input, int kernel, int inputMap, int x, int y) {
+            float sum = 0;
+            for (int yy = 0; yy < kernelSize; yy++) {
+                int iny = y - halfKernelSize;
+                for (int xx = 0; xx < kernelSize; xx++) {
+                    int inx = x - halfKernelSize;
+                    // debug
+                    int idx = i(inputMap, inx, iny);
+                    if (idx >= input.length) {
+                        log.warning("big index");
+                    }
+                    sum += kernels[k(kernel, xx, yy)] * input[i(inputMap, inx, iny)];
+                    inx++;
+                }
+                iny++;
+            }
+            return sum;
         }
 
         private void applyBiasAndNonlinearity() {
             if (activations == null) {
                 return;
             }
-            for (int i = 0; i < activations.length; i++) {
-                activations[i] = sigm(activations[i] + biases[i]);
+            for (int b = 0; b < biases.length; b++) {
+                for (int x = 0; x < outputMapDim; x++) {
+                    for (int y = 0; y < outputMapDim; y++) {
+                        int idx = o(b, x, y);
+                        activations[idx] = sigm(activations[idx] + biases[b]);
+                    }
+                }
             }
 
         }
 
+        // input index
         final int i(int map, int x, int y) {
             return map * inputMapLength + y * inputMapDim + x; // TODO check x,y
         }
 
+        // kernel index
         final int k(int kernel, int x, int y) {
             return kernelLength * kernel + kernelSize * y + x;
         }
 
+        // output index
         final int o(int outputMap, int x, int y) {
             return outputMap * outputMapLength + y * outputMapDim + x; // TODO fix
         }
@@ -293,14 +368,17 @@ public class DeepLearnCnnNetwork {
     }
 
     public class SubsamplingLayer extends Layer {
+        int averageOverDim, averageOverNum; // we average over averageOverDim*averageOverDim inputs
+        float[] biases;
+        int inputMapLength, inputMapDim, outputMapLength, outputMapDim;
+        float averageOverMultiplier;
+        int nOutputMaps;
+        private int activationsLength;
 
         public SubsamplingLayer(int index) {
             super(index);
         }
 
-        int averageOverDim; // we average over averageOverDim*averageOverDim inputs
-        float[] biases;
-        int inputMapLength, inputMapDim;
 
         @Override
         public void compute(Layer input) {
@@ -309,12 +387,46 @@ public class DeepLearnCnnNetwork {
                 return;
             }
             ConvLayer convLayer = (ConvLayer) input;
-//            convLayer.
+            nOutputMaps = convLayer.nOutputMaps;
+            inputMapDim = convLayer.outputMapDim;
+            inputMapLength = convLayer.outputMapLength;
+            outputMapDim = inputMapDim / averageOverDim;
+            averageOverNum = (averageOverDim * averageOverDim);
+            averageOverMultiplier = 1f / averageOverNum;
+            outputMapLength = inputMapLength / averageOverNum;
+            activationsLength=outputMapLength*nOutputMaps;
 
+            if (activations == null || activations.length != activationsLength) {
+                activations = new float[activationsLength];
+            }
+
+            for (int map = 0; map < nOutputMaps; map++) {
+                for (int xo = 0; xo < outputMapDim; xo++) {
+                    for (int yo = 0; yo < outputMapDim; yo++) {
+                        float s = 0;
+                        int startx = xo * averageOverDim, endx = xo * averageOverDim, starty = yo * averageOverDim, endy = yo * averageOverDim;
+                        for (int xi = startx; xi < endx; xi++) {
+                            for (int yi = starty; yi < endy; yi++) {
+                                s += convLayer.activations[convLayer.o(map, xi, yi)];
+                            }
+                        }
+                        // debug
+                        int idx=o(map, xo, yo);
+                        if(idx>=activations.length){
+                            log.warning("overrun output activations");
+                        }
+                        activations[o(map, xo, yo)] = s * averageOverMultiplier;
+                    }
+                }
+            }
         }
 
         final int i(int map, int x, int y) {
             return map * inputMapLength + y * inputMapDim + x; // TODO check x,y
+        }
+
+        final int o(int map, int x, int y) {
+            return map * outputMapLength + y * outputMapDim + x;
         }
 
         public String toString() {
@@ -416,6 +528,7 @@ public class DeepLearnCnnNetwork {
                     l.kernelSize = layerReader.getInt("kernelSize");
                     l.biases = layerReader.getBase64FloatArr("biases");
                     l.kernels = layerReader.getBase64FloatArr("kernels");
+                    l.initializeConstants();
                 }
                 break;
                 case "s": {
