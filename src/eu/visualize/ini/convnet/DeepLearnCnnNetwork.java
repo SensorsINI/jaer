@@ -302,10 +302,15 @@ public class DeepLearnCnnNetwork {
         // convolves a given kernel over the inputMap and accumulates output to activations
         private void conv(float[] input, int kernel, int inputMap) {
             int startx = halfKernelSize, starty = halfKernelSize, endx = outputMapDim - halfKernelSize, endy = outputMapDim - halfKernelSize;
-            for (int xo = startx; xo < endx; xo++) { // index to outputMap
-                for (int yo = starty; yo < endy; yo++) {
-                    activations[o(kernel, xo, yo)] += convsingle(input, kernel, inputMap, xo, yo);
+            int xo=0, yo;
+            for (int xi = startx; xi < endx; xi++) { // index to outputMap
+                yo=0;
+                for (int yi = starty; yi < endy; yi++) {
+                    int outidx=o(kernel, xo, yo);
+                    activations[outidx] += convsingle(input, kernel, inputMap, xi, yi);
+                    yo++;
                 }
+                xo++;
             }
         }
 
@@ -317,11 +322,11 @@ public class DeepLearnCnnNetwork {
                 for (int xx = 0; xx < kernelSize; xx++) {
                     int inx = x - halfKernelSize;
                     // debug
-                    int idx = i(inputMap, inx, iny);
-                    if (idx >= input.length) {
+                    int inidx = i(inputMap, inx, iny);
+                    if (inidx >= input.length) {
                         log.warning("big index");
                     }
-                    sum += kernels[k(kernel, xx, yy)] * input[i(inputMap, inx, iny)];
+                    sum += kernels[k(kernel, xx, yy)] * input[inidx];
                     inx++;
                 }
                 iny++;
@@ -356,7 +361,7 @@ public class DeepLearnCnnNetwork {
 
         // output index
         final int o(int outputMap, int x, int y) {
-            return outputMap * outputMapLength + y * outputMapDim + x; // TODO fix
+            return outputMap * outputMapLength + y * outputMapDim + x; 
         }
 
     }
@@ -395,11 +400,12 @@ public class DeepLearnCnnNetwork {
             }
 
             for (int map = 0; map < nOutputMaps; map++) {
-                for (int xo = 0; xo < outputMapDim; xo++) {
-                    for (int yo = 0; yo < outputMapDim; yo++) {
-                        float s = 0;
-                        int startx = xo * averageOverDim, endx = xo * averageOverDim, starty = yo * averageOverDim, endy = yo * averageOverDim;
-                        for (int xi = startx; xi < endx; xi++) {
+                for (int xo = 0; xo < outputMapDim; xo++) { // output map index
+                    for (int yo = 0; yo < outputMapDim; yo++) { // output map
+                        float s = 0; // sum
+                        // input indices
+                        int startx = xo * averageOverDim, endx = startx+averageOverDim, starty = yo * averageOverDim, endy = starty+ averageOverDim;
+                        for (int xi = startx; xi < endx; xi++) { // iterate over input
                             for (int yi = starty; yi < endy; yi++) {
                                 s += convLayer.activations[convLayer.o(map, xi, yi)];
                             }
@@ -465,14 +471,14 @@ public class DeepLearnCnnNetwork {
                 Arrays.fill(activations, 0);
             }
             maxActivation=Float.NEGATIVE_INFINITY;
-            int numActivationsPerOutput=activations.length/biases.length;
+            int numActivationsPerOutput=input.activations.length/biases.length;
             int idx=0;
             for (int unit = 0; unit < biases.length; unit++) {
                 for (int i = 0; i < numActivationsPerOutput; i++) {
                     activations[unit] += input.activations[idx] * weights[idx];
                     idx++;
                 }
-                activations[unit]=sigm(activations[unit]);
+                activations[unit]=sigm(activations[unit]+biases[unit]);
                 if(activations[unit]>maxActivation){
                     maxActivatedUnit=unit;
                     maxActivation=activations[unit];

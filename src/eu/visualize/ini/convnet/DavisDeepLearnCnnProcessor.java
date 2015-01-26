@@ -195,7 +195,6 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     public void setShowInput(boolean showInput) {
         this.showInput = showInput;
         getSupport().firePropertyChange("showInput", null, showInput);
-
     }
 
     /**
