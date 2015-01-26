@@ -20,10 +20,9 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.util.filter.LowpassFilter2d;
+import net.sf.jaer.util.histogram.SimpleHistogram;
 import eu.seebetter.ini.chips.ApsDvsChip;
 import eu.seebetter.ini.chips.DAViS.DAViS240;
-import net.sf.jaer.util.histogram.AbstractHistogram;
-import net.sf.jaer.util.histogram.SimpleHistogram;
 
 /**
  * Class adapted from AEChipRenderer to render not only AE events but also
@@ -55,7 +54,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     protected FloatBuffer onMap, onBuffer;
     protected FloatBuffer offMap, offBuffer;
     // double buffered histogram so we can accumulate new histogram while old one is still being rendered and returned to caller
-    private final int histStep = 4; // histogram bin step in ADC counts of 1024 levels
+    private final int histStep = 1; // histogram bin step in ADC counts of 1024 levels
     private SimpleHistogram adcSampleValueHistogram1 = new SimpleHistogram(0, histStep, (ApsDvsChip.MAX_ADC + 1) / histStep, 0);
     private SimpleHistogram adcSampleValueHistogram2 = new SimpleHistogram(0, histStep, (ApsDvsChip.MAX_ADC + 1) / histStep, 0);
     private SimpleHistogram currentHist = adcSampleValueHistogram1, nextHist = adcSampleValueHistogram2;
@@ -185,7 +184,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
         if (!addedPropertyChangeListener) {
             if (chip instanceof AEChip) {
-                AEChip aeChip = (AEChip) chip;
+                AEChip aeChip = chip;
                 if (aeChip.getAeViewer() != null) {
                     aeChip.getAeViewer().addPropertyChangeListener(this);
                     addedPropertyChangeListener = true;
@@ -263,7 +262,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             startFrame(e.timestamp);
         } else if (e.isResetRead()) {
             int index = getIndex(e);
-            if (index < 0 || index >= buf.length) {
+            if ((index < 0) || (index >= buf.length)) {
                 return;
             }
             float val = e.getAdcSample();
@@ -353,7 +352,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         } else if (colorMode == ColorMode.GrayTime) {
             int ts0 = packet.getFirstTimestamp();
             float dt = packet.getDurationUs();
-            float v = 0.95f - 0.95f * ((e.timestamp - ts0) / dt);
+            float v = 0.95f - (0.95f * ((e.timestamp - ts0) / dt));
             map[index] = v;
             map[index + 1] = v;
             map[index + 2] = v;
@@ -361,7 +360,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         } else {
             float alpha = map[index + 3] + (1.0f / colorScale);
             alpha = normalizeEvent(alpha);
-            if (e.polarity == PolarityEvent.Polarity.On || ignorePolarityEnabled) {
+            if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
                 map[index] = onColor[0];
                 map[index + 1] = onColor[1];
                 map[index + 2] = onColor[2];
