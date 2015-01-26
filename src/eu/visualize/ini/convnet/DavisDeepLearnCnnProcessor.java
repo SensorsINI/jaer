@@ -34,7 +34,7 @@ import net.sf.jaer.graphics.ImageDisplay;
  * @author tobi
  */
 @Description("Computes CNN from DAVIS APS frames")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 public class DavisDeepLearnCnnProcessor extends EventFilter2D implements PropertyChangeListener, FrameAnnotater {
 
     private String lastFileName = getString("lastFileName", "LCRN_cnn.xml");
