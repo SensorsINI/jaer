@@ -55,7 +55,7 @@ public class AEPacketRaw extends AEPacket {
      * @param timestamps
      */
     public AEPacketRaw(int[] addresses, int[] timestamps) {
-        if (addresses == null || timestamps == null) {
+        if ((addresses == null) || (timestamps == null)) {
             return;
         }
         setAddresses(addresses);
@@ -81,7 +81,7 @@ public class AEPacketRaw extends AEPacket {
 
     /** Constructs a new AEPacketRaw by concatenating two packets.
      * The contents of the source packets are copied to this packet's memory arrays.
-     * 
+     *
      * The timestamps will be probably not be ordered monotonically after this concatenation!
      * And unless the sources are identified by unique addresses, the sources of the events will be lost.
      * @param one
@@ -180,7 +180,8 @@ public class AEPacketRaw extends AEPacket {
      *
      * @param e an Event to add to the ones already present. Capacity is enlarged if necessary.
      */
-    final public void addEvent(EventRaw e) {
+    @Override
+	final public void addEvent(EventRaw e) {
         if (e == null) {
             log.warning("tried to add null event, not adding it");
         }
@@ -210,7 +211,8 @@ public class AEPacketRaw extends AEPacket {
         return dest;
     }
 
-    public String toString() {
+    @Override
+	public String toString() {
         if (getNumEvents() == 0) {
             return super.toString();
         } else {

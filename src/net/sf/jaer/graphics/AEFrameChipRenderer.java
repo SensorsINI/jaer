@@ -54,7 +54,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     protected FloatBuffer onMap, onBuffer;
     protected FloatBuffer offMap, offBuffer;
     // double buffered histogram so we can accumulate new histogram while old one is still being rendered and returned to caller
-    private final int histStep = 1; // histogram bin step in ADC counts of 1024 levels
+    private final int histStep = 4; // histogram bin step in ADC counts of 1024 levels
     private SimpleHistogram adcSampleValueHistogram1 = new SimpleHistogram(0, histStep, (ApsDvsChip.MAX_ADC + 1) / histStep, 0);
     private SimpleHistogram adcSampleValueHistogram2 = new SimpleHistogram(0, histStep, (ApsDvsChip.MAX_ADC + 1) / histStep, 0);
     private SimpleHistogram currentHist = adcSampleValueHistogram1, nextHist = adcSampleValueHistogram2;

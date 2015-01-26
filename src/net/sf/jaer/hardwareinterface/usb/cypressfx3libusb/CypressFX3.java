@@ -466,13 +466,14 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		// synchronized(aePacketRawPool){ // synchronize on aeReader so that we
 		// don't try to access the events at the
 		// same time
-		aePacketRawPool.swap();
-		lastEventsAcquired = aePacketRawPool.readBuffer();
+		synchronized (aePacketRawPool) {
+			aePacketRawPool.swap();
+			lastEventsAcquired = aePacketRawPool.readBuffer();
+			eventCounter = 0;
+			realTimeEventCounterStart = 0;
+		}
 
 		nEvents = lastEventsAcquired.getNumEvents();
-		eventCounter = 0;
-		realTimeEventCounterStart = 0;
-
 		computeEstimatedEventRate(lastEventsAcquired);
 		if (nEvents != 0) {
 			support.firePropertyChange(CypressFX3.PROPERTY_CHANGE_NEW_EVENTS, null, lastEventsAcquired); // call

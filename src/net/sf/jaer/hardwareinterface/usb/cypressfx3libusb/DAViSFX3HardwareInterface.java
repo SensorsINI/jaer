@@ -56,6 +56,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	 * AEPacketRaw
 	 */
 	public class RetinaAEReader extends CypressFX3.AEReader implements PropertyChangeListener {
+		private static final int MAX_CAPACITY = 1024 * 1024 * 2;
+
 		private int wrapAdd;
 		private int lastTimestamp;
 		private int currentTimestamp;
@@ -66,11 +68,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private static final int APS_READOUT_TYPES_NUM = 2;
 		private static final int APS_READOUT_RESET = 0;
 		private static final int APS_READOUT_SIGNAL = 1;
-		private boolean apsGlobalShutter;
 		private boolean apsResetRead;
 		private int apsCurrentReadoutType;
-		private short[] apsCountX;
-		private short[] apsCountY;
+		private final short[] apsCountX;
+		private final short[] apsCountY;
 
 		private static final int IMU_DATA_LENGTH = 7;
 		private final short[] imuEvents;
@@ -80,12 +81,12 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
 			super(cypress);
 
-			apsCountX = new short[APS_READOUT_TYPES_NUM];
-			apsCountY = new short[APS_READOUT_TYPES_NUM];
+			apsCountX = new short[RetinaAEReader.APS_READOUT_TYPES_NUM];
+			apsCountY = new short[RetinaAEReader.APS_READOUT_TYPES_NUM];
 
 			initFrame();
 
-			imuEvents = new short[IMU_DATA_LENGTH];
+			imuEvents = new short[RetinaAEReader.IMU_DATA_LENGTH];
 		}
 
 		private void checkMonotonicTimestamp() {
@@ -97,9 +98,23 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		}
 
 		private void initFrame() {
-			apsCurrentReadoutType = APS_READOUT_RESET;
-			Arrays.fill(apsCountX, 0, APS_READOUT_TYPES_NUM, (short) 0);
-			Arrays.fill(apsCountY, 0, APS_READOUT_TYPES_NUM, (short) 0);
+			apsCurrentReadoutType = RetinaAEReader.APS_READOUT_RESET;
+			Arrays.fill(apsCountX, 0, RetinaAEReader.APS_READOUT_TYPES_NUM, (short) 0);
+			Arrays.fill(apsCountY, 0, RetinaAEReader.APS_READOUT_TYPES_NUM, (short) 0);
+		}
+
+		private boolean ensureCapacity(final AEPacketRaw buffer, final int capacity) {
+			if (buffer.getCapacity() > RetinaAEReader.MAX_CAPACITY) {
+				if (buffer.overrunOccuredFlag || (capacity > buffer.getCapacity())) {
+					buffer.overrunOccuredFlag = true;
+					return (false);
+				}
+
+				return (true);
+			}
+
+			buffer.ensureCapacity(capacity);
+			return (true);
 		}
 
 		@Override
@@ -156,10 +171,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										CypressFX3.log.fine("External input event received.");
 
 										// Check that the buffer has space for this event. Enlarge if needed.
-										buffer.ensureCapacity(eventCounter + 1);
-
-										buffer.getAddresses()[eventCounter] = ApsDvsChip.EXTERNAL_INPUT_EVENT_ADDR;
-										buffer.getTimestamps()[eventCounter++] = currentTimestamp;
+										if (ensureCapacity(buffer, eventCounter + 1)) {
+											buffer.getAddresses()[eventCounter] = ApsDvsChip.EXTERNAL_INPUT_EVENT_ADDR;
+											buffer.getTimestamps()[eventCounter++] = currentTimestamp;
+										}
 										break;
 
 									case 5: // IMU Start (6 axes)
@@ -172,10 +187,12 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									case 7: // IMU End
 										CypressFX3.log.fine("IMU End event received.");
 
-										if (imuCount == ((2 * IMU_DATA_LENGTH) + 1)) {
-											// Check for buffer space is done inside writeToPacket().
-											final IMUSample imuSample = new IMUSample(currentTimestamp, imuEvents);
-											eventCounter += imuSample.writeToPacket(buffer, eventCounter);
+										if (imuCount == ((2 * RetinaAEReader.IMU_DATA_LENGTH) + 1)) {
+											if (ensureCapacity(buffer, eventCounter + IMUSample.SIZE_EVENTS)) {
+												// Check for buffer space is also done inside writeToPacket().
+												final IMUSample imuSample = new IMUSample(currentTimestamp, imuEvents);
+												eventCounter += imuSample.writeToPacket(buffer, eventCounter);
+											}
 										}
 										else {
 											CypressFX3.log.info("IMU End: failed to validate IMU sample count ("
@@ -185,7 +202,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									case 8: // APS Global Shutter Frame Start
 										CypressFX3.log.fine("APS GS Frame Start event received.");
-										apsGlobalShutter = true;
 										apsResetRead = true;
 
 										initFrame();
@@ -194,7 +210,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									case 9: // APS Rolling Shutter Frame Start
 										CypressFX3.log.fine("APS RS Frame Start event received.");
-										apsGlobalShutter = false;
 										apsResetRead = true;
 
 										initFrame();
@@ -204,12 +219,12 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									case 10: // APS Frame End
 										CypressFX3.log.fine("APS Frame End event received.");
 
-										for (int j = 0; j < APS_READOUT_TYPES_NUM; j++) {
+										for (int j = 0; j < RetinaAEReader.APS_READOUT_TYPES_NUM; j++) {
 											int checkValue = chip.getSizeX();
 
 											// Check reset read against zero if
 											// disabled.
-											if ((j == APS_READOUT_RESET) && !apsResetRead) {
+											if ((j == RetinaAEReader.APS_READOUT_RESET) && !apsResetRead) {
 												checkValue = 0;
 											}
 
@@ -224,7 +239,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									case 11: // APS Reset Column Start
 										CypressFX3.log.fine("APS Reset Column Start event received.");
 
-										apsCurrentReadoutType = APS_READOUT_RESET;
+										apsCurrentReadoutType = RetinaAEReader.APS_READOUT_RESET;
 										apsCountY[apsCurrentReadoutType] = 0;
 
 										break;
@@ -232,7 +247,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									case 12: // APS Signal Column Start
 										CypressFX3.log.fine("APS Signal Column Start event received.");
 
-										apsCurrentReadoutType = APS_READOUT_SIGNAL;
+										apsCurrentReadoutType = RetinaAEReader.APS_READOUT_SIGNAL;
 										apsCountY[apsCurrentReadoutType] = 0;
 
 										break;
@@ -252,7 +267,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									case 14: // APS Global Shutter Frame Start with no Reset Read
 										CypressFX3.log.fine("APS GS NORST Frame Start event received.");
-										apsGlobalShutter = true;
 										apsResetRead = false;
 
 										initFrame();
@@ -261,7 +275,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									case 15: // APS Rolling Shutter Frame Start with no Reset Read
 										CypressFX3.log.fine("APS RS NORST Frame Start event received.");
-										apsGlobalShutter = false;
 										apsResetRead = false;
 
 										initFrame();
@@ -315,10 +328,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 								if (dvsGotY) {
 									// Check that the buffer has space for this event. Enlarge if needed.
-									buffer.ensureCapacity(eventCounter + 1);
+									if (ensureCapacity(buffer, eventCounter + 1)) {
+										buffer.getAddresses()[eventCounter] = ((dvsLastY << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK);
+										buffer.getTimestamps()[eventCounter++] = currentTimestamp;
+									}
 
-									buffer.getAddresses()[eventCounter] = ((dvsLastY << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK);
-									buffer.getTimestamps()[eventCounter++] = currentTimestamp;
 									CypressFX3.log.fine("DVS: row-only event received for address Y=" + dvsLastY + ".");
 								}
 
@@ -337,12 +351,12 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 								}
 
 								// Check that the buffer has space for this event. Enlarge if needed.
-								buffer.ensureCapacity(eventCounter + 1);
-
-								buffer.getAddresses()[eventCounter] = ((dvsLastY << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
-									| ((data << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
-									| (((code & 0x01) << ApsDvsChip.POLSHIFT) & ApsDvsChip.POLMASK);
-								buffer.getTimestamps()[eventCounter++] = currentTimestamp;
+								if (ensureCapacity(buffer, eventCounter + 1)) {
+									buffer.getAddresses()[eventCounter] = ((dvsLastY << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
+										| ((data << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
+										| (((code & 0x01) << ApsDvsChip.POLSHIFT) & ApsDvsChip.POLMASK);
+									buffer.getTimestamps()[eventCounter++] = currentTimestamp;
+								}
 
 								dvsGotY = false;
 
@@ -357,21 +371,20 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									break;
 								}
 
-								int xPos = chip.getSizeX() - 1 - apsCountX[apsCurrentReadoutType];
-								int yPos = chip.getSizeY() - 1 - apsCountY[apsCurrentReadoutType];
+								final int xPos = chip.getSizeX() - 1 - apsCountX[apsCurrentReadoutType];
+								final int yPos = chip.getSizeY() - 1 - apsCountY[apsCurrentReadoutType];
 
 								apsCountY[apsCurrentReadoutType]++;
 
 								// Check that the buffer has space for this event. Enlarge if needed.
-								buffer.ensureCapacity(eventCounter + 1);
-
-								buffer.getAddresses()[eventCounter] = ApsDvsChip.ADDRESS_TYPE_APS
-									| ((yPos << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
-									| ((xPos << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
-									| ((apsCurrentReadoutType << ApsDvsChip.ADC_READCYCLE_SHIFT) & ApsDvsChip.ADC_READCYCLE_MASK)
-									| (data & ApsDvsChip.ADC_DATA_MASK);
-								buffer.getTimestamps()[eventCounter++] = currentTimestamp;
-
+								if (ensureCapacity(buffer, eventCounter + 1)) {
+									buffer.getAddresses()[eventCounter] = ApsDvsChip.ADDRESS_TYPE_APS
+										| ((yPos << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
+										| ((xPos << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
+										| ((apsCurrentReadoutType << ApsDvsChip.ADC_READCYCLE_SHIFT) & ApsDvsChip.ADC_READCYCLE_MASK)
+										| (data & ApsDvsChip.ADC_DATA_MASK);
+									buffer.getTimestamps()[eventCounter++] = currentTimestamp;
+								}
 								break;
 
 							case 5: // Misc 8bit data, used currently only
@@ -382,7 +395,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 								switch (misc8Code) {
 									case 0:
 										// Detect missing IMU end events.
-										if (imuCount >= ((2 * IMU_DATA_LENGTH) + 1)) {
+										if (imuCount >= ((2 * RetinaAEReader.IMU_DATA_LENGTH) + 1)) {
 											CypressFX3.log
 												.info("IMU data: IMU samples count is at maximum, discarding further samples.");
 											break;
