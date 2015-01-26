@@ -368,6 +368,7 @@ public class DeepLearnCnnNetwork {
     }
 
     public class SubsamplingLayer extends Layer {
+
         int averageOverDim, averageOverNum; // we average over averageOverDim*averageOverDim inputs
         float[] biases;
         int inputMapLength, inputMapDim, outputMapLength, outputMapDim;
@@ -378,7 +379,6 @@ public class DeepLearnCnnNetwork {
         public SubsamplingLayer(int index) {
             super(index);
         }
-
 
         @Override
         public void compute(Layer input) {
@@ -394,7 +394,7 @@ public class DeepLearnCnnNetwork {
             averageOverNum = (averageOverDim * averageOverDim);
             averageOverMultiplier = 1f / averageOverNum;
             outputMapLength = inputMapLength / averageOverNum;
-            activationsLength=outputMapLength*nOutputMaps;
+            activationsLength = outputMapLength * nOutputMaps;
 
             if (activations == null || activations.length != activationsLength) {
                 activations = new float[activationsLength];
@@ -411,8 +411,8 @@ public class DeepLearnCnnNetwork {
                             }
                         }
                         // debug
-                        int idx=o(map, xo, yo);
-                        if(idx>=activations.length){
+                        int idx = o(map, xo, yo);
+                        if (idx >= activations.length) {
                             log.warning("overrun output activations");
                         }
                         activations[o(map, xo, yo)] = s * averageOverMultiplier;
@@ -441,11 +441,29 @@ public class DeepLearnCnnNetwork {
             super(index);
         }
 
-        float[] outputBias;
-        float[] outputWeights;
+        float[] outputBias;  //ffb in matlab DeepLearnToolbox
+        float[] outputWeights; // ffW in matlab DeepLearnToolbox
 
         public String toString() {
             return String.format("Output: bias=float[%d] outputWeights=float[%d]", outputBias.length, outputWeights.length);
+        }
+
+        /**
+         * Computes following:
+         * <pre>
+         * concatenate all end layer feature maps into vector
+         * net.fv = [];
+         * for j = 1 : numel(net.layers{n}.activations)
+         * sa = size(net.layers{n}.activations{j});
+         * net.fv = [net.fv; reshape(net.layers{n}.activations{j}, sa(1) * sa(2), sa(3))];
+         * end
+         * %  feedforward into output perceptrons
+         * net.o = sigm(net.ffW * net.fv + repmat(net.ffb, 1, size(net.fv, 2)));
+         * </pre>
+         */
+        @Override
+        public void compute(Layer input) {
+
         }
 
         /**
