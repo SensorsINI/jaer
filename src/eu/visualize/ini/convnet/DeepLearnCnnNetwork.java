@@ -77,10 +77,10 @@ public class DeepLearnCnnNetwork {
     Layer[] layers;
     InputLayer inputLayer;
     OutputLayer outputLayer;
-    JFrame frame = null;
+    JFrame activationsFrame = null, kernelsFrame = null;
 
     /**
-     * Computes the output of the network from an input frame
+     * Computes the output of the network from an input activationsFrame
      *
      * @param frame the image, indexed by y * width + x
      * @param width the width of image in pixels
@@ -99,27 +99,55 @@ public class DeepLearnCnnNetwork {
     }
 
     void drawActivations() {
-        checkFrame();
+        checkActivationsFrame();
         for (Layer l : layers) {
             l.drawActivations();
         }
-        if (!frame.isVisible()) {
-            frame.setVisible(true);
+        if (outputLayer != null) {
+            outputLayer.drawActivations();
+        }
+        if (!activationsFrame.isVisible()) {
+            activationsFrame.setVisible(true);
             return;
         }
     }
 
-    private void checkFrame() {
-        if (frame != null) {
+    void drawKernels() {
+        checkKernelsFrame();
+        for (Layer l : layers) {
+            if (l instanceof ConvLayer) {
+                ((ConvLayer) l).drawKernels();
+//                break; // DEBUG only first layer
+            }
+        }
+        if (!kernelsFrame.isVisible()) {
+            kernelsFrame.setVisible(true);
+            return;
+        }
+        kernelsFrame.repaint();
+    }
+
+    private void checkActivationsFrame() {
+        if (activationsFrame != null) {
             return;
         }
 
-        frame = new JFrame("DavisDeepLearnCnnProcessor");
-        frame.setLayout(new BoxLayout(frame.getContentPane(), BoxLayout.Y_AXIS));
-        frame.setPreferredSize(new Dimension(600, 600));
-        frame.setVisible(true);
+        activationsFrame = new JFrame("Activations: DeepLearnCNNNetwork");
+        activationsFrame.setLayout(new BoxLayout(activationsFrame.getContentPane(), BoxLayout.Y_AXIS));
+        activationsFrame.setPreferredSize(new Dimension(600, 600));
+    }
 
-//            frame.addWindowListener(new WindowAdapter() {
+    private void checkKernelsFrame() {
+        if (kernelsFrame != null) {
+            return;
+        }
+
+        kernelsFrame = new JFrame("Kernels: DeepLearnCNNNetwork");
+        kernelsFrame.setLayout(new BoxLayout(activationsFrame.getContentPane(), BoxLayout.Y_AXIS));
+        kernelsFrame.setPreferredSize(new Dimension(600, 600));
+//        activationsFrame.setVisible(true);
+
+//            activationsFrame.addWindowListener(new WindowAdapter() {
 //                public void windowClosing(WindowEvent e) {
 //                    setVisible(false);
 //                }
@@ -166,13 +194,23 @@ public class DeepLearnCnnNetwork {
         }
 
         /**
-         * Sets whether to draw this layer.
+         * Sets whether to annotateHistogram this layer.
          *
          * @param visible the visible to set
          */
         public void setVisible(boolean visible) {
             this.visible = visible;
         }
+
+        /**
+         * Return the activation of this layer
+         *
+         * @param map the output map
+         * @param x
+         * @param y
+         * @return activation from 0-1
+         */
+        abstract public float a(int map, int x, int y);
 
     }
 
@@ -188,7 +226,7 @@ public class DeepLearnCnnNetwork {
 
     /**
      * Represents input to network; computes the sub/down sampled input from
-     * image frame.
+     * image activationsFrame.
      */
     public class InputLayer extends Layer {
 
@@ -202,46 +240,54 @@ public class DeepLearnCnnNetwork {
         private ImageDisplay imageDisplay = null;
 
         /**
-         * Computes the output from input frame
+         * Computes the output from input activationsFrame
          *
-         * @param frame the input image, indexed by <code>y * width + x</code>
-         * @param width the width of image in pixels
-         * @return the vector of output values, which are indexed by y+dimx*x
+         * @param frame the input image, indexed by <code>y * width + x</code>.
+         * Lower left pixel is pixel x,y=0,0. Next pixel is x,y=1,0, etc
+         * @param frameWidth the width of image in pixels
+         * @return the vector of output values, which are indexed by y+dimy*x
          * @see #getActivations
          */
-        public float[] compute(double[] frame, int width) {
-            if (frame == null || width == 0 || frame.length % width != 0) {
-                throw new IllegalArgumentException("input frame is null or frame vector dimension not a multiple of width=" + width);
+        public float[] compute(double[] frame, int frameWidth) {
+            if (frame == null || frameWidth == 0 || frame.length % frameWidth != 0) {
+                throw new IllegalArgumentException("input frame is null or frame vector dimension not a multiple of width=" + frameWidth);
             }
             if (activations == null) {
                 activations = new float[nUnits];
             }
-            int height = frame.length / width;
-            // subsample input frame to dimx dimy 
-            // frame has width*height pixels
+            int frameHeight = frame.length / frameWidth;
+            // subsample input activationsFrame to dimx dimy 
+            // activationsFrame has width*height pixels
             // for first pass we just downsample every width/dimx pixel in x and every height/dimy pixel in y
             // TODO change to subsample (averaging)
-            float xstride = (float) width / dimx, ystride = (float) height / dimy;
-            int aidx = 0;
+            float xstride = (float) frameWidth / dimx, ystride = (float) frameHeight / dimy;
+            int xo, yo = 0;
             loop:
-            for (float y = 0; y < height; y += ystride) {
-                for (float x = 0; x < width; x += xstride) {  // take every xstride, ystride pixels as output
-                    int fridx = (int) (Math.floor(y) * width + Math.floor(x));
-                    if (fridx >= frame.length) {
-                        break loop;
-                    }
-                    if (aidx >= activations.length) {
-                        break loop;
-                    }
-                    activations[aidx++] = (float) frame[fridx];
+            for (float y = 0; y < frameHeight; y += ystride) {
+                xo = 0;
+                for (float x = 0; x < frameWidth; x += xstride) {  // take every xstride, ystride pixels as output
+                    int fridx = (int) (Math.floor(y) * frameWidth + Math.floor(x)); // nearest pixel, for cheapest downsampling
+//                    if (fridx >= activationsFrame.length) {
+//                        break loop;
+//                    }
+//                    if (aidx >= activations.length) {
+//                        break loop;
+//                    }
+                    activations[o(xo, yo)] = (float) frame[fridx];
+                    xo++;
                 }
+                yo++;
             }
-            return activations; //indexed by y+dimx*x in the downsampled image
+            return activations;
+        }
+
+        int o(int x, int y) {
+            return y + (dimy * x); // activations of input layer are stored by column and then row, as in matlab array that is taken by (:)
         }
 
         @Override
         public void compute(Layer input) {
-            throw new UnsupportedOperationException("Input layer only computes on input frame, not previous layer output");
+            throw new UnsupportedOperationException("Input layer only computes on input frame, not previous layer output; use compute(frame[] f, ...) method");
         }
 
         public String toString() {
@@ -254,20 +300,30 @@ public class DeepLearnCnnNetwork {
             if (!isVisible() || activations == null) {
                 return;
             }
-            checkFrame();
+            checkActivationsFrame();
             if (imageDisplay == null) {
-                JPanel panel=new JPanel();
+                JPanel panel = new JPanel();
                 panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
                 imageDisplay = ImageDisplay.createOpenGLCanvas();
+                imageDisplay.setBorderSpacePixels(0);
                 imageDisplay.setImageSize(dimx, dimy);
                 imageDisplay.setSize(200, 200);
                 panel.add(imageDisplay);
 
-                frame.getContentPane().add(panel);
-                frame.pack();
+                activationsFrame.getContentPane().add(panel);
+                activationsFrame.pack();
             }
-            imageDisplay.setPixmapFromGrayArray(activations);
+            for (int x = 0; x < dimx; x++) {
+                for (int y = 0; y < dimy; y++) {
+                    imageDisplay.setPixmapGray(x, y, activations[o(x, y)]);
+                }
+            }
             imageDisplay.display();
+        }
+
+        @Override
+        public final float a(int map, int x, int y) {
+            return activations[o(x, y)];
         }
 
     }
@@ -311,7 +367,7 @@ public class DeepLearnCnnNetwork {
         int outputMapLength; // length of single output map vector; biases.length/nOutputMaps, calculated during compute()
         int outputMapDim;  // dimension of single output map, calculated during compute()
         int activationsLength;
-        ImageDisplay[] activationDisplays = null;
+        ImageDisplay[] activationDisplays = null, kernelDisplays = null;
 
         public String toString() {
             return String.format("index=%d CNN   layer; nInputMaps=%d nOutputMaps=%d kernelSize=%d biases=float[%d] kernels=float[%d]",
@@ -363,7 +419,7 @@ public class DeepLearnCnnNetwork {
 
             for (int kernel = 0; kernel < nOutputMaps; kernel++) { // for each kernel/outputMap
                 for (int inputMap = 0; inputMap < nInputMaps; inputMap++) { // for each inputMap
-                    conv(input.activations, kernel, inputMap);
+                    conv(input, kernel, inputMap);
                 }
             }
 
@@ -371,8 +427,8 @@ public class DeepLearnCnnNetwork {
         }
 
         // convolves a given kernel over the inputMap and accumulates output to activations
-        private void conv(float[] input, int kernel, int inputMap) {
-            int startx = halfKernelSize, starty = halfKernelSize, endx = outputMapDim - halfKernelSize, endy = outputMapDim - halfKernelSize;
+        private void conv(Layer input, int kernel, int inputMap) {
+            int startx = halfKernelSize, starty = halfKernelSize, endx = inputMapDim - halfKernelSize, endy = inputMapDim - halfKernelSize;
             int xo = 0, yo;
             for (int xi = startx; xi < endx; xi++) { // index to outputMap
                 yo = 0;
@@ -386,18 +442,13 @@ public class DeepLearnCnnNetwork {
         }
 
         // computes single kernal location summed result centered on x,y in inputMap
-        private float convsingle(float[] input, int kernel, int inputMap, int x, int y) {
+        private float convsingle(Layer input, int kernel, int inputMap, int x, int y) {
             float sum = 0;
             for (int yy = 0; yy < kernelSize; yy++) {
                 int iny = y - halfKernelSize;
                 for (int xx = 0; xx < kernelSize; xx++) {
                     int inx = x - halfKernelSize;
-                    // debug
-                    int inidx = i(inputMap, inx, iny);
-                    if (inidx >= input.length) {
-                        log.warning("big index");
-                    }
-                    sum += kernels[k(kernel, xx, yy)] * input[inidx];
+                    sum += kernels[k(kernel, xx, yy)] * input.a(inputMap, inx, iny);
                     inx++;
                 }
                 iny++;
@@ -422,17 +473,17 @@ public class DeepLearnCnnNetwork {
 
         // input index
         final int i(int map, int x, int y) {
-            return map * inputMapLength + y * inputMapDim + x; // TODO check x,y
+            return map * inputMapLength + x * inputMapDim + y; // TODO check x,y
         }
 
         // kernel index
         final int k(int kernel, int x, int y) {
-            return kernelLength * kernel + kernelSize * y + x;
+            return kernelLength * kernel + kernelSize * x + (kernelSize - y - 1);
         }
 
         // output index
         final int o(int outputMap, int x, int y) {
-            return outputMap * outputMapLength + y * outputMapDim + x;
+            return outputMap * outputMapLength + outputMapDim * x + y;
         }
 
         @Override
@@ -440,20 +491,21 @@ public class DeepLearnCnnNetwork {
             if (!isVisible() || activations == null) {
                 return;
             }
-            checkFrame();
+            checkActivationsFrame();
             if (activationDisplays == null) {
                 JPanel panel = new JPanel();
                 panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
                 activationDisplays = new ImageDisplay[nOutputMaps];
                 for (int i = 0; i < nOutputMaps; i++) {
                     activationDisplays[i] = ImageDisplay.createOpenGLCanvas();
+                    activationDisplays[i].setBorderSpacePixels(0);
                     activationDisplays[i].setImageSize(outputMapDim, outputMapDim);
-                    activationDisplays[i].setSize(100,100);
+                    activationDisplays[i].setSize(100, 100);
                     panel.add(activationDisplays[i]);
                 }
 
-                frame.getContentPane().add(panel);
-                frame.pack();
+                activationsFrame.getContentPane().add(panel);
+                activationsFrame.pack();
             }
             for (int map = 0; map < nOutputMaps; map++) {
                 for (int x = 0; x < outputMapDim; x++) {
@@ -463,6 +515,42 @@ public class DeepLearnCnnNetwork {
                 }
                 activationDisplays[map].display();
             }
+        }
+
+        private void drawKernels() {
+            if (!isVisible() || kernels == null) {
+                return;
+            }
+            checkKernelsFrame();
+            if (kernelDisplays == null) {
+                JPanel panel = new JPanel();
+                panel.setPreferredSize(new Dimension(900, 200));
+                panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+                kernelDisplays = new ImageDisplay[nOutputMaps];
+                for (int i = 0; i < nOutputMaps; i++) {
+                    kernelDisplays[i] = ImageDisplay.createOpenGLCanvas();
+                    kernelDisplays[i].setBorderSpacePixels(5);
+                    kernelDisplays[i].setImageSize(kernelSize, kernelSize);
+                    kernelDisplays[i].setSize(200, 200);
+                    panel.add(kernelDisplays[i]);
+                }
+
+                kernelsFrame.getContentPane().add(panel);
+                kernelsFrame.pack();
+            }
+            for (int kernel = 0; kernel < nOutputMaps; kernel++) {
+                for (int x = 0; x < kernelSize; x++) {
+                    for (int y = 0; y < kernelSize; y++) {
+                        kernelDisplays[kernel].setPixmapGray(x, y, kernels[k(kernel, x, y)]);
+                    }
+                }
+                kernelDisplays[kernel].display();
+            }
+        }
+
+        @Override
+        public float a(int map, int x, int y) {
+            return activations[o(map, x, y)];
         }
 
     }
@@ -475,6 +563,7 @@ public class DeepLearnCnnNetwork {
         float averageOverMultiplier;
         int nOutputMaps;
         private int activationsLength;
+        ImageDisplay[] activationDisplays = null;
 
         public SubsamplingLayer(int index) {
             super(index);
@@ -508,7 +597,7 @@ public class DeepLearnCnnNetwork {
                         int startx = xo * averageOverDim, endx = startx + averageOverDim, starty = yo * averageOverDim, endy = starty + averageOverDim;
                         for (int xi = startx; xi < endx; xi++) { // iterate over input
                             for (int yi = starty; yi < endy; yi++) {
-                                s += convLayer.activations[convLayer.o(map, xi, yi)];
+                                s += convLayer.a(map, xi, yi); // add to sum to compute average
                             }
                         }
                         // debug
@@ -516,36 +605,75 @@ public class DeepLearnCnnNetwork {
                         if (idx >= activations.length) {
                             log.warning("overrun output activations");
                         }
-                        activations[o(map, xo, yo)] = s * averageOverMultiplier;
+                        activations[o(map, xo, yo)] = s * averageOverMultiplier;  //average
                     }
                 }
             }
         }
 
         final int i(int map, int x, int y) {
-            return map * inputMapLength + y * inputMapDim + x; // TODO check x,y
+            return map * inputMapLength + x * inputMapDim + (outputMapDim - y - 1); // TODO check x,y
         }
 
         final int o(int map, int x, int y) {
-            return map * outputMapLength + y * outputMapDim + x;
+            return map * outputMapLength + x * outputMapDim + (outputMapDim - y - 1);
+        }
+
+        @Override
+        public void drawActivations() {
+//            if (!isVisible() || activations == null) {
+//                return;
+//            }
+//            checkActivationsFrame();
+//            if (activationDisplays == null) {
+//                JPanel panel = new JPanel();
+//                panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+//                activationDisplays = new ImageDisplay[nOutputMaps];
+//                for (int i = 0; i < nOutputMaps; i++) {
+//                    activationDisplays[i] = ImageDisplay.createOpenGLCanvas();
+//                    activationDisplays[i].setBorderSpacePixels(0);
+//                    activationDisplays[i].setImageSize(outputMapDim, outputMapDim);
+//                    activationDisplays[i].setSize(100, 100);
+//                    panel.add(activationDisplays[i]);
+//                }
+//
+//                activationsFrame.getContentPane().add(panel);
+//                activationsFrame.pack();
+//            }
+//            for (int map = 0; map < nOutputMaps; map++) {
+//                for (int x = 0; x < outputMapDim; x++) {
+//                    for (int y = 0; y < outputMapDim; y++) {
+//                        activationDisplays[map].setPixmapGray(x, y, activations[o(map, x, y)]);
+//                    }
+//                }
+//                activationDisplays[map].display();
+//            }
         }
 
         public String toString() {
             return String.format("index=%d Subsamp layer; averageOver=%d biases=float[%d]",
                     index, averageOverDim, biases == null ? 0 : biases.length);
         }
+
+        @Override
+        public float a(int map, int x, int y) {
+            return activations[o(map, x, y)];
+        }
     }
 
     public class OutputLayer extends Layer {
+
+        private ImageDisplay imageDisplay;
 
         public OutputLayer(int index) {
             super(index);
         }
 
         float[] biases;  //ffb in matlab DeepLearnToolbox
-        float[] weights; // ffW in matlab DeepLearnToolbox
+        float[] weights; // ffW in matlab DeepLearnToolbox, a many by few array in XML where there are a few rows each with many columsn to dot with previous layer
         public float maxActivation;
         public int maxActivatedUnit;
+        public int cols, rows;
 
         public String toString() {
             return String.format("Output: bias=float[%d] outputWeights=float[%d]", biases.length, weights.length);
@@ -572,11 +700,12 @@ public class DeepLearnCnnNetwork {
                 Arrays.fill(activations, 0);
             }
             maxActivation = Float.NEGATIVE_INFINITY;
-            int numActivationsPerOutput = input.activations.length / biases.length;
+            cols = input.activations.length / biases.length;
+            rows=biases.length;
             int idx = 0;
             for (int unit = 0; unit < biases.length; unit++) {
-                for (int i = 0; i < numActivationsPerOutput; i++) {
-                    activations[unit] += input.activations[idx] * weights[idx];
+                for (int i = 0; i < cols; i++) {
+                    activations[unit] += input.activations[idx] * weight(unit,i); // the input activations are stored in the feature maps of last layer, column, row, map order
                     idx++;
                 }
                 activations[unit] = sigm(activations[unit] + biases[unit]);
@@ -587,15 +716,19 @@ public class DeepLearnCnnNetwork {
             }
 
         }
+        
+        private float weight(int unit, int weight){
+            return weights[weight+cols*unit];
+        }
 
         /**
          * Draw with default width and color
          *
          * @param gl
-         * @param width width of draw (chip) area in gl pixels
-         * @param height of draw (chip) area in gl pixels
+         * @param width width of annotateHistogram (chip) area in gl pixels
+         * @param height of annotateHistogram (chip) area in gl pixels
          */
-        public void draw(GL2 gl, int width, int height) { // width and height are of AEchip draw size in pixels of chip (not screen pixels)
+        public void annotateHistogram(GL2 gl, int width, int height) { // width and height are of AEchip annotateHistogram size in pixels of chip (not screen pixels)
 
             if (activations == null) {
                 return;
@@ -620,72 +753,146 @@ public class DeepLearnCnnNetwork {
             gl.glEnd();
         }
 
-        public void draw(GL2 gl, int width, int height, float lineWidth, float[] color) {
+        public void annotateHistogram(GL2 gl, int width, int height, float lineWidth, float[] color) {
             gl.glPushAttrib(GL2GL3.GL_COLOR | GL2.GL_LINE_WIDTH);
             gl.glLineWidth(lineWidth);
             gl.glColor4fv(color, 0);
-            draw(gl, width, height);
+            OutputLayer.this.annotateHistogram(gl, width, height);
             gl.glPopAttrib();
+        }
+
+        @Override
+        public void drawActivations() {
+            if (!isVisible() || activations == null) {
+                return;
+            }
+            checkActivationsFrame();
+            if (imageDisplay == null) {
+                JPanel panel = new JPanel();
+                panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+                imageDisplay = ImageDisplay.createOpenGLCanvas();
+                imageDisplay.setBorderSpacePixels(0);
+                imageDisplay.setImageSize(biases.length, 1);
+                imageDisplay.setSize(200, 200);
+                panel.add(imageDisplay);
+
+                activationsFrame.getContentPane().add(panel);
+                activationsFrame.pack();
+            }
+            for (int x = 0; x < biases.length; x++) {
+                imageDisplay.setPixmapGray(x, 0, activations[x]);
+            }
+            imageDisplay.display();
+        }
+
+        @Override
+        public float a(int map, int x, int y) { // map and y are ignored
+            return activations[x];
         }
 
     }
 
-    public void loadFromXMLFile(File f) {
-        EasyXMLReader networkReader = new EasyXMLReader(f);
-        if (!networkReader.hasFile()) {
-            log.warning("No file for reader; file=" + networkReader.getFile());
+    public void setNetworkToUniformValues(float weight, float bias) {
+        if (layers == null) {
             return;
         }
-
-        netname = networkReader.getRaw("name");
-        notes = networkReader.getRaw("notes");
-        dob = networkReader.getRaw("dob");
-        nettype = networkReader.getRaw("type");
-        if (!nettype.equals("cnn")) {
-            log.warning("network type is not cnn");
-        }
-        nLayers = networkReader.getNodeCount("Layer");
-        layers = new Layer[nLayers];
-
-        for (int i = 0; i < nLayers; i++) {
-            EasyXMLReader layerReader = networkReader.getNode("Layer", i);
-            int index = layerReader.getInt("index");
-            String type = layerReader.getRaw("type");
-            switch (type) {
-                case "i": {
-                    inputLayer = new InputLayer(index);
-                    layers[index] = inputLayer;
-                    inputLayer.dimx = layerReader.getInt("dimx");
-                    inputLayer.dimy = layerReader.getInt("dimy");
-                    inputLayer.nUnits = layerReader.getInt("nUnits");
+        for (Layer l : layers) {
+            if (l == null) {
+                continue;
+            }
+            if (l instanceof ConvLayer) {
+                ConvLayer c = (ConvLayer) l;
+                if (c.kernels != null) {
+                    Arrays.fill(c.kernels, weight);
                 }
-                break;
-                case "c": {
-                    ConvLayer l = new ConvLayer(index);
-                    layers[index] = l;
-                    l.nInputMaps = layerReader.getInt("inputMaps");
-                    l.nOutputMaps = layerReader.getInt("outputMaps");
-                    l.kernelSize = layerReader.getInt("kernelSize");
-                    l.biases = layerReader.getBase64FloatArr("biases");
-                    l.kernels = layerReader.getBase64FloatArr("kernels");
-                    l.initializeConstants();
+                if (c.biases != null) {
+                    Arrays.fill(c.biases, bias);
                 }
-                break;
-                case "s": {
-                    SubsamplingLayer l = new SubsamplingLayer(index);
-                    layers[index] = l;
-                    l.averageOverDim = layerReader.getInt("averageOver");
-                    l.biases = layerReader.getBase64FloatArr("biases");
 
+            } else if (l instanceof OutputLayer) {
+                OutputLayer o = (OutputLayer) l;
+                if (o.biases != null) {
+                    Arrays.fill(o.biases, bias);
                 }
-                break;
+                if (o.weights != null) {
+                    Arrays.fill(o.weights, weight);
+                }
+
             }
         }
-        outputLayer = new OutputLayer(nLayers);
+    }
 
-        outputLayer.biases = networkReader.getBase64FloatArr("outputBias");
-        outputLayer.weights = networkReader.getBase64FloatArr("outputWeights");
-        log.info(toString());
+    public void loadFromXMLFile(File f) {
+        try {
+            EasyXMLReader networkReader = new EasyXMLReader(f);
+            if (!networkReader.hasFile()) {
+                log.warning("No file for reader; file=" + networkReader.getFile());
+                return;
+            }
+
+            if (activationsFrame != null) {
+                activationsFrame.dispose();
+                activationsFrame = null;
+            }
+
+            netname = networkReader.getRaw("name");
+            notes = networkReader.getRaw("notes");
+            dob = networkReader.getRaw("dob");
+            nettype = networkReader.getRaw("type");
+            if (!nettype.equals("cnn")) {
+                log.warning("network type is not cnn");
+            }
+            nLayers = networkReader.getNodeCount("Layer");
+            if (layers != null) {
+                for (int i = 0; i < layers.length; i++) {
+                    layers[i] = null;
+                }
+            }
+            layers = new Layer[nLayers];
+
+            for (int i = 0; i < nLayers; i++) {
+                EasyXMLReader layerReader = networkReader.getNode("Layer", i);
+                int index = layerReader.getInt("index");
+                String type = layerReader.getRaw("type");
+                switch (type) {
+                    case "i": {
+                        inputLayer = new InputLayer(index);
+                        layers[index] = inputLayer;
+                        inputLayer.dimx = layerReader.getInt("dimx");
+                        inputLayer.dimy = layerReader.getInt("dimy");
+                        inputLayer.nUnits = layerReader.getInt("nUnits");
+                    }
+                    break;
+                    case "c": {
+                        ConvLayer l = new ConvLayer(index);
+                        layers[index] = l;
+                        l.nInputMaps = layerReader.getInt("inputMaps");
+                        l.nOutputMaps = layerReader.getInt("outputMaps");
+                        l.kernelSize = layerReader.getInt("kernelSize");
+                        l.biases = layerReader.getBase64FloatArr("biases");
+                        l.kernels = layerReader.getBase64FloatArr("kernels");
+                        l.initializeConstants();
+                    }
+                    break;
+                    case "s": {
+                        SubsamplingLayer l = new SubsamplingLayer(index);
+                        layers[index] = l;
+                        l.averageOverDim = layerReader.getInt("averageOver");
+                        l.biases = layerReader.getBase64FloatArr("biases");
+
+                    }
+                    break;
+                }
+            }
+            outputLayer = new OutputLayer(nLayers);
+           
+            outputLayer.weights = networkReader.getBase64FloatArr("outputWeights"); // stored in many cols and few rows: one row per output unit
+            outputLayer.biases = networkReader.getBase64FloatArr("outputBias");
+            log.info(toString());
+        } catch (RuntimeException e) {
+            log.warning("couldn't load net from file: caught " + e.toString());
+            e.printStackTrace();
+        }
     }
 
     public String toString() {

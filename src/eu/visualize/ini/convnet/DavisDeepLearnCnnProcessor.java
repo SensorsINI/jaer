@@ -42,18 +42,22 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     private ApsFrameExtractor frameExtractor = new ApsFrameExtractor(chip);
     private boolean showActivations = getBoolean("showActivations", false);
     private boolean showInput = getBoolean("showInput", false);
+    private boolean showKernels = getBoolean("showKernels", false);
     private boolean showOutputAsBarChart = getBoolean("showOutputAsBarChart", true);
+    private float uniformWeight = getFloat("uniformWeight", 0);
+    private float uniformBias = getFloat("uniformBias", 0);
 
     private JFrame imageDisplayFrame = null;
     public ImageDisplay inputImageDisplay;
 
     public DavisDeepLearnCnnProcessor(AEChip chip) {
         super(chip);
-        setPropertyTooltip("loadCNNNetworkFromXML", "Load an XML file containing a CNN exported from DeepLearnToolbox by cnntoxml.m");
         FilterChain chain = new FilterChain(chip);
         chain.add(frameExtractor);
         setEnclosedFilterChain(chain);
         frameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);
+        setPropertyTooltip("loadCNNNetworkFromXML", "Load an XML file containing a CNN exported from DeepLearnToolbox by cnntoxml.m");
+        setPropertyTooltip("setNetworkToUniformValues", "sets previously-loaded net to uniform values for debugging");
 
         initFilter();
     }
@@ -75,9 +79,17 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         }
         lastFileName = c.getSelectedFile().toString();
         putString("lastFileName", lastFileName);
-        net = new DeepLearnCnnNetwork();
+        if (net == null) {
+            net = new DeepLearnCnnNetwork();
+        }
         net.loadFromXMLFile(c.getSelectedFile());
 
+    }
+
+    public void doSetNetworkToUniformValues() {
+        if (net != null) {
+            net.setNetworkToUniformValues(uniformWeight, uniformBias);
+        }
     }
 
     @Override
@@ -105,7 +117,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        // new frame is available, process it
+        // new activationsFrame is available, process it
         if (net != null) {
             double[] frame = frameExtractor.getNewFrame(); // TODO currently a clone of vector, index is y * width + x, i.e. it marches along rows and then up
             if (frame == null || frame.length == 0 || frameExtractor.getWidth() == 0) {
@@ -124,6 +136,11 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
                 net.drawActivations();
             }
         }
+        if (showKernels) {
+            if (net != null) {
+                net.drawKernels();
+            }
+        }
         if (showOutputAsBarChart) {
             drawOutput(gl);
         }
@@ -133,7 +150,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         if (net == null || net.outputLayer == null) {
             return;
         }
-        net.outputLayer.draw(gl, chip.getSizeX(), chip.getSizeY());
+        net.outputLayer.annotateHistogram(gl, chip.getSizeX(), chip.getSizeY());
         System.out.println("maxActivatedUnit=" + net.outputLayer.maxActivatedUnit + " maxActivation=" + net.outputLayer.maxActivation);
     }
 
@@ -145,6 +162,20 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
      */
     public boolean isShowActivations() {
         return showActivations;
+    }
+
+    /**
+     * @return the showKernels
+     */
+    public boolean isShowKernels() {
+        return showKernels;
+    }
+
+    /**
+     * @param showKernels the showKernels to set
+     */
+    public void setShowKernels(boolean showKernels) {
+        this.showKernels = showKernels;
     }
 
     /**
@@ -186,6 +217,36 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 
     private void checkDisplayFrame() {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    /**
+     * @return the uniformWeight
+     */
+    public float getUniformWeight() {
+        return uniformWeight;
+    }
+
+    /**
+     * @param uniformWeight the uniformWeight to set
+     */
+    public void setUniformWeight(float uniformWeight) {
+        this.uniformWeight = uniformWeight;
+        putFloat("uniformWeight", uniformWeight);
+    }
+
+    /**
+     * @return the uniformBias
+     */
+    public float getUniformBias() {
+        return uniformBias;
+    }
+
+    /**
+     * @param uniformBias the uniformBias to set
+     */
+    public void setUniformBias(float uniformBias) {
+        this.uniformBias = uniformBias;
+        putFloat("uniformBias", uniformBias);
     }
 
 }
