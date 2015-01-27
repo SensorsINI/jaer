@@ -24,6 +24,7 @@ import javax.swing.JFrame;
 import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
+import net.sf.jaer.chip.Chip;
 import net.sf.jaer.chip.RetinaExtractor;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
@@ -67,8 +68,9 @@ import eu.seebetter.ini.chips.DAViS.IMUSample.IncompleteIMUSampleException;
  */
 @Description("DAViS240a/b 240x180 pixel APS-DVS DAVIS sensor")
 public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
-	private final int ADC_NUMBER_OF_TRAILING_ZEROS = Integer.numberOfTrailingZeros(ADC_READCYCLE_MASK); // speedup in
-																										// loop
+	private final int ADC_NUMBER_OF_TRAILING_ZEROS = Integer.numberOfTrailingZeros(ApsDvsChip.ADC_READCYCLE_MASK); // speedup
+																													// in
+	// loop
 	// following define bit masks for various hardware data types.
 	// The hardware interface translateEvents method packs the raw device data into 32 bit 'addresses' and timestamps.
 	// timestamps are unwrapped and timestamp resets are handled in translateEvents. Addresses are filled with either AE
@@ -78,14 +80,14 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 	 * bit masks/shifts for cDVS AE data
 	 */
 	private DAViS240DisplayMethod davisDisplayMethod = null;
-	private AEFrameChipRenderer apsDVSrenderer;
+	private final AEFrameChipRenderer apsDVSrenderer;
 	private int frameExposureStartTimestampUs = 0; // timestamp of first sample from frame (first sample read after
-													// reset released)
+	// reset released)
 	private int frameExposureEndTimestampUs; // end of exposure (first events of signal read)
 	private int exposureDurationUs; // internal measured variable, set during rendering. Duration of frame expsosure in
-									// us.
+	// us.
 	private int frameIntervalUs; // internal measured variable, set during rendering. Time between this frame and
-									// previous one.
+	// previous one.
 	/**
 	 * holds measured variable in Hz for GUI rendering of rate
 	 */
@@ -110,7 +112,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 	private final String CMD_EXPOSURE_CC = "exposureCC";
 	private final String CMD_RS_SETTLE_CC = "resetSettleCC";
 
-	private AutoExposureController autoExposureController = new AutoExposureController();
+	private final AutoExposureController autoExposureController = new AutoExposureController();
 
 	/**
 	 * Creates a new instance of cDVSTest20.
@@ -119,8 +121,8 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 		setName("DAViS240");
 		setDefaultPreferencesFile("biasgenSettings/Davis240a/David240aBasic.xml");
 		setEventClass(ApsDvsEvent.class);
-		setSizeX(WIDTH);
-		setSizeY(HEIGHT);
+		setSizeX(DAViS240.WIDTH);
+		setSizeY(DAViS240.HEIGHT);
 		setNumCellTypes(3); // two are polarity and last is intensity
 		setPixelHeightUm(18.5f);
 		setPixelWidthUm(18.5f);
@@ -131,7 +133,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 
 		// hardware interface is ApsDvsHardwareInterface
 		apsDVSrenderer = new AEFrameChipRenderer(this);
-		apsDVSrenderer.setMaxADC(MAX_ADC);
+		apsDVSrenderer.setMaxADC(ApsDvsChip.MAX_ADC);
 		setRenderer(apsDVSrenderer);
 
 		davisDisplayMethod = new DAViS240DisplayMethod(this);
@@ -151,16 +153,16 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 				CMD_RS_SETTLE_CC + " val - sets reset settling time. val in clock cycles");
 		}
 		addObserver(this); // we observe ourselves so that if hardware interface for example calls notifyListeners we
-							// get informed
+		// get informed
 	}
 
 	@Override
-	public String processRemoteControlCommand(RemoteControlCommand command, String input) {
-		log.info("processing RemoteControlCommand " + command + " with input=" + input);
+	public String processRemoteControlCommand(final RemoteControlCommand command, final String input) {
+		Chip.log.info("processing RemoteControlCommand " + command + " with input=" + input);
 		if (command == null) {
 			return null;
 		}
-		String[] tokens = input.split(" ");
+		final String[] tokens = input.split(" ");
 		if (tokens.length < 2) {
 			return input + ": unknown command - did you forget the argument?";
 		}
@@ -171,10 +173,10 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 		try {
 			v = Float.parseFloat(tokens[1]);
 		}
-		catch (NumberFormatException e) {
+		catch (final NumberFormatException e) {
 			return input + ": bad argument? Caught " + e.toString();
 		}
-		String c = command.getCmdName();
+		final String c = command.getCmdName();
 		if (c.equals(CMD_EXPOSURE)) {
 			config.setExposureDelayMs((int) v);
 		}
@@ -191,18 +193,18 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 	}
 
 	@Override
-	public void setPowerDown(boolean powerDown) {
+	public void setPowerDown(final boolean powerDown) {
 		config.powerDown.set(powerDown);
 		try {
 			config.sendOnChipConfigChain();
 		}
-		catch (HardwareInterfaceException ex) {
+		catch (final HardwareInterfaceException ex) {
 			Logger.getLogger(DAViS240.class.getName()).log(Level.SEVERE, null, ex);
 		}
 	}
 
 	@Override
-	public void setADCEnabled(boolean adcEnabled) {
+	public void setADCEnabled(final boolean adcEnabled) {
 		config.apsReadoutControl.setAdcEnabled(adcEnabled);
 	}
 
@@ -214,7 +216,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 	 *            is preferred. It makes a new cDVSTest10Biasgen object to talk to the
 	 *            on-chip biasgen.
 	 */
-	public DAViS240(HardwareInterface hardwareInterface) {
+	public DAViS240(final HardwareInterface hardwareInterface) {
 		this();
 		setHardwareInterface(hardwareInterface);
 	}
@@ -244,11 +246,15 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 	 * <p>
 	 */
 	public class DAViS240Extractor extends RetinaExtractor {
+		/**
+		 *
+		 */
+		private static final long serialVersionUID = 3890914720599660376L;
 		private int autoshotEventsSinceLastShot = 0; // autoshot counter
 		private int warningCount = 0;
 		private static final int WARNING_COUNT_DIVIDER = 10000;
 
-		public DAViS240Extractor(DAViS240 chip) {
+		public DAViS240Extractor(final DAViS240 chip) {
 			super(chip);
 		}
 
@@ -266,7 +272,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 		 *         in-place. empty packet is returned if null is supplied as in.
 		 */
 		@Override
-		synchronized public EventPacket extractPacket(AEPacketRaw in) {
+		synchronized public EventPacket extractPacket(final AEPacketRaw in) {
 			if (!(chip instanceof ApsDvsChip)) {
 				return null;
 			}
@@ -280,13 +286,13 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			if (in == null) {
 				return out;
 			}
-			int n = in.getNumEvents(); // addresses.length;
+			final int n = in.getNumEvents(); // addresses.length;
 			sx1 = chip.getSizeX() - 1;
 			sy1 = chip.getSizeY() - 1;
 
-			int[] datas = in.getAddresses();
-			int[] timestamps = in.getTimestamps();
-			OutputEventIterator outItr = out.outputIterator();
+			final int[] datas = in.getAddresses();
+			final int[] timestamps = in.getTimestamps();
+			final OutputEventIterator outItr = out.outputIterator();
 			// NOTE we must make sure we write ApsDvsEvents when we want them, not reuse the IMUSamples
 
 			// at this point the raw data from the USB IN packet has already been digested to extract timestamps,
@@ -296,38 +302,38 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			// TODO entire rendering / processing approach is not very efficient now
 			// System.out.println("Extracting new packet "+out);
 			for (int i = 0; i < n; i++) { // TODO implement skipBy/subsampling, but without missing the frame start/end
-											// events and still delivering frames
-				int data = datas[i];
+				// events and still delivering frames
+				final int data = datas[i];
 
 				if ((incompleteIMUSampleException != null)
 					|| ((ApsDvsChip.ADDRESS_TYPE_IMU & data) == ApsDvsChip.ADDRESS_TYPE_IMU)) {
 					if (IMUSample.extractSampleTypeCode(data) == 0) { // / only start getting an IMUSample at code 0,
-																		// the first sample type
+						// the first sample type
 						try {
-							IMUSample possibleSample = IMUSample.constructFromAEPacketRaw(in, i,
+							final IMUSample possibleSample = IMUSample.constructFromAEPacketRaw(in, i,
 								incompleteIMUSampleException);
 							i += IMUSample.SIZE_EVENTS - 1;
 							incompleteIMUSampleException = null;
 							imuSample = possibleSample; // asking for sample from AEChip now gives this value, but no
-														// access to intermediate IMU samples
+							// access to intermediate IMU samples
 							imuSample.imuSampleEvent = true;
 							outItr.writeToNextOutput(imuSample); // also write the event out to the next output event
-																	// slot
+							// slot
 							continue;
 						}
-						catch (IMUSample.IncompleteIMUSampleException ex) {
+						catch (final IMUSample.IncompleteIMUSampleException ex) {
 							incompleteIMUSampleException = ex;
-							if ((missedImuSampleCounter++ % IMU_WARNING_INTERVAL) == 0) {
-								log.warning(String.format("%s (obtained %d partial samples so far)", ex.toString(),
-									missedImuSampleCounter));
+							if ((missedImuSampleCounter++ % DAViS240Extractor.IMU_WARNING_INTERVAL) == 0) {
+								Chip.log.warning(String.format("%s (obtained %d partial samples so far)",
+									ex.toString(), missedImuSampleCounter));
 							}
 							break; // break out of loop because this packet only contained part of an IMUSample and
-									// formed the end of the packet anyhow. Next time we come back here we will complete
-									// the IMUSample
+							// formed the end of the packet anyhow. Next time we come back here we will complete
+							// the IMUSample
 						}
-						catch (IMUSample.BadIMUDataException ex2) {
-							if ((badImuDataCounter++ % IMU_WARNING_INTERVAL) == 0) {
-								log.warning(String.format("%s (%d bad samples so far)", ex2.toString(),
+						catch (final IMUSample.BadIMUDataException ex2) {
+							if ((badImuDataCounter++ % DAViS240Extractor.IMU_WARNING_INTERVAL) == 0) {
+								Chip.log.warning(String.format("%s (%d bad samples so far)", ex2.toString(),
 									badImuDataCounter));
 							}
 							incompleteIMUSampleException = null;
@@ -338,11 +344,11 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 				}
 				else if ((data & ApsDvsChip.ADDRESS_TYPE_MASK) == ApsDvsChip.ADDRESS_TYPE_DVS) {
 					// DVS event
-					ApsDvsEvent e = nextApsDvsEvent(outItr);
+					final ApsDvsEvent e = nextApsDvsEvent(outItr);
 					if ((data & ApsDvsChip.EVENT_TYPE_MASK) == ApsDvsChip.EXTERNAL_INPUT_EVENT_ADDR) {
 						e.adcSample = -1; // TODO hack to mark as not an ADC sample
 						e.special = true; // TODO special is set here when capturing frames which will mess us up if
-											// this is an IMUSample used as a plain ApsDvsEvent
+						// this is an IMUSample used as a plain ApsDvsEvent
 						e.address = data;
 						e.timestamp = (timestamps[i]);
 						e.setIsDVS(true);
@@ -352,17 +358,18 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 						e.special = false;
 						e.address = data;
 						e.timestamp = (timestamps[i]);
-						e.polarity = (data & POLMASK) == POLMASK ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
-						e.type = (byte) ((data & POLMASK) == POLMASK ? 1 : 0);
+						e.polarity = (data & ApsDvsChip.POLMASK) == ApsDvsChip.POLMASK ? ApsDvsEvent.Polarity.On
+							: ApsDvsEvent.Polarity.Off;
+						e.type = (byte) ((data & ApsDvsChip.POLMASK) == ApsDvsChip.POLMASK ? 1 : 0);
 						if ((getHardwareInterface() != null)
 							&& (getHardwareInterface() instanceof net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3)) {
 							// New logic already rights the address in FPGA.
-							e.x = (short) ((data & XMASK) >>> XSHIFT);
+							e.x = (short) ((data & ApsDvsChip.XMASK) >>> ApsDvsChip.XSHIFT);
 						}
 						else {
-							e.x = (short) (sx1 - ((data & XMASK) >>> XSHIFT));
+							e.x = (short) (sx1 - ((data & ApsDvsChip.XMASK) >>> ApsDvsChip.XSHIFT));
 						}
-						e.y = (short) ((data & YMASK) >>> YSHIFT);
+						e.y = (short) ((data & ApsDvsChip.YMASK) >>> ApsDvsChip.YSHIFT);
 						e.setIsDVS(true);
 						// System.out.println(data);
 						// autoshot triggering
@@ -371,65 +378,80 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 				}
 				else if ((data & ApsDvsChip.ADDRESS_TYPE_MASK) == ApsDvsChip.ADDRESS_TYPE_APS) {
 					// APS event
-					ApsDvsEvent e = nextApsDvsEvent(outItr);
-					e.adcSample = data & ADC_DATA_MASK;
-					int sampleType = (data & ADC_READCYCLE_MASK) >> ADC_NUMBER_OF_TRAILING_ZEROS;
-					switch (sampleType) {
+					// We first calculate the positions, so we can put events such as StartOfFrame at their
+					// right place, before the actual APS event denoting (0, 0) for example.
+					final int timestamp = timestamps[i];
+
+					final short x = (short) (((data & ApsDvsChip.XMASK) >>> ApsDvsChip.XSHIFT));
+					final short y = (short) ((data & ApsDvsChip.YMASK) >>> ApsDvsChip.YSHIFT);
+
+					final boolean pixFirst = (x == sx1) && (y == sy1); // First event of frame (addresses get flipped)
+					final boolean pixLast = (x == 0) && (y == 0); // Last event of frame (addresses get flipped)
+
+					ApsDvsEvent.ReadoutType readoutType = ApsDvsEvent.ReadoutType.Null;
+					switch ((data & ApsDvsChip.ADC_READCYCLE_MASK) >> ADC_NUMBER_OF_TRAILING_ZEROS) {
 						case 0:
-							e.readoutType = ApsDvsEvent.ReadoutType.ResetRead;
+							readoutType = ApsDvsEvent.ReadoutType.ResetRead;
 							break;
+
 						case 1:
-							e.readoutType = ApsDvsEvent.ReadoutType.SignalRead;
-							// log.info("got SignalRead event");
+							readoutType = ApsDvsEvent.ReadoutType.SignalRead;
 							break;
+
 						case 3:
-							log.warning("Event with readout cycle null was sent out!");
+							Chip.log.warning("Event with readout cycle null was sent out!");
 							break;
+
 						default:
-							if ((warningCount < 10) || ((warningCount % WARNING_COUNT_DIVIDER) == 0)) {
-								log.warning("Event with unknown readout cycle was sent out! You might be reading a file that had the deprecated C readout mode enabled.");
+							if ((warningCount < 10) || ((warningCount % DAViS240Extractor.WARNING_COUNT_DIVIDER) == 0)) {
+								Chip.log
+									.warning("Event with unknown readout cycle was sent out! You might be reading a file that had the deprecated C readout mode enabled.");
 							}
 							warningCount++;
+							break;
 					}
-					e.special = false;
-					e.timestamp = (timestamps[i]);
-					e.address = data;
-					e.x = (short) (((data & XMASK) >>> XSHIFT));
-					e.y = (short) ((data & YMASK) >>> YSHIFT);
-					e.type = (byte) (2);
 
-					boolean pixZero = (e.x == sx1) && (e.y == sy1);// first event of frame (addresses get flipped)
-
-					if (pixZero && e.isResetRead()) {
-						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOF, timestamps[i]);
+					if (pixFirst && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)) {
+						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOF, timestamp);
 
 						if (!config.chipConfigChain.configBits[6].isSet()) {
 							// rolling shutter start of exposure (SOE)
-							createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamps[i]);
-							frameIntervalUs = e.timestamp - frameExposureStartTimestampUs;
-							frameExposureStartTimestampUs = e.timestamp;
+							createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamp);
+							frameIntervalUs = timestamp - frameExposureStartTimestampUs;
+							frameExposureStartTimestampUs = timestamp;
 						}
 					}
 
-					if (config.chipConfigChain.configBits[6].isSet() && e.isResetRead() && (e.x == 0) && (e.y == 0)) {
+					if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)
+						&& config.chipConfigChain.configBits[6].isSet()) {
 						// global shutter start of exposure (SOE)
-						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamps[i]);
-						frameIntervalUs = e.timestamp - frameExposureStartTimestampUs;
-						frameExposureStartTimestampUs = e.timestamp;
+						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamp);
+						frameIntervalUs = timestamp - frameExposureStartTimestampUs;
+						frameExposureStartTimestampUs = timestamp;
 					}
+
+					final ApsDvsEvent e = nextApsDvsEvent(outItr);
+					e.adcSample = data & ApsDvsChip.ADC_DATA_MASK;
+					e.readoutType = readoutType;
+					e.special = false;
+					e.timestamp = timestamp;
+					e.address = data;
+					e.x = x;
+					e.y = y;
+					e.type = (byte) (2);
 
 					// end of exposure, same for both
-					if (pixZero && e.isSignalRead()) {
-						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOE, timestamps[i]);
-						frameExposureEndTimestampUs = e.timestamp;
-						exposureDurationUs = e.timestamp - frameExposureStartTimestampUs;
+					if (pixFirst && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
+						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOE, timestamp);
+						frameExposureEndTimestampUs = timestamp;
+						exposureDurationUs = timestamp - frameExposureStartTimestampUs;
 					}
 
-					if (e.isSignalRead() && (e.x == 0) && (e.y == 0)) {
+					if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
 						// if we use ResetRead+SignalRead+C readout, OR, if we use ResetRead-SignalRead readout and we
 						// are at last APS pixel, then write EOF event
 						// insert a new "end of frame" event not present in original data
-						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamps[i]);
+						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamp);
 
 						if (snapshot) {
 							snapshot = false;
@@ -440,26 +462,18 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 					}
 				}
 			}
+
 			if ((getAutoshotThresholdEvents() > 0) && (autoshotEventsSinceLastShot > getAutoshotThresholdEvents())) {
 				takeSnapshot();
 				autoshotEventsSinceLastShot = 0;
 			}
-			// int imuEventCount=0, realImuEventCount=0;
-			// for(Object e:out){
-			// if(e instanceof IMUSample){
-			// imuEventCount++;
-			// IMUSample i=(IMUSample)e;
-			// if(i.imuSampleEvent) realImuEventCount++;
-			// }
-			// }
-			// System.out.println(String.format("packet has \ttotal %d, \timu type=%d, \treal imu data=%d events",
-			// out.getSize(), imuEventCount, realImuEventCount));
+
 			return out;
 		} // extractPacket
 
 		// TODO hack to reuse IMUSample events as ApsDvsEvents holding only APS or DVS data by using the special flags
-		private ApsDvsEvent nextApsDvsEvent(OutputEventIterator outItr) {
-			ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
+		private ApsDvsEvent nextApsDvsEvent(final OutputEventIterator outItr) {
+			final ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
 			e.special = false;
 			e.adcSample = -1;
 			if (e instanceof IMUSample) {
@@ -477,8 +491,9 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 		 * @param timestamp
 		 * @return
 		 */
-		private ApsDvsEvent createApsFlagEvent(OutputEventIterator outItr, ApsDvsEvent.ReadoutType flag, int timestamp) {
-			ApsDvsEvent a = nextApsDvsEvent(outItr);
+		private ApsDvsEvent createApsFlagEvent(final OutputEventIterator outItr, final ApsDvsEvent.ReadoutType flag,
+			final int timestamp) {
+			final ApsDvsEvent a = nextApsDvsEvent(outItr);
 			a.adcSample = 0; // set this effectively as ADC sample even though fake
 			a.timestamp = timestamp;
 			a.x = -1;
@@ -488,23 +503,23 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 		}
 
 		@Override
-		public AEPacketRaw reconstructRawPacket(EventPacket packet) {
+		public AEPacketRaw reconstructRawPacket(final EventPacket packet) {
 			if (raw == null) {
 				raw = new AEPacketRaw();
 			}
 			if (!(packet instanceof ApsDvsEventPacket)) {
 				return null;
 			}
-			ApsDvsEventPacket apsDVSpacket = (ApsDvsEventPacket) packet;
+			final ApsDvsEventPacket apsDVSpacket = (ApsDvsEventPacket) packet;
 			raw.ensureCapacity(packet.getSize());
 			raw.setNumEvents(0);
-			int[] a = raw.addresses;
-			int[] ts = raw.timestamps;
-			int n = apsDVSpacket.getSize();
-			Iterator evItr = apsDVSpacket.fullIterator();
+			final int[] a = raw.addresses;
+			final int[] ts = raw.timestamps;
+			apsDVSpacket.getSize();
+			final Iterator evItr = apsDVSpacket.fullIterator();
 			int k = 0;
 			while (evItr.hasNext()) {
-				ApsDvsEvent e = (ApsDvsEvent) evItr.next();
+				final ApsDvsEvent e = (ApsDvsEvent) evItr.next();
 				// not writing out these EOF events (which were synthesized on extraction) results in reconstructed
 				// packets with giant time gaps, reason unknown
 				if (e.isEndOfFrame()) {
@@ -527,7 +542,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 		 * @return the raw address
 		 */
 		@Override
-		public int reconstructRawAddressFromEvent(TypedEvent e) {
+		public int reconstructRawAddressFromEvent(final TypedEvent e) {
 			int address = e.address;
 			// if(e.x==0 && e.y==0){
 			// log.info("start of frame event "+e);
@@ -538,17 +553,17 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			// e.x came from e.x = (short) (chip.getSizeX()-1-((data & XMASK) >>> XSHIFT)); // for DVS event, no x flip
 			// if APS event
 			if (((ApsDvsEvent) e).adcSample >= 0) {
-				address = (address & ~XMASK) | ((e.x) << XSHIFT);
+				address = (address & ~ApsDvsChip.XMASK) | ((e.x) << ApsDvsChip.XSHIFT);
 			}
 			else {
-				address = (address & ~XMASK) | ((sx1 - e.x) << XSHIFT);
+				address = (address & ~ApsDvsChip.XMASK) | ((sx1 - e.x) << ApsDvsChip.XSHIFT);
 			}
 			// e.y came from e.y = (short) ((data & YMASK) >>> YSHIFT);
-			address = (address & ~YMASK) | (e.y << YSHIFT);
+			address = (address & ~ApsDvsChip.YMASK) | (e.y << ApsDvsChip.YSHIFT);
 			return address;
 		}
 
-		private void setFrameCount(int i) {
+		private void setFrameCount(final int i) {
 			frameCount = i;
 		}
 	} // extractor
@@ -564,18 +579,17 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 	@Override
 	public void setHardwareInterface(final HardwareInterface hardwareInterface) {
 		this.hardwareInterface = hardwareInterface;
-		DAViS240Config config;
 		try {
 			if (getBiasgen() == null) {
-				setBiasgen(config = new DAViS240Config(this));
+				setBiasgen(new DAViS240Config(this));
 				// now we can addConfigValue the control panel
 			}
 			else {
 				getBiasgen().setHardwareInterface((BiasgenHardwareInterface) hardwareInterface);
 			}
 		}
-		catch (ClassCastException e) {
-			log.warning(e.getMessage()
+		catch (final ClassCastException e) {
+			Chip.log.warning(e.getMessage()
 				+ ": probably this chip object has a biasgen but the hardware interface doesn't, ignoring");
 		}
 	}
@@ -589,21 +603,21 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 		private static final int FONTSIZE = 10;
 		private static final int FRAME_COUNTER_BAR_LENGTH_FRAMES = 10;
 
-		private TextRenderer exposureRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, FONTSIZE), true,
-			true);
+		private final TextRenderer exposureRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN,
+			DAViS240DisplayMethod.FONTSIZE), true, true);
 
-		public DAViS240DisplayMethod(DAViS240 chip) {
+		public DAViS240DisplayMethod(final DAViS240 chip) {
 			super(chip.getCanvas());
 		}
 
 		@Override
-		public void display(GLAutoDrawable drawable) {
+		public void display(final GLAutoDrawable drawable) {
 			getCanvas().setBorderSpacePixels(50);
 
 			super.display(drawable);
 
 			if ((config.videoControl != null) && config.videoControl.displayFrames) {
-				GL2 gl = drawable.getGL().getGL2();
+				final GL2 gl = drawable.getGL().getGL2();
 				exposureRender(gl);
 			}
 
@@ -611,8 +625,8 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			if (showImageHistogram && (renderer instanceof AEFrameChipRenderer)) {
 				// System.out.println("drawing hist");
 				final int size = 100;
-				AbstractHistogram hist = ((AEFrameChipRenderer) renderer).getAdcSampleValueHistogram();
-				GL2 gl = drawable.getGL().getGL2();
+				final AbstractHistogram hist = ((AEFrameChipRenderer) renderer).getAdcSampleValueHistogram();
+				final GL2 gl = drawable.getGL().getGL2();
 				gl.glPushAttrib(GL.GL_COLOR_BUFFER_BIT);
 				gl.glColor3f(0, 0, 1);
 				hist.draw(drawable, exposureRenderer, (sizeX / 2) - (size / 2), (sizeY / 2) + (size / 2), size, size);
@@ -621,7 +635,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 
 			// Draw last IMU output
 			if (config.isDisplayImu() && (chip instanceof DAViS240)) {
-				IMUSample imuSample = ((DAViS240) chip).getImuSample();
+				final IMUSample imuSample = ((DAViS240) chip).getImuSample();
 				if (imuSample != null) {
 					imuRender(drawable, imuSample);
 				}
@@ -632,9 +646,9 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 		GLU glu = null;
 		GLUquadric accelCircle = null;
 
-		private void imuRender(GLAutoDrawable drawable, IMUSample imuSample) {
+		private void imuRender(final GLAutoDrawable drawable, final IMUSample imuSample) {
 			// System.out.println("on rendering: "+imuSample.toString());
-			GL2 gl = drawable.getGL().getGL2();
+			final GL2 gl = drawable.getGL().getGL2();
 			gl.glPushMatrix();
 
 			gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
@@ -649,8 +663,8 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			gl.glColor3f(1f, 0, 1);
 			gl.glBegin(GL.GL_LINES);
 			gl.glVertex2f(0, 0);
-			x = (vectorScale * imuSample.getGyroYawY() * HEIGHT) / IMUSample.getFullScaleGyroDegPerSec();
-			y = (vectorScale * imuSample.getGyroTiltX() * HEIGHT) / IMUSample.getFullScaleGyroDegPerSec();
+			x = (vectorScale * imuSample.getGyroYawY() * DAViS240.HEIGHT) / IMUSample.getFullScaleGyroDegPerSec();
+			y = (vectorScale * imuSample.getGyroTiltX() * DAViS240.HEIGHT) / IMUSample.getFullScaleGyroDegPerSec();
 			gl.glVertex2f(x, y);
 			gl.glEnd();
 
@@ -661,7 +675,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			imuTextRenderer.end3DRendering();
 
 			// gyro roll
-			x = (vectorScale * imuSample.getGyroRollZ() * HEIGHT) / IMUSample.getFullScaleGyroDegPerSec();
+			x = (vectorScale * imuSample.getGyroRollZ() * DAViS240.HEIGHT) / IMUSample.getFullScaleGyroDegPerSec();
 			y = chip.getSizeY() * .25f;
 			gl.glBegin(GL.GL_LINES);
 			gl.glVertex2f(0, y);
@@ -673,8 +687,8 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			imuTextRenderer.end3DRendering();
 
 			// acceleration x,y
-			x = (vectorScale * imuSample.getAccelX() * HEIGHT) / IMUSample.getFullScaleAccelG();
-			y = (vectorScale * imuSample.getAccelY() * HEIGHT) / IMUSample.getFullScaleAccelG();
+			x = (vectorScale * imuSample.getAccelX() * DAViS240.HEIGHT) / IMUSample.getFullScaleAccelG();
+			y = (vectorScale * imuSample.getAccelY() * DAViS240.HEIGHT) / IMUSample.getFullScaleAccelG();
 			gl.glColor3f(0, 1, 0);
 			gl.glBegin(GL.GL_LINES);
 			gl.glVertex2f(0, 0);
@@ -694,7 +708,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			if (accelCircle == null) {
 				accelCircle = glu.gluNewQuadric();
 			}
-			final float az = ((vectorScale * imuSample.getAccelZ() * HEIGHT)) / IMUSample.getFullScaleAccelG();
+			final float az = ((vectorScale * imuSample.getAccelZ() * DAViS240.HEIGHT)) / IMUSample.getFullScaleAccelG();
 			final float rim = .5f;
 			glu.gluQuadricDrawStyle(accelCircle, GLU.GLU_FILL);
 			glu.gluDisk(accelCircle, az - rim, az + rim, 16, 1);
@@ -702,7 +716,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			imuTextRenderer.begin3DRendering();
 			imuTextRenderer.setColor(0, .5f, 0, trans);
 			final String saz = String.format("%.2f g", imuSample.getAccelZ());
-			Rectangle2D rect = imuTextRenderer.getBounds(saz);
+			final Rectangle2D rect = imuTextRenderer.getBounds(saz);
 			imuTextRenderer.draw3D(saz, az, -(float) rect.getHeight() * textScale * 0.5f, 0, textScale);
 			imuTextRenderer.end3DRendering();
 
@@ -712,7 +726,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			final String ratestr = String.format("IMU: timestamp=%-+9.3fs last dtMs=%-6.1fms  avg dtMs=%-6.1fms",
 				1e-6f * imuSample.getTimestampUs(), imuSample.getDeltaTimeUs() * .001f,
 				IMUSample.getAverageSampleIntervalUs() / 1000);
-			Rectangle2D raterect = imuTextRenderer.getBounds(ratestr);
+			final Rectangle2D raterect = imuTextRenderer.getBounds(ratestr);
 			imuTextRenderer.draw3D(ratestr, -(float) raterect.getWidth() * textScale * 0.5f * .7f, -12, 0,
 				textScale * .7f); // x,y,z, scale factor
 			imuTextRenderer.end3DRendering();
@@ -720,7 +734,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			gl.glPopMatrix();
 		}
 
-		private void exposureRender(GL2 gl) {
+		private void exposureRender(final GL2 gl) {
 			gl.glPushMatrix();
 
 			exposureRenderer.begin3DRendering();
@@ -728,16 +742,19 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 				setFrameRateHz((float) 1000000 / frameIntervalUs);
 			}
 			setExposureMs((float) exposureDurationUs / 1000);
-			String s = String.format("Frame: %d; Exposure %.2f ms; Frame rate: %.2f Hz", getFrameCount(), exposureMs,
-				frameRateHz);
-			exposureRenderer.draw3D(s, 0, HEIGHT + (FONTSIZE / 2), 0, .5f); // x,y,z, scale factor
+			final String s = String.format("Frame: %d; Exposure %.2f ms; Frame rate: %.2f Hz", getFrameCount(),
+				exposureMs, frameRateHz);
+			exposureRenderer.draw3D(s, 0, DAViS240.HEIGHT + (DAViS240DisplayMethod.FONTSIZE / 2), 0, .5f); // x,y,z,
+																											// scale
+																											// factor
 			exposureRenderer.end3DRendering();
 
-			int nframes = frameCount % FRAME_COUNTER_BAR_LENGTH_FRAMES;
-			int rectw = WIDTH / FRAME_COUNTER_BAR_LENGTH_FRAMES;
+			final int nframes = frameCount % DAViS240DisplayMethod.FRAME_COUNTER_BAR_LENGTH_FRAMES;
+			final int rectw = DAViS240.WIDTH / DAViS240DisplayMethod.FRAME_COUNTER_BAR_LENGTH_FRAMES;
 			gl.glColor4f(1, 1, 1, .5f);
 			for (int i = 0; i < nframes; i++) {
-				gl.glRectf(nframes * rectw, HEIGHT + 1, ((nframes + 1) * rectw) - 3, (HEIGHT + (FONTSIZE / 2)) - 1);
+				gl.glRectf(nframes * rectw, DAViS240.HEIGHT + 1, ((nframes + 1) * rectw) - 3,
+					(DAViS240.HEIGHT + (DAViS240DisplayMethod.FONTSIZE / 2)) - 1);
 			}
 			gl.glPopMatrix();
 		}
@@ -757,7 +774,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 
 	@Override
 	public int getMaxADC() {
-		return MAX_ADC;
+		return ApsDvsChip.MAX_ADC;
 	}
 
 	/**
@@ -767,10 +784,10 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 	 * @param frameRateHz
 	 *            the frameRateHz to set
 	 */
-	private void setFrameRateHz(float frameRateHz) {
-		float old = this.frameRateHz;
+	private void setFrameRateHz(final float frameRateHz) {
+		final float old = this.frameRateHz;
 		this.frameRateHz = frameRateHz;
-		getSupport().firePropertyChange(PROPERTY_FRAME_RATE_HZ, old, this.frameRateHz);
+		getSupport().firePropertyChange(ApsDvsChip.PROPERTY_FRAME_RATE_HZ, old, this.frameRateHz);
 	}
 
 	/**
@@ -780,10 +797,10 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 	 * @param exposureMs
 	 *            the exposureMs to set
 	 */
-	private void setExposureMs(float exposureMs) {
-		float old = this.exposureMs;
+	private void setExposureMs(final float exposureMs) {
+		final float old = this.exposureMs;
 		this.exposureMs = exposureMs;
-		getSupport().firePropertyChange(PROPERTY_EXPOSURE_MS, old, this.exposureMs);
+		getSupport().firePropertyChange(ApsDvsChip.PROPERTY_EXPOSURE_MS, old, this.exposureMs);
 	}
 
 	@Override
@@ -856,7 +873,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 	}
 
 	@Override
-	public void setAutoExposureEnabled(boolean yes) {
+	public void setAutoExposureEnabled(final boolean yes) {
 		getAutoExposureController().setAutoExposureEnabled(yes);
 	}
 
@@ -873,7 +890,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 	}
 
 	@Override
-	public void setShowImageHistogram(boolean yes) {
+	public void setShowImageHistogram(final boolean yes) {
 		showImageHistogram = yes;
 		getPrefs().putBoolean("DAViS240.showImageHistogram", yes);
 	}
@@ -887,9 +904,9 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 
 		private float expDelta = .05f; // exposure change if incorrectly exposed
 		private float underOverFractionThreshold = 0.2f; // threshold for fraction of total pixels that are underexposed
-															// or overexposed
-		private PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
-		private PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
+		// or overexposed
+		private final PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
+		private final PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
 		SimpleHistogram hist = null;
 		SimpleHistogram.Statistics stats = null;
 		private float lowBoundary = getPrefs().getFloat("AutoExposureController.lowBoundary", 0.1f);
@@ -907,19 +924,19 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 		}
 
 		@Override
-		public String getPropertyTooltip(String propertyName) {
+		public String getPropertyTooltip(final String propertyName) {
 			return tooltipSupport.getPropertyTooltip(propertyName);
 		}
 
-		public void setAutoExposureEnabled(boolean yes) {
-			boolean old = this.autoExposureEnabled;
-			this.autoExposureEnabled = yes;
+		public void setAutoExposureEnabled(final boolean yes) {
+			final boolean old = autoExposureEnabled;
+			autoExposureEnabled = yes;
 			propertyChangeSupport.firePropertyChange("autoExposureEnabled", old, yes);
 			getPrefs().putBoolean("autoExposureEnabled", yes);
 		}
 
 		public boolean isAutoExposureEnabled() {
-			return this.autoExposureEnabled;
+			return autoExposureEnabled;
 		}
 
 		public void controlExposure() {
@@ -937,9 +954,10 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			stats.setLowBoundary(lowBoundary);
 			stats.setHighBoundary(highBoundary);
 			hist.computeStatistics();
-			CPLDInt exposure = config.exposure;
+			final CPLDInt exposure = config.exposure;
 
-			int currentExposure = exposure.get(), newExposure = 0;
+			final int currentExposure = exposure.get();
+			int newExposure = 0;
 			if ((stats.fracLow >= underOverFractionThreshold) && (stats.fracHigh < underOverFractionThreshold)) {
 				newExposure = Math.round(currentExposure * (1 + expDelta));
 				if (newExposure == currentExposure) {
@@ -951,7 +969,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 				if (newExposure != currentExposure) {
 					exposure.set(newExposure);
 				}
-				log.log(
+				Chip.log.log(
 					Level.INFO,
 					"Underexposed: {0}\n{1}",
 					new Object[] { stats.toString(),
@@ -968,7 +986,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 				if (newExposure != currentExposure) {
 					exposure.set(newExposure);
 				}
-				log.log(
+				Chip.log.log(
 					Level.INFO,
 					"Overexposed: {0}\n{1}",
 					new Object[] { stats.toString(),
@@ -996,7 +1014,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 		 * @param expDelta
 		 *            the expDelta to set
 		 */
-		public void setExpDelta(float expDelta) {
+		public void setExpDelta(final float expDelta) {
 			this.expDelta = expDelta;
 			getPrefs().putFloat("expDelta", expDelta);
 		}
@@ -1019,7 +1037,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 		 *            the underOverFractionThreshold to
 		 *            set
 		 */
-		public void setUnderOverFractionThreshold(float underOverFractionThreshold) {
+		public void setUnderOverFractionThreshold(final float underOverFractionThreshold) {
 			this.underOverFractionThreshold = underOverFractionThreshold;
 			getPrefs().putFloat("underOverFractionThreshold", underOverFractionThreshold);
 		}
@@ -1028,7 +1046,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			return lowBoundary;
 		}
 
-		public void setLowBoundary(float lowBoundary) {
+		public void setLowBoundary(final float lowBoundary) {
 			this.lowBoundary = lowBoundary;
 			getPrefs().putFloat("AutoExposureController.lowBoundary", lowBoundary);
 		}
@@ -1037,7 +1055,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			return highBoundary;
 		}
 
-		public void setHighBoundary(float highBoundary) {
+		public void setHighBoundary(final float highBoundary) {
 			this.highBoundary = highBoundary;
 			getPrefs().putFloat("AutoExposureController.highBoundary", highBoundary);
 		}
@@ -1060,7 +1078,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 	}
 
 	@Override
-	public void update(Observable o, Object arg) {
+	public void update(final Observable o, final Object arg) {
 		// TODO Auto-generated method stub
 	}
 }
