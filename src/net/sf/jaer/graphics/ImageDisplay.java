@@ -5,14 +5,9 @@
 package net.sf.jaer.graphics;
 
 import java.awt.AWTEvent;
-import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Toolkit;
-import java.awt.event.InputEvent;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
@@ -41,6 +36,11 @@ import net.sf.jaer.JAERViewer;
 import net.sf.jaer.util.WindowSaver;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
+import java.awt.FlowLayout;
+import javax.media.opengl.awt.GLJPanel;
+import javax.swing.BoxLayout;
+import javax.swing.JPanel;
+import static net.sf.jaer.graphics.ImageDisplay.log;
 
 /**
  * OpenGL display of 2d data as color image. See the main method for example of
@@ -157,7 +157,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
  *
  * </pre> @author Tobi Delbruck
  */
-public class ImageDisplay extends GLCanvas implements GLEventListener {
+public class ImageDisplay extends GLJPanel implements GLEventListener {
 
     private static Preferences prefs = Preferences.userNodeForPackage(ImageDisplay.class);
     static final Logger log = Logger.getLogger("ImageDisplay");
@@ -255,6 +255,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     public synchronized void display(GLAutoDrawable drawable) {
 
         GL2 gl = getGL().getGL2();
+//        gl.getContext().makeCurrent();
         checkGLError(gl, "before display in ID");
         if (reshapePending) {
             reshapePending = false;
@@ -276,7 +277,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
      */
     @Override
     public void init(GLAutoDrawable drawable) {
-    	GL2 gl = drawable.getGL().getGL2();
+        GL2 gl = drawable.getGL().getGL2();
 
         log.info("OpenGL implementation is: " + gl.getClass().getName() + "\nGL_VENDOR: "
                 + gl.glGetString(GL.GL_VENDOR) + "\nGL_RENDERER: " + gl.glGetString(GL.GL_RENDERER) + "\nGL_VERSION: "
@@ -533,19 +534,19 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 
     /**
      * Sets the whole pixmap array in gray values - a float[] of the kind gray1,
-     * gray2,...  
+     * gray2,...
      *
      * @param src the array of gray values, indexed as in setPixmapGray()
-     * @see #setPixmapGray(int, int, float) 
+     * @see #setPixmapGray(int, int, float)
      */
     public void setPixmapFromGrayArray(float[] src) {
         checkPixmapAllocation();
         final int n = 3 * src.length;
-        float[] dest=pixmap.array();
-        for(int i=0;i<src.length;i++){
-            float s=src[i];
-            for(int j=0;j<3;j++){
-                dest[3*i+j]=s;
+        float[] dest = pixmap.array();
+        for (int i = 0; i < src.length; i++) {
+            float s = src[i];
+            for (int j = 0; j < 3; j++) {
+                dest[3 * i + j] = s;
             }
         }
         pixmap.rewind();
@@ -553,7 +554,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
     }
 
     /**
-     * Position the pixmap buffer at pixel x,y, i.e. at <code> 3 * (x + (y * sizeX))</code>.
+     * Position the pixmap buffer at pixel x,y, i.e. at
+     * <code> 3 * (x + (y * sizeX))</code>.
      *
      * @param x row
      * @param y column
@@ -608,6 +610,10 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
      */
     public void checkPixmapAllocation() {
         final int n = 3 * sizeX * sizeY;
+        if (n == 0) {
+            log.warning("tried to set pixmap with 0 pixels in it; ignoring");
+            return;
+        }
         if ((pixmap == null) || (pixmap.capacity() != n)) {
             if (pixmap != null) {
                 pixmap = null;
@@ -620,7 +626,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
                 pixmap.limit(n);
             }
         }
-       
+
     }
 
     /**
@@ -749,10 +755,18 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         checkGLError(g, "after setDefaultProjection");
     }
 
+    /**
+     * @see #setBorderSpacePixels(int) 
+     * @return image being displayed pixels border
+     */
     public float getBorderSpacePixels() {
         return borderPixels;
     }
 
+    /** Sets the border outside the image frame in pixels (pixels of the image being displayed, not screen pixels)
+     * 
+     * @param border 
+     */
     public void setBorderSpacePixels(int border) {
         borderPixels = border;
     }
@@ -1225,70 +1239,41 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
 
     private static int windowCount = 0;
 
-    private static void makeAndRunNewTestImageDisplay() {
+    /**
+     * Static method to make a test display
+     */
+    public static void makeAndRunNewTestImageDisplay() {
 
         Thread t = new Thread() {
 
             @Override
             public void run() {
-                final ImageDisplay disp = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
                 JFrame frame = new JFrame("ImageFrame " + windowCount);  // make a JFrame to hold it
                 frame.setPreferredSize(new Dimension(400, 400));  // set the window size
-                frame.getContentPane().add(disp, BorderLayout.CENTER); // add the GLCanvas to the center of the window
+                frame.getContentPane().setLayout(new BoxLayout(frame.getContentPane(),BoxLayout.Y_AXIS));
+
+                final ImageDisplay disp = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
+                final ImageDisplay disp2 = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
+                int s=0;
+                disp.setPreferredSize(new Dimension(s, s));
+                disp2.setPreferredSize(new Dimension(s, s));
+//                JPanel p1=new JPanel(), p2=new JPanel();
+//                p1.add(disp); p2.add(disp2);
+//                Dimension d=new Dimension(s,s);
+//                p1.setPreferredSize(d);p2.setPreferredSize(d);
+                
+
+                frame.getContentPane().add(disp); // add the GLCanvas to the center of the window
+                frame.getContentPane().add(disp2); // add the GLCanvas to the center of the window
+                frame.pack(); // otherwise it wont fill up the display
+                
                 final Point2D.Float mousePoint = new Point2D.Float();
 
-                disp.addKeyListener(new KeyAdapter() { // add some key listeners to the ImageDisplay
-
-                    @Override
-                    public void keyReleased(KeyEvent e) {
-                        System.out.println(e.toString());
-                        int k = e.getKeyCode();
-                        if ((k == KeyEvent.VK_ESCAPE) || (k == KeyEvent.VK_X)) {
-                            System.exit(0);
-                        } else if (k == KeyEvent.VK_N) {
-                            makeAndRunNewTestImageDisplay(); // make another window
-                        } else if ((k == KeyEvent.VK_W) && ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) == InputEvent.CTRL_DOWN_MASK)) {
-                            interrupt();
-                        } else if (k == KeyEvent.VK_UP) {
-                            disp.setSizeY(disp.getSizeY() * 2); // UP arrow incrases vertical dimension
-                        } else if (k == KeyEvent.VK_DOWN) {
-                            disp.setSizeY(disp.getSizeY() / 2);
-                        } else if (k == KeyEvent.VK_RIGHT) {
-                            disp.setSizeX(disp.getSizeX() * 2);
-                        } else if (k == KeyEvent.VK_LEFT) {
-                            disp.setSizeX(disp.getSizeX() / 2);
-                        } else if (k == KeyEvent.VK_G) { // 'g' resets the frame to gray level 0.5f
-                            disp.resetFrame(.5f);
-                        } else if ((k == KeyEvent.VK_F) && ((e.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) == InputEvent.SHIFT_DOWN_MASK)) {
-                            disp.setFontSize((disp.getFontSize() * 14) / 10);
-                            log.info("fontSize" + disp.getFontSize());
-                        } else if ((k == KeyEvent.VK_F) && ((e.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) == 0)) {
-                            int newsize = (disp.getFontSize() * 10) / 14;
-                            if (newsize < 1) {
-                                newsize = 1;
-                            }
-                            disp.setFontSize(newsize);
-                            log.info("fontSize" + disp.getFontSize());
-                        }
-                    }
-                });
-
-                disp.addMouseMotionListener(new MouseAdapter() {
-
-                    @Override
-                    public void mouseDragged(MouseEvent e) {
-                        super.mouseDragged(e);
-                        Point2D.Float p = disp.getMouseImagePosition(e); // save the mouse point in image coordinates
-                        mousePoint.x = p.x;
-                        mousePoint.y = p.y;
-                    }
-                });
-
                 frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // closing the frame exits
-                frame.pack(); // otherwise it wont fill up the display
                 frame.setVisible(true); // make the frame visible
                 int sizex = 3, sizey = 3;  // used later to define image size
                 disp.setImageSize(sizex, sizey); // set dimensions of image		disp.setxLabel("x label"); // add xaxis label and some tick markers
+                disp2.setImageSize(sizex, sizey); // set dimensions of image		disp.setxLabel("x label"); // add xaxis label and some tick markers
                 disp.addXTick(0, "0");
                 disp.addXTick(sizex, Integer.toString(sizex));
                 disp.addXTick(sizey / 2, Integer.toString(sizey / 2));
@@ -1304,6 +1289,8 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
                 legend.color = new float[]{1, 0, 0};
 
                 disp.setTextColor(new float[]{.8f, 1, 1});
+                disp2.setTextColor(new float[]{.8f, 1, 1});
+                new ImageDisplayTestKeyMouseHandler(disp, mousePoint, this);
 
                 Random r = new Random();  // will use to fill display with noise
 
@@ -1313,6 +1300,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
                 int sx, sy, xx, yy;
                 while (!isInterrupted()) {
                     disp.checkPixmapAllocation(); // make sure we have a pixmaps (not resally necessary since setting size will allocate pixmap
+                    disp2.checkPixmapAllocation(); // make sure we have a pixmaps (not resally necessary since setting size will allocate pixmap
                     n = sizex * sizey;
                     f = disp.getPixmapArray(); // get reference to pixmap array so we can set pixel values
                     sx = disp.getSizeX();
@@ -1342,6 +1330,7 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
                     xx = r.nextInt(disp.getSizeX());
                     yy = r.nextInt(disp.getSizeY());
                     disp.setPixmapRGB(xx, yy, r.nextFloat(), r.nextFloat(), r.nextFloat());
+                    disp2.setPixmapRGB(xx, yy, r.nextFloat(), r.nextFloat(), r.nextFloat());
 
                     // move the legend around sinusoidally
                     //            double phase = Math.PI * 2 * (frameCounter % 1000000) / 1000000;
@@ -1352,9 +1341,11 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
                     legend.y = (mousePoint.y);
 
                     disp.setTitleLabel("Frame " + (frameCounter++));
+                    disp2.setTitleLabel("Frame " + (frameCounter++));
 
                     // ask for a repaint
                     disp.repaint();
+                    disp2.repaint();
                     try {
                         Thread.sleep(10);
                     } catch (InterruptedException e) {
@@ -1406,4 +1397,5 @@ public class ImageDisplay extends GLCanvas implements GLEventListener {
         // TODO Auto-generated method stub
 
     }
+
 }
