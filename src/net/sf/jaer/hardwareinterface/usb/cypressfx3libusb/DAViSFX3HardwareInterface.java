@@ -56,8 +56,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	 * AEPacketRaw
 	 */
 	public class RetinaAEReader extends CypressFX3.AEReader implements PropertyChangeListener {
-		private static final int MAX_CAPACITY = 1024 * 1024 * 2;
-
 		private int wrapAdd;
 		private int lastTimestamp;
 		private int currentTimestamp;
@@ -104,7 +102,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		}
 
 		private boolean ensureCapacity(final AEPacketRaw buffer, final int capacity) {
-			if (buffer.getCapacity() > RetinaAEReader.MAX_CAPACITY) {
+			if (buffer.getCapacity() > getAEBufferSize()) {
 				if (buffer.overrunOccuredFlag || (capacity > buffer.getCapacity())) {
 					buffer.overrunOccuredFlag = true;
 					return (false);
