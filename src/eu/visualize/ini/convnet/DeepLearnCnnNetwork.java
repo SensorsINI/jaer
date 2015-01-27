@@ -5,16 +5,14 @@
  */
 package eu.visualize.ini.convnet;
 
-import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.io.File;
 import java.util.Arrays;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GL2GL3;
+import javax.swing.BoxLayout;
 import javax.swing.JFrame;
-import net.sf.jaer.event.BasicEvent;
+import javax.swing.JPanel;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.graphics.ImageDisplay;
 
@@ -79,6 +77,7 @@ public class DeepLearnCnnNetwork {
     Layer[] layers;
     InputLayer inputLayer;
     OutputLayer outputLayer;
+    JFrame frame = null;
 
     /**
      * Computes the output of the network from an input frame
@@ -99,6 +98,34 @@ public class DeepLearnCnnNetwork {
         return outputLayer.activations;
     }
 
+    void drawActivations() {
+        checkFrame();
+        for (Layer l : layers) {
+            l.drawActivations();
+        }
+        if (!frame.isVisible()) {
+            frame.setVisible(true);
+            return;
+        }
+    }
+
+    private void checkFrame() {
+        if (frame != null) {
+            return;
+        }
+
+        frame = new JFrame("DavisDeepLearnCnnProcessor");
+        frame.setLayout(new BoxLayout(frame.getContentPane(), BoxLayout.Y_AXIS));
+        frame.setPreferredSize(new Dimension(600, 600));
+        frame.setVisible(true);
+
+//            frame.addWindowListener(new WindowAdapter() {
+//                public void windowClosing(WindowEvent e) {
+//                    setVisible(false);
+//                }
+//            });
+    }
+
     abstract public class Layer {
 
         public Layer(int index) {
@@ -114,6 +141,8 @@ public class DeepLearnCnnNetwork {
          */
         float[] activations;
 
+        private boolean visible = true;
+
         public void initializeConstants() {
             // override to compute constants for layer
         }
@@ -125,7 +154,26 @@ public class DeepLearnCnnNetwork {
          */
         abstract public void compute(Layer input);
 
-        
+        public void drawActivations() {
+
+        }
+
+        /**
+         * @return the visible
+         */
+        public boolean isVisible() {
+            return visible;
+        }
+
+        /**
+         * Sets whether to draw this layer.
+         *
+         * @param visible the visible to set
+         */
+        public void setVisible(boolean visible) {
+            this.visible = visible;
+        }
+
     }
 
     /**
@@ -151,6 +199,7 @@ public class DeepLearnCnnNetwork {
         int dimx;
         int dimy;
         int nUnits;
+        private ImageDisplay imageDisplay = null;
 
         /**
          * Computes the output from input frame
@@ -172,19 +221,19 @@ public class DeepLearnCnnNetwork {
             // frame has width*height pixels
             // for first pass we just downsample every width/dimx pixel in x and every height/dimy pixel in y
             // TODO change to subsample (averaging)
-            float xstride = (float) width / dimx, ystride =(float) height / dimy;
+            float xstride = (float) width / dimx, ystride = (float) height / dimy;
             int aidx = 0;
             loop:
             for (float y = 0; y < height; y += ystride) {
                 for (float x = 0; x < width; x += xstride) {  // take every xstride, ystride pixels as output
-                    int fridx = (int)(Math.floor(y) * width + Math.floor(x));
+                    int fridx = (int) (Math.floor(y) * width + Math.floor(x));
                     if (fridx >= frame.length) {
                         break loop;
                     }
                     if (aidx >= activations.length) {
                         break loop;
                     }
-                    activations[aidx++] = (float)frame[fridx];
+                    activations[aidx++] = (float) frame[fridx];
                 }
             }
             return activations; //indexed by y+dimx*x in the downsampled image
@@ -198,6 +247,27 @@ public class DeepLearnCnnNetwork {
         public String toString() {
             return String.format("index=%d Input layer; dimx=%d dimy=%d nUnits=%d",
                     index, dimx, dimy, nUnits);
+        }
+
+        @Override
+        public void drawActivations() {
+            if (!isVisible() || activations == null) {
+                return;
+            }
+            checkFrame();
+            if (imageDisplay == null) {
+                JPanel panel=new JPanel();
+                panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+                imageDisplay = ImageDisplay.createOpenGLCanvas();
+                imageDisplay.setImageSize(dimx, dimy);
+                imageDisplay.setSize(200, 200);
+                panel.add(imageDisplay);
+
+                frame.getContentPane().add(panel);
+                frame.pack();
+            }
+            imageDisplay.setPixmapFromGrayArray(activations);
+            imageDisplay.display();
         }
 
     }
@@ -241,6 +311,7 @@ public class DeepLearnCnnNetwork {
         int outputMapLength; // length of single output map vector; biases.length/nOutputMaps, calculated during compute()
         int outputMapDim;  // dimension of single output map, calculated during compute()
         int activationsLength;
+        ImageDisplay[] activationDisplays = null;
 
         public String toString() {
             return String.format("index=%d CNN   layer; nInputMaps=%d nOutputMaps=%d kernelSize=%d biases=float[%d] kernels=float[%d]",
@@ -302,11 +373,11 @@ public class DeepLearnCnnNetwork {
         // convolves a given kernel over the inputMap and accumulates output to activations
         private void conv(float[] input, int kernel, int inputMap) {
             int startx = halfKernelSize, starty = halfKernelSize, endx = outputMapDim - halfKernelSize, endy = outputMapDim - halfKernelSize;
-            int xo=0, yo;
+            int xo = 0, yo;
             for (int xi = startx; xi < endx; xi++) { // index to outputMap
-                yo=0;
+                yo = 0;
                 for (int yi = starty; yi < endy; yi++) {
-                    int outidx=o(kernel, xo, yo);
+                    int outidx = o(kernel, xo, yo);
                     activations[outidx] += convsingle(input, kernel, inputMap, xi, yi);
                     yo++;
                 }
@@ -361,7 +432,37 @@ public class DeepLearnCnnNetwork {
 
         // output index
         final int o(int outputMap, int x, int y) {
-            return outputMap * outputMapLength + y * outputMapDim + x; 
+            return outputMap * outputMapLength + y * outputMapDim + x;
+        }
+
+        @Override
+        public void drawActivations() {
+            if (!isVisible() || activations == null) {
+                return;
+            }
+            checkFrame();
+            if (activationDisplays == null) {
+                JPanel panel = new JPanel();
+                panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+                activationDisplays = new ImageDisplay[nOutputMaps];
+                for (int i = 0; i < nOutputMaps; i++) {
+                    activationDisplays[i] = ImageDisplay.createOpenGLCanvas();
+                    activationDisplays[i].setImageSize(outputMapDim, outputMapDim);
+                    activationDisplays[i].setSize(100,100);
+                    panel.add(activationDisplays[i]);
+                }
+
+                frame.getContentPane().add(panel);
+                frame.pack();
+            }
+            for (int map = 0; map < nOutputMaps; map++) {
+                for (int x = 0; x < outputMapDim; x++) {
+                    for (int y = 0; y < outputMapDim; y++) {
+                        activationDisplays[map].setPixmapGray(x, y, activations[o(map, x, y)]);
+                    }
+                }
+                activationDisplays[map].display();
+            }
         }
 
     }
@@ -404,7 +505,7 @@ public class DeepLearnCnnNetwork {
                     for (int yo = 0; yo < outputMapDim; yo++) { // output map
                         float s = 0; // sum
                         // input indices
-                        int startx = xo * averageOverDim, endx = startx+averageOverDim, starty = yo * averageOverDim, endy = starty+ averageOverDim;
+                        int startx = xo * averageOverDim, endx = startx + averageOverDim, starty = yo * averageOverDim, endy = starty + averageOverDim;
                         for (int xi = startx; xi < endx; xi++) { // iterate over input
                             for (int yi = starty; yi < endy; yi++) {
                                 s += convLayer.activations[convLayer.o(map, xi, yi)];
@@ -470,18 +571,18 @@ public class DeepLearnCnnNetwork {
             } else {
                 Arrays.fill(activations, 0);
             }
-            maxActivation=Float.NEGATIVE_INFINITY;
-            int numActivationsPerOutput=input.activations.length/biases.length;
-            int idx=0;
+            maxActivation = Float.NEGATIVE_INFINITY;
+            int numActivationsPerOutput = input.activations.length / biases.length;
+            int idx = 0;
             for (int unit = 0; unit < biases.length; unit++) {
                 for (int i = 0; i < numActivationsPerOutput; i++) {
                     activations[unit] += input.activations[idx] * weights[idx];
                     idx++;
                 }
-                activations[unit]=sigm(activations[unit]+biases[unit]);
-                if(activations[unit]>maxActivation){
-                    maxActivatedUnit=unit;
-                    maxActivation=activations[unit];
+                activations[unit] = sigm(activations[unit] + biases[unit]);
+                if (activations[unit] > maxActivation) {
+                    maxActivatedUnit = unit;
+                    maxActivation = activations[unit];
                 }
             }
 

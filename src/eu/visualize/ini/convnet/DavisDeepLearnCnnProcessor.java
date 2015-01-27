@@ -119,11 +119,10 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     @Override
     public void annotate(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
-        if (showInput) {
-            drawInput(drawable);
-        }
         if (showActivations) {
-            drawActivations(drawable);
+            if (net != null) {
+                net.drawActivations();
+            }
         }
         if (showOutputAsBarChart) {
             drawOutput(gl);
@@ -138,34 +137,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         System.out.println("maxActivatedUnit=" + net.outputLayer.maxActivatedUnit + " maxActivation=" + net.outputLayer.maxActivation);
     }
 
-    private void drawInput(GLAutoDrawable drawable) {
-        if (net.inputLayer.activations == null) {
-            return;
-        }
-        if (inputImageDisplay == null) {
-            inputImageDisplay = ImageDisplay.createOpenGLCanvas();
-            inputImageDisplay.setImageSize(net.inputLayer.dimx, net.inputLayer.dimy);
-
-            imageDisplayFrame = new JFrame("DavisDeepLearnCnnProcessor");
-            imageDisplayFrame.setPreferredSize(new Dimension(200, 200));
-
-            imageDisplayFrame.addWindowListener(new WindowAdapter() {
-                public void windowClosing(WindowEvent e) {
-                    setShowInput(false);
-                    setShowActivations(false);
-                }
-            });
-            imageDisplayFrame.getContentPane().add(inputImageDisplay, BorderLayout.CENTER);
-            imageDisplayFrame.pack();
-        }
-        if (!imageDisplayFrame.isVisible()) {
-            imageDisplayFrame.setVisible(true);
-        }
-        inputImageDisplay.setPixmapFromGrayArray(net.inputLayer.activations);
-        inputImageDisplay.display();
-    }
-
-    private void drawActivations(GLAutoDrawable drawable) {
+    private void drawActivations() {
     }
 
     /**
