@@ -473,7 +473,7 @@ public class DeepLearnCnnNetwork {
 
         // input index
         final int i(int map, int x, int y) {
-            return map * inputMapLength + x * inputMapDim + y; // TODO check x,y
+            return map * inputMapLength + x * inputMapDim + (outputMapDim-y-1); // TODO check x,y
         }
 
         // kernel index
@@ -483,7 +483,7 @@ public class DeepLearnCnnNetwork {
 
         // output index
         final int o(int outputMap, int x, int y) {
-            return outputMap * outputMapLength + outputMapDim * x + y;
+            return outputMap * outputMapLength + outputMapDim * x + (outputMapDim-y-1);
         }
 
         @Override
@@ -621,33 +621,33 @@ public class DeepLearnCnnNetwork {
 
         @Override
         public void drawActivations() {
-//            if (!isVisible() || activations == null) {
-//                return;
-//            }
-//            checkActivationsFrame();
-//            if (activationDisplays == null) {
-//                JPanel panel = new JPanel();
-//                panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
-//                activationDisplays = new ImageDisplay[nOutputMaps];
-//                for (int i = 0; i < nOutputMaps; i++) {
-//                    activationDisplays[i] = ImageDisplay.createOpenGLCanvas();
-//                    activationDisplays[i].setBorderSpacePixels(0);
-//                    activationDisplays[i].setImageSize(outputMapDim, outputMapDim);
-//                    activationDisplays[i].setSize(100, 100);
-//                    panel.add(activationDisplays[i]);
-//                }
-//
-//                activationsFrame.getContentPane().add(panel);
-//                activationsFrame.pack();
-//            }
-//            for (int map = 0; map < nOutputMaps; map++) {
-//                for (int x = 0; x < outputMapDim; x++) {
-//                    for (int y = 0; y < outputMapDim; y++) {
-//                        activationDisplays[map].setPixmapGray(x, y, activations[o(map, x, y)]);
-//                    }
-//                }
-//                activationDisplays[map].display();
-//            }
+            if (!isVisible() || activations == null) {
+                return;
+            }
+            checkActivationsFrame();
+            if (activationDisplays == null) {
+                JPanel panel = new JPanel();
+                panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+                activationDisplays = new ImageDisplay[nOutputMaps];
+                for (int i = 0; i < nOutputMaps; i++) {
+                    activationDisplays[i] = ImageDisplay.createOpenGLCanvas();
+                    activationDisplays[i].setBorderSpacePixels(0);
+                    activationDisplays[i].setImageSize(outputMapDim, outputMapDim);
+                    activationDisplays[i].setSize(100, 100);
+                    panel.add(activationDisplays[i]);
+                }
+
+                activationsFrame.getContentPane().add(panel);
+                activationsFrame.pack();
+            }
+            for (int map = 0; map < nOutputMaps; map++) {
+                for (int x = 0; x < outputMapDim; x++) {
+                    for (int y = 0; y < outputMapDim; y++) {
+                        activationDisplays[map].setPixmapGray(x, y, activations[o(map, x, y)]);
+                    }
+                }
+                activationDisplays[map].display();
+            }
         }
 
         public String toString() {
@@ -680,7 +680,7 @@ public class DeepLearnCnnNetwork {
         }
 
         /**
-         * Computes following:
+         * Computes following perceptron output:
          * <pre>
          * concatenate all end layer feature maps into vector
          * net.fv = [];
@@ -700,8 +700,8 @@ public class DeepLearnCnnNetwork {
                 Arrays.fill(activations, 0);
             }
             maxActivation = Float.NEGATIVE_INFINITY;
-            cols = input.activations.length / biases.length;
-            rows=biases.length;
+            cols = input.activations.length / biases.length; // weights for each output unit
+            rows=biases.length; // number of output units
             int idx = 0;
             for (int unit = 0; unit < biases.length; unit++) {
                 for (int i = 0; i < cols; i++) {
@@ -718,7 +718,7 @@ public class DeepLearnCnnNetwork {
         }
         
         private float weight(int unit, int weight){
-            return weights[weight+cols*unit];
+            return weights[unit+rows*weight];
         }
 
         /**
