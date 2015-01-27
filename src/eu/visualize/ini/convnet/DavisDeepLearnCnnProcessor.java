@@ -37,8 +37,8 @@ import net.sf.jaer.graphics.ImageDisplay;
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 public class DavisDeepLearnCnnProcessor extends EventFilter2D implements PropertyChangeListener, FrameAnnotater {
 
+    protected DeepLearnCnnNetwork net = null;
     private String lastFileName = getString("lastFileName", "LCRN_cnn.xml");
-    private DeepLearnCnnNetwork net = null;
     private ApsFrameExtractor frameExtractor = new ApsFrameExtractor(chip);
     private boolean showActivations = getBoolean("showActivations", false);
     private boolean showInput = getBoolean("showInput", false);
@@ -151,7 +151,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             return;
         }
         net.outputLayer.annotateHistogram(gl, chip.getSizeX(), chip.getSizeY());
-        System.out.println("maxActivatedUnit=" + net.outputLayer.maxActivatedUnit + " maxActivation=" + net.outputLayer.maxActivation);
+//        System.out.println("maxActivatedUnit=" + net.outputLayer.maxActivatedUnit + " maxActivation=" + net.outputLayer.maxActivation);
     }
 
     private void drawActivations() {
