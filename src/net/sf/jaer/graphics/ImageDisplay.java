@@ -763,7 +763,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
         return borderPixels;
     }
 
-    /** Sets the border outside the image frame in pixels (pixels of the image being displayed, not screen pixels)
+    /** Sets the border outside the image frame in pixels (this space is in screen pixels)
      * 
      * @param border 
      */
