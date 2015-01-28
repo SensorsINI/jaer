@@ -17,6 +17,7 @@ import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import net.sf.jaer.Description;
@@ -42,7 +43,6 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     private ApsFrameExtractor frameExtractor = new ApsFrameExtractor(chip);
     private boolean showActivations = getBoolean("showActivations", false);
     private boolean showInput = getBoolean("showInput", false);
-    private boolean showKernels = getBoolean("showKernels", false);
     private boolean showOutputAsBarChart = getBoolean("showOutputAsBarChart", true);
     private float uniformWeight = getFloat("uniformWeight", 0);
     private float uniformBias = getFloat("uniformBias", 0);
@@ -58,6 +58,9 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         frameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);
         setPropertyTooltip("loadCNNNetworkFromXML", "Load an XML file containing a CNN exported from DeepLearnToolbox by cnntoxml.m");
         setPropertyTooltip("setNetworkToUniformValues", "sets previously-loaded net to uniform values for debugging");
+        setPropertyTooltip("showKernels", "draw all the network kernels (once) in a new JFrame");
+        setPropertyTooltip("showActivations", "draws the network activations in a separate JFrame");
+        setPropertyTooltip("inputClampedTo1", "clamps network input image to fixed value (1) for debugging");
 
         initFilter();
     }
@@ -89,6 +92,12 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     public void doSetNetworkToUniformValues() {
         if (net != null) {
             net.setNetworkToUniformValues(uniformWeight, uniformBias);
+        }
+    }
+
+    public void doShowKernels() {
+        if (net != null) {
+            net.drawKernels();
         }
     }
 
@@ -136,11 +145,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
                 net.drawActivations();
             }
         }
-        if (showKernels) {
-            if (net != null) {
-                net.drawKernels();
-            }
-        }
+
         if (showOutputAsBarChart) {
             drawOutput(gl);
         }
@@ -162,20 +167,6 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
      */
     public boolean isShowActivations() {
         return showActivations;
-    }
-
-    /**
-     * @return the showKernels
-     */
-    public boolean isShowKernels() {
-        return showKernels;
-    }
-
-    /**
-     * @param showKernels the showKernels to set
-     */
-    public void setShowKernels(boolean showKernels) {
-        this.showKernels = showKernels;
     }
 
     /**
@@ -249,4 +240,13 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         putFloat("uniformBias", uniformBias);
     }
 
+    public boolean isInputClampedTo1() {
+        return net==null? false: net.isInputClampedTo1();
+    }
+
+    public void setInputClampedTo1(boolean inputClampedTo1) {
+        if(net!=null) net.setInputClampedTo1(inputClampedTo1);
+    }
+
+    
 }

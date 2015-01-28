@@ -9,6 +9,8 @@ import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLException;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 
 /**
@@ -17,6 +19,8 @@ import net.sf.jaer.chip.AEChip;
  *
  * @author Tobi
  */
+@Description("Displays Visualise steering ConvNet results; subclass of DavisDeepLearnCnnProcessor")
+@DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor {
 
     private boolean hasBlendChecked = false;

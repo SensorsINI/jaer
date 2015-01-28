@@ -6,6 +6,7 @@
 package eu.visualize.ini.convnet;
 
 import java.awt.Dimension;
+import java.awt.GridLayout;
 import java.io.File;
 import java.util.Arrays;
 import javax.media.opengl.GL2;
@@ -79,6 +80,17 @@ public class DeepLearnCnnNetwork {
     OutputLayer outputLayer;
     JFrame activationsFrame = null, kernelsFrame = null;
 
+    /** For debug, clamps input image to fixed value */
+    public boolean isInputClampedTo1() {
+        return inputLayer.isInputClampedTo1();
+    }
+
+    /** For debug, clamps input image to fixed value */
+    public void setInputClampedTo1(boolean inputClampedTo1) {
+        inputLayer.setInputClampedTo1(inputClampedTo1);
+    }
+
+    
     /**
      * Computes the output of the network from an input activationsFrame
      *
@@ -110,6 +122,7 @@ public class DeepLearnCnnNetwork {
             activationsFrame.setVisible(true);
             return;
         }
+
     }
 
     void drawKernels() {
@@ -234,6 +247,7 @@ public class DeepLearnCnnNetwork {
             super(index);
         }
 
+        private boolean inputClampedTo1=false; // for debug
         int dimx;
         int dimy;
         int nUnits;
@@ -282,7 +296,7 @@ public class DeepLearnCnnNetwork {
         }
 
         int o(int x, int y) {
-            return (dimy-y-1) + (dimy * x); // activations of input layer are stored by column and then row, as in matlab array that is taken by (:)
+            return (dimy - y - 1) /*y */+ (dimy * x); // activations of input layer are stored by column and then row, as in matlab array that is taken by (:)
         }
 
         @Override
@@ -315,7 +329,7 @@ public class DeepLearnCnnNetwork {
             }
             for (int x = 0; x < dimx; x++) {
                 for (int y = 0; y < dimy; y++) {
-                    imageDisplay.setPixmapGray(x, y, activations[o(x, y)]);
+                    imageDisplay.setPixmapGray(x, y, a(0,x, y));
                 }
             }
             imageDisplay.display();
@@ -323,8 +337,25 @@ public class DeepLearnCnnNetwork {
 
         @Override
         public final float a(int map, int x, int y) {
-            return activations[o(x, y)];
+            
+            return inputClampedTo1?0.5f:activations[o(x, y)];
         }
+
+        /**
+         * @return the inputClampedTo1
+         */
+        public boolean isInputClampedTo1() {
+            return inputClampedTo1;
+        }
+
+        /**
+         * @param inputClampedTo1 the inputClampedTo1 to set
+         */
+        public void setInputClampedTo1(boolean inputClampedTo1) {
+            this.inputClampedTo1 = inputClampedTo1;
+        }
+        
+        
 
     }
 
@@ -350,6 +381,9 @@ public class DeepLearnCnnNetwork {
      * net.layers{l}.activations{j} = sigm(z + net.layers{l}.b{j});
      *
      * <pre>
+     *
+     * Note that for each of I input maps there are O kernels corresponding the the O output maps. Therefore there are I*O kernels.
+     *
      */
     public class ConvLayer extends Layer {
 
@@ -359,7 +393,7 @@ public class DeepLearnCnnNetwork {
 
         int nInputMaps;
         int nOutputMaps; // same as number of kernels
-        int kernelSize, kernelLength, halfKernelSize;
+        int kernelDim, singleKernelLength, halfKernelDim, kernelWeightsPerOutputMap;
         float[] biases;
         float[] kernels;
         private int inputMapLength; // length of single input map out of input.activations
@@ -367,17 +401,18 @@ public class DeepLearnCnnNetwork {
         int outputMapLength; // length of single output map vector; biases.length/nOutputMaps, calculated during compute()
         int outputMapDim;  // dimension of single output map, calculated during compute()
         int activationsLength;
-        ImageDisplay[] activationDisplays = null, kernelDisplays = null;
+        ImageDisplay[] activationDisplays = null;
+        ImageDisplay[][] kernelDisplays = null;
 
         public String toString() {
             return String.format("index=%d CNN   layer; nInputMaps=%d nOutputMaps=%d kernelSize=%d biases=float[%d] kernels=float[%d]",
-                    index, nInputMaps, nOutputMaps, kernelSize, biases == null ? 0 : biases.length, kernels == null ? 0 : kernels.length);
+                    index, nInputMaps, nOutputMaps, kernelDim, biases == null ? 0 : biases.length, kernels == null ? 0 : kernels.length);
         }
 
         @Override
         public void initializeConstants() {
-            kernelLength = kernelSize * kernelSize;
-            halfKernelSize = kernelSize / 2;
+            singleKernelLength = kernelDim * kernelDim;
+            halfKernelDim = kernelDim / 2;
             // output size can only be computed once we know our input 
         }
 
@@ -403,9 +438,10 @@ public class DeepLearnCnnNetwork {
                 log.warning("input map is not square; Math.rint(sqrtInputMapLength)=" + Math.rint(sqrtInputMapLength));
             }
             inputMapDim = (int) sqrtInputMapLength;
-            outputMapDim = inputMapDim - kernelSize + 1;
+            outputMapDim = inputMapDim - kernelDim + 1;
             outputMapLength = outputMapDim * outputMapDim;
             activationsLength = outputMapLength * nOutputMaps;
+            kernelWeightsPerOutputMap = singleKernelLength * nInputMaps;
 
             if (nOutputMaps != biases.length) {
                 log.warning("nOutputMaps!=biases.length: " + nOutputMaps + "!=" + biases.length);
@@ -428,7 +464,7 @@ public class DeepLearnCnnNetwork {
 
         // convolves a given kernel over the inputMap and accumulates output to activations
         private void conv(Layer input, int kernel, int inputMap) {
-            int startx = halfKernelSize, starty = halfKernelSize, endx = inputMapDim - halfKernelSize, endy = inputMapDim - halfKernelSize;
+            int startx = halfKernelDim, starty = halfKernelDim, endx = inputMapDim - halfKernelDim, endy = inputMapDim - halfKernelDim;
             int xo = 0, yo;
             for (int xi = startx; xi < endx; xi++) { // index to outputMap
                 yo = 0;
@@ -444,11 +480,11 @@ public class DeepLearnCnnNetwork {
         // computes single kernel inner product summed result centered on x,y in inputMap
         private float convsingle(Layer input, int kernel, int inputMap, int x, int y) {
             float sum = 0;
-            for (int yy = 0; yy < kernelSize; yy++) {
-                int iny = y - halfKernelSize;
-                for (int xx = 0; xx < kernelSize; xx++) {
-                    int inx = x - halfKernelSize;
-                    sum += kernels[k(kernel, xx, yy)] * input.a(inputMap, inx, iny);
+            for (int yy = 0; yy < kernelDim; yy++) {
+                int iny = y - halfKernelDim;
+                for (int xx = 0; xx < kernelDim; xx++) {
+                    int inx = x - halfKernelDim;
+                    sum += kernels[k(inputMap, kernel, xx, yy)] * input.a(inputMap, inx, iny);
                     inx++;
                 }
                 iny++;
@@ -473,17 +509,26 @@ public class DeepLearnCnnNetwork {
 
         // input index
         final int i(int map, int x, int y) {
-            return map * inputMapLength + x * inputMapDim + y;//(outputMapDim-y-1); // TODO check x,y
+            return map * inputMapLength + x * inputMapDim + (outputMapDim-y-1); // TODO check x,y
         }
 
-        // kernel index
-        final int k(int kernel, int x, int y) {
-            return kernelLength * kernel + kernelSize * x + y;//(kernelSize - y - 1);
+        /**
+         * Return kernel index corresponding to input map, kernel (output map),
+         * x, and y.
+         *
+         * @param inputMap the features map to convolve
+         * @param kernel the feature (output map) to accumulate to
+         * @param x
+         * @param y
+         * @return the index into kernels[]
+         */
+        final int k(int inputMap, int kernel, int x, int y) {
+            return inputMap * kernelWeightsPerOutputMap + singleKernelLength * kernel + kernelDim * x + (kernelDim - y - 1);
         }
 
         // output index
         final int o(int outputMap, int x, int y) {
-            return outputMap * outputMapLength + outputMapDim * x + y;//(outputMapDim-y-1);
+            return outputMap * outputMapLength + outputMapDim * x + (outputMapDim-y-1);
         }
 
         @Override
@@ -527,24 +572,31 @@ public class DeepLearnCnnNetwork {
                 panel.setPreferredSize(new Dimension(900, 200));
                 kernelsFrame.getContentPane().add(panel);
                 panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
-                kernelDisplays = new ImageDisplay[nOutputMaps];
-                for (int i = 0; i < nOutputMaps; i++) {
-                    kernelDisplays[i] = ImageDisplay.createOpenGLCanvas();
-                    kernelDisplays[i].setBorderSpacePixels(5);
-                    kernelDisplays[i].setImageSize(kernelSize, kernelSize);
-                    kernelDisplays[i].setSize(200, 200);
-                    panel.add(kernelDisplays[i]);
+                kernelDisplays = new ImageDisplay[nOutputMaps][nInputMaps];
+                int s = (int) Math.ceil(Math.sqrt(nOutputMaps));
+                for (int outputMapNumber = 0; outputMapNumber < nOutputMaps; outputMapNumber++) {
+                    JPanel outputMapPanel = new JPanel(new GridLayout(s, s));
+                    for (int inputFeatureMapNumber = 0; inputFeatureMapNumber < nInputMaps; inputFeatureMapNumber++) {
+                        kernelDisplays[outputMapNumber][inputFeatureMapNumber] = ImageDisplay.createOpenGLCanvas();
+                        kernelDisplays[outputMapNumber][inputFeatureMapNumber].setBorderSpacePixels(1);
+                        kernelDisplays[outputMapNumber][inputFeatureMapNumber].setImageSize(kernelDim, kernelDim);
+                        kernelDisplays[outputMapNumber][inputFeatureMapNumber].setSize(200, 200);
+                        outputMapPanel.add(kernelDisplays[outputMapNumber][inputFeatureMapNumber]);
+                    }
+                    panel.add(outputMapPanel);
                 }
 
                 kernelsFrame.pack();
             }
             for (int kernel = 0; kernel < nOutputMaps; kernel++) {
-                for (int x = 0; x < kernelSize; x++) {
-                    for (int y = 0; y < kernelSize; y++) {
-                        kernelDisplays[kernel].setPixmapGray(x, y, kernels[k(kernel, x, y)]);
+                for (int inputFeatureMapNumber = 0; inputFeatureMapNumber < nInputMaps; inputFeatureMapNumber++) {
+                    for (int x = 0; x < kernelDim; x++) {
+                        for (int y = 0; y < kernelDim; y++) {
+                            kernelDisplays[kernel][inputFeatureMapNumber].setPixmapGray(x, y, kernels[k(inputFeatureMapNumber, kernel, x, y)]);
+                        }
                     }
+                    kernelDisplays[kernel][inputFeatureMapNumber].display();
                 }
-                kernelDisplays[kernel].display();
             }
         }
 
@@ -612,11 +664,11 @@ public class DeepLearnCnnNetwork {
         }
 
         final int i(int map, int x, int y) {
-            return map * inputMapLength + x * inputMapDim + y;//(outputMapDim - y - 1); // TODO check x,y
+            return map * inputMapLength + x * inputMapDim + (outputMapDim - y - 1); // TODO check x,y
         }
 
         final int o(int map, int x, int y) {
-            return map * outputMapLength + x * outputMapDim + y;//(outputMapDim - y - 1);
+            return map * outputMapLength + x * outputMapDim + (outputMapDim - y - 1);
         }
 
         @Override
@@ -701,11 +753,11 @@ public class DeepLearnCnnNetwork {
             }
             maxActivation = Float.NEGATIVE_INFINITY;
             cols = input.activations.length / biases.length; // weights for each output unit
-            rows=biases.length; // number of output units
+            rows = biases.length; // number of output units
             int idx = 0;
             for (int unit = 0; unit < biases.length; unit++) {
                 for (int i = 0; i < cols; i++) {
-                    activations[unit] += input.activations[idx] * weight(unit,i); // the input activations are stored in the feature maps of last layer, column, row, map order
+                    activations[unit] += input.activations[idx] * weight(unit, i); // the input activations are stored in the feature maps of last layer, column, row, map order
                     idx++;
                 }
                 activations[unit] = sigm(activations[unit] + biases[unit]);
@@ -716,9 +768,9 @@ public class DeepLearnCnnNetwork {
             }
 
         }
-        
-        private float weight(int unit, int weight){
-            return weights[unit+rows*weight];
+
+        private float weight(int unit, int weight) {
+            return weights[unit + rows * weight];
         }
 
         /**
@@ -868,7 +920,7 @@ public class DeepLearnCnnNetwork {
                         layers[index] = l;
                         l.nInputMaps = layerReader.getInt("inputMaps");
                         l.nOutputMaps = layerReader.getInt("outputMaps");
-                        l.kernelSize = layerReader.getInt("kernelSize");
+                        l.kernelDim = layerReader.getInt("kernelSize");
                         l.biases = layerReader.getBase64FloatArr("biases");
                         l.kernels = layerReader.getBase64FloatArr("kernels");
                         l.initializeConstants();
@@ -885,7 +937,7 @@ public class DeepLearnCnnNetwork {
                 }
             }
             outputLayer = new OutputLayer(nLayers);
-           
+
             outputLayer.weights = networkReader.getBase64FloatArr("outputWeights"); // stored in many cols and few rows: one row per output unit
             outputLayer.biases = networkReader.getBase64FloatArr("outputBias");
             log.info(toString());
