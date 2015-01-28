@@ -350,8 +350,14 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 								// Check that the buffer has space for this event. Enlarge if needed.
 								if (ensureCapacity(buffer, eventCounter + 1)) {
+									// The X address comes out of the new logic such that the (0, 0) address
+									// is, as expected by most, in the lower left corner. Since the DAVIS240
+									// chip class data format assumes that this is still flipped, as in the
+									// old logic, we have to flip it here, so that the chip class extractor
+									// can flip it back. Backwards compatibility with recordings is the main
+									// motivation to do this hack.
 									buffer.getAddresses()[eventCounter] = ((dvsLastY << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
-										| ((data << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
+										| (((chip.getSizeX() - 1 - data) << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
 										| (((code & 0x01) << ApsDvsChip.POLSHIFT) & ApsDvsChip.POLMASK);
 									buffer.getTimestamps()[eventCounter++] = currentTimestamp;
 								}

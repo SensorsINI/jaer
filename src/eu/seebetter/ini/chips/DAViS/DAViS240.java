@@ -361,14 +361,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 						e.polarity = (data & ApsDvsChip.POLMASK) == ApsDvsChip.POLMASK ? ApsDvsEvent.Polarity.On
 							: ApsDvsEvent.Polarity.Off;
 						e.type = (byte) ((data & ApsDvsChip.POLMASK) == ApsDvsChip.POLMASK ? 1 : 0);
-						if ((getHardwareInterface() != null)
-							&& (getHardwareInterface() instanceof net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3)) {
-							// New logic already rights the address in FPGA.
-							e.x = (short) ((data & ApsDvsChip.XMASK) >>> ApsDvsChip.XSHIFT);
-						}
-						else {
-							e.x = (short) (sx1 - ((data & ApsDvsChip.XMASK) >>> ApsDvsChip.XSHIFT));
-						}
+						e.x = (short) (sx1 - ((data & ApsDvsChip.XMASK) >>> ApsDvsChip.XSHIFT));
 						e.y = (short) ((data & ApsDvsChip.YMASK) >>> ApsDvsChip.YSHIFT);
 						e.setIsDVS(true);
 						// System.out.println(data);
