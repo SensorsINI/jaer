@@ -80,17 +80,38 @@ public class DeepLearnCnnNetwork {
     OutputLayer outputLayer;
     JFrame activationsFrame = null, kernelsFrame = null;
 
-    /** For debug, clamps input image to fixed value */
+    /**
+     * For debug, clamps input image to fixed value
+     */
     public boolean isInputClampedTo1() {
-        return inputLayer.isInputClampedTo1();
+        return inputLayer == null ? false : inputLayer.isInputClampedTo1();
     }
 
-    /** For debug, clamps input image to fixed value */
+    /**
+     * For debug, clamps input image to fixed value
+     */
     public void setInputClampedTo1(boolean inputClampedTo1) {
-        inputLayer.setInputClampedTo1(inputClampedTo1);
+        if (inputLayer != null) {
+            inputLayer.setInputClampedTo1(inputClampedTo1);
+        }
     }
 
-    
+    /**
+     * For debug, clamps input image to fixed value
+     */
+    public boolean isInputClampedToIncreasingIntegers() {
+        return inputLayer == null ? false : inputLayer.isInputClampedToIncreasingIntegers();
+    }
+
+    /**
+     * For debug, clamps input image to fixed value
+     */
+    public void setInputClampedToIncreasingIntegers(boolean inputClampedTo1) {
+        if (inputLayer != null) {
+            inputLayer.setInputClampedToIncreasingIntegers(inputClampedTo1);
+        }
+    }
+
     /**
      * Computes the output of the network from an input activationsFrame
      *
@@ -247,7 +268,8 @@ public class DeepLearnCnnNetwork {
             super(index);
         }
 
-        private boolean inputClampedTo1=false; // for debug
+        private boolean inputClampedTo1 = false; // for debug
+        private boolean inputClampedToIncreasingIntegers = false; // debug
         int dimx;
         int dimy;
         int nUnits;
@@ -287,7 +309,13 @@ public class DeepLearnCnnNetwork {
 //                    if (aidx >= activations.length) {
 //                        break loop;
 //                    }
-                    activations[o(xo, yo)] = (float) frame[fridx];
+                    float v = (float) frame[fridx];
+                    if (inputClampedToIncreasingIntegers) {
+                        v = y + x * dimy;
+                    } else if (inputClampedTo1) {
+                        v = .5f;
+                    }
+                    activations[o(xo, yo)] = v;
                     xo++;
                 }
                 yo++;
@@ -296,7 +324,7 @@ public class DeepLearnCnnNetwork {
         }
 
         int o(int x, int y) {
-            return (dimy - y - 1) /*y */+ (dimy * x); // activations of input layer are stored by column and then row, as in matlab array that is taken by (:)
+            return (dimy * x) + y;//(dimy - y - 1); // activations of input layer are stored by column and then row, as in matlab array that is taken by (:)
         }
 
         @Override
@@ -329,16 +357,15 @@ public class DeepLearnCnnNetwork {
             }
             for (int x = 0; x < dimx; x++) {
                 for (int y = 0; y < dimy; y++) {
-                    imageDisplay.setPixmapGray(x, y, a(0,x, y));
+                    imageDisplay.setPixmapGray(x, y, a(0, x, y));
                 }
             }
-            imageDisplay.display();
+            imageDisplay.repaint();
         }
 
         @Override
         public final float a(int map, int x, int y) {
-            
-            return inputClampedTo1?0.5f:activations[o(x, y)];
+            return activations[o(x, y)];
         }
 
         /**
@@ -354,8 +381,21 @@ public class DeepLearnCnnNetwork {
         public void setInputClampedTo1(boolean inputClampedTo1) {
             this.inputClampedTo1 = inputClampedTo1;
         }
-        
-        
+
+        /**
+         * @return the inputClampedToIncreasingIntegers
+         */
+        public boolean isInputClampedToIncreasingIntegers() {
+            return inputClampedToIncreasingIntegers;
+        }
+
+        /**
+         * @param inputClampedToIncreasingIntegers the
+         * inputClampedToIncreasingIntegers to set
+         */
+        public void setInputClampedToIncreasingIntegers(boolean inputClampedToIncreasingIntegers) {
+            this.inputClampedToIncreasingIntegers = inputClampedToIncreasingIntegers;
+        }
 
     }
 
@@ -387,13 +427,9 @@ public class DeepLearnCnnNetwork {
      */
     public class ConvLayer extends Layer {
 
-        public ConvLayer(int index) {
-            super(index);
-        }
-
         int nInputMaps;
-        int nOutputMaps; // same as number of kernels
-        int kernelDim, singleKernelLength, halfKernelDim, kernelWeightsPerOutputMap;
+        int nOutputMaps; //
+        int kernelDim, singleKernelLength, halfKernelDim, kernelWeightsPerOutputMap, nKernels;
         float[] biases;
         float[] kernels;
         private int inputMapLength; // length of single input map out of input.activations
@@ -403,6 +439,10 @@ public class DeepLearnCnnNetwork {
         int activationsLength;
         ImageDisplay[] activationDisplays = null;
         ImageDisplay[][] kernelDisplays = null;
+
+        public ConvLayer(int index) {
+            super(index);
+        }
 
         public String toString() {
             return String.format("index=%d CNN   layer; nInputMaps=%d nOutputMaps=%d kernelSize=%d biases=float[%d] kernels=float[%d]",
@@ -419,24 +459,24 @@ public class DeepLearnCnnNetwork {
         /**
          * Computes convolutions of input kernels with input maps
          *
-         * @param input the input to this layer, represented by nInputMaps on
-         * the activations array
+         * @param inputLayer the input to this layer, represented by nInputMaps
+         * on the activations array
          */
         @Override
-        public void compute(Layer input) {
-            // TODO convolve activations of input with kernels
-            if (input.activations == null) {
+        public void compute(Layer inputLayer) {
+            if (inputLayer.activations == null) {
                 log.warning("input.activations==null");
                 return;
             }
-            if (input.activations.length % nInputMaps != 0) {
-                log.warning("input.activations.length=" + input.activations.length + " which is not divisible by nInputMaps=" + nInputMaps);
+            if (inputLayer.activations.length % nInputMaps != 0) {
+                log.warning("input.activations.length=" + inputLayer.activations.length + " which is not divisible by nInputMaps=" + nInputMaps);
             }
-            inputMapLength = input.activations.length / nInputMaps; // for computing indexing to input
+            inputMapLength = inputLayer.activations.length / nInputMaps; // for computing indexing to input
             double sqrtInputMapLength = Math.sqrt(inputMapLength);
             if (Math.IEEEremainder(sqrtInputMapLength, 1) != 0) {
                 log.warning("input map is not square; Math.rint(sqrtInputMapLength)=" + Math.rint(sqrtInputMapLength));
             }
+            nKernels = nInputMaps * nOutputMaps;
             inputMapDim = (int) sqrtInputMapLength;
             outputMapDim = inputMapDim - kernelDim + 1;
             outputMapLength = outputMapDim * outputMapDim;
@@ -453,24 +493,24 @@ public class DeepLearnCnnNetwork {
                 Arrays.fill(activations, 0);  // clear the output, since results from inputMaps will be accumulated
             }
 
-            for (int kernel = 0; kernel < nOutputMaps; kernel++) { // for each kernel/outputMap
+            for (int outputMap = 0; outputMap < nOutputMaps; outputMap++) { // for each kernel/outputMap
                 for (int inputMap = 0; inputMap < nInputMaps; inputMap++) { // for each inputMap
-                    conv(input, kernel, inputMap);
+                    conv(inputLayer, outputMap, inputMap);
                 }
             }
 
-            applyBiasAndNonlinearity();
+//            applyBiasAndNonlinearity();
         }
 
         // convolves a given kernel over the inputMap and accumulates output to activations
-        private void conv(Layer input, int kernel, int inputMap) {
+        private void conv(Layer inputLayer, int outputMap, int inputMap) {
             int startx = halfKernelDim, starty = halfKernelDim, endx = inputMapDim - halfKernelDim, endy = inputMapDim - halfKernelDim;
             int xo = 0, yo;
             for (int xi = startx; xi < endx; xi++) { // index to outputMap
                 yo = 0;
                 for (int yi = starty; yi < endy; yi++) {
-                    int outidx = o(kernel, xo, yo);
-                    activations[outidx] += convsingle(input, kernel, inputMap, xi, yi);
+                    int outidx = o(outputMap, xo, yo);
+                    activations[outidx] += convsingle(inputLayer, outputMap, inputMap, xi, yi);
                     yo++;
                 }
                 xo++;
@@ -478,18 +518,19 @@ public class DeepLearnCnnNetwork {
         }
 
         // computes single kernel inner product summed result centered on x,y in inputMap
-        private float convsingle(Layer input, int kernel, int inputMap, int x, int y) {
+        private float convsingle(Layer input, int outputMap, int inputMap, int xincenter, int yincenter) {
             float sum = 0;
-            for (int yy = 0; yy < kernelDim; yy++) {
-                int iny = y - halfKernelDim;
-                for (int xx = 0; xx < kernelDim; xx++) {
-                    int inx = x - halfKernelDim;
-                    sum += kernels[k(inputMap, kernel, xx, yy)] * input.a(inputMap, inx, iny);
+            // march over kernel y and x
+            for (int yy = 0; yy < kernelDim; yy++) { //yy is kernel coordinate
+                int iny = yincenter + yy - halfKernelDim; // iny is input coordinate
+                for (int xx = 0; xx < kernelDim; xx++) { // kernel coordinate
+                    int inx = xincenter + xx - halfKernelDim; // input coordinate
+                    sum += kernels[k(inputMap, outputMap, xx, yy)] * input.a(inputMap, inx, iny);
                     inx++;
                 }
                 iny++;
             }
-            return sum;
+            return sum; //1; // debug
         }
 
         private void applyBiasAndNonlinearity() {
@@ -509,7 +550,7 @@ public class DeepLearnCnnNetwork {
 
         // input index
         final int i(int map, int x, int y) {
-            return map * inputMapLength + x * inputMapDim + (outputMapDim-y-1); // TODO check x,y
+            return map * inputMapLength + x * inputMapDim + y;//(outputMapDim-y-1); // TODO check x,y
         }
 
         /**
@@ -523,12 +564,12 @@ public class DeepLearnCnnNetwork {
          * @return the index into kernels[]
          */
         final int k(int inputMap, int kernel, int x, int y) {
-            return inputMap * kernelWeightsPerOutputMap + singleKernelLength * kernel + kernelDim * x + (kernelDim - y - 1);
+            return inputMap * kernelWeightsPerOutputMap + singleKernelLength * kernel + kernelDim * x + y;//(kernelDim - y - 1);
         }
 
         // output index
         final int o(int outputMap, int x, int y) {
-            return outputMap * outputMapLength + outputMapDim * x + (outputMapDim-y-1);
+            return outputMap * outputMapLength + outputMapDim * x + y;//(outputMapDim-y-1);
         }
 
         @Override
@@ -664,11 +705,11 @@ public class DeepLearnCnnNetwork {
         }
 
         final int i(int map, int x, int y) {
-            return map * inputMapLength + x * inputMapDim + (outputMapDim - y - 1); // TODO check x,y
+            return map * inputMapLength + x * inputMapDim + y;//(outputMapDim - y - 1); // TODO check x,y
         }
 
         final int o(int map, int x, int y) {
-            return map * outputMapLength + x * outputMapDim + (outputMapDim - y - 1);
+            return map * outputMapLength + x * outputMapDim + y; //(outputMapDim - y - 1);
         }
 
         @Override
@@ -751,15 +792,18 @@ public class DeepLearnCnnNetwork {
             } else {
                 Arrays.fill(activations, 0);
             }
-            maxActivation = Float.NEGATIVE_INFINITY;
             cols = input.activations.length / biases.length; // weights for each output unit
             rows = biases.length; // number of output units
             int idx = 0;
-            for (int unit = 0; unit < biases.length; unit++) {
-                for (int i = 0; i < cols; i++) {
+            for (int i = 0; i < cols; i++) {
+                for (int unit = 0; unit < biases.length; unit++) {
                     activations[unit] += input.activations[idx] * weight(unit, i); // the input activations are stored in the feature maps of last layer, column, row, map order
                     idx++;
                 }
+            }
+
+            maxActivation = Float.NEGATIVE_INFINITY;
+            for (int unit = 0; unit < biases.length; unit++) {
                 activations[unit] = sigm(activations[unit] + biases[unit]);
                 if (activations[unit] > maxActivation) {
                     maxActivatedUnit = unit;

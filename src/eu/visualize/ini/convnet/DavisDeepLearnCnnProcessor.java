@@ -61,6 +61,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         setPropertyTooltip("showKernels", "draw all the network kernels (once) in a new JFrame");
         setPropertyTooltip("showActivations", "draws the network activations in a separate JFrame");
         setPropertyTooltip("inputClampedTo1", "clamps network input image to fixed value (1) for debugging");
+        setPropertyTooltip("inputClampedToIncreasingIntegers", "clamps network input image to idx of matrix, increasing integers, for debugging");
 
         initFilter();
     }
@@ -240,13 +241,26 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         putFloat("uniformBias", uniformBias);
     }
 
+    
+    // net computation debug methods
     public boolean isInputClampedTo1() {
-        return net==null? false: net.isInputClampedTo1();
+        return net == null ? false : net.isInputClampedTo1();
     }
 
     public void setInputClampedTo1(boolean inputClampedTo1) {
-        if(net!=null) net.setInputClampedTo1(inputClampedTo1);
+        if (net != null) {
+            net.setInputClampedTo1(inputClampedTo1);
+        }
     }
 
-    
+    public boolean isInputClampedToIncreasingIntegers() {
+        return net == null ? false : net.isInputClampedToIncreasingIntegers();
+    }
+
+    public void setInputClampedToIncreasingIntegers(boolean inputClampedTo1) {
+        if (net != null) {
+            net.setInputClampedToIncreasingIntegers(inputClampedTo1);
+        }
+    }
+
 }
