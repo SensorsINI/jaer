@@ -127,7 +127,6 @@ public class DeepLearnCnnNetwork {
             layers[i].compute(layers[i - 1]);
         }
         outputLayer.compute(layers[nLayers - 2]);
-//        showActivations();
         return outputLayer.activations;
     }
 
@@ -179,13 +178,6 @@ public class DeepLearnCnnNetwork {
         kernelsFrame = new JFrame("Kernels: DeepLearnCNNNetwork");
         kernelsFrame.setLayout(new BoxLayout(kernelsFrame.getContentPane(), BoxLayout.Y_AXIS));
         kernelsFrame.setPreferredSize(new Dimension(600, 600));
-//        activationsFrame.setVisible(true);
-
-//            activationsFrame.addWindowListener(new WindowAdapter() {
-//                public void windowClosing(WindowEvent e) {
-//                    setVisible(false);
-//                }
-//            });
     }
 
     abstract public class Layer {
@@ -431,6 +423,9 @@ public class DeepLearnCnnNetwork {
         int nOutputMaps; //
         int kernelDim, singleKernelLength, halfKernelDim, kernelWeightsPerOutputMap, nKernels;
         float[] biases;
+        /**
+        @see #k(int, int, int, int) 
+         */
         float[] kernels;
         private int inputMapLength; // length of single input map out of input.activations
         private int inputMapDim; // size of single input map, sqrt of inputMapLength for square input (TODO assumes square input)
@@ -481,7 +476,7 @@ public class DeepLearnCnnNetwork {
             outputMapDim = inputMapDim - kernelDim + 1;
             outputMapLength = outputMapDim * outputMapDim;
             activationsLength = outputMapLength * nOutputMaps;
-            kernelWeightsPerOutputMap = singleKernelLength * nInputMaps;
+            kernelWeightsPerOutputMap = singleKernelLength * nOutputMaps;
 
             if (nOutputMaps != biases.length) {
                 log.warning("nOutputMaps!=biases.length: " + nOutputMaps + "!=" + biases.length);
@@ -493,13 +488,13 @@ public class DeepLearnCnnNetwork {
                 Arrays.fill(activations, 0);  // clear the output, since results from inputMaps will be accumulated
             }
 
-            for (int outputMap = 0; outputMap < nOutputMaps; outputMap++) { // for each kernel/outputMap
-                for (int inputMap = 0; inputMap < nInputMaps; inputMap++) { // for each inputMap
+            for (int inputMap = 0; inputMap < nInputMaps; inputMap++) { // for each inputMap
+                for (int outputMap = 0; outputMap < nOutputMaps; outputMap++) { // for each kernel/outputMap
                     conv(inputLayer, outputMap, inputMap);
                 }
             }
 
-//            applyBiasAndNonlinearity();
+            applyBiasAndNonlinearity();
         }
 
         // convolves a given kernel over the inputMap and accumulates output to activations
@@ -556,15 +551,21 @@ public class DeepLearnCnnNetwork {
         /**
          * Return kernel index corresponding to input map, kernel (output map),
          * x, and y.
+         * <p>
+         * kernels are stored in this order in the kernels array: y, x, outputMap, inputMap, i.e. for
+         * 5x5 kernels, 12 output maps and 6 input maps, the first 12 kernels
+         * (25*12=300 weights) are the 12 5x5 weights for the first input map
+         * and each output map.
+         *
          *
          * @param inputMap the features map to convolve
-         * @param kernel the feature (output map) to accumulate to
+         * @param outputMap the feature (output map) to accumulate to
          * @param x
          * @param y
          * @return the index into kernels[]
          */
-        final int k(int inputMap, int kernel, int x, int y) {
-            return inputMap * kernelWeightsPerOutputMap + singleKernelLength * kernel + kernelDim * x + y;//(kernelDim - y - 1);
+        final int k(int inputMap, int outputMap, int x, int y) {
+            return inputMap * kernelWeightsPerOutputMap + singleKernelLength * outputMap + kernelDim * x + y;//(kernelDim - y - 1);
         }
 
         // output index
