@@ -303,7 +303,7 @@ public class DeepLearnCnnNetwork {
 //                    }
                     float v = (float) frame[fridx];
                     if (inputClampedToIncreasingIntegers) {
-                        v = y + x * dimy;
+                        v = (float)(xo+yo)/(dimx+dimy);
                     } else if (inputClampedTo1) {
                         v = .5f;
                     }
@@ -316,7 +316,7 @@ public class DeepLearnCnnNetwork {
         }
 
         int o(int x, int y) {
-            return (dimy * x) + y;//(dimy - y - 1); // activations of input layer are stored by column and then row, as in matlab array that is taken by (:)
+            return (dimy * x) + (dimy - y - 1); // activations of input layer are stored by column and then row, as in matlab array that is taken by (:)
         }
 
         @Override
@@ -377,7 +377,7 @@ public class DeepLearnCnnNetwork {
         /**
          * @return the inputClampedToIncreasingIntegers
          */
-        public boolean isInputClampedToIncreasingIntegers() {
+        public boolean isInputClampedToIncreasingIntegers() {  // only for debug
             return inputClampedToIncreasingIntegers;
         }
 
