@@ -316,7 +316,7 @@ public class DeepLearnCnnNetwork {
         }
 
         int o(int x, int y) {
-            return (dimy * x) + (dimy - y - 1); // activations of input layer are stored by column and then row, as in matlab array that is taken by (:)
+            return (dimy * x) + y; //(dimy - y - 1); // activations of input layer are stored by column and then row, as in matlab array that is taken by (:)
         }
 
         @Override
@@ -565,12 +565,12 @@ public class DeepLearnCnnNetwork {
          * @return the index into kernels[]
          */
         final int k(int inputMap, int outputMap, int x, int y) {
-            return inputMap * kernelWeightsPerOutputMap + singleKernelLength * outputMap + kernelDim * x + y;//(kernelDim - y - 1);
+            return inputMap * kernelWeightsPerOutputMap + singleKernelLength * outputMap + kernelDim * x + y; //(kernelDim - y - 1);
         }
 
         // output index
         final int o(int outputMap, int x, int y) {
-            return outputMap * outputMapLength + outputMapDim * x + y;//(outputMapDim-y-1);
+            return outputMap * outputMapLength + outputMapDim * x + (outputMapDim-y-1);
         }
 
         @Override
@@ -706,11 +706,11 @@ public class DeepLearnCnnNetwork {
         }
 
         final int i(int map, int x, int y) {
-            return map * inputMapLength + x * inputMapDim + y;//(outputMapDim - y - 1); // TODO check x,y
+            return map * inputMapLength + x * inputMapDim + y; //(outputMapDim - y - 1); // TODO check x,y
         }
 
         final int o(int map, int x, int y) {
-            return map * outputMapLength + x * outputMapDim + y; //(outputMapDim - y - 1);
+            return map * outputMapLength + x * outputMapDim + y;//(outputMapDim - y - 1);
         }
 
         @Override
