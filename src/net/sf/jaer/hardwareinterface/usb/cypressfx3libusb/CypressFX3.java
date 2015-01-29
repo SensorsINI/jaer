@@ -1680,8 +1680,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			dataBuffer = BufferUtils.allocateByteBuffer(0);
 		}
 
-		System.out.println(String.format("Sent VR %X, wValue %X, wIndex %X, wLength %d.\n", request, value, index,
-			dataBuffer.limit()));
+//		System.out.println(String.format("Sent VR %X, wValue %X, wIndex %X, wLength %d.\n", request, value, index,
+//			dataBuffer.limit()));
 
 		final byte bmRequestType = (byte) (LibUsb.ENDPOINT_OUT | LibUsb.REQUEST_TYPE_VENDOR | LibUsb.RECIPIENT_DEVICE);
 
