@@ -303,7 +303,8 @@ public class DeepLearnCnnNetwork {
 //                    }
                     float v = (float) frame[fridx];
                     if (inputClampedToIncreasingIntegers) {
-                        v = (float)(xo+yo)/(dimx+dimy);
+//                        v = (float)(xo+yo)/(dimx+dimy);
+                        v = (float) (yo) / (dimy);
                     } else if (inputClampedTo1) {
                         v = .5f;
                     }
@@ -316,7 +317,7 @@ public class DeepLearnCnnNetwork {
         }
 
         int o(int x, int y) {
-            return (dimy * x) + y; //(dimy - y - 1); // activations of input layer are stored by column and then row, as in matlab array that is taken by (:)
+            return (dimy * x) + y;  // activations of input layer are stored by column and then row, as in matlab array that is taken by (:)
         }
 
         @Override
@@ -424,7 +425,7 @@ public class DeepLearnCnnNetwork {
         int kernelDim, singleKernelLength, halfKernelDim, kernelWeightsPerOutputMap, nKernels;
         float[] biases;
         /**
-        @see #k(int, int, int, int) 
+         * @see #k(int, int, int, int)
          */
         float[] kernels;
         private int inputMapLength; // length of single input map out of input.activations
@@ -494,7 +495,7 @@ public class DeepLearnCnnNetwork {
                 }
             }
 
-            applyBiasAndNonlinearity();
+//            applyBiasAndNonlinearity();
         }
 
         // convolves a given kernel over the inputMap and accumulates output to activations
@@ -516,15 +517,17 @@ public class DeepLearnCnnNetwork {
         private float convsingle(Layer input, int outputMap, int inputMap, int xincenter, int yincenter) {
             float sum = 0;
             // march over kernel y and x
-            for (int yy = 0; yy < kernelDim; yy++) { //yy is kernel coordinate
-                int iny = yincenter + yy - halfKernelDim; // iny is input coordinate
-                for (int xx = 0; xx < kernelDim; xx++) { // kernel coordinate
-                    int inx = xincenter + xx - halfKernelDim; // input coordinate
+            for (int xx = 0; xx < kernelDim; xx++) { // kernel coordinate
+                int inx = xincenter + xx - halfKernelDim; // input coordinate
+                for (int yy = 0; yy < kernelDim; yy++) { //yy is kernel coordinate
+                    int iny = yincenter + yy - halfKernelDim; // iny is input coordinate
                     sum += kernels[k(inputMap, outputMap, xx, yy)] * input.a(inputMap, inx, iny);
-                    inx++;
+//                    sum += 1;
+                    iny++;
                 }
-                iny++;
+                inx++;
             }
+//            return 1; //1; // debug
             return sum; //1; // debug
         }
 
@@ -543,19 +546,14 @@ public class DeepLearnCnnNetwork {
 
         }
 
-        // input index
-        final int i(int map, int x, int y) {
-            return map * inputMapLength + x * inputMapDim + y;//(outputMapDim-y-1); // TODO check x,y
-        }
-
         /**
          * Return kernel index corresponding to input map, kernel (output map),
          * x, and y.
          * <p>
-         * kernels are stored in this order in the kernels array: y, x, outputMap, inputMap, i.e. for
-         * 5x5 kernels, 12 output maps and 6 input maps, the first 12 kernels
-         * (25*12=300 weights) are the 12 5x5 weights for the first input map
-         * and each output map.
+         * kernels are stored in this order in the kernels array: y, x,
+         * outputMap, inputMap, i.e. for 5x5 kernels, 12 output maps and 6 input
+         * maps, the first 12 kernels (25*12=300 weights) are the 12 5x5 weights
+         * for the first input map and each output map.
          *
          *
          * @param inputMap the features map to convolve
@@ -570,7 +568,7 @@ public class DeepLearnCnnNetwork {
 
         // output index
         final int o(int outputMap, int x, int y) {
-            return outputMap * outputMapLength + outputMapDim * x + (outputMapDim-y-1);
+            return outputMap * outputMapLength + outputMapDim * x + y; //(outputMapDim-y-1);
         }
 
         @Override
@@ -705,12 +703,9 @@ public class DeepLearnCnnNetwork {
             }
         }
 
-        final int i(int map, int x, int y) {
-            return map * inputMapLength + x * inputMapDim + y; //(outputMapDim - y - 1); // TODO check x,y
-        }
-
+        // output index function
         final int o(int map, int x, int y) {
-            return map * outputMapLength + x * outputMapDim + y;//(outputMapDim - y - 1);
+            return map * outputMapLength + x * outputMapDim + y;
         }
 
         @Override
