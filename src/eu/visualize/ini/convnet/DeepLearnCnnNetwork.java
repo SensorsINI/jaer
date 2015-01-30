@@ -307,7 +307,7 @@ public class DeepLearnCnnNetwork {
                     } else if (inputClampedTo1) {
                         v = .5f;
                     }
-                    activations[o(xo, yo)] = v;
+                    activations[o(dimy-yo-1, xo)] = v; // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
                     xo++;
                 }
                 yo++;
