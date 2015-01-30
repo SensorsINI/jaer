@@ -126,7 +126,7 @@ public class DeepLearnCnnNetwork {
         for (int i = 1; i < nLayers; i++) {
             layers[i].compute(layers[i - 1]);
         }
-        outputLayer.compute(layers[nLayers - 2]);
+        outputLayer.compute(layers[nLayers - 1]);
         return outputLayer.activations;
     }
 
@@ -252,7 +252,7 @@ public class DeepLearnCnnNetwork {
 
     /**
      * Represents input to network; computes the sub/down sampled input from
-     * image activationsFrame.
+     * image activationsFrame. Order of entries in activations is the same as in matlab, first column on left from row=0 to dimy, 2nd column, etc.
      */
     public class InputLayer extends Layer {
 
@@ -303,8 +303,8 @@ public class DeepLearnCnnNetwork {
 //                    }
                     float v = (float) frame[fridx];
                     if (inputClampedToIncreasingIntegers) {
-//                        v = (float)(xo+yo)/(dimx+dimy);
-                        v = (float) (yo) / (dimy);
+                        v = (float)(xo+yo)/(dimx+dimy); // make image that is x+y, for debugging
+//                        v = (float) (yo) / (dimy);
                     } else if (inputClampedTo1) {
                         v = .5f;
                     }
@@ -495,7 +495,7 @@ public class DeepLearnCnnNetwork {
                 }
             }
 
-//            applyBiasAndNonlinearity();
+            applyBiasAndNonlinearity();
         }
 
         // convolves a given kernel over the inputMap and accumulates output to activations
@@ -514,6 +514,8 @@ public class DeepLearnCnnNetwork {
         }
 
         // computes single kernel inner product summed result centered on x,y in inputMap
+        // DANGER DANGER - note that in matlab the conv2/convn function do convolutions by flipping the kernel matrix and then doing 2d sum-of-products.
+        // So the sum-of-product results are not just the sum of products of corresponding x,y entries.
         private float convsingle(Layer input, int outputMap, int inputMap, int xincenter, int yincenter) {
             float sum = 0;
             // march over kernel y and x
@@ -521,8 +523,9 @@ public class DeepLearnCnnNetwork {
                 int inx = xincenter + xx - halfKernelDim; // input coordinate
                 for (int yy = 0; yy < kernelDim; yy++) { //yy is kernel coordinate
                     int iny = yincenter + yy - halfKernelDim; // iny is input coordinate
-                    sum += kernels[k(inputMap, outputMap, xx, yy)] * input.a(inputMap, inx, iny);
 //                    sum += 1;
+//                    sum += input.a(inputMap, inx, iny);
+                    sum += kernels[k(inputMap, outputMap, kernelDim-xx-1, kernelDim-yy-1)] * input.a(inputMap, inx, iny);
                     iny++;
                 }
                 inx++;
@@ -759,10 +762,10 @@ public class DeepLearnCnnNetwork {
         }
 
         float[] biases;  //ffb in matlab DeepLearnToolbox
-        float[] weights; // ffW in matlab DeepLearnToolbox, a many by few array in XML where there are a few rows each with many columsn to dot with previous layer
+        /** @see #weight(int, int) */
+        float[] weights; 
         public float maxActivation;
         public int maxActivatedUnit;
-        public int cols, rows;
 
         public String toString() {
             return String.format("Output: bias=float[%d] outputWeights=float[%d]", biases.length, weights.length);
@@ -788,14 +791,13 @@ public class DeepLearnCnnNetwork {
             } else {
                 Arrays.fill(activations, 0);
             }
-            cols = input.activations.length / biases.length; // weights for each output unit
-            rows = biases.length; // number of output units
-            int idx = 0;
-            for (int i = 0; i < cols; i++) {
-                for (int unit = 0; unit < biases.length; unit++) {
-                    activations[unit] += input.activations[idx] * weight(unit, i); // the input activations are stored in the feature maps of last layer, column, row, map order
-                    idx++;
+            int aidx=0;
+            for(int unit=0;unit<biases.length;unit++){
+                for(int w=0;w<input.activations.length;w++){
+                    activations[unit] += input.activations[aidx] * weight(unit, biases.length, w);
+                    aidx++; // the input activations are stored in the feature maps of last layer, column, row, map order
                 }
+                aidx=0;
             }
 
             maxActivation = Float.NEGATIVE_INFINITY;
@@ -809,8 +811,10 @@ public class DeepLearnCnnNetwork {
 
         }
 
-        private float weight(int unit, int weight) {
-            return weights[unit + rows * weight];
+        private float weight(int unit, int nUnits, int weight) {
+            // ffW in matlab DeepLearnToolbox, a many by few array in XML where there are a few rows each with many columsn to dot with previous layer
+            // weight array here is stored by columns; first 4-column has first weight for each of 4 outputs, 2nd column (entries 4-7) has 2nd weights for 4 output units.
+            return weights[unit + nUnits * weight]; // e.g 2nd weight for unit 0 is at position 4=0+4*1
         }
 
         /**
