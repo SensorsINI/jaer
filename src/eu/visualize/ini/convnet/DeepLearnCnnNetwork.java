@@ -140,7 +140,6 @@ public class DeepLearnCnnNetwork {
         }
         if (!activationsFrame.isVisible()) {
             activationsFrame.setVisible(true);
-            return;
         }
 
     }
@@ -325,6 +324,7 @@ public class DeepLearnCnnNetwork {
             throw new UnsupportedOperationException("Input layer only computes on input frame, not previous layer output; use compute(frame[] f, ...) method");
         }
 
+        @Override
         public String toString() {
             return String.format("index=%d Input layer; dimx=%d dimy=%d nUnits=%d",
                     index, dimx, dimy, nUnits);
@@ -440,6 +440,7 @@ public class DeepLearnCnnNetwork {
             super(index);
         }
 
+        @Override
         public String toString() {
             return String.format("index=%d CNN   layer; nInputMaps=%d nOutputMaps=%d kernelSize=%d biases=float[%d] kernels=float[%d]",
                     index, nInputMaps, nOutputMaps, kernelDim, biases == null ? 0 : biases.length, kernels == null ? 0 : kernels.length);
@@ -525,7 +526,7 @@ public class DeepLearnCnnNetwork {
                     int iny = yincenter + yy - halfKernelDim; // iny is input coordinate
 //                    sum += 1;
 //                    sum += input.a(inputMap, inx, iny);
-                    sum += kernels[k(inputMap, outputMap, kernelDim-xx-1, kernelDim-yy-1)] * input.a(inputMap, inx, iny);
+                    sum += kernels[k(inputMap, outputMap, kernelDim-xx-1, kernelDim-yy-1)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
                     iny++;
                 }
                 inx++;
@@ -623,7 +624,7 @@ public class DeepLearnCnnNetwork {
                         kernelDisplays[outputMapNumber][inputFeatureMapNumber] = ImageDisplay.createOpenGLCanvas();
                         kernelDisplays[outputMapNumber][inputFeatureMapNumber].setBorderSpacePixels(1);
                         kernelDisplays[outputMapNumber][inputFeatureMapNumber].setImageSize(kernelDim, kernelDim);
-                        kernelDisplays[outputMapNumber][inputFeatureMapNumber].setSize(200, 200);
+                        kernelDisplays[outputMapNumber][inputFeatureMapNumber].setSize(100, 100);
                         outputMapPanel.add(kernelDisplays[outputMapNumber][inputFeatureMapNumber]);
                     }
                     panel.add(outputMapPanel);
@@ -636,6 +637,8 @@ public class DeepLearnCnnNetwork {
                     for (int x = 0; x < kernelDim; x++) {
                         for (int y = 0; y < kernelDim; y++) {
                             kernelDisplays[kernel][inputFeatureMapNumber].setPixmapGray(x, y, kernels[k(inputFeatureMapNumber, kernel, x, y)]);
+                            kernelDisplays[kernel][inputFeatureMapNumber].setFontSize(12);
+                            kernelDisplays[kernel][inputFeatureMapNumber].setTitleLabel(String.format("o%d i%d",kernel,inputFeatureMapNumber));
                         }
                     }
                     kernelDisplays[kernel][inputFeatureMapNumber].display();
@@ -742,6 +745,7 @@ public class DeepLearnCnnNetwork {
             }
         }
 
+        @Override
         public String toString() {
             return String.format("index=%d Subsamp layer; averageOver=%d biases=float[%d]",
                     index, averageOverDim, biases == null ? 0 : biases.length);
@@ -767,6 +771,7 @@ public class DeepLearnCnnNetwork {
         public float maxActivation;
         public int maxActivatedUnit;
 
+        @Override
         public String toString() {
             return String.format("Output: bias=float[%d] outputWeights=float[%d]", biases.length, weights.length);
         }
@@ -991,6 +996,7 @@ public class DeepLearnCnnNetwork {
         }
     }
 
+    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("DeepLearnCnnNetwork: \n");
         sb.append(String.format("name=%s, dob=%s, type=%s\nnotes=%s\n", netname, dob, nettype, notes));
