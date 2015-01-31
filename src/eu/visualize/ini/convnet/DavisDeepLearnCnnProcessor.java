@@ -46,6 +46,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     private boolean showOutputAsBarChart = getBoolean("showOutputAsBarChart", true);
     private float uniformWeight = getFloat("uniformWeight", 0);
     private float uniformBias = getFloat("uniformBias", 0);
+    private boolean measurePerformance = getBoolean("measurePerformance", false);
 
     private JFrame imageDisplayFrame = null;
     public ImageDisplay inputImageDisplay;
@@ -62,6 +63,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         setPropertyTooltip("showActivations", "draws the network activations in a separate JFrame");
         setPropertyTooltip("inputClampedTo1", "clamps network input image to fixed value (1) for debugging");
         setPropertyTooltip("inputClampedToIncreasingIntegers", "clamps network input image to idx of matrix, increasing integers, for debugging");
+        setPropertyTooltip("measurePerformance", "Measures and logs time in ms to process each frame");
 
         initFilter();
     }
@@ -125,6 +127,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 
     }
 
+
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         // new activationsFrame is available, process it
@@ -133,7 +136,19 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             if (frame == null || frame.length == 0 || frameExtractor.getWidth() == 0) {
                 return;
             }
+
+            long startTime = 0;
+            if (measurePerformance) {
+                startTime = System.nanoTime();
+            }
             float[] outputs = net.compute(frame, frameExtractor.getWidth());
+            if (measurePerformance) {
+                long dt = System.nanoTime() - startTime;
+                float ms = 1e-6f * dt;
+                float fps = 1e3f / ms;
+                log.info(String.format("Frame processing time: %.1fms (%.1f FPS)", ms, fps));
+
+            }
         }
 
     }
@@ -241,7 +256,6 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         putFloat("uniformBias", uniformBias);
     }
 
-    
     // net computation debug methods
     public boolean isInputClampedTo1() {
         return net == null ? false : net.isInputClampedTo1();
@@ -261,6 +275,21 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         if (net != null) {
             net.setInputClampedToIncreasingIntegers(inputClampedTo1);
         }
+    }
+
+    /**
+     * @return the measurePerformance
+     */
+    public boolean isMeasurePerformance() {
+        return measurePerformance;
+    }
+
+    /**
+     * @param measurePerformance the measurePerformance to set
+     */
+    public void setMeasurePerformance(boolean measurePerformance) {
+        this.measurePerformance = measurePerformance;
+        putBoolean("measurePerformance", measurePerformance);
     }
 
 }
