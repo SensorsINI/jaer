@@ -79,6 +79,8 @@ public class DeepLearnCnnNetwork {
     InputLayer inputLayer;
     OutputLayer outputLayer;
     JFrame activationsFrame = null, kernelsFrame = null;
+    private boolean hideSubsamplingLayers=true;
+    private boolean hideConvLayers=false;
 
     /**
      * For debug, clamps input image to fixed value
@@ -133,6 +135,8 @@ public class DeepLearnCnnNetwork {
     void drawActivations() {
         checkActivationsFrame();
         for (Layer l : layers) {
+            if(l instanceof ConvLayer && hideConvLayers) continue;
+            if(l instanceof SubsamplingLayer && hideSubsamplingLayers) continue;
             l.drawActivations();
         }
         if (outputLayer != null) {
@@ -1007,6 +1011,34 @@ public class DeepLearnCnnNetwork {
         sb.append(outputLayer == null ? "null outputLayer" : outputLayer.toString());
         return sb.toString();
 
+    }
+    
+       /**
+     * @return the hideSubsamplingLayers
+     */
+    public boolean isHideSubsamplingLayers() {
+        return hideSubsamplingLayers;
+    }
+
+    /**
+     * @param hideSubsamplingLayers the hideSubsamplingLayers to set
+     */
+    public void setHideSubsamplingLayers(boolean hideSubsamplingLayers) {
+        this.hideSubsamplingLayers = hideSubsamplingLayers;
+    }
+
+    /**
+     * @return the hideConvLayers
+     */
+    public boolean isHideConvLayers() {
+        return hideConvLayers;
+    }
+
+    /**
+     * @param hideConvLayers the hideConvLayers to set
+     */
+    public void setHideConvLayers(boolean hideConvLayers) {
+        this.hideConvLayers = hideConvLayers;
     }
 
 }

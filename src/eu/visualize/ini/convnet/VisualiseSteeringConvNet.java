@@ -5,6 +5,7 @@
  */
 package eu.visualize.ini.convnet;
 
+import java.util.prefs.Preferences;
 import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
@@ -25,14 +26,19 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor {
 
     private boolean hasBlendChecked = false;
     private boolean hasBlend = false;
+    private boolean hideOutput = getBoolean("hideOutput", false);
+    private boolean showAnalogDecisionOutput = getBoolean("hideOutput", false);
 
     public VisualiseSteeringConvNet(AEChip chip) {
         super(chip);
+        setPropertyTooltip("showAnalogDecisionOutput", "shows output units as analog shading");
+        setPropertyTooltip("hideOutput", "hides output units");
     }
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
+        if(hideOutput) return;
         if (net.outputLayer.activations != null) {
             // 0=left, 1=center, 2=right, 3=no target
             int decision = net.outputLayer.maxActivatedUnit;
@@ -59,14 +65,54 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor {
 
             int third = chip.getSizeX() / 3;
             int sy = chip.getSizeY();
-            if (decision < 3) {
+            if (showAnalogDecisionOutput) {
+                for (int i = 0; i < 3; i++) {
+                    int x0 = third * i;
+                    int x1 = x0 + third;
+                    float shade = .5f*net.outputLayer.activations[i];
+                    gl.glColor4f(shade, 0, 0, .1f);
+                    gl.glRecti(x0, 0, x1, sy);
+                }
+
+            } else if (decision < 3) {
                 int x0 = third * decision;
                 int x1 = x0 + third;
-                gl.glColor4f(.5f, 0, 0, .2f);
+                float shade = .5f;
+                gl.glColor4f(shade, 0, 0, .2f);
                 gl.glRecti(x0, 0, x1, sy);
             }
 
         }
+    }
+
+    /**
+     * @return the hideOutput
+     */
+    public boolean isHideOutput() {
+        return hideOutput;
+    }
+
+    /**
+     * @param hideOutput the hideOutput to set
+     */
+    public void setHideOutput(boolean hideOutput) {
+        this.hideOutput = hideOutput;
+        putBoolean("hideOutput", hideOutput);
+    }
+
+    /**
+     * @return the showAnalogDecisionOutput
+     */
+    public boolean isShowAnalogDecisionOutput() {
+        return showAnalogDecisionOutput;
+    }
+
+    /**
+     * @param showAnalogDecisionOutput the showAnalogDecisionOutput to set
+     */
+    public void setShowAnalogDecisionOutput(boolean showAnalogDecisionOutput) {
+        this.showAnalogDecisionOutput = showAnalogDecisionOutput;
+        putBoolean("showAnalogDecisionOutput", showAnalogDecisionOutput);
     }
 
 }

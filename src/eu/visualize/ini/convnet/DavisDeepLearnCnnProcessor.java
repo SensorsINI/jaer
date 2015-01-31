@@ -38,11 +38,10 @@ import net.sf.jaer.graphics.ImageDisplay;
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 public class DavisDeepLearnCnnProcessor extends EventFilter2D implements PropertyChangeListener, FrameAnnotater {
 
-    protected DeepLearnCnnNetwork net = null;
+    protected DeepLearnCnnNetwork net = new DeepLearnCnnNetwork();
     private String lastFileName = getString("lastFileName", "LCRN_cnn.xml");
     private ApsFrameExtractor frameExtractor = new ApsFrameExtractor(chip);
     private boolean showActivations = getBoolean("showActivations", false);
-    private boolean showInput = getBoolean("showInput", false);
     private boolean showOutputAsBarChart = getBoolean("showOutputAsBarChart", true);
     private float uniformWeight = getFloat("uniformWeight", 0);
     private float uniformBias = getFloat("uniformBias", 0);
@@ -57,13 +56,16 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         chain.add(frameExtractor);
         setEnclosedFilterChain(chain);
         frameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);
+        String deb="2. Debug",disp="1. Display";
         setPropertyTooltip("loadCNNNetworkFromXML", "Load an XML file containing a CNN exported from DeepLearnToolbox by cnntoxml.m");
-        setPropertyTooltip("setNetworkToUniformValues", "sets previously-loaded net to uniform values for debugging");
-        setPropertyTooltip("showKernels", "draw all the network kernels (once) in a new JFrame");
-        setPropertyTooltip("showActivations", "draws the network activations in a separate JFrame");
-        setPropertyTooltip("inputClampedTo1", "clamps network input image to fixed value (1) for debugging");
-        setPropertyTooltip("inputClampedToIncreasingIntegers", "clamps network input image to idx of matrix, increasing integers, for debugging");
-        setPropertyTooltip("measurePerformance", "Measures and logs time in ms to process each frame");
+        setPropertyTooltip(deb,"setNetworkToUniformValues", "sets previously-loaded net to uniform values for debugging");
+        setPropertyTooltip(disp,"showKernels", "draw all the network kernels (once) in a new JFrame");
+        setPropertyTooltip(disp, "showActivations", "draws the network activations in a separate JFrame");
+        setPropertyTooltip(disp, "hideSubsamplingLayers", "hides layers that are subsampling conv layers");
+        setPropertyTooltip(disp, "hideConvLayers", "hides conv layers");
+        setPropertyTooltip(deb, "inputClampedTo1", "clamps network input image to fixed value (1) for debugging");
+        setPropertyTooltip(deb, "inputClampedToIncreasingIntegers", "clamps network input image to idx of matrix, increasing integers, for debugging");
+        setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame");
 
         initFilter();
     }
@@ -193,21 +195,6 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     }
 
     /**
-     * @return the showInput
-     */
-    public boolean isShowInput() {
-        return showInput;
-    }
-
-    /**
-     * @param showInput the showInput to set
-     */
-    public void setShowInput(boolean showInput) {
-        this.showInput = showInput;
-        getSupport().firePropertyChange("showInput", null, showInput);
-    }
-
-    /**
      * @return the showOutputAsBarChart
      */
     public boolean isShowOutputAsBarChart() {
@@ -292,4 +279,23 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         putBoolean("measurePerformance", measurePerformance);
     }
 
+    public boolean isHideSubsamplingLayers() {
+        return net.isHideSubsamplingLayers();
+    }
+
+    public void setHideSubsamplingLayers(boolean hideSubsamplingLayers) {
+        net.setHideSubsamplingLayers(hideSubsamplingLayers);
+    }
+
+    public boolean isHideConvLayers() {
+        return net.isHideConvLayers();
+    }
+
+    public void setHideConvLayers(boolean hideConvLayers) {
+        net.setHideConvLayers(hideConvLayers);
+    }
+
+  
+    
+    
 }
