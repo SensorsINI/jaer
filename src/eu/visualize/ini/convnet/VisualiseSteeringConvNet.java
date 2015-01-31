@@ -27,7 +27,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor {
     private boolean hasBlendChecked = false;
     private boolean hasBlend = false;
     private boolean hideOutput = getBoolean("hideOutput", false);
-    private boolean showAnalogDecisionOutput = getBoolean("hideOutput", false);
+    private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
 
     public VisualiseSteeringConvNet(AEChip chip) {
         super(chip);

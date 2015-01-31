@@ -59,12 +59,15 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         String deb="2. Debug",disp="1. Display";
         setPropertyTooltip("loadCNNNetworkFromXML", "Load an XML file containing a CNN exported from DeepLearnToolbox by cnntoxml.m");
         setPropertyTooltip(deb,"setNetworkToUniformValues", "sets previously-loaded net to uniform values for debugging");
+        setPropertyTooltip(deb,"showOutputAsBarChart", "displays activity of output units as bar chart, where height indicates activation");
         setPropertyTooltip(disp,"showKernels", "draw all the network kernels (once) in a new JFrame");
         setPropertyTooltip(disp, "showActivations", "draws the network activations in a separate JFrame");
         setPropertyTooltip(disp, "hideSubsamplingLayers", "hides layers that are subsampling conv layers");
         setPropertyTooltip(disp, "hideConvLayers", "hides conv layers");
         setPropertyTooltip(deb, "inputClampedTo1", "clamps network input image to fixed value (1) for debugging");
         setPropertyTooltip(deb, "inputClampedToIncreasingIntegers", "clamps network input image to idx of matrix, increasing integers, for debugging");
+        setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame");
+        setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame");
         setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame");
 
         initFilter();
@@ -93,12 +96,12 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         net.loadFromXMLFile(c.getSelectedFile());
 
     }
-
-    public void doSetNetworkToUniformValues() {
-        if (net != null) {
-            net.setNetworkToUniformValues(uniformWeight, uniformBias);
-        }
-    }
+// debug only
+//    public void doSetNetworkToUniformValues() {
+//        if (net != null) {
+//            net.setNetworkToUniformValues(uniformWeight, uniformBias);
+//        }
+//    }
 
     public void doShowKernels() {
         if (net != null) {
@@ -213,35 +216,35 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
-    /**
-     * @return the uniformWeight
-     */
-    public float getUniformWeight() {
-        return uniformWeight;
-    }
-
-    /**
-     * @param uniformWeight the uniformWeight to set
-     */
-    public void setUniformWeight(float uniformWeight) {
-        this.uniformWeight = uniformWeight;
-        putFloat("uniformWeight", uniformWeight);
-    }
-
-    /**
-     * @return the uniformBias
-     */
-    public float getUniformBias() {
-        return uniformBias;
-    }
-
-    /**
-     * @param uniformBias the uniformBias to set
-     */
-    public void setUniformBias(float uniformBias) {
-        this.uniformBias = uniformBias;
-        putFloat("uniformBias", uniformBias);
-    }
+//    /**
+//     * @return the uniformWeight
+//     */
+//    public float getUniformWeight() {
+//        return uniformWeight;
+//    }
+//
+//    /**
+//     * @param uniformWeight the uniformWeight to set
+//     */
+//    public void setUniformWeight(float uniformWeight) {
+//        this.uniformWeight = uniformWeight;
+//        putFloat("uniformWeight", uniformWeight);
+//    }
+//
+//    /**
+//     * @return the uniformBias
+//     */
+//    public float getUniformBias() {
+//        return uniformBias;
+//    }
+//
+//    /**
+//     * @param uniformBias the uniformBias to set
+//     */
+//    public void setUniformBias(float uniformBias) {
+//        this.uniformBias = uniformBias;
+//        putFloat("uniformBias", uniformBias);
+//    }
 
     // net computation debug methods
     public boolean isInputClampedTo1() {
