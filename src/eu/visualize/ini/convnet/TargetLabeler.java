@@ -45,6 +45,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.ApsDvsChip;
+import java.awt.Cursor;
 
 /**
  * Labels location of target using mouse GUI in recorded data for later
@@ -403,6 +404,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     }
 
+
     private class TargetLocationComparator implements Comparator<TargetLocation> {
 
         @Override
@@ -476,44 +478,49 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     private void loadLocations(File f) {
         log.info("loading " + f);
-        targetLocations.clear();
-        minSampleTimestamp = Integer.MAX_VALUE;
-        maxSampleTimestamp = Integer.MIN_VALUE;
         try {
-            BufferedReader reader = new BufferedReader(new FileReader(f));
-            String s = reader.readLine();
-            StringBuilder sb = new StringBuilder();
-            while ((s != null) && s.startsWith("#")) {
-                sb.append(s + "\n");
-                s = reader.readLine();
-            }
-            log.info("header lines on " + f.getAbsolutePath() + " are\n" + sb.toString());
-            while (s != null) {
-                Scanner scanner = new Scanner(s);
-                try {
-                    TargetLocation targetLocation = new TargetLocation(scanner.nextInt(), scanner.nextInt(), new Point(scanner.nextInt(), scanner.nextInt())); // read target location
-                    if (targetLocation.location.x == -1 && targetLocation.location.y == -1) {
-                        targetLocation.location = null;
-                    }
-                    targetLocations.put(targetLocation.timestamp, targetLocation);
-                    if (targetLocation != null) {
-                        if (targetLocation.timestamp > maxSampleTimestamp) {
-                            maxSampleTimestamp = targetLocation.timestamp;
-                        }
-                        if (targetLocation.timestamp < minSampleTimestamp) {
-                            minSampleTimestamp = targetLocation.timestamp;
-                        }
-                    }
-                } catch (InputMismatchException ex2) {
-                    throw new IOException("couldn't parse file, got InputMismatchException on line: " + s);
+            setCursor(new Cursor(Cursor.WAIT_CURSOR));
+            targetLocations.clear();
+            minSampleTimestamp = Integer.MAX_VALUE;
+            maxSampleTimestamp = Integer.MIN_VALUE;
+            try {
+                BufferedReader reader = new BufferedReader(new FileReader(f));
+                String s = reader.readLine();
+                StringBuilder sb = new StringBuilder();
+                while ((s != null) && s.startsWith("#")) {
+                    sb.append(s + "\n");
+                    s = reader.readLine();
                 }
-                s = reader.readLine();
+                log.info("header lines on " + f.getAbsolutePath() + " are\n" + sb.toString());
+                while (s != null) {
+                    Scanner scanner = new Scanner(s);
+                    try {
+                        TargetLocation targetLocation = new TargetLocation(scanner.nextInt(), scanner.nextInt(), new Point(scanner.nextInt(), scanner.nextInt())); // read target location
+                        if (targetLocation.location.x == -1 && targetLocation.location.y == -1) {
+                            targetLocation.location = null;
+                        }
+                        targetLocations.put(targetLocation.timestamp, targetLocation);
+                        if (targetLocation != null) {
+                            if (targetLocation.timestamp > maxSampleTimestamp) {
+                                maxSampleTimestamp = targetLocation.timestamp;
+                            }
+                            if (targetLocation.timestamp < minSampleTimestamp) {
+                                minSampleTimestamp = targetLocation.timestamp;
+                            }
+                        }
+                    } catch (InputMismatchException ex2) {
+                        throw new IOException("couldn't parse file, got InputMismatchException on line: " + s);
+                    }
+                    s = reader.readLine();
+                }
+                log.info("done loading " + f);
+            } catch (FileNotFoundException ex) {
+                JOptionPane.showMessageDialog(glCanvas, ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(glCanvas, ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
             }
-            log.info("done loading " + f);
-        } catch (FileNotFoundException ex) {
-            JOptionPane.showMessageDialog(glCanvas, ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
-        } catch (IOException ex) {
-            JOptionPane.showMessageDialog(glCanvas, ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
+        } finally {
+            setCursor(Cursor.getDefaultCursor());
         }
     }
 
