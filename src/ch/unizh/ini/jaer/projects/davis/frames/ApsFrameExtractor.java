@@ -22,7 +22,6 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
-import net.sf.jaer.graphics.DavisRendererOutput;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.ImageDisplay.Legend;
 
@@ -38,7 +37,7 @@ import net.sf.jaer.graphics.ImageDisplay.Legend;
  */
 @Description("Method to acquire a frame from a stream of APS sample events")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class ApsFrameExtractor extends EventFilter2D implements Observer, DavisRendererOutput /* Observer needed to get change events on chip construction */{
+public class ApsFrameExtractor extends EventFilter2D implements Observer /* Observer needed to get change events on chip construction */{
 
     private JFrame apsFrame = null;
     public ImageDisplay apsDisplay;
@@ -71,27 +70,7 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer, DavisR
         
     }
 
-    @Override
-    public float grayValueAtPixel(int x, int y) {
-        return displayFrame[getIndex(x, y)];
-    }
 
-    @Override
-    public float[] rgbValuesAtPixel(int x, int y) {
-        float[] rgb=new float[3];
-        System.arraycopy(displayFrame, getIndex(x, y), rgb, 0, 3);
-        return rgb;
-    }
-
-    @Override
-    public int getWidthInPixels() {
-        return getWidth();
-    }
-
-    @Override
-    public int getHeightInPixels() {
-        return getHeight();
-    }
 
     public static enum Extraction {
 
