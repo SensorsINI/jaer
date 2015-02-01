@@ -17,7 +17,6 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
-import net.sf.jaer.graphics.DavisRendererOutput;
 import net.sf.jaer.graphics.ImageDisplay;
 
 /**
