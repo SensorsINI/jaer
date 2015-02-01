@@ -28,15 +28,24 @@ import eu.seebetter.ini.chips.DAViS.DAViS240;
  * Class adapted from AEChipRenderer to render not only AE events but also
  * frames.
  *
- * The frame buffer is RGBA so four bytes per pixel
+ * The frame buffer is RGBA so four bytes per pixel. The rendering uses a
+ * texture which is a power of two multiple of image size, so watch out for
+ * getWidth and getHeight; they return this value and not the number of pixels
+ * being rendered from the chip.
  *
  * @author christian, tobi
  * @see ChipRendererDisplayMethod
  */
 public class AEFrameChipRenderer extends AEChipRenderer {
+    
+      /**
+     * PropertyChange events
+     */
+    public static final String EVENT_NEW_FRAME_AVAILBLE = "newFrameAvailable";
+
 
     private boolean addedPropertyChangeListener = false;
-   public int textureWidth; //due to hardware acceloration reasons, has to be a 2^x with x a natural number
+    public int textureWidth; //due to hardware acceloration reasons, has to be a 2^x with x a natural number
     public int textureHeight; //due to hardware acceloration reasons, has to be a 2^x with x a natural number
 
     private int sizeX, sizeY, maxADC;
@@ -191,7 +200,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 }
             }
         }
-       if (!(pkt instanceof ApsDvsEventPacket)) {
+        if (!(pkt instanceof ApsDvsEventPacket)) {
             if ((warningCount++ % WARNING_INTERVAL) == 0) {
                 log.info("I only know how to render ApsDvsEventPacket but got " + pkt);
             }
@@ -318,6 +327,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             java.awt.geom.Point2D.Float filter2d = lowpassFilter.filter2d(minValue, maxValue, timestamp);
             getSupport().firePropertyChange(AGC_VALUES, null, filter2d); // inform listeners (GUI) of new AGC min/max filterd log intensity values
         }
+        getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILBLE,null,this); // TODO document what is sent and send something reasonable
     }
 
     /**
@@ -426,7 +436,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
         this.colorScale = colorScale;
         prefs.putInt("Chip2DRenderer.colorScale", colorScale);
-        getSupport().firePropertyChange(PROPERTY_COLOR_SCALE, old, colorScale);
+        getSupport().firePropertyChange(EVENT_COLOR_SCALE_CHANGE, old, colorScale);
     }
 
     private static int ceilingPow2(int n) {
@@ -437,21 +447,77 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         return pow2;
     }
 
+    /**
+     * Returns pixmap for ON events
+     *
+     * @return a float buffer. Obtain a pixel from it using getPixMapIndex
+     * @see #getPixMapIndex(int, int)
+     */
     public FloatBuffer getOnMap() {
         onMap.rewind();
         checkPixmapAllocation();
         return onMap;
     }
 
+    /**
+     * Returns pixmap for OFF events
+     *
+     * @return a float buffer. Obtain a pixel from it using getPixMapIndex
+     * @see #getPixMapIndex(int, int)
+     */
     public FloatBuffer getOffMap() {
         offMap.rewind();
         checkPixmapAllocation();
         return offMap;
     }
 
+    /**
+     * Returns index into pixmap
+     *
+     * @param x
+     * @param y
+     * @return the index
+     */
     @Override
     public int getPixMapIndex(int x, int y) {
-        return 4 * (x + (y * sizeX));
+        if (textureRendering) {
+            return 4 * (x + (y * textureWidth));
+        } else {
+            return 3 * (x + (y * sizeX));
+        }
+    }
+
+    /**
+     * Overridden to return ON and OFF map values as R and G channels. B channel
+     * is returned 0. Note that this method returns rendering of events; it
+     * disregards APS frame values.
+     *
+     * @param x
+     * @param y
+     * @return
+     */
+    public float[] getDvsRenderedValuesAtPixel(int x, int y) {
+        int k = getPixMapIndex(x, y);
+        float[] f = new float[3];
+        f[0] = onMap.get(k + 3);
+        f[1] = offMap.get(k + 3);
+        f[2] = 0; // return alpha channel which is the ON and OFF value that is rendered (RGB are 1 for ON and OFF maps)
+        return f; //To change body of generated methods, choose Tools | Templates.
+    }
+
+    /**
+     * Overridden to combine ON and OFF map values to a gray value by averaging
+     * them. Note that this method returns rendering of events; it disregards
+     * APS frame values.
+     *
+     * @param x
+     * @param y
+     * @return
+     */
+    public float getApsGrayValueAtPixel(int x, int y) {
+        int k=getPixMapIndex(x, y);
+        float[] pm=pixmap.array();
+        return (pm[k] + pm[k+1] + pm[k+2]) / 3;
     }
 
     /**
@@ -462,11 +528,25 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         return pixBuffer;
     }
 
+    /**
+     * Returns the width of the texture used to render output. Note this is NOT
+     * the chip dimension; it is a power of 2 multiple that is next larger to
+     * chip size.
+     *
+     * @return power of 2 multiple that is next larger to chip size
+     */
     @Override
     public int getWidth() {
         return textureWidth;
     }
 
+    /**
+     * Returns the height of the texture used to render output. Note this is NOT
+     * the chip dimension; it is a power of 2 multiple that is next larger to
+     * chip size.
+     *
+     * @return power of 2 multiple that is next larger to chip size
+     */
     @Override
     public int getHeight() {
         return textureHeight;
@@ -591,6 +671,14 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      */
     public SimpleHistogram getAdcSampleValueHistogram() {
         return currentHist;
+    }
+
+    public int getWidthInPixels() {
+        return getWidth();
+    }
+
+    public int getHeightInPixels() {
+        return getHeight();
     }
 
 }
