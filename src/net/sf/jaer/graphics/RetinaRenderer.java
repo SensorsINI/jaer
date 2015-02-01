@@ -27,5 +27,5 @@ public class RetinaRenderer extends AEChipRenderer {
     public RetinaRenderer(AEChip chip) {
         super(chip);
     }
-    
-}
+
+    }
