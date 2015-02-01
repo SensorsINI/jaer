@@ -6,10 +6,6 @@
 package eu.visualize.ini.convnet;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
-import java.awt.BorderLayout;
-import java.awt.Dimension;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
@@ -17,7 +13,6 @@ import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
-import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import net.sf.jaer.Description;
@@ -26,6 +21,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
 
@@ -40,12 +36,15 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 
     protected DeepLearnCnnNetwork net = new DeepLearnCnnNetwork();
     private String lastFileName = getString("lastFileName", "LCRN_cnn.xml");
-    private ApsFrameExtractor frameExtractor = new ApsFrameExtractor(chip);
+//    private ApsFrameExtractor frameExtractor = new ApsFrameExtractor(chip);
     private boolean showActivations = getBoolean("showActivations", false);
     private boolean showOutputAsBarChart = getBoolean("showOutputAsBarChart", true);
     private float uniformWeight = getFloat("uniformWeight", 0);
     private float uniformBias = getFloat("uniformBias", 0);
     private boolean measurePerformance = getBoolean("measurePerformance", false);
+    private boolean processDVSTimeSlices = getBoolean("processDVSTimeSlices", false);
+    private boolean processAPSFrames = getBoolean("processAPSFrames", true);
+    private boolean addedPropertyChangeListener = false;  // must do lazy add of us as listener to chip because renderer is not there yet when this is constructed
 
     private JFrame imageDisplayFrame = null;
     public ImageDisplay inputImageDisplay;
@@ -53,14 +52,14 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     public DavisDeepLearnCnnProcessor(AEChip chip) {
         super(chip);
         FilterChain chain = new FilterChain(chip);
-        chain.add(frameExtractor);
-        setEnclosedFilterChain(chain);
-        frameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);
-        String deb="2. Debug",disp="1. Display";
+//        chain.add(frameExtractor);
+//        setEnclosedFilterChain(chain);
+//        frameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);
+        String deb = "3. Debug", disp = "1. Display", anal = "2. Analysis";
         setPropertyTooltip("loadCNNNetworkFromXML", "Load an XML file containing a CNN exported from DeepLearnToolbox by cnntoxml.m");
-        setPropertyTooltip(deb,"setNetworkToUniformValues", "sets previously-loaded net to uniform values for debugging");
-        setPropertyTooltip(deb,"showOutputAsBarChart", "displays activity of output units as bar chart, where height indicates activation");
-        setPropertyTooltip(disp,"showKernels", "draw all the network kernels (once) in a new JFrame");
+        setPropertyTooltip(deb, "setNetworkToUniformValues", "sets previously-loaded net to uniform values for debugging");
+        setPropertyTooltip(disp, "showOutputAsBarChart", "displays activity of output units as bar chart, where height indicates activation");
+        setPropertyTooltip(disp, "showKernels", "draw all the network kernels (once) in a new JFrame");
         setPropertyTooltip(disp, "showActivations", "draws the network activations in a separate JFrame");
         setPropertyTooltip(disp, "hideSubsamplingLayers", "hides layers that are subsampling conv layers");
         setPropertyTooltip(disp, "hideConvLayers", "hides conv layers");
@@ -69,6 +68,8 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame");
         setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame");
         setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame");
+        setPropertyTooltip(anal, "processAPSFrames", "sends APS frames to convnet");
+        setPropertyTooltip(anal, "processDVSTimeSlices", "sends DVS time slices to convnet");
 
         initFilter();
     }
@@ -111,7 +112,21 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        frameExtractor.filterPacket(in);
+        if (!addedPropertyChangeListener) {
+            ((AEFrameChipRenderer) chip.getRenderer()).getSupport().addPropertyChangeListener(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
+            addedPropertyChangeListener = true;
+        }
+//        frameExtractor.filterPacket(in); // extracts frames with nornalization (brightness, contrast) and sends to net on each frame in PropertyChangeListener
+        // send DVS timeslice to convnet
+        if (processDVSTimeSlices) {
+            float[] pixmap = chip.getRenderer().getPixmapArray();
+            if (pixmap == null) {
+                log.warning("null pixmap; are you using a 3D rendering mode or is the DVS event output rendering disabled?");
+            } else {
+                net.processFrame((AEFrameChipRenderer) (chip.getRenderer()),DeepLearnCnnNetwork.DvsOrAps.Dvs);
+            }
+
+        }
         return in;
     }
 
@@ -132,21 +147,20 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 
     }
 
-
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         // new activationsFrame is available, process it
-        if (net != null) {
-            double[] frame = frameExtractor.getNewFrame(); // TODO currently a clone of vector, index is y * width + x, i.e. it marches along rows and then up
-            if (frame == null || frame.length == 0 || frameExtractor.getWidth() == 0) {
-                return;
-            }
+        if (net != null && processAPSFrames) {
+//            float[] frame = frameExtractor.getNewFrame(); 
+//            if (frame == null || frame.length == 0 || frameExtractor.getWidth() == 0) {
+//                return;
+//            }
 
             long startTime = 0;
             if (measurePerformance) {
                 startTime = System.nanoTime();
             }
-            float[] outputs = net.compute(frame, frameExtractor.getWidth());
+            float[] outputs = net.processFrame((AEFrameChipRenderer) (chip.getRenderer()),DeepLearnCnnNetwork.DvsOrAps.Aps);
             if (measurePerformance) {
                 long dt = System.nanoTime() - startTime;
                 float ms = 1e-6f * dt;
@@ -245,7 +259,6 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 //        this.uniformBias = uniformBias;
 //        putFloat("uniformBias", uniformBias);
 //    }
-
     // net computation debug methods
     public boolean isInputClampedTo1() {
         return net == null ? false : net.isInputClampedTo1();
@@ -298,7 +311,34 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         net.setHideConvLayers(hideConvLayers);
     }
 
-  
-    
-    
+    /**
+     * @return the processDVSTimeSlices
+     */
+    public boolean isProcessDVSTimeSlices() {
+        return processDVSTimeSlices;
+    }
+
+    /**
+     * @param processDVSTimeSlices the processDVSTimeSlices to set
+     */
+    public void setProcessDVSTimeSlices(boolean processDVSTimeSlices) {
+        this.processDVSTimeSlices = processDVSTimeSlices;
+        putBoolean("processDVSTimeSlices", processDVSTimeSlices);
+    }
+
+    /**
+     * @return the processAPSFrames
+     */
+    public boolean isProcessAPSFrames() {
+        return processAPSFrames;
+    }
+
+    /**
+     * @param processAPSFrames the processAPSFrames to set
+     */
+    public void setProcessAPSFrames(boolean processAPSFrames) {
+        this.processAPSFrames = processAPSFrames;
+        putBoolean("processAPSFrames", processAPSFrames);
+    }
+
 }

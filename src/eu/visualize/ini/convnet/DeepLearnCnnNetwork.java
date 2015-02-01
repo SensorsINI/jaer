@@ -5,6 +5,7 @@
  */
 package eu.visualize.ini.convnet;
 
+import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.io.File;
@@ -15,6 +16,8 @@ import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
+import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRendererOutput;
 import net.sf.jaer.graphics.ImageDisplay;
 
 /**
@@ -79,8 +82,16 @@ public class DeepLearnCnnNetwork {
     InputLayer inputLayer;
     OutputLayer outputLayer;
     JFrame activationsFrame = null, kernelsFrame = null;
-    private boolean hideSubsamplingLayers=true;
-    private boolean hideConvLayers=false;
+    private boolean hideSubsamplingLayers = true;
+    private boolean hideConvLayers = true;
+
+    /**
+     * Type of input to process
+     */
+    public enum DvsOrAps {
+
+        Dvs, Aps
+    }
 
     /**
      * For debug, clamps input image to fixed value
@@ -118,13 +129,13 @@ public class DeepLearnCnnNetwork {
      * Computes the output of the network from an input activationsFrame
      *
      * @param frame the image, indexed by y * width + x
-     * @param width the width of image in pixels
+     * @param type type of rendered image to process from renderer
      * @return the vector of output values
      * @see #getActivations
      */
-    public float[] compute(double[] frame, int width) {
+    public float[] processFrame(AEFrameChipRenderer frame, DvsOrAps type) {
 
-        inputLayer.compute(frame, width);
+        inputLayer.processFrame(frame, type);
         for (int i = 1; i < nLayers; i++) {
             layers[i].compute(layers[i - 1]);
         }
@@ -135,8 +146,12 @@ public class DeepLearnCnnNetwork {
     void drawActivations() {
         checkActivationsFrame();
         for (Layer l : layers) {
-            if(l instanceof ConvLayer && hideConvLayers) continue;
-            if(l instanceof SubsamplingLayer && hideSubsamplingLayers) continue;
+            if (l instanceof ConvLayer && hideConvLayers) {
+                continue;
+            }
+            if (l instanceof SubsamplingLayer && hideSubsamplingLayers) {
+                continue;
+            }
             l.drawActivations();
         }
         if (outputLayer != null) {
@@ -201,13 +216,13 @@ public class DeepLearnCnnNetwork {
         private boolean visible = true;
 
         public void initializeConstants() {
-            // override to compute constants for layer
+            // override to processFrame constants for layer
         }
 
         /**
          * Computes activations from input layer
          *
-         * @param input the input layer to compute from
+         * @param input the input layer to processFrame from
          */
         abstract public void compute(Layer input);
 
@@ -255,7 +270,8 @@ public class DeepLearnCnnNetwork {
 
     /**
      * Represents input to network; computes the sub/down sampled input from
-     * image activationsFrame. Order of entries in activations is the same as in matlab, first column on left from row=0 to dimy, 2nd column, etc.
+     * image activationsFrame. Order of entries in activations is the same as in
+     * matlab, first column on left from row=0 to dimy, 2nd column, etc.
      */
     public class InputLayer extends Layer {
 
@@ -271,22 +287,28 @@ public class DeepLearnCnnNetwork {
         private ImageDisplay imageDisplay = null;
 
         /**
-         * Computes the output from input activationsFrame
+         * Computes the output from input frame. The frame can be either a
+         * gray-scale frame[] with a single entry per pixel, or it can be an RGB
+         * frame[] with 3 sample (RGB) per pixel. The appropriate extraction is
+         * done in processFrame by the FrameType parameter.
          *
          * @param frame the input image, indexed by <code>y * width + x</code>.
          * Lower left pixel is pixel x,y=0,0. Next pixel is x,y=1,0, etc
          * @param frameWidth the width of image in pixels
-         * @return the vector of output values, which are indexed by y+dimy*x
+         * @param type either Dvs or Aps type of input to process
+         * @return the vector of network output values, which are indexed by
+         * y+dimy*x
          * @see #getActivations
          */
-        public float[] compute(double[] frame, int frameWidth) {
-            if (frame == null || frameWidth == 0 || frame.length % frameWidth != 0) {
-                throw new IllegalArgumentException("input frame is null or frame vector dimension not a multiple of width=" + frameWidth);
-            }
+        public float[] processFrame(AEFrameChipRenderer renderer, DvsOrAps type) {
+//            if (frame == null || frameWidth == 0 || (frame.length / type.samplesPerPixel()) % frameWidth != 0) {
+//                throw new IllegalArgumentException("input frame is null or frame array length is not a multiple of width=" + frameWidth);
+//            }
             if (activations == null) {
                 activations = new float[nUnits];
             }
-            int frameHeight = frame.length / frameWidth;
+            int frameHeight = renderer.getChip().getSizeY();
+            int frameWidth = renderer.getChip().getSizeX();
             // subsample input activationsFrame to dimx dimy 
             // activationsFrame has width*height pixels
             // for first pass we just downsample every width/dimx pixel in x and every height/dimy pixel in y
@@ -297,21 +319,33 @@ public class DeepLearnCnnNetwork {
             for (float y = 0; y < frameHeight; y += ystride) {
                 xo = 0;
                 for (float x = 0; x < frameWidth; x += xstride) {  // take every xstride, ystride pixels as output
-                    int fridx = (int) (Math.floor(y) * frameWidth + Math.floor(x)); // nearest pixel, for cheapest downsampling
-//                    if (fridx >= activationsFrame.length) {
-//                        break loop;
-//                    }
-//                    if (aidx >= activations.length) {
-//                        break loop;
-//                    }
-                    float v = (float) frame[fridx];
+                    float v=0;
+                    switch (type) {
+                        case Aps:
+                            v = renderer.getApsGrayValueAtPixel((int) Math.floor(x), (int) Math.floor(y));
+                            break;
+                        case Dvs:
+                            float[] fv = renderer.getDvsRenderedValuesAtPixel((int) Math.floor(x), (int) Math.floor(y));
+                            switch (renderer.getColorMode()) {
+                                case GrayLevel:
+                                    v = fv[0];
+                                    break;
+                                case RedGreen:
+                                    v = (fv[1] - fv[0]) / 2;
+                                    break;
+                                default:
+                                    v = (fv[0] + fv[1] + fv[2]);
+                                    break;
+                            }
+                    }
+                    // TODO remove only for debug
                     if (inputClampedToIncreasingIntegers) {
-                        v = (float)(xo+yo)/(dimx+dimy); // make image that is x+y, for debugging
+                        v = (float) (xo + yo) / (dimx + dimy); // make image that is x+y, for debugging
 //                        v = (float) (yo) / (dimy);
                     } else if (inputClampedTo1) {
                         v = .5f;
                     }
-                    activations[o(dimy-yo-1, xo)] = v; // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
+                    activations[o(dimy - yo - 1, xo)] = v; // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
                     xo++;
                 }
                 yo++;
@@ -376,14 +410,14 @@ public class DeepLearnCnnNetwork {
          * @param inputClampedTo1 the inputClampedTo1 to set
          */
         public void setInputClampedTo1(boolean inputClampedTo1) {
-            this.inputClampedTo1 = inputClampedTo1;
+            this.inputClampedTo1 = inputClampedTo1; // TODO remove debug
         }
 
         /**
          * @return the inputClampedToIncreasingIntegers
          */
         public boolean isInputClampedToIncreasingIntegers() {  // only for debug
-            return inputClampedToIncreasingIntegers;
+            return inputClampedToIncreasingIntegers; // TODO remove debug
         }
 
         /**
@@ -434,8 +468,8 @@ public class DeepLearnCnnNetwork {
         float[] kernels;
         private int inputMapLength; // length of single input map out of input.activations
         private int inputMapDim; // size of single input map, sqrt of inputMapLength for square input (TODO assumes square input)
-        int outputMapLength; // length of single output map vector; biases.length/nOutputMaps, calculated during compute()
-        int outputMapDim;  // dimension of single output map, calculated during compute()
+        int outputMapLength; // length of single output map vector; biases.length/nOutputMaps, calculated during processFrame()
+        int outputMapDim;  // dimension of single output map, calculated during processFrame()
         int activationsLength;
         ImageDisplay[] activationDisplays = null;
         ImageDisplay[][] kernelDisplays = null;
@@ -530,7 +564,7 @@ public class DeepLearnCnnNetwork {
                     int iny = yincenter + yy - halfKernelDim; // iny is input coordinate
 //                    sum += 1;
 //                    sum += input.a(inputMap, inx, iny);
-                    sum += kernels[k(inputMap, outputMap, kernelDim-xx-1, kernelDim-yy-1)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
+                    sum += kernels[k(inputMap, outputMap, kernelDim - xx - 1, kernelDim - yy - 1)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
                     iny++;
                 }
                 inx++;
@@ -642,7 +676,7 @@ public class DeepLearnCnnNetwork {
                         for (int y = 0; y < kernelDim; y++) {
                             kernelDisplays[kernel][inputFeatureMapNumber].setPixmapGray(x, y, kernels[k(inputFeatureMapNumber, kernel, x, y)]);
                             kernelDisplays[kernel][inputFeatureMapNumber].setFontSize(12);
-                            kernelDisplays[kernel][inputFeatureMapNumber].setTitleLabel(String.format("o%d i%d",kernel,inputFeatureMapNumber));
+                            kernelDisplays[kernel][inputFeatureMapNumber].setTitleLabel(String.format("o%d i%d", kernel, inputFeatureMapNumber));
                         }
                     }
                     kernelDisplays[kernel][inputFeatureMapNumber].display();
@@ -699,7 +733,7 @@ public class DeepLearnCnnNetwork {
                         int startx = xo * averageOverDim, endx = startx + averageOverDim, starty = yo * averageOverDim, endy = starty + averageOverDim;
                         for (int xi = startx; xi < endx; xi++) { // iterate over input
                             for (int yi = starty; yi < endy; yi++) {
-                                s += convLayer.a(map, xi, yi); // add to sum to compute average
+                                s += convLayer.a(map, xi, yi); // add to sum to processFrame average
                             }
                         }
                         // debug
@@ -770,8 +804,10 @@ public class DeepLearnCnnNetwork {
         }
 
         float[] biases;  //ffb in matlab DeepLearnToolbox
-        /** @see #weight(int, int) */
-        float[] weights; 
+        /**
+         * @see #weight(int, int)
+         */
+        float[] weights;
         public float maxActivation;
         public int maxActivatedUnit;
 
@@ -800,13 +836,13 @@ public class DeepLearnCnnNetwork {
             } else {
                 Arrays.fill(activations, 0);
             }
-            int aidx=0;
-            for(int unit=0;unit<biases.length;unit++){
-                for(int w=0;w<input.activations.length;w++){
+            int aidx = 0;
+            for (int unit = 0; unit < biases.length; unit++) {
+                for (int w = 0; w < input.activations.length; w++) {
                     activations[unit] += input.activations[aidx] * weight(unit, biases.length, w);
                     aidx++; // the input activations are stored in the feature maps of last layer, column, row, map order
                 }
-                aidx=0;
+                aidx = 0;
             }
 
             maxActivation = Float.NEGATIVE_INFINITY;
@@ -1012,8 +1048,8 @@ public class DeepLearnCnnNetwork {
         return sb.toString();
 
     }
-    
-       /**
+
+    /**
      * @return the hideSubsamplingLayers
      */
     public boolean isHideSubsamplingLayers() {
