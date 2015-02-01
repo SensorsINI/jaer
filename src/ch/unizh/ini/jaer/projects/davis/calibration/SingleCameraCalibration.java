@@ -21,6 +21,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.FrameAnnotater;
 import org.bytedeco.javacpp.DoublePointer;
+import org.bytedeco.javacpp.FloatPointer;
 import org.bytedeco.javacpp.opencv_calib3d;
 import org.bytedeco.javacpp.opencv_core;
 import static org.bytedeco.javacpp.opencv_core.CV_64FC3;
@@ -49,7 +50,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private int sy;
     private int lastTimestamp = 0;
 
-    private double[] lastFrame;
+    private float[] lastFrame;
     
     SimpleDepthCameraViewerApplication depthViewerThread;
 
@@ -144,7 +145,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 }
 
                 if (calibrated && showUndistortedFrames) {
-                    DoublePointer ip = new DoublePointer(lastFrame);
+                    FloatPointer ip = new FloatPointer(lastFrame);
                     Mat input = new Mat(ip);
                     input.convertTo(input, CV_8U, 255, 0);
                     Mat img = input.reshape(0, sy);
@@ -171,7 +172,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     public boolean findCurrentCorners(boolean drawAndSave) {
         Size patternSize = new Size(patternWidth, patternHeight);
         corners = new Mat();
-        DoublePointer ip = new DoublePointer(lastFrame);
+        FloatPointer ip = new FloatPointer(lastFrame);
         Mat input = new Mat(ip);
         input.convertTo(input, CV_8U, 255, 0);
         imgIn = input.reshape(0, sy);
