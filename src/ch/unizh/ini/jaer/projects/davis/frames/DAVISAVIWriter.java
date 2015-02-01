@@ -93,7 +93,7 @@ public class DAVISAVIWriter extends EventFilter2D implements PropertyChangeListe
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         if (aviOutputStream != null && evt.getPropertyName() == ApsFrameExtractor.EVENT_NEW_FRAME) {
-            double[] frame = apsFrameExtractor.getNewFrame();
+            float[] frame = apsFrameExtractor.getNewFrame();
 
             BufferedImage bufferedImage = new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_3BYTE_BGR);
             WritableRaster raster = bufferedImage.getRaster();

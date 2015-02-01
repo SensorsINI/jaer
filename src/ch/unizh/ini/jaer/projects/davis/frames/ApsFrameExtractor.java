@@ -21,6 +21,8 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.DavisRendererOutput;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.ImageDisplay.Legend;
 
@@ -36,7 +38,7 @@ import net.sf.jaer.graphics.ImageDisplay.Legend;
  */
 @Description("Method to acquire a frame from a stream of APS sample events")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class ApsFrameExtractor extends EventFilter2D implements Observer /* Observer needed to get change events on chip construction */{
+public class ApsFrameExtractor extends EventFilter2D implements Observer, DavisRendererOutput /* Observer needed to get change events on chip construction */{
 
     private JFrame apsFrame = null;
     public ImageDisplay apsDisplay;
@@ -47,7 +49,7 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
     private float[] displayBuffer; 
     private float[] apsDisplayPixmapBuffer;
     /** Cooked pixel values, after brightness, contrast, log intensity conversion, etc. */
-    private double[] displayFrame; // format is RGB triplets indexed by ??? what is this? How different than displayBuffer??? 
+    private float[] displayFrame; // format is RGB triplets indexed by ??? what is this? How different than displayBuffer??? 
     public int width, height, maxADC, maxIDX;
     private float grayValue;
     public final float logSafetyOffset = 10000.0f;
@@ -55,10 +57,10 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
     private Legend apsDisplayLegend;
     /**
      * A PropertyChangeEvent with this value is fired when a new frame has been
-     * completely read. The oldValue is null. The newValue is the double[]
+     * completely read. The oldValue is null. The newValue is the float[]
      * displayFrame that will be rendered.
      */
-    public static final String EVENT_NEW_FRAME = "newFrame";
+    public static final String EVENT_NEW_FRAME = AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE;
     private int lastFrameTimestamp=-1;
 
     @Override
@@ -67,6 +69,28 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
             initFilter();
         }
         
+    }
+
+    @Override
+    public float grayValueAtPixel(int x, int y) {
+        return displayFrame[getIndex(x, y)];
+    }
+
+    @Override
+    public float[] rgbValuesAtPixel(int x, int y) {
+        float[] rgb=new float[3];
+        System.arraycopy(displayFrame, getIndex(x, y), rgb, 0, 3);
+        return rgb;
+    }
+
+    @Override
+    public int getWidthInPixels() {
+        return getWidth();
+    }
+
+    @Override
+    public int getHeightInPixels() {
+        return getHeight();
     }
 
     public static enum Extraction {
@@ -133,7 +157,7 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
         apsDisplay.setImageSize(width, height);
         resetBuffer = new float[width * height];
         signalBuffer = new float[width * height];
-        displayFrame = new double[width * height];
+        displayFrame = new float[width * height];
         displayBuffer = new float[width * height];
         apsDisplayPixmapBuffer = new float[3 * width * height];
         Arrays.fill(resetBuffer, 0.0f);
@@ -235,7 +259,7 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
         } else {
             grayValue = scaleGrayValue(displayBuffer[idx]);
         }
-        displayFrame[idx] = (double) grayValue;
+        displayFrame[idx] = (float) grayValue;
         if (!preBufferFrame && !useExtRender && showAPSFrameDisplay) {
             apsDisplay.setPixmapGray(e.x, e.y, grayValue);
         } else {
@@ -313,7 +337,7 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
      *
      * @return the double[] frame
      */
-    public double[] getNewFrame() {
+    public float[] getNewFrame() {
         newFrame = false;
         return displayFrame;
     }
