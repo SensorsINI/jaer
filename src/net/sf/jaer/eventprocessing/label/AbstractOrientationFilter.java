@@ -327,12 +327,12 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --width--">
+    // <editor-fold defaultstate="collapsed" desc="getter/setter for --getWidthInPixels--">
     public int getWidth (){
         return width;
     }
 
-    /** @param width the width of the RF, 0 for a single line of pixels, 1 for 3 lines, etc */
+    /** @param width the getWidthInPixels of the RF, 0 for a single line of pixels, 1 for 3 lines, etc */
     synchronized public void setWidth (final int width){
         int setValue = (width < 0) ? 0 : width;
             setValue = (width > (length -1)) ? length -1 : setValue;

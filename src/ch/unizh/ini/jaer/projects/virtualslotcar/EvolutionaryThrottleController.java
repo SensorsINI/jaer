@@ -1320,23 +1320,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
                 return;
             }
             GL2 gl = drawable.getGL().getGL2();
-            if (!hasBlendChecked) {
-                hasBlendChecked = true;
-                String glExt = gl.glGetString(GL.GL_EXTENSIONS);
-                if (glExt.indexOf("GL_EXT_blend_color") != -1) {
-                    hasBlend = true;
-                }
-            }
-            if (hasBlend) {
-                try {
-                    gl.glEnable(GL.GL_BLEND);
-                    gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
-                    gl.glBlendEquation(GL.GL_FUNC_ADD);
-                } catch (GLException e) {
-                    e.printStackTrace();
-                    hasBlend = false;
-                }
-            }
+            checkBlend(gl);
             switch (editState) {
                 case None:
                     gl.glColor4f(.25f, .25f, 0, .3f);

@@ -265,10 +265,10 @@ public class ApsDVSUserControlPanel extends javax.swing.JPanel implements Proper
 			else if (name == ApsDvsChip.PROPERTY_FRAME_RATE_HZ) {
 				fpsTF.setText(String.format("%.3f", (Float) evt.getNewValue()));
 			}
-			else if (name == AEChipRenderer.PROPERTY_COLOR_MODE) {
+			else if (name == AEChipRenderer.EVENT_COLOR_MODE_CHANGE) {
 				setDvsColorModeRadioButtons();
 			}
-			else if (name == AEChipRenderer.PROPERTY_COLOR_SCALE) {
+			else if (name == AEChipRenderer.EVENT_COLOR_SCALE_CHANGE) {
 				dvsContSp.setValue(renderer.getColorScale());
 			}
 			else if (name == ApsDvsConfig.PROPERTY_IMU_ENABLED) {

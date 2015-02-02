@@ -322,7 +322,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 	}
 
 	public boolean sendDACconfig() {
-		log.info("Send DAC Config");
+//		log.info("Send DAC Config");
 
 		if ((dac == null) || (dacChannels == null)) {
 			return false;
@@ -467,7 +467,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 			return false;
 		}
 
-		log.info("Send on chip config: " + onChipConfigBits);
+//		log.info("Send on chip config: " + onChipConfigBits);
 		sendFx2ConfigCommand(CMD_CHIP_CONFIG, 0, onChipConfigBytes);
 		return true;
 	}
@@ -500,7 +500,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 			portBits.add((PortBit) value);
 		}
 		value.addObserver(this);
-		log.info("Added " + value);
+//		log.info("Added " + value);
 	}
 
 	/**
@@ -527,11 +527,11 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 	@Override
 	public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
 		if (isBatchEditOccurring()) {
-			log.info("batch edit occurring, not sending configuration yet");
+//			log.info("batch edit occurring, not sending configuration yet");
 			return;
 		}
 
-		log.info("sending full configuration");
+//		log.info("sending full configuration");
 		if (!sendOnChipConfig()) {
 			return;
 		}

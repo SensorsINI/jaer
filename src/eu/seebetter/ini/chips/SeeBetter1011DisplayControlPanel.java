@@ -35,7 +35,7 @@ public class SeeBetter1011DisplayControlPanel extends javax.swing.JPanel impleme
         this.displayMethod=(SeeBetter1011DisplayMethod)chip.getCanvas().getDisplayMethod();
         this.renderer=(SeeBetter1011Renderer)chip.getRenderer();
         initComponents();
-        renderer.getSupport().addPropertyChangeListener(AEChipRenderer.PROPERTY_COLOR_SCALE, this);
+        renderer.getSupport().addPropertyChangeListener(AEChipRenderer.EVENT_COLOR_SCALE_CHANGE, this);
         renderer.getSupport().addPropertyChangeListener(SeeBetter1011.SeeBetter1011Renderer.AGC_VALUES, this);
         renderer.getSupport().addPropertyChangeListener(SeeBetter1011.SeeBetter1011Renderer.LOG_INTENSITY_GAIN, this);
         renderer.getSupport().addPropertyChangeListener(SeeBetter1011.SeeBetter1011Renderer.LOG_INTENSITY_OFFSET, this);
@@ -624,7 +624,7 @@ public class SeeBetter1011DisplayControlPanel extends javax.swing.JPanel impleme
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if(evt.getPropertyName()==AEChipRenderer.PROPERTY_COLOR_SCALE){
+        if(evt.getPropertyName()==AEChipRenderer.EVENT_COLOR_SCALE_CHANGE){
             colorScaleSpinner.setValue((Integer)evt.getNewValue());
         }else if(evt.getPropertyName()==SeeBetter1011.SeeBetter1011Renderer.AGC_VALUES){
             Point2D.Float f=(Point2D.Float)evt.getNewValue();

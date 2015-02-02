@@ -810,7 +810,7 @@ public final class NBFG256 extends AETemporalConstastRetina {
     public class IntensityFrameData {
 
         /** The scanner is 240wide by 180 high  */
-        public final int WIDTH = EntirePixelArray.width, HEIGHT = EntirePixelArray.height; // width is BDVS pixels not scanner registers
+        public final int WIDTH = EntirePixelArray.width, HEIGHT = EntirePixelArray.height; // getWidthInPixels is BDVS pixels not scanner registers
         private final int NUMSAMPLES = WIDTH * HEIGHT;
         private int timestamp = 0; // timestamp of starting sample
         private float[] data = new float[NUMSAMPLES];

@@ -378,7 +378,7 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
         }
     }
 
-    public void setDisplayFrameRGB(double[] frame) {
+    public void setDisplayFrameRGB(float[] frame) {
         int xc = 0;
         int yc = 0;
         for (int i = 0; i < frame.length; i += 3) {

@@ -72,24 +72,6 @@ public abstract class AbstractRetinaModelCell extends EventFilter2D implements F
             quad = glu.gluNewQuadric();
         }
 
-        GL gl = drawable.getGL();
-        if (!hasBlendChecked) {
-            hasBlendChecked = true;
-            String glExt = gl.glGetString(GL.GL_EXTENSIONS);
-            if (glExt.indexOf("GL_EXT_blend_color") != -1) {
-                hasBlend = true;
-            }
-        }
-        if (hasBlend) {
-            try {
-                gl.glEnable(GL.GL_BLEND);
-                gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
-                gl.glBlendEquation(GL.GL_FUNC_ADD);
-            } catch (GLException e) {
-                e.printStackTrace();
-                hasBlend = false;
-            }
-        }
     }
 
     @Override

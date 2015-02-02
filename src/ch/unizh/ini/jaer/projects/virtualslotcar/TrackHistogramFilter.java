@@ -233,7 +233,6 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
     public void initFilter() {
     }
 
-    private boolean blendChecked=false;
     
     @Override
     public void annotate(GLAutoDrawable drawable) {
@@ -241,18 +240,7 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
             return;
         }
         GL2 gl = drawable.getGL().getGL2();
-        try {
-            if (true) { // TODO must set every time, don't know why
-                gl.glEnable(GL.GL_BLEND);
-                gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
-                gl.glBlendEquation(GL.GL_FUNC_ADD);
-            }
-        } catch (GLException e) {
-            log.warning("tried to use glBlend which is supposed to be available but got following exception");
-            gl.glDisable(GL.GL_BLEND);
-            e.printStackTrace();
-        }
-        blendChecked=true;
+        checkBlend(gl);
         int numX = chip.getSizeX(), numY = chip.getSizeY();
         final float bmbrightness=.4f;
         for (int y = 0; y < numY; y++) {

@@ -65,23 +65,7 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
             if (p == null) {
                 return;
             }
-            if (!hasBlendChecked) {
-                hasBlendChecked = true;
-                String glExt = gl.glGetString(GL.GL_EXTENSIONS);
-                if (glExt.indexOf("GL_EXT_blend_color") != -1) {
-                    hasBlend = true;
-                }
-            }
-            if (hasBlend) {
-                try {
-                    gl.glEnable(GL.GL_BLEND);
-                    gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
-                    gl.glBlendEquation(GL.GL_FUNC_ADD);
-                } catch (GLException e) {
-                    e.printStackTrace();
-                    hasBlend = false;
-                }
-            }
+            checkBlend(gl);
             gl.glColor4f(1f, 1f, 1f, 1);
             gl.glLineWidth(3f);
             gl.glPushMatrix();

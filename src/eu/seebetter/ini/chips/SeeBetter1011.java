@@ -99,8 +99,8 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
          * @param pitch pitch of pixels in raw AER address space
          * @param x left corner origin x location of pixel in its address space
          * @param y bottom origin of array in its address space 
-         * @param width width in pixels
-         * @param height height in pixels.
+         * @param width getWidthInPixels in pixels
+         * @param height getHeightInPixels in pixels.
          */
         public PixelArray(int pitch, int x, int y, int width, int height) {
             super(x, y, width, height);
@@ -2262,7 +2262,7 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
     public class LogIntensityFrameData implements HasPreference {
 
         /** The scanner is 16 wide by 32 high  */
-        public final int WIDTH = BDVSArray.width, HEIGHT = BDVSArray.height; // width is BDVS pixels not scanner registers
+        public final int WIDTH = BDVSArray.width, HEIGHT = BDVSArray.height; // getWidthInPixels is BDVS pixels not scanner registers
         private final int NUMSAMPLES = WIDTH * HEIGHT;
         private int timestamp = 0; // timestamp of starting sample
         private int[] data = new int[NUMSAMPLES];
