@@ -15,6 +15,9 @@ import java.util.Observable;
 import java.util.Set;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+import javax.media.opengl.GL;
+import javax.media.opengl.GL2;
+import javax.media.opengl.GLException;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
@@ -124,6 +127,11 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * chip that we are filtering for
      */
     protected AEChip chip;
+    
+    // for checkBlend()
+    private boolean hasBlendChecked = false;
+    private boolean hasBlend = false;
+ 
 
     protected PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
 
@@ -410,6 +418,32 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     protected void setCursor(Cursor cursor) {
         if(chip!=null && chip.getAeViewer()!=null){
             chip.getAeViewer().setCursor(cursor);
+        }
+    }
+
+    /** Convenience method to check if blending in OpenGL is available, and if so, to turn it on.
+     * 
+     * @param gl the GL2 context
+     */
+    protected void checkBlend(GL2 gl) {
+        if (!hasBlendChecked) {
+            hasBlendChecked = true;
+            String glExt = gl.glGetString(GL.GL_EXTENSIONS);
+            if (glExt.indexOf("GL_EXT_blend_color") != -1) {
+                hasBlend = true;
+            }
+        }
+        if (hasBlend) {
+            try {
+                gl.glEnable(GL.GL_BLEND);
+                gl.glBlendFunc(GL.GL_ONE, GL.GL_ONE);
+                gl.glBlendEquation(GL.GL_FUNC_ADD);
+            } catch (GLException e) {
+                log.warning("tried to use glBlend which is supposed to be available but got following exception");
+                gl.glDisable(GL.GL_BLEND);
+                e.printStackTrace();
+                hasBlend = false;
+            }
         }
     }
 
