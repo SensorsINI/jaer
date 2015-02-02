@@ -9,8 +9,8 @@ import java.util.Arrays;
 import net.sf.jaer.event.PolarityEvent;
 
 /**
- * Subsamples DVS input ON and OFF events to a desired input "frame" to the
- * DeepLearnCnnNetwork
+ * Subsamples DVS input ON and OFF events to a desired input "frame" for the
+ * DeepLearnCnnNetwork.  By subsampling (accumulation) of events it performs much better than downsampling the sparse DVS output.
  *
  * @author tobi
  */

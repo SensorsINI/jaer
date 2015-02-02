@@ -5,6 +5,7 @@
  */
 package eu.visualize.ini.convnet;
 
+import java.awt.Color;
 import java.util.prefs.Preferences;
 import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
@@ -21,11 +22,9 @@ import net.sf.jaer.chip.AEChip;
  * @author Tobi
  */
 @Description("Displays Visualise steering ConvNet results; subclass of DavisDeepLearnCnnProcessor")
-@DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor {
 
-    private boolean hasBlendChecked = false;
-    private boolean hasBlend = false;
     private boolean hideOutput = getBoolean("hideOutput", false);
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
 
@@ -41,53 +40,43 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor {
         if (hideOutput) {
             return;
         }
-        if (apsNet.outputLayer.activations != null) {
-            // 0=left, 1=center, 2=right, 3=no target
-            int decision = apsNet.outputLayer.maxActivatedUnit;
-            GL2 gl = drawable.getGL().getGL2();
-            if (!hasBlendChecked) {
-                hasBlendChecked = true;
-                String glExt = gl.glGetString(GL.GL_EXTENSIONS);
-                if (glExt.indexOf("GL_EXT_blend_color") != -1) {
-                    hasBlend = true;
-                }
-            }
-            if (hasBlend) {
-                try {
-                    gl.glEnable(GL.GL_BLEND);
-                    gl.glBlendFunc(GL.GL_ONE, GL.GL_ONE);
-                    gl.glBlendEquation(GL.GL_FUNC_ADD);
-                } catch (GLException e) {
-                    log.warning("tried to use glBlend which is supposed to be available but got following exception");
-                    gl.glDisable(GL.GL_BLEND);
-                    e.printStackTrace();
-                    hasBlend = false;
-                }
-            }
+        GL2 gl = drawable.getGL().getGL2();
+        checkBlend(gl);
+        int third = chip.getSizeX() / 3;
+        int sy = chip.getSizeY();
+        if (apsNet.outputLayer.activations != null && isProcessAPSFrames()) {
+            drawDecisionOutput(third, gl, sy, apsNet, Color.RED);
+        }
+        if (dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
+            drawDecisionOutput(third, gl, sy, dvsNet, Color.YELLOW);
+        }
+    }
 
-            int third = chip.getSizeX() / 3;
-            int sy = chip.getSizeY();
-            if (showAnalogDecisionOutput) {
-                final float b = .3f; // brightness scale
-                for (int i = 0; i < 3; i++) {
-                    int x0 = third * i;
-                    int x1 = x0 + third;
-                    float shade = b * apsNet.outputLayer.activations[i];
-                    gl.glColor3f(shade, 0, 0);
-                    gl.glRecti(x0, 0, x1, sy);
-                    gl.glRecti(x0, 0, x1, sy);
-                }
-                gl.glColor4f(b * apsNet.outputLayer.activations[3], 0, 0, .1f);
-                gl.glRecti(0, 0, chip.getSizeX(), sy/8);
-
-            } else if (decision < 3) {
-                int x0 = third * decision;
+    private void drawDecisionOutput(int third, GL2 gl, int sy, DeepLearnCnnNetwork net, Color color) {
+        // 0=left, 1=center, 2=right, 3=no target
+        int decision = net.outputLayer.maxActivatedUnit;
+        float r = color.getRed() / 255f, g = color.getGreen() / 255f, b = color.getBlue() / 255f;
+        float[] cv = color.getColorComponents(null);
+        if (showAnalogDecisionOutput) {
+            final float brightness = .3f; // brightness scale
+            for (int i = 0; i < 3; i++) {
+                int x0 = third * i;
                 int x1 = x0 + third;
-                float shade = .5f;
-                gl.glColor4f(shade, 0, 0, .2f);
+                float shade = brightness * apsNet.outputLayer.activations[i];
+                gl.glColor3f((shade * r), (shade * g), (shade * b));
+                gl.glRecti(x0, 0, x1, sy);
                 gl.glRecti(x0, 0, x1, sy);
             }
+            float shade = brightness * apsNet.outputLayer.activations[3]; // no target
+            gl.glColor3f((shade * r), (shade * g), (shade * b));
+            gl.glRecti(0, 0, chip.getSizeX(), sy / 8);
 
+        } else if (decision < 3) {
+            int x0 = third * decision;
+            int x1 = x0 + third;
+            float shade = .5f;
+            gl.glColor3i((int) (shade * r), (int) (shade * g), (int) (shade * b));
+            gl.glRecti(x0, 0, x1, sy);
         }
     }
 

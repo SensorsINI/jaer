@@ -33,7 +33,7 @@ import net.sf.jaer.graphics.ImageDisplay;
  * @author tobi
  */
 @Description("Computes CNN from DAVIS APS frames")
-@DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DavisDeepLearnCnnProcessor extends EventFilter2D implements PropertyChangeListener, FrameAnnotater {
 
     protected DeepLearnCnnNetwork apsNet = new DeepLearnCnnNetwork(), dvsNet = new DeepLearnCnnNetwork();
@@ -75,7 +75,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame");
         setPropertyTooltip(anal, "processAPSFrames", "sends APS frames to convnet");
         setPropertyTooltip(anal, "processDVSTimeSlices", "sends DVS time slices to convnet");
-        setPropertyTooltip(anal, "dvsColorScale", "scale by which each DVS event is added to time slice 2D histogram");
+        setPropertyTooltip(anal, "dvsColorScale", "1/dvsColorScale is the amount by which each DVS event is added to time slice 2D gray-level histogram");
 
         initFilter();
     }
@@ -193,11 +193,11 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 
         if (showOutputAsBarChart) {
             final float lineWidth = 2;
-            if (apsNet.outputLayer != null) {
-                apsNet.outputLayer.annotateHistogram(gl, chip.getSizeX(), chip.getSizeY(), lineWidth, Color.ORANGE);
+            if (apsNet.outputLayer != null && processAPSFrames) {
+                apsNet.outputLayer.annotateHistogram(gl, chip.getSizeX(), chip.getSizeY(), lineWidth, Color.RED);
             }
-            if (dvsNet.outputLayer != null) {
-                dvsNet.outputLayer.annotateHistogram(gl, chip.getSizeX(), chip.getSizeY(), lineWidth, Color.MAGENTA);
+            if (dvsNet.outputLayer != null && processDVSTimeSlices) {
+                dvsNet.outputLayer.annotateHistogram(gl, chip.getSizeX(), chip.getSizeY(), lineWidth, Color.YELLOW);
             }
         }
     }
