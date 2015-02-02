@@ -5,7 +5,7 @@
  */
 package eu.visualize.ini.convnet;
 
-import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
+import java.awt.Color;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
@@ -34,7 +34,7 @@ import net.sf.jaer.graphics.ImageDisplay;
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 public class DavisDeepLearnCnnProcessor extends EventFilter2D implements PropertyChangeListener, FrameAnnotater {
 
-    protected DeepLearnCnnNetwork net = new DeepLearnCnnNetwork();
+    protected DeepLearnCnnNetwork apsNet = new DeepLearnCnnNetwork(), dvsNet = new DeepLearnCnnNetwork();
     private String lastFileName = getString("lastFileName", "LCRN_cnn.xml");
 //    private ApsFrameExtractor frameExtractor = new ApsFrameExtractor(chip);
     private boolean showActivations = getBoolean("showActivations", false);
@@ -91,22 +91,20 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         }
         lastFileName = c.getSelectedFile().toString();
         putString("lastFileName", lastFileName);
-        if (net == null) {
-            net = new DeepLearnCnnNetwork();
-        }
-        net.loadFromXMLFile(c.getSelectedFile());
+        apsNet.loadFromXMLFile(c.getSelectedFile());
+        dvsNet.loadFromXMLFile(c.getSelectedFile());
 
     }
 // debug only
 //    public void doSetNetworkToUniformValues() {
-//        if (net != null) {
-//            net.setNetworkToUniformValues(uniformWeight, uniformBias);
+//        if (apsNet != null) {
+//            apsNet.setNetworkToUniformValues(uniformWeight, uniformBias);
 //        }
 //    }
 
     public void doShowKernels() {
-        if (net != null) {
-            net.drawKernels();
+        if (apsNet != null) {
+            apsNet.drawKernels();
         }
     }
 
@@ -116,14 +114,14 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             ((AEFrameChipRenderer) chip.getRenderer()).getSupport().addPropertyChangeListener(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
             addedPropertyChangeListener = true;
         }
-//        frameExtractor.filterPacket(in); // extracts frames with nornalization (brightness, contrast) and sends to net on each frame in PropertyChangeListener
+//        frameExtractor.filterPacket(in); // extracts frames with nornalization (brightness, contrast) and sends to apsNet on each frame in PropertyChangeListener
         // send DVS timeslice to convnet
         if (processDVSTimeSlices) {
             float[] pixmap = chip.getRenderer().getPixmapArray();
             if (pixmap == null) {
                 log.warning("null pixmap; are you using a 3D rendering mode or is the DVS event output rendering disabled?");
             } else {
-                net.processFrame((AEFrameChipRenderer) (chip.getRenderer()),DeepLearnCnnNetwork.DvsOrAps.Dvs);
+                dvsNet.processFrame((AEFrameChipRenderer) (chip.getRenderer()), DeepLearnCnnNetwork.DvsOrAps.Dvs);
             }
 
         }
@@ -136,12 +134,12 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 
     @Override
     public void initFilter() {
-        // if net was loaded before, load it now
+        // if apsNet was loaded before, load it now
         if (lastFileName != null) {
             File f = new File(lastFileName);
             if (f.exists() && f.isFile()) {
-                net = new DeepLearnCnnNetwork();
-                net.loadFromXMLFile(f);
+                apsNet.loadFromXMLFile(f);
+                dvsNet.loadFromXMLFile(f);
             }
         }
 
@@ -150,7 +148,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         // new activationsFrame is available, process it
-        if (net != null && processAPSFrames) {
+        if (apsNet != null && processAPSFrames) {
 //            float[] frame = frameExtractor.getNewFrame(); 
 //            if (frame == null || frame.length == 0 || frameExtractor.getWidth() == 0) {
 //                return;
@@ -160,7 +158,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             if (measurePerformance) {
                 startTime = System.nanoTime();
             }
-            float[] outputs = net.processFrame((AEFrameChipRenderer) (chip.getRenderer()),DeepLearnCnnNetwork.DvsOrAps.Aps);
+            float[] outputs = apsNet.processFrame((AEFrameChipRenderer) (chip.getRenderer()), DeepLearnCnnNetwork.DvsOrAps.Aps);
             if (measurePerformance) {
                 long dt = System.nanoTime() - startTime;
                 float ms = 1e-6f * dt;
@@ -176,25 +174,23 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     public void annotate(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
         if (showActivations) {
-            if (net != null) {
-                net.drawActivations();
+            if (apsNet != null && processAPSFrames) {
+                apsNet.drawActivations();
+            }
+            if (dvsNet != null && processDVSTimeSlices) {
+                apsNet.drawActivations();
             }
         }
 
         if (showOutputAsBarChart) {
-            drawOutput(gl);
+            final float lineWidth=2;
+            if (apsNet.outputLayer != null) {
+                apsNet.outputLayer.annotateHistogram(gl, chip.getSizeX(), chip.getSizeY(),lineWidth, Color.ORANGE);
+            }
+            if (dvsNet.outputLayer != null) {
+                dvsNet.outputLayer.annotateHistogram(gl, chip.getSizeX(), chip.getSizeY(),lineWidth, Color.MAGENTA);
+            }
         }
-    }
-
-    private void drawOutput(GL2 gl) {
-        if (net == null || net.outputLayer == null) {
-            return;
-        }
-        net.outputLayer.annotateHistogram(gl, chip.getSizeX(), chip.getSizeY());
-//        System.out.println("maxActivatedUnit=" + net.outputLayer.maxActivatedUnit + " maxActivation=" + net.outputLayer.maxActivation);
-    }
-
-    private void drawActivations() {
     }
 
     /**
@@ -259,27 +255,26 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 //        this.uniformBias = uniformBias;
 //        putFloat("uniformBias", uniformBias);
 //    }
-    // net computation debug methods
-    public boolean isInputClampedTo1() {
-        return net == null ? false : net.isInputClampedTo1();
-    }
-
-    public void setInputClampedTo1(boolean inputClampedTo1) {
-        if (net != null) {
-            net.setInputClampedTo1(inputClampedTo1);
-        }
-    }
-
-    public boolean isInputClampedToIncreasingIntegers() {
-        return net == null ? false : net.isInputClampedToIncreasingIntegers();
-    }
-
-    public void setInputClampedToIncreasingIntegers(boolean inputClampedTo1) {
-        if (net != null) {
-            net.setInputClampedToIncreasingIntegers(inputClampedTo1);
-        }
-    }
-
+    // apsNet computation debug methods
+//    public boolean isInputClampedTo1() {
+//        return apsNet == null ? false : apsNet.isInputClampedTo1();
+//    }
+//
+//    public void setInputClampedTo1(boolean inputClampedTo1) {
+//        if (apsNet != null) {
+//            apsNet.setInputClampedTo1(inputClampedTo1);
+//        }
+//    }
+//
+//    public boolean isInputClampedToIncreasingIntegers() {
+//        return apsNet == null ? false : apsNet.isInputClampedToIncreasingIntegers();
+//    }
+//
+//    public void setInputClampedToIncreasingIntegers(boolean inputClampedTo1) {
+//        if (apsNet != null) {
+//            apsNet.setInputClampedToIncreasingIntegers(inputClampedTo1);
+//        }
+//    }
     /**
      * @return the measurePerformance
      */
@@ -296,19 +291,21 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     }
 
     public boolean isHideSubsamplingLayers() {
-        return net.isHideSubsamplingLayers();
+        return apsNet.isHideSubsamplingLayers();
     }
 
     public void setHideSubsamplingLayers(boolean hideSubsamplingLayers) {
-        net.setHideSubsamplingLayers(hideSubsamplingLayers);
+        apsNet.setHideSubsamplingLayers(hideSubsamplingLayers);
+        dvsNet.setHideSubsamplingLayers(hideSubsamplingLayers);
     }
 
     public boolean isHideConvLayers() {
-        return net.isHideConvLayers();
+        return apsNet.isHideConvLayers();
     }
 
     public void setHideConvLayers(boolean hideConvLayers) {
-        net.setHideConvLayers(hideConvLayers);
+        apsNet.setHideConvLayers(hideConvLayers);
+        dvsNet.setHideConvLayers(hideConvLayers);
     }
 
     /**

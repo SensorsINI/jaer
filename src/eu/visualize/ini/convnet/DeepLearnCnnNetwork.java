@@ -5,7 +5,7 @@
  */
 package eu.visualize.ini.convnet;
 
-import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.io.File;
@@ -324,6 +324,7 @@ public class DeepLearnCnnNetwork {
                             v = renderer.getApsGrayValueAtPixel((int) Math.floor(x), (int) Math.floor(y));
                             break;
                         case Dvs:
+                            // TODO nasty with downsampling approach used here. Sparse DVS events result in practically invisible DVS time slices. Need a subsampling approach here.
                             float[] fv = renderer.getDvsRenderedValuesAtPixel((int) Math.floor(x), (int) Math.floor(y));
                             switch (renderer.getColorMode()) {
                                 case GrayLevel:
@@ -868,7 +869,7 @@ public class DeepLearnCnnNetwork {
          * @param width width of annotateHistogram (chip) area in gl pixels
          * @param height of annotateHistogram (chip) area in gl pixels
          */
-        public void annotateHistogram(GL2 gl, int width, int height) { // width and height are of AEchip annotateHistogram size in pixels of chip (not screen pixels)
+        private void annotateHistogram(GL2 gl, int width, int height) { // width and height are of AEchip annotateHistogram size in pixels of chip (not screen pixels)
 
             if (activations == null) {
                 return;
@@ -893,10 +894,11 @@ public class DeepLearnCnnNetwork {
             gl.glEnd();
         }
 
-        public void annotateHistogram(GL2 gl, int width, int height, float lineWidth, float[] color) {
+        public void annotateHistogram(GL2 gl, int width, int height, float lineWidth, Color color) {
             gl.glPushAttrib(GL2GL3.GL_COLOR | GL2.GL_LINE_WIDTH);
             gl.glLineWidth(lineWidth);
-            gl.glColor4fv(color, 0);
+            float[] ca=color.getColorComponents(null);
+            gl.glColor4fv(ca, 0);
             OutputLayer.this.annotateHistogram(gl, width, height);
             gl.glPopAttrib();
         }

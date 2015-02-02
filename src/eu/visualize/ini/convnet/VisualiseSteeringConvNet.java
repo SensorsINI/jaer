@@ -41,9 +41,9 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor {
         if (hideOutput) {
             return;
         }
-        if (net.outputLayer.activations != null) {
+        if (apsNet.outputLayer.activations != null) {
             // 0=left, 1=center, 2=right, 3=no target
-            int decision = net.outputLayer.maxActivatedUnit;
+            int decision = apsNet.outputLayer.maxActivatedUnit;
             GL2 gl = drawable.getGL().getGL2();
             if (!hasBlendChecked) {
                 hasBlendChecked = true;
@@ -72,12 +72,12 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor {
                 for (int i = 0; i < 3; i++) {
                     int x0 = third * i;
                     int x1 = x0 + third;
-                    float shade = b * net.outputLayer.activations[i];
+                    float shade = b * apsNet.outputLayer.activations[i];
                     gl.glColor3f(shade, 0, 0);
                     gl.glRecti(x0, 0, x1, sy);
                     gl.glRecti(x0, 0, x1, sy);
                 }
-                gl.glColor4f(b * net.outputLayer.activations[3], 0, 0, .1f);
+                gl.glColor4f(b * apsNet.outputLayer.activations[3], 0, 0, .1f);
                 gl.glRecti(0, 0, chip.getSizeX(), sy/8);
 
             } else if (decision < 3) {
