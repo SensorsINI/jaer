@@ -18,7 +18,9 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
@@ -49,6 +51,9 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     private JFrame imageDisplayFrame = null;
     public ImageDisplay inputImageDisplay;
 
+    private DvsSubsamplingTimesliceConvNetInput dvsSubsampler = null;
+    private int dvsColorScale = getInt("dvsColorScale", 32); // 1/dvsColorScale is amount each event color the timeslice in subsampled timeslice input
+
     public DavisDeepLearnCnnProcessor(AEChip chip) {
         super(chip);
         FilterChain chain = new FilterChain(chip);
@@ -70,6 +75,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame");
         setPropertyTooltip(anal, "processAPSFrames", "sends APS frames to convnet");
         setPropertyTooltip(anal, "processDVSTimeSlices", "sends DVS time slices to convnet");
+        setPropertyTooltip(anal, "dvsColorScale", "scale by which each DVS event is added to time slice 2D histogram");
 
         initFilter();
     }
@@ -109,20 +115,22 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!addedPropertyChangeListener) {
             ((AEFrameChipRenderer) chip.getRenderer()).getSupport().addPropertyChangeListener(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
             addedPropertyChangeListener = true;
         }
 //        frameExtractor.filterPacket(in); // extracts frames with nornalization (brightness, contrast) and sends to apsNet on each frame in PropertyChangeListener
         // send DVS timeslice to convnet
+        dvsSubsampler.clear();
         if (processDVSTimeSlices) {
-            float[] pixmap = chip.getRenderer().getPixmapArray();
-            if (pixmap == null) {
-                log.warning("null pixmap; are you using a 3D rendering mode or is the DVS event output rendering disabled?");
-            } else {
-                dvsNet.processFrame((AEFrameChipRenderer) (chip.getRenderer()), DeepLearnCnnNetwork.DvsOrAps.Dvs);
+            final int sizeX = chip.getSizeX();
+            final int sizeY = chip.getSizeY();
+            for (BasicEvent e : in) {
+                PolarityEvent p = (PolarityEvent) e;
+                dvsSubsampler.addEvent(p, sizeX, sizeY);
             }
+            dvsNet.processDvsTimeslice(dvsSubsampler);
 
         }
         return in;
@@ -140,6 +148,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             if (f.exists() && f.isFile()) {
                 apsNet.loadFromXMLFile(f);
                 dvsNet.loadFromXMLFile(f);
+                dvsSubsampler = new DvsSubsamplingTimesliceConvNetInput(dvsNet.inputLayer.dimx, dvsNet.inputLayer.dimy, getDvsColorScale());
             }
         }
 
@@ -158,7 +167,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             if (measurePerformance) {
                 startTime = System.nanoTime();
             }
-            float[] outputs = apsNet.processFrame((AEFrameChipRenderer) (chip.getRenderer()), DeepLearnCnnNetwork.DvsOrAps.Aps);
+            float[] outputs = apsNet.processFrame((AEFrameChipRenderer) (chip.getRenderer()));
             if (measurePerformance) {
                 long dt = System.nanoTime() - startTime;
                 float ms = 1e-6f * dt;
@@ -178,17 +187,17 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
                 apsNet.drawActivations();
             }
             if (dvsNet != null && processDVSTimeSlices) {
-                apsNet.drawActivations();
+                dvsNet.drawActivations();
             }
         }
 
         if (showOutputAsBarChart) {
-            final float lineWidth=2;
+            final float lineWidth = 2;
             if (apsNet.outputLayer != null) {
-                apsNet.outputLayer.annotateHistogram(gl, chip.getSizeX(), chip.getSizeY(),lineWidth, Color.ORANGE);
+                apsNet.outputLayer.annotateHistogram(gl, chip.getSizeX(), chip.getSizeY(), lineWidth, Color.ORANGE);
             }
             if (dvsNet.outputLayer != null) {
-                dvsNet.outputLayer.annotateHistogram(gl, chip.getSizeX(), chip.getSizeY(),lineWidth, Color.MAGENTA);
+                dvsNet.outputLayer.annotateHistogram(gl, chip.getSizeX(), chip.getSizeY(), lineWidth, Color.MAGENTA);
             }
         }
     }
@@ -336,6 +345,23 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     public void setProcessAPSFrames(boolean processAPSFrames) {
         this.processAPSFrames = processAPSFrames;
         putBoolean("processAPSFrames", processAPSFrames);
+    }
+
+    /**
+     * @return the dvsColorScale
+     */
+    public int getDvsColorScale() {
+        return dvsColorScale;
+    }
+
+    /**
+     * @param dvsColorScale the dvsColorScale to set
+     */
+    synchronized public void setDvsColorScale(int dvsColorScale) {
+        if(dvsColorScale<1) dvsColorScale=1;
+        this.dvsColorScale = dvsColorScale;
+        putInt("dvsColorScale", dvsColorScale);
+        if(dvsSubsampler!=null) dvsSubsampler.setColorScale(dvsColorScale);
     }
 
 }

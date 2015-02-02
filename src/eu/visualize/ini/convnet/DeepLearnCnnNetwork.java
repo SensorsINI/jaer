@@ -84,57 +84,26 @@ public class DeepLearnCnnNetwork {
     private boolean hideSubsamplingLayers = true;
     private boolean hideConvLayers = true;
 
-    /**
-     * Type of input to process
-     */
-    public enum DvsOrAps {
+    public float[] processDvsTimeslice(DvsSubsamplingTimesliceConvNetInput subsampler) {
+        inputLayer.processDvsTimeslice(subsampler);
+        return processLayers();
 
-        Dvs, Aps
-    }
-
-    /**
-     * For debug, clamps input image to fixed value
-     */
-    public boolean isInputClampedTo1() {
-        return inputLayer == null ? false : inputLayer.isInputClampedTo1();
-    }
-
-    /**
-     * For debug, clamps input image to fixed value
-     */
-    public void setInputClampedTo1(boolean inputClampedTo1) {
-        if (inputLayer != null) {
-            inputLayer.setInputClampedTo1(inputClampedTo1);
-        }
-    }
-
-    /**
-     * For debug, clamps input image to fixed value
-     */
-    public boolean isInputClampedToIncreasingIntegers() {
-        return inputLayer == null ? false : inputLayer.isInputClampedToIncreasingIntegers();
-    }
-
-    /**
-     * For debug, clamps input image to fixed value
-     */
-    public void setInputClampedToIncreasingIntegers(boolean inputClampedTo1) {
-        if (inputLayer != null) {
-            inputLayer.setInputClampedToIncreasingIntegers(inputClampedTo1);
-        }
     }
 
     /**
      * Computes the output of the network from an input activationsFrame
      *
-     * @param frame the image, indexed by y * width + x
-     * @param type type of rendered image to process from renderer
+     * @param frame the renderer that rendered the APS output
      * @return the vector of output values
      * @see #getActivations
      */
-    public float[] processFrame(AEFrameChipRenderer frame, DvsOrAps type) {
+    public float[] processFrame(AEFrameChipRenderer frame) {
 
-        inputLayer.processFrame(frame, type);
+        inputLayer.processFrame(frame);
+        return processLayers();
+    }
+
+    private float[] processLayers() {
         for (int i = 1; i < nLayers; i++) {
             layers[i].compute(layers[i - 1]);
         }
@@ -286,20 +255,12 @@ public class DeepLearnCnnNetwork {
         private ImageDisplay imageDisplay = null;
 
         /**
-         * Computes the output from input frame. The frame can be either a
-         * gray-scale frame[] with a single entry per pixel, or it can be an RGB
-         * frame[] with 3 sample (RGB) per pixel. The appropriate extraction is
-         * done in processFrame by the FrameType parameter.
+         * Computes the output from input frame.
          *
-         * @param frame the input image, indexed by <code>y * width + x</code>.
-         * Lower left pixel is pixel x,y=0,0. Next pixel is x,y=1,0, etc
-         * @param frameWidth the width of image in pixels
-         * @param type either Dvs or Aps type of input to process
-         * @return the vector of network output values, which are indexed by
-         * y+dimy*x
-         * @see #getActivations
+         * @param renderer the image comes from this image displayed in AEViewer
+         * @return the vector of network output values
          */
-        public float[] processFrame(AEFrameChipRenderer renderer, DvsOrAps type) {
+        public float[] processFrame(AEFrameChipRenderer renderer) {
 //            if (frame == null || frameWidth == 0 || (frame.length / type.samplesPerPixel()) % frameWidth != 0) {
 //                throw new IllegalArgumentException("input frame is null or frame array length is not a multiple of width=" + frameWidth);
 //            }
@@ -318,26 +279,8 @@ public class DeepLearnCnnNetwork {
             for (float y = 0; y < frameHeight; y += ystride) {
                 xo = 0;
                 for (float x = 0; x < frameWidth; x += xstride) {  // take every xstride, ystride pixels as output
-                    float v=0;
-                    switch (type) {
-                        case Aps:
-                            v = renderer.getApsGrayValueAtPixel((int) Math.floor(x), (int) Math.floor(y));
-                            break;
-                        case Dvs:
-                            // TODO nasty with downsampling approach used here. Sparse DVS events result in practically invisible DVS time slices. Need a subsampling approach here.
-                            float[] fv = renderer.getDvsRenderedValuesAtPixel((int) Math.floor(x), (int) Math.floor(y));
-                            switch (renderer.getColorMode()) {
-                                case GrayLevel:
-                                    v = fv[0];
-                                    break;
-                                case RedGreen:
-                                    v = (fv[1] - fv[0]) / 2;
-                                    break;
-                                default:
-                                    v = (fv[0] + fv[1] + fv[2]);
-                                    break;
-                            }
-                    }
+                    float v = 0;
+                    v = renderer.getApsGrayValueAtPixel((int) Math.floor(x), (int) Math.floor(y));
                     // TODO remove only for debug
                     if (inputClampedToIncreasingIntegers) {
                         v = (float) (xo + yo) / (dimx + dimy); // make image that is x+y, for debugging
@@ -349,6 +292,30 @@ public class DeepLearnCnnNetwork {
                     xo++;
                 }
                 yo++;
+            }
+            return activations;
+        }
+
+        /**
+         * Computes the output from input frame. The frame can be either a
+         * gray-scale frame[] with a single entry per pixel, or it can be an RGB
+         * frame[] with 3 sample (RGB) per pixel. The appropriate extraction is
+         * done in processFrame by the FrameType parameter.
+         *
+         * @param subsampler the DVS subsampled input
+         * @return the vector of network output values
+         */
+        public float[] processDvsTimeslice(DvsSubsamplingTimesliceConvNetInput subsampler) {
+//            if (frame == null || frameWidth == 0 || (frame.length / type.samplesPerPixel()) % frameWidth != 0) {
+//                throw new IllegalArgumentException("input frame is null or frame array length is not a multiple of width=" + frameWidth);
+//            }
+            if (activations == null) {
+                activations = new float[nUnits];
+            }
+            for (int y = 0; y < dimy; y++) {
+                for (int x = 0; x < dimy; x++) {  // take every xstride, ystride pixels as output
+                    activations[o(dimy - y - 1, x)] = subsampler.getValueAtPixel(x, y); // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
+                }
             }
             return activations;
         }
@@ -388,7 +355,7 @@ public class DeepLearnCnnNetwork {
             }
             for (int x = 0; x < dimx; x++) {
                 for (int y = 0; y < dimy; y++) {
-                    imageDisplay.setPixmapGray(x, y, a(0, x, y));
+                    imageDisplay.setPixmapGray(y, dimx-x-1, a(0, x, y));
                 }
             }
             imageDisplay.repaint();
@@ -897,7 +864,7 @@ public class DeepLearnCnnNetwork {
         public void annotateHistogram(GL2 gl, int width, int height, float lineWidth, Color color) {
             gl.glPushAttrib(GL2GL3.GL_COLOR | GL2.GL_LINE_WIDTH);
             gl.glLineWidth(lineWidth);
-            float[] ca=color.getColorComponents(null);
+            float[] ca = color.getColorComponents(null);
             gl.glColor4fv(ca, 0);
             OutputLayer.this.annotateHistogram(gl, width, height);
             gl.glPopAttrib();
@@ -1076,6 +1043,38 @@ public class DeepLearnCnnNetwork {
      */
     public void setHideConvLayers(boolean hideConvLayers) {
         this.hideConvLayers = hideConvLayers;
+    }
+
+    /**
+     * For debug, clamps input image to fixed value
+     */
+    public boolean isInputClampedTo1() {
+        return inputLayer == null ? false : inputLayer.isInputClampedTo1();
+    }
+
+    /**
+     * For debug, clamps input image to fixed value
+     */
+    public void setInputClampedTo1(boolean inputClampedTo1) {
+        if (inputLayer != null) {
+            inputLayer.setInputClampedTo1(inputClampedTo1);
+        }
+    }
+
+    /**
+     * For debug, clamps input image to fixed value
+     */
+    public boolean isInputClampedToIncreasingIntegers() {
+        return inputLayer == null ? false : inputLayer.isInputClampedToIncreasingIntegers();
+    }
+
+    /**
+     * For debug, clamps input image to fixed value
+     */
+    public void setInputClampedToIncreasingIntegers(boolean inputClampedTo1) {
+        if (inputLayer != null) {
+            inputLayer.setInputClampedToIncreasingIntegers(inputClampedTo1);
+        }
     }
 
 }
