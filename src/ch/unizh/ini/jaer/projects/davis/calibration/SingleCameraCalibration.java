@@ -155,8 +155,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                     cvtColor(undistortedImg, imgOut8u, CV_GRAY2RGB);
                     Mat outImgF = new Mat(sy, sx, CV_64FC3);
                     imgOut8u.convertTo(outImgF, CV_64FC3, 1.0 / 255, 0);
-                    double[] outFrame = new double[sy * sx * 3];
-                    outImgF.getDoubleBuffer().get(outFrame);
+                    float[] outFrame = new float[sy * sx * 3];
+                    outImgF.getFloatBuffer().get(outFrame);
                     frameExtractor.setDisplayFrameRGB(outFrame);
                     frameExtractor.apsDisplay.setxLabel("lens correction enabled");
                 }
@@ -190,8 +190,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             opencv_calib3d.drawChessboardCorners(imgOut, patternSize, corners, patternFound);
             Mat outImgF = new Mat(sy, sx, CV_64FC3);
             imgOut.convertTo(outImgF, CV_64FC3, 1.0 / 255, 0);
-            double[] outFrame = new double[sy * sx * 3];
-            outImgF.getDoubleBuffer().get(outFrame);
+            float[] outFrame = new float[sy * sx * 3];
+            outImgF.getFloatBuffer().get(outFrame);
             frameExtractor.setDisplayFrameRGB(outFrame);
             //save image
             if (patternFound) {
