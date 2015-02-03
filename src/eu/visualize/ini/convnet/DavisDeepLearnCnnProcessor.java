@@ -37,7 +37,8 @@ import net.sf.jaer.graphics.ImageDisplay;
 public class DavisDeepLearnCnnProcessor extends EventFilter2D implements PropertyChangeListener, FrameAnnotater {
 
     protected DeepLearnCnnNetwork apsNet = new DeepLearnCnnNetwork(), dvsNet = new DeepLearnCnnNetwork();
-    private String lastFileName = getString("lastFileName", "LCRN_cnn.xml");
+    private String lastAPSNetXMLFilename = getString("lastAPSNetXMLFilename", "LCRN_cnn.xml");
+    private String lastDVSNetXMLFilename = getString("lastDVSNetXMLFilename", "LCRN_cnn.xml");
 //    private ApsFrameExtractor frameExtractor = new ApsFrameExtractor(chip);
     private boolean showActivations = getBoolean("showActivations", false);
     private boolean showOutputAsBarChart = getBoolean("showOutputAsBarChart", true);
@@ -47,6 +48,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     private boolean processDVSTimeSlices = getBoolean("processDVSTimeSlices", false);
     private boolean processAPSFrames = getBoolean("processAPSFrames", true);
     private boolean addedPropertyChangeListener = false;  // must do lazy add of us as listener to chip because renderer is not there yet when this is constructed
+    private int dvsMinEvents = getInt("dvsMinEvents", 10000);
 
     private JFrame imageDisplayFrame = null;
     public ImageDisplay inputImageDisplay;
@@ -61,7 +63,8 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 //        setEnclosedFilterChain(chain);
 //        frameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);
         String deb = "3. Debug", disp = "1. Display", anal = "2. Analysis";
-        setPropertyTooltip("loadCNNNetworkFromXML", "Load an XML file containing a CNN exported from DeepLearnToolbox by cnntoxml.m");
+        setPropertyTooltip("loadApsNetworkFromXML", "For the APS frame, load an XML file containing a CNN exported from DeepLearnToolbox by cnntoxml.m");
+        setPropertyTooltip("loadDVSTimesliceNetworkFromXML", "For the DVS time slices, load an XML file containing a CNN exported from DeepLearnToolbox by cnntoxml.m");
         setPropertyTooltip(deb, "setNetworkToUniformValues", "sets previously-loaded net to uniform values for debugging");
         setPropertyTooltip(disp, "showOutputAsBarChart", "displays activity of output units as bar chart, where height indicates activation");
         setPropertyTooltip(disp, "showKernels", "draw all the network kernels (once) in a new JFrame");
@@ -76,6 +79,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         setPropertyTooltip(anal, "processAPSFrames", "sends APS frames to convnet");
         setPropertyTooltip(anal, "processDVSTimeSlices", "sends DVS time slices to convnet");
         setPropertyTooltip(anal, "dvsColorScale", "1/dvsColorScale is the amount by which each DVS event is added to time slice 2D gray-level histogram");
+        setPropertyTooltip(anal, "dvsMinEvents", "minimum number of events to run net on DVS timeslice");
 
         initFilter();
     }
@@ -86,28 +90,47 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
      * exported using Danny Neil's XML Matlab script cnntoxml.m.
      *
      */
-    public void doLoadCNNNetworkFromXML() {
-        JFileChooser c = new JFileChooser(lastFileName);
+    public void doLoadApsNetworkFromXML() {
+        JFileChooser c = new JFileChooser(lastAPSNetXMLFilename);
         FileFilter filt = new FileNameExtensionFilter("XML File", "xml");
         c.addChoosableFileFilter(filt);
-        c.setSelectedFile(new File(lastFileName));
+        c.setSelectedFile(new File(lastAPSNetXMLFilename));
         int ret = c.showOpenDialog(chip.getAeViewer());
         if (ret != JFileChooser.APPROVE_OPTION) {
             return;
         }
-        lastFileName = c.getSelectedFile().toString();
-        putString("lastFileName", lastFileName);
+        lastAPSNetXMLFilename = c.getSelectedFile().toString();
+        putString("lastAPSNetXMLFilename", lastAPSNetXMLFilename);
         apsNet.loadFromXMLFile(c.getSelectedFile());
-        dvsNet.loadFromXMLFile(c.getSelectedFile());
-
     }
+
+    /**
+     * Loads a convolutional neural network (CNN) trained using DeapLearnToolbox
+     * for Matlab (https://github.com/rasmusbergpalm/DeepLearnToolbox) that was
+     * exported using Danny Neil's XML Matlab script cnntoxml.m.
+     *
+     */
+    public void doLoadDVSTimesliceNetworkFromXML() {
+        JFileChooser c = new JFileChooser(lastDVSNetXMLFilename);
+        FileFilter filt = new FileNameExtensionFilter("XML File", "xml");
+        c.addChoosableFileFilter(filt);
+        c.setSelectedFile(new File(lastDVSNetXMLFilename));
+        int ret = c.showOpenDialog(chip.getAeViewer());
+        if (ret != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        lastDVSNetXMLFilename = c.getSelectedFile().toString();
+        putString("lastDVSNetXMLFilename", lastAPSNetXMLFilename);
+        dvsNet.loadFromXMLFile(c.getSelectedFile());
+        dvsSubsampler = new DvsSubsamplingTimesliceConvNetInput(dvsNet.inputLayer.dimx, dvsNet.inputLayer.dimy, getDvsColorScale());
+    }
+
 // debug only
 //    public void doSetNetworkToUniformValues() {
 //        if (apsNet != null) {
 //            apsNet.setNetworkToUniformValues(uniformWeight, uniformBias);
 //        }
 //    }
-
     public void doShowKernels() {
         if (apsNet != null) {
             apsNet.drawKernels();
@@ -122,15 +145,18 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         }
 //        frameExtractor.filterPacket(in); // extracts frames with nornalization (brightness, contrast) and sends to apsNet on each frame in PropertyChangeListener
         // send DVS timeslice to convnet
-        dvsSubsampler.clear();
-        if (processDVSTimeSlices) {
+
+        if (dvsNet != null && processDVSTimeSlices) {
             final int sizeX = chip.getSizeX();
             final int sizeY = chip.getSizeY();
             for (BasicEvent e : in) {
                 PolarityEvent p = (PolarityEvent) e;
                 dvsSubsampler.addEvent(p, sizeX, sizeY);
+                if (dvsSubsampler.getAccumulatedEventCount() > dvsMinEvents) {
+                    dvsNet.processDvsTimeslice(dvsSubsampler);
+                    dvsSubsampler.clear();
+                }
             }
-            dvsNet.processDvsTimeslice(dvsSubsampler);
 
         }
         return in;
@@ -143,10 +169,15 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     @Override
     public void initFilter() {
         // if apsNet was loaded before, load it now
-        if (lastFileName != null) {
-            File f = new File(lastFileName);
+        if (lastAPSNetXMLFilename != null) {
+            File f = new File(lastAPSNetXMLFilename);
             if (f.exists() && f.isFile()) {
                 apsNet.loadFromXMLFile(f);
+            }
+        }
+        if (lastDVSNetXMLFilename != null) {
+            File f = new File(lastDVSNetXMLFilename);
+            if (f.exists() && f.isFile()) {
                 dvsNet.loadFromXMLFile(f);
                 dvsSubsampler = new DvsSubsamplingTimesliceConvNetInput(dvsNet.inputLayer.dimx, dvsNet.inputLayer.dimy, getDvsColorScale());
             }
@@ -358,10 +389,29 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
      * @param dvsColorScale the dvsColorScale to set
      */
     synchronized public void setDvsColorScale(int dvsColorScale) {
-        if(dvsColorScale<1) dvsColorScale=1;
+        if (dvsColorScale < 1) {
+            dvsColorScale = 1;
+        }
         this.dvsColorScale = dvsColorScale;
         putInt("dvsColorScale", dvsColorScale);
-        if(dvsSubsampler!=null) dvsSubsampler.setColorScale(dvsColorScale);
+        if (dvsSubsampler != null) {
+            dvsSubsampler.setColorScale(dvsColorScale);
+        }
+    }
+
+    /**
+     * @return the dvsMinEvents
+     */
+    public int getDvsMinEvents() {
+        return dvsMinEvents;
+    }
+
+    /**
+     * @param dvsMinEvents the dvsMinEvents to set
+     */
+    public void setDvsMinEvents(int dvsMinEvents) {
+        this.dvsMinEvents = dvsMinEvents;
+        putInt("dvsMinEvents", dvsMinEvents);
     }
 
 }

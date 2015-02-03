@@ -10,7 +10,8 @@ import net.sf.jaer.event.PolarityEvent;
 
 /**
  * Subsamples DVS input ON and OFF events to a desired input "frame" for the
- * DeepLearnCnnNetwork.  By subsampling (accumulation) of events it performs much better than downsampling the sparse DVS output.
+ * DeepLearnCnnNetwork. By subsampling (accumulation) of events it performs much
+ * better than downsampling the sparse DVS output.
  *
  * @author tobi
  */
@@ -22,14 +23,17 @@ public class DvsSubsamplingTimesliceConvNetInput {
     private final float[] pixmap;
     private int colorScale;
     private float colorScaleRecip;
-    public final float GRAY_LEVEL=0.5f;
+    public final float GRAY_LEVEL = 0.5f;
+    private int accumulatedEventCount = 0;
 
-    /** Makes a new DvsSubsamplingTimesliceConvNetInput
-     * 
+    /**
+     * Makes a new DvsSubsamplingTimesliceConvNetInput
+     *
      * @param dimX
      * @param dimY
-     * @param colorScale initial scale by which each ON or OFF event is added to the pixmap.
-     * @see #setColorScale(int) 
+     * @param colorScale initial scale by which each ON or OFF event is added to
+     * the pixmap.
+     * @see #setColorScale(int)
      */
     public DvsSubsamplingTimesliceConvNetInput(int dimX, int dimY, int colorScale) {
         this.width = dimX;
@@ -42,21 +46,20 @@ public class DvsSubsamplingTimesliceConvNetInput {
 
     public void clear() {
         Arrays.fill(pixmap, GRAY_LEVEL);
+        accumulatedEventCount = 0;
     }
 
-    public void init() {
-    }
-
-    /** Adds event from a source event location to the map
-     * 
+    /**
+     * Adds event from a source event location to the map
+     *
      * @param e
      * @param srcWidth width of originating source sensor, e.g. 240 for DAVIS240
      * @param srcHeight height of source address space
      */
     public void addEvent(PolarityEvent e, int srcWidth, int srcHeight) {
         // find element here that contains this event
-        int x = (int)Math.floor(((float)e.x/srcWidth)*width);
-        int y = (int)Math.floor(((float)e.y/srcHeight)*height);
+        int x = (int) Math.floor(((float) e.x / srcWidth) * width);
+        int y = (int) Math.floor(((float) e.y / srcHeight) * height);
         int k = getIndex(x, y);
         float f = pixmap[k];
         f += colorScaleRecip * (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
@@ -66,6 +69,7 @@ public class DvsSubsamplingTimesliceConvNetInput {
             f = 1;
         }
         pixmap[k] = f;
+        accumulatedEventCount++;
 
     }
 
@@ -118,6 +122,13 @@ public class DvsSubsamplingTimesliceConvNetInput {
     public void setColorScale(int colorScale) {
         this.colorScale = colorScale;
         colorScaleRecip = 1f / colorScale;
+    }
+
+    /**
+     * @return the accumulatedEventCount
+     */
+    public int getAccumulatedEventCount() {
+        return accumulatedEventCount;
     }
 
 }
