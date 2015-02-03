@@ -83,6 +83,7 @@ public class DeepLearnCnnNetwork {
     JFrame activationsFrame = null, kernelsFrame = null;
     private boolean hideSubsamplingLayers = true;
     private boolean hideConvLayers = true;
+    private String xmlFilename=null;
 
     public float[] processDvsTimeslice(DvsSubsamplingTimesliceConvNetInput subsampler) {
         inputLayer.processDvsTimeslice(subsampler);
@@ -150,8 +151,8 @@ public class DeepLearnCnnNetwork {
         if (activationsFrame != null) {
             return;
         }
-
-        activationsFrame = new JFrame("Activations: DeepLearnCNNNetwork");
+        String windowName=(xmlFilename==null?"null XML":xmlFilename.substring(xmlFilename.lastIndexOf(File.separatorChar)+1))+"CNN Activations";
+        activationsFrame = new JFrame(windowName);
         activationsFrame.setLayout(new BoxLayout(activationsFrame.getContentPane(), BoxLayout.Y_AXIS));
         activationsFrame.setPreferredSize(new Dimension(600, 600));
     }
@@ -164,6 +165,20 @@ public class DeepLearnCnnNetwork {
         kernelsFrame = new JFrame("Kernels: DeepLearnCNNNetwork");
         kernelsFrame.setLayout(new BoxLayout(kernelsFrame.getContentPane(), BoxLayout.Y_AXIS));
         kernelsFrame.setPreferredSize(new Dimension(600, 600));
+    }
+
+    /**
+     * @return the xmlFilename
+     */
+    public String getXmlFilename() {
+        return xmlFilename;
+    }
+
+    /**
+     * @param xmlFilename the xmlFilename to set
+     */
+    public void setXmlFilename(String xmlFilename) {
+        this.xmlFilename = xmlFilename;
     }
 
     abstract public class Layer {
@@ -997,6 +1012,7 @@ public class DeepLearnCnnNetwork {
 
             outputLayer.weights = networkReader.getBase64FloatArr("outputWeights"); // stored in many cols and few rows: one row per output unit
             outputLayer.biases = networkReader.getBase64FloatArr("outputBias");
+            setXmlFilename(f.toString());
             log.info(toString());
         } catch (RuntimeException e) {
             log.warning("couldn't load net from file: caught " + e.toString());

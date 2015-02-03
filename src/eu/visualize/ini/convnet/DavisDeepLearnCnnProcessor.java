@@ -120,7 +120,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             return;
         }
         lastDVSNetXMLFilename = c.getSelectedFile().toString();
-        putString("lastDVSNetXMLFilename", lastAPSNetXMLFilename);
+        putString("lastDVSNetXMLFilename", lastDVSNetXMLFilename);
         dvsNet.loadFromXMLFile(c.getSelectedFile());
         dvsSubsampler = new DvsSubsamplingTimesliceConvNetInput(dvsNet.inputLayer.dimx, dvsNet.inputLayer.dimy, getDvsColorScale());
     }
