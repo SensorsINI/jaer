@@ -58,6 +58,7 @@ public class DvsSubsamplingTimesliceConvNetInput {
      */
     public void addEvent(PolarityEvent e, int srcWidth, int srcHeight) {
         // find element here that contains this event
+        if(e.isSpecial()) return;
         int x = (int) Math.floor(((float) e.x / srcWidth) * width);
         int y = (int) Math.floor(((float) e.y / srcHeight) * height);
         int k = getIndex(x, y);

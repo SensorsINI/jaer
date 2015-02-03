@@ -44,10 +44,10 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor {
         checkBlend(gl);
         int third = chip.getSizeX() / 3;
         int sy = chip.getSizeY();
-        if (apsNet.outputLayer.activations != null && isProcessAPSFrames()) {
+        if (apsNet!=null && apsNet.outputLayer.activations != null && isProcessAPSFrames()) {
             drawDecisionOutput(third, gl, sy, apsNet, Color.RED);
         }
-        if (dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
+        if (dvsNet!=null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
             drawDecisionOutput(third, gl, sy, dvsNet, Color.YELLOW);
         }
     }
@@ -62,12 +62,12 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor {
             for (int i = 0; i < 3; i++) {
                 int x0 = third * i;
                 int x1 = x0 + third;
-                float shade = brightness * apsNet.outputLayer.activations[i];
+                float shade = brightness * net.outputLayer.activations[i];
                 gl.glColor3f((shade * r), (shade * g), (shade * b));
                 gl.glRecti(x0, 0, x1, sy);
                 gl.glRecti(x0, 0, x1, sy);
             }
-            float shade = brightness * apsNet.outputLayer.activations[3]; // no target
+            float shade = brightness * net.outputLayer.activations[3]; // no target
             gl.glColor3f((shade * r), (shade * g), (shade * b));
             gl.glRecti(0, 0, chip.getSizeX(), sy / 8);
 
