@@ -153,8 +153,19 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
                 PolarityEvent p = (PolarityEvent) e;
                 dvsSubsampler.addEvent(p, sizeX, sizeY);
                 if (dvsSubsampler.getAccumulatedEventCount() > dvsMinEvents) {
+                    long startTime = 0;
+                    if (measurePerformance) {
+                        startTime = System.nanoTime();
+                    }
                     dvsNet.processDvsTimeslice(dvsSubsampler);
                     dvsSubsampler.clear();
+                    if (measurePerformance) {
+                        long dt = System.nanoTime() - startTime;
+                        float ms = 1e-6f * dt;
+                        float fps = 1e3f / ms;
+                        log.info(String.format("DVS slice processing time: %.1fms", ms, fps));
+
+                    }
                 }
             }
 
