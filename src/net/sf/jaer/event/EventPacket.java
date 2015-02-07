@@ -58,10 +58,18 @@ import net.sf.jaer.aemonitor.AEConstants;
  * To filter events out of a packet, the BasicEvent's filteredOut flag can be set. 
  * Then the event will simply be skipped in iterating over the packet.
  * However, the total number of events in the packet does not change by this 
- * filtering operation.
+ * filtering operation. <b> 
+ * * Note that events that are "filteredOut" by a preceding filter (by it calling the setFilteredOut method on the event) may not be filtered out
+ * by the InputIterator of this packet if they are the last event in a packet. Individual filters can still check the BasicEvent's isFilteredOut() method.</b>
+
+* 
  * 
  * @param <E> the class of the events in this packet
- * @author tobi */
+ * @author tobi 
+ 
+ * @see BasicEvent
+ * @see BasicEvent#isFilteredOut() 
+ */
 public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface<E>,*/ Cloneable, Iterable<E> {
     
     static final Logger log=Logger.getLogger(EventPacket.class.getName());
