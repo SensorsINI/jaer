@@ -38,7 +38,7 @@ import net.sf.jaer.util.avioutput.AVIOutputStream;
  */
 @Description("Writes AVI file from DAVIS APS frames, using ApsFrameExtractor")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class DAVISAVIWriter extends EventFilter2D implements PropertyChangeListener {
+public class DavisFrameAviWriter extends EventFilter2D implements PropertyChangeListener {
 
     ApsFrameExtractor apsFrameExtractor;
     AVIOutputStream aviOutputStream = null;
@@ -54,7 +54,7 @@ public class DAVISAVIWriter extends EventFilter2D implements PropertyChangeListe
     private boolean closeOnRewind = getBoolean("closeOnRewind", true);
     private boolean propertyChangeListenerAdded = false;
 
-    public DAVISAVIWriter(AEChip chip) {
+    public DavisFrameAviWriter(AEChip chip) {
         super(chip);
         FilterChain filterChain = new FilterChain(chip);
         apsFrameExtractor = new ApsFrameExtractor(chip);
@@ -120,7 +120,7 @@ public class DAVISAVIWriter extends EventFilter2D implements PropertyChangeListe
                 }
 
             } catch (IOException ex) {
-                Logger.getLogger(DAVISAVIWriter.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(DavisFrameAviWriter.class.getName()).log(Level.SEVERE, null, ex);
             }
         } else if (evt.getPropertyName() == AEInputStream.EVENT_REWIND) {
             doCloseFile();
