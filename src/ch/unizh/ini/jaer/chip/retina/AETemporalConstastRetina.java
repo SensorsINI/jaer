@@ -9,6 +9,7 @@
 package ch.unizh.ini.jaer.chip.retina;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.eventprocessing.filter.CellStatsProber;
 import net.sf.jaer.graphics.RetinaRenderer;
 
 /**
@@ -24,5 +25,6 @@ abstract public class AETemporalConstastRetina extends AEChip{
         // these are subclasses of ChipRenderer and ChipCanvas
         // these need to be added *before* the filters are made or the filters will not annotate the results!!!
         setRenderer(new RetinaRenderer(this));
-    }
+        addDefaultEventFilter(CellStatsProber.class);
+   }
 }

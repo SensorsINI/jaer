@@ -139,10 +139,6 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 		davisDisplayMethod = new DAViS240DisplayMethod(this);
 		getCanvas().addDisplayMethod(davisDisplayMethod);
 		getCanvas().setDisplayMethod(davisDisplayMethod);
-		addDefaultEventFilter(ApsDvsEventFilter.class);
-		addDefaultEventFilter(HotPixelFilter.class);
-		addDefaultEventFilter(RefractoryFilter.class);
-		addDefaultEventFilter(Info.class);
 
 		if (getRemoteControl() != null) {
 			getRemoteControl()

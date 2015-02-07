@@ -5,6 +5,7 @@
 package eu.seebetter.ini.chips;
 
 import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
+import net.sf.jaer.eventprocessing.filter.ApsDvsEventFilter;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
 
 /**
@@ -51,11 +52,15 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
      * first read, 2 second read, which is deprecated and not used).
      */
     public static final int ADC_DATA_MASK = MAX_ADC, ADC_READCYCLE_SHIFT = 10, ADC_READCYCLE_MASK = 0xC00;
-    
+
     /**
      * Property change events fired when these properties change
      */
     public static final String PROPERTY_FRAME_RATE_HZ = "ApsDvsChip.FRAME_RATE_HZ", PROPERTY_EXPOSURE_MS = "ApsDvsChip.EXPOSURE_MS";
+
+    public ApsDvsChip() {
+        addDefaultEventFilter(ApsDvsEventFilter.class);
+    }
 
     /**
      * Returns maximum ADC count value
@@ -77,18 +82,23 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
      * @return frame rate in Hz
      */
     abstract public float getFrameRateHz();
-    
-    /** Returns start of exposure time in timestamp tick units (us). Note this is particularly relevant for global shutter mode.
-     * For rolling shutter readout mode, this time is the start of exposure time of the first column.
-     * 
-     * @return start of exposure time in timestamp units (us). 
+
+    /**
+     * Returns start of exposure time in timestamp tick units (us). Note this is
+     * particularly relevant for global shutter mode. For rolling shutter
+     * readout mode, this time is the start of exposure time of the first
+     * column.
+     *
+     * @return start of exposure time in timestamp units (us).
      */
     abstract public int getFrameExposureStartTimestampUs();
 
-   /** Returns end of exposure time in timestamp tick units (us). Note this is particularly relevant for global shutter mode.
-     * For rolling shutter readout mode, this time is the last value read from last column.
-     * 
-     * @return start of exposure time in timestamp units (us). 
+    /**
+     * Returns end of exposure time in timestamp tick units (us). Note this is
+     * particularly relevant for global shutter mode. For rolling shutter
+     * readout mode, this time is the last value read from last column.
+     *
+     * @return start of exposure time in timestamp units (us).
      */
     abstract public int getFrameExposureEndTimestampUs();
 
@@ -103,10 +113,10 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
      * Triggers the taking of one snapshot, i.e, triggers a frame capture.
      */
     abstract public void takeSnapshot();
-    
+
     /**
      * Turns on/off ADC
-     * 
+     *
      * @param adcEnabled true to turn on
      */
     abstract public void setADCEnabled(boolean adcEnabled);
@@ -160,11 +170,11 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
     abstract public void setShowImageHistogram(boolean yes);
 
     /**
-     * Returns the frame counter value. This value is set on each end-of-frame sample.
+     * Returns the frame counter value. This value is set on each end-of-frame
+     * sample.
      *
      * @return the frameCount
      */
     public abstract int getFrameCount();
-
 
 }
