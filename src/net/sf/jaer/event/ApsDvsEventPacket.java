@@ -18,9 +18,10 @@ import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
  * and you will get just the DVS events. However, if you iterate over <code>ApsDvsEventPacket</code>,
  * then the APS events will be bypassed to an internal output packet of <code>ApsDvsEventPacket</code>
  * called {@link #outputPacket}. This packet is automatically initialized when you call checkOutputPacketEventType(in). 
- * 
- * TODO explain better.
- * 
+ * <p>
+ * Note that events that are "filteredOut" by a preceding filter (by it calling the setFilteredOut method on the event) may not be filtered out
+ * by the InputIterator of this packet if they are the last event in a packet.
+ * </p>
  * Call 
  * <pre>   
  * checkOutputPacketEventType(in); 
@@ -29,7 +30,7 @@ import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
  * <p>
  * Internally this class overrides the default iterator of EventPacket.
  * 
- * @author Christian
+ * @author Christian Brandli, Tobi Delbruck
  * @see BackgroundActivityFilter
  */
 public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
@@ -134,11 +135,14 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E>{
          */
         @Override
         public boolean hasNext() {
-            if(usingTimeout) {
-                return cursorDvs<size&&!timeLimitTimer.isTimedOut();
+            if (usingTimeout) {
+                return cursorDvs < size && !timeLimitTimer.isTimedOut();
             } else {
-                while(elementData[cursorDvs].isFilteredOut() && cursorDvs<size) {filteredOutCount++; cursorDvs++;} // TODO: can return filteredOut event if it is the last one in the packet
-                return cursorDvs<size;
+                while (elementData[cursorDvs].isFilteredOut() && cursorDvs < size) {
+                    filteredOutCount++;
+                    cursorDvs++;
+                } // TODO: can return filteredOut event if it is the last one in the packet
+                return cursorDvs < size;
             }
         }
         
