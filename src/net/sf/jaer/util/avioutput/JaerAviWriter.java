@@ -8,6 +8,7 @@ package net.sf.jaer.util.avioutput;
 import ch.unizh.ini.jaer.projects.davis.frames.*;
 import com.jogamp.common.nio.Buffers;
 import eu.seebetter.ini.chips.ApsDvsChip;
+import java.awt.Desktop;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.awt.image.WritableRaster;
@@ -44,7 +45,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  */
 @Description("Writes AVI file AEViewer displayed OpenGL graphics")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class JaerAviWriter extends EventFilter2D implements  FrameAnnotater {
+public class JaerAviWriter extends EventFilter2D implements FrameAnnotater {
 
     AVIOutputStream aviOutputStream = null;
     private static final String DEFAULT_FILENAME = "jAER-AEViewer.avi";
@@ -57,9 +58,9 @@ public class JaerAviWriter extends EventFilter2D implements  FrameAnnotater {
     private FileWriter timecodeWriter = null;
     private boolean closeOnRewind = getBoolean("closeOnRewind", true);
     private boolean propertyChangeListenerAdded = false;
-    private AVIOutputStream.VideoFormat format=AVIOutputStream.VideoFormat.valueOf(getString("format", AVIOutputStream.VideoFormat.RAW.toString()));
-    private int maxFrames=getInt("maxFrames",0);
-    private float compressionQuality=getFloat("compressionQuality",0.9f);
+    private AVIOutputStream.VideoFormat format = AVIOutputStream.VideoFormat.valueOf(getString("format", AVIOutputStream.VideoFormat.RAW.toString()));
+    private int maxFrames = getInt("maxFrames", 0);
+    private float compressionQuality = getFloat("compressionQuality", 0.9f);
 
     public JaerAviWriter(AEChip chip) {
         super(chip);
@@ -71,6 +72,7 @@ public class JaerAviWriter extends EventFilter2D implements  FrameAnnotater {
         setPropertyTooltip("maxFrames", "file is automatically closed after this many frames have been written; set to 0 to disable");
         setPropertyTooltip("framesWritten", "READONLY, shows number of frames written");
         setPropertyTooltip("compressionQuality", "In PNG or JPG format, sets compression quality; 0 is lowest quality and 1 is highest, 0.9 is default value");
+        setPropertyTooltip("showFolderInDesktop", "Opens the folder containging the last-written AVI file");
     }
 
     @Override
@@ -89,6 +91,22 @@ public class JaerAviWriter extends EventFilter2D implements  FrameAnnotater {
 
     @Override
     public void initFilter() {
+    }
+
+    public void doShowFolderInDesktop() {
+        if (!Desktop.isDesktopSupported()) {
+            log.warning("Sorry, desktop operations are not supported");
+            return;
+        }
+        try {
+            Desktop desktop = Desktop.getDesktop();
+            File f = new File(lastFileName);
+            if (f.exists()) {
+                desktop.open(f.getParentFile());
+            }
+        } catch (Exception e) {
+            log.warning(e.toString());
+        }
     }
 
     synchronized public void doSaveAVIFileAs() {
@@ -135,14 +153,14 @@ public class JaerAviWriter extends EventFilter2D implements  FrameAnnotater {
                 aviOutputStream = null;
                 if (timecodeWriter != null) {
                     timecodeWriter.close();
-                    log.info("Closed timecode file "+timecodeFile.toString());
+                    log.info("Closed timecode file " + timecodeFile.toString());
                     timecodeWriter = null;
                 }
-                log.info("Closed " + lastFileName + " in format "+format+" with " + framesWritten + " frames");
+                log.info("Closed " + lastFileName + " in format " + format + " with " + framesWritten + " frames");
             } catch (Exception ex) {
                 log.warning(ex.toString());
                 ex.printStackTrace();
-                aviOutputStream=null;
+                aviOutputStream = null;
             }
         }
 
@@ -163,9 +181,9 @@ public class JaerAviWriter extends EventFilter2D implements  FrameAnnotater {
                 timecodeWriter.write(String.format("# timecode file relating frames of AVI file to AER timestamps\n"));
                 timecodeWriter.write(String.format("# written %s\n", new Date().toString()));
                 timecodeWriter.write(String.format("# frameNumber timestamp\n"));
-                log.info("Opened timecode file "+timecodeFile.toString());
+                log.info("Opened timecode file " + timecodeFile.toString());
             }
-            log.info("Opened AVI output file " + f.toString()+" with format "+format);
+            log.info("Opened AVI output file " + f.toString() + " with format " + format);
             framesWritten = 0;
             getSupport().firePropertyChange("framesWritten", null, framesWritten);
         } catch (IOException ex) {
@@ -206,30 +224,32 @@ public class JaerAviWriter extends EventFilter2D implements  FrameAnnotater {
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        if(aviOutputStream==null) return;
-        GL2 gl=drawable.getGL().getGL2();
-        BufferedImage bi=toImage(gl, drawable.getNativeSurface().getSurfaceWidth(), drawable.getNativeSurface().getSurfaceHeight());
-       
-            try {
-                aviOutputStream.writeFrame(bi);
-                if (timecodeWriter != null) {
-                    int timestamp = chip.getAeViewer().getAePlayer().getTime();
-                    timecodeWriter.write(String.format("%d %d\n", framesWritten, timestamp));
+        if (aviOutputStream == null) {
+            return;
+        }
+        GL2 gl = drawable.getGL().getGL2();
+        BufferedImage bi = toImage(gl, drawable.getNativeSurface().getSurfaceWidth(), drawable.getNativeSurface().getSurfaceHeight());
 
-                }
-                if (++framesWritten % logEveryThisManyFrames == 0) {
-                    log.info(String.format("wrote %d frames", framesWritten));
-                }
-                getSupport().firePropertyChange("framesWritten", null, framesWritten);
-                if(maxFrames>0 && framesWritten>=maxFrames){
-                    log.info("wrote maxFrames="+maxFrames+" frames; closing AVI file");
-                    doCloseFile();
-                }
+        try {
+            aviOutputStream.writeFrame(bi);
+            if (timecodeWriter != null) {
+                int timestamp = chip.getAeViewer().getAePlayer().getTime();
+                timecodeWriter.write(String.format("%d %d\n", framesWritten, timestamp));
 
-            } catch (Exception e) {
-                log.warning("While writing AVI frame, caught exception, closing file: "+e.toString());
+            }
+            if (++framesWritten % logEveryThisManyFrames == 0) {
+                log.info(String.format("wrote %d frames", framesWritten));
+            }
+            getSupport().firePropertyChange("framesWritten", null, framesWritten);
+            if (maxFrames > 0 && framesWritten >= maxFrames) {
+                log.info("wrote maxFrames=" + maxFrames + " frames; closing AVI file");
                 doCloseFile();
-            } 
+            }
+
+        } catch (Exception e) {
+            log.warning("While writing AVI frame, caught exception, closing file: " + e.toString());
+            doCloseFile();
+        }
     }
 
     public BufferedImage toImage(GL2 gl, int w, int h) {
@@ -246,7 +266,7 @@ public class JaerAviWriter extends EventFilter2D implements  FrameAnnotater {
                 int b = 2 * glBB.get();
                 int g = 2 * glBB.get();
                 int r = 2 * glBB.get();
-                int a=glBB.get(); // not using
+                int a = glBB.get(); // not using
 
                 bd[(h - y - 1) * w + x] = (b << 16) | (g << 8) | r | 0xFF000000;
             }
@@ -282,7 +302,7 @@ public class JaerAviWriter extends EventFilter2D implements  FrameAnnotater {
      */
     public void setMaxFrames(int maxFrames) {
         this.maxFrames = maxFrames;
-        putInt("maxFrames",maxFrames);
+        putInt("maxFrames", maxFrames);
     }
 
     /**
@@ -310,8 +330,12 @@ public class JaerAviWriter extends EventFilter2D implements  FrameAnnotater {
      * @param compressionQuality the compressionQuality to set
      */
     public void setCompressionQuality(float compressionQuality) {
-        if(compressionQuality<0) compressionQuality=0; else if(compressionQuality>1)compressionQuality=1;
+        if (compressionQuality < 0) {
+            compressionQuality = 0;
+        } else if (compressionQuality > 1) {
+            compressionQuality = 1;
+        }
         this.compressionQuality = compressionQuality;
-        putFloat("compressionQuality",compressionQuality);
+        putFloat("compressionQuality", compressionQuality);
     }
 }
