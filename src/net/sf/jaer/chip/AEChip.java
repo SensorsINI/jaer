@@ -33,6 +33,7 @@ import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.ChipRendererDisplayMethod;
 import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.graphics.SpaceTimeEventDisplayMethod;
+import net.sf.jaer.util.avioutput.JaerAviWriter;
 
 /**
  * Describes a generic address-event chip, and includes fields for associated
@@ -132,6 +133,7 @@ public class AEChip extends Chip2D {
         addDefaultEventFilter(RefractoryFilter.class);
         addDefaultEventFilter(HotPixelFilter.class);
         addDefaultEventFilter(Info.class);
+        addDefaultEventFilter(JaerAviWriter.class);
  
         filterChain = new FilterChain(this);
         filterChain.contructPreferredFilters();
