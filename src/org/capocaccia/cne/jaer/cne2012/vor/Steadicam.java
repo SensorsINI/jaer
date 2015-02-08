@@ -524,24 +524,33 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
             // draw transform
             gl.glPushMatrix();
 
-            // draw xhairs on frame to help show locations of objects and if they have moved.
-            gl.glLineWidth(2f);
+            gl.glLineWidth(1f);
             gl.glColor3f(1, 0, 0);
-            gl.glBegin(GL.GL_LINES);
-            gl.glVertex2f(sx2, 0);
-            gl.glVertex2f(sx2, sy2 << 1);
-            gl.glVertex2f(0, sy2);
-            gl.glVertex2f(sx2 << 1, sy2);
+            
+            // translate and rotate
+            gl.glTranslatef(getLastTransform().translationPixels.x + sx2, getLastTransform().translationPixels.y + sy2, 0);
+            gl.glRotatef((float) ((getLastTransform().rotationRad * 180) / Math.PI), 0, 0, 1);
+
+            // draw xhairs on frame to help show locations of objects and if they have moved.
+            gl.glBegin(GL.GL_LINES); // sequence of individual segments, in pairs of vertices
+            gl.glVertex2f(0, 0);  // start at origin
+            gl.glVertex2f(sx2, 0);  // out to right
+            gl.glVertex2f(0, 0);  // origin
+            gl.glVertex2f(-sx2, 0); // out to left
+            gl.glVertex2f(0, 0);  // origin
+            gl.glVertex2f(0, sy2); // up
+            gl.glVertex2f(0, 0);  // origin
+            gl.glVertex2f(0, -sy2); // down
             gl.glEnd();
 
             // rectangle around transform
-            gl.glTranslatef(getLastTransform().translationPixels.x + sx2, getLastTransform().translationPixels.y + sy2, 0);
-            gl.glRotatef((float) ((getLastTransform().rotationRad * 180) / Math.PI), 0, 0, 1);
-            gl.glBegin(GL.GL_LINE_LOOP);
-            gl.glVertex2f(-sx2, -sy2);
-            gl.glVertex2f(sx2, -sy2);
-            gl.glVertex2f(sx2, sy2);
-            gl.glVertex2f(-sx2, sy2);
+            gl.glTranslatef(-sx2, -sy2, 0); // lower left corner
+            gl.glBegin(GL.GL_LINE_LOOP); // loop of vertices
+            gl.glVertex2f(0,0); // lower left corner
+            gl.glVertex2f(sx2*2, 0); // lower right
+            gl.glVertex2f(2*sx2, 2*sy2); // upper right
+            gl.glVertex2f(0, 2*sy2); // upper left
+            gl.glVertex2f(0,0); // back of lower left
             gl.glEnd();
             gl.glPopMatrix();
 
