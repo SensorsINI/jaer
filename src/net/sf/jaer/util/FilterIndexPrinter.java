@@ -28,10 +28,10 @@ import net.sf.jaer.Description;
  * https://sourceforge.net/apps/trac/jaer/wiki/FilterIndex
  * to update the list of filters.
  * 
- * @author Peter
+ * @author Peter OConnor, Tobi Delbruck
  */
 public class FilterIndexPrinter {
-	private static final int DIVIDE_INTO_NUM_FILES = 2; // if pages are too long, sf.net allura wiki barfs
+	private static final int DIVIDE_INTO_NUM_FILES = 1; // if pages are too long, sf.net allura wiki barfs
 	private static final int MAX_DESC_LENGTH = 1000;
         private static Logger log=Logger.getLogger("FilterIndexPrinter");
                 
@@ -140,7 +140,7 @@ public class FilterIndexPrinter {
 					+ ")");
 
 				// Print header.
-				psCurrentFile.println("# List of Event-Processing Filters " + j);
+				psCurrentFile.println("# List of Event-Processing Filters " + j+"/"+DIVIDE_INTO_NUM_FILES);
 				psCurrentFile.println();
 				psCurrentFile.println("Click on a filter for more info.");
 				psCurrentFile.println();
@@ -187,7 +187,7 @@ public class FilterIndexPrinter {
 		}
 
 		ps.println();
-		ps.println("Run the class net.sf.jaer.util.FilterIndexPrinter to regenerate the lists.");
+		ps.println("Run the class net.sf.jaer.util.FilterIndexPrinter to regenerate the lists. Save the lists to a name, e.g. filterlist. \nThe result will be a base file filterlist. Then copy the contents of filterlist here, and copy the contents of filterlist_1 to the index of filters, page 1, filterlist_2 to index of filters, page 2, etc.");
 
 		ps.close();
 		for (final PrintStream p : psAlpha) {
