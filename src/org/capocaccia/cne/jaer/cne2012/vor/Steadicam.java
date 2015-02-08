@@ -120,6 +120,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
     private CalibrationFilter panCalibrator, tiltCalibrator, rollCalibrator;
     TextRenderer imuTextRenderer = null;
     private boolean showTransformRectangle = getBoolean("showTransformRectangle", true);
+    private boolean showGrid = getBoolean("showGrid", true);
     // transform control
     public boolean disableTranslation = getBoolean("disableTranslation", false);
     public boolean disableRotation = getBoolean("disableRotation", false);
@@ -179,6 +180,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         setPropertyTooltip("eraseGyroZero", "Erases the gyro zero values");
         setPropertyTooltip(transform, "transformResetLimitDegrees", "If transform translations exceed this limit in degrees the transform is automatically reset to 0");
         setPropertyTooltip(transform, "showTransformRectangle", "Disable to not show the red transform square and red cross hairs");
+        setPropertyTooltip(transform, "showGrid", "Enabled to show a grid to allow judging the degree of stabilization");
         setPropertyTooltip(transform, "disableRotation", "Disables rotational part of transform");
         setPropertyTooltip(transform, "disableTranslation", "Disables translations part of transform");
 
@@ -511,22 +513,21 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
             imuTextRenderer.end3DRendering();
         }
 
-        if (!showTransformRectangle) {
-            return;
+        GL2 gl = null;
+        if (showGrid || showTransformRectangle) {
+            gl = drawable.getGL().getGL2();
         }
 
-        GL2 gl = drawable.getGL().getGL2();
         if (gl == null) {
             return;
         }
-
-        if ((getLastTransform() != null) && isElectronicStabilizationEnabled()) { // draw translationPixels frame
+        if (showTransformRectangle && (getLastTransform() != null) && isElectronicStabilizationEnabled()) {
             // draw transform
             gl.glPushMatrix();
 
             gl.glLineWidth(1f);
             gl.glColor3f(1, 0, 0);
-            
+
             // translate and rotate
             gl.glTranslatef(getLastTransform().translationPixels.x + sx2, getLastTransform().translationPixels.y + sy2, 0);
             gl.glRotatef((float) ((getLastTransform().rotationRad * 180) / Math.PI), 0, 0, 1);
@@ -546,14 +547,32 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
             // rectangle around transform
             gl.glTranslatef(-sx2, -sy2, 0); // lower left corner
             gl.glBegin(GL.GL_LINE_LOOP); // loop of vertices
-            gl.glVertex2f(0,0); // lower left corner
-            gl.glVertex2f(sx2*2, 0); // lower right
-            gl.glVertex2f(2*sx2, 2*sy2); // upper right
-            gl.glVertex2f(0, 2*sy2); // upper left
-            gl.glVertex2f(0,0); // back of lower left
+            gl.glVertex2f(0, 0); // lower left corner
+            gl.glVertex2f(sx2 * 2, 0); // lower right
+            gl.glVertex2f(2 * sx2, 2 * sy2); // upper right
+            gl.glVertex2f(0, 2 * sy2); // upper left
+            gl.glVertex2f(0, 0); // back of lower left
             gl.glEnd();
             gl.glPopMatrix();
+        }
 
+        if (showGrid) {
+            gl.glLineWidth(1f);
+            gl.glColor3f(0, 0, 1);
+            final int s = chip.getMaxSize() / 8;
+            final int n = chip.getMaxSize() / s;
+            gl.glBegin(GL.GL_LINES);
+            for (int i = 0; i < n ; i++) {
+                final int x = i * s;
+                gl.glVertex2i(x, 0);
+                gl.glVertex2i(x, sy2 * 2);
+            }
+            for (int i = 0; i < n ; i++) {
+                final int y = i * s;
+                gl.glVertex2i(0, y);
+                gl.glVertex2i(sx2 * 2, y);
+            }
+            gl.glEnd();
         }
 
     }
@@ -651,7 +670,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
             setPanTiltEnabled(false); // turn off servos, close interface
             if (chip.getAeViewer() != null && chip.getCanvas() != null && chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA) {
                 ChipRendererDisplayMethodRGBA displayMethod = (ChipRendererDisplayMethodRGBA) chip.getCanvas().getDisplayMethod(); // TODO not ideal (tobi)
-                displayMethod.setImageTransform(new Point2D.Float(0,0),0);
+                displayMethod.setImageTransform(new Point2D.Float(0, 0), 0);
             }
         } else {
             resetFilter(); // reset on enabled to prevent large timestep anomalies
@@ -981,5 +1000,20 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
     public void setTransformImageEnabled(boolean transformImageEnabled) {
         this.transformImageEnabled = transformImageEnabled;
         putBoolean("transformImageEnabled", transformImageEnabled);
+    }
+
+    /**
+     * @return the showGrid
+     */
+    public boolean isShowGrid() {
+        return showGrid;
+    }
+
+    /**
+     * @param showGrid the showGrid to set
+     */
+    public void setShowGrid(boolean showGrid) {
+        this.showGrid = showGrid;
+        putBoolean("showGrid", showGrid);
     }
 }
