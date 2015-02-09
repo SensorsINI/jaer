@@ -79,7 +79,7 @@ public class DvsSubsamplingTimesliceConvNetInput {
     }
 
     public int getIndex(int x, int y) {
-        return y + width * x;
+        return y + height * x;
     }
 
     /**

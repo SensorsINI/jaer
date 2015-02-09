@@ -10,49 +10,31 @@ import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.JFileChooser;
-import javax.swing.JOptionPane;
-import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.util.avioutput.AVIOutputStream;
+import net.sf.jaer.util.avioutput.AbstractAviWriter;
 
 /**
  * Writes AVI file from DAVIS APS frames, using ApsFrameExtractor. The AVI file
- * is in RAW format with pixel values 0-255 coming from ApsFrameExtractor
+ * has pixel values 0-255 coming from ApsFrameExtractor
  * displayed frames, which are offset and scaled by it.
  *
  * @author Tobi
  */
-@Description("Writes AVI file from DAVIS APS frames, using ApsFrameExtractor")
+@Description("Writes AVI file from DAVIS APS frames, using ApsFrameExtractor. This AVI has spatial resolution the same as the AEChip (not the display resolution)")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class DavisFrameAviWriter extends EventFilter2D implements PropertyChangeListener {
+public class DavisFrameAviWriter extends AbstractAviWriter {
 
     ApsFrameExtractor apsFrameExtractor;
-    AVIOutputStream aviOutputStream = null;
-    private static final String DEFAULT_FILENAME = "DAVIS_APS.avi";
-    private String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
     ApsDvsChip apsDvsChip = null;
-    private int framesWritten = 0;
-    private final int logEveryThisManyFrames = 30;
-    private boolean writeTimecodeFile = getBoolean("writeTimecodeFile", true);
-    private static final String TIMECODE_SUFFIX = "-timecode.txt";
-    private File timecodeFile = null;
-    private FileWriter timecodeWriter = null;
-    private boolean closeOnRewind = getBoolean("closeOnRewind", true);
-    private boolean propertyChangeListenerAdded = false;
 
     public DavisFrameAviWriter(AEChip chip) {
         super(chip);
@@ -69,12 +51,7 @@ public class DavisFrameAviWriter extends EventFilter2D implements PropertyChange
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if (!propertyChangeListenerAdded) {
-            if (chip.getAeViewer() != null) {
-                chip.getAeViewer().addPropertyChangeListener(this);
-                propertyChangeListenerAdded = true;
-            }
-        }
+        super.filterPacket(in); // adds propertychangelistener for rewind event
         apsDvsChip = (ApsDvsChip) chip;
         apsFrameExtractor.filterPacket(in);
         return in;
@@ -110,14 +87,9 @@ public class DavisFrameAviWriter extends EventFilter2D implements PropertyChange
             }
             try {
                 aviOutputStream.writeFrame(bufferedImage);
-                if (timecodeWriter != null) {
-                    int timestamp = apsFrameExtractor.getLastFrameTimestamp();
-                    timecodeWriter.write(String.format("%d %d\n", framesWritten, timestamp));
-
-                }
-                if (++framesWritten % logEveryThisManyFrames == 0) {
-                    log.info(String.format("wrote %d frames", framesWritten));
-                }
+                int timestamp = apsFrameExtractor.getLastFrameTimestamp();
+                writeTimecode(timestamp);
+                incrementFramecountAndMaybeCloseOutput();
 
             } catch (IOException ex) {
                 Logger.getLogger(DavisFrameAviWriter.class.getName()).log(Level.SEVERE, null, ex);
@@ -127,115 +99,4 @@ public class DavisFrameAviWriter extends EventFilter2D implements PropertyChange
         }
     }
 
-    synchronized public void doSaveAVIFileAs() {
-        if (aviOutputStream != null) {
-            JOptionPane.showMessageDialog(null, "AVI output stream is already opened");
-            return;
-        }
-        JFileChooser c = new JFileChooser(lastFileName);
-        c.setFileFilter(new FileFilter() {
-
-            @Override
-            public boolean accept(File f) {
-                return f.isDirectory() || f.getName().toLowerCase().endsWith(".avi");
-            }
-
-            @Override
-            public String getDescription() {
-                return "AVI (Audio Video Interleave) Microsoft video file";
-            }
-        });
-        c.setSelectedFile(new File(lastFileName));
-        int ret = c.showSaveDialog(null);
-        if (ret != JFileChooser.APPROVE_OPTION) {
-            return;
-        }
-        if (!c.getSelectedFile().getName().toLowerCase().endsWith(".avi")) {
-            String newName = c.getSelectedFile().toString() + ".avi";
-            c.setSelectedFile(new File(newName));
-        }
-        lastFileName = c.getSelectedFile().toString();
-        if (c.getSelectedFile().exists()) {
-            int r = JOptionPane.showConfirmDialog(null, "File " + c.getSelectedFile().toString() + " already exists, overwrite it?");
-            if (r != JOptionPane.OK_OPTION) {
-                return;
-            }
-        }
-        openAVIOutputStream(c.getSelectedFile());
-    }
-
-    synchronized public void doCloseFile() {
-        if (aviOutputStream != null) {
-            try {
-                aviOutputStream.close();
-                aviOutputStream = null;
-                if (timecodeWriter != null) {
-                    timecodeWriter.close();
-                    timecodeWriter = null;
-                }
-                log.info("Closed " + lastFileName + " with " + framesWritten + " frames");
-            } catch (IOException ex) {
-                log.warning(ex.toString());
-            }
-        }
-
-    }
-
-    private void openAVIOutputStream(File f) {
-        try {
-            aviOutputStream = new AVIOutputStream(f, AVIOutputStream.VideoFormat.RAW);
-            int frameRate = apsDvsChip==null?10:(int) apsDvsChip.getFrameRateHz();
-            if (frameRate == 0) {
-                JOptionPane.showMessageDialog(null, "Frame rate is reported as 0, setting to 10 by default.\nEnable the Image Sensor/Display Frames option in HW Configuration panel so that frame rate is computed.", "Couldn't set correct frame rate", JOptionPane.WARNING_MESSAGE, null);
-                frameRate = 10;
-            }
-            aviOutputStream.setFrameRate(frameRate);
-//            aviOutputStream.setVideoDimension(chip.getSizeX(), chip.getSizeY());
-            lastFileName = f.toString();
-            putString("lastFileName", lastFileName);
-            if (writeTimecodeFile) {
-                String s = f.toString().subSequence(0, f.toString().lastIndexOf(".")).toString() + TIMECODE_SUFFIX;
-                timecodeFile = new File(s);
-                timecodeWriter = new FileWriter(timecodeFile);
-                timecodeWriter.write(String.format("# timecode file relating frames of AVI file to AER timestamps\n"));
-                timecodeWriter.write(String.format("# written %s\n", new Date().toString()));
-                timecodeWriter.write(String.format("# frameNumber timestamp\n"));
-            }
-            log.info("Opened " + f.toString());
-            framesWritten = 0;
-        } catch (IOException ex) {
-            JOptionPane.showMessageDialog(null, ex.toString(), "Couldn't create output file stream", JOptionPane.WARNING_MESSAGE, null);
-            return;
-        }
-    }
-
-    /**
-     * @return the writeTimecodeFile
-     */
-    public boolean isWriteTimecodeFile() {
-        return writeTimecodeFile;
-    }
-
-    /**
-     * @param writeTimecodeFile the writeTimecodeFile to set
-     */
-    public void setWriteTimecodeFile(boolean writeTimecodeFile) {
-        this.writeTimecodeFile = writeTimecodeFile;
-        putBoolean("writeTimecodeFile", writeTimecodeFile);
-    }
-
-    /**
-     * @return the closeOnRewind
-     */
-    public boolean isCloseOnRewind() {
-        return closeOnRewind;
-    }
-
-    /**
-     * @param closeOnRewind the closeOnRewind to set
-     */
-    public void setCloseOnRewind(boolean closeOnRewind) {
-        this.closeOnRewind = closeOnRewind;
-        putBoolean("closeOnRewind", closeOnRewind);
-    }
 }
