@@ -55,6 +55,7 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
     protected AVIOutputStream.VideoFormat format = AVIOutputStream.VideoFormat.valueOf(getString("format", AVIOutputStream.VideoFormat.RAW.toString()));
     protected int maxFrames = getInt("maxFrames", 0);
     protected float compressionQuality = getFloat("compressionQuality", 0.9f);
+    private String[] additionalComments=null;
 
     public AbstractAviWriter(AEChip chip) {
         super(chip);
@@ -140,7 +141,7 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
                 return;
             }
         }
-        openAVIOutputStream(c.getSelectedFile());
+        openAVIOutputStream(c.getSelectedFile(), additionalComments);
     }
 
     synchronized public void doCloseFile() {
@@ -163,7 +164,13 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
 
     }
 
-    private void openAVIOutputStream(File f) {
+    /** Opens AVI output stream and optionally the timecode file.
+     * 
+     * @param f the file
+     * @param additionalComments additional comments to be written to timecode file, Comment header characters are added if not supplied.
+     * 
+     */
+    private void openAVIOutputStream(File f, String[] additionalComments) {
         try {
             aviOutputStream = new AVIOutputStream(f, format);
             aviOutputStream.setFrameRate(chip.getAeViewer().getFrameRate());
@@ -177,11 +184,18 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
                 timecodeWriter = new FileWriter(timecodeFile);
                 timecodeWriter.write(String.format("# timecode file relating frames of AVI file to AER timestamps\n"));
                 timecodeWriter.write(String.format("# written %s\n", new Date().toString()));
+                if(additionalComments!=null){
+                    for(String st:additionalComments){
+                        if(!st.startsWith("#")) st="# "+st;
+                        if(!st.endsWith("\n")) st=st+"\n";
+                        timecodeWriter.write(st);
+                    }
+                }
                 timecodeWriter.write(String.format("# frameNumber timestamp\n"));
                 log.info("Opened timecode file " + timecodeFile.toString());
             }
             log.info("Opened AVI output file " + f.toString() + " with format " + format);
-            framesWritten = 0;
+            setFramesWritten(0);
             getSupport().firePropertyChange("framesWritten", null, framesWritten);
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(null, ex.toString(), "Couldn't create output file stream", JOptionPane.WARNING_MESSAGE, null);
@@ -313,7 +327,9 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
      * @param framesWritten the framesWritten to set
      */
     public void setFramesWritten(int framesWritten) {
-        // do nothing, only here to expose in GUI
+        int old=this.framesWritten;
+        this.framesWritten=framesWritten;
+        getSupport().firePropertyChange("framesWritten", old, framesWritten);
     }
 
     /**
@@ -342,5 +358,20 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
         if (closeOnRewind && evt.getPropertyName() == AEInputStream.EVENT_REWIND) {
             doCloseFile();
         }
+    }
+
+    /**
+     * @return the additionalComments
+     */
+    public String[] getAdditionalComments() {
+        return additionalComments;
+    }
+
+    /**
+     * Sets array of additional comment strings to be written to timecode file.
+     * @param additionalComments the additionalComments to set
+     */
+    public void setAdditionalComments(String[] additionalComments) {
+        this.additionalComments = additionalComments;
     }
 }
