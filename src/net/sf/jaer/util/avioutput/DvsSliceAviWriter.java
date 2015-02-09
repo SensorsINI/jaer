@@ -81,12 +81,19 @@ public class DvsSliceAviWriter extends AbstractAviWriter {
                     }
                 }
                 dvsSubsampler.clear();
-
             }
         }
-
         return in;
     }
+
+    @Override
+    public synchronized void doSaveAVIFileAs() {
+        String[] s={"dimx="+dimx,"dimy="+dimy,"grayScale="+grayScale,"dvsMinEvents="+dvsMinEvents,"format="+format.toString(),"compressionQuality="+compressionQuality};
+        setAdditionalComments(s);
+        super.doSaveAVIFileAs(); //To change body of generated methods, choose Tools | Templates.
+    }
+    
+    
 
     private void checkSubsampler() {
         if (dvsSubsampler == null || dimx * dimy != dvsSubsampler.getnPixels()) {
