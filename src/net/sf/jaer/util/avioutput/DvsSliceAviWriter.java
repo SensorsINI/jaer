@@ -27,7 +27,7 @@ import net.sf.jaer.graphics.ImageDisplay;
  *
  * @author Tobi Delbruck
  */
-@Description("Writes out AVI movie with DVS time or event slices as AVI frame images with desired output resolution")
+@Description("Writes out AVI movie with DVS constant-number-of-event slices as AVI frame images with desired output resolution")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DvsSliceAviWriter extends AbstractAviWriter {
 
