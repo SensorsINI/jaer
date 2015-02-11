@@ -5,81 +5,175 @@
 package ch.unizh.ini.jaer.projects.util;
 
 import java.lang.reflect.Array;
+import java.util.Arrays;
 import java.util.Iterator;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 
 /**
  *
  * @author Christian
  */
-public class TrailingRingBuffer<O> implements Iterable, Iterator{
-    
-    private Class elementClass=null;
+public class TrailingRingBuffer<O> implements Iterable, Iterator {
+
+    private Class elementClass = null;
     public O[] buffer;
-    public int size;
-    public int lead,trail,itIdx;
-    
-    public TrailingRingBuffer(Class elementClass, int size){
-        this.size = size;
+    public int capacity, size;
+    public int writeIdx, readIdx, itrIdx;
+    public boolean full, empty;
+
+    public TrailingRingBuffer(Class elementClass, int size) {
+        this.capacity = size;
         this.elementClass = elementClass;
-        reset();
+        buffer = (O[]) Array.newInstance(elementClass, capacity);
+        writeIdx = 0;
+        readIdx = 0;
+        itrIdx = 0;
+        full = false;
+        empty = true;
     }
-    
-    public void reset(){
-        buffer=(O[]) Array.newInstance(elementClass, size);
-        lead = 0;
-        trail = 0;
+
+    public void clear() {
+        buffer = (O[]) Array.newInstance(elementClass, capacity);
+        writeIdx = 0;
+        readIdx = 0;
+        itrIdx = 0;
+        full = false;
+        empty = true;
     }
-    
-    public void add(O element){
-        //System.out.println("add: "+lead);
-        buffer[lead]=element;
-        if(decrease(trail)==lead)trail=increase(trail);
-        lead = increase(lead);
+
+    public void add(O element) {
+        buffer[writeIdx] = element;
+        writeIdx = increase(writeIdx);
+        if(writeIdx == readIdx){
+            size = capacity;
+            full = true;
+            readIdx++;
+        }else{
+            size++;
+        }
+        empty=false;
     }
-    
-    public int increase(int i){
+
+    public Object get() {
+        Object result = buffer[readIdx];
+        buffer[readIdx] = null;
+        readIdx += increase(readIdx);
+        size--;
+        full = false;
+        if (size == 0) {
+            empty = true;
+        }
+        return result;
+    }
+
+    private int increase(int i) {
         i++;
-        if(i>=size)i=0;
+        if (i >= capacity) {
+            i = 0;
+        }
         return i;
     }
 
-    public int decrease(int i){
+    private int decrease(int i) {
         i--;
-        if(i<0)i=size-1;
+        if (i < 0) {
+            i = capacity - 1;
+        }
         return i;
     }
-    
-    public void resetItr(){
-        itIdx = decrease(lead);
-        //System.out.println("resetItr: "+itIdx);
-    }
-    
+
     @Override
     public boolean hasNext() {
-        while(buffer[itIdx] == null && itIdx != decrease(trail)){
-            itIdx = decrease(itIdx);
+        while (buffer[itrIdx] == null && itrIdx != decrease(readIdx)) {
+            itrIdx = decrease(itrIdx);
         }
-        return (lead != trail && itIdx != decrease(trail));
+        return (writeIdx != readIdx && itrIdx != decrease(readIdx));
     }
 
     @Override
     public Object next() {
-        //System.out.println("itIdx: "+itIdx);
-        Object result = buffer[itIdx];
-        itIdx = decrease(itIdx);
+        Object result = buffer[itrIdx];
+        itrIdx = decrease(itrIdx);
         return result;
     }
 
     @Override
     public void remove() {
-        buffer[increase(itIdx)] = null;
+        get();
     }
 
     @Override
     public Iterator iterator() {
-        resetItr();
-        
+        itrIdx = readIdx;
         return this;
     }
+    
+    public void resize(int newCapacity){
+        TrailingRingBuffer<Object> newBuffer = new TrailingRingBuffer<Object>(elementClass,newCapacity);
+        while(!isEmpty()){
+            newBuffer.add(get());
+        }
+    }
+    
+    //more efficien but not yet working
+//    public void resizeArray(int newCapacity){
+//        if(newCapacity > capacity){
+//            O[] newBuffer;
+//            if(writeIdx>readIdx){
+//                newBuffer = (O[]) Arrays.copyOfRange(buffer, readIdx, writeIdx);
+//                newBuffer = (O[]) Arrays.copyOfRange(newBuffer, 0, newCapacity);
+//            }else{
+//                newBuffer = (O[]) Arrays.copyOfRange(buffer, readIdx, newCapacity+readIdx);
+//                System.arraycopy(buffer, 0, newBuffer, capacity-readIdx, writeIdx);
+//            }
+//            writeIdx=size-1;
+//            readIdx=0;
+//            buffer = (O[]) newBuffer;
+//        }else if(newCapacity < capacity){
+//            O[] newBuffer;
+//            if(writeIdx>readIdx){
+//                if(size>newCapacity){
+//                    newBuffer = (O[]) Arrays.copyOfRange(buffer, writeIdx-newCapacity, writeIdx);
+//                    readIdx=0;
+//                    writeIdx=newCapacity-1;
+//                }else{
+//                    newBuffer = (O[]) Arrays.copyOfRange(buffer, writeIdx-readIdx, writeIdx);
+//                    newBuffer = (O[]) Arrays.copyOfRange(newBuffer, 0, newCapacity);
+//                    writeIdx=size-1;
+//                    readIdx=0;
+//                }
+//            }else{
+//                if(size>newCapacity){
+//                    if(writeIdx>newCapacity){
+//                        newBuffer = (O[]) Arrays.copyOfRange(buffer, writeIdx-newCapacity, writeIdx);
+//                        writeIdx=newCapacity-1;
+//                        readIdx=0;
+//                    }else{
+//                        newBuffer = (O[]) Arrays.copyOfRange(buffer, readIdx, newCapacity+readIdx);
+//                        System.arraycopy(buffer, 0, newBuffer, capacity-readIdx, writeIdx);
+//                    }
+//                }
+//                newBuffer = (O[]) Arrays.copyOfRange(buffer, readIdx, newCapacity+readIdx);
+//                System.arraycopy(buffer, 0, newBuffer, capacity-readIdx, writeIdx);
+//            }
+//            if(size>capacity)size=capacity;
+//            buffer = (O[]) newBuffer;
+//        }
+//        capacity = newCapacity;
+//        if(capacity != buffer.length){
+//            log.warning("capacity: "+capacity+" does not match buffer length:"+buffer.length);
+//        }
+//    }
 
+    public boolean isFull() {
+        return full;
+    }
+
+    public boolean isEmpty() {
+        return empty;
+    }
+    
+    public int getSize(){
+        return size;
+    }
 }
