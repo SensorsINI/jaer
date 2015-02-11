@@ -85,7 +85,7 @@ public class DeepLearnCnnNetwork {
     private boolean hideConvLayers = true;
     private String xmlFilename=null;
 
-    public float[] processDvsTimeslice(DvsSubsamplingTimesliceConvNetInput subsampler) {
+    public float[] processDvsTimeslice(DvsSubsamplerToFrame subsampler) {
         inputLayer.processDvsTimeslice(subsampler);
         return processLayers();
 
@@ -320,7 +320,7 @@ public class DeepLearnCnnNetwork {
          * @param subsampler the DVS subsampled input
          * @return the vector of network output values
          */
-        public float[] processDvsTimeslice(DvsSubsamplingTimesliceConvNetInput subsampler) {
+        public float[] processDvsTimeslice(DvsSubsamplerToFrame subsampler) {
 //            if (frame == null || frameWidth == 0 || (frame.length / type.samplesPerPixel()) % frameWidth != 0) {
 //                throw new IllegalArgumentException("input frame is null or frame array length is not a multiple of width=" + frameWidth);
 //            }

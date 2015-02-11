@@ -53,7 +53,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     private JFrame imageDisplayFrame = null;
     public ImageDisplay inputImageDisplay;
 
-    private DvsSubsamplingTimesliceConvNetInput dvsSubsampler = null;
+    private DvsSubsamplerToFrame dvsSubsampler = null;
     private int dvsColorScale = getInt("dvsColorScale", 32); // 1/dvsColorScale is amount each event color the timeslice in subsampled timeslice input
 
     public DavisDeepLearnCnnProcessor(AEChip chip) {
@@ -122,7 +122,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         lastDVSNetXMLFilename = c.getSelectedFile().toString();
         putString("lastDVSNetXMLFilename", lastDVSNetXMLFilename);
         dvsNet.loadFromXMLFile(c.getSelectedFile());
-        dvsSubsampler = new DvsSubsamplingTimesliceConvNetInput(dvsNet.inputLayer.dimx, dvsNet.inputLayer.dimy, getDvsColorScale());
+        dvsSubsampler = new DvsSubsamplerToFrame(dvsNet.inputLayer.dimx, dvsNet.inputLayer.dimy, getDvsColorScale());
     }
 
 // debug only
@@ -190,7 +190,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             File f = new File(lastDVSNetXMLFilename);
             if (f.exists() && f.isFile()) {
                 dvsNet.loadFromXMLFile(f);
-                dvsSubsampler = new DvsSubsamplingTimesliceConvNetInput(dvsNet.inputLayer.dimx, dvsNet.inputLayer.dimy, getDvsColorScale());
+                dvsSubsampler = new DvsSubsamplerToFrame(dvsNet.inputLayer.dimx, dvsNet.inputLayer.dimy, getDvsColorScale());
             }
         }
 

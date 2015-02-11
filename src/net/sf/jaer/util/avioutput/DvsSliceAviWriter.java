@@ -1,6 +1,6 @@
 package net.sf.jaer.util.avioutput;
 
-import eu.visualize.ini.convnet.DvsSubsamplingTimesliceConvNetInput;
+import eu.visualize.ini.convnet.DvsSubsamplerToFrame;
 import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -31,7 +31,7 @@ import net.sf.jaer.graphics.ImageDisplay;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DvsSliceAviWriter extends AbstractAviWriter {
 
-    private DvsSubsamplingTimesliceConvNetInput dvsSubsampler = null;
+    private DvsSubsamplerToFrame dvsSubsampler = null;
     private int dimx, dimy, grayScale;
     private int dvsMinEvents = getInt("dvsMinEvents", 10000);
     private JFrame frame = null;
@@ -101,11 +101,11 @@ public class DvsSliceAviWriter extends AbstractAviWriter {
                 log.info("closing existing output file because output resolution has changed");
                 doCloseFile();
             }
-            dvsSubsampler = new DvsSubsamplingTimesliceConvNetInput(dimx, dimy, grayScale);
+            dvsSubsampler = new DvsSubsamplerToFrame(dimx, dimy, grayScale);
         }
     }
 
-    private BufferedImage toImage(DvsSubsamplingTimesliceConvNetInput subSampler) {
+    private BufferedImage toImage(DvsSubsamplerToFrame subSampler) {
         BufferedImage bi = new BufferedImage(dimx, dimy, BufferedImage.TYPE_INT_BGR);
         int[] bd = ((DataBufferInt) bi.getRaster().getDataBuffer()).getData();
 
@@ -123,7 +123,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter {
 
     }
 
-    synchronized public void maybeShowOutput(DvsSubsamplingTimesliceConvNetInput subSampler) {
+    synchronized public void maybeShowOutput(DvsSubsamplerToFrame subSampler) {
         if (!showOutput) {
             return;
         }
