@@ -22,7 +22,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  * @author tobi
  */
 @Description("Enables filtering out of either DVS events, APS samples, or IMU samples from ApsDvsEventPacket, and also filtering out of transient events caused by global shutter closing")
-@DevelopmentStatus(DevelopmentStatus.Status.Stable)
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class ApsDvsEventFilter extends EventFilter2D {
 
     private boolean filterDVSEvents = getBoolean("filterDVSEvents", false);
@@ -58,14 +58,14 @@ public class ApsDvsEventFilter extends EventFilter2D {
             if (filterFrameTransientEvents && lastFrameStartTimestamp != Integer.MIN_VALUE && event.getTimestamp() - lastFrameStartTimestamp < filterFrameTransientEventsTimeUs) {
                 continue;
             }
-            if (filterAPSEvents && event.isSampleEvent() && !((event instanceof IMUSample) && !(((IMUSample) event).imuSampleEvent)))  {
+            if (filterAPSEvents && event.isSampleEvent() /*&& !((event instanceof IMUSample) && !(((IMUSample) event).imuSampleEvent))*/)  {
                 continue;
             }
             if (filterDVSEvents && !event.isSampleEvent()) {
                 continue;
             }
             if (filterIMUSamples && (event instanceof IMUSample) && ((IMUSample) event).imuSampleEvent) {
-                continue;
+                continue; // TODO does not filter all IMU samples!!!
             }
             if (filterIMUSamples && event.isSpecial()) {
                 continue;
