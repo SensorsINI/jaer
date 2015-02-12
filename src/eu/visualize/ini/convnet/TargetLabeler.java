@@ -135,7 +135,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     @Override
-    synchronized public void annotate(GLAutoDrawable drawable) {
+    public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
         if (textRenderer == null) {
             textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36));
@@ -404,6 +404,21 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     }
 
+    /** Returns true if locations are specified already 
+     * 
+     * @return true if there are locations specified
+     */
+    public boolean hasLocations() {
+        return !targetLocations.isEmpty();
+    }
+
+    /**
+     * @return the targetLocation
+     */
+    public TargetLocation getTargetLocation() {
+        return targetLocation;
+    }
+
 
     private class TargetLocationComparator implements Comparator<TargetLocation> {
 
@@ -414,7 +429,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     }
 
-    private class TargetLocation {
+    public class TargetLocation {
 
         int timestamp;
         int frameNumber;
@@ -428,14 +443,14 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
         private void draw(GLAutoDrawable drawable, GL2 gl) {
 
-            if (targetLocation.location == null) {
+            if (getTargetLocation().location == null) {
                 textRenderer.beginRendering(drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
                 textRenderer.draw("Target not visible", chip.getSizeX() / 2, chip.getSizeY() / 2);
                 textRenderer.endRendering();
                 return;
             }
             gl.glPushMatrix();
-            gl.glTranslatef(targetLocation.location.x, targetLocation.location.y, 0f);
+            gl.glTranslatef(getTargetLocation().location.x, getTargetLocation().location.y, 0f);
             gl.glColor4f(0, 1, 0, .5f);
             if (mouseQuad == null) {
                 mouseQuad = glu.gluNewQuadric();
@@ -475,8 +490,16 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             return;
         }
     }
+   
+    /** Loads last locations. Note that this is a lengthy operation */
+    synchronized public void loadLastLocations(){
+        if(lastFileName==null) return;
+        File f=new File(lastFileName);
+        if(!f.exists() || !f.isFile()) return;
+        loadLocations(f);
+    }
 
-    private void loadLocations(File f) {
+    synchronized private void loadLocations(File f) {
         log.info("loading " + f);
         try {
             setCursor(new Cursor(Cursor.WAIT_CURSOR));
@@ -509,15 +532,15 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                             }
                         }
                     } catch (InputMismatchException ex2) {
-                        throw new IOException("couldn't parse file, got InputMismatchException on line: " + s);
+                        throw new IOException("couldn't parse file "+f==null?"null":f.toString()+", got InputMismatchException on line: " + s);
                     }
                     s = reader.readLine();
                 }
                 log.info("done loading " + f);
             } catch (FileNotFoundException ex) {
-                JOptionPane.showMessageDialog(glCanvas, ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
+                JOptionPane.showMessageDialog(glCanvas, "couldn't find file "+f==null?"null":f.toString()+": got exception "+ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
             } catch (IOException ex) {
-                JOptionPane.showMessageDialog(glCanvas, ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
+                JOptionPane.showMessageDialog(glCanvas,  "IOException with file "+f==null?"null":f.toString()+": got exception "+ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
             }
         } finally {
             setCursor(Cursor.getDefaultCursor());
