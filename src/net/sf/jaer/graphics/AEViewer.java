@@ -657,7 +657,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             statisticsLabel = new DynamicFontSizeJLabel();
             //        statisticsLabel.setFont(new java.awt.Font("Bitstream Vera Sans Mono 11 Bold", 0, 8));
-            statisticsLabel.setToolTipText("Time slice/Absolute time, NumEvents/NumFiltered, events/sec, Frame rate acheived/desired, Time expansion X contraction /, delay after frame, color scale");
+            statisticsLabel.setToolTipText("Time slice/Absolute time, NumEvents/NumFiltered, events/sec, Graphics rendering frame rate acheived/desired, Time expansion X contraction /, delay after frame, color scale");
             statisticsPanel.add(statisticsLabel);
             PropertyChangeListener[] list = statisticsLabel.getPropertyChangeListeners();
             for (PropertyChangeListener p : list) {
