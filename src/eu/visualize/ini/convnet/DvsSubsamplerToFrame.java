@@ -24,6 +24,8 @@ public class DvsSubsamplerToFrame {
     private float colorScaleRecip;
     public final float GRAY_LEVEL = 0.5f;
     private int accumulatedEventCount = 0;
+    private int lastTimestamp=Integer.MIN_VALUE;
+//    private float minValue=Float.POSITIVE_INFINITY, maxValue=Float.NEGATIVE_INFINITY;
 
     /**
      * Makes a new DvsSubsamplingTimesliceConvNetInput

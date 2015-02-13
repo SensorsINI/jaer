@@ -6,14 +6,18 @@
 package eu.visualize.ini.convnet;
 
 import java.awt.Color;
-import java.util.prefs.Preferences;
-import javax.media.opengl.GL;
+import java.awt.Point;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.GLException;
+import javax.swing.SwingUtilities;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /**
  * Extends DavisDeepLearnCnnProcessor to add annotation graphics to show
@@ -23,20 +27,79 @@ import net.sf.jaer.chip.AEChip;
  */
 @Description("Displays Visualise steering ConvNet results; subclass of DavisDeepLearnCnnProcessor")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor {
+public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor implements PropertyChangeListener {
 
     private boolean hideOutput = getBoolean("hideOutput", false);
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
+    private TargetLabeler targetLabeler = null;
+    private int totalDecisions = 0, correct = 0, incorrect = 0;
 
     public VisualiseSteeringConvNet(AEChip chip) {
         super(chip);
         setPropertyTooltip("showAnalogDecisionOutput", "shows output units as analog shading");
         setPropertyTooltip("hideOutput", "hides output units");
+        FilterChain chain = new FilterChain(chip);
+        targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
+        chain.add(targetLabeler);
+        setEnclosedFilterChain(chain);
+        apsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
+        dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
+    }
+
+    @Override
+    public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
+        targetLabeler.filterPacket(in);
+        EventPacket out = super.filterPacket(in);
+        return out;
+    }
+
+    private Boolean correctDescisionFromTargetLabeler(TargetLabeler targetLabeler, DeepLearnCnnNetwork net) {
+        if (targetLabeler.getTargetLocation() == null) {
+            return null; // no location labeled for this time
+        }
+        Point p = targetLabeler.getTargetLocation().location;
+        if (p == null) {
+            if (net.outputLayer.maxActivatedUnit == 3) {
+                return true; // no target seen
+            }
+        } else {
+            int x = p.x;
+            int third = (x * 3) / chip.getSizeX();
+            if (third == net.outputLayer.maxActivatedUnit) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public void resetFilter() {
+        super.resetFilter();
+        totalDecisions = 0;
+        correct = 0;
+        incorrect = 0;
+
+    }
+
+    @Override
+    public synchronized void setFilterEnabled(boolean yes) {
+        super.setFilterEnabled(yes);
+        if (yes && !targetLabeler.hasLocations()) {
+            Runnable r = new Runnable() {
+
+                @Override
+                public void run() {
+                    targetLabeler.loadLastLocations();
+                }
+            };
+            SwingUtilities.invokeLater(r);
+        }
     }
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
+        targetLabeler.annotate(drawable);
         if (hideOutput) {
             return;
         }
@@ -44,12 +107,19 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor {
         checkBlend(gl);
         int third = chip.getSizeX() / 3;
         int sy = chip.getSizeY();
-        if (apsNet!=null && apsNet.outputLayer.activations != null && isProcessAPSFrames()) {
+        if (apsNet != null && apsNet.outputLayer.activations != null && isProcessAPSFrames()) {
             drawDecisionOutput(third, gl, sy, apsNet, Color.RED);
         }
-        if (dvsNet!=null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
+        if (dvsNet != null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
             drawDecisionOutput(third, gl, sy, dvsNet, Color.YELLOW);
         }
+
+        if (totalDecisions > 0) {
+            float errorRate = (float) incorrect / totalDecisions;
+            String s = String.format("Error rate %.2f%% (total=%d correct=%d incorrect=%d)\n", errorRate * 100, totalDecisions, correct, incorrect);
+            MultilineAnnotationTextRenderer.renderMultilineString(s);
+        }
+
     }
 
     private void drawDecisionOutput(int third, GL2 gl, int sy, DeepLearnCnnNetwork net, Color color) {
@@ -75,7 +145,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor {
             int x0 = third * decision;
             int x1 = x0 + third;
             float shade = .5f;
-            gl.glColor3f( (shade * r),(shade * g),  (shade * b));
+            gl.glColor3f((shade * r), (shade * g), (shade * b));
             gl.glRecti(x0, 0, x1, sy);
         }
     }
@@ -108,6 +178,24 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor {
     public void setShowAnalogDecisionOutput(boolean showAnalogDecisionOutput) {
         this.showAnalogDecisionOutput = showAnalogDecisionOutput;
         putBoolean("showAnalogDecisionOutput", showAnalogDecisionOutput);
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if (evt.getPropertyName() != DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
+            super.propertyChange(evt);
+        } else {
+            DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
+            Boolean correctDecision = correctDescisionFromTargetLabeler(targetLabeler, net);
+            if (correctDecision != null) {
+                totalDecisions++;
+                if (correctDecision) {
+                    correct++;
+                } else {
+                    incorrect++;
+                }
+            }
+        }
     }
 
 }

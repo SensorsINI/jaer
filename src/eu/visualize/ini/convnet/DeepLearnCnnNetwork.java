@@ -8,6 +8,7 @@ package eu.visualize.ini.convnet;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridLayout;
+import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.util.Arrays;
 import javax.media.opengl.GL2;
@@ -83,7 +84,14 @@ public class DeepLearnCnnNetwork {
     JFrame activationsFrame = null, kernelsFrame = null;
     private boolean hideSubsamplingLayers = true;
     private boolean hideConvLayers = true;
-    private String xmlFilename=null;
+    private String xmlFilename = null;
+    /**
+     * This PropertyChange is emitted when either APS or DVS net outputs. The
+     * new value is the network. The old value is null.
+     */
+    public static final String EVENT_MADE_DECISION = "networkMadeDecision";
+
+    private PropertyChangeSupport support = new PropertyChangeSupport(this);
 
     public float[] processDvsTimeslice(DvsSubsamplerToFrame subsampler) {
         inputLayer.processDvsTimeslice(subsampler);
@@ -109,6 +117,7 @@ public class DeepLearnCnnNetwork {
             layers[i].compute(layers[i - 1]);
         }
         outputLayer.compute(layers[nLayers - 1]);
+        getSupport().firePropertyChange(EVENT_MADE_DECISION, null, this);
         return outputLayer.activations;
     }
 
@@ -151,7 +160,7 @@ public class DeepLearnCnnNetwork {
         if (activationsFrame != null) {
             return;
         }
-        String windowName=(xmlFilename==null?"null XML":xmlFilename.substring(xmlFilename.lastIndexOf(File.separatorChar)+1))+"CNN Activations";
+        String windowName = (xmlFilename == null ? "null XML" : xmlFilename.substring(xmlFilename.lastIndexOf(File.separatorChar) + 1)) + "CNN Activations";
         activationsFrame = new JFrame(windowName);
         activationsFrame.setLayout(new BoxLayout(activationsFrame.getContentPane(), BoxLayout.Y_AXIS));
         activationsFrame.setPreferredSize(new Dimension(600, 600));
@@ -179,6 +188,15 @@ public class DeepLearnCnnNetwork {
      */
     public void setXmlFilename(String xmlFilename) {
         this.xmlFilename = xmlFilename;
+    }
+
+    /**
+     * Net fires event EVENT_MADE_DECISION when it makes a decision. New value is the net itself.
+     * 
+     * @return the support
+     */
+    public PropertyChangeSupport getSupport() {
+        return support;
     }
 
     abstract public class Layer {
@@ -370,7 +388,7 @@ public class DeepLearnCnnNetwork {
             }
             for (int x = 0; x < dimx; x++) {
                 for (int y = 0; y < dimy; y++) {
-                    imageDisplay.setPixmapGray(y, dimx-x-1, a(0, x, y));
+                    imageDisplay.setPixmapGray(y, dimx - x - 1, a(0, x, y));
                 }
             }
             imageDisplay.repaint();
