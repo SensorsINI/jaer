@@ -138,6 +138,7 @@ import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.SubclassFinder;
 import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
 import ch.unizh.ini.jaer.chip.retina.DVS128;
+import java.awt.Font;
 
 /**
  * This is the main jAER interface to the user. The main event loop "ViewLoop" is here; see ViewLoop.run(). AEViewer shows AE chip live view and allows for controlling view and recording and playing back events from files and network connections.
@@ -1246,22 +1247,24 @@ two interfaces). otherwise force user choice.
      * code below.
      */
     public void buildInterfaceMenu(JMenu interfaceMenu) {
-        ButtonGroup bg = new ButtonGroup();
         interfaceMenu.removeAll();
+        boolean interfaceAlreadyOpen=false;
         // make an item for the currently opened hardware interface, if there is one for this chip, and select it.
         if ((chip != null) && (chip.getHardwareInterface() != null)  && chip.getHardwareInterface().isOpen()) {
             String menuText = String.format("%s", chip.getHardwareInterface().toString());
-            JRadioButtonMenuItem item = new JRadioButtonMenuItem(menuText);
+            JMenuItem item = new JMenuItem(menuText);
+            item.setFont(item.getFont().deriveFont(Font.ITALIC));
 //            interfaceButton.putClientProperty(HARDWARE_INTERFACE_NUMBER_PROPERTY, new Integer(i)); // has no number, already opened
             item.putClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY, chip.getHardwareInterface());
             item.setToolTipText("Currently selected hardware interface");
             interfaceMenu.add(item);
             
-            bg.add(item);
             item.setSelected(true);
             interfaceMenu.add(new JSeparator());
+            interfaceAlreadyOpen=true;
             // don't add action listener because we are already selected as interface
         }
+        ButtonGroup bg = new ButtonGroup();
 
         //create a list of available hardware interfaces from enumerated devices
         log.info("finding number of available interfaces");
@@ -1384,7 +1387,7 @@ two interfaces). otherwise force user choice.
             }
         });
         interfaceMenu.add(new JSeparator());
-        noneInterfaceButton.setSelected(true);
+        noneInterfaceButton.setSelected(!interfaceAlreadyOpen);  // if we already have an interface open, then set none button deselected
         // set current interface selected
         if ((chip != null) && (chip.getHardwareInterface() != null)) {
             choseOneButton = false;
