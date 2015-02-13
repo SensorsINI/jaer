@@ -131,7 +131,10 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
 //                    UsbIo.destroyDeviceList(gDevList);
 //                    log.warning(UsbIo.errorText(status));
 //                } else {
-                usbioList.add(dev);
+                int status2 = dev.acquireDevice();
+                if (status2 == USBIO_ERR_SUCCESS) { // only add device if it can be exclusively bound. If devices are alredy opened exclusively, then they will not appear in the list
+                    usbioList.add(dev); 
+                }
 //                System.out.println("added "+dev);
 //                }
                 dev.close();

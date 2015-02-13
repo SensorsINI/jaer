@@ -16,7 +16,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
  * <ul>
  * <li>VID=0x152a
  * <li>PID=0x8400 to 0x841f, 32 addresses. Current global assignments should be documented in the <jAER root>/drivers/readme.txt file.
- * </ul>
+ * </ul>O
  *
  * @author tobi
  */

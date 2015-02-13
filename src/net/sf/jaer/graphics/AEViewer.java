@@ -1248,155 +1248,170 @@ two interfaces). otherwise force user choice.
     public void buildInterfaceMenu(JMenu interfaceMenu) {
         ButtonGroup bg = new ButtonGroup();
         interfaceMenu.removeAll();
+        // make an item for the currently opened hardware interface, if there is one for this chip, and select it.
+        if ((chip != null) && (chip.getHardwareInterface() != null)  && chip.getHardwareInterface().isOpen()) {
+            String menuText = String.format("%s", chip.getHardwareInterface().toString());
+            JRadioButtonMenuItem item = new JRadioButtonMenuItem(menuText);
+//            interfaceButton.putClientProperty(HARDWARE_INTERFACE_NUMBER_PROPERTY, new Integer(i)); // has no number, already opened
+            item.putClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY, chip.getHardwareInterface());
+            item.setToolTipText("Currently selected hardware interface");
+            interfaceMenu.add(item);
+            
+            bg.add(item);
+            item.setSelected(true);
+            interfaceMenu.add(new JSeparator());
+            // don't add action listener because we are already selected as interface
+        }
 
-		//create a list of available hardware interfaces from enumerated devices
-                log.info("finding number of available interfaces");
-		int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable(); // TODO this rebuilds the entire list of hardware
-		//        StringBuilder sb = new StringBuilder("adding menu items for ").append(Integer.toString(n)).append(" interfaces");
+        //create a list of available hardware interfaces from enumerated devices
+        log.info("finding number of available interfaces");
+        int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable(); // TODO this rebuilds the entire list of hardware
+        //        StringBuilder sb = new StringBuilder("adding menu items for ").append(Integer.toString(n)).append(" interfaces");
 //                log.info("found "+n+" interfaces");
-		boolean choseOneButton = false;
-		JRadioButtonMenuItem interfaceButton = null;
-		for (int i = 0; i < n; i++) {
-			HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(i);
+        boolean choseOneButton = false;
+        JRadioButtonMenuItem interfaceButton = null;
+        for (int i = 0; i < n; i++) {
+            HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(i);// should only return interfaces that are not opened and exclusively owned (modified contract as of Feb 2015, tobi and luca)
 //                        log.info("found device "+hw);
-			if (hw == null) {
-				continue;
-			} // in case it disappeared
+            if (hw == null) {
+                continue;
+            } // in case it disappeared
 
-
-			if ((!UDPInterface.class.isInstance(hw) && !NetworkChip.class.isInstance(chip))
-				|| (UDPInterface.class.isInstance(hw) && NetworkChip.class.isInstance(chip))) {
+            // if found interface is NOT some network interface, then make a chooser button for it.
+            if ((!UDPInterface.class.isInstance(hw) && !NetworkChip.class.isInstance(chip))
+                    || (UDPInterface.class.isInstance(hw) && NetworkChip.class.isInstance(chip))) {
 				// if the chip is a normal AEChip with regular (not network) hardware interface, and the interface is not a network interface,
-				// then add a menu item to select this interface.
-                                String menuText=String.format("%s (#%d)",hw.toString(),i);
-				interfaceButton = new JRadioButtonMenuItem(menuText);
-				interfaceButton.putClientProperty(HARDWARE_INTERFACE_NUMBER_PROPERTY, new Integer(i));
-				interfaceButton.putClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY, hw);
-				interfaceMenu.add(interfaceButton);
-				bg.add(interfaceButton);
-				interfaceButton.addActionListener(new ActionListener() {
+                // then add a menu item to select this interface.
+                String menuText = String.format("%s (#%d)", hw.toString(), i);
+                interfaceButton = new JRadioButtonMenuItem(menuText);
+                interfaceButton.putClientProperty(HARDWARE_INTERFACE_NUMBER_PROPERTY, new Integer(i));
+                interfaceButton.putClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY, hw);
+                interfaceMenu.add(interfaceButton);
+                bg.add(interfaceButton);
+                interfaceButton.addActionListener(new ActionListener() {
 
-					@Override
-					public void actionPerformed(ActionEvent evt) {
-						JComponent comp = (JComponent) evt.getSource();
-						int interfaceNumber = (Integer) comp.getClientProperty("HardwareInterfaceNumber");
-						HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(interfaceNumber);
-						//only select an interface if it is not the same as already selected
-						if (((hw != null) && (chip != null) && (chip.getHardwareInterface() == null)) || !hw.toString().equals(chip.getHardwareInterface().toString())) {
-							synchronized (viewLoop) {
-								// close interface on chip if there is one and it's open
-								if ((chip.getHardwareInterface() != null) && chip.getHardwareInterface().isOpen()) {
-									log.info("closing " + chip.getHardwareInterface().toString());
-									chip.getHardwareInterface().close();
-									aemon = null;
-								}
-								log.info("selected interface " + evt.getActionCommand() + " with HardwareInterface number" + interfaceNumber + " which is " + hw);
-								chip.setHardwareInterface(hw);
-							}
-						}
-					}
-				});
+                    @Override
+                    public void actionPerformed(ActionEvent evt) {
+                        JComponent comp = (JComponent) evt.getSource();
+                        int interfaceNumber = (Integer) comp.getClientProperty("HardwareInterfaceNumber");
+                        HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(interfaceNumber);
+                        //only select an interface if it is not the same as already selected
+                        if (((hw != null) && (chip != null) && (chip.getHardwareInterface() == null)) || !hw.toString().equals(chip.getHardwareInterface().toString())) {
+                            synchronized (viewLoop) {
+                                // close interface on chip if there is one and it's open
+                                if ((chip.getHardwareInterface() != null) && chip.getHardwareInterface().isOpen()) {
+                                    log.info("closing " + chip.getHardwareInterface().toString());
+                                    chip.getHardwareInterface().close();
+                                    aemon = null;
+                                }
+                                log.info("selected interface " + evt.getActionCommand() + " with HardwareInterface number" + interfaceNumber + " which is " + hw);
+                                chip.setHardwareInterface(hw);
+                            }
+                        }
+                    }
+                });
 				//            if(chip!=null && chip.getHardwareInterface()==hw) b.setSelected(true);
-				//                sb.append("\n").append(hw.toString());
-			}
-		}
-		boolean addedSep = false;
-		// now make items for HardwareInterfaceFactoryChooserDialog factories
-		// these HardwareInterfaceFactories allow choice of multiple alternative interfaces, e.g. for a serial port or network interface
-		for (Class c : HardwareInterfaceFactory.factories) {
-			if (HardwareInterfaceFactoryChooserDialog.class.isAssignableFrom(c)) {
-				//                log.log(Level.INFO, "found hardware chooser class {0}", c);
-				if (!addedSep) {
-					interfaceMenu.add(new JSeparator());
-					addedSep = true;
-				}
-				try {
-					Method m = (c.getMethod("instance")); // get singleton instance of factory
-					final HardwareInterfaceFactoryChooserDialog inst = (HardwareInterfaceFactoryChooserDialog) m.invoke(c);
-					JRadioButtonMenuItem mi = new JRadioButtonMenuItem(inst.getName());
-					mi.setToolTipText("Shows a chooser dialog for making this type of HardwareInterface");
-					interfaceMenu.add(mi);
-					bg.add(mi);
-					mi.addActionListener(new ActionListener() {
+                //                sb.append("\n").append(hw.toString());
+            }
+        }
+	       // now make items for HardwareInterfaceFactoryChooserDialog factories
+        // these HardwareInterfaceFactories allow choice of multiple alternative interfaces, e.g. for a serial port or network interface
+        interfaceMenu.add(new JSeparator());
 
-						@Override
-						public void actionPerformed(ActionEvent e) {
-							JDialog fac = inst.getInterfaceChooser(chip);
-							fac.setVisible(true);
-							if (inst.getChosenHardwareInterface() != null) {
-								synchronized (viewLoop) {
-									// close interface on chip if there is one and it's open
-									if (chip.getHardwareInterface() != null) {
-										log.info("before opening new interface, closing " + chip.getHardwareInterface().toString());
-										chip.getHardwareInterface().close();
-										aemon = null; // TODO aemon is a bad hack
-									}
-									HardwareInterface hw = inst.getChosenHardwareInterface();
-									log.info("setting new interface " + hw);
-									chip.setHardwareInterface(hw);
-								}
-								if (e.getSource() instanceof JMenuItem) {
-									JMenuItem item = (JMenuItem) e.getSource();
-									item.setSelected(true); // doesn't work because menu is contantly rebuilt TODO
-								}
-							}
-						}
-					});
-				} catch (Exception e) {
-					log.warning(c + " threw Exception when trying to get HardwareInterfaceChooserFactory: " + e.toString());
-					e.printStackTrace();
-				}
+        for (Class c : HardwareInterfaceFactory.factories) {
+            if (HardwareInterfaceFactoryChooserDialog.class.isAssignableFrom(c)) {
+                //                log.log(Level.INFO, "found hardware chooser class {0}", c);
+                try {
+                    Method m = (c.getMethod("instance")); // get singleton instance of factory
+                    final HardwareInterfaceFactoryChooserDialog inst = (HardwareInterfaceFactoryChooserDialog) m.invoke(c);
+                    JRadioButtonMenuItem mi = new JRadioButtonMenuItem(inst.getName());
+                    mi.setToolTipText("Shows a chooser dialog for making this type of HardwareInterface");
+                    interfaceMenu.add(mi);
+                    bg.add(mi);
+                    mi.addActionListener(new ActionListener() {
 
-			}
-		}
-		// make a 'none' item (only there is no interface) // TOTO tobi changed to always make one
-		JRadioButtonMenuItem noneInterfaceButton = new JRadioButtonMenuItem("None");
-		noneInterfaceButton.putClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY, null);
-		interfaceMenu.add(new JSeparator());
-		interfaceMenu.add(noneInterfaceButton);
-		bg.add(noneInterfaceButton);
-		noneInterfaceButton.addActionListener(new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            JDialog fac = inst.getInterfaceChooser(chip);
+                            fac.setVisible(true);
+                            if (inst.getChosenHardwareInterface() != null) {
+                                synchronized (viewLoop) {
+                                    // close interface on chip if there is one and it's open
+                                    if (chip.getHardwareInterface() != null) {
+                                        log.info("before opening new interface, closing " + chip.getHardwareInterface().toString());
+                                        chip.getHardwareInterface().close();
+                                        aemon = null; // TODO aemon is a bad hack
+                                    }
+                                    HardwareInterface hw = inst.getChosenHardwareInterface();
+                                    log.info("setting new interface " + hw);
+                                    chip.setHardwareInterface(hw);
+                                }
+                                if (e.getSource() instanceof JMenuItem) {
+                                    JMenuItem item = (JMenuItem) e.getSource();
+                                    item.setSelected(true); // doesn't work because menu is contantly rebuilt TODO
+                                }
+                            }
+                        }
+                    });
+                } catch (Exception e) {
+                    log.warning(c + " threw Exception when trying to get HardwareInterfaceChooserFactory: " + e.toString());
+                    e.printStackTrace();
+                }
 
-			@Override
-			public void actionPerformed(ActionEvent evt) {
-				//                log.info("selected null interface");
-				synchronized (viewLoop) {
-					if (chip.getHardwareInterface() != null) {
-						chip.getHardwareInterface().close();
-					}
-					chip.setHardwareInterface(null);
-					// force null interface
-					nullInterface = true;
-				}
-			}
-		});
-		interfaceMenu.add(new JSeparator());
-		noneInterfaceButton.setSelected(true);
-                // set current interface selected
-		if ((chip != null) && (chip.getHardwareInterface() != null)) {
-			choseOneButton = false;
+            }
+        }
+
+        // make a 'none' item (only there is no interface) // TOTO tobi changed to always make one
+        JRadioButtonMenuItem noneInterfaceButton = new JRadioButtonMenuItem("None");
+        noneInterfaceButton.setToolTipText("Close hardware interface if it is open");
+        noneInterfaceButton.putClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY, null);
+        interfaceMenu.add(new JSeparator());
+        interfaceMenu.add(noneInterfaceButton);
+        bg.add(noneInterfaceButton);
+        noneInterfaceButton.addActionListener(new ActionListener() {
+
+            @Override
+            public void actionPerformed(ActionEvent evt) {
+                //                log.info("selected null interface");
+                synchronized (viewLoop) {
+                    if (chip.getHardwareInterface() != null) {
+                        chip.getHardwareInterface().close();
+                    }
+                    chip.setHardwareInterface(null);
+                    // force null interface
+                    nullInterface = true;
+                }
+            }
+        });
+        interfaceMenu.add(new JSeparator());
+        noneInterfaceButton.setSelected(true);
+        // set current interface selected
+        if ((chip != null) && (chip.getHardwareInterface() != null)) {
+            choseOneButton = false;
 //			String chipInterfaceClass = chip.getHardwareInterface().getClass().getSimpleName();
-			//            System.out.println("chipInterface="+chipInterface);
-			for (Component c : interfaceMenu.getMenuComponents()) {
-				if (!(c instanceof JMenuItem)) {
-					continue;
-				}
-				JMenuItem item = (JMenuItem) c;
-				// set the button on for the actual interface of the chip if there is one already
-				if ((item!=null) && (item.getClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY)!=null) && item.getClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY).toString().equals(chip==null? null:chip.getHardwareInterface().toString())) {
-					item.setSelected(true);
-					//                    System.out.println("selected "+item.getText());
-					choseOneButton = true;
-					// normal interface selected
-					nullInterface = false;
-				}
-			}
-		}
+            //            System.out.println("chipInterface="+chipInterface);
+            for (Component c : interfaceMenu.getMenuComponents()) {
+                if (!(c instanceof JMenuItem)) {
+                    continue;
+                }
+                JMenuItem item = (JMenuItem) c;
+                // set the button on for the actual interface of the chip if there is one already
+                if ((item != null) && (item.getClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY) != null) && item.getClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY).toString().equals(chip == null ? null : chip.getHardwareInterface().toString())) {
+                    item.setSelected(true);
+                    //                    System.out.println("selected "+item.getText());
+                    choseOneButton = true;
+                    // normal interface selected
+                    nullInterface = false;
+                }
+            }
+        }
+        if (choseOneButton == false) {
+
+        }
 		//        log.info(sb.toString());
 
 		// TODO add menu item for choosers for things that cannot be easily enumerated like serial port devices, e.g. where enumeration is very expensive because
-
-	}
+    }
 
 	void fixBiasgenControls() {
 

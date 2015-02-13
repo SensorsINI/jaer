@@ -74,7 +74,7 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 
 	/**
 	 * Explicitly searches all interface types to build a list of available hardware interfaces. This method is
-	 * expensive.
+	 * expensive.  The list should only includes devices that are not already opened.
 	 *
 	 * @see #getNumInterfacesAvailable()
 	 */
@@ -120,7 +120,7 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 
 	/**
 	 * Says how many total of all types of hardware are available, assuming that {@link #buildInterfaceList() } has been
-	 * called earlier.
+	 * called earlier.  This method should only return devices that are not already opened, i.e. bound already.
 	 *
 	 * @return number of devices
 	 * @see #buildInterfaceList()
