@@ -51,6 +51,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.ApsDvsChip;
 import eu.seebetter.ini.chips.DAViS.IMUSample.IncompleteIMUSampleException;
+import net.sf.jaer.graphics.AEViewer;
 
 /**
  * <p>
@@ -932,6 +933,9 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			if (!autoExposureEnabled) {
 				return;
 			}
+                        if(getAeViewer()!=null && getAeViewer().getPlayMode()!=null && getAeViewer().getPlayMode()!=AEViewer.PlayMode.LIVE){
+                            return;
+                        }
 			hist = apsDVSrenderer.getAdcSampleValueHistogram();
 			if (hist == null) {
 				return;
