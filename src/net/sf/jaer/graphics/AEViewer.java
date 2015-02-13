@@ -1755,6 +1755,7 @@ two interfaces). otherwise force user choice.
                                             renderPacket(packet);
                                         }catch(RuntimeException e){
                                             log.warning(("caught "+e.toString()+" caused by "+e.getCause())!=null?e.getCause().toString():" unknown cause");
+                                            e.printStackTrace();
                                         }
                                         if(packet==null){
                                             log.warning("packet became null after rendering");
