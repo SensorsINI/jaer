@@ -44,20 +44,17 @@ public class TrailingRingBuffer<O> implements Iterable, Iterator {
     public void add(O element) {
         buffer[writeIdx] = element;
         writeIdx = increase(writeIdx);
-        if(writeIdx == readIdx){
-            size = capacity;
+        size++;
+        if(size>=capacity){
+            size=capacity;
             full = true;
-            readIdx++;
-        }else{
-            size++;
         }
         empty=false;
     }
 
     public Object get() {
         Object result = buffer[readIdx];
-        buffer[readIdx] = null;
-        readIdx += increase(readIdx);
+        readIdx = increase(readIdx);
         size--;
         full = false;
         if (size == 0) {
@@ -108,15 +105,16 @@ public class TrailingRingBuffer<O> implements Iterable, Iterator {
         return this;
     }
     
-    public void resize(int newCapacity){
+    public TrailingRingBuffer<Object> resizeCopy(int newCapacity){
         TrailingRingBuffer<Object> newBuffer = new TrailingRingBuffer<Object>(elementClass,newCapacity);
         while(!isEmpty()){
             newBuffer.add(get());
         }
+        return newBuffer;
     }
     
     //more efficien but not yet working
-//    public void resizeArray(int newCapacity){
+//    public void resize(int newCapacity){
 //        if(newCapacity > capacity){
 //            O[] newBuffer;
 //            if(writeIdx>readIdx){
