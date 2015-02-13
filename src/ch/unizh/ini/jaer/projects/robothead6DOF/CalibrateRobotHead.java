@@ -26,16 +26,16 @@ public class CalibrateRobotHead extends EventFilter2D { // extends EventFilter o
 
     protected static final Logger log = Logger.getLogger("CalibrateRobotHead");
     private float stepSize;  //indicates the step size
-    public final float eyeRangeX;
+    public final float eyeRangeX;       //max range of eye movement
     public final float eyeRangeY;
-    public final float headRangeX;
+    public final float headRangeX;      //max range of head movement
     public final float headRangeY;
-    float headX;
-    float headY;
-    float eyeX;
-    float eyeY;
-    boolean calibrateHead = false;
-    boolean calibrateEye = false;
+    private float headX;                        //current head position
+    private float headY;
+    private float eyeX;                         //current eye position
+    private float eyeY;
+    private boolean calibrateHead = false;
+    private boolean calibrateEye = false;
     
     FilterChain filterChain = null;
     Head6DOF_ServoController headControl = null;
@@ -45,7 +45,7 @@ public class CalibrateRobotHead extends EventFilter2D { // extends EventFilter o
         filterChain = new FilterChain(chip);
         filterChain.add(new RotateFilter(chip));
         filterChain.add(new BackgroundActivityFilter(chip));
-        headControl = new Head6DOF_ServoController(chip);
+        headControl = new Head6DOF_ServoController(chip);   //the filter that communicates with the board
         filterChain.add(headControl);
         setEnclosedFilterChain(filterChain);
         this.chip = chip;
@@ -163,7 +163,7 @@ public class CalibrateRobotHead extends EventFilter2D { // extends EventFilter o
      */
     public void setStepSize(String stepSize) {
         this.stepSize = Float.valueOf(stepSize);
-        putString("CalibrateRobotHead.stepSize", stepSize);
+        putString("stepSize", stepSize);
         log.info("new step size: " + Float.toString(this.stepSize));
     }
     // </editor-fold>

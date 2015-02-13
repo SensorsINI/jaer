@@ -68,7 +68,7 @@ public class ImageCreator extends FremeExtractor implements Observer {
     float yOffset;              //actual y-offset of the current head position (headPositiony * offsetScaleHeadTilt)
     public float grayValueScaling; //factor by which each events changes the intensity value of a pixel
     public boolean invert = false;
-    public boolean standAlone = true;
+    public boolean standAlone = true;   //defines if the head is controlled by other filter (ITD filter)
     boolean jitteringActive = false;
     java.util.Timer jitterTimer;
     public float[] jitterStartPosition = new float[2];
@@ -107,6 +107,8 @@ public class ImageCreator extends FremeExtractor implements Observer {
         setPropertyTooltip("ToggleSavingImage", "saves the current image created by the imageCreator");
         setPropertyTooltip("StartCaptureJitteringImage", "starts jittering and painting the image");
         setPropertyTooltip("StartCenterSweep", "perform a single center sweep and paint image");
+        setPropertyTooltip("gettingImage", "signals if current incoming events are used to change the image");
+        setPropertyTooltip("savingImage", "indicates if constant image saving is active");
         headRangeX = headControl.getHEAD_PAN_LIMIT();
         headRangeY = headControl.getHEAD_TILT_LIMIT();
         eyeRangeX = headControl.getEYE_PAN_LIMIT();
@@ -464,7 +466,9 @@ public class ImageCreator extends FremeExtractor implements Observer {
      * @param gettingImage the gettingImage to set
      */
     public void setGettingImage(boolean gettingImage) {
+        boolean oldgettingImage = this.gettingImage;
         this.gettingImage = gettingImage;
+        support.firePropertyChange("gettingImage", oldgettingImage, gettingImage);
     }//</editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for grayValueScaling">
@@ -472,14 +476,16 @@ public class ImageCreator extends FremeExtractor implements Observer {
      * @return the grayValueScaling
      */
     public float getGrayValueScaling() {
-        return grayValueScaling;
+        return this.grayValueScaling;
     }
 
     /**
      * @param grayValueScaling the grayValueScaling to set
      */
     public void setGrayValueScaling(float grayValueScaling) {
+        float oldgrayValueScaling = this.grayValueScaling;
         this.grayValueScaling = grayValueScaling;
+        support.firePropertyChange("grayValueScaling", oldgrayValueScaling, grayValueScaling);
     }//</editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for offsetScaleHeadPan">
@@ -487,14 +493,16 @@ public class ImageCreator extends FremeExtractor implements Observer {
      * @return the offsetScaleHeadPan
      */
     public float getOffsetScaleHeadPan() {
-        return offsetScaleHeadPan;
+        return this.offsetScaleHeadPan;
     }
 
     /**
      * @param offsetScaleHeadPan the offsetScaleHeadPan to set
      */
     public void setOffsetScaleHeadPan(float offsetScaleHeadPan) {
+        float oldoffsetScaleHeadPan = this.offsetScaleHeadPan;
         this.offsetScaleHeadPan = offsetScaleHeadPan;
+        support.firePropertyChange("offsetScaleHeadPan", oldoffsetScaleHeadPan, offsetScaleHeadPan);
     }//</editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for offsetScaleHeadTilt">
@@ -502,14 +510,16 @@ public class ImageCreator extends FremeExtractor implements Observer {
      * @return the offsetScaleHeadTilt
      */
     public float getOffsetScaleHeadTilt() {
-        return offsetScaleHeadTilt;
+        return this.offsetScaleHeadTilt;
     }
 
     /**
      * @param offsetScaleHeadTilt the offsetScaleHeadTilt to set
      */
     public void setOffsetScaleHeadTilt(float offsetScaleHeadTilt) {
+        float oldoffsetScaleHeadTilt = this.offsetScaleHeadTilt;
         this.offsetScaleHeadTilt = offsetScaleHeadTilt;
+        support.firePropertyChange("offsetScaleHeadTilt", oldoffsetScaleHeadTilt, offsetScaleHeadTilt);
     }//</editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for offsetScaleEyePan">
@@ -517,14 +527,16 @@ public class ImageCreator extends FremeExtractor implements Observer {
      * @return the offsetScaleEyePan
      */
     public float getOffsetScaleEyePan() {
-        return offsetScaleEyePan;
+        return this.offsetScaleEyePan;
     }
 
     /**
      * @param offsetScaleEyePan the offsetScaleEyePan to set
      */
     public void setOffsetScaleEyePan(float offsetScaleEyePan) {
+        float oldoffsetScaleEyePan = this.offsetScaleEyePan;
         this.offsetScaleEyePan = offsetScaleEyePan;
+        support.firePropertyChange("offsetScaleEyePan", oldoffsetScaleEyePan, offsetScaleEyePan);
     }//</editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for offsetScaleEyeTilt">
@@ -532,14 +544,16 @@ public class ImageCreator extends FremeExtractor implements Observer {
      * @return the offsetScaleEyeTilt
      */
     public float getOffsetScaleEyeTilt() {
-        return offsetScaleEyeTilt;
+        return this.offsetScaleEyeTilt;
     }
 
     /**
      * @param offsetScaleEyeTilt the offsetScaleEyeTilt to set
      */
     public void setOffsetScaleEyeTilt(float offsetScaleEyeTilt) {
+        float oldoffsetScaleEyeTilt = this.offsetScaleEyeTilt;
         this.offsetScaleEyeTilt = offsetScaleEyeTilt;
+        support.firePropertyChange("offsetScaleEyeTilt", oldoffsetScaleEyeTilt, offsetScaleEyeTilt);
     }//</editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="is/setter for savingImage">
@@ -554,6 +568,7 @@ public class ImageCreator extends FremeExtractor implements Observer {
      * @param savingImage the savingImage to set
      */
     public void setSavingImage(boolean savingImage) { //saves the histogram image every 5sec to a new file
+        boolean oldsavingImage = this.savingImage;
         if (savingImage == true) {
             try {
                 // Repeat the SavingImageTask without delay and with 5000ms between executions
@@ -562,7 +577,7 @@ public class ImageCreator extends FremeExtractor implements Observer {
                 int state = f.showSaveDialog(null);
                 if (state == JFileChooser.APPROVE_OPTION) {
                     savingImageTimer = new java.util.Timer();
-                    savingImageTimer.scheduleAtFixedRate(new SaveImageTask(f.getSelectedFile()), 0, 5000);
+                    savingImageTimer.scheduleAtFixedRate(new SaveImageTask(f.getSelectedFile()), 0, 5000); //define the saving rate (5000ms)
                 }
             } catch (HeadlessException e) {//Catch exception if any
                 log.warning("Error: " + e.getMessage());
@@ -572,6 +587,7 @@ public class ImageCreator extends FremeExtractor implements Observer {
             savingImageTimer = null;
         }
         this.savingImage = savingImage;
+        support.firePropertyChange("savingImage", oldsavingImage, savingImage);
     }//</editor-fold>
 
     private class JittererTask extends TimerTask {
@@ -650,6 +666,7 @@ public class ImageCreator extends FremeExtractor implements Observer {
      * @param jitteringActive the jitteringActive to set
      */
     void setJitteringActive(boolean jitteringActive) {
+        boolean oldjitteringActive = this.jitteringActive;
         if (jitteringActive == true) {
             setStandAlone(false);
             setGrayValueScaling(0.05f);
@@ -664,6 +681,7 @@ public class ImageCreator extends FremeExtractor implements Observer {
             jitterTimer = null;
         }
         this.jitteringActive = jitteringActive;
+        support.firePropertyChange("jitteringActive", oldjitteringActive, jitteringActive);
     }// </editor-fold>
 
     private class CaptureImage extends Thread {
@@ -718,7 +736,7 @@ public class ImageCreator extends FremeExtractor implements Observer {
                             headControl.setHeadDirection(-getHeadRangeX() + (currentColumn * columnStepSize), -getHeadRangeY() + (currentRow * rowStepSize));   //step = 0.16 == 20px; columnStepSize = 0.02 == 2.5px for 4.5mm
                             setxOffset((float) headControl.getGazeDirection().getHeadDirection().getX(), (float) headControl.getGazeDirection().getEyeDirection().getX());
                             setyOffset((float) headControl.getGazeDirection().getHeadDirection().getY(), (float) headControl.getGazeDirection().getEyeDirection().getY());
-                            Thread.sleep(50);
+                            Thread.sleep(10);
                         } catch (HardwareInterfaceException | IOException | InterruptedException ex) {
                             log.severe(ex.toString());
                         }
@@ -765,32 +783,35 @@ public class ImageCreator extends FremeExtractor implements Observer {
                     log.severe(ex.toString());
                 }
                 for (; currentColumn < numColumns; currentColumn++) {
-                    if (currentColumn < 18) {
-                        setOffsetScaleHeadPan(2.05f);
-                    } else if (currentColumn < 36) {
-                        setOffsetScaleHeadPan(2.05f);
-                    } else if (currentColumn < 54) {
-                        setOffsetScaleHeadPan(2.0f);
-                    } else if (currentColumn < 72) {
-                        setOffsetScaleHeadPan(1.95f);
-                    } else if (currentColumn < 90) {
-                        setOffsetScaleHeadPan(1.9f);
-                    } else if (currentColumn < 108) {
-                        setOffsetScaleHeadPan(1.9f);
-                    } else if (currentColumn < 126) {
-                        setOffsetScaleHeadPan(1.85f);
-                    } else if (currentColumn < 144) {
-                        setOffsetScaleHeadPan(1.85f);
-                    } else if (currentColumn < 162) {
-                        setOffsetScaleHeadPan(1.8f);
-                    } else if (currentColumn < 180) {
-                        setOffsetScaleHeadPan(1.8f);
+                    if (headControl.lensFocalLengthMm == 8f) {   //detailed offset for 8mm lenses
+                        setOffsetScaleHeadTilt(1.7f);
+                        if (currentColumn < 18) {
+                            setOffsetScaleHeadPan(2.05f);
+                        } else if (currentColumn < 36) {
+                            setOffsetScaleHeadPan(2.05f);
+                        } else if (currentColumn < 54) {
+                            setOffsetScaleHeadPan(2.0f);
+                        } else if (currentColumn < 72) {
+                            setOffsetScaleHeadPan(1.95f);
+                        } else if (currentColumn < 90) {
+                            setOffsetScaleHeadPan(1.9f);
+                        } else if (currentColumn < 108) {
+                            setOffsetScaleHeadPan(1.9f);
+                        } else if (currentColumn < 126) {
+                            setOffsetScaleHeadPan(1.85f);
+                        } else if (currentColumn < 144) {
+                            setOffsetScaleHeadPan(1.85f);
+                        } else if (currentColumn < 162) {
+                            setOffsetScaleHeadPan(1.8f);
+                        } else if (currentColumn < 180) {
+                            setOffsetScaleHeadPan(1.8f);
+                        }
                     }
                     try {
                         headControl.setHeadDirection(-getHeadRangeX() + (currentColumn * columnStepSize), 0f);   //step = 0.16 == 20px; columnStepSize = 0.02 == 2.5px for 4.5mm
                         setxOffset((float) headControl.getGazeDirection().getHeadDirection().getX(), (float) headControl.getGazeDirection().getEyeDirection().getX());
                         setyOffset((float) headControl.getGazeDirection().getHeadDirection().getY(), (float) headControl.getGazeDirection().getEyeDirection().getY());
-                        Thread.sleep(200);
+                        Thread.sleep(10);
                     } catch (HardwareInterfaceException | IOException | InterruptedException ex) {
                         log.severe(ex.toString());
                     }
@@ -801,7 +822,7 @@ public class ImageCreator extends FremeExtractor implements Observer {
         }
     }
 
-    private class SaveImageTask extends TimerTask {
+    private class SaveImageTask extends TimerTask { //save the created images at a constant rate
 
         long startTime = System.currentTimeMillis();
         File path;

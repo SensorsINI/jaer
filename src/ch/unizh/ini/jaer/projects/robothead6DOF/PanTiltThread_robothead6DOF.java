@@ -24,12 +24,12 @@ public class PanTiltThread_robothead6DOF extends Thread {
     private static final Logger log = Logger.getLogger("PanTiltThread_robothead6DOF");
     boolean exitThread = false;
     PanTilt_robothead6DOF panTilt = null;
-    int itdValue;
+    int itdValue;       //current ITD value
     static ImageCreator imageCreator = null;
     Head6DOF_ServoController headControl = null;
     float currentHeadPan;
     float currentHeadTilt;
-    public double turnFactor = 0.0012315823;
+    public double turnFactor = 0.0012315823;    //constant turn factor multiplied with incoming ITD values
     public int lastITDValue;
 
     public PanTiltThread_robothead6DOF(PanTilt_robothead6DOF panTilt) {

@@ -76,7 +76,7 @@ public class Head6DOF_SpinAround extends EventFilter2D { // extends EventFilter 
         }
 
         volatile boolean stop = false;
-        int SpinAround_SleepTime = 13; // sleep after each step in ms; eyes spin around in a circle within 3 seconds and 231 steps
+        int sleepTime = 13; // sleep after each step in ms; eyes spin around in a circle within 3 seconds and 231 steps
 
         public void stopThread() {
             stop = true;
@@ -87,36 +87,36 @@ public class Head6DOF_SpinAround extends EventFilter2D { // extends EventFilter 
             while (!stop) {
                 for (; eyeSpinCounter <= 70; eyeSpinCounter = eyeSpinCounter + 1) {
                     try {
-                        headControl.setEyeGazeDirection(-headControl.getEYE_PAN_LIMIT() + (eyeSpinValue), -headControl.getEYE_TILT_LIMIT());
+                        headControl.setEyeGazeDirection(-headControl.getEYE_PAN_LIMIT() + (eyeSpinValue), -headControl.getEYE_TILT_LIMIT());    //moves the eyes to the right
                         eyeSpinValue = eyeSpinValue + .01f;
-                        Thread.sleep(SpinAround_SleepTime);
+                        Thread.sleep(sleepTime);
                     } catch (Exception e) {
                         log.warning(e.toString());
                     }
                 }
                 for (; eyeSpinCounter > 70 && eyeSpinCounter <= 115; eyeSpinCounter = eyeSpinCounter + 1) {
                     try {
-                        headControl.setEyeGazeDirection(headControl.getEYE_PAN_LIMIT(),-headControl.getEYE_TILT_LIMIT() + (eyeSpinValue - .7f));
+                        headControl.setEyeGazeDirection(headControl.getEYE_PAN_LIMIT(),-headControl.getEYE_TILT_LIMIT() + (eyeSpinValue - .7f));    //moves the eyes upwards
                         eyeSpinValue = eyeSpinValue + .01f;
-                        Thread.sleep(SpinAround_SleepTime);
+                        Thread.sleep(sleepTime);
                     } catch (Exception e) {
                         log.warning(e.toString());
                     }
                 }
                 for (; eyeSpinCounter > 115 && eyeSpinCounter <= 185; eyeSpinCounter = eyeSpinCounter + 1) {
                     try {
-                        headControl.setEyeGazeDirection(headControl.getEYE_PAN_LIMIT() - (eyeSpinValue - 1.15f), headControl.getEYE_TILT_LIMIT());
+                        headControl.setEyeGazeDirection(headControl.getEYE_PAN_LIMIT() - (eyeSpinValue - 1.15f), headControl.getEYE_TILT_LIMIT());  //moves the eyes to the left
                         eyeSpinValue = eyeSpinValue + .01f;
-                        Thread.sleep(SpinAround_SleepTime);
+                        Thread.sleep(sleepTime);
                     } catch (Exception e) {
                         log.warning(e.toString());
                     }
                 }
                 for (; eyeSpinCounter > 185 && eyeSpinCounter <= 230; eyeSpinCounter = eyeSpinCounter + 1) {
                     try {
-                        headControl.setEyeGazeDirection(-headControl.getEYE_PAN_LIMIT(), headControl.getEYE_TILT_LIMIT() - (eyeSpinValue - 1.85f));
+                        headControl.setEyeGazeDirection(-headControl.getEYE_PAN_LIMIT(), headControl.getEYE_TILT_LIMIT() - (eyeSpinValue - 1.85f)); //moves the eyes downwards
                         eyeSpinValue = eyeSpinValue + .01f;
-                        Thread.sleep(SpinAround_SleepTime);
+                        Thread.sleep(sleepTime);
                     } catch (Exception e) {
                         log.warning(e.toString());
                     }

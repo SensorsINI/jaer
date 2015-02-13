@@ -17,13 +17,14 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import org.ine.telluride.jaer.tell2011.head6axis.Head6DOF_ServoController;
 
 /**
- *
+ * filter that combines the ITD filter with histogram image painting and robot head control
+ * 
  * @author philipp
  */
 public class ITDImageCreator extends EventFilter2D {
 
     protected static final Logger log = Logger.getLogger("ITDImageCreator");
-    static public Head6DOF_ServoController headControl = null;
+    static public Head6DOF_ServoController headControl = null;  
     static public ImageCreator imageCreator = null;
     static public ImageCreatorSlave imageCreatorSlave = null;
     static public ITDFilter_robothead6DOF itdFilter = null;
@@ -48,12 +49,12 @@ public class ITDImageCreator extends EventFilter2D {
     boolean savingActive = false;
     long startTimeTest;
 
-    private String numOfCameras = String.valueOf(getString("ITDImageCreator.numOfCameras", "2"));  // number of connected DVS cameras
-    private String resetTime = String.valueOf(getString("ITDImageCreator.resetTime", "2000"));  // time (in ms) before image is resetted
+    private String numOfCameras = String.valueOf(getString("numOfCameras", "2"));  // number of connected DVS cameras
+    private String resetTime = String.valueOf(getString("resetTime", "2000"));  // time (in ms) before image is resetted
 
     public ITDImageCreator(AEChip chip) {
         super(chip);
-        final String conn = "Connect", check = "Check filters", jitt = "Jitter Options";
+        final String check = "Check filters", jitt = "Jitter Options";
         setPropertyTooltip(jitt, "jitterAmplitude", "the amplitude of the jitter; higher value results in larger circle");
         setPropertyTooltip(jitt, "jitterFreqHz", "defines the jitter frequency");
         setPropertyTooltip(check, "connectedToRobotHead", "indicates if the robot head is connected");
@@ -70,8 +71,8 @@ public class ITDImageCreator extends EventFilter2D {
         setPropertyTooltip("DisconnectFromRobotHead", "disconnects the filter from the robot head");
         setPropertyTooltip("ToggleSaveImages", "starts saving the histogram images");
         filterChain = new FilterChain(chip);
-        itdFilter = new ITDFilter_robothead6DOF(chip);
-        headControl = itdFilter.headControl;
+        itdFilter = new ITDFilter_robothead6DOF(chip);  //create a new ITD filter
+        headControl = itdFilter.headControl;            //use the head controller of the ITD filter
         filterChain.add(itdFilter);
         setEnclosedFilterChain(filterChain);
         timeold = System.currentTimeMillis();
@@ -130,7 +131,7 @@ public class ITDImageCreator extends EventFilter2D {
         }
     }
 
-    public void doToggleITDMovement() {
+    public void doToggleITDMovement() {     //choose if the head should be controlled by ITDs
         if (isFiltersReady() == true) {
             if (isITDPanTiltActive() == false) {
                 setITDPanTiltActive(true);
@@ -154,7 +155,7 @@ public class ITDImageCreator extends EventFilter2D {
      *
      * @see #setJitterAmplitude
      */
-    public void doToggleJittering() {
+    public void doToggleJittering() {   
         if (isJitteringActive() != true) {
             setJitteringActive(true);
         } else {
@@ -162,7 +163,7 @@ public class ITDImageCreator extends EventFilter2D {
         }
     }
 
-    public void doToggleCaptureImage() {
+    public void doToggleCaptureImage() {    //start and stop image acquisition
         if (isCaptureImage() != true) {
             setCaptureImage(true);
         } else {
@@ -170,8 +171,8 @@ public class ITDImageCreator extends EventFilter2D {
         }
     }
 
-    public void doToggleSaveImages() {
-        if (isSavingActive() != true) {
+    public void doToggleSaveImages() {      //save the created image at a constant rate
+        if (isSavingActive() != true) { 
             setSavingActive(true);
         } else {
             setSavingActive(false);
@@ -244,9 +245,9 @@ public class ITDImageCreator extends EventFilter2D {
     /**
      * @param numOfCameras the numOfCameras to set
      */
-    public void setNumOfCameras(String numOfCameras) {
+    public void setNumOfCameras(String numOfCameras) {  //define the number of connected DVS cameras and imagecreator / imagecreator slave filter
         this.numOfCameras = numOfCameras;
-        putString("ITDImageCreator.numOfCameras", numOfCameras);
+        putString("numOfCameras", numOfCameras);
         log.info(this.numOfCameras);
     }
     // </editor-fold>
@@ -264,7 +265,7 @@ public class ITDImageCreator extends EventFilter2D {
      */
     public void setResetTime(String resetTime) {
         this.resetTime = resetTime;
-        putString("ITDImageCreator.resetTime", resetTime);
+        putString("resetTime", resetTime);
         log.info(this.resetTime);
     }
     // </editor-fold>
@@ -394,7 +395,7 @@ public class ITDImageCreator extends EventFilter2D {
         boolean old = this.iTDPanTiltActive;
         if (!old && iTDPanTiltActive) {
             imageCreator.setStandAlone(false);
-            itdFilter.doConnectToPanTiltThread(this);
+            itdFilter.connectToPanTiltThread(this);
             this.iTDPanTiltActive = true;
         } else if (!iTDPanTiltActive && old) {
             itdFilter.doDisconnectFromPanTiltThread();
@@ -446,22 +447,19 @@ public class ITDImageCreator extends EventFilter2D {
                 try {
                     headControl.setEyeGazeDirection(startPosition[0] + dx, startPosition[1] + dy);
                     if (isImageCreatorAlive() == true) {
-                        if (headControl.gazeDirection.getEyeDirection().getX() + dx - headControl.gazeDirection.getEyeDirection().getX() < 0 || headControl.gazeDirection.getEyeDirection().getY() + dy - headControl.gazeDirection.getEyeDirection().getY() < 0) {
-                            imageCreator.setInvert(true);
                             imageCreator.setxOffset((float) headControl.getGazeDirection().getHeadDirection().getX(), (float) headControl.getGazeDirection().getEyeDirection().getX());
                             imageCreator.setyOffset((float) headControl.getGazeDirection().getHeadDirection().getY(), (float) headControl.getGazeDirection().getEyeDirection().getY());
-                        } else {
-                            imageCreator.setInvert(false);
-                            imageCreator.setxOffset((float) headControl.getGazeDirection().getHeadDirection().getX(), (float) headControl.getGazeDirection().getEyeDirection().getX());
-                            imageCreator.setyOffset((float) headControl.getGazeDirection().getHeadDirection().getY(), (float) headControl.getGazeDirection().getEyeDirection().getY());
-                        }
+                    }
+                    if (dx < 0 || dy < 0) {
+                        imageCreator.setInvert(true);
+                    } else {
+                        imageCreator.setInvert(false);
                     }
                 } catch (HardwareInterfaceException | IOException ex) {
                     log.severe(ex.toString());
                 }
             } else {
                 doToggleJittering();
-                headControl.doCenterGaze();
                 imageCreator.setGettingImage(false);
             }
         }
@@ -555,6 +553,7 @@ public class ITDImageCreator extends EventFilter2D {
      * @param jitteringActive the jitteringActive to set
      */
     void setSavingActive(boolean savingActive) {
+        boolean oldsavingActive = this.savingActive;
         if (savingActive == true) {
             if (isFiltersReady() == true && Integer.parseInt(numOfCameras) >= 1) {
                 imageCreator.doToggleSavingImage();
@@ -571,5 +570,6 @@ public class ITDImageCreator extends EventFilter2D {
             }
         }
         this.savingActive = savingActive;
+        support.firePropertyChange("savingActive", oldsavingActive, savingActive);
     }// </editor-fold>
 }

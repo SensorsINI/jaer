@@ -73,9 +73,10 @@ public class ImageCreatorSlave extends FremeExtractor implements Observer {
         setPropertyTooltip("imageCreatorAlive", "indicates if this filter is connected to an ImageCreator filter");
         setPropertyTooltip("saveImage", "saves the current image created by the imageCreator");
         setPropertyTooltip("ToggleSaveImages", "starts saving the histogram images");
+        setPropertyTooltip("savingImage", "indicates if constant image saving is active");
     }
 
-    public void doConnectToMaster() {
+    public void doConnectToMaster() {   //find a ImageCreator filter and use it as a master, there should be one master filter. Get all required variables from the master.
         setImageCreatorAlive(true);
         sizeX = imageCreator.getSizeX();
         sizeY = imageCreator.getSizeY();
