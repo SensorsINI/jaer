@@ -196,7 +196,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         try{
             EventRaw ev = readEventForwards(); // init timestamp
             firstTimestamp = ev.timestamp;
-            position( size() - 1 );
+            position( size() - 2 );
             ev = readEventForwards();
             lastTimestamp = ev.timestamp;
             position(0);
@@ -747,7 +747,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         return firstTimestamp;
     }
 
-    /** @return last timestamp in file */
+    /**
+     * returns the last timestamp in the stream
+     * @return last timestamp in file */
     public int getLastTimestamp (){
         return lastTimestamp;
     }
