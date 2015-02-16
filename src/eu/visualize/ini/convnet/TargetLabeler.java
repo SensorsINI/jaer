@@ -46,6 +46,9 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.ApsDvsChip;
 import java.awt.Cursor;
+import java.util.Arrays;
+import net.sf.jaer.graphics.AEPlayer;
+import net.sf.jaer.graphics.AEViewer;
 
 /**
  * Labels location of target using mouse GUI in recorded data for later
@@ -75,10 +78,17 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     private int targetRadius = getInt("targetRadius", 10);
     private int maxTimeLastTargetLocationValidUs = getInt("maxTimeLastTargetLocationValidUs", 100000);
     private int minSampleTimestamp = Integer.MAX_VALUE, maxSampleTimestamp = Integer.MIN_VALUE;
+    private final int N_FRACTIONS = 1000;
+    private boolean[] labeledFractions = new boolean[N_FRACTIONS];  // to annotate graphically what has been labeled so far in event stream
+    private boolean showLabeledFraction = getBoolean("showLabeledFraction", true);
 
     private boolean propertyChangeListenerAdded = false;
     private String DEFAULT_FILENAME = "locations.txt";
     private String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
+
+    // file statistics
+    private long firstInputStreamTimestamp = 0, lastInputStreamTimestamp = 0, inputStreamDuration = 0;
+    private long filePositionEvents = 0, fileLengthEvents = 0;
 
     public TargetLabeler(AEChip chip) {
         super(chip);
@@ -91,7 +101,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         setPropertyTooltip("saveLocations", "saves target locations");
         setPropertyTooltip("saveLocationsAs", "show file dialog to save target locations to a new file");
         setPropertyTooltip("loadLocations", "loads locations from a file");
-
+        setPropertyTooltip("showLabeledFraction", "shows labeled part of input by a bar with red=unlabeled, green=labeled, blue=current position in events");
+        Arrays.fill(labeledFractions, false);
     }
 
     @Override
@@ -137,6 +148,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     @Override
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
+        if (chip.getAeViewer().getPlayMode() != AEViewer.PlayMode.PLAYBACK) {
+            return;
+        }
         if (textRenderer == null) {
             textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36));
             textRenderer.setColor(1, 1, 1, 1);
@@ -161,12 +175,36 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             targetLocation.draw(drawable, gl);
         }
 
+        // show labeled parts
+        if (showLabeledFraction && inputStreamDuration > 0) {
+            float dx = chip.getSizeX() / (float) N_FRACTIONS;
+            float y = chip.getSizeY() / 5;
+            float dy = chip.getSizeY() / 50;
+            float x = 0;
+            for (int i = 0; i < N_FRACTIONS; i++) {
+                boolean b = labeledFractions[i];
+                if (b) {
+                    gl.glColor3f(0, 1, 0);
+                } else {
+                    gl.glColor3f(1, 0, 0);
+                }
+                gl.glRectf(x, y, x + dx, y + dy);
+                x += dx;
+            }
+            float curPosFrac = (float) filePositionEvents / fileLengthEvents;
+            x = curPosFrac * chip.getSizeX();
+            y = y + dy;
+            gl.glColor3f(1, 1, 1);
+            gl.glRectf(x, y-dy*2, x + dx*3, y + dy);
+        }
+
     }
 
     synchronized public void doClearLocations() {
         targetLocations.clear();
         minSampleTimestamp = Integer.MAX_VALUE;
         maxSampleTimestamp = Integer.MIN_VALUE;
+        Arrays.fill(labeledFractions, false);
     }
 
     synchronized public void doSaveLocationsAs() {
@@ -207,6 +245,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+        if (chip.getAeViewer().getPlayMode() != AEViewer.PlayMode.PLAYBACK) {
+            return in;
+        }
         if (!propertyChangeListenerAdded) {
             if (chip.getAeViewer() != null) {
                 chip.getAeViewer().addPropertyChangeListener(this);
@@ -242,6 +283,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         targetLocation = null;
                     } else {
                         targetLocation = mostRecentLocationBeforeThisEvent.getValue();
+                        updateLabeledFractions(targetLocation);
                     }
                     TargetLocation newTargetLocation = null;
                     if (shiftPressed && ctlPressed && (mousePoint != null)) {
@@ -304,6 +346,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     public void propertyChange(PropertyChangeEvent evt
     ) {
         switch (evt.getPropertyName()) {
+            case AEInputStream.EVENT_POSITION:
+                filePositionEvents = (long) evt.getNewValue();
+                break;
             case AEInputStream.EVENT_REWIND:
             case AEInputStream.EVENT_REPOSITIONED:
                 log.info("rewind to start or mark position or reposition event " + evt.toString());
@@ -322,11 +367,23 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     } else {
                         currentFrameNumber = 0;
                         lastFrameNumber = currentFrameNumber - 1;
-                        lastTimestamp = Integer.MIN_VALUE;
+                        lastInputStreamTimestamp = Integer.MIN_VALUE;
                     }
                 } else {
                     log.warning("couldn't determine stream position after rewind from PropertyChangeEvent " + evt.toString());
                 }
+                break;
+            case AEInputStream.EVENT_INIT:
+                if (chip.getAeInputStream() != null) {
+                    firstInputStreamTimestamp = chip.getAeInputStream().getFirstTimestamp();
+                    lastTimestamp = chip.getAeInputStream().getLastTimestamp();
+                    inputStreamDuration = chip.getAeInputStream().getDurationUs();
+                    fileLengthEvents = chip.getAeInputStream().size();
+                    if (inputStreamDuration > 0) {
+                        fixLabeledFraction();
+                    }
+                }
+                break;
         }
     }
 
@@ -404,8 +461,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     }
 
-    /** Returns true if locations are specified already 
-     * 
+    /**
+     * Returns true if locations are specified already
+     *
      * @return true if there are locations specified
      */
     public boolean hasLocations() {
@@ -418,7 +476,6 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     public TargetLocation getTargetLocation() {
         return targetLocation;
     }
-
 
     private class TargetLocationComparator implements Comparator<TargetLocation> {
 
@@ -490,12 +547,18 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             return;
         }
     }
-   
-    /** Loads last locations. Note that this is a lengthy operation */
-    synchronized public void loadLastLocations(){
-        if(lastFileName==null) return;
-        File f=new File(lastFileName);
-        if(!f.exists() || !f.isFile()) return;
+
+    /**
+     * Loads last locations. Note that this is a lengthy operation
+     */
+    synchronized public void loadLastLocations() {
+        if (lastFileName == null) {
+            return;
+        }
+        File f = new File(lastFileName);
+        if (!f.exists() || !f.isFile()) {
+            return;
+        }
         loadLocations(f);
     }
 
@@ -523,6 +586,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                             targetLocation.location = null;
                         }
                         targetLocations.put(targetLocation.timestamp, targetLocation);
+                        updateLabeledFractions(targetLocation);
                         if (targetLocation != null) {
                             if (targetLocation.timestamp > maxSampleTimestamp) {
                                 maxSampleTimestamp = targetLocation.timestamp;
@@ -532,19 +596,55 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                             }
                         }
                     } catch (InputMismatchException ex2) {
-                        throw new IOException("couldn't parse file "+f==null?"null":f.toString()+", got InputMismatchException on line: " + s);
+                        throw new IOException("couldn't parse file " + f == null ? "null" : f.toString() + ", got InputMismatchException on line: " + s);
                     }
                     s = reader.readLine();
                 }
                 log.info("done loading " + f);
             } catch (FileNotFoundException ex) {
-                JOptionPane.showMessageDialog(glCanvas, "couldn't find file "+f==null?"null":f.toString()+": got exception "+ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
+                JOptionPane.showMessageDialog(glCanvas, "couldn't find file " + f == null ? "null" : f.toString() + ": got exception " + ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
             } catch (IOException ex) {
-                JOptionPane.showMessageDialog(glCanvas,  "IOException with file "+f==null?"null":f.toString()+": got exception "+ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
+                JOptionPane.showMessageDialog(glCanvas, "IOException with file " + f == null ? "null" : f.toString() + ": got exception " + ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
             }
         } finally {
             setCursor(Cursor.getDefaultCursor());
         }
+    }
+
+    private void updateLabeledFractions(TargetLocation targetLocation) {
+        if (targetLocation == null) {
+            return;
+        }
+        if (inputStreamDuration == 0) {
+            return;
+        }
+        int frac = (int) Math.floor(N_FRACTIONS * (float) (targetLocation.timestamp - firstInputStreamTimestamp) / inputStreamDuration);
+        labeledFractions[frac] = true;
+    }
+
+    private void fixLabeledFraction() {
+        if (targetLocations == null || targetLocations.isEmpty()) {
+            Arrays.fill(labeledFractions, false);
+            return;
+        }
+        for (TargetLocation t : targetLocations.values()) {
+            updateLabeledFractions(t);
+        }
+    }
+
+    /**
+     * @return the showLabeledFraction
+     */
+    public boolean isShowLabeledFraction() {
+        return showLabeledFraction;
+    }
+
+    /**
+     * @param showLabeledFraction the showLabeledFraction to set
+     */
+    public void setShowLabeledFraction(boolean showLabeledFraction) {
+        this.showLabeledFraction = showLabeledFraction;
+        putBoolean("showLabeledFraction", showLabeledFraction);
     }
 
 }
