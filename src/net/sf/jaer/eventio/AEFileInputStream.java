@@ -1076,7 +1076,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
     /** Call to signal first read from file. */
     protected void fireInitPropertyChange (){
-        getSupport().firePropertyChange(AEInputStream.EVENT_INIT,0,0);
+        getSupport().firePropertyChange(AEInputStream.EVENT_INIT,null,this);
         firstReadCompleted = true;
     }
 
