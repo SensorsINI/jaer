@@ -23,6 +23,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.util.filter.LowpassFilter;
 import eu.visualize.ini.retinamodel.AbstractRetinaModelCell;
+import java.lang.*;
 
 /**
  * Models a single PV-5 approach cell discovered by Botond Roska group in Basel.
@@ -230,15 +231,17 @@ public class ApproachCell extends AbstractRetinaModelCell {
         gl.glPushMatrix();
         gl.glTranslatef(chip.getSizeX() / 2, chip.getSizeY() / 2, 10);
         if (showApproachCell && (approachCellModel.nSpikes > integrateAndFireThreshold)) {
-            gl.glColor4f(1, 1, 1, .2f);
+            gl.glColor4f(0, 0, 1, .2f);
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
-            float radius = (chip.getMaxSize() * approachCellModel.spikeRateHz) / maxSpikeRateHz / 2;
+            //float radius = (chip.getMaxSize() * approachCellModel.spikeRateHz) / maxSpikeRateHz / 2;
+            float radius = (chip.getMaxSize() * approachCellModel.spikeRateHz) * 3/100;
             glu.gluDisk(quad, 0, radius, 32, 1);
             approachCellModel.resetSpikeCount();
         }
         gl.glPopMatrix();
 
         if (showSubunits) {
+            //float OnInhibitionShow= float(Math.log(10)(double(onInhibition)));
             gl.glColor4f(0, 1, 0, .3f);
             gl.glRectf(-10, 0, -5, onInhibition);
             gl.glColor4f(1, 0, 0, .3f);
@@ -370,18 +373,20 @@ public class ApproachCell extends AbstractRetinaModelCell {
 
         private void render(GL2 gl) {
             final float alpha = .2f;
-            final float scaleRadius = .05f;
+            final float scaleRadius = .0001f;
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
             for (int x = 0; x < nx; x++) {
                 for (int y = 0; y < ny; y++) {
                     gl.glPushMatrix();
                     final int shift = 1 << (subunitSubsamplingBits - 1);
                     gl.glTranslatef(shift + (x << subunitSubsamplingBits), shift + (y << subunitSubsamplingBits), 5);
-                    gl.glColor4f(1, 0, 0, alpha);
-                    glu.gluDisk(quad, 0, scaleRadius *synapticWeight* offSubunits[x][y].computeInputToApproachCell(), 16, 1);
                     gl.glColor4f(0, 1, 0, alpha);
+                    //glu.gluDisk(quad, 0, (float)Math.log10((double)scaleRadius *synapticWeight* offSubunits[x][y].computeInputToApproachCell()), 16, 1);
                     glu.gluDisk(quad, 0, scaleRadius *synapticWeight*  onSubunits[x][y].computeInputToApproachCell(), 16, 1);
-                    gl.glPopMatrix();
+                    gl.glColor4f(1, 0, 0, alpha);
+                    glu.gluDisk(quad, 0, scaleRadius *synapticWeight*  offSubunits[x][y].computeInputToApproachCell(), 16, 1);
+                    //glu.gluDisk(quad, 0, (float)Math.log10((double)scaleRadius *synapticWeight* onSubunits[x][y].computeInputToApproachCell()), 16, 1);
+                    gl.glPopMatrix(); 
                 }
             }
             renderer.begin3DRendering();
@@ -389,7 +394,7 @@ public class ApproachCell extends AbstractRetinaModelCell {
             renderer.draw3D("Inhibitory ON subunits", 0, chip.getSizeY(), 0, .5f);
             renderer.setColor(1, 0, 0, 1);
             renderer.draw3D("Excitatory OFF subunits", chip.getSizeX() / 2, chip.getSizeY(), 0, .5f);
-            renderer.end3DRendering();
+            renderer.end3DRendering(); // annotation on top 
 
         }
     }
