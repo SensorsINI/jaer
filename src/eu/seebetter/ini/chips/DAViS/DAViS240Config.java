@@ -89,33 +89,33 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
 	// CPLD shift register contents specified here by CPLDInt and CPLDBit
 	protected CPLDInt exposure = new CPLDInt(
 		chip,
-		15,
+		23,
 		0,
 		"exposure",
 		"global shutter exposure time between reset and readout phases; interpretation depends on whether rolling or global shutter readout is used.",
 		0);
 	protected CPLDInt colSettle = new CPLDInt(
 		chip,
-		31,
-		16,
+		39,
+		24,
 		"colSettle",
 		"time in 30MHz clock cycles to settle after column select before readout; allows all pixels in column to drive in parallel the row readout lines (like resSettle)",
 		0);
 	protected CPLDInt rowSettle = new CPLDInt(
 		chip,
-		47,
-		32,
+		55,
+		40,
 		"rowSettle",
 		"time in 30MHz clock cycles for pixel source follower to settle after each pixel's row select before ADC conversion; this is the fastest process of readout",
 		0);
 	protected CPLDInt resSettle = new CPLDInt(
 		chip,
-		63,
-		48,
+		71,
+		56,
 		"resSettle",
 		"time in 30MHz clock cycles  to settle after column reset before readout; allows all pixels in column to drive in parallel the row readout lines (like colSettle)",
 		0);
-	protected CPLDInt frameDelay = new CPLDInt(chip, 79, 64, "frameDelay",
+	protected CPLDInt frameDelay = new CPLDInt(chip, 87, 72, "frameDelay",
 		"time between two frames; scaling of this parameter depends on readout logic used", 0);
 	/*
 	 * IMU registers, defined in logic IMUStateMachine
@@ -129,21 +129,21 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
 	 * constant IMUInitAddr4 : std_logic_vector(7 downto 0) := "00011100"; -- ADDR: (0x1C) Accel Configuration: Full
 	 * Scale Range / Sensitivity
 	 */
-	protected CPLDByte miscControlBits = new CPLDByte(chip, 87, 80, "miscControlBits",
+	protected CPLDByte miscControlBits = new CPLDByte(chip, 95, 88, "miscControlBits",
 		"Bit0: IMU run (0=stop, 1=run). Bit1: Rolling shutter (0=global shutter, 1=rolling shutter). Bits2-7: unused ",
 		(byte) 1);
 	// See Invensense MPU-6100 IMU datasheet RM-MPU-6100A.pdf
-	protected CPLDByte imu0PowerMgmtClkRegConfig = new CPLDByte(chip, 95, 88, "imu0_PWR_MGMT_1",
+	protected CPLDByte imu0PowerMgmtClkRegConfig = new CPLDByte(chip, 103, 96, "imu0_PWR_MGMT_1",
 		"1=Disable sleep, select x axis gyro as clock source", (byte) 1); // PWR_MGMT_1
-	protected CPLDByte imu1DLPFConfig = new CPLDByte(chip, 103, 96, "imu1_CONFIG",
+	protected CPLDByte imu1DLPFConfig = new CPLDByte(chip, 111, 104, "imu1_CONFIG",
 		"1=digital low pass filter DLPF: FS=1kHz, Gyro 188Hz, 1.9ms delay ", (byte) 1); // CONFIG
-	protected CPLDByte imu2SamplerateDividerConfig = new CPLDByte(chip, 111, 104, "imu2_SMPLRT_DIV",
+	protected CPLDByte imu2SamplerateDividerConfig = new CPLDByte(chip, 119, 112, "imu2_SMPLRT_DIV",
 		"0=sample rate divider: 1 Khz sample rate when DLPF is enabled", (byte) 0); // SMPLRT_DIV
-	protected CPLDByte imu3GyroConfig = new CPLDByte(chip, 119, 112, "imu3_GYRO_CONFIG",
+	protected CPLDByte imu3GyroConfig = new CPLDByte(chip, 127, 120, "imu3_GYRO_CONFIG",
 		"8=500 deg/s, 65.5 LSB per deg/s ", (byte) 8); // GYRO_CONFIG:
-	protected CPLDByte imu4AccelConfig = new CPLDByte(chip, 127, 120, "imu4_ACCEL_CONFIG",
+	protected CPLDByte imu4AccelConfig = new CPLDByte(chip, 135, 128, "imu4_ACCEL_CONFIG",
 		"ACCEL_CONFIG: Bits 4:3 code AFS_SEL. 8=4g, 8192 LSB per g", (byte) 8); // ACCEL_CONFIG:
-	protected CPLDInt nullSettle = new CPLDInt(chip, 143, 128, "nullSettle",
+	protected CPLDInt nullSettle = new CPLDInt(chip, 151, 136, "nullSettle",
 		"time to remain in NULL state between columns", 0);
 	// DVSTweaks
 	private AddressedIPotCF diffOn, diffOff, refr, pr, sf, diff;

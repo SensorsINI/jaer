@@ -115,7 +115,10 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 			// NullSettle is only understood by SeeBetterLogic new logic devices. So we chop it off when talking
 			// to old devices based on the old logic.
 			if ((getHardwareInterface() != null) && !(getHardwareInterface() instanceof CypressFX3)) {
-				if ((cmd == CMD_CPLD_CONFIG) && (bytes.length == 18)) {
+				if ((cmd == CMD_CPLD_CONFIG) && (bytes.length == 19)) {
+					bytes[16] = bytes[17];
+					bytes[17] = bytes[18];
+
 					bytes = Arrays.copyOfRange(bytes, 2, 18);
 				}
 			}
@@ -153,7 +156,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 
 				// Exposure (in cycles, from us)
 				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 7,
-					(buf.getShort(16) & 0xFFFF) * ADC_CLOCK_FREQ_CYCLES);
+					(((buf.getShort(16) & 0xFFFF) << 8) | (buf.get(18) & 0xFF)) * ADC_CLOCK_FREQ_CYCLES);
 
 				// ColSettle
 				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 10,
@@ -322,7 +325,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 	}
 
 	public boolean sendDACconfig() {
-//		log.info("Send DAC Config");
+		// log.info("Send DAC Config");
 
 		if ((dac == null) || (dacChannels == null)) {
 			return false;
@@ -467,7 +470,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 			return false;
 		}
 
-//		log.info("Send on chip config: " + onChipConfigBits);
+		// log.info("Send on chip config: " + onChipConfigBits);
 		sendFx2ConfigCommand(CMD_CHIP_CONFIG, 0, onChipConfigBytes);
 		return true;
 	}
@@ -500,7 +503,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 			portBits.add((PortBit) value);
 		}
 		value.addObserver(this);
-//		log.info("Added " + value);
+		// log.info("Added " + value);
 	}
 
 	/**
@@ -527,11 +530,11 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 	@Override
 	public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
 		if (isBatchEditOccurring()) {
-//			log.info("batch edit occurring, not sending configuration yet");
+			// log.info("batch edit occurring, not sending configuration yet");
 			return;
 		}
 
-//		log.info("sending full configuration");
+		// log.info("sending full configuration");
 		if (!sendOnChipConfig()) {
 			return;
 		}
