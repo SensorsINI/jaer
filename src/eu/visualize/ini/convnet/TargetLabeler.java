@@ -195,7 +195,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             x = curPosFrac * chip.getSizeX();
             y = y + dy;
             gl.glColor3f(1, 1, 1);
-            gl.glRectf(x, y-dy*2, x + dx*3, y + dy);
+            gl.glRectf(x-dx, y-dy*2, x + dx, y + dy);
         }
 
     }
