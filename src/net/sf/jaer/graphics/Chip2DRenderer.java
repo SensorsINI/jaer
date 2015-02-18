@@ -113,6 +113,42 @@ public class Chip2DRenderer implements Observer {
     public float[] getPixmapArray() {
         return pixmap.array();
     }
+    
+    /**
+     * sets a specific value of the pixmap
+     *
+     * @param index
+     * @param value
+     */
+    public void setPixmapValue(int index, float value) {
+        pixmap.put(index, value);
+    }
+    
+    /**
+     * sets a specific color (rgb float 0-1) of the pixmap
+     *
+     * @param index
+     * @param value
+     */
+    public void setPixmapColorRGB(int index, float[] value) {
+        pixmap.put(index, value[0]);
+        pixmap.put(index+1, value[1]);
+        pixmap.put(index+2, value[2]);
+    }
+    
+    /**
+     * sets a specific color (rgb float 0-1) of the pixmap
+     *
+     * @param x
+     * @param y
+     * @param value
+     */
+    public void setPixmapColorRGB(int x, int y, float[] value) {
+        int index = getPixMapIndex(x,y);
+        pixmap.put(index, value[0]);
+        pixmap.put(index+1, value[1]);
+        pixmap.put(index+2, value[2]);
+    }
 
 //    public void setPixmapPosition(int x, int y) {
 //        pixmap.position(3 * (x + y * sizeX));

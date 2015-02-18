@@ -34,6 +34,7 @@ import net.sf.jaer.eventio.AEInputStream;
 public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeListener {
 
     private boolean addedPropertyChangeListener = false;
+    private boolean externalRenderer = false;
 
     /**
      * PropertyChange events
@@ -256,7 +257,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         try {
             if (packet.getNumCellTypes() > 2) {
                 checkTypeColors(packet.getNumCellTypes());
-                if (!accumulateEnabled) {
+                if (!accumulateEnabled && !externalRenderer) {
                     resetFrame(0);
                 }
                 step = 1f / (colorScale);
@@ -293,7 +294,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             } else {
                 switch (colorMode) {
                     case GrayLevel:
-                        if (!accumulateEnabled) {
+                        if (!accumulateEnabled && !externalRenderer) {
                             resetFrame(.5f); // also sets grayValue
                         }
                         step = 2f / (colorScale + 1);
@@ -323,7 +324,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                         }
                         break;
                     case Contrast:
-                        if (!accumulateEnabled) {
+                        if (!accumulateEnabled && !externalRenderer) {
                             resetFrame(.5f);
                         }
                         float eventContrastRecip = 1 / eventContrast;
@@ -353,7 +354,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                         }
                         break;
                     case RedGreen:
-                        if (!accumulateEnabled) {
+                        if (!accumulateEnabled && !externalRenderer) {
                             resetFrame(0);
                         }
                         step = 1f / (colorScale); // cs=1, step=1, cs=2, step=.5
@@ -374,7 +375,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                         }
                         break;
                     case ColorTime:
-                        if (!accumulateEnabled) {
+                        if (!accumulateEnabled && !externalRenderer) {
                             resetFrame(0);
                         }
                         if (numEvents == 0) {
@@ -729,6 +730,15 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     protected void playSpike(int type) {
         spikeSound.play(type);
         selectedPixelEventCount++;
+    }
+    
+    /**
+     * Sets whether an external renderer adds data to the array and resets it
+     *
+     * @param extRender 
+     */
+    public void setExternalRenderer(boolean extRender) {
+        externalRenderer = extRender;
     }
 
     /**
