@@ -56,6 +56,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	 * AEPacketRaw
 	 */
 	public class RetinaAEReader extends CypressFX3.AEReader implements PropertyChangeListener {
+		private final int chipID;
+
 		private int wrapAdd;
 		private int lastTimestamp;
 		private int currentTimestamp;
@@ -85,6 +87,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 			initFrame();
 
 			imuEvents = new short[RetinaAEReader.IMU_DATA_LENGTH];
+
+			chipID = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 1);
 		}
 
 		private void checkMonotonicTimestamp() {
@@ -375,7 +379,16 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									break;
 								}
 
-								final int xPos = chip.getSizeX() - 1 - apsCountX[apsCurrentReadoutType];
+								// The DAVIS240c chip is flipped along the X axis. This means it's first reading
+								// out the leftmost columns, and not the rightmost ones as in all the other chips.
+								// So, if a 240c is detected, we don't do the artificial sign flip here.
+								int xPos;
+								if (chipID == 2) {
+									xPos = apsCountX[apsCurrentReadoutType];
+								}
+								else {
+									xPos = chip.getSizeX() - 1 - apsCountX[apsCurrentReadoutType];
+								}
 								final int yPos = chip.getSizeY() - 1 - apsCountY[apsCurrentReadoutType];
 
 								apsCountY[apsCurrentReadoutType]++;

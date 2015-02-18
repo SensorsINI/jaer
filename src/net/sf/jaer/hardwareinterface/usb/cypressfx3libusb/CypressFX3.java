@@ -125,16 +125,16 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	public PropertyChangeSupport support = new PropertyChangeSupport(this);
 
 	final static byte AE_MONITOR_ENDPOINT_ADDRESS = (byte) 0x82; // this is
-																	// endpoint
-																	// of AE
-																	// fifo on
-																	// Cypress
-																	// FX2, 0x86
+	// endpoint
+	// of AE
+	// fifo on
+	// Cypress
+	// FX2, 0x86
 	// means IN endpoint EP6.
 	final static byte STATUS_ENDPOINT_ADDRESS = (byte) 0x81; // this is endpoint
-																// 1 IN for
-																// device to
-																// report status
+	// 1 IN for
+	// device to
+	// report status
 
 	public static final byte VR_FPGA_CONFIG = (byte) 0xBF;
 
@@ -149,9 +149,9 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	// first filter in the
 	// realTimeFilterChain to a reused EventPacket.
 	AEPacketRaw realTimeRawPacket = null; // used to hold raw events that are
-											// extracted for real time procesing
+	// extracted for real time procesing
 	EventPacket<?> realTimePacket = null; // used to hold extracted real time
-											// events for processing
+	// events for processing
 	/**
 	 * start of events that have been captured but not yet processed by the
 	 * realTimeFilters
@@ -182,7 +182,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * @see #setAEBufferSize
 	 */
 	public static final int AE_BUFFER_SIZE = 100000; // should handle 5Meps at
-														// 30FPS
+	// 30FPS
 	/**
 	 * this is the size of the AEPacketRaw that are part of AEPacketRawPool that
 	 * double buffer the translated events
@@ -196,7 +196,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	/** The pool of raw AE packets, used for data transfer */
 	protected AEPacketRawPool aePacketRawPool = new AEPacketRawPool(this);
 	private String stringDescription = "CypressFX3"; // default which is
-														// modified by opening
+
+	// modified by opening
 
 	/**
 	 * Populates the device descriptor and the string descriptors and builds the
@@ -264,15 +265,15 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * acquireAvailableEventsFromDriver
 	 */
 	protected int eventCounter = 0; // counts events acquired but not yet passed
-									// to user
+	// to user
 	/**
 	 * the last events from {@link #acquireAvailableEventsFromDriver}, This
 	 * packet is reused.
 	 */
 	protected AEPacketRaw lastEventsAcquired = new AEPacketRaw();
 	protected boolean inEndpointEnabled = false; // raphael: changed from
-													// private to protected,
-													// because i need to access
+	// private to protected,
+	// because i need to access
 	// this member
 	/** device open status */
 	private boolean isOpened = false;
@@ -348,7 +349,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		if (numberOfStringDescriptors == 0) {
 			try {
 				open_minimal_close(); // populates stringDescription and sets
-										// numberOfStringDescriptors!=0
+				// numberOfStringDescriptors!=0
 			}
 			catch (final HardwareInterfaceException e) {
 			}
@@ -542,8 +543,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 
 		try {
-			spiConfigSend(FPGA_MUX, (short) 2, 1);
-			spiConfigSend(FPGA_MUX, (short) 2, 0);
+			spiConfigSend(CypressFX3.FPGA_MUX, (short) 2, 1);
+			spiConfigSend(CypressFX3.FPGA_MUX, (short) 2, 0);
 		}
 		catch (final HardwareInterfaceException e) {
 			CypressFX3.log.warning("CypressFX3.resetTimestamps: couldn't send vendor request to reset timestamps");
@@ -643,9 +644,10 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	public final static short FPGA_APS = 2;
 	public final static short FPGA_IMU = 3;
 	public final static short FPGA_EXTINPUT = 4;
+	public final static short FPGA_SYSINFO = 6;
 	public final static short FPGA_USB = 9;
 
-	public synchronized void spiConfigSend(short moduleAddr, short paramAddr, int param)
+	public synchronized void spiConfigSend(final short moduleAddr, final short paramAddr, final int param)
 		throws HardwareInterfaceException {
 		final byte[] configBytes = new byte[4];
 
@@ -657,6 +659,20 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, moduleAddr, paramAddr, configBytes);
 	}
 
+	public synchronized int spiConfigReceive(final short moduleAddr, final short paramAddr)
+		throws HardwareInterfaceException {
+		int returnedParam = 0;
+
+		final ByteBuffer configBytes = sendVendorRequestIN(CypressFX3.VR_FPGA_CONFIG, moduleAddr, paramAddr, 4);
+
+		returnedParam |= configBytes.get(0) << 24;
+		returnedParam |= configBytes.get(1) << 16;
+		returnedParam |= configBytes.get(2) << 8;
+		returnedParam |= configBytes.get(3) << 0;
+
+		return (returnedParam);
+	}
+
 	protected synchronized void enableINEndpoint() throws HardwareInterfaceException {
 		if (deviceHandle == null) {
 			CypressFX3.log.warning("CypressFX3.enableINEndpoint(): null USBIO device");
@@ -665,22 +681,22 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		// Slow down DVS ACK for rows on small boards.
 		if (getPID() == (short) 0x841B) {
-			spiConfigSend(FPGA_DVS, (short) 1, 14);
-			spiConfigSend(FPGA_DVS, (short) 3, 4);
+			spiConfigSend(CypressFX3.FPGA_DVS, (short) 1, 14);
+			spiConfigSend(CypressFX3.FPGA_DVS, (short) 3, 4);
 		}
 
-		spiConfigSend(FPGA_USB, (short) 0, 1);
+		spiConfigSend(CypressFX3.FPGA_USB, (short) 0, 1);
 
-		spiConfigSend(FPGA_MUX, (short) 1, 1);
-		spiConfigSend(FPGA_MUX, (short) 0, 1);
+		spiConfigSend(CypressFX3.FPGA_MUX, (short) 1, 1);
+		spiConfigSend(CypressFX3.FPGA_MUX, (short) 0, 1);
 
-		spiConfigSend(FPGA_DVS, (short) 0, 1);
+		spiConfigSend(CypressFX3.FPGA_DVS, (short) 0, 1);
 
-		spiConfigSend(FPGA_APS, (short) 0, 1);
+		spiConfigSend(CypressFX3.FPGA_APS, (short) 0, 1);
 
-		spiConfigSend(FPGA_IMU, (short) 0, 1);
+		spiConfigSend(CypressFX3.FPGA_IMU, (short) 0, 1);
 
-		spiConfigSend(FPGA_EXTINPUT, (short) 0, 1);
+		spiConfigSend(CypressFX3.FPGA_EXTINPUT, (short) 0, 1);
 
 		inEndpointEnabled = true;
 	}
@@ -692,15 +708,15 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 */
 	protected synchronized void disableINEndpoint() {
 		try {
-			spiConfigSend(FPGA_EXTINPUT, (short) 0, 0);
-			spiConfigSend(FPGA_IMU, (short) 0, 0);
-			spiConfigSend(FPGA_APS, (short) 1, 0); // Ensure ADC turns off.
-			spiConfigSend(FPGA_APS, (short) 0, 0);
-			spiConfigSend(FPGA_DVS, (short) 0, 0);
-			spiConfigSend(FPGA_MUX, (short) 3, 0); // Ensure chip turns off.
-			spiConfigSend(FPGA_MUX, (short) 1, 0); // Turn off timestamp too.
-			spiConfigSend(FPGA_MUX, (short) 0, 0);
-			spiConfigSend(FPGA_USB, (short) 0, 0);
+			spiConfigSend(CypressFX3.FPGA_EXTINPUT, (short) 0, 0);
+			spiConfigSend(CypressFX3.FPGA_IMU, (short) 0, 0);
+			spiConfigSend(CypressFX3.FPGA_APS, (short) 1, 0); // Ensure ADC turns off.
+			spiConfigSend(CypressFX3.FPGA_APS, (short) 0, 0);
+			spiConfigSend(CypressFX3.FPGA_DVS, (short) 0, 0);
+			spiConfigSend(CypressFX3.FPGA_MUX, (short) 3, 0); // Ensure chip turns off.
+			spiConfigSend(CypressFX3.FPGA_MUX, (short) 1, 0); // Turn off timestamp too.
+			spiConfigSend(CypressFX3.FPGA_MUX, (short) 0, 0);
+			spiConfigSend(CypressFX3.FPGA_USB, (short) 0, 0);
 		}
 		catch (final HardwareInterfaceException e) {
 			CypressFX3.log
@@ -1050,8 +1066,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			}
 			else {
 				realTimeRawPacket.ensureCapacity(nevents);// // copy data to
-															// real time raw
-															// packet
+				// real time raw
+				// packet
 				// if(addresses==null || timestamps==null){
 				// log.warning("realTimeFilter: addresses or timestamp array became null");
 				// }else{
@@ -1446,7 +1462,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 
 		if (!hasStringIdentifier()) { // TODO: does this really ever happen, a
-										// non-blank device with invalid fw?
+			// non-blank device with invalid fw?
 			CypressFX3.log.warning("open_minimal_close(): blank device detected, downloading preferred firmware");
 
 			CypressFX3.log.severe("USE FLASHY FOR FIRMWARE UPLOAD!");
@@ -1545,7 +1561,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	/** @return bcdDevice (the binary coded decimel device version */
 	@Override
 	public short getDID() { // this is not part of USB spec in device
-							// descriptor.
+		// descriptor.
 		if (deviceDescriptor == null) {
 			CypressFX3.log.warning("USBAEMonitor: getDID called but device has not been opened");
 			return 0;
@@ -1680,8 +1696,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			dataBuffer = BufferUtils.allocateByteBuffer(0);
 		}
 
-//		System.out.println(String.format("Sent VR %X, wValue %X, wIndex %X, wLength %d.\n", request, value, index,
-//			dataBuffer.limit()));
+		// System.out.println(String.format("Sent VR %X, wValue %X, wIndex %X, wLength %d.\n", request, value, index,
+		// dataBuffer.limit()));
 
 		final byte bmRequestType = (byte) (LibUsb.ENDPOINT_OUT | LibUsb.REQUEST_TYPE_VENDOR | LibUsb.RECIPIENT_DEVICE);
 
