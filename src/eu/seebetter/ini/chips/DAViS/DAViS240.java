@@ -6,6 +6,8 @@
 package eu.seebetter.ini.chips.DAViS;
 
 import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeSupport;
 import java.util.Iterator;
@@ -19,7 +21,10 @@ import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.glu.GLU;
 import javax.media.opengl.glu.GLUquadric;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -31,10 +36,8 @@ import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
-import net.sf.jaer.eventprocessing.filter.ApsDvsEventFilter;
-import net.sf.jaer.eventprocessing.filter.Info;
-import net.sf.jaer.eventprocessing.filter.RefractoryFilter;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
@@ -51,7 +54,6 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.ApsDvsChip;
 import eu.seebetter.ini.chips.DAViS.IMUSample.IncompleteIMUSampleException;
-import net.sf.jaer.graphics.AEViewer;
 
 /**
  * <p>
@@ -69,9 +71,12 @@ import net.sf.jaer.graphics.AEViewer;
  */
 @Description("DAViS240a/b 240x180 pixel APS-DVS DAVIS sensor")
 public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
-	private final int ADC_NUMBER_OF_TRAILING_ZEROS = Integer.numberOfTrailingZeros(ApsDvsChip.ADC_READCYCLE_MASK); // speedup
-																													// in
-	// loop
+	private JMenu chipMenu = null;
+	private JMenuItem syncEnabledMenuItem = null;
+	private boolean isTimestampMaster = true;
+
+	private final int ADC_NUMBER_OF_TRAILING_ZEROS = Integer.numberOfTrailingZeros(ApsDvsChip.ADC_READCYCLE_MASK);
+	// speedup in loop
 	// following define bit masks for various hardware data types.
 	// The hardware interface translateEvents method packs the raw device data into 32 bit 'addresses' and timestamps.
 	// timestamps are unwrapped and timestamp resets are handled in translateEvents. Addresses are filled with either AE
@@ -143,7 +148,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 
 		if (getRemoteControl() != null) {
 			getRemoteControl()
-				.addCommandListener(this, CMD_EXPOSURE, CMD_EXPOSURE + " val - sets exposure. val in ms.");
+			.addCommandListener(this, CMD_EXPOSURE, CMD_EXPOSURE + " val - sets exposure. val in ms.");
 			getRemoteControl().addCommandListener(this, CMD_EXPOSURE_CC,
 				CMD_EXPOSURE_CC + " val - sets exposure. val in clock cycles");
 			getRemoteControl().addCommandListener(this, CMD_RS_SETTLE_CC,
@@ -395,7 +400,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 						default:
 							if ((warningCount < 10) || ((warningCount % DAViS240Extractor.WARNING_COUNT_DIVIDER) == 0)) {
 								Chip.log
-									.warning("Event with unknown readout cycle was sent out! You might be reading a file that had the deprecated C readout mode enabled.");
+								.warning("Event with unknown readout cycle was sent out! You might be reading a file that had the deprecated C readout mode enabled.");
 							}
 							warningCount++;
 							break;
@@ -606,6 +611,12 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 
 			super.display(drawable);
 
+			if (isTimestampMaster == false) {
+				exposureRenderer.begin3DRendering();
+				exposureRenderer.draw3D("Slave camera", 0, -(DAViS240DisplayMethod.FONTSIZE / 2), 0, .5f);
+				exposureRenderer.end3DRendering();
+			}
+
 			if ((config.videoControl != null) && config.videoControl.displayFrames) {
 				final GL2 gl = drawable.getGL().getGL2();
 				exposureRender(gl);
@@ -734,9 +745,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			setExposureMs((float) exposureDurationUs / 1000);
 			final String s = String.format("Frame: %d; Exposure %.2f ms; Frame rate: %.2f Hz", getFrameCount(),
 				exposureMs, frameRateHz);
-			exposureRenderer.draw3D(s, 0, DAViS240.HEIGHT + (DAViS240DisplayMethod.FONTSIZE / 2), 0, .5f); // x,y,z,
-																											// scale
-																											// factor
+			exposureRenderer.draw3D(s, 0, DAViS240.HEIGHT + (DAViS240DisplayMethod.FONTSIZE / 2), 0, .5f);
 			exposureRenderer.end3DRendering();
 
 			final int nframes = frameCount % DAViS240DisplayMethod.FRAME_COUNTER_BAR_LENGTH_FRAMES;
@@ -908,7 +917,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 				"fraction of pixel values under xor over exposed to trigger exposure change");
 			tooltipSupport.setPropertyTooltip("lowBoundary", "Upper edge of histogram range considered as low values");
 			tooltipSupport
-				.setPropertyTooltip("highBoundary", "Lower edge of histogram range considered as high values");
+			.setPropertyTooltip("highBoundary", "Lower edge of histogram range considered as high values");
 			tooltipSupport.setPropertyTooltip("autoExposureEnabled",
 				"Exposure time is automatically controlled when this flag is true");
 		}
@@ -933,9 +942,10 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			if (!autoExposureEnabled) {
 				return;
 			}
-                        if(getAeViewer()!=null && getAeViewer().getPlayMode()!=null && getAeViewer().getPlayMode()!=AEViewer.PlayMode.LIVE){
-                            return;
-                        }
+			if ((getAeViewer() != null) && (getAeViewer().getPlayMode() != null)
+				&& (getAeViewer().getPlayMode() != AEViewer.PlayMode.LIVE)) {
+				return;
+			}
 			hist = apsDVSrenderer.getAdcSampleValueHistogram();
 			if (hist == null) {
 				return;
@@ -1073,5 +1083,78 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 	@Override
 	public void update(final Observable o, final Object arg) {
 		// TODO Auto-generated method stub
+	}
+
+	private void updateTSMasterState() {
+		// Check which logic we are and send the TS Master/Slave command if we are old logic.
+		// TODO: this needs to be done.
+	}
+
+	/**
+	 * Enables or disable DVS128 menu in AEViewer
+	 *
+	 * @param yes
+	 *            true to enable it
+	 */
+	private void enableChipMenu(final boolean yes) {
+		if (yes) {
+			if (chipMenu == null) {
+				chipMenu = new JMenu(this.getClass().getSimpleName());
+				chipMenu.getPopupMenu().setLightWeightPopupEnabled(false); // to paint on GLCanvas
+				chipMenu.setToolTipText("Specialized menu for DAVIS chip");
+			}
+
+			if (syncEnabledMenuItem == null) {
+				syncEnabledMenuItem = new JCheckBoxMenuItem("Timestamp master");
+				syncEnabledMenuItem.setToolTipText("<html>Sets this device as timestamp master");
+
+				syncEnabledMenuItem.addActionListener(new ActionListener() {
+					@Override
+					public void actionPerformed(final ActionEvent evt) {
+						Chip.log.info("setting sync/timestamp master to " + syncEnabledMenuItem.isSelected());
+						isTimestampMaster = syncEnabledMenuItem.isSelected();
+
+						updateTSMasterState();
+					}
+				});
+
+				syncEnabledMenuItem.setSelected(isTimestampMaster);
+				updateTSMasterState();
+
+				chipMenu.add(syncEnabledMenuItem);
+			}
+
+			if (getAeViewer() != null) {
+				getAeViewer().setMenu(chipMenu);
+			}
+
+		}
+		else { // disable menu
+			if (chipMenu != null) {
+				getAeViewer().removeMenu(chipMenu);
+			}
+		}
+	}
+
+	@Override
+	public void onDeregistration() {
+		super.onDeregistration();
+
+		if (getAeViewer() == null) {
+			return;
+		}
+
+		enableChipMenu(false);
+	}
+
+	@Override
+	public void onRegistration() {
+		super.onRegistration();
+
+		if (getAeViewer() == null) {
+			return;
+		}
+
+		enableChipMenu(true);
 	}
 }
