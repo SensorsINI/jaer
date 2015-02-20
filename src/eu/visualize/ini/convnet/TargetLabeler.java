@@ -81,6 +81,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     private final int N_FRACTIONS = 1000;
     private boolean[] labeledFractions = new boolean[N_FRACTIONS];  // to annotate graphically what has been labeled so far in event stream
     private boolean showLabeledFraction = getBoolean("showLabeledFraction", true);
+    private boolean showHelpText = getBoolean("showHelpText", true);
 
     private boolean propertyChangeListenerAdded = false;
     private String DEFAULT_FILENAME = "locations.txt";
@@ -102,6 +103,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         setPropertyTooltip("saveLocationsAs", "show file dialog to save target locations to a new file");
         setPropertyTooltip("loadLocations", "loads locations from a file");
         setPropertyTooltip("showLabeledFraction", "shows labeled part of input by a bar with red=unlabeled, green=labeled, blue=current position in events");
+        setPropertyTooltip("showHelpText", "shows help text on screen. Uncheck to hide");
         Arrays.fill(labeledFractions, false);
     }
 
@@ -159,11 +161,13 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         MultilineAnnotationTextRenderer.setColor(Color.CYAN);
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .9f);
         MultilineAnnotationTextRenderer.setScale(.3f);
-        StringBuilder sb = new StringBuilder("Shift + Ctrl + mouse position: Specify target location\nShift: Specify no target seen\n");
-        MultilineAnnotationTextRenderer.renderMultilineString(sb.toString());
+        StringBuilder sb = new StringBuilder();
+        if (showHelpText) {
+            sb.append("Shift + Ctrl + mouse position: Specify target location\nShift: Specify no target seen\n");
+            MultilineAnnotationTextRenderer.renderMultilineString(sb.toString());
 
-        MultilineAnnotationTextRenderer.renderMultilineString(String.format("%d TargetLocation samples specified\nFirst sample time: %.1fs, Last sample time: %.1fs\nCurrent frame number: %d", targetLocations.size(), minSampleTimestamp * 1e-6f, maxSampleTimestamp * 1e-6f, currentFrameNumber));
-
+            MultilineAnnotationTextRenderer.renderMultilineString(String.format("%d TargetLocation samples specified\nFirst sample time: %.1fs, Last sample time: %.1fs\nCurrent frame number: %d", targetLocations.size(), minSampleTimestamp * 1e-6f, maxSampleTimestamp * 1e-6f, currentFrameNumber));
+        }
         if (shiftPressed && !ctlPressed) {
             MultilineAnnotationTextRenderer.renderMultilineString("Specifying no target");
         } else if (shiftPressed && ctlPressed) {
@@ -195,7 +199,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             x = curPosFrac * chip.getSizeX();
             y = y + dy;
             gl.glColor3f(1, 1, 1);
-            gl.glRectf(x-dx, y-dy*2, x + dx, y + dy);
+            gl.glRectf(x - dx, y - dy * 2, x + dx, y + dy);
         }
 
     }
@@ -645,6 +649,21 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     public void setShowLabeledFraction(boolean showLabeledFraction) {
         this.showLabeledFraction = showLabeledFraction;
         putBoolean("showLabeledFraction", showLabeledFraction);
+    }
+
+    /**
+     * @return the showHelpText
+     */
+    public boolean isShowHelpText() {
+        return showHelpText;
+    }
+
+    /**
+     * @param showHelpText the showHelpText to set
+     */
+    public void setShowHelpText(boolean showHelpText) {
+        this.showHelpText = showHelpText;
+        putBoolean("showHelpText", showHelpText);
     }
 
 }
