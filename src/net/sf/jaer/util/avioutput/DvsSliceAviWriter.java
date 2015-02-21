@@ -4,11 +4,10 @@ import eu.visualize.ini.convnet.DvsSubsamplerToFrame;
 import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.event.WindowStateListener;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
-import java.io.File;
 import java.io.IOException;
+import javax.media.opengl.GLAutoDrawable;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -19,7 +18,9 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
+import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
+import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /**
  * Writes out AVI movie with DVS time or event slices as AVI frame images with
@@ -29,7 +30,7 @@ import net.sf.jaer.graphics.ImageDisplay;
  */
 @Description("Writes out AVI movie with DVS constant-number-of-event slices as AVI frame images with desired output resolution")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class DvsSliceAviWriter extends AbstractAviWriter {
+public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotater{
 
     private DvsSubsamplerToFrame dvsSubsampler = null;
     private int dimx, dimy, grayScale;
@@ -85,6 +86,17 @@ public class DvsSliceAviWriter extends AbstractAviWriter {
         }
         return in;
     }
+
+    @Override
+    public void annotate(GLAutoDrawable drawable) {
+        if(dvsSubsampler==null) return;
+        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY()*.8f);
+        MultilineAnnotationTextRenderer.setScale(.3f);
+        String s=String.format("mostOffCount=%d\n mostOnCount=%d",dvsSubsampler.getMostOffCount(),dvsSubsampler.getMostOnCount());
+        MultilineAnnotationTextRenderer.renderMultilineString(s);
+    }
+    
+    
 
     @Override
     public synchronized void doSaveAVIFileAs() {
