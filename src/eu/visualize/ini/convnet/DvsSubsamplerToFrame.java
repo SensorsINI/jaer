@@ -9,8 +9,9 @@ import java.util.Arrays;
 import net.sf.jaer.event.PolarityEvent;
 
 /**
- * Subsamples DVS input ON and OFF events to a desired "frame" resolution. By subsampling (accumulation) of events it performs much
- * better than downsampling the sparse DVS output.
+ * Subsamples DVS input ON and OFF events to a desired "frame" resolution. By
+ * subsampling (accumulation) of events it performs much better than
+ * downsampling the sparse DVS output.
  *
  * @author tobi
  */
@@ -20,12 +21,13 @@ public class DvsSubsamplerToFrame {
     private final int height;
     private final int nPixels;
     private final float[] pixmap;
+    private final int[] eventSum;
     private int colorScale;
     private float colorScaleRecip;
     public final float GRAY_LEVEL = 0.5f;
     private int accumulatedEventCount = 0;
-    private int lastTimestamp=Integer.MIN_VALUE;
-//    private float minValue=Float.POSITIVE_INFINITY, maxValue=Float.NEGATIVE_INFINITY;
+    private int lastTimestamp = Integer.MIN_VALUE;
+    private int mostOffCount = Integer.MAX_VALUE, mostOnCount = Integer.MIN_VALUE;
 
     /**
      * Makes a new DvsSubsamplingTimesliceConvNetInput
@@ -43,11 +45,15 @@ public class DvsSubsamplerToFrame {
         colorScaleRecip = 1f / colorScale;
         nPixels = getWidth() * getHeight();
         pixmap = new float[getnPixels()];
+        eventSum = new int[getnPixels()];
     }
 
     public void clear() {
+        Arrays.fill(eventSum, 0);
         Arrays.fill(pixmap, GRAY_LEVEL);
         accumulatedEventCount = 0;
+        mostOffCount = Integer.MAX_VALUE;
+        mostOnCount = Integer.MIN_VALUE;
     }
 
     /**
@@ -59,18 +65,27 @@ public class DvsSubsamplerToFrame {
      */
     public void addEvent(PolarityEvent e, int srcWidth, int srcHeight) {
         // find element here that contains this event
-        if(e.isSpecial()) return;
+        if (e.isSpecial()) {
+            return;
+        }
         int x = (int) Math.floor(((float) e.x / srcWidth) * width);
         int y = (int) Math.floor(((float) e.y / srcHeight) * height);
         int k = getIndex(x, y);
-        float f = pixmap[k];
-        f += colorScaleRecip * (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
-        if (f < 0) {
-            f = 0;
-        } else if (f > 1) {
-            f = 1;
+        int sum = eventSum[k];
+        sum += (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
+        if (sum > mostOnCount) {
+            mostOnCount = sum;
+        } else if (sum < mostOffCount) {
+            mostOffCount = sum;
         }
-        pixmap[k] = f;
+        eventSum[k] = sum;
+        float pmv = .5f + sum * colorScaleRecip/2;
+        if (pmv > 1) {
+            pmv = 1;
+        } else if (pmv < 0) {
+            pmv = 0;
+        }
+        pixmap[k] = pmv;
         accumulatedEventCount++;
 
     }
@@ -131,6 +146,20 @@ public class DvsSubsamplerToFrame {
      */
     public int getAccumulatedEventCount() {
         return accumulatedEventCount;
+    }
+
+    /**
+     * @return the mostOffCount
+     */
+    public int getMostOffCount() {
+        return mostOffCount;
+    }
+
+    /**
+     * @return the mostOnCount
+     */
+    public int getMostOnCount() {
+        return mostOnCount;
     }
 
 }
