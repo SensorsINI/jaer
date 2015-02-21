@@ -946,6 +946,10 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             numBytesToMap = fileSize - start;
         }
         byteBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY,start,numBytesToMap);
+        if(byteBuffer==null){
+            log.severe("got null byteBuffer from fileChannel.map(FileChannel.MapMode.READ_ONLY,start,numBytesToMap) with start="+start+" numBytesToMap="+numBytesToMap);
+            
+        }
         this.position = positionFromChunk(chunkNumber);
 //        log.info("mapped chunk "+chunkNumber+" of "+(numBytesToMap>>10)+"kB");
         if(++chunksMapped>GC_EVERY_THIS_MANY_CHUNKS){
