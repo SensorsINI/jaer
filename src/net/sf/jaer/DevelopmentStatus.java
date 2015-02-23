@@ -23,7 +23,7 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE) // can only annotate classes, not methods of fields
 public @interface DevelopmentStatus {
     Status value();
-    public enum Status {Stable, Experimental, InDevelopment}
+    public enum Status {Stable, Experimental, InDevelopment, Abstract}
     
 }
 
