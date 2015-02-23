@@ -99,17 +99,17 @@ public class FaceDetectorConvNet extends DavisDeepLearnCnnProcessor implements P
     @Override
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
-        targetLabeler.annotate(drawable);
+        if(targetLabeler!=null) targetLabeler.annotate(drawable);
         if (hideOutput) {
             return;
         }
         GL2 gl = drawable.getGL().getGL2();
         checkBlend(gl);
         int sy = chip.getSizeY();
-        if (apsNet != null && apsNet.outputLayer.activations != null && isProcessAPSFrames()) {
+        if (apsNet != null && apsNet.outputLayer!=null && apsNet.outputLayer.activations != null && isProcessAPSFrames()) {
             drawDecisionOutput(gl, sy, apsNet, Color.RED);
         }
-        if (dvsNet != null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
+        if (dvsNet != null && dvsNet.outputLayer!=null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
             drawDecisionOutput(gl, sy, dvsNet, Color.YELLOW);
         }
 
