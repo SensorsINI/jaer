@@ -19,7 +19,7 @@ import net.sf.jaer.event.PolarityEvent;
  * 45 deg CCW to 7 being motion up and to right.
  * @see AbstractDirectionSelectiveFilter
  * @author tobi */
-@Description("Local motion by time-of-travel of orientation events for APSDVS (DAVIS) sensor")
+@Description("Local motion optical flow by time-of-travel of orientation events for APSDVS (DAVIS) sensor")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class ApsDvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilter {
 

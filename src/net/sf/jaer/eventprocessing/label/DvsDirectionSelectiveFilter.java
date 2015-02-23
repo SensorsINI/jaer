@@ -19,7 +19,7 @@ import net.sf.jaer.event.PolarityEvent;
  * to 7 being motion up and to right.
  * @see AbstractDirectionSelectiveFilter
  * @author tobi */
-@Description("Local motion by time-of-travel of orientation events for DVS sensor")
+@Description("Local optical flow motion by time-of-travel of orientation events for DVS sensor")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilter {
     

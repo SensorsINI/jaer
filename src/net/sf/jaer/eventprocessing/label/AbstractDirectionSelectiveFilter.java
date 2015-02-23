@@ -13,6 +13,8 @@ import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
 import javax.media.opengl.GLException;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
@@ -28,6 +30,8 @@ import net.sf.jaer.util.filter.LowpassFilter;
  * @author tobi */
 // No need to have @Description and @DevelopmentStatus here, as the abstract
 // class needs to be implemented, which is where the desc. and status. are used.
+@Description("Abstract base class for local motion optical flow by time-of-travel of orientation events")
+@DevelopmentStatus(DevelopmentStatus.Status.Abstract)
 abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D implements Observer, FrameAnnotater {
     protected static final int NUM_INPUT_TYPES = 8; // 4 orientations * 2 polarities
     protected static final int MAX_SEARCH_DISTANCE = 12;
