@@ -4678,6 +4678,7 @@ two interfaces). otherwise force user choice.
 
 //			loggingOutputStream = new AEFileOutputStream(new FileOutputStream(loggingFile));
 			loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile), 8192)); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance that super large buffer
+                        chip.writeAdditionalAEFileOutputStreamHeader(loggingOutputStream);
 			loggingEnabled = true;
 
 			if(playMode==PlayMode.PLAYBACK){ // add change listener for rewind to stop logging
@@ -4711,8 +4712,13 @@ two interfaces). otherwise force user choice.
 
 		} catch (FileNotFoundException e) {
 			loggingFile = null;
-			e.printStackTrace();
-		}
+                    log.warning(e.toString());
+                    e.printStackTrace();
+		} catch (IOException ioe){
+                    loggingFile=null;
+                    log.warning(ioe.toString());
+                    ioe.printStackTrace();
+                }
 
 		return loggingFile;
 	}
