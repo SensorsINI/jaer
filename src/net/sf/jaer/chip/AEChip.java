@@ -9,7 +9,7 @@
  */
 package net.sf.jaer.chip;
 
-import eu.seebetter.ini.chips.DAViS.HotPixelFilter;
+import eu.seebetter.ini.chips.davis.HotPixelFilter;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
