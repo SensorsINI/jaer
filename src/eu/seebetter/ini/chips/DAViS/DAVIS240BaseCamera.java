@@ -69,8 +69,8 @@ import eu.seebetter.ini.chips.DAViS.IMUSample.IncompleteIMUSampleException;
  *
  * @author tobi, christian
  */
-@Description("DAViS240a/b 240x180 pixel APS-DVS DAVIS sensor")
-public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
+@Description("DAVIS240 base class for 240x180 pixel APS-DVS DAVIS sensor")
+abstract public class DAVIS240BaseCamera extends ApsDvsChip implements RemoteControlled, Observer {
 	private JMenu chipMenu = null;
 	private JMenuItem syncEnabledMenuItem = null;
 	private boolean isTimestampMaster = true;
@@ -123,12 +123,12 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 	/**
 	 * Creates a new instance of cDVSTest20.
 	 */
-	public DAViS240() {
-		setName("DAViS240");
+	public DAVIS240BaseCamera() {
+		setName("DAVIS240BaseCamera");
 		setDefaultPreferencesFile("biasgenSettings/Davis240a/David240aBasic.xml");
 		setEventClass(ApsDvsEvent.class);
-		setSizeX(DAViS240.WIDTH);
-		setSizeY(DAViS240.HEIGHT);
+		setSizeX(DAVIS240BaseCamera.WIDTH);
+		setSizeY(DAVIS240BaseCamera.HEIGHT);
 		setNumCellTypes(3); // two are polarity and last is intensity
 		setPixelHeightUm(18.5f);
 		setPixelWidthUm(18.5f);
@@ -201,7 +201,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			config.sendOnChipConfigChain();
 		}
 		catch (final HardwareInterfaceException ex) {
-			Logger.getLogger(DAViS240.class.getName()).log(Level.SEVERE, null, ex);
+			Logger.getLogger(DAVIS240BaseCamera.class.getName()).log(Level.SEVERE, null, ex);
 		}
 	}
 
@@ -218,7 +218,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 	 *            is preferred. It makes a new cDVSTest10Biasgen object to talk to the
 	 *            on-chip biasgen.
 	 */
-	public DAViS240(final HardwareInterface hardwareInterface) {
+	public DAVIS240BaseCamera(final HardwareInterface hardwareInterface) {
 		this();
 		setHardwareInterface(hardwareInterface);
 	}
@@ -256,7 +256,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 		private int warningCount = 0;
 		private static final int WARNING_COUNT_DIVIDER = 10000;
 
-		public DAViS240Extractor(final DAViS240 chip) {
+		public DAViS240Extractor(final DAVIS240BaseCamera chip) {
 			super(chip);
 		}
 
@@ -380,8 +380,8 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 					final short x = (short) (((data & ApsDvsChip.XMASK) >>> ApsDvsChip.XSHIFT));
 					final short y = (short) ((data & ApsDvsChip.YMASK) >>> ApsDvsChip.YSHIFT);
 
-					final boolean pixFirst = (x == sx1) && (y == sy1); // First event of frame (addresses get flipped)
-					final boolean pixLast = (x == 0) && (y == 0); // Last event of frame (addresses get flipped)
+					final boolean pixFirst = firstFrameAddress(x,y); // First event of frame (addresses get flipped)
+					final boolean pixLast = lastFrameAddress(x,y); // Last event of frame (addresses get flipped)
 
 					ApsDvsEvent.ReadoutType readoutType = ApsDvsEvent.ReadoutType.Null;
 					switch ((data & ApsDvsChip.ADC_READCYCLE_MASK) >> ADC_NUMBER_OF_TRAILING_ZEROS) {
@@ -561,7 +561,8 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 		private void setFrameCount(final int i) {
 			frameCount = i;
 		}
-	} // extractor
+
+ 	} // extractor
 
 	/**
 	 * overrides the Chip setHardware interface to construct a biasgen if one
@@ -601,7 +602,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 		private final TextRenderer exposureRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN,
 			DAViS240DisplayMethod.FONTSIZE), true, true);
 
-		public DAViS240DisplayMethod(final DAViS240 chip) {
+		public DAViS240DisplayMethod(final DAVIS240BaseCamera chip) {
 			super(chip.getCanvas());
 		}
 
@@ -636,8 +637,8 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			}
 
 			// Draw last IMU output
-			if (config.isDisplayImu() && (chip instanceof DAViS240)) {
-				final IMUSample imuSample = ((DAViS240) chip).getImuSample();
+			if (config.isDisplayImu() && (chip instanceof DAVIS240BaseCamera)) {
+				final IMUSample imuSample = ((DAVIS240BaseCamera) chip).getImuSample();
 				if (imuSample != null) {
 					imuRender(drawable, imuSample);
 				}
@@ -665,8 +666,8 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			gl.glColor3f(1f, 0, 1);
 			gl.glBegin(GL.GL_LINES);
 			gl.glVertex2f(0, 0);
-			x = (vectorScale * imuSample.getGyroYawY() * DAViS240.HEIGHT) / IMUSample.getFullScaleGyroDegPerSec();
-			y = (vectorScale * imuSample.getGyroTiltX() * DAViS240.HEIGHT) / IMUSample.getFullScaleGyroDegPerSec();
+			x = (vectorScale * imuSample.getGyroYawY() * DAVIS240BaseCamera.HEIGHT) / IMUSample.getFullScaleGyroDegPerSec();
+			y = (vectorScale * imuSample.getGyroTiltX() * DAVIS240BaseCamera.HEIGHT) / IMUSample.getFullScaleGyroDegPerSec();
 			gl.glVertex2f(x, y);
 			gl.glEnd();
 
@@ -677,7 +678,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			imuTextRenderer.end3DRendering();
 
 			// gyro roll
-			x = (vectorScale * imuSample.getGyroRollZ() * DAViS240.HEIGHT) / IMUSample.getFullScaleGyroDegPerSec();
+			x = (vectorScale * imuSample.getGyroRollZ() * DAVIS240BaseCamera.HEIGHT) / IMUSample.getFullScaleGyroDegPerSec();
 			y = chip.getSizeY() * .25f;
 			gl.glBegin(GL.GL_LINES);
 			gl.glVertex2f(0, y);
@@ -689,8 +690,8 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			imuTextRenderer.end3DRendering();
 
 			// acceleration x,y
-			x = (vectorScale * imuSample.getAccelX() * DAViS240.HEIGHT) / IMUSample.getFullScaleAccelG();
-			y = (vectorScale * imuSample.getAccelY() * DAViS240.HEIGHT) / IMUSample.getFullScaleAccelG();
+			x = (vectorScale * imuSample.getAccelX() * DAVIS240BaseCamera.HEIGHT) / IMUSample.getFullScaleAccelG();
+			y = (vectorScale * imuSample.getAccelY() * DAVIS240BaseCamera.HEIGHT) / IMUSample.getFullScaleAccelG();
 			gl.glColor3f(0, 1, 0);
 			gl.glBegin(GL.GL_LINES);
 			gl.glVertex2f(0, 0);
@@ -710,7 +711,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			if (accelCircle == null) {
 				accelCircle = glu.gluNewQuadric();
 			}
-			final float az = ((vectorScale * imuSample.getAccelZ() * DAViS240.HEIGHT)) / IMUSample.getFullScaleAccelG();
+			final float az = ((vectorScale * imuSample.getAccelZ() * DAVIS240BaseCamera.HEIGHT)) / IMUSample.getFullScaleAccelG();
 			final float rim = .5f;
 			glu.gluQuadricDrawStyle(accelCircle, GLU.GLU_FILL);
 			glu.gluDisk(accelCircle, az - rim, az + rim, 16, 1);
@@ -746,15 +747,15 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 			setExposureMs((float) exposureDurationUs / 1000);
 			final String s = String.format("Frame: %d; Exposure %.2f ms; Frame rate: %.2f Hz", getFrameCount(),
 				exposureMs, frameRateHz);
-			exposureRenderer.draw3D(s, 0, DAViS240.HEIGHT + (DAViS240DisplayMethod.FONTSIZE / 2), 0, .5f);
+			exposureRenderer.draw3D(s, 0, DAVIS240BaseCamera.HEIGHT + (DAViS240DisplayMethod.FONTSIZE / 2), 0, .5f);
 			exposureRenderer.end3DRendering();
 
 			final int nframes = frameCount % DAViS240DisplayMethod.FRAME_COUNTER_BAR_LENGTH_FRAMES;
-			final int rectw = DAViS240.WIDTH / DAViS240DisplayMethod.FRAME_COUNTER_BAR_LENGTH_FRAMES;
+			final int rectw = DAVIS240BaseCamera.WIDTH / DAViS240DisplayMethod.FRAME_COUNTER_BAR_LENGTH_FRAMES;
 			gl.glColor4f(1, 1, 1, .5f);
 			for (int i = 0; i < nframes; i++) {
-				gl.glRectf(nframes * rectw, DAViS240.HEIGHT + 1, ((nframes + 1) * rectw) - 3,
-					(DAViS240.HEIGHT + (DAViS240DisplayMethod.FONTSIZE / 2)) - 1);
+				gl.glRectf(nframes * rectw, DAVIS240BaseCamera.HEIGHT + 1, ((nframes + 1) * rectw) - 3,
+					(DAVIS240BaseCamera.HEIGHT + (DAViS240DisplayMethod.FONTSIZE / 2)) - 1);
 			}
 			gl.glPopMatrix();
 		}
@@ -1158,4 +1159,9 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 
 		enableChipMenu(true);
 	}
+        
+    abstract protected boolean firstFrameAddress(short x, short y);
+
+    abstract protected boolean lastFrameAddress(short x, short y);
+
 }
