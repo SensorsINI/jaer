@@ -22,7 +22,7 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.util.filter.LowpassFilter2d;
 import net.sf.jaer.util.histogram.SimpleHistogram;
 import eu.seebetter.ini.chips.ApsDvsChip;
-import eu.seebetter.ini.chips.DAViS.DAViS240;
+import eu.seebetter.ini.chips.DAViS.DAVIS240BaseCamera;
 
 /**
  * Class adapted from AEChipRenderer to render not only AE events but also
@@ -209,8 +209,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             return;
         }
 
-        if (getChip() instanceof DAViS240) {
-            computeHistograms = ((DAViS240) chip).isShowImageHistogram() || ((ApsDvsChip) chip).isAutoExposureEnabled();
+        if (getChip() instanceof DAVIS240BaseCamera) {
+            computeHistograms = ((DAVIS240BaseCamera) chip).isShowImageHistogram() || ((ApsDvsChip) chip).isAutoExposureEnabled();
         }
 
         ApsDvsEventPacket packet = (ApsDvsEventPacket) pkt;
