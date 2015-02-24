@@ -977,7 +977,7 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
 			tooltipSupport
 				.setPropertyTooltip(
 					"globalShutterMode",
-					"Has no effect on Davis240a camera. On Davis240b camera, enables global shutter readout. If disabled, enables rolling shutter readout.");
+					"Has no effect on Davis240a camera. On Davis240b/c cameras, enables global shutter readout. If disabled, enables rolling shutter readout.");
 		}
 
 		public boolean isAdcEnabled() {
@@ -1420,7 +1420,7 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
 				chip,
 				"hotPixelSuppression",
 				3,
-				"<html>DAViS240a: turns on the hot pixel suppression. <p>DAViS240b: enables test pixel stripes on right side of array",
+				"<html>DAViS240a: turns on the hot pixel suppression. <p>DAViS240b: enables test pixel stripes on right side of array <p>DAViS240c: no effect",
 				false),
 			nArow = new OnchipConfigBit(chip, "nArow", 4, "use nArow in the AER state machine", false),
 			useAout = new OnchipConfigBit(chip, "useAout", 5, "turn the pads for the analog MUX outputs on", true),
@@ -1428,7 +1428,7 @@ public class DAViS240Config extends LatticeLogicConfig implements ApsDvsConfig, 
 				chip,
 				"globalShutter",
 				6,
-				"Use the global shutter or not, only has effect on DAVIS240b cameras. No effect in DAVIS240a cameras. On-chip control bit that is looded into on-chip shift register.",
+				"Use the global shutter or not, only has effect on DAVIS240b/c cameras. No effect in DAVIS240a cameras. On-chip control bit that is looded into on-chip shift register.",
 				false);
 		// Muxes
 		OutputMux[] amuxes = { new AnalogOutputMux(1), new AnalogOutputMux(2), new AnalogOutputMux(3) };
