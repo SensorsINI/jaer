@@ -630,6 +630,7 @@ public class DAViS240 extends ApsDvsChip implements RemoteControlled, Observer {
 				final GL2 gl = drawable.getGL().getGL2();
 				gl.glPushAttrib(GL.GL_COLOR_BUFFER_BIT);
 				gl.glColor3f(0, 0, 1);
+                                gl.glLineWidth(1f);
 				hist.draw(drawable, exposureRenderer, (sizeX / 2) - (size / 2), (sizeY / 2) + (size / 2), size, size);
 				gl.glPopAttrib();
 			}
