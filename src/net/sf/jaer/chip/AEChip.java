@@ -12,6 +12,7 @@ package net.sf.jaer.chip;
 import eu.seebetter.ini.chips.DAViS.HotPixelFilter;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 
 import net.sf.jaer.Description;
@@ -399,5 +400,15 @@ public class AEChip extends Chip2D {
         AEFileInputStream stream = new AEFileInputStream(file);
         aeInputStream = stream;
         return stream;
+    }
+    
+    /** This method writes additional header lines to a newly created AEFileOutputStream that logs data from this AEChip.
+     * The default implementation writes the AEChip class name.
+     * @param os the AEFileOutputStream that is being written to
+     * @see AEFileOutputStream#writeHeaderLine(java.lang.String)
+     * @throws IOException 
+     */
+    public void writeAdditionalAEFileOutputStreamHeader(AEFileOutputStream os) throws IOException{
+        os.writeHeaderLine(" AEChip: "+this.getClass().getName());
     }
 }
