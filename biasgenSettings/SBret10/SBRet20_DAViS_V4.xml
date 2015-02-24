@@ -11,7 +11,7 @@
           <map/>
           <node name="chips">
             <map/>
-            <node name="DAViS">
+            <node name="davis">
               <map>
                 <entry key="FilterChain.timeLimitEnabled" value="false"/>
                 <entry key="FilterChain.timeLimitMs" value="10"/>

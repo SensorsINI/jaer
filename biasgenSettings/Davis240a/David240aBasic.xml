@@ -11,7 +11,7 @@
           <map/>
           <node name="chips">
             <map/>
-            <node name="DAViS">
+            <node name="davis">
               <map>
                 <entry key="FilterChain.timeLimitEnabled" value="false"/>
                 <entry key="FilterChain.timeLimitMs" value="10"/>
@@ -29,183 +29,183 @@
                 <entry key="apsIntensityOffset" value="0"/>
                 <entry key="invertADCvalues" value="false"/>
                 <entry key="displayLogIntensityChangeEvents" value="true"/>
-                <entry key="DAViS240.bgTabbedPaneSelectedIndex" value="0"/>
+                <entry key="DAVIS240A.bgTabbedPaneSelectedIndex" value="0"/>
                 <entry key="displayIntensity" value="true"/>
                 <entry key="CypressFX2Blank.defaultFirmwareBixFileForBlankDevice" value="..\..\devices\firmware\CypressFX2\firmware_FX2LP_DAViS_FX2V4\SBret10.bix"/>
-                <entry key="DAViS240.AddressedIPotCF.DiffBn.BitValueCoarse" value="3"/>
-                <entry key="DAViS240.AddressedIPotCF.DiffBn.BitValueFine" value="39"/>
-                <entry key="DAViS240.AddressedIPotCF.DiffBn.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.DiffBn.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.DiffBn.Sex" value="N"/>
-                <entry key="DAViS240.AddressedIPotCF.DiffBn.Type" value="NORMAL"/>
-                <entry key="DAViS240.AddressedIPotCF.OnBn.BitValueCoarse" value="2"/>
-                <entry key="DAViS240.AddressedIPotCF.OnBn.BitValueFine" value="117"/>
-                <entry key="DAViS240.AddressedIPotCF.OnBn.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.OnBn.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.OnBn.Sex" value="N"/>
-                <entry key="DAViS240.AddressedIPotCF.OnBn.Type" value="NORMAL"/>
-                <entry key="DAViS240.AddressedIPotCF.OffBn.BitValueCoarse" value="3"/>
-                <entry key="DAViS240.AddressedIPotCF.OffBn.BitValueFine" value="3"/>
-                <entry key="DAViS240.AddressedIPotCF.OffBn.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.OffBn.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.OffBn.Sex" value="N"/>
-                <entry key="DAViS240.AddressedIPotCF.OffBn.Type" value="NORMAL"/>
-                <entry key="DAViS240.AddressedIPotCF.ApsCasEpc.BitValueCoarse" value="2"/>
-                <entry key="DAViS240.AddressedIPotCF.ApsCasEpc.BitValueFine" value="144"/>
-                <entry key="DAViS240.AddressedIPotCF.ApsCasEpc.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.ApsCasEpc.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.ApsCasEpc.Sex" value="N"/>
-                <entry key="DAViS240.AddressedIPotCF.ApsCasEpc.Type" value="CASCODE"/>
-                <entry key="DAViS240.AddressedIPotCF.PrCasBnc.BitValueCoarse" value="0"/>
-                <entry key="DAViS240.AddressedIPotCF.PrCasBnc.BitValueFine" value="0"/>
-                <entry key="DAViS240.AddressedIPotCF.PrCasBnc.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.PrCasBnc.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.PrCasBnc.Sex" value="N"/>
-                <entry key="DAViS240.AddressedIPotCF.PrCasBnc.Type" value="NORMAL"/>
-                <entry key="DAViS240.AddressedIPotCF.ApsROSF.BitValueCoarse" value="2"/>
-                <entry key="DAViS240.AddressedIPotCF.ApsROSF.BitValueFine" value="2"/>
-                <entry key="DAViS240.AddressedIPotCF.ApsROSF.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.ApsROSF.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.ApsROSF.Sex" value="N"/>
-                <entry key="DAViS240.AddressedIPotCF.ApsROSF.Type" value="NORMAL"/>
-                <entry key="DAViS240.AddressedIPotCF.LocalBufBn.BitValueCoarse" value="2"/>
-                <entry key="DAViS240.AddressedIPotCF.LocalBufBn.BitValueFine" value="164"/>
-                <entry key="DAViS240.AddressedIPotCF.LocalBufBn.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.LocalBufBn.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.LocalBufBn.Sex" value="N"/>
-                <entry key="DAViS240.AddressedIPotCF.LocalBufBn.Type" value="NORMAL"/>
-                <entry key="DAViS240.AddressedIPotCF.PixInvBn.BitValueCoarse" value="2"/>
-                <entry key="DAViS240.AddressedIPotCF.PixInvBn.BitValueFine" value="129"/>
-                <entry key="DAViS240.AddressedIPotCF.PixInvBn.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.PixInvBn.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.PixInvBn.Sex" value="N"/>
-                <entry key="DAViS240.AddressedIPotCF.PixInvBn.Type" value="NORMAL"/>
-                <entry key="DAViS240.AddressedIPotCF.PrBp.BitValueCoarse" value="5"/>
-                <entry key="DAViS240.AddressedIPotCF.PrBp.BitValueFine" value="34"/>
-                <entry key="DAViS240.AddressedIPotCF.PrBp.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.PrBp.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.PrBp.Sex" value="P"/>
-                <entry key="DAViS240.AddressedIPotCF.PrBp.Type" value="NORMAL"/>
-                <entry key="DAViS240.AddressedIPotCF.PrSFBp.BitValueCoarse" value="6"/>
-                <entry key="DAViS240.AddressedIPotCF.PrSFBp.BitValueFine" value="4"/>
-                <entry key="DAViS240.AddressedIPotCF.PrSFBp.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.PrSFBp.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.PrSFBp.Sex" value="P"/>
-                <entry key="DAViS240.AddressedIPotCF.PrSFBp.Type" value="NORMAL"/>
-                <entry key="DAViS240.AddressedIPotCF.RefrBp.BitValueCoarse" value="3"/>
-                <entry key="DAViS240.AddressedIPotCF.RefrBp.BitValueFine" value="25"/>
-                <entry key="DAViS240.AddressedIPotCF.RefrBp.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.RefrBp.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.RefrBp.Sex" value="P"/>
-                <entry key="DAViS240.AddressedIPotCF.RefrBp.Type" value="NORMAL"/>
-                <entry key="DAViS240.AddressedIPotCF.AEPdBn.BitValueCoarse" value="1"/>
-                <entry key="DAViS240.AddressedIPotCF.AEPdBn.BitValueFine" value="91"/>
-                <entry key="DAViS240.AddressedIPotCF.AEPdBn.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.AEPdBn.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.AEPdBn.Sex" value="N"/>
-                <entry key="DAViS240.AddressedIPotCF.AEPdBn.Type" value="NORMAL"/>
-                <entry key="DAViS240.AddressedIPotCF.AERxEBn.BitValueCoarse" value="0"/>
-                <entry key="DAViS240.AddressedIPotCF.AERxEBn.BitValueFine" value="165"/>
-                <entry key="DAViS240.AddressedIPotCF.AERxEBn.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.AERxEBn.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.AERxEBn.Sex" value="N"/>
-                <entry key="DAViS240.AddressedIPotCF.AERxEBn.Type" value="NORMAL"/>
-                <entry key="DAViS240.AddressedIPotCF.AEPuXBp.BitValueCoarse" value="3"/>
-                <entry key="DAViS240.AddressedIPotCF.AEPuXBp.BitValueFine" value="80"/>
-                <entry key="DAViS240.AddressedIPotCF.AEPuXBp.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.AEPuXBp.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.AEPuXBp.Sex" value="P"/>
-                <entry key="DAViS240.AddressedIPotCF.AEPuXBp.Type" value="NORMAL"/>
-                <entry key="DAViS240.AddressedIPotCF.AEPuYBp.BitValueCoarse" value="3"/>
-                <entry key="DAViS240.AddressedIPotCF.AEPuYBp.BitValueFine" value="152"/>
-                <entry key="DAViS240.AddressedIPotCF.AEPuYBp.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.AEPuYBp.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.AEPuYBp.Sex" value="P"/>
-                <entry key="DAViS240.AddressedIPotCF.AEPuYBp.Type" value="NORMAL"/>
-                <entry key="DAViS240.AddressedIPotCF.IFThrBn.BitValueCoarse" value="2"/>
-                <entry key="DAViS240.AddressedIPotCF.IFThrBn.BitValueFine" value="255"/>
-                <entry key="DAViS240.AddressedIPotCF.IFThrBn.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.IFThrBn.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.IFThrBn.Sex" value="N"/>
-                <entry key="DAViS240.AddressedIPotCF.IFThrBn.Type" value="NORMAL"/>
-                <entry key="DAViS240.AddressedIPotCF.IFRefrBn.BitValueCoarse" value="2"/>
-                <entry key="DAViS240.AddressedIPotCF.IFRefrBn.BitValueFine" value="255"/>
-                <entry key="DAViS240.AddressedIPotCF.IFRefrBn.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.IFRefrBn.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.IFRefrBn.Sex" value="N"/>
-                <entry key="DAViS240.AddressedIPotCF.IFRefrBn.Type" value="NORMAL"/>
-                <entry key="DAViS240.AddressedIPotCF.PadFollBn.BitValueCoarse" value="0"/>
-                <entry key="DAViS240.AddressedIPotCF.PadFollBn.BitValueFine" value="211"/>
-                <entry key="DAViS240.AddressedIPotCF.PadFollBn.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.PadFollBn.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.PadFollBn.Sex" value="N"/>
-                <entry key="DAViS240.AddressedIPotCF.PadFollBn.Type" value="NORMAL"/>
-                <entry key="DAViS240.AddressedIPotCF.apsOverflowLevel.BitValueCoarse" value="0"/>
-                <entry key="DAViS240.AddressedIPotCF.apsOverflowLevel.BitValueFine" value="36"/>
-                <entry key="DAViS240.AddressedIPotCF.apsOverflowLevel.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.apsOverflowLevel.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.apsOverflowLevel.Sex" value="N"/>
-                <entry key="DAViS240.AddressedIPotCF.apsOverflowLevel.Type" value="NORMAL"/>
-                <entry key="DAViS240.AddressedIPotCF.biasBuffer.BitValueCoarse" value="1"/>
-                <entry key="DAViS240.AddressedIPotCF.biasBuffer.BitValueFine" value="251"/>
-                <entry key="DAViS240.AddressedIPotCF.biasBuffer.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.biasBuffer.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.biasBuffer.Sex" value="N"/>
-                <entry key="DAViS240.AddressedIPotCF.biasBuffer.Type" value="NORMAL"/>
+                <entry key="DAVIS240A.AddressedIPotCF.DiffBn.BitValueCoarse" value="3"/>
+                <entry key="DAVIS240A.AddressedIPotCF.DiffBn.BitValueFine" value="39"/>
+                <entry key="DAVIS240A.AddressedIPotCF.DiffBn.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.DiffBn.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.DiffBn.Sex" value="N"/>
+                <entry key="DAVIS240A.AddressedIPotCF.DiffBn.Type" value="NORMAL"/>
+                <entry key="DAVIS240A.AddressedIPotCF.OnBn.BitValueCoarse" value="2"/>
+                <entry key="DAVIS240A.AddressedIPotCF.OnBn.BitValueFine" value="117"/>
+                <entry key="DAVIS240A.AddressedIPotCF.OnBn.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.OnBn.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.OnBn.Sex" value="N"/>
+                <entry key="DAVIS240A.AddressedIPotCF.OnBn.Type" value="NORMAL"/>
+                <entry key="DAVIS240A.AddressedIPotCF.OffBn.BitValueCoarse" value="3"/>
+                <entry key="DAVIS240A.AddressedIPotCF.OffBn.BitValueFine" value="3"/>
+                <entry key="DAVIS240A.AddressedIPotCF.OffBn.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.OffBn.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.OffBn.Sex" value="N"/>
+                <entry key="DAVIS240A.AddressedIPotCF.OffBn.Type" value="NORMAL"/>
+                <entry key="DAVIS240A.AddressedIPotCF.ApsCasEpc.BitValueCoarse" value="2"/>
+                <entry key="DAVIS240A.AddressedIPotCF.ApsCasEpc.BitValueFine" value="144"/>
+                <entry key="DAVIS240A.AddressedIPotCF.ApsCasEpc.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.ApsCasEpc.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.ApsCasEpc.Sex" value="N"/>
+                <entry key="DAVIS240A.AddressedIPotCF.ApsCasEpc.Type" value="CASCODE"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PrCasBnc.BitValueCoarse" value="0"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PrCasBnc.BitValueFine" value="0"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PrCasBnc.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PrCasBnc.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PrCasBnc.Sex" value="N"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PrCasBnc.Type" value="NORMAL"/>
+                <entry key="DAVIS240A.AddressedIPotCF.ApsROSF.BitValueCoarse" value="2"/>
+                <entry key="DAVIS240A.AddressedIPotCF.ApsROSF.BitValueFine" value="2"/>
+                <entry key="DAVIS240A.AddressedIPotCF.ApsROSF.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.ApsROSF.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.ApsROSF.Sex" value="N"/>
+                <entry key="DAVIS240A.AddressedIPotCF.ApsROSF.Type" value="NORMAL"/>
+                <entry key="DAVIS240A.AddressedIPotCF.LocalBufBn.BitValueCoarse" value="2"/>
+                <entry key="DAVIS240A.AddressedIPotCF.LocalBufBn.BitValueFine" value="164"/>
+                <entry key="DAVIS240A.AddressedIPotCF.LocalBufBn.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.LocalBufBn.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.LocalBufBn.Sex" value="N"/>
+                <entry key="DAVIS240A.AddressedIPotCF.LocalBufBn.Type" value="NORMAL"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PixInvBn.BitValueCoarse" value="2"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PixInvBn.BitValueFine" value="129"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PixInvBn.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PixInvBn.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PixInvBn.Sex" value="N"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PixInvBn.Type" value="NORMAL"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PrBp.BitValueCoarse" value="5"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PrBp.BitValueFine" value="34"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PrBp.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PrBp.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PrBp.Sex" value="P"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PrBp.Type" value="NORMAL"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PrSFBp.BitValueCoarse" value="6"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PrSFBp.BitValueFine" value="4"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PrSFBp.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PrSFBp.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PrSFBp.Sex" value="P"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PrSFBp.Type" value="NORMAL"/>
+                <entry key="DAVIS240A.AddressedIPotCF.RefrBp.BitValueCoarse" value="3"/>
+                <entry key="DAVIS240A.AddressedIPotCF.RefrBp.BitValueFine" value="25"/>
+                <entry key="DAVIS240A.AddressedIPotCF.RefrBp.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.RefrBp.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.RefrBp.Sex" value="P"/>
+                <entry key="DAVIS240A.AddressedIPotCF.RefrBp.Type" value="NORMAL"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AEPdBn.BitValueCoarse" value="1"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AEPdBn.BitValueFine" value="91"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AEPdBn.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AEPdBn.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AEPdBn.Sex" value="N"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AEPdBn.Type" value="NORMAL"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AERxEBn.BitValueCoarse" value="0"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AERxEBn.BitValueFine" value="165"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AERxEBn.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AERxEBn.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AERxEBn.Sex" value="N"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AERxEBn.Type" value="NORMAL"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AEPuXBp.BitValueCoarse" value="3"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AEPuXBp.BitValueFine" value="80"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AEPuXBp.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AEPuXBp.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AEPuXBp.Sex" value="P"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AEPuXBp.Type" value="NORMAL"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AEPuYBp.BitValueCoarse" value="3"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AEPuYBp.BitValueFine" value="152"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AEPuYBp.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AEPuYBp.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AEPuYBp.Sex" value="P"/>
+                <entry key="DAVIS240A.AddressedIPotCF.AEPuYBp.Type" value="NORMAL"/>
+                <entry key="DAVIS240A.AddressedIPotCF.IFThrBn.BitValueCoarse" value="2"/>
+                <entry key="DAVIS240A.AddressedIPotCF.IFThrBn.BitValueFine" value="255"/>
+                <entry key="DAVIS240A.AddressedIPotCF.IFThrBn.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.IFThrBn.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.IFThrBn.Sex" value="N"/>
+                <entry key="DAVIS240A.AddressedIPotCF.IFThrBn.Type" value="NORMAL"/>
+                <entry key="DAVIS240A.AddressedIPotCF.IFRefrBn.BitValueCoarse" value="2"/>
+                <entry key="DAVIS240A.AddressedIPotCF.IFRefrBn.BitValueFine" value="255"/>
+                <entry key="DAVIS240A.AddressedIPotCF.IFRefrBn.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.IFRefrBn.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.IFRefrBn.Sex" value="N"/>
+                <entry key="DAVIS240A.AddressedIPotCF.IFRefrBn.Type" value="NORMAL"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PadFollBn.BitValueCoarse" value="0"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PadFollBn.BitValueFine" value="211"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PadFollBn.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PadFollBn.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PadFollBn.Sex" value="N"/>
+                <entry key="DAVIS240A.AddressedIPotCF.PadFollBn.Type" value="NORMAL"/>
+                <entry key="DAVIS240A.AddressedIPotCF.apsOverflowLevel.BitValueCoarse" value="0"/>
+                <entry key="DAVIS240A.AddressedIPotCF.apsOverflowLevel.BitValueFine" value="36"/>
+                <entry key="DAVIS240A.AddressedIPotCF.apsOverflowLevel.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.apsOverflowLevel.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.apsOverflowLevel.Sex" value="N"/>
+                <entry key="DAVIS240A.AddressedIPotCF.apsOverflowLevel.Type" value="NORMAL"/>
+                <entry key="DAVIS240A.AddressedIPotCF.biasBuffer.BitValueCoarse" value="1"/>
+                <entry key="DAVIS240A.AddressedIPotCF.biasBuffer.BitValueFine" value="251"/>
+                <entry key="DAVIS240A.AddressedIPotCF.biasBuffer.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.biasBuffer.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.biasBuffer.Sex" value="N"/>
+                <entry key="DAVIS240A.AddressedIPotCF.biasBuffer.Type" value="NORMAL"/>
                 <entry key="Masterbias.rx" value="8200.0"/>
                 <entry key="Masterbias.rint" value="46000.0"/>
                 <entry key="Masterbias.internalResistorUsed" value="false"/>
-                <entry key="DAViS240.nChipReset" value="true"/>
-                <entry key="DAViS240.powerDown" value="false"/>
-                <entry key="DAViS240.runAdc" value="true"/>
-                <entry key="DAViS240.runCpld" value="true"/>
-                <entry key="DAViS240.resetTestpixel" value="true"/>
+                <entry key="DAVIS240A.nChipReset" value="true"/>
+                <entry key="DAVIS240A.powerDown" value="false"/>
+                <entry key="DAVIS240A.runAdc" value="true"/>
+                <entry key="DAVIS240A.runCpld" value="true"/>
+                <entry key="DAVIS240A.resetTestpixel" value="true"/>
                 <entry key="CPLDInt.exposureB" value="39"/>
                 <entry key="CPLDInt.exposureC" value="1887"/>
                 <entry key="CPLDInt.resSettle" value="10"/>
                 <entry key="CPLDInt.rowSettle" value="10"/>
                 <entry key="CPLDInt.colSettle" value="10"/>
                 <entry key="CPLDInt.frameDelay" value="0"/>
-                <entry key="DAViS240.testPixel" value="false"/>
-                <entry key="DAViS240.useC" value="false"/>
-                <entry key="DAViS240.resetCalib" value="true"/>
-                <entry key="DAViS240.typePCalib" value="false"/>
-                <entry key="DAViS240.hotPixelSuppression" value="false"/>
-                <entry key="DAViS240.nArow" value="false"/>
-                <entry key="DAViS240.useAout" value="false"/>
-                <entry key="DAViS240.ShiftedSourceBias.SSP.RefValue" value="1"/>
-                <entry key="DAViS240.ShiftedSourceBias.SSP.RegBitValue" value="33"/>
-                <entry key="DAViS240.ShiftedSourceBias.SSP.OperatingMode" value="ShiftedSource"/>
-                <entry key="DAViS240.ShiftedSourceBias.SSP.VoltageLevel" value="SplitGate"/>
-                <entry key="DAViS240.ShiftedSourceBias.SSN.RefValue" value="1"/>
-                <entry key="DAViS240.ShiftedSourceBias.SSN.RegBitValue" value="33"/>
-                <entry key="DAViS240.ShiftedSourceBias.SSN.OperatingMode" value="ShiftedSource"/>
-                <entry key="DAViS240.ShiftedSourceBias.SSN.VoltageLevel" value="SplitGate"/>
+                <entry key="DAVIS240A.testPixel" value="false"/>
+                <entry key="DAVIS240A.useC" value="false"/>
+                <entry key="DAVIS240A.resetCalib" value="true"/>
+                <entry key="DAVIS240A.typePCalib" value="false"/>
+                <entry key="DAVIS240A.hotPixelSuppression" value="false"/>
+                <entry key="DAVIS240A.nArow" value="false"/>
+                <entry key="DAVIS240A.useAout" value="false"/>
+                <entry key="DAVIS240A.ShiftedSourceBias.SSP.RefValue" value="1"/>
+                <entry key="DAVIS240A.ShiftedSourceBias.SSP.RegBitValue" value="33"/>
+                <entry key="DAVIS240A.ShiftedSourceBias.SSP.OperatingMode" value="ShiftedSource"/>
+                <entry key="DAVIS240A.ShiftedSourceBias.SSP.VoltageLevel" value="SplitGate"/>
+                <entry key="DAVIS240A.ShiftedSourceBias.SSN.RefValue" value="1"/>
+                <entry key="DAVIS240A.ShiftedSourceBias.SSN.RegBitValue" value="33"/>
+                <entry key="DAVIS240A.ShiftedSourceBias.SSN.OperatingMode" value="ShiftedSource"/>
+                <entry key="DAVIS240A.ShiftedSourceBias.SSN.VoltageLevel" value="SplitGate"/>
                 <entry key="autoResetEnabled" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.DiffCasBnc.BitValueCoarse" value="2"/>
-                <entry key="DAViS240.AddressedIPotCF.DiffCasBnc.BitValueFine" value="115"/>
-                <entry key="DAViS240.AddressedIPotCF.DiffCasBnc.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.DiffCasBnc.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.DiffCasBnc.Sex" value="N"/>
-                <entry key="DAViS240.AddressedIPotCF.DiffCasBnc.Type" value="CASCODE"/>
-                <entry key="DAViS240.AddressedIPotCF.LcolTimeoutBn.BitValueCoarse" value="2"/>
-                <entry key="DAViS240.AddressedIPotCF.LcolTimeoutBn.BitValueFine" value="49"/>
-                <entry key="DAViS240.AddressedIPotCF.LcolTimeoutBn.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.LcolTimeoutBn.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.LcolTimeoutBn.Sex" value="N"/>
-                <entry key="DAViS240.AddressedIPotCF.LcolTimeoutBn.Type" value="NORMAL"/>
-                <entry key="class eu.seebetter.ini.chips.DAViS.DAViS240.preferredDisplayMethod" value="eu.seebetter.ini.chips.DAViS.DAViS240$DAViS240DisplayMethod"/>
-                <entry key="DAViS240.extTrigger" value="false"/>
-                <entry key="DAViS240.testPixAPSread" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.DiffCasBnc.BitValueCoarse" value="2"/>
+                <entry key="DAVIS240A.AddressedIPotCF.DiffCasBnc.BitValueFine" value="115"/>
+                <entry key="DAVIS240A.AddressedIPotCF.DiffCasBnc.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.DiffCasBnc.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.DiffCasBnc.Sex" value="N"/>
+                <entry key="DAVIS240A.AddressedIPotCF.DiffCasBnc.Type" value="CASCODE"/>
+                <entry key="DAVIS240A.AddressedIPotCF.LcolTimeoutBn.BitValueCoarse" value="2"/>
+                <entry key="DAVIS240A.AddressedIPotCF.LcolTimeoutBn.BitValueFine" value="49"/>
+                <entry key="DAVIS240A.AddressedIPotCF.LcolTimeoutBn.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.LcolTimeoutBn.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.LcolTimeoutBn.Sex" value="N"/>
+                <entry key="DAVIS240A.AddressedIPotCF.LcolTimeoutBn.Type" value="NORMAL"/>
+                <entry key="class eu.seebetter.ini.chips.DAViS.DAVIS240A.preferredDisplayMethod" value="eu.seebetter.ini.chips.DAViS.DAVIS240A$DAViS240DisplayMethod"/>
+                <entry key="DAVIS240A.extTrigger" value="false"/>
+                <entry key="DAVIS240A.testPixAPSread" value="false"/>
                 <entry key="agcEnabled" value="false"/>
                 <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAGdwQAAAAGdAA0bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5BcHNEdnNFdmVudEZpbHRlcnQASGNoLnVuaXpoLmluaS5qYWVyLnByb2plY3RzLm1hY2hpbmV2aXNpb24uZmFjZWRldGVjdGlvbi5BcHNEdnNGYWNlVHJhY2tlcnQARmNoLnVuaXpoLmluaS5qYWVyLnByb2plY3RzLm1hY2hpbmV2aXNpb24uZmFjZWRldGVjdGlvbi5BcHNGYWNlRGV0ZWN0b3J0AFBjaC51bml6aC5pbmkuamFlci5wcm9qZWN0cy5tYWNoaW5ldmlzaW9uLmZlYXR1cmVzLmV4dHJhY3Rpb24uQXBzRmVhdHVyZUV4dHJhY3RvcnQAQWNoLnVuaXpoLmluaS5qYWVyLnByb2plY3RzLm1hY2hpbmV2aXNpb24uZnJhbWVzLkFwc0ZyYW1lRXh0cmFjdG9ydABFY2gudW5pemguaW5pLmphZXIucHJvamVjdHMubWFjaGluZXZpc2lvbi5mcmFtZXMuQXBzRnJhbWVFeHRyYXBvbGF0aW9ueA=="/>
                 <entry key="RefractoryFilter.filterEnabled" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.ApsROSFBn.BitValueCoarse" value="1"/>
-                <entry key="DAViS240.AddressedIPotCF.ApsROSFBn.BitValueFine" value="188"/>
-                <entry key="DAViS240.AddressedIPotCF.ApsROSFBn.Enabled" value="true"/>
-                <entry key="DAViS240.AddressedIPotCF.ApsROSFBn.LowCurrent" value="false"/>
-                <entry key="DAViS240.AddressedIPotCF.ApsROSFBn.Sex" value="N"/>
-                <entry key="DAViS240.AddressedIPotCF.ApsROSFBn.Type" value="NORMAL"/>
+                <entry key="DAVIS240A.AddressedIPotCF.ApsROSFBn.BitValueCoarse" value="1"/>
+                <entry key="DAVIS240A.AddressedIPotCF.ApsROSFBn.BitValueFine" value="188"/>
+                <entry key="DAVIS240A.AddressedIPotCF.ApsROSFBn.Enabled" value="true"/>
+                <entry key="DAVIS240A.AddressedIPotCF.ApsROSFBn.LowCurrent" value="false"/>
+                <entry key="DAVIS240A.AddressedIPotCF.ApsROSFBn.Sex" value="N"/>
+                <entry key="DAVIS240A.AddressedIPotCF.ApsROSFBn.Type" value="NORMAL"/>
                 <entry key="ignoreReadout" value="true"/>
                 <entry key="AEChip.subSamplingEnabled" value="false"/>
                 <entry key="useDVSExtrapolation" value="false"/>
@@ -219,7 +219,7 @@
                 <entry key="XYTypeFilter.endY" value="92"/>
                 <entry key="XYTypeFilter.invertEnabled" value="false"/>
                 <entry key="useMismatchCorrection" value="true"/>
-                <entry key="DAViS240.typeNCalib" value="false"/>
+                <entry key="DAVIS240A.typeNCalib" value="false"/>
                 <entry key="ApsEventFilter.filterEnabled" value="true"/>
                 <entry key="ApsEventFilter.filterAPSEvents" value="true"/>
                 <entry key="ApsEventFilter.filterDVSEvents" value="false"/>
@@ -274,8 +274,8 @@
                 <entry key="DepressingSynapseFilter.tauMs" value="2785.9604"/>
                 <entry key="DepressingSynapseFilter.weight" value="2.313778E-4"/>
                 <entry key="RotateFilter.rotate90deg" value="false"/>
-                <entry key="DAViS240.sbret10" value="true"/>
-                <entry key="DAViS240.globalShutter" value="false"/>
+                <entry key="DAVIS240A.sbret10" value="true"/>
+                <entry key="DAVIS240A.globalShutter" value="false"/>
                 <entry key="Steadicam.positionComputer" value="VORSensor"/>
                 <entry key="Steadicam.cornerFreqHz" value="0.1"/>
                 <entry key="Steadicam.filterEnabled" value="false"/>
@@ -334,7 +334,7 @@
                 <entry key="MultiLineClusterTracker.mixingFactorTheta" value="0.13938662"/>
                 <entry key="MultiLineClusterTracker.mixingFactorRho" value="0.0110249985"/>
                 <entry key="MultiLineClusterTracker.minDistanceNormalized" value="0.01812906"/>
-                <entry key="DAViS240.showImageHistogram" value="false"/>
+                <entry key="DAVIS240A.showImageHistogram" value="false"/>
                 <entry key="CPLDInt.exposure" value="35"/>
                 <entry key="ApsFrameExtractor.logCompress" value="false"/>
                 <entry key="ApsFrameExtractor.deltaBufferSize" value="100000.0"/>
@@ -346,7 +346,7 @@
                 <entry key="ApsFaceDetector.filterEnabled" value="false"/>
                 <entry key="ApsFeatureExtractor.pullFrames" value="true"/>
                 <entry key="ApsFeatureExtractor.detectionMethod" value="BRISK"/>
-                <entry key="DAViS240.autoshotThresholdEvents" value="0"/>
+                <entry key="DAVIS240A.autoshotThresholdEvents" value="0"/>
                 <entry key="ApsDvsAutoShooter.filterEnabled" value="false"/>
                 <entry key="ApsDvsAutoShooter.eventRateThresholdHz" value="184736.56"/>
                 <entry key="HotPixelSupressor.learnTimeMs" value="30"/>
@@ -365,7 +365,7 @@
                 <entry key="AdaptiveGaussianTracker.filterEnabled" value="false"/>
                 <entry key="FullGaussianTracker.filterEnabled" value="false"/>
                 <entry key="CellStatsProber.showAverageISIHistogram" value="true"/>
-                <entry key="DAViS240.showIMU" value="true"/>
+                <entry key="DAVIS240A.showIMU" value="true"/>
                 <entry key="ApsDvsFaceTracker.octaves" value="4"/>
                 <entry key="ApsDvsFaceTracker.scale" value="1.0"/>
                 <entry key="ApsFrameExtractor.logDecompress" value="false"/>
@@ -396,7 +396,7 @@
                 <entry key="Steadicam.annotateEnclosedEnabled" value="false"/>
                 <entry key="Steadicam.showAnnotation" value="true"/>
                 <entry key="Steadicam.flipContrast" value="true"/>
-                <entry key="DAViS240.syncTimestampMaster" value="true"/>
+                <entry key="DAVIS240A.syncTimestampMaster" value="true"/>
                 <entry key="VerticalObjectMotionCell.filterEnabled" value="false"/>
                 <entry key="FrequencyDetectionCell.filterEnabled" value="false"/>
                 <entry key="Steadicam.disableTranslation" value="false"/>
