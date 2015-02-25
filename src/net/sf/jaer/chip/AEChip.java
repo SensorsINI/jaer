@@ -12,7 +12,6 @@ package net.sf.jaer.chip;
 import eu.seebetter.ini.chips.davis.HotPixelFilter;
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
 
 import net.sf.jaer.Description;
@@ -23,7 +22,6 @@ import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.FilterFrame;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
-import net.sf.jaer.eventprocessing.filter.CellStatsProber;
 import net.sf.jaer.eventprocessing.filter.Info;
 import net.sf.jaer.eventprocessing.filter.RefractoryFilter;
 import net.sf.jaer.eventprocessing.filter.RotateFilter;

@@ -150,6 +150,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     @Override
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
+        if(!isFilterEnabled()) return;
         if (chip.getAeViewer().getPlayMode() != AEViewer.PlayMode.PLAYBACK) {
             return;
         }

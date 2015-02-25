@@ -626,6 +626,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
             oos.close();
             bos.close();
             log.info("throttle settings saveed to preferences");
+            log.info("current throttle profile is "+currentProfile.toString());
         } catch (Exception e) {
             log.warning("couldn't save profile: " + e);
         }
