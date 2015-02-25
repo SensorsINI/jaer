@@ -15,13 +15,15 @@
               <map>
                 <entry key="FilterChain.timeLimitEnabled" value="false"/>
                 <entry key="FilterChain.timeLimitMs" value="10"/>
+                <entry key="Info.useLocalTimeZone" value="true"/>
                 <entry key="VideoControl.displayFrames" value="true"/>
                 <entry key="VideoControl.displayEvents" value="true"/>
                 <entry key="VideoControl.useAutoContrast" value="false"/>
-                <entry key="VideoControl.contrast" value="1.5"/>
+                <entry key="VideoControl.contrast" value="1.8000001"/>
                 <entry key="VideoControl.brightness" value="0.0"/>
                 <entry key="VideoControl.gamma" value="1.0"/>
                 <entry key="agcTauMs" value="1000.0"/>
+                <entry key="DAViS240.bgTabbedPaneSelectedIndex" value="0"/>
                 <entry key="XYTypeFilter.filterEnabled" value="false"/>
                 <entry key="RotateFilter.filterEnabled" value="false"/>
                 <entry key="BackgroundActivityFilter.filterEnabled" value="false"/>
@@ -141,7 +143,7 @@
                 <entry key="DAVIS240C.AddressedIPotCF.PadFollBn.Sex" value="N"/>
                 <entry key="DAVIS240C.AddressedIPotCF.PadFollBn.Type" value="NORMAL"/>
                 <entry key="DAVIS240C.AddressedIPotCF.apsOverflowLevel.BitValueCoarse" value="1"/>
-                <entry key="DAVIS240C.AddressedIPotCF.apsOverflowLevel.BitValueFine" value="253"/>
+                <entry key="DAVIS240C.AddressedIPotCF.apsOverflowLevel.BitValueFine" value="255"/>
                 <entry key="DAVIS240C.AddressedIPotCF.apsOverflowLevel.Enabled" value="true"/>
                 <entry key="DAVIS240C.AddressedIPotCF.apsOverflowLevel.LowCurrent" value="false"/>
                 <entry key="DAVIS240C.AddressedIPotCF.apsOverflowLevel.Sex" value="N"/>
@@ -162,9 +164,9 @@
                 <entry key="DAVIS240C.resetTestpixel" value="true"/>
                 <entry key="CPLDInt.exposureB" value="39"/>
                 <entry key="CPLDInt.exposureC" value="1887"/>
-                <entry key="CPLDInt.resSettle" value="10"/>
-                <entry key="CPLDInt.rowSettle" value="10"/>
-                <entry key="CPLDInt.colSettle" value="10"/>
+                <entry key="CPLDInt.resSettle" value="12"/>
+                <entry key="CPLDInt.rowSettle" value="18"/>
+                <entry key="CPLDInt.colSettle" value="11"/>
                 <entry key="CPLDInt.frameDelay" value="0"/>
                 <entry key="DAVIS240C.testPixel" value="false"/>
                 <entry key="DAVIS240C.useC" value="false"/>
@@ -198,7 +200,7 @@
                 <entry key="DAVIS240C.extTrigger" value="false"/>
                 <entry key="DAVIS240C.testPixAPSread" value="false"/>
                 <entry key="agcEnabled" value="false"/>
-                <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAAdwQAAAAAeA=="/>
+                <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAJdwQAAAAJdAA5Y2gudW5pemguaW5pLmphZXIucHJvamVjdHMuZGF2aXMuZnJhbWVzLkFwc0ZyYW1lRXh0cmFjdG9ydAA1bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5BcHNOb2lzZVN0YXRpc3RpY3N0ADtuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLkJhY2tncm91bmRBY3Rpdml0eUZpbHRlcnQALW9yZy5jYXBvY2FjY2lhLmNuZS5qYWVyLmNuZTIwMTIudm9yLlN0ZWFkaWNhbXQAQmNoLnVuaXpoLmluaS5qYWVyLnByb2plY3RzLmRhdmlzLmZyYW1lcy5BcHNGcmFtZUV4dHJhcG9sYXRpb25JU0NBU3QAMWV1LnZpc3VhbGl6ZS5pbmkuY29udm5ldC5WaXN1YWxpc2VTdGVlcmluZ0NvbnZOZXR0ACxldS52aXN1YWxpemUuaW5pLmNvbnZuZXQuRmFjZURldGVjdG9yQ29udk5ldHQAJ25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuSW5mb3QAMm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuQ2VsbFN0YXRzUHJvYmVyeA=="/>
                 <entry key="RefractoryFilter.filterEnabled" value="false"/>
                 <entry key="DAVIS240C.AddressedIPotCF.ApsROSFBn.BitValueCoarse" value="1"/>
                 <entry key="DAVIS240C.AddressedIPotCF.ApsROSFBn.BitValueFine" value="219"/>
@@ -210,7 +212,7 @@
                 <entry key="AEChip.subSamplingEnabled" value="false"/>
                 <entry key="useDVSExtrapolation" value="false"/>
                 <entry key="CPLDInt.pad" value="0"/>
-                <entry key="FilterFrame.lastFilterSelected" value=""/>
+                <entry key="FilterFrame.lastFilterSelected" value="class org.capocaccia.cne.jaer.cne2012.vor.Steadicam"/>
                 <entry key="XYTypeFilter.startX" value="134"/>
                 <entry key="XYTypeFilter.xEnabled" value="true"/>
                 <entry key="XYTypeFilter.endX" value="139"/>
@@ -257,7 +259,6 @@
                 <entry key="ApsFrameExtrapolation.manualOffGain" value="-0.06837005"/>
                 <entry key="ApsFrameExtrapolation.lowPassTimeConst" value="1.0"/>
                 <entry key="ApsFrameExtrapolation.averagingWindow" value="10"/>
-                <entry key="Info.useLocalTimeZone" value="true"/>
                 <entry key="Info.filterEnabled" value="false"/>
                 <entry key="Info.eventRateScaleMax" value="613913.56"/>
                 <entry key="RefractoryFilter.refractoryPeriodUs" value="586"/>
@@ -275,10 +276,10 @@
                 <entry key="DepressingSynapseFilter.weight" value="2.313778E-4"/>
                 <entry key="RotateFilter.rotate90deg" value="false"/>
                 <entry key="DAVIS240C.sbret10" value="false"/>
-                <entry key="DAVIS240C.globalShutter" value="true"/>
+                <entry key="DAVIS240C.globalShutter" value="false"/>
                 <entry key="Steadicam.positionComputer" value="VORSensor"/>
                 <entry key="Steadicam.cornerFreqHz" value="0.1"/>
-                <entry key="Steadicam.filterEnabled" value="false"/>
+                <entry key="Steadicam.filterEnabled" value="true"/>
                 <entry key="Steadicam.panTiltEnabled" value="false"/>
                 <entry key="RectangularClusterTracker.thresholdVelocityForVisibleCluster" value="0.0"/>
                 <entry key="RectangularClusterTracker.filterEventsEnabled" value="false"/>
@@ -335,7 +336,7 @@
                 <entry key="MultiLineClusterTracker.mixingFactorRho" value="0.0110249985"/>
                 <entry key="MultiLineClusterTracker.minDistanceNormalized" value="0.01812906"/>
                 <entry key="DAVIS240C.showImageHistogram" value="false"/>
-                <entry key="CPLDInt.exposure" value="8041"/>
+                <entry key="CPLDInt.exposure" value="80407"/>
                 <entry key="ApsFrameExtractor.logCompress" value="false"/>
                 <entry key="ApsFrameExtractor.deltaBufferSize" value="1000.0"/>
                 <entry key="ApsFrameExtractor.displayBrightness" value="0.0"/>
@@ -370,9 +371,9 @@
                 <entry key="ApsDvsFaceTracker.scale" value="1.0"/>
                 <entry key="ApsFrameExtractor.logDecompress" value="false"/>
                 <entry key="ApsFrameExtractor.preBufferFrame" value="false"/>
-                <entry key="ApsNoiseStatistics.filterEnabled" value="false"/>
-                <entry key="ApsNoiseStatistics.histNumBins" value="151"/>
-                <entry key="ApsNoiseStatistics.spatialHistogramEnabled" value="false"/>
+                <entry key="ApsNoiseStatistics.filterEnabled" value="true"/>
+                <entry key="ApsNoiseStatistics.histNumBins" value="29"/>
+                <entry key="ApsNoiseStatistics.spatialHistogramEnabled" value="true"/>
                 <entry key="ApsNoiseStatistics.scaleHistogramsIncludingOverflow" value="true"/>
                 <entry key="ApsNoiseStatistics.temporalNoiseEnabled" value="true"/>
                 <entry key="PanTiltAimer.filterEnabled" value="false"/>
@@ -387,10 +388,10 @@
                 <entry key="RefractoryFilter.subsampleBy" value="0"/>
                 <entry key="Steadicam.highpassTauMsTranslation" value="1215.506"/>
                 <entry key="Steadicam.highpassTauMsRotation" value="1710.3384"/>
-                <entry key="Steadicam.panOffset" value="0.93567175"/>
-                <entry key="Steadicam.tiltOffset" value="0.95819443"/>
-                <entry key="Steadicam.rollOffset" value="0.8386835"/>
-                <entry key="Steadicam.lensFocalLengthMm" value="12.0"/>
+                <entry key="Steadicam.panOffset" value="0.29959917"/>
+                <entry key="Steadicam.tiltOffset" value="-1.9631878"/>
+                <entry key="Steadicam.rollOffset" value="0.7365175"/>
+                <entry key="Steadicam.lensFocalLengthMm" value="4.5226784"/>
                 <entry key="Steadicam.transformResetLimitDegrees" value="30"/>
                 <entry key="NoOpFilter.filterEnabled" value="false"/>
                 <entry key="Steadicam.annotateEnclosedEnabled" value="false"/>
@@ -589,7 +590,7 @@
                 <entry key="CPLDByte.imu4_ACCEL_CONFIG" value="16"/>
                 <entry key="ImuGyroScale" value="GyroFullScaleDegPerSec1000"/>
                 <entry key="ImuAccelScale" value="ImuAccelScaleG8"/>
-                <entry key="CPLDByte.miscControlBits" value="1"/>
+                <entry key="CPLDByte.miscControlBits" value="3"/>
                 <entry key="XYTypeFilter.typeEnabled" value="true"/>
                 <entry key="XYTypeFilter.endType" value="1"/>
                 <entry key="XYTypeFilter.startType" value="1"/>
@@ -608,7 +609,8 @@
                 <entry key="HotPixelFilter.learnTimeMs" value="107"/>
                 <entry key="MedianTracker.filterEnabled" value="true"/>
                 <entry key="MedianTracker.tauUs" value="16137"/>
-                <entry key="CPLDInt.nullSettle" value="40"/>
+                <entry key="CPLDInt.nullSettle" value="42"/>
+                <entry key="DAViS240.showImageHistogram" value="true"/>
               </map>
             </node>
           </node>
