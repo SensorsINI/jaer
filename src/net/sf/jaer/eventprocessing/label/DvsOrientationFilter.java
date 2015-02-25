@@ -4,7 +4,7 @@
 
 package net.sf.jaer.eventprocessing.label;
 
-import eu.seebetter.ini.chips.DAViS.IMUSample;
+import eu.seebetter.ini.chips.davis.IMUSample;
 import net.sf.jaer.event.orientation.DvsOrientationEvent;
 import net.sf.jaer.event.orientation.BinocularOrientationEvent;
 import net.sf.jaer.event.orientation.OrientationEventInterface;

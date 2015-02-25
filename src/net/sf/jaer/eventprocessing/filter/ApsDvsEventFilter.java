@@ -4,7 +4,7 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
-import eu.seebetter.ini.chips.DAViS.IMUSample;
+import eu.seebetter.ini.chips.davis.IMUSample;
 import java.util.Iterator;
 
 import net.sf.jaer.Description;

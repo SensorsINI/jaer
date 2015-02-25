@@ -22,7 +22,7 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.util.filter.LowpassFilter2d;
 import net.sf.jaer.util.histogram.SimpleHistogram;
 import eu.seebetter.ini.chips.ApsDvsChip;
-import eu.seebetter.ini.chips.DAViS.DAVIS240BaseCamera;
+import eu.seebetter.ini.chips.davis.DAVIS240BaseCamera;
 
 /**
  * Class adapted from AEChipRenderer to render not only AE events but also

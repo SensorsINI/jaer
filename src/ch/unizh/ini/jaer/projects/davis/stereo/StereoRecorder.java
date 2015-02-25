@@ -8,8 +8,6 @@ package ch.unizh.ini.jaer.projects.davis.stereo;
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.ApsDvsChip;
-import eu.seebetter.ini.chips.DAViS.DAViS240;
-import eu.seebetter.ini.chips.DAViS.DAViS240Config;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
 import java.io.File;

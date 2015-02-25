@@ -3,6 +3,7 @@
 //----------------------------------------------------------------------------//
 package eu.visualize.ini.retinamodel;
 
+import eu.seebetter.ini.chips.davis.HotPixelFilter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
@@ -24,7 +25,6 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter;
 import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
-import eu.seebetter.ini.chips.DAViS.HotPixelFilter;
 
 //-- end packages ------------------------------------------------------------//
 //****************************************************************************//

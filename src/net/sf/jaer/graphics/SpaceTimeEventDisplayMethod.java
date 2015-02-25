@@ -30,7 +30,7 @@ import net.sf.jaer.util.EngineeringFormat;
 import com.jogamp.opengl.util.gl2.GLUT;
 
 import eu.seebetter.ini.chips.ApsDvsChip;
-import eu.seebetter.ini.chips.DAViS.IMUSample;
+import eu.seebetter.ini.chips.davis.IMUSample;
 
 /**
  * Displays events in space time
