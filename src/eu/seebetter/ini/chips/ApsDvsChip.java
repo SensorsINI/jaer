@@ -5,7 +5,12 @@
 package eu.seebetter.ini.chips;
 
 import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
+import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
+import ch.unizh.ini.jaer.projects.davis.frames.DavisFrameAviWriter;
+import eu.seebetter.ini.chips.davis.ApsDvsAutoShooter;
 import net.sf.jaer.eventprocessing.filter.ApsDvsEventFilter;
+import net.sf.jaer.eventprocessing.label.ApsDvsDirectionSelectiveFilter;
+import net.sf.jaer.eventprocessing.label.ApsDvsOrientationFilter;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
 
 /**
@@ -60,6 +65,11 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
 
     public ApsDvsChip() {
         addDefaultEventFilter(ApsDvsEventFilter.class);
+        addDefaultEventFilter(ApsFrameExtractor.class);
+        addDefaultEventFilter(ApsDvsAutoShooter.class);
+        addDefaultEventFilter(ApsDvsOrientationFilter.class);
+        addDefaultEventFilter(ApsDvsDirectionSelectiveFilter.class);
+        addDefaultEventFilter(DavisFrameAviWriter.class);
     }
 
     /**
