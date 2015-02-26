@@ -17,7 +17,7 @@ import java.util.Arrays;
  * inPacket that are supported by another event in the past {@link #setDt dt} 
  * in the immediate spatial neighborhood, defined by a subsampling bit shift.
  * @author tobi */
-@Description("Filters out uncorrelated background activity")
+@Description("Filters out uncorrelated background activity noise")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class BackgroundActivityFilter extends EventFilter2D implements Observer {
 
