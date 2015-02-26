@@ -647,9 +647,9 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         });
 
         defaultsButton.setMnemonic('d');
-        defaultsButton.setText("Defaults");
+        defaultsButton.setText("Add Defaults");
+        defaultsButton.setToolTipText("Adds the defaults to the front of the selected classes list");
         defaultsButton.setMargin(new java.awt.Insets(2, 5, 2, 5));
-        defaultsButton.setMaximumSize(null);
         defaultsButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 defaultsButtonActionPerformed(evt);
@@ -700,7 +700,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                         .addGap(18, 18, 18)
                         .addComponent(revertButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(defaultsButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(defaultsButton))
                     .addComponent(availClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 480, Short.MAX_VALUE)
                     .addComponent(chosenClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 480, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -710,9 +710,11 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_defaultsButtonActionPerformed
-        chosenClassesListModel.clear();
-        for (String s : defaultClassNames) {
-            chosenClassesListModel.addElement(s);
+//        chosenClassesListModel.clear();
+        int i=0;
+        for (String s : defaultClassNames) { // add them in reverse order because they were added to the list 
+            chosenClassesListModel.insertElementAt(s, i++);
+//            chosenClassesListModel.addElement(s);
         }
     }//GEN-LAST:event_defaultsButtonActionPerformed
 
