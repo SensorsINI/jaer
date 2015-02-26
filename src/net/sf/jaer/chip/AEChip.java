@@ -98,7 +98,8 @@ public class AEChip extends Chip2D {
      */
     public void addDefaultEventFilter(Class f) {
         if (!EventFilter.class.isAssignableFrom(f)) {
-            log.warning(f + " is not an EventFilter");
+            log.warning("In trying to addDefaultEventFilter, "+f + " is not an EventFilter, ignoring");
+            return;
         }
         defaultEventFilters.add(f);
     }
