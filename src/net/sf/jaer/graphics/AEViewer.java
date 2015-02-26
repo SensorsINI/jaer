@@ -611,19 +611,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             aeChipClass = FastClassFinder.forName(getAeChipClassName());
                     }
             } catch (ClassNotFoundException e) {
-                    log.warning(getAeChipClassName() + " class not found or not a valid AEChip, setting preferred chip class to default " + DEFAULT_CHIP_CLASS+" and using that class");
-                    prefs.put("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS);
-                    try {
-                            prefs.flush();
-                    } catch (BackingStoreException ex) {
-                            log.warning("couldnt' flush the preferences to save preferred chip class: "+ex.toString());
-                    }
-                    try {
-                            aeChipClass=FastClassFinder.forName(DEFAULT_CHIP_CLASS);
-                    } catch (ClassNotFoundException ex) {
-                            log.warning("could not even find the default chip class "+DEFAULT_CHIP_CLASS+", exiting");
-                            System.exit(1);
-                    }
+                    handleAEChipClassNotAvailable();
+            }catch(NoClassDefFoundError err){
+                    handleAEChipClassNotAvailable();
             }
             setLocale(Locale.US); // to avoid problems with other language support in JOGL
             //        try {
@@ -809,6 +799,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     }
 
+    private void handleAEChipClassNotAvailable() {
+        log.warning(getAeChipClassName() + " class not found or not a valid AEChip, setting preferred chip class to default " + DEFAULT_CHIP_CLASS+" and using that class");
+        prefs.put("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS);
+        try {
+            prefs.flush();
+        } catch (BackingStoreException ex) {
+            log.warning("couldnt' flush the preferences to save preferred chip class: "+ex.toString());
+        }
+        try {
+            aeChipClass=FastClassFinder.forName(DEFAULT_CHIP_CLASS);
+        } catch (ClassNotFoundException ex) {
+            log.warning("could not even find the default chip class "+DEFAULT_CHIP_CLASS+", exiting");
+            System.exit(1);
+        }
+    }
+
     /** Closes hardware interface and network sockets.
      * Register all cleanup here for other classes, e.g. Chip classes that open
 sockets.
@@ -987,6 +993,11 @@ two interfaces). otherwise force user choice.
                             deviceGroup.add(b);
                     } catch (ClassNotFoundException e) {
                             log.warning("couldn't find device class " + e.getMessage() + ", removing from preferred classes");
+                            if (deviceClassName != null) {
+                                    notFoundClasses.add(deviceClassName);
+                            }
+                    } catch(NoClassDefFoundError err){
+                        log.warning("couldn't find device class " + err.getMessage() + ", removing from preferred classes");
                             if (deviceClassName != null) {
                                     notFoundClasses.add(deviceClassName);
                             }
