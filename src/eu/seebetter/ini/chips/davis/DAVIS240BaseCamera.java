@@ -903,15 +903,16 @@ abstract public class DAVIS240BaseCamera extends ApsDvsChip implements RemoteCon
 	public class AutoExposureController implements HasPropertyTooltips { // TODO not implemented yet
 		private boolean autoExposureEnabled = getPrefs().getBoolean("autoExposureEnabled", false);
 
-		private float expDelta = .05f; // exposure change if incorrectly exposed
-		private float underOverFractionThreshold = 0.2f; // threshold for fraction of total pixels that are underexposed
+		private float expDelta = getPrefs().getFloat("expDelta",.1f); // exposure change if incorrectly exposed
+		private float underOverFractionThreshold = getPrefs().getFloat("underOverFractionThreshold", 0.2f); // threshold for fraction of total pixels that are underexposed
 		// or overexposed
 		private final PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
 		private final PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
 		SimpleHistogram hist = null;
 		SimpleHistogram.Statistics stats = null;
-		private float lowBoundary = getPrefs().getFloat("AutoExposureController.lowBoundary", 0.1f);
-		private float highBoundary = getPrefs().getFloat("AutoExposureController.highBoundary", 0.9f);
+		private float lowBoundary = getPrefs().getFloat("AutoExposureController.lowBoundary", 0.25f);
+		private float highBoundary = getPrefs().getFloat("AutoExposureController.highBoundary", 0.75f);
+                private boolean pidControllerEnabled=getPrefs().getBoolean("pidControllerEnabled", false);
 
 		public AutoExposureController() {
 			tooltipSupport.setPropertyTooltip("expDelta", "fractional change of exposure when under or overexposed");
@@ -922,6 +923,8 @@ abstract public class DAVIS240BaseCamera extends ApsDvsChip implements RemoteCon
 			.setPropertyTooltip("highBoundary", "Lower edge of histogram range considered as high values");
 			tooltipSupport.setPropertyTooltip("autoExposureEnabled",
 				"Exposure time is automatically controlled when this flag is true");
+                        tooltipSupport.setPropertyTooltip("pidControllerEnabled",
+				"<html>Enable proportional integral derivative (actually just proportional) controller rather than fixed-size step control. <p><i>expDelta</i> is multiplied by the fractional error from mid-range exposure when <i>pidControllerEnabled</i> is set");
 		}
 
 		@Override
@@ -934,6 +937,7 @@ abstract public class DAVIS240BaseCamera extends ApsDvsChip implements RemoteCon
 			autoExposureEnabled = yes;
 			propertyChangeSupport.firePropertyChange("autoExposureEnabled", old, yes);
 			getPrefs().putBoolean("autoExposureEnabled", yes);
+                        if(!yes) stats.reset(); // ensure toggling enabled resets the maxBin stat
 		}
 
 		public boolean isAutoExposureEnabled() {
@@ -963,8 +967,14 @@ abstract public class DAVIS240BaseCamera extends ApsDvsChip implements RemoteCon
 
 			final int currentExposure = exposure.get();
 			int newExposure = 0;
+                        float expChange=expDelta;
+                        if(pidControllerEnabled  && stats.maxNonZeroBin>0){
+                            // compute error signsl from meanBin relative to actual range of bins
+                            float err=(stats.meanBin-(stats.maxNonZeroBin/2))/(float)stats.maxNonZeroBin; // fraction of range exposure is above middle bin
+                            expChange=expDelta*Math.abs(err);
+                        }
 			if ((stats.fracLow >= underOverFractionThreshold) && (stats.fracHigh < underOverFractionThreshold)) {
-				newExposure = Math.round(currentExposure * (1 + expDelta));
+				newExposure = Math.round(currentExposure * (1 + expChange));
 				if (newExposure == currentExposure) {
 					newExposure++; // ensure increase
 				}
@@ -976,12 +986,12 @@ abstract public class DAVIS240BaseCamera extends ApsDvsChip implements RemoteCon
 				}
 				Chip.log.log(
 					Level.INFO,
-					"Underexposed: {0}\n{1}",
+					"Underexposed: {0} {1}",
 					new Object[] { stats.toString(),
-						String.format("oldExposure=%8d newExposure=%8d", currentExposure, newExposure) });
+						String.format("expChange=%.2f (oldExposure=%8d newExposure=%8d)", expChange, currentExposure, newExposure) });
 			}
 			else if ((stats.fracLow < underOverFractionThreshold) && (stats.fracHigh >= underOverFractionThreshold)) {
-				newExposure = Math.round(currentExposure * (1 - expDelta));
+				newExposure = Math.round(currentExposure * (1 - expChange));
 				if (newExposure == currentExposure) {
 					newExposure--; // ensure decrease even with rounding.
 				}
@@ -993,9 +1003,9 @@ abstract public class DAVIS240BaseCamera extends ApsDvsChip implements RemoteCon
 				}
 				Chip.log.log(
 					Level.INFO,
-					"Overexposed: {0}\n{1}",
+					"Overexposed: {0} {1}",
 					new Object[] { stats.toString(),
-						String.format("oldExposure=%8d newExposure=%8d", currentExposure, newExposure) });
+						String.format("expChange=%.2f (oldExposure=%8d newExposure=%8d)", expChange, currentExposure, newExposure) });
 			}
 			else {
 				// log.info(stats.toString());
@@ -1071,6 +1081,21 @@ abstract public class DAVIS240BaseCamera extends ApsDvsChip implements RemoteCon
 		public PropertyChangeSupport getPropertyChangeSupport() {
 			return propertyChangeSupport;
 		}
+
+        /**
+         * @return the pidControllerEnabled
+         */
+        public boolean isPidControllerEnabled() {
+            return pidControllerEnabled;
+        }
+
+        /**
+         * @param pidControllerEnabled the pidControllerEnabled to set
+         */
+        public void setPidControllerEnabled(boolean pidControllerEnabled) {
+            this.pidControllerEnabled = pidControllerEnabled;
+            getPrefs().putBoolean("pidControllerEnabled", pidControllerEnabled);
+        }
 	}
 
 	/**
