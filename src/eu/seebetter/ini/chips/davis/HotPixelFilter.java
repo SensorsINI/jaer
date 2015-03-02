@@ -29,9 +29,10 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- * Cheaply suppresses (filters out) hot pixels from DVS; ie pixels that continuously fire a
- * sustained stream of events. These events are learned on command, e.g. while sensor is stationary, and then
- * the list of hot pixels is filtered from the subsequent output.
+ * Cheaply suppresses (filters out) hot pixels from DVS; ie pixels that
+ * continuously fire a sustained stream of events. These events are learned on
+ * command, e.g. while sensor is stationary, and then the list of hot pixels is
+ * filtered from the subsequent output.
  *
  * @author tobi
  */
@@ -47,7 +48,7 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
     private boolean learnHotPixels = false, learningStarted = false;
     private int learningStartedTimestamp = 0;
 
-    private static class HotPixel implements Serializable{  // static to avoid having this reference to enclosing class in each hotpixel
+    private static class HotPixel implements Serializable {  // static to avoid having this reference to enclosing class in each hotpixel
 
         int x, y, address;
         volatile int count;
@@ -76,12 +77,12 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
         }
 
         @Override
-		public String toString() {
+        public String toString() {
             return String.format("(%d,%d)", x, y);
         }
 
         @Override
-		public int hashCode() {
+        public int hashCode() {
             return new Integer(address).hashCode();
         }
     }
@@ -92,47 +93,48 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
             return contains(new HotPixel(e));
         }
 
-        void storePrefs(){
-         try {
-            // Serialize to a byte array
-            ByteArrayOutputStream bos=new ByteArrayOutputStream();
-            ObjectOutput oos=new ObjectOutputStream(bos);
-            Object[] hps=this.toArray();
-            oos.writeObject(hps);
-            oos.close();
-            // Get the bytes of the serialized object
-            byte[] buf=bos.toByteArray();
-            getPrefs().putByteArray("HotPixelFilter.HotPixelSet", buf);
-        } catch(Exception e) {
-            e.printStackTrace();
-        }
-
-        }
-
-        void loadPrefs(){
-           try {
-            byte[] bytes=getPrefs().getByteArray("HotPixelFilter.HotPixelSet", null);
-            if(bytes!=null) {
-                ObjectInputStream in=new ObjectInputStream(new ByteArrayInputStream(bytes));
-                Object obj=in.readObject();
-                Object[] array=(Object[])obj;
-                clear();
-                for(Object o:array){
-                    add((HotPixel)o);
-                }
-                in.close();
-                log.info("loaded existing hot pixel array with "+size()+" hot pixels");
-            } else {
-                log.info("no hot pixels to load");
+        void storePrefs() {
+            try {
+                // Serialize to a byte array
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                ObjectOutput oos = new ObjectOutputStream(bos);
+                Object[] hps = this.toArray();
+                oos.writeObject(hps);
+                oos.close();
+                // Get the bytes of the serialized object
+                byte[] buf = bos.toByteArray();
+                getPrefs().putByteArray("HotPixelFilter.HotPixelSet", buf);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        } catch(Exception e) {
-            e.printStackTrace();
+
         }
 
+        void loadPrefs() {
+            try {
+                byte[] bytes = getPrefs().getByteArray("HotPixelFilter.HotPixelSet", null);
+                if (bytes != null) {
+                    ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
+                    Object obj = in.readObject();
+                    Object[] array = (Object[]) obj;
+                    clear();
+                    for (Object o : array) {
+                        add((HotPixel) o);
+                    }
+                    in.close();
+                    log.info("loaded existing hot pixel array with " + size() + " hot pixels");
+                } else {
+                    log.info("no hot pixels to load");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            } catch (NoClassDefFoundError err) {
+                err.printStackTrace();
+            }
         }
     }
 
-    private class CollectedAddresses extends HashMap<Integer,HotPixel> {
+    private class CollectedAddresses extends HashMap<Integer, HotPixel> {
 
         public CollectedAddresses(int initialCapacity) {
             super(initialCapacity);
@@ -156,15 +158,14 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
 //        OutputEventIterator outItr = getOutputPacket().outputIterator();
         for (BasicEvent e : in) {
             if (learnHotPixels) {
-                if(e.special)
-				 {
-					continue; // don't learn special events
-				}
+                if (e.special) {
+                    continue; // don't learn special events
+                }
                 if (learningStarted) {
                     // initialize collection of addresses to be filled during learning
                     learningStarted = false;
                     learningStartedTimestamp = e.timestamp;
-                    collectedAddresses = new CollectedAddresses(chip.getNumPixels()/50);
+                    collectedAddresses = new CollectedAddresses(chip.getNumPixels() / 50);
 
                 } else if ((e.timestamp - learningStartedTimestamp) > (learnTimeMs << 10)) { // ms to us is <<10 approx
                     // done collecting hot pixel data, now build lookup table
@@ -173,10 +174,10 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
                     for (int i = 0; i < numHotPixels; i++) {
                         int max = 0;
                         HotPixel hp = null;
-                        Set<Entry<Integer,HotPixel>> hps=collectedAddresses.entrySet();
+                        Set<Entry<Integer, HotPixel>> hps = collectedAddresses.entrySet();
 
-                        for (Entry<Integer,HotPixel> ent : hps) {
-                            HotPixel p=ent.getValue();
+                        for (Entry<Integer, HotPixel> ent : hps) {
+                            HotPixel p = ent.getValue();
                             if (p.count > max) {
                                 max = p.count;
                                 hp = p;
@@ -194,15 +195,15 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
                     // we're learning now by collecting addresses, store this address
                     // increment count for this address
                     HotPixel thisPixel = new HotPixel(e);
-                    if (collectedAddresses.get(e.address)!=null) {
+                    if (collectedAddresses.get(e.address) != null) {
                         collectedAddresses.get(e.address).incrementCount();
                     } else {
-                        collectedAddresses.put(e.address,thisPixel);
+                        collectedAddresses.put(e.address, thisPixel);
                     }
                 }
             }
             // process event
-            if(hotPixelSet.contains(e)){
+            if (hotPixelSet.contains(e)) {
                 e.setFilteredOut(true);
             }
 //            if (e.special || !hotPixelSet.contains(e) ) {
