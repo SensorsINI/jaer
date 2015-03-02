@@ -10,9 +10,14 @@
 package net.sf.jaer.chip;
 
 import eu.seebetter.ini.chips.davis.HotPixelFilter;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.prefs.BackingStoreException;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.event.BasicEvent;
@@ -402,12 +407,24 @@ public class AEChip extends Chip2D {
     }
     
     /** This method writes additional header lines to a newly created AEFileOutputStream that logs data from this AEChip.
-     * The default implementation writes the AEChip class name.
+     * The default implementation writes the AEChip class name and the complete preferences subtree for this AEChip.
      * @param os the AEFileOutputStream that is being written to
      * @see AEFileOutputStream#writeHeaderLine(java.lang.String)
      * @throws IOException 
      */
-    public void writeAdditionalAEFileOutputStreamHeader(AEFileOutputStream os) throws IOException{
-        os.writeHeaderLine(" AEChip: "+this.getClass().getName());
+    public void writeAdditionalAEFileOutputStreamHeader(AEFileOutputStream os) throws IOException, BackingStoreException {
+        os.writeHeaderLine(" AEChip: " + this.getClass().getName());
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(100000);
+        getPrefs().exportSubtree(bos);
+        bos.flush();
+        os.writeHeaderLine("Start of Preferences for this AEChip");
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(bos.toByteArray())));
+        String line = null;
+        while ((line = reader.readLine()) != null) {
+            os.writeHeaderLine(line);
+        }
+        os.writeHeaderLine("End of Preferences for this AEChip");
+
     }
 }
