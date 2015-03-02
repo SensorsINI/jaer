@@ -4723,12 +4723,16 @@ two interfaces). otherwise force user choice.
 
 		} catch (FileNotFoundException e) {
 			loggingFile = null;
-                    log.warning(e.toString());
+                    log.warning("In trying open a logging output file, caught: "+e.toString());
                     e.printStackTrace();
 		} catch (IOException ioe){
                     loggingFile=null;
-                    log.warning(ioe.toString());
+                    log.warning("In trying open a logging output file, caught: "+ioe.toString());
                     ioe.printStackTrace();
+                } catch(BackingStoreException bse){
+                     log.warning("In trying to export preferences to the logged data file, caught: "+bse.toString());
+                    bse.printStackTrace();
+                  
                 }
 
 		return loggingFile;
