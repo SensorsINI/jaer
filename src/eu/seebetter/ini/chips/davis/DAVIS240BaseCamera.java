@@ -85,6 +85,7 @@ abstract public class DAVIS240BaseCamera extends ApsDvsChip implements RemoteCon
     private boolean isTimestampMaster = true;
     public static final String HELP_URL_RETINA = "http://inilabs.com/support/overview-of-dynamic-vision-sensors";
     public static final String USER_GUIDE_URL_RETINA = "http://www.inilabs.com/support/davis240";
+    public static final String USER_GUIDE_URL_FLASHY = "https://docs.google.com/a/longi.li/document/d/1LuO-i8u-Y7Nf0zQ-N-Z2LRiKiQMO-EkD3Ln2bmnjhmQ/edit?usp=sharing";
 //    public static final String FIRMWARE_CHANGELOG = "https://sourceforge.net/p/jaer/code/HEAD/tree/devices/firmware/CypressFX2/firmware_FX2LP_DVS128/CHANGELOG.txt";
     JComponent helpMenuItem1 = null, helpMenuItem2 = null, helpMenuItem3 = null;
 
@@ -1165,7 +1166,7 @@ abstract public class DAVIS240BaseCamera extends ApsDvsChip implements RemoteCon
         }
         getAeViewer().removeHelpItem(helpMenuItem1);
         getAeViewer().removeHelpItem(helpMenuItem2);
-//        getAeViewer().removeHelpItem(helpMenuItem3);
+        getAeViewer().removeHelpItem(helpMenuItem3);
 
         enableChipMenu(false);
     }
@@ -1179,7 +1180,7 @@ abstract public class DAVIS240BaseCamera extends ApsDvsChip implements RemoteCon
         }
         helpMenuItem1 = getAeViewer().addHelpURLItem(HELP_URL_RETINA, "Product overview", "Opens product overview guide");
         helpMenuItem2 = getAeViewer().addHelpURLItem(USER_GUIDE_URL_RETINA, "DAVIS240 user guide", "Opens DAVIS240 user guide");
-//        helpMenuItem3 = getAeViewer().addHelpURLItem(FIRMWARE_CHANGELOG, "DVS128 Firmware Change Log", "Displays the head version of the DVS128 firmware change log");
+        helpMenuItem3 = getAeViewer().addHelpURLItem(USER_GUIDE_URL_FLASHY, "Flashy user guide", "User guide for external tool flashy for firmware/logic updates to devices using the libusb driver");
 
         enableChipMenu(true);
     }
