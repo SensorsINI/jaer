@@ -787,11 +787,21 @@
             <MenuItem class="javax.swing.JMenuItem" name="cypressFX2EEPROMMenuItem">
               <Properties>
                 <Property name="mnemonic" type="int" value="101"/>
-                <Property name="text" type="java.lang.String" value="(Advanced users only) CypressFX2 EEPPROM Utility"/>
-                <Property name="toolTipText" type="java.lang.String" value="(advanced users) Opens dialog to download device firmware "/>
+                <Property name="text" type="java.lang.String" value="(Advanced users only) Launch CypressFX2 EEPPROM utility"/>
+                <Property name="toolTipText" type="java.lang.String" value="(advanced users) Opens dialog to download device firmware and logic for devices that use the Thesycon UsbIo driver"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="cypressFX2EEPROMMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="flashyMenuItem">
+              <Properties>
+                <Property name="mnemonic" type="int" value="101"/>
+                <Property name="text" type="java.lang.String" value="(Advanced users only) Lanch flashy utility"/>
+                <Property name="toolTipText" type="java.lang.String" value="(advanced users) Opens dialog to download device firmware and logic for devices that use the libusb driver "/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="flashyMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="setDefaultFirmwareMenuItem">
