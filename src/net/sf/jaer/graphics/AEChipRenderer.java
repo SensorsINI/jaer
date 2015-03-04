@@ -34,7 +34,7 @@ import net.sf.jaer.eventio.AEInputStream;
 public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeListener {
 
     private boolean addedPropertyChangeListener = false;
-    private boolean externalRenderer = false;
+    boolean externalRenderer = false;
 
     /**
      * PropertyChange events

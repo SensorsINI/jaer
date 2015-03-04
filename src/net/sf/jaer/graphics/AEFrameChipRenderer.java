@@ -51,8 +51,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     private int sizeX, sizeY, maxADC;
     private int timestamp = 0;
     private LowpassFilter2d lowpassFilter = new LowpassFilter2d();  // 2 lp values are min and max log intensities from each frame
-    private float minValue, maxValue;
-    public boolean textureRendering = true;
+    private float minValue, maxValue, annotateAlpha;
     private float[] onColor, offColor;
     private ApsDvsConfig config;
 
@@ -62,12 +61,14 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     protected FloatBuffer pixBuffer;
     protected FloatBuffer onMap, onBuffer;
     protected FloatBuffer offMap, offBuffer;
+    protected FloatBuffer annotateMap;
     // double buffered histogram so we can accumulate new histogram while old one is still being rendered and returned to caller
     private final int histStep = 4; // histogram bin step in ADC counts of 1024 levels
     private SimpleHistogram adcSampleValueHistogram1 = new SimpleHistogram(0, histStep, (ApsDvsChip.MAX_ADC + 1) / histStep, 0);
     private SimpleHistogram adcSampleValueHistogram2 = new SimpleHistogram(0, histStep, (ApsDvsChip.MAX_ADC + 1) / histStep, 0);
     private SimpleHistogram currentHist = adcSampleValueHistogram1, nextHist = adcSampleValueHistogram2;
     private boolean computeHistograms = false;
+    private boolean displayAnnotation = false;
 
     /**
      * PropertyChange
@@ -81,6 +82,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         onColor = new float[4];
         offColor = new float[4];
         resetFrame(0.5f);
+        resetAnnotationFrame(0.0f);
     }
 
     /**
@@ -90,6 +92,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     protected void resetPixmapGrayLevel(float value) {
         maxValue = Float.MIN_VALUE;
         minValue = Float.MAX_VALUE;
+        setAnnotateAlpha(1.0f);
         checkPixmapAllocation();
         final int n = 4 * textureWidth * textureHeight;
         boolean madebuffer = false;
@@ -128,10 +131,10 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         pixmap.limit(n);
         pixBuffer.limit(n);
         setColors();
-        resetEventMaps();
+        resetMaps();
     }
 
-    protected void resetEventMaps() {
+    protected void resetMaps() {
         setColors();
         checkPixmapAllocation();
         final int n = 4 * textureWidth * textureHeight;
@@ -140,6 +143,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
 
         grayBuffer.rewind();
+        //Fill maps with fully transparent values
         Arrays.fill(grayBuffer.array(), 0.0f);
         System.arraycopy(grayBuffer.array(), 0, onMap.array(), 0, n);
         System.arraycopy(grayBuffer.array(), 0, offMap.array(), 0, n);
@@ -149,6 +153,24 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         offMap.rewind();
         onMap.limit(n);
         offMap.limit(n);
+    }
+    
+    @Override
+    public void resetAnnotationFrame(float resetValue) {
+        checkPixmapAllocation();
+        final int n = 4 * textureWidth * textureHeight;
+        if ((grayBuffer == null) || (grayBuffer.capacity() != n)) {
+            grayBuffer = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
+        }
+
+        grayBuffer.rewind();
+        //Fill maps with fully transparent values
+        Arrays.fill(grayBuffer.array(), resetValue);
+        System.arraycopy(grayBuffer.array(), 0, annotateMap.array(), 0, n);
+
+        grayBuffer.rewind();
+        annotateMap.rewind();
+        annotateMap.limit(n);
     }
 
     @Override
@@ -204,7 +226,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             if ((warningCount++ % WARNING_INTERVAL) == 0) {
                 log.info("I only know how to render ApsDvsEventPacket but got " + pkt);
             }
-            resetEventMaps();
+            resetMaps();
             resetFrame(0);
             return;
         }
@@ -227,7 +249,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
         if (!accumulateEnabled) {
 //            resetFrame(0.5f);
-            resetEventMaps();
+            resetMaps();
         }
         boolean displayEvents = config.isDisplayEvents(),
                 displayFrames = config.isDisplayFrames(),
@@ -395,11 +417,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             }
             return -1;
         }
-        if (textureRendering) {
-            return 4 * (x + (y * textureWidth));
-        } else {
-            return 4 * (x + (y * sizeX));
-        }
+        return 4 * (x + (y * textureWidth));
     }
 
     @Override
@@ -411,11 +429,12 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             textureHeight = ceilingPow2(sizeY);
         }
         final int n = 4 * textureWidth * textureHeight;
-        if ((pixmap == null) || (pixmap.capacity() < n) || (pixBuffer.capacity() < n) || (onMap.capacity() < n) || (offMap.capacity() < n)) {
+        if ((pixmap == null) || (pixmap.capacity() < n) || (pixBuffer.capacity() < n) || (onMap.capacity() < n) || (offMap.capacity() < n) || (annotateMap.capacity() < n)) {
             pixmap = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
             pixBuffer = FloatBuffer.allocate(n);
             onMap = FloatBuffer.allocate(n);
             offMap = FloatBuffer.allocate(n);
+            annotateMap = FloatBuffer.allocate(n);
         }
     }
 
@@ -470,6 +489,18 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         checkPixmapAllocation();
         return offMap;
     }
+    
+    /**
+     * Returns pixmap for annotated pixels
+     *
+     * @return a float buffer. Obtain a pixel from it using getPixMapIndex
+     * @see #getPixMapIndex(int, int)
+     */
+    public FloatBuffer getAnnotateMap() {
+        annotateMap.rewind();
+        checkPixmapAllocation();
+        return annotateMap;
+    }
 
     /**
      * Returns index into pixmap
@@ -480,11 +511,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      */
     @Override
     public int getPixMapIndex(int x, int y) {
-        if (textureRendering) {
-            return 4 * (x + (y * textureWidth));
-        } else {
-            return 3 * (x + (y * sizeX));
-        }
+        return 4 * (x + (y * textureWidth));
     }
 
     /**
@@ -526,6 +553,75 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      */
     public FloatBuffer getPixBuffer() {
         return pixBuffer;
+    }
+    
+    /**
+     * sets a specific value of the pixmap
+     *
+     * @param index
+     * @param value
+     */
+    @Override
+    public void setAnnotateValue(int index, float value) {
+        annotateMap.put(index, value);
+    }
+    
+    /**
+     * sets a specific color (rgb float 0-1) of the pixmap
+     *
+     * @param index
+     * @param value
+     */
+    @Override
+    public void setAnnotateColorRGB(int index, float[] value) {
+        annotateMap.put(index, value[0]);
+        annotateMap.put(index+1, value[1]);
+        annotateMap.put(index+2, value[2]);
+        annotateMap.put(index+3, getAnnotateAlpha());
+    }
+    
+    /**
+     * sets a specific color (rgb float 0-1) of the pixmap
+     *
+     * @param index
+     * @param value
+     */
+    public void setAnnotateColorRGBA(int index, float[] value) {
+        annotateMap.put(index, value[0]);
+        annotateMap.put(index+1, value[1]);
+        annotateMap.put(index+2, value[2]);
+        annotateMap.put(index+3, value[3]);
+    }
+    
+    /**
+     * sets a specific color (rgb float 0-1) of the pixmap
+     *
+     * @param x
+     * @param y
+     * @param value
+     */
+    @Override
+    public void setAnnotateColorRGB(int x, int y, float[] value) {
+        int index = getPixMapIndex(x,y);
+        annotateMap.put(index, value[0]);
+        annotateMap.put(index+1, value[1]);
+        annotateMap.put(index+2, value[2]);
+        annotateMap.put(index+3, getAnnotateAlpha());
+    }
+    
+    /**
+     * sets a specific color (rgb float 0-1) of the pixmap
+     *
+     * @param x
+     * @param y
+     * @param value
+     */
+    public void setAnnotateColorRGBA(int x, int y, float[] value) {
+        int index = getPixMapIndex(x,y);
+        annotateMap.put(index, value[0]);
+        annotateMap.put(index+1, value[1]);
+        annotateMap.put(index+2, value[2]);
+        annotateMap.put(index+3, value[3]);
     }
 
     /**
@@ -681,4 +777,42 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         return getHeight();
     }
 
+    /**
+     * @return the annotateAlpha
+     */
+    public float getAnnotateAlpha() {
+        return annotateAlpha;
+    }
+
+    /**
+     * @param annotateAlpha the annotateAlpha to set
+     */
+    public void setAnnotateAlpha(float annotateAlpha) {
+        this.annotateAlpha = annotateAlpha;
+    }
+
+    /**
+     * @return the displayAnnotation
+     */
+    public boolean isDisplayAnnotation() {
+        return displayAnnotation;
+    }
+
+    /**
+     * @param displayAnnotation the displayAnnotation to set
+     */
+    public void setDisplayAnnotation(boolean displayAnnotation) {
+        this.displayAnnotation = displayAnnotation;
+    }
+
+    /**
+     * Sets whether an external renderer adds data to the array and resets it
+     *
+     * @param extRender 
+     */
+    @Override
+    public void setExternalRenderer(boolean extRender) {
+        externalRenderer = extRender;
+        displayAnnotation = extRender;
+    }
 }

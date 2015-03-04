@@ -120,7 +120,7 @@ public class Chip2DRenderer implements Observer {
      * @param index
      * @param value
      */
-    public void setPixmapValue(int index, float value) {
+    public void setAnnotateValue(int index, float value) {
         pixmap.put(index, value);
     }
     
@@ -130,7 +130,7 @@ public class Chip2DRenderer implements Observer {
      * @param index
      * @param value
      */
-    public void setPixmapColorRGB(int index, float[] value) {
+    public void setAnnotateColorRGB(int index, float[] value) {
         pixmap.put(index, value[0]);
         pixmap.put(index+1, value[1]);
         pixmap.put(index+2, value[2]);
@@ -143,7 +143,7 @@ public class Chip2DRenderer implements Observer {
      * @param y
      * @param value
      */
-    public void setPixmapColorRGB(int x, int y, float[] value) {
+    public void setAnnotateColorRGB(int x, int y, float[] value) {
         int index = getPixMapIndex(x,y);
         pixmap.put(index, value[0]);
         pixmap.put(index+1, value[1]);
@@ -326,6 +326,16 @@ public class Chip2DRenderer implements Observer {
      * @param value gray level, 0-1 range.
      */
     synchronized public void resetFrame(float value) {
+        resetPixmapGrayLevel(value);
+        grayValue = value;
+    }
+    
+    /**
+     * Resets the pixmap frame buffer to a given gray level.
+     *
+     * @param value gray level, 0-1 range.
+     */
+    synchronized public void resetAnnotationFrame(float value) {
         resetPixmapGrayLevel(value);
         grayValue = value;
     }
