@@ -27,7 +27,7 @@ public class DvsDirectionSelectiveFilter extends AbstractDirectionSelectiveFilte
     private int n=0;
     public DvsDirectionSelectiveFilter(AEChip chip) {
         super(chip);
-        oriFilter = new DvsOrientationFilter(chip);
+        oriFilter = new SimpleOrientationFilter(chip);
         oriFilter.setAnnotationEnabled(false);
         oriFilter.setShowRawInputEnabled(false); // so that the orientation filter returns orientation events, not the input packet (tobi)
         setEnclosedFilter(oriFilter);

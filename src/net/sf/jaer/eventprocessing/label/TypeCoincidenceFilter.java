@@ -58,13 +58,13 @@ public class TypeCoincidenceFilter extends EventFilter2D implements Observer {
         return lastTimesMap;
     }
 
-    DvsOrientationFilter oriFilter;
+    SimpleOrientationFilter oriFilter;
 
     @Override
 	synchronized public void resetFilter() {
         allocateMap();
         if(oriFilter==null) {
-			oriFilter=new DvsOrientationFilter(chip);
+			oriFilter=new SimpleOrientationFilter(chip);
 		}
         setEnclosedFilter(oriFilter);
     }

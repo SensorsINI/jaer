@@ -9,7 +9,7 @@ package net.sf.jaer.config;
  * 
  * @author Christian
  */
-public interface ApsDvsConfig {
+public interface ApsDvsConfig extends DvsConfig {
     
        public static final String PROPERTY_IMU_DISPLAY_ENABLED = "IMU_DISPLAY_ENABLED", PROPERTY_IMU_ENABLED="IMU_ENABLED", PROPERTY_IMU_DLPF_CHANGED="IMU_DLPF_CHANGED", PROPERTY_IMU_SAMPLE_RATE_CHANGED="IMU_SAMPLE_RATE_CHANGED", PROPERTY_IMU_GYRO_SCALE_CHANGED="IMU_GYRO_SCALE_CHANGED", PROPERTY_IMU_ACCEL_SCALE_CHANGED="IMU_ACCEL_SCALE_CHANGED";
     
@@ -22,30 +22,6 @@ public interface ApsDvsConfig {
        public static String PROPERTY_AUTO_CONTRAST_ENABLED="PROPERTY_AUTO_CONTRAST_ENABLED";
        public static String PROPERTY_GLOBAL_SHUTTER_MODE_ENABLED="PROPERTY_GLOBAL_SHUTTER_MODE_ENABLED";
        public static String PROPERTY_TRANSLATE_ROW_ONLY_EVENTS="PROPERTY_TRANSLATE_ROW_ONLY_EVENTS";
-
-    
-    public abstract boolean isDisplayFrames();
-    
-    public abstract void setDisplayFrames(boolean displayFrames);
-    
-    public abstract boolean isDisplayEvents();
-    
-    public abstract void setDisplayEvents(boolean displayEvents);
-    
-    public abstract boolean isUseAutoContrast();
-    
-    public abstract void setUseAutoContrast(boolean useAutoContrast);
-    
-    public abstract float getContrast();
-    
-    public abstract void setContrast(float contrast);
-    
-    public abstract float getBrightness();
-    
-    public abstract void setBrightness(float brightness);
-    
-    public abstract float getGamma();
-    public abstract void setGamma(float gamma);
     
     abstract public void setFrameDelayMs(int ms);
     abstract public int getFrameDelayMs();

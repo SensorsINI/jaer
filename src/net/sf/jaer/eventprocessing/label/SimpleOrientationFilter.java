@@ -1,13 +1,12 @@
-/* DvsOrientationFilter.java
+/*
+ * DvsOrientationFilter.java
  *
  * Created on November 2, 2005, 8:24 PM */
-
 package net.sf.jaer.eventprocessing.label;
 
 import eu.seebetter.ini.chips.davis.IMUSample;
-import net.sf.jaer.event.orientation.DvsOrientationEvent;
+import net.sf.jaer.event.orientation.ApsDvsOrientationEvent;
 import net.sf.jaer.event.orientation.BinocularOrientationEvent;
-import net.sf.jaer.event.orientation.OrientationEventInterface;
 
 import java.util.logging.Level;
 
@@ -15,39 +14,30 @@ import net.sf.jaer.chip.*;
 import net.sf.jaer.event.*;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
-import net.sf.jaer.event.orientation.ApsDvsOrientationEvent;
-import static net.sf.jaer.eventprocessing.EventFilter.log;
+import net.sf.jaer.event.orientation.DvsOrientationEvent;
+import net.sf.jaer.event.orientation.OrientationEvent;
+import net.sf.jaer.event.orientation.OrientationEventInterface;
 
 /** Computes simple-type orientation-tuned cells.                           <br>
- * <ul>
- * <li>SWITCH: multiOriOutputEnabled:                                       <br>
- *     {false} = WTA mode, meaning only max 1 orientation per event         <br>
- *     {true}  = any orientation that passes coincidence threshold 
- *               (so multiple per event possible)</li>                      <br>
- * <li>SWITCH: oriHistoryEnabled:                                           <br>
- *     {false} = orientations are generated just based on current events    <br>
- *     {true}  = Previous orientations at this location are used to 
- *               make generation of similar orientations easier and 
- *               inhibit very different orientations. This can be 
- *               understood as contour enhancement.</li>                    <br>
- * <li>SWITCH: useAverageDtEnabled:                                         <br>
- *     {false} = the maximum temporal difference per orientation is 
- *               used as coincidence measure.                               <br>
- *     {true}  = the average over all cells in the receptive field 
- *               per orientation is used as coincidence measure.</li>
- * </ul><p>
- * Orientation type output takes values 0-3;                                <br>
- * 0 is a horizontal edge (0 deg),                                          <br>
- * 1 is an edge tilted up and to right (rotated CCW 45 deg),                <br>
- * 2 is a vertical edge (rotated 90 deg),                                   <br>
+ * multiOriOutputEnabled - boolean switch:
+ *      WTA mode {false} only max 1 orientation per event
+ *      or many event {true} any orientation that passes coincidence threshold.
+ * Another switch allows contour enhancement by using previous output 
+ * orientation events to make it easier to make events along the same orientation.
+ * Another switch decides whether to use max delay or average delay as the coincidence measure.
+ * <p>
+ * Orientation type output takes values 0-3;                    <br>
+ * 0 is a horizontal edge (0 deg),                              <br>
+ * 1 is an edge tilted up and to right (rotated CCW 45 deg),    <br>
+ * 2 is a vertical edge (rotated 90 deg),                       <br>
  * 3 is tilted up and to left (rotated 135 deg from horizontal edge).
  * <p>
  * The filter takes either PolarityEvents or BinocularEvents to create 
- * DvsOrientationEvent or BinocularOrientationEvents.
+ * DvsOrientationEvent or BinocularEvents.
  * @author tobi/phess */
 @Description("Detects local orientation by spatio-temporal correlation for DVS sensors")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class DvsOrientationFilter extends AbstractOrientationFilter{
+public class SimpleOrientationFilter extends AbstractOrientationFilter{
     //TODO: The oriHistoryMap is still not completely bias-free.
     //      The values for orientation range from 0-3 and each time we update
     //      the oriHistory map we adjust the value of the history slightly towards 
@@ -61,36 +51,41 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
     //      This fact gives a bias towards orientations 1 and 2 and yields 
     //      fewer outputs of orientations 0 and 3...
     
+    final int ORI_SHIFT = 16; // will shift our orientation value this many bits in raw address
     private boolean isBinocular;
+    private boolean isApsDvs;
     
     /** Creates a new instance of DvsOrientationFilter
-     * Most of the initialization is done in the Abstract super of this class.
      * @param chip */
-    public DvsOrientationFilter (AEChip chip){
+    public SimpleOrientationFilter (AEChip chip){
         super(chip);
+        chip.addObserver(this);
+        
         //Tooltips and Properties are defined in the AbstractOrientationFilter.
     }
 
     /** filters in to getOutputPacket(). 
-     * This filter can be used as FILTER (i.e. the number of events in the 
-     * outputPacket can be less than the number of input events) or as LABELER
-     * (i.e. the number of events is exactly the same) based on the flag
-     * 'passAllEvents'
+     * if filtering is enabled, the number of getOutputPacket() may be less
+     * than the number putString in
      * @param in input events can be null or empty.
      * @return the processed events, may be fewer in number. */
-    @Override synchronized public EventPacket<?> filterPacket (EventPacket<?> in){
+    @Override
+    synchronized public EventPacket<?> filterPacket (EventPacket<?> in){
         if ( enclosedFilter != null ) in = enclosedFilter.filterPacket(in);
         if ( in.getSize() == 0 ) return in;
 
         Class inputClass = in.getEventClass();
         if ( inputClass == PolarityEvent.class) {
             isBinocular = false;
+            isApsDvs = false;
             checkOutputPacketEventType(DvsOrientationEvent.class);
         } else if ( inputClass == ApsDvsEvent.class) {
             isBinocular = false;
+            isApsDvs = true;
             checkOutputPacketEventType(ApsDvsOrientationEvent.class);
         } else if( inputClass == BinocularEvent.class ) {
             isBinocular = true;
+            isApsDvs = false;
             checkOutputPacketEventType(BinocularOrientationEvent.class);
         } else { //Neither Polarity nor Binocular Event --> Wrong class used!
             log.log(Level.WARNING, "wrong input event class {0} in the input packet {1}, disabling filter", new Object[]{inputClass, in});
@@ -127,26 +122,26 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
             int type = e.getType();
             
             //TODO: Is this check really necessary? Should those special events being marked 'special'? (They would have already being catched above)
-            if(type >= NUM_TYPES || e.x < 0||e.y < 0) {
-                continue;  // tobi - some special type like IMU sample
-            }
+//            if (type >= NUM_TYPES || e.x < 0||e.y < 0) {
+//                continue;  // tobi - some special type like IMU sample
+//            }
 
             /* (Peter Hess) monocular events use eye = 0 as standard. therefore some arrays will waste memory, because eye will never be 1 for monocular events
              * in terms of performance this may not be optimal. but as long as this filter is not final, it makes rewriting code much easier, because
              * monocular and binocular events may be handled the same way. */
             int eye = 0;
-            if(isBinocular && (( (BinocularEvent)ein ).eye == BinocularEvent.Eye.RIGHT)){
-                eye = 1;
+            if ( isBinocular ){
+                if ( ( (BinocularEvent)ein ).eye == BinocularEvent.Eye.RIGHT ){
+                    eye = 1;
+                }
             }
             if ( eye == 1 ){
                 type = type << 1;
             }
-            
             if(x<0||y<0||type<0){
                 log.warning("negative coordinate for event "+e.toString());
                 continue;
             }
-            
             lastTimesMap[x][y][type] = e.timestamp;
 
             // For each orientation and position in the receptive field compute
@@ -183,19 +178,6 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
                     for ( int k = 0 ; k < rfSize ; k++ ){
                         int dt = dts[ori][k];
                         if ( dt > dtRejectThreshold ){
-                            //TODO: bbeyer: There is a small bug here that I could not
-                            // figure out. Using the orientation sample data from the jAER
-                            // project page and measuring how often events where rejected
-                            // due to dtRejectThreshold I could reliably find, that
-                            // diagonal orientations (ori 1 and 3) get rejected 11% more
-                            // often than horizontal and vertical orientations.
-                            // At first I thought that this might be due to the euclidian distance
-                            // to diagonal pixels being longer than to horizontal/vertical pixels.
-                            // But since we are concerned about orientation not motion here this should
-                            // not matter!?
-                            // Basically I dont know why diagonal orientations get systematicallty rejected
-                            // more often, but I am pretty certain that it should not be the case, given 
-                            // a well diversified sample...
                             continue; // we're averaging delta times; this rejects outliers
                         }
                         oridts[ori] += dt; // average dt
@@ -250,7 +232,7 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
                 // here we do a WTA, only 1 event max gets generated in optimal 
                 // orienation IFF is also satisfies coincidence timing requirement
 
-                // now find min of these, this is most likely orientation, iff this time is also less than minDtThresholdUs
+                // now find min of these, this is most likely orientation, iff this time is also less than minDtThreshold
                 int mindt = minDtThresholdUs, decideHelper = 0, dir = -1;
                 for ( int ori = 0 ; ori < NUM_TYPES ; ori++ ){
                     if ( oridts[ori] < mindt ){
@@ -280,8 +262,8 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
                         }
                     }
                 }
-                
-                if ( dir == -1 ){ // didn't find a good orientation(meaning oridts[ori] has been larger than minDtThresholdUs for all ori)
+
+                if ( dir == -1 ){ // didn't find a good orientation
                     if ( passAllEvents ) writeOutput(outItr , e , false , (byte)0);
                     continue;
                 }
@@ -332,7 +314,7 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
             } else {
                 // <editor-fold defaultstate="collapsed" desc="--allow multiple orientations per event--">
                 // here events are generated in oris that satisfy timing; there is no WTA
-                // now write output cell iff all events along dir occur within minDtThresholdUs
+                // now write output cell iff all events along dir occur within minDtThreshold
                 for ( int k = 0 ; k < NUM_TYPES ; k++ ){
                     if ( oridts[k] < minDtThresholdUs ){
                         writeOutput(outItr , e , true , (byte)k);
@@ -342,15 +324,45 @@ public class DvsOrientationFilter extends AbstractOrientationFilter{
                 // </editor-fold>
             }
         }
+        
+        
+        for (Object o : outputPacket) {
+            //bbeyer: What is the use of this inclusive or?
+            // If the orientation is 0 than the address stays the same.
+            // If the orientation is 1 the 16th bit is always 1 ...
+            // I dont see what this is trying to achieve.
+            if(isApsDvs){
+                ApsDvsOrientationEvent e = (ApsDvsOrientationEvent) o;
+                e.address = e.address | (e.orientation << ORI_SHIFT);
+            }else{
+                DvsOrientationEvent e = (DvsOrientationEvent) o;
+                e.address = e.address | (e.orientation << ORI_SHIFT);
+            }
+            
+        }
 
         return showRawInputEnabled ? in : getOutputPacket();
     }
     
     private void writeOutput(OutputEventIterator outItr, PolarityEvent e, boolean hasOrientation, byte orientation){
-        OrientationEventInterface eout = (OrientationEventInterface) outItr.nextOutput();
-        eout.copyFrom(e);
-        eout.setOrientation(orientation);
-        eout.setHasOrientation(hasOrientation);
+        if ( !isBinocular ){
+            if(isApsDvs){
+                ApsDvsOrientationEvent eout = (ApsDvsOrientationEvent)outItr.nextOutput();
+                eout.copyFrom(e);
+                eout.hasOrientation = hasOrientation;
+                eout.orientation = orientation;
+            }else{
+                DvsOrientationEvent eout = (DvsOrientationEvent) outItr.nextOutput();
+                eout.copyFrom(e);
+                eout.setOrientation(orientation);
+                eout.setHasOrientation(hasOrientation);
+            }
+        } else {
+            BinocularOrientationEvent eout = (BinocularOrientationEvent)outItr.nextOutput();
+            eout.copyFrom(e);
+            eout.hasOrientation = hasOrientation;
+            eout.orientation = orientation;
+        }
     }
-  
+    
 }

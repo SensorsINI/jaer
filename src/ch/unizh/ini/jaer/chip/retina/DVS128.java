@@ -36,10 +36,13 @@ import net.sf.jaer.biasgen.PotTweakerUtilities;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.chip.RetinaExtractor;
+import net.sf.jaer.config.DvsConfig;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2DVS128HardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasLEDControl;
@@ -75,6 +78,8 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
     private JRadioButtonMenuItem ledOnBut, ledOffBut, ledFlashingBut;
     public static final String CMD_TWEAK_THESHOLD = "threshold", CMD_TWEAK_ONOFF_BALANCE = "balance", CMD_TWEAK_BANDWIDTH = "bandwidth", CMD_TWEAK_MAX_FIRING_RATE = "maxfiringrate";
     private Biasgen dvs128Biasgen;
+    private AEFrameChipRenderer dvsRenderer;
+    private ChipRendererDisplayMethodRGBA dvsDisplayMethod = null;
     JComponent helpMenuItem1 = null, helpMenuItem2 = null, helpMenuItem3 = null;
     public static final String HELP_URL_RETINA = "http://inilabs.com/support/overview-of-dynamic-vision-sensors";
     public static final String USER_GUIDE_URL_RETINA = "http://inilabs.com/support/dvs128";
@@ -106,6 +111,12 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         if (!dvs128Biasgen.isInitialized()) {
             maybeLoadDefaultPreferences();  // call *after* biasgen is built so that we check for unitialized biases as well.
         }//        if(c!=null)c.setBorderSpacePixels(5);// make border smaller than default
+        dvsRenderer = new AEFrameChipRenderer(this);
+        setRenderer(dvsRenderer);
+        
+        dvsDisplayMethod = new ChipRendererDisplayMethodRGBA(this.getCanvas());
+        getCanvas().addDisplayMethod(dvsDisplayMethod);
+        getCanvas().setDisplayMethod(dvsDisplayMethod);
     }
 
     /**
@@ -551,7 +562,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
      *
      * @author tobi
      */
-    public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements ChipControlPanel, DVSTweaks {
+    public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements ChipControlPanel, DVSTweaks, DvsConfig {
 
         private IPot diffOn, diffOff, refr, pr, sf, diff;
 
@@ -812,6 +823,66 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         public float getOnOffBalanceTweak() {
             return onOffBalance;
         }
+
+        @Override
+        public boolean isDisplayFrames() {
+            return false;
+        }
+
+        @Override
+        public void setDisplayFrames(boolean displayFrames) {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
+
+        @Override
+        public boolean isDisplayEvents() {
+            return true;
+        }
+
+        @Override
+        public void setDisplayEvents(boolean displayEvents) {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
+
+        @Override
+        public boolean isUseAutoContrast() {
+            return false;
+        }
+
+        @Override
+        public void setUseAutoContrast(boolean useAutoContrast) {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
+
+        @Override
+        public float getContrast() {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
+
+        @Override
+        public void setContrast(float contrast) {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
+
+        @Override
+        public float getBrightness() {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
+
+        @Override
+        public void setBrightness(float brightness) {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
+
+        @Override
+        public float getGamma() {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
+
+        @Override
+        public void setGamma(float gamma) {
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
     } // DVS128Biasgen
 
-}
+    }

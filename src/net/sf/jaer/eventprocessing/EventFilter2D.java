@@ -6,6 +6,8 @@ package net.sf.jaer.eventprocessing;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JPanel;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.*;
@@ -92,6 +94,13 @@ abstract public class EventFilter2D extends EventFilter {
     protected void checkOutputPacketEventType(Class<? extends BasicEvent> outClass) {
         if (out == null || out.getEventClass() == null || out.getEventClass() != outClass) {
             out = new EventPacket(outClass);
+            try {
+                out.setEventPrototype(outClass.newInstance());
+            } catch (InstantiationException ex) {
+                Logger.getLogger(EventFilter2D.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IllegalAccessException ex) {
+                Logger.getLogger(EventFilter2D.class.getName()).log(Level.SEVERE, null, ex);
+            } 
         }
         out.clear();
     }

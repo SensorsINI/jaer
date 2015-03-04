@@ -23,6 +23,8 @@ import net.sf.jaer.util.filter.LowpassFilter2d;
 import net.sf.jaer.util.histogram.SimpleHistogram;
 import eu.seebetter.ini.chips.ApsDvsChip;
 import eu.seebetter.ini.chips.davis.DAVIS240BaseCamera;
+import net.sf.jaer.config.DvsConfig;
+import net.sf.jaer.event.orientation.OrientationEventInterface;
 
 /**
  * Class adapted from AEChipRenderer to render not only AE events but also
@@ -48,12 +50,12 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     public int textureWidth; //due to hardware acceloration reasons, has to be a 2^x with x a natural number
     public int textureHeight; //due to hardware acceloration reasons, has to be a 2^x with x a natural number
 
-    private int sizeX, sizeY, maxADC;
+    private int sizeX, sizeY, maxADC, numTypes;
     private int timestamp = 0;
     private LowpassFilter2d lowpassFilter = new LowpassFilter2d();  // 2 lp values are min and max log intensities from each frame
     private float minValue, maxValue, annotateAlpha;
     private float[] onColor, offColor;
-    private ApsDvsConfig config;
+    private DvsConfig config;
 
     /**
      * The linear buffer of RGBA pixel colors of image frame brightness values
@@ -77,7 +79,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     public AEFrameChipRenderer(AEChip chip) {
         super(chip);
-        config = (ApsDvsConfig) chip.getBiasgen();
+        config = (DvsConfig) chip.getBiasgen();
         setAGCTauMs(chip.getPrefs().getFloat("agcTauMs", 1000));
         onColor = new float[4];
         offColor = new float[4];
@@ -222,19 +224,26 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 }
             }
         }
-        if (!(pkt instanceof ApsDvsEventPacket)) {
-            if ((warningCount++ % WARNING_INTERVAL) == 0) {
-                log.info("I only know how to render ApsDvsEventPacket but got " + pkt);
-            }
-            resetMaps();
-            resetFrame(0);
-            return;
+        numTypes = pkt.getNumCellTypes();
+        if (pkt instanceof ApsDvsEventPacket) {
+            renderApsDvsEvents(pkt);
+        }else{
+            renderDvsEvents(pkt);
         }
+    }
+    
+    private void renderApsDvsEvents(EventPacket pkt){
 
         if (getChip() instanceof DAVIS240BaseCamera) {
             computeHistograms = ((DAVIS240BaseCamera) chip).isShowImageHistogram() || ((ApsDvsChip) chip).isAutoExposureEnabled();
         }
 
+        if (!accumulateEnabled) {
+            resetMaps();
+            if(numTypes>2){
+                resetAnnotationFrame(0.0f);
+            }
+        }
         ApsDvsEventPacket packet = (ApsDvsEventPacket) pkt;
 
         checkPixmapAllocation();
@@ -246,10 +255,6 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 log.warning("wrong input event class, got " + packet.getEventPrototype() + " but we need to have " + ApsDvsEvent.class);
             }
             return;
-        }
-        if (!accumulateEnabled) {
-//            resetFrame(0.5f);
-            resetMaps();
         }
         boolean displayEvents = config.isDisplayEvents(),
                 displayFrames = config.isDisplayFrames(),
@@ -274,16 +279,44 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                             playSpike(type);
                         }
                     }
-                    updateEventMaps(e);
+                    updateEventMaps((PolarityEvent)e);
                 }
             } else if (!backwards && isAdcSampleFlag && displayFrames && !paused) { // TODO need to handle single step updates here
                 updateFrameBuffer(e);
             }
         }
-//        pixmap.rewind();
-//        pixBuffer.rewind();
-//        onMap.rewind();
-//        offMap.rewind();
+    }
+    
+    private void renderDvsEvents(EventPacket pkt){
+        checkPixmapAllocation();
+        resetSelectedPixelEventCount(); // TODO fix locating pixel with xsel ysel
+        
+        if (!accumulateEnabled) {
+            resetMaps();
+            if(numTypes>2){
+                resetAnnotationFrame(0.0f);
+            }
+        }
+
+        setSpecialCount(0);
+        this.packet = pkt;
+        Iterator itr = packet.inputIterator();
+        while (itr.hasNext()) {
+            //The iterator only iterates over the DVS events
+            PolarityEvent e = (PolarityEvent) itr.next();
+            if (e.isSpecial()) {
+                setSpecialCount(specialCount + 1); // TODO optimize special count increment
+                continue;
+            }
+            int type = e.getType();
+            if ((xsel >= 0) && (ysel >= 0)) { // find correct mouse pixel interpretation to make sounds for large pixels
+                int xs = xsel, ys = ysel;
+                if ((e.x == xs) && (e.y == ys)) {
+                    playSpike(type);
+                }
+            }
+            updateEventMaps(e);
+        }
     }
 
     private void updateFrameBuffer(ApsDvsEvent e) {
@@ -351,16 +384,18 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
         getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILBLE,null,this); // TODO document what is sent and send something reasonable
     }
-
+    
     /**
      * changes alpha of ON map
      *
      * @param index 0-(size of pixel array-1) of pixel
      */
-    private void updateEventMaps(ApsDvsEvent e) {
+    private void updateEventMaps(PolarityEvent e) {
         float[] map;
         int index = getIndex(e);
-        if (e.polarity == ApsDvsEvent.Polarity.On) {
+        if(packet.getNumCellTypes() > 2){
+            map = onMap.array();
+        }else if (e.polarity == ApsDvsEvent.Polarity.On) {
             map = onMap.array();
         } else {
             map = offMap.array();
@@ -368,7 +403,33 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         if ((index < 0) || (index >= map.length)) {
             return;
         }
-        if (colorMode == ColorMode.ColorTime) {
+        if (packet.getNumCellTypes() > 2) {
+            checkTypeColors(packet.getNumCellTypes());
+            if (e.special) {
+                setSpecialCount(specialCount + 1); // TODO optimize special count increment
+                return;
+            }
+            int type = e.getType();
+            if ((e.x == xsel) && (e.y == ysel)) {
+                playSpike(type);
+            }
+            int ind = getPixMapIndex(e.x, e.y);
+            float[] c = typeColorRGBComponents[type];
+            float alpha = map[index + 3] + (1.0f / colorScale);
+            alpha = normalizeEvent(alpha);
+            if ((e instanceof OrientationEventInterface) && (((OrientationEventInterface) e).isHasOrientation() == false)) {
+                // if event is orientation event but orientation was not set, just draw as gray level
+                map[ind] = 1.0f; //if(f[0]>1f) f[0]=1f;
+                map[ind + 1] = 1.0f; //if(f[1]>1f) f[1]=1f;
+                map[ind + 2] = 1.0f; //if(f[2]>1f) f[2]=1f;
+            } else {
+                // if color scale is 1, then last value is used as the pixel value, which quantizes the color to full scale.
+                map[ind] = c[0]; //if(f[0]>1f) f[0]=1f;
+                map[ind + 1] = c[1]; //if(f[1]>1f) f[1]=1f;
+                map[ind + 2] = c[2]; //if(f[2]>1f) f[2]=1f;
+            }
+            map[index + 3] += alpha;
+        }else if (colorMode == ColorMode.ColorTime) {
             int ts0 = packet.getFirstTimestamp();
             float dt = packet.getDurationUs();
             int ind = (int) Math.floor(((NUM_TIME_COLORS - 1) * (e.timestamp - ts0)) / dt);

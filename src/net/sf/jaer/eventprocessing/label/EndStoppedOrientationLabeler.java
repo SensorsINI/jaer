@@ -23,7 +23,7 @@ import net.sf.jaer.event.OutputEventIterator;
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 @Description("End-stopped orientation labeler")
-public class EndStoppedOrientationLabeler extends DvsOrientationFilter {
+public class EndStoppedOrientationLabeler extends SimpleOrientationFilter {
 
     private float minActivityDifference = getPrefs().getFloat("EndStoppedOrientationLabeler.minActivityDifference", .4f);
     private int maxDtToUse = getPrefs().getInt("EndStoppedOrientationLabeler.maxDtToUse", 100000);
