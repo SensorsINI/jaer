@@ -13,18 +13,17 @@ import java.util.Arrays;
 import java.util.Iterator;
 
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.config.ApsDvsConfig;
+import net.sf.jaer.config.DvsConfig;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.event.orientation.OrientationEventInterface;
 import net.sf.jaer.util.filter.LowpassFilter2d;
 import net.sf.jaer.util.histogram.SimpleHistogram;
 import eu.seebetter.ini.chips.ApsDvsChip;
 import eu.seebetter.ini.chips.davis.DAVIS240BaseCamera;
-import net.sf.jaer.config.DvsConfig;
-import net.sf.jaer.event.orientation.OrientationEventInterface;
 
 /**
  * Class adapted from AEChipRenderer to render not only AE events but also
@@ -39,7 +38,7 @@ import net.sf.jaer.event.orientation.OrientationEventInterface;
  * @see ChipRendererDisplayMethod
  */
 public class AEFrameChipRenderer extends AEChipRenderer {
-    
+
       /**
      * PropertyChange events
      */
@@ -156,9 +155,9 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         onMap.limit(n);
         offMap.limit(n);
     }
-    
+
     @Override
-    public void resetAnnotationFrame(float resetValue) {
+    public synchronized void resetAnnotationFrame(float resetValue) {
         checkPixmapAllocation();
         final int n = 4 * textureWidth * textureHeight;
         if ((grayBuffer == null) || (grayBuffer.capacity() != n)) {
@@ -231,7 +230,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             renderDvsEvents(pkt);
         }
     }
-    
+
     private void renderApsDvsEvents(EventPacket pkt){
 
         if (getChip() instanceof DAVIS240BaseCamera) {
@@ -279,18 +278,18 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                             playSpike(type);
                         }
                     }
-                    updateEventMaps((PolarityEvent)e);
+                    updateEventMaps(e);
                 }
             } else if (!backwards && isAdcSampleFlag && displayFrames && !paused) { // TODO need to handle single step updates here
                 updateFrameBuffer(e);
             }
         }
     }
-    
+
     private void renderDvsEvents(EventPacket pkt){
         checkPixmapAllocation();
         resetSelectedPixelEventCount(); // TODO fix locating pixel with xsel ysel
-        
+
         if (!accumulateEnabled) {
             resetMaps();
             if(numTypes>2){
@@ -384,7 +383,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
         getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILBLE,null,this); // TODO document what is sent and send something reasonable
     }
-    
+
     /**
      * changes alpha of ON map
      *
@@ -550,7 +549,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         checkPixmapAllocation();
         return offMap;
     }
-    
+
     /**
      * Returns pixmap for annotated pixels
      *
@@ -615,7 +614,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     public FloatBuffer getPixBuffer() {
         return pixBuffer;
     }
-    
+
     /**
      * sets a specific value of the pixmap
      *
@@ -626,7 +625,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     public void setAnnotateValue(int index, float value) {
         annotateMap.put(index, value);
     }
-    
+
     /**
      * sets a specific color (rgb float 0-1) of the pixmap
      *
@@ -640,7 +639,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         annotateMap.put(index+2, value[2]);
         annotateMap.put(index+3, getAnnotateAlpha());
     }
-    
+
     /**
      * sets a specific color (rgb float 0-1) of the pixmap
      *
@@ -653,7 +652,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         annotateMap.put(index+2, value[2]);
         annotateMap.put(index+3, value[3]);
     }
-    
+
     /**
      * sets a specific color (rgb float 0-1) of the pixmap
      *
@@ -669,7 +668,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         annotateMap.put(index+2, value[2]);
         annotateMap.put(index+3, getAnnotateAlpha());
     }
-    
+
     /**
      * sets a specific color (rgb float 0-1) of the pixmap
      *
@@ -869,7 +868,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     /**
      * Sets whether an external renderer adds data to the array and resets it
      *
-     * @param extRender 
+     * @param extRender
      */
     @Override
     public void setExternalRenderer(boolean extRender) {
