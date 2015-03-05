@@ -1953,6 +1953,7 @@ two interfaces). otherwise force user choice.
 					//                            System.out.println("thread "+thisThread+" getting events for renderCount="+renderCount);
 					aeRaw = getAePlayer().getNextPacket(aePlayer);
 					getAePlayer().adjustTimesliceForRealtimePlayback();
+                                        overrunOccurred=false;
 					//                            System.out.println("."); System.out.flush();
 					break;
 				case REMOTE:
