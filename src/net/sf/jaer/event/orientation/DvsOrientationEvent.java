@@ -17,7 +17,7 @@ import net.sf.jaer.event.PolarityEvent;
  * 2 is vertical edge                (rotated CCW 90 deg),  <br>
  * 3 is tilted up and to left edge   (rotated CCW 135 deg). <br><br>
  *
- * These Events are used by the {@link net.sf.jaer.eventprocessing.label.DvsOrientationFilter}
+ * These Events are used by the {@link net.sf.jaer.eventprocessing.label.SimpleOrientationFilter}
  * @author tobi */
 public class DvsOrientationEvent extends PolarityEvent implements OrientationEventInterface {
     

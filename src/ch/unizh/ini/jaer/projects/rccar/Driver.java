@@ -35,7 +35,7 @@ import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.eventprocessing.filter.OnOffProximityLineFilter;
 import net.sf.jaer.eventprocessing.filter.RotateFilter;
 import net.sf.jaer.eventprocessing.filter.XYTypeFilter;
-import net.sf.jaer.eventprocessing.label.DvsOrientationFilter;
+import net.sf.jaer.eventprocessing.label.SimpleOrientationFilter;
 import net.sf.jaer.eventprocessing.tracking.HoughLineTracker;
 import net.sf.jaer.eventprocessing.tracking.LineDetector;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -50,7 +50,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
 /**
  * Drives the RC car using the output from an enclosed line detector filter.
 The enclosed filter chain is a MultiLineClusterTracker which itself encloses
-a chain of XYTypeFilter - BackgroundActivityFilter - OnOffProximityFilter - DvsOrientationFilter.
+a chain of XYTypeFilter - BackgroundActivityFilter - OnOffProximityFilter - SimpleOrientationFilter.
 <p>
 Preference values for these enclosed filters are stored by keys based on the enclosing Driver filter.
 <p>
@@ -73,7 +73,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
     /** This filter chain is a common preprocessor for Driver line detectors */
     public class DriverPreFilter extends EventFilter2D implements PropertyChangeListener {
 
-        private DvsOrientationFilter oriFilter;
+        private SimpleOrientationFilter oriFilter;
         private OnOffProximityLineFilter lineFilter;
         private BackgroundActivityFilter backgroundFilter;
         private XYTypeFilter xyTypeFilter;
@@ -89,7 +89,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
 
             filterChain = new FilterChain(chip);
             xyTypeFilter = new XYTypeFilter(chip);
-            oriFilter = new DvsOrientationFilter(chip);
+            oriFilter = new SimpleOrientationFilter(chip);
             backgroundFilter = new BackgroundActivityFilter(chip);
             lineFilter = new OnOffProximityLineFilter(chip);
             rotateFilter = new RotateFilter(chip);

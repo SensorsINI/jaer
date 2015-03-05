@@ -1,5 +1,5 @@
 /*
- * DvsOrientationFilter.java
+ * SimpleOrientationFilter.java
  *
  * Created on November 2, 2005, 8:24 PM */
 package net.sf.jaer.eventprocessing.label;
@@ -55,7 +55,7 @@ public class SimpleOrientationFilter extends AbstractOrientationFilter{
     private boolean isBinocular;
     private boolean isApsDvs;
     
-    /** Creates a new instance of DvsOrientationFilter
+    /** Creates a new instance of SimpleOrientationFilter
      * @param chip */
     public SimpleOrientationFilter (AEChip chip){
         super(chip);

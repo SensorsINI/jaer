@@ -21,7 +21,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.eventprocessing.label.DvsOrientationFilter;
+import net.sf.jaer.eventprocessing.label.SimpleOrientationFilter;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
@@ -44,7 +44,7 @@ public class GlobalDisparityFilter2 extends EventFilter2D implements Observer {
     private LowpassFilter lpFilter = new LowpassFilter();
     
     /** enclosed filter */
-    private DvsOrientationFilter oriFilter;
+    private SimpleOrientationFilter oriFilter;
     
     // array dimensions are ordered this way because you have to iterate mainly over x coorinates
     /** Stores the timestamp of previous events at lastEvent[LEFT/RIGHT][y][x]. */
@@ -64,7 +64,7 @@ public class GlobalDisparityFilter2 extends EventFilter2D implements Observer {
     /** Creates a new instance of GlobalXDisparityFilter2 */
     public GlobalDisparityFilter2(AEChip chip) {
         super(chip);
-        oriFilter = new DvsOrientationFilter(chip);
+        oriFilter = new SimpleOrientationFilter(chip);
         oriFilter.setFilterEnabled(true);
         setEnclosedFilter(oriFilter);
         chip.addObserver(this);

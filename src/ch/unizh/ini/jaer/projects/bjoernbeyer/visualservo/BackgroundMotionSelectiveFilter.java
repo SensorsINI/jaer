@@ -12,7 +12,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.label.DvsDirectionSelectiveFilter;
-import net.sf.jaer.eventprocessing.label.DvsOrientationFilter;
+import net.sf.jaer.eventprocessing.label.SimpleOrientationFilter;
 
 /**
  *
@@ -47,7 +47,7 @@ public class BackgroundMotionSelectiveFilter extends AbstractBackgroundSelective
             //We need to make sure that the enclosed orientation as well as the enclosed
             // directionselective Filter output all their events.
             ((DvsDirectionSelectiveFilter) motionFilter.getEnclosedFilter()).setPassAllEvents(true);
-            ((DvsOrientationFilter) ((DvsDirectionSelectiveFilter) motionFilter.getEnclosedFilter()).getEnclosedFilter()).setPassAllEvents(true);
+            ((SimpleOrientationFilter) ((DvsDirectionSelectiveFilter) motionFilter.getEnclosedFilter()).getEnclosedFilter()).setPassAllEvents(true);
         setEnclosedFilter(motionFilter);
     }
 

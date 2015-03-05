@@ -13,7 +13,7 @@ import net.sf.jaer.event.orientation.ApsDvsOrientationEvent;
 import net.sf.jaer.event.OutputEventIterator;
 
 /**
- * Experimental labeler which only outputs endstopped cell activity. The outputs from an enclosed DvsOrientationFilter are used to filter
+ * Experimental labeler which only outputs endstopped cell activity. The outputs from an enclosed SimpleOrientationFilter are used to filter
  the events to only pass events with past orientation events in one of the two directions along the orientation.
  *
  * @author tobi
