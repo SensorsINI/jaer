@@ -126,11 +126,10 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
                 } else {
                     log.info("no hot pixels to load");
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
-            } catch (NoClassDefFoundError err) {
+            } catch (Throwable err) {
+                log.warning("while loading old HotPixel set, caught Exception or Error; ignoring old hot pixel set; stack trace is as follows:");
                 err.printStackTrace();
-            }
+            } 
         }
     }
 
