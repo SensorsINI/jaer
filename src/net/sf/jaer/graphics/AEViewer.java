@@ -350,6 +350,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public final String REMOTE_START_LOGGING = "startlogging";
     public final String REMOTE_STOP_LOGGING = "stoplogging";
     public final String REMOTE_TOGGLE_SYNCHRONIZED_LOGGING = "togglesynclogging";
+    public final String REMOTE_ZERO_TIMESTAMPS = "zerotimestamps";
 
     /** Processes remote control commands for this AEViewer. A list of commands can be obtained
      * from a remote host by sending ? or help. The port number is logged to the console on startup.
@@ -383,6 +384,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             } else {
                                     return "couldn't toggle synchronized logging because there is only 1 viewer or sync is disbled";
                             }
+                    } else if (command.getCmdName().equals(REMOTE_ZERO_TIMESTAMPS)) {
+                            jaerViewer.zeroTimestamps();
                     }
             } catch (Exception e) {
                     return e.toString() + "\n";
@@ -792,6 +795,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     remoteControl.addCommandListener(this, REMOTE_START_LOGGING + " <filename>", "starts logging ae data to a file");
                     remoteControl.addCommandListener(this, REMOTE_STOP_LOGGING, "stops logging ae data to a file");
                     remoteControl.addCommandListener(this, REMOTE_TOGGLE_SYNCHRONIZED_LOGGING, "starts synchronized logging ae data to a set of files with aeidx filename automatically timstamped"); // TODO allow sync logging to a chosen file - change startLogging to do sync logging if viewers are synchronized
+                    remoteControl.addCommandListener(this, REMOTE_ZERO_TIMESTAMPS, "zeros timestamps on all AEViewers"); 
                     log.info("created " + remoteControl + " for remote control of some AEViewer functions");
             } catch (SocketException ex) {
                     log.warning(ex.toString());
