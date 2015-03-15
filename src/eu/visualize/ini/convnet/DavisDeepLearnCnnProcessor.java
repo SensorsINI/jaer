@@ -6,6 +6,7 @@
 package eu.visualize.ini.convnet;
 
 import java.awt.Color;
+import java.awt.Cursor;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
@@ -52,8 +53,8 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 
     private JFrame imageDisplayFrame = null;
     public ImageDisplay inputImageDisplay;
-    
-   private DvsSubsamplerToFrame dvsSubsampler = null;
+
+    private DvsSubsamplerToFrame dvsSubsampler = null;
     private int dvsColorScale = getInt("dvsColorScale", 32); // 1/dvsColorScale is amount each event color the timeslice in subsampled timeslice input
 
     public DavisDeepLearnCnnProcessor(AEChip chip) {
@@ -132,8 +133,16 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 //        }
 //    }
     public void doShowKernels() {
-        if (apsNet != null) {
-            apsNet.drawKernels();
+        setCursor(new Cursor(Cursor.WAIT_CURSOR));
+        try {
+            if (apsNet != null) {
+                apsNet.drawKernels();
+            }
+            if (dvsNet != null) {
+                dvsNet.drawKernels();
+            }
+        } finally {
+            setCursor(Cursor.getDefaultCursor());
         }
     }
 
