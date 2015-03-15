@@ -19,6 +19,7 @@ import javax.swing.JPanel;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ImageDisplay;
+import org.bytedeco.javacpp.opencv_highgui;
 
 /**
  * Simple convolutional neural network (CNN) data structure to hold CNN from
