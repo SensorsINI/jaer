@@ -433,4 +433,40 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         putInt("dvsMinEvents", dvsMinEvents);
     }
 
+    public boolean isNormalizeKernelDisplayWeightsGlobally() {
+        if (apsNet == null) {
+            return false;
+        } else {
+            return apsNet.isNormalizeKernelDisplayWeightsGlobally();
+        }
+    }
+
+    public void setNormalizeKernelDisplayWeightsGlobally(boolean normalizeKernelDisplayWeightsGlobally) {
+        if (apsNet == null) {
+            return;
+        }
+        apsNet.setNormalizeKernelDisplayWeightsGlobally(normalizeKernelDisplayWeightsGlobally);
+        if (dvsNet != null) {
+            dvsNet.setNormalizeKernelDisplayWeightsGlobally(normalizeKernelDisplayWeightsGlobally);
+        }
+
+    }
+
+    public boolean isNormalizeActivationDisplayGlobally() {
+        if (apsNet == null) {
+            return false;
+        }
+        return apsNet.isNormalizeActivationDisplayGlobally();
+    }
+
+    public void setNormalizeActivationDisplayGlobally(boolean normalizeActivationDisplayGlobally) {
+        if (apsNet == null) {
+            return;
+        }
+        apsNet.setNormalizeActivationDisplayGlobally(normalizeActivationDisplayGlobally);
+        if (dvsNet != null) {
+            dvsNet.setNormalizeActivationDisplayGlobally(normalizeActivationDisplayGlobally);
+        }
+    }
+
 }

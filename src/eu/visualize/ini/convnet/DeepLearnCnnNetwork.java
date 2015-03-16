@@ -84,6 +84,8 @@ public class DeepLearnCnnNetwork {
     OutputLayer outputLayer;
     JFrame activationsFrame = null, kernelsFrame = null;
     private boolean hideSubsamplingLayers = true;
+    private boolean normalizeKernelDisplayWeightsGlobally = true;
+    private boolean normalizeActivationDisplayGlobally = true;
     private boolean hideConvLayers = true;
     private String xmlFilename = null;
     /**
@@ -192,8 +194,9 @@ public class DeepLearnCnnNetwork {
     }
 
     /**
-     * Net fires event EVENT_MADE_DECISION when it makes a decision. New value is the net itself.
-     * 
+     * Net fires event EVENT_MADE_DECISION when it makes a decision. New value
+     * is the net itself.
+     *
      * @return the support
      */
     public PropertyChangeSupport getSupport() {
@@ -463,6 +466,7 @@ public class DeepLearnCnnNetwork {
         int nOutputMaps; //
         int kernelDim, singleKernelLength, halfKernelDim, kernelWeightsPerOutputMap, nKernels;
         float[] biases;
+        float minWeight = Float.POSITIVE_INFINITY, maxWeight = Float.NEGATIVE_INFINITY;
         /**
          * @see #k(int, int, int, int)
          */
@@ -490,6 +494,21 @@ public class DeepLearnCnnNetwork {
             singleKernelLength = kernelDim * kernelDim;
             halfKernelDim = kernelDim / 2;
             // output size can only be computed once we know our input 
+            for (int i = 0; i < kernels.length; i++) {
+                if (kernels[i] < minWeight) {
+                    minWeight = kernels[i];
+                } else if (kernels[i] > maxWeight) {
+                    maxWeight = kernels[i];
+                }
+            }
+        }
+
+        private float normalizedWeight(float w) {
+            if (normalizeKernelDisplayWeightsGlobally) {
+                return ((w - minWeight) / (maxWeight - minWeight));
+            } else {
+                return w;
+            }
         }
 
         /**
@@ -675,7 +694,7 @@ public class DeepLearnCnnNetwork {
                 for (int inputFeatureMapNumber = 0; inputFeatureMapNumber < nInputMaps; inputFeatureMapNumber++) {
                     for (int x = 0; x < kernelDim; x++) {
                         for (int y = 0; y < kernelDim; y++) {
-                            kernelDisplays[kernel][inputFeatureMapNumber].setPixmapGray(x, y, kernels[k(inputFeatureMapNumber, kernel, x, y)]);
+                            kernelDisplays[kernel][inputFeatureMapNumber].setPixmapGray(x, y, normalizedWeight(kernels[k(inputFeatureMapNumber, kernel, x, y)]));
                             kernelDisplays[kernel][inputFeatureMapNumber].setFontSize(12);
                             kernelDisplays[kernel][inputFeatureMapNumber].setTitleLabel(String.format("o%d i%d", kernel, inputFeatureMapNumber));
                         }
@@ -1110,6 +1129,36 @@ public class DeepLearnCnnNetwork {
         if (inputLayer != null) {
             inputLayer.setInputClampedToIncreasingIntegers(inputClampedTo1);
         }
+    }
+
+    /**
+     * @return the normalizeKernelDisplayWeightsGlobally
+     */
+    public boolean isNormalizeKernelDisplayWeightsGlobally() {
+        return normalizeKernelDisplayWeightsGlobally;
+    }
+
+    /**
+     * @param normalizeKernelDisplayWeightsGlobally the
+     * normalizeKernelDisplayWeightsGlobally to set
+     */
+    public void setNormalizeKernelDisplayWeightsGlobally(boolean normalizeKernelDisplayWeightsGlobally) {
+        this.normalizeKernelDisplayWeightsGlobally = normalizeKernelDisplayWeightsGlobally;
+    }
+
+    /**
+     * @return the normalizeActivationDisplayGlobally
+     */
+    public boolean isNormalizeActivationDisplayGlobally() {
+        return normalizeActivationDisplayGlobally;
+    }
+
+    /**
+     * @param normalizeActivationDisplayGlobally the
+     * normalizeActivationDisplayGlobally to set
+     */
+    public void setNormalizeActivationDisplayGlobally(boolean normalizeActivationDisplayGlobally) {
+        this.normalizeActivationDisplayGlobally = normalizeActivationDisplayGlobally;
     }
 
 }
