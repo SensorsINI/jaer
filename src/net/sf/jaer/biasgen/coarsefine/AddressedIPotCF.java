@@ -211,6 +211,9 @@ public class AddressedIPotCF extends AddressedIPot {
     public void changeByRatioFromPreferred(float ratio){
         int v = Math.round(getPreferedFineBitValue() * ratio);
         v = v + (ratio >= 1 ? 1 : -1); // ensure at least one step unit of change up or down depending on ratio >1 or <1
+        if(v<1){
+            v=1; // prevent zero value
+        } 
 //        log.info("changing bit value from "+getFineBitValue()+" to "+v);
 //        if (v < 1 ) {
 //            setCoarseBitValue(getPreferedCoarseBitValue()+1); // sign inversion on coarse bits means increment bit value here
@@ -229,7 +232,7 @@ public class AddressedIPotCF extends AddressedIPot {
         return fineBitValue;
     }
 
-    /** Set the buffer bias bit value
+    /** Set the fine control bias bit value
      * @param bufferBitValue the value which has maxBuffeBitValue as maximum and specifies fraction of master bias
      */
     public void setFineBitValue(int fineBitValue) {
