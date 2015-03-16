@@ -144,7 +144,7 @@ public class DeepLearnCnnNetwork {
 
     }
 
-    void drawKernels() {
+    public JFrame drawKernels() {
         checkKernelsFrame();
         for (Layer l : layers) {
             if (l instanceof ConvLayer) {
@@ -154,9 +154,10 @@ public class DeepLearnCnnNetwork {
         }
         if (!kernelsFrame.isVisible()) {
             kernelsFrame.setVisible(true);
-            return;
+            return kernelsFrame;
         }
         kernelsFrame.repaint();
+        return kernelsFrame;
     }
 
     private void checkActivationsFrame() {
@@ -695,10 +696,10 @@ public class DeepLearnCnnNetwork {
                     for (int x = 0; x < kernelDim; x++) {
                         for (int y = 0; y < kernelDim; y++) {
                             kernelDisplays[kernel][inputFeatureMapNumber].setPixmapGray(x, y, normalizedWeight(kernels[k(inputFeatureMapNumber, kernel, x, y)]));
-                            kernelDisplays[kernel][inputFeatureMapNumber].setFontSize(12);
-                            kernelDisplays[kernel][inputFeatureMapNumber].setTitleLabel(String.format("o%d i%d", kernel, inputFeatureMapNumber));
                         }
                     }
+                    kernelDisplays[kernel][inputFeatureMapNumber].setFontSize(12);
+                    kernelDisplays[kernel][inputFeatureMapNumber].setTitleLabel(String.format("o%d i%d", kernel, inputFeatureMapNumber));
                     kernelDisplays[kernel][inputFeatureMapNumber].display();
                 }
             }

@@ -136,10 +136,12 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         setCursor(new Cursor(Cursor.WAIT_CURSOR));
         try {
             if (apsNet != null) {
-                apsNet.drawKernels();
+                JFrame frame=apsNet.drawKernels();
+                frame.setTitle("APS net kernel weights");
             }
             if (dvsNet != null) {
-                dvsNet.drawKernels();
+                JFrame frame=dvsNet.drawKernels();
+                frame.setTitle("DVS net kernel weights");
             }
         } finally {
             setCursor(Cursor.getDefaultCursor());
