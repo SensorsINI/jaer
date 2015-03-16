@@ -90,7 +90,7 @@ class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfigInterf
             chip,
             23,
             0,
-            (1<<24)-1,
+            (1<<20)-1,
             "exposure",
             "global shutter exposure time between reset and readout phases; interpretation depends on whether rolling or global shutter readout is used.",
             0);
@@ -98,7 +98,7 @@ class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfigInterf
             chip,
             39,
             24,
-            (1<<6)-1,
+            (1<<7)-1,
             "colSettle",
             "time in 30MHz clock cycles to settle after column select before readout; allows all pixels in column to drive in parallel the row readout lines (like resSettle)",
             0);
@@ -114,7 +114,7 @@ class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfigInterf
             chip,
             71,
             56,
-            (1<<6)-1,
+            (1<<7)-1,
             "resSettle",
             "time in 30MHz clock cycles  to settle after column reset before readout; allows all pixels in column to drive in parallel the row readout lines (like colSettle)",
             0);
@@ -146,7 +146,7 @@ class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfigInterf
             "8=500 deg/s, 65.5 LSB per deg/s ", (byte) 8); // GYRO_CONFIG:
     protected CPLDByte imu4AccelConfig = new CPLDByte(chip, 135, 128, 255, "imu4_ACCEL_CONFIG",
             "ACCEL_CONFIG: Bits 4:3 code AFS_SEL. 8=4g, 8192 LSB per g", (byte) 8); // ACCEL_CONFIG:
-    protected CPLDInt nullSettle = new CPLDInt(chip, 151, 136, (1<<6)-1, "nullSettle",
+    protected CPLDInt nullSettle = new CPLDInt(chip, 151, 136, (1<<5)-1, "nullSettle",
             "time to remain in NULL state between columns", 0);
     // these pots for DVSTweaks
     protected AddressedIPotCF diffOn, diffOff, refr, pr, sf, diff;
