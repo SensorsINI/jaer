@@ -12,10 +12,7 @@ import java.util.logging.Logger;
 
 import javax.swing.SwingConstants;
 
-import net.sf.jaer.config.ApsDvsConfig;
-import eu.seebetter.ini.chips.davis.DAViS240Config.ImuAccelScale;
-import eu.seebetter.ini.chips.davis.DAViS240Config.ImuControl;
-import eu.seebetter.ini.chips.davis.DAViS240Config.ImuGyroScale;
+import eu.seebetter.ini.chips.davis.DavisConfig.ImuControl;
 
 /**
  *
@@ -30,8 +27,8 @@ public class ImuControlPanel extends javax.swing.JPanel implements PropertyChang
 	/**
 	 * Creates new form ImuControlPanel
 	 */
-	public ImuControlPanel(DAViS240Config config) {
-		imuControl = config.imuControl;
+	public ImuControlPanel(DavisConfig config) {
+		imuControl = config.getImuControl();
 		initComponents();
 		dontProcess = true;
 		gyroFullScaleComboBox.removeAllItems();
@@ -263,19 +260,19 @@ public class ImuControlPanel extends javax.swing.JPanel implements PropertyChang
 	@Override
 	public void propertyChange(PropertyChangeEvent evt) {
 		switch (evt.getPropertyName()) {
-			case ApsDvsConfig.PROPERTY_IMU_ENABLED:
+			case DavisDisplayConfigInterface.PROPERTY_IMU_ENABLED:
 				imuEnabledCB.setSelected((boolean) evt.getNewValue());
 				break;
-			case ApsDvsConfig.PROPERTY_IMU_DISPLAY_ENABLED:
+			case DavisDisplayConfigInterface.PROPERTY_IMU_DISPLAY_ENABLED:
 				imuVisibleCB.setSelected((boolean) evt.getNewValue());
 				break;
-			case ApsDvsConfig.PROPERTY_IMU_ACCEL_SCALE_CHANGED:
+			case DavisDisplayConfigInterface.PROPERTY_IMU_ACCEL_SCALE_CHANGED:
 				dontProcess = true;
 				accelFullScaleComboBox
 					.setSelectedItem(ImuAccelScale.valueOf(evt.getNewValue().toString()).fullScaleString);
 				dontProcess = false;
 				break;
-			case ApsDvsConfig.PROPERTY_IMU_GYRO_SCALE_CHANGED:
+			case DavisDisplayConfigInterface.PROPERTY_IMU_GYRO_SCALE_CHANGED:
 				dontProcess = true;
 				gyroFullScaleComboBox
 					.setSelectedItem(ImuGyroScale.valueOf(evt.getNewValue().toString()).fullScaleString);

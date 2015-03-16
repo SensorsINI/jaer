@@ -1186,6 +1186,7 @@ two interfaces). otherwise force user choice.
                     firePropertyChange(EVENT_CHIP, oldChip, getChip());
 
                     chip.onRegistration();
+                    setTitleAccordingToState();
 
             } catch (Exception e) {
                     e.printStackTrace();

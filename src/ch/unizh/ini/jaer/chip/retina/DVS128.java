@@ -36,7 +36,6 @@ import net.sf.jaer.biasgen.PotTweakerUtilities;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.chip.RetinaExtractor;
-import net.sf.jaer.config.DvsConfig;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
@@ -562,7 +561,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
      *
      * @author tobi
      */
-    public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements ChipControlPanel, DVSTweaks, DvsConfig {
+    public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements ChipControlPanel, DVSTweaks, DvsDisplayConfigInterface {
 
         private IPot diffOn, diffOff, refr, pr, sf, diff;
 
@@ -831,7 +830,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
 
         @Override
         public void setDisplayFrames(boolean displayFrames) {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            throw new UnsupportedOperationException("Not supported for DVS camera."); //To change body of generated methods, choose Tools | Templates.
         }
 
         @Override

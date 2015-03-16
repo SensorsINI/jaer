@@ -17,7 +17,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 import org.usb4java.Device;
 
-import eu.seebetter.ini.chips.ApsDvsChip;
+import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.IMUSample;
 
 /**
@@ -174,7 +174,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 										// Check that the buffer has space for this event. Enlarge if needed.
 										if (ensureCapacity(buffer, eventCounter + 1)) {
-											buffer.getAddresses()[eventCounter] = ApsDvsChip.EXTERNAL_INPUT_EVENT_ADDR;
+											buffer.getAddresses()[eventCounter] = DavisChip.EXTERNAL_INPUT_EVENT_ADDR;
 											buffer.getTimestamps()[eventCounter++] = currentTimestamp;
 										}
 										break;
@@ -331,7 +331,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 								if (dvsGotY) {
 									// Check that the buffer has space for this event. Enlarge if needed.
 									if (ensureCapacity(buffer, eventCounter + 1)) {
-										buffer.getAddresses()[eventCounter] = ((dvsLastY << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK);
+										buffer.getAddresses()[eventCounter] = ((dvsLastY << DavisChip.YSHIFT) & DavisChip.YMASK);
 										buffer.getTimestamps()[eventCounter++] = currentTimestamp;
 									}
 
@@ -360,9 +360,9 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									// old logic, we have to flip it here, so that the chip class extractor
 									// can flip it back. Backwards compatibility with recordings is the main
 									// motivation to do this hack.
-									buffer.getAddresses()[eventCounter] = ((dvsLastY << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
-										| (((chip.getSizeX() - 1 - data) << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
-										| (((code & 0x01) << ApsDvsChip.POLSHIFT) & ApsDvsChip.POLMASK);
+									buffer.getAddresses()[eventCounter] = ((dvsLastY << DavisChip.YSHIFT) & DavisChip.YMASK)
+										| (((chip.getSizeX() - 1 - data) << DavisChip.XSHIFT) & DavisChip.XMASK)
+										| (((code & 0x01) << DavisChip.POLSHIFT) & DavisChip.POLMASK);
 									buffer.getTimestamps()[eventCounter++] = currentTimestamp;
 								}
 
@@ -395,11 +395,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 								// Check that the buffer has space for this event. Enlarge if needed.
 								if (ensureCapacity(buffer, eventCounter + 1)) {
-									buffer.getAddresses()[eventCounter] = ApsDvsChip.ADDRESS_TYPE_APS
-										| ((yPos << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
-										| ((xPos << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
-										| ((apsCurrentReadoutType << ApsDvsChip.ADC_READCYCLE_SHIFT) & ApsDvsChip.ADC_READCYCLE_MASK)
-										| (data & ApsDvsChip.ADC_DATA_MASK);
+									buffer.getAddresses()[eventCounter] = DavisChip.ADDRESS_TYPE_APS
+										| ((yPos << DavisChip.YSHIFT) & DavisChip.YMASK)
+										| ((xPos << DavisChip.XSHIFT) & DavisChip.XMASK)
+										| ((apsCurrentReadoutType << DavisChip.ADC_READCYCLE_SHIFT) & DavisChip.ADC_READCYCLE_MASK)
+										| (data & DavisChip.ADC_DATA_MASK);
 									buffer.getTimestamps()[eventCounter++] = currentTimestamp;
 								}
 								break;

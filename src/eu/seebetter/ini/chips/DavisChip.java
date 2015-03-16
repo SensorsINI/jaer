@@ -7,18 +7,18 @@ package eu.seebetter.ini.chips;
 import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.davis.frames.DavisFrameAviWriter;
-import eu.seebetter.ini.chips.davis.ApsDvsAutoShooter;
+import eu.seebetter.ini.chips.davis.DavisAutoShooter;
 import net.sf.jaer.eventprocessing.filter.ApsDvsEventFilter;
 import net.sf.jaer.eventprocessing.label.ApsDvsDirectionSelectiveFilter;
 import net.sf.jaer.eventprocessing.label.SimpleOrientationFilter;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
 
 /**
- * Constants for ApsDvsChip AE data format such as raw address encodings.
+ * Constants for DAVIS AE data format such as raw address encodings.
  *
  * @author Christian/Tobi (added IMU)
  */
-abstract public class ApsDvsChip extends AETemporalConstastRetina {
+abstract public class DavisChip extends AETemporalConstastRetina {
 
     /**
      * Field for decoding pixel address and data type
@@ -61,12 +61,12 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
     /**
      * Property change events fired when these properties change
      */
-    public static final String PROPERTY_FRAME_RATE_HZ = "ApsDvsChip.FRAME_RATE_HZ", PROPERTY_EXPOSURE_MS = "ApsDvsChip.EXPOSURE_MS";
+    public static final String PROPERTY_FRAME_RATE_HZ = "ApsDvsChip.FRAME_RATE_HZ", PROPERTY_MEASURED_EXPOSURE_MS = "ApsDvsChip.EXPOSURE_MS";
 
-    public ApsDvsChip() {
+    public DavisChip() {
         addDefaultEventFilter(ApsDvsEventFilter.class);
         addDefaultEventFilter(ApsFrameExtractor.class);
-        addDefaultEventFilter(ApsDvsAutoShooter.class);
+        addDefaultEventFilter(DavisAutoShooter.class);
         addDefaultEventFilter(SimpleOrientationFilter.class);
         addDefaultEventFilter(ApsDvsDirectionSelectiveFilter.class);
         addDefaultEventFilter(DavisFrameAviWriter.class);
@@ -117,7 +117,7 @@ abstract public class ApsDvsChip extends AETemporalConstastRetina {
      *
      * @return exposure time in ms
      */
-    abstract public float getExposureMs();
+    abstract public float getMeasuredExposureMs();
 
     /**
      * Triggers the taking of one snapshot, i.e, triggers a frame capture.

@@ -2,14 +2,14 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package net.sf.jaer.config;
+package ch.unizh.ini.jaer.chip.retina;
 
 /**
  * Configuration interface for DVS vision sensor output rendering using the "new" texture based rendering.
  * 
  * @author Christian
  */
-public interface DvsConfig { 
+public interface DvsDisplayConfigInterface { 
 
     
     public abstract boolean isDisplayFrames();

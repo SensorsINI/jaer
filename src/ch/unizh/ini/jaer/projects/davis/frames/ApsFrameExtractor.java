@@ -4,7 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.davis.frames;
 
-import eu.seebetter.ini.chips.ApsDvsChip;
+import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import java.awt.BorderLayout;
@@ -41,7 +41,7 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
 
     private JFrame apsFrame = null;
     public ImageDisplay apsDisplay;
-    private ApsDvsChip apsChip = null;
+    private DavisChip apsChip = null;
     private boolean newFrame, useExtRender = false; // useExtRender means using something like OpenCV to render the data. If false, the displayBuffer is displayed
     private float[] resetBuffer, signalBuffer;
     /** Raw pixel values from sensor, before conversion, brightness, etc.*/
@@ -123,8 +123,8 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
 
     @Override
     public void resetFilter() {
-        if (ApsDvsChip.class.isAssignableFrom(chip.getClass())) {
-            apsChip = (ApsDvsChip) chip;
+        if (DavisChip.class.isAssignableFrom(chip.getClass())) {
+            apsChip = (DavisChip) chip;
         } else {
             log.warning("The filter ApsFrameExtractor can only be used for chips that extend the ApsDvsChip class");
         }

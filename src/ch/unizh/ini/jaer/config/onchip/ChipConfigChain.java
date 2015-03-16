@@ -24,7 +24,7 @@ public abstract class ChipConfigChain extends Observable implements HasPreferenc
     public Chip sbChip;
 
     //Config Bits
-    public OnchipConfigBit[] configBits;
+    protected OnchipConfigBit[] configBits;
     public int TOTAL_CONFIG_BITS = 0;
 
     ArrayList<OutputMux> muxes = new ArrayList();
@@ -42,7 +42,7 @@ public abstract class ChipConfigChain extends Observable implements HasPreferenc
 
     @Override
     public void loadPreference() {
-        for (OnchipConfigBit b : configBits) {
+        for (OnchipConfigBit b : getConfigBits()) {
             b.loadPreference();
         }
         for (OutputMux m : muxes) {
@@ -52,7 +52,7 @@ public abstract class ChipConfigChain extends Observable implements HasPreferenc
 
     @Override
     public void storePreference() {
-        for (OnchipConfigBit b : configBits) {
+        for (OnchipConfigBit b : getConfigBits()) {
             b.storePreference();
         }
         for (OutputMux m : muxes) {
@@ -64,5 +64,12 @@ public abstract class ChipConfigChain extends Observable implements HasPreferenc
     public void update(Observable o, Object arg) {
         setChanged();
         notifyObservers(arg);
+    }
+
+    /**
+     * @return the configBits
+     */
+    public OnchipConfigBit[] getConfigBits() {
+        return configBits;
     }
 }

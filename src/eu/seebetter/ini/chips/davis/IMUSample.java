@@ -11,7 +11,7 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.util.filter.LowpassFilter;
-import eu.seebetter.ini.chips.ApsDvsChip;
+import eu.seebetter.ini.chips.DavisChip;
 
 /**
  * Encapsulates data sent from device Invensense Inertial Measurement Unit (IMU)
@@ -269,7 +269,7 @@ public class IMUSample extends ApsDvsEvent {
 				throw new IncompleteIMUSampleException(sample, code);
 			}
 			final int data = packet.addresses[start + offset];
-			if ((ApsDvsChip.ADDRESS_TYPE_IMU & data) != ApsDvsChip.ADDRESS_TYPE_IMU) {
+			if ((DavisChip.ADDRESS_TYPE_IMU & data) != DavisChip.ADDRESS_TYPE_IMU) {
 				throw new BadIMUDataException("bad data, not an IMU data type, wrong bits are set: " + data);
 			}
 			int actualCode;

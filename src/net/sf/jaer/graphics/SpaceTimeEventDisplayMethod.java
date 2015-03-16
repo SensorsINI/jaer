@@ -20,7 +20,7 @@ import javax.media.opengl.glu.GLU;
 
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.Chip2D;
-import net.sf.jaer.config.ApsDvsConfig;
+import eu.seebetter.ini.chips.davis.DavisDisplayConfigInterface;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
@@ -29,7 +29,7 @@ import net.sf.jaer.util.EngineeringFormat;
 
 import com.jogamp.opengl.util.gl2.GLUT;
 
-import eu.seebetter.ini.chips.ApsDvsChip;
+import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.IMUSample;
 
 /**
@@ -41,7 +41,7 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
 
 	EngineeringFormat engFmt = new EngineeringFormat();
 
-	private ApsDvsConfig config;
+	private DavisDisplayConfigInterface config;
 	private boolean displayEvents = true;
 	private boolean displayFrames = true;
 
@@ -146,8 +146,8 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
 				final ApsDvsEventPacket apsPacket = (ApsDvsEventPacket) packet;
 				evItr = apsPacket.fullIterator();
 
-				if ((config == null) && (chip != null) && (chip instanceof ApsDvsChip)) {
-					config = (ApsDvsConfig) chip.getBiasgen();
+				if ((config == null) && (chip != null) && (chip instanceof DavisChip)) {
+					config = (DavisDisplayConfigInterface) chip.getBiasgen();
 				}
 
 				if (config != null) {

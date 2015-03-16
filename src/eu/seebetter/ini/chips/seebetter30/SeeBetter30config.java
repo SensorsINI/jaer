@@ -216,10 +216,10 @@ public class SeeBetter30config extends LatticeLogicConfig{
         configTabbedPane.addTab("DAC Control", dacPanel);
 
         //muxes
-        configTabbedPane.addTab("Debug Output MUX control", chipConfigChain.buildMuxControlPanel());
+        configTabbedPane.addTab("Debug Output MUX control", getChipConfigChain().buildMuxControlPanel());
 
         //chip config
-        JPanel chipConfigPanel = chipConfigChain.getChipConfigPanel();
+        JPanel chipConfigPanel = getChipConfigChain().getChipConfigPanel();
         configTabbedPane.addTab("Chip configuration", chipConfigPanel);
 
         configPanel.add(configTabbedPane, BorderLayout.CENTER);
@@ -510,11 +510,11 @@ public class SeeBetter30config extends LatticeLogicConfig{
 
         String getConfigBitString() {
             StringBuilder s = new StringBuilder();
-            for (int i = 0; i < (TOTAL_CONFIG_BITS - configBits.length); i++) {
+            for (int i = 0; i < (TOTAL_CONFIG_BITS - getConfigBits().length); i++) {
                 s.append("0");
             }
-            for (int i = configBits.length - 1; i >= 0; i--) {
-                s.append(configBits[i].isSet() ? "1" : "0");
+            for (int i = getConfigBits().length - 1; i >= 0; i--) {
+                s.append(getConfigBits()[i].isSet() ? "1" : "0");
             }
             //System.out.println(s);
             return s.toString();
@@ -532,7 +532,7 @@ public class SeeBetter30config extends LatticeLogicConfig{
             //On-Chip config bits
             JPanel extraPanel = new JPanel();
             extraPanel.setLayout(new BoxLayout(extraPanel, BoxLayout.Y_AXIS));
-            for (OnchipConfigBit b : configBits) {
+            for (OnchipConfigBit b : getConfigBits()) {
                 extraPanel.add(new JRadioButton(b.getAction()));
             }
             extraPanel.setBorder(new TitledBorder("Extra on-chip bits"));

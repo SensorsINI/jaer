@@ -18,7 +18,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 
-import eu.seebetter.ini.chips.ApsDvsChip;
+import eu.seebetter.ini.chips.DavisChip;
 import java.util.HashMap;
 import java.util.LinkedList;
 import javax.media.opengl.GL2;
@@ -31,9 +31,9 @@ import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
  *
  * @author Tobi
  */
-@Description("Triggers snapshots of APS frames based on sensor data stream.")
+@Description("Triggers snapshots of DAVIS APS frames based on DVS data stream")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class ApsDvsAutoShooter extends EventFilter2D implements FrameAnnotater {
+public class DavisAutoShooter extends EventFilter2D implements FrameAnnotater {
 
     private EventRateEstimator eventRateEstimator = new EventRateEstimator(chip);
     private RectangularClusterTracker tracker =new RectangularClusterTracker(chip);
@@ -50,9 +50,9 @@ public class ApsDvsAutoShooter extends EventFilter2D implements FrameAnnotater {
     private int trackerMovementPixelsForNewFrame=getInt("trackerMovementPixelsForNewFrame",5);
     private HashMap<Cluster,Cluster> oldClusters=new HashMap();
 
-    public ApsDvsAutoShooter(AEChip chip) {
+    public DavisAutoShooter(AEChip chip) {
         super(chip);
-        if (!(chip instanceof ApsDvsChip)) {
+        if (!(chip instanceof DavisChip)) {
             throw new RuntimeException("AEChip needs to be ApsDvsChip to use ApsDvsAutoShooter");
         }
         FilterChain chain = new FilterChain(chip);
@@ -118,7 +118,7 @@ public class ApsDvsAutoShooter extends EventFilter2D implements FrameAnnotater {
             // trigger shot
             eventsSinceLastShot = 0;
             snapshotTriggered = true;
-            ((ApsDvsChip) chip).takeSnapshot();
+            ((DavisChip) chip).takeSnapshot();
             uninitialized=false;
         } else {
             snapshotTriggered = false;

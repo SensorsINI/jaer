@@ -27,6 +27,6 @@ public class DAVIS240C extends DAVIS240BaseCamera {
 
     @Override
     public boolean lastFrameAddress(short x, short y) {
-        return (x == sx1) && (y == sy1);
+        return (x == getSizeX()-1) && (y == getSizeY()-1);
      }
 }

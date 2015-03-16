@@ -33,6 +33,7 @@ import ch.unizh.ini.jaer.config.dac.DACchannel;
 import ch.unizh.ini.jaer.config.dac.DACchannelArray;
 import ch.unizh.ini.jaer.config.fx2.PortBit;
 import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
+import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 
 /**
  *
@@ -40,7 +41,7 @@ import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
  */
 public class LatticeLogicConfig extends Biasgen implements HasPreference {
 	public AEChip chip;
-	public ChipConfigChain chipConfigChain = null;
+	protected ChipConfigChain chipConfigChain = null;
 	protected ShiftedSourceBiasCF[] ssBiases = new ShiftedSourceBiasCF[2];
 	protected ArrayList<HasPreference> hasPreferenceList = new ArrayList<HasPreference>();
 
@@ -77,6 +78,13 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 
 	// Clock cycles per microsecond for ADC logic. It's running at 30MHz.
 	private static final int ADC_CLOCK_FREQ_CYCLES = 30;
+
+    /**
+     * @return the chipConfigChain
+     */
+    public ChipConfigChain getChipConfigChain() {
+        return chipConfigChain;
+    }
 
 	/** Command sent to firmware by vendor request */
 	public class Fx2ConfigCmd {
@@ -464,7 +472,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 	}
 
 	public boolean sendOnChipConfigChain() throws HardwareInterfaceException {
-		String onChipConfigBits = chipConfigChain.getBitString();
+		String onChipConfigBits = getChipConfigChain().getBitString();
 		byte[] onChipConfigBytes = bitString2Bytes(onChipConfigBits);
 		if (onChipConfigBits == null) {
 			return false;
@@ -600,4 +608,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 			}
 		}
 	}
+
+        
+        
 }

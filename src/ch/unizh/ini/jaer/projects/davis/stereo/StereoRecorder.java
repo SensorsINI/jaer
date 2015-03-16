@@ -7,7 +7,7 @@ package ch.unizh.ini.jaer.projects.davis.stereo;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import com.jogamp.opengl.util.awt.TextRenderer;
-import eu.seebetter.ini.chips.ApsDvsChip;
+import eu.seebetter.ini.chips.DavisChip;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
 import java.io.File;
@@ -40,7 +40,7 @@ public class StereoRecorder extends EventFilter2D implements FrameAnnotater {
     private int sy;
     private int lastTimestamp = 0;
 
-    private ApsDvsChip apsChip = null;
+    private DavisChip apsChip = null;
 
     private SimpleDepthCameraViewerApplication depthViewerThread;
     File depthFile;
@@ -203,8 +203,8 @@ public class StereoRecorder extends EventFilter2D implements FrameAnnotater {
     public final void initFilter() {
         sx = chip.getSizeX();
         sy = chip.getSizeY();
-        if (ApsDvsChip.class.isAssignableFrom(chip.getClass())) {
-            apsChip = (ApsDvsChip) chip;
+        if (DavisChip.class.isAssignableFrom(chip.getClass())) {
+            apsChip = (DavisChip) chip;
         }
     }
 

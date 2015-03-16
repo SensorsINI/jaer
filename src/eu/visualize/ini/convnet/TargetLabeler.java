@@ -44,7 +44,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 
-import eu.seebetter.ini.chips.ApsDvsChip;
+import eu.seebetter.ini.chips.DavisChip;
 import java.awt.Cursor;
 import java.util.Arrays;
 import net.sf.jaer.graphics.AEPlayer;
@@ -68,7 +68,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     private GLUquadric mouseQuad = null;
     private TreeMap<Integer, TargetLocation> targetLocations = new TreeMap();
     private TargetLocation targetLocation = null;
-    private ApsDvsChip apsDvsChip = null;
+    private DavisChip apsDvsChip = null;
     private int lastFrameNumber = -1;
     private int lastTimestamp = Integer.MIN_VALUE;
     private int currentFrameNumber = -1;
@@ -93,8 +93,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     public TargetLabeler(AEChip chip) {
         super(chip);
-        if (chip instanceof ApsDvsChip) {
-            apsDvsChip = ((ApsDvsChip) chip);
+        if (chip instanceof DavisChip) {
+            apsDvsChip = ((DavisChip) chip);
         }
         setPropertyTooltip("minTargetPointIntervalUs", "minimum interval between target positions in the database in us");
         setPropertyTooltip("targetRadius", "drawn radius of target in pixels");

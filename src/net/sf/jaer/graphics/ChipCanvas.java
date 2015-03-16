@@ -971,7 +971,13 @@ public class ChipCanvas implements GLEventListener, Observer {
 		 */
 		checkGLError(g, glu, "at start of setDefaultProjection");
 		final int w = drawable.getWidth(), h = drawable.getHeight(); // w,h of screen
+                
 		final int sx = chip.getSizeX(), sy = chip.getSizeY(); // chip size
+                
+                if(sx==0 || sy==0){
+                    log.warning("zero sized chip for sizeX or sizeY; something is wrong. Did you forget to set the chip size in pixels in its constructor?");
+                    return;
+                }
 		final float border = getBorderSpacePixels(); // desired smallest border in screen pixels
 		float glScale;
 		checkGLError(g, glu, "before setDefaultProjection");

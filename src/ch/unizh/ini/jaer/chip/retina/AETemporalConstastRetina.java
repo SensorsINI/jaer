@@ -27,4 +27,5 @@ abstract public class AETemporalConstastRetina extends AEChip{
         setRenderer(new RetinaRenderer(this));
         addDefaultEventFilter(CellStatsProber.class);
    }
+    
 }

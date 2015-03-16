@@ -16,7 +16,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import javax.swing.ProgressMonitor;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.config.ApsDvsConfig;
+import eu.seebetter.ini.chips.davis.DavisDisplayConfigInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.EngineeringFormat;
 import de.thesycon.usbio.UsbIo;
@@ -24,7 +24,7 @@ import de.thesycon.usbio.UsbIoBuf;
 import de.thesycon.usbio.UsbIoInterface;
 import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
 import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
-import eu.seebetter.ini.chips.ApsDvsChip;
+import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.IMUSample;
 
 /**
@@ -76,8 +76,8 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
      */
     @Override
     synchronized public void setPowerDown(boolean powerDown) throws HardwareInterfaceException {
-        if ((chip != null) && (chip instanceof ApsDvsChip)) {
-            ApsDvsChip apsDVSchip = (ApsDvsChip) chip;
+        if ((chip != null) && (chip instanceof DavisChip)) {
+            DavisChip apsDVSchip = (DavisChip) chip;
             apsDVSchip.setPowerDown(powerDown);
         }
     }
@@ -352,8 +352,8 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
         public RetinaAEReader(CypressFX2 cypress) throws HardwareInterfaceException {
             super(cypress);
             resetFrameAddressCounters();
-            setAEReaderFifoSize(((ApsDvsConfig)(chip.getBiasgen())).getAeReaderFifoSize()); // TODO awkward, should move all this USB buffer size stuff to AEchip preferences and out of the hardware interface, which should not have any preference values!
-            setAEReaderNumBuffers(((ApsDvsConfig)(chip.getBiasgen())).getAeReaderNumBuffers());
+            setAEReaderFifoSize(((DavisDisplayConfigInterface)(chip.getBiasgen())).getAeReaderFifoSize()); // TODO awkward, should move all this USB buffer size stuff to AEchip preferences and out of the hardware interface, which should not have any preference values!
+            setAEReaderNumBuffers(((DavisDisplayConfigInterface)(chip.getBiasgen())).getAeReaderNumBuffers());
         }
         /**
          * Method to translate the UsbIoBuffer for the DVS320 sensor which uses
@@ -458,23 +458,23 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
         @Override
         public void setNumBuffers(int numBuffers) {
             super.setNumBuffers(numBuffers);
-            ((ApsDvsConfig)(chip.getBiasgen())).setAeReaderNumBuffers(numBuffers);
+            ((DavisDisplayConfigInterface)(chip.getBiasgen())).setAeReaderNumBuffers(numBuffers);
         }
 
         @Override
         public int getNumBuffers() {
-            return ((ApsDvsConfig)(chip.getBiasgen())).getAeReaderNumBuffers();
+            return ((DavisDisplayConfigInterface)(chip.getBiasgen())).getAeReaderNumBuffers();
         }
 
         @Override
         public void setFifoSize(int fifoSize) {
             super.setFifoSize(fifoSize);
-            ((ApsDvsConfig)(chip.getBiasgen())).setAeReaderFifoSize(fifoSize);
+            ((DavisDisplayConfigInterface)(chip.getBiasgen())).setAeReaderFifoSize(fifoSize);
         }
 
         @Override
         public int getFifoSize() {
-            return ((ApsDvsConfig)(chip.getBiasgen())).getAeReaderFifoSize();
+            return ((DavisDisplayConfigInterface)(chip.getBiasgen())).getAeReaderFifoSize();
         }
 
 
@@ -484,7 +484,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
             // TODO debug
 //            if(imuSample!=null) System.out.println(imuSample);
 //            stats.addBuf(b);
-            boolean translateRowOnlyEvents=((ApsDvsConfig)(chip.getBiasgen())).isTranslateRowOnlyEvents();
+            boolean translateRowOnlyEvents=((DavisDisplayConfigInterface)(chip.getBiasgen())).isTranslateRowOnlyEvents();
             try {
                 // data from cDVS is stateful. 2 bytes sent for each word of data can consist of either timestamp, y address, x address, or ADC value.
                 // The type of data is determined from bits in these two bytes.
@@ -521,7 +521,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 
                             final int code = (buf[i + 1] & 0xC0) >> 6; // gets two bits at XX00 0000 0000 0000. (val&0xC000)>>>14;
                             //  log.info("code " + code);
-                            int xmask = (ApsDvsChip.XMASK | ApsDvsChip.POLMASK) >>> ApsDvsChip.POLSHIFT;
+                            int xmask = (DavisChip.XMASK | DavisChip.POLMASK) >>> DavisChip.POLSHIFT;
                             switch (code) {
                                 case 0: // address
                                     // If the data is an address, we write out an address value if we either get an ADC reading or an x address.
@@ -541,7 +541,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 									// overruns need to happen in both places.
 									if (!((dataword & ADDRESS_TYPE_BIT) == ADDRESS_TYPE_BIT)
 										&& ((buf[i + 1] & EXTERNAL_PIN_EVENT) == EXTERNAL_PIN_EVENT)
-										&& ((buf[i] & ApsDvsChip.IMUMASK) == ApsDvsChip.IMUMASK)) {
+										&& ((buf[i] & DavisChip.IMUMASK) == DavisChip.IMUMASK)) {
 										readingIMUEvents = true;
 										break;
 									}
@@ -557,7 +557,7 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                             if ((dataword & FRAME_START_BIT) == FRAME_START_BIT) {
                                                 resetFrameAddressCounters();
                                             }
-                                            int readcycle = (dataword & ApsDvsChip.ADC_READCYCLE_MASK) >> ApsDvsChip.ADC_READCYCLE_SHIFT;
+                                            int readcycle = (dataword & DavisChip.ADC_READCYCLE_MASK) >> DavisChip.ADC_READCYCLE_SHIFT;
                                             if (countY[readcycle] >= chip.getSizeY()) {
                                                 countY[readcycle] = 0;
                                                 countX[readcycle]++;
@@ -575,23 +575,23 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                             int yAddr = (short) (chip.getSizeY() - 1 - countY[readcycle]);
     //                                        if(xAddr >= chip.getSizeX() || xAddr<0 || yAddr >= chip.getSizeY() || yAddr<0)System.out.println("out of bounds event: x = "+xAddr+", y = "+yAddr+", read = "+readcycle);
                                             countY[readcycle]++;
-                                            addr = ApsDvsChip.ADDRESS_TYPE_APS
-                                                    | ((yAddr << ApsDvsChip.YSHIFT) & ApsDvsChip.YMASK)
-                                                    | ((xAddr << ApsDvsChip.XSHIFT) & ApsDvsChip.XMASK)
-                                                    | (dataword & (ApsDvsChip.ADC_READCYCLE_MASK | ApsDvsChip.ADC_DATA_MASK));
+                                            addr = DavisChip.ADDRESS_TYPE_APS
+                                                    | ((yAddr << DavisChip.YSHIFT) & DavisChip.YMASK)
+                                                    | ((xAddr << DavisChip.XSHIFT) & DavisChip.XMASK)
+                                                    | (dataword & (DavisChip.ADC_READCYCLE_MASK | DavisChip.ADC_DATA_MASK));
                                             timestamp = currentts;  // ADC event gets last timestamp
                                             haveEvent = true;
     //                                              System.out.println("ADC word: " + (dataword&SeeBetter20.ADC_DATA_MASK));
 
                                         // Detects Special Events which can be of type IMUEvents
                                         } else if ((buf[i + 1] & EXTERNAL_PIN_EVENT) == EXTERNAL_PIN_EVENT) {
-                                            addr = ApsDvsChip.EXTERNAL_INPUT_EVENT_ADDR;
+                                            addr = DavisChip.EXTERNAL_INPUT_EVENT_ADDR;
                                             timestamp = currentts;
                                             haveEvent = false; // TODO set false for now
     //                                        haveEvent = true; // TODO don't write out the external pin events for now, because they mess up the IMU special events
 
                                             // Detect Special / External Event of Type IMU, and set flag to start reading subsequent pairs of bytes as IMUEvents
-                                            if ((buf[i] & ApsDvsChip.IMUMASK) == ApsDvsChip.IMUMASK) {
+                                            if ((buf[i] & DavisChip.IMUMASK) == DavisChip.IMUMASK) {
                                                 readingIMUEvents = true;
                                                 //if (bytesSent - i < 20) System.out.println(bytesSent - i);
                                             }
@@ -600,10 +600,10 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
 
                                             // x/column part of DVS event
                                             // x column adddress received, combine with previous row y address and commit to output packet
-                                            addr = (lasty << ApsDvsChip.YSHIFT) | ((dataword & xmask) << ApsDvsChip.POLSHIFT);  // combine current bits with last y address bits and send
+                                            addr = (lasty << DavisChip.YSHIFT) | ((dataword & xmask) << DavisChip.POLSHIFT);  // combine current bits with last y address bits and send
                                             timestamp = currentts; // add in the wrap offset and convert to 1us tick
                                             haveEvent = true;
-                                            //log.info("X: "+((dataword & ApsDvsChip.XMASK)>>1));
+                                            //log.info("X: "+((dataword & DavisChip.XMASK)>>1));
                                             gotY = false;
                                         } else { // row address came, just save it until we get a column address
                                             addr = 0;
@@ -612,17 +612,17 @@ public class ApsDvsHardwareInterface extends CypressFX2Biasgen {
                                             if (gotY) { // no col address came after last row address, last event was row-only event
                                                 if (translateRowOnlyEvents) {// make  row-only event
 
-                                                    addresses[eventCounter] = (lasty << ApsDvsChip.YSHIFT);  // combine current bits with last y address bits and send
+                                                    addresses[eventCounter] = (lasty << DavisChip.YSHIFT);  // combine current bits with last y address bits and send
                                                     timestamps[eventCounter] = currentts; // add in the wrap offset and convert to 1us tick
                                                     eventCounter++;
                                                 }
 
                                             }
                                             // y address, save it for all the x/row addresses that should follow
-                                            int ymask = (ApsDvsChip.YMASK >>> ApsDvsChip.YSHIFT);
+                                            int ymask = (DavisChip.YMASK >>> DavisChip.YSHIFT);
                                             lasty = ymask & dataword; //(0xFF & buf[i]); //
                                             gotY = true;
-                                            //log.info("Y: "+lasty+" - data "+dataword+" - mask: "+(ApsDvsChip.YMASK >>> ApsDvsChip.YSHIFT));
+                                            //log.info("Y: "+lasty+" - data "+dataword+" - mask: "+(DavisChip.YMASK >>> DavisChip.YSHIFT));
                                         }
                                         if (haveEvent) {
                                             // see if there are any IMU samples to add to packet

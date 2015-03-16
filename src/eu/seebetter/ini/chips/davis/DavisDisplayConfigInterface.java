@@ -2,14 +2,16 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package net.sf.jaer.config;
+package eu.seebetter.ini.chips.davis;
+
+import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
 
 /**
- * Configuration interface for apsDVS vision sensor output rendering.
+ * Configuration interface for APS-DVS DAVIS vision sensor output rendering.
  * 
  * @author Christian
  */
-public interface ApsDvsConfig extends DvsConfig {
+public interface DavisDisplayConfigInterface extends DvsDisplayConfigInterface {
     
        public static final String PROPERTY_IMU_DISPLAY_ENABLED = "IMU_DISPLAY_ENABLED", PROPERTY_IMU_ENABLED="IMU_ENABLED", PROPERTY_IMU_DLPF_CHANGED="IMU_DLPF_CHANGED", PROPERTY_IMU_SAMPLE_RATE_CHANGED="IMU_SAMPLE_RATE_CHANGED", PROPERTY_IMU_GYRO_SCALE_CHANGED="IMU_GYRO_SCALE_CHANGED", PROPERTY_IMU_ACCEL_SCALE_CHANGED="IMU_ACCEL_SCALE_CHANGED";
     

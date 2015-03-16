@@ -75,7 +75,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
     public Biasgen(Chip chip) {
         this.setChip(chip);
         prefs = chip.getPrefs();
-        setHardwareInterface((BiasgenHardwareInterface) chip.getHardwareInterface());
+        setHardwareInterface((BiasgenHardwareInterface) chip.getHardwareInterface()); // TODO can break easily if the hardware interface is not set when this is 
         masterbias = new Masterbias(this);
         masterbias.addObserver(this);
 //        Pot.setModificationTrackingEnabled(false);

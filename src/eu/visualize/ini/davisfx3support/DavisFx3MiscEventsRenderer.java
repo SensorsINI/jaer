@@ -18,7 +18,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
-import eu.seebetter.ini.chips.ApsDvsChip;
+import eu.seebetter.ini.chips.DavisChip;
 
 /**
  * Renders the Misc events from integrated FPGA filters and trackers.
@@ -82,19 +82,19 @@ public class DavisFx3MiscEventsRenderer extends EventFilter2D implements FrameAn
 	synchronized public void annotate(GLAutoDrawable drawable) {
 		GL2 gl = drawable.getGL().getGL2();
 		for (ApsDvsEvent e : drawList) {
-			if (((e.address & 0x7ff) >> 8) == ApsDvsChip.HW_TRACKER_CM) {
+			if (((e.address & 0x7ff) >> 8) == DavisChip.HW_TRACKER_CM) {
 				if (isShowTrackerCM()) {
 					gl.glColor3f(0, 0, (e.address & 0x3) + 1);
 					gl.glRectf(e.x - 2, e.y - 2, e.x + 2, e.y + 2);
 				}
 			}
-			else if (((e.address & 0x7ff) >> 8) == ApsDvsChip.HW_TRACKER_CLUSTER) {
+			else if (((e.address & 0x7ff) >> 8) == DavisChip.HW_TRACKER_CLUSTER) {
 				if (isShowTrackerCluster()) {
 					gl.glColor3f((e.address & 0x3) + 1, 0, (e.address & 0x3) + 1); // Tracker color depending on number of tracker
 					gl.glRectf(e.x - 2, e.y - 2, e.x + 2, e.y + 2);
 				}
 			}
-                        else if (((e.address & 0x7ff) >> 8) == ApsDvsChip.HW_OMC_EVENT) {
+                        else if (((e.address & 0x7ff) >> 8) == DavisChip.HW_OMC_EVENT) {
 				if (isShowOMCevent()) {
                                         if ((e.address & 0x1) == 1) { // Look  at 1st bit (if Object Motion Cell 1 fires)
                                             gl.glColor3f(0, 0, 1);

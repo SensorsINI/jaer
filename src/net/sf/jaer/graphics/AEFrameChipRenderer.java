@@ -13,7 +13,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.config.DvsConfig;
+import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
@@ -22,7 +22,7 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.orientation.OrientationEventInterface;
 import net.sf.jaer.util.filter.LowpassFilter2d;
 import net.sf.jaer.util.histogram.SimpleHistogram;
-import eu.seebetter.ini.chips.ApsDvsChip;
+import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DAVIS240BaseCamera;
 
 /**
@@ -39,11 +39,10 @@ import eu.seebetter.ini.chips.davis.DAVIS240BaseCamera;
  */
 public class AEFrameChipRenderer extends AEChipRenderer {
 
-      /**
+    /**
      * PropertyChange events
      */
     public static final String EVENT_NEW_FRAME_AVAILBLE = "newFrameAvailable";
-
 
     private boolean addedPropertyChangeListener = false;
     public int textureWidth; //due to hardware acceloration reasons, has to be a 2^x with x a natural number
@@ -54,7 +53,6 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     private LowpassFilter2d lowpassFilter = new LowpassFilter2d();  // 2 lp values are min and max log intensities from each frame
     private float minValue, maxValue, annotateAlpha;
     private float[] onColor, offColor;
-    private DvsConfig config;
 
     /**
      * The linear buffer of RGBA pixel colors of image frame brightness values
@@ -65,8 +63,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     protected FloatBuffer annotateMap;
     // double buffered histogram so we can accumulate new histogram while old one is still being rendered and returned to caller
     private final int histStep = 4; // histogram bin step in ADC counts of 1024 levels
-    private SimpleHistogram adcSampleValueHistogram1 = new SimpleHistogram(0, histStep, (ApsDvsChip.MAX_ADC + 1) / histStep, 0);
-    private SimpleHistogram adcSampleValueHistogram2 = new SimpleHistogram(0, histStep, (ApsDvsChip.MAX_ADC + 1) / histStep, 0);
+    private SimpleHistogram adcSampleValueHistogram1 = new SimpleHistogram(0, histStep, (DavisChip.MAX_ADC + 1) / histStep, 0);
+    private SimpleHistogram adcSampleValueHistogram2 = new SimpleHistogram(0, histStep, (DavisChip.MAX_ADC + 1) / histStep, 0);
     private SimpleHistogram currentHist = adcSampleValueHistogram1, nextHist = adcSampleValueHistogram2;
     private boolean computeHistograms = false;
     private boolean displayAnnotation = false;
@@ -78,12 +76,16 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     public AEFrameChipRenderer(AEChip chip) {
         super(chip);
-        config = (DvsConfig) chip.getBiasgen();
+        if (chip.getNumPixels() == 0) {
+            log.warning("chip has zero pixels; is the constuctor of AEFrameChipRenderer called before size of the AEChip is set?");
+            return;
+        }
         setAGCTauMs(chip.getPrefs().getFloat("agcTauMs", 1000));
         onColor = new float[4];
         offColor = new float[4];
-        resetFrame(0.5f);
-        resetAnnotationFrame(0.0f);
+        checkPixmapAllocation();
+//        resetFrame(0.5f);
+//        resetAnnotationFrame(0.0f); // don't call here because it depends on knowing desired rendering state, which requires chip configuration, which might not be set yet
     }
 
     /**
@@ -105,7 +107,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             grayBuffer.rewind();
             for (int y = 0; y < textureWidth; y++) {
                 for (int x = 0; x < textureHeight; x++) {
-                    if (config.isDisplayFrames()) {
+                    if (isDisplayFrames()) {
                         grayBuffer.put(0);
                         grayBuffer.put(0);
                         grayBuffer.put(0);
@@ -226,20 +228,20 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         numTypes = pkt.getNumCellTypes();
         if (pkt instanceof ApsDvsEventPacket) {
             renderApsDvsEvents(pkt);
-        }else{
+        } else {
             renderDvsEvents(pkt);
         }
     }
 
-    private void renderApsDvsEvents(EventPacket pkt){
+    private void renderApsDvsEvents(EventPacket pkt) {
 
         if (getChip() instanceof DAVIS240BaseCamera) {
-            computeHistograms = ((DAVIS240BaseCamera) chip).isShowImageHistogram() || ((ApsDvsChip) chip).isAutoExposureEnabled();
+            computeHistograms = ((DAVIS240BaseCamera) chip).isShowImageHistogram() || ((DavisChip) chip).isAutoExposureEnabled();
         }
 
         if (!accumulateEnabled) {
             resetMaps();
-            if(numTypes>2){
+            if (numTypes > 2) {
                 resetAnnotationFrame(0.0f);
             }
         }
@@ -255,8 +257,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             }
             return;
         }
-        boolean displayEvents = config.isDisplayEvents(),
-                displayFrames = config.isDisplayFrames(),
+        boolean displayEvents = isDisplayEvents(),
+                displayFrames = isDisplayFrames(),
                 paused = chip.getAeViewer().isPaused(), backwards = packet.getDurationUs() < 0;
 
         Iterator allItr = packet.fullIterator();
@@ -286,13 +288,13 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
     }
 
-    private void renderDvsEvents(EventPacket pkt){
+    private void renderDvsEvents(EventPacket pkt) {
         checkPixmapAllocation();
         resetSelectedPixelEventCount(); // TODO fix locating pixel with xsel ysel
 
         if (!accumulateEnabled) {
             resetMaps();
-            if(numTypes>2){
+            if (numTypes > 2) {
                 resetAnnotationFrame(0.0f);
             }
         }
@@ -362,7 +364,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 nextHist = tmp;
                 nextHist.reset();
             }
-            ((ApsDvsChip) chip).controlExposure();
+            ((DavisChip) chip).controlExposure();
 
         }
     }
@@ -381,7 +383,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             java.awt.geom.Point2D.Float filter2d = lowpassFilter.filter2d(minValue, maxValue, timestamp);
             getSupport().firePropertyChange(AGC_VALUES, null, filter2d); // inform listeners (GUI) of new AGC min/max filterd log intensity values
         }
-        getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILBLE,null,this); // TODO document what is sent and send something reasonable
+        getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILBLE, null, this); // TODO document what is sent and send something reasonable
     }
 
     /**
@@ -392,9 +394,9 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     private void updateEventMaps(PolarityEvent e) {
         float[] map;
         int index = getIndex(e);
-        if(packet.getNumCellTypes() > 2){
+        if (packet.getNumCellTypes() > 2) {
             map = onMap.array();
-        }else if (e.polarity == ApsDvsEvent.Polarity.On) {
+        } else if (e.polarity == ApsDvsEvent.Polarity.On) {
             map = onMap.array();
         } else {
             map = offMap.array();
@@ -428,7 +430,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 map[ind + 2] = c[2]; //if(f[2]>1f) f[2]=1f;
             }
             map[index + 3] += alpha;
-        }else if (colorMode == ColorMode.ColorTime) {
+        } else if (colorMode == ColorMode.ColorTime) {
             int ts0 = packet.getFirstTimestamp();
             float dt = packet.getDurationUs();
             int ind = (int) Math.floor(((NUM_TIME_COLORS - 1) * (e.timestamp - ts0)) / dt);
@@ -602,9 +604,9 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      * @return
      */
     public float getApsGrayValueAtPixel(int x, int y) {
-        int k=getPixMapIndex(x, y);
-        float[] pm=pixmap.array();
-        return (pm[k] + pm[k+1] + pm[k+2]) / 3;
+        int k = getPixMapIndex(x, y);
+        float[] pm = pixmap.array();
+        return (pm[k] + pm[k + 1] + pm[k + 2]) / 3;
     }
 
     /**
@@ -635,9 +637,9 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     @Override
     public void setAnnotateColorRGB(int index, float[] value) {
         annotateMap.put(index, value[0]);
-        annotateMap.put(index+1, value[1]);
-        annotateMap.put(index+2, value[2]);
-        annotateMap.put(index+3, getAnnotateAlpha());
+        annotateMap.put(index + 1, value[1]);
+        annotateMap.put(index + 2, value[2]);
+        annotateMap.put(index + 3, getAnnotateAlpha());
     }
 
     /**
@@ -648,9 +650,9 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      */
     public void setAnnotateColorRGBA(int index, float[] value) {
         annotateMap.put(index, value[0]);
-        annotateMap.put(index+1, value[1]);
-        annotateMap.put(index+2, value[2]);
-        annotateMap.put(index+3, value[3]);
+        annotateMap.put(index + 1, value[1]);
+        annotateMap.put(index + 2, value[2]);
+        annotateMap.put(index + 3, value[3]);
     }
 
     /**
@@ -662,11 +664,11 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      */
     @Override
     public void setAnnotateColorRGB(int x, int y, float[] value) {
-        int index = getPixMapIndex(x,y);
+        int index = getPixMapIndex(x, y);
         annotateMap.put(index, value[0]);
-        annotateMap.put(index+1, value[1]);
-        annotateMap.put(index+2, value[2]);
-        annotateMap.put(index+3, getAnnotateAlpha());
+        annotateMap.put(index + 1, value[1]);
+        annotateMap.put(index + 2, value[2]);
+        annotateMap.put(index + 3, getAnnotateAlpha());
     }
 
     /**
@@ -677,11 +679,11 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      * @param value
      */
     public void setAnnotateColorRGBA(int x, int y, float[] value) {
-        int index = getPixMapIndex(x,y);
+        int index = getPixMapIndex(x, y);
         annotateMap.put(index, value[0]);
-        annotateMap.put(index+1, value[1]);
-        annotateMap.put(index+2, value[2]);
-        annotateMap.put(index+3, value[3]);
+        annotateMap.put(index + 1, value[1]);
+        annotateMap.put(index + 2, value[2]);
+        annotateMap.put(index + 3, value[3]);
     }
 
     /**
@@ -719,12 +721,12 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      */
     private float normalizeFramePixel(float value) {
         float v;
-        if (!config.isUseAutoContrast()) { // fixed rendering computed here
-            float gamma = config.getGamma();
+        if (!isUseAutoContrast()) { // fixed rendering computed here
+            float gamma = getGamma();
             if (gamma == 1.0f) {
-                v = ((config.getContrast() * value) + config.getBrightness()) / maxADC;
+                v = ((getContrast() * value) + getBrightness()) / maxADC;
             } else {
-                v = (float) (Math.pow((((config.getContrast() * value) + config.getBrightness()) / maxADC), gamma));
+                v = (float) (Math.pow((((getContrast() * value) + getBrightness()) / maxADC), gamma));
             }
         } else {
             java.awt.geom.Point2D.Float filter2d = lowpassFilter.getValue2d();
@@ -764,8 +766,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     public void applyAGCValues() {
         java.awt.geom.Point2D.Float f = lowpassFilter.getValue2d();
-        config.setBrightness(agcOffset());
-        config.setContrast(agcGain());
+        setBrightness(agcOffset());
+        setContrast(agcGain());
     }
 
     private int agcOffset() {
@@ -800,7 +802,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      */
     @Override
     public float getGrayValue() {
-        if (config.isDisplayFrames() || (colorMode == ColorMode.Contrast) || (colorMode == ColorMode.GrayLevel)) {
+        if (isDisplayFrames() || (colorMode == ColorMode.Contrast) || (colorMode == ColorMode.GrayLevel)) {
             grayValue = 0.5f;
         } else if (colorMode == ColorMode.GrayTime) {
             grayValue = 1.0f;
@@ -808,14 +810,6 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             grayValue = 0.0f;
         }
         return this.grayValue;
-    }
-
-    public boolean isDisplayFrames() {
-        return config.isDisplayFrames();
-    }
-
-    public boolean isDisplayEvents() {
-        return config.isDisplayEvents();
     }
 
     /**
@@ -874,5 +868,37 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     public void setExternalRenderer(boolean extRender) {
         externalRenderer = extRender;
         displayAnnotation = extRender;
+    }
+
+    public boolean isDisplayFrames() {
+        return ((DvsDisplayConfigInterface) chip.getBiasgen()).isDisplayFrames();
+    }
+
+    public boolean isDisplayEvents() {
+        return ((DvsDisplayConfigInterface) chip.getBiasgen()).isDisplayEvents();
+    }
+
+    private boolean isUseAutoContrast() {
+        return ((DvsDisplayConfigInterface) chip.getBiasgen()).isUseAutoContrast();
+    }
+
+    private float getGamma() {
+        return ((DvsDisplayConfigInterface) chip.getBiasgen()).getGamma();
+    }
+
+    private float getContrast() {
+        return ((DvsDisplayConfigInterface) chip.getBiasgen()).getContrast();
+    }
+
+    private float getBrightness() {
+        return ((DvsDisplayConfigInterface) chip.getBiasgen()).getBrightness();
+    }
+
+    private void setBrightness(float brightness) {
+        ((DvsDisplayConfigInterface) chip.getBiasgen()).setBrightness(brightness);
+    }
+
+    private void setContrast(int contrast) {
+        ((DvsDisplayConfigInterface) chip.getBiasgen()).setContrast(contrast);
     }
 }

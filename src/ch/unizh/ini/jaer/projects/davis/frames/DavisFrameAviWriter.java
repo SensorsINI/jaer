@@ -5,7 +5,7 @@
  */
 package ch.unizh.ini.jaer.projects.davis.frames;
 
-import eu.seebetter.ini.chips.ApsDvsChip;
+import eu.seebetter.ini.chips.DavisChip;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.beans.PropertyChangeEvent;
@@ -34,7 +34,7 @@ import net.sf.jaer.util.avioutput.AbstractAviWriter;
 public class DavisFrameAviWriter extends AbstractAviWriter {
 
     ApsFrameExtractor apsFrameExtractor;
-    ApsDvsChip apsDvsChip = null;
+    DavisChip apsDvsChip = null;
 
     public DavisFrameAviWriter(AEChip chip) {
         super(chip);
@@ -52,7 +52,7 @@ public class DavisFrameAviWriter extends AbstractAviWriter {
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         super.filterPacket(in); // adds propertychangelistener for rewind event
-        apsDvsChip = (ApsDvsChip) chip;
+        apsDvsChip = (DavisChip) chip;
         apsFrameExtractor.filterPacket(in);
         return in;
     }

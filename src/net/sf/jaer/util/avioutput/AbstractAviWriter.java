@@ -6,7 +6,6 @@
 package net.sf.jaer.util.avioutput;
 
 import com.jogamp.common.nio.Buffers;
-import eu.seebetter.ini.chips.ApsDvsChip;
 import java.awt.Desktop;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;

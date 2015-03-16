@@ -40,7 +40,7 @@ import net.sf.jaer.util.filter.HighpassFilter;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
-import eu.seebetter.ini.chips.ApsDvsChip;
+import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.IMUSample;
 
 import net.sf.jaer.DevelopmentStatus;
@@ -241,8 +241,8 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
                             IMUSample s = (IMUSample) ev;
                             if (s.imuSampleEvent) {
                                 lastTransform = updateTransform(s);
-                                if (transformImageEnabled && lastTransform != null && chip instanceof ApsDvsChip && chip.getAeViewer() != null && chip.getCanvas() != null && chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA) {
-                                    ApsDvsChip apsDvsChip = (ApsDvsChip) chip;
+                                if (transformImageEnabled && lastTransform != null && chip instanceof DavisChip && chip.getAeViewer() != null && chip.getCanvas() != null && chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA) {
+                                    DavisChip apsDvsChip = (DavisChip) chip;
                                     int frameStartTimestamp = apsDvsChip.getFrameExposureStartTimestampUs();
                                     int frameEndTimestamp = apsDvsChip.getFrameExposureEndTimestampUs();
                                     int frameCounter = apsDvsChip.getFrameCount();
@@ -287,6 +287,9 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
                 }
             } // event iterator
 //            if(transformImageEnabled && lastTransform!=null && chip.getAeViewer()!=null && chip.getCanvas()!=null && chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA){
+//                ChipRendererDisplayMethodRGBA displayMethod=(ChipRendererDisplayMethodRGBA)chip.getCanvas().getDisplayMethod(); // TODO not ideal (tobi)
+//                displayMethod.setImageTransform(lastTransform.translationPixels,lastTransform.rotationRad);
+//            }//            if(transformImageEnabled && lastTransform!=null && chip.getAeViewer()!=null && chip.getCanvas()!=null && chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA){
 //                ChipRendererDisplayMethodRGBA displayMethod=(ChipRendererDisplayMethodRGBA)chip.getCanvas().getDisplayMethod(); // TODO not ideal (tobi)
 //                displayMethod.setImageTransform(lastTransform.translationPixels,lastTransform.rotationRad);
 //            }

@@ -170,6 +170,10 @@ public class Chip2DRenderer implements Observer {
      */
     protected void resetPixmapGrayLevel(float value) {
         checkPixmapAllocation();
+        if (chip.getNumPixels() == 0) {
+            log.warning("chip has zero pixels; is the constuctor of Chip2DRenderer called before size of the AEChip is set?");
+            return;
+        }
         final int n = 3 * chip.getNumPixels();
         boolean madebuffer = false;
         if ((grayBuffer == null) || (grayBuffer.capacity() != n)) {

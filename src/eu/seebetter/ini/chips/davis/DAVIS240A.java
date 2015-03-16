@@ -22,7 +22,7 @@ public class DAVIS240A extends DAVIS240BaseCamera {
 
     @Override
     public boolean firstFrameAddress(short x, short y) {
-        return (x == sx1) && (y == sy1);
+        return (x == getSizeX()-1) && (y == getSizeY()-1);
     }
 
     @Override
