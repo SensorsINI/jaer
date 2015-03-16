@@ -26,9 +26,10 @@ public class CPLDLong extends CPLDConfigValue implements ConfigInt, HasPreferenc
      * @param name name
      * @param tip tool-tip
      * @param def default value
+     * @param maxVal maximum allowed value
      */
-    public CPLDLong(Chip chip, int msb, int lsb, String name, String tip, int def) {
-        super(chip, lsb, msb, name, tip);
+    public CPLDLong(Chip chip, int msb, int lsb, int maxVal, String name, String tip, int def) {
+        super(chip, lsb, msb, maxVal, name, tip);
         this.lsb = lsb;
         this.msb = msb;
         this.def = def;
@@ -82,11 +83,4 @@ public class CPLDLong extends CPLDConfigValue implements ConfigInt, HasPreferenc
         prefs.putLong(key, value); // will eventually call pref change listener which will call set again
     }
     
-    public int getMax(){
-        return 1<<nBits-1;
-    }
-    
-    public int getMin(){
-        return 0;
-    }
-}
+  }

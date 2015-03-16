@@ -29,7 +29,7 @@ public class CPLDBit extends CPLDConfigValue implements ConfigBit, HasPreference
      * @param def default preferred value
      */
     public CPLDBit(Chip chip, int pos, String name, String tip, boolean def) {
-        super(chip, pos, pos, name, tip);
+        super(chip, pos, pos, 1, name, tip);
         this.pos = pos;
         this.def = def;
         loadPreference();

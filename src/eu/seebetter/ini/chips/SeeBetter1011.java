@@ -433,13 +433,13 @@ public class SeeBetter1011 extends AETemporalConstastRetina implements HasIntens
         // CPLD shift register contents specified here by CPLDInt and CPLDBit
         private CPLDBit use5TBuffer = new CPLDBit(SeeBetter1011.this, 0, "use5TBuffer", "enables 5T OTA vs Source-Follower in-pixel buffer", true);
         private CPLDBit useCalibration = new CPLDBit(SeeBetter1011.this, 1, "useCalibration", "enables on-chip per-pixel calibration current after log intenisty sample", true);
-        private CPLDInt adcConfig = new CPLDInt(SeeBetter1011.this, 13, 2, "adcConfig", "ADC configuration bits; computed by ADC with channel and sequencing parameters", 0);
-        private CPLDInt adcTrackTime = new CPLDInt(SeeBetter1011.this, 29, 14, "adcTrackTime", "ADC track time in clock cycles which are 15 cycles/us", 0);
-        private CPLDInt adcRefOnTime = new CPLDInt(SeeBetter1011.this, 45, 30, "adcRefOnTime", "ADC Reference ON time in clock cycles which are 15 cycles/us", 0);
-        private CPLDInt adcRefOffTime = new CPLDInt(SeeBetter1011.this, 61, 46, "adcRefOffTime", "ADC Reference OFF time in clock cycles which are 15 cycles/us", 0);
-        private CPLDInt adcIdleTime = new CPLDInt(SeeBetter1011.this, 77, 62, "adcIdleTime", "ADC idle time after last acquisition in clock cycles which are 15 cycles/us", 0);
-        private CPLDInt scanY = new CPLDInt(SeeBetter1011.this, 83, 78, "scanY", "cochlea tap to monitor when not scanning continuously", 1);
-        private CPLDInt scanX = new CPLDInt(SeeBetter1011.this, 89, 84, "scanX", "cochlea tap to monitor when not scanning continuously", 1);
+        private CPLDInt adcConfig = new CPLDInt(SeeBetter1011.this, 13, 2, (1<<12)-1,"adcConfig", "ADC configuration bits; computed by ADC with channel and sequencing parameters", 0);
+        private CPLDInt adcTrackTime = new CPLDInt(SeeBetter1011.this, 29, 14, (1<<26)-1,"adcTrackTime", "ADC track time in clock cycles which are 15 cycles/us", 0);
+        private CPLDInt adcRefOnTime = new CPLDInt(SeeBetter1011.this, 45, 30, 65534,"adcRefOnTime", "ADC Reference ON time in clock cycles which are 15 cycles/us", 0);
+        private CPLDInt adcRefOffTime = new CPLDInt(SeeBetter1011.this, 61, 46, 65534,"adcRefOffTime", "ADC Reference OFF time in clock cycles which are 15 cycles/us", 0);
+        private CPLDInt adcIdleTime = new CPLDInt(SeeBetter1011.this, 77, 62, 65534,"adcIdleTime", "ADC idle time after last acquisition in clock cycles which are 15 cycles/us", 0);
+        private CPLDInt scanY = new CPLDInt(SeeBetter1011.this, 83, 78, 63,"scanY", "tap to monitor when not scanning continuously", 1);
+        private CPLDInt scanX = new CPLDInt(SeeBetter1011.this, 89, 84, 63,"scanX", "tap to monitor when not scanning continuously", 1);
         private CPLDBit scanContinuouslyEnabled = new CPLDBit(SeeBetter1011.this, 90, "scanContinuouslyEnabled", "enables continuous scanning of on-chip scanner", false);
         //
         // lists of ports and CPLD config

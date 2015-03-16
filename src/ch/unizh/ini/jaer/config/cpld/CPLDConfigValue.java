@@ -24,6 +24,7 @@ public class CPLDConfigValue extends AbstractConfigValue {
     protected int msb;
     protected int nBits = 8;
     protected static final Logger log=Logger.getLogger("CPLDConfigValue");
+    protected long maxVal=-1; // if not -1, then determines actual max value
 
     /**
      * Makes an abstract value.
@@ -33,11 +34,13 @@ public class CPLDConfigValue extends AbstractConfigValue {
      * @param msb last bit
      * @param name 
      * @param tip 
+     * @param maxVal maximum allowed value
      */
-    public CPLDConfigValue(Chip chip, int startBit, int endBit, String name, String tip) {
+    public CPLDConfigValue(Chip chip, int startBit, int endBit, long maxVal, String name, String tip) {
         super(chip, name, tip);
         this.lsb = startBit;
         this.msb = endBit;
+        this.maxVal=maxVal;
         nBits = endBit - startBit + 1;
     }
     
@@ -59,7 +62,15 @@ public class CPLDConfigValue extends AbstractConfigValue {
 
     @Override
     public String toString() {
-        return "CPLDConfigValue{" + "name=" + name + " startBit=" + lsb + "endBit=" + msb + "nBits=" + nBits + '}';
+        return "CPLDConfigValue{" + "name=" + name + " startBit=" + lsb + "endBit=" + msb + "nBits=" + nBits + "maxVal=" + maxVal + '}';
+    }
+
+    public long getMax() {
+        return maxVal; // tobi changed to support values that are not full resolution of bits that are sent, e.g. to support different endpoints for data on device // (1 << nBits) - 1;
+    }
+
+    public long getMin() {
+        return 0;
     }
     
 }

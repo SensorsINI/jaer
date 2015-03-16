@@ -26,9 +26,10 @@ public class CPLDInt extends CPLDConfigValue implements ConfigInt, HasPreference
      * @param name name
      * @param tip tool-tip
      * @param def default value
-     */
-    public CPLDInt(Chip chip, int msb, int lsb, String name, String tip, int def) {
-        super(chip, lsb, msb, name, tip);
+    * @param maxVal maximum allowed value
+      */
+    public CPLDInt(Chip chip, int msb, int lsb, int maxVal, String name, String tip, int def) {
+        super(chip, lsb, msb, maxVal, name, tip);
         this.lsb = lsb;
         this.msb = msb;
         this.def = def;
@@ -44,7 +45,7 @@ public class CPLDInt extends CPLDConfigValue implements ConfigInt, HasPreference
         if (value < getMin() || value > getMax()) {
             log.warning("tried to store value=" + value + " which larger than permitted value of " + ((1 << nBits)-1) + " or is negative in " + this+"; clipped to valid value");
         }
-        if(value<getMin()) value=getMin(); else if(value>getMax())value=getMax();
+        if(value<getMin()) value=(int)getMin(); else if(value>getMax())value=(int)getMax();
         if (this.value != value) {
             setChanged();
         }
@@ -82,11 +83,4 @@ public class CPLDInt extends CPLDConfigValue implements ConfigInt, HasPreference
         prefs.putInt(key, value); // will eventually call pref change listener which will call set again
     }
     
-    public int getMax(){
-        return (1<<nBits)-1;
-    }
-    
-    public int getMin(){
-        return 0;
-    }
-}
+ }

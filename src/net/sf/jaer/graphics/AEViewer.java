@@ -139,6 +139,10 @@ import net.sf.jaer.util.SubclassFinder;
 import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
 import ch.unizh.ini.jaer.chip.retina.DVS128;
 import java.awt.Font;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JLabel;
+import javax.swing.JTextField;
 
 /**
  * This is the main jAER interface to the user. The main event loop "ViewLoop" is here; see ViewLoop.run(). AEViewer shows AE chip live view and allows for controlling view and recording and playing back events from files and network connections.
@@ -4766,6 +4770,14 @@ two interfaces). otherwise force user choice.
 					//                        ((JPanel)c).add(new ResetFileButton(base,chooser));
 					//                    }
 					//                }
+//                                        JPanel commentsPanel=new JPanel();
+//                                        commentsPanel.setLayout(new BoxLayout(commentsPanel,BoxLayout.Y_AXIS));
+//                                        JTextField tf=new JTextField("");
+//                                        JLabel tfLabel=new JLabel("Optional comment");
+//                                        commentsPanel.add(tfLabel);
+//                                        commentsPanel.add(tf);
+//                                        chooser.setAccessory(commentsPanel);
+                                        
 					boolean savedIt = false;
 					do {
 						// clear the text input buffer to prevent multiply typed characters from destroying proposed datetimestamped filename

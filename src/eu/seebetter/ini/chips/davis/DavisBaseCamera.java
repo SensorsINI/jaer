@@ -453,8 +453,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                 if (newExposure == currentExposure) {
                     newExposure++; // ensure increase
                 }
-                if (newExposure > getDavisConfig().getExposureControlRegister().getMax()) {
-                    newExposure = getDavisConfig().getExposureControlRegister().getMax();
+                if (newExposure > (int)getDavisConfig().getExposureControlRegister().getMax()) {
+                    newExposure = (int)getDavisConfig().getExposureControlRegister().getMax();
                 }
                 if (newExposure != currentExposure) {
                     getDavisConfig().getExposureControlRegister().set(newExposure);
@@ -466,7 +466,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     newExposure--; // ensure decrease even with rounding.
                 }
                 if (newExposure < getDavisConfig().getExposureControlRegister().getMin()) {
-                    newExposure = getDavisConfig().getExposureControlRegister().getMin();
+                    newExposure = (int)getDavisConfig().getExposureControlRegister().getMin();
                 }
                 if (newExposure != currentExposure) {
                     getDavisConfig().getExposureControlRegister().set(newExposure);

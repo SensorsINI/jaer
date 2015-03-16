@@ -26,9 +26,10 @@ public class CPLDShort extends CPLDConfigValue implements ConfigInt, HasPreferen
      * @param name name
      * @param tip tool-tip
      * @param def default value
+     * @param maxVal maximum allowed value
      */
-    public CPLDShort(Chip chip, int msb, int lsb, String name, String tip, short def) {
-        super(chip, lsb, msb, name, tip);
+    public CPLDShort(Chip chip, int msb, int lsb, int maxVal, String name, String tip, short def) {
+        super(chip, lsb, msb, maxVal, name, tip);
         this.lsb = lsb;
         this.msb = msb;
         this.def = def;
@@ -49,7 +50,7 @@ public class CPLDShort extends CPLDConfigValue implements ConfigInt, HasPreferen
         if (value < getMin() || value > getMax()) {
             log.warning("tried to store value=" + value + " which larger than permitted value of " + ((1 << nBits)-1) + " or is negative in " + this+"; clipped to valid value");
         }
-        if(value<getMin()) value=getMin(); else if(value>getMax())value=getMax();
+        if(value<getMin()) value=(int)getMin(); else if(value>getMax())value=(int)getMax();
         if (this.value != value) {
             setChanged();
         }
@@ -86,12 +87,4 @@ public class CPLDShort extends CPLDConfigValue implements ConfigInt, HasPreferen
     public void storePreference() {
         prefs.putInt(key, value); // will eventually call pref change listener which will call set again
     }
-    
-    public int getMax(){
-        return (1<<nBits)-1;
-    }
-    
-    public int getMin(){
-        return 0;
-    }
-}
+ }
