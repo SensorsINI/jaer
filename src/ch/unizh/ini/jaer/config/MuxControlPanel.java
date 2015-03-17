@@ -18,9 +18,11 @@ import javax.swing.JRadioButton;
 import javax.swing.border.TitledBorder;
 
 import ch.unizh.ini.jaer.config.onchip.OutputMux;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 
 /**
-    * Control panel for SBret10 diagnostic output configuration.
+    * Control panel for diagnostic mux output configuration.
     * @author  tobi
     */
 public class MuxControlPanel extends javax.swing.JPanel {
@@ -63,11 +65,23 @@ public class MuxControlPanel extends javax.swing.JPanel {
         */
     public MuxControlPanel(ArrayList<OutputMux> muxes) {
         this.muxes = muxes;
+//        GridBagLayout layout=new GridBagLayout();
+////        GridBagConstraints constraints=new GridBagConstraints();
+////        constraints.
+////        layout.
+//        setLayout(layout);
+        setToolTipText("Controls multiplexor for debugging system output (generally only used during system development)");
+        final int MUX_CONTROLS_PER_ROW=4;
+        int controlsAdded=0;
+        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        JPanel rowPanel=new JPanel();
+        rowPanel.setLayout(new BoxLayout(rowPanel, BoxLayout.X_AXIS));
+        add(rowPanel);
         for (OutputMux m : muxes) {
-            JPanel p = new JPanel();
-            p.setAlignmentY(0);
-            p.setBorder(new TitledBorder(m.getName()));
-            p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+            JPanel muxPanel = new JPanel();
+            muxPanel.setAlignmentY(0);
+            muxPanel.setBorder(new TitledBorder(m.getName()));
+            muxPanel.setLayout(new BoxLayout(muxPanel, BoxLayout.Y_AXIS));
             ButtonGroup group = new ButtonGroup();
             final Insets insets = new Insets(0, 0, 0, 0);
             for (int i = 0; i < m.nInputs; i++) {
@@ -81,9 +95,15 @@ public class MuxControlPanel extends javax.swing.JPanel {
                 b.setMargin(insets);
 //                b.setMinimumSize(new Dimension(30, 14));
                 group.add(b);
-                p.add(b);
+                muxPanel.add(b);
             }
-            add(p);
+            rowPanel.add(muxPanel);
+            if(++controlsAdded>=MUX_CONTROLS_PER_ROW){
+                rowPanel=new JPanel();
+                rowPanel.setLayout(new BoxLayout(rowPanel,BoxLayout.X_AXIS));
+                add(rowPanel);
+                controlsAdded=0;
+            }
         }
     }
 }

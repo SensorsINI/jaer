@@ -48,7 +48,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     FilterChain filterChain;
     RecentFiles recentFiles = null;
     private boolean restoreFilterEnabledStateEnabled;
-    private String defaultFolder = "";
+    private String defaultFolder = null;
     EngineeringFormat engFmt = new EngineeringFormat();
     /**
      * Key for preferences of last selected filter; used to reselect this filter
@@ -566,7 +566,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
 	private void loadMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loadMenuItemActionPerformed
             JFileChooser fileChooser = new JFileChooser();
-            String lastFilePath = prefs.get("FilterFrame.lastFile", defaultFolder); // getString the last folder
+            String lastFilePath = prefs.get("FilterFrame.lastFile", defaultFolder); // TODO seems to be same as for biases, should default to filterSettings folder of jAER
             lastFile = new File(lastFilePath);
             XMLFileFilter fileFilter = new XMLFileFilter();
             fileChooser.addChoosableFileFilter(fileFilter);

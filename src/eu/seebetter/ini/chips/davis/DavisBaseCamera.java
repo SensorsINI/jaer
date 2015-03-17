@@ -304,7 +304,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         }
         final String c = command.getCmdName();
         if (c.equals(CMD_EXPOSURE)) {
-            ((DavisDisplayConfigInterface) getBiasgen()).setExposureDelayMs((int) v);
+            getDavisConfig().setExposureDelayMs(v);
         } else {
             return input + ": unknown command";
         }
@@ -413,7 +413,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             autoExposureEnabled = yes;
             propertyChangeSupport.firePropertyChange("autoExposureEnabled", old, yes);
             getPrefs().putBoolean("autoExposureEnabled", yes);
-            if (!yes) {
+            if (!yes && stats!=null) {
                 stats.reset(); // ensure toggling enabled resets the maxBin stat
             }
         }
@@ -440,8 +440,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             stats.setLowBoundary(lowBoundary);
             stats.setHighBoundary(highBoundary);
             hist.computeStatistics();
-            final int currentExposure = getDavisConfig().getExposureControlRegister().get();
-            int newExposure = 0;
+            final float currentExposure = getDavisConfig().getExposureDelayMs();
+            float newExposure = 0;
             float expChange = expDelta;
             if (pidControllerEnabled && stats.maxNonZeroBin > 0) {
                 // compute error signsl from meanBin relative to actual range of bins
@@ -449,29 +449,26 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                 expChange = expDelta * Math.abs(err);
             }
             if ((stats.fracLow >= underOverFractionThreshold) && (stats.fracHigh < underOverFractionThreshold)) {
-                newExposure = Math.round(currentExposure * (1 + expChange));
+                newExposure = currentExposure * (1 + expChange);
                 if (newExposure == currentExposure) {
                     newExposure++; // ensure increase
                 }
-                if (newExposure > (int)getDavisConfig().getExposureControlRegister().getMax()) {
-                    newExposure = (int)getDavisConfig().getExposureControlRegister().getMax();
-                }
                 if (newExposure != currentExposure) {
-                    getDavisConfig().getExposureControlRegister().set(newExposure);
+                    getDavisConfig().setExposureDelayMs(newExposure);
                 }
-                Chip.log.log(Level.INFO, "Underexposed: {0} {1}", new Object[]{stats.toString(), String.format("expChange=%.2f (oldExposure=%8d newExposure=%8d)", expChange, currentExposure, newExposure)});
+                Chip.log.log(Level.INFO, "Underexposed: {0} {1}", new Object[]{stats.toString(), String.format("expChange=%.2f (oldExposure=%10.3f newExposure=%10.3f)", expChange, currentExposure, newExposure)});
             } else if ((stats.fracLow < underOverFractionThreshold) && (stats.fracHigh >= underOverFractionThreshold)) {
-                newExposure = Math.round(currentExposure * (1 - expChange));
+                newExposure = currentExposure * (1 - expChange);
                 if (newExposure == currentExposure) {
                     newExposure--; // ensure decrease even with rounding.
                 }
-                if (newExposure < getDavisConfig().getExposureControlRegister().getMin()) {
-                    newExposure = (int)getDavisConfig().getExposureControlRegister().getMin();
+                if (newExposure < 0) {
+                    newExposure = 0;
                 }
                 if (newExposure != currentExposure) {
-                    getDavisConfig().getExposureControlRegister().set(newExposure);
+                    getDavisConfig().setExposureDelayMs(newExposure);
                 }
-                Chip.log.log(Level.INFO, "Overexposed: {0} {1}", new Object[]{stats.toString(), String.format("expChange=%.2f (oldExposure=%8d newExposure=%8d)", expChange, currentExposure, newExposure)});
+                Chip.log.log(Level.INFO, "Overexposed: {0} {1}", new Object[]{stats.toString(), String.format("expChange=%.2f (oldExposure=%10.3f newExposure=%10.3f)", expChange, currentExposure, newExposure)});
             } else {
                 // log.info(stats.toString());
             }

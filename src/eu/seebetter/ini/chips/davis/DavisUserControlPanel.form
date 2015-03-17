@@ -44,7 +44,7 @@
                   </Group>
                   <Component id="dvsPanel" min="-2" pref="468" max="-2" attributes="0"/>
               </Group>
-              <EmptySpace pref="68" max="32767" attributes="0"/>
+              <EmptySpace pref="37" max="32767" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -315,62 +315,60 @@
                           <Component id="contrastSp" min="-2" max="-2" attributes="0"/>
                           <EmptySpace max="-2" attributes="0"/>
                           <Component id="autoContrastCB" min="-2" max="-2" attributes="0"/>
-                          <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                          <Component id="histCB" min="-2" max="-2" attributes="0"/>
                       </Group>
                       <Group type="102" alignment="0" attributes="0">
                           <Group type="103" groupAlignment="0" attributes="0">
-                              <Group type="102" alignment="0" attributes="0">
-                                  <Component id="jLabel2" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace max="-2" attributes="0"/>
-                                  <Component id="edSp" min="-2" pref="54" max="-2" attributes="0"/>
-                              </Group>
-                              <Group type="102" alignment="0" attributes="0">
-                                  <EmptySpace min="-2" pref="13" max="-2" attributes="0"/>
-                                  <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace max="-2" attributes="0"/>
-                                  <Component id="fdSp" min="-2" pref="54" max="-2" attributes="0"/>
-                              </Group>
                               <Group type="102" alignment="0" attributes="0">
                                   <EmptySpace max="-2" attributes="0"/>
                                   <Component id="captureFramesCheckBox" min="-2" max="-2" attributes="0"/>
                                   <EmptySpace max="-2" attributes="0"/>
                                   <Component id="displayFramesCheckBox" min="-2" max="-2" attributes="0"/>
                               </Group>
-                          </Group>
-                          <Group type="103" groupAlignment="0" attributes="0">
-                              <Group type="102" attributes="0">
-                                  <EmptySpace min="-2" pref="9" max="-2" attributes="0"/>
-                                  <Group type="103" groupAlignment="0" attributes="0">
-                                      <Group type="102" alignment="1" attributes="0">
-                                          <EmptySpace min="-2" pref="2" max="-2" attributes="0"/>
-                                          <Component id="jLabel5" min="-2" max="-2" attributes="0"/>
-                                          <EmptySpace max="-2" attributes="0"/>
-                                          <Component id="exposMsTF" min="-2" pref="71" max="-2" attributes="0"/>
-                                      </Group>
-                                      <Group type="102" alignment="0" attributes="0">
-                                          <EmptySpace min="-2" pref="4" max="-2" attributes="0"/>
-                                          <Component id="jLabel4" min="-2" max="-2" attributes="0"/>
-                                          <EmptySpace max="-2" attributes="0"/>
-                                          <Component id="fpsTF" min="-2" pref="50" max="-2" attributes="0"/>
-                                      </Group>
+                              <Group type="103" alignment="0" groupAlignment="1" max="-2" attributes="0">
+                                  <Group type="102" alignment="0" attributes="0">
+                                      <Component id="jLabel2" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace max="-2" attributes="0"/>
+                                      <Component id="edSp" max="32767" attributes="0"/>
+                                  </Group>
+                                  <Group type="102" alignment="0" attributes="0">
+                                      <EmptySpace min="-2" pref="13" max="-2" attributes="0"/>
+                                      <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace max="-2" attributes="0"/>
+                                      <Component id="fdSp" min="-2" pref="74" max="-2" attributes="0"/>
                                   </Group>
                               </Group>
-                              <Group type="102" alignment="0" attributes="0">
-                                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                                  <Component id="snapshotButton" min="-2" max="-2" attributes="0"/>
+                          </Group>
+                          <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="0" attributes="0">
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Group type="102" alignment="0" attributes="0">
+                                      <EmptySpace min="-2" pref="36" max="-2" attributes="0"/>
+                                      <Component id="jLabel4" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace max="-2" attributes="0"/>
+                                      <Component id="fpsTF" min="-2" pref="50" max="-2" attributes="0"/>
+                                  </Group>
+                                  <Group type="102" alignment="1" attributes="0">
+                                      <Component id="jLabel5" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace max="-2" attributes="0"/>
+                                      <Component id="exposMsTF" min="-2" pref="71" max="-2" attributes="0"/>
+                                  </Group>
+                                  <Component id="autoExpCB" alignment="1" min="-2" max="-2" attributes="0"/>
+                                  <Group type="102" alignment="1" attributes="0">
+                                      <Component id="glShutterCB" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace max="-2" attributes="0"/>
+                                      <Component id="histCB" min="-2" max="-2" attributes="0"/>
+                                  </Group>
                               </Group>
+                              <Component id="snapshotButton" alignment="0" min="-2" max="-2" attributes="0"/>
                           </Group>
                       </Group>
                       <Group type="102" alignment="0" attributes="0">
                           <Component id="jLabel3" min="-2" max="-2" attributes="0"/>
                           <EmptySpace max="-2" attributes="0"/>
                           <Component id="autoshotThresholdSp" min="-2" pref="72" max="-2" attributes="0"/>
-                          <EmptySpace max="-2" attributes="0"/>
-                          <Component id="autoExpCB" min="-2" max="-2" attributes="0"/>
                       </Group>
                   </Group>
-                  <EmptySpace pref="18" max="32767" attributes="0"/>
+                  <EmptySpace pref="20" max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
@@ -409,6 +407,7 @@
                       <Component id="contrastSp" alignment="3" min="-2" max="-2" attributes="0"/>
                       <Component id="autoContrastCB" alignment="3" min="-2" max="-2" attributes="0"/>
                       <Component id="histCB" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="glShutterCB" alignment="3" min="-2" max="-2" attributes="0"/>
                   </Group>
               </Group>
           </Group>
@@ -423,7 +422,7 @@
         <Component class="javax.swing.JSpinner" name="fdSp">
           <Properties>
             <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
-              <SpinnerModel initial="0" minimum="0" numberType="java.lang.Integer" stepSize="1" type="number"/>
+              <SpinnerModel initial="0.0" minimum="0.0" numberType="java.lang.Float" stepSize="1.0" type="number"/>
             </Property>
             <Property name="toolTipText" type="java.lang.String" value="Delay of starting new frame capture after last frame"/>
           </Properties>
@@ -439,7 +438,7 @@
         <Component class="javax.swing.JSpinner" name="edSp">
           <Properties>
             <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
-              <SpinnerModel initial="0" numberType="java.lang.Integer" stepSize="1" type="number"/>
+              <SpinnerModel initial="0.0" numberType="java.lang.Float" stepSize="1.0" type="number"/>
             </Property>
             <Property name="toolTipText" type="java.lang.String" value="The exposure delay; affects actual exposure time"/>
           </Properties>
@@ -450,7 +449,7 @@
         <Component class="javax.swing.JCheckBox" name="autoExpCB">
           <Properties>
             <Property name="text" type="java.lang.String" value="Auto exposure"/>
-            <Property name="toolTipText" type="java.lang.String" value="Automatically set pixel exposure delay"/>
+            <Property name="toolTipText" type="java.lang.String" value="Automatically set pixel exposure delay. See AutoExposureController panel for full parameter set."/>
             <Property name="horizontalAlignment" type="int" value="11"/>
             <Property name="horizontalTextPosition" type="int" value="2"/>
           </Properties>
@@ -509,7 +508,7 @@
             <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
               <SpinnerModel initial="1.0" maximum="5.0" minimum="0.2" numberType="java.lang.Float" stepSize="0.05" type="number"/>
             </Property>
-            <Property name="toolTipText" type="java.lang.String" value="Rendering contrast (1 is default)"/>
+            <Property name="toolTipText" type="java.lang.String" value="Sets rendering contrast gain (1 is default). See Video Control panel for full set of controls."/>
           </Properties>
           <BindingProperties>
             <BindingProperty name="value" source="Form" sourcePath="${apsDvsConfig.contrast}" target="contrastSp" targetPath="value" updateStrategy="0" immediately="false"/>
@@ -518,7 +517,7 @@
         <Component class="javax.swing.JCheckBox" name="autoContrastCB">
           <Properties>
             <Property name="text" type="java.lang.String" value="Auto contrast"/>
-            <Property name="toolTipText" type="java.lang.String" value="Automatically set rendering contrast"/>
+            <Property name="toolTipText" type="java.lang.String" value="Automatically set rendering contrast so that brightness (offset) and contrast (gain) scale min and max values to 0 and 1 respectively"/>
             <Property name="horizontalAlignment" type="int" value="11"/>
             <Property name="horizontalTextPosition" type="int" value="2"/>
           </Properties>
@@ -538,7 +537,7 @@
         <Component class="javax.swing.JCheckBox" name="histCB">
           <Properties>
             <Property name="text" type="java.lang.String" value="histogram"/>
-            <Property name="toolTipText" type="java.lang.String" value="Display hisogram of pixel values"/>
+            <Property name="toolTipText" type="java.lang.String" value="Display hisogram of captured pixel values from ADC (reset - signal values)"/>
             <Property name="horizontalAlignment" type="int" value="11"/>
             <Property name="horizontalTextPosition" type="int" value="2"/>
           </Properties>
@@ -565,6 +564,17 @@
           </Properties>
           <Events>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="captureFramesCheckBoxActionPerformed"/>
+          </Events>
+        </Component>
+        <Component class="javax.swing.JCheckBox" name="glShutterCB">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="Global shutter"/>
+            <Property name="toolTipText" type="java.lang.String" value="Enables global (synchronous) electronic shutter. Unchecked enables rolling shutter readout."/>
+            <Property name="horizontalAlignment" type="int" value="11"/>
+            <Property name="horizontalTextPosition" type="int" value="2"/>
+          </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="glShutterCBActionPerformed"/>
           </Events>
         </Component>
       </SubComponents>

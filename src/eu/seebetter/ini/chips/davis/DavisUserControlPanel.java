@@ -20,6 +20,7 @@ import net.sf.jaer.graphics.AEChipRenderer;
 import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
 import ch.unizh.ini.jaer.config.cpld.CPLDInt;
 import eu.seebetter.ini.chips.DavisChip;
+import java.awt.Color;
 
 /**
  * Wraps some key apsDVS sensor control in more user-friendly control panel.
@@ -50,12 +51,11 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         for (PotTweaker tweaker : tweakers) {
             chip.getBiasgen().getSupport().addPropertyChangeListener(tweaker); // to reset sliders on load/save of
         }
-        chip.getSupport().addPropertyChangeListener(this);
-        chip.getBiasgen().getSupport().addPropertyChangeListener(this);
 
         histCB.setSelected(this.chip.isShowImageHistogram());
         fdSp.setValue(getConfig().getFrameDelayMs());
         edSp.setValue(getConfig().getExposureDelayMs());
+        glShutterCB.setSelected(((DavisBaseCamera)chip).getDavisConfig().getApsReadoutControl().isGlobalShutterMode());
         displayEventsCheckBox.setSelected(getConfig().isDisplayEvents());
         displayFramesCheckBox.setSelected(getConfig().isDisplayFrames());
         captureFramesCheckBox.setSelected(getConfig().isCaptureFramesEnabled());
@@ -76,17 +76,20 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             // add us as observer for various property changes
             DavisConfig config = (DavisConfig) getConfig();
             exposureCPLDInt = config.getExposureControlRegister();
-            frameDelayCPLDInt = config.frameDelay;
+            frameDelayCPLDInt = config.getFrameDelayControlRegister();
             videoControl = config.getVideoControl();
             videoControl.addObserver(this); // contrast and useAutoContrast updates come here
             apsReadoutControl = config.getApsReadoutControl();
             apsReadoutControl.addObserver(this);
-			// config.exposureControlRegister.addObserver(this);
-            // config.frameDelay.addObserver(this); // TODO generates loop that resets the spinner if the new spinner
+            // config.exposureControlRegister.addObserver(this);
+            // config.frameDelayControlRegister.addObserver(this); // TODO generates loop that resets the spinner if the new spinner
             // value does not change the exposureControlRegister in ms according to new register value
             imuVisibleCB.setSelected(config.isDisplayImu());
             imuEnabledCB.setSelected(config.isImuEnabled());
         }
+        chip.getSupport().addPropertyChangeListener(this);
+        chip.getBiasgen().getSupport().addPropertyChangeListener(this);
+
     }
 
     private void setDvsColorModeRadioButtons() {
@@ -234,43 +237,86 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
     public void propertyChange(PropertyChangeEvent evt) {
         String name = evt.getPropertyName();
         try {
-            if (name == DVSTweaks.THRESHOLD) { // fired from Davis240Config setBandwidthTweak
-                float v = (Float) evt.getNewValue();
-                thresholdTweaker.setValue(v);
-            } else if (name == DVSTweaks.BANDWIDTH) {
-                // log.info(evt.toString());
-                float v = (Float) evt.getNewValue();
-                bandwidthTweaker.setValue(v);
-            } else if (name == DVSTweaks.MAX_FIRING_RATE) {
-                float v = (Float) evt.getNewValue();
-                maxFiringRateTweaker.setValue(v);
-            } else if (name == DVSTweaks.ON_OFF_BALANCE) {
-                float v = (Float) evt.getNewValue();
-                onOffBalanceTweaker.setValue(v);
-            } else if (name == DavisChip.PROPERTY_MEASURED_EXPOSURE_MS) {
-                exposMsTF.setText(String.format("%.3f", (Float) evt.getNewValue()));
-            } else if (name == DavisChip.PROPERTY_FRAME_RATE_HZ) {
-                fpsTF.setText(String.format("%.3f", (Float) evt.getNewValue()));
-            } else if (name == AEChipRenderer.EVENT_COLOR_MODE_CHANGE) {
-                setDvsColorModeRadioButtons();
-            } else if (name == AEChipRenderer.EVENT_COLOR_SCALE_CHANGE) {
-                dvsContSp.setValue(renderer.getColorScale());
-            } else if (name == DavisDisplayConfigInterface.PROPERTY_IMU_ENABLED) {
-                imuEnabledCB.setSelected((boolean) evt.getNewValue());
-            } else if (name == DavisDisplayConfigInterface.PROPERTY_IMU_DISPLAY_ENABLED) {
-                imuVisibleCB.setSelected((boolean) evt.getNewValue());
-            } else if (name == DavisDisplayConfigInterface.PROPERTY_DISPLAY_FRAMES_ENABLED) {
-                displayFramesCheckBox.setSelected((boolean) evt.getNewValue());
-            } else if (name == DavisDisplayConfigInterface.PROPERTY_CAPTURE_FRAMES_ENABLED) {
-                captureFramesCheckBox.setSelected((boolean) evt.getNewValue());
-            } else if (name == DavisDisplayConfigInterface.PROPERTY_CAPTURE_EVENTS_ENABLED) {
-                captureEventsCB.setSelected((boolean) evt.getNewValue());
-            } else if (name == DavisDisplayConfigInterface.PROPERTY_DISPLAY_EVENTS_ENABLED) {
-                displayEventsCheckBox.setSelected((boolean) evt.getNewValue());
-            }else if (name == DavisDisplayConfigInterface.PROPERTY_CONTRAST) {
-                contrastSp.setValue((float)evt.getNewValue());
+            switch (name) {
+                case DVSTweaks.THRESHOLD: // fired from Davis240Config setBandwidthTweak
+                {
+                    float v = (Float) evt.getNewValue();
+                    thresholdTweaker.setValue(v);
+                }
+                break;
+                case DVSTweaks.BANDWIDTH: // log.info(evt.toString());
+                {
+                    float v = (Float) evt.getNewValue();
+                    bandwidthTweaker.setValue(v);
+                }
+                break;
+                case DVSTweaks.MAX_FIRING_RATE: {
+                    float v = (Float) evt.getNewValue();
+                    maxFiringRateTweaker.setValue(v);
+                }
+                break;
+                case DVSTweaks.ON_OFF_BALANCE: {
+                    float v = (Float) evt.getNewValue();
+                    onOffBalanceTweaker.setValue(v);
+                }
+                break;
+                case DavisChip.PROPERTY_MEASURED_EXPOSURE_MS: {
+                    exposMsTF.setText(String.format("%.3f", (Float) evt.getNewValue()));
+                }
+                break;
+                case DavisChip.PROPERTY_FRAME_RATE_HZ: {
+                    fpsTF.setText(String.format("%.3f", (Float) evt.getNewValue()));
+                }
+                break;
+                case AEChipRenderer.EVENT_COLOR_MODE_CHANGE: {
+                    setDvsColorModeRadioButtons();
+                }
+                break;
+                case AEChipRenderer.EVENT_COLOR_SCALE_CHANGE: {
+                    dvsContSp.setValue(renderer.getColorScale());
+                }
+                break;
+                case DavisDisplayConfigInterface.PROPERTY_IMU_ENABLED: {
+                    imuEnabledCB.setSelected((boolean) evt.getNewValue());
+                }
+                break;
+                case DavisDisplayConfigInterface.PROPERTY_IMU_DISPLAY_ENABLED: {
+                    imuVisibleCB.setSelected((boolean) evt.getNewValue());
+                }
+                break;
+                case DavisDisplayConfigInterface.PROPERTY_DISPLAY_FRAMES_ENABLED: {
+                    displayFramesCheckBox.setSelected((boolean) evt.getNewValue());
+                }
+                break;
+                case DavisDisplayConfigInterface.PROPERTY_CAPTURE_FRAMES_ENABLED: {
+                    captureFramesCheckBox.setSelected((boolean) evt.getNewValue());
+                }
+                break;
+                case DavisDisplayConfigInterface.PROPERTY_CAPTURE_EVENTS_ENABLED: {
+                    captureEventsCB.setSelected((boolean) evt.getNewValue());
+                }
+                break;
+                case DavisDisplayConfigInterface.PROPERTY_DISPLAY_EVENTS_ENABLED: {
+                    displayEventsCheckBox.setSelected((boolean) evt.getNewValue());
+                }
+                break;
+                case DavisDisplayConfigInterface.PROPERTY_CONTRAST: {
+                    contrastSp.setValue((float) evt.getNewValue());
+                }
+                break;
+                case DavisConfig.PROPERTY_EXPOSURE_DELAY_US: {
+                    edSp.setValue((Integer) evt.getNewValue() * .001f);
+                }
+                break;
+                case DavisConfig.PROPERTY_FRAME_DELAY_US: {
+                    fdSp.setValue((Integer) evt.getNewValue() * .001f);
+                }
+                break;
+                case DavisConfig.PROPERTY_GLOBAL_SHUTTER_MODE_ENABLED: {
+                    glShutterCB.setSelected((Boolean)evt.getNewValue());
+                }
+                break;
             }
-            // TODO handle IMU changes here
         } catch (Exception e) {
             log.warning("responding to property change, caught " + e.toString());
             e.printStackTrace();
@@ -320,6 +366,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         histCB = new javax.swing.JCheckBox();
         snapshotButton = new javax.swing.JButton();
         captureFramesCheckBox = new javax.swing.JCheckBox();
+        glShutterCB = new javax.swing.JCheckBox();
         imuPanel = new javax.swing.JPanel();
         imuVisibleCB = new javax.swing.JCheckBox();
         imuEnabledCB = new javax.swing.JCheckBox();
@@ -500,7 +547,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 
         jLabel1.setText("Frame Delay (ms)");
 
-        fdSp.setModel(new javax.swing.SpinnerNumberModel(Integer.valueOf(0), Integer.valueOf(0), null, Integer.valueOf(1)));
+        fdSp.setModel(new javax.swing.SpinnerNumberModel(Float.valueOf(0.0f), Float.valueOf(0.0f), null, Float.valueOf(1.0f)));
         fdSp.setToolTipText("Delay of starting new frame capture after last frame");
         fdSp.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
@@ -510,7 +557,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 
         jLabel2.setText("Exposure delay (ms)");
 
-        edSp.setModel(new javax.swing.SpinnerNumberModel());
+        edSp.setModel(new javax.swing.SpinnerNumberModel(Float.valueOf(0.0f), null, null, Float.valueOf(1.0f)));
         edSp.setToolTipText("The exposure delay; affects actual exposure time");
         edSp.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
@@ -519,7 +566,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         });
 
         autoExpCB.setText("Auto exposure");
-        autoExpCB.setToolTipText("Automatically set pixel exposure delay");
+        autoExpCB.setToolTipText("Automatically set pixel exposure delay. See AutoExposureController panel for full parameter set.");
         autoExpCB.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
         autoExpCB.setHorizontalTextPosition(javax.swing.SwingConstants.LEFT);
         autoExpCB.addActionListener(new java.awt.event.ActionListener() {
@@ -556,13 +603,13 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         });
 
         contrastSp.setModel(new javax.swing.SpinnerNumberModel(Float.valueOf(1.0f), Float.valueOf(0.2f), Float.valueOf(5.0f), Float.valueOf(0.05f)));
-        contrastSp.setToolTipText("Rendering contrast (1 is default)");
+        contrastSp.setToolTipText("Sets rendering contrast gain (1 is default). See Video Control panel for full set of controls.");
 
         org.jdesktop.beansbinding.Binding binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${apsDvsConfig.contrast}"), contrastSp, org.jdesktop.beansbinding.BeanProperty.create("value"));
         bindingGroup.addBinding(binding);
 
         autoContrastCB.setText("Auto contrast");
-        autoContrastCB.setToolTipText("Automatically set rendering contrast");
+        autoContrastCB.setToolTipText("Automatically set rendering contrast so that brightness (offset) and contrast (gain) scale min and max values to 0 and 1 respectively");
         autoContrastCB.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
         autoContrastCB.setHorizontalTextPosition(javax.swing.SwingConstants.LEFT);
 
@@ -578,7 +625,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         });
 
         histCB.setText("histogram");
-        histCB.setToolTipText("Display hisogram of pixel values");
+        histCB.setToolTipText("Display hisogram of captured pixel values from ADC (reset - signal values)");
         histCB.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
         histCB.setHorizontalTextPosition(javax.swing.SwingConstants.LEFT);
         histCB.addActionListener(new java.awt.event.ActionListener() {
@@ -603,6 +650,16 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             }
         });
 
+        glShutterCB.setText("Global shutter");
+        glShutterCB.setToolTipText("Enables global (synchronous) electronic shutter. Unchecked enables rolling shutter readout.");
+        glShutterCB.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
+        glShutterCB.setHorizontalTextPosition(javax.swing.SwingConstants.LEFT);
+        glShutterCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                glShutterCBActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout apsPanelLayout = new javax.swing.GroupLayout(apsPanel);
         apsPanel.setLayout(apsPanelLayout);
         apsPanelLayout.setHorizontalGroup(
@@ -615,49 +672,47 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(contrastSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(autoContrastCB)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(histCB))
+                        .addComponent(autoContrastCB))
                     .addGroup(apsPanelLayout.createSequentialGroup()
                         .addGroup(apsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(apsPanelLayout.createSequentialGroup()
-                                .addComponent(jLabel2)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(edSp, javax.swing.GroupLayout.PREFERRED_SIZE, 54, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGroup(apsPanelLayout.createSequentialGroup()
-                                .addGap(13, 13, 13)
-                                .addComponent(jLabel1)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(fdSp, javax.swing.GroupLayout.PREFERRED_SIZE, 54, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addGroup(apsPanelLayout.createSequentialGroup()
                                 .addContainerGap()
                                 .addComponent(captureFramesCheckBox)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(displayFramesCheckBox)))
+                                .addComponent(displayFramesCheckBox))
+                            .addGroup(apsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                                .addGroup(javax.swing.GroupLayout.Alignment.LEADING, apsPanelLayout.createSequentialGroup()
+                                    .addComponent(jLabel2)
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                    .addComponent(edSp))
+                                .addGroup(javax.swing.GroupLayout.Alignment.LEADING, apsPanelLayout.createSequentialGroup()
+                                    .addGap(13, 13, 13)
+                                    .addComponent(jLabel1)
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                    .addComponent(fdSp, javax.swing.GroupLayout.PREFERRED_SIZE, 74, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addGroup(apsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(apsPanelLayout.createSequentialGroup()
-                                .addGap(9, 9, 9)
-                                .addGroup(apsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, apsPanelLayout.createSequentialGroup()
-                                        .addGap(2, 2, 2)
-                                        .addComponent(jLabel5)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(exposMsTF, javax.swing.GroupLayout.PREFERRED_SIZE, 71, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                    .addGroup(apsPanelLayout.createSequentialGroup()
-                                        .addGap(4, 4, 4)
-                                        .addComponent(jLabel4)
-                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                        .addComponent(fpsTF, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                            .addGroup(apsPanelLayout.createSequentialGroup()
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                                .addComponent(snapshotButton))))
+                            .addGroup(apsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addGroup(apsPanelLayout.createSequentialGroup()
+                                    .addGap(36, 36, 36)
+                                    .addComponent(jLabel4)
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                    .addComponent(fpsTF, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, apsPanelLayout.createSequentialGroup()
+                                    .addComponent(jLabel5)
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                    .addComponent(exposMsTF, javax.swing.GroupLayout.PREFERRED_SIZE, 71, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addComponent(autoExpCB, javax.swing.GroupLayout.Alignment.TRAILING)
+                                .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, apsPanelLayout.createSequentialGroup()
+                                    .addComponent(glShutterCB)
+                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                    .addComponent(histCB)))
+                            .addComponent(snapshotButton)))
                     .addGroup(apsPanelLayout.createSequentialGroup()
                         .addComponent(jLabel3)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(autoshotThresholdSp, javax.swing.GroupLayout.PREFERRED_SIZE, 72, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(autoExpCB)))
-                .addContainerGap(18, Short.MAX_VALUE))
+                        .addComponent(autoshotThresholdSp, javax.swing.GroupLayout.PREFERRED_SIZE, 72, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(20, Short.MAX_VALUE))
         );
         apsPanelLayout.setVerticalGroup(
             apsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -689,7 +744,8 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
                     .addComponent(jLabel6)
                     .addComponent(contrastSp, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(autoContrastCB)
-                    .addComponent(histCB)))
+                    .addComponent(histCB)
+                    .addComponent(glShutterCB)))
         );
 
         snapshotButton.getAccessibleContext().setAccessibleName("snapshotButton");
@@ -745,7 +801,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(imuPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addComponent(dvsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 468, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(68, Short.MAX_VALUE))
+                .addContainerGap(37, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -762,6 +818,10 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 
         bindingGroup.bind();
     }// </editor-fold>//GEN-END:initComponents
+
+    private void glShutterCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_glShutterCBActionPerformed
+        ((DavisBaseCamera)chip).getDavisConfig().getApsReadoutControl().setGlobalShutterMode(glShutterCB.isSelected());
+    }//GEN-LAST:event_glShutterCBActionPerformed
 
     private void bandwidthTweakerStateChanged(javax.swing.event.ChangeEvent evt) {// GEN-FIRST:event_bandwidthTweakerStateChanged
         getDvsTweaks().setBandwidthTweak(bandwidthTweaker.getValue());
@@ -785,7 +845,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 
     private void exposMsTFActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_exposMsTFActionPerformed
         try {
-            getConfig().setExposureDelayMs((Integer) edSp.getValue());
+            getConfig().setExposureDelayMs((float) edSp.getValue());
         } catch (Exception e) {
             log.warning(e.toString());
         }
@@ -793,17 +853,21 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 
     private void fdSpStateChanged(javax.swing.event.ChangeEvent evt) {// GEN-FIRST:event_fdSpStateChanged
         try {
-            getConfig().setFrameDelayMs((Integer) fdSp.getValue());
+            getConfig().setFrameDelayMs((float) fdSp.getValue());
+            fdSp.setBackground(Color.WHITE);
         } catch (Exception e) {
             log.warning(e.toString());
+            fdSp.setBackground(Color.RED);
         }
     }// GEN-LAST:event_fdSpStateChanged
 
     private void edSpStateChanged(javax.swing.event.ChangeEvent evt) {// GEN-FIRST:event_edSpStateChanged
         try {
-            getConfig().setExposureDelayMs((Integer) edSp.getValue());
+            getConfig().setExposureDelayMs((float) edSp.getValue());
+            edSp.setBackground(Color.WHITE);
         } catch (Exception e) {
             log.warning(e.toString());
+            edSp.setBackground(Color.RED);
         }
     }// GEN-LAST:event_edSpStateChanged
 
@@ -885,6 +949,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
     private javax.swing.JTextField exposMsTF;
     private javax.swing.JSpinner fdSp;
     private javax.swing.JTextField fpsTF;
+    private javax.swing.JCheckBox glShutterCB;
     private javax.swing.JCheckBox histCB;
     private javax.swing.JCheckBox imuEnabledCB;
     private javax.swing.JPanel imuPanel;

@@ -178,12 +178,12 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
     private BeanInfo info;
     private PropertyDescriptor[] props;
     private Method[] methods;
-    private static Logger log = Logger.getLogger("Parameters");
+    private static final Logger log = Logger.getLogger("Parameters");
     final float fontSize = 14f;
     private Border normalBorder, redLineBorder;
     private TitledBorder titledBorder;
-    private HashMap<String, HasSetGet> setterMap = new HashMap<String, HasSetGet>(); // map from class to property, to apply property change events to control
-    private java.util.ArrayList<JComponent> controls = new ArrayList<JComponent>();
+    private HashMap<String, HasSetGet> setterMap = new HashMap<>(); // map from class to property, to apply property change events to control
+    private java.util.ArrayList<JComponent> controls = new ArrayList<>();
 //    private HashMap<String, Container> groupContainerMap = new HashMap();
 //    private JPanel inheritedPanel = null;
     PropertyChangeSupport support=null;

@@ -40,10 +40,16 @@ public class CPLDInt extends CPLDConfigValue implements ConfigInt, HasPreference
         loadPreference();
     }
 
+    /** Sets a new value; Observers are notified with old value as arg.
+     * 
+     * @param value the new value
+     * @throws IllegalArgumentException 
+     */
     @Override
     public void set(int value) throws IllegalArgumentException {
+        int old=get();
         if (value < getMin() || value > getMax()) {
-            log.warning("tried to store value=" + value + " which larger than permitted value of " + ((1 << nBits)-1) + " or is negative in " + this+"; clipped to valid value");
+            log.warning("tried to store value=" + value + " which larger than permitted value of " + getMax() + " or is negative in " + this+"; clipped to valid value");
         }
         if(value<getMin()) value=(int)getMin(); else if(value>getMax())value=(int)getMax();
         if (this.value != value) {
@@ -51,7 +57,7 @@ public class CPLDInt extends CPLDConfigValue implements ConfigInt, HasPreference
         }
         this.value = value;
         //                log.info("set " + this + " to value=" + value+" notifying "+countObservers()+" observers");
-        notifyObservers();
+        notifyObservers(old);
     }
 
     @Override
