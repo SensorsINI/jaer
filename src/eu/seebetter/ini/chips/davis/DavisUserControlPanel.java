@@ -267,6 +267,8 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
                 captureEventsCB.setSelected((boolean) evt.getNewValue());
             } else if (name == DavisDisplayConfigInterface.PROPERTY_DISPLAY_EVENTS_ENABLED) {
                 displayEventsCheckBox.setSelected((boolean) evt.getNewValue());
+            }else if (name == DavisDisplayConfigInterface.PROPERTY_CONTRAST) {
+                contrastSp.setValue((float)evt.getNewValue());
             }
             // TODO handle IMU changes here
         } catch (Exception e) {
