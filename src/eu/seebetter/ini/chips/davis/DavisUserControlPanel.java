@@ -55,7 +55,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         histCB.setSelected(this.chip.isShowImageHistogram());
         fdSp.setValue(getConfig().getFrameDelayMs());
         edSp.setValue(getConfig().getExposureDelayMs());
-        glShutterCB.setSelected(((DavisBaseCamera)chip).getDavisConfig().getApsReadoutControl().isGlobalShutterMode());
+        glShutterCB.setSelected(((DavisBaseCamera) chip).getDavisConfig().getApsReadoutControl().isGlobalShutterMode());
         displayEventsCheckBox.setSelected(getConfig().isDisplayEvents());
         displayFramesCheckBox.setSelected(getConfig().isDisplayFrames());
         captureFramesCheckBox.setSelected(getConfig().isCaptureFramesEnabled());
@@ -146,22 +146,28 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             if (mwe.getScrollType() != MouseWheelEvent.WHEEL_UNIT_SCROLL) {
                 return;
             }
-            int value = (Integer) spinner.getValue();
-            int i = 0;
-            for (i = 0; i < vals.length; i++) {
-                if (value < vals[i]) {
-                    break;
+            try {
+                float value = (float) spinner.getValue();
+
+                int i = 0;
+                for (i = 0; i < vals.length; i++) {
+                    if (value < vals[i]) {
+                        break;
+                    }
                 }
+                if (i >= vals.length) {
+                    i = vals.length - 1;
+                }
+                int mult = mults[i];
+                value -= mult * mwe.getWheelRotation();
+                if (value < 0) {
+                    value = 0;
+                }
+                spinner.setValue(value);
+            } catch (Exception e) {
+                log.warning(e.toString());
+                return;
             }
-            if (i >= vals.length) {
-                i = vals.length - 1;
-            }
-            int mult = mults[i];
-            value -= mult * mwe.getWheelRotation();
-            if (value < 0) {
-                value = 0;
-            }
-            spinner.setValue(value);
         }
     }
 
@@ -313,7 +319,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
                 }
                 break;
                 case DavisConfig.PROPERTY_GLOBAL_SHUTTER_MODE_ENABLED: {
-                    glShutterCB.setSelected((Boolean)evt.getNewValue());
+                    glShutterCB.setSelected((Boolean) evt.getNewValue());
                 }
                 break;
             }
@@ -820,7 +826,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
     }// </editor-fold>//GEN-END:initComponents
 
     private void glShutterCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_glShutterCBActionPerformed
-        ((DavisBaseCamera)chip).getDavisConfig().getApsReadoutControl().setGlobalShutterMode(glShutterCB.isSelected());
+        ((DavisBaseCamera) chip).getDavisConfig().getApsReadoutControl().setGlobalShutterMode(glShutterCB.isSelected());
     }//GEN-LAST:event_glShutterCBActionPerformed
 
     private void bandwidthTweakerStateChanged(javax.swing.event.ChangeEvent evt) {// GEN-FIRST:event_bandwidthTweakerStateChanged
