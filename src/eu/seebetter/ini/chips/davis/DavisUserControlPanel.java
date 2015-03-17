@@ -62,10 +62,11 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         captureEventsCB.setSelected(getConfig().isCaptureEventsEnabled());
         autoshotThresholdSp.setValue(this.chip.getAutoshotThresholdEvents() >> 10);
         final int[] vals = {10, 100, 1000}, mults = {1, 10, 100};
+        final float[] fvals = {.01f, .1f, 1, 10, 100, 1000}, fmults = {.001f, .01f, .1f, 1, 10, 100};
         autoshotThresholdSp.addMouseWheelListener(new SpinnerMouseWheelIntHandler(vals, mults));
         autoExpCB.setSelected(this.chip.isAutoExposureEnabled());
-        fdSp.addMouseWheelListener(new SpinnerMouseWheelIntHandler(vals, mults));
-        edSp.addMouseWheelListener(new SpinnerMouseWheelIntHandler(vals, mults));
+        fdSp.addMouseWheelListener(new SpinnerMouseWheelFloatHandler(fvals, fmults));
+        edSp.addMouseWheelListener(new SpinnerMouseWheelFloatHandler(fvals, fmults));
         dvsContSp.addMouseWheelListener(new SpinnerMouseWheelIntHandler(new int[]{10, 20}, new int[]{1, 2}));
         dvsContSp.setValue(renderer.getColorScale());
         contrastSp.addMouseWheelListener(new SpinnerMouseWheelFloatHandler(new float[]{1, 2}, new float[]{.05f,
@@ -147,7 +148,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
                 return;
             }
             try {
-                float value = (float) spinner.getValue();
+                int value = (Integer) spinner.getValue();
 
                 int i = 0;
                 for (i = 0; i < vals.length; i++) {
@@ -208,22 +209,26 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             if (mwe.getScrollType() != MouseWheelEvent.WHEEL_UNIT_SCROLL) {
                 return;
             }
-            float value = (Float) spinner.getValue();
-            int i = 0;
-            for (i = 0; i < vals.length; i++) {
-                if (value < vals[i]) {
-                    break;
+            try {
+                float value = (Float) spinner.getValue();
+                int i = 0;
+                for (i = 0; i < vals.length; i++) {
+                    if (value <= vals[i]) {
+                        break;
+                    }
                 }
+                if (i >= vals.length) {
+                    i = vals.length - 1;
+                }
+                float mult = mults[i];
+                value -= mult * mwe.getWheelRotation();
+                if (value < 0) {
+                    value = 0;
+                }
+                spinner.setValue(value);
+            } catch (Exception e) {
+                log.warning(e.toString());
             }
-            if (i >= vals.length) {
-                i = vals.length - 1;
-            }
-            float mult = mults[i];
-            value -= mult * mwe.getWheelRotation();
-            if (value < 0) {
-                value = 0;
-            }
-            spinner.setValue(value);
         }
     }
 
