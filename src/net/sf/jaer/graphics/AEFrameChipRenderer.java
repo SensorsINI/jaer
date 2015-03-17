@@ -50,7 +50,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     private int sizeX, sizeY, maxADC, numTypes;
     private int timestamp = 0;
-    private LowpassFilter2d lowpassFilter = new LowpassFilter2d();  // 2 lp values are min and max log intensities from each frame
+    private LowpassFilter2d autoContrast2DLowpassRangeFilter = new LowpassFilter2d();  // 2 lp values are min and max log intensities from each frame
     private float minValue, maxValue, annotateAlpha;
     private float[] onColor, offColor;
 
@@ -379,8 +379,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     private void endFrame() {
         System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
-        if ((minValue > 0) && (maxValue > 0)) { // don't adapt to first frame which is all zeros
-            java.awt.geom.Point2D.Float filter2d = lowpassFilter.filter2d(minValue, maxValue, timestamp);
+        if ((minValue !=0 ) && (maxValue > 0)) { // don't adapt to first frame which is all zeros TODO does not work if minValue<0
+            java.awt.geom.Point2D.Float filter2d = autoContrast2DLowpassRangeFilter.filter2d(minValue, maxValue, timestamp);
             getSupport().firePropertyChange(AGC_VALUES, null, filter2d); // inform listeners (GUI) of new AGC min/max filterd log intensity values
         }
         getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILBLE, null, this); // TODO document what is sent and send something reasonable
@@ -729,7 +729,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 v = (float) (Math.pow((((getContrast() * value) + getBrightness()) / maxADC), gamma));
             }
         } else {
-            java.awt.geom.Point2D.Float filter2d = lowpassFilter.getValue2d();
+            java.awt.geom.Point2D.Float filter2d = autoContrast2DLowpassRangeFilter.getValue2d();
             float offset = filter2d.x;
             float range = (filter2d.y - filter2d.x);
             v = ((value - offset)) / (range);
@@ -753,29 +753,29 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     }
 
     public float getAGCTauMs() {
-        return lowpassFilter.getTauMs();
+        return autoContrast2DLowpassRangeFilter.getTauMs();
     }
 
     public void setAGCTauMs(float tauMs) {
         if (tauMs < 10) {
             tauMs = 10;
         }
-        lowpassFilter.setTauMs(tauMs);
+        autoContrast2DLowpassRangeFilter.setTauMs(tauMs);
         chip.getPrefs().putFloat("agcTauMs", tauMs);
     }
 
     public void applyAGCValues() {
-        java.awt.geom.Point2D.Float f = lowpassFilter.getValue2d();
+        java.awt.geom.Point2D.Float f = autoContrast2DLowpassRangeFilter.getValue2d();
         setBrightness(agcOffset());
         setContrast(agcGain());
     }
 
     private int agcOffset() {
-        return (int) lowpassFilter.getValue2d().x;
+        return (int) autoContrast2DLowpassRangeFilter.getValue2d().x;
     }
 
     private int agcGain() {
-        java.awt.geom.Point2D.Float f = lowpassFilter.getValue2d();
+        java.awt.geom.Point2D.Float f = autoContrast2DLowpassRangeFilter.getValue2d();
         float diff = f.y - f.x;
         if (diff < 1) {
             return 1;
