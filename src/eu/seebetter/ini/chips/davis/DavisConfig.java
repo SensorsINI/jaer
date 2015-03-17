@@ -663,7 +663,7 @@ class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfigInterf
             return;
         }
         maxFiringRate = val;
-        final float MAX = 300;
+        final float MAX = 100;
         refr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
         chip.getSupport().firePropertyChange(DVSTweaks.MAX_FIRING_RATE, old, val);
     }
