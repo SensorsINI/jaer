@@ -62,7 +62,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         captureEventsCB.setSelected(getConfig().isCaptureEventsEnabled());
         autoshotThresholdSp.setValue(this.chip.getAutoshotThresholdEvents() >> 10);
         final int[] vals = {10, 100, 1000}, mults = {1, 10, 100};
-        final float[] fvals = {.01f, .1f, 1, 10, 100, 1000}, fmults = {.001f, .01f, .1f, 1, 10, 100};
+        final float[] fvals = {.02f, .2f, 2, 20, 200, 2000}, fmults = {.001f, .01f, .1f, 1, 10, 100};
         autoshotThresholdSp.addMouseWheelListener(new SpinnerMouseWheelIntHandler(vals, mults));
         autoExpCB.setSelected(this.chip.isAutoExposureEnabled());
         fdSp.addMouseWheelListener(new SpinnerMouseWheelFloatHandler(fvals, fmults));
@@ -212,14 +212,27 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             try {
                 float value = (Float) spinner.getValue();
                 int i = 0;
-                for (i = 0; i < vals.length; i++) {
-                    if (value <= vals[i]) {
-                        break;
+//                int rot = mwe.getWheelRotation(); // >0 is roll down, want smaller value
+                if (true) { 
+                    for (i = 0; i < vals.length; i++) {
+                        if (value <= vals[i]) {
+                            break;  // take value from vals array that is just above our current value, e.g. if our current value is 11, then take 20 (if that is next higher vals) as next value and mult of 20 value as decrement amount
+                        }
                     }
-                }
-                if (i >= vals.length) {
-                    i = vals.length - 1;
-                }
+                    if (i > vals.length-1) {
+                        i = vals.length - 1;
+                    }
+                } 
+//                else { // roll up, want larger value
+//                    for (i = vals.length-1; i >=0 ; i--) {
+//                        if (value >= vals[i]) {
+//                            break;   // now start at highest vals value and go down, until we find next lower or equal vals, e.g. if we are at 11, then take 2 (if that is next lower value) and then choose that mult that goes with 2 to decr
+//                        }
+//                    }
+//                    if (i<0) {
+//                        i = 0;
+//                    }
+//                }
                 float mult = mults[i];
                 value -= mult * mwe.getWheelRotation();
                 if (value < 0) {
