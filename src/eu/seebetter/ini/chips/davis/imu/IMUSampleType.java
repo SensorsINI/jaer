@@ -1,4 +1,4 @@
-package eu.seebetter.ini.chips.davis;
+package eu.seebetter.ini.chips.davis.imu;
 
 import eu.seebetter.ini.chips.DavisChip;
 

@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package eu.seebetter.ini.chips.davis;
+package eu.seebetter.ini.chips.davis.imu;
 
 /**
 * Defines allowed scales for IMU accelerometer.

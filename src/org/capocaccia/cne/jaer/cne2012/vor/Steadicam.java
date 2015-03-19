@@ -41,7 +41,7 @@ import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.DavisChip;
-import eu.seebetter.ini.chips.davis.IMUSample;
+import eu.seebetter.ini.chips.davis.imu.IMUSample;
 
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.eventio.AEFileInputStream;

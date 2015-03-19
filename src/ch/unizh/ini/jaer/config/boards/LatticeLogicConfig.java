@@ -43,6 +43,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 	public AEChip chip;
 	protected ChipConfigChain chipConfigChain = null;
 	protected ShiftedSourceBiasCF[] ssBiases = new ShiftedSourceBiasCF[2];
+        /** list of configuration values that implement HasPreference; used for load and store of preferred values. */
 	protected ArrayList<HasPreference> hasPreferenceList = new ArrayList<HasPreference>();
 
 	public LatticeLogicConfig(Chip chip) {
@@ -84,6 +85,14 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
      */
     public ChipConfigChain getChipConfigChain() {
         return chipConfigChain;
+    }
+
+    /**
+     * Returns list of config values that have preference value
+     * @return the hasPreferenceList
+     */
+    public ArrayList<HasPreference> getHasPreferenceList() {
+        return hasPreferenceList;
     }
 
 	/** Command sent to firmware by vendor request */
@@ -503,7 +512,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 			return;
 		}
 		configValues.add(value);
-		value.addToPreferenceList(hasPreferenceList);
+		value.addToPreferenceList(getHasPreferenceList());
 		if (value instanceof CPLDConfigValue) {
 			cpldConfig.add((CPLDConfigValue) value);
 		}
@@ -564,8 +573,8 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 	public void loadPreference() {
 		super.loadPreferences();
 
-		if (hasPreferenceList != null) {
-			for (HasPreference hp : hasPreferenceList) {
+		if (getHasPreferenceList() != null) {
+			for (HasPreference hp : getHasPreferenceList()) {
 				hp.loadPreference();
 			}
 		}
@@ -594,7 +603,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 	@Override
 	public void storePreference() {
 		super.storePreferences();
-		for (HasPreference hp : hasPreferenceList) {
+		for (HasPreference hp : getHasPreferenceList()) {
 			hp.storePreference();
 		}
 		if (ssBiases != null) {

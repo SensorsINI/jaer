@@ -334,7 +334,7 @@ public class SeeBetter30config extends LatticeLogicConfig{
 
             TOTAL_CONFIG_BITS = 24;
 
-            hasPreferenceList.add(this);
+            getHasPreferenceList().add(this);
             configBits = new OnchipConfigBit[4];
             configBits[0] = S1;
             configBits[1] = S2;

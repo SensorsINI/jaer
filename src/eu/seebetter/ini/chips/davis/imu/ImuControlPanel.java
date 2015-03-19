@@ -3,16 +3,16 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package eu.seebetter.ini.chips.davis;
+package eu.seebetter.ini.chips.davis.imu;
 
+import eu.seebetter.ini.chips.davis.DavisConfig;
 import java.awt.Color;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.logging.Logger;
 
-import javax.swing.SwingConstants;
 
-import eu.seebetter.ini.chips.davis.DavisConfig.ImuControl;
+import eu.seebetter.ini.chips.davis.DavisDisplayConfigInterface;
 
 /**
  *

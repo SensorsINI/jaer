@@ -5,6 +5,7 @@
  */
 package eu.seebetter.ini.chips.davis;
 
+import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.DavisChip;
 import java.awt.Font;

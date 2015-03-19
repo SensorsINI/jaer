@@ -5,6 +5,8 @@
  */
 package eu.seebetter.ini.chips.davis;
 
+import eu.seebetter.ini.chips.davis.imu.ImuControlPanel;
+import eu.seebetter.ini.chips.davis.imu.ImuAccelScale;
 import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
 import ch.unizh.ini.jaer.config.MuxControlPanel;
 import ch.unizh.ini.jaer.config.OutputMap;
@@ -17,6 +19,7 @@ import ch.unizh.ini.jaer.config.fx2.TriStateablePortBit;
 import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
 import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
 import ch.unizh.ini.jaer.config.onchip.OutputMux;
+import eu.seebetter.ini.chips.davis.imu.ImuControl;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
@@ -30,13 +33,10 @@ import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.prefs.PreferenceChangeEvent;
-import java.util.prefs.PreferenceChangeListener;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
@@ -66,13 +66,13 @@ import net.sf.jaer.util.PropertyTooltipSupport;
  *
  * @author tobi
  */
-class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfigInterface, DavisTweaks, HasPreference {
+public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfigInterface, DavisTweaks, HasPreference {
 
     public static final String PROPERTY_EXPOSURE_DELAY_US = "PROPERTY_EXPOSURE_DELAY_US";
     public static final String PROPERTY_FRAME_DELAY_US = "PROPERTY_FRAME_DELAY_US";
     ParameterControlPanel videoParameterControlPanel = null, apsReadoutParameterControlPanel = null;
     protected ShiftedSourceBiasCF ssn, ssp;
-    protected JPanel configPanel;
+   protected JPanel configPanel;
     protected JTabbedPane configTabbedPane;
     // *********** FX2 *********************
     // portA
@@ -137,19 +137,19 @@ class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfigInterf
      * constant IMUInitAddr4 : std_logic_vector(7 downto 0) := "00011100"; -- ADDR: (0x1C) Accel Configuration: Full
      * Scale Range / Sensitivity
      */
-    protected CPLDByte miscControlBits = new CPLDByte(chip, 95, 88, 3, "miscControlBits",
+    public CPLDByte miscControlBits = new CPLDByte(chip, 95, 88, 3, "miscControlBits",
             "Bit0: IMU run (0=stop, 1=run). Bit1: Rolling shutter (0=global shutter, 1=rolling shutter). Bits2-7: unused ",
             (byte) 1);
     // See Invensense MPU-6100 IMU datasheet RM-MPU-6100A.pdf
-    protected CPLDByte imu0PowerMgmtClkRegConfig = new CPLDByte(chip, 103, 96, 255, "imu0_PWR_MGMT_1",
+    public CPLDByte imu0PowerMgmtClkRegConfig = new CPLDByte(chip, 103, 96, 255, "imu0_PWR_MGMT_1",
             "1=Disable sleep, select x axis gyro as clock source", (byte) 1); // PWR_MGMT_1
-    protected CPLDByte imu1DLPFConfig = new CPLDByte(chip, 111, 104, 255, "imu1_CONFIG",
+    public CPLDByte imu1DLPFConfig = new CPLDByte(chip, 111, 104, 255, "imu1_CONFIG",
             "1=digital low pass filter DLPF: FS=1kHz, Gyro 188Hz, 1.9ms delay ", (byte) 1); // CONFIG
-    protected CPLDByte imu2SamplerateDividerConfig = new CPLDByte(chip, 119, 112, 255, "imu2_SMPLRT_DIV",
+    public CPLDByte imu2SamplerateDividerConfig = new CPLDByte(chip, 119, 112, 255, "imu2_SMPLRT_DIV",
             "0=sample rate divider: 1 Khz sample rate when DLPF is enabled", (byte) 0); // SMPLRT_DIV
-    protected CPLDByte imu3GyroConfig = new CPLDByte(chip, 127, 120, 255, "imu3_GYRO_CONFIG",
+    public CPLDByte imu3GyroConfig = new CPLDByte(chip, 127, 120, 255, "imu3_GYRO_CONFIG",
             "8=500 deg/s, 65.5 LSB per deg/s ", (byte) 8); // GYRO_CONFIG:
-    protected CPLDByte imu4AccelConfig = new CPLDByte(chip, 135, 128, 255, "imu4_ACCEL_CONFIG",
+    public CPLDByte imu4AccelConfig = new CPLDByte(chip, 135, 128, 255, "imu4_ACCEL_CONFIG",
             "ACCEL_CONFIG: Bits 4:3 code AFS_SEL. 8=4g, 8192 LSB per g", (byte) 8); // ACCEL_CONFIG:
     protected CPLDInt nullSettle = new CPLDInt(chip, 151, 136, (1 << 5) - 1, "nullSettle",
             "time to remain in NULL state between columns", 0);
@@ -159,7 +159,7 @@ class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfigInterf
     // subclasses for controlling aspects of camera
     protected DavisConfig.VideoControl videoControl;
     protected DavisConfig.ApsReadoutControl apsReadoutControl;
-    protected DavisConfig.ImuControl imuControl;
+    protected ImuControl imuControl;
     protected int aeReaderFifoSize;
     protected int aeReaderNumBuffers;
     protected int autoShotThreshold; // threshold for triggering a new frame snapshot automatically
@@ -263,7 +263,7 @@ class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfigInterf
         apsReadoutControl = new ApsReadoutControl();
 
         // imuControl
-        imuControl = new ImuControl();
+        imuControl = new ImuControl(this);
 
         setBatchEditOccurring(true);
         loadPreferences();
@@ -1007,254 +1007,6 @@ class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfigInterf
         }
     }
 
-    /**
-     * IMU control of Invensense IMU-6100A, encapsulated here.
-     */
-    public class ImuControl extends Observable implements HasPropertyTooltips, HasPreference, PreferenceChangeListener {
-
-        PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
-        private ImuGyroScale imuGyroScale;
-        private ImuAccelScale imuAccelScale;
-        private boolean displayImuEnabled;
-
-        public ImuControl() {
-            super();
-            // imu0PowerMgmtClkRegConfig.addObserver(this);
-            // imu1DLPFConfig.addObserver(this);
-            // imu2SamplerateDividerConfig.addObserver(this);
-            // imu3GyroConfig.addObserver(this);
-            // imu4AccelConfig.addObserver(this);
-            // TODO awkward renaming of properties here due to wrongly named delegator methods
-            hasPreferenceList.add(this);
-            loadPreference();
-            tooltipSupport.setPropertyTooltip("imu0", imu0PowerMgmtClkRegConfig.getDescription());
-            tooltipSupport.setPropertyTooltip("imu1", imu1DLPFConfig.getDescription());
-            tooltipSupport.setPropertyTooltip("imu2", imu2SamplerateDividerConfig.getDescription());
-            tooltipSupport.setPropertyTooltip("imu3", imu3GyroConfig.getDescription());
-            tooltipSupport.setPropertyTooltip("imu4", imu4AccelConfig.getDescription());
-            IMUSample.setFullScaleGyroDegPerSec(imuGyroScale.fullScaleDegPerSec);
-            IMUSample.setGyroSensitivityScaleFactorDegPerSecPerLsb(1 / imuGyroScale.scaleFactorLsbPerDegPerSec);
-            IMUSample.setFullScaleAccelG(imuAccelScale.fullScaleG);
-            IMUSample.setAccelSensitivityScaleFactorGPerLsb(1 / imuAccelScale.scaleFactorLsbPerG);
-            chip.getPrefs().addPreferenceChangeListener(this);
-        }
-
-        public boolean isImuEnabled() {
-            return (miscControlBits.get() & 1) == 1;
-        }
-
-        public void setImuEnabled(boolean yes) {
-            boolean old = (miscControlBits.get() & 1) == 1;
-            int oldval = miscControlBits.get();
-            int newval = (oldval & (~1)) | (yes ? 1 : 0);
-            miscControlBits.set(newval);
-            getSupport().firePropertyChange(PROPERTY_IMU_ENABLED, old, yes);
-        }
-
-        /**
-         * Register 26: CONFIG, digital low pass filter setting DLPF_CFG
-         */
-        public void setDLPF(int dlpf) {
-            if ((dlpf < 0) || (dlpf > 6)) {
-                throw new IllegalArgumentException("dlpf=" + dlpf + " is outside allowed range 0-6");
-            }
-            int old = imu1DLPFConfig.get() & 7;
-            int oldval = imu1DLPFConfig.get();
-            int newval = (oldval & (~7)) | (dlpf);
-            imu1DLPFConfig.set(newval);
-            activateNewRegisterValues();
-            getSupport().firePropertyChange(PROPERTY_IMU_DLPF_CHANGED, old, dlpf);
-        }
-
-        public int getDLPF() {
-            return imu1DLPFConfig.get() & 7;
-        }
-
-        /**
-         * Register 27: Sample rate divider
-         */
-        public void setSampleRateDivider(int srd) {
-            if ((srd < 0) || (srd > 255)) {
-                throw new IllegalArgumentException("sampleRateDivider=" + srd + " is outside allowed range 0-255");
-            }
-            int old = imu2SamplerateDividerConfig.get();
-            imu2SamplerateDividerConfig.set(srd & 255);
-            activateNewRegisterValues();
-            getSupport().firePropertyChange(PROPERTY_IMU_SAMPLE_RATE_CHANGED, old, srd);
-        }
-
-        public int getSampleRateDivider() {
-            return imu2SamplerateDividerConfig.get();
-        }
-
-        public ImuGyroScale getGyroScale() {
-            return imuGyroScale;
-        }
-
-        public void setGyroScale(ImuGyroScale scale) {
-            ImuGyroScale old = this.imuGyroScale;
-            this.imuGyroScale = scale;
-            setFS_SEL(imuGyroScale.fs_sel);
-            IMUSample.setFullScaleGyroDegPerSec(imuGyroScale.fullScaleDegPerSec);
-            IMUSample.setGyroSensitivityScaleFactorDegPerSecPerLsb(1 / imuGyroScale.scaleFactorLsbPerDegPerSec);
-            getSupport().firePropertyChange(PROPERTY_IMU_GYRO_SCALE_CHANGED, old, this.imuGyroScale);
-        }
-
-        /**
-         * @return the imuAccelScale
-         */
-        public ImuAccelScale getAccelScale() {
-            return imuAccelScale;
-        }
-
-        /**
-         * @param imuAccelScale the imuAccelScale to set
-         */
-        public void setAccelScale(ImuAccelScale scale) {
-            ImuAccelScale old = this.imuAccelScale;
-            this.imuAccelScale = scale;
-            setAFS_SEL(imuAccelScale.afs_sel);
-            IMUSample.setFullScaleAccelG(imuAccelScale.fullScaleG);
-            IMUSample.setAccelSensitivityScaleFactorGPerLsb(1 / imuAccelScale.scaleFactorLsbPerG);
-            getSupport().firePropertyChange(PROPERTY_IMU_ACCEL_SCALE_CHANGED, old, this.imuAccelScale);
-        }
-
-        // accel scale bits
-        private void setAFS_SEL(int val) {
-            // AFS_SEL bits are bits 4:3 in accel register
-            if ((val < 0) || (val > 3)) {
-                throw new IllegalArgumentException("value " + val + " is outside range 0-3");
-            }
-            int oldval = imu4AccelConfig.get();
-            int newval = (oldval & (~(3 << 3))) | (val << 3);
-            setImu4(newval);
-        }
-
-        // gyro scale bits
-        private void setFS_SEL(int val) {
-            // AFS_SEL bits are bits 4:3 in accel register
-            if ((val < 0) || (val > 3)) {
-                throw new IllegalArgumentException("value " + val + " is outside range 0-3");
-            }
-            int oldval = imu3GyroConfig.get();
-            int newval = (oldval & (~(3 << 3))) | (val << 3);
-            setImu3(newval);
-        }
-
-        public boolean isDisplayImu() {
-            return displayImuEnabled;
-        }
-
-        public void setDisplayImu(boolean yes) {
-            boolean old = this.displayImuEnabled;
-            this.displayImuEnabled = yes;
-            getSupport().firePropertyChange(PROPERTY_IMU_DISPLAY_ENABLED, old, displayImuEnabled);
-        }
-
-        private void setImu0(int value) throws IllegalArgumentException {
-            imu0PowerMgmtClkRegConfig.set(value);
-            activateNewRegisterValues();
-        }
-
-        private int getImu0() {
-            return imu0PowerMgmtClkRegConfig.get();
-        }
-
-        private void setImu1(int value) throws IllegalArgumentException {
-            imu1DLPFConfig.set(value);
-            activateNewRegisterValues();
-        }
-
-        private int getImu1() {
-            return imu1DLPFConfig.get();
-        }
-
-        private void setImu2(int value) throws IllegalArgumentException {
-            imu2SamplerateDividerConfig.set(value);
-            activateNewRegisterValues();
-        }
-
-        private int getImu2() {
-            return imu2SamplerateDividerConfig.get();
-        }
-
-        private void setImu3(int value) throws IllegalArgumentException {
-            imu3GyroConfig.set(value);
-            activateNewRegisterValues();
-        }
-
-        private int getImu3() {
-            return imu3GyroConfig.get();
-        }
-
-        private void setImu4(int value) throws IllegalArgumentException {
-            imu4AccelConfig.set(value);
-            activateNewRegisterValues();
-        }
-
-        private int getImu4() {
-            return imu4AccelConfig.get();
-        }
-
-        private void activateNewRegisterValues() {
-            if (isImuEnabled()) {
-                setImuEnabled(false);
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                }
-                setImuEnabled(true);
-            }
-        }
-
-        @Override
-        public String getPropertyTooltip(String propertyName) {
-            return tooltipSupport.getPropertyTooltip(propertyName);
-        }
-
-        @Override
-        public final void loadPreference() {
-            try {
-                setGyroScale(ImuGyroScale.valueOf(chip.getPrefs().get("ImuGyroScale", ImuGyroScale.GyroFullScaleDegPerSec1000.toString())));
-                setAccelScale(ImuAccelScale.valueOf(chip.getPrefs().get("ImuAccelScale", ImuAccelScale.ImuAccelScaleG8.toString())));
-                setDisplayImu(chip.getPrefs().getBoolean("IMU.displayEnabled", true));
-            } catch (Exception e) {
-                log.warning(e.toString());
-            }
-        }
-
-        @Override
-        public void storePreference() {
-            chip.getPrefs().put("ImuGyroScale", imuGyroScale.toString());
-            chip.getPrefs().put("ImuAccelScale", imuAccelScale.toString());
-            chip.getPrefs().putBoolean("IMU.displayEnabled", this.displayImuEnabled);
-        }
-
-        @Override
-        public void preferenceChange(PreferenceChangeEvent e) {
-            if (e.getKey().toLowerCase().contains("imu")) {
-                log.info(this + " preferenceChange(): event=" + e + " key=" + e.getKey() + " newValue=" + e.getNewValue());
-            }
-            if (e.getNewValue() == null) {
-                return;
-            }
-            try {
-                // log.info(e.toString());
-                switch (e.getKey()) {
-                    case "ImuAccelScale":
-                        setAccelScale(ImuAccelScale.valueOf(e.getNewValue()));
-                        break;
-                    case "ImuGyroScale":
-                        setGyroScale(ImuGyroScale.valueOf(e.getNewValue()));
-                        break;
-                    case "IMU.displayEnabled":
-                        setDisplayImu(Boolean.valueOf(e.getNewValue()));
-                }
-            } catch (IllegalArgumentException iae) {
-                log.warning(iae.toString() + ": Preference value=" + e.getNewValue() + " for the preferenc with key=" + e.getKey() + " is not a proper enum for an IMU setting");
-            }
-        }
-    }
 
     public class VideoControl extends Observable implements Observer, HasPreference, HasPropertyTooltips {
 
@@ -1271,7 +1023,7 @@ class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfigInterf
 
         public VideoControl() {
             super();
-            hasPreferenceList.add(this);
+            getHasPreferenceList().add(this);
             tooltipSupport.setPropertyTooltip("displayEvents", "display DVS events");
             tooltipSupport.setPropertyTooltip("displayFrames", "display APS frames");
             tooltipSupport.setPropertyTooltip("useAutoContrast", "automatically set the display contrast for APS frames");
@@ -1489,7 +1241,7 @@ class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfigInterf
     /**
      * @return the imuControl
      */
-    public DavisConfig.ImuControl getImuControl() {
+    public ImuControl getImuControl() {
         return imuControl;
     }
 
@@ -1566,7 +1318,7 @@ class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfigInterf
 
             TOTAL_CONFIG_BITS = 24;
 
-            hasPreferenceList.add(this);
+            getHasPreferenceList().add(this);
             configBits = new OnchipConfigBit[7];
             configBits[0] = resetCalib;
             configBits[1] = typeNCalib;

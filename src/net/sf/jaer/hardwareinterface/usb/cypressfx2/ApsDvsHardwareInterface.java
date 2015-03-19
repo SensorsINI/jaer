@@ -25,7 +25,7 @@ import de.thesycon.usbio.UsbIoInterface;
 import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
 import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
 import eu.seebetter.ini.chips.DavisChip;
-import eu.seebetter.ini.chips.davis.IMUSample;
+import eu.seebetter.ini.chips.davis.imu.IMUSample;
 
 /**
  * Adds functionality of apsDVS sensors to based CypressFX2Biasgen class. The

@@ -1,4 +1,4 @@
-package eu.seebetter.ini.chips.davis;
+package eu.seebetter.ini.chips.davis.imu;
 
 /*
  * This class created in Telluride 2013 to encapsulate Invensense IMU MPU-6150

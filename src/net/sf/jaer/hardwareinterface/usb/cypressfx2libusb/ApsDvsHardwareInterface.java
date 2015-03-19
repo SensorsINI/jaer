@@ -15,7 +15,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import org.usb4java.Device;
 
 import eu.seebetter.ini.chips.DavisChip;
-import eu.seebetter.ini.chips.davis.IMUSample;
+import eu.seebetter.ini.chips.davis.imu.IMUSample;
 
 /**
  * Adds functionality of apsDVS sensors to based CypressFX2Biasgen class. The
