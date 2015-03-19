@@ -5,17 +5,14 @@
  */
 package eu.seebetter.ini.chips.davis;
 
-import ch.unizh.ini.jaer.config.cpld.CPLDInt;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.DavisChip;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.geom.Rectangle2D;
-import java.beans.PropertyChangeSupport;
 import java.util.Iterator;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
@@ -40,7 +37,6 @@ import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.HasPropertyTooltips;
 import net.sf.jaer.util.PropertyTooltipSupport;
 import net.sf.jaer.util.RemoteControlCommand;
@@ -63,7 +59,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 //    protected final String CMD_EXPOSURE_CC = "exposureCC";
 //    protected final String CMD_RS_SETTLE_CC = "resetSettleCC"; // can be added to sub cameras again if needed, or exposed in DavisDisplayConfigInterface by methods
     protected AEFrameChipRenderer apsDVSrenderer;
-    protected final AutoExposureController autoExposureController = new AutoExposureController();
+    protected final AutoExposureController autoExposureController;
     protected int autoshotThresholdEvents = getPrefs().getInt("autoshotThresholdEvents", 0);
     protected JMenu chipMenu = null;
     JFrame controlFrame = null;
@@ -120,7 +116,11 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 //            getRemoteControl().addCommandListener(this, CMD_RS_SETTLE_CC,
 //                    CMD_RS_SETTLE_CC + " val - sets reset settling time. val in clock cycles");
         }
+        autoExposureController = new AutoExposureController(this);
+       
     }
+    
+    
 
     @Override
     public void controlExposure() {
@@ -373,190 +373,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         // TODO: this needs to be done.
     }
 
-    /**
-     * Controls exposureControlRegister automatically to try to optimize
-     * captured gray levels
-     *
-     */
-    public class AutoExposureController implements HasPropertyTooltips {
-
-        // TODO not implemented yet
-        private boolean autoExposureEnabled = getPrefs().getBoolean("autoExposureEnabled", false);
-        private float expDelta = getPrefs().getFloat("expDelta", 0.1F); // exposureControlRegister change if incorrectly exposed
-        private float underOverFractionThreshold = getPrefs().getFloat("underOverFractionThreshold", 0.2F); // threshold for fraction of total pixels that are underexposed
-        // or overexposed
-        private final PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
-        private final PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
-        SimpleHistogram hist = null;
-        SimpleHistogram.Statistics stats = null;
-        private float lowBoundary = getPrefs().getFloat("AutoExposureController.lowBoundary", 0.25F);
-        private float highBoundary = getPrefs().getFloat("AutoExposureController.highBoundary", 0.75F);
-        private boolean pidControllerEnabled = getPrefs().getBoolean("pidControllerEnabled", false);
-
-        public AutoExposureController() {
-            super();
-            tooltipSupport.setPropertyTooltip("expDelta", "fractional change of exposure when under or overexposed");
-            tooltipSupport.setPropertyTooltip("underOverFractionThreshold", "fraction of pixel values under xor over exposed to trigger exposure change");
-            tooltipSupport.setPropertyTooltip("lowBoundary", "Upper edge of histogram range considered as low values");
-            tooltipSupport.setPropertyTooltip("highBoundary", "Lower edge of histogram range considered as high values");
-            tooltipSupport.setPropertyTooltip("autoExposureEnabled", "Exposure time is automatically controlled when this flag is true");
-            tooltipSupport.setPropertyTooltip("pidControllerEnabled", "<html>Enable proportional integral derivative (actually just proportional) controller rather than fixed-size step control. <p><i>expDelta</i> is multiplied by the fractional error from mid-range exposure when <i>pidControllerEnabled</i> is set");
-        }
-
-        @Override
-        public String getPropertyTooltip(final String propertyName) {
-            return tooltipSupport.getPropertyTooltip(propertyName);
-        }
-
-        public void setAutoExposureEnabled(final boolean yes) {
-            final boolean old = autoExposureEnabled;
-            autoExposureEnabled = yes;
-            propertyChangeSupport.firePropertyChange("autoExposureEnabled", old, yes);
-            getPrefs().putBoolean("autoExposureEnabled", yes);
-            if (!yes && stats!=null) {
-                stats.reset(); // ensure toggling enabled resets the maxBin stat
-            }
-        }
-
-        public boolean isAutoExposureEnabled() {
-            return autoExposureEnabled;
-        }
-
-        public void controlExposure() {
-            if (!autoExposureEnabled) {
-                return;
-            }
-            if ((getAeViewer() != null) && (getAeViewer().getPlayMode() != null) && (getAeViewer().getPlayMode() != AEViewer.PlayMode.LIVE)) {
-                return;
-            }
-            hist = apsDVSrenderer.getAdcSampleValueHistogram();
-            if (hist == null) {
-                return;
-            }
-            stats = hist.getStatistics();
-            if (stats == null) {
-                return;
-            }
-            stats.setLowBoundary(lowBoundary);
-            stats.setHighBoundary(highBoundary);
-            hist.computeStatistics();
-            final float currentExposure = getDavisConfig().getExposureDelayMs();
-            float newExposure = 0;
-            float expChange = expDelta;
-            if (pidControllerEnabled && stats.maxNonZeroBin > 0) {
-                // compute error signsl from meanBin relative to actual range of bins
-                float err = (stats.meanBin - (stats.maxNonZeroBin / 2)) / (float) stats.maxNonZeroBin; // fraction of range exposureControlRegister is above middle bin
-                expChange = expDelta * Math.abs(err);
-            }
-            if ((stats.fracLow >= underOverFractionThreshold) && (stats.fracHigh < underOverFractionThreshold)) {
-                newExposure = currentExposure * (1 + expChange);
-                if (newExposure == currentExposure) {
-                    newExposure++; // ensure increase
-                }
-                if (newExposure != currentExposure) {
-                    getDavisConfig().setExposureDelayMs(newExposure);
-                }
-                Chip.log.log(Level.INFO, "Underexposed: {0} {1}", new Object[]{stats.toString(), String.format("expChange=%.2f (oldExposure=%10.3f newExposure=%10.3f)", expChange, currentExposure, newExposure)});
-            } else if ((stats.fracLow < underOverFractionThreshold) && (stats.fracHigh >= underOverFractionThreshold)) {
-                newExposure = currentExposure * (1 - expChange);
-                if (newExposure == currentExposure) {
-                    newExposure--; // ensure decrease even with rounding.
-                }
-                if (newExposure < 0) {
-                    newExposure = 0;
-                }
-                if (newExposure != currentExposure) {
-                    getDavisConfig().setExposureDelayMs(newExposure);
-                }
-                Chip.log.log(Level.INFO, "Overexposed: {0} {1}", new Object[]{stats.toString(), String.format("expChange=%.2f (oldExposure=%10.3f newExposure=%10.3f)", expChange, currentExposure, newExposure)});
-            } else {
-                // log.info(stats.toString());
-            }
-        }
-
-        /**
-         * Gets by what relative amount the exposureControlRegister is changed
-         * on each frame if under or over exposed.
-         *
-         * @return the expDelta
-         */
-        public float getExpDelta() {
-            return expDelta;
-        }
-
-        /**
-         * Sets by what relative amount the exposureControlRegister is changed
-         * on each frame if under or over exposed.
-         *
-         * @param expDelta the expDelta to set
-         */
-        public void setExpDelta(final float expDelta) {
-            this.expDelta = expDelta;
-            getPrefs().putFloat("expDelta", expDelta);
-        }
-
-        /**
-         * Gets the fraction of pixel values that must be under xor over exposed
-         * to change exposureControlRegister automatically.
-         *
-         * @return the underOverFractionThreshold
-         */
-        public float getUnderOverFractionThreshold() {
-            return underOverFractionThreshold;
-        }
-
-        /**
-         * Gets the fraction of pixel values that must be under xor over exposed
-         * to change exposureControlRegister automatically.
-         *
-         * @param underOverFractionThreshold the underOverFractionThreshold to
-         * set
-         */
-        public void setUnderOverFractionThreshold(final float underOverFractionThreshold) {
-            this.underOverFractionThreshold = underOverFractionThreshold;
-            getPrefs().putFloat("underOverFractionThreshold", underOverFractionThreshold);
-        }
-
-        public float getLowBoundary() {
-            return lowBoundary;
-        }
-
-        public void setLowBoundary(final float lowBoundary) {
-            this.lowBoundary = lowBoundary;
-            getPrefs().putFloat("AutoExposureController.lowBoundary", lowBoundary);
-        }
-
-        public float getHighBoundary() {
-            return highBoundary;
-        }
-
-        public void setHighBoundary(final float highBoundary) {
-            this.highBoundary = highBoundary;
-            getPrefs().putFloat("AutoExposureController.highBoundary", highBoundary);
-        }
-
-        /**
-         * @return the propertyChangeSupport
-         */
-        public PropertyChangeSupport getPropertyChangeSupport() {
-            return propertyChangeSupport;
-        }
-
-        /**
-         * @return the pidControllerEnabled
-         */
-        public boolean isPidControllerEnabled() {
-            return pidControllerEnabled;
-        }
-
-        /**
-         * @param pidControllerEnabled the pidControllerEnabled to set
-         */
-        public void setPidControllerEnabled(boolean pidControllerEnabled) {
-            this.pidControllerEnabled = pidControllerEnabled;
-            getPrefs().putBoolean("pidControllerEnabled", pidControllerEnabled);
-        }
-    }
 
     /**
      * The event extractor. Each pixel has two polarities 0 and 1.

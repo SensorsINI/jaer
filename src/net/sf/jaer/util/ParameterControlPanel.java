@@ -1215,9 +1215,9 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         }
     }
 
-    /** Called when a clazz calls firePropertyChange. The PropertyChangeEvent should send the bound property name and the old and new values.
+    /** Called when a class calls firePropertyChange. The PropertyChangeEvent should send the bound property name and the old and new values.
     The GUI control is then updated by this method.
-    @param propertyChangeEvent contains the property that has changed, e.g. it would be called from an Class
+    @param propertyChangeEvent contains the property that has changed, e.g. it would be called from a setter like this:
      * with 
      * <code>support.firePropertyChange("mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled, this.mapEventsToLearnedTopologyEnabled);</code>
      */
@@ -1227,10 +1227,10 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             {
                 // we need to find the control and set it appropriately. we don't need to set the property itself since this has already been done!
                 try {
-//                    log.info("PropertyChangeEvent received from " +
-//                            propertyChangeEvent.getSource() + " for property=" +
-//                            propertyChangeEvent.getPropertyName() +
-//                            " newValue=" + propertyChangeEvent.getNewValue());
+                    log.info("PropertyChangeEvent received from " +
+                            propertyChangeEvent.getSource() + " for property=" +
+                            propertyChangeEvent.getPropertyName() +
+                            " newValue=" + propertyChangeEvent.getNewValue());
                     HasSetGet setter = setterMap.get(propertyChangeEvent.getPropertyName());
                     if (setter == null) {
                         log.warning("null setter for property named " + propertyChangeEvent.getPropertyName());

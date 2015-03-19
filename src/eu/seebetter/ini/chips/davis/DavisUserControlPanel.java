@@ -88,6 +88,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             imuVisibleCB.setSelected(config.isDisplayImu());
             imuEnabledCB.setSelected(config.isImuEnabled());
         }
+        this.chip.addObserver(this);
         chip.getSupport().addPropertyChangeListener(this);
         chip.getBiasgen().getSupport().addPropertyChangeListener(this);
 
@@ -338,6 +339,9 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
                 break;
                 case DavisConfig.PROPERTY_GLOBAL_SHUTTER_MODE_ENABLED: {
                     glShutterCB.setSelected((Boolean) evt.getNewValue());
+                }
+                case DavisChip.PROPERTY_AUTO_EXPOSURE_ENABLED:{
+                    autoExpCB.setSelected((Boolean) evt.getNewValue());
                 }
                 break;
             }
@@ -1035,6 +1039,6 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         } else if (o == apsReadoutControl) {
             edSp.setValue(getConfig().getExposureDelayMs());
             fdSp.setValue(getConfig().getFrameDelayMs());
-        }
+        } 
     }
 }

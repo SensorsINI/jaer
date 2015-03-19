@@ -8,6 +8,7 @@ import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.davis.frames.DavisFrameAviWriter;
 import eu.seebetter.ini.chips.davis.DavisAutoShooter;
+import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import net.sf.jaer.eventprocessing.filter.ApsDvsEventFilter;
 import net.sf.jaer.eventprocessing.label.ApsDvsDirectionSelectiveFilter;
 import net.sf.jaer.eventprocessing.label.SimpleOrientationFilter;
@@ -63,6 +64,9 @@ abstract public class DavisChip extends AETemporalConstastRetina {
      */
     public static final String PROPERTY_FRAME_RATE_HZ = "ApsDvsChip.FRAME_RATE_HZ", PROPERTY_MEASURED_EXPOSURE_MS = "ApsDvsChip.EXPOSURE_MS";
 
+    public static final String PROPERTY_AUTO_EXPOSURE_ENABLED = "autoExposureEnabled"; 
+
+    
     public DavisChip() {
         addDefaultEventFilter(ApsDvsEventFilter.class);
         addDefaultEventFilter(ApsFrameExtractor.class);
