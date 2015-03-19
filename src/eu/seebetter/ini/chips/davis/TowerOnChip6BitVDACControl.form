@@ -52,7 +52,7 @@
     <Component class="javax.swing.JSlider" name="voltageSlider">
       <Properties>
         <Property name="maximum" type="int" value="63"/>
-        <Property name="toolTipText" type="java.lang.String" value="Slide to adjust shifted source voltage"/>
+        <Property name="toolTipText" type="java.lang.String" value="Slide to adjust VDAC output voltage"/>
         <Property name="value" type="int" value="0"/>
         <Property name="alignmentX" type="float" value="0.0"/>
         <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
@@ -66,9 +66,9 @@
         </Property>
       </Properties>
       <Events>
+        <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="voltageSliderStateChanged"/>
         <EventHandler event="mousePressed" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="voltageSliderMousePressed"/>
         <EventHandler event="mouseReleased" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="voltageSliderMouseReleased"/>
-        <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="voltageSliderStateChanged"/>
       </Events>
     </Component>
     <Component class="javax.swing.JTextField" name="voltageTF">
@@ -79,7 +79,7 @@
         </Property>
         <Property name="horizontalAlignment" type="int" value="11"/>
         <Property name="text" type="java.lang.String" value="value"/>
-        <Property name="toolTipText" type="java.lang.String" value="Enter bias current here. Up and Down arrows change values. Shift to increment/decrement bit value."/>
+        <Property name="toolTipText" type="java.lang.String" value="Enter desired VDAC voltage here."/>
         <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
           <Dimension value="[100, 16]"/>
         </Property>
@@ -119,7 +119,7 @@
         <Component class="javax.swing.JSlider" name="bufferSllider">
           <Properties>
             <Property name="maximum" type="int" value="63"/>
-            <Property name="toolTipText" type="java.lang.String" value="Slide to adjust internal buffer bias for shifted source"/>
+            <Property name="toolTipText" type="java.lang.String" value="Slide to adjust buffer bias current for VDAC"/>
             <Property name="value" type="int" value="0"/>
             <Property name="alignmentX" type="float" value="0.0"/>
             <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
@@ -146,7 +146,7 @@
             </Property>
             <Property name="horizontalAlignment" type="int" value="11"/>
             <Property name="text" type="java.lang.String" value="value"/>
-            <Property name="toolTipText" type="java.lang.String" value="Enter buffer bias current here. Up and Down arrows change values. Shift to increment/decrement bit value."/>
+            <Property name="toolTipText" type="java.lang.String" value="Enter VDAC buffer bias current here. Up and Down arrows change values. Shift to increment/decrement bit value."/>
             <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
               <Dimension value="[100, 2147483647]"/>
             </Property>

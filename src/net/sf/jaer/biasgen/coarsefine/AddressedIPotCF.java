@@ -30,7 +30,7 @@ public class AddressedIPotCF extends AddressedIPot {
     public static final float RX=100e3f;
 
     /** Estimation of the master bias with 100kOhm external resistor (designed value); 389nA */
-    public double fixMasterBias = 0.000000389;
+    public static final float ACTUAL_MASTER_BIAS_CURRENT = 0.000000389f;
 
    /** Operating current level, defines whether to use shifted-source current mirrors for small currents. */
     public enum CurrentLevel {Normal, Low}
@@ -329,7 +329,7 @@ public class AddressedIPotCF extends AddressedIPot {
      *@return actual float value of current after resolution clipping.
      */
     public float setCoarseCurrent(float current){
-        double im=fixMasterBias; //TODO real MasterBias
+        double im=ACTUAL_MASTER_BIAS_CURRENT; //TODO real MasterBias
         setCoarseBitValue(7-(int)Math.round((Math.log(current/im)/Math.log(8))+5));
         return getCoarseCurrent();
     }
@@ -339,7 +339,7 @@ public class AddressedIPotCF extends AddressedIPot {
      * @return current in amperes
      */
     public float getCoarseCurrent(){
-        double im=fixMasterBias; //TODO real MasterBias
+        double im=ACTUAL_MASTER_BIAS_CURRENT; //TODO real MasterBias
         float i=(float)(im*Math.pow(RATIO_COARSE_CURRENT_STEP, 2-getCoarseBitValue()));
         return i;
     }

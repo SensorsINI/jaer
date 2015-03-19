@@ -92,13 +92,13 @@ public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Ob
             pot.loadPreferences(); // to get around slider value change
             pot.addObserver(this); // when pot changes, so does this gui control view
         }
-        updateAppearance();  // set controls up with values from ipot
+        updateAppearance();
         allInstances.add(this);
         setBitViewEnabled(true);
     }
 
     public String toString() {
-        return "ShiftedSourceControls " + pot.getName();
+        return "TowerOnChip6BitVDACControl " + pot.getName();
     }
 
     void rr() {
@@ -153,12 +153,17 @@ public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Ob
         add(nameLabel);
 
         voltageSlider.setMaximum(63);
-        voltageSlider.setToolTipText("Slide to adjust shifted source voltage");
+        voltageSlider.setToolTipText("Slide to adjust VDAC output voltage");
         voltageSlider.setValue(0);
         voltageSlider.setAlignmentX(0.0F);
         voltageSlider.setMaximumSize(new java.awt.Dimension(32767, 16));
         voltageSlider.setMinimumSize(new java.awt.Dimension(36, 10));
         voltageSlider.setPreferredSize(new java.awt.Dimension(200, 25));
+        voltageSlider.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                voltageSliderStateChanged(evt);
+            }
+        });
         voltageSlider.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mousePressed(java.awt.event.MouseEvent evt) {
                 voltageSliderMousePressed(evt);
@@ -167,18 +172,13 @@ public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Ob
                 voltageSliderMouseReleased(evt);
             }
         });
-        voltageSlider.addChangeListener(new javax.swing.event.ChangeListener() {
-            public void stateChanged(javax.swing.event.ChangeEvent evt) {
-                voltageSliderStateChanged(evt);
-            }
-        });
         add(voltageSlider);
 
         voltageTF.setColumns(6);
         voltageTF.setFont(new java.awt.Font("Courier New", 0, 11)); // NOI18N
         voltageTF.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
         voltageTF.setText("value");
-        voltageTF.setToolTipText("Enter bias current here. Up and Down arrows change values. Shift to increment/decrement bit value.");
+        voltageTF.setToolTipText("Enter desired VDAC voltage here.");
         voltageTF.setMaximumSize(new java.awt.Dimension(100, 16));
         voltageTF.setMinimumSize(new java.awt.Dimension(11, 15));
         voltageTF.setPreferredSize(new java.awt.Dimension(53, 15));
@@ -220,7 +220,7 @@ public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Ob
         bufferBiasPanel.setLayout(new javax.swing.BoxLayout(bufferBiasPanel, javax.swing.BoxLayout.X_AXIS));
 
         bufferSllider.setMaximum(63);
-        bufferSllider.setToolTipText("Slide to adjust internal buffer bias for shifted source");
+        bufferSllider.setToolTipText("Slide to adjust buffer bias current for VDAC");
         bufferSllider.setValue(0);
         bufferSllider.setAlignmentX(0.0F);
         bufferSllider.setMaximumSize(new java.awt.Dimension(32767, 50));
@@ -245,7 +245,7 @@ public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Ob
         bufferCurrentTF.setFont(new java.awt.Font("Courier New", 0, 11)); // NOI18N
         bufferCurrentTF.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
         bufferCurrentTF.setText("value");
-        bufferCurrentTF.setToolTipText("Enter buffer bias current here. Up and Down arrows change values. Shift to increment/decrement bit value.");
+        bufferCurrentTF.setToolTipText("Enter VDAC buffer bias current here. Up and Down arrows change values. Shift to increment/decrement bit value.");
         bufferCurrentTF.setMaximumSize(new java.awt.Dimension(100, 2147483647));
         bufferCurrentTF.setMinimumSize(new java.awt.Dimension(11, 15));
         bufferCurrentTF.setPreferredSize(new java.awt.Dimension(53, 15));
@@ -310,8 +310,8 @@ public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Ob
             dontProcessRefSlider = false;
             return;
         }
-        int bv = refBitValueFromSliderValue();
-        pot.setRefBitValue(bv);
+        int bv = vdacBitValueFromSlider();
+        pot.setVdacBitValue(bv);
 }//GEN-LAST:event_voltageSliderStateChanged
 
     private void voltageSliderMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_voltageSliderMousePressed
@@ -330,7 +330,7 @@ public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Ob
             float v = engFormat.parseFloat(voltageTF.getText());
             //            System.out.println("parsed "+valueTextField.getText()+" as "+v);
             startEdit();
-            pot.setRefCurrent(v);
+            pot.setVdacVoltage(v);
             endEdit();
         } catch (NumberFormatException e) {
             Toolkit.getDefaultToolkit().beep();
@@ -349,11 +349,11 @@ public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Ob
     private void voltageTFKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_voltageTFKeyPressed
         int code = evt.getKeyCode();
         if (code == KeyEvent.VK_UP) {
-            pot.setRefBitValue(pot.getVdacBitValue() + 1);
+            pot.setVdacBitValue(pot.getVdacBitValue() + 1);
             endEdit();
         } else if (code == KeyEvent.VK_DOWN) {
             startEdit();
-            pot.setRefBitValue(pot.getVdacBitValue() - 1);
+            pot.setVdacBitValue(pot.getVdacBitValue() - 1);
             endEdit();
         }
         pot.updateBitValue();
@@ -361,7 +361,7 @@ public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Ob
 
     private void voltageTFMouseWheelMoved(java.awt.event.MouseWheelEvent evt) {//GEN-FIRST:event_voltageTFMouseWheelMoved
         int clicks = evt.getWheelRotation();
-        pot.setRefBitValue(pot.getVdacBitValue() - clicks);
+        pot.setVdacBitValue(pot.getVdacBitValue() - clicks);
 }//GEN-LAST:event_voltageTFMouseWheelMoved
 
     private void bufferSlliderStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_bufferSlliderStateChanged
@@ -383,7 +383,7 @@ public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Ob
             dontProcessRegBiasSlider = false;
             return;
         }
-        int bbv = regBitValueFromSliderValue();
+        int bbv = bufferBitValueFromSlider();
         pot.setBufferBitValue(bbv);
 //        log.info("from slider state change got new buffer bit value = " + pot.getBufferBitValue() + " from slider value =" + s.getValue());
 }//GEN-LAST:event_bufferSlliderStateChanged
@@ -400,7 +400,7 @@ public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Ob
         try {
             float v = engFormat.parseFloat(bufferCurrentTF.getText());
             startEdit();
-            bufferCurrentTF.setText(engFormat.format(pot.setRegCurrent(v)));
+            bufferCurrentTF.setText(engFormat.format(pot.setBufferCurrent(v)));
             endEdit();
         } catch (NumberFormatException e) {
             Toolkit.getDefaultToolkit().beep();
@@ -510,7 +510,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
             log.warning("pot " + pot + " not in hashtable " + hashtable + " with size=" + hashtable.size());
             return;
         }
-        pot.setRefBitValue((Integer) hashtable.get(KEY_REFBITVALUE));
+        pot.setVdacBitValue((Integer) hashtable.get(KEY_REFBITVALUE));
         pot.setBufferBitValue((Integer) hashtable.get(KEY_REGBITVALUE));
     }
 
@@ -557,8 +557,8 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
             rr();
         }
 
-        voltageSlider.setValue(refSliderValueFromBitValue());
-        voltageTF.setText(engFormat.format(pot.getRefCurrent()));
+        voltageSlider.setValue(vdacSliderFromBitValue());
+        voltageTF.setText(engFormat.format(pot.getVdacVoltage()));
 
         if (bitPatternTextField.isVisible() != bitViewEnabled) {
             bitPatternTextField.setVisible(bitViewEnabled);
@@ -566,8 +566,8 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         }
         bitPatternTextField.setText(String.format("%16s", Integer.toBinaryString(pot.computeBinaryRepresentation())).replace(' ', '0'));
 
-        bufferSllider.setValue(regSliderValueFromBitValue());
-        bufferCurrentTF.setText(engFormat.format(pot.getRegCurrent()));
+        bufferSllider.setValue(bufferSliderFromBitValue());
+        bufferCurrentTF.setText(engFormat.format(pot.getBufferCurrent()));
 
 
         //log.info("update appearance "+pot.getName());
@@ -613,31 +613,31 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         return v;
     }
 
-    private int refSliderValueFromBitValue() {
+    private int vdacSliderFromBitValue() {
         int s = bitVal2SliderVal(pot.getVdacBitValue(), pot.maxVdacBitValue, voltageSlider);
         return s;
     }
 
-    private int refBitValueFromSliderValue() {
+    private int vdacBitValueFromSlider() {
         int v = sliderVal2BitVal(pot.maxVdacBitValue, voltageSlider);
         return v;
     }
 
     /** Returns slider value for this pots buffer bit value. */
-    private int regSliderValueFromBitValue() {
+    private int bufferSliderFromBitValue() {
         int v = bitVal2SliderVal(pot.getBufferBitValue(), pot.maxBufBitValue, bufferSllider);
         return v;
     }
 
     /** Returns buffer bit value from the slider value. */
-    private int regBitValueFromSliderValue() {
+    private int bufferBitValueFromSlider() {
         int v = sliderVal2BitVal(pot.maxBufBitValue, bufferSllider);
         return v;
     }
 
     /** called when Observable changes (pot changes) */
     public void update(Observable observable, Object obj) {
-        if (observable instanceof ShiftedSourceBiasCF) {
+        if (observable instanceof TowerOnChip6BitVDAC) {
 //            log.info("observable="+observable);
             SwingUtilities.invokeLater(new Runnable() {
 

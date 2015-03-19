@@ -6,8 +6,10 @@
 package eu.seebetter.ini.chips.davis;
 
 import eu.seebetter.ini.chips.davis.imu.ImuControl;
+import java.util.Observable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JPanel;
 import net.sf.jaer.biasgen.AddressedIPotArray;
 import net.sf.jaer.biasgen.Pot;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
@@ -55,16 +57,20 @@ public class DavisTowerBaseConfig extends DavisConfig {
 //        getMasterbias().setWOverL(4.8f / 2.4f); // masterbias has nfet with w/l=2 at output
 //        getMasterbias().addObserver(this); // changes to masterbias come back to update() here
 
-
         setPotArray(new AddressedIPotArray(this)); // garbage collect IPots added in super by making this new potArray
 
         vdacs = new TowerOnChip6BitVDAC[8];
         // TODO fix this code for actual vdacs
         int address = 0;
-        for (int i = 0; i < vdacs.length; i++) {
-            vdacs[i] = new TowerOnChip6BitVDAC(this, String.format("VDAC %d"), i, address++, "6-bit voltage dac with 3-bit buffer current control");
-            getPotArray().addPot(vdacs[i]);
-        }
+        //getPotArray().addPot(new TowerOnChip6BitVDAC(this, "", 0, 0, ""));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "apsOverflowLevel", 0, 0, "Sets reset level gate voltage of APS reset FET to prevent overflow causing DVS events"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ApsCas", 0, 0, "n-type cascode for protecting drain of DVS photoreceptor log feedback FET from APS transients"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADC_RefHigh", 0, 0, "on-chip column-parallel APS ADC upper conversion limit"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADC_RefLow", 0, 0, "on-chip column-parallel APS ADC ADC lower limit"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "AdcTestVoltagexAI", 0, 0, "Voltage supply for testing the ADC"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "BlkV1", 0, 0, "unused"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "BlkV2", 0, 0, "unused"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "BlkV3", 0, 0, "unused"));
 
         try {
             // added from gdoc https://docs.google.com/spreadsheet/ccc?key=0AuXeirzvZroNdHNLMWVldWVJdkdqNGNxOG5ZOFdXcHc#gid=6 
@@ -96,25 +102,24 @@ public class DavisTowerBaseConfig extends DavisConfig {
             addAIPot("Blk3N,n,normal,Ununsed N type"); //
             addAIPot("Blk4N,n,normal,Ununsed N type"); //
             addAIPot("biasBuffer,n,normal,special buffer bias "); // address 34
-            
-        // shifted sources 
-        ssn = new ShiftedSourceBiasCF(this);
-        ssn.setSex(Pot.Sex.N);
-        ssn.setName("SSN");
-        ssn.setTooltipString("n-type shifted source that generates a regulated voltage near ground");
-        ssn.addObserver(this);
-        ssn.setAddress(35);
 
-        ssp = new ShiftedSourceBiasCF(this);
-        ssp.setSex(Pot.Sex.P);
-        ssp.setName("SSP");
-        ssp.setTooltipString("p-type shifted source that generates a regulated voltage near Vdd");
-        ssp.addObserver(this);
-        ssp.setAddress(36);
+            // shifted sources 
+            ssn = new ShiftedSourceBiasCF(this);
+            ssn.setSex(Pot.Sex.N);
+            ssn.setName("SSN");
+            ssn.setTooltipString("n-type shifted source that generates a regulated voltage near ground");
+            ssn.addObserver(this);
+            ssn.setAddress(35);
 
-        ssBiases[1] = ssn;
-        ssBiases[0] = ssp;
+            ssp = new ShiftedSourceBiasCF(this);
+            ssp.setSex(Pot.Sex.P);
+            ssp.setName("SSP");
+            ssp.setTooltipString("p-type shifted source that generates a regulated voltage near Vdd");
+            ssp.addObserver(this);
+            ssp.setAddress(36);
 
+            ssBiases[1] = ssn;
+            ssBiases[0] = ssp;
 
             // old, from SBRet10/20/21
 //            diff = addAIPot("DiffBn,n,normal,differencing amp");
@@ -163,6 +168,24 @@ public class DavisTowerBaseConfig extends DavisConfig {
         } catch (HardwareInterfaceException ex) {
             Logger.getLogger(DAVIS240BaseCamera.class.getName()).log(Level.SEVERE, null, ex);
         }
+    }
+
+    @Override
+    public JPanel buildControlPanel() {
+        return super.buildControlPanel(); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public synchronized void update(Observable observable, Object object) {
+        super.update(observable, object);
+        try {
+            if (observable instanceof TowerOnChip6BitVDAC) {
+                sendOnChipConfig();
+            }
+        } catch (HardwareInterfaceException e) {
+            log.warning("On update() caught " + e.toString());
+        }
+
     }
 
 }
