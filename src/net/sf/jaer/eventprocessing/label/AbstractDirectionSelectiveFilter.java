@@ -208,8 +208,13 @@ abstract public class AbstractDirectionSelectiveFilter extends EventFilter2D imp
     }
 
 
-    // plots a single motion vector which is the number of pixels per second times scaling
-    void drawMotionVector(GL2 gl, MotionOrientationEventInterface e,float[][] c) {
+    /** plots a single motion vector which is the number of pixels per second times scaling
+     * 
+     * @param gl the OpenGL context
+     * @param e the event
+     * @param c a 2D array of colors vectors; the first dimension is the event type, and the second is a 3-vector of RGB colors
+     */
+    protected void drawMotionVector(GL2 gl, MotionOrientationEventInterface e,float[][] c) {
         float jx = 0, jy = 0;
         MotionOrientationEventInterface.Dir d = MotionOrientationEventInterface.unitDirs[e.getDirection()];
 
