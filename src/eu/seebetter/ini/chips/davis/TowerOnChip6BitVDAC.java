@@ -50,13 +50,16 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
     protected int vdacBitValue = 0, bufferBitValue = 0;
 
     /**
-     * correction here to map from 3-bit buffer current code value here to
-     * actual code bits that are messed up in the design of the VDAC. The bits
-     * are mirrored. See
+     * 
+     *
+     * The correction here to map from 3-bit buffer current code value here to
+     * actual code bits that are messed up (The order of values is flipped and also the bits are mirrored left/right) 
+     * in the design of the VDAC is done in the SeeBetter logic, on the logic device.  See
      * https://docs.google.com/presentation/d/1noZqRgHd17kX_U00rJvyhnoTRB_fgHmJe9KYT6DkPD0/edit#slide=id.p14
      * .
      */
-    private static final int[] COARSE_CODE_MAP = {7, 3, 5, 1, 6, 2, 4, 0};
+//    private static final int[] COARSE_CODE_MAP = {7, 3, 5, 1, 6, 2, 4, 0};
+     private static final int[] COARSE_CODE_MAP = {0,1,2,3,4,5,6,7};
 
     private int getCoarseCodeFromBufferBitValue(int bitValue) {
         if (bitValue < 0 || bitValue > 7) {
