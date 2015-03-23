@@ -47,25 +47,12 @@ abstract public class Davis346BaseCamera extends DavisBaseCamera {
         setDefaultPreferencesFile("biasgenSettings/Davis346/Davis346.xml");
         setSizeX(WIDTH_PIXELS);
         setSizeY(HEIGHT_PIXELS);
-
   
         setBiasgen(davisConfig = new Davis346Config(this));
 
         apsDVSrenderer = new AEFrameChipRenderer(this); // must be called after configuration is constructed, because it needs to know if frames are enabled to reset pixmap
         apsDVSrenderer.setMaxADC(DavisChip.MAX_ADC);
         setRenderer(apsDVSrenderer);
-
-        // hardware interface is ApsDvsHardwareInterface
-        if (getRemoteControl() != null) {
-            getRemoteControl()
-                    .addCommandListener(this, CMD_EXPOSURE, CMD_EXPOSURE + " val - sets exposure. val in ms.");
-//            getRemoteControl().addCommandListener(this, CMD_EXPOSURE_CC,
-//                    CMD_EXPOSURE_CC + " val - sets exposureControlRegister. val in clock cycles");
-//            getRemoteControl().addCommandListener(this, CMD_RS_SETTLE_CC,
-//                    CMD_RS_SETTLE_CC + " val - sets reset settling time. val in clock cycles");  // can add back later if needed for device testing
-        }
-
-        // get informed
     }
 
     /**
@@ -80,46 +67,5 @@ abstract public class Davis346BaseCamera extends DavisBaseCamera {
         setHardwareInterface(hardwareInterface);
     }
 
-    @Override
-    public void setPowerDown(final boolean powerDown) {
-        davisConfig.powerDown.set(powerDown);
-        try {
-            davisConfig.sendOnChipConfigChain();
-        } catch (final HardwareInterfaceException ex) {
-            Logger.getLogger(Davis346BaseCamera.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
-
-    /**
-     * Sets threshold for shooting a frame automatically
-     *
-     * @param thresholdEvents the number of events to trigger shot on. Less than
-     * or equal to zero disables auto-shot.
-     */
-    @Override
-    public void setAutoshotThresholdEvents(int thresholdEvents) {
-        if (thresholdEvents < 0) {
-            thresholdEvents = 0;
-        }
-        autoshotThresholdEvents = thresholdEvents;
-        getPrefs().putInt("DAViS240.autoshotThresholdEvents", thresholdEvents);
-        if (autoshotThresholdEvents == 0) {
-            davisConfig.runAdc.set(true);
-        }
-    }
-
-    @Override
-    public void setADCEnabled(final boolean adcEnabled) {
-        davisConfig.getApsReadoutControl().setAdcEnabled(adcEnabled);
-    }
-
-    /**
-     * Triggers shot of one APS frame
-     */
-    @Override
-    public void takeSnapshot() {
-        snapshot = true;
-        davisConfig.getApsReadoutControl().setAdcEnabled(true);
-    }
-
+ 
 }
