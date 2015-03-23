@@ -14,6 +14,7 @@ import java.awt.event.ActionListener;
 import java.awt.geom.Rectangle2D;
 import java.util.Iterator;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
@@ -38,6 +39,7 @@ import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.HasPropertyTooltips;
 import net.sf.jaer.util.PropertyTooltipSupport;
 import net.sf.jaer.util.RemoteControlCommand;
@@ -875,6 +877,48 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
      */
     protected DavisConfig getDavisConfig() {
         return (DavisConfig)getBiasgen();
+    }
+
+       @Override
+    public void setPowerDown(final boolean powerDown) {
+        getDavisConfig().powerDown.set(powerDown);
+        try {
+            getDavisConfig().sendOnChipConfigChain();
+        } catch (final HardwareInterfaceException ex) {
+            Logger.getLogger(Davis346BaseCamera.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    /**
+     * Sets threshold for shooting a frame automatically
+     *
+     * @param thresholdEvents the number of events to trigger shot on. Less than
+     * or equal to zero disables auto-shot.
+     */
+    @Override
+    public void setAutoshotThresholdEvents(int thresholdEvents) {
+        if (thresholdEvents < 0) {
+            thresholdEvents = 0;
+        }
+        autoshotThresholdEvents = thresholdEvents;
+        getPrefs().putInt("DAViS240.autoshotThresholdEvents", thresholdEvents);
+        if (autoshotThresholdEvents == 0) {
+            getDavisConfig().runAdc.set(true);
+        }
+    }
+
+    @Override
+    public void setADCEnabled(final boolean adcEnabled) {
+        getDavisConfig().getApsReadoutControl().setAdcEnabled(adcEnabled);
+    }
+
+    /**
+     * Triggers shot of one APS frame
+     */
+    @Override
+    public void takeSnapshot() {
+        snapshot = true;
+        getDavisConfig().getApsReadoutControl().setAdcEnabled(true);
     }
 
 }

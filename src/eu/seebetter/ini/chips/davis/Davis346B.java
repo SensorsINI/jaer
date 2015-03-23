@@ -6,10 +6,10 @@
 package eu.seebetter.ini.chips.davis;
 
 /**
- * Davis346A camera 
+ * Davis346B camera 
  * @author tobi
  */
-public class Davis346A extends Davis346BaseCamera {
+public class Davis346B extends Davis346BaseCamera {
 
     @Override
     public boolean firstFrameAddress(short x, short y) {
