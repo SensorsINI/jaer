@@ -44,15 +44,22 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      */
     public static final String EVENT_NEW_FRAME_AVAILBLE = "newFrameAvailable";
 
-    private boolean addedPropertyChangeListener = false;
+    /** Set true after we have added a property change listener */
+    protected boolean addedPropertyChangeListener = false;
     public int textureWidth; //due to hardware acceloration reasons, has to be a 2^x with x a natural number
     public int textureHeight; //due to hardware acceloration reasons, has to be a 2^x with x a natural number
 
-    private int sizeX, sizeY, maxADC, numTypes;
-    private int timestamp = 0;
-    private LowpassFilter2d autoContrast2DLowpassRangeFilter = new LowpassFilter2d();  // 2 lp values are min and max log intensities from each frame
-    private float minValue, maxValue, annotateAlpha;
-    private float[] onColor, offColor;
+    /** Fields used to reduce method calls */
+    protected int sizeX, sizeY, maxADC, numEventTypes;
+    
+    /** Used to mark time of occurance of frame event */
+    protected int timestamp = 0;
+    /** low pass temporal filter that computes time-averaged min and max gray values */
+    protected LowpassFilter2d autoContrast2DLowpassRangeFilter = new LowpassFilter2d();  // 2 lp values are min and max log intensities from each frame
+    /** min and max values of rendered gray values */
+    protected float minValue, maxValue, annotateAlpha;
+    /** RGBA rendering colors for ON and OFF DVS events */
+    protected float[] onColor, offColor;
 
     /**
      * The linear buffer of RGBA pixel colors of image frame brightness values
@@ -65,8 +72,11 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     private final int histStep = 4; // histogram bin step in ADC counts of 1024 levels
     private SimpleHistogram adcSampleValueHistogram1 = new SimpleHistogram(0, histStep, (DavisChip.MAX_ADC + 1) / histStep, 0);
     private SimpleHistogram adcSampleValueHistogram2 = new SimpleHistogram(0, histStep, (DavisChip.MAX_ADC + 1) / histStep, 0);
-    private SimpleHistogram currentHist = adcSampleValueHistogram1, nextHist = adcSampleValueHistogram2;
-    private boolean computeHistograms = false;
+    /** Histogram objects used to collect APS statistics */
+    protected SimpleHistogram currentHist = adcSampleValueHistogram1, nextHist = adcSampleValueHistogram2;
+    
+    /** Boolean on whether to compute the histogram of gray levels */
+    protected boolean computeHistograms = false;
     private boolean displayAnnotation = false;
 
     /**
@@ -210,8 +220,11 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
     }
 
-    private int warningCount = 0;
-    private static int WARNING_INTERVAL = 100;
+    /** warning counter for some warnings */
+    protected int warningCount = 0;
+    
+    /** interval to print warning messages */
+    protected static int WARNING_INTERVAL = 100;
 
     @Override
     public synchronized void render(EventPacket pkt) {
@@ -225,7 +238,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 }
             }
         }
-        numTypes = pkt.getNumCellTypes();
+        numEventTypes = pkt.getNumCellTypes();
         if (pkt instanceof ApsDvsEventPacket) {
             renderApsDvsEvents(pkt);
         } else {
@@ -241,7 +254,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
         if (!accumulateEnabled) {
             resetMaps();
-            if (numTypes > 2) {
+            if (numEventTypes > 2) {
                 resetAnnotationFrame(0.0f);
             }
         }
@@ -294,7 +307,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
         if (!accumulateEnabled) {
             resetMaps();
-            if (numTypes > 2) {
+            if (numEventTypes > 2) {
                 resetAnnotationFrame(0.0f);
             }
         }
@@ -320,7 +333,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
     }
 
-    private void updateFrameBuffer(ApsDvsEvent e) {
+    protected void updateFrameBuffer(ApsDvsEvent e) {
         float[] buf = pixBuffer.array();
         // TODO if playing backwards, then frame will come out white because B sample comes before A
         if (e.isStartOfFrame()) {
@@ -369,7 +382,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
     }
 
-    private void startFrame(int ts) {
+    protected void startFrame(int ts) {
         timestamp = ts;
         maxValue = Float.MIN_VALUE;
         minValue = Float.MAX_VALUE;
@@ -377,7 +390,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     }
 
-    private void endFrame() {
+    protected void endFrame() {
         System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
         if ((minValue !=0 ) && (maxValue > 0)) { // don't adapt to first frame which is all zeros TODO does not work if minValue<0
             java.awt.geom.Point2D.Float filter2d = autoContrast2DLowpassRangeFilter.filter2d(minValue, maxValue, timestamp);
@@ -391,7 +404,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      *
      * @param index 0-(size of pixel array-1) of pixel
      */
-    private void updateEventMaps(PolarityEvent e) {
+    protected void updateEventMaps(PolarityEvent e) {
         float[] map;
         int index = getIndex(e);
         if (packet.getNumCellTypes() > 2) {
@@ -470,7 +483,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     final int INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS = 1000;
     private long lastWarningPrintedTimeMs = Integer.MAX_VALUE;
 
-    private int getIndex(BasicEvent e) {
+    protected int getIndex(BasicEvent e) {
         int x = e.x, y = e.y;
         if ((x < 0) || (y < 0) || (x >= sizeX) || (y >= sizeY)) {
             if ((System.currentTimeMillis() - lastWarningPrintedTimeMs) > INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS) {
@@ -520,7 +533,12 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         getSupport().firePropertyChange(EVENT_COLOR_SCALE_CHANGE, old, colorScale);
     }
 
-    private static int ceilingPow2(int n) {
+    /** computes power of two value that is equal to or greater than argument
+     * 
+     * @param n value, e.g. 3
+     * @return power of two that is >=n, e.g. 4
+     */
+    protected static int ceilingPow2(int n) {
         int pow2 = 1;
         while (n > pow2) {
             pow2 = pow2 << 1;
@@ -878,27 +896,27 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         return ((DvsDisplayConfigInterface) chip.getBiasgen()).isDisplayEvents();
     }
 
-    private boolean isUseAutoContrast() {
+    protected boolean isUseAutoContrast() {
         return ((DvsDisplayConfigInterface) chip.getBiasgen()).isUseAutoContrast();
     }
 
-    private float getGamma() {
+    protected float getGamma() {
         return ((DvsDisplayConfigInterface) chip.getBiasgen()).getGamma();
     }
 
-    private float getContrast() {
+    protected float getContrast() {
         return ((DvsDisplayConfigInterface) chip.getBiasgen()).getContrast();
     }
 
-    private float getBrightness() {
+    protected float getBrightness() {
         return ((DvsDisplayConfigInterface) chip.getBiasgen()).getBrightness();
     }
 
-    private void setBrightness(float brightness) {
+    protected void setBrightness(float brightness) {
         ((DvsDisplayConfigInterface) chip.getBiasgen()).setBrightness(brightness);
     }
 
-    private void setContrast(int contrast) {
+    protected void setContrast(int contrast) {
         ((DvsDisplayConfigInterface) chip.getBiasgen()).setContrast(contrast);
     }
 }
