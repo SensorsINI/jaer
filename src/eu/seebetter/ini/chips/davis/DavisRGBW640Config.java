@@ -66,6 +66,7 @@ class DavisRGBW640Config extends DavisTowerBaseConfig {
             addAIPot("AEPdBn,n,normal,Request encoder static pulldown strength"); //31
             addAIPot("AEPuXBp,p,normal,AER column pullup strength"); //32
             addAIPot("AEPuYBp,p,normal,AER row pullup strength"); //33
+            addAIPot("BiasBuffer,n,normal,Biasgen buffer strength");//34
            
             // shifted sources 
             ssn = new ShiftedSourceBiasCF(this);
