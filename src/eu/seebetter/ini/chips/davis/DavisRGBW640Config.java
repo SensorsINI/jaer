@@ -28,46 +28,45 @@ class DavisRGBW640Config extends DavisTowerBaseConfig {
         vdacs = new TowerOnChip6BitVDAC[8];
         // TODO fix this code for actual vdacs
         //getPotArray().addPot(new TowerOnChip6BitVDAC(this, "", 0, 0, ""));
-        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "apsOverflowLevel", 0, 0, "Sets reset level gate voltage of APS reset FET to prevent overflow causing DVS events"));
-        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ApsCas", 0, 0, "n-type cascode for protecting drain of DVS photoreceptor log feedback FET from APS transients"));
-        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADC_RefHigh", 0, 0, "on-chip column-parallel APS ADC upper conversion limit"));
-        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADC_RefLow", 0, 0, "on-chip column-parallel APS ADC ADC lower limit"));
-        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "AdcTestVoltagexAI", 0, 0, "Voltage supply for testing the ADC"));
-        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "BlkV1", 0, 0, "unused"));
-        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "BlkV2", 0, 0, "unused"));
-        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "BlkV3", 0, 0, "unused"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ApsCasBpc", 0, 0, "N-type cascode for protecting drain of DVS photoreceptor log feedback FET from APS transients"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "OVG1Lo", 1, 1, "Logic low level of the overflow gate in the DAVIS pixel if it's configured as adjustable"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "OVG2Lo", 2, 2, "Logic low level of the overflow gate in the APS pixel if it's configured as adjustable"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "TX2OVG2Hi", 3, 3, "Logic high level of the overflow gate and transfer gate in the APS pixel if it's configured as adjustable"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "Gnd07", 4, 4, "Elevated ground source at 0.7V for producing 4V reset signals"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "VTestADC", 5, 5, "A fixed voltage to test the on-chip ADC if it's configured to test mode"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADCRefHigh", 6, 6, "The upper limit of the input voltage to the on chip ADC"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADCRefLow", 7, 7, "The lower limit of the input voltage to the on chip ADC"));
 
         try {
             // added from gdoc https://docs.google.com/spreadsheet/ccc?key=0AuXeirzvZroNdHNLMWVldWVJdkdqNGNxOG5ZOFdXcHc#gid=6 
             // private AddressedIPotCF diffOn, diffOff, refr, pr, sf, diff;
-            addAIPot("LocalBufBn,n,normal,Local buffer bias"); // 8
-            addAIPot("PadFollBn,n,normal,Follower-pad buffer bias current");//9
-            diff = addAIPot("DiffBn,n,normal,differencing amp");
-            diffOn = addAIPot("OnBn,n,normal,DVS brighter threshold");
-            diffOff = addAIPot("OffBn,n,normal,DVS darker threshold");
-            addAIPot("PixInvBn,n,normal,Pixel request inversion static inverter bias");
-            pr = addAIPot("PrBp,p,normal,Photoreceptor bias current");
-            sf = addAIPot("PrSFBp,p,normal,Photoreceptor follower bias current (when used in pixel type)");
-            refr = addAIPot("RefrBp,p,normal,DVS refractory period current");
-            addAIPot("ReadoutBufBP,p,normal,APS readout OTA follower bias");
-            addAIPot("ApsROSFBn,n,normal,APS readout source follower bias"); //18
-            addAIPot("ADCcompBp,p,normal,ADC comparator bias"); //19
-            addAIPot("ColSelLowBn,n,normal,Column arbiter request pull-down"); //20
-            addAIPot("DACBufBp,p,normal,Row request pull up"); //21
-            addAIPot("LcolTimeoutBn,n,normal,No column request timeout"); // 22
-            addAIPot("AEPdBn,n,normal,Request encoder pulldown static current");
-            addAIPot("AEPuXBp,p,normal,AER column pullup");
-            addAIPot("AEPuYBp,p,normal,AER row pullup");
-            addAIPot("IFRefrBn,n,normal,Bias calibration refractory period bias current"); // 26
-            addAIPot("IFThrBn,n,normal,Bias calibration neuron threshold"); //27 
-            addAIPot("Blk1P,p,normal,Ununsed P type"); //28
-            addAIPot("Blk2P,p,normal,Ununsed P type"); //
-            addAIPot("Blk1N,n,normal,Ununsed N type"); //
-            addAIPot("Blk2N,n,normal,Ununsed N type"); //
-            addAIPot("Blk3N,n,normal,Ununsed N type"); //
-            addAIPot("Blk4N,n,normal,Ununsed N type"); //
-            addAIPot("biasBuffer,n,normal,special buffer bias "); // address 34
-
+            addAIPot("IFRefrBn,n,normal,Bias calibration refractory period"); // 8
+            addAIPot("IFThrBn,n,normal,Bias calibration neuron threshold");//9
+            addAIPot("LocalBufBn,n,normal,Local buffer strength");//10
+            addAIPot("PadFollBn,n,normal,Follower-pad buffer strength");//11
+            addAIPot("Blk1N,n,normal,Ununsed N type");//12
+            addAIPot("PixInvBn,n,normal,DVS request inversion static inverter strength");//13
+            addAIPot("DiffBn,n,normal,DVS differenciator gain");//14
+            addAIPot("OnBn,n,normal,DVS on event threshold");//15
+            addAIPot("OffBn,n,normal,DVS off event threshold");//16
+            addAIPot("PrBp,p,normal,Photoreceptor bias current");//17
+            addAIPot("PrSFBp,p,normal,Photoreceptor follower bias current"); //18
+            addAIPot("RefrBp,p,normal,DVS refractory period"); //19
+            addAIPot("ArrayBiasBufferBn,n,normal,Row/column bias buffer strength"); //20
+            addAIPot("Blk1P,p,normal,Ununsed P type"); //21
+            addAIPot("ArrayLogicBufferBn,n,normal,Row logic level buffer strength"); // 22
+            addAIPot("FalltimeBn,n,normal,Fall time of the APS control signals");//23
+            addAIPot("RisetimeBp,p,normal,Rise time of the APS control signals");//24
+            addAIPot("ReadoutBufBp,p,normal,APS analog readout buffer strangth");//25
+            addAIPot("ApsROSFBn,n,normal,APS readout source follower strength"); // 26
+            addAIPot("ADCcompBp,p,normal,ADC comparator gain"); //27 
+            addAIPot("DACBufBp,p,normal,ADC ramp buffer strength"); //28
+            addAIPot("Blk2P,p,normal,Ununsed P type"); //29
+            addAIPot("LcolTimeoutBn,n,normal,No column request timeout"); //30
+            addAIPot("AEPdBn,n,normal,Request encoder static pulldown strength"); //31
+            addAIPot("AEPuXBp,p,normal,AER column pullup strength"); //32
+            addAIPot("AEPuYBp,p,normal,AER row pullup strength"); //33
+           
             // shifted sources 
             ssn = new ShiftedSourceBiasCF(this);
             ssn.setSex(Pot.Sex.N);
@@ -90,68 +89,6 @@ class DavisRGBW640Config extends DavisTowerBaseConfig {
             throw new Error(e.toString());
         }       // TODO fix this code for actual vdacs
 
-//        //getPotArray().addPot(new TowerOnChip6BitVDAC(this, "", 0, 0, ""));
-//        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "apsOverflowLevel", 0, 0, "Sets reset level gate voltage of APS reset FET to prevent overflow causing DVS events"));
-//        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ApsCas", 0, 0, "n-type cascode for protecting drain of DVS photoreceptor log feedback FET from APS transients"));
-//        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADC_RefHigh", 0, 0, "on-chip column-parallel APS ADC upper conversion limit"));
-//        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADC_RefLow", 0, 0, "on-chip column-parallel APS ADC ADC lower limit"));
-//        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "AdcTestVoltagexAI", 0, 0, "Voltage supply for testing the ADC"));
-//        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "BlkV1", 0, 0, "unused"));
-//        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "BlkV2", 0, 0, "unused"));
-//        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "BlkV3", 0, 0, "unused"));
-//
-//        try {
-//            // added from gdoc https://docs.google.com/spreadsheet/ccc?key=0AuXeirzvZroNdHNLMWVldWVJdkdqNGNxOG5ZOFdXcHc#gid=6 
-//            // private AddressedIPotCF diffOn, diffOff, refr, pr, sf, diff;
-//            addAIPot("LocalBufBn,n,normal,Local buffer bias"); // 8
-//            addAIPot("PadFollBn,n,normal,Follower-pad buffer bias current");//9
-//            diff = addAIPot("DiffBn,n,normal,differencing amp");
-//            diffOn = addAIPot("OnBn,n,normal,DVS brighter threshold");
-//            diffOff = addAIPot("OffBn,n,normal,DVS darker threshold");
-//            addAIPot("PixInvBn,n,normal,Pixel request inversion static inverter bias");
-//            pr = addAIPot("PrBp,p,normal,Photoreceptor bias current");
-//            sf = addAIPot("PrSFBp,p,normal,Photoreceptor follower bias current (when used in pixel type)");
-//            refr = addAIPot("RefrBp,p,normal,DVS refractory period current");
-//            addAIPot("ReadoutBufBP,p,normal,APS readout OTA follower bias");
-//            addAIPot("ApsROSFBn,n,normal,APS readout source follower bias"); //18
-//            addAIPot("ADCcompBp,p,normal,ADC comparator bias"); //19
-//            addAIPot("ColSelLowBn,n,normal,Column arbiter request pull-down"); //20
-//            addAIPot("DACBufBp,p,normal,Row request pull up"); //21
-//            addAIPot("LcolTimeoutBn,n,normal,No column request timeout"); // 22
-//            addAIPot("AEPdBn,n,normal,Request encoder pulldown static current");
-//            addAIPot("AEPuXBp,p,normal,AER column pullup");
-//            addAIPot("AEPuYBp,p,normal,AER row pullup");
-//            addAIPot("IFRefrBn,n,normal,Bias calibration refractory period bias current"); // 26
-//            addAIPot("IFThrBn,n,normal,Bias calibration neuron threshold"); //27 
-//            addAIPot("Blk1P,p,normal,Ununsed P type"); //28
-//            addAIPot("Blk2P,p,normal,Ununsed P type"); //
-//            addAIPot("Blk1N,n,normal,Ununsed N type"); //
-//            addAIPot("Blk2N,n,normal,Ununsed N type"); //
-//            addAIPot("Blk3N,n,normal,Ununsed N type"); //
-//            addAIPot("Blk4N,n,normal,Ununsed N type"); //
-//            addAIPot("biasBuffer,n,normal,special buffer bias "); // address 34
-//
-//            // shifted sources 
-//            ssn = new ShiftedSourceBiasCF(this);
-//            ssn.setSex(Pot.Sex.N);
-//            ssn.setName("SSN");
-//            ssn.setTooltipString("n-type shifted source that generates a regulated voltage near ground");
-//            ssn.addObserver(this);
-//            ssn.setAddress(35);
-//
-//            ssp = new ShiftedSourceBiasCF(this);
-//            ssp.setSex(Pot.Sex.P);
-//            ssp.setName("SSP");
-//            ssp.setTooltipString("p-type shifted source that generates a regulated voltage near Vdd");
-//            ssp.addObserver(this);
-//            ssp.setAddress(36);
-//
-//            ssBiases[1] = ssn;
-//            ssBiases[0] = ssp;
-//
-//        } catch (Exception e) {
-//            throw new Error(e.toString());
-//        }
 
         // graphicOptions
         videoControl = new VideoControl();
