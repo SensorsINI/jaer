@@ -64,13 +64,13 @@ public class DavisTowerBaseConfig extends DavisConfig {
         int address = 0;
         //getPotArray().addPot(new TowerOnChip6BitVDAC(this, "", 0, 0, ""));
         getPotArray().addPot(new TowerOnChip6BitVDAC(this, "apsOverflowLevel", 0, 0, "Sets reset level gate voltage of APS reset FET to prevent overflow causing DVS events"));
-        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ApsCas", 0, 0, "n-type cascode for protecting drain of DVS photoreceptor log feedback FET from APS transients"));
-        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADC_RefHigh", 0, 0, "on-chip column-parallel APS ADC upper conversion limit"));
-        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADC_RefLow", 0, 0, "on-chip column-parallel APS ADC ADC lower limit"));
-        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "AdcTestVoltagexAI", 0, 0, "Voltage supply for testing the ADC"));
-        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "BlkV1", 0, 0, "unused"));
-        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "BlkV2", 0, 0, "unused"));
-        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "BlkV3", 0, 0, "unused"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ApsCas",1, 0, "n-type cascode for protecting drain of DVS photoreceptor log feedback FET from APS transients"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADC_RefHigh", 2, 0, "on-chip column-parallel APS ADC upper conversion limit"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADC_RefLow", 3, 0, "on-chip column-parallel APS ADC ADC lower limit"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "AdcTestVoltagexAI", 4, 0, "Voltage supply for testing the ADC"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "BlkV1", 5, 0, "unused"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "BlkV2", 6, 0, "unused"));
+        getPotArray().addPot(new TowerOnChip6BitVDAC(this, "BlkV3", 7, 0, "unused"));
 
         try {
             // added from gdoc https://docs.google.com/spreadsheet/ccc?key=0AuXeirzvZroNdHNLMWVldWVJdkdqNGNxOG5ZOFdXcHc#gid=6 
