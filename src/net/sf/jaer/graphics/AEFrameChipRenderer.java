@@ -246,7 +246,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
     }
 
-    private void renderApsDvsEvents(EventPacket pkt) {
+    protected void renderApsDvsEvents(EventPacket pkt) {
 
         if (getChip() instanceof DAVIS240BaseCamera) {
             computeHistograms = ((DAVIS240BaseCamera) chip).isShowImageHistogram() || ((DavisChip) chip).isAutoExposureEnabled();
@@ -301,7 +301,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
     }
 
-    private void renderDvsEvents(EventPacket pkt) {
+    protected void renderDvsEvents(EventPacket pkt) {
         checkPixmapAllocation();
         resetSelectedPixelEventCount(); // TODO fix locating pixel with xsel ysel
 
