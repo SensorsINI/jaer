@@ -5,8 +5,6 @@
  */
 package eu.seebetter.ini.chips.davis;
 
-import eu.seebetter.ini.chips.DavisChip;
-import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.event.ApsDvsEvent;
@@ -14,7 +12,8 @@ import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
+import eu.seebetter.ini.chips.DavisChip;
+import eu.seebetter.ini.chips.davis.imu.IMUSample;
 
 /**
  * CDAVIS camera with heterogenous mixture of DAVIS and RGB APS global shutter
@@ -43,21 +42,21 @@ public class DavisRGBW640 extends Davis346BaseCamera {
             ; // event code cannot be higher than 7 in 3 bits
 
     public DavisRGBW640() {
-        
+
         setName("DavisRGBW640");
         setDefaultPreferencesFile("biasgenSettings/DavisRGBW640/DavisRGBW640.xml");
         setSizeX(WIDTH_PIXELS);
         setSizeY(HEIGHT_PIXELS);
-  
+
         setBiasgen(davisConfig = new DavisRGBW640Config(this));
 
         setEventExtractor(new DavisRGBWEventExtractor(this));
-        
+
         apsDVSrenderer = new DavisRGBW640Renderer(this); // must be called after configuration is constructed, because it needs to know if frames are enabled to reset pixmap
         apsDVSrenderer.setMaxADC(DavisChip.MAX_ADC);
         setRenderer(apsDVSrenderer);
     }
-    
+
     /**
      * The event extractor. Each pixel has two polarities 0 and 1.
      *
@@ -196,6 +195,10 @@ public class DavisRGBW640 extends Davis346BaseCamera {
                             readoutType = ApsDvsEvent.ReadoutType.SignalRead;
                             break;
 
+                        case 2:
+                            readoutType = ApsDvsEvent.ReadoutType.CpResetRead;
+                            break;
+
                         case 3:
                             Chip.log.warning("Event with readout cycle null was sent out!");
                             break;
@@ -203,7 +206,7 @@ public class DavisRGBW640 extends Davis346BaseCamera {
                         default:
                             if ((warningCount < 10) || ((warningCount % DavisEventExtractor.WARNING_COUNT_DIVIDER) == 0)) {
                                 Chip.log
-                                        .warning("Event with unknown readout cycle was sent out! You might be reading a file that had the deprecated C readout mode enabled.");
+                                        .warning("Event with unknown readout cycle was sent out!.");
                             }
                             warningCount++;
                             break;
@@ -289,12 +292,12 @@ public class DavisRGBW640 extends Davis346BaseCamera {
             // e.x came from e.x = (short) (chip.getSizeX()-1-((data & XMASK) >>> XSHIFT)); // for DVS event, no x flip
             // if APS event
             if (((ApsDvsEvent) e).adcSample >= 0) {
-                address = (address & ~DavisChip.XMASK) | ((e.x)/2 << DavisChip.XSHIFT);
+                address = (address & ~DavisChip.XMASK) | (((e.x)/2) << DavisChip.XSHIFT);
             } else {
-                address = (address & ~DavisChip.XMASK) | ((getSizeX() - 1 - e.x/2) << DavisChip.XSHIFT);
+                address = (address & ~DavisChip.XMASK) | ((getSizeX() - 1 - (e.x/2)) << DavisChip.XSHIFT);
             }
             // e.y came from e.y = (short) ((data & YMASK) >>> YSHIFT);
-            address = (address & ~DavisChip.YMASK) | (e.y/2 << DavisChip.YSHIFT);
+            address = (address & ~DavisChip.YMASK) | ((e.y/2) << DavisChip.YSHIFT);
             return address;
         }
 
@@ -302,7 +305,7 @@ public class DavisRGBW640 extends Davis346BaseCamera {
 
     @Override
     public boolean firstFrameAddress(short x, short y) {
-        return (x == getSizeX() - 1) && (y == getSizeY() - 1);
+        return (x == (getSizeX() - 1)) && (y == (getSizeY() - 1));
     }
 
     @Override
