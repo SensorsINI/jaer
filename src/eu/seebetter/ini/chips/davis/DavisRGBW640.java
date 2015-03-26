@@ -181,6 +181,22 @@ public class DavisRGBW640 extends Davis346BaseCamera {
 
                     final short x = (short) (((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
                     final short y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
+                    
+                    if (x < 320) {
+                        x = 2*(319-x);
+                    } else {
+                        x = 2*(x-320)+1;
+                    }
+                    
+                    if ((x%2)==0)&&(y%2)==0) {
+                        //R
+                    } else if ((x%2)==1)&&(y%2)==0) {
+                        //G
+                    } else if ((x%2)==1)&&(y%2)==1) {
+                        //B
+                    } else if ((x%2)==0)&&(y%2)==1) {
+                        //w
+                    }
 
                     final boolean pixFirst = firstFrameAddress(x, y); // First event of frame (addresses get flipped)
                     final boolean pixLast = lastFrameAddress(x, y); // Last event of frame (addresses get flipped)
