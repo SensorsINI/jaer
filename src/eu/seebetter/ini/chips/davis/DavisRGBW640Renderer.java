@@ -9,22 +9,14 @@
 package eu.seebetter.ini.chips.davis;
 
 import net.sf.jaer.graphics.*;
-import java.nio.FloatBuffer;
-import java.util.Arrays;
 import java.util.Iterator;
 
 import net.sf.jaer.chip.AEChip;
-import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
-import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.PolarityEvent;
-import net.sf.jaer.event.orientation.OrientationEventInterface;
-import net.sf.jaer.util.filter.LowpassFilter2d;
 import net.sf.jaer.util.histogram.SimpleHistogram;
 import eu.seebetter.ini.chips.DavisChip;
-import eu.seebetter.ini.chips.davis.DAVIS240BaseCamera;
 
 /**
  * Class adapted from AEFrameChipRenderer to render CDAVIS=rgbDAVIS output.
@@ -38,9 +30,6 @@ import eu.seebetter.ini.chips.davis.DAVIS240BaseCamera;
  * @see ChipRendererDisplayMethod
  */
 public class DavisRGBW640Renderer extends AEFrameChipRenderer {
-
- 
- 
 
     /**
      * PropertyChange
@@ -61,10 +50,8 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 //        resetAnnotationFrame(0.0f); // don't call here because it depends on knowing desired rendering state, which requires chip configuration, which might not be set yet
     }
 
-  
-
- 
-    private void renderApsDvsEvents(EventPacket pkt) {
+    @Override
+    protected void renderApsDvsEvents(EventPacket pkt) {
 
         if (getChip() instanceof DAVIS240BaseCamera) {
             computeHistograms = ((DAVIS240BaseCamera) chip).isShowImageHistogram() || ((DavisChip) chip).isAutoExposureEnabled();
@@ -119,11 +106,12 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
         }
     }
 
- 
-    /** Overridden to do CDAVIS rendering 
-     * 
+    /**
+     * Overridden to do CDAVIS rendering
+     *
      * @param e the ADC sample event
      */
+    @Override
     protected void updateFrameBuffer(ApsDvsEvent e) {
         float[] buf = pixBuffer.array();
         // TODO if playing backwards, then frame will come out white because B sample comes before A
@@ -173,18 +161,17 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
         }
     }
 
-    /** returns code that says whether this ADC sample event is RGB or White pixel
-     * 
+    /**
+     * returns code that says whether this ADC sample event is RGB or White
+     * pixel
+     *
      * @param e
      * @return int 0-3 encoding sample type
      */
-    private int rgbwSampleType(ApsDvsEvent e){
+    private int rgbwSampleType(ApsDvsEvent e) {
         return 0; // TODO fix for actual x,y RBBW mapping 
     }
 
- 
- 
- 
     /**
      * Computes the normalized gray value from an ADC sample value using
      * brightness (offset), contrast (multiplier), and gamma (power law). Takes
@@ -218,5 +205,4 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
         return v;
     }
 
- 
 }

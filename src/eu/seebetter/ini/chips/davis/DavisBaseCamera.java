@@ -393,19 +393,19 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         /**
          *
          */
-        private static final long serialVersionUID = 3890914720599660376L;
-        private int autoshotEventsSinceLastShot = 0; // autoshot counter
-        private int warningCount = 0;
-        private static final int WARNING_COUNT_DIVIDER = 10000;
+        protected static final long serialVersionUID = 3890914720599660376L;
+        protected int autoshotEventsSinceLastShot = 0; // autoshot counter
+        protected int warningCount = 0;
+        protected static final int WARNING_COUNT_DIVIDER = 10000;
 
         public DavisEventExtractor(final DavisBaseCamera chip) {
             super(chip);
         }
 
-        private IMUSample.IncompleteIMUSampleException incompleteIMUSampleException = null;
-        private static final int IMU_WARNING_INTERVAL = 1000;
-        private int missedImuSampleCounter = 0;
-        private int badImuDataCounter = 0;
+        protected IMUSample.IncompleteIMUSampleException incompleteIMUSampleException = null;
+        protected static final int IMU_WARNING_INTERVAL = 1000;
+        protected int missedImuSampleCounter = 0;
+        protected int badImuDataCounter = 0;
 
         /**
          * extracts the meaning of the raw events.
@@ -602,7 +602,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         } // extractPacket
 
         // TODO hack to reuse IMUSample events as ApsDvsEvents holding only APS or DVS data by using the special flags
-        private ApsDvsEvent nextApsDvsEvent(final OutputEventIterator outItr) {
+        protected ApsDvsEvent nextApsDvsEvent(final OutputEventIterator outItr) {
             final ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
             e.special = false;
             e.adcSample = -1;
@@ -621,7 +621,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
          * @param timestamp
          * @return
          */
-        private ApsDvsEvent createApsFlagEvent(final OutputEventIterator outItr, final ApsDvsEvent.ReadoutType flag,
+        protected ApsDvsEvent createApsFlagEvent(final OutputEventIterator outItr, final ApsDvsEvent.ReadoutType flag,
                 final int timestamp) {
             final ApsDvsEvent a = nextApsDvsEvent(outItr);
             a.adcSample = 0; // set this effectively as ADC sample even though fake
@@ -691,7 +691,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             return address;
         }
 
-        private void setFrameCount(final int i) {
+        protected void setFrameCount(final int i) {
             frameCount = i;
         }
 
