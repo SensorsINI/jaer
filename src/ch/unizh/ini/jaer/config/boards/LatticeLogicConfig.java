@@ -33,7 +33,6 @@ import ch.unizh.ini.jaer.config.dac.DACchannel;
 import ch.unizh.ini.jaer.config.dac.DACchannelArray;
 import ch.unizh.ini.jaer.config.fx2.PortBit;
 import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
-import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 
 /**
  *
@@ -212,7 +211,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 8,
 					(buf.get(2) >> 3) & 0x03);
 
-				// NulLSettle
+				// NullSettle
 				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 12,
 					buf.getShort(0) & 0xFFFF);
 			}
@@ -618,6 +617,6 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 		}
 	}
 
-        
-        
+
+
 }
