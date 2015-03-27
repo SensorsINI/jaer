@@ -180,25 +180,25 @@ public class DavisRGBW640 extends Davis346BaseCamera {
                     // right place, before the actual APS event denoting (0, 0) for example.
                     final int timestamp = timestamps[i];
 
-                    final short x = (short) (((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
-                    final short y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
+                    short x = (short) (((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
+                    short y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
                     
                     //TODO fix code, rearrange APS sample pixel address
                     if (x < 320) {
-                        x = 2*(319-x);
+                        x = (short) (2*(319-x));
                     } else {
-                        x = 2*(x-320)+1;
+                        x = (short) (2*(x-320)+1);
                     }
                     
                     //TODO fix code, identify R, G, B and W pixels
                     ApsDvsEventRGBW.ColorFilter ColorFilter = ApsDvsEventRGBW.ColorFilter.Null;
-                    if ((x%2)==0)&&(y%2)==0) {
+                    if (((x%2)==0)&&(y%2)==0) {
                         ColorFilter = ApsDvsEventRGBW.ColorFilter.R;//R
-                    } else if ((x%2)==1)&&(y%2)==0) {
+                    } else if (((x%2)==1)&&(y%2)==0) {
                         ColorFilter = ApsDvsEventRGBW.ColorFilter.G;//G
-                    } else if ((x%2)==1)&&(y%2)==1) {
+                    } else if (((x%2)==1)&&(y%2)==1) {
                         ColorFilter = ApsDvsEventRGBW.ColorFilter.B;//B
-                    } else if ((x%2)==0)&&(y%2)==1) {
+                    } else if (((x%2)==0)&&(y%2)==1) {
                         ColorFilter = ApsDvsEventRGBW.ColorFilter.W;//w
                     }
 

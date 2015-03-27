@@ -17,6 +17,7 @@ import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.util.histogram.SimpleHistogram;
 import eu.seebetter.ini.chips.DavisChip;
+import net.sf.jaer.event.ApsDvsEventRGBW;
 
 /**
  * Class adapted from AEFrameChipRenderer to render CDAVIS=rgbDAVIS output.
@@ -111,8 +112,8 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
      *
      * @param e the ADC sample event
      */
-    @Override
-    protected void updateFrameBuffer(ApsDvsEvent e) {
+    //@Override
+    protected void updateFrameBuffer(ApsDvsEventRGBW e) {
         float[] buf = pixBuffer.array();
         // TODO if playing backwards, then frame will come out white because B sample comes before A
         if (e.isStartOfFrame()) {
@@ -148,29 +149,29 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
             buf[index + 1] = fval;
             buf[index + 2] = fval;
             buf[index + 3] = 1;
-        } else if (e.isCpResetRead()) {
-            int index = getIndex(e);
-            if ((index < 0) || (index >= buf.length)) {
-                return;
-            }
-            if (e.getColorFilter() == 'W') {
+        //} else if (e.isCpResetRead()) {
+            //int index = getIndex(e);
+            //if ((index < 0) || (index >= buf.length)) {
+            //    return;
+            //}
+            //if (e.getColorFilter() == W) {
                 //(Vreset-Vsignal)+C*(Vcpreset-Vsiganl)
-                if (val < minValue) {
-                    minValue = val;
-                } else if (val > maxValue) {
-                    maxValue = val;
-                }
+                //if (val < minValue) {
+                //    minValue = val;
+                //} else if (val > maxValue) {
+                //    maxValue = val;
+            //    }
             // right here sample-reset value of this pixel is in val
 
-            if (computeHistograms) {
-                nextHist.add(val);
-            }
-            float fval = normalizeFramePixel(val);
+            //if (computeHistograms) {
+            //    nextHist.add(val);
+            //}
+            //float fval = normalizeFramePixel(val);
 //            fval=.5f;
-            buf[index] = fval;
-            buf[index + 1] = fval;
-            buf[index + 2] = fval;
-            buf[index + 3] = 1;
+            //buf[index] = fval;
+            //buf[index + 1] = fval;
+            //buf[index + 2] = fval;
+            //buf[index + 3] = 1;
         } else if (e.isEndOfFrame()) {
             endFrame();
             SimpleHistogram tmp = currentHist;
