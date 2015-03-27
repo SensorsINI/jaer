@@ -14,6 +14,7 @@ import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
+import net.sf.jaer.event.ApsDvsEventRGBW;
 
 /**
  * CDAVIS camera with heterogenous mixture of DAVIS and RGB APS global shutter
@@ -182,20 +183,23 @@ public class DavisRGBW640 extends Davis346BaseCamera {
                     final short x = (short) (((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
                     final short y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
                     
+                    //TODO fix code, rearrange APS sample pixel address
                     if (x < 320) {
                         x = 2*(319-x);
                     } else {
                         x = 2*(x-320)+1;
                     }
                     
+                    //TODO fix code, identify R, G, B and W pixels
+                    ApsDvsEventRGBW.ColorFilter ColorFilter = ApsDvsEventRGBW.ColorFilter.Null;
                     if ((x%2)==0)&&(y%2)==0) {
-                        //R
+                        ColorFilter = ApsDvsEventRGBW.ColorFilter.R;//R
                     } else if ((x%2)==1)&&(y%2)==0) {
-                        //G
+                        ColorFilter = ApsDvsEventRGBW.ColorFilter.G;//G
                     } else if ((x%2)==1)&&(y%2)==1) {
-                        //B
+                        ColorFilter = ApsDvsEventRGBW.ColorFilter.B;//B
                     } else if ((x%2)==0)&&(y%2)==1) {
-                        //w
+                        ColorFilter = ApsDvsEventRGBW.ColorFilter.W;//w
                     }
 
                     final boolean pixFirst = firstFrameAddress(x, y); // First event of frame (addresses get flipped)

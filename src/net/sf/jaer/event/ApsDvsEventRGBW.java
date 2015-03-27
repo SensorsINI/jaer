@@ -15,7 +15,7 @@ public class ApsDvsEventRGBW extends ApsDvsEvent{
     
     /** Tells for APS events whether they are under a red (R), green (G), blue (B) or white (W) colorfilter
      */
-    public enum ColorFilter {R,G,B,W};
+    public enum ColorFilter {R,G,B,W, Null};
     
     private ColorFilter colorFilter;
     

@@ -112,7 +112,11 @@ public class ApsDvsEvent extends PolarityEvent {
     public boolean isSignalRead(){
         return readoutType == ReadoutType.SignalRead;
     }
-
+    
+    public boolean isCpResetRead(){
+        return readoutType == ReadoutType.CpResetRead;
+    }
+    
     /**
      * Flags if this sample is from the start of the frame.
      * @return the startOfFrame

@@ -148,6 +148,29 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
             buf[index + 1] = fval;
             buf[index + 2] = fval;
             buf[index + 3] = 1;
+        } else if (e.isCpResetRead()) {
+            int index = getIndex(e);
+            if ((index < 0) || (index >= buf.length)) {
+                return;
+            }
+            if (e.getColorFilter() == 'W') {
+                //(Vreset-Vsignal)+C*(Vcpreset-Vsiganl)
+                if (val < minValue) {
+                    minValue = val;
+                } else if (val > maxValue) {
+                    maxValue = val;
+                }
+            // right here sample-reset value of this pixel is in val
+
+            if (computeHistograms) {
+                nextHist.add(val);
+            }
+            float fval = normalizeFramePixel(val);
+//            fval=.5f;
+            buf[index] = fval;
+            buf[index + 1] = fval;
+            buf[index + 2] = fval;
+            buf[index + 3] = 1;
         } else if (e.isEndOfFrame()) {
             endFrame();
             SimpleHistogram tmp = currentHist;
