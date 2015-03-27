@@ -259,6 +259,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 												checkValue = 0;
 											}
 
+											// Reset2 read only ever needs to be checked for RGBW DAVIS.
+											if ((j == RetinaAEReader.APS_READOUT_CPRESET) && (chipID != CHIP_DAVISRGB)) {
+												checkValue = 0;
+											}
+
 											if (apsCountX[j] != checkValue) {
 												CypressFX3.log.severe("APS Frame End: wrong column count [" + j + " - "
 													+ apsCountX[j] + "] detected.");
@@ -429,7 +434,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 								int yPos = getSizeY() - 1 - apsCountY[apsCurrentReadoutType];
 
 								// Flip for some new chips.
-								if (chipID == CHIP_DAVISRGB) {
+								if ((chipID == CHIP_DAVIS346A) || (chipID == CHIP_DAVIS346B)
+									|| (chipID == CHIP_DAVIS640) || (chipID == CHIP_DAVISRGB)) {
 									int temp = xPos;
 									xPos = yPos;
 									yPos = temp;

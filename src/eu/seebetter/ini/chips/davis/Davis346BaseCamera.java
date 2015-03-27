@@ -5,24 +5,21 @@
  */
 package eu.seebetter.ini.chips.davis;
 
-import eu.seebetter.ini.chips.DavisChip;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import net.sf.jaer.Description;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import eu.seebetter.ini.chips.DavisChip;
 
 /**
  * Base camera for Tower Davis346 cameras
- * 
+ *
  * @author tobi
  */
-@Description("DAVIS346 base class for 346x288 pixel APS-DVS DAVIS sensor")
+@Description("DAVIS346 base class for 346x260 pixel APS-DVS DAVIS sensor")
 abstract public class Davis346BaseCamera extends DavisBaseCamera {
 
     public static final short WIDTH_PIXELS = 346;
-    public static final short HEIGHT_PIXELS = 288;
+    public static final short HEIGHT_PIXELS = 260;
     protected Davis346Config davisConfig;
   /**
      * Field for decoding pixel address and data type, shadows super values to customize the EventExtractor
@@ -47,7 +44,7 @@ abstract public class Davis346BaseCamera extends DavisBaseCamera {
         setDefaultPreferencesFile("biasgenSettings/Davis346/Davis346.xml");
         setSizeX(WIDTH_PIXELS);
         setSizeY(HEIGHT_PIXELS);
-  
+
         setBiasgen(davisConfig = new Davis346Config(this));
 
         apsDVSrenderer = new AEFrameChipRenderer(this); // must be called after configuration is constructed, because it needs to know if frames are enabled to reset pixmap
@@ -67,5 +64,5 @@ abstract public class Davis346BaseCamera extends DavisBaseCamera {
         setHardwareInterface(hardwareInterface);
     }
 
- 
+
 }

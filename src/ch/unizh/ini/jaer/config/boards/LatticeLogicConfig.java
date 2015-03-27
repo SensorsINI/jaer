@@ -25,6 +25,7 @@ import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DAViSFX3HardwareInterface;
 import ch.unizh.ini.jaer.config.AbstractConfigValue;
 import ch.unizh.ini.jaer.config.cpld.CPLDConfigValue;
 import ch.unizh.ini.jaer.config.cpld.CPLDShiftRegister;
@@ -42,7 +43,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 	public AEChip chip;
 	protected ChipConfigChain chipConfigChain = null;
 	protected ShiftedSourceBiasCF[] ssBiases = new ShiftedSourceBiasCF[2];
-        /** list of configuration values that implement HasPreference; used for load and store of preferred values. */
+	/** list of configuration values that implement HasPreference; used for load and store of preferred values. */
 	protected ArrayList<HasPreference> hasPreferenceList = new ArrayList<HasPreference>();
 
 	public LatticeLogicConfig(Chip chip) {
@@ -79,20 +80,21 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 	// Clock cycles per microsecond for ADC logic. It's running at 30MHz.
 	private static final int ADC_CLOCK_FREQ_CYCLES = 30;
 
-    /**
-     * @return the chipConfigChain
-     */
-    public ChipConfigChain getChipConfigChain() {
-        return chipConfigChain;
-    }
+	/**
+	 * @return the chipConfigChain
+	 */
+	public ChipConfigChain getChipConfigChain() {
+		return chipConfigChain;
+	}
 
-    /**
-     * Returns list of config values that have preference value
-     * @return the hasPreferenceList
-     */
-    public ArrayList<HasPreference> getHasPreferenceList() {
-        return hasPreferenceList;
-    }
+	/**
+	 * Returns list of config values that have preference value
+	 *
+	 * @return the hasPreferenceList
+	 */
+	public ArrayList<HasPreference> getHasPreferenceList() {
+		return hasPreferenceList;
+	}
 
 	/** Command sent to firmware by vendor request */
 	public class Fx2ConfigCmd {
@@ -156,13 +158,25 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 		if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
 			// Send biases to chip (addressed ones, AIPOT).
 			if (cmd == CMD_AIPOT) {
-				((CypressFX3) getHardwareInterface()).sendVendorRequest(VR_CHIP_BIAS, (short) (bytes[0] & 0xFFFF),
-					(short) 0, Arrays.copyOfRange(bytes, 1, 3));
+				if (((CypressFX3) getHardwareInterface()).getPID() == DAViSFX3HardwareInterface.PID) {
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS,
+						(short) (bytes[0] & 0xFFFF),
+						ByteBuffer.wrap(Arrays.copyOfRange(bytes, 1, 3)).getShort() & 0xFFFF);
+				}
+				else {
+					((CypressFX3) getHardwareInterface()).sendVendorRequest(VR_CHIP_BIAS, (short) (bytes[0] & 0xFFFF),
+						(short) 0, Arrays.copyOfRange(bytes, 1, 3));
+				}
 			}
 
 			// Send chip shift register (diagnostic).
 			if (cmd == CMD_CHIP_CONFIG) {
-				((CypressFX3) getHardwareInterface()).sendVendorRequest(VR_CHIP_DIAG, (short) 0, (short) 0, bytes);
+				if (((CypressFX3) getHardwareInterface()).getPID() == DAViSFX3HardwareInterface.PID) {
+					// TODO: chip config is disabled for now.
+				}
+				else {
+					((CypressFX3) getHardwareInterface()).sendVendorRequest(VR_CHIP_DIAG, (short) 0, (short) 0, bytes);
+				}
 			}
 
 			// Send FPGA shift register for configuration.
@@ -616,7 +630,5 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 			}
 		}
 	}
-
-
 
 }

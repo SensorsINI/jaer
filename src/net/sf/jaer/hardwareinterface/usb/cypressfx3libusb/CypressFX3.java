@@ -644,6 +644,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	public final static short FPGA_APS = 2;
 	public final static short FPGA_IMU = 3;
 	public final static short FPGA_EXTINPUT = 4;
+	public final static short FPGA_CHIPBIAS = 5;
 	public final static short FPGA_SYSINFO = 6;
 	public final static short FPGA_USB = 9;
 
