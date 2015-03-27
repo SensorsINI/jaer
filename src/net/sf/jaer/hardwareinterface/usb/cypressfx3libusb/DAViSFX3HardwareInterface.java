@@ -51,6 +51,16 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		HardwareInterfaceException.clearException();
 	}
 
+	private static final int CHIP_DAVIS240A = 0;
+	private static final int CHIP_DAVIS240B = 1;
+	private static final int CHIP_DAVIS240C = 2;
+	private static final int CHIP_DAVIS128 = 3;
+	private static final int CHIP_DAVIS346A = 4;
+	private static final int CHIP_DAVIS346B = 5;
+	private static final int CHIP_DAVIS640 = 6;
+	private static final int CHIP_DAVISRGB = 7;
+	private static final int CHIP_DAVIS208 = 8;
+
 	/**
 	 * This reader understands the format of raw USB data and translates to the
 	 * AEPacketRaw
@@ -65,9 +75,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private int dvsLastY;
 		private boolean dvsGotY;
 
-		private static final int APS_READOUT_TYPES_NUM = 2;
+		private static final int APS_READOUT_TYPES_NUM = 3;
 		private static final int APS_READOUT_RESET = 0;
 		private static final int APS_READOUT_SIGNAL = 1;
+		private static final int APS_READOUT_CPRESET = 2;
 		private boolean apsResetRead;
 		private int apsCurrentReadoutType;
 		private final short[] apsCountX;
@@ -314,6 +325,14 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 										break;
 
+									case 32: // APS Reset2 Column Start
+										CypressFX3.log.fine("APS Reset2 Column Start event received.");
+
+										apsCurrentReadoutType = RetinaAEReader.APS_READOUT_CPRESET;
+										apsCountY[apsCurrentReadoutType] = 0;
+
+										break;
+
 									default:
 										CypressFX3.log.severe("Caught special event that can't be handled.");
 										break;
@@ -383,7 +402,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 								// out the leftmost columns, and not the rightmost ones as in all the other chips.
 								// So, if a 240c is detected, we don't do the artificial sign flip here.
 								int xPos;
-								if (chipID == 2) {
+								if (chipID == CHIP_DAVIS240C) {
 									xPos = apsCountX[apsCurrentReadoutType];
 								}
 								else {
