@@ -35,5 +35,4 @@ public interface DvsDisplayConfigInterface {
     public abstract float getGamma();
     public abstract void setGamma(float gamma);
 
-    
 }

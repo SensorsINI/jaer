@@ -54,6 +54,7 @@ import net.sf.jaer.biasgen.coarsefine.AddressedIPotCF;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceControlsCF;
 import net.sf.jaer.chip.Chip;
+import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 import net.sf.jaer.util.HasPropertyTooltips;
@@ -615,7 +616,8 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
         }
         getVideoControl().setContrast(contrast);
     }
-
+    
+ 
     @Override
     public void setDisplayEvents(boolean displayEvents) {
         if (getVideoControl() == null) {
@@ -871,6 +873,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
         }
     }
 
+
  
     /**
      * Controls the APS intensity readout by wrapping the relevant bits
@@ -1013,6 +1016,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
         public boolean displayEvents = chip.getPrefs().getBoolean("VideoControl.displayEvents", true);
         public boolean displayFrames = chip.getPrefs().getBoolean("VideoControl.displayFrames", true);
         public boolean useAutoContrast = chip.getPrefs().getBoolean("VideoControl.useAutoContrast", false);
+        public float autoContrastControlTimeConstantMs = chip.getPrefs().getFloat("VideoControl.autoContrastControlTimeConstantMs", 10000f);
         public float contrast = chip.getPrefs().getFloat("VideoControl.contrast", 1.0F);
         public float brightness = chip.getPrefs().getFloat("VideoControl.brightness", 0.0F);
         private float gamma = chip.getPrefs().getFloat("VideoControl.gamma", 1); // gamma control for improving display
@@ -1030,6 +1034,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
             tooltipSupport.setPropertyTooltip("brightness", "sets the brightness for APS frames, which is the lowest level of display intensity. Default is 0.");
             tooltipSupport.setPropertyTooltip("contrast", "sets the contrast for APS frames, which multiplies sample values by this quantity. Default is 1.");
             tooltipSupport.setPropertyTooltip("gamma", "sets the display gamma for APS frames, which applies a power law to optimize display for e.g. monitors. Default is 1.");
+            tooltipSupport.setPropertyTooltip("autoContrastControlTimeConstantMs", "Time constant in ms for autocontrast control. This is the lowpasss filter time constant for min and max image values to automatically scale image to 0-1 range.");
         }
 
         /**
@@ -1170,6 +1175,22 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
                 notifyObservers(); // inform ParameterControlPanel
             }
         }
+        
+           
+        public float getAutoContrastTimeconstantMs() {
+            if (chip.getRenderer() instanceof AEFrameChipRenderer) {
+                return ((AEFrameChipRenderer) chip.getRenderer()).getAGCTauMs();
+            }
+            return 0;
+        }
+
+        public void setAutoContrastTimeconstantMs(float ms) {
+            if (chip.getRenderer() instanceof AEFrameChipRenderer) {
+                ((AEFrameChipRenderer) chip.getRenderer()).setAGCTauMs(ms);
+            }
+            return;
+        }
+
 
         @Override
         public void update(Observable o, Object arg) {

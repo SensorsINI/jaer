@@ -125,4 +125,6 @@ public interface DavisDisplayConfigInterface extends DvsDisplayConfigInterface {
 
     public boolean isTranslateRowOnlyEvents();
 
+//    abstract public float getAutoContrastTimeconstantMs();
+//    abstract public float setAutoContrastTimeconstantMs(float ms);
 }

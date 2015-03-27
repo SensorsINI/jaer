@@ -353,7 +353,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 return;
             }
             int val = ((int) buf[index] - e.getAdcSample());
-            if (val < minValue) {
+            if (val>=0 && val < minValue) { // tobi only update min if it is >0, to deal with sensors with bad column read, like 240C
                 minValue = val;
             } else if (val > maxValue) {
                 maxValue = val;
@@ -780,6 +780,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
         autoContrast2DLowpassRangeFilter.setTauMs(tauMs);
         chip.getPrefs().putFloat("agcTauMs", tauMs);
+        resetAutoContrast();
     }
 
     public void applyAGCValues() {
@@ -811,7 +812,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     }
 
     public void resetAutoContrast() {
-
+        autoContrast2DLowpassRangeFilter.reset();
     }
 
     /**
@@ -919,4 +920,6 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     protected void setContrast(int contrast) {
         ((DvsDisplayConfigInterface) chip.getBiasgen()).setContrast(contrast);
     }
+    
+    
 }
