@@ -5,14 +5,15 @@
  */
 package eu.seebetter.ini.chips.davis;
 
-import eu.seebetter.ini.chips.davis.imu.ImuControl;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import net.sf.jaer.biasgen.AddressedIPotArray;
 import net.sf.jaer.biasgen.Pot;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import eu.seebetter.ini.chips.davis.imu.ImuControl;
 
 /**
  * Base configuration for Davis356 (ApsDvs346) on Tower wafer designs
@@ -38,7 +39,7 @@ class DavisRGBW640Config extends DavisTowerBaseConfig {
         getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADCRefLow", 7, 7, "The lower limit of the input voltage to the on chip ADC"));
 
         try {
-            // added from gdoc https://docs.google.com/spreadsheet/ccc?key=0AuXeirzvZroNdHNLMWVldWVJdkdqNGNxOG5ZOFdXcHc#gid=6 
+            // added from gdoc https://docs.google.com/spreadsheet/ccc?key=0AuXeirzvZroNdHNLMWVldWVJdkdqNGNxOG5ZOFdXcHc#gid=6
             // private AddressedIPotCF diffOn, diffOff, refr, pr, sf, diff;
             addAIPot("IFRefrBn,n,normal,Bias calibration refractory period"); // 8
             addAIPot("IFThrBn,n,normal,Bias calibration neuron threshold");//9
@@ -46,12 +47,12 @@ class DavisRGBW640Config extends DavisTowerBaseConfig {
             addAIPot("PadFollBn,n,normal,Follower-pad buffer strength");//11
             addAIPot("Blk1N,n,normal,Ununsed N type");//12
             addAIPot("PixInvBn,n,normal,DVS request inversion static inverter strength");//13
-            addAIPot("DiffBn,n,normal,DVS differenciator gain");//14
-            addAIPot("OnBn,n,normal,DVS on event threshold");//15
-            addAIPot("OffBn,n,normal,DVS off event threshold");//16
-            addAIPot("PrBp,p,normal,Photoreceptor bias current");//17
-            addAIPot("PrSFBp,p,normal,Photoreceptor follower bias current"); //18
-            addAIPot("RefrBp,p,normal,DVS refractory period"); //19
+            diff = addAIPot("DiffBn,n,normal,DVS differenciator gain");//14
+            diffOn = addAIPot("OnBn,n,normal,DVS on event threshold");//15
+            diffOff = addAIPot("OffBn,n,normal,DVS off event threshold");//16
+            pr = addAIPot("PrBp,p,normal,Photoreceptor bias current");//17
+            sf = addAIPot("PrSFBp,p,normal,Photoreceptor follower bias current"); //18
+            refr = addAIPot("RefrBp,p,normal,DVS refractory period"); //19
             addAIPot("ArrayBiasBufferBn,n,normal,Row/column bias buffer strength"); //20
             addAIPot("Blk1P,p,normal,Ununsed P type"); //21
             addAIPot("ArrayLogicBufferBn,n,normal,Row logic level buffer strength"); // 22
@@ -59,7 +60,7 @@ class DavisRGBW640Config extends DavisTowerBaseConfig {
             addAIPot("RisetimeBp,p,normal,Rise time of the APS control signals");//24
             addAIPot("ReadoutBufBp,p,normal,APS analog readout buffer strangth");//25
             addAIPot("ApsROSFBn,n,normal,APS readout source follower strength"); // 26
-            addAIPot("ADCcompBp,p,normal,ADC comparator gain"); //27 
+            addAIPot("ADCcompBp,p,normal,ADC comparator gain"); //27
             addAIPot("DACBufBp,p,normal,ADC ramp buffer strength"); //28
             addAIPot("Blk2P,p,normal,Ununsed P type"); //29
             addAIPot("LcolTimeoutBn,n,normal,No column request timeout"); //30
@@ -67,8 +68,8 @@ class DavisRGBW640Config extends DavisTowerBaseConfig {
             addAIPot("AEPuXBp,p,normal,AER column pullup strength"); //32
             addAIPot("AEPuYBp,p,normal,AER row pullup strength"); //33
             addAIPot("BiasBuffer,n,normal,Biasgen buffer strength");//34
-           
-            // shifted sources 
+
+            // shifted sources
             ssn = new ShiftedSourceBiasCF(this);
             ssn.setSex(Pot.Sex.N);
             ssn.setName("SSN");
@@ -114,5 +115,5 @@ class DavisRGBW640Config extends DavisTowerBaseConfig {
             Logger.getLogger(DAVIS240BaseCamera.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
+
 }

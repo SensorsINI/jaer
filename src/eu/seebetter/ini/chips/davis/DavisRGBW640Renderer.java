@@ -8,16 +8,18 @@
  */
 package eu.seebetter.ini.chips.davis;
 
-import net.sf.jaer.graphics.*;
+import java.nio.FloatBuffer;
 import java.util.Iterator;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.ApsDvsEventRGBW;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.ChipRendererDisplayMethod;
 import net.sf.jaer.util.histogram.SimpleHistogram;
 import eu.seebetter.ini.chips.DavisChip;
-import net.sf.jaer.event.ApsDvsEventRGBW;
 
 /**
  * Class adapted from AEFrameChipRenderer to render CDAVIS=rgbDAVIS output.
@@ -31,6 +33,8 @@ import net.sf.jaer.event.ApsDvsEventRGBW;
  * @see ChipRendererDisplayMethod
  */
 public class DavisRGBW640Renderer extends AEFrameChipRenderer {
+
+	protected FloatBuffer pixBuffer2;
 
     /**
      * PropertyChange
@@ -107,6 +111,16 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
         }
     }
 
+    @Override
+    protected void checkPixmapAllocation() {
+    	super.checkPixmapAllocation();
+
+        final int n = 4 * textureWidth * textureHeight;
+        if ((pixBuffer2 == null) || (pixBuffer2.capacity() < n)) {
+            pixBuffer2 = FloatBuffer.allocate(n);
+        }
+    }
+
     /**
      * Overridden to do CDAVIS rendering
      *
@@ -115,6 +129,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
     //@Override
     protected void updateFrameBuffer(ApsDvsEventRGBW e) {
         float[] buf = pixBuffer.array();
+        float[] buf2 = pixBuffer2.array();
         // TODO if playing backwards, then frame will come out white because B sample comes before A
         if (e.isStartOfFrame()) {
             startFrame(e.timestamp);
@@ -193,7 +208,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
      * @return int 0-3 encoding sample type
      */
     private int rgbwSampleType(ApsDvsEvent e) {
-        return 0; // TODO fix for actual x,y RBBW mapping 
+        return 0; // TODO fix for actual x,y RBBW mapping
     }
 
     /**
