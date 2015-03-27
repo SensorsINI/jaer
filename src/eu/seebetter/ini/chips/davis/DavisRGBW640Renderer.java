@@ -140,8 +140,8 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
             }
             int val = e.getAdcSample();
             buf[index] = val;
-            buf[index + 1] = val;
-            buf[index + 2] = val;
+            //buf[index + 1] = val;
+            //buf[index + 2] = val;
         } else if (e.isSignalRead()) {
             int index = getIndex(e);
             if ((index < 0) || (index >= buf.length)) {
@@ -149,8 +149,8 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
             }
             int val = e.getAdcSample();
             buf2[index] = val;
-            buf2[index + 1] = val;
-            buf2[index + 2] = val;
+            //buf2[index + 1] = val;
+            //buf2[index + 2] = val;
         } else if (e.isCpResetRead()) {
             int index = getIndex(e);
             if ((index < 0) || (index >= buf.length)) {
@@ -158,10 +158,10 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
             }
             int val = 0;
             if (e.getColorFilter() == ApsDvsEventRGBW.ColorFilter.W) {
-                val = ((int)buf[index] - (int)buf2[index])+(int)(7.35/2.13)*(e.getAdcSample()-(int)buf2[index]); 
-                //(Vreset-Vsignal)+C*(Vcpreset-Vsiganl), C=7.35/2.13
+                val = (int) ((buf[index] - buf2[index]) + ((7.35f / 2.13f) * (e.getAdcSample() - buf2[index])));
+                //(Vreset-Vsignal)+C*(Vcpreset-Vsignal), C=7.35/2.13
             } else {
-                val = ((int)buf[index] - (int)buf2[index]);
+                val = (int) (buf[index] - buf2[index]);
             }
             if (val < minValue) {
                 minValue = val;
@@ -172,7 +172,6 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
                 nextHist.add(val);
             }
             float fval = normalizeFramePixel(val);
-            fval=.5f;
             buf[index] = fval;
             buf[index + 1] = fval;
             buf[index + 2] = fval;
