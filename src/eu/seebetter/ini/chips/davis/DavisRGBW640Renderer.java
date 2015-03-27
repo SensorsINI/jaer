@@ -138,7 +138,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
             if ((index < 0) || (index >= buf.length)) {
                 return;
             }
-            float val = e.getAdcSample();
+            int val = e.getAdcSample();
             buf[index] = val;
             buf[index + 1] = val;
             buf[index + 2] = val;
@@ -147,46 +147,36 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
             if ((index < 0) || (index >= buf.length)) {
                 return;
             }
-            int val = ((int) buf[index] - e.getAdcSample());
+            int val = e.getAdcSample();
+            buf2[index] = val;
+            buf2[index + 1] = val;
+            buf2[index + 2] = val;
+        } else if (e.isCpResetRead()) {
+            int index = getIndex(e);
+            if ((index < 0) || (index >= buf.length)) {
+                return;
+            }
+            int val = 0;
+            if (e.getColorFilter() == ApsDvsEventRGBW.ColorFilter.W) {
+                val = ((int)buf[index] - (int)buf2[index])+(int)(7.35/2.13)*(e.getAdcSample()-(int)buf2[index]); 
+                //(Vreset-Vsignal)+C*(Vcpreset-Vsiganl), C=7.35/2.13
+            } else {
+                val = ((int)buf[index] - (int)buf2[index]);
+            }
             if (val < minValue) {
                 minValue = val;
             } else if (val > maxValue) {
                 maxValue = val;
             }
-            // right here sample-reset value of this pixel is in val
-
             if (computeHistograms) {
                 nextHist.add(val);
             }
             float fval = normalizeFramePixel(val);
-//            fval=.5f;
+            fval=.5f;
             buf[index] = fval;
             buf[index + 1] = fval;
             buf[index + 2] = fval;
             buf[index + 3] = 1;
-        //} else if (e.isCpResetRead()) {
-            //int index = getIndex(e);
-            //if ((index < 0) || (index >= buf.length)) {
-            //    return;
-            //}
-            //if (e.getColorFilter() == W) {
-                //(Vreset-Vsignal)+C*(Vcpreset-Vsiganl)
-                //if (val < minValue) {
-                //    minValue = val;
-                //} else if (val > maxValue) {
-                //    maxValue = val;
-            //    }
-            // right here sample-reset value of this pixel is in val
-
-            //if (computeHistograms) {
-            //    nextHist.add(val);
-            //}
-            //float fval = normalizeFramePixel(val);
-//            fval=.5f;
-            //buf[index] = fval;
-            //buf[index + 1] = fval;
-            //buf[index + 2] = fval;
-            //buf[index + 3] = 1;
         } else if (e.isEndOfFrame()) {
             endFrame();
             SimpleHistogram tmp = currentHist;
