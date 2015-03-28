@@ -29,10 +29,10 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
 
 /**
- * Computes CNN from DAVIS APS frames.
- *
- * @author tobi
- */
+* Computes CNN from DAVIS APS frames.
+*
+* @author tobi
+*/
 @Description("Computes CNN from DAVIS APS frames")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DavisDeepLearnCnnProcessor extends EventFilter2D implements PropertyChangeListener, FrameAnnotater {
@@ -48,7 +48,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     private boolean measurePerformance = getBoolean("measurePerformance", false);
     private boolean processDVSTimeSlices = getBoolean("processDVSTimeSlices", false);
     private boolean processAPSFrames = getBoolean("processAPSFrames", true);
-    private boolean addedPropertyChangeListener = false;  // must do lazy add of us as listener to chip because renderer is not there yet when this is constructed
+    protected boolean addedPropertyChangeListener = false;  // must do lazy add of us as listener to chip because renderer is not there yet when this is constructed
     private int dvsMinEvents = getInt("dvsMinEvents", 10000);
 
     private JFrame imageDisplayFrame = null;
@@ -81,7 +81,6 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         setPropertyTooltip(anal, "processDVSTimeSlices", "sends DVS time slices to convnet");
         setPropertyTooltip(anal, "dvsColorScale", "1/dvsColorScale is the amount by which each DVS event is added to time slice 2D gray-level histogram");
         setPropertyTooltip(anal, "dvsMinEvents", "minimum number of events to run net on DVS timeslice");
-
         initFilter();
     }
 
@@ -210,7 +209,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     public void propertyChange(PropertyChangeEvent evt) {
         // new activationsFrame is available, process it
         if (apsNet != null && processAPSFrames) {
-//            float[] frame = frameExtractor.getNewFrame(); 
+//            float[] frame = frameExtractor.getNewFrame();
 //            if (frame == null || frame.length == 0 || frameExtractor.getWidth() == 0) {
 //                return;
 //            }

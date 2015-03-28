@@ -1,8 +1,8 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
+* To change this license header, choose License Headers in Project Properties.
+* To change this template file, choose Tools | Templates
+* and open the template in the editor.
+*/
 package eu.visualize.ini.convnet;
 
 import java.awt.Color;
@@ -22,56 +22,55 @@ import net.sf.jaer.graphics.ImageDisplay;
 import org.bytedeco.javacpp.opencv_highgui;
 
 /**
- * Simple convolutional neural network (CNN) data structure to hold CNN from
- * Matlab DeepLearnToolbox. Replicates the computation in matlab function
- * cnnff.m, which is as follows:
- * <pre>
- *
- * function net = cnnff(net, x)
- * n = numel(net.layers);
- * net.layers{1}.activations{1} = x;
- * inputmaps = 1;
- *
- * for l = 2 : n   %  for each layer
- * if strcmp(net.layers{l}.type, 'c')
- * %  !!below can probably be handled by insane matrix operations
- * for j = 1 : net.layers{l}.outputmaps   %  for each output map
- * %  create temp output map
- * z = zeros(size(net.layers{l - 1}.activations{1}) - [net.layers{l}.kernelsize - 1 net.layers{l}.kernelsize - 1 0]);
- * for i = 1 : inputmaps   %  for each input map
- * %  convolve with corresponding kernel and add to temp output map
- * z = z + convn(net.layers{l - 1}.activations{i}, net.layers{l}.k{i}{j}, 'valid');
- * end
- * %  add bias, pass through nonlinearity
- * net.layers{l}.activations{j} = sigm(z + net.layers{l}.b{j});
- * end
- * %  set number of input maps to this layers number of outputmaps
- * inputmaps = net.layers{l}.outputmaps;
- * elseif strcmp(net.layers{l}.type, 's')
- * %  downsample
- * for j = 1 : inputmaps
- * z = convn(net.layers{l - 1}.activations{j}, ones(net.layers{l}.scale) / (net.layers{l}.scale ^ 2), 'valid');   %  !! replace with variable
- * net.layers{l}.activations{j} = z(1 : net.layers{l}.scale : end, 1 : net.layers{l}.scale : end, :);
- * end
- * end
- * end
- *
- * %  concatenate all end layer feature maps into vector
- * net.fv = [];
- * for j = 1 : numel(net.layers{n}.activations)
- * sa = size(net.layers{n}.activations{j});
- * net.fv = [net.fv; reshape(net.layers{n}.activations{j}, sa(1) * sa(2), sa(3))];
- * end
- * %  feedforward into output perceptrons
- * net.o = sigm(net.ffW * net.fv + repmat(net.ffb, 1, size(net.fv, 2)));
- *
- * end
- *
- *
- * </pre>
- *
- * @author tobi
- */
+* Simple convolutional neural network (CNN) data structure to hold CNN from
+* Matlab DeepLearnToolbox. Replicates the computation in matlab function
+* cnnff.m, which is as follows:
+* <pre>
+*
+* function net = cnnff(net, x)
+* n = numel(net.layers);
+* net.layers{1}.activations{1} = x;
+* inputmaps = 1;
+* * for l = 2 : n   %  for each layer
+* if strcmp(net.layers{l}.type, 'c')
+* %  !!below can probably be handled by insane matrix operations
+* for j = 1 : net.layers{l}.outputmaps   %  for each output map
+* %  create temp output map
+* z = zeros(size(net.layers{l - 1}.activations{1}) - [net.layers{l}.kernelsize - 1 net.layers{l}.kernelsize - 1 0]);
+* for i = 1 : inputmaps   %  for each input map
+* %  convolve with corresponding kernel and add to temp output map
+* z = z + convn(net.layers{l - 1}.activations{i}, net.layers{l}.k{i}{j}, 'valid');
+* end
+* %  add bias, pass through nonlinearity
+* net.layers{l}.activations{j} = sigm(z + net.layers{l}.b{j});
+* end
+* %  set number of input maps to this layers number of outputmaps
+* inputmaps = net.layers{l}.outputmaps;
+* elseif strcmp(net.layers{l}.type, 's')
+* %  downsample
+* for j = 1 : inputmaps
+* z = convn(net.layers{l - 1}.activations{j}, ones(net.layers{l}.scale) / (net.layers{l}.scale ^ 2), 'valid');   %  !! replace with variable
+* net.layers{l}.activations{j} = z(1 : net.layers{l}.scale : end, 1 : net.layers{l}.scale : end, :);
+* end
+* end
+* end
+*
+* %  concatenate all end layer feature maps into vector
+* net.fv = [];
+* for j = 1 : numel(net.layers{n}.activations)
+* sa = size(net.layers{n}.activations{j});
+* net.fv = [net.fv; reshape(net.layers{n}.activations{j}, sa(1) * sa(2), sa(3))];
+* end
+* %  feedforward into output perceptrons
+* net.o = sigm(net.ffW * net.fv + repmat(net.ffb, 1, size(net.fv, 2)));
+*
+* end
+*
+*
+* </pre>
+*
+* @author tobi
+*/
 public class DeepLearnCnnNetwork {
 
     int nLayers;
@@ -111,8 +110,20 @@ public class DeepLearnCnnNetwork {
      */
     public float[] processFrame(AEFrameChipRenderer frame) {
 
-        inputLayer.processFrame(frame);
+        inputLayer.processDownsampledFrame(frame);
         return processLayers();
+    }
+   
+    /**
+     * Process network given an input layer.
+     *
+     * @param inputLayerinput
+     * @return the network output
+     */
+    public float[] processNetwork(InputLayer inputLayerinput){
+        this.inputLayer=inputLayer;
+             return processLayers();
+  
     }
 
     private float[] processLayers() {
@@ -222,13 +233,13 @@ public class DeepLearnCnnNetwork {
         private boolean visible = true;
 
         public void initializeConstants() {
-            // override to processFrame constants for layer
+            // override to processDownsampledFrame constants for layer
         }
 
         /**
          * Computes activations from input layer
          *
-         * @param input the input layer to processFrame from
+         * @param input the input layer to processDownsampledFrame from
          */
         abstract public void compute(Layer input);
 
@@ -296,9 +307,9 @@ public class DeepLearnCnnNetwork {
          * Computes the output from input frame.
          *
          * @param renderer the image comes from this image displayed in AEViewer
-         * @return the vector of network output values
+         * @return the vector of input layer activations
          */
-        public float[] processFrame(AEFrameChipRenderer renderer) {
+        public float[] processDownsampledFrame(AEFrameChipRenderer renderer) {
 //            if (frame == null || frameWidth == 0 || (frame.length / type.samplesPerPixel()) % frameWidth != 0) {
 //                throw new IllegalArgumentException("input frame is null or frame array length is not a multiple of width=" + frameWidth);
 //            }
@@ -307,7 +318,7 @@ public class DeepLearnCnnNetwork {
             }
             int frameHeight = renderer.getChip().getSizeY();
             int frameWidth = renderer.getChip().getSizeX();
-            // subsample input activationsFrame to dimx dimy 
+            // subsample input activationsFrame to dimx dimy
             // activationsFrame has width*height pixels
             // for first pass we just downsample every width/dimx pixel in x and every height/dimy pixel in y
             // TODO change to subsample (averaging)
@@ -336,9 +347,9 @@ public class DeepLearnCnnNetwork {
 
         /**
          * Computes the output from input frame. The frame can be either a
-         * gray-scale frame[] with a single entry per pixel, or it can be an RGB
-         * frame[] with 3 sample (RGB) per pixel. The appropriate extraction is
-         * done in processFrame by the FrameType parameter.
+gray-scale frame[] with a single entry per pixel, or it can be an RGB
+frame[] with 3 sample (RGB) per pixel. The appropriate extraction is
+done in processDownsampledFrame by the FrameType parameter.
          *
          * @param subsampler the DVS subsampled input
          * @return the vector of network output values
@@ -474,8 +485,8 @@ public class DeepLearnCnnNetwork {
         float[] kernels;
         private int inputMapLength; // length of single input map out of input.activations
         private int inputMapDim; // size of single input map, sqrt of inputMapLength for square input (TODO assumes square input)
-        int outputMapLength; // length of single output map vector; biases.length/nOutputMaps, calculated during processFrame()
-        int outputMapDim;  // dimension of single output map, calculated during processFrame()
+        int outputMapLength; // length of single output map vector; biases.length/nOutputMaps, calculated during processDownsampledFrame()
+        int outputMapDim;  // dimension of single output map, calculated during processDownsampledFrame()
         int activationsLength;
         ImageDisplay[] activationDisplays = null;
         ImageDisplay[][] kernelDisplays = null;
@@ -494,7 +505,7 @@ public class DeepLearnCnnNetwork {
         public void initializeConstants() {
             singleKernelLength = kernelDim * kernelDim;
             halfKernelDim = kernelDim / 2;
-            // output size can only be computed once we know our input 
+            // output size can only be computed once we know our input
             for (int i = 0; i < kernels.length; i++) {
                 if (kernels[i] < minWeight) {
                     minWeight = kernels[i];
@@ -754,7 +765,7 @@ public class DeepLearnCnnNetwork {
                         int startx = xo * averageOverDim, endx = startx + averageOverDim, starty = yo * averageOverDim, endy = starty + averageOverDim;
                         for (int xi = startx; xi < endx; xi++) { // iterate over input
                             for (int yi = starty; yi < endy; yi++) {
-                                s += convLayer.a(map, xi, yi); // add to sum to processFrame average
+                                s += convLayer.a(map, xi, yi); // add to sum to processDownsampledFrame average
                             }
                         }
                         // debug
