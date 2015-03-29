@@ -5,21 +5,24 @@
 */
 package eu.visualize.ini.convnet;
 
+import static net.sf.jaer.eventprocessing.EventFilter.log;
+
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.util.Arrays;
+
+import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
-import javax.media.opengl.GL2GL3;
+import javax.media.opengl.GL2ES3;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
-import static net.sf.jaer.eventprocessing.EventFilter.log;
+
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ImageDisplay;
-import org.bytedeco.javacpp.opencv_highgui;
 
 /**
 * Simple convolutional neural network (CNN) data structure to hold CNN from
@@ -113,17 +116,16 @@ public class DeepLearnCnnNetwork {
         inputLayer.processDownsampledFrame(frame);
         return processLayers();
     }
-   
+
     /**
      * Process network given an input layer.
      *
      * @param inputLayerinput
      * @return the network output
      */
-    public float[] processNetwork(InputLayer inputLayerinput){
-        this.inputLayer=inputLayer;
-             return processLayers();
-  
+    public float[] processNetwork(InputLayer inputLayerInput){
+    	this.inputLayer = inputLayerInput;
+    	return processLayers();
     }
 
     private float[] processLayers() {
@@ -138,10 +140,10 @@ public class DeepLearnCnnNetwork {
     void drawActivations() {
         checkActivationsFrame();
         for (Layer l : layers) {
-            if (l instanceof ConvLayer && hideConvLayers) {
+            if ((l instanceof ConvLayer) && hideConvLayers) {
                 continue;
             }
-            if (l instanceof SubsamplingLayer && hideSubsamplingLayers) {
+            if ((l instanceof SubsamplingLayer) && hideSubsamplingLayers) {
                 continue;
             }
             l.drawActivations();
@@ -386,7 +388,7 @@ done in processDownsampledFrame by the FrameType parameter.
 
         @Override
         public void drawActivations() {
-            if (!isVisible() || activations == null) {
+            if (!isVisible() || (activations == null)) {
                 return;
             }
             checkActivationsFrame();
@@ -506,11 +508,11 @@ done in processDownsampledFrame by the FrameType parameter.
             singleKernelLength = kernelDim * kernelDim;
             halfKernelDim = kernelDim / 2;
             // output size can only be computed once we know our input
-            for (int i = 0; i < kernels.length; i++) {
-                if (kernels[i] < minWeight) {
-                    minWeight = kernels[i];
-                } else if (kernels[i] > maxWeight) {
-                    maxWeight = kernels[i];
+            for (float kernel : kernels) {
+                if (kernel < minWeight) {
+                    minWeight = kernel;
+                } else if (kernel > maxWeight) {
+                    maxWeight = kernel;
                 }
             }
         }
@@ -535,7 +537,7 @@ done in processDownsampledFrame by the FrameType parameter.
                 log.warning("input.activations==null");
                 return;
             }
-            if (inputLayer.activations.length % nInputMaps != 0) {
+            if ((inputLayer.activations.length % nInputMaps) != 0) {
                 log.warning("input.activations.length=" + inputLayer.activations.length + " which is not divisible by nInputMaps=" + nInputMaps);
             }
             inputMapLength = inputLayer.activations.length / nInputMaps; // for computing indexing to input
@@ -545,7 +547,7 @@ done in processDownsampledFrame by the FrameType parameter.
             }
             nKernels = nInputMaps * nOutputMaps;
             inputMapDim = (int) sqrtInputMapLength;
-            outputMapDim = inputMapDim - kernelDim + 1;
+            outputMapDim = (inputMapDim - kernelDim) + 1;
             outputMapLength = outputMapDim * outputMapDim;
             activationsLength = outputMapLength * nOutputMaps;
             kernelWeightsPerOutputMap = singleKernelLength * nOutputMaps;
@@ -554,7 +556,7 @@ done in processDownsampledFrame by the FrameType parameter.
                 log.warning("nOutputMaps!=biases.length: " + nOutputMaps + "!=" + biases.length);
             }
 
-            if (activations == null || activations.length != activationsLength) {
+            if ((activations == null) || (activations.length != activationsLength)) {
                 activations = new float[activationsLength];
             } else {
                 Arrays.fill(activations, 0);  // clear the output, since results from inputMaps will be accumulated
@@ -591,9 +593,9 @@ done in processDownsampledFrame by the FrameType parameter.
             float sum = 0;
             // march over kernel y and x
             for (int xx = 0; xx < kernelDim; xx++) { // kernel coordinate
-                int inx = xincenter + xx - halfKernelDim; // input coordinate
+                int inx = (xincenter + xx) - halfKernelDim; // input coordinate
                 for (int yy = 0; yy < kernelDim; yy++) { //yy is kernel coordinate
-                    int iny = yincenter + yy - halfKernelDim; // iny is input coordinate
+                    int iny = (yincenter + yy) - halfKernelDim; // iny is input coordinate
 //                    sum += 1;
 //                    sum += input.a(inputMap, inx, iny);
                     sum += kernels[k(inputMap, outputMap, kernelDim - xx - 1, kernelDim - yy - 1)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
@@ -637,17 +639,17 @@ done in processDownsampledFrame by the FrameType parameter.
          * @return the index into kernels[]
          */
         final int k(int inputMap, int outputMap, int x, int y) {
-            return inputMap * kernelWeightsPerOutputMap + singleKernelLength * outputMap + kernelDim * x + y; //(kernelDim - y - 1);
+            return (inputMap * kernelWeightsPerOutputMap) + (singleKernelLength * outputMap) + (kernelDim * x) + y; //(kernelDim - y - 1);
         }
 
         // output index
         final int o(int outputMap, int x, int y) {
-            return outputMap * outputMapLength + outputMapDim * x + y; //(outputMapDim-y-1);
+            return (outputMap * outputMapLength) + (outputMapDim * x) + y; //(outputMapDim-y-1);
         }
 
         @Override
         public void drawActivations() {
-            if (!isVisible() || activations == null) {
+            if (!isVisible() || (activations == null)) {
                 return;
             }
             checkActivationsFrame();
@@ -677,7 +679,7 @@ done in processDownsampledFrame by the FrameType parameter.
         }
 
         private void drawKernels() {
-            if (!isVisible() || kernels == null) {
+            if (!isVisible() || (kernels == null)) {
                 return;
             }
             checkKernelsFrame();
@@ -753,7 +755,7 @@ done in processDownsampledFrame by the FrameType parameter.
             outputMapLength = inputMapLength / averageOverNum;
             activationsLength = outputMapLength * nOutputMaps;
 
-            if (activations == null || activations.length != activationsLength) {
+            if ((activations == null) || (activations.length != activationsLength)) {
                 activations = new float[activationsLength];
             }
 
@@ -781,12 +783,12 @@ done in processDownsampledFrame by the FrameType parameter.
 
         // output index function
         final int o(int map, int x, int y) {
-            return map * outputMapLength + x * outputMapDim + y;
+            return (map * outputMapLength) + (x * outputMapDim) + y;
         }
 
         @Override
         public void drawActivations() {
-            if (!isVisible() || activations == null) {
+            if (!isVisible() || (activations == null)) {
                 return;
             }
             checkActivationsFrame();
@@ -863,7 +865,7 @@ done in processDownsampledFrame by the FrameType parameter.
          */
         @Override
         public void compute(Layer input) {
-            if (activations == null || activations.length != biases.length) {
+            if ((activations == null) || (activations.length != biases.length)) {
                 activations = new float[biases.length];
             } else {
                 Arrays.fill(activations, 0);
@@ -891,7 +893,7 @@ done in processDownsampledFrame by the FrameType parameter.
         private float weight(int unit, int nUnits, int weight) {
             // ffW in matlab DeepLearnToolbox, a many by few array in XML where there are a few rows each with many columsn to dot with previous layer
             // weight array here is stored by columns; first 4-column has first weight for each of 4 outputs, 2nd column (entries 4-7) has 2nd weights for 4 output units.
-            return weights[unit + nUnits * weight]; // e.g 2nd weight for unit 0 is at position 4=0+4*1
+            return weights[unit + (nUnits * weight)]; // e.g 2nd weight for unit 0 is at position 4=0+4*1
         }
 
         /**
@@ -909,12 +911,12 @@ done in processDownsampledFrame by the FrameType parameter.
             float dx = (float) (width) / (activations.length);
             float sy = (float) (height) / 1;
 
-            gl.glBegin(GL2.GL_LINES);
+            gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(1, 1);
             gl.glVertex2f(width - 1, 1);
             gl.glEnd();
 
-            gl.glBegin(GL2.GL_LINE_STRIP);
+            gl.glBegin(GL.GL_LINE_STRIP);
             for (int i = 0; i < activations.length; i++) {
                 float y = 1 + (sy * activations[i]);
                 float x1 = 1 + (dx * i), x2 = x1 + dx;
@@ -927,7 +929,7 @@ done in processDownsampledFrame by the FrameType parameter.
         }
 
         public void annotateHistogram(GL2 gl, int width, int height, float lineWidth, Color color) {
-            gl.glPushAttrib(GL2GL3.GL_COLOR | GL2.GL_LINE_WIDTH);
+            gl.glPushAttrib(GL2ES3.GL_COLOR | GL.GL_LINE_WIDTH);
             gl.glLineWidth(lineWidth);
             float[] ca = color.getColorComponents(null);
             gl.glColor4fv(ca, 0);
@@ -937,7 +939,7 @@ done in processDownsampledFrame by the FrameType parameter.
 
         @Override
         public void drawActivations() {
-            if (!isVisible() || activations == null) {
+            if (!isVisible() || (activations == null)) {
                 return;
             }
             checkActivationsFrame();
