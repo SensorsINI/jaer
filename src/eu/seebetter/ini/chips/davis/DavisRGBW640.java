@@ -237,7 +237,7 @@ public class DavisRGBW640 extends Davis346BaseCamera {
                     if (pixFirst && (readoutType == ApsDvsEventRGBW.ReadoutType.ResetRead)) {
                         createApsFlagEvent(outItr, ApsDvsEventRGBW.ReadoutType.SOF, timestamp);
 
-                        if (!getDavisConfig().getChipConfigChain().getConfigBits()[6].isSet()) {
+                        if (!getDavisConfig().getApsReadoutControl().isGlobalShutterMode()) {
                             // rolling shutter start of exposureControlRegister (SOE)
                             createApsFlagEvent(outItr, ApsDvsEventRGBW.ReadoutType.SOE, timestamp);
                             frameIntervalUs = timestamp - frameExposureStartTimestampUs;
@@ -246,7 +246,7 @@ public class DavisRGBW640 extends Davis346BaseCamera {
                     }
 
                     if (pixLast && (readoutType == ApsDvsEventRGBW.ReadoutType.ResetRead)
-                            && getDavisConfig().getChipConfigChain().getConfigBits()[6].isSet()) {
+                            && getDavisConfig().getApsReadoutControl().isGlobalShutterMode()) {
                         // global shutter start of exposureControlRegister (SOE)
                         createApsFlagEvent(outItr, ApsDvsEventRGBW.ReadoutType.SOE, timestamp);
                         frameIntervalUs = timestamp - frameExposureStartTimestampUs;

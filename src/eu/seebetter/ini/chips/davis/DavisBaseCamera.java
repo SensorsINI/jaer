@@ -5,9 +5,6 @@
  */
 package eu.seebetter.ini.chips.davis;
 
-import eu.seebetter.ini.chips.davis.imu.IMUSample;
-import com.jogamp.opengl.util.awt.TextRenderer;
-import eu.seebetter.ini.chips.DavisChip;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -15,6 +12,7 @@ import java.awt.geom.Rectangle2D;
 import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.media.opengl.GL;
 import javax.media.opengl.GL2;
 import javax.media.opengl.GLAutoDrawable;
@@ -25,6 +23,7 @@ import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
+
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.Chip;
@@ -35,17 +34,18 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
-import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.util.HasPropertyTooltips;
-import net.sf.jaer.util.PropertyTooltipSupport;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.histogram.AbstractHistogram;
-import net.sf.jaer.util.histogram.SimpleHistogram;
+
+import com.jogamp.opengl.util.awt.TextRenderer;
+
+import eu.seebetter.ini.chips.DavisChip;
+import eu.seebetter.ini.chips.davis.imu.IMUSample;
 
 /**
  * Abstract base camera class for SeeBetter DAVIS cameras.
@@ -106,7 +106,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         setEventExtractor(new DavisEventExtractor(this));
 
-  
+
         davisDisplayMethod = new DavisDisplayMethod(this);
         getCanvas().addDisplayMethod(davisDisplayMethod);
         getCanvas().setDisplayMethod(davisDisplayMethod);
@@ -120,10 +120,10 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 //                    CMD_RS_SETTLE_CC + " val - sets reset settling time. val in clock cycles");
         }
         autoExposureController = new AutoExposureController(this);
-       
+
     }
-    
-    
+
+
 
     @Override
     public void controlExposure() {
@@ -544,7 +544,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     if (pixFirst && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)) {
                         createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOF, timestamp);
 
-                        if (!getDavisConfig().getChipConfigChain().getConfigBits()[6].isSet()) {
+                        if (!getDavisConfig().getApsReadoutControl().isGlobalShutterMode()) {
                             // rolling shutter start of exposureControlRegister (SOE)
                             createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamp);
                             frameIntervalUs = timestamp - frameExposureStartTimestampUs;
@@ -553,7 +553,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     }
 
                     if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)
-                            && getDavisConfig().getChipConfigChain().getConfigBits()[6].isSet()) {
+                            && getDavisConfig().getApsReadoutControl().isGlobalShutterMode()) {
                         // global shutter start of exposureControlRegister (SOE)
                         createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamp);
                         frameIntervalUs = timestamp - frameExposureStartTimestampUs;
@@ -745,7 +745,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             }
 
             // Draw last IMU output
-            if (getDavisConfig() != null && getDavisConfig().isDisplayImu() && (chip instanceof DavisBaseCamera)) {
+            if ((getDavisConfig() != null) && getDavisConfig().isDisplayImu() && (chip instanceof DavisBaseCamera)) {
                 final IMUSample imuSample = ((DavisBaseCamera) chip).getImuSample();
                 if (imuSample != null) {
                     imuRender(drawable, imuSample);
@@ -870,7 +870,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
     /**
      * A convenience method that returns the Biasgen object cast to DavisConfig. This object contains all configuration of the
-     * camera. This method was added for use in all configuration classes of subclasses fo DavisBaseCamera. 
+     * camera. This method was added for use in all configuration classes of subclasses fo DavisBaseCamera.
      *
      * @return the configuration object
      * @author tobi

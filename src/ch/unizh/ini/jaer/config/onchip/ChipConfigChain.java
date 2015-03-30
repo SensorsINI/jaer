@@ -16,60 +16,63 @@ import ch.unizh.ini.jaer.config.MuxControlPanel;
 
 /**
  * Describes a chip or FPGA/CPLD level configuration shift register.
- * 
+ *
  * @author Christian
  */
 public abstract class ChipConfigChain extends Observable implements HasPreference, Observer {
+	public Chip sbChip;
 
-    public Chip sbChip;
+	// Config Bits
+	protected OnchipConfigBit[] configBits;
+	public int TOTAL_CONFIG_BITS = 0;
 
-    //Config Bits
-    protected OnchipConfigBit[] configBits;
-    public int TOTAL_CONFIG_BITS = 0;
+	protected ArrayList<OutputMux> muxes = new ArrayList<>();
+	protected MuxControlPanel controlPanel = null;
 
-    ArrayList<OutputMux> muxes = new ArrayList();
-    MuxControlPanel controlPanel = null;
+	public ChipConfigChain(Chip chip) {
+		this.sbChip = chip;
+	}
 
-    public ChipConfigChain(Chip chip){  
-        this.sbChip = chip;
-    }
+	public abstract String getBitString();
 
-    public abstract String getBitString();
+	public abstract MuxControlPanel buildMuxControlPanel();
 
-    public abstract MuxControlPanel buildMuxControlPanel();
+	public abstract JPanel getChipConfigPanel();
 
-    public abstract JPanel getChipConfigPanel();
+	@Override
+	public void loadPreference() {
+		for (OnchipConfigBit b : getConfigBits()) {
+			if (b != null) {
+				b.loadPreference();
+			}
+		}
+		for (OutputMux m : muxes) {
+			m.loadPreference();
+		}
+	}
 
-    @Override
-    public void loadPreference() {
-        for (OnchipConfigBit b : getConfigBits()) {
-            b.loadPreference();
-        }
-        for (OutputMux m : muxes) {
-            m.loadPreference();
-        }
-    }
+	@Override
+	public void storePreference() {
+		for (OnchipConfigBit b : getConfigBits()) {
+			if (b != null) {
+				b.storePreference();
+			}
+		}
+		for (OutputMux m : muxes) {
+			m.storePreference();
+		}
+	}
 
-    @Override
-    public void storePreference() {
-        for (OnchipConfigBit b : getConfigBits()) {
-            b.storePreference();
-        }
-        for (OutputMux m : muxes) {
-            m.storePreference();
-        }
-    }
+	@Override
+	public void update(Observable o, Object arg) {
+		setChanged();
+		notifyObservers(arg);
+	}
 
-    @Override
-    public void update(Observable o, Object arg) {
-        setChanged();
-        notifyObservers(arg);
-    }
-
-    /**
-     * @return the configBits
-     */
-    public OnchipConfigBit[] getConfigBits() {
-        return configBits;
-    }
+	/**
+	 * @return the configBits
+	 */
+	public OnchipConfigBit[] getConfigBits() {
+		return configBits;
+	}
 }
