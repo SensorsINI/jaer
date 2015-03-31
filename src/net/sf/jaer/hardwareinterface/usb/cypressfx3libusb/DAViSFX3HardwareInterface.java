@@ -81,6 +81,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private static final int APS_READOUT_CPRESET = 2;
 		private boolean apsResetRead;
 		private int apsCurrentReadoutType;
+		private int apsRGBPixelOffset;
+		private boolean apsRGBPixelOffsetDirection;
 		private final short[] apsCountX;
 		private final short[] apsCountY;
 
@@ -278,6 +280,9 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										apsCurrentReadoutType = RetinaAEReader.APS_READOUT_RESET;
 										apsCountY[apsCurrentReadoutType] = 0;
 
+										apsRGBPixelOffsetDirection = false;
+										apsRGBPixelOffset = 1; // RGB support, first pixel of row always even.
+
 										break;
 
 									case 12: // APS Signal Column Start
@@ -285,6 +290,9 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 										apsCurrentReadoutType = RetinaAEReader.APS_READOUT_SIGNAL;
 										apsCountY[apsCurrentReadoutType] = 0;
+
+										apsRGBPixelOffsetDirection = false;
+										apsRGBPixelOffset = 1; // RGB support, first pixel of row always even.
 
 										break;
 
@@ -353,6 +361,9 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 										apsCurrentReadoutType = RetinaAEReader.APS_READOUT_CPRESET;
 										apsCountY[apsCurrentReadoutType] = 0;
+
+										apsRGBPixelOffsetDirection = false;
+										apsRGBPixelOffset = 1; // RGB support, first pixel of row always even.
 
 										break;
 
@@ -424,14 +435,20 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 								// The DAVIS240c chip is flipped along the X axis. This means it's first reading
 								// out the leftmost columns, and not the rightmost ones as in all the other chips.
 								// So, if a 240c is detected, we don't do the artificial sign flip here.
-								int xPos;
+								int xPos,
+								yPos;
 								if (chipID == CHIP_DAVIS240C) {
 									xPos = apsCountX[apsCurrentReadoutType];
 								}
 								else {
 									xPos = getSizeX() - 1 - apsCountX[apsCurrentReadoutType];
 								}
-								int yPos = getSizeY() - 1 - apsCountY[apsCurrentReadoutType];
+								if (chipID == CHIP_DAVISRGB) {
+									yPos = getSizeY() - 1 - apsCountY[apsCurrentReadoutType] - apsRGBPixelOffset;
+								}
+								else {
+									yPos = getSizeY() - 1 - apsCountY[apsCurrentReadoutType];
+								}
 
 								// Flip for some new chips.
 								if ((chipID == CHIP_DAVIS346A) || (chipID == CHIP_DAVIS346B)
@@ -442,6 +459,20 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 								}
 
 								apsCountY[apsCurrentReadoutType]++;
+
+								// RGB support: first 320 pixels are even, then odd.
+								if (!apsRGBPixelOffsetDirection) { // Increasing
+									apsRGBPixelOffset++;
+
+									if (apsRGBPixelOffset == 321) {
+										// Switch to decreasing after last even pixel.
+										apsRGBPixelOffsetDirection = true;
+										apsRGBPixelOffset = 318;
+									}
+								}
+								else { // Decreasing
+									apsRGBPixelOffset -= 3;
+								}
 
 								// Check that the buffer has space for this event. Enlarge if needed.
 								if (ensureCapacity(buffer, eventCounter + 1)) {

@@ -13,7 +13,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 
 import net.sf.jaer.chip.AEChip;
-import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
@@ -22,6 +21,7 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.orientation.OrientationEventInterface;
 import net.sf.jaer.util.filter.LowpassFilter2d;
 import net.sf.jaer.util.histogram.SimpleHistogram;
+import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DAVIS240BaseCamera;
 
@@ -51,7 +51,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     /** Fields used to reduce method calls */
     protected int sizeX, sizeY, maxADC, numEventTypes;
-    
+
     /** Used to mark time of occurance of frame event */
     protected int timestamp = 0;
     /** low pass temporal filter that computes time-averaged min and max gray values */
@@ -74,7 +74,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     private SimpleHistogram adcSampleValueHistogram2 = new SimpleHistogram(0, histStep, (DavisChip.MAX_ADC + 1) / histStep, 0);
     /** Histogram objects used to collect APS statistics */
     protected SimpleHistogram currentHist = adcSampleValueHistogram1, nextHist = adcSampleValueHistogram2;
-    
+
     /** Boolean on whether to compute the histogram of gray levels */
     protected boolean computeHistograms = false;
     private boolean displayAnnotation = false;
@@ -222,7 +222,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     /** warning counter for some warnings */
     protected int warningCount = 0;
-    
+
     /** interval to print warning messages */
     protected static int WARNING_INTERVAL = 100;
 
@@ -353,7 +353,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 return;
             }
             int val = ((int) buf[index] - e.getAdcSample());
-            if (val>=0 && val < minValue) { // tobi only update min if it is >0, to deal with sensors with bad column read, like 240C
+            if ((val>=0) && (val < minValue)) { // tobi only update min if it is >0, to deal with sensors with bad column read, like 240C
                 minValue = val;
             } else if (val > maxValue) {
                 maxValue = val;
@@ -480,8 +480,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
     }
 
-    final int INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS = 1000;
-    private long lastWarningPrintedTimeMs = Integer.MAX_VALUE;
+    protected final int INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS = 1000;
+    protected long lastWarningPrintedTimeMs = Integer.MAX_VALUE;
 
     protected int getIndex(BasicEvent e) {
         int x = e.x, y = e.y;
@@ -534,7 +534,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     }
 
     /** computes power of two value that is equal to or greater than argument
-     * 
+     *
      * @param n value, e.g. 3
      * @return power of two that is >=n, e.g. 4
      */
@@ -920,6 +920,6 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     protected void setContrast(int contrast) {
         ((DvsDisplayConfigInterface) chip.getBiasgen()).setContrast(contrast);
     }
-    
-    
+
+
 }

@@ -1088,6 +1088,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 
 		public boolean displayEvents = chip.getPrefs().getBoolean("VideoControl.displayEvents", true);
 		public boolean displayFrames = chip.getPrefs().getBoolean("VideoControl.displayFrames", true);
+		public boolean separateAPSByColor = chip.getPrefs().getBoolean("VideoControl.separateAPSByColor", false);
 		public boolean useAutoContrast = chip.getPrefs().getBoolean("VideoControl.useAutoContrast", false);
 		public float autoContrastControlTimeConstantMs = chip.getPrefs().getFloat(
 			"VideoControl.autoContrastControlTimeConstantMs", 10000f);
@@ -1141,6 +1142,19 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 				setChanged();
 				notifyObservers(); // inform ParameterControlPanel
 			}
+		}
+
+		public boolean isSeparateAPSByColor() {
+			return separateAPSByColor;
+		}
+
+		/**
+		 * @param displayFrames
+		 *            the displayFrames to set
+		 */
+		public void setSeparateAPSByColor(boolean separateAPSByColor) {
+			this.separateAPSByColor = separateAPSByColor;
+			chip.getPrefs().putBoolean("VideoControl.separateAPSByColor", separateAPSByColor);
 		}
 
 		/**
@@ -1310,6 +1324,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		public void storePreference() {
 			chip.getPrefs().putBoolean("VideoControl.displayEvents", displayEvents);
 			chip.getPrefs().putBoolean("VideoControl.displayFrames", displayFrames);
+			chip.getPrefs().putBoolean("VideoControl.separateAPSByColor", separateAPSByColor);
 			chip.getPrefs().putBoolean("VideoControl.useAutoContrast", useAutoContrast);
 			chip.getPrefs().putFloat("VideoControl.contrast", contrast);
 			chip.getPrefs().putFloat("VideoControl.brightness", brightness);
@@ -1674,5 +1689,22 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 
 			return chipConfigPanel;
 		}
+	}
+
+	@Override
+	public boolean isSeparateAPSByColor() {
+		if (getVideoControl() == null) {
+			return false;
+		}
+
+		return getVideoControl().isSeparateAPSByColor();
+	}
+
+	@Override
+	public void setSeparateAPSByColor(boolean yes) {
+		if (getVideoControl() == null) {
+			return;
+		}
+		getVideoControl().setSeparateAPSByColor(yes);
 	}
 }

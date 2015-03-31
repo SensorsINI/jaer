@@ -80,6 +80,10 @@ public interface DavisDisplayConfigInterface extends DvsDisplayConfigInterface {
 
     abstract public void setDisplayImu(boolean yes);
 
+    abstract public boolean isSeparateAPSByColor();
+
+    abstract public void setSeparateAPSByColor(boolean yes);
+
     /**
      * Sets whether AER monitor interface runs to capture DVS output from sensor
      *
