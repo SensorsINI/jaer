@@ -487,7 +487,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 		return ret;
 	}
 
-	protected boolean sendAIPot(AddressedIPot pot) throws HardwareInterfaceException {
+	public boolean sendAIPot(AddressedIPot pot) throws HardwareInterfaceException {
 		byte[] bytes = pot.getBinaryRepresentation();
 
 		if ((getHardwareInterface() != null)
