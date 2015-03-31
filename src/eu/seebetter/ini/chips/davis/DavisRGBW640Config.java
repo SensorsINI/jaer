@@ -13,6 +13,7 @@ import net.sf.jaer.biasgen.Pot;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import ch.unizh.ini.jaer.config.cpld.CPLDInt;
 import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
 import eu.seebetter.ini.chips.davis.imu.ImuControl;
 
@@ -22,9 +23,40 @@ import eu.seebetter.ini.chips.davis.imu.ImuControl;
  * @author tobi
  */
 class DavisRGBW640Config extends DavisTowerBaseConfig {
+	protected CPLDInt Transfer_D = new CPLDInt(chip, 167, 152, (1 << 12) - 1, "Transfer_D",
+		"Transfer time counter (3 in GS, 1 in RS).", 0);
+	protected CPLDInt RSFDSettle_D = new CPLDInt(chip, 183, 168, (1 << 12) - 1, "RSFDSettle_D",
+		"RS counter 0.", 0);
+	protected CPLDInt RSCpReset_D = new CPLDInt(chip, 199, 184, (1 << 12) - 1, "RSCpReset_D",
+		"RS counter 2.", 0);
+	protected CPLDInt RSCpSettle_D = new CPLDInt(chip, 215, 200, (1 << 12) - 1, "RSCpSettle_D",
+		"RS counter 3.", 0);
+	protected CPLDInt GSPDReset_D = new CPLDInt(chip, 231, 216, (1 << 12) - 1, "GSPDReset_D",
+		"GS counter 0.", 0);
+	protected CPLDInt GSResetFall_D = new CPLDInt(chip, 247, 232, (1 << 12) - 1, "GSResetFall_D",
+		"GS counter 2.", 0);
+	protected CPLDInt GSTXFall_D = new CPLDInt(chip, 263, 248, (1 << 12) - 1, "GSTXFall_D",
+		"GS counter 4.", 0);
+	protected CPLDInt GSFDReset_D = new CPLDInt(chip, 279, 264, (1 << 12) - 1, "GSFDReset_D",
+		"GS counter 5.", 0);
+	protected CPLDInt GSCpResetFD_D = new CPLDInt(chip, 295, 280, (1 << 12) - 1, "GSCpResetFD_D",
+		"GS counter 6.", 0);
+	protected CPLDInt GSCpResetSettle_D = new CPLDInt(chip, 311, 296, (1 << 12) - 1, "GSCpResetSettle_D",
+		"GS counter 7.", 0);
 
 	public DavisRGBW640Config(Chip chip) {
 		super(chip);
+
+		addConfigValue(Transfer_D);
+		addConfigValue(RSFDSettle_D);
+		addConfigValue(RSCpReset_D);
+		addConfigValue(RSCpSettle_D);
+		addConfigValue(GSPDReset_D);
+		addConfigValue(GSResetFall_D);
+		addConfigValue(GSTXFall_D);
+		addConfigValue(GSFDReset_D);
+		addConfigValue(GSCpResetFD_D);
+		addConfigValue(GSCpResetSettle_D);
 
 		setPotArray(new AddressedIPotArray(this)); // garbage collect IPots added in super by making this new potArray
 
@@ -123,7 +155,7 @@ class DavisRGBW640Config extends DavisTowerBaseConfig {
 		chipConfigChain.addObserver(this);
 
 		// control of log readout
-		apsReadoutControl = new ApsReadoutControl();
+		apsReadoutControl = new DavisRGBW640APSReadoutControl();
 
 		// imuControl
 		imuControl = new ImuControl(this);
@@ -157,6 +189,113 @@ class DavisRGBW640Config extends DavisTowerBaseConfig {
 			configBits[10].addObserver(this);
 			configBits[11] = adjustTX2OVG2Hi;
 			configBits[11].addObserver(this);
+		}
+	}
+
+	public class DavisRGBW640APSReadoutControl extends ApsReadoutControl {
+		public DavisRGBW640APSReadoutControl() {
+			super();
+
+			Transfer_D.addObserver(this);
+			tooltipSupport.setPropertyTooltip("Transfer_D", Transfer_D.getDescription());
+			RSFDSettle_D.addObserver(this);
+			tooltipSupport.setPropertyTooltip("RSFDSettle_D", RSFDSettle_D.getDescription());
+			RSCpReset_D.addObserver(this);
+			tooltipSupport.setPropertyTooltip("RSCpReset_D", RSCpReset_D.getDescription());
+			RSCpSettle_D.addObserver(this);
+			tooltipSupport.setPropertyTooltip("RSCpSettle_D", RSCpSettle_D.getDescription());
+			GSPDReset_D.addObserver(this);
+			tooltipSupport.setPropertyTooltip("GSPDReset_D", GSPDReset_D.getDescription());
+			GSResetFall_D.addObserver(this);
+			tooltipSupport.setPropertyTooltip("GSResetFall_D", GSResetFall_D.getDescription());
+			GSTXFall_D.addObserver(this);
+			tooltipSupport.setPropertyTooltip("GSTXFall_D", GSTXFall_D.getDescription());
+			GSFDReset_D.addObserver(this);
+			tooltipSupport.setPropertyTooltip("GSFDReset_D", GSFDReset_D.getDescription());
+			GSCpResetFD_D.addObserver(this);
+			tooltipSupport.setPropertyTooltip("GSCpResetFD_D", GSCpResetFD_D.getDescription());
+			GSCpResetSettle_D.addObserver(this);
+			tooltipSupport.setPropertyTooltip("GSCpResetSettle_D", GSCpResetSettle_D.getDescription());
+		}
+
+		public void setTransfer_D(int cc) {
+			Transfer_D.set(cc);
+		}
+
+		public int getTransfer_D() {
+			return Transfer_D.get();
+		}
+
+		public void setRSFDSettle_D(int cc) {
+			RSFDSettle_D.set(cc);
+		}
+
+		public int getRSFDSettle_D() {
+			return RSFDSettle_D.get();
+		}
+
+		public void setRSCpReset_D(int cc) {
+			RSCpReset_D.set(cc);
+		}
+
+		public int getRSCpReset_D() {
+			return RSCpReset_D.get();
+		}
+
+		public void setRSCpSettle_D(int cc) {
+			RSCpSettle_D.set(cc);
+		}
+
+		public int getRSCpSettle_D() {
+			return RSCpSettle_D.get();
+		}
+
+		public void setGSPDReset_D(int cc) {
+			GSPDReset_D.set(cc);
+		}
+
+		public int getGSPDReset_D() {
+			return GSPDReset_D.get();
+		}
+
+		public void setGSResetFall_D(int cc) {
+			GSResetFall_D.set(cc);
+		}
+
+		public int getGSResetFall_D() {
+			return GSResetFall_D.get();
+		}
+
+		public void setGSTXFall_D(int cc) {
+			GSTXFall_D.set(cc);
+		}
+
+		public int getGSTXFall_D() {
+			return GSTXFall_D.get();
+		}
+
+		public void setGSFDReset_D(int cc) {
+			GSFDReset_D.set(cc);
+		}
+
+		public int getGSFDReset_D() {
+			return GSFDReset_D.get();
+		}
+
+		public void setGSCpResetFD_D(int cc) {
+			GSCpResetFD_D.set(cc);
+		}
+
+		public int getGSCpResetFD_D() {
+			return GSCpResetFD_D.get();
+		}
+
+		public void setGSCpResetSettle_D(int cc) {
+			GSCpResetSettle_D.set(cc);
+		}
+
+		public int getGSCpResetSettle_D() {
+			return GSCpResetSettle_D.get();
 		}
 	}
 }

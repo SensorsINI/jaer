@@ -156,12 +156,22 @@
                 <entry key="CPLDByte.imu4_ACCEL_CONFIG" value="16"/>
                 <entry key="CPLDByte.imu_RUN" value="1"/>
                 <entry key="CPLDByte.miscControlBits" value="3"/>
-                <entry key="CPLDInt.colSettle" value="10"/>
+                <entry key="CPLDInt.GSCpResetFD_D" value="3000"/>
+                <entry key="CPLDInt.GSCpResetSettle_D" value="3000"/>
+                <entry key="CPLDInt.GSFDReset_D" value="3000"/>
+                <entry key="CPLDInt.GSPDReset_D" value="3000"/>
+                <entry key="CPLDInt.GSResetFall_D" value="3000"/>
+                <entry key="CPLDInt.GSTXFall_D" value="3000"/>
+                <entry key="CPLDInt.RSCpReset_D" value="3000"/>
+                <entry key="CPLDInt.RSCpSettle_D" value="3000"/>
+                <entry key="CPLDInt.RSFDSettle_D" value="3000"/>
+                <entry key="CPLDInt.Transfer_D" value="3000"/>
+                <entry key="CPLDInt.colSettle" value="30"/>
                 <entry key="CPLDInt.exposure" value="30000"/>
                 <entry key="CPLDInt.exposureB" value="39"/>
                 <entry key="CPLDInt.exposureC" value="1887"/>
                 <entry key="CPLDInt.frameDelay" value="0"/>
-                <entry key="CPLDInt.nullSettle" value="31"/>
+                <entry key="CPLDInt.nullSettle" value="10"/>
                 <entry key="CPLDInt.pad" value="0"/>
                 <entry key="CPLDInt.resSettle" value="10"/>
                 <entry key="CPLDInt.rowSettle" value="10"/>
@@ -571,7 +581,7 @@
                 <entry key="Davis346B.runCpld" value="true"/>
                 <entry key="Davis346B.typeNCalib" value="false"/>
                 <entry key="Davis346B.useAout" value="true"/>
-                <entry key="DavisBaseCamera.bgTabbedPaneSelectedIndex" value="2"/>
+                <entry key="DavisBaseCamera.bgTabbedPaneSelectedIndex" value="4"/>
                 <entry key="DavisRGBW640.AERnArow" value="false"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.ADCcompBp.BitValueCoarse" value="2"/>
                 <entry key="DavisRGBW640.AddressedIPotCF.ADCcompBp.BitValueFine" value="20"/>
@@ -989,6 +999,7 @@
                 <entry key="VideoControl.displayEvents" value="false"/>
                 <entry key="VideoControl.displayFrames" value="true"/>
                 <entry key="VideoControl.gamma" value="1.0"/>
+                <entry key="VideoControl.separateAPSByColor" value="true"/>
                 <entry key="VideoControl.useAutoContrast" value="false"/>
                 <entry key="XYTypeFilter.endType" value="1"/>
                 <entry key="XYTypeFilter.endX" value="139"/>
