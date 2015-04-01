@@ -32,17 +32,17 @@ public class Davis240Config extends DavisConfig {
 	}
 
 	public class Davis240ChipConfigChain extends DavisChipConfigChain {
-		OnchipConfigBit hotPixelSuppression = new OnchipConfigBit(
+		OnchipConfigBit specialPixelControl = new OnchipConfigBit(
 			chip,
-			"HotPixelSuppression",
+			"SpecialPixelControl",
 			3,
-			"<html>DAVIS240a: turns on the hot pixel suppression. <p>DAViS240b: enables test pixel stripes on right side of array. <p>DAViS240c: no effect.",
+			"<html>DAVIS240a: enable hot pixel suppression circuit. <p>DAViS240b: enable experimental pixel stripes on right side of array. <p>DAViS240c: no effect.",
 			false);
 
 		public Davis240ChipConfigChain(Chip chip) {
 			super(chip);
 
-			configBits[3] = hotPixelSuppression;
+			configBits[3] = specialPixelControl;
 			configBits[3].addObserver(this);
 		}
 	}
