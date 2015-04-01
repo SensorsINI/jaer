@@ -175,7 +175,8 @@ public class DavisRGBW640 extends Davis346BaseCamera {
 						e.polarity = (data & DavisChip.POLMASK) == DavisChip.POLMASK ? ApsDvsEventRGBW.Polarity.On
 							: ApsDvsEventRGBW.Polarity.Off;
 						e.type = (byte) ((data & DavisChip.POLMASK) == DavisChip.POLMASK ? 1 : 0);
-						e.x = (short) (2 * ((((data & DavisChip.XMASK) >>> DavisChip.XSHIFT)) - 160)); // TODO: why 160???
+						e.x = (short) (2 * ((((data & DavisChip.XMASK) >>> DavisChip.XSHIFT)) - 160));
+						// TODO: why -160 here ???
 						e.y = (short) (2 * ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT));
 						e.setIsDVS(true);
 						e.setColorFilter(ColorFilter.W);
@@ -286,16 +287,10 @@ public class DavisRGBW640 extends Davis346BaseCamera {
 
 		@Override
 		protected ApsDvsEventRGBW nextApsDvsEvent(final OutputEventIterator outItr) {
-			ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
-			e.special = false;
-			e.adcSample = -1;
+			ApsDvsEvent e = super.nextApsDvsEvent(outItr);
 
-			if (e instanceof IMUSample) {
-				// IMUSample is not compatible with ApsDvsEventRGBW. They are different branches in
-				// the class hierarchy. So if we see it's a IMUSample event, we disable it and jump
-				// over it to the next one.
-				((IMUSample) e).imuSampleEvent = false;
-				e = nextApsDvsEvent(outItr);
+			if (e instanceof ApsDvsEventRGBW) {
+				((ApsDvsEventRGBW) e).setColorFilter(null);
 			}
 
 			return (ApsDvsEventRGBW) e;

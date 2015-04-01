@@ -5,20 +5,22 @@
  */
 package net.sf.jaer.event;
 
+import eu.seebetter.ini.chips.davis.imu.IMUSample;
+
 /**
  *
  * Event class for DAVIS chips with color filter arrays
- * 
+ *
  * @author Christian
  */
-public class ApsDvsEventRGBW extends ApsDvsEvent{
-    
+public class ApsDvsEventRGBW extends IMUSample {
+
     /** Tells for APS events whether they are under a red (R), green (G), blue (B) or white (W) colorfilter
      */
     public enum ColorFilter {R,G,B,W, Null};
-    
+
     private ColorFilter colorFilter;
-    
+
     /**
      * @return the colorFilter
      */
@@ -32,5 +34,5 @@ public class ApsDvsEventRGBW extends ApsDvsEvent{
     public void setColorFilter(ColorFilter colorFilter) {
         this.colorFilter = colorFilter;
     }
-    
+
 }
