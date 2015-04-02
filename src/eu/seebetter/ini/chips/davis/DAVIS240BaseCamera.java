@@ -36,7 +36,6 @@ abstract public class DAVIS240BaseCamera extends DavisBaseCamera {
 	 */
 	public DAVIS240BaseCamera() {
 		setName("DAVIS240BaseCamera");
-		setDefaultPreferencesFile("biasgenSettings/Davis240a/David240aBasic.xml");
 		setSizeX(WIDTH_PIXELS);
 		setSizeY(HEIGHT_PIXELS);
 
@@ -46,17 +45,6 @@ abstract public class DAVIS240BaseCamera extends DavisBaseCamera {
 														// needs to know if frames are enabled to reset pixmap
 		apsDVSrenderer.setMaxADC(DavisChip.MAX_ADC);
 		setRenderer(apsDVSrenderer);
-
-		// hardware interface is ApsDvsHardwareInterface
-		if (getRemoteControl() != null) {
-			getRemoteControl()
-				.addCommandListener(this, CMD_EXPOSURE, CMD_EXPOSURE + " val - sets exposure. val in ms.");
-			// getRemoteControl().addCommandListener(this, CMD_EXPOSURE_CC,
-			// CMD_EXPOSURE_CC + " val - sets exposureControlRegister. val in clock cycles");
-			// getRemoteControl().addCommandListener(this, CMD_RS_SETTLE_CC,
-			// CMD_RS_SETTLE_CC + " val - sets reset settling time. val in clock cycles"); // can add back later if
-			// needed for device testing
-		}
 	}
 
 	/**

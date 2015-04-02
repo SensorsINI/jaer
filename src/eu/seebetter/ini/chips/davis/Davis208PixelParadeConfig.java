@@ -16,7 +16,7 @@ import eu.seebetter.ini.chips.davis.imu.ImuControl;
  *
  * @author Diederik
  */
-class Davis208PixelParadeConfig extends DavisTowerBaseConfig {
+public class Davis208PixelParadeConfig extends DavisTowerBaseConfig {
 
 	public Davis208PixelParadeConfig(Chip chip) {
 		super(chip);

@@ -22,7 +22,7 @@ import eu.seebetter.ini.chips.davis.imu.ImuControl;
  *
  * @author tobi
  */
-class DavisRGBW640Config extends DavisTowerBaseConfig {
+public class DavisRGBW640Config extends DavisTowerBaseConfig {
 	protected CPLDInt Transfer_D = new CPLDInt(chip, 167, 152, (1 << 12) - 1, "Transfer_D",
 		"Transfer time counter (3 in GS, 1 in RS).", 0);
 	protected CPLDInt RSFDSettle_D = new CPLDInt(chip, 183, 168, (1 << 12) - 1, "RSFDSettle_D",

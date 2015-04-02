@@ -16,7 +16,7 @@ import eu.seebetter.ini.chips.DavisChip;
  * @author tobi
  */
 @Description("DAVIS128 base class for 128x128 pixel APS-DVS DAVIS sensor")
-abstract public class Davis128 extends DavisBaseCamera {
+public class Davis128 extends DavisBaseCamera {
 
 	public static final short WIDTH_PIXELS = 128;
 	public static final short HEIGHT_PIXELS = 128;
@@ -26,7 +26,7 @@ abstract public class Davis128 extends DavisBaseCamera {
 	 * Creates a new instance.
 	 */
 	public Davis128() {
-		setName("DAVIS128BaseCamera");
+		setName("DAVIS128");
 		setDefaultPreferencesFile("biasgenSettings/Davis128/Davis128.xml");
 		setSizeX(WIDTH_PIXELS);
 		setSizeY(HEIGHT_PIXELS);
@@ -37,17 +37,6 @@ abstract public class Davis128 extends DavisBaseCamera {
 														// needs to know if frames are enabled to reset pixmap
 		apsDVSrenderer.setMaxADC(DavisChip.MAX_ADC);
 		setRenderer(apsDVSrenderer);
-
-		// hardware interface is ApsDvsHardwareInterface
-		if (getRemoteControl() != null) {
-			getRemoteControl()
-				.addCommandListener(this, CMD_EXPOSURE, CMD_EXPOSURE + " val - sets exposure. val in ms.");
-			// getRemoteControl().addCommandListener(this, CMD_EXPOSURE_CC,
-			// CMD_EXPOSURE_CC + " val - sets exposureControlRegister. val in clock cycles");
-			// getRemoteControl().addCommandListener(this, CMD_RS_SETTLE_CC,
-			// CMD_RS_SETTLE_CC + " val - sets reset settling time. val in clock cycles"); // can add back later if
-			// needed for device testing
-		}
 	}
 
 	/**

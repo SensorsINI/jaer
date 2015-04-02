@@ -27,7 +27,6 @@ abstract public class Davis346BaseCamera extends DavisBaseCamera {
 	 */
 	public Davis346BaseCamera() {
 		setName("DAVIS346BaseCamera");
-		setDefaultPreferencesFile("biasgenSettings/Davis346/Davis346.xml");
 		setSizeX(WIDTH_PIXELS);
 		setSizeY(HEIGHT_PIXELS);
 

@@ -10,4 +10,8 @@ package eu.seebetter.ini.chips.davis;
  * @author tobi
  */
 public class Davis346B extends Davis346BaseCamera {
+	public Davis346B() {
+		setName("Davis346B");
+		setDefaultPreferencesFile("biasgenSettings/Davis346/Davis346.xml");
+	}
 }
