@@ -6,19 +6,8 @@
 package eu.seebetter.ini.chips.davis;
 
 /**
- * Davis346B camera 
+ * Davis346B camera
  * @author tobi
  */
 public class Davis346B extends Davis346BaseCamera {
-
-    @Override
-    public boolean firstFrameAddress(short x, short y) {
-        return (x == getSizeX()-1) && (y == getSizeY()-1);
-    }
-
-    @Override
-    public boolean lastFrameAddress(short x, short y) {
-        return (x == 0) && (y == 0); //To change body of generated methods, choose Tools | Templates.
-    }
-    
 }

@@ -9,8 +9,6 @@ import java.util.Observable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.swing.JPanel;
-
 import net.sf.jaer.biasgen.AddressedIPotArray;
 import net.sf.jaer.biasgen.Pot;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
@@ -31,41 +29,12 @@ public class DavisTowerBaseConfig extends DavisConfig {
 
 	public DavisTowerBaseConfig(Chip chip) {
 		super(chip);
-		// // port bits
-		// addConfigValue(nChipReset);
-		// addConfigValue(powerDown);
-		// addConfigValue(runAdc);
-		// addConfigValue(runCpld);
-		//
-		// // cpld shift register stuff
-		// addConfigValue(exposureControlRegister);
-		// addConfigValue(resSettle);
-		// addConfigValue(rowSettle);
-		// addConfigValue(colSettle);
-		// addConfigValue(frameDelayControlRegister);
-		// addConfigValue(nullSettle);
-		//
-		// addConfigValue(miscControlBits);
-		//
-		// // imu config values
-		// addConfigValue(imu0PowerMgmtClkRegConfig);
-		// addConfigValue(imu1DLPFConfig);
-		// addConfigValue(imu2SamplerateDividerConfig);
-		// addConfigValue(imu3GyroConfig);
-		// addConfigValue(imu4AccelConfig);
-		//
-		// // masterbias
-		// getMasterbias().setKPrimeNFet(55e-3f); // estimated from tox=42A, mu_n=670 cm^2/Vs // TODO fix for UMC18
-		// process
-		// getMasterbias().setMultiplier(4); // =45 correct for dvs320
-		// getMasterbias().setWOverL(4.8f / 2.4f); // masterbias has nfet with w/l=2 at output
-		// getMasterbias().addObserver(this); // changes to masterbias come back to update() here
 
 		setPotArray(new AddressedIPotArray(this)); // garbage collect IPots added in super by making this new potArray
 
 		vdacs = new TowerOnChip6BitVDAC[8];
 		// TODO fix this code for actual vdacs
-		int address = 0;
+
 		// getPotArray().addPot(new TowerOnChip6BitVDAC(this, "", 0, 0, ""));
 		getPotArray().addPot(
 			new TowerOnChip6BitVDAC(this, "apsOverflowLevel", 0, 0,
@@ -134,28 +103,6 @@ public class DavisTowerBaseConfig extends DavisConfig {
 
 			ssBiases[1] = ssn;
 			ssBiases[0] = ssp;
-
-			// old, from SBRet10/20/21
-			// diff = addAIPot("DiffBn,n,normal,differencing amp");
-			// diffOn = addAIPot("OnBn,n,normal,DVS brighter threshold");
-			// diffOff = addAIPot("OffBn,n,normal,DVS darker threshold");
-			// addAIPot("ApsCasEpc,p,cascode,cascode between APS und DVS");
-			// addAIPot("DiffCasBnc,n,cascode,differentiator cascode bias");
-			// addAIPot("ApsROSFBn,n,normal,APS readout source follower bias");
-			// addAIPot("LocalBufBn,n,normal,Local buffer bias"); // TODO what's this?
-			// addAIPot("PixInvBn,n,normal,Pixel request inversion static inverter bias");
-			// pr = addAIPot("PrBp,p,normal,Photoreceptor bias current");
-			// sf = addAIPot("PrSFBp,p,normal,Photoreceptor follower bias current (when used in pixel type)");
-			// refr = addAIPot("RefrBp,p,normal,DVS refractory period current");
-			// addAIPot("AEPdBn,n,normal,Request encoder pulldown static current");
-			// addAIPot("LcolTimeoutBn,n,normal,No column request timeout");
-			// addAIPot("AEPuXBp,p,normal,AER column pullup");
-			// addAIPot("AEPuYBp,p,normal,AER row pullup");
-			// addAIPot("IFThrBn,n,normal,Integrate and fire intensity neuron threshold");
-			// addAIPot("IFRefrBn,n,normal,Integrate and fire intensity neuron refractory period bias current");
-			// addAIPot("PadFollBn,n,normal,Follower-pad buffer bias current");
-			// addAIPot("apsOverflowLevel,n,normal,special overflow level bias ");
-			// addAIPot("biasBuffer,n,normal,special buffer bias ");
 		}
 		catch (Exception e) {
 			throw new Error(e.toString());
@@ -187,13 +134,9 @@ public class DavisTowerBaseConfig extends DavisConfig {
 	}
 
 	@Override
-	public JPanel buildControlPanel() {
-		return super.buildControlPanel(); // To change body of generated methods, choose Tools | Templates.
-	}
-
-	@Override
 	public synchronized void update(Observable observable, Object object) {
 		super.update(observable, object);
+
 		try {
 			if (observable instanceof TowerOnChip6BitVDAC) {
 				sendOnChipConfig();
@@ -202,7 +145,6 @@ public class DavisTowerBaseConfig extends DavisConfig {
 		catch (HardwareInterfaceException e) {
 			log.warning("On update() caught " + e.toString());
 		}
-
 	}
 
 	public class DavisTowerBaseChipConfigChain extends DavisChipConfigChain {

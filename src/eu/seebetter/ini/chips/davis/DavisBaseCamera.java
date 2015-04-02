@@ -168,8 +168,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         }
     }
 
-    protected abstract boolean firstFrameAddress(short x, short y);
-
     /**
      * @return the autoExposureController
      */
@@ -260,7 +258,13 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         return showImageHistogram;
     }
 
-    protected abstract boolean lastFrameAddress(short x, short y);
+    public boolean firstFrameAddress(short x, short y) {
+        return (x == (getSizeX()-1)) && (y == (getSizeY()-1));
+    }
+
+    public boolean lastFrameAddress(short x, short y) {
+        return (x == 0) && (y == 0); //To change body of generated methods, choose Tools | Templates.
+    }
 
     @Override
     public void onDeregistration() {
@@ -885,7 +889,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         try {
             getDavisConfig().sendOnChipConfigChain();
         } catch (final HardwareInterfaceException ex) {
-            Logger.getLogger(Davis346BaseCamera.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(DavisBaseCamera.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
