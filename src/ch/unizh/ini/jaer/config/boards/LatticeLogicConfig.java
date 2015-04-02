@@ -185,9 +185,11 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 					int GlobalShutter = ((bytes[4] & 0x40) >>> 6);
 					int SelectGrayCounter = ((bytes[4] & 0x80) >>> 7);
 					int TestADC = ((bytes[3] & 0x01) >>> 0);
-					int AdjustOVG1Lo = ((bytes[3] & 0x02) >>> 1);
-					int AdjustOVG2Lo = ((bytes[3] & 0x04) >>> 2);
-					int AdjustTX2OVG2Hi = ((bytes[3] & 0x08) >>> 3);
+					int AdjustOVG1Lo = ((bytes[3] & 0x02) >>> 1); // This is 'SelPreAmpAvgxD' for PixelParade.
+					int AdjustOVG2Lo = ((bytes[3] & 0x04) >>> 2); // This is 'SelBiasRefxD' for PixelParade.
+					int AdjustTX2OVG2Hi = ((bytes[3] & 0x08) >>> 3); // This is 'SelSensexD' for PixelParade.
+					int SelPosFbxD = ((bytes[3] & 0x10) >>> 4);
+					int SelHpxD = ((bytes[3] & 0x20) >>> 5);
 					// bytes[2] left unused.
 					int dMux0 = (bytes[1] & 0x0F);
 					int dMux1 = (bytes[1] & 0xF0);
@@ -225,6 +227,9 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 						AdjustOVG2Lo);
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 147,
 						AdjustTX2OVG2Hi);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 148,
+						SelPosFbxD);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 149, SelHpxD);
 				}
 				else {
 					((CypressFX3) getHardwareInterface()).sendVendorRequest(VR_CHIP_DIAG, (short) 0, (short) 0, bytes);

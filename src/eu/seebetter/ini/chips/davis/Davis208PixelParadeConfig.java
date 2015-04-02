@@ -129,31 +129,30 @@ public class Davis208PixelParadeConfig extends DavisTowerBaseConfig {
 	}
 
 	public class Davis208PixelParadeChipConfigChain extends DavisTowerBaseChipConfigChain {
-
-		OnchipConfigBit SelPreAmpAvgxD = new OnchipConfigBit(chip, "SelPreAmpAvgxD", 12,
-			"If 1, connect PreAmpAvgxA to calibration neuron, if 0, commongate", true);
-		OnchipConfigBit SelBiasRefxD = new OnchipConfigBit(chip, "SelBiasRefxD", 13,
+		OnchipConfigBit SelPreAmpAvgxD = new OnchipConfigBit(chip, "SelPreAmpAvgxD", 9,
+			"If 1, connect PreAmpAvgxA to calibration neuron, if 0, commongate", false);
+		OnchipConfigBit SelBiasRefxD = new OnchipConfigBit(chip, "SelBiasRefxD", 10,
 			"If 1, select Nbias Blk1N, if 0, VDAC VblkV2", true);
-		OnchipConfigBit SelSensexD = new OnchipConfigBit(chip, "SelSensexD", 14,
+		OnchipConfigBit SelSensexD = new OnchipConfigBit(chip, "SelSensexD", 11,
 			"If 0, hook refractory bias to Vdd (unselect)", true);
-		OnchipConfigBit SelPosFbxD = new OnchipConfigBit(chip, "SelPosFbxD", 15,
+		OnchipConfigBit SelPosFbxD = new OnchipConfigBit(chip, "SelPosFbxD", 12,
 			"If 0, hook refractory bias to Vdd (unselect)", true);
-		OnchipConfigBit SelHpxD = new OnchipConfigBit(chip, "SelHpxD", 16,
+		OnchipConfigBit SelHpxD = new OnchipConfigBit(chip, "SelHpxD", 13,
 			"If 0, hook refractory bias to Vdd (unselect)", true);
 
 		public Davis208PixelParadeChipConfigChain(Chip chip) {
 			super(chip);
 
-			configBits[12] = SelPreAmpAvgxD;
+			configBits[9] = SelPreAmpAvgxD;
+			configBits[9].addObserver(this);
+			configBits[10] = SelBiasRefxD;
+			configBits[10].addObserver(this);
+			configBits[11] = SelSensexD;
+			configBits[11].addObserver(this);
+			configBits[12] = SelPosFbxD;
 			configBits[12].addObserver(this);
-			configBits[13] = SelBiasRefxD;
+			configBits[13] = SelHpxD;
 			configBits[13].addObserver(this);
-			configBits[14] = SelSensexD;
-			configBits[14].addObserver(this);
-			configBits[15] = SelPosFbxD;
-			configBits[15].addObserver(this);
-			configBits[16] = SelHpxD;
-			configBits[16].addObserver(this);
 		}
 	}
 }
