@@ -7,9 +7,9 @@ package net.sf.jaer.eventprocessing.tracking;
 import java.awt.geom.Point2D;
 import java.util.Observable;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;

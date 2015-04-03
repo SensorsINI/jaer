@@ -7,13 +7,13 @@
 package ch.unizh.ini.jaer.projects.integrateandfire;
 
 // JAER Stuff
+import com.jogamp.opengl.GLAutoDrawable;
 import java.io.File;
 // Java  Stuff
 import java.io.FileNotFoundException;
 // Swingers
 import java.util.Arrays;
 
-import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JOptionPane;
 
 import net.sf.jaer.chip.AEChip;

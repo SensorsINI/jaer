@@ -9,8 +9,6 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.util.prefs.Preferences;
 
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.awt.GLJPanel;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 
@@ -23,6 +21,8 @@ import net.sf.jaer.util.chart.Series;
 import net.sf.jaer.util.chart.XYChart;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ChannelBuffer;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.DataBuffer;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.awt.GLJPanel;
 
 /**
  * Displays data from CochleaAMS1c using RollingCochleaGramDisplayMethod with additional rolling strip chart of ADC samples.

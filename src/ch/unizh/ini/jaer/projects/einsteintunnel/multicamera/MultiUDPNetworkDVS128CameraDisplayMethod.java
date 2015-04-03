@@ -5,11 +5,11 @@
 
 package ch.unizh.ini.jaer.projects.einsteintunnel.multicamera;
 
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 import java.awt.Font;
 import java.net.InetSocketAddress;
 
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
 
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.ChipRendererDisplayMethod;

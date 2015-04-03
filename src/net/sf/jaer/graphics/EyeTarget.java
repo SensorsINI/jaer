@@ -12,22 +12,22 @@
 
 package net.sf.jaer.graphics;
 
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLCapabilities;
+import com.jogamp.opengl.GLEventListener;
+import com.jogamp.opengl.awt.GLCanvas;
+import com.jogamp.opengl.fixedfunc.GLLightingFunc;
+import com.jogamp.opengl.fixedfunc.GLMatrixFunc;
+import com.jogamp.opengl.glu.GLU;
+import com.jogamp.opengl.glu.GLUquadric;
 import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.geom.Point2D;
 import java.util.Random;
 import java.util.logging.Logger;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.GLCapabilities;
-import javax.media.opengl.GLEventListener;
-import javax.media.opengl.awt.GLCanvas;
-import javax.media.opengl.fixedfunc.GLLightingFunc;
-import javax.media.opengl.fixedfunc.GLMatrixFunc;
-import javax.media.opengl.glu.GLU;
-import javax.media.opengl.glu.GLUquadric;
 
 import net.sf.jaer.util.filter.LowpassFilter;
 
@@ -199,7 +199,7 @@ public class EyeTarget extends GLCanvas implements GLEventListener {
 	/** Called by the drawable during the first repaint after the
      component has been resized. The client can update the viewport
      and view volume of the window appropriately, for example by a
-     call to {@link javax.media.opengl.GL#glViewport}; note that for
+     call to {@link com.jogamp.opengl.GL#glViewport}; note that for
      convenience the component has already called <code>glViewport(x,
      y, width, height)</code> when this method is called, so the
      client may not have to do anything in this method.

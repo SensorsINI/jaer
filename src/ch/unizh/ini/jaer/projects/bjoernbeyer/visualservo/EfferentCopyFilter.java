@@ -5,7 +5,6 @@ import ch.unizh.ini.jaer.projects.bjoernbeyer.pantiltscreencalibration.Calibrati
 import net.sf.jaer.util.Vector2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.orientation.DvsMotionOrientationEvent;
@@ -15,7 +14,6 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTilt.TrajectoryPoint;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
 import java.util.ArrayList;
-import javax.media.opengl.GL2;
 import java.util.Collections;
 import java.util.List;
 import net.sf.jaer.event.orientation.MotionOrientationEventInterface;
@@ -23,6 +21,8 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.label.AbstractDirectionSelectiveFilter;
 import net.sf.jaer.eventprocessing.label.DvsDirectionSelectiveFilter;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTiltAimerGUI;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 

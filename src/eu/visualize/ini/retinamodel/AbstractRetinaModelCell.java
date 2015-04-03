@@ -9,11 +9,11 @@ import java.awt.Font;
 import java.util.Observable;
 import java.util.Observer;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.GLException;
-import javax.media.opengl.glu.GLU;
-import javax.media.opengl.glu.GLUquadric;
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLException;
+import com.jogamp.opengl.glu.GLU;
+import com.jogamp.opengl.glu.GLUquadric;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;

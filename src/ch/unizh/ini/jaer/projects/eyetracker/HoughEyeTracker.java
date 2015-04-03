@@ -7,6 +7,8 @@
 
 package ch.unizh.ini.jaer.projects.eyetracker;
 
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Toolkit;
@@ -15,8 +17,6 @@ import java.awt.event.KeyListener;
 import java.util.Observable;
 import java.util.Observer;
 
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 

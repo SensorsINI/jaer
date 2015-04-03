@@ -8,10 +8,10 @@
 
 package net.sf.jaer.util.chart;
 
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GL2ES1;
 import java.util.Arrays;
 
-import javax.media.opengl.GL2;
-import javax.media.opengl.GL2ES1;
 
 /**
  * The Category class. A Category is a view of a data series in a chart.

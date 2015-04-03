@@ -11,11 +11,11 @@
  */
 package net.sf.jaer.graphics;
 
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 import java.nio.FloatBuffer;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
 
 /**
  * Renders using OpenGL the RGB histogram values from Chip2DRenderer.

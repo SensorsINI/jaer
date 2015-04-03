@@ -9,9 +9,9 @@
 package no.uio.ifi.jaer.chip.foveated;
 
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.ChipCanvas;

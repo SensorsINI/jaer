@@ -10,7 +10,7 @@ import java.awt.Font;
 import java.awt.geom.Rectangle2D;
 import java.util.logging.Logger;
 
-import javax.media.opengl.GLException;
+import com.jogamp.opengl.GLException;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 import java.awt.Color;

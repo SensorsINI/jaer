@@ -3,8 +3,8 @@
  * Created on November 6, 2005, 10:31 AM */
 package net.sf.jaer.event;
 
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 
 /** Base class for events. 
  * This class is extended by producers offering extended event type information. 

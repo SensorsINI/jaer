@@ -5,7 +5,7 @@
 
 package net.sf.jaer.eventprocessing.tracking;
 
-import javax.media.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.event.TypedEvent;
 

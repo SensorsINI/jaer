@@ -8,7 +8,10 @@
  */
 package net.sf.jaer;
 
-import com.jogamp.common.util.JogampVersion;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLCapabilities;
+import com.jogamp.opengl.GLDrawableFactory;
+import com.jogamp.opengl.GLProfile;
 import com.jogamp.opengl.JoglVersion;
 import java.awt.AWTEvent;
 import java.awt.AlphaComposite;
@@ -35,10 +38,6 @@ import java.util.Date;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.GLCapabilities;
-import javax.media.opengl.GLDrawableFactory;
-import javax.media.opengl.GLProfile;
 
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;

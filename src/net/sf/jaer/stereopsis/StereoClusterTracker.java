@@ -10,6 +10,8 @@
  *Copyright July 24, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 package net.sf.jaer.stereopsis;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -17,8 +19,6 @@ import java.io.PrintStream;
 import java.util.Random;
 import java.util.logging.Logger;
 
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;

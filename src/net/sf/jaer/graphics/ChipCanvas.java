@@ -33,20 +33,6 @@ import java.util.Observer;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GL2ES2;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.GLCapabilitiesImmutable;
-import javax.media.opengl.GLContext;
-import javax.media.opengl.GLDrawableFactory;
-import javax.media.opengl.GLEventListener;
-import javax.media.opengl.GLException;
-import javax.media.opengl.awt.GLCanvas;
-import javax.media.opengl.fixedfunc.GLLightingFunc;
-import javax.media.opengl.fixedfunc.GLMatrixFunc;
-import javax.media.opengl.glu.GLU;
-import javax.media.opengl.glu.GLUquadric;
 import javax.swing.ButtonGroup;
 import javax.swing.JComponent;
 import javax.swing.JMenu;
@@ -61,6 +47,20 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import org.apache.commons.lang3.SystemUtils;
 
 import com.jogamp.common.nio.Buffers;
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GL2ES2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLCapabilitiesImmutable;
+import com.jogamp.opengl.GLContext;
+import com.jogamp.opengl.GLDrawableFactory;
+import com.jogamp.opengl.GLEventListener;
+import com.jogamp.opengl.GLException;
+import com.jogamp.opengl.awt.GLCanvas;
+import com.jogamp.opengl.fixedfunc.GLLightingFunc;
+import com.jogamp.opengl.fixedfunc.GLMatrixFunc;
+import com.jogamp.opengl.glu.GLU;
+import com.jogamp.opengl.glu.GLUquadric;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
 
@@ -265,7 +265,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 																	// between all viewers and file open dialog
 																	// previews.
 		// TODO we now get under windows this exception:
-		// javax.media.opengl.GLException: AWT-EventQueue-0: WindowsWGLContex.createContextImpl ctx !ARB but ARB is
+		// com.jogamp.opengl.GLException: AWT-EventQueue-0: WindowsWGLContex.createContextImpl ctx !ARB but ARB is
 		// used, profile > GL2 requested (OpenGL >= 3.0.1). Requested: GLProfile[GL4bc/GL4bc.hw], current: 1.1 (Compat
 		// profile, hardware) - 1.1.0
 
@@ -780,7 +780,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 	 * Internally, this calls the display() method of the drawable, which by callback to display(GLAutoDrawable).
 	 * If openGL is disabled, then it calls paint() directly.
 	 *
-	 * @see #display(javax.media.opengl.GLAutoDrawable)
+	 * @see #display(com.jogamp.opengl.GLAutoDrawable)
 	 */
 	public void paintFrame() {
 		try {
@@ -911,7 +911,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 	 * This method is not synchronized.
 	 *
 	 * @return the clip area; only valid after display has been called.
-	 * @see #setDefaultProjection(javax.media.opengl.GL, javax.media.opengl.GLAutoDrawable)
+	 * @see #setDefaultProjection(com.jogamp.opengl.GL, com.jogamp.opengl.GLAutoDrawable)
 	 */
 	public ClipArea getClipArea() {
 		return clipArea;
@@ -920,7 +920,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 	/**
 	 * Border around chip in model space coordinate (chip pixels).
 	 *
-	 * @see #setDefaultProjection(javax.media.opengl.GL, javax.media.opengl.GLAutoDrawable)
+	 * @see #setDefaultProjection(com.jogamp.opengl.GL, com.jogamp.opengl.GLAutoDrawable)
 	 * @see #getScale()
 	 */
 	public class Borders {
@@ -945,7 +945,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 	 * This method is not synchronized.
 	 *
 	 * @return the borders; only valid after display has been called.
-	 * @see #setDefaultProjection(javax.media.opengl.GL, javax.media.opengl.GLAutoDrawable)
+	 * @see #setDefaultProjection(com.jogamp.opengl.GL, com.jogamp.opengl.GLAutoDrawable)
 	 */
 	public Borders getBorders() {
 		return borders;

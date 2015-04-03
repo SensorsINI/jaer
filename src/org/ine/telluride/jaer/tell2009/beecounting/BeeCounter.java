@@ -6,9 +6,9 @@ package org.ine.telluride.jaer.tell2009.beecounting;
 
 import java.util.ArrayList;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;

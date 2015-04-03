@@ -3,16 +3,14 @@
  * Created on November 2, 2005, 8:24 PM */
 package net.sf.jaer.eventprocessing.label;
 
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.geom.Point2D;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Random;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.GLException;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 

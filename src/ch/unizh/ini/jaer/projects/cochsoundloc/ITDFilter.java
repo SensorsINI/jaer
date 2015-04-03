@@ -24,8 +24,6 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
 
@@ -40,11 +38,9 @@ import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent;
 import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent.Ear;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.ChannelBuffer;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cADCSamples.DataBuffer;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMSEvent;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 
 import com.jogamp.opengl.util.gl2.GLUT;
 

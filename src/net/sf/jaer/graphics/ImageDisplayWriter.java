@@ -8,7 +8,7 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 
-import javax.media.opengl.GLCapabilities;
+import com.jogamp.opengl.GLCapabilities;
 import javax.swing.JPanel;
 
 /**

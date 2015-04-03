@@ -14,11 +14,11 @@ import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Level;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GL2ES1;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.GLException;
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GL2ES1;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLException;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;

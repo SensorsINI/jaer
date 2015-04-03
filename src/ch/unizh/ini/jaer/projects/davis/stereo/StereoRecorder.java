@@ -5,15 +5,14 @@
  */
 package ch.unizh.ini.jaer.projects.davis.stereo;
 
-import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.DavisChip;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
 import java.io.File;
 import java.util.List;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import net.sf.jaer.chip.AEChip;
@@ -25,7 +24,6 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.eventprocessing.filter.RefractoryFilter;
 import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.ApsDvsHardwareInterface;
 import org.openni.Device;
 import org.openni.DeviceInfo;
 import org.openni.OpenNI;

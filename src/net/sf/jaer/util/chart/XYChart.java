@@ -6,6 +6,8 @@
 package net.sf.jaer.util.chart;
 
 
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Insets;
@@ -15,8 +17,6 @@ import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 

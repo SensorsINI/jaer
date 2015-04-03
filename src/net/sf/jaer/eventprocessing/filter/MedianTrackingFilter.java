@@ -20,8 +20,8 @@ package net.sf.jaer.eventprocessing.filter;
 import java.awt.geom.Point2D;
 import java.util.Arrays;
 
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;

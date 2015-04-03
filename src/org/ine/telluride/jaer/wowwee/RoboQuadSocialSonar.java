@@ -8,9 +8,9 @@ import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.glu.GLU;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.glu.GLU;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;

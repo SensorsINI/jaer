@@ -23,10 +23,10 @@ import java.util.Iterator;
 import java.util.Observable;
 import java.util.Observer;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.awt.GLCanvas;
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.awt.GLCanvas;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;

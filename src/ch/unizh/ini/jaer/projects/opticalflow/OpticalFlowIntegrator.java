@@ -7,9 +7,9 @@ import java.util.Arrays;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.ServoInterface;
@@ -36,7 +36,7 @@ import ch.unizh.ini.jaer.hardware.pantilt.PanTiltParserPanel;
  * </li>
  * <li> relative to the same initial top-left
  *  corner of the first frame. Because the coordinate system is <b>translated</b>
- *  by the <code>currentX/Y()</code> (see {@link #glTransform(javax.media.opengl.GL)}),
+ *  by the <code>currentX/Y()</code> (see {@link #glTransform(com.jogamp.opengl.GL)}),
  *  these coordinates must always be shifted by <code>-currentX/Y()</code> when
  *  anything is drawn via GL.
  * </li>

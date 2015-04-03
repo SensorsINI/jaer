@@ -6,13 +6,13 @@
 
 package net.sf.jaer.eventprocessing.tracking;
 
+import com.jogamp.opengl.GLAutoDrawable;
 import java.awt.Color;
 import java.awt.geom.Point2D;
 import java.util.LinkedList;
 import java.util.Random;
 import net.sf.jaer.event.BasicEvent;
 import java.util.logging.Level;
-import javax.media.opengl.GLAutoDrawable;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 
 /**

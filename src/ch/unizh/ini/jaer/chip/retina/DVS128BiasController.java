@@ -6,6 +6,8 @@
  */
 package ch.unizh.ini.jaer.chip.retina;
 
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.Writer;
@@ -13,8 +15,6 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;

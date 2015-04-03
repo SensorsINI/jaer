@@ -3,6 +3,7 @@ package ch.unizh.ini.jaer.projects.bjoernbeyer.pantiltscreencalibration;
 
 import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
 import ch.unizh.ini.jaer.projects.bjoernbeyer.stimulusdisplay.ScreenActionCanvas;
+import com.jogamp.opengl.GLAutoDrawable;
 import java.awt.Graphics;
 import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
@@ -11,7 +12,6 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.TimerTask;
 import java.util.logging.Logger;
-import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;

@@ -1,7 +1,7 @@
 package ch.unizh.ini.jaer.projects.laser3d;
 
 import java.util.Arrays;
-import javax.media.opengl.GL;
+import com.jogamp.opengl.GL;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 /**
  * histogramData holds a history of data over a certain timeperiod and returns a

@@ -10,7 +10,7 @@
 
 package net.sf.jaer.graphics;
 
-import javax.media.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLAutoDrawable;
 
 /**
  An EventFilter2D should implement FrameAnnotator in order to render annotations onto the ChipCanvas during processing.

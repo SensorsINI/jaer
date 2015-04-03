@@ -19,9 +19,9 @@ import org.ine.telluride.jaer.wowwee.WowWeeRSHardwareInterface;
 
 /*
 import java.awt.Graphics2D;
-import javax.media.opengl.GL;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.glu.GLU;
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.glu.GLU;
  */ 
 /**
  * Extracts pitch from AE cochlea spike output.

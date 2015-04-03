@@ -6,7 +6,7 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
 
 import java.awt.Font;
 
-import javax.media.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLAutoDrawable;
 import javax.swing.JOptionPane;
 
 import net.sf.jaer.Description;

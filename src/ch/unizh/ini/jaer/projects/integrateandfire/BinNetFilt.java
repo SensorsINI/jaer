@@ -4,13 +4,13 @@
  */
 package ch.unizh.ini.jaer.projects.integrateandfire;
 
+import com.jogamp.opengl.GLAutoDrawable;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.LinkedList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.media.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;

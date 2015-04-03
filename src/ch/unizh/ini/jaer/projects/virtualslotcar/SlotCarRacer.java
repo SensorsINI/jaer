@@ -8,7 +8,7 @@ import de.thesycon.usbio.UsbIoBuf;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.LinkedList;
-import javax.media.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;

@@ -3,13 +3,13 @@
  * and open the template in the editor.
  */
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
+import com.jogamp.opengl.GLAutoDrawable;
 import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
 import java.util.Hashtable;
 import java.util.Observable;
 import java.util.Observer;
 
-import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JFrame;
 
 import net.sf.jaer.Description;

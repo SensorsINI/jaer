@@ -6,7 +6,7 @@ package ch.unizh.ini.jaer.projects.spatiotemporalcloseness.util;
 
 import java.util.List;
 
-import javax.media.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.event.TypedEvent;
 

@@ -7,7 +7,7 @@ package ch.unizh.ini.jaer.projects.sensoryfusion.slaem;
 import java.lang.reflect.Array;
 import java.util.Arrays;
 
-import javax.media.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLAutoDrawable;
 
 /**
  * Special stack that has always the most recent entry on top. If an element is

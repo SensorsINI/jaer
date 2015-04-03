@@ -1,5 +1,8 @@
 package ch.ethz.hest.balgrist.microscopetracker;
 
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 import java.awt.geom.Point2D;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -7,9 +10,6 @@ import java.util.LinkedList;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;

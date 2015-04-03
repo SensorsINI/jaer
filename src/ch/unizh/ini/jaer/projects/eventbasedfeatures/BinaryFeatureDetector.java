@@ -4,12 +4,12 @@
  */
 package ch.unizh.ini.jaer.projects.eventbasedfeatures;
 
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JFrame;
 
 import net.sf.jaer.chip.AEChip;

@@ -4,6 +4,17 @@
  */
 package net.sf.jaer.graphics;
 
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLCapabilities;
+import com.jogamp.opengl.GLCapabilitiesImmutable;
+import com.jogamp.opengl.GLEventListener;
+import com.jogamp.opengl.GLException;
+import com.jogamp.opengl.awt.GLJPanel;
+import com.jogamp.opengl.fixedfunc.GLLightingFunc;
+import com.jogamp.opengl.fixedfunc.GLMatrixFunc;
+import com.jogamp.opengl.glu.GLU;
 import java.awt.AWTEvent;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -19,27 +30,13 @@ import java.util.Random;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.GLCapabilities;
-import javax.media.opengl.GLCapabilitiesImmutable;
-import javax.media.opengl.GLEventListener;
-import javax.media.opengl.GLException;
-import javax.media.opengl.awt.GLCanvas;
-import javax.media.opengl.fixedfunc.GLLightingFunc;
-import javax.media.opengl.fixedfunc.GLMatrixFunc;
-import javax.media.opengl.glu.GLU;
 import javax.swing.JFrame;
 
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.util.WindowSaver;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
-import java.awt.FlowLayout;
-import javax.media.opengl.awt.GLJPanel;
 import javax.swing.BoxLayout;
-import javax.swing.JPanel;
 import static net.sf.jaer.graphics.ImageDisplay.log;
 
 /**

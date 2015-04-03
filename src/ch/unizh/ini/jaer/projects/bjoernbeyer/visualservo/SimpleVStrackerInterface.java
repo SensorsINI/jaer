@@ -1,8 +1,8 @@
 
 package ch.unizh.ini.jaer.projects.bjoernbeyer.visualservo;
 
+import com.jogamp.opengl.GLAutoDrawable;
 import java.beans.PropertyChangeListener;
-import javax.media.opengl.GLAutoDrawable;
 import net.sf.jaer.event.EventPacket;
 
 /**

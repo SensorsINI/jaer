@@ -7,7 +7,7 @@
 package eu.visualize.ini.convnet;
 
 import java.beans.PropertyChangeEvent;
-import javax.media.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLAutoDrawable;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;

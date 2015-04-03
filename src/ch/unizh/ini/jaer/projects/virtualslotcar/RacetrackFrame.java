@@ -13,7 +13,7 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
 
 import java.awt.geom.Point2D;
 
-import javax.media.opengl.GLCapabilities;
+import com.jogamp.opengl.GLCapabilities;
 
 import com.jogamp.opengl.util.FPSAnimator;
 

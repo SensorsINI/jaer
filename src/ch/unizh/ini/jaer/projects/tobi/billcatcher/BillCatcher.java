@@ -16,8 +16,8 @@ import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
 import java.util.logging.Logger;
 
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;

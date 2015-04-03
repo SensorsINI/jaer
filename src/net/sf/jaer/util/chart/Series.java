@@ -12,12 +12,12 @@ import java.nio.BufferOverflowException;
 import java.nio.FloatBuffer;
 import java.util.logging.Logger;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.fixedfunc.GLPointerFunc;
-import javax.media.opengl.glu.GLU;
 
 import com.jogamp.common.nio.Buffers;
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.fixedfunc.GLPointerFunc;
+import com.jogamp.opengl.glu.GLU;
 
 /**
  * The Series class.

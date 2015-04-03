@@ -38,6 +38,7 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
     private boolean displayError = getBoolean("displayError", false);
     private boolean freezeGains = getBoolean("freezeGains", false);
     private boolean clipping = getBoolean("clipping", true);
+    private boolean expansion=getBoolean("expansion",false);
     private boolean tieGainsToAverage = getBoolean("tieGainsToAverage", true);
     private float manualOnGain = getFloat("manualOnGain", 0.001f);
     private float manualOffGain = getFloat("manualOffGain", -0.001f);
@@ -84,6 +85,7 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
         setPropertyTooltip("globalAverageGainMixingFactor", "mixing factor for average of time bins, range 0-1, increase to speed up learning.");
         setPropertyTooltip("revertLearning", "If set, continually reverts gains to the manual settings.");
         setPropertyTooltip("tieGainsToAverage", "All the gains are clamped to be identical to the average. Use this option to greatly speed up initial gain setting.");
+        setPropertyTooltip("expansion", "Whether expansion of the extrapolation to neighboring pixels is used, to fill in missing pixels with missing events (not in published results)");
 
         filterChain = new FilterChain(chip);
         baFilter = new BackgroundActivityFilter(chip);
@@ -260,6 +262,24 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
         } else {
             pixelOffEventCounter[idx] += 1;
             displayBuffer[idx] += offPixTimeBins[idx][bin];
+        }
+        if (expansion) {
+            for (int dx = -1; dx <= 1; dx++) {
+                if (dx == 0) {
+                    continue;
+                }
+                for (int dy = -1; dy <= 1; dy++) {
+                    if (dy == 0) {
+                        continue;
+                    }
+                    int x = e.x + dx, y = e.y + dy;
+                    if (x < 0 || x >= chip.getSizeX() || y < 0 || y >= chip.getSizeY()) {
+                        continue;
+                    }
+                    int idx2 = getIndex(x, y);
+                    displayBuffer[idx2] += (e.polarity == PolarityEvent.Polarity.On) ? onPixTimeBins[idx][bin] : offPixTimeBins[idx][bin];
+                }
+            }
         }
         //clipping of the displayBuffer values
 //        if (isClipping()) {
@@ -559,6 +579,21 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
     private float clip01(float val) {
         if(val>1) val=1; else if(val<0) val=0;
         return val;
+    }
+
+    /**
+     * @return the expansion
+     */
+    public boolean isExpansion() {
+        return expansion;
+    }
+
+    /**
+     * @param expansion the expansion to set
+     */
+    public void setExpansion(boolean expansion) {
+        this.expansion = expansion;
+        putBoolean("expansion",expansion);
     }
 
 }

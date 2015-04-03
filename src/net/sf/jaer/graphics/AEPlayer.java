@@ -1,4 +1,5 @@
 package net.sf.jaer.graphics;
+import com.jogamp.opengl.GLException;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.event.KeyAdapter;
@@ -9,7 +10,6 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import javax.media.opengl.GLException;
 
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;

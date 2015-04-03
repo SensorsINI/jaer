@@ -15,8 +15,6 @@ import net.sf.jaer.event.*;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.event.orientation.DvsOrientationEvent;
-import net.sf.jaer.event.orientation.OrientationEvent;
-import net.sf.jaer.event.orientation.OrientationEventInterface;
 
 /** Computes simple-type orientation-tuned cells.                           <br>
  * multiOriOutputEnabled - boolean switch:

@@ -4,11 +4,11 @@
  */
 package ch.unizh.ini.jaer.projects.cochsoundloc.multichipviewer;
 
+import com.jogamp.opengl.GLAutoDrawable;
 import java.awt.Graphics2D;
 import java.util.ArrayList;
 import java.util.concurrent.ArrayBlockingQueue;
 
-import javax.media.opengl.GLAutoDrawable;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;

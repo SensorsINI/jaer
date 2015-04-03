@@ -5,10 +5,10 @@
 package ch.unizh.ini.jaer.projects.gesture.virtualdrummer;
 
 
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 import java.awt.geom.Point2D;
 
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
 
 import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
 

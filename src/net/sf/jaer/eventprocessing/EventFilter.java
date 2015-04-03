@@ -3,6 +3,9 @@
  * Created on October 30, 2005, 4:58 PM */
 package net.sf.jaer.eventprocessing;
 
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLException;
 import java.awt.Cursor;
 import java.awt.Desktop;
 import java.beans.PropertyChangeSupport;
@@ -15,9 +18,6 @@ import java.util.Observable;
 import java.util.Set;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLException;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;

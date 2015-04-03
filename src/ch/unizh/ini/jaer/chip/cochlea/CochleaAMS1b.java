@@ -11,6 +11,8 @@
  */
 package ch.unizh.ini.jaer.chip.cochlea;
 
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.BorderLayout;
 import java.awt.Graphics2D;
@@ -20,8 +22,6 @@ import java.util.Iterator;
 import java.util.Observable;
 import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;

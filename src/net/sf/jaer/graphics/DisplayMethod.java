@@ -8,12 +8,12 @@
  */
 package net.sf.jaer.graphics;
 
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.glu.GLU;
 import java.util.ArrayList;
 import java.util.logging.Logger;
 
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.glu.GLU;
 import javax.swing.JMenuItem;
 
 import net.sf.jaer.chip.Chip2D;

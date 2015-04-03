@@ -23,10 +23,10 @@ import java.util.Date;
 import java.util.Observable;
 import java.util.Observer;
 
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.glu.GLU;
-import javax.media.opengl.glu.GLUquadric;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.glu.GLU;
+import com.jogamp.opengl.glu.GLUquadric;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEConstants;

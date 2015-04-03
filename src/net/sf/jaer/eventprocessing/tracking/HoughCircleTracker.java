@@ -15,8 +15,8 @@ import java.awt.event.KeyListener;
 import java.util.Observable;
 import java.util.Observer;
 
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 

@@ -6,7 +6,7 @@ package eu.seebetter.ini.chips.davis;
 
 import java.awt.Font;
 
-import javax.media.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
@@ -21,7 +21,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.DavisChip;
 import java.util.HashMap;
 import java.util.LinkedList;
-import javax.media.opengl.GL2;
+import com.jogamp.opengl.GL2;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;

@@ -1,8 +1,8 @@
 
 package net.sf.jaer.util;
 
+import com.jogamp.opengl.GL2;
 import java.awt.geom.Point2D;
-import javax.media.opengl.GL2;
 /** A simple wrapper class for Point2D.Float that allows for basic vector operation
  *
  * @author Bjoern */

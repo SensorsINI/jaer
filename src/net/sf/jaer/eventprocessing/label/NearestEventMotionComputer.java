@@ -10,10 +10,10 @@
 
 package net.sf.jaer.eventprocessing.label;
 
+import com.jogamp.opengl.GLAutoDrawable;
 import java.util.Observable;
 import java.util.Observer;
 
-import javax.media.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;

@@ -10,15 +10,15 @@
 package ch.unizh.ini.jaer.chip.cochlea;
 
 
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.fixedfunc.GLMatrixFunc;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Observable;
 import java.util.Observer;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.fixedfunc.GLMatrixFunc;
 
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.TypedEvent;

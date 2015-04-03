@@ -4,7 +4,7 @@
  */
 package org.capocaccia.cne.jaer.cne2011;
 
-import javax.media.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;

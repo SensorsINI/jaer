@@ -10,8 +10,8 @@ import java.util.Observable;
 
 import java.util.Observer;
 
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.awt.GLCanvas;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.awt.GLCanvas;
 import javax.swing.JFrame;
 
 import net.sf.jaer.Description;

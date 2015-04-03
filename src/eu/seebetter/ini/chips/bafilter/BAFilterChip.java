@@ -15,9 +15,9 @@ import java.util.Observer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.glu.GLU;
-import javax.media.opengl.glu.GLUquadric;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.glu.GLU;
+import com.jogamp.opengl.glu.GLUquadric;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFrame;
 import javax.swing.JMenu;

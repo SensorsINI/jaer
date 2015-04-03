@@ -5,6 +5,13 @@
 
 package ch.unizh.ini.jaer.projects.einsteintunnel.visualeffects;
 
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLEventListener;
+import com.jogamp.opengl.awt.GLCanvas;
+import com.jogamp.opengl.fixedfunc.GLMatrixFunc;
+import com.jogamp.opengl.glu.GLU;
 import java.awt.Graphics2D;
 import java.awt.Insets;
 import java.io.IOException;
@@ -15,13 +22,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Random;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.GLEventListener;
-import javax.media.opengl.awt.GLCanvas;
-import javax.media.opengl.fixedfunc.GLMatrixFunc;
-import javax.media.opengl.glu.GLU;
 import javax.swing.JFrame;
 
 

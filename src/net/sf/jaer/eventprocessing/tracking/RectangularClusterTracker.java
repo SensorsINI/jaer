@@ -3,6 +3,10 @@
  * Created on December 5, 2005, 3:49 AM */
 package net.sf.jaer.eventprocessing.tracking;
 
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.awt.GLCanvas;
 import java.awt.Color;
 import java.awt.Point;
 import java.awt.event.MouseEvent;
@@ -25,10 +29,6 @@ import java.util.Observer;
 import java.util.Random;
 import java.util.logging.Level;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.awt.GLCanvas;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;

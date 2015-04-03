@@ -24,9 +24,6 @@ import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEConstants;
@@ -40,6 +37,9 @@ import net.sf.jaer.eventprocessing.tracking.ClusterTrackerInterface;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter2d;
 import ch.unizh.ini.jaer.projects.einsteintunnel.sensoryprocessing.BlurringTunnelFilter.NeuronGroup;
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 
 import com.jogamp.opengl.util.gl2.GLUT;
 

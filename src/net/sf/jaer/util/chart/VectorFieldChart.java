@@ -11,8 +11,8 @@ package net.sf.jaer.util.chart;
 import java.awt.Color;
 import java.awt.Dimension;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
 
 /**
  * The VectorFieldChart class.

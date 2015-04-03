@@ -12,8 +12,8 @@ import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
 
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.orientation.BinocularDisparityEvent;

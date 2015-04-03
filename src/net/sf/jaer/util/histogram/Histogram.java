@@ -4,8 +4,8 @@
  */
 package net.sf.jaer.util.histogram;
 
+import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
-import javax.media.opengl.GLAutoDrawable;
 
 /**
  *

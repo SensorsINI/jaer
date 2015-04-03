@@ -12,7 +12,7 @@
 
 package net.sf.jaer.graphics;
 
-import javax.media.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLAutoDrawable;
 
 /**
  * Provides empty implementations of all FrameAnnotater methods, in case a class wishes to subclass this class and simply override the desired annotation methods.

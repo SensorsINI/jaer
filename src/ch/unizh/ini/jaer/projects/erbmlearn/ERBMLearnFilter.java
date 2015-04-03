@@ -9,13 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
-import javax.media.opengl.GLEventListener;
-import javax.media.opengl.awt.GLCanvas;
-import javax.media.opengl.fixedfunc.GLMatrixFunc;
-import javax.media.opengl.glu.GLU;
 import javax.swing.JFrame;
 
 import net.sf.jaer.Description;
@@ -31,6 +24,13 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.jblas.DoubleMatrix;
 
 import ch.unizh.ini.JEvtLearn.ERBM;
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLEventListener;
+import com.jogamp.opengl.awt.GLCanvas;
+import com.jogamp.opengl.fixedfunc.GLMatrixFunc;
+import com.jogamp.opengl.glu.GLU;
 
 import com.jogamp.opengl.util.gl2.GLUT;
 /**

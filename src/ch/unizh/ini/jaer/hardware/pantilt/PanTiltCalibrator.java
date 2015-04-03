@@ -1,4 +1,7 @@
 package ch.unizh.ini.jaer.hardware.pantilt;
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
@@ -13,9 +16,6 @@ import java.io.ObjectOutputStream;
 import java.util.Vector;
 import java.util.logging.Logger;
 
-import javax.media.opengl.GL;
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
 
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.FrameAnnotater;

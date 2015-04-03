@@ -4,10 +4,11 @@
 package ch.unizh.ini.jaer.projects.labyrinth;
 
 
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
 import java.awt.Font;
 
-import javax.media.opengl.GL2;
-import javax.media.opengl.GLAutoDrawable;
+//import com.jogamp.opengl.GL2;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;

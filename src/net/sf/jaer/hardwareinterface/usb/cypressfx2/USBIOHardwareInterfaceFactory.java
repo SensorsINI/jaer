@@ -121,6 +121,7 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
             int status = dev.open(i, getGDevList(), GUID);
 
             if (status == USBIO_ERR_NO_SUCH_DEVICE_INSTANCE) {
+//                log.info("USBIO_ERR_NO_SUCH_DEVICE_INSTANCE: no device found at list address "+i);
                 break;
             } else {
                 //        System.out.println("CypressFX2.openUsbIo(): UsbIo opened the device");
@@ -134,6 +135,7 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
                 int status2 = dev.acquireDevice();
                 if (status2 == USBIO_ERR_SUCCESS) { // only add device if it can be exclusively bound. If devices are alredy opened exclusively, then they will not appear in the list
                     usbioList.add(dev); 
+                    log.info("found device with UsbIo device handle "+dev+" at list address "+i);
                 }
 //                System.out.println("added "+dev);
 //                }
