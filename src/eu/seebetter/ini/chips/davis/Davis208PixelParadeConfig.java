@@ -77,7 +77,7 @@ public class Davis208PixelParadeConfig extends DavisTowerBaseConfig {
 			addAIPot("IFThrBn,n,normal,Bias calibration neuron threshold"); // 27
 			addAIPot("RegBiasBp,p,normal,Bias of OTA fixing the shifted source bias OffsetBn of the pre-amplifier"); // 28
 			addAIPot("Blk2P,p,normal,Ununsed P type"); // 29
-			addAIPot("RefSsbxBn,n,normal,Set OffsetBns, the shifted source bias voltage of the pre-amplifier with NBias");// 30
+			addAIPot("RefSsbxBn,n,normal,Set OffsetBns the shifted source bias voltage of the pre-amplifier with NBias");// 30
 			addAIPot("Blk2N,n,normal,Ununsed N type");// 31
 			addAIPot("Blk3N,n,normal,Ununsed N type");// 32
 			addAIPot("Blk4N,n,normal,Ununsed N type");// 33
