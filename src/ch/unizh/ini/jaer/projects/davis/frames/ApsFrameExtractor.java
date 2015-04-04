@@ -88,7 +88,7 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
         super(chip);
         apsDisplay = ImageDisplay.createOpenGLCanvas();
         apsFrame = new JFrame("APS Frame");
-        apsFrame.setPreferredSize(new Dimension(width * 4, height * 4));
+        apsFrame.setPreferredSize(new Dimension(400, 400));
         apsFrame.getContentPane().add(apsDisplay, BorderLayout.CENTER);
         apsFrame.pack();
         apsFrame.addWindowListener(new WindowAdapter() {
