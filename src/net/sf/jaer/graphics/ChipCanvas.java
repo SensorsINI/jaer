@@ -63,6 +63,8 @@ import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
 
 /**
  * Superclass for classes that paint rendered AE data to graphics devices.
@@ -275,6 +277,22 @@ public class ChipCanvas implements GLEventListener, Observer {
 				log.info("GLCanvas has GLContext=" + drawable.getContext().toString());
 			}
 		}
+                
+                drawable.setFocusable(true);
+                
+                drawable.addFocusListener(new FocusListener() {
+
+                    @Override
+                    public void focusGained(FocusEvent e) {
+                        log.info("focus gained");
+                                
+                    }
+
+                    @Override
+                    public void focusLost(FocusEvent e) {
+                        log.info("focus lost");
+                    }
+                });
 	}
 
 	/** call this method so that next open gl rendering by display(GLAutoDrawable) writes imageOpenGL */
@@ -440,7 +458,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 	 * @see net.sf.jaer.graphics.DisplayMethod#setupGL which sets up GL context for display methods
 	 */
 	@Override
-	public synchronized void display(final GLAutoDrawable drawable) {
+	public void display(final GLAutoDrawable drawable) {
 		final GL2 gl = drawable.getGL().getGL2();
 		checkGLError(gl, glu, "start of display");
 
@@ -499,9 +517,8 @@ public class ChipCanvas implements GLEventListener, Observer {
 	float[] rgbVec = new float[3];
 
 	public void displayChanged(final GLAutoDrawable drawable, final boolean modeChanged, final boolean deviceChanged) {
-		// log.info("display changed");
-		// should be empty according to jogl user guide.
-		// System.out.println("displayChanged");
+		 log.info("display changed");
+//		 should be empty according to jogl user guide.
 	}
 
 	// TODO javadoc
@@ -554,51 +571,53 @@ public class ChipCanvas implements GLEventListener, Observer {
 	 * @return the AEChip pixel, clipped to the bounds of the AEChip.
 	 */
 	public Point getPixelFromPoint(final Point mp) {
-		// this method depends on current GL context being the one that is used for rendering.
-		// the display method should not push/pop the matrix stacks!!
-		if (mp == null) {
-			// log.warning("null Point (outside entire canvas?), returning center pixel");
-			return new Point(chip.getSizeX() / 2, chip.getSizeY() / 2);
-		}
-		try {
-			final int ret = drawable.getContext().makeCurrent();
-			if (ret != GLContext.CONTEXT_CURRENT) {
-				throw new GLException("couldn't make context current");
-			}
-		}
-		catch (final GLException e) {
-			log.warning("couldn't make GL context current, mouse position meaningless: " + e.toString());
-		}
-		final int viewport[] = new int[4];
-		final double mvmatrix[] = new double[16];
-		final double projmatrix[] = new double[16];
-		int realy = 0;// GL y coord pos
-		final double wcoord[] = new double[4];// wx, wy, wz;// returned xyz coords
-		// set up a floatbuffer to getString the depth buffer value of the mouse position
-		final FloatBuffer fb = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asFloatBuffer();
-		final GL2 gl = drawable.getContext().getGL().getGL2();
-		gl.glGetIntegerv(GL.GL_VIEWPORT, viewport, 0);
-		gl.glGetDoublev(GLMatrixFunc.GL_MODELVIEW_MATRIX, mvmatrix, 0);
-		gl.glGetDoublev(GLMatrixFunc.GL_PROJECTION_MATRIX, projmatrix, 0);
-		/* note viewport[3] is height of window in pixels */
-		realy = viewport[3] - (int) mp.getY() - 1;
+		          final double wcoord[] = new double[4];// wx, wy, wz;// returned xyz coords
+            // this method depends on current GL context being the one that is used for rendering.
+            // the display method should not push/pop the matrix stacks!!
+            if (mp == null) {
+                // log.warning("null Point (outside entire canvas?), returning center pixel");
+                return new Point(chip.getSizeX() / 2, chip.getSizeY() / 2);
+            }
+            try {
+                final int ret = drawable.getContext().makeCurrent();
+                if (ret != GLContext.CONTEXT_CURRENT) {
+                    throw new GLException("couldn't make context current");
+                }
+
+                final int viewport[] = new int[4];
+                final double mvmatrix[] = new double[16];
+                final double projmatrix[] = new double[16];
+                int realy = 0;// GL y coord pos
+                // set up a floatbuffer to getString the depth buffer value of the mouse position
+                final FloatBuffer fb = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+                final GL2 gl = drawable.getContext().getGL().getGL2();
+                gl.glGetIntegerv(GL.GL_VIEWPORT, viewport, 0);
+                gl.glGetDoublev(GLMatrixFunc.GL_MODELVIEW_MATRIX, mvmatrix, 0);
+                gl.glGetDoublev(GLMatrixFunc.GL_PROJECTION_MATRIX, projmatrix, 0);
+                /* note viewport[3] is height of window in pixels */
+                realy = viewport[3] - (int) mp.getY() - 1;
 		// Get the depth buffer value at the mouse position. have to do height-mouseY, as GL puts 0,0 in the bottom
-		// left, not top left.
-		gl.glReadPixels(mp.x, realy, 1, 1, GL2ES2.GL_DEPTH_COMPONENT, GL.GL_FLOAT, fb);
-		final float z = 0; // fb.getString(0);
-		glu.gluUnProject(mp.getX(), realy, z, mvmatrix, 0, projmatrix, 0, viewport, 0, wcoord, 0);
-		final Point p = new Point();
-		p.x = (int) Math.round(wcoord[0]);
-		p.y = (int) Math.round(wcoord[1]);
-		if ((p.x < 0) || (p.x > (chip.getSizeX() - 1)) || ((p.y < 0) | (p.y > (chip.getSizeY() - 1)))) {
-			mouseWasInsideChipBounds = false;
-		}
-		else {
-			mouseWasInsideChipBounds = true;
-		}
-		clipPoint(p);
-		// log.info("Mouse xyz=" + mp.getX() + "," + realy + "," + z + "   Pixel x,y=" + p.x + "," + p.y);
-		return p;
+                // left, not top left.
+                gl.glReadPixels(mp.x, realy, 1, 1, GL2ES2.GL_DEPTH_COMPONENT, GL.GL_FLOAT, fb);
+                final float z = 0; // fb.getString(0);
+                glu.gluUnProject(mp.getX(), realy, z, mvmatrix, 0, projmatrix, 0, viewport, 0, wcoord, 0);
+            } catch (final GLException e) {
+                log.warning("couldn't make GL context current, mouse position meaningless: " + e.toString());
+            } finally {
+                drawable.getContext().release();
+            }
+            final Point p = new Point();
+            p.x = (int) Math.round(wcoord[0]);
+            p.y = (int) Math.round(wcoord[1]);
+            if ((p.x < 0) || (p.x > (chip.getSizeX() - 1)) || ((p.y < 0) | (p.y > (chip.getSizeY() - 1)))) {
+                mouseWasInsideChipBounds = false;
+            } else {
+                mouseWasInsideChipBounds = true;
+            }
+            clipPoint(p);
+
+            // log.info("Mouse xyz=" + mp.getX() + "," + realy + "," + z + "   Pixel x,y=" + p.x + "," + p.y);
+            return p;
 	}
 
 	/**
@@ -798,7 +817,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 	}
 
 	/** calls repaint on the drawable */
-	public synchronized void repaint() {
+	public void repaint() {
 		drawable.repaint();
 	}
 
@@ -808,7 +827,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 	 * @param tm
 	 *            time to repaint within, in ms
 	 */
-	public synchronized void repaint(final long tm) {
+	public void repaint(final long tm) {
 		drawable.repaint(tm);
 	}
 
@@ -817,7 +836,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 	 * for a new orthographic projection to achieve this filling. Finally sets the viewport to the entire drawable area.
 	 */
 	@Override
-	public synchronized void reshape(final GLAutoDrawable drawable, final int x, final int y, final int width,
+	public void reshape(final GLAutoDrawable drawable, final int x, final int y, final int width,
 		final int height) {
 		final GL2 gl = drawable.getGL().getGL2();
 		checkGLError(gl, glu, "at start of reshape");
@@ -1307,7 +1326,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 	}
 
 	public void addGLEventListener(final GLEventListener listener) {
-		// System.out.println("addGLEventListener("+listener+")");
+		 System.out.println("addGLEventListener("+listener+")");
 	}
 
 	/**
