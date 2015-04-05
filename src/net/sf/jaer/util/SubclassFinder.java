@@ -22,7 +22,26 @@ public class SubclassFinder {
     // TODO needs a way of caching in preferences the list of classes and the number or checksum of classes,
     // to reduce startup time, since this lookup of subclasses takes 10s of seconds on some machines
 
+    /** List of regexp package names to exclude from search */
     public static final ArrayList<String> exclusionList = new ArrayList();
+    static{
+            exclusionList.add("com.jogamp.*");
+            exclusionList.add("jogamp.*");
+            exclusionList.add("java.*");
+            exclusionList.add("javax.*");
+            exclusionList.add("org.openni.*");
+            exclusionList.add("com.sun.*");
+            exclusionList.add("com.sun.*");
+            exclusionList.add("lib.*");
+            exclusionList.add("org.jblas.*");
+            exclusionList.add("com.phidgets.*");
+            exclusionList.add("com.phidgets.*");
+            exclusionList.add("org.usb4java.*");
+            exclusionList.add("com.kitfox.*");
+            exclusionList.add("org.uncommons.*");
+            exclusionList.add("org.bytedeco.*");
+
+    }
 
     private final static Logger log = Logger.getLogger("SubclassFinder");
 
@@ -70,21 +89,6 @@ public class SubclassFinder {
         public SubclassFinderWorker(Class clazz) {
             this.clazz = clazz;
             // exclude known libraries
-            exclusionList.add("com.jogamp.*");
-            exclusionList.add("jogamp.*");
-            exclusionList.add("java.*");
-            exclusionList.add("javax.*");
-            exclusionList.add("org.openni.*");
-            exclusionList.add("com.sun.*");
-            exclusionList.add("com.sun.*");
-            exclusionList.add("lib.*");
-            exclusionList.add("org.jblas.*");
-            exclusionList.add("com.phidgets.*");
-            exclusionList.add("com.phidgets.*");
-            exclusionList.add("org.usb4java.*");
-            exclusionList.add("com.kitfox.*");
-            exclusionList.add("org.uncommons.*");
-            exclusionList.add("org.bytedeco.*");
             StringBuilder sb=new StringBuilder("The following packages are excluded from searching for subclasses of "+clazz.getName()+": \n");
             for(String s:exclusionList){
                 sb.append(s).append("\n");
@@ -216,7 +220,7 @@ public class SubclassFinder {
         if (progressMonitor != null) {
             progressMonitor.setMaximum(allClasses.size());
         }
-        for (String s : allClasses) {
+        allclassloop: for (String s : allClasses) {
             try {
                 if (progressMonitor != null) {
                     if (progressMonitor.isCanceled()) {
@@ -230,6 +234,11 @@ public class SubclassFinder {
                 s = s.replace('/', '.').replace('\\', '.'); // TODO check this replacement of file separators on win/unix
                 if (s.indexOf("$") != -1) {
                     continue; // inner class
+                }
+                for (String excl : exclusionList) {
+                    if (s.matches(excl)) {
+                        continue allclassloop;
+                    }
                 }
                 c = FastClassFinder.forName(s); //THIS LINE THROWS ALL THE EXCEPTIONS
                 if (c == superClass || c == null) {
