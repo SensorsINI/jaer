@@ -85,6 +85,12 @@ public class SubclassFinder {
             exclusionList.add("com.kitfox.*");
             exclusionList.add("org.uncommons.*");
             exclusionList.add("org.bytedeco.*");
+            StringBuilder sb=new StringBuilder("The following packages are excluded from searching for subclasses of "+clazz.getName()+": \n");
+            for(String s:exclusionList){
+                sb.append(s).append("\n");
+            }
+            sb.append("To modify this list, modify the class SubclassFinder.");
+            log.info(sb.toString());
         }
 
         /**
