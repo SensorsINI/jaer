@@ -51,7 +51,6 @@ import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.GlobalViewer;
-import net.sf.jaer.graphics.JAERDataViewer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 import net.sf.jaer.util.LoggingThreadGroup;
@@ -80,8 +79,6 @@ public class JAERViewer {
      * 
      */
     protected static Logger log;
-    /** Can be used to globally display data */
-    static public JAERDataViewer globalDataViewer = new JAERDataViewer("Global data viewer");
     private ArrayList<AEViewer> viewers = new ArrayList<AEViewer>();
     private boolean syncEnabled = prefs.getBoolean("JAERViewer.syncEnabled", false); // default false so that all viewers are independent
     ArrayList<AbstractButton> syncEnableButtons = new ArrayList<AbstractButton>(); // list of all viewer sync enable buttons, used here to change boolean state because this is not property of Action that buttons understand

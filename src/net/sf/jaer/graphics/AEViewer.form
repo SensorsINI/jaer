@@ -267,15 +267,6 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewBiasesMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="dataWindowMenu">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Data Window"/>
-                <Property name="toolTipText" type="java.lang.String" value="Shows a general purpose data window (including log output)"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="dataWindowMenuActionPerformed"/>
-              </Events>
-            </MenuItem>
             <Menu class="javax.swing.JMenu" name="filtersSubMenu">
               <Properties>
                 <Property name="mnemonic" type="int" value="102"/>
