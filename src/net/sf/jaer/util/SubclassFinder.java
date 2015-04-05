@@ -24,24 +24,22 @@ public class SubclassFinder {
 
     /** List of regexp package names to exclude from search */
     public static final ArrayList<String> exclusionList = new ArrayList();
-    static{
-            exclusionList.add("com.jogamp.*");
-            exclusionList.add("jogamp.*");
-            exclusionList.add("java.*");
-            exclusionList.add("javax.*");
-            exclusionList.add("org.openni.*");
-            exclusionList.add("com.sun.*");
-            exclusionList.add("com.sun.*");
-            exclusionList.add("lib.*");
-            exclusionList.add("org.jblas.*");
-            exclusionList.add("com.phidgets.*");
-            exclusionList.add("com.phidgets.*");
-            exclusionList.add("org.usb4java.*");
-            exclusionList.add("com.kitfox.*");
-            exclusionList.add("org.uncommons.*");
-            exclusionList.add("org.bytedeco.*");
-
-    }
+//    static{
+//            exclusionList.add("com.jogamp.*");
+//            exclusionList.add("jogamp.*");
+//            exclusionList.add("java.*");
+//            exclusionList.add("javax.*");
+//            exclusionList.add("org.openni.*");
+//            exclusionList.add("com.sun.*");
+//            exclusionList.add("lib.*");
+//            exclusionList.add("org.jblas.*");
+//            exclusionList.add("com.phidgets.*");
+//            exclusionList.add("org.usb4java.*");
+//            exclusionList.add("com.kitfox.*");
+//            exclusionList.add("org.uncommons.*");
+//            exclusionList.add("org.bytedeco.*");
+//
+//    } // already handled in ListClasses
 
     private final static Logger log = Logger.getLogger("SubclassFinder");
 
