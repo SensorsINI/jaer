@@ -296,7 +296,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                     }
                     updateEventMaps(e);
                 }
-            } else if (!backwards && isAdcSampleFlag && displayFrames && !paused) { // TODO need to handle single step updates here
+            } else if (!backwards && isAdcSampleFlag && displayFrames ) { // TODO need to handle single step updates here
                 updateFrameBuffer(e);
             }
         }
