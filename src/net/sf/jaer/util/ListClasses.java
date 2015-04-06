@@ -9,7 +9,9 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.StringTokenizer;
@@ -17,7 +19,6 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import static net.sf.jaer.util.SubclassFinder.exclusionList;
 
 /**
  * Provides a static method that returns a List<String> of all classes on
@@ -36,7 +37,7 @@ public class ListClasses {
      */
     public static final String[] IGNORED_CLASSPATH = {
         "java", "javax",
-        "com/sun",
+        "com/sun", "com/oracle", "org/w3c", "org.omg", "org/xml", "sun", "oracle", 
         "gnu/io", // added because we don't bother with the native code for I2C, parallel ports, etc
         "build/classes", // added to ignore classes not in jaer.jar and only temporarily built
         //Below list is to speed up the search as well as the subclassFinder
@@ -44,12 +45,14 @@ public class ListClasses {
         // This also helps eliminating 'UnsatisfiedLinkError' on some systems.
         "com/googlecode", "org/jfree", "org/jblas", "flanagan", "org/apache",
         "org/jdesktop", "de/thesycon", "com/kitfox", "org/uncommons",
-        "de/ailis", "jspikestack",
-        "com/kitfox", "org/bytedeco", "com/phidgets", "org/usb4java", "org/openni", "jogamp", "org/jogamp", "lib"
+        "de/ailis", "jspikestack", "org/netbeans",
+        "com/kitfox", "org/bytedeco", "com/phidgets", "org/usb4java", "org/openni", 
+        "jogamp", "org/jogamp", "com/jogamp", "gluegen", "newt", 
+        "lib"
     };
 
     static final Logger log = Logger.getLogger("net.sf.jaer.util");
-    private static boolean debug = true;
+    private static boolean debug = false;
     private static final int INIT_SIZE = 500, SIZE_INC = 500;
 
     private static void usage() {
@@ -92,7 +95,10 @@ public class ListClasses {
                         ? loadClassesFromDir(null, classpathElement, classpathElement)
                         : loadClassesFromJar(classpathElement));
             }
-        } catch (Exception e) {
+            HashSet<String> hash=new HashSet(classNames); // store only unique
+            classNames=new ArrayList(hash);
+            log.info("found "+classNames.size()+" classes in "+classpath);
+       } catch (Exception e) {
             e.printStackTrace();
         }
         return classNames;
@@ -133,6 +139,9 @@ public class ListClasses {
             }
         } catch (IOException e) {
             e.printStackTrace();
+        }
+        if(files.size()>0){
+            log.info("found "+files.size()+" class files in "+jarFile.getName());
         }
         return files;
     }
