@@ -453,8 +453,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 	/**
 	 * OpenGL calls this when it wants to redraw, and we call it when we actively render.
 	 *
-	 * @param drawable
-	 *            the surface from which we can getString the context with getGL
+	 * @param drawable the surface from which we can get the context with getGL
 	 * @see net.sf.jaer.graphics.DisplayMethod#setupGL which sets up GL context for display methods
 	 */
 	@Override
