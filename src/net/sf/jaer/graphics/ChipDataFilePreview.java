@@ -18,6 +18,7 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.logging.Logger;
 
 import javax.swing.JFileChooser;
@@ -33,9 +34,10 @@ import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.util.EngineeringFormat;
 
 /**
- * Provides preview of recorded AE data file in file dialogs.  It uses the default renderer, extractor and display method 
- * for the AEChip to generate a preview and
- * the 2d histograms of event activity over (by default) 40ms time windows.
+ * Provides preview of recorded AE data file in file dialogs. It uses the
+ * default renderer, extractor and display method for the AEChip to generate a
+ * preview and the 2d histograms of event activity over (by default) 40ms time
+ * windows.
  *
  * @author tobi
  */
@@ -49,21 +51,25 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
     AEChip chip;
     volatile boolean indexFileEnabled = false;
     Logger log = Logger.getLogger("AEViewer");
-    /** The time in us of packets by default */
+    /**
+     * The time in us of packets by default
+     */
     public int packetTimeUs = 40000;
     private File currentFile;
+    private boolean newFileSelected = false;
 
     /**
      * Creates new form ChipDataFilePreview
+     *
      * @param jfc the file chooser
-     * @param chip the AEChip to preview. 
+     * @param chip the AEChip to preview.
      */
     public ChipDataFilePreview(JFileChooser jfc, AEChip chip) {
         canvas = new ChipCanvas(chip);
 //        if(chip.getCanvas().getDisplayMethod()==null){
 //            canvas.setDisplayMethod(new ChipRendererDisplayMethod(canvas)); // needs a default display method
 //        }else{
-            canvas.setDisplayMethod(chip.getPreferredDisplayMethod()); // construct a new private display method to avoid using objects in different OpenGL contexts, e.g. TextRenderer's, which cause Error 1281 GL errors
+        canvas.setDisplayMethod(chip.getPreferredDisplayMethod()); // construct a new private display method to avoid using objects in different OpenGL contexts, e.g. TextRenderer's, which cause Error 1281 GL errors
 //        }
         setLayout(new BorderLayout());
         this.chooser = jfc;
@@ -90,7 +96,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
         if (f == null) {
             return false;
         }
-        if (f.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION) || f.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION)){
+        if (f.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION) || f.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION)) {
             return true;
         } else {
             return false;
@@ -144,8 +150,8 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                     ais = null;
                     System.gc(); // try to make memory mapped file GC'ed so that user can delete it
                     System.runFinalization();
-                // see http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4715154
-                // http://bugs.sun.com/bugdatabase/view_bug.do;:YfiG?bug_id=4724038
+                    // see http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4715154
+                    // http://bugs.sun.com/bugdatabase/view_bug.do;:YfiG?bug_id=4724038
                 }
                 ais = new AEFileInputStream(file);
                 try {
@@ -167,8 +173,10 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
     AEPacketRaw aeRaw;
     EventPacket ae;
 
-    /** Paints the file preview using {@link ChipCanvas#paintFrame() }.
-     @param g the graphics context
+    /**
+     * Paints the file preview using {@link ChipCanvas#paintFrame() }.
+     *
+     * @param g the graphics context
      */
     @Override
     public void paintComponent(Graphics g) {
@@ -198,6 +206,11 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             return;
         }
         Graphics2D g2 = (Graphics2D) canvas.getCanvas().getGraphics();
+        if (newFileSelected) { // erases old text, otherwise draws over it
+            newFileSelected = false;
+            g2.clearRect(0, 0, getWidth(), getHeight());
+        }
+
 //        g2.setColor(Color.black);
 //        g2.fillRect(0,0,getWidth(),getHeight()); // rendering method already paints frame black, shouldn't do it here or we get flicker from black to image
         if (!indexFileEnabled) {
@@ -231,11 +244,14 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             }
             if (ae != null) {
                 renderer.render(ae);
+                ArrayList<FrameAnnotater> annotators = canvas.getDisplayMethod().getAnnotators();
+                canvas.getDisplayMethod().setAnnotators(null);
                 canvas.paintFrame();
+                canvas.getDisplayMethod().setAnnotators(annotators);
             }
         } else {
             fileSizeString = indexFileString;
-            g2.clearRect(0,0,getWidth(),getHeight());
+            g2.clearRect(0, 0, getWidth(), getHeight());
         }
         g2.setColor(Color.red);
         g2.setFont(g2.getFont().deriveFont(17f));
@@ -256,25 +272,25 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
         try {
             BufferedReader r = new BufferedReader(new FileReader(file));
             int numFiles = 0;
-            String s=null;
-            StringBuilder sb=new StringBuilder();
-            EngineeringFormat fmt=new EngineeringFormat();
-            while ((s=r.readLine()) != null) {
+            String s = null;
+            StringBuilder sb = new StringBuilder();
+            EngineeringFormat fmt = new EngineeringFormat();
+            while ((s = r.readLine()) != null) {
                 numFiles++;
-                if(s!=null) {
-                    try{
-                    File f=new File(file.getParent(),s);
-                    if(f.canRead()){
-                        long l=f.length();
-                        sb.append(" "+fmt.format((float)l)+"b");
+                if (s != null) {
+                    try {
+                        File f = new File(file.getParent(), s);
+                        if (f.canRead()) {
+                            long l = f.length();
+                            sb.append(" " + fmt.format((float) l) + "b");
 
-                    }
-                    }catch(Exception e){
+                        }
+                    } catch (Exception e) {
                         sb.append(" ? ");
                     }
                 }
             }
-            return numFiles + " files: "+sb.toString();
+            return numFiles + " files: " + sb.toString();
         } catch (Exception e) {
             return "";
         }
@@ -292,5 +308,6 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
      */
     void setCurrentFile(File currentFile) {
         this.currentFile = currentFile;
+        newFileSelected = true;
     }
 }
