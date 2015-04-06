@@ -510,9 +510,9 @@
             </Property>
             <Property name="toolTipText" type="java.lang.String" value="Sets rendering contrast gain (1 is default). See Video Control panel for full set of controls."/>
           </Properties>
-          <BindingProperties>
-            <BindingProperty name="value" source="Form" sourcePath="${apsDvsConfig.contrast}" target="contrastSp" targetPath="value" updateStrategy="0" immediately="false"/>
-          </BindingProperties>
+          <Events>
+            <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="contrastSpStateChanged"/>
+          </Events>
         </Component>
         <Component class="javax.swing.JCheckBox" name="autoContrastCB">
           <Properties>
@@ -521,9 +521,9 @@
             <Property name="horizontalAlignment" type="int" value="11"/>
             <Property name="horizontalTextPosition" type="int" value="2"/>
           </Properties>
-          <BindingProperties>
-            <BindingProperty name="selected" source="Form" sourcePath="${apsDvsConfig.useAutoContrast}" target="autoContrastCB" targetPath="selected" updateStrategy="0" immediately="false"/>
-          </BindingProperties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="autoContrastCBActionPerformed"/>
+          </Events>
         </Component>
         <Component class="javax.swing.JCheckBox" name="displayFramesCheckBox">
           <Properties>

@@ -24,6 +24,9 @@ import net.sf.jaer.util.histogram.SimpleHistogram;
 import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DAVIS240BaseCamera;
+import eu.seebetter.ini.chips.davis.DavisAutoShooter;
+import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
+import java.beans.PropertyChangeEvent;
 
 /**
  * Class adapted from AEChipRenderer to render not only AE events but also
@@ -52,7 +55,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     /** Fields used to reduce method calls */
     protected int sizeX, sizeY, maxADC, numEventTypes;
 
-    /** Used to mark time of occurance of frame event */
+    /** Used to mark time of frame event */
     protected int timestamp = 0;
     /** low pass temporal filter that computes time-averaged min and max gray values */
     protected LowpassFilter2d autoContrast2DLowpassRangeFilter = new LowpassFilter2d();  // 2 lp values are min and max log intensities from each frame
@@ -74,28 +77,26 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     private SimpleHistogram adcSampleValueHistogram2 = new SimpleHistogram(0, histStep, (DavisChip.MAX_ADC + 1) / histStep, 0);
     /** Histogram objects used to collect APS statistics */
     protected SimpleHistogram currentHist = adcSampleValueHistogram1, nextHist = adcSampleValueHistogram2;
+    
+    protected DavisVideoContrastController contrastController=null;
 
     /** Boolean on whether to compute the histogram of gray levels */
     protected boolean computeHistograms = false;
     private boolean displayAnnotation = false;
 
-    /**
-     * PropertyChange
-     */
-    public static final String AGC_VALUES = "AGCValuesChanged";
-
+ 
     public AEFrameChipRenderer(AEChip chip) {
         super(chip);
         if (chip.getNumPixels() == 0) {
             log.warning("chip has zero pixels; is the constuctor of AEFrameChipRenderer called before size of the AEChip is set?");
             return;
         }
-        setAGCTauMs(chip.getPrefs().getFloat("agcTauMs", 1000));
         onColor = new float[4];
         offColor = new float[4];
         checkPixmapAllocation();
-//        resetFrame(0.5f);
-//        resetAnnotationFrame(0.0f); // don't call here because it depends on knowing desired rendering state, which requires chip configuration, which might not be set yet
+        contrastController=new DavisVideoContrastController((DavisChip)chip);
+        // when contrast controller properties change, inform this so this can pass on to the chip
+        contrastController.getSupport().addPropertyChangeListener(this);
     }
 
     /**
@@ -392,10 +393,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     protected void endFrame() {
         System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
-        if ((minValue !=0 ) && (maxValue > 0)) { // don't adapt to first frame which is all zeros TODO does not work if minValue<0
-            java.awt.geom.Point2D.Float filter2d = autoContrast2DLowpassRangeFilter.filter2d(minValue, maxValue, timestamp);
-            getSupport().firePropertyChange(AGC_VALUES, null, filter2d); // inform listeners (GUI) of new AGC min/max filterd log intensity values
-        }
+        contrastController.endFrame(minValue, maxValue, timestamp);
         getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILBLE, null, this); // TODO document what is sent and send something reasonable
     }
 
@@ -738,27 +736,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      * @return the gray value
      */
     private float normalizeFramePixel(float value) {
-        float v;
-        if (!isUseAutoContrast()) { // fixed rendering computed here
-            float gamma = getGamma();
-            if (gamma == 1.0f) {
-                v = ((getContrast() * value) + getBrightness()) / maxADC;
-            } else {
-                v = (float) (Math.pow((((getContrast() * value) + getBrightness()) / maxADC), gamma));
-            }
-        } else {
-            java.awt.geom.Point2D.Float filter2d = autoContrast2DLowpassRangeFilter.getValue2d();
-            float offset = filter2d.x;
-            float range = (filter2d.y - filter2d.x);
-            v = ((value - offset)) / (range);
-//           System.out.println("offset="+offset+" range="+range+" value="+value+" v="+v);
-        }
-        if (v < 0) {
-            v = 0;
-        } else if (v > 1) {
-            v = 1;
-        }
-        return v;
+        return contrastController.normalizePixelGrayValue(value, maxADC);
     }
 
     private float normalizeEvent(float value) {
@@ -770,38 +748,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         return value;
     }
 
-    public float getAGCTauMs() {
-        return autoContrast2DLowpassRangeFilter.getTauMs();
-    }
-
-    public void setAGCTauMs(float tauMs) {
-        if (tauMs < 10) {
-            tauMs = 10;
-        }
-        autoContrast2DLowpassRangeFilter.setTauMs(tauMs);
-        chip.getPrefs().putFloat("agcTauMs", tauMs);
-        resetAutoContrast();
-    }
-
-    public void applyAGCValues() {
-        java.awt.geom.Point2D.Float f = autoContrast2DLowpassRangeFilter.getValue2d();
-        setBrightness(agcOffset());
-        setContrast(agcGain());
-    }
-
-    private int agcOffset() {
-        return (int) autoContrast2DLowpassRangeFilter.getValue2d().x;
-    }
-
-    private int agcGain() {
-        java.awt.geom.Point2D.Float f = autoContrast2DLowpassRangeFilter.getValue2d();
-        float diff = f.y - f.x;
-        if (diff < 1) {
-            return 1;
-        }
-        int gain = (int) (maxADC / (f.y - f.x));
-        return gain;
-    }
+  
 
     public int getMaxADC() {
         return maxADC;
@@ -809,10 +756,6 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     public void setMaxADC(int max) {
         maxADC = max;
-    }
-
-    public void resetAutoContrast() {
-        autoContrast2DLowpassRangeFilter.reset();
     }
 
     /**
@@ -897,29 +840,66 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         return ((DvsDisplayConfigInterface) chip.getBiasgen()).isDisplayEvents();
     }
 
-    protected boolean isUseAutoContrast() {
-        return ((DvsDisplayConfigInterface) chip.getBiasgen()).isUseAutoContrast();
+   
+    /**
+     * @return the contrastController
+     */
+    public DavisVideoContrastController getContrastController() {
+        return contrastController;
     }
 
-    protected float getGamma() {
-        return ((DvsDisplayConfigInterface) chip.getBiasgen()).getGamma();
+    /**
+     * @param contrastController the contrastController to set
+     */
+    public void setContrastController(DavisVideoContrastController contrastController) {
+        this.contrastController = contrastController;
     }
 
-    protected float getContrast() {
-        return ((DvsDisplayConfigInterface) chip.getBiasgen()).getContrast();
+    public boolean isUseAutoContrast() {
+        return contrastController.isUseAutoContrast();
     }
 
-    protected float getBrightness() {
-        return ((DvsDisplayConfigInterface) chip.getBiasgen()).getBrightness();
+    public void setUseAutoContrast(boolean useAutoContrast) {
+        contrastController.setUseAutoContrast(useAutoContrast);
     }
 
-    protected void setBrightness(float brightness) {
-        ((DvsDisplayConfigInterface) chip.getBiasgen()).setBrightness(brightness);
+    public float getContrast() {
+        return contrastController.getContrast();
     }
 
-    protected void setContrast(int contrast) {
-        ((DvsDisplayConfigInterface) chip.getBiasgen()).setContrast(contrast);
+    public void setContrast(float contrast) {
+        contrastController.setContrast(contrast);
     }
 
+    public float getBrightness() {
+        return contrastController.getBrightness();
+    }
+
+    public void setBrightness(float brightness) {
+        contrastController.setBrightness(brightness);
+    }
+
+    public float getGamma() {
+        return contrastController.getGamma();
+    }
+
+    public void setGamma(float gamma) {
+        contrastController.setGamma(gamma);
+    }
+
+    public void setAutoContrastTimeconstantMs(float tauMs) {
+        contrastController.setAutoContrastTimeconstantMs(tauMs);
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent pce) {
+        super.propertyChange(pce); //To change body of generated methods, choose Tools | Templates.
+        chip.getBiasgen().getSupport().firePropertyChange(pce); // pass on events to chip configuration
+    }
+
+    
+    
+    
+    
 
 }

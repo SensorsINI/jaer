@@ -21,6 +21,7 @@ import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
 import ch.unizh.ini.jaer.config.cpld.CPLDInt;
 import eu.seebetter.ini.chips.DavisChip;
 import java.awt.Color;
+import net.sf.jaer.graphics.AEFrameChipRenderer;
 
 /**
  * Wraps some key apsDVS sensor control in more user-friendly control panel.
@@ -31,8 +32,9 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 
     protected DavisChip chip = null;
     protected DavisTweaks apsDvsTweaks;
-    Davis240Config.VideoControl videoControl;
-    Davis240Config.ApsReadoutControl apsReadoutControl;
+    DavisConfig.VideoControl videoControl;
+    DavisConfig.ApsReadoutControl apsReadoutControl;
+    DavisVideoContrastController contrastController;
     AEChipRenderer renderer = null;
 
     private static final Logger log = Logger.getLogger("DVSFunctionalControlPanel");
@@ -79,7 +81,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             exposureCPLDInt = config.getExposureControlRegister();
             frameDelayCPLDInt = config.getFrameDelayControlRegister();
             videoControl = config.getVideoControl();
-            videoControl.addObserver(this); // contrast and useAutoContrast updates come here
+            videoControl.addObserver(this); // display of various events/frames enabled comes here
             apsReadoutControl = config.getApsReadoutControl();
             apsReadoutControl.addObserver(this);
             // config.exposureControlRegister.addObserver(this);
@@ -88,6 +90,11 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             imuVisibleCB.setSelected(config.isDisplayImu());
             imuEnabledCB.setSelected(config.isImuEnabled());
         }
+        contrastController = ((AEFrameChipRenderer) chip.getRenderer()).getContrastController();
+        contrastController.addObserver(this); // get updates from contrast controller
+        contrastSp.setValue(contrastController.getContrast());
+        contrastSp.setEnabled(!contrastController.isUseAutoContrast());
+        autoContrastCB.setSelected(contrastController.isUseAutoContrast());
         this.chip.addObserver(this);
         chip.getSupport().addPropertyChangeListener(this);
         chip.getBiasgen().getSupport().addPropertyChangeListener(this);
@@ -214,16 +221,16 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
                 float value = (Float) spinner.getValue();
                 int i = 0;
 //                int rot = mwe.getWheelRotation(); // >0 is roll down, want smaller value
-                if (true) { 
+                if (true) {
                     for (i = 0; i < vals.length; i++) {
                         if (value <= vals[i]) {
                             break;  // take value from vals array that is just above our current value, e.g. if our current value is 11, then take 20 (if that is next higher vals) as next value and mult of 20 value as decrement amount
                         }
                     }
-                    if (i > vals.length-1) {
+                    if (i > vals.length - 1) {
                         i = vals.length - 1;
                     }
-                } 
+                }
 //                else { // roll up, want larger value
 //                    for (i = vals.length-1; i >=0 ; i--) {
 //                        if (value >= vals[i]) {
@@ -263,6 +270,11 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         String name = evt.getPropertyName();
         try {
             switch (name) {
+                case DavisVideoContrastController.AGC_VALUES:
+                {
+                    contrastSp.setValue(contrastController.getAutoContrast());
+                }
+                break;
                 case DVSTweaks.THRESHOLD: // fired from Davis240Config setBandwidthTweak
                 {
                     float v = (Float) evt.getNewValue();
@@ -325,7 +337,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
                     displayEventsCheckBox.setSelected((boolean) evt.getNewValue());
                 }
                 break;
-                case DavisDisplayConfigInterface.PROPERTY_CONTRAST: {
+                case DavisVideoContrastController.PROPERTY_CONTRAST: {
                     contrastSp.setValue((float) evt.getNewValue());
                 }
                 break;
@@ -340,7 +352,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
                 case DavisConfig.PROPERTY_GLOBAL_SHUTTER_MODE_ENABLED: {
                     glShutterCB.setSelected((Boolean) evt.getNewValue());
                 }
-                case DavisChip.PROPERTY_AUTO_EXPOSURE_ENABLED:{
+                case DavisChip.PROPERTY_AUTO_EXPOSURE_ENABLED: {
                     autoExpCB.setSelected((Boolean) evt.getNewValue());
                 }
                 break;
@@ -359,7 +371,6 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
-        bindingGroup = new org.jdesktop.beansbinding.BindingGroup();
 
         dvsColorButGrp = new javax.swing.ButtonGroup();
         jPanel1 = new javax.swing.JPanel();
@@ -632,17 +643,21 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 
         contrastSp.setModel(new javax.swing.SpinnerNumberModel(Float.valueOf(1.0f), Float.valueOf(0.2f), Float.valueOf(5.0f), Float.valueOf(0.05f)));
         contrastSp.setToolTipText("Sets rendering contrast gain (1 is default). See Video Control panel for full set of controls.");
-
-        org.jdesktop.beansbinding.Binding binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${apsDvsConfig.contrast}"), contrastSp, org.jdesktop.beansbinding.BeanProperty.create("value"));
-        bindingGroup.addBinding(binding);
+        contrastSp.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                contrastSpStateChanged(evt);
+            }
+        });
 
         autoContrastCB.setText("Auto contrast");
         autoContrastCB.setToolTipText("Automatically set rendering contrast so that brightness (offset) and contrast (gain) scale min and max values to 0 and 1 respectively");
         autoContrastCB.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
         autoContrastCB.setHorizontalTextPosition(javax.swing.SwingConstants.LEFT);
-
-        binding = org.jdesktop.beansbinding.Bindings.createAutoBinding(org.jdesktop.beansbinding.AutoBinding.UpdateStrategy.READ_WRITE, this, org.jdesktop.beansbinding.ELProperty.create("${apsDvsConfig.useAutoContrast}"), autoContrastCB, org.jdesktop.beansbinding.BeanProperty.create("selected"));
-        bindingGroup.addBinding(binding);
+        autoContrastCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                autoContrastCBActionPerformed(evt);
+            }
+        });
 
         displayFramesCheckBox.setText("Display Frames");
         displayFramesCheckBox.setToolTipText("Enables display of APS imager output");
@@ -843,13 +858,27 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
                 .addComponent(dvsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(16, Short.MAX_VALUE))
         );
-
-        bindingGroup.bind();
     }// </editor-fold>//GEN-END:initComponents
 
     private void glShutterCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_glShutterCBActionPerformed
         ((DavisBaseCamera) chip).getDavisConfig().getApsReadoutControl().setGlobalShutterMode(glShutterCB.isSelected());
     }//GEN-LAST:event_glShutterCBActionPerformed
+
+    private void contrastSpStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_contrastSpStateChanged
+        if(contrastController.isUseAutoContrast()) return; // don't update if only used for display of contrast
+        try {
+            float f = (float) contrastSp.getValue();
+            contrastController.setContrast(f);
+            contrastSp.setBackground(Color.GRAY);
+        } catch (Exception e) {
+            log.warning(e.toString());
+            contrastSp.setBackground(Color.red);
+        }
+    }//GEN-LAST:event_contrastSpStateChanged
+
+    private void autoContrastCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_autoContrastCBActionPerformed
+        contrastController.setUseAutoContrast(autoContrastCB.isSelected());
+    }//GEN-LAST:event_autoContrastCBActionPerformed
 
     private void bandwidthTweakerStateChanged(javax.swing.event.ChangeEvent evt) {// GEN-FIRST:event_bandwidthTweakerStateChanged
         getDvsTweaks().setBandwidthTweak(bandwidthTweaker.getValue());
@@ -993,7 +1022,6 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
     private net.sf.jaer.biasgen.PotTweaker onOffBalanceTweaker;
     private javax.swing.JButton snapshotButton;
     private net.sf.jaer.biasgen.PotTweaker thresholdTweaker;
-    private org.jdesktop.beansbinding.BindingGroup bindingGroup;
     // End of variables declaration//GEN-END:variables
 
     /**
@@ -1032,13 +1060,15 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         } else if (o == frameDelayCPLDInt) {
             fdSp.setValue(getConfig().getFrameDelayMs());
         } else if (o == videoControl) {
-            contrastSp.setValue(getConfig().getContrast());
-            autoContrastCB.setSelected(getConfig().isUseAutoContrast());
             displayFramesCheckBox.setSelected(getConfig().isDisplayFrames());
             displayEventsCheckBox.setSelected(getConfig().isDisplayEvents());
         } else if (o == apsReadoutControl) {
             edSp.setValue(getConfig().getExposureDelayMs());
             fdSp.setValue(getConfig().getFrameDelayMs());
-        } 
+        } else if (o == contrastController) {
+            autoContrastCB.setSelected(contrastController.isUseAutoContrast());
+            contrastSp.setEnabled(!contrastController.isUseAutoContrast());
+            contrastSp.setValue(contrastController.getContrast());
+        }
     }
 }

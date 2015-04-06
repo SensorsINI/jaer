@@ -49,7 +49,6 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 			log.warning("chip has zero pixels; is the constuctor of AEFrameChipRenderer called before size of the AEChip is set?");
 			return;
 		}
-		setAGCTauMs(chip.getPrefs().getFloat("agcTauMs", 1000));
 		onColor = new float[4];
 		offColor = new float[4];
 		checkPixmapAllocation();
