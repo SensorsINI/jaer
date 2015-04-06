@@ -21,11 +21,11 @@ public class DAVIS240C extends DAVIS240BaseCamera {
 
     @Override
     public boolean firstFrameAddress(short x, short y) {
-       return (x == 0) && (y == 0); //To change body of generated methods, choose Tools | Templates.
+       return (x == 0) && (y == getSizeY()-1); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
     public boolean lastFrameAddress(short x, short y) {
-        return (x == (getSizeX()-1)) && (y == (getSizeY()-1));
+        return (x == (getSizeX()-1)) && (y == 0);
      }
 }
