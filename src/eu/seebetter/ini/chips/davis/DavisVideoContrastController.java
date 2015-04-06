@@ -9,6 +9,7 @@ import eu.seebetter.ini.chips.DavisChip;
 import java.awt.geom.Point2D;
 import java.beans.PropertyChangeSupport;
 import java.util.Observable;
+import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import net.sf.jaer.util.filter.LowpassFilter2d;
 
@@ -27,6 +28,7 @@ import net.sf.jaer.util.filter.LowpassFilter2d;
  */
 public class DavisVideoContrastController extends Observable {
 
+    private static Logger log=Logger.getLogger("DavisVideoContrastController");
     DavisChip chip;
     Preferences prefs = Preferences.userNodeForPackage(this.getClass());
 
@@ -42,6 +44,9 @@ public class DavisVideoContrastController extends Observable {
     public static final String PROPERTY_GAMMA = "gamma";
     public static final String AGC_VALUES = "AGCValuesChanged";
     public static final String PROPERTY_AUTO_CONTRAST_ENABLED = "useAutoContrast";
+    
+    public static int DEBUG_PRINT_INTERVAL=50;
+    private int debugPrintCounter=0;
     
     /** The automatically-computed gain (computed in endFrame) applied to ADC samples */
     protected float autoContrast=1;
@@ -65,12 +70,12 @@ public class DavisVideoContrastController extends Observable {
         if (!isUseAutoContrast()) { // fixed rendering computed here
             float gamma = getGamma();
             if (gamma == 1.0f) {
-                v = ((contrast * adcCount) + brightness) / maxADC;
+                v = (contrast *(adcCount + brightness)) / maxADC;
             } else {
-                v = (float) (Math.pow((((contrast * adcCount) + brightness) / maxADC), gamma));
+                v = (float) (Math.pow(((contrast * (adcCount + brightness)) / maxADC), gamma));
             }
         } else {
-            v = ((autoContrast* adcCount + autoBrightness)/maxADC);
+            v = ((autoContrast* (adcCount + autoBrightness))/maxADC);
         }
         if (v < 0) {
             v = 0;
@@ -118,7 +123,15 @@ public class DavisVideoContrastController extends Observable {
             if(diff<1) diff=1;
             autoContrast = chip.getMaxADC()/diff; // this value results in video value 1 when pixel is max value
             getSupport().firePropertyChange(AGC_VALUES, null, new Point2D.Float(autoBrightness, autoContrast)); // inform listeners (GUI) of new AGC min/max filterd log intensity values
+            if(debugPrintCounter++%DEBUG_PRINT_INTERVAL==0){
+                log.info(this.toString());
+            }
         }
+    }
+    
+    public String toString(){
+        Point2D.Float minmax=autoContrast2DLowpassRangeFilter.getValue2d();
+        return String.format("DavisVideoContrastController: minAvg=%-10.1f, maxAvg=%-10.1f, autoContrast=%-10.3f autoBrightness=%-10.3f",minmax.x, minmax.y,autoContrast,autoBrightness);
     }
 
     /**
