@@ -652,7 +652,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             statisticsLabel = new DynamicFontSizeJLabel();
             //        statisticsLabel.setFont(new java.awt.Font("Bitstream Vera Sans Mono 11 Bold", 0, 8));
-            statisticsLabel.setToolTipText("Time slice/Absolute time, NumEvents/NumFiltered, events/sec, Graphics rendering frame rate desired/achieved, Time speedup X slowdown /, delay after frame, color scale");
+            statisticsLabel.setToolTipText("Time slice/Absolute time, NumEvents/NumFiltered, events/sec, Graphics rendering frame rate desired/achieved, Time speedup X, delay after frame, color scale");
             statisticsPanel.add(statisticsLabel);
             PropertyChangeListener[] list = statisticsLabel.getPropertyChangeListeners();
             for (PropertyChangeListener p : list) {
@@ -2334,7 +2334,7 @@ two interfaces). otherwise force user choice.
 				if (ratekeps >= 100e3f) {
 					rateString = "   >=100 Meps ";
 				} else {
-					rateString = String.format("%5.1f Keps", ratekeps); //String.format("%6.2fkeps ",ratekeps);
+					rateString = String.format("%7.1fKeps", ratekeps); //String.format("%6.2fkeps ",ratekeps);
 				}
 
 
@@ -2358,11 +2358,9 @@ two interfaces). otherwise force user choice.
 					float expansion = getTimeExpansion(dtMs);
 					if (expansion == 0) {
 						timeExpansionString = "??? ";
-					} else if (expansion > 1) {
-						timeExpansionString = String.format("%5.1fX ", expansion);
 					} else {
-						timeExpansionString = String.format("%5.1f/ ", 1 / expansion);
-					}
+						timeExpansionString = String.format("%7sX", engFmt.format(expansion));
+					} 
 				}
 
 
@@ -2380,7 +2378,7 @@ two interfaces). otherwise force user choice.
 
 				FrameRater fr = getFrameRater();
 
-				String frameRateString = String.format("%3.0f/%dfps,%dms ",
+				String frameRateString = String.format("%3.0f/%dfps,%3dms ",
 					fr.getAverageFPS(),
 					fr.getDesiredFPS(),
 					fr.getLastDelayMs());
