@@ -416,7 +416,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         setPreferredSize(new java.awt.Dimension(580, 686));
 
         availClassPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Available classes"));
-        availClassPanel.setToolTipText("If your class doesn't show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath)");
+        availClassPanel.setToolTipText("<html>If your class doesn't show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath). <p> Yyour class must be concrete (not abstract). <p> Finally, if your class lives in a separate JAR archive, make sure your archive classpath is not on the excluded list in the class ListClasses.");
         availClassPanel.setPreferredSize(new java.awt.Dimension(400, 300));
 
         filterLabel.setText("Filter");
@@ -648,7 +648,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
         defaultsButton.setMnemonic('d');
         defaultsButton.setText("Add Defaults");
-        defaultsButton.setToolTipText("Adds the defaults to the front of the selected classes list");
+        defaultsButton.setToolTipText("Adds the defaults to the end of the selected classes list");
         defaultsButton.setMargin(new java.awt.Insets(2, 5, 2, 5));
         defaultsButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

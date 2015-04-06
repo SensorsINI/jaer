@@ -83,7 +83,7 @@
             <TitledBorder title="Available classes"/>
           </Border>
         </Property>
-        <Property name="toolTipText" type="java.lang.String" value="If your class doesn&apos;t show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath)"/>
+        <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;If your class doesn&apos;t show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath). &lt;p&gt; Yyour class must be concrete (not abstract). &lt;p&gt; Finally, if your class lives in a separate JAR archive, make sure your archive classpath is not on the excluded list in the class ListClasses."/>
         <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
           <Dimension value="[400, 300]"/>
         </Property>
@@ -475,7 +475,7 @@
       <Properties>
         <Property name="mnemonic" type="int" value="100"/>
         <Property name="text" type="java.lang.String" value="Add Defaults"/>
-        <Property name="toolTipText" type="java.lang.String" value="Adds the defaults to the front of the selected classes list"/>
+        <Property name="toolTipText" type="java.lang.String" value="Adds the defaults to the end of the selected classes list"/>
         <Property name="margin" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
           <Insets value="[2, 5, 2, 5]"/>
         </Property>
