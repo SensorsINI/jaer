@@ -4271,7 +4271,11 @@ two interfaces). otherwise force user choice.
 	}//GEN-LAST:event_increaseContrastMenuItemActionPerformed
 
 	private void cycleColorRenderingMethodMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cycleColorRenderingMethodMenuItemActionPerformed
-		getRenderer().cycleColorMode();
+            if(chipCanvas!=null && chipCanvas.getDisplayMethod()!=null && chipCanvas.getDisplayMethod() instanceof DisplayMethod2D){
+                getRenderer().cycleColorMode();
+            }else{
+                log.warning("It does not make sense to cycle color mode for this display method, ignoring");
+            }
 	}//GEN-LAST:event_cycleColorRenderingMethodMenuItemActionPerformed
 
 	private void subsampleEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_subsampleEnabledCheckBoxMenuItemActionPerformed
