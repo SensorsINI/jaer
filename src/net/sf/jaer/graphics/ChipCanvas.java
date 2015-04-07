@@ -809,7 +809,11 @@ public class ChipCanvas implements GLEventListener, Observer {
 			if (!(e.getCause() instanceof InterruptedException)) {
 				log.warning(e.toString());
 			}
-		}
+		}catch(final RuntimeException ie){
+                    if (!(ie.getCause() instanceof InterruptedException)) {
+				log.warning(ie.toString());
+			}
+                }
 	}
 
 	public void removeGLEventListener(final GLEventListener listener) {
