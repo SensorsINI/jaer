@@ -15,12 +15,8 @@ import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.DatagramChannel;
-import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.Exchanger;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
@@ -64,38 +60,24 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private static Preferences prefs = Preferences.userNodeForPackage(AEUnicastInput.class);
     private DatagramSocket datagramSocket = null;
     private boolean printedHost = false;
-//    private String host=prefs.get("AEUnicastInput.host", "localhost");
     private int port = prefs.getInt("AEUnicastInput.port", AENetworkInterfaceConstants.DATAGRAM_PORT);
     private boolean sequenceNumberEnabled = prefs.getBoolean("AEUnicastInput.sequenceNumberEnabled", true);
     private boolean addressFirstEnabled = prefs.getBoolean("AEUnicastInput.addressFirstEnabled", true);
     private ArrayBlockingQueue<ByteBuffer> exchanger = new ArrayBlockingQueue(NBUFFERS);
     private AENetworkRawPacket packet = new AENetworkRawPacket();
-//    private Exchanger<AENetworkRawPacket> exchanger = new Exchanger();
-//    private AENetworkRawPacket initialEmptyBuffer = new AENetworkRawPacket(); // the buffer to start capturing into
-//    private AENetworkRawPacket initialFullBuffer = new AENetworkRawPacket();    // the buffer to render/process first
-//    private AENetworkRawPacket currentFillingBuffer = initialEmptyBuffer; // starting buffer for filling
-//    private AENetworkRawPacket currentEmptyingBuffer = initialFullBuffer; // starting buffer to empty
     private static final Logger log = Logger.getLogger("AESocketStream");
     private int bufferSize = prefs.getInt("AEUnicastInput.bufferSize", AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES);
     private boolean swapBytesEnabled = prefs.getBoolean("AEUnicastInput.swapBytesEnabled", false);
     private float timestampMultiplier = prefs.getFloat("AEUnicastInput.timestampMultiplier", DEFAULT_TIMESTAMP_MULTIPLIER);
     private boolean use4ByteAddrTs = prefs.getBoolean("AEUnicastInput.use4ByteAddrTs", DEFAULT_USE_4_BYTE_ADDR_AND_TIMESTAMP);
     private boolean localTimestampsEnabled = prefs.getBoolean("AEUnicastOutput.localTimestampsEnabled", false);
-//    /**
-//     * Maximum time interval in ms to exchange EventPacketRaw with consumer
-//     */
-//    static public final long MIN_INTERVAL_MS = 30;
-//    final int TIMEOUT_MS = 1000; // SO_TIMEOUT for receive in ms
     boolean stopme = false;
-    private final boolean debug = false; // to print received amount of data
     private DatagramChannel channel;
     private int datagramCounter = 0;
     private int datagramSequenceNumber = 0;
     private EventRaw eventRaw = new EventRaw();
-//    private int wrapCount=0;
     private int timeZero = 0; // used to store initial timestamp for 4 byte timestamp reads to subtract this value
     private boolean readTimeZeroAlready = false;
-    // receive buffer, allocated direct for speed
     private boolean timestampsEnabled = prefs.getBoolean("AEUnicastInput.timestampsEnabled", DEFAULT_TIMESTAMPS_ENABLED);
     private Semaphore pauseSemaphore = new Semaphore(1);
     private volatile boolean paused = false;
@@ -164,13 +146,6 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
         }
     }
 
-//    synchronized private void allocateBuffers() {
-//        buffers = new ByteBuffer[NBUFFERS];
-//        for (int i = 0; i < NBUFFERS; i++) {
-//            buffers[i] = ByteBuffer.allocateDirect(bufferSize);
-//            buffers[i].order(swapBytesEnabled ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
-//        }
-//    }
     private void checkSequenceNumber(ByteBuffer buffer) {
         if (sequenceNumberEnabled) {
             datagramSequenceNumber = buffer.getInt(); // swab(buffer.getInt());
@@ -340,8 +315,6 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
 
     }
 
-    //debug
-//    int lastts=0;
     @Override
     public String toString() {
         return "AEUnicastInput at PORT=" + getPort();
@@ -363,11 +336,6 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                 log.warning("on closing DatagramChannel caught " + ex);
             }
         }
-//        if(datagramSocket!=null){
-//            datagramSocket.close();
-//        }
-        // interrupt(); // TODO this interrupts the thread reading from the socket, but not the one that is blocked on the exchange
-//        if(readingThread!=null) readingThread.interrupt();
     }
 
     /**
@@ -627,25 +595,6 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
 //        }
     }
 
-    //    private int swab(int v) {
-//        return v;
-//        // TODO now handled by ByteBuffer.order
-////        if(swapBytesEnabled) {
-////            return ByteSwapper.swap(v);
-////        } else {
-////            return v;
-////        }
-//    }
-//
-//    private short swab(short v) {
-//        return v;
-//
-////        if(swapBytesEnabled) {
-////            return ByteSwapper.swap(v);
-////        } else {
-////            return v;
-////        }
-//    }
     private class Reader extends Thread {
 
         volatile boolean maxSizeExceeded = false;
