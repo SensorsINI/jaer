@@ -94,9 +94,13 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         onColor = new float[4];
         offColor = new float[4];
         checkPixmapAllocation();
-        contrastController=new DavisVideoContrastController((DavisChip)chip);
+        if (chip instanceof DavisChip) {
+            contrastController = new DavisVideoContrastController((DavisChip) chip);
+            contrastController.getSupport().addPropertyChangeListener(this);
+        } else {
+            log.warning("cannot make a DavisVideoContrastController for this chip because it does not extend DavisChip");
+        }
         // when contrast controller properties change, inform this so this can pass on to the chip
-        contrastController.getSupport().addPropertyChangeListener(this);
     }
 
     /**
@@ -393,7 +397,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     protected void endFrame() {
         System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
-        contrastController.endFrame(minValue, maxValue, timestamp);
+        if(contrastController!=null) contrastController.endFrame(minValue, maxValue, timestamp);
         getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILBLE, null, this); // TODO document what is sent and send something reasonable
     }
 
@@ -736,7 +740,10 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      * @return the gray value
      */
     private float normalizeFramePixel(float value) {
+        if(contrastController!=null)
         return contrastController.normalizePixelGrayValue(value, maxADC);
+        else
+            return 0;
     }
 
     private float normalizeEvent(float value) {
