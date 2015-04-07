@@ -77,7 +77,21 @@ public class TobiLogger {
                 logStream.print(((nanotimeEnabled?System.nanoTime():System.currentTimeMillis())-startingTime)+"\t");
             }
             logStream.println(s);
-            if(logStream.checkError()) log.warning("eroror logging data");
+            if(logStream.checkError()) log.warning("error logging data");
+        }
+    }
+    
+    /** Adds a comment to the log preceeded by # 
+     * 
+     * @param s the string
+     * @see #setEnabled
+     */
+    synchronized public void addComment(String s) {
+        if(!logDataEnabled) return;
+        if(logStream!=null) {
+            logStream.print("# ");
+            logStream.println(s);
+            if(logStream.checkError()) log.warning("error adding log comment");
         }
     }
     

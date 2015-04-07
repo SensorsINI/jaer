@@ -5,21 +5,29 @@
 package ch.unizh.ini.jaer.projects.davis.frames;
 
 import eu.seebetter.ini.chips.DavisChip;
-import net.sf.jaer.event.ApsDvsEvent;
-import net.sf.jaer.event.ApsDvsEventPacket;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.Observable;
 import java.util.Observer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ImageDisplay;
@@ -80,6 +88,7 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
     private boolean preBufferFrame = getBoolean("preBufferFrame", true);
     private boolean logCompress = getBoolean("logCompress", false);
     private boolean logDecompress = getBoolean("logDecompress", false);
+    private boolean saveAsPNG = getBoolean("saveAsPNG", false);
     private float displayContrast = getFloat("displayContrast", 1.0f);
     private float displayBrightness = getFloat("displayBrightness", 0.0f);
     public Extraction extractionMethod = Extraction.valueOf(getString("extractionMethod", "CDSframe"));
@@ -112,6 +121,7 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
         setPropertyTooltip("displayBrightness", "Offset for the rendering of the APS display");
         setPropertyTooltip("extractionMethod", "Method to extract a frame; CDSframe is the final result after subtracting signal from reset frame. Signal and reset frames are the raw sensor output before correlated double sampling.");
         setPropertyTooltip("showAPSFrameDisplay", "Shows the JFrame frame display if true");
+        setPropertyTooltip("saveAsPNG", "Saves current frame as PNG to the execution folder");
         chip.addObserver(this);
         
     }
@@ -245,6 +255,25 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
             apsDisplayPixmapBuffer[3 * idx] = grayValue;
             apsDisplayPixmapBuffer[3 * idx + 1] = grayValue;
             apsDisplayPixmapBuffer[3 * idx + 2] = grayValue;
+        }
+    }
+    
+    public void saveImage(){
+        Date d=new Date();
+        String fn="ApsFrame-"+AEDataFile.DATE_FORMAT.format(d)+".png";
+        BufferedImage theImage = new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_INT_RGB);
+        for(int y = 0; y<chip.getSizeY(); y++){
+            for(int x = 0; x<chip.getSizeX(); x++){
+                int idx = apsDisplay.getPixMapIndex(chip.getSizeX()-x, chip.getSizeY()-y);
+                int value = (int)(256*apsDisplay.getPixmapArray()[idx]) << 16 | (int)(256*apsDisplay.getPixmapArray()[idx+1]) << 8 | (int)(256*apsDisplay.getPixmapArray()[idx+2]);
+                theImage.setRGB(x, y, value);
+            }
+        }
+        File outputfile = new File(fn);
+        try {
+            ImageIO.write(theImage, "png", outputfile);
+        } catch (IOException ex) {
+            Logger.getLogger(ApsFrameExtractor.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
@@ -557,6 +586,24 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
      */
     public int getMaxIDX() {
         return maxIDX;
+    }
+    
+    /**
+     * @return the saveAsPNG
+     */
+    public boolean isSaveAsPNG() {
+        return saveAsPNG;
+    }
+
+    /**
+     * @param saveImage the saveAsPNG to set
+     */
+    public void setSaveAsPNG(boolean saveImage) {
+        if(saveImage){
+            saveImage();
+            setSaveAsPNG(false);
+        }
+        this.saveAsPNG = saveImage;
     }
 
 }
