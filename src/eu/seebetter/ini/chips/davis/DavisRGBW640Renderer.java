@@ -299,7 +299,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
             if (!isSeparateAPSByColor()) {
                 //color interpolation
                 float[] image = pixBuffer.array();
-                for (int i = 0; i < image.length; i++) {
+                for (int i = 0; i < (640 * 480); i++) {
                     int i2 = i % 1280;
                     if (i2 < 640) {
                         //row 0, 2, 4 ... 478, contianing W and B
@@ -372,14 +372,14 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
                             //interpolation B for R
                             if ((i / 640) > 478) {
                                 //top edge of R
-                                if (i2 == 0) {
+                                if (i2 == 640) {
                                     //top left corner of R
                                     image[i * 4 + 2] = image[(i - 639) * 4 + 2];
                                 } else {
                                     //rest of the top edge of R
                                     image[i * 4 + 2] = 0.5f * (image[(i - 639) * 4 + 2] + image[(i - 641) * 4 + 2]);
                                 }
-                            } else if (i2 == 0) {
+                            } else if (i2 == 640) {
                                 //left edge of R excluding top left corner
                                 image[i * 4 + 2] = 0.5f * (image[(i + 641) * 4 + 2] + image[(i - 639) * 4 + 2]);
                             } else {
@@ -388,7 +388,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
                                         + image[(i + 639) * 4 + 2] + image[(i + 641) * 4 + 2]);
                             }
                             //interpolating G for R
-                            if (i2 == 0) {
+                            if (i2 == 640) {
                                 //left egde of R
                                 image[i * 4 + 1] = image[(i + 1) * 4 + 1];
                             } else {
