@@ -76,9 +76,9 @@ public class AddressedIPotCFGUIControl extends javax.swing.JPanel implements Obs
         this.pot = pot;
         initComponents(); // this has unfortunate byproduect of resetting pot value to 0... don't know how to prevent stateChanged event
         dontProcessFineBiasSlider = true;
-        fineBiasSlider.setMaximum(AddressedIPotCF.maxFineBitValue - 1); // TODO replace with getter,  needed to prevent extraneous callbacks
+        fineBiasSlider.setMaximum(AddressedIPotCF.maxFineBitValue); // TODO replace with getter,  needed to prevent extraneous callbacks
         dontProcessCoarseBiasSlider = true;
-        coarseBiasSlider.setMaximum(AddressedIPotCF.maxCoarseBitValue - 1);
+        coarseBiasSlider.setMaximum(AddressedIPotCF.maxCoarseBitValue );
 //        dontProcessFineBiasSlider = true;
 //        bufferBiasSlider.setMinorTickSpacing(1);
 //        dontProcessFineBiasSlider = true;
@@ -236,7 +236,7 @@ public class AddressedIPotCFGUIControl extends javax.swing.JPanel implements Obs
         coarseBiasSlider.setToolTipText("Slide to adjust bias");
         coarseBiasSlider.setValue(0);
         coarseBiasSlider.setAlignmentX(0.0F);
-        coarseBiasSlider.setPreferredSize(new java.awt.Dimension(75, 10));
+        coarseBiasSlider.setPreferredSize(new java.awt.Dimension(100, 10));
         coarseBiasSlider.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mousePressed(java.awt.event.MouseEvent evt) {
                 coarseBiasSliderMousePressed(evt);
@@ -259,6 +259,14 @@ public class AddressedIPotCFGUIControl extends javax.swing.JPanel implements Obs
         coarseBiasTextField.setMaximumSize(new java.awt.Dimension(100, 16));
         coarseBiasTextField.setMinimumSize(new java.awt.Dimension(11, 15));
         coarseBiasTextField.setPreferredSize(new java.awt.Dimension(53, 15));
+        coarseBiasTextField.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusGained(java.awt.event.FocusEvent evt) {
+                coarseBiasTextFieldFocusGained(evt);
+            }
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                coarseBiasTextFieldFocusLost(evt);
+            }
+        });
         coarseBiasTextField.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
             public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
                 coarseBiasTextFieldMouseWheelMoved(evt);
@@ -267,14 +275,6 @@ public class AddressedIPotCFGUIControl extends javax.swing.JPanel implements Obs
         coarseBiasTextField.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 coarseBiasTextFieldActionPerformed(evt);
-            }
-        });
-        coarseBiasTextField.addFocusListener(new java.awt.event.FocusAdapter() {
-            public void focusGained(java.awt.event.FocusEvent evt) {
-                coarseBiasTextFieldFocusGained(evt);
-            }
-            public void focusLost(java.awt.event.FocusEvent evt) {
-                coarseBiasTextFieldFocusLost(evt);
             }
         });
         coarseBiasTextField.addKeyListener(new java.awt.event.KeyAdapter() {
@@ -441,6 +441,7 @@ public class AddressedIPotCFGUIControl extends javax.swing.JPanel implements Obs
             return;
         }
         int bv = coarseBitValueFromSliderValue();
+        log.info(Integer.toString(bv));
         pot.setCoarseBitValue(pot.getMaxCoarseBitValue()-bv);
 }//GEN-LAST:event_coarseBiasSliderStateChanged
 
@@ -460,8 +461,10 @@ public class AddressedIPotCFGUIControl extends javax.swing.JPanel implements Obs
             int v = Integer.valueOf(coarseBiasTextField.getText());
             //            System.out.println("parsed "+valueTextField.getText()+" as "+v);
             startEdit();
+            dontProcessCoarseBiasSlider=true;
             pot.setCoarseBitValue(v);
             endEdit();
+//            log.info(pot.toString());
         } catch (NumberFormatException e) {
             Toolkit.getDefaultToolkit().beep();
             coarseBiasTextField.selectAll();
@@ -480,18 +483,22 @@ public class AddressedIPotCFGUIControl extends javax.swing.JPanel implements Obs
         int code = evt.getKeyCode();
         if (code == KeyEvent.VK_UP) {
             startEdit();
+            dontProcessCoarseBiasSlider=true;
             pot.setCoarseBitValue(pot.getCoarseBitValue() - 1);
             endEdit();
         } else if (code == KeyEvent.VK_DOWN) {
+            dontProcessCoarseBiasSlider=true;
             startEdit();
             pot.setCoarseBitValue(pot.getCoarseBitValue() + 1);
             endEdit();
         }
+//        log.info(pot.toString());
 }//GEN-LAST:event_coarseBiasTextFieldKeyPressed
 
     private void coarseBiasTextFieldMouseWheelMoved(java.awt.event.MouseWheelEvent evt) {//GEN-FIRST:event_coarseBiasTextFieldMouseWheelMoved
         int clicks = evt.getWheelRotation();
         startEdit();
+        dontProcessCoarseBiasSlider=true;
         pot.setCoarseBitValue(pot.getCoarseBitValue() + clicks);
         endEdit();
 }//GEN-LAST:event_coarseBiasTextFieldMouseWheelMoved
@@ -754,16 +761,16 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     /** Maps from linear slider to linear/exponential bit value.
      *
      * @param vmax max bit value.
-     * @param slider the slider.
+     * @param slider the slider.au
      * @return the bit value.
      */
     private int sliderVal2BitVal(int vmax, JSlider slider) {
         int v = 0;
-        int s = slider.getValue();
+        float s = slider.getValue();
         double sm = slider.getMaximum();
         double vm = vmax;
         v = (int) Math.round(vm*s/sm);
-        //log.info("sliderValue=" + s + " -> bitValue=" + v +" Max bit: "+vmax+" Max slider: "+sm);
+//        log.info("sliderValue=" + s + " -> bitValue=" + v +" Max bit: "+vmax+" Max slider: "+sm);
         return v;
     }
 
