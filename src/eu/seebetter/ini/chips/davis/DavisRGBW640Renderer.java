@@ -293,4 +293,137 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 	public boolean isSeparateAPSByColor() {
 		return ((DavisDisplayConfigInterface) chip.getBiasgen()).isSeparateAPSByColor();
 	}
+        
+        @Override
+        protected void endFrame() {
+            if (!isSeparateAPSByColor()) {
+                //color interpolation
+                float[] image = pixBuffer.array();
+                for (int i = 0; i < image.length; i++) {
+                    int i2 = i % 1280;
+                    if (i2 < 640) {
+                        //row 0, 2, 4 ... 478, contianing W and B
+                        if ((i2 % 2) == 0) { //W
+                            //interpolating R for W
+                            if (i < 640) {
+                                //bottom egde of W
+                                image[i * 4] = image[(i + 640) * 4];
+                            } else {
+                                //rest of W
+                                image[i * 4] = 0.5f * (image[(i + 640) * 4] + image[(i - 640) * 4]);
+                            }
+                            //interpolating B for W
+                            if (i2 == 0) {
+                                //left edge of W
+                                image[i * 4 + 2] = image[(i + 1) * 4 + 2];
+                            } else {
+                                //rest of W
+                                image[i * 4 + 2] = 0.5f * (image[(i - 1) * 4 + 2] + image[(i + 1) * 4 + 2]);
+                            }
+                            //interpolating G for W
+                            if (i < 640) {
+                                //bottom edge of W
+                                if (i2 == 0) {
+                                    //bottom left corner of W
+                                    image[i * 4 + 1] = image[(i + 641) * 4 + 1];
+                                } else {
+                                    //rest of the bottom edge of W
+                                    image[i * 4 + 1] = 0.5f * (image[(i + 639) * 4 + 1] + image[(i + 641) * 4 + 1]);
+                                }
+                            } else if (i2 == 0) {
+                                //left edge of W excluding bottom left corner
+                                image[i * 4 + 1] = 0.5f * (image[(i - 639) * 4 + 1] + image[(i + 641) * 4 + 1]);
+                            } else {
+                                // rest of W
+                                image[i * 4 + 1] = 0.25f * (image[(i - 639) * 4 + 1] + image[(i - 641) * 4 + 1]
+                                        + image[(i + 639) * 4 + 1] + image[(i + 641) * 4 + 1]);
+                            }
+                        } else { //B
+                            //interpolating R for B
+                            if (i < 640) {
+                                //bottom edge of B
+                                if (i2 == 639) {
+                                    //bottom right corner of B
+                                    image[i * 4] = image[(i + 639) * 4];
+                                } else {
+                                    //rest of the bottom edge of B
+                                    image[i * 4] = 0.5f * (image[(i + 639) * 4] + image[(i + 641) * 4]);
+                                }
+                            } else if (i2 == 639) {
+                                //right edge of B excluding bottom right corner
+                                image[i * 4] = 0.5f * (image[(i - 641) * 4] + image[(i + 639) * 4]);
+                            } else {
+                                // rest of W
+                                image[i * 4] = 0.25f * (image[(i - 639) * 4] + image[(i - 641) * 4]
+                                        + image[(i + 639) * 4] + image[(i + 641) * 4]);
+                            }
+                            //interpolating G for B
+                            if (i < 640) {
+                                //bottom egde of W
+                                image[i * 4 + 1] = image[(i + 640) * 4 + 1];
+                            } else {
+                                //rest of W
+                                image[i * 4 + 1] = 0.5f * (image[(i + 640) * 4 + 1] + image[(i - 640) * 4 + 1]);
+                            }
+                        }
+                    } else {
+                        //row 1, 3, 5 ... 479, contianing R and G
+                        if ((i2 % 2) == 0) { //R
+                            //interpolation B for R
+                            if ((i / 640) > 478) {
+                                //top edge of R
+                                if (i2 == 0) {
+                                    //top left corner of R
+                                    image[i * 4 + 2] = image[(i - 639) * 4 + 2];
+                                } else {
+                                    //rest of the top edge of R
+                                    image[i * 4 + 2] = 0.5f * (image[(i - 639) * 4 + 2] + image[(i - 641) * 4 + 2]);
+                                }
+                            } else if (i2 == 0) {
+                                //left edge of R excluding top left corner
+                                image[i * 4 + 2] = 0.5f * (image[(i + 641) * 4 + 2] + image[(i - 639) * 4 + 2]);
+                            } else {
+                                // rest of R
+                                image[i * 4 + 2] = 0.25f * (image[(i - 639) * 4 + 2] + image[(i - 641) * 4 + 2]
+                                        + image[(i + 639) * 4 + 2] + image[(i + 641) * 4 + 2]);
+                            }
+                            //interpolating G for R
+                            if (i2 == 0) {
+                                //left egde of R
+                                image[i * 4 + 1] = image[(i + 1) * 4 + 1];
+                            } else {
+                                //rest of R
+                                image[i * 4 + 1] = 0.5f * (image[(i + 1) * 4 + 1] + image[(i - 1) * 4 + 1]);
+                            }
+                        } else { //G
+                            //interpolating R for G
+                            if (i2 == 1279) {
+                                //right egde of G
+                                image[i * 4] = image[(i - 1) * 4];
+                            } else {
+                                //rest of R
+                                image[i * 4] = 0.5f * (image[(i + 1) * 4] + image[(i - 1) * 4]);
+                            }
+                            //interpolating B for G
+                            if ((i / 640) > 478) {
+                                //top egde of G
+                                image[i * 4 + 2] = image[(i - 640) * 4 + 2];
+                            } else {
+                                //rest of R
+                                image[i * 4 + 2] = 0.5f * (image[(i + 640) * 4 + 2] + image[(i - 640) * 4 + 2]);
+                            }
+                        }
+                    }
+                    image[i * 4 + 3] = 1;
+                }
+                System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
+            }
+            else {
+                System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
+            }
+            if (contrastController != null) {
+                contrastController.endFrame(minValue, maxValue, timestamp);
+            }
+            getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILBLE, null, this); // TODO document what is sent and send something reasonable
+        }
 }
