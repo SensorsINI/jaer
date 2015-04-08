@@ -41,7 +41,7 @@ to supply MultiCameraInterface which are multiple DVS128 hardware interfaces.
  * @see net.sf.jaer.stereopsis.MultiCameraInterface
  * @see net.sf.jaer.stereopsis.MultiCameraHardwareInterface
  */
-import org.ine.telluride.jaer.tell2013.ThreeDTracker.TwoCamera3DDisplayMethod;
+import net.sf.jaer.graphics.TwoCamera3DDisplayMethod;
 
 import ch.unizh.ini.jaer.chip.retina.DVS128;
 @Description("A multi DVS128 retina (DVS128) each on it's own USB interface with merged and presumably aligned fields of view")

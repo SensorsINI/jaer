@@ -2,7 +2,7 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package org.ine.telluride.jaer.tell2009;
+package net.sf.jaer.eventprocessing.filter;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Container;

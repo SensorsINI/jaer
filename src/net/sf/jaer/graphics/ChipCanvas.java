@@ -279,20 +279,20 @@ public class ChipCanvas implements GLEventListener, Observer {
 		}
                 
                 drawable.setFocusable(true);
-                
-                drawable.addFocusListener(new FocusListener() {
-
-                    @Override
-                    public void focusGained(FocusEvent e) {
-                        log.info("focus gained");
-                                
-                    }
-
-                    @Override
-                    public void focusLost(FocusEvent e) {
-                        log.info("focus lost");
-                    }
-                });
+                // for debugging bug where context was grabbed by getMousePoint and not released
+//                drawable.addFocusListener(new FocusListener() {
+//
+//                    @Override
+//                    public void focusGained(FocusEvent e) {
+//                        log.info("focus gained");
+//                                
+//                    }
+//
+//                    @Override
+//                    public void focusLost(FocusEvent e) {
+//                        log.info("focus lost");
+//                    }
+//                });
 	}
 
 	/** call this method so that next open gl rendering by display(GLAutoDrawable) writes imageOpenGL */

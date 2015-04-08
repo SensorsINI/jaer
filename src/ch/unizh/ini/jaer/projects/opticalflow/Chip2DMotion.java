@@ -36,6 +36,7 @@ public  abstract class Chip2DMotion extends Chip2D {
 
     public  Chip2DMotion() {
         super();
+        setCanvas(new ChipCanvas(this));
         integrator= new OpticalFlowIntegrator(this);
     }
 

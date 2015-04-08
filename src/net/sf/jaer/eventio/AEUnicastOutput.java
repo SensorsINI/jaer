@@ -96,7 +96,7 @@ public class AEUnicastOutput implements AEUnicastSettings{
         allocateBuffers();
         consumerThread = new Thread(new Consumer(exchanger,initialFullBuffer));
         consumerThread.setName("AEUnicastOutput");
-        consumerThread.setPriority(Thread.NORM_PRIORITY + 1);
+        consumerThread.setPriority(Thread.NORM_PRIORITY + -1);
         consumerThread.start();
         log.info("opened AEUnicastOutput on local port="+socket.getLocalPort()+" with bufferSize="+getBufferSize());
     }
@@ -199,6 +199,7 @@ public class AEUnicastOutput implements AEUnicastSettings{
 //            log.info("exchanging "+currentBuf);
             currentBuf = exchanger.exchange(currentBuf);
             currentBuf.clear();
+            Thread.currentThread().yield();
         } catch ( Exception e ){
             log.warning(e.toString());
         }
@@ -312,6 +313,7 @@ public class AEUnicastOutput implements AEUnicastSettings{
                     try{
 //                        log.info("sending buf="+buf+" to client="+client);
                         channel.send(buf,client);
+                        Thread.currentThread().yield(); // give up to possible receiver thread; see http://www.javamex.com/tutorials/threads/yield.shtml
                     } catch ( IOException e ){
                         e.printStackTrace();
                     }

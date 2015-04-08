@@ -71,7 +71,7 @@ public class UioFoveatedImager extends AETemporalConstastRetina implements Seria
         // these need to be added *before* the filters are made or the filters will not annotate the results!!!
         setRenderer(new AdaptiveIntensityRenderer(this));
         ((AdaptiveIntensityRenderer)this.renderer).setAdaptiveArea(8,83-8,8,87-9);
-        setCanvas(new RetinaCanvas(this));
+//        setCanvas(new RetinaCanvas(this)); // already done in AEChip
         // Add and set the custom display method
         DisplayMethod cdm = new UioFoveatedImagerDisplayMethod(getCanvas());
         getCanvas().addDisplayMethod(cdm);

@@ -3,6 +3,7 @@
  * and open the template in the editor.
  */
 package org.ine.telluride.jaer.tell2009;
+import net.sf.jaer.eventprocessing.filter.ISIHistogrammer;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Rectangle;

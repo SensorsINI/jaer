@@ -151,7 +151,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             datagramSequenceNumber = buffer.getInt(); // swab(buffer.getInt());
 //                log.info("recieved packet with sequence number "+packetSequenceNumber);
             if (datagramSequenceNumber != datagramCounter) {
-                log.warning(String.format("Dropped %d packets. (Incoming packet sequence number (%d) doesn't match expected packetCounter (%d), resetting packetCounter to match present incoming sequence number)", datagramSequenceNumber - datagramCounter, datagramSequenceNumber, datagramCounter));
+                log.warning(String.format("Dropped %d packets. (Incoming packet sequence number (%d) doesn't match expected packetCounter (%d), resetting packetCounter)", datagramSequenceNumber - datagramCounter, datagramSequenceNumber, datagramCounter));
                 datagramCounter = datagramSequenceNumber;
             }
             datagramCounter++;

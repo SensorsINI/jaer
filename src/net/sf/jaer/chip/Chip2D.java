@@ -23,7 +23,7 @@ public class Chip2D extends Chip {
     public Chip2D() {
         super();
         setRenderer(new Chip2DRenderer(this));
-        setCanvas(new ChipCanvas(this));
+//        setCanvas(new ChipCanvas(this)); // subclass must do this now
     }
     /** Horizontal dimension of pixel array. Each pixel may have multiple cell types. */
     protected int sizeX = 0;
