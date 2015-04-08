@@ -10,3 +10,4 @@ on these platforms.
 Note that you should always use a 32 bit JVM (Java Virtual Machine) to run jAER even when running on a 64 bit machine running
 a 64 bit native OS. E.g. on Windows 7 x64, you should still use a 32 bit JVM.
 
+The class net.sf.jaer.util.ListClasses should periodically be updated to filter out the jar classes from selection of EventFilters or AEChips, to speed up populating the ClassChooserDialog.
