@@ -23,10 +23,14 @@ public class LoggingThreadGroup extends ThreadGroup {
             Handler handler = LoggingWindowHandler.getInstance();
             logger.addHandler(handler);
         }
-        logger.log(Level.WARNING, t.getName(), e);
+        logger.log(Level.WARNING, t==null?"(null thread supplied)":t.getName(), e==null?"(null exception)":e.toString());
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
-        e.printStackTrace(pw);
+        if(e!=null){
+            e.printStackTrace(pw);
+        }else{
+            sw.write("(null exception, cannot provide stack trace)");
+        }
         pw.flush();
         String st=sw.toString();
         logger.log(Level.WARNING,st);
