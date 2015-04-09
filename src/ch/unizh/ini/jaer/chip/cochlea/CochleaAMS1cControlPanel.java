@@ -642,7 +642,6 @@ public final class CochleaAMS1cControlPanel extends javax.swing.JPanel implement
                 tf.selectAll();
                 tf.setBackground(Color.red);
                 log.warning(ex.toString());
-                showException(ex, e.getSource());
             }
         }
     }
@@ -1762,11 +1761,5 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
 //        protected void removeRedundantState(){}; // override this to actually isSet a state stored!!
 //    }
 
-    public void showException(Exception ex, Object source) {
-        try {
-            chip.getAeViewer().getBiasgenFrame().exceptionOccurred(ex, source);
-        } catch (Exception e) {
-            log.warning(e.toString());
-        }
-    }
+ 
 }
