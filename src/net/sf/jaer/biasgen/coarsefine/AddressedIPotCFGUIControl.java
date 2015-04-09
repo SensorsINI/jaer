@@ -441,7 +441,7 @@ public class AddressedIPotCFGUIControl extends javax.swing.JPanel implements Obs
             return;
         }
         int bv = coarseBitValueFromSliderValue();
-        log.info(Integer.toString(bv));
+//        log.info(Integer.toString(bv));
         pot.setCoarseBitValue(pot.getMaxCoarseBitValue()-bv);
 }//GEN-LAST:event_coarseBiasSliderStateChanged
 
