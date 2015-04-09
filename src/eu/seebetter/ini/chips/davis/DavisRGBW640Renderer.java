@@ -202,9 +202,6 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
      * @param e
      * @return int 0-3 encoding sample type
      */
-    private int rgbwSampleType(ApsDvsEvent e) {
-        return 0; // TODO fix for actual x,y RBBW mapping
-    }
 
     /**
      * Computes the normalized gray value from an ADC sample value using
@@ -239,19 +236,8 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
         return v;
     }
 
-    protected int getIndex(ApsDvsEventRGBW e) {
-        return getIndex(e.x, e.y, e.getColorFilter());
-    }
-
-    /**
-     * Returns red value of index
-     *
-     * @param x
-     * @param y
-     * @return
-     */
     protected int getIndex(int x, int y) {
-        return getIndex(x, y, ColorFilter.R);
+        return 4 * (x + (y * textureWidth));
     }
 
     /**
@@ -262,7 +248,10 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
      * @param color
      * @return the index
      */
-    protected int getIndex(int x, int y, ColorFilter color) {
+    @Override
+    protected int getIndex(BasicEvent e) {
+        int x = e.x, y = e.y;
+        
         if ((x < 0) || (y < 0) || (x >= sizeX) || (y >= sizeY)) {
             if ((System.currentTimeMillis() - lastWarningPrintedTimeMs) > INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS) {
                 log.warning(String
@@ -274,6 +263,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
             return -1;
         }
         if (isSeparateAPSByColor()) {
+            ColorFilter color = ((ApsDvsEventRGBW)e).getColorFilter();
 
             if (color == ColorFilter.R) {
                 x = x / 2;
