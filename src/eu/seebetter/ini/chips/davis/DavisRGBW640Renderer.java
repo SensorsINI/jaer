@@ -22,6 +22,9 @@ import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethod;
 import net.sf.jaer.util.histogram.SimpleHistogram;
 import eu.seebetter.ini.chips.DavisChip;
+import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.event.orientation.OrientationEventInterface;
+import static net.sf.jaer.graphics.AEChipRenderer.NUM_TIME_COLORS;
 
 /**
  * Class adapted from AEFrameChipRenderer to render CDAVIS=rgbDAVIS output.
@@ -117,6 +120,175 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
     }
 
     @Override
+    protected void updateEventMaps(PolarityEvent e) {
+        float[] map;
+        int index = getIndex(e);
+        boolean fill = !isSeparateAPSByColor();
+        if (packet.getNumCellTypes() > 2) {
+            map = onMap.array();
+        } else if (e.polarity == ApsDvsEvent.Polarity.On) {
+            map = onMap.array();
+        } else {
+            map = offMap.array();
+        }
+        if ((index < 0) || (index >= map.length)) {
+            return;
+        }
+        if (packet.getNumCellTypes() > 2) {
+            checkTypeColors(packet.getNumCellTypes());
+            if (e.special) {
+                setSpecialCount(specialCount + 1); // TODO optimize special count increment
+                return;
+            }
+            int type = e.getType();
+            if ((e.x == xsel) && (e.y == ysel)) {
+                playSpike(type);
+            }
+            int ind = getPixMapIndex(e.x, e.y);
+            float[] c = typeColorRGBComponents[type];
+            float alpha = map[index + 3] + (1.0f / colorScale);
+            alpha = normalizeEvent(alpha);
+            if ((e instanceof OrientationEventInterface) && (((OrientationEventInterface) e).isHasOrientation() == false)) {
+                // if event is orientation event but orientation was not set, just draw as gray level
+                map[ind] = 1.0f; //if(f[0]>1f) f[0]=1f;
+                map[ind + 1] = 1.0f; //if(f[1]>1f) f[1]=1f;
+                map[ind + 2] = 1.0f; //if(f[2]>1f) f[2]=1f;
+                if (fill) {
+                    map[getPixMapIndex(e.x + 1, e.y)] = 1.0f;
+                    map[getPixMapIndex(e.x + 1, e.y) + 1] = 1.0f;
+                    map[getPixMapIndex(e.x + 1, e.y) + 2] = 1.0f;
+                    map[getPixMapIndex(e.x, e.y + 1)] = 1.0f;
+                    map[getPixMapIndex(e.x, e.y + 1) + 1] = 1.0f;
+                    map[getPixMapIndex(e.x, e.y + 1) + 2] = 1.0f;
+                    map[getPixMapIndex(e.x + 1, e.y + 1)] = 1.0f;
+                    map[getPixMapIndex(e.x + 1, e.y + 1) + 1] = 1.0f;
+                    map[getPixMapIndex(e.x + 1, e.y + 1) + 2] = 1.0f;
+                }
+            } else {
+                // if color scale is 1, then last value is used as the pixel value, which quantizes the color to full scale.
+                map[ind] = c[0]; //if(f[0]>1f) f[0]=1f;
+                map[ind + 1] = c[1]; //if(f[1]>1f) f[1]=1f;
+                map[ind + 2] = c[2]; //if(f[2]>1f) f[2]=1f;
+                if (fill) {
+                    map[getPixMapIndex(e.x + 1, e.y)] = c[0];
+                    map[getPixMapIndex(e.x + 1, e.y) + 1] = c[1];
+                    map[getPixMapIndex(e.x + 1, e.y) + 2] = c[2];
+                    map[getPixMapIndex(e.x, e.y + 1)] = c[0];
+                    map[getPixMapIndex(e.x, e.y + 1) + 1] = c[1];
+                    map[getPixMapIndex(e.x, e.y + 1) + 2] = c[2];
+                    map[getPixMapIndex(e.x + 1, e.y + 1)] = c[0];
+                    map[getPixMapIndex(e.x + 1, e.y + 1) + 1] = c[1];
+                    map[getPixMapIndex(e.x + 1, e.y + 1) + 2] = c[2];
+                }
+            }
+            map[index + 3] += alpha;
+            if (fill) {
+                map[getPixMapIndex(e.x + 1, e.y) + 3] += alpha;
+                map[getPixMapIndex(e.x, e.y + 1) + 3] += alpha;
+                map[getPixMapIndex(e.x + 1, e.y + 1) + 3] += alpha;
+            }
+        } else if (colorMode == ColorMode.ColorTime) {
+            int ts0 = packet.getFirstTimestamp();
+            float dt = packet.getDurationUs();
+            int ind = (int) Math.floor(((NUM_TIME_COLORS - 1) * (e.timestamp - ts0)) / dt);
+            if (ind < 0) {
+                ind = 0;
+            } else if (ind >= timeColors.length) {
+                ind = timeColors.length - 1;
+            }
+            map[index] = timeColors[ind][0];
+            map[index + 1] = timeColors[ind][1];
+            map[index + 2] = timeColors[ind][2];
+            map[index + 3] = 0.5f;
+            if (fill) {
+                map[getPixMapIndex(e.x + 1, e.y)] = timeColors[ind][0];
+                map[getPixMapIndex(e.x + 1, e.y) + 1] = timeColors[ind][1];
+                map[getPixMapIndex(e.x + 1, e.y) + 2] = timeColors[ind][2];
+                map[getPixMapIndex(e.x, e.y + 1)] = timeColors[ind][0];
+                map[getPixMapIndex(e.x, e.y + 1) + 1] = timeColors[ind][1];
+                map[getPixMapIndex(e.x, e.y + 1) + 2] = timeColors[ind][2];
+                map[getPixMapIndex(e.x + 1, e.y + 1)] = timeColors[ind][0];
+                map[getPixMapIndex(e.x + 1, e.y + 1) + 1] = timeColors[ind][1];
+                map[getPixMapIndex(e.x + 1, e.y + 1) + 2] = timeColors[ind][2];
+                map[getPixMapIndex(e.x + 1, e.y) + 3] = 0.5f;
+                map[getPixMapIndex(e.x, e.y + 1) + 3] = 0.5f;
+                map[getPixMapIndex(e.x + 1, e.y + 1) + 3] = 0.5f;
+            }
+        } else if (colorMode == ColorMode.GrayTime) {
+            int ts0 = packet.getFirstTimestamp();
+            float dt = packet.getDurationUs();
+            float v = 0.95f - (0.95f * ((e.timestamp - ts0) / dt));
+            map[index] = v;
+            map[index + 1] = v;
+            map[index + 2] = v;
+            map[index + 3] = 1.0f;
+            if (fill) {
+                map[getPixMapIndex(e.x + 1, e.y)] = v;
+                map[getPixMapIndex(e.x + 1, e.y) + 1] = v;
+                map[getPixMapIndex(e.x + 1, e.y) + 2] = v;
+                map[getPixMapIndex(e.x, e.y + 1)] = v;
+                map[getPixMapIndex(e.x, e.y + 1) + 1] = v;
+                map[getPixMapIndex(e.x, e.y + 1) + 2] = v;
+                map[getPixMapIndex(e.x + 1, e.y + 1)] = v;
+                map[getPixMapIndex(e.x + 1, e.y + 1) + 1] = v;
+                map[getPixMapIndex(e.x + 1, e.y + 1) + 2] = v;
+                map[getPixMapIndex(e.x + 1, e.y) + 3] = 1.0f;
+                map[getPixMapIndex(e.x, e.y + 1) + 3] = 1.0f;
+                map[getPixMapIndex(e.x + 1, e.y + 1) + 3] = 1.0f;
+            }
+        } else {
+            float alpha = map[index + 3] + (1.0f / colorScale);
+            alpha = normalizeEvent(alpha);
+            if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
+                map[index] = onColor[0];
+                map[index + 1] = onColor[1];
+                map[index + 2] = onColor[2];
+                if (fill) {
+                    map[getPixMapIndex(e.x + 1, e.y)] = onColor[0];
+                    map[getPixMapIndex(e.x + 1, e.y) + 1] = onColor[1];
+                    map[getPixMapIndex(e.x + 1, e.y) + 2] = onColor[2];
+                    map[getPixMapIndex(e.x, e.y + 1)] = onColor[0];
+                    map[getPixMapIndex(e.x, e.y + 1) + 1] = onColor[1];
+                    map[getPixMapIndex(e.x, e.y + 1) + 2] = onColor[2];
+                    map[getPixMapIndex(e.x + 1, e.y + 1)] = onColor[0];
+                    map[getPixMapIndex(e.x + 1, e.y + 1) + 1] = onColor[1];
+                    map[getPixMapIndex(e.x + 1, e.y + 1) + 2] = onColor[2];
+                }
+            } else {
+                map[index] = offColor[0];
+                map[index + 1] = offColor[1];
+                map[index + 2] = offColor[2];
+                if (fill) {
+                    map[getPixMapIndex(e.x + 1, e.y)] = offColor[0];
+                    map[getPixMapIndex(e.x + 1, e.y) + 1] = offColor[1];
+                    map[getPixMapIndex(e.x + 1, e.y) + 2] = offColor[2];
+                    map[getPixMapIndex(e.x, e.y + 1)] = offColor[0];
+                    map[getPixMapIndex(e.x, e.y + 1) + 1] = offColor[1];
+                    map[getPixMapIndex(e.x, e.y + 1) + 2] = offColor[2];
+                    map[getPixMapIndex(e.x + 1, e.y + 1)] = offColor[0];
+                    map[getPixMapIndex(e.x + 1, e.y + 1) + 1] = offColor[1];
+                    map[getPixMapIndex(e.x + 1, e.y + 1) + 2] = offColor[2];
+                }
+            }
+            map[index + 3] = alpha;
+            if (fill) {
+                map[getPixMapIndex(e.x + 1, e.y) + 3] = alpha;
+                map[getPixMapIndex(e.x, e.y + 1) + 3] = alpha;
+                map[getPixMapIndex(e.x + 1, e.y + 1) + 3] = alpha;
+            }
+        }
+    }
+    
+    private float normalizeEvent(float value) {
+        if (value < 0) {
+            value = 0;
+        } else if (value > 1) {
+            value = 1;
+        }
+        return value;
+    }
+
+    @Override
     protected void checkPixmapAllocation() {
         super.checkPixmapAllocation();
 
@@ -202,7 +374,6 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
      * @param e
      * @return int 0-3 encoding sample type
      */
-
     /**
      * Computes the normalized gray value from an ADC sample value using
      * brightness (offset), contrast (multiplier), and gamma (power law). Takes
@@ -251,7 +422,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
     @Override
     protected int getIndex(BasicEvent e) {
         int x = e.x, y = e.y;
-        
+
         if ((x < 0) || (y < 0) || (x >= sizeX) || (y >= sizeY)) {
             if ((System.currentTimeMillis() - lastWarningPrintedTimeMs) > INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS) {
                 log.warning(String
@@ -263,7 +434,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
             return -1;
         }
         if (isSeparateAPSByColor()) {
-            ColorFilter color = ((ApsDvsEventRGBW)e).getColorFilter();
+            ColorFilter color = ((ApsDvsEventRGBW) e).getColorFilter();
 
             if (color == ColorFilter.R) {
                 x = x / 2;
@@ -297,7 +468,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
                         //row 1, 3, 5 ... 479, from top of the image, contianing W and B
                         if ((x % 2) == 0) { //W
                             //interpolating R for W
-                            if (y == chip.getSizeY()-1) {
+                            if (y == chip.getSizeY() - 1) {
                                 //bottom egde of W
                                 image[getIndex(x, y)] = image[getIndex(x, y - 1)];
                             } else {
@@ -313,7 +484,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
                                 image[getIndex(x, y) + 2] = 0.5f * (image[getIndex(x - 1, y) + 2] + image[getIndex(x + 1, y) + 2]);
                             }
                             //interpolating G for W
-                            if (y == chip.getSizeY()-1) {
+                            if (y == chip.getSizeY() - 1) {
                                 //bottom edge of W
                                 if (x == 0) {
                                     //bottom left corner of W
@@ -332,7 +503,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
                             }
                         } else { //B
                             //interpolating R for B
-                            if (y == chip.getSizeY()-1) {
+                            if (y == chip.getSizeY() - 1) {
                                 //bottom edge of B
                                 if (x == chip.getSizeX() - 1) {
                                     //bottom right corner of B
@@ -350,7 +521,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
                                         + image[getIndex(x + 1, y - 1)] + image[getIndex(x + 1, y + 1)]);
                             }
                             //interpolating G for B
-                            if (y == chip.getSizeY()-1) {
+                            if (y == chip.getSizeY() - 1) {
                                 //bottom egde of B
                                 image[getIndex(x, y) + 1] = image[getIndex(x, y - 1) + 1];
                             } else {
