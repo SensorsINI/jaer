@@ -242,16 +242,17 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
     protected int getIndex(ApsDvsEventRGBW e) {
         return getIndex(e.x, e.y, e.getColorFilter());
     }
-    
-    /** Returns red value of index
-     * 
+
+    /**
+     * Returns red value of index
+     *
      * @param x
      * @param y
-     * @return 
+     * @return
      */
-     protected int getIndex(int x, int y) {
-         return getIndex(x,y,ColorFilter.R);
-     }
+    protected int getIndex(int x, int y) {
+        return getIndex(x, y, ColorFilter.R);
+    }
 
     /**
      * Returns index into pixmap according to separateAPSByColor flag
@@ -261,13 +262,13 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
      * @param color
      * @return the index
      */
-    protected int getIndex(int x, int y, ColorFilter color ) {
+    protected int getIndex(int x, int y, ColorFilter color) {
         if ((x < 0) || (y < 0) || (x >= sizeX) || (y >= sizeY)) {
             if ((System.currentTimeMillis() - lastWarningPrintedTimeMs) > INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS) {
                 log.warning(String
                         .format(
                                 "Event with x=%d y=%d out of bounds and cannot be rendered in bounds sizeX=%d sizeY=%d - delaying next warning for %dms",
-                                x,y, sizeX, sizeY, INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS));
+                                x, y, sizeX, sizeY, INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS));
                 lastWarningPrintedTimeMs = System.currentTimeMillis();
             }
             return -1;
@@ -300,127 +301,123 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
         if (!isSeparateAPSByColor()) {
             //color interpolation
             float[] image = pixBuffer.array();
-//            for (int x = 0; x < chip.getSizeX(); x++) {
-//                for (int y = 0; y < chip.getSizeY(); y++) {
-//                    int idx=getIndex(x,y);
-//                }
-//            }
-            for (int i = 0; i < (640 * 480); i++) {
-                int i2 = i % 1280; // reminder of two rows
-                if (i2 <640) {
-                    //row 0, 2, 4 ... 478, contianing W and B
-                    if ((i2 % 2) == 0) { //W
-                        //interpolating R for W
-                        if (i < 640) {
-                            //bottom egde of W
-                            image[i * 4] = image[(i + 640) * 4];
-                        } else {
-                            //rest of W
-                            image[i * 4] = 0.5f * (image[(i + 640) * 4] + image[(i - 640) * 4]);
-                        }
-                        //interpolating B for W
-                        if (i2 == 0) {
-                            //left edge of W
-                            image[i * 4 + 2] = image[(i + 1) * 4 + 2];
-                        } else {
-                            //rest of W
-                            image[i * 4 + 2] = 0.5f * (image[(i - 1) * 4 + 2] + image[(i + 1) * 4 + 2]);
-                        }
-                        //interpolating G for W
-                        if (i < 640) {
-                            //bottom edge of W
-                            if (i2 == 0) {
-                                //bottom left corner of W
-                                image[i * 4 + 1] = image[(i + 641) * 4 + 1];
+            for (int y = 0; y < chip.getSizeY(); y++) {
+                for (int x = 0; x < chip.getSizeX(); x++) {
+                    if ((y % 2) == 1) {
+                        //row 1, 3, 5 ... 479, from top of the image, contianing W and B
+                        if ((x % 2) == 0) { //W
+                            //interpolating R for W
+                            if (y == chip.getSizeY()-1) {
+                                //bottom egde of W
+                                image[getIndex(x, y)] = image[getIndex(x, y - 1)];
                             } else {
-                                //rest of the bottom edge of W
-                                image[i * 4 + 1] = 0.5f * (image[(i + 639) * 4 + 1] + image[(i + 641) * 4 + 1]);
+                                //rest of W
+                                image[getIndex(x, y)] = 0.5f * (image[getIndex(x, y + 1)] + image[getIndex(x, y - 1)]);
                             }
-                        } else if (i2 == 0) {
-                            //left edge of W excluding bottom left corner
-                            image[i * 4 + 1] = 0.5f * (image[(i - 639) * 4 + 1] + image[(i + 641) * 4 + 1]);
-                        } else {
-                            // rest of W
-                            image[i * 4 + 1] = 0.25f * (image[(i - 639) * 4 + 1] + image[(i - 641) * 4 + 1]
-                                    + image[(i + 639) * 4 + 1] + image[(i + 641) * 4 + 1]);
-                        }
-                    } else { //B
-                        //interpolating R for B
-                        if (i < 640) {
-                            //bottom edge of B
-                            if (i2 == 639) {
-                                //bottom right corner of B
-                                image[i * 4] = image[(i + 639) * 4];
+                            //interpolating B for W
+                            if (x == 0) {
+                                //left edge of W
+                                image[getIndex(x, y) + 2] = image[getIndex(x + 1, y) + 2];
                             } else {
-                                //rest of the bottom edge of B
-                                image[i * 4] = 0.5f * (image[(i + 639) * 4] + image[(i + 641) * 4]);
+                                //rest of W
+                                image[getIndex(x, y) + 2] = 0.5f * (image[getIndex(x - 1, y) + 2] + image[getIndex(x + 1, y) + 2]);
                             }
-                        } else if (i2 == 639) {
-                            //right edge of B excluding bottom right corner
-                            image[i * 4] = 0.5f * (image[(i - 641) * 4] + image[(i + 639) * 4]);
-                        } else {
-                            // rest of W
-                            image[i * 4] = 0.25f * (image[(i - 639) * 4] + image[(i - 641) * 4]
-                                    + image[(i + 639) * 4] + image[(i + 641) * 4]);
+                            //interpolating G for W
+                            if (y == chip.getSizeY()-1) {
+                                //bottom edge of W
+                                if (x == 0) {
+                                    //bottom left corner of W
+                                    image[getIndex(x, y) + 1] = image[getIndex(x + 1, y - 1) + 1];
+                                } else {
+                                    //rest of the bottom edge of W
+                                    image[getIndex(x, y) + 1] = 0.5f * (image[getIndex(x + 1, y - 1) + 1] + image[getIndex(x - 1, y - 1) + 1]);
+                                }
+                            } else if (x == 0) {
+                                //left edge of W excluding bottom left corner
+                                image[getIndex(x, y) + 1] = 0.5f * (image[getIndex(x + 1, y + 1) + 1] + image[getIndex(x + 1, y - 1) + 1]);
+                            } else {
+                                // rest of W
+                                image[getIndex(x, y) + 1] = 0.25f * (image[getIndex(x + 1, y + 1) + 1] + image[getIndex(x + 1, y - 1) + 1]
+                                        + image[getIndex(x - 1, y + 1) + 1] + image[getIndex(x - 1, y - 1) + 1]);
+                            }
+                        } else { //B
+                            //interpolating R for B
+                            if (y == chip.getSizeY()-1) {
+                                //bottom edge of B
+                                if (x == chip.getSizeX() - 1) {
+                                    //bottom right corner of B
+                                    image[getIndex(x, y)] = image[getIndex(x - 1, y - 1)];
+                                } else {
+                                    //rest of the bottom edge of B
+                                    image[getIndex(x, y)] = 0.5f * (image[getIndex(x - 1, y - 1)] + image[getIndex(x + 1, y - 1)]);
+                                }
+                            } else if (x == chip.getSizeX() - 1) {
+                                //right edge of B excluding bottom right corner
+                                image[getIndex(x, y)] = 0.5f * (image[getIndex(x - 1, y + 1)] + image[getIndex(x - 1, y - 1)]);
+                            } else {
+                                // rest of B
+                                image[getIndex(x, y)] = 0.25f * (image[getIndex(x - 1, y - 1)] + image[getIndex(x - 1, y + 1)]
+                                        + image[getIndex(x + 1, y - 1)] + image[getIndex(x + 1, y + 1)]);
+                            }
+                            //interpolating G for B
+                            if (y == chip.getSizeY()-1) {
+                                //bottom egde of B
+                                image[getIndex(x, y) + 1] = image[getIndex(x, y - 1) + 1];
+                            } else {
+                                //rest of B
+                                image[getIndex(x, y) + 1] = 0.5f * (image[getIndex(x, y - 1) + 1] + image[getIndex(x, y + 1) + 1]);
+                            }
                         }
-                        //interpolating G for B
-                        if (i < 640) {
-                            //bottom egde of W
-                            image[i * 4 + 1] = image[(i + 640) * 4 + 1];
-                        } else {
-                            //rest of W
-                            image[i * 4 + 1] = 0.5f * (image[(i + 640) * 4 + 1] + image[(i - 640) * 4 + 1]);
+                    } else {
+                        //row 0, 2, 4 ... 478, from top of the image, contianing R and G
+                        if ((x % 2) == 0) { //R
+                            //interpolation B for R
+                            if (y == 0) {
+                                //top edge of R
+                                if (x == 0) {
+                                    //top left corner of R
+                                    image[getIndex(x, y) + 2] = image[getIndex(x + 1, y + 1) + 2];
+                                } else {
+                                    //rest of the top edge of R
+                                    image[getIndex(x, y) + 2] = 0.5f * (image[getIndex(x - 1, y + 1) + 2] + image[getIndex(x + 1, y + 1) + 2]);
+                                }
+                            } else if (x == 0) {
+                                //left edge of R excluding top left corner
+                                image[getIndex(x, y) + 2] = 0.5f * (image[getIndex(x + 1, y + 1) + 2] + image[getIndex(x + 1, y - 1) + 2]);
+                            } else {
+                                // rest of R
+                                image[getIndex(x, y) + 2] = 0.25f * (image[getIndex(x - 1, y - 1) + 2] + image[getIndex(x - 1, y + 1) + 2]
+                                        + image[getIndex(x + 1, y - 1) + 2] + image[getIndex(x + 1, y + 1) + 2]);
+                            }
+                            //interpolating G for R
+                            if (x == 0) {
+                                //left egde of R
+                                image[getIndex(x, y) + 1] = image[getIndex(x + 1, y) + 1];
+                            } else {
+                                //rest of R
+                                image[getIndex(x, y) + 1] = 0.5f * (image[getIndex(x - 1, y) + 1] + image[getIndex(x + 1, y) + 1]);
+                            }
+                        } else { //G
+                            //interpolating R for G
+                            if (x == chip.getSizeX() - 1) {
+                                //right egde of G
+                                image[getIndex(x, y)] = image[getIndex(x - 1, y)];
+                            } else {
+                                //rest of R
+                                image[getIndex(x, y)] = 0.5f * (image[getIndex(x - 1, y)] + image[getIndex(x + 1, y)]);
+                            }
+                            //interpolating B for G
+                            if (y == 0) {
+                                //top egde of G
+                                image[getIndex(x, y) + 2] = image[getIndex(x, y + 1) + 2];
+                            } else {
+                                //rest of R
+                                image[getIndex(x, y) + 2] = 0.5f * (image[getIndex(x, y - 1) + 2] + image[getIndex(x, y + 1) + 2]);
+                            }
                         }
                     }
-                } else {
-                    //row 1, 3, 5 ... 479, contianing R and G
-                    if ((i2 % 2) == 0) { //R
-                        //interpolation B for R
-                        if ((i / 640) > 478) {
-                            //top edge of R
-                            if (i2 == 640) {
-                                //top left corner of R
-                                image[i * 4 + 2] = image[(i - 639) * 4 + 2];
-                            } else {
-                                //rest of the top edge of R
-                                image[i * 4 + 2] = 0.5f * (image[(i - 639) * 4 + 2] + image[(i - 641) * 4 + 2]);
-                            }
-                        } else if (i2 == 640) {
-                            //left edge of R excluding top left corner
-                            image[i * 4 + 2] = 0.5f * (image[(i + 641) * 4 + 2] + image[(i - 639) * 4 + 2]);
-                        } else {
-                            // rest of R
-                            image[i * 4 + 2] = 0.25f * (image[(i - 639) * 4 + 2] + image[(i - 641) * 4 + 2]
-                                    + image[(i + 639) * 4 + 2] + image[(i + 641) * 4 + 2]);
-                        }
-                        //interpolating G for R
-                        if (i2 == 640) {
-                            //left egde of R
-                            image[i * 4 + 1] = image[(i + 1) * 4 + 1];
-                        } else {
-                            //rest of R
-                            image[i * 4 + 1] = 0.5f * (image[(i + 1) * 4 + 1] + image[(i - 1) * 4 + 1]);
-                        }
-                    } else { //G
-                        //interpolating R for G
-                        if (i2 == 1279) {
-                            //right egde of G
-                            image[i * 4] = image[(i - 1) * 4];
-                        } else {
-                            //rest of R
-                            image[i * 4] = 0.5f * (image[(i + 1) * 4] + image[(i - 1) * 4]);
-                        }
-                        //interpolating B for G
-                        if ((i / 640) > 478) {
-                            //top egde of G
-                            image[i * 4 + 2] = image[(i - 640) * 4 + 2];
-                        } else {
-                            //rest of R
-                            image[i * 4 + 2] = 0.5f * (image[(i + 640) * 4 + 2] + image[(i - 640) * 4 + 2]);
-                        }
-                    }
+                    image[getIndex(x, y) + 3] = 1;
                 }
-                image[i * 4 + 3] = 1;
             }
             System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
         } else {
