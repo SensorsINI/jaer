@@ -10,13 +10,13 @@ import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.io.IOException;
 import java.util.logging.Logger;
-
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.KeyStroke;
-
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.eventio.AEFileInputStream;
+import static net.sf.jaer.eventio.AEInputStream.EVENT_REPEAT_OFF;
+import static net.sf.jaer.eventio.AEInputStream.EVENT_REPEAT_ON;
 
 /**
  * Base class for AEPlayers for playing back AER data files that implements some
@@ -61,7 +61,7 @@ public abstract class AbstractAEPlayer {
      */
     public static final String EVENT_PLAYBACKMODE = "playbackMode", EVENT_TIMESLICE_US = "timesliceUs",
             EVENT_PACKETSIZEEVENTS = "packetSizeEvents",
-            EVENT_PLAYBACKDIRECTION = "playbackDirection", EVENT_PAUSED = "paused", EVENT_RESUMED = "resumed", EVENT_STOPPED = "stopped", EVENT_FILEOPEN = "fileopen", EVENT_REPEAT_ON = "repeatOn", EVENT_REPEAT_OFF = "repeatOff"; // TODO not used yet in code
+            EVENT_PLAYBACKDIRECTION = "playbackDirection", EVENT_PAUSED = "paused", EVENT_RESUMED = "resumed", EVENT_STOPPED = "stopped", EVENT_FILEOPEN = "fileopen"; // TODO not used yet in code
 
     /**
      * Creates new instance of AbstractAEPlayer and adds the viewer (if not
@@ -135,8 +135,8 @@ public abstract class AbstractAEPlayer {
      * Flog for all pause/resume state.
      */
     volatile protected boolean paused = false; // multiple threads will access
-
-    protected boolean repeat = true;
+    
+    volatile protected boolean repeat = false; // multiple threads will access
     
     public abstract void setFractionalPosition(float fracPos);
 
@@ -307,9 +307,9 @@ public abstract class AbstractAEPlayer {
     }
 
     /**
-     * repeats playback. Fires property change "paused" or "resumed".
+     * repeats/unrepeats playback. Fires property change "repeatOn" or "repeatOff".
      *
-     * @param yes true to pause, false to resume.
+     * @param yes true to repeat, false to stop after playback.
      */
     public void setRepeat(boolean yes) {
         boolean old = repeat;

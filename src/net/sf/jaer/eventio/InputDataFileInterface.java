@@ -94,5 +94,17 @@ public interface InputDataFileInterface {
      * @return true if set. 
      */
     public boolean isMarkOutSet();
+    
+    /**
+     * Set whether the stream should be repeated after reaching OUT mark
+     * @param repeat sets whether repeat is on
+     */
+    public void setRepeat(boolean repeat);
+    
+    /** Returns whether stream should be repeated after reaching OUT mark
+     * 
+     * @return true if set. 
+     */
+    public boolean isRepeat();
 
 }

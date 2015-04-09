@@ -3915,6 +3915,7 @@ two interfaces). otherwise force user choice.
 			setCurrentFile(file);
 			AEFileInputStream fileAEInputStream = new AEFileInputStream(file);
 			fileAEInputStream.setFile(file);
+                        fileAEInputStream.setRepeat(aePlayer.isRepeat());
 			fileAEInputStream.setNonMonotonicTimeExceptionsChecked(false); // the code below has to take care about non-monotonic time anyway
 
 			int numberOfEvents = (int) fileAEInputStream.size();

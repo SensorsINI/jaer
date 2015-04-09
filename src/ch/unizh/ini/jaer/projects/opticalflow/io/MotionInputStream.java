@@ -126,6 +126,16 @@ public class MotionInputStream extends DataInputStream implements InputDataFileI
     }
     
     @Override
+    public void setRepeat(boolean repeat) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public boolean isRepeat() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+    
+    @Override
     public long position() {
         try{
             long p= (int)fileChannel.position()/motionData.getLoggedObjectSize();

@@ -894,7 +894,15 @@ public class MotionViewer extends javax.swing.JFrame implements PropertyChangeLi
 		public boolean isMarkOutSet() {
             return motionInputStream.isMarkOutSet();
         }
+                
+        @Override
+        public void setRepeat(boolean repeat) {
+        }
 
+        @Override
+        public boolean isRepeat() {
+            return true;
+        }
 
         @Override
 		public long position() {

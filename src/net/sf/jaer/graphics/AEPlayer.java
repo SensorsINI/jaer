@@ -10,10 +10,8 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
-
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;
@@ -260,6 +258,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             throw new IOException("chip is not set in AEViewer so we cannot contruct the file input stream for it");
         }
         aeFileInputStream = viewer.getChip().constuctFileInputStream(file); // new AEFileInputStream(file);
+        aeFileInputStream.setRepeat(isRepeat());
         aeFileInputStream.setNonMonotonicTimeExceptionsChecked(viewer.getCheckNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem().isSelected());
         aeFileInputStream.setTimestampResetBitmask(viewer.getAeFileInputStreamTimestampResetBitmask());
         aeFileInputStream.setFile(file);
@@ -398,9 +397,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             }
             // when we get to end, we now just wraps in either direction, to make it easier to explore the ends
 //                System.out.println("***********"+this+" reached EOF, calling rewind");
-            if(repeat){
-                viewer.getAePlayer().rewind();
-            }
+            viewer.getAePlayer().rewind();
             // we force a rewind on all players in case we are not the only one
 //                                if(!aePlayer.isPlayingForwards())
             //getAePlayer().toggleDirection();
@@ -535,7 +532,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
      */
     @Override
     public boolean isRepeat() {
-        return aeFileInputStream.isRepeat();
+        return repeat;
     }
 
     /**
@@ -545,10 +542,8 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
      */
     @Override
     public void setRepeat(boolean yes) {
-        boolean old = repeat;
-        repeat = yes;
-        support.firePropertyChange(repeat ? EVENT_REPEAT_ON : EVENT_REPEAT_OFF, old, repeat);
-        aeFileInputStream.setRepeat(repeat);
+        super.setRepeat(yes);
+        aeFileInputStream.setRepeat(yes);
     }
 
   /** Says if checking for non-monotonic timestamps in input file is enabled.

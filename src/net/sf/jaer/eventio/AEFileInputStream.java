@@ -24,9 +24,10 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
+import static net.sf.jaer.eventio.AEInputStream.EVENT_REPEAT_OFF;
+import static net.sf.jaer.eventio.AEInputStream.EVENT_REPEAT_ON;
 import net.sf.jaer.util.EngineeringFormat;
 /**
  * Class to stream in packets of events from binary input stream from a file recorded by AEViewer.
@@ -94,7 +95,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
     private int eventSizeBytes = AEFileInputStream.EVENT16_SIZE; // size of event in bytes, set finally after reading file header
     protected boolean firstReadCompleted = false;
-    private boolean repeat = true;
+    private boolean repeat;
     private long absoluteStartingTimeMs = 0; // parsed from filename if possible
     private boolean enableTimeWrappingExceptionsChecking = true;
     //    private int numEvents,currentEventNumber;
@@ -165,9 +166,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         setupChunks();
 
         clearMarks();
-
-
-
+        setRepeat(true);
 
 //        long totalMemory=Runtime.getRuntime().totalMemory();
 //        long maxMemory=Runtime.getRuntime().maxMemory();
@@ -788,15 +787,20 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     /**
      * @return the repeat
      */
+   @Override
     public boolean isRepeat() {
         return repeat;
     }
 
     /**
-     * @param repeat the repeat to set
+     * @param rep the repeat to set
      */
-    public void setRepeat(boolean repeat) {
-        this.repeat = repeat;
+   @Override
+    public synchronized void setRepeat(boolean rep) {
+        boolean old = repeat;
+        repeat = rep;
+        getSupport().firePropertyChange(repeat ? EVENT_REPEAT_ON : EVENT_REPEAT_OFF, old, repeat);
+        this.repeat = rep;
     }
 
 

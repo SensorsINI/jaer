@@ -61,7 +61,7 @@ public class AEInputStream implements Closeable {
      * </ul>
      */
      public static final String EVENT_EOF="eof", EVENT_WRAPPED_TIME="wrappedTime", EVENT_POSITION="position", EVENT_REWIND="rewind",
-             EVENT_MARKSET="markset", EVENT_MARKS_CLEARED="marksCleared",EVENT_MARK_IN_SET="markInSet",EVENT_MARK_OUT_SET="markOutSet", EVENT_INIT="init", EVENT_NON_MONOTONIC_TIMESTAMP="nonMonotonicTimestamp", EVENT_REPOSITIONED="respositioned";
+             EVENT_MARKSET="markset", EVENT_MARKS_CLEARED="marksCleared",EVENT_MARK_IN_SET="markInSet",EVENT_MARK_OUT_SET="markOutSet", EVENT_INIT="init", EVENT_NON_MONOTONIC_TIMESTAMP="nonMonotonicTimestamp", EVENT_REPOSITIONED="respositioned", EVENT_REPEAT_ON = "repeatOn", EVENT_REPEAT_OFF = "repeatOff";
 
     private InputStream is;
     AEPacketRaw packet = new AEPacketRaw();
