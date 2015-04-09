@@ -245,6 +245,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         clearMarksB = new javax.swing.JButton();
         setInB = new javax.swing.JButton();
         setOutB = new javax.swing.JButton();
+        repeatPlaybackButton = new javax.swing.JToggleButton();
         jPanel3 = new javax.swing.JPanel();
         playerStatusPanel = new javax.swing.JPanel();
         timeField = new javax.swing.JTextField();
@@ -397,6 +398,18 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         setOutB.setIconTextGap(2);
         setOutB.setMargin(new java.awt.Insets(2, 5, 2, 5));
         playerControlPanel.add(setOutB);
+
+        repeatPlaybackButton.setIcon(new javax.swing.ImageIcon(getClass().getResource("/net/sf/jaer/graphics/icons/Repeat.gif"))); // NOI18N
+        repeatPlaybackButton.setSelected(true);
+        repeatPlaybackButton.setToolTipText("");
+        repeatPlaybackButton.setIconTextGap(2);
+        repeatPlaybackButton.setMargin(new java.awt.Insets(2, 5, 2, 5));
+        repeatPlaybackButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                repeatPlaybackButtonActionPerformed(evt);
+            }
+        });
+        playerControlPanel.add(repeatPlaybackButton);
 
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);
@@ -694,6 +707,14 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
             eventField.selectAll();
         }
     }//GEN-LAST:event_eventFieldActionPerformed
+
+    private void repeatPlaybackButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_repeatPlaybackButtonActionPerformed
+        if (aePlayer == null) {
+            return;
+        }
+        aePlayer.setRepeat(repeatPlaybackButton.isSelected());
+    }//GEN-LAST:event_repeatPlaybackButtonActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.ButtonGroup buttonGroup1;
     private javax.swing.JButton clearMarksB;
@@ -718,6 +739,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
     private javax.swing.JSlider playerSlider;
     private javax.swing.JPanel playerStatusPanel;
     private javax.swing.JRadioButton realtimeButton;
+    private javax.swing.JToggleButton repeatPlaybackButton;
     private javax.swing.JButton reverseButton;
     private javax.swing.JButton rewindButton;
     private javax.swing.JButton setInB;
