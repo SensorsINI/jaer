@@ -485,6 +485,11 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     protected final int INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS = 1000;
     protected long lastWarningPrintedTimeMs = Integer.MAX_VALUE;
 
+    /** Returns index to R (red) value in RGBA pixmap
+     * 
+     * @param e
+     * @return index to red entry in RGBA pixmap
+     */
     protected int getIndex(BasicEvent e) {
         int x = e.x, y = e.y;
         if ((x < 0) || (y < 0) || (x >= sizeX) || (y >= sizeY)) {
