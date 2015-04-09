@@ -398,7 +398,9 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             }
             // when we get to end, we now just wraps in either direction, to make it easier to explore the ends
 //                System.out.println("***********"+this+" reached EOF, calling rewind");
-            viewer.getAePlayer().rewind();
+            if(repeat){
+                viewer.getAePlayer().rewind();
+            }
             // we force a rewind on all players in case we are not the only one
 //                                if(!aePlayer.isPlayingForwards())
             //getAePlayer().toggleDirection();
@@ -524,6 +526,29 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     @Override
     public AEFileInputStream getAEInputStream (){
         return aeFileInputStream;
+    }
+    
+    /**
+     * Returns state of repeat.
+     *
+     * @return true if the playback is repeated.
+     */
+    @Override
+    public boolean isRepeat() {
+        return aeFileInputStream.isRepeat();
+    }
+
+    /**
+     * repeats playback. Fires property change "paused" or "resumed".
+     *
+     * @param yes true to pause, false to resume.
+     */
+    @Override
+    public void setRepeat(boolean yes) {
+        boolean old = repeat;
+        repeat = yes;
+        support.firePropertyChange(repeat ? EVENT_REPEAT_ON : EVENT_REPEAT_OFF, old, repeat);
+        aeFileInputStream.setRepeat(repeat);
     }
 
   /** Says if checking for non-monotonic timestamps in input file is enabled.

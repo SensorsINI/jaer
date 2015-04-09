@@ -264,7 +264,7 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
         BufferedImage theImage = new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_INT_RGB);
         for(int y = 0; y<chip.getSizeY(); y++){
             for(int x = 0; x<chip.getSizeX(); x++){
-                int idx = apsDisplay.getPixMapIndex(chip.getSizeX()-x, chip.getSizeY()-y);
+                int idx = apsDisplay.getPixMapIndex(x, chip.getSizeY()-y-1);
                 int value = (int)(256*apsDisplay.getPixmapArray()[idx]) << 16 | (int)(256*apsDisplay.getPixmapArray()[idx+1]) << 8 | (int)(256*apsDisplay.getPixmapArray()[idx+2]);
                 theImage.setRGB(x, y, value);
             }
@@ -598,12 +598,14 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
     /**
      * @param saveImage the saveAsPNG to set
      */
-    public void setSaveAsPNG(boolean saveImage) {
-        if(saveImage){
+    public synchronized void setSaveAsPNG(boolean saveImage) {
+        this.saveAsPNG = saveImage;
+        putBoolean("saveAsPNG", saveAsPNG);
+        if (saveAsPNG) {
             saveImage();
             setSaveAsPNG(false);
         }
-        this.saveAsPNG = saveImage;
+        getSupport().firePropertyChange("saveAsPNG", null, saveAsPNG);
     }
 
 }

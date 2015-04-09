@@ -94,6 +94,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
     private int eventSizeBytes = AEFileInputStream.EVENT16_SIZE; // size of event in bytes, set finally after reading file header
     protected boolean firstReadCompleted = false;
+    private boolean repeat = true;
     private long absoluteStartingTimeMs = 0; // parsed from filename if possible
     private boolean enableTimeWrappingExceptionsChecking = true;
     //    private int numEvents,currentEventNumber;
@@ -233,8 +234,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         int lastTs=mostRecentTimestamp;
         try{
             if(position==markOut) { // TODO check exceptions here for markOut set before markIn
-                rewind();
-                return readEventForwards();
+                if(repeat){
+                    rewind();
+                    return readEventForwards();
+                }else{
+                    return null;
+                }
             }
 //            eventByteBuffer.rewind();
 //            fileChannel.read(eventByteBuffer);
@@ -778,6 +783,20 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
     public void setMostRecentTimestamp (int mostRecentTimestamp){
         this.mostRecentTimestamp = mostRecentTimestamp;
+    }
+
+    /**
+     * @return the repeat
+     */
+    public boolean isRepeat() {
+        return repeat;
+    }
+
+    /**
+     * @param repeat the repeat to set
+     */
+    public void setRepeat(boolean repeat) {
+        this.repeat = repeat;
     }
 
 

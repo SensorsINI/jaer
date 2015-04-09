@@ -61,7 +61,7 @@ public abstract class AbstractAEPlayer {
      */
     public static final String EVENT_PLAYBACKMODE = "playbackMode", EVENT_TIMESLICE_US = "timesliceUs",
             EVENT_PACKETSIZEEVENTS = "packetSizeEvents",
-            EVENT_PLAYBACKDIRECTION = "playbackDirection", EVENT_PAUSED = "paused", EVENT_RESUMED = "resumed", EVENT_STOPPED = "stopped", EVENT_FILEOPEN = "fileopen"; // TODO not used yet in code
+            EVENT_PLAYBACKDIRECTION = "playbackDirection", EVENT_PAUSED = "paused", EVENT_RESUMED = "resumed", EVENT_STOPPED = "stopped", EVENT_FILEOPEN = "fileopen", EVENT_REPEAT_ON = "repeatOn", EVENT_REPEAT_OFF = "repeatOff"; // TODO not used yet in code
 
     /**
      * Creates new instance of AbstractAEPlayer and adds the viewer (if not
@@ -136,6 +136,8 @@ public abstract class AbstractAEPlayer {
      */
     volatile protected boolean paused = false; // multiple threads will access
 
+    protected boolean repeat = true;
+    
     public abstract void setFractionalPosition(float fracPos);
 
     abstract public void setDoSingleStepEnabled(boolean b);
@@ -293,6 +295,26 @@ public abstract class AbstractAEPlayer {
         } else {
             pausePlayAction.setPauseAction();
         }
+    }
+    
+    /**
+     * Returns state of repeat.
+     *
+     * @return true if the playback is repeated.
+     */
+    public boolean isRepeat() {
+        return repeat;
+    }
+
+    /**
+     * repeats playback. Fires property change "paused" or "resumed".
+     *
+     * @param yes true to pause, false to resume.
+     */
+    public void setRepeat(boolean yes) {
+        boolean old = repeat;
+        repeat = yes;
+        support.firePropertyChange(repeat ? EVENT_REPEAT_ON : EVENT_REPEAT_OFF, old, repeat);
     }
 
     abstract public void setTime(int time);
