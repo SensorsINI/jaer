@@ -61,6 +61,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         markerPopupMenu.add(aePlayer.markOutAction);
         markerPopupMenu.add(aePlayer.clearMarksAction);
         playerSlider.setComponentPopupMenu(markerPopupMenu);
+        repeatPlaybackButton.setSelected(aePlayer.isRepeat());
     }
 
     /**
@@ -120,10 +121,6 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                     markTable.clear();
                     markInPosition = null;
                     markOutPosition = null;
-                } else if (evt.getPropertyName().equals(AEInputStream.EVENT_REPEAT_ON)) {
-                    repeatPlaybackButton.setSelected(true);
-                } else if (evt.getPropertyName().equals(AEInputStream.EVENT_REPEAT_OFF)) {
-                    repeatPlaybackButton.setSelected(false);
                 }
             } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_TIMESLICE_US)) { // TODO replace with public static Sttring
                 timesliceSpinner.setValue(aePlayer.getTimesliceUs());
@@ -133,11 +130,14 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                 aePlayer.pausePlayAction.setPlayAction();
             } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_RESUMED)) {
                 aePlayer.pausePlayAction.setPauseAction();
-            } 
+            }else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_REPEAT)) {
+                repeatPlaybackButton.setSelected((boolean)evt.getNewValue());
+            }
         } catch (Throwable t) {
             log.warning("caught error in player control panel - probably another thread is modifying the text field at the same time: " + t.toString());
         }
     }
+        
 
     public JCheckBox getSyncPlaybackCheckBox() {
         return syncPlaybackCheckBox;

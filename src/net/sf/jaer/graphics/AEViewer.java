@@ -510,7 +510,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             WAITING, LIVE, PLAYBACK, SEQUENCING, REMOTE
     }
     volatile private PlayMode playMode = PlayMode.WAITING;
-    static Preferences prefs = Preferences.userNodeForPackage(AEViewer.class);
+    public static Preferences prefs = Preferences.userNodeForPackage(AEViewer.class);
     Logger log = Logger.getLogger("AEViewer");
     //    private PropertyChangeSupport support = new PropertyChangeSupport(this); // already has support as Componenent!!!
     EventExtractor2D extractor = null;

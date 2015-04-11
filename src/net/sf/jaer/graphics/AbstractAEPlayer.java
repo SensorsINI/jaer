@@ -61,7 +61,7 @@ public abstract class AbstractAEPlayer {
      */
     public static final String EVENT_PLAYBACKMODE = "playbackMode", EVENT_TIMESLICE_US = "timesliceUs",
             EVENT_PACKETSIZEEVENTS = "packetSizeEvents",
-            EVENT_PLAYBACKDIRECTION = "playbackDirection", EVENT_PAUSED = "paused", EVENT_RESUMED = "resumed", EVENT_STOPPED = "stopped", EVENT_FILEOPEN = "fileopen"; // TODO not used yet in code
+            EVENT_PLAYBACKDIRECTION = "playbackDirection", EVENT_PAUSED = "paused", EVENT_RESUMED = "resumed", EVENT_STOPPED = "stopped", EVENT_FILEOPEN = "fileopen", EVENT_REPEAT = "repeat"; // TODO not used yet in code
 
     /**
      * Creates new instance of AbstractAEPlayer and adds the viewer (if not
@@ -135,8 +135,11 @@ public abstract class AbstractAEPlayer {
      * Flog for all pause/resume state.
      */
     volatile protected boolean paused = false; // multiple threads will access
-    
-    volatile protected boolean repeat = false; // multiple threads will access
+
+    /**
+     * Whether playback repeats after mark out or EOF is reached
+     */
+    volatile protected boolean repeat = viewer.prefs.getBoolean("AbstractAEPlayer.repeat", true); // multiple threads will access
     
     public abstract void setFractionalPosition(float fracPos);
 
@@ -296,7 +299,7 @@ public abstract class AbstractAEPlayer {
             pausePlayAction.setPauseAction();
         }
     }
-    
+
     /**
      * Returns state of repeat.
      *
@@ -312,9 +315,10 @@ public abstract class AbstractAEPlayer {
      * @param yes true to repeat, false to stop after playback.
      */
     public void setRepeat(boolean yes) {
-        boolean old = repeat;
-        repeat = yes;
-        support.firePropertyChange(repeat ? EVENT_REPEAT_ON : EVENT_REPEAT_OFF, old, repeat);
+        boolean old = this.repeat;
+        this.repeat = yes;
+        support.firePropertyChange(EVENT_REPEAT, old, this.repeat);
+        viewer.prefs.putBoolean("AbstractAEPlayer.repeat", this.repeat);
     }
 
     abstract public void setTime(int time);
@@ -467,7 +471,7 @@ public abstract class AbstractAEPlayer {
         public void actionPerformed(ActionEvent e) {
             clearMarks();
             putValue(Action.SELECTED_KEY, true);
-            putValue(Action.SHORT_DESCRIPTION,"Clears IN and OUT markers");
+            putValue(Action.SHORT_DESCRIPTION, "Clears IN and OUT markers");
         }
     }
 
@@ -480,7 +484,7 @@ public abstract class AbstractAEPlayer {
         public void actionPerformed(ActionEvent e) {
             setMarkIn();
             putValue(Action.SELECTED_KEY, true);
-            putValue(Action.SHORT_DESCRIPTION,"Marks IN marker");
+            putValue(Action.SHORT_DESCRIPTION, "Marks IN marker");
         }
     }
 
@@ -493,7 +497,7 @@ public abstract class AbstractAEPlayer {
         public void actionPerformed(ActionEvent e) {
             setMarkOut();
             putValue(Action.SELECTED_KEY, true);
-            putValue(Action.SHORT_DESCRIPTION,"Sets OUT marker");
+            putValue(Action.SHORT_DESCRIPTION, "Sets OUT marker");
         }
     }
 
@@ -598,7 +602,9 @@ public abstract class AbstractAEPlayer {
         public void actionPerformed(ActionEvent e) {
             setPlaybackDirection(PlaybackDirection.Forward);
             doSingleStep();
-            if(viewer!=null) viewer.interruptViewloop();
+            if (viewer != null) {
+                viewer.interruptViewloop();
+            }
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -613,10 +619,14 @@ public abstract class AbstractAEPlayer {
         public void actionPerformed(ActionEvent e) {
             setPlaybackDirection(PlaybackDirection.Backward);
             doSingleStep();
-            if(viewer!=null) viewer.interruptViewloop();
+            if (viewer != null) {
+                viewer.interruptViewloop();
+            }
             putValue(Action.SELECTED_KEY, true);
         }
     }
+    
+    
 //    final public class SyncPlaybackAction extends AbstractAction{
 //        public SyncPlaybackAction (){
 //            super("Synchronized playback");

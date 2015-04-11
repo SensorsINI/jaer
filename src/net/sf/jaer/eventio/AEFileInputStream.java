@@ -26,8 +26,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
-import static net.sf.jaer.eventio.AEInputStream.EVENT_REPEAT_OFF;
-import static net.sf.jaer.eventio.AEInputStream.EVENT_REPEAT_ON;
+import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.util.EngineeringFormat;
 /**
  * Class to stream in packets of events from binary input stream from a file recorded by AEViewer.
@@ -785,6 +784,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     /**
+     * Determines whether reaching EOF results in rewind or just no more data at end of file or mark. 
      * @return the repeat
      */
    @Override
@@ -793,14 +793,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     /**
-     * @param rep the repeat to set
+     * Determines whether reaching EOF results in rewind or just no more data at end of file or mark. 
+     * @param rep true to repeat, false to return null packets after mark out or EOF
      */
    @Override
     public synchronized void setRepeat(boolean rep) {
-        boolean old = repeat;
         repeat = rep;
-        getSupport().firePropertyChange(repeat ? EVENT_REPEAT_ON : EVENT_REPEAT_OFF, old, repeat);
-        this.repeat = rep;
     }
 
 
