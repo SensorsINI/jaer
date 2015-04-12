@@ -1789,7 +1789,6 @@ two interfaces). otherwise force user choice.
 					try{
                                             renderPacket(packet);
                                         }catch(RuntimeException e){
-                                            System.out.println(e.toString());
                                             String cause=" unknown cause";
                                             if(e.getCause()!=null){
                                                 cause=e.getCause().toString();
