@@ -6,12 +6,13 @@
 package net.sf.jaer.eventprocessing.filter;
 
 import java.util.Iterator;
+import java.util.Observable;
+import java.util.Observer;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.InputEventIterator;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
@@ -23,11 +24,11 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  */
 @Description("<html>A real-time oscilloscope, which can play back selected time or event slices during live or recorded playback.<p>Trigger input provide possibilites for synchronizing on special events")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
-public class Oscilloscope extends EventFilter2D {
+public class Oscilloscope extends EventFilter2D implements Observer {
 
     public enum TriggerType {
 
-        TimeInterval, EventInterval
+        TimeInterval, EventInterval, Manual, SpecialEvent
     };
 
     public enum BufferType {
@@ -35,78 +36,98 @@ public class Oscilloscope extends EventFilter2D {
         TimeInterval, EventNumber
     };
 
-    protected TriggerType triggerType = TriggerType.EventInterval;
-    protected BufferType bufferType = BufferType.EventNumber;
+    public enum PlaybackType {
 
-    protected int numberOfEvents = getInt("numberOfEvents", 10000);
-    protected int sampleTimeUs = getInt("sampleTimeUs", 1000);
-    protected float timeScale = getInt("timeScale", 10);
+        EventNumber, TimeInterval;
+    }
 
+    protected TriggerType triggerType = TriggerType.valueOf(getString("triggerType", TriggerType.Manual.toString()));
+    protected BufferType bufferType = BufferType.valueOf(getString("bufferType", BufferType.EventNumber.toString()));
+    private PlaybackType playbackType = PlaybackType.valueOf(getString("playbackType", PlaybackType.TimeInterval.toString()));
+
+    protected int numberOfEventsToCapture = getInt("numberOfEventsToCapture", 10000);
+    protected int lengthOfTimeToCaptureUs = getInt("lengthOfTimeToCaptureUs", 1000);
+    protected float playbackTimeScale = getInt("playbackTimeScale", 10);
+
+    private int playbackNumEvents = getInt("playbackNumEvents", 100);
+    private int playbackTimeIntervalUs = getInt("playbackTimeIntervalUs", 1000);
+
+    private boolean manualTrigger = false;
     private int triggerTimestamp;
+    
+    private int lastPlaybackTimestamp=0;
+    private int lastPlaybackEventNumber=0;
 
-    private boolean sampling = true; // is new data being recorded?
-    private boolean playing=false; // is recorded buffer being output still?
-    private final EventPacket<BasicEvent> buffer;
+    private boolean sampling = false; // is new data being recorded?
+    private boolean playing = false; // is recorded buffer being output still?
+    private EventPacket<BasicEvent> scopeOutputPacket;
     private OutputEventIterator recordingIterator;
     private Iterator<BasicEvent> playingIterator;
 
     public Oscilloscope(AEChip chip) {
         super(chip);
-        this.buffer = new EventPacket<>();
-        this.recordingIterator = this.buffer.outputIterator();
+        chip.addObserver(this);
     }
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+        checkOutputPacketEventType(in);
         if (sampling) {
-            sampleEvents(in.inputIterator());
+            sampling = !sampleEvents(in.inputIterator(), recordingIterator);
         } else {
             Iterator<?> inputIterator = in.inputIterator();
-            while(inputIterator.hasNext()){
-                BasicEvent e=(BasicEvent)inputIterator.next();
-                if(isTrigger(e))
-                    sampleEvents(inputIterator);
+            while (inputIterator.hasNext()) {
+                BasicEvent e = (BasicEvent) inputIterator.next();
+                if (isTrigger(e)) {
+                    triggerTimestamp = e.timestamp;
+                    recordingIterator = scopeOutputPacket.outputIterator();
+                    recordingIterator.writeToNextOutput(e);
+                    log.info("triggered on " + e.toString());
+                    sampling = !sampleEvents(inputIterator, recordingIterator);
+                }
             }
-           
         }
-        if(playing){
-            if(playingIterator==null){
-                playingIterator=buffer.inputIterator();
-            }
-            OutputEventIterator outItr=getOutputPacket().outputIterator();
-            while(playingIterator.hasNext()){
-                BasicEvent e=playingIterator.next();
-                BasicEvent oe=outItr.nextOutput();
+
+        if (playingIterator == null) {
+            playingIterator = scopeOutputPacket.inputIterator();
+        }
+        if (!sampling) {
+            OutputEventIterator outItr = getOutputPacket().outputIterator();
+            while (playingIterator.hasNext()) {
+                BasicEvent e = playingIterator.next();
+                BasicEvent oe = outItr.nextOutput();
                 oe.copyFrom(e);
-                oe.timestamp*=getTimeScale();
+                oe.timestamp = triggerTimestamp + (int) (getPlaybackTimeScale() * (e.timestamp - triggerTimestamp));
             }
             return getOutputPacket();
+        } else {
+            return null;
         }
 
-        return in;
     }
 
-    private void sampleEvents(Iterator<?> in) {
-        
-        while(in.hasNext()) {
-            BasicEvent e=(BasicEvent)in.next();
+    private boolean sampleEvents(Iterator<?> in, OutputEventIterator recordingIterator) {
+        boolean finishedSampling = false;
+        while (in.hasNext()) {
+            BasicEvent e = (BasicEvent) in.next();
             recordingIterator.writeToNextOutput(e);
-            if (sampling = finishedSampling(e)) {
-                log.info("finished sampling at "+e);
+            if (finishedSampling = finishedSampling(e)) {
+                log.info("finished sampling at " + e);
                 break;
             }
         }
+        return finishedSampling;
     }
 
     private boolean finishedSampling(BasicEvent e) {
         switch (getBufferType()) {
             case EventNumber:
-                if (buffer.getSize() > getNumberOfEvents()) {
+                if (scopeOutputPacket.getSize() > getNumberOfEventsToCapture()) {
                     return true;
                 }
                 break;
             case TimeInterval:
-                if (buffer.getLastTimestamp() > triggerTimestamp + getSampleTimeUs()) {
+                if (scopeOutputPacket.getLastTimestamp() > triggerTimestamp + getLengthOfTimeToCaptureUs()) {
                     return true;
                 }
                 break;
@@ -116,21 +137,47 @@ public class Oscilloscope extends EventFilter2D {
     }
 
     private boolean isTrigger(BasicEvent e) {
-        if(sampling) return false;
-        if(playing) return false;
-        triggerTimestamp=e.timestamp;
-        return true;
+        switch (triggerType) {
+            case Manual:
+                if (manualTrigger) {
+                    manualTrigger = false;
+                    return true;
+                }
+                return false;
+            case EventInterval:
+                return false;
+            case TimeInterval:
+                return false;
+            case SpecialEvent:
+                if(e.isSpecial()) return true;
+                return false;
+            default:
+                return false;
+        }
     }
 
     @Override
     synchronized public void resetFilter() {
-        buffer.clear();
-        sampling=true;
-        playing=false;
+        scopeOutputPacket.clear();
+        sampling = false;
+        playing = false;
     }
 
     @Override
     public void initFilter() {
+        this.scopeOutputPacket = new EventPacket<>(chip.getEventClass());
+        this.recordingIterator = this.scopeOutputPacket.outputIterator();
+    }
+
+    @Override
+    public void update(Observable o, Object arg) {
+        if (o instanceof AEChip && arg == AEChip.EVENT_NUM_CELL_TYPES) { // lazy construction, after the actual AEChip subclass has been constructed
+            initFilter();
+        }
+    }
+
+    public void doTrigger() {
+        manualTrigger = true;
     }
 
     /**
@@ -145,6 +192,7 @@ public class Oscilloscope extends EventFilter2D {
      */
     public void setTriggerType(TriggerType triggerType) {
         this.triggerType = triggerType;
+        putString("triggerType", triggerType.toString());
     }
 
     /**
@@ -159,48 +207,97 @@ public class Oscilloscope extends EventFilter2D {
      */
     public void setBufferType(BufferType bufferType) {
         this.bufferType = bufferType;
+        putString("bufferType", bufferType.toString());
     }
 
     /**
-     * @return the numberOfEvents
+     * @return the numberOfEventsToCapture
      */
-    public int getNumberOfEvents() {
-        return numberOfEvents;
+    public int getNumberOfEventsToCapture() {
+        return numberOfEventsToCapture;
     }
 
     /**
-     * @param numberOfEvents the numberOfEvents to set
+     * @param numberOfEventsToCapture the numberOfEventsToCapture to set
      */
-    public void setNumberOfEvents(int numberOfEvents) {
-        this.numberOfEvents = numberOfEvents;
+    public void setNumberOfEventsToCapture(int numberOfEventsToCapture) {
+        this.numberOfEventsToCapture = numberOfEventsToCapture;
+        putInt("numberOfEventsToCapture", numberOfEventsToCapture);
     }
 
     /**
-     * @return the sampleTimeUs
+     * @return the lengthOfTimeToCaptureUs
      */
-    public int getSampleTimeUs() {
-        return sampleTimeUs;
+    public int getLengthOfTimeToCaptureUs() {
+        return lengthOfTimeToCaptureUs;
     }
 
     /**
-     * @param sampleTimeUs the sampleTimeUs to set
+     * @param lengthOfTimeToCaptureUs the lengthOfTimeToCaptureUs to set
      */
-    public void setSampleTimeUs(int sampleTimeUs) {
-        this.sampleTimeUs = sampleTimeUs;
+    public void setLengthOfTimeToCaptureUs(int lengthOfTimeToCaptureUs) {
+        this.lengthOfTimeToCaptureUs = lengthOfTimeToCaptureUs;
+        putInt("lengthOfTimeToCaptureUs", lengthOfTimeToCaptureUs);
     }
 
     /**
-     * @return the timeScale
+     * @return the playbackTimeScale
      */
-    public float getTimeScale() {
-        return timeScale;
+    public float getPlaybackTimeScale() {
+        return playbackTimeScale;
     }
 
     /**
-     * @param timeScale the timeScale to set
+     * @param playbackTimeScale the playbackTimeScale to set
      */
-    public void setTimeScale(float timeScale) {
-        this.timeScale = timeScale;
+    public void setPlaybackTimeScale(float playbackTimeScale) {
+        this.playbackTimeScale = playbackTimeScale;
+        putFloat("playbackTimeScale", playbackTimeScale);
+    }
+
+    /**
+     * @return the playbackNumEvents
+     */
+    public int getPlaybackNumEvents() {
+        return playbackNumEvents;
+    }
+
+    /**
+     * @param playbackNumEvents the playbackNumEvents to set
+     */
+    public void setPlaybackNumEvents(int playbackNumEvents) {
+        this.playbackNumEvents = playbackNumEvents;
+        putInt("playbackNumEvents", playbackNumEvents);
+    }
+
+    /**
+     * @return the playbackTimeIntervalUs
+     */
+    public int getPlaybackTimeIntervalUs() {
+        return playbackTimeIntervalUs;
+    }
+
+    /**
+     * @param playbackTimeIntervalUs the playbackTimeIntervalUs to set
+     */
+    public void setPlaybackTimeIntervalUs(int playbackTimeIntervalUs) {
+        this.playbackTimeIntervalUs = playbackTimeIntervalUs;
+        putInt("playbackTimeIntervalUs", playbackTimeIntervalUs);
+    }
+
+    /**
+     * @return the playbackType
+     */
+    public PlaybackType getPlaybackType() {
+        return playbackType;
+    }
+
+    /**
+     * @param playbackType the playbackType to set
+     */
+    public void setPlaybackType(PlaybackType playbackType) {
+        this.playbackType = playbackType;
+        putString("playbackType",playbackType.toString());
     }
 
 }
