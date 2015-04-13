@@ -70,13 +70,16 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
 
     protected int numberOfEventsToCapture = getInt("numberOfEventsToCapture", 10000);
     protected int lengthOfTimeToCaptureUs = getInt("lengthOfTimeToCaptureUs", 1000);
-    protected float playbackTimeScale = getInt("playbackTimeScale", 10);
 
     private int playbackNumEvents = getInt("playbackNumEvents", 100);
     private int playbackTimeIntervalUs = getInt("playbackTimeIntervalUs", 1000);
 
     private boolean manualTrigger = false;
-    private int triggerTimestamp;
+    private int triggerTimestamp, triggerEventCounterValue=0;
+    
+    private int triggerTimeIntervalUs=getInt("triggerTimeIntervalUs",1000000);
+    private int triggerEventInterval=getInt("triggerEventInterval",1000000);
+    private int triggerSpecialEventRawAddress=getInt("triggerSpecialEventRawAddress",0x80000000);
 
     private int lastPacketPlaybackEndTimestamp = 0;
     private int lastPacketPlaybackEndEventNumber = 0;
@@ -93,10 +96,39 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
     public Oscilloscope(AEChip chip) {
         super(chip);
         chip.addObserver(this);
+        String t="Trigger", c="Capture", p="Playback";
+        setPropertyTooltip(t, "triggerType", "<html><ul>"
+                + "<li>Manual: Triggers on button press"
+                + "<li>TimeInterval: on time interval triggerIntervalUs"
+                + "<li>EventInterval: on every triggerTimeIntervalUs"
+                + "<li>SpecialEvent: on every special event"
+                + "</ul>");
+        setPropertyTooltip(t, "triggerTimeIntervalUs", "time in us between triggers");
+        setPropertyTooltip(t, "triggerEventInterval", "# events between triggers");
+        setPropertyTooltip(t, "triggerSpecialEventRawAddress", "events with this raw address trigger");
+        setPropertyTooltip(t,"doTrigger","Manually trigger a capture");
+        
+        setPropertyTooltip(c, "captureType", "<html><ul>"
+                + "<li>TimeInterval: capture time interval lengthOfTimeToCaptureUs in us"
+                + "<li>EventInterval: capture numberOfEventsToCapture events"
+                + "</ul>");
+        setPropertyTooltip(c,"lengthOfTimeToCaptureUs","duration in us to capture");
+        setPropertyTooltip(c,"numberOfEventsToCapture","number of events to capture");
+        
+        setPropertyTooltip(p,"playbackType", "<html><ul>"
+                + "<li>EventNumber: play playbackNumEvents per rendered frame"
+                + "<li>TimeInterval: play playbackTimeIntervalUs in us per rendered frame"
+                + "</ul>");
+        setPropertyTooltip(p,"playbackTimeIntervalUs","duration in us to play per frame");
+        setPropertyTooltip(p,"playbackNumEvents","# events to play per frame");
+        
     }
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+        if (manualTrigger && in.getSize()>0) {
+            startRecording(in.getFirstTimestamp());
+        }
         if (triggered) {
 //            System.out.println(" recording additional " + in.getSize() + " events to "+recordingIterator.toString());
             triggered = recordEvents(in.inputIterator(), recordingIterator);
@@ -114,8 +146,7 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
                     continue;
                 }
                 if (isTrigger(e)) {
-                    triggerTimestamp = e.timestamp;
-                    recordingIterator = recordingPacket.outputIterator(); // clears recording packet
+                    startRecording(e.timestamp);
 //                    log.info("triggered, recording first " + in.getSize() + " events to "+recordingIterator.toString());
                     triggered = recordEvents(inputIterator, recordingIterator);
                     if (!triggered) {
@@ -127,8 +158,8 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
         }
 
         if (playing) {
-            if(playbackPacket==null){
-                playbackPacket=new EventPacket<>(recordingPacket.getEventClass());
+            if (playbackPacket == null) {
+                playbackPacket = new EventPacket<>(recordingPacket.getEventClass());
             }
             if (playingIterator == null) {
                 playingIterator = recordingPacket.inputIterator();
@@ -171,8 +202,10 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
             statusText = String.format("playing %d events at %s", playbackPacket.getSize(), playingIterator.toString());
             if (!playingIterator.hasNext()) {
                 playingIterator = recordingPacket.inputIterator();
+            lastPacketPlaybackEndTimestamp = recordingPacket.getFirstTimestamp();
+            }else{
+            lastPacketPlaybackEndTimestamp = playbackPacket.getLastTimestamp();
             }
-            lastPacketPlaybackEndTimestamp = getOutputPacket().getLastTimestamp();
             return playbackPacket;
         } else {
             if (triggered) {
@@ -183,6 +216,15 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
             return in;
         }
 
+    }
+
+    private void startRecording(int timestamp) {
+        playing = false;
+        triggered = true;
+        manualTrigger = false;
+        triggerTimestamp=timestamp;
+        
+        recordingIterator = recordingPacket.outputIterator(); // clears recording packet
     }
 
     /**
@@ -202,8 +244,9 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
             if (e.isFilteredOut()) {
                 continue;
             }
-            recordingIterator.writeToNextOutput(e);
-            if (finishedSampling = isFinishedRecording(e)) {
+            BasicEvent oe = recordingIterator.nextOutput();
+            oe.copyFrom(e);
+            if (finishedSampling = isFinishedRecording(e, recordingPacket, triggerTimestamp)) {
                 break;
             }
         }
@@ -216,7 +259,7 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
      * @param e
      * @return true if finished
      */
-    private boolean isFinishedRecording(BasicEvent e) {
+    private boolean isFinishedRecording(BasicEvent e, EventPacket recordingPacket, int triggerTimestamp) {
         switch (getCaptureType()) {
             case EventNumber:
                 if (recordingPacket.getSize() > getNumberOfEventsToCapture()) {
@@ -246,9 +289,10 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
             case EventInterval:
                 return false;
             case TimeInterval:
+                if(e.timestamp-triggerTimestamp>triggerTimeIntervalUs) return true;
                 return false;
             case SpecialEvent:
-                if (e.isSpecial()) {
+                if (e.isSpecial() && e.address==triggerSpecialEventRawAddress) {
                     return true;
                 }
                 return false;
@@ -358,21 +402,6 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
     }
 
     /**
-     * @return the playbackTimeScale
-     */
-    public float getPlaybackTimeScale() {
-        return playbackTimeScale;
-    }
-
-    /**
-     * @param playbackTimeScale the playbackTimeScale to set
-     */
-    public void setPlaybackTimeScale(float playbackTimeScale) {
-        this.playbackTimeScale = playbackTimeScale;
-        putFloat("playbackTimeScale", playbackTimeScale);
-    }
-
-    /**
      * @return the playbackNumEvents
      */
     public int getPlaybackNumEvents() {
@@ -415,6 +444,51 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
     public void setPlaybackType(PlaybackType playbackType) {
         this.playbackType = playbackType;
         putString("playbackType", playbackType.toString());
+    }
+
+    /**
+     * @return the triggerTimeIntervalUs
+     */
+    public int getTriggerTimeIntervalUs() {
+        return triggerTimeIntervalUs;
+    }
+
+    /**
+     * @param triggerTimeIntervalUs the triggerTimeIntervalUs to set
+     */
+    public void setTriggerTimeIntervalUs(int triggerTimeIntervalUs) {
+        this.triggerTimeIntervalUs = triggerTimeIntervalUs;
+        putInt("triggerTimeIntervalUs",triggerTimeIntervalUs);
+    }
+
+    /**
+     * @return the triggerEventInterval
+     */
+    public int getTriggerEventInterval() {
+        return triggerEventInterval;
+    }
+
+    /**
+     * @param triggerEventInterval the triggerEventInterval to set
+     */
+    public void setTriggerEventInterval(int triggerEventInterval) {
+        this.triggerEventInterval = triggerEventInterval;
+        putInt("triggerEventInterval",triggerEventInterval);
+    }
+
+    /**
+     * @return the triggerSpecialEventRawAddress
+     */
+    public int getTriggerSpecialEventRawAddress() {
+        return triggerSpecialEventRawAddress;
+    }
+
+    /**
+     * @param triggerSpecialEventRawAddress the triggerSpecialEventRawAddress to set
+     */
+    public void setTriggerSpecialEventRawAddress(int triggerSpecialEventRawAddress) {
+        this.triggerSpecialEventRawAddress = triggerSpecialEventRawAddress;
+        putInt("triggerSpecialEventRawAddress",triggerSpecialEventRawAddress);
     }
 
 }
