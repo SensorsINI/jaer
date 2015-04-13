@@ -352,6 +352,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
                 case DavisConfig.PROPERTY_GLOBAL_SHUTTER_MODE_ENABLED: {
                     glShutterCB.setSelected((Boolean) evt.getNewValue());
                 }
+                break;
                 case DavisChip.PROPERTY_AUTO_EXPOSURE_ENABLED: {
                     autoExpCB.setSelected((Boolean) evt.getNewValue());
                 }
