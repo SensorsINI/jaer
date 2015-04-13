@@ -46,7 +46,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  */
 @Description("<html>A real-time oscilloscope, which can play back selected time or event slices during live or recorded playback in slow motion."
         + "<p>Trigger input provide possibilites for synchronizing on special events.")
-@DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnotater {
 
     public enum TriggerType {
