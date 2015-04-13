@@ -17,7 +17,7 @@ import net.sf.jaer.util.filter.LowpassFilter2d;
  * Encapsulates control of rendering contrast of rendered DAVIS APS images
  * including automatic control of contrast and brightness.
  * <p>
- * The rendered gray value v is computed feom ADC sample s using brightness and contrast values, along with maxADC count by following equation. 
+ * The rendered gray value v is computed from ADC sample s using brightness and contrast values, along with maxADC count by following equation. 
  * <br>
  * float v=(s-brightness)*contrast
  *<br>
