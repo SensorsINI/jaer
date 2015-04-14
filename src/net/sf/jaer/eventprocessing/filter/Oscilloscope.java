@@ -141,7 +141,7 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
         setPropertyTooltip(p, "playbackTimeIntervalUs", "duration in us to play per frame");
         setPropertyTooltip(p, "playbackNumEvents", "# events to play per frame");
         setPropertyTooltip(p, "playbackNumberOfCycles", "# times to play each capture");
-
+        initFilter();
     }
 
     @Override
