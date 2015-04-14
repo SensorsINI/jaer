@@ -466,7 +466,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     
     /** An iterator of type <E> over the input events. */
     public class InItr implements Iterator<E> {
-        int cursor;
+        protected int cursor;
         boolean usingTimeout;
 
         /** Constructs a new instance of the InItr. */
@@ -520,6 +520,16 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
         public String toString() {
             return "InputEventIterator cursor="+cursor+" for packet with size="+size+" and capacity="+capacity;
         }
+
+        /**
+         * Returns current cursor position of this iterator
+         * @return the cursor
+         */
+        public int getCursor() {
+            return cursor;
+        }
+        
+        
     }
 
     /* 
