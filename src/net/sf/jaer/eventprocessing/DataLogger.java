@@ -147,9 +147,9 @@ public class DataLogger extends EventFilter2D {
             getSupport().firePropertyChange("loggingEnabled", null, true);
             log.info("starting logging to " + loggingFile);
 
-        } catch (FileNotFoundException e) {
+        } catch (IOException e) {
             loggingFile = null;
-            log.warning("exception on starting to log data to file "+filename+": "+e.toString());
+            log.warning("exception on starting to log data to file "+filename+": "+e);
             loggingEnabled=false;
             getSupport().firePropertyChange("loggingEnabled", null, false);
         }

@@ -40,4 +40,6 @@ public interface AEDataFile {
     public static final String DATA_FILE_VERSION_NUMBER = "2.0";
     /** Format used for log file names */
     public static DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ssZ"); //e.g. Tmpdiff128-   2007-04-04T11-32-21-0700    -0 ants molting swarming.dat
+    /** end of line (EOL) ending (the "windows type") used in data files */
+    public static final byte[] EOL = new byte[]{'\r','\n'};
 }

@@ -4612,10 +4612,7 @@ two interfaces). otherwise force user choice.
 		}
 		try {
 			loggingFile = new File(filename);
-
-//			loggingOutputStream = new AEFileOutputStream(new FileOutputStream(loggingFile));
-			loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile), 8192)); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance that super large buffer
-                        chip.writeAdditionalAEFileOutputStreamHeader(loggingOutputStream);
+			loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile), AEFileOutputStream.OUTPUT_BUFFER_SIZE), chip); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
 			loggingEnabled = true;
 
 			if(playMode==PlayMode.PLAYBACK){ // add change listener for rewind to stop logging
@@ -4655,10 +4652,6 @@ two interfaces). otherwise force user choice.
                     loggingFile=null;
                     log.warning("In trying open a logging output file, caught: "+ioe.toString());
                     ioe.printStackTrace();
-                } catch(BackingStoreException bse){
-                     log.warning("In trying to export preferences to the logged data file, caught: "+bse.toString());
-                    bse.printStackTrace();
-
                 }
 
 		return loggingFile;

@@ -116,7 +116,7 @@ public class AEUnicastOutput implements AEUnicastSettings{
      * This method actually offers new Datagram packets to the consumer thread for later tranmission. The datagram address and port are taken from
      * the current settings for the AEUnicastOutput.
      * 
-     *@param ae a raw addresse-event packet
+     *@param ae a raw address-event packet
      */
     synchronized public void writePacket (AEPacketRaw ae) throws IOException{
 
