@@ -26,10 +26,13 @@ import java.beans.PropertyChangeListener;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.text.NumberFormat;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Set;
 import java.util.logging.Logger;
 import javax.swing.AbstractButton;
@@ -903,9 +906,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     return;
                 }
                 initValue = x.intValue();
-                String s = Integer.toString(x);
+                String s = NumberFormat.getIntegerInstance().format(initValue);
 //                System.out.println("init value of "+name+" is "+s);
                 tf.setText(s);
+                fixIntValue(tf, r);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -915,9 +919,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 @Override
                 public void actionPerformed(ActionEvent e) {
                     try {
-                        int y = Integer.parseInt(
-                                tf.getText());
+                        NumberFormat format = NumberFormat.getNumberInstance();
+                        int y=format.parse(tf.getText()).intValue();
                         w.invoke(filter, new Integer(y)); // write int value
+                    } catch (ParseException pe) {
+    //Handle exception
                     } catch (NumberFormatException fe) {
                         tf.selectAll();
                     } catch (InvocationTargetException ite) {
@@ -1034,6 +1040,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 }
                                 w.invoke(filter, new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
+                                fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
                             } catch (IllegalAccessException iae) {
@@ -1052,6 +1059,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 }
                                 w.invoke(filter, new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
+                                fixIntValue(tf,r);
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
                             } catch (IllegalAccessException iae) {
@@ -1081,7 +1089,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         try {
             Integer x = (Integer) r.invoke(getFilter()); // read int value
 //            initValue=x.intValue();
-            String s = Integer.toString(x);
+            String s = NumberFormat.getIntegerInstance().format(x);
             tf.setText(s);
         } catch (Exception e) {
             e.printStackTrace();
