@@ -117,7 +117,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
             "rowSettle",
             "time in 30MHz clock cycles for pixel source follower to settle after each pixel's row select before ADC conversion; this is the fastest process of readout. In new logic value must be <64.",
             0);
-    protected CPLDInt resSettle = new CPLDInt(
+    public CPLDInt resSettle = new CPLDInt(
             chip,
             71,
             56,
