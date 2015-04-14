@@ -41,7 +41,7 @@
 	<classpathentry kind="lib" path="jars/jblas-1.2.3.jar"/>
 	<classpathentry kind="lib" path="jars/JEvtLearn.jar"/>
 	<classpathentry kind="lib" path="jars/uncommons-maths-1.2.3.jar"/>
-	<classpathentry kind="lib" path="jars/USBTransferThread-0.9.3.jar"/>
+	<classpathentry kind="lib" path="jars/USBTransferThread-0.9.4.jar"/>
 	<classpathentry kind="lib" path="jars/usb4java/libusb4java-1.2.0-linux-arm.jar"/>
 	<classpathentry kind="lib" path="jars/usb4java/libusb4java-1.2.0-linux-x86_64.jar"/>
 	<classpathentry kind="lib" path="jars/usb4java/libusb4java-1.2.0-linux-x86.jar"/>
