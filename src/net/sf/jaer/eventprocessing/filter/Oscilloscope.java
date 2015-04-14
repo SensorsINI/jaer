@@ -116,8 +116,8 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
                 + "<li>SpecialEvent: on every special event"
                 + "</ul>");
         setPropertyTooltip(t, "triggerMode", "<html><ul>"
-                + "<li>Auto: Triggers again after a single replay of last capture is played, once trigger condition is met"
-                + "<li>Normal: Triggers automatically even if trigger condition is not met, after a single replay of last capture"
+                + "<li>Auto: Triggers again after playbackNumberOfCycles plays of last capture are played"
+                + "<li>Normal: Triggers again only if trigger condition is not met, after replays of current capture have been played"
                 + "</ul>");
         setPropertyTooltip(t, "triggerTimeIntervalUs", "time in us between triggers");
         setPropertyTooltip(t, "triggerEventInterval", "# events between triggers");
@@ -313,6 +313,7 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
 
     private boolean isTrigger(BasicEvent e) {
         eventsSinceLastTriggerCounter++;
+        if(triggerMode==TriggerMode.Auto) return true;
         switch (triggerType) {
             case Manual:
                 if (manualTrigger) {
@@ -334,7 +335,7 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
                 }
                 return false;
             case SpecialEvent:
-                if (e.isSpecial() && e.address == triggerSpecialEventRawAddress) {
+                if (e.isSpecial() && e.address == triggerSpecialEventRawAddress ) {
                     eventsSinceLastTriggerCounter = 0;
                     return true;
                 }
