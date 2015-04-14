@@ -10,17 +10,18 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import java.awt.Color;
 import java.awt.Font;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.Iterator;
 import java.util.Observable;
 import java.util.Observer;
-import java.util.concurrent.Exchanger;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.EventPacket.InItr;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -47,14 +48,14 @@ import net.sf.jaer.graphics.FrameAnnotater;
  *
  * @author tobi
  */
-@Description("<html>A real-time oscilloscope, which can play back selected time or event slices during live or recorded playback in slow motion."
-        + "<p>Trigger input provide possibilites for synchronizing on special events.")
+@Description("<html>A real-time oscilloscope, which can do instant replay of selected time or event slices during live or recorded playback in slow motion."
+        + "<p>Trigger input provide possibilites for synchronizing on special events or bias changes.")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnotater {
+public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnotater, PropertyChangeListener {
 
     public enum TriggerType {
 
-        TimeInterval, EventInterval, Manual, SpecialEvent
+        TimeInterval, EventInterval, Manual, SpecialEvent, BiasChange
     };
 
     public enum CaptureType {
@@ -86,6 +87,7 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
 
     private boolean manualTrigger = false;
     private int triggerTimestamp, eventsSinceLastTriggerCounter = 0;
+    private boolean biasChanged = false;
 
     private int triggerTimeIntervalUs = getInt("triggerTimeIntervalUs", 1000000);
     private int triggerEventInterval = getInt("triggerEventInterval", 1000000);
@@ -114,6 +116,7 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
                 + "<li>TimeInterval: on time interval triggerIntervalUs"
                 + "<li>EventInterval: on every triggerTimeIntervalUs"
                 + "<li>SpecialEvent: on every special event"
+                + "<li>BiasChange: on every property change from the AEChip's hardware configuration"
                 + "</ul>");
         setPropertyTooltip(t, "triggerMode", "<html><ul>"
                 + "<li>Auto: Triggers again after playbackNumberOfCycles plays of last capture are played"
@@ -229,11 +232,6 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
             }
             return playbackPacket;
         } else {
-            if (triggered) {
-                statusText = String.format("triggered: %d events", recordingPacket.getSize());
-            } else {
-                statusText = String.format("live");
-            }
             return in;
         }
 
@@ -296,13 +294,13 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
         switch (getCaptureType()) {
             case EventNumber:
                 if (recordingPacket.getSize() > getNumberOfEventsToCapture()) {
-                    log.info(getCaptureType().toString() + ": recorded " + recordingPacket.getSize() + " events");
+//                    log.info(getCaptureType().toString() + ": recorded " + recordingPacket.getSize() + " events");
                     return true;
                 }
                 break;
             case TimeInterval:
                 if (recordingPacket.getLastTimestamp() > triggerTimestamp + getLengthOfTimeToCaptureUs()) {
-                    log.info(getCaptureType().toString() + ": recorded " + recordingPacket.getSize() + " events over " + recordingPacket.getDurationUs() + " us");
+//                    log.info(getCaptureType().toString() + ": recorded " + recordingPacket.getSize() + " events over " + recordingPacket.getDurationUs() + " us");
                     return true;
                 }
                 break;
@@ -313,7 +311,9 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
 
     private boolean isTrigger(BasicEvent e) {
         eventsSinceLastTriggerCounter++;
-        if(triggerMode==TriggerMode.Auto) return true;
+        if (triggerMode == TriggerMode.Auto) {
+            return true;
+        }
         switch (triggerType) {
             case Manual:
                 if (manualTrigger) {
@@ -335,13 +335,27 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
                 }
                 return false;
             case SpecialEvent:
-                if (e.isSpecial() && e.address == triggerSpecialEventRawAddress ) {
+                if (e.isSpecial() && e.address == triggerSpecialEventRawAddress) {
                     eventsSinceLastTriggerCounter = 0;
                     return true;
                 }
                 return false;
+            case BiasChange:
+                if (biasChanged) {
+                    biasChanged = false;
+                    return true;
+                }
+                return false;
+
             default:
                 return false;
+        }
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if(evt.getSource() instanceof AEChip){
+            biasChanged=true;
         }
     }
 
@@ -364,19 +378,41 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
     public void update(Observable o, Object arg) {
         if (o instanceof AEChip && arg == AEChip.EVENT_NUM_CELL_TYPES) { // lazy construction, after the actual AEChip subclass has been constructed
             initFilter();
+        } else if (o instanceof AEChip && chip.getBiasgen() != null) {
+            chip.getBiasgen().getSupport().addPropertyChangeListener(this);
         }
     }
 
     @Override
-    synchronized public void annotate(GLAutoDrawable drawable) {
+    public void annotate(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
         if (textRenderer == null) {
             textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 10));
         }
+        if (playing) {
+            statusText = String.format("playing %d events at %s", playbackPacket.getSize(), playbackIterator.toString());
+            textRenderer.setColor(Color.green);
+            gl.glColor3f(1, 1, 0);
+            gl.glRectf(0, -8, chip.getSizeX() * (float) ((InItr) playbackIterator).getCursor() / capturedPacket.getSize(), -7);
+        } else if (triggered) {
+            statusText = String.format("triggered: %d events", recordingPacket.getSize());
+            textRenderer.setColor(Color.yellow);
+            gl.glColor3f(0, 1, 0);
+            float frac = 0;
+            if (captureType == CaptureType.EventNumber) {
+                frac = (float) recordingPacket.getSize() / numberOfEventsToCapture;
+            } else if (captureType == CaptureType.TimeInterval) {
+                frac = (float) recordingPacket.getDurationUs() / lengthOfTimeToCaptureUs;
+            }
+            gl.glRectf(0, -8, chip.getSizeX() * frac, -7);
+        } else {
+            statusText = String.format("live");
+            gl.glColor3f(1, 0, 0);
+        }
+
         if (statusText != null) {
             textRenderer.begin3DRendering();
-            textRenderer.setColor(Color.yellow);
-            textRenderer.draw3D(statusText, 0, 0, 0, .5f);
+            textRenderer.draw3D(statusText, 0, -5, 0, .5f);
             textRenderer.end3DRendering();
         }
     }
