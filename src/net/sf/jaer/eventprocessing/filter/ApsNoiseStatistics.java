@@ -31,6 +31,8 @@ import net.sf.jaer.util.EngineeringFormat;
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 
 /**
  * Displays noise statistics for APS frames from DAVIS sensors.
@@ -38,13 +40,14 @@ import com.jogamp.opengl.util.awt.TextRenderer;
  * @author tobi
  */
 @Description("Collects and displays APS noise statistics for a selected range of pixels")
-public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements FrameAnnotater, Observer {
+public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements FrameAnnotater, Observer, PropertyChangeListener {
 
     ApsFrameExtractor frameExtractor;
 //    private int numFramesToAverage = getInt("numFramesToAverage", 10);
     public boolean temporalNoiseEnabled = getBoolean("temporalNoiseEnabled", true);
     public boolean spatialHistogramEnabled = getBoolean("spatialHistogramEnabled", true);
     public boolean scaleHistogramsIncludingOverflow = getBoolean("scaleHistogramsIncludingOverflow", true);
+    protected boolean resetOnBiasChange = getBoolean("resetOnBiasChange", true);
     public int histNumBins = getInt("histNumBins", 30);
     int startx, starty, endx, endy;
     private Point startPoint = null, endPoint = null, clickedPoint = null;
@@ -83,6 +86,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
         setPropertyTooltip("histNumBins", "number of bins in the spatial (FPN) histogram");
         setPropertyTooltip("spatialHistogramEnabled", "shows the spatial (FPN) histogram for mouse-selected region");
         setPropertyTooltip("temporalNoiseEnabled", "<html>shows the temporal noise (AC RMS) of pixels in mouse-selected region. <br> The AC RMS is computed for each pixel separately and the grand average AC RMS is displayed.");
+        setPropertyTooltip("resetOnBiasChange", "Resets filter on any PropertyChangeEvent from the chip's configuration");
     }
 
     @Override
@@ -322,6 +326,9 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
         currentAddress = new int[chip.getNumCellTypes()];
         Arrays.fill(currentAddress, -1);
         frameExtractor.resetFilter();
+        if(chip.getBiasgen()!=null){
+            chip.getBiasgen().getSupport().addPropertyChangeListener(this);
+        }
     }
 
     /**
@@ -344,6 +351,13 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
     private Point getMousePoint(MouseEvent e) {
         synchronized (glCanvas) { // sync here on opengl canvas because getPixelFromMouseEvent calls opengl and we don't want that during rendering
             return canvas.getPixelFromMouseEvent(e);
+        }
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if(resetOnBiasChange && evt.getSource() instanceof AEChip){
+            resetFilter();
         }
     }
 
@@ -747,5 +761,20 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
         this.histNumBins = histNumBins;
         putInt("histNumBins", histNumBins);
         stats.reset();
+    }
+
+    /**
+     * @return the resetOnBiasChange
+     */
+    public boolean isResetOnBiasChange() {
+        return resetOnBiasChange;
+    }
+
+    /**
+     * @param resetOnBiasChange the resetOnBiasChange to set
+     */
+    public void setResetOnBiasChange(boolean resetOnBiasChange) {
+        this.resetOnBiasChange = resetOnBiasChange;
+        putBoolean("resetOnBiasChange", resetOnBiasChange);
     }
 }
