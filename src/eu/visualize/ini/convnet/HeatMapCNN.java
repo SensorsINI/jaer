@@ -14,6 +14,8 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 
+/* import can be generated automatically 
+
 /**
  * Computes heat map by running CNN using ROI over the frame.
  * @author hongjie
@@ -44,7 +46,6 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         }
          return in;
    }
-    
     
     
     
