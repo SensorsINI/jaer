@@ -45,9 +45,9 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     private boolean showOutputAsBarChart = getBoolean("showOutputAsBarChart", true);
     private float uniformWeight = getFloat("uniformWeight", 0);
     private float uniformBias = getFloat("uniformBias", 0);
-    private boolean measurePerformance = getBoolean("measurePerformance", false);
+    protected boolean measurePerformance = getBoolean("measurePerformance", false);
     private boolean processDVSTimeSlices = getBoolean("processDVSTimeSlices", false);
-    private boolean processAPSFrames = getBoolean("processAPSFrames", true);
+    protected boolean processAPSFrames = getBoolean("processAPSFrames", true);
     protected boolean addedPropertyChangeListener = false;  // must do lazy add of us as listener to chip because renderer is not there yet when this is constructed
     private int dvsMinEvents = getInt("dvsMinEvents", 10000);
 
@@ -218,7 +218,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             if (measurePerformance) {
                 startTime = System.nanoTime();
             }
-            float[] outputs = apsNet.processFrame((AEFrameChipRenderer) (chip.getRenderer()));
+            float[] outputs = apsNet.processDownsampleFrame((AEFrameChipRenderer) (chip.getRenderer()));
             if (measurePerformance) {
                 long dt = System.nanoTime() - startTime;
                 float ms = 1e-6f * dt;

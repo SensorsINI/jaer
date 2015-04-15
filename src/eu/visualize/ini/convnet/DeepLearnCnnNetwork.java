@@ -111,9 +111,24 @@ public class DeepLearnCnnNetwork {
      * @return the vector of output values
      * @see #getActivations
      */
-    public float[] processFrame(AEFrameChipRenderer frame) {
+    public float[] processDownsampleFrame(AEFrameChipRenderer frame) {
 
         inputLayer.processDownsampledFrame(frame);
+        return processLayers();
+    }
+    
+    /**
+     * Computes the output of the network from an input activationsFrame
+     *
+     * @param frame the renderer that rendered the APS output
+     * @param offX x offset of the patch
+     * @param offY y offset of the patch
+     * @return the vector of output values
+     * @see #getActivations
+     */
+    public float[] processInputPatchFrame(AEFrameChipRenderer frame, int offX, int offY) {
+
+        inputLayer.processInputFramePatch(frame, offX, offY);
         return processLayers();
     }
 
@@ -343,6 +358,46 @@ public class DeepLearnCnnNetwork {
                     xo++;
                 }
                 yo++;
+            }
+            return activations;
+        }
+        
+        /**
+         * Computes the output from input frame.
+         *
+         * @param renderer the image comes from this image displayed in AEViewer
+         * @param xOffset x offset of the patch
+         * @param yOffset y offset of tye patch
+         * @return the vector of input layer activations
+         */
+        public float[] processInputFramePatch(AEFrameChipRenderer renderer, int xOffset, int yOffset) {
+//            if (frame == null || frameWidth == 0 || (frame.length / type.samplesPerPixel()) % frameWidth != 0) {
+//                throw new IllegalArgumentException("input frame is null or frame array length is not a multiple of width=" + frameWidth);
+//            }
+            if (activations == null) {
+                activations = new float[nUnits];
+            }
+            int frameHeight = renderer.getChip().getSizeY();
+            int frameWidth = renderer.getChip().getSizeX();
+            int dimx2 = dimx/2;
+            int dimy2 = dimy/2;
+            if(xOffset < dimx2 || xOffset > frameWidth-dimx2 || yOffset < dimy2 || xOffset > frameWidth-dimy2){
+                log.warning("Cannot process input frame patch with x offset: "+xOffset+" and y Offset: "+yOffset+" because frame measures only "+frameWidth+" x "+frameHeight);
+                return null;
+            }
+            for (int y = yOffset-dimy2; y < yOffset+dimy2; y ++) {
+                for (int x = xOffset-dimx2; x < xOffset+dimx2; x ++) {  // take every xstride, ystride pixels as output
+                    float v = 0;
+                    v = renderer.getApsGrayValueAtPixel((int) Math.floor(x), (int) Math.floor(y));
+                    // TODO remove only for debug
+                    if (inputClampedToIncreasingIntegers) {
+                        v = (float) (x + y) / (dimx + dimy); // make image that is x+y, for debugging
+//                        v = (float) (yo) / (dimy);
+                    } else if (inputClampedTo1) {
+                        v = .5f;
+                    }
+                    activations[o(dimy - y - 1, x)] = v; // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
+                }
             }
             return activations;
         }
