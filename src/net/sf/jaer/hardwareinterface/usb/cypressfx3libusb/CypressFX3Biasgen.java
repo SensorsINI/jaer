@@ -75,12 +75,19 @@ public class CypressFX3Biasgen extends CypressFX3 implements BiasgenHardwareInte
 			}
 		}
 
-		((DavisConfig) biasgen).sendConfiguration(biasgen);
+		DavisConfig davisConf = null; 
+                try {
+                    davisConf = ((DavisConfig) biasgen);
+                } catch (ClassCastException cce) {
+                    throw new HardwareInterfaceException(cce.getLocalizedMessage(),cce); //propagate as HIEx
+                }
+                
+                davisConf.sendConfiguration(biasgen);
 
 		if (biasgen.getPotArray() != null) {
 			// Send all biases.
 			for (Pot b : biasgen.getPotArray().getPots()) {
-				((DavisConfig) biasgen).sendAIPot((AddressedIPot) b);
+				davisConf.sendAIPot((AddressedIPot) b);
 			}
 		}
 	}

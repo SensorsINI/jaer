@@ -1519,7 +1519,7 @@ two interfaces). otherwise force user choice.
                                                 } else {
                                                     bg.sendConfiguration(bg);
                                                 }
-					}
+                                        }
 
 					if ((chip.getHardwareInterface() != null) && (chip.getHardwareInterface() instanceof AESequencerInterface)) {
 						// the 'chip's' hardware interface is a pure sequencer
@@ -1554,8 +1554,8 @@ two interfaces). otherwise force user choice.
 				aemon.close();
 				nullifyHardware();
 
-			} catch (Exception e) {
-				log.warning(e.toString());
+	                   } catch (Exception e) {
+				log.warning(e.getMessage());
 				e.printStackTrace();
 				if (aemon != null) {
 					log.info("closing Monitor" + aemon);
