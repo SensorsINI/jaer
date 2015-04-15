@@ -1512,15 +1512,13 @@ two interfaces). otherwise force user choice.
 
 					if (aemon instanceof BiasgenHardwareInterface) {
 						Biasgen bg = chip.getBiasgen();
-						if ((chip.getBiasgen() != null) && !chip.getBiasgen().isInitialized()) {
-							chip.getBiasgen().showUnitializedBiasesWarningDialog(this);
-						}
-
-						                        if (bg == null) {
-						                            log.warning(chip + " is BiasgenHardwareInterface but has null biasgen object, not setting biases");
-						                        } else {
-						                            chip.getBiasgen().sendConfiguration(chip.getBiasgen());
-						                        }
+						if ((bg != null) && !bg.isInitialized()) {
+							bg.showUnitializedBiasesWarningDialog(this);
+						} else if (bg == null) {
+                                                    log.warning(chip + " is BiasgenHardwareInterface but has null biasgen object, not setting biases");
+                                                } else {
+                                                    bg.sendConfiguration(bg);
+                                                }
 					}
 
 					if ((chip.getHardwareInterface() != null) && (chip.getHardwareInterface() instanceof AESequencerInterface)) {
