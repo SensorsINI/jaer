@@ -765,7 +765,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			usbTransfer = new USBTransferThread(monitor.deviceHandle, CypressFX3.STATUS_ENDPOINT_ADDRESS,
 				LibUsb.TRANSFER_TYPE_INTERRUPT, new ProcessStatusMessages(), 4, 64);
 			usbTransfer.setName("AsyncStatusThread");
-			usbTransfer.setPriority(AEReader.MONITOR_PRIORITY);
 			usbTransfer.start();
 		}
 
@@ -863,15 +862,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 */
 	public class AEReader implements ReaderBufferControl {
 		/**
-		 * the priority for this monitor acquisition thread. This should be set
-		 * high (e.g. Thread.MAX_PRIORITY) so that
-		 * the thread can
-		 * start new buffer reads in a timely manner so that the sender does not
-		 * getString blocked
-		 * */
-		public static final int MONITOR_PRIORITY = Thread.MAX_PRIORITY; // Thread.NORM_PRIORITY+2
-
-		/**
 		 * the number of capture buffers for the buffer pool for the translated
 		 * address-events.
 		 * These buffers allow for smoother access to buffer space by the event
@@ -918,7 +908,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 						monitor.close();
 					}
 				});
-			usbTransfer.setPriority(AEReader.MONITOR_PRIORITY);
 			usbTransfer.setName("AEReaderThread");
 			usbTransfer.start();
 
