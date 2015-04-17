@@ -711,7 +711,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
     private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_defaultsButtonActionPerformed
 //        chosenClassesListModel.clear();
-        int i=0;
+        int i = 0;
         for (String s : defaultClassNames) { // add them in reverse order because they were added to the list 
             chosenClassesListModel.insertElementAt(s, i++);
 //            chosenClassesListModel.addElement(s);
@@ -871,4 +871,27 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             }
         }
     }
+
+    public class ClassNameWithDescriptionAndDevelopmentStatus {
+
+        String className;
+        Description description;
+        DevelopmentStatus developmentStatus;
+
+        public ClassNameWithDescriptionAndDevelopmentStatus(String className, Description description, DevelopmentStatus developmentStatus) {
+            this.className = className;
+            this.description = description;
+            this.developmentStatus = developmentStatus;
+        }
+
+        public ClassNameWithDescriptionAndDevelopmentStatus(Class clazz) {
+
+        }
+        
+        public String toString(){
+            return className;
+        }
+
+    }
+
 }
