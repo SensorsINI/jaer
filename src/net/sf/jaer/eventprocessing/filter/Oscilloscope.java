@@ -391,13 +391,11 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
         }
         if (playing) {
             statusText = String.format("playing %d events at %s", playbackPacket.getSize(), playbackIterator.toString());
-            textRenderer.setColor(Color.green);
             gl.glColor3f(1, 1, 0);
             gl.glRectf(0, -8, chip.getSizeX() * (float) ((InItr) playbackIterator).getCursor() / capturedPacket.getSize(), -7);
         } else if (triggered) {
             statusText = String.format("triggered: %d events", recordingPacket.getSize());
-            textRenderer.setColor(Color.yellow);
-            gl.glColor3f(0, 1, 0);
+             gl.glColor3f(0, 1, 0);
             float frac = 0;
             if (captureType == CaptureType.EventNumber) {
                 frac = (float) recordingPacket.getSize() / numberOfEventsToCapture;
@@ -412,6 +410,13 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
 
         if (statusText != null) {
             textRenderer.begin3DRendering();
+            if(triggered)
+                       textRenderer.setColor(Color.green);
+            else if(playing)
+                textRenderer.setColor(Color.yellow);
+            else 
+                textRenderer.setColor(Color.red);
+
             textRenderer.draw3D(statusText, 0, -5, 0, .5f);
             textRenderer.end3DRendering();
         }
