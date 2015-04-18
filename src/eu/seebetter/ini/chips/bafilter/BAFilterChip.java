@@ -43,13 +43,15 @@ import net.sf.jaer.util.RemoteControlled;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.DavisChip;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 
 /**
- *
+ * Aimed for filtering background activity noise by generating PASS signal when events are correlated with past events.
  * @author hongjie
  */
 @Description("Background Activity Filter Chip")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class BAFilterChip extends AEChip implements RemoteControlled, Observer {
 
     private JMenu chipMenu = null;
