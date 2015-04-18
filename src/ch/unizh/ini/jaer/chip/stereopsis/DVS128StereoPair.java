@@ -31,15 +31,17 @@ import net.sf.jaer.stereopsis.StereoBiasgenHardwareInterface;
 import net.sf.jaer.stereopsis.StereoChipInterface;
 import net.sf.jaer.stereopsis.Stereopsis;
 import ch.unizh.ini.jaer.chip.retina.DVS128;
+import net.sf.jaer.DevelopmentStatus;
 /**
- * A stereo pair of Tmpdiff128 retinas each with its own separate but time-sychronized hardware interface. 
+ * A stereo pair of Tmpdiff128 retinas each with its own separate but time-synchronized hardware interface. 
  * Differs from the usual AEChip object in that it also overrides #getHardwareInterface and #setHardwareInterface
 to supply StereoHardwareInterface which is a pair of Tmpdiff128 hardware interfaces.
  * @author tobi
  * @see net.sf.jaer.stereopsis.StereoHardwareInterface
  * @see net.sf.jaer.stereopsis.StereoBiasgenHardwareInterface
  */
-@Description("A stereo pair of Tmpdiff128 retinas (DVS128) each on it's own USB interface")
+@Description("A stereo pair of DVS128 cameras each with its own USB interface")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DVS128StereoPair extends DVS128 implements StereoChipInterface{
     private AEChip left, right;
 

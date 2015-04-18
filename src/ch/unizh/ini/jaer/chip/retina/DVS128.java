@@ -27,6 +27,7 @@ import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JTabbedPane;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.biasgen.ChipControlPanel;
@@ -68,6 +69,7 @@ import net.sf.jaer.util.WarningDialogWithDontShowPreference;
  * @author tobi
  */
 @Description("DVS128 Dynamic Vision Sensor")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DVS128 extends AETemporalConstastRetina implements Serializable, Observer, RemoteControlled {
 
     private JMenu dvs128Menu = null;

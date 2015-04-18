@@ -16,13 +16,17 @@ import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  * CDAVIS camera with heterogenous mixture of DAVIS and RGB APS global shutter
  * pixels camera
  *
- * @author tobi
+ * @author Chenghan Li, Luca Longinotti, Tobi Delbruck
  */
+@Description("DAVIS APS-DVS camera with RGBW CFA color filter array and 640x480 APS pixels and 320x240 DAVIS pixels")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DavisRGBW640 extends Davis346BaseCamera {
 	public static final short WIDTH_PIXELS = 640;
 	public static final short HEIGHT_PIXELS = 480;

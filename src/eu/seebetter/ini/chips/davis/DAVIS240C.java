@@ -6,6 +6,7 @@
 package eu.seebetter.ini.chips.davis;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  * The DAVIS240C camera.
@@ -13,6 +14,7 @@ import net.sf.jaer.Description;
  * @author Tobi
  */
 @Description("The DAVIS240C camera")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DAVIS240C extends DAVIS240BaseCamera {
     public DAVIS240C() {
         setName("DAVIS240C");

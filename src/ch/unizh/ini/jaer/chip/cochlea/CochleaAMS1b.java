@@ -28,6 +28,7 @@ import javax.swing.JTabbedPane;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.biasgen.ChipControlPanel;
 import net.sf.jaer.biasgen.IPot;
@@ -54,6 +55,7 @@ import net.sf.jaer.util.RemoteControlled;
  * @author tobi
  */
 @Description("Binaural AER silicon cochlea with 64 channels and 8 ganglion cells of two types per channel")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class CochleaAMS1b extends CochleaAMSNoBiasgen {
 
 	//    // biasgen components implement this interface to send their own messages

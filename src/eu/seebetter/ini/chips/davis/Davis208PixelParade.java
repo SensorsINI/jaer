@@ -4,6 +4,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import eu.seebetter.ini.chips.DavisChip;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  * Base camera for Tower Davis208PixelParade cameras
@@ -11,6 +12,7 @@ import eu.seebetter.ini.chips.DavisChip;
  * @author Diederik
  */
 @Description("Davis208PixelParade base class for 208x192 pixel sensitive APS-DVS DAVIS sensor")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class Davis208PixelParade extends DavisBaseCamera {
 
     public static final short WIDTH_PIXELS = 208;

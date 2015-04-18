@@ -8,12 +8,16 @@ package eu.seebetter.ini.chips.davis;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import eu.seebetter.ini.chips.DavisChip;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  * Davis640 camera
  *
  * @author tobi
  */
+@Description("DAVIS APS-DVS camera with 640x480 pixels")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class Davis640 extends DavisBaseCamera {
 
 	public static final short WIDTH_PIXELS = 640;

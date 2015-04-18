@@ -9,6 +9,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import eu.seebetter.ini.chips.DavisChip;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  * 128x128 DAVIS camera on Tower wafer
@@ -16,6 +17,7 @@ import eu.seebetter.ini.chips.DavisChip;
  * @author tobi
  */
 @Description("DAVIS128 base class for 128x128 pixel APS-DVS DAVIS sensor")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class Davis128 extends DavisBaseCamera {
 
 	public static final short WIDTH_PIXELS = 128;

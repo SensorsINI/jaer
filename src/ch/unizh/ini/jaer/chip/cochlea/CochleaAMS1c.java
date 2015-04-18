@@ -38,6 +38,7 @@ import javax.swing.JTabbedPane;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.biasgen.IPot;
@@ -76,6 +77,7 @@ import net.sf.jaer.util.WarningDialogWithDontShowPreference;
  * @author tobi
  */
 @Description("Binaural AER silicon cochlea with 64 channels and 8 ganglion cells of two types per channel with many fixes to CochleaAMS1b")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSyncEventOutput {
 
     final GLUT glut = new GLUT();
