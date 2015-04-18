@@ -791,6 +791,10 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_defaultsButtonActionPerformed
 //        chosenClassesListModel.clear();
         int i = 0;
+        if(defaultClassNames==null){
+            log.warning("No default classes to add");
+            return;
+        }
         for (String s : defaultClassNames) { // add them in reverse order because they were added to the list 
             chosenClassesListModel.insertElementAt(s, i++);
 //            chosenClassesListModel.addElement(s);
