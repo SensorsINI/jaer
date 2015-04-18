@@ -28,6 +28,7 @@ import net.sf.jaer.eventprocessing.filter.Info;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 import com.jogamp.opengl.util.gl2.GLUT;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  * Monitors input events for sudden increases in activity. When this increase is detected, a recording is started to memory. When the buffer is full or live input activity stops for a sufficiently
@@ -40,6 +41,7 @@ import com.jogamp.opengl.util.gl2.GLUT;
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 @Description("Automatically replays input when input activity falls below a threshold for long enough.")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotater {
 
 	private AEOutputStream os;

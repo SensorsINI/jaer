@@ -14,6 +14,7 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BinocularEvent;
 import net.sf.jaer.event.EventPacket;
@@ -30,6 +31,7 @@ import net.sf.jaer.util.TobiLogger;
  * 
  */
 @Description("Pencil balancing robot which uses a pair of DVS128 and a USBServoController")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class PencilBalancer extends EventFilter2D implements FrameAnnotater,Observer{
     /* ***************************************************************************************************** */
     /* **  The follwing stuff we need to compute linetracking and desired table position ******************* */

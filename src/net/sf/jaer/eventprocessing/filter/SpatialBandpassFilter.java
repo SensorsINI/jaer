@@ -17,6 +17,7 @@ import java.util.Observable;
 import java.util.Observer;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
@@ -29,6 +30,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  * @author tobi
  */
 @Description("Does an event-based spatial highpass filter, so that only small objects pass through.")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SpatialBandpassFilter extends EventFilter2D implements Observer{
        
     private int centerRadius=getPrefs().getInt("SpatialBandpassFilter.centerRadius",0);

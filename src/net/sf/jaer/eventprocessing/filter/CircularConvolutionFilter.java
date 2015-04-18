@@ -15,6 +15,7 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
@@ -30,6 +31,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * @author tobi
  */
 @Description("Computes circular convolutions by splatting out events and checking receiving pixels to see if they exceed a threshold")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public final class CircularConvolutionFilter extends EventFilter2D implements Observer, FrameAnnotater {
 
 	static final int NUM_INPUT_CELL_TYPES=1;

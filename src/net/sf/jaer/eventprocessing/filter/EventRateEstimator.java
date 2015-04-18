@@ -5,6 +5,7 @@
 package net.sf.jaer.eventprocessing.filter;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
@@ -23,6 +24,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
  * href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 @Description("Estimates event rate from the input event packets")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class EventRateEstimator extends EventFilter2D {
 
     private LowpassFilter filter = new LowpassFilter();

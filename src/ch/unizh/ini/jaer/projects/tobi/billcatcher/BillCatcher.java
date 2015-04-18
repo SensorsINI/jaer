@@ -33,6 +33,7 @@ import net.sf.jaer.hardwareinterface.ServoInterface;
 import net.sf.jaer.hardwareinterface.usb.ServoInterfaceFactory;
 
 import com.jogamp.opengl.util.gl2.GLUT;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  * Catches ppper money dropped between fingers. The game is that a person holds a bill and then releases it at a random moment.
@@ -42,6 +43,7 @@ import com.jogamp.opengl.util.gl2.GLUT;
  * @author tobi
  */
 @Description("Catches a bill (money) when sufficient motion is detected")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class BillCatcher extends EventFilter2D implements FrameAnnotater {
 
     ServoInterface servo=null;

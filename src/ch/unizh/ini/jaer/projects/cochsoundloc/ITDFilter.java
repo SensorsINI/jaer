@@ -43,6 +43,7 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 
 import com.jogamp.opengl.util.gl2.GLUT;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  * Extracts interaural time difference (ITD) from a binaural cochlea input.
@@ -50,6 +51,7 @@ import com.jogamp.opengl.util.gl2.GLUT;
  * @author Holger
  */
 @Description("Measures ITD (Interaural time difference) using a variety of methods")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater, RemoteControlled {
 
 	private ITDCalibrationGaussians calibration = null;

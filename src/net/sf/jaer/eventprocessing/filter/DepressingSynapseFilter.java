@@ -28,6 +28,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  *  Filters out high-firing input using probabalistic depressing synaptic connection. Works particularly well for high firing rate flickering lighting sources with the DVS.
@@ -39,6 +40,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 @Description("Filters out rapidly firing input using depressing probabalistic synapse model")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DepressingSynapseFilter extends EventFilter2D implements FrameAnnotater, net.sf.jaer.eventprocessing.processortype.Filter {
 
 	private static Random random = new Random();

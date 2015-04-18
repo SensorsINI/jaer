@@ -7,6 +7,7 @@ package ch.unizh.ini.jaer.projects.labyrinth;
 import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
@@ -18,6 +19,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  * @author tobi
  */
 @Description("Top level labyinth game class")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class LabyrinthGame extends EventFilter2DMouseAdaptor  {
 
     LabyrinthBallController controller;

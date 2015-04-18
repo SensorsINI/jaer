@@ -26,6 +26,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.EngineeringFormat;
 
 import com.jogamp.opengl.util.gl2.GLUT;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  * Controls the rate of events from the retina by controlling retina biases.
@@ -37,6 +38,7 @@ A lowpass filter smooths the rate measurements.
  * @author tobi
  */
 @Description("Adaptively controls biases on DVS128 to control event rate")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DVS128BiasController extends EventFilter2D implements FrameAnnotater {
 
 	protected int rateHigh = getInt("rateHigh", 400);

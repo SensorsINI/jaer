@@ -44,6 +44,7 @@ import net.sf.jaer.util.StateMachineStates;
 import org.ine.telluride.jaer.tell2011.head6axis.Head6DOF_ServoController;
 
 import com.jogamp.opengl.util.gl2.GLUT;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  * Controls a servo arm in the way of a ball rolling towards a goal box.
@@ -53,6 +54,7 @@ import com.jogamp.opengl.util.gl2.GLUT;
  * @author tGoalielbruck/manuel lang
  */
 @Description("Stereo Vision Binocular Goalie robot from Telluride 2012")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class StereoGoalie extends EventFilter2D implements FrameAnnotater, Observer{
 
 	final String LOGGING_FILENAME="goalie.csv";

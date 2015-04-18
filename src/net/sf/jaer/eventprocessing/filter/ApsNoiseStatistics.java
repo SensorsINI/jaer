@@ -33,6 +33,7 @@ import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  * Displays noise statistics for APS frames from DAVIS sensors.
@@ -40,6 +41,7 @@ import java.beans.PropertyChangeListener;
  * @author tobi
  */
 @Description("Collects and displays APS noise statistics for a selected range of pixels")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements FrameAnnotater, Observer, PropertyChangeListener {
 
     ApsFrameExtractor frameExtractor;

@@ -124,6 +124,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
      */
     public ClassChooserPanel(final Class subclassOf, ArrayList<String> classNames, ArrayList<String> defaultClassNames) {
         initComponents();
+        includeExperimentalCB.setEnabled(onlyStableCB.isSelected());
         availFilterTextField.requestFocusInWindow();
         this.defaultClassNames = defaultClassNames;
         final SubclassFinder.SubclassFinderWorker worker = new SubclassFinder.SubclassFinderWorker(subclassOf);
@@ -359,6 +360,8 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                 passAllStable = true; // pass all stable filters 
             }
 
+            boolean includeExperimental = includeExperimentalCB.isSelected();
+
             filterString = s.toLowerCase();
             resetList();
 
@@ -373,11 +376,15 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                 String str = null;
                 boolean isStable = false;
                 DevelopmentStatus ds = cn.getDevelopmentStatus();
-                if (ds != null && ds.value().equals(DevelopmentStatus.Status.Stable)) {
+                if (ds != null
+                        && (ds.value().equals(DevelopmentStatus.Status.Stable)
+                        || (includeExperimental && ds.value().equals(DevelopmentStatus.Status.Experimental)))) {
                     isStable = true; // this class is stable
                 }
                 if (passAllStable) {
-                    if(!isStable) v.add(o); // filter out this class because it not stable and we are passing all stable filters only
+                    if (!isStable) {
+                        v.add(o); // filter out this class because it not stable and we are passing all stable filters only
+                    }
                 } else { // add (filter out) depending on if strings don't match or if !isStable and onlyStable is true
                     if (onlyStable && !isStable) {
                         v.add(o);
@@ -427,6 +434,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         availClassJList = new javax.swing.JList();
         includeDescriptionCB = new javax.swing.JCheckBox();
         onlyStableCB = new javax.swing.JCheckBox();
+        includeExperimentalCB = new javax.swing.JCheckBox();
         chosenClassPanel = new javax.swing.JPanel();
         jScrollPane3 = new javax.swing.JScrollPane();
         classJList = new javax.swing.JList();
@@ -484,7 +492,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                     .addGroup(filterPanelLayout.createSequentialGroup()
                         .addComponent(filterLabel)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(availFilterTextField)
+                        .addComponent(availFilterTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 179, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(clearFilterBut))
                     .addComponent(filterTypeOptionsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
@@ -525,10 +533,26 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             }
         });
 
+        includeExperimentalCB.setText("Include Experimental");
+        includeExperimentalCB.setToolTipText("Include Experimental classes in search results");
+        includeExperimentalCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                includeExperimentalCBActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout availClassPanelLayout = new javax.swing.GroupLayout(availClassPanel);
         availClassPanel.setLayout(availClassPanelLayout);
         availClassPanelLayout.setHorizontalGroup(
             availClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(availClassPanelLayout.createSequentialGroup()
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(availClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(includeExperimentalCB)
+                    .addComponent(onlyStableCB))
+                .addGap(18, 18, 18)
+                .addComponent(includeDescriptionCB)
+                .addContainerGap())
             .addGroup(availClassPanelLayout.createSequentialGroup()
                 .addGap(2, 2, 2)
                 .addGroup(availClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -536,12 +560,6 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                     .addGroup(availClassPanelLayout.createSequentialGroup()
                         .addComponent(filterPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addGap(2, 2, 2))))
-            .addGroup(availClassPanelLayout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(onlyStableCB)
-                .addGap(18, 18, 18)
-                .addComponent(includeDescriptionCB)
-                .addContainerGap())
         );
         availClassPanelLayout.setVerticalGroup(
             availClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -553,7 +571,9 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                     .addComponent(includeDescriptionCB)
                     .addComponent(onlyStableCB))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(availClassDesciptionPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 406, Short.MAX_VALUE))
+                .addComponent(includeExperimentalCB)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 5, Short.MAX_VALUE)
+                .addComponent(availClassDesciptionPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 377, javax.swing.GroupLayout.PREFERRED_SIZE))
         );
 
         chosenClassPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Selected classes"));
@@ -724,7 +744,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(descPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
-                        .addComponent(availClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 244, Short.MAX_VALUE)
+                        .addComponent(availClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 288, Short.MAX_VALUE)
                         .addGap(10, 10, 10)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(defaultsButton, javax.swing.GroupLayout.PREFERRED_SIZE, 61, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -735,7 +755,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                             .addComponent(moveDownButton, javax.swing.GroupLayout.PREFERRED_SIZE, 71, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(addClassButton, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addGap(10, 10, 10)
-                        .addComponent(chosenClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 226, Short.MAX_VALUE))))
+                        .addComponent(chosenClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 182, Short.MAX_VALUE))))
         );
 
         layout.linkSize(javax.swing.SwingConstants.HORIZONTAL, new java.awt.Component[] {addClassButton, defaultsButton, moveDownButton, moveUpButton, removeAllButton, removeClassButton, revertButton});
@@ -760,8 +780,8 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                         .addComponent(revertButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(defaultsButton))
-                    .addComponent(availClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 483, Short.MAX_VALUE)
-                    .addComponent(chosenClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 483, Short.MAX_VALUE))
+                    .addComponent(availClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 480, Short.MAX_VALUE)
+                    .addComponent(chosenClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 480, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(descPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
@@ -876,9 +896,15 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     }//GEN-LAST:event_includeDescriptionCBActionPerformed
 
     private void onlyStableCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_onlyStableCBActionPerformed
+        includeExperimentalCB.setEnabled(onlyStableCB.isSelected());
         String s = availFilterTextField.getText();
         availClassesListModel.filter(s);
     }//GEN-LAST:event_onlyStableCBActionPerformed
+
+    private void includeExperimentalCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_includeExperimentalCBActionPerformed
+        String s = availFilterTextField.getText();
+        availClassesListModel.filter(s);
+    }//GEN-LAST:event_includeExperimentalCBActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JScrollPane ClassDescSP;
@@ -901,6 +927,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     private javax.swing.JPanel filterPanel;
     private javax.swing.JPanel filterTypeOptionsPanel;
     private javax.swing.JCheckBox includeDescriptionCB;
+    private javax.swing.JCheckBox includeExperimentalCB;
     private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JButton moveDownButton;
     private javax.swing.JButton moveUpButton;

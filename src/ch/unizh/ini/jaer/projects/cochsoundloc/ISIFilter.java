@@ -26,12 +26,16 @@ import net.sf.jaer.util.chart.XYChart;
 import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent;
 import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent.Ear;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMSEvent;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  *
  * @author Holger (some parts are from tobi's ISIhistogrammer)
  *
  */
+@Description("Only passes events from silicon cochlea with certain range of ISIs (interspike intervals)")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class ISIFilter extends EventFilter2D implements Observer {
 
     private int nBins = getPrefs().getInt("ISIFilter.nBins", 50);

@@ -21,6 +21,7 @@ import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.eventprocessing.filter.RotateFilter;
 import net.sf.jaer.graphics.ImageDisplay;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTiltAimer;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  * Moves DVS128 using pantilt and maintains continuous image based on DVS
@@ -29,6 +30,7 @@ import ch.unizh.ini.jaer.hardware.pantilt.PanTiltAimer;
  * @author tobi
  */
 @Description("Small eye movements from pan-tilt are used to build up gradient image")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class SmallEyeMovements extends EventFilter2D implements Observer, PropertyChangeListener {
 
     PanTiltAimer aimer = null;

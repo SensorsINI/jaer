@@ -42,6 +42,7 @@ import net.sf.jaer.hardwareinterface.ServoInterface;
 import net.sf.jaer.util.StateMachineStates;
 
 import com.jogamp.opengl.util.gl2.GLUT;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  * Controls a servo motor that swings an arm in the way of a ball rolling
@@ -50,6 +51,7 @@ import com.jogamp.opengl.util.gl2.GLUT;
  * @author tGoalielbruck/manuel lang
  */
 @Description("Goalie robot")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class Goalie extends EventFilter2D implements FrameAnnotater, Observer {
 
     final String LOGGING_FILENAME = "goalie.csv";

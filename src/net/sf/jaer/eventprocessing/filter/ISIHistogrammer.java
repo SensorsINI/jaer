@@ -15,6 +15,7 @@ import java.util.Observer;
 import javax.swing.JFrame;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.BasicEvent;
@@ -33,6 +34,7 @@ import net.sf.jaer.util.chart.XYChart;
 licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License">http://en.wikipedia.org/wiki/GNU_Lesser_General_Public_License</a>.
  */
 @Description("Computes ISI (inter spike interval) histogram")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class ISIHistogrammer extends EventFilter2D implements Observer{
 
     /**
