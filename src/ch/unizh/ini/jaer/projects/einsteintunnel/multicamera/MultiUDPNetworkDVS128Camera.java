@@ -32,6 +32,8 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.hardwareinterface.udp.NetworkChip;
 import ch.unizh.ini.jaer.chip.retina.DVS128;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 
 
 /**
@@ -40,6 +42,8 @@ import ch.unizh.ini.jaer.chip.retina.DVS128;
  *
  * @author tobi delbruck, christian braendli
  */
+@Description("Encapsulates a whole bunch of networked UDP DVS128 cameras into this single AEChip object")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, MultiChip{
 
     /** Maximum number of network cameras in the linear array. */
