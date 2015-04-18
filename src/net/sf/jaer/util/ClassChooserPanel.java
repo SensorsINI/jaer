@@ -296,16 +296,16 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                 background = list.getBackground();
                 DevelopmentStatus.Status develStatus = getClassDevelopmentStatus(fullclassname);
                 if (develStatus == DevelopmentStatus.Status.Experimental) {
-                    foreground = Color.ORANGE;
+                    foreground = Color.ORANGE.darker();
                 } else if (develStatus == DevelopmentStatus.Status.InDevelopment) {
-                    foreground = Color.PINK;
+                    foreground = Color.YELLOW;
                 } else if (develStatus == DevelopmentStatus.Status.Stable) {
                     foreground = Color.BLUE;
                 } else {
-                    foreground = Color.LIGHT_GRAY;
+                    foreground = Color.GRAY;
                 }
                 if (getClassDescription(fullclassname) == null) {
-                    foreground = Color.GRAY;
+                    foreground = Color.LIGHT_GRAY;
                 }
             }
             setEnabled(list.isEnabled());
