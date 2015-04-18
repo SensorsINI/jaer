@@ -426,8 +426,13 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 	 */
 	protected CPLDShiftRegister cpldConfig = new CPLDShiftRegister();
 
+        /** Sends the entire configuration but only if getHardwareInterface()!=null
+         * 
+         * @throws HardwareInterfaceException 
+         */
 	protected void sendCPLDConfig() throws HardwareInterfaceException {
-		if (cpldConfig.getShiftRegisterLength() > 0) {
+            if(getHardwareInterface()==null) return;
+            if (cpldConfig.getShiftRegisterLength() > 0) {
 			byte[] bytes = cpldConfig.getBytes();
 			// log.info("Send CPLD Config: "+cpldConfig.toString());
 			sendFx2ConfigCommand(CMD_CPLD_CONFIG, 0, bytes);
@@ -623,6 +628,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 
 		// biases
 		if (getPotArray() == null) {
+                        log.info("null pot array, AEChip is still in constuction");
 			return false;
 		}
 		AddressedIPotArray ipots = (AddressedIPotArray) potArray;

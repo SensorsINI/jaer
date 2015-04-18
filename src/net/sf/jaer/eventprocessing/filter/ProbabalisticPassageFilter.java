@@ -5,8 +5,9 @@
 
 package net.sf.jaer.eventprocessing.filter;
 import java.util.Random;
-
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
+
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
@@ -17,6 +18,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  * @author tobi
  */
 @Description("Passes events probabilistically")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class ProbabalisticPassageFilter extends EventFilter2D{
     
     private float passProb=getPrefs().getFloat("TestFilter.passProb",.5f);

@@ -11,6 +11,7 @@ import java.util.Observable;
 import java.util.Observer;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.orientation.ApsDvsOrientationEvent;
 import net.sf.jaer.event.EventPacket;
@@ -19,12 +20,13 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**
- * Computes coincidences betweeen different types of events at the same location in its input. Intended for e.g., a corner detector that works by
- *simulatanous vertical and horizontal edges.
+ * Computes coincidences between different types of events at the same location in its input. Intended for e.g., a corner detector that works by
+ *simultaneous vertical and horizontal edges.
  *
  * @author tobi
  */
 @Description("Only lets through events spatio-temporally correlated complementary types (e.g. corners)")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class TypeCoincidenceFilter extends EventFilter2D implements Observer {
 
    public boolean isGeneratingFilter(){ return true;}

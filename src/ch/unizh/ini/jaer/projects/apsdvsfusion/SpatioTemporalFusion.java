@@ -51,7 +51,7 @@ import ch.unizh.ini.jaer.projects.apsdvsfusion.gui.ParameterBrowserPanel;
  *
  */
 @Description("Allows to apply user-defined series of convolution filters")
-@DevelopmentStatus(DevelopmentStatus.Status.Stable)
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class SpatioTemporalFusion extends EventFilter2D { //implements ActionListener {
 
 	static ArrayList<SpatioTemporalFusion> runningInstances = new ArrayList<SpatioTemporalFusion>();

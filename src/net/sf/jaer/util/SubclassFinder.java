@@ -9,6 +9,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.ProgressMonitor;
 import javax.swing.SwingWorker;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  * Finds subclasses of a given class name in classes on the loaded classpath.
@@ -75,7 +77,7 @@ public class SubclassFinder {
     /**
      * Finds subclasses in SwingWorker
      */
-    public static class SubclassFinderWorker extends SwingWorker<ArrayList<String>, Object> {
+    public static class SubclassFinderWorker extends SwingWorker<ArrayList<ClassNameWithDescriptionAndDevelopmentStatus>, Object> {
 
         Class clazz;
 
@@ -102,10 +104,10 @@ public class SubclassFinder {
          * @throws Exception on any error
          */
         @Override
-        protected ArrayList<String> doInBackground() throws Exception {
+        protected ArrayList<ClassNameWithDescriptionAndDevelopmentStatus> doInBackground() throws Exception {
             setProgress(0);
             String superClassName = clazz.getName();
-            ArrayList<String> classes = new ArrayList<String>(100);
+            ArrayList<ClassNameWithDescriptionAndDevelopmentStatus> classes = new ArrayList<>(100);
             if (superClassName == null) {
                 log.warning("tried to find subclasses of null class name, returning empty list");
                 return classes;
@@ -149,7 +151,7 @@ public class SubclassFinder {
                         continue;//if class is abstract, dont add to list.
                     }
                     if (superClass.isAssignableFrom(c)) { //sees if e.g. superclass AEChip can be cast from e.g. c=DVS128, i.e. can we do (AEChip)DVS128?
-                        classes.add(s);
+                        classes.add(new ClassNameWithDescriptionAndDevelopmentStatus(c));
                     }
                     // TODO: Better way of handling Errors is needed. Most of them arent a problem, as they dont belong to jAER anyway. If that is the case we should ignore, not log...    
                 } catch (ExceptionInInitializerError t) {
@@ -269,4 +271,6 @@ public class SubclassFinder {
         }
         System.exit(0);
     }
+    
+
 }

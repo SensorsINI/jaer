@@ -26,7 +26,7 @@
               <Group type="103" groupAlignment="1" attributes="0">
                   <Component id="descPanel" alignment="1" max="32767" attributes="0"/>
                   <Group type="102" alignment="0" attributes="0">
-                      <Component id="availClassPanel" pref="236" max="32767" attributes="0"/>
+                      <Component id="availClassPanel" pref="244" max="32767" attributes="0"/>
                       <EmptySpace min="-2" pref="10" max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
                           <Component id="defaultsButton" linkSize="3" min="-2" pref="61" max="-2" attributes="1"/>
@@ -38,7 +38,7 @@
                           <Component id="addClassButton" linkSize="3" alignment="0" min="-2" pref="80" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace min="-2" pref="10" max="-2" attributes="0"/>
-                      <Component id="chosenClassPanel" pref="234" max="32767" attributes="0"/>
+                      <Component id="chosenClassPanel" pref="226" max="32767" attributes="0"/>
                   </Group>
               </Group>
           </Group>
@@ -65,8 +65,8 @@
                       <EmptySpace max="-2" attributes="0"/>
                       <Component id="defaultsButton" min="-2" max="-2" attributes="0"/>
                   </Group>
-                  <Component id="availClassPanel" pref="480" max="32767" attributes="0"/>
-                  <Component id="chosenClassPanel" pref="480" max="32767" attributes="0"/>
+                  <Component id="availClassPanel" pref="483" max="32767" attributes="0"/>
+                  <Component id="chosenClassPanel" pref="483" max="32767" attributes="0"/>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
               <Component id="descPanel" min="-2" max="-2" attributes="0"/>
@@ -102,6 +102,13 @@
                       </Group>
                   </Group>
               </Group>
+              <Group type="102" alignment="0" attributes="0">
+                  <EmptySpace max="32767" attributes="0"/>
+                  <Component id="onlyStableCB" min="-2" max="-2" attributes="0"/>
+                  <EmptySpace type="separate" max="-2" attributes="0"/>
+                  <Component id="includeDescriptionCB" min="-2" max="-2" attributes="0"/>
+                  <EmptySpace max="-2" attributes="0"/>
+              </Group>
           </Group>
         </DimensionLayout>
         <DimensionLayout dim="1">
@@ -110,7 +117,12 @@
                   <EmptySpace min="0" pref="0" max="-2" attributes="0"/>
                   <Component id="filterPanel" min="-2" pref="27" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
-                  <Component id="availClassDesciptionPanel" max="32767" attributes="0"/>
+                  <Group type="103" groupAlignment="3" attributes="0">
+                      <Component id="includeDescriptionCB" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="onlyStableCB" alignment="3" min="-2" max="-2" attributes="0"/>
+                  </Group>
+                  <EmptySpace max="-2" attributes="0"/>
+                  <Component id="availClassDesciptionPanel" pref="406" max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
@@ -146,8 +158,8 @@
                           <Component id="clearFilterBut" alignment="3" min="-2" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace max="32767" attributes="0"/>
-                      <Component id="filterTypeOptionsPanel" min="-2" max="-2" attributes="0"/>
-                      <EmptySpace min="-2" pref="42" max="-2" attributes="0"/>
+                      <Component id="filterTypeOptionsPanel" min="-2" pref="32" max="-2" attributes="0"/>
+                      <EmptySpace min="-2" pref="20" max="-2" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
@@ -207,6 +219,25 @@
             </Component>
           </SubComponents>
         </Container>
+        <Component class="javax.swing.JCheckBox" name="includeDescriptionCB">
+          <Properties>
+            <Property name="selected" type="boolean" value="true"/>
+            <Property name="text" type="java.lang.String" value="Include descriptions"/>
+            <Property name="toolTipText" type="java.lang.String" value="Include class Descriptions in filter results"/>
+          </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="includeDescriptionCBActionPerformed"/>
+          </Events>
+        </Component>
+        <Component class="javax.swing.JCheckBox" name="onlyStableCB">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="Only Stable"/>
+            <Property name="toolTipText" type="java.lang.String" value="Show only items with DevelopmentStatus.Stable"/>
+          </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="onlyStableCBActionPerformed"/>
+          </Events>
+        </Component>
       </SubComponents>
     </Container>
     <Container class="javax.swing.JPanel" name="chosenClassPanel">
@@ -232,7 +263,7 @@
           <Group type="103" groupAlignment="0" attributes="0">
               <Group type="102" alignment="1" attributes="0">
                   <EmptySpace min="-2" pref="36" max="-2" attributes="0"/>
-                  <Component id="jScrollPane3" pref="421" max="32767" attributes="0"/>
+                  <Component id="jScrollPane3" max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>
