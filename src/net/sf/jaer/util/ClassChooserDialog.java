@@ -61,15 +61,6 @@ public class ClassChooserDialog extends javax.swing.JDialog {
         return returnStatus;
     }
 
-    /** Returns the panel used to show options for filtering the shown classes. Any components can be added to this panel.
-     *
-     * @return the panel
-     */
-    public JPanel getFilterTypeOptionsPanel() {
-        return chooserPanel.getFilterTypeOptionsPanel();
-    }
-
-
     
     public ArrayList<String> getList(){
         if(returnStatus==RET_CANCEL) return null;
@@ -92,7 +83,6 @@ public class ClassChooserDialog extends javax.swing.JDialog {
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("ClassChooser");
-        setPreferredSize(new java.awt.Dimension(720, 640));
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosing(java.awt.event.WindowEvent evt) {
                 closeDialog(evt);
@@ -129,10 +119,11 @@ public class ClassChooserDialog extends javax.swing.JDialog {
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                        .addGap(0, 447, Short.MAX_VALUE)
                         .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(cancelButton))
-                    .addComponent(businessPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 761, Short.MAX_VALUE))
+                    .addComponent(businessPanel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
 

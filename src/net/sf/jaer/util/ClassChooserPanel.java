@@ -211,10 +211,6 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         classJList.setCellRenderer(new MyCellRenderer());
     }
 
-    public JPanel getFilterTypeOptionsPanel() {
-        return filterTypeOptionsPanel;
-    }
-
     private class ClassNameSorter implements Comparator {
 
         @Override
@@ -425,22 +421,17 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     private void initComponents() {
 
         availClassPanel = new javax.swing.JPanel();
-        filterPanel = new javax.swing.JPanel();
-        filterLabel = new javax.swing.JLabel();
-        availFilterTextField = new javax.swing.JTextField();
-        filterTypeOptionsPanel = new javax.swing.JPanel();
-        clearFilterBut = new javax.swing.JButton();
         availClassDesciptionPanel = new javax.swing.JScrollPane();
         availClassJList = new javax.swing.JList();
-        includeDescriptionCB = new javax.swing.JCheckBox();
         onlyStableCB = new javax.swing.JCheckBox();
         includeExperimentalCB = new javax.swing.JCheckBox();
+        filterLabel = new javax.swing.JLabel();
+        availFilterTextField = new javax.swing.JTextField();
+        clearFilterBut = new javax.swing.JButton();
+        includeDescriptionCB = new javax.swing.JCheckBox();
         chosenClassPanel = new javax.swing.JPanel();
         jScrollPane3 = new javax.swing.JScrollPane();
         classJList = new javax.swing.JList();
-        addClassButton = new javax.swing.JButton();
-        removeClassButton = new javax.swing.JButton();
-        removeAllButton = new javax.swing.JButton();
         descPanel = new javax.swing.JPanel();
         ClassDescSP = new javax.swing.JScrollPane();
         descPane = new javax.swing.JTextPane();
@@ -448,9 +439,13 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         develStatusTF = new javax.swing.JTextField();
         ClassNameLbl = new javax.swing.JLabel();
         ClassNameTF = new javax.swing.JTextField();
+        jPanel1 = new javax.swing.JPanel();
+        addClassButton = new javax.swing.JButton();
+        removeClassButton = new javax.swing.JButton();
+        removeAllButton = new javax.swing.JButton();
         moveUpButton = new javax.swing.JButton();
-        revertButton = new javax.swing.JButton();
         moveDownButton = new javax.swing.JButton();
+        revertButton = new javax.swing.JButton();
         defaultsButton = new javax.swing.JButton();
 
         setPreferredSize(new java.awt.Dimension(580, 686));
@@ -458,6 +453,28 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         availClassPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Available classes"));
         availClassPanel.setToolTipText("<html>If your class doesn't show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath). <p> Yyour class must be concrete (not abstract). <p> Finally, if your class lives in a separate JAR archive, make sure your archive classpath is not on the excluded list in the class ListClasses.");
         availClassPanel.setPreferredSize(new java.awt.Dimension(400, 300));
+
+        availClassDesciptionPanel.setBorder(null);
+
+        availClassJList.setToolTipText("If your class doesn't show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath)");
+        availClassDesciptionPanel.setViewportView(availClassJList);
+        availClassJList.getAccessibleContext().setAccessibleDescription("");
+
+        onlyStableCB.setText("Only Stable");
+        onlyStableCB.setToolTipText("Show only items with DevelopmentStatus.Stable");
+        onlyStableCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                onlyStableCBActionPerformed(evt);
+            }
+        });
+
+        includeExperimentalCB.setText("Include Experimental");
+        includeExperimentalCB.setToolTipText("Include Experimental classes in search results");
+        includeExperimentalCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                includeExperimentalCBActionPerformed(evt);
+            }
+        });
 
         filterLabel.setText("Filter");
 
@@ -482,40 +499,6 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             }
         });
 
-        javax.swing.GroupLayout filterPanelLayout = new javax.swing.GroupLayout(filterPanel);
-        filterPanel.setLayout(filterPanelLayout);
-        filterPanelLayout.setHorizontalGroup(
-            filterPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(filterPanelLayout.createSequentialGroup()
-                .addGap(2, 2, 2)
-                .addGroup(filterPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(filterPanelLayout.createSequentialGroup()
-                        .addComponent(filterLabel)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(availFilterTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 179, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(clearFilterBut))
-                    .addComponent(filterTypeOptionsPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-        );
-        filterPanelLayout.setVerticalGroup(
-            filterPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(filterPanelLayout.createSequentialGroup()
-                .addGap(2, 2, 2)
-                .addGroup(filterPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(filterLabel)
-                    .addComponent(availFilterTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(clearFilterBut))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(filterTypeOptionsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(20, 20, 20))
-        );
-
-        availClassDesciptionPanel.setBorder(null);
-
-        availClassJList.setToolTipText("If your class doesn't show up here, rebuild the project to get it into jAER.jar (or some other jar on the classpath)");
-        availClassDesciptionPanel.setViewportView(availClassJList);
-        availClassJList.getAccessibleContext().setAccessibleDescription("");
-
         includeDescriptionCB.setSelected(true);
         includeDescriptionCB.setText("Include descriptions");
         includeDescriptionCB.setToolTipText("Include class Descriptions in filter results");
@@ -525,55 +508,45 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             }
         });
 
-        onlyStableCB.setText("Only Stable");
-        onlyStableCB.setToolTipText("Show only items with DevelopmentStatus.Stable");
-        onlyStableCB.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                onlyStableCBActionPerformed(evt);
-            }
-        });
-
-        includeExperimentalCB.setText("Include Experimental");
-        includeExperimentalCB.setToolTipText("Include Experimental classes in search results");
-        includeExperimentalCB.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                includeExperimentalCBActionPerformed(evt);
-            }
-        });
-
         javax.swing.GroupLayout availClassPanelLayout = new javax.swing.GroupLayout(availClassPanel);
         availClassPanel.setLayout(availClassPanelLayout);
         availClassPanelLayout.setHorizontalGroup(
             availClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(availClassPanelLayout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addContainerGap()
                 .addGroup(availClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(availClassDesciptionPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 222, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(includeExperimentalCB)
-                    .addComponent(onlyStableCB))
-                .addGap(18, 18, 18)
-                .addComponent(includeDescriptionCB)
-                .addContainerGap())
-            .addGroup(availClassPanelLayout.createSequentialGroup()
-                .addGap(2, 2, 2)
-                .addGroup(availClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(availClassDesciptionPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
-                    .addGroup(availClassPanelLayout.createSequentialGroup()
-                        .addComponent(filterPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addGap(2, 2, 2))))
+                    .addGroup(availClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                        .addGroup(availClassPanelLayout.createSequentialGroup()
+                            .addComponent(onlyStableCB)
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(includeDescriptionCB))
+                        .addGroup(availClassPanelLayout.createSequentialGroup()
+                            .addComponent(filterLabel)
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                            .addComponent(availFilterTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 116, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                            .addComponent(clearFilterBut)
+                            .addGap(44, 44, 44)))))
         );
         availClassPanelLayout.setVerticalGroup(
             availClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, availClassPanelLayout.createSequentialGroup()
-                .addGap(0, 0, 0)
-                .addComponent(filterPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 27, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addContainerGap()
                 .addGroup(availClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(includeDescriptionCB)
-                    .addComponent(onlyStableCB))
+                    .addComponent(filterLabel)
+                    .addComponent(availFilterTextField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(clearFilterBut))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(availClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(onlyStableCB)
+                    .addComponent(includeDescriptionCB))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(includeExperimentalCB)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 5, Short.MAX_VALUE)
-                .addComponent(availClassDesciptionPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 377, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(availClassDesciptionPanel)
+                .addContainerGap())
         );
 
         chosenClassPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Selected classes"));
@@ -596,13 +569,67 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         chosenClassPanel.setLayout(chosenClassPanelLayout);
         chosenClassPanelLayout.setHorizontalGroup(
             chosenClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jScrollPane3, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
+            .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
         );
         chosenClassPanelLayout.setVerticalGroup(
             chosenClassPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, chosenClassPanelLayout.createSequentialGroup()
-                .addGap(36, 36, 36)
-                .addComponent(jScrollPane3))
+            .addComponent(jScrollPane3, javax.swing.GroupLayout.Alignment.TRAILING)
+        );
+
+        descPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Class description"));
+
+        ClassDescSP.setBorder(null);
+
+        descPane.setEditable(false);
+        descPane.setBorder(null);
+        ClassDescSP.setViewportView(descPane);
+
+        devlStatusLbl.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+        devlStatusLbl.setText("Development status:");
+
+        develStatusTF.setEditable(false);
+        develStatusTF.setBackground(new java.awt.Color(255, 255, 255));
+        develStatusTF.setToolTipText("Shows DevelopmentStatus of class as annotated with DevelopmentStatus");
+        develStatusTF.setBorder(null);
+
+        ClassNameLbl.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+        ClassNameLbl.setText("Full class name:");
+
+        ClassNameTF.setEditable(false);
+        ClassNameTF.setBackground(new java.awt.Color(255, 255, 255));
+        ClassNameTF.setToolTipText("Shows the full classname of a class and hence its location in the jAER project");
+        ClassNameTF.setBorder(null);
+
+        javax.swing.GroupLayout descPanelLayout = new javax.swing.GroupLayout(descPanel);
+        descPanel.setLayout(descPanelLayout);
+        descPanelLayout.setHorizontalGroup(
+            descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, descPanelLayout.createSequentialGroup()
+                .addGap(2, 2, 2)
+                .addComponent(ClassDescSP, javax.swing.GroupLayout.DEFAULT_SIZE, 642, Short.MAX_VALUE)
+                .addGap(2, 2, 2))
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, descPanelLayout.createSequentialGroup()
+                .addGroup(descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                    .addComponent(ClassNameLbl, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(devlStatusLbl))
+                .addGap(4, 4, 4)
+                .addGroup(descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(ClassNameTF, javax.swing.GroupLayout.DEFAULT_SIZE, 542, Short.MAX_VALUE)
+                    .addComponent(develStatusTF, javax.swing.GroupLayout.DEFAULT_SIZE, 542, Short.MAX_VALUE)))
+        );
+        descPanelLayout.setVerticalGroup(
+            descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(descPanelLayout.createSequentialGroup()
+                .addComponent(ClassDescSP, javax.swing.GroupLayout.PREFERRED_SIZE, 58, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(devlStatusLbl)
+                    .addComponent(develStatusTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(ClassNameLbl)
+                    .addComponent(ClassNameTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         addClassButton.setMnemonic('a');
@@ -637,63 +664,6 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             }
         });
 
-        descPanel.setBorder(javax.swing.BorderFactory.createTitledBorder("Class description"));
-
-        ClassDescSP.setBorder(null);
-
-        descPane.setEditable(false);
-        descPane.setBorder(null);
-        ClassDescSP.setViewportView(descPane);
-
-        devlStatusLbl.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
-        devlStatusLbl.setText("Development status:");
-
-        develStatusTF.setEditable(false);
-        develStatusTF.setBackground(new java.awt.Color(255, 255, 255));
-        develStatusTF.setToolTipText("Shows DevelopmentStatus of class as annotated with DevelopmentStatus");
-        develStatusTF.setBorder(null);
-
-        ClassNameLbl.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
-        ClassNameLbl.setText("Full class name:");
-
-        ClassNameTF.setEditable(false);
-        ClassNameTF.setBackground(new java.awt.Color(255, 255, 255));
-        ClassNameTF.setToolTipText("Shows the full classname of a class and hence its location in the jAER project");
-        ClassNameTF.setBorder(null);
-
-        javax.swing.GroupLayout descPanelLayout = new javax.swing.GroupLayout(descPanel);
-        descPanel.setLayout(descPanelLayout);
-        descPanelLayout.setHorizontalGroup(
-            descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, descPanelLayout.createSequentialGroup()
-                .addGap(2, 2, 2)
-                .addGroup(descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(ClassDescSP)
-                    .addGroup(descPanelLayout.createSequentialGroup()
-                        .addGroup(descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                            .addComponent(ClassNameLbl, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(devlStatusLbl, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                        .addGap(4, 4, 4)
-                        .addGroup(descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(ClassNameTF, javax.swing.GroupLayout.DEFAULT_SIZE, 450, Short.MAX_VALUE)
-                            .addComponent(develStatusTF, javax.swing.GroupLayout.DEFAULT_SIZE, 450, Short.MAX_VALUE))))
-                .addGap(2, 2, 2))
-        );
-        descPanelLayout.setVerticalGroup(
-            descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(descPanelLayout.createSequentialGroup()
-                .addComponent(ClassDescSP, javax.swing.GroupLayout.PREFERRED_SIZE, 105, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(devlStatusLbl)
-                    .addComponent(develStatusTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(descPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(ClassNameLbl)
-                    .addComponent(ClassNameTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(10, 10, 10))
-        );
-
         moveUpButton.setMnemonic('u');
         moveUpButton.setText("Move up");
         moveUpButton.setMargin(new java.awt.Insets(2, 5, 2, 5));
@@ -701,6 +671,16 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         moveUpButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 moveUpButtonActionPerformed(evt);
+            }
+        });
+
+        moveDownButton.setMnemonic('d');
+        moveDownButton.setText("Move down");
+        moveDownButton.setMargin(new java.awt.Insets(2, 5, 2, 5));
+        moveDownButton.setMaximumSize(null);
+        moveDownButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                moveDownButtonActionPerformed(evt);
             }
         });
 
@@ -715,16 +695,6 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             }
         });
 
-        moveDownButton.setMnemonic('d');
-        moveDownButton.setText("Move down");
-        moveDownButton.setMargin(new java.awt.Insets(2, 5, 2, 5));
-        moveDownButton.setMaximumSize(null);
-        moveDownButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                moveDownButtonActionPerformed(evt);
-            }
-        });
-
         defaultsButton.setMnemonic('d');
         defaultsButton.setText("Add Defaults");
         defaultsButton.setToolTipText("Adds the defaults to the end of the selected classes list");
@@ -735,6 +705,41 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             }
         });
 
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(defaultsButton, javax.swing.GroupLayout.DEFAULT_SIZE, 116, Short.MAX_VALUE)
+                    .addComponent(removeClassButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(removeAllButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(moveUpButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(revertButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(moveDownButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(addClassButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap())
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(addClassButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(removeClassButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(removeAllButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
+                .addComponent(moveUpButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(moveDownButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
+                .addComponent(revertButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(defaultsButton))
+        );
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
@@ -743,128 +748,31 @@ public class ClassChooserPanel extends javax.swing.JPanel {
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(descPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
-                        .addComponent(availClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 288, Short.MAX_VALUE)
-                        .addGap(10, 10, 10)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(defaultsButton, javax.swing.GroupLayout.PREFERRED_SIZE, 61, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(removeClassButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(removeAllButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(moveUpButton, javax.swing.GroupLayout.PREFERRED_SIZE, 61, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(revertButton, javax.swing.GroupLayout.PREFERRED_SIZE, 61, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(moveDownButton, javax.swing.GroupLayout.PREFERRED_SIZE, 71, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(addClassButton, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(10, 10, 10)
-                        .addComponent(chosenClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 182, Short.MAX_VALUE))))
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(availClassPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 240, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(chosenClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 266, Short.MAX_VALUE))))
         );
-
-        layout.linkSize(javax.swing.SwingConstants.HORIZONTAL, new java.awt.Component[] {addClassButton, defaultsButton, moveDownButton, moveUpButton, removeAllButton, removeClassButton, revertButton});
-
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addGap(67, 67, 67)
-                        .addComponent(addClassButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(removeClassButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(removeAllButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(18, 18, 18)
-                        .addComponent(moveUpButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(moveDownButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(18, 18, 18)
-                        .addComponent(revertButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(defaultsButton))
-                    .addComponent(availClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 480, Short.MAX_VALUE)
-                    .addComponent(chosenClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 480, Short.MAX_VALUE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addContainerGap()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(chosenClassPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 522, Short.MAX_VALUE)
+                            .addComponent(availClassPanel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 522, Short.MAX_VALUE))
+                        .addGap(5, 5, 5))
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(135, 135, 135)
+                        .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 171, Short.MAX_VALUE)))
                 .addComponent(descPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
     }// </editor-fold>//GEN-END:initComponents
-
-    private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_defaultsButtonActionPerformed
-//        chosenClassesListModel.clear();
-        int i = 0;
-        if(defaultClassNames==null){
-            log.warning("No default classes to add");
-            return;
-        }
-        for (String s : defaultClassNames) { // add them in reverse order because they were added to the list 
-            chosenClassesListModel.insertElementAt(s, i++);
-//            chosenClassesListModel.addElement(s);
-        }
-    }//GEN-LAST:event_defaultsButtonActionPerformed
-
-    private void removeAllButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeAllButtonActionPerformed
-        chosenClassesListModel.clear();
-    }//GEN-LAST:event_removeAllButtonActionPerformed
-
-    private void revertButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_revertButtonActionPerformed
-        chosenClassesListModel.clear();
-        for (String s : revertCopy) {
-            chosenClassesListModel.addElement(s);
-        }
-    }//GEN-LAST:event_revertButtonActionPerformed
-
-    private void addClassButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addClassButtonActionPerformed
-        Object o = availClassJList.getSelectedValue();
-        if (o == null) {
-            return;
-        }
-
-        int last = chosenClassesListModel.getSize() - 1;
-        chosenClassesListModel.add(last + 1, o);
-        classJList.setSelectedIndex(last + 1);
-    }//GEN-LAST:event_addClassButtonActionPerformed
-
-    private void moveDownButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moveDownButtonActionPerformed
-        int last = chosenClassesListModel.getSize() - 1;
-        int index = classJList.getSelectedIndex();
-        if (index == last) {
-            return;
-        }
-
-        Object o = chosenClassesListModel.getElementAt(index);
-        chosenClassesListModel.removeElementAt(index);
-        chosenClassesListModel.insertElementAt(o, index + 1);
-        classJList.setSelectedIndex(index + 1);
-    }//GEN-LAST:event_moveDownButtonActionPerformed
-
-    private void moveUpButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moveUpButtonActionPerformed
-        int index = classJList.getSelectedIndex();
-        if (index == 0) {
-            return;
-        }
-
-        Object o = chosenClassesListModel.getElementAt(index);
-        chosenClassesListModel.removeElementAt(index);
-        chosenClassesListModel.insertElementAt(o, index - 1);
-        classJList.setSelectedIndex(index - 1);
-    }//GEN-LAST:event_moveUpButtonActionPerformed
-
-    private void removeClassButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeClassButtonActionPerformed
-        int index = classJList.getSelectedIndex();
-        chosenClassesListModel.removeElementAt(index);
-        int size = chosenClassesListModel.getSize();
-
-        if (size == 0) { //Nobody's left, disable firing.
-            removeClassButton.setEnabled(false);
-        } else { //Select an index.
-            if (index == chosenClassesListModel.getSize()) {
-                //removed item in last position
-                index--;
-            }
-
-            classJList.setSelectedIndex(index);
-            classJList.ensureIndexIsVisible(index);
-        }
-    }//GEN-LAST:event_removeClassButtonActionPerformed
 
     private void classJListMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_classJListMouseClicked
         moveDownButton.setEnabled(true);
@@ -910,6 +818,84 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         availClassesListModel.filter(s);
     }//GEN-LAST:event_includeExperimentalCBActionPerformed
 
+    private void defaultsButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_defaultsButtonActionPerformed
+        //        chosenClassesListModel.clear();
+        int i = 0;
+        if(defaultClassNames==null){
+            log.warning("No default classes to add");
+            return;
+        }
+        for (String s : defaultClassNames) { // add them in reverse order because they were added to the list
+            chosenClassesListModel.insertElementAt(s, i++);
+            //            chosenClassesListModel.addElement(s);
+        }
+    }//GEN-LAST:event_defaultsButtonActionPerformed
+
+    private void revertButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_revertButtonActionPerformed
+        chosenClassesListModel.clear();
+        for (String s : revertCopy) {
+            chosenClassesListModel.addElement(s);
+        }
+    }//GEN-LAST:event_revertButtonActionPerformed
+
+    private void moveDownButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moveDownButtonActionPerformed
+        int last = chosenClassesListModel.getSize() - 1;
+        int index = classJList.getSelectedIndex();
+        if (index == last) {
+            return;
+        }
+
+        Object o = chosenClassesListModel.getElementAt(index);
+        chosenClassesListModel.removeElementAt(index);
+        chosenClassesListModel.insertElementAt(o, index + 1);
+        classJList.setSelectedIndex(index + 1);
+    }//GEN-LAST:event_moveDownButtonActionPerformed
+
+    private void moveUpButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moveUpButtonActionPerformed
+        int index = classJList.getSelectedIndex();
+        if (index == 0) {
+            return;
+        }
+
+        Object o = chosenClassesListModel.getElementAt(index);
+        chosenClassesListModel.removeElementAt(index);
+        chosenClassesListModel.insertElementAt(o, index - 1);
+        classJList.setSelectedIndex(index - 1);
+    }//GEN-LAST:event_moveUpButtonActionPerformed
+
+    private void removeAllButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeAllButtonActionPerformed
+        chosenClassesListModel.clear();
+    }//GEN-LAST:event_removeAllButtonActionPerformed
+
+    private void removeClassButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeClassButtonActionPerformed
+        int index = classJList.getSelectedIndex();
+        chosenClassesListModel.removeElementAt(index);
+        int size = chosenClassesListModel.getSize();
+
+        if (size == 0) { //Nobody's left, disable firing.
+            removeClassButton.setEnabled(false);
+        } else { //Select an index.
+            if (index == chosenClassesListModel.getSize()) {
+                //removed item in last position
+                index--;
+            }
+
+            classJList.setSelectedIndex(index);
+            classJList.ensureIndexIsVisible(index);
+        }
+    }//GEN-LAST:event_removeClassButtonActionPerformed
+
+    private void addClassButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addClassButtonActionPerformed
+        Object o = availClassJList.getSelectedValue();
+        if (o == null) {
+            return;
+        }
+
+        int last = chosenClassesListModel.getSize() - 1;
+        chosenClassesListModel.add(last + 1, o);
+        classJList.setSelectedIndex(last + 1);
+    }//GEN-LAST:event_addClassButtonActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JScrollPane ClassDescSP;
     private javax.swing.JLabel ClassNameLbl;
@@ -928,10 +914,9 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     private javax.swing.JTextField develStatusTF;
     private javax.swing.JLabel devlStatusLbl;
     private javax.swing.JLabel filterLabel;
-    private javax.swing.JPanel filterPanel;
-    private javax.swing.JPanel filterTypeOptionsPanel;
     private javax.swing.JCheckBox includeDescriptionCB;
     private javax.swing.JCheckBox includeExperimentalCB;
+    private javax.swing.JPanel jPanel1;
     private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JButton moveDownButton;
     private javax.swing.JButton moveUpButton;
