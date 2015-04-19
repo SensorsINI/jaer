@@ -88,7 +88,6 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
     private boolean preBufferFrame = getBoolean("preBufferFrame", true);
     private boolean logCompress = getBoolean("logCompress", false);
     private boolean logDecompress = getBoolean("logDecompress", false);
-    private boolean saveAsPNG = getBoolean("saveAsPNG", false);
     private float displayContrast = getFloat("displayContrast", 1.0f);
     private float displayBrightness = getFloat("displayBrightness", 0.0f);
     public Extraction extractionMethod = Extraction.valueOf(getString("extractionMethod", "CDSframe"));
@@ -121,7 +120,6 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
         setPropertyTooltip("displayBrightness", "Offset for the rendering of the APS display");
         setPropertyTooltip("extractionMethod", "Method to extract a frame; CDSframe is the final result after subtracting signal from reset frame. Signal and reset frames are the raw sensor output before correlated double sampling.");
         setPropertyTooltip("showAPSFrameDisplay", "Shows the JFrame frame display if true");
-        setPropertyTooltip("saveAsPNG", "Saves current frame as PNG to the execution folder");
         chip.addObserver(this);
         
     }
@@ -587,25 +585,11 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
     public int getMaxIDX() {
         return maxIDX;
     }
-    
-    /**
-     * @return the saveAsPNG
-     */
-    public boolean isSaveAsPNG() {
-        return saveAsPNG;
-    }
 
     /**
-     * @param saveImage the saveAsPNG to set
      */
-    public synchronized void setSaveAsPNG(boolean saveImage) {
-        this.saveAsPNG = saveImage;
-        putBoolean("saveAsPNG", saveAsPNG);
-        if (saveAsPNG) {
+    public void doSaveAsPNG() {
             saveImage();
-            setSaveAsPNG(false);
-        }
-        getSupport().firePropertyChange("saveAsPNG", null, saveAsPNG);
     }
 
 }
