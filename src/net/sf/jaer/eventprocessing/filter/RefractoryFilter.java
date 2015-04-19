@@ -86,6 +86,8 @@ public class RefractoryFilter extends EventFilter2D implements Observer {
             if ((longISI && !passShortISIsEnabled) || (!longISI && passShortISIsEnabled)) {
 //                BasicEvent o = (BasicEvent) outItr.nextOutput();
 //                o.copyFrom(i);
+                i.setFilteredOut(false);
+            }else{
                 i.setFilteredOut(true);
             }
             lastTimestamps[x][y] = ts;
@@ -113,6 +115,7 @@ public class RefractoryFilter extends EventFilter2D implements Observer {
     public void setRefractoryPeriodUs(final int refractoryPeriodUs) {
         this.refractoryPeriodUs = refractoryPeriodUs;
         getPrefs().putInt("RefractoryFilter.refractoryPeriodUs", refractoryPeriodUs);
+         getSupport().firePropertyChange("refractoryPeriodUs", null, refractoryPeriodUs);
     }
 
     public Object getFilterState() {
@@ -160,7 +163,8 @@ public class RefractoryFilter extends EventFilter2D implements Observer {
             subsampleBy = 4;
         }
         this.subsampleBy = subsampleBy;
-        getPrefs().putInt("RefractoryFilter.subsampleBy", subsampleBy);
+         getSupport().firePropertyChange("subsampleBy", null, subsampleBy);
+       getPrefs().putInt("RefractoryFilter.subsampleBy", subsampleBy);
     }
 
     /**
