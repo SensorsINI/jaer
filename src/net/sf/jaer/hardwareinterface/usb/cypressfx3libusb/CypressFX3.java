@@ -1394,8 +1394,9 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		// start the thread that listens for device status information.
 		// This is only preset on FX3 devices.
 		if (getPID() == DAViSFX3HardwareInterface.PID) {
-			asyncStatusThread = new AsyncStatusThread(this);
-			asyncStatusThread.startThread();
+			//asyncStatusThread = new AsyncStatusThread(this);
+			//asyncStatusThread.startThread();
+			// TODO: fix USBTransferThread to only use one thread to handle USB events.
 		}
 	}
 
