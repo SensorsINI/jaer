@@ -107,10 +107,10 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         checkBlend(gl);
         int third = chip.getSizeX() / 3;
         int sy = chip.getSizeY();
-        if (apsNet != null && apsNet.outputLayer.activations != null && isProcessAPSFrames()) {
+        if (apsNet != null && apsNet.outputLayer!=null && apsNet.outputLayer.activations != null && isProcessAPSFrames()) {
             drawDecisionOutput(third, gl, sy, apsNet, Color.RED);
         }
-        if (dvsNet != null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
+        if (dvsNet != null && dvsNet.outputLayer!=null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
             drawDecisionOutput(third, gl, sy, dvsNet, Color.YELLOW);
         }
 
