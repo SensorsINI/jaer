@@ -1412,6 +1412,24 @@
                 <entry key="class eu.seebetter.ini.chips.davis.DavisRGBW640.preferredDisplayMethod" value="eu.seebetter.ini.chips.davis.DavisBaseCamera$DavisDisplayMethod"/>
                 <entry key="pidControllerEnabled" value="false"/>
               </map>
+              <node name="net">
+                <map/>
+                <node name="sf">
+                  <map/>
+                  <node name="jaer">
+                    <map/>
+                    <node name="eventprocessing">
+                      <map/>
+                      <node name="filter">
+                        <map/>
+                        <node name="Info">
+                          <map/>
+                        </node>
+                      </node>
+                    </node>
+                  </node>
+                </node>
+              </node>
             </node>
           </node>
         </node>
