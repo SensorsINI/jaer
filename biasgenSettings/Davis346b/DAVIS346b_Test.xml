@@ -13,6 +13,21 @@
             <map/>
             <node name="davis">
               <map>
+                <entry key="CPLDByte.imu0_PWR_MGMT_1" value="2"/>
+                <entry key="CPLDByte.imu1_CONFIG" value="0"/>
+                <entry key="CPLDByte.imu2_SMPLRT_DIV" value="0"/>
+                <entry key="CPLDByte.imu3_GYRO_CONFIG" value="16"/>
+                <entry key="CPLDByte.imu4_ACCEL_CONFIG" value="16"/>
+                <entry key="CPLDByte.imu_RUN" value="1"/>
+                <entry key="CPLDByte.miscControlBits" value="0"/>
+                <entry key="CPLDInt.colSettle" value="30"/>
+                <entry key="CPLDInt.exposure" value="6100"/>
+                <entry key="CPLDInt.frameDelay" value="0"/>
+                <entry key="CPLDInt.nullSettle" value="5"/>
+                <entry key="CPLDInt.pad" value="0"/>
+                <entry key="CPLDInt.resSettle" value="10"/>
+                <entry key="CPLDInt.rowSettle" value="20"/>
+                <entry key="Davis346B.AERnArow" value="false"/>
                 <entry key="Davis346B.AddressedIPotCF.ADCcompBp.BitValueCoarse" value="2"/>
                 <entry key="Davis346B.AddressedIPotCF.ADCcompBp.BitValueFine" value="20"/>
                 <entry key="Davis346B.AddressedIPotCF.ADCcompBp.Enabled" value="true"/>
@@ -175,6 +190,10 @@
                 <entry key="Davis346B.AddressedIPotCF.biasBuffer.LowCurrent" value="false"/>
                 <entry key="Davis346B.AddressedIPotCF.biasBuffer.Sex" value="N"/>
                 <entry key="Davis346B.AddressedIPotCF.biasBuffer.Type" value="NORMAL"/>
+                <entry key="Davis346B.GlobalShutter" value="true"/>
+                <entry key="Davis346B.ResetCalibNeuron" value="true"/>
+                <entry key="Davis346B.ResetTestPixel" value="true"/>
+                <entry key="Davis346B.SelectGrayCounter" value="true"/>
                 <entry key="Davis346B.ShiftedSourceBias.ADC_RefHigh.BufBitValue" value="7"/>
                 <entry key="Davis346B.ShiftedSourceBias.ADC_RefHigh.VdacBitValue" value="30"/>
                 <entry key="Davis346B.ShiftedSourceBias.ADC_RefLow.BufBitValue" value="7"/>
@@ -199,6 +218,32 @@
                 <entry key="Davis346B.ShiftedSourceBias.SSP.VoltageLevel" value="SplitGate"/>
                 <entry key="Davis346B.ShiftedSourceBias.apsOverflowLevel.BufBitValue" value="6"/>
                 <entry key="Davis346B.ShiftedSourceBias.apsOverflowLevel.VdacBitValue" value="27"/>
+                <entry key="Davis346B.TestADC" value="false"/>
+                <entry key="Davis346B.TypeNCalibNeuron" value="false"/>
+                <entry key="Davis346B.UseAOut" value="false"/>
+                <entry key="Davis346B.globalShutter" value="true"/>
+                <entry key="Davis346B.hotPixelSuppression" value="false"/>
+                <entry key="Davis346B.nArow" value="false"/>
+                <entry key="Davis346B.nChipReset" value="true"/>
+                <entry key="Davis346B.powerDown" value="false"/>
+                <entry key="Davis346B.resetCalib" value="true"/>
+                <entry key="Davis346B.resetTestpixel" value="true"/>
+                <entry key="Davis346B.runAdc" value="true"/>
+                <entry key="Davis346B.runCpld" value="true"/>
+                <entry key="Davis346B.typeNCalib" value="false"/>
+                <entry key="Davis346B.useAout" value="false"/>
+                <entry key="DigitalOutputMux.BiasOutMux.selectedChannel" value="-1"/>
+                <entry key="DigitalOutputMux.DigMux0.selectedChannel" value="-1"/>
+                <entry key="DigitalOutputMux.DigMux1.selectedChannel" value="-1"/>
+                <entry key="DigitalOutputMux.DigMux2.selectedChannel" value="-1"/>
+                <entry key="DigitalOutputMux.DigMux3.selectedChannel" value="-1"/>
+                <entry key="aeReaderFifoSize" value="16384"/>
+                <entry key="aeReaderNumBuffers" value="16"/>
+                <entry key="autoExposureEnabled" value="false"/>
+                <entry key="displayEvents" value="true"/>
+                <entry key="displayFrames" value="true"/>
+                <entry key="showImageHistogram" value="false"/>
+                <entry key="translateRowOnlyEvents" value="false"/>
               </map>
             </node>
           </node>
