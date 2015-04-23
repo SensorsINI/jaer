@@ -122,7 +122,8 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         if (apsNet != null && apsNet.outputLayer.activations != null && isProcessAPSFrames()) {
             drawDecisionOutput(third, gl, sy, apsNet, Color.RED);
         }
-        if (dvsNet != null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
+        
+        if (dvsNet != null && dvsNet.outputLayer != null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
             drawDecisionOutput(third, gl, sy, dvsNet, Color.YELLOW);
         }
 
@@ -145,9 +146,9 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
             for (int y = 0; y < sizeY; y++) {
                 float hue = 3f-3f*heatMap[getHeatmapIdx(x,y)];
                 colors = ColorHelper.HSVtoRGB(hue, 1.0f, 1.0f);
-                for(int xx = 0; xx<strideX; x++){
-                    for(int yy = 0; yy<strideY; y++){
-                        renderer.setAnnotateColorRGB(x, y, colors);
+                for(int xx = 0; xx<strideX; xx++){
+                    for(int yy = 0; yy<strideY; yy++){
+                        renderer.setAnnotateColorRGB(x + xx, y + yy, colors);
                     }
                 }
             }

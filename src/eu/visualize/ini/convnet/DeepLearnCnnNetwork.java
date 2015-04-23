@@ -396,7 +396,7 @@ public class DeepLearnCnnNetwork {
                     } else if (inputClampedTo1) {
                         v = .5f;
                     }
-                    activations[o(dimy - y - 1, x)] = v; // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
+                    activations[o(dimy - y % dimy - 1, x % dimx)] = v; // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
                 }
             }
             return activations;
@@ -427,6 +427,9 @@ done in processDownsampledFrame by the FrameType parameter.
         }
 
         int o(int x, int y) {
+            if(((dimy * x) + y)<0) {
+                System.out.print("a");
+            }
             return (dimy * x) + y;  // activations of input layer are stored by column and then row, as in matlab array that is taken by (:)
         }
 
