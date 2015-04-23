@@ -735,7 +735,7 @@ done in processDownsampledFrame by the FrameType parameter.
                 activationDisplays[map].display();
             }
         }
-
+        
         private void drawKernels() {
             if (!isVisible() || (kernels == null)) {
                 return;

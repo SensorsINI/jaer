@@ -37,10 +37,11 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
     private TargetLabeler targetLabeler = null;
     private int totalDecisions = 0, correct = 0, incorrect = 0;
+    private float alpha = 0.5f;
     private final int strideX = 16;
     private final int strideY = 16;
     private float[] heatMap;
-    private final AEChipRenderer renderer;
+    private final AEFrameChipRenderer renderer;
 
     public HeatMapCNN(AEChip chip) {
         super(chip);
@@ -52,7 +53,7 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         setEnclosedFilterChain(chain);
         apsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
         dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
-        renderer = (AEChipRenderer) chip.getRenderer();
+        renderer = (AEFrameChipRenderer) chip.getRenderer();
     }
 
     @Override
@@ -139,16 +140,18 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         
         renderer.setExternalRenderer(true);
         renderer.resetAnnotationFrame(0.0f);
+        renderer.setAnnotateAlpha(alpha);
         float[] colors = new float[3];
         int sizeX = chip.getSizeX()/strideX;
         int sizeY = chip.getSizeY()/strideY;
         for (int x = 0; x < sizeX; x++) {
             for (int y = 0; y < sizeY; y++) {
-                float hue = 3f-3f*heatMap[getHeatmapIdx(x,y)];
+                float heat = heatMap[getHeatmapIdx(x,y)]*10000;
+                float hue = 3f-3f*heat;
                 colors = ColorHelper.HSVtoRGB(hue, 1.0f, 1.0f);
                 for(int xx = 0; xx<strideX; xx++){
                     for(int yy = 0; yy<strideY; yy++){
-                        renderer.setAnnotateColorRGB(x + xx, y + yy, colors);
+                        renderer.setAnnotateColorRGB(x*strideX + xx, y*strideY + yy, colors);
                     }
                 }
             }
@@ -205,6 +208,7 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
                 for(int x = dimx2; x< chip.getSizeX()-dimx2; x+= strideX){
                     for(int y = dimy2; y< chip.getSizeY()-dimy2; y+= strideY){
                         float[] outputs = apsNet.processInputPatchFrame((AEFrameChipRenderer) (chip.getRenderer()), x, y);
+                        apsNet.drawActivations();
                         heatMap[idx]=outputs[0];
                         idx++;
                     }
