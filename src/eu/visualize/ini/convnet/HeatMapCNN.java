@@ -51,6 +51,10 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
         chain.add(targetLabeler);
         setEnclosedFilterChain(chain);
+        int sx = chip.getSizeX()/strideX;
+        int sy = chip.getSizeY()/strideY;
+        heatMap = new float[sx*sy];
+        Arrays.fill(heatMap, 0.0f);
         apsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
         dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
         renderer = (AEFrameChipRenderer) chip.getRenderer();
@@ -146,7 +150,7 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         int sizeY = chip.getSizeY()/strideY;
         for (int x = 0; x < sizeX; x++) {
             for (int y = 0; y < sizeY; y++) {
-                float heat = heatMap[getHeatmapIdx(x,y)]*10000;
+                float heat = heatMap[getHeatmapIdx(x,y)];
                 float hue = 3f-3f*heat;
                 colors = ColorHelper.HSVtoRGB(hue, 1.0f, 1.0f);
                 for(int xx = 0; xx<strideX; xx++){
