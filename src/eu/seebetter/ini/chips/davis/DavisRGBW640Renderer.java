@@ -105,7 +105,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
                 if (displayEvents) {
                     if ((xsel >= 0) && (ysel >= 0)) { // find correct mouse pixel interpretation to make sounds for
                         // large pixels
-                        int xs = xsel, ys = ysel;
+                        int xs = (xsel>>>1)<<1, ys = (ysel>>>1)<<1;
                         if ((e.x == xs) && (e.y == ys)) {
                             playSpike(type);
                         }
