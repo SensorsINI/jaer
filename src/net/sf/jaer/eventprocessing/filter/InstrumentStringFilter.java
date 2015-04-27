@@ -445,11 +445,7 @@ public class InstrumentStringFilter extends EventFilter2D implements Observer, F
                     }
         		}
             }
-            
-            colorCodeGL.glBegin(GL2.GL_POINTS);
-            {
-            	//
-            }
+            gl.glEnd();
             
             lastEventsAvgGL.glBegin(GL2.GL_POINTS);
             {	
@@ -477,9 +473,8 @@ public class InstrumentStringFilter extends EventFilter2D implements Observer, F
 	        		}
 	        	}    
             }
+            lastEventsAvgGL.glEnd();
         } finally{
-            gl.glEnd();
-            colorCodeGL.glEnd();
         }
         
         /*
