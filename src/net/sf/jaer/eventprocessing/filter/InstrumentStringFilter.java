@@ -386,7 +386,7 @@ public class InstrumentStringFilter extends EventFilter2D implements Observer, F
 	        pixelsMap[x][y].set_saturationCorrection();
         }
         
-		return in; //@author Adrien added by Eclipse...
+	return in; //@author Adrien added by Eclipse...
     }
     
     //private final GLUT glut = new GLUT();
@@ -431,10 +431,10 @@ public class InstrumentStringFilter extends EventFilter2D implements Observer, F
             {
             	for (int cnt = 0; cnt < this.timestampsOfDisplayedPixels.bufferSize; cnt++){
             		//if (0 < this.timestampsOfDisplayedPixels.get_bufferValues(cnt)){ // else it means that this value was not modified since its initialization
-            		int xCoordinate = (int) this.displayedPixelsX.get_bufferValues(cnt);
-            		int yCoordinate = (int) this.displayedPixelsY.get_bufferValues(cnt);
-            		pixelsMap[xCoordinate][yCoordinate].set_displayActive(true);
-            		if (pixelsMap[xCoordinate][yCoordinate].get_displayActive() == true){ // Yes, for the moment, it is a useless test...
+                    int xCoordinate = (int) this.displayedPixelsX.get_bufferValues(cnt);
+                    int yCoordinate = (int) this.displayedPixelsY.get_bufferValues(cnt);
+                    pixelsMap[xCoordinate][yCoordinate].set_displayActive(true);
+                    if (pixelsMap[xCoordinate][yCoordinate].get_displayActive() == true){ // Yes, for the moment, it is a useless test...
         				// We transmit the (RGB) color the pixel 
             			gl.glColor3f(pixelsMap[xCoordinate][yCoordinate].pixelRGB[0], 
                         			 pixelsMap[xCoordinate][yCoordinate].pixelRGB[1], 
@@ -443,7 +443,7 @@ public class InstrumentStringFilter extends EventFilter2D implements Observer, F
                         gl.glVertex2i(xCoordinate, yCoordinate);
                         this.pixelsMap[xCoordinate][yCoordinate].set_displayActive(false); // reset of the activeDisplay tag => indeed, for the moment, this tag is quite useless
                     }
-        		}
+                }
             }
             gl.glEnd();
             
@@ -485,17 +485,17 @@ public class InstrumentStringFilter extends EventFilter2D implements Observer, F
         // Displaying a color code of the different tone in an octave
         float vertical_position;
         for (int cnt = 0; cnt < 12; cnt++){
-        	vertical_position = 35 + cnt*8; //(float) (240.0 - (float) (8*cnt));
-	       	colorCodeGL.glRasterPos3f(130, vertical_position, 0); // display position
+        	vertical_position = (chip.getSizeY() + cnt*8 - 96); //(float) (240.0 - (float) (8*cnt)); //Sim - made the display positions dependent on chip size
+	       	colorCodeGL.glRasterPos3f(chip.getSizeX() + 5, vertical_position, 0); // display position //Sim - made the display positions dependent on chip size
 	       	colorCodeGL.glColor3f(colorsTonesInRGB[cnt][0], colorsTonesInRGB[cnt][1], colorsTonesInRGB[cnt][2]); // display color
 	        glutColorCode.glutBitmapString(GLUT.BITMAP_HELVETICA_18, pixelsMap[0][0].octave.tones[cnt].name); // for getting the name, we pray that the Tone object was initialized for the pixel (0, 0)...	
         }
         
         // Displaying values of the average of the last valid frequencies values and their presumed tone
-        lastEventsAvgGL.glRasterPos3f(140, 123, 0); // display position
+        lastEventsAvgGL.glRasterPos3f(chip.getSizeX() + 15, chip.getSizeY() - 5, 0); // display position //Sim - made the display positions dependent on chip size
        	lastEventsAvgGL.glColor3f((float) 0.2, (float) 0.2, (float) 0.2); // display color
         glutColorCode.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("<f> = %.3f Hz", displayedAvg)); 
-        lastEventsAvgGL.glRasterPos3f(140, 115, 0); // display position
+        lastEventsAvgGL.glRasterPos3f(chip.getSizeX() + 15, chip.getSizeY() - 13, 0); // display position //Sim - made the display positions dependent on chip size
         lastEventsAvgGL.glColor3f((float) 0.2, (float) 0.2, (float) 0.2); // display color
         glutColorCode.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("f_tone = %.3f Hz (%s%d)", presumedOctave.tones[presumedToneCnt].frequency, 
         																								  presumedOctave.tones[presumedToneCnt].name,
