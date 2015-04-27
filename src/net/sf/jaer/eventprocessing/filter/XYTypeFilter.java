@@ -139,6 +139,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         // for each event only write it to the tmp buffers if it matches
         for ( Object obj:in ){
             BasicEvent e = (BasicEvent)obj;
+            if(e.isFilteredOut()) continue;
             if ( multiSelectionEnabled  ){
                 if(selectionList.isEmpty()) {
 					return in;
@@ -356,7 +357,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater,Observ
         }
         canvas = chip.getCanvas();
         glCanvas = (GLCanvas)canvas.getCanvas();
-        int sx = chip.getSizeX(), sy = chip.getSizeY();
+//        int sx = chip.getSizeX(), sy = chip.getSizeY();
         GL2 gl = drawable.getGL().getGL2();
         if ( selecting ){
             drawSelection(gl,selection,SELECT_COLOR);

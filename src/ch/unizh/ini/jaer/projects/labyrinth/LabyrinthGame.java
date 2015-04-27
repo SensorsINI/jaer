@@ -16,24 +16,29 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /**
  * Top level labyrinth robot class.
+ *
  * @author tobi
  */
 @Description("Top level labyinth game class")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class LabyrinthGame extends EventFilter2DMouseAdaptor  {
+public class LabyrinthGame extends EventFilter2DMouseAdaptor {
 
     LabyrinthBallController controller;
-    LabyrinthVirtualBall virtualBall=null;
+    LabyrinthVirtualBall virtualBall = null;
     LabyrinthMap map;
     FilterChain filterChain;
-    enum State {Starting, Running, Finished, LostTracking, PathNotFound};
-    State state=State.Starting;
 
-   public LabyrinthGame(AEChip chip) {
+    enum State {
+
+        Starting, Running, Finished, LostTracking, PathNotFound
+    };
+    State state = State.Starting;
+
+    public LabyrinthGame(AEChip chip) {
         super(chip);
         controller = new LabyrinthBallController(chip);
-        virtualBall=new LabyrinthVirtualBall(chip,this);
-         
+        virtualBall = new LabyrinthVirtualBall(chip, this);
+
         filterChain = new FilterChain(chip);
 
 //        filterChain.add(new RotateFilter(chip));
@@ -41,29 +46,30 @@ public class LabyrinthGame extends EventFilter2DMouseAdaptor  {
         filterChain.add(controller);
         setEnclosedFilterChain(filterChain);
         setPropertyTooltip("clearMap", "clears the map; use for bare table");
-        setPropertyTooltip("loadMap","loads a map from an SVG file");
+        setPropertyTooltip("loadMap", "loads a map from an SVG file");
         setPropertyTooltip("controlTilts", "shows a GUI to directly control table tilts with mouse");
-        setPropertyTooltip("centerTilts","centers the table tilts");
-        setPropertyTooltip("disableServos","disables the servo motors by turning off the PWM control signals; digital servos may not relax however becuase they remember the previous settings");
+        setPropertyTooltip("centerTilts", "centers the table tilts");
+        setPropertyTooltip("disableServos", "disables the servo motors by turning off the PWM control signals; digital servos may not relax however becuase they remember the previous settings");
         setPropertyTooltip("jiggleTable", "jiggle the table according to the jitter settings for the LabyrinthHardware");
+        setPropertyTooltip("stopJiggle", "stop the current jiggling");
         setPropertyTooltip("enableControl", "enable ball controller");
         setPropertyTooltip("disableControl", "disable ball controller");
     }
-     
+
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        out= filterChain.filterPacket(in);
- 
-        if(controller.isLostTracking()){
-            state=State.LostTracking;
-        }else if(controller.isPathNotFound()){
-            state=State.PathNotFound;
-        }else if(controller.isAtMazeStart()){
-            state=State.Starting;
-        }else if(controller.isAtMazeEnd()){
-            state=State.Finished;
-        }else{
-            state=State.Running;
+        out = filterChain.filterPacket(in);
+
+        if (controller.isLostTracking()) {
+            state = State.LostTracking;
+        } else if (controller.isPathNotFound()) {
+            state = State.PathNotFound;
+        } else if (controller.isAtMazeStart()) {
+            state = State.Starting;
+        } else if (controller.isAtMazeEnd()) {
+            state = State.Finished;
+        } else {
+            state = State.Running;
         }
         return out;
     }
@@ -90,16 +96,14 @@ public class LabyrinthGame extends EventFilter2DMouseAdaptor  {
         controller.controlTilts();
     }
 
-    public void doEnableControl(){
+    public void doEnableControl() {
         controller.setControllerEnabled(true);
     }
-    
-    public void doDisableControl(){
+
+    public void doDisableControl() {
         controller.setControllerEnabled(false);
     }
-            
-    
-    
+
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
@@ -117,14 +121,16 @@ public class LabyrinthGame extends EventFilter2DMouseAdaptor  {
     public void doJiggleTable() {
         controller.doJiggleTable();
     }
+    
+    public void doStopJiggle(){
+        controller.doStopJiggle();
+    }
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
-        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY()-5);
-        MultilineAnnotationTextRenderer.renderMultilineString("LabyrinthGate: State="+state.toString());
+        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() - 5);
+        MultilineAnnotationTextRenderer.renderMultilineString("LabyrinthGate: State=" + state.toString());
     }
 
-    
-    
 }

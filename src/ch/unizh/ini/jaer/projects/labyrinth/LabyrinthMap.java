@@ -143,6 +143,8 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
     private float scale = getFloat("scale", 1);
     private float transXPixels = getFloat("transXPixels", 0);
     private float transYPixels = getFloat("transYPixels", 0);
+    protected boolean flipY=getBoolean("flipY", false);
+    protected boolean flipX=getBoolean("flipX", false);
     private boolean loopEnabled = getBoolean("loopEnabled", true);
     private boolean recomputeDisplayList = true;  // to flag annotation to recompute its display list
 
@@ -161,6 +163,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
         setPropertyTooltip("scale", "scales the map");
         setPropertyTooltip("transXPixels", "translates the map; positive to move it up");
         setPropertyTooltip("transYPixels", "translates the map; positive to move to right");
+        setPropertyTooltip("flipY", "flips Y coordinate after translation");
         setPropertyTooltip("loopEnabled", "loops path instead of just finishing");
         chip.addObserver(this);// to get informed about changes to chip size
     }
@@ -232,6 +235,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
             {0, 1, ty},
             {0, 0, 1}
         };
+        
 
         // affine transform from SVG coords to pixel coords
         float[][] scm = {
@@ -240,9 +244,20 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
             {0, 0, 1}
         };
         // now transform according to desired rotation and translation
-        float[][] rotm = {
+        
+        float[][] rott1 = {
+            {1, 0, -chip.getSizeX()/2},
+            {0, 1, -chip.getSizeY()/2},
+            {0, 0, 1}
+        };
+      float[][] rotm = {
             {cos, -sin, 0},
             {sin, cos, 0},
+            {0, 0, 1}
+        };
+        float[][] rott2 = {
+            {1, 0, chip.getSizeX()/2},
+            {0, 1, chip.getSizeY()/2},
             {0, 0, 1}
         };
         float[][] trm2 = {
@@ -250,10 +265,20 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
             {0, 1, getTransYPixels()},
             {0, 0, 1}
         };
+        // flipY
+        float[][] flip= {
+            {flipX?-1:1, 0, flipX?chip.getSizeX():0F},
+            {0, flipY?-1:1, flipY?chip.getSizeY():0},
+            {0, 0, 1}
+        };
+        
         // now compute t*r*x so that we first transform to pixel space, then rotate, then translate
         float[][] m1 = Matrix.multMatrix(scm, trm1);
-        float[][] m2 = Matrix.multMatrix(rotm, m1);
-        float[][] tsrt = Matrix.multMatrix(trm2, m2);
+        float[][] m2a = Matrix.multMatrix(rott1, m1);
+        float[][] m2b = Matrix.multMatrix(rotm, m2a);
+        float[][] m2c = Matrix.multMatrix(rott2, m2b);
+        float[][] m3 = Matrix.multMatrix(trm2, m2c);
+        float[][] tsrt = Matrix.multMatrix(flip, m3);
 
         // now transform all Point2D coordinates
         if (ballPathSVG != null) {
@@ -309,6 +334,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
         getBoundingBox().setFrame(minx, miny, maxx-minx, maxy-miny);
         invalidateDisplayList();
         closestPointComputer.init();
+        if(chip.getAeViewer()!=null) chip.getAeViewer().interruptViewloop(); // refresh if we are paused
 
     }
 
@@ -466,13 +492,17 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
     private void putLastFilePrefs(File file) {
         putString("lastFile", file.toString());
     }
-    private GLU glu = new GLU();
-    private GLUquadric holeQuad = glu.gluNewQuadric();
+    private GLU glu = null;
+    private GLUquadric holeQuad = null;
     int listnum = 0;
 
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
 
+        if(glu==null) glu = new GLU();
+
+        if(holeQuad==null) holeQuad = glu.gluNewQuadric();
+ 
         if (!isDisplayMap()) {
             return;
         }
@@ -639,6 +669,38 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
         this.transYPixels = transYPixels;
         putFloat("transYPixels", transYPixels);
         computeTransformsToRetinaCoordinates();
+    }
+
+    /**
+     * @return the flipY
+     */
+    public boolean isFlipY() {
+        return flipY;
+    }
+
+    /**
+     * @param flipY the flipY to set
+     */
+    public void setFlipY(boolean flipY) {
+        this.flipY = flipY;
+        putBoolean("flipY", flipY);
+         computeTransformsToRetinaCoordinates();
+   }
+
+    /**
+     * @return the flipX
+     */
+    public boolean isFlipX() {
+        return flipX;
+    }
+
+    /**
+     * @param flipX the flipX to set
+     */
+    public void setFlipX(boolean flipX) {
+        this.flipX = flipX;
+        putBoolean("flipX",flipX);
+         computeTransformsToRetinaCoordinates();
     }
 
     private void invalidateDisplayList() {

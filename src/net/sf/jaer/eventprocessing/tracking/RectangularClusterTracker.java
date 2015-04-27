@@ -658,7 +658,7 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
         // reached maxNumClusters
         // This will also update the Position, Mass, EventRate and AverageDistance
         for (BasicEvent ev : in) {
-            if(ev.isSpecial()) continue;
+            if(ev.isSpecial() || ev.isFilteredOut()) continue;
             if(ev.x<0||ev.x>=sx || ev.y<0|| ev.y>=sy) continue ;  // out of bounds from e.g. steadicom transform
             Cluster closest = fastClusterFinder.findClusterNear(ev);
 

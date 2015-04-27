@@ -80,6 +80,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 	PathNavigator nav = new PathNavigator();
 	private float dwellTimePathPointMs = getFloat("dwellTimePathPointMs", 100);
 	private int timeToTriggerJiggleAfterBallLostMs=getInt("timeToTriggerJiggleAfterBallLostMs",3000);
+        private Thread jiggleThread=null;
 
 	/** Constructs instance of the new 'filter' CalibratedPanTilt. The only time events are actually used
 	 * is during calibration. The PanTilt hardware interface is also constructed.
@@ -89,7 +90,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 		super(chip);
 
 		handDetector = new HandDetector(chip);
-		tracker = new LabyrinthBallTracker(chip,this);
+ 		tracker = new LabyrinthBallTracker(chip,this);
 		tracker.addObserver(this);
 		labyrinthHardware = new LabyrinthHardware(chip);
 		labyrinthHardware.getSupport().addPropertyChangeListener(this);
@@ -375,6 +376,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 		s.append(String.format("\nController dynamics:\ntau=%.1fms\nQ=%.2f", tau * 1000, Q));
 		s.append(isControllerEnabled() ? "\nController is ENABLED" : "\nController is DISABLED");
 		s.append("\n").append(nav.toString());
+                MultilineAnnotationTextRenderer.setScale(.2f);
 		MultilineAnnotationTextRenderer.renderMultilineString(s.toString());
 		chip.getCanvas().checkGLError(gl, glu, "after controller annotations");
 	}
@@ -524,6 +526,20 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 		//        centerTilts();
 	}
 
+    /**
+     * @return the jiggleRunning
+     */
+    public boolean isJiggleRunning() {
+        return jiggleRunning;
+    }
+
+    /**
+     * @param jiggleRunning the jiggleRunning to set
+     */
+    public void setJiggleRunning(boolean jiggleRunning) {
+        this.jiggleRunning = jiggleRunning;
+    }
+
 	public enum Message {
 
 		AbortRecording,
@@ -651,7 +667,13 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 		tracker.doClearMap();
 	}
 
-	volatile boolean jiggleRunning=false;
+	protected volatile boolean jiggleRunning=false;
+        
+        public void doStopJiggle(){
+            if(jiggleThread!=null && jiggleThread.isAlive()){
+                jiggleThread.interrupt();
+            }
+        }
 
 	@Override
 	public void doJiggleTable() {
@@ -659,10 +681,10 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
 			@Override
 			public void run() {
-				if(jiggleRunning) {
+				if(isJiggleRunning()) {
 					return;
 				}
-				jiggleRunning=true;
+				setJiggleRunning(true);
 				log.info("starting jiggle");
 				setControllerDisabledTemporarily(true);
 				tracker.resetFilter();
@@ -670,12 +692,17 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 				try {
 					Thread.sleep(300);
 				} catch (InterruptedException ex) {
+                                    setJiggleRunning(false);
+                                    return;
 				}
 
 				labyrinthHardware.startJitter();
 				try {
 					Thread.sleep(getJiggleTimeMs());
 				} catch (InterruptedException ex) {
+                                    setJiggleRunning(false);
+                                    labyrinthHardware.stopJitter();
+                                    return;
 				}
 				labyrinthHardware.stopJitter();
 				try {
@@ -684,12 +711,12 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 				}
 				centerTilts();
 				setControllerDisabledTemporarily(false);
-				jiggleRunning=false;
+				setJiggleRunning(false);
 			}
 		};
-		Thread T = new Thread(r);
-		T.setName("TableJiggler");
-		T.start();
+		jiggleThread = new Thread(r);
+		jiggleThread.setName("TableJiggler");
+		jiggleThread.start();
 	}
 
 	public boolean isLostTracking() {

@@ -36,6 +36,8 @@ import java.beans.PropertyChangeEvent;
  * texture which is a power of two multiple of image size, so watch out for
  * getWidth and getHeight; they return this value and not the number of pixels
  * being rendered from the chip.
+ * 
+ * Besides the pixmaps for APS samples and ON and OFF events, an additional pixmap is provided for pixel annotation; see {@link #getAnnotateMap() }.
  *
  * @author christian, tobi
  * @see ChipRendererDisplayMethod
@@ -165,6 +167,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         Arrays.fill(grayBuffer.array(), 0.0f);
         System.arraycopy(grayBuffer.array(), 0, onMap.array(), 0, n);
         System.arraycopy(grayBuffer.array(), 0, offMap.array(), 0, n);
+//       if(displayAnnotation) Arrays.fill(annotateMap.array(), 0);
 
         grayBuffer.rewind();
         onMap.rewind();
@@ -173,6 +176,10 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         offMap.limit(n);
     }
 
+    public synchronized void clearAnnotationMap(){
+        resetAnnotationFrame(0);
+    }
+    
     @Override
     public synchronized void resetAnnotationFrame(float resetValue) {
         checkPixmapAllocation();
@@ -813,6 +820,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     }
 
     /**
+     * Sets the alpha of the annotation layer. This alpha determines the transparency of the annotation.
      * @param annotateAlpha the annotateAlpha to set
      */
     public void setAnnotateAlpha(float annotateAlpha) {
@@ -820,6 +828,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     }
 
     /**
+     * Returns whether the annotation layer is displayed
      * @return the displayAnnotation
      */
     public boolean isDisplayAnnotation() {
@@ -827,6 +836,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     }
 
     /**
+     * Sets whether the annotation layer is displayed.
+     * 
      * @param displayAnnotation the displayAnnotation to set
      */
     public void setDisplayAnnotation(boolean displayAnnotation) {

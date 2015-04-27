@@ -72,7 +72,7 @@ public class TrackDefineFilter extends EventFilter2D implements FrameAnnotater, 
     private int currentPointIdx;
     private Point currentInsertMarkPoints = null;
     // Histogram data
-    private TrackHistogramFilter trackHistogramFilter=new TrackHistogramFilter(chip);
+    private Histogram2DFilter trackHistogramFilter=new Histogram2DFilter(chip);
     // Total sum of histogram points
     float totalSum;
     // draw accumulated tracker locations

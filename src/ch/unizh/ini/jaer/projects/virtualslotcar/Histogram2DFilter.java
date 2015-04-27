@@ -18,6 +18,8 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLException;
 import javax.swing.JFileChooser;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -29,13 +31,14 @@ import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- * Allows accumulating a histogram of active pixels during practice rounds of a
- * computer controlled car, and then filtering out all but these events for
- * later car tracking to control the car.
+ * Allows accumulating a histogram of active pixels and then filtering in or out all these x,y addresses from incoming event packets.
  *
  * @author tobi
  */
-public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotater, Serializable {
+@Description("Allows accumulating a histogram of active pixels, \n" +
+" * and then filtering out the active pixels, or the inactive ones, depending on <i>invertFiltering</i>.")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+public class Histogram2DFilter extends EventFilter2D implements FrameAnnotater, Serializable {
 
     private static final long serialVersionUID = 8749822155491049760L; // tobi randomly defined
     private int[][] histogram = null;  // first dim is X, 2nd is Y
@@ -43,15 +46,17 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
     private boolean collect = false;
     private float threshold = getFloat("threshold", 20);
     private int histmax = 0;
-    private static final String HISTOGRAM_FILE_NAME = "trackhistogram.dat";
+    private static final String HISTOGRAM_FILE_NAME = "Histogram2DFilter.dat";
+    private static final String HISTOGRAM_FILE_NAME_EXTENSION=".dat";
     private boolean showHistogram = getBoolean("showHistogram", true);
     private boolean showBitmap = getBoolean("showBitmap", true);
     private int numX=0, numY=0, numPix=0;
     private int erosionSize = getInt("erosionSize", 0);
     private int totalSum; // sum of histogram values
-    private String filePath=getString("filePath",HISTOGRAM_FILE_NAME);
+    private String filePath=getString("filePath",System.getProperty("user.dir")+File.separator+HISTOGRAM_FILE_NAME);
+    protected boolean invertFiltering=getBoolean("invertFiltering", false);
  
-    public TrackHistogramFilter(AEChip chip) {
+    public Histogram2DFilter(AEChip chip) {
         super(chip);
          setPropertyTooltip("collect", "set true to accumulate histogram");
         setPropertyTooltip("threshold", "threshold in accumulated events to allow events to pass through");
@@ -63,17 +68,18 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
         setPropertyTooltip("saveHistogram", "saves current histogram to the fixed filename " + HISTOGRAM_FILE_NAME);
         setPropertyTooltip("loadHistogram", "loads histogram from the fixed filename " + HISTOGRAM_FILE_NAME);
         setPropertyTooltip("collectHistogram", "turns on histogram accumulation");
-        setPropertyTooltip("computeErodedBitmap", "computes the bitmap of valid pixels for track");
-        setPropertyTooltip("clearBitmap", "clears the bitmap of valid pixels for track");
+        setPropertyTooltip("computeErodedBitmap", "computes the bitmap of valid pixels");
+        setPropertyTooltip("clearBitmap", "clears the bitmap of valid pixels");
         setPropertyTooltip("erosionSize", "Amount in pixels to erode histogram bitmap on erode operation");
-        setPropertyTooltip("filePath", "The file path to this track histogram mask; also the ID of the mask");
-        String lastFile=getString("lastFile",null);
-        if(lastFile!=null) loadHistogramFromFile(new File(lastFile)); // load last file by default; user can overwrite with some other file
+        setPropertyTooltip("invertFiltering", "Pass events from pixels that are NOT active during collection phase; used to filter out background noise");
+        setPropertyTooltip("filePath", "The file path to this histogram mask; also the ID of the mask");
+        String filePath=getString("filePath",null);
+        if(filePath!=null) loadHistogramFromFile(new File(filePath)); // load last file by default; user can overwrite with some other file
    }
 
     
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) { // removed synchronized because it causes a deadlock between annotating CarTracker and processing it
+    public EventPacket<?> filterPacket(EventPacket<?> in) { 
         checkOutputPacketEventType(in);
         checkHistogram();
         int max = getHistmax();
@@ -93,18 +99,13 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
                 if (histogram[e.x][e.y] > max) {
                     max = histogram[e.x][e.y];
                 }
-            } else { // filter out events that are not coming from pixels that have collected enough events
-                if(bitmap!=null && !bitmap[e.x][e.y]){
-//                    outItr.nextOutput().copyFrom(e);
-                }else if (histmax > 0 && histogram[e.x][e.y] < threshold) {
-//                    e.setFilteredOut(true); // has the effect that it filters out events in-place in the input packet, making it impossible to filter out different events from same packet.
-                } else {
-//                    e.setFilteredOut(false);
+            } else { // filter out events 
+                if(bitmap==null) return in;
+                if((!invertFiltering && bitmap[e.x][e.y]) || (invertFiltering && !bitmap[e.x][e.y])){
                     outItr.nextOutput().copyFrom(e);
                     nOut++;
                 }
             }
-
         }
         if (isCollect()) {
             setHistmax(max);
@@ -125,12 +126,14 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
         setHistmax(0);
         totalSum=0;
         bitmap=null;
+        if(getFilePath()!=null){
+            String s=getFilePath();
+            int i=s.lastIndexOf(File.separator);
+            s=s.substring(0, i);
+            setFilePath(s);
+        }
     }
     
-    synchronized public void doClearBitmap(){
-        bitmap=null;
-    }
-
     synchronized public void doCollectHistogram() {
         setCollect(true);
         setShowHistogram(true);
@@ -143,6 +146,7 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
 
     synchronized public void doFreezeHistogram() {
         setCollect(false);
+        computeErodedBitmap();
     }
 
     synchronized public void doSaveHistogram() {
@@ -152,10 +156,13 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
         }
         try {
             JFileChooser fileChooser = new JFileChooser();
-            String lastFilePath = getString("lastFile", System.getProperty("user.dir"));
+            String lastFilePath = getFilePath();
+            if(!lastFilePath.endsWith(HISTOGRAM_FILE_NAME_EXTENSION))lastFilePath=lastFilePath+HISTOGRAM_FILE_NAME_EXTENSION;
             // get the last folder
 //            fileChooser.setFileFilter(datFileFilter);
-            fileChooser.setCurrentDirectory(new File(lastFilePath));
+            File f=new File(lastFilePath);
+            fileChooser.setCurrentDirectory(f);
+            fileChooser.setSelectedFile(f);
             int retValue = fileChooser.showOpenDialog(fileChooser);
             if (retValue == JFileChooser.CANCEL_OPTION) {
                 return;
@@ -169,7 +176,7 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
     }
 
     public void saveHistogramToFile(File file) throws IOException, FileNotFoundException {
-        log.info("Saving track data to " + file.getName());
+        log.info("Saving histogram data to " + file.getName());
         FileOutputStream fos = new FileOutputStream(file);
         ObjectOutputStream oos = new ObjectOutputStream(fos);
         oos.writeObject(histogram.length);
@@ -199,6 +206,7 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
             }
             numPix = numX * numY;
             computeTotalSum(); // in case loaded from file
+            computeErodedBitmap(); // in case not stored
             ois.close();
             fis.close();
             log.info("histogram loaded from (usually host/java) file " + file.getPath() + "; histmax=" + histmax);
@@ -214,7 +222,9 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
         String lastFilePath = getString("lastFile", System.getProperty("user.dir") );
         // get the last folder
 //            fileChooser.setFileFilter(datFileFilter);
-        fileChooser.setCurrentDirectory(new File(lastFilePath));
+        File f=new File(lastFilePath);
+        fileChooser.setCurrentDirectory(f);
+        fileChooser.setSelectedFile(f);
         int retValue = fileChooser.showOpenDialog(fileChooser);
         if (retValue == JFileChooser.CANCEL_OPTION) {
             return;
@@ -313,6 +323,9 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
         this.threshold = threshold;
         putFloat("threshold", threshold);
         getSupport().firePropertyChange("threshhold",old,this.threshold); // update GUI on loading histogram
+        if(old!=this.threshold){
+            computeErodedBitmap();
+        }
     }
 
     /**
@@ -348,7 +361,7 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
         getSupport().firePropertyChange("showHistogram",old,this.showHistogram);
     }
     
-    /** Computes morphological erosion of track histogram to produce boolean bitmap of possible track pixels
+    /** Computes morphological erosion of histogram to produce boolean bitmap of pixels
      * 
      * @return boolean[][] where first dimension is x and second is y, or null if there is no data yet
      */
@@ -475,6 +488,21 @@ public class TrackHistogramFilter extends EventFilter2D implements FrameAnnotate
             }
         }
         totalSum=sum;
+    }
+
+    /**
+     * @return the invertFiltering
+     */
+    public boolean isInvertFiltering() {
+        return invertFiltering;
+    }
+
+    /**
+     * @param invertFiltering the invertFiltering to set
+     */
+    public void setInvertFiltering(boolean invertFiltering) {
+        this.invertFiltering = invertFiltering;
+        putBoolean("invertFiltering", invertFiltering);
     }
 
 

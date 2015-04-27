@@ -20,7 +20,7 @@ import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
 
 /**
  * The labyrinth hardware abstraction enables controlling the labyrinth table.
- * 
+ *
  * @author Tobi Delbruck
  */
 @Description("Low level hardware interface for Labyrinth game")
@@ -44,21 +44,26 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
     // this is approx 5 deg per 0.1 unit change 
     public static final String PANTILT_CHANGE = "panTiltChange";
 
-    /** Constructs instance of the new 'filter' CalibratedPanTilt. The only time events are actually used
-     * is during calibration. The PanTilt hardware interface is also constructed.
+    /**
+     * Constructs instance of the new 'filter' CalibratedPanTilt. The only time
+     * events are actually used is during calibration. The PanTilt hardware
+     * interface is also constructed.
+     *
      * @param chip
      */
     public LabyrinthHardware(AEChip chip) {
         super(chip);
 
-//        panTiltHardware = PanTilt.getLastInstance();
-        panTiltHardware.setPanServoNumber(panServoNumber);
-        panTiltHardware.setTiltServoNumber(tiltServoNumber);
-        panTiltHardware.setJitterAmplitude(jitterAmplitude);
-        panTiltHardware.setJitterFreqHz(jitterFreqHz);
-        panTiltHardware.setJitterEnabled(jitterEnabled);
-        panTiltHardware.setPanInverted(invertPan);
-        panTiltHardware.setTiltInverted(invertTilt);
+        panTiltHardware = PanTilt.getLastInstance();
+        if (panTiltHardware != null) {
+            panTiltHardware.setPanServoNumber(panServoNumber);
+            panTiltHardware.setTiltServoNumber(tiltServoNumber);
+            panTiltHardware.setJitterAmplitude(jitterAmplitude);
+            panTiltHardware.setJitterFreqHz(jitterFreqHz);
+            panTiltHardware.setJitterEnabled(jitterEnabled);
+            panTiltHardware.setPanInverted(invertPan);
+            panTiltHardware.setTiltInverted(invertTilt);
+        }
 
         String servo = "Servos", control = "Control";
         setPropertyTooltip("controlTilts", "shows GUI for controlling table tilts with mouse");
@@ -123,8 +128,10 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
         return jitterAmplitude;
     }
 
-    /** Sets the amplitude (1/2 of peak to peak) of circular jitter of pan tilt during jittering
-     * 
+    /**
+     * Sets the amplitude (1/2 of peak to peak) of circular jitter of pan tilt
+     * during jittering
+     *
      * @param jitterAmplitude the amplitude
      */
     public void setJitterAmplitude(float jitterAmplitude) {
@@ -140,12 +147,13 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
         return jitterFreqHz;
     }
 
-    /** The frequency of the jitter
-     * 
+    /**
+     * The frequency of the jitter
+     *
      * @param jitterFreqHz in Hz
      */
     public void setJitterFreqHz(float jitterFreqHz) {
-        this.jitterFreqHz=jitterFreqHz;
+        this.jitterFreqHz = jitterFreqHz;
         putFloat("jitterFreqHz", jitterFreqHz);
     }
 
@@ -171,7 +179,7 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
             stopJitter(); //  running, must stop to get new position correct
         }
         timer = new java.util.Timer();
-        timer.schedule(new JittererTask(new float[]{0,0}), 0, 20); // every 20 ms update jitter
+        timer.schedule(new JittererTask(new float[]{0, 0}), 0, 20); // every 20 ms update jitter
     }
 
     synchronized public void stopJitter() {
@@ -181,10 +189,13 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
         }
     }
 
-    /** Sets the pan and tilt servo values in radians with 0 being flat.
-     * Fires a PANTILT_CHANGE if either value changes with a Point2D.Float of the new pan and tilt values.
-    @param pan in radians
-    @param tilt in radians
+    /**
+     * Sets the pan and tilt servo values in radians with 0 being flat. Fires a
+     * PANTILT_CHANGE if either value changes with a Point2D.Float of the new
+     * pan and tilt values.
+     *
+     * @param pan in radians
+     * @param tilt in radians
      */
     synchronized public void setPanTiltValues(float pan, float tilt) throws HardwareInterfaceException {
 //        float[] old = getPanTiltHardware().getPanTiltValues();
@@ -207,9 +218,10 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
         return out;
     }
 
-    /** Input is desired table tilt in radians, output is actual servo interface value 0-1 range.
-     * Tilt is clipped to +/- panTiltLimitRad.
-     * 
+    /**
+     * Input is desired table tilt in radians, output is actual servo interface
+     * value 0-1 range. Tilt is clipped to +/- panTiltLimitRad.
+     *
      * @param tiltRad in radians from 0 for flat
      * @return servo value.
      */
@@ -224,11 +236,13 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
         return f;
     }
 
-    /** converts from desired angle of table knob to needed servo arm angle value, based
-     * on geometry of arm connected by rod to table knob and fact that servo turns 120 deg when servo
-     * software value ranges from 0 to 1.
+    /**
+     * converts from desired angle of table knob to needed servo arm angle
+     * value, based on geometry of arm connected by rod to table knob and fact
+     * that servo turns 120 deg when servo software value ranges from 0 to 1.
+     *
      * @param knob
-     * @return servo value ranging over 
+     * @return servo value ranging over
      */
     private float knob2arm(float knob) {
         final float SERVO_ARM_KNOB_RADIUS_RATIO = 2f / 1f; // affects the actual angle produced.

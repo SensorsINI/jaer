@@ -19,6 +19,7 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLException;
+import java.util.Arrays;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -47,6 +48,8 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
     private int learnTimeMs = getInt("learnTimeMs", 20);
     private boolean learnHotPixels = false, learningStarted = false;
     private int learningStartedTimestamp = 0;
+    protected boolean use2DBooleanArray = getBoolean("use2DBooleanArray", false);
+    boolean[][] hotPixelArray = null;
 
     private static class HotPixel implements Serializable {  // static to avoid having this reference to enclosing class in each hotpixel
 
@@ -129,7 +132,7 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
             } catch (Throwable err) {
                 log.warning("while loading old HotPixel set, caught Exception or Error; ignoring old hot pixel set");
 //                err.printStackTrace();
-            } 
+            }
         }
     }
 
@@ -148,6 +151,7 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip("learnHotPixels", "learn which pixels are hot");
         setPropertyTooltip("clearHotPixels", "clear list of hot pixels");
         setPropertyTooltip("showHotPixels", "label the hot pixels graphically");
+        setPropertyTooltip("use2DBooleanArray", "use a 2D boolean array to filter rather than a Set; more efficient for large numbers of hot pixels");
         hotPixelSet.loadPrefs();
     }
 
@@ -156,10 +160,10 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
 //        checkOutputPacketEventType(in);
 //        OutputEventIterator outItr = getOutputPacket().outputIterator();
         for (BasicEvent e : in) {
+            if (e.isSpecial() || e.isFilteredOut() || e.x >= chip.getSizeX() || e.y >= chip.getSizeY()) {
+                continue; // don't learn special events
+            }
             if (learnHotPixels) {
-                if (e.isSpecial() || e.isFilteredOut()) {
-                    continue; // don't learn special events
-                }
                 if (learningStarted) {
                     // initialize collection of addresses to be filled during learning
                     learningStarted = false;
@@ -170,10 +174,10 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
                     // done collecting hot pixel data, now build lookup table
                     learnHotPixels = false;
                     // find largest n counts and call them hot
+                    Set<Entry<Integer, HotPixel>> hps = collectedAddresses.entrySet();
                     for (int i = 0; i < numHotPixels; i++) {
                         int max = 0;
                         HotPixel hp = null;
-                        Set<Entry<Integer, HotPixel>> hps = collectedAddresses.entrySet();
 
                         for (Entry<Integer, HotPixel> ent : hps) {
                             HotPixel p = ent.getValue();
@@ -190,6 +194,14 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
                     }
                     collectedAddresses = null; // free memory
                     hotPixelSet.storePrefs();
+                    if (use2DBooleanArray) {
+                        hotPixelArray = new boolean[chip.getSizeX()][chip.getSizeY()];
+                        Object[] hpa = (Object[]) hotPixelSet.toArray();
+                        for (Object o : hpa) {
+                            HotPixel hp = (HotPixel) o;
+                            hotPixelArray[hp.x][hp.y] = true;
+                        }
+                    }
                 } else {
                     // we're learning now by collecting addresses, store this address
                     // increment count for this address
@@ -202,7 +214,9 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
                 }
             }
             // process event
-            if (hotPixelSet.contains(e)) {
+            if (!use2DBooleanArray && hotPixelSet.contains(e)) {
+                e.setFilteredOut(true);
+            } else if (use2DBooleanArray && hotPixelArray != null && hotPixelArray[e.x][e.y]) {
                 e.setFilteredOut(true);
             }
 //            if (e.special || !hotPixelSet.contains(e) ) {
@@ -229,6 +243,11 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
 
     synchronized public void doClearHotPixels() {
         hotPixelSet.clear();
+        if (hotPixelArray != null) {
+            for (boolean[] ba : hotPixelArray) {
+                Arrays.fill(ba, false);
+            }
+        }
     }
 
     @Override
@@ -305,5 +324,19 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
     public void setLearnTimeMs(int learnTimeMs) {
         this.learnTimeMs = learnTimeMs;
         putInt("learnTimeMs", learnTimeMs);
+    }
+
+    /**
+     * @return the use2DBooleanArray
+     */
+    public boolean isUse2DBooleanArray() {
+        return use2DBooleanArray;
+    }
+
+    /**
+     * @param use2DBooleanArray the use2DBooleanArray to set
+     */
+    public void setUse2DBooleanArray(boolean use2DBooleanArray) {
+        this.use2DBooleanArray = use2DBooleanArray;
     }
 }

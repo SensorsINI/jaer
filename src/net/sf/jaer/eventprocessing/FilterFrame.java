@@ -39,8 +39,8 @@ import net.sf.jaer.util.XMLFileFilter;
  *
  * @author tobi
  */
-public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFrame implements PropertyChangeListener, WindowSaver.DontResize {
-
+public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFrame implements PropertyChangeListener/*, WindowSaver.DontResize*/ {
+    // tobi commented out DontResize because the filter frame was extending below the bottom of screen, making it awkward to control properties for deep implementations
     final int MAX_ROWS = 10; // max rows of filters, then wraps back to top
     static Preferences prefs = Preferences.userNodeForPackage(FilterFrame.class);
     Logger log = Logger.getLogger("filter");

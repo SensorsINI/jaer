@@ -87,9 +87,9 @@ public class JAERWindowUtilities {
 //            log.info("window extends over edge of screen, moving back to origin");
 //            x=y=0;
 //        }
-            if (h > sd.height - lowerInset) {
+            if (h+y > sd.height - lowerInset) {
                 log.info("window height (" + h + ") is bigger than screen height minus WINDOWS_TASK_BAR_HEIGHT (" + (sd.height - WINDOWS_TASK_BAR_HEIGHT) + "), resizing height");
-                h = sd.height - lowerInset;
+                h = sd.height - lowerInset-y;
                 resize = true;
             }
             if (w > sd.width) {

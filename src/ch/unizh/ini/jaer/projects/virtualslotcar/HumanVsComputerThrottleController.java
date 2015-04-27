@@ -148,7 +148,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     private SlotcarTrack track = new SlotcarTrack();
     private String trackFileName = getString("trackFileName", null);
 
-    TrackHistogramFilter computerMask = null, humanMask = null; // later refer to enclosed filters in CarTrackers
+    Histogram2DFilter computerMask = null, humanMask = null; // later refer to enclosed filters in CarTrackers
     private String computerTrackHistogramFilePath = getString("computerTrackHistogramFilePath", "computerTrackHistogramMask.dat");
     private String humanTrackHistogramFilePath = getString("humanTrackHistogramFilePath", "humanTrackHistogramMask.dat");
     BackgroundActivityFilter backgroundActivityFilter = null;

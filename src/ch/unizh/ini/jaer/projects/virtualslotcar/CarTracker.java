@@ -33,7 +33,7 @@ import net.sf.jaer.aemonitor.AEPacket;
 import net.sf.jaer.util.DrawGL;
 
 /**
- * Tracks slot car using the TrackHistogramFilter to filter out events not belonging to this car.
+ * Tracks slot car using the Histogram2DFilter to filter out events not belonging to this car.
  * which.
  *
  *
@@ -53,7 +53,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
     private SlotcarTrack track;
     private CarCluster currentCarCluster = null, crashedCar = null;
 //    private NearbyTrackEventFilter nearbyTrackFilter = null;
-    private TrackHistogramFilter trackHistogramFilter = null;
+    private Histogram2DFilter trackHistogramFilter = null;
     private CarCluster computerControlledCarCluster = null;
     private int warnedNullTrackerCounter = 0;
     private final int WARNED_NULL_TRACK_INTERVAL = 1000;
@@ -131,7 +131,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
         FilterChain filterChain = new FilterChain(chip);
 //        filterChain.add(new BackgroundActivityFilter(chip));
 //        nearbyTrackFilter = new NearbyTrackEventFilter(chip);
-        trackHistogramFilter = new TrackHistogramFilter(chip);
+        trackHistogramFilter = new Histogram2DFilter(chip);
         filterChain.add(trackHistogramFilter);
 
         setEnclosedFilterChain(filterChain);
@@ -896,7 +896,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
     /**
      * @return the trackHistogramFilter
      */
-    public TrackHistogramFilter getTrackHistogramFilter() {
+    public Histogram2DFilter getTrackHistogramFilter() {
         return trackHistogramFilter;
     }
 
