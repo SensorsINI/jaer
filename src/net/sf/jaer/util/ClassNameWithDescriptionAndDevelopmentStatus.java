@@ -5,9 +5,9 @@
  */
 package net.sf.jaer.util;
 
-import java.io.IOException;
 import java.io.ObjectStreamException;
 import java.io.Serializable;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 
@@ -26,14 +26,14 @@ public class ClassNameWithDescriptionAndDevelopmentStatus implements Serializabl
         this.developmentStatus = developmentStatus;
     }
 
-    public ClassNameWithDescriptionAndDevelopmentStatus(Class c) {
+    public ClassNameWithDescriptionAndDevelopmentStatus(Class<?> c) {
         this.className = c.getName();
         if (c.isAnnotationPresent(Description.class)) {
-            Description des = (Description) c.getAnnotation(Description.class);
+            Description des = c.getAnnotation(Description.class);
             this.description = des.value();
         }
         if (c.isAnnotationPresent(DevelopmentStatus.class)) {
-            DevelopmentStatus des = (DevelopmentStatus) c.getAnnotation(DevelopmentStatus.class);
+            DevelopmentStatus des = c.getAnnotation(DevelopmentStatus.class);
             developmentStatus = des;
         }
     }
@@ -41,7 +41,8 @@ public class ClassNameWithDescriptionAndDevelopmentStatus implements Serializabl
     /**
      * Returns just the class name
      */
-    public String toString() {
+    @Override
+	public String toString() {
         return getClassName();
     }
 
@@ -90,5 +91,5 @@ public class ClassNameWithDescriptionAndDevelopmentStatus implements Serializabl
     private Object writeReplace() throws ObjectStreamException {
         return className;
     }
-    
+
 }
