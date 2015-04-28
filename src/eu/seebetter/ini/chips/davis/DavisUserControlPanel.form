@@ -517,7 +517,7 @@
         <Component class="javax.swing.JCheckBox" name="autoContrastCB">
           <Properties>
             <Property name="text" type="java.lang.String" value="Auto contrast"/>
-            <Property name="toolTipText" type="java.lang.String" value="Automatically set rendering contrast so that brightness (offset) and contrast (gain) scale min and max values to 0 and 1 respectively"/>
+            <Property name="toolTipText" type="java.lang.String" value="Uses DavisVideoContrastController to automatically set rendering contrast so that brightness (offset) and contrast (gain) scale min and max values to 0 and 1 respectively"/>
             <Property name="horizontalAlignment" type="int" value="11"/>
             <Property name="horizontalTextPosition" type="int" value="2"/>
           </Properties>

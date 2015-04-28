@@ -651,7 +651,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         });
 
         autoContrastCB.setText("Auto contrast");
-        autoContrastCB.setToolTipText("Automatically set rendering contrast so that brightness (offset) and contrast (gain) scale min and max values to 0 and 1 respectively");
+        autoContrastCB.setToolTipText("Uses DavisVideoContrastController to automatically set rendering contrast so that brightness (offset) and contrast (gain) scale min and max values to 0 and 1 respectively");
         autoContrastCB.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
         autoContrastCB.setHorizontalTextPosition(javax.swing.SwingConstants.LEFT);
         autoContrastCB.addActionListener(new java.awt.event.ActionListener() {
