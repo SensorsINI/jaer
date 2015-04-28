@@ -17,18 +17,22 @@ import net.sf.jaer.util.filter.LowpassFilter2d;
  * Encapsulates control of rendering contrast of rendered DAVIS APS images
  * including automatic control of contrast and brightness.
  * <p>
- * The rendered gray value v is computed from ADC sample s using brightness and contrast values, along with maxADC count by following equation. 
+ * The rendered gray value v is computed from ADC sample s using brightness and
+ * contrast values, along with maxADC count by following equation.
  * <br>
  * float v=(s-brightness)*contrast
- *<br>
+ * <br>
  * The result is clipped to 0-1 range.
- * 
- * The auto contrast feature low-pass filters the min and max ADC samples from a frame (min and max values are computed elsewhere) to automatically scale video to 0-1 range.
+ *
+ * The auto contrast feature low-pass filters the min and max ADC samples from a
+ * frame (min and max values are computed elsewhere) to automatically scale
+ * video to 0-1 range.
+ *
  * @author Tobi
  */
 public class DavisVideoContrastController extends Observable {
 
-    private static Logger log=Logger.getLogger("DavisVideoContrastController");
+    private static Logger log = Logger.getLogger("DavisVideoContrastController");
     DavisChip chip;
     Preferences prefs = Preferences.userNodeForPackage(this.getClass());
 
@@ -44,14 +48,24 @@ public class DavisVideoContrastController extends Observable {
     public static final String PROPERTY_GAMMA = "gamma";
     public static final String AGC_VALUES = "AGCValuesChanged";
     public static final String PROPERTY_AUTO_CONTRAST_ENABLED = "useAutoContrast";
-    
-    public static int DEBUG_PRINT_INTERVAL=50;
-    private int debugPrintCounter=0;
-    
-    /** The automatically-computed gain (computed in endFrame) applied to ADC samples */
-    protected float autoContrast=1;
-    /** The automatically-computed brightness (computed in endFrame) (offset ADC value) applied to ADC samples */
-    protected float autoBrightness=0;
+    /**
+     * Max allowed contrast
+     */
+    public static final float MAX_CONTRAST = 5;
+
+    public static int DEBUG_PRINT_INTERVAL = 50;
+    private int debugPrintCounter = 0;
+
+    /**
+     * The automatically-computed gain (computed in endFrame) applied to ADC
+     * samples
+     */
+    protected float autoContrast = 1;
+    /**
+     * The automatically-computed brightness (computed in endFrame) (offset ADC
+     * value) applied to ADC samples
+     */
+    protected float autoBrightness = 0;
 
     public DavisVideoContrastController(DavisChip chip) {
         this.chip = chip;
@@ -70,12 +84,12 @@ public class DavisVideoContrastController extends Observable {
         if (!isUseAutoContrast()) { // fixed rendering computed here
             float gamma = getGamma();
             if (gamma == 1.0f) {
-                v = (contrast *(adcCount + brightness)) / maxADC;
+                v = (contrast * (adcCount + brightness)) / maxADC;
             } else {
                 v = (float) (Math.pow(((contrast * (adcCount + brightness)) / maxADC), gamma));
             }
         } else {
-            v = ((autoContrast* (adcCount + autoBrightness))/maxADC);
+            v = ((autoContrast * (adcCount + autoBrightness)) / maxADC);
         }
         if (v < 0) {
             v = 0;
@@ -96,7 +110,7 @@ public class DavisVideoContrastController extends Observable {
         if (chip.getAeViewer() != null) {
             chip.getAeViewer().interruptViewloop();
         }
-       getSupport().firePropertyChange(PROPERTY_AUTO_CONTRAST_ENABLED, old,
+        getSupport().firePropertyChange(PROPERTY_AUTO_CONTRAST_ENABLED, old,
                 this.useAutoContrast);
         if (old != useAutoContrast) {
             setChanged();
@@ -107,31 +121,39 @@ public class DavisVideoContrastController extends Observable {
     }
 
     /**
-     * Provide new min/max values for a new frame to update auto contrast and brightness values. 
-     * Fires an AGC_VALUES PropertyChange with newValue a Point2D.Float(autoBrightness, autoContrast) object.
+     * Provide new min/max values for a new frame to update auto contrast and
+     * brightness values. Fires an AGC_VALUES PropertyChange with newValue a
+     * Point2D.Float(autoBrightness, autoContrast) object.
      *
      * @param minValue in ADC counts
      * @param maxValue in ADC counts
      * @param timestamp of frame in microseconds
      */
     public void endFrame(float minValue, float maxValue, int timestamp) {
-        if(!useAutoContrast) return;
+        if (!useAutoContrast) {
+            return;
+        }
         if ((minValue >= 0) && (maxValue > 0)) { // don't adapt to first frame which is all zeros TODO does not work if minValue<0
             java.awt.geom.Point2D.Float filter2d = autoContrast2DLowpassRangeFilter.filter2d(minValue, maxValue, timestamp);
             autoBrightness = -filter2d.x;
-            float diff=(filter2d.y - filter2d.x);
-            if(diff<1) diff=1;
-            autoContrast = chip.getMaxADC()/diff; // this value results in video value 1 when pixel is max value
+            float diff = (filter2d.y - filter2d.x);
+            if (diff < 1) {
+                diff = 1;
+            }
+            autoContrast = chip.getMaxADC() / diff; // this value results in video value 1 when pixel is max value
+            if (autoContrast > MAX_CONTRAST) {
+                autoContrast = 5;
+            }
             getSupport().firePropertyChange(AGC_VALUES, null, new Point2D.Float(autoBrightness, autoContrast)); // inform listeners (GUI) of new AGC min/max filterd log intensity values
-            if(debugPrintCounter++%DEBUG_PRINT_INTERVAL==0){
+            if (debugPrintCounter++ % DEBUG_PRINT_INTERVAL == 0) {
                 log.info(this.toString());
             }
         }
     }
-    
-    public String toString(){
-        Point2D.Float minmax=autoContrast2DLowpassRangeFilter.getValue2d();
-        return String.format("DavisVideoContrastController: minAvg=%-10.1f, maxAvg=%-10.1f, autoContrast=%-10.3f autoBrightness=%-10.3f",minmax.x, minmax.y,autoContrast,autoBrightness);
+
+    public String toString() {
+        Point2D.Float minmax = autoContrast2DLowpassRangeFilter.getValue2d();
+        return String.format("DavisVideoContrastController: minAvg=%-10.1f, maxAvg=%-10.1f, autoContrast=%-10.3f autoBrightness=%-10.3f", minmax.x, minmax.y, autoContrast, autoBrightness);
     }
 
     /**
@@ -233,17 +255,19 @@ public class DavisVideoContrastController extends Observable {
         autoContrast2DLowpassRangeFilter.reset();
     }
 
-    /** Return the automatic brightness (offset from zero) value
-     * 
-     * @return the brightness 
+    /**
+     * Return the automatic brightness (offset from zero) value
+     *
+     * @return the brightness
      */
     public float getAutoBrightness() {
         return autoBrightness;
     }
 
-    /** Return the automatic contrast value 
-     * 
-     * @return the contrast (gain) value 
+    /**
+     * Return the automatic contrast value
+     *
+     * @return the contrast (gain) value
      */
     public float getAutoContrast() {
         return autoContrast;
