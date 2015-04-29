@@ -60,6 +60,7 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
 		OutputEventIterator oi=out.outputIterator();
 		for(Object o:in){
 			PolarityEvent e=(PolarityEvent)o;
+                        if(e.isSpecial() || e.isFilteredOut()) continue;
 			x=e.x;
 			y=e.y;
 			ts=e.timestamp;
@@ -74,6 +75,10 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
 				}
 
 				float dtMs=(ts-convolutionLastEventTime[xoff][yoff])*1e-3f;
+                                if(dtMs<0){
+                                    convolutionLastEventTime[xoff][yoff]=ts;
+                                    continue; // ignore negative dt
+                                }
 				float vmold=convolutionVm[xoff][yoff];
 				vmold=(float)(vmold*(Math.exp(-dtMs/tauMs)));
 				float vm=vmold+s.weight;

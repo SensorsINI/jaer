@@ -29,6 +29,7 @@ import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap.PathPoint;
+import net.sf.jaer.util.TobiLogger;
 
 /**
  * This filter enables controlling the tracked labyrinth ball.
@@ -47,14 +48,14 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     private float integralGain = getFloat("integralGain", 1);
     // controller delay
     private float controllerDelayMs = getFloat("controllerDelayMs", 0);
-	// error signals
+    // error signals
     // errors
     Point2D.Float pControl = new Point2D.Float(0, 0);
     Point2D.Float iControl = new Point2D.Float(0, 0);
     Point2D.Float dControl = new Point2D.Float(0, 0);
     int lastErrorUpdateTime = 0;
     boolean controllerInitialized = false;
-	// components of the controller output
+    // components of the controller output
     //    Point2D.Float pTilt = new Point2D.Float();
     //    Point2D.Float iTilt = new Point2D.Float();
     //    Point2D.Float dTilt = new Point2D.Float();
@@ -81,6 +82,8 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     private float dwellTimePathPointMs = getFloat("dwellTimePathPointMs", 100);
     private int timeToTriggerJiggleAfterBallLostMs = getInt("timeToTriggerJiggleAfterBallLostMs", 3000);
     private Thread jiggleThread = null;
+
+    private TobiLogger tobiLogger = null;
 
     /**
      * Constructs instance of the new 'filter' CalibratedPanTilt. The only time
@@ -130,7 +133,25 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             control(in, timeUs()); //in.getLastTimestamp()
         } // control is also called from callback via update from tracker
         out = getEnclosedFilterChain().filterPacket(in);// TODO real practical problem here that if there is no retina input that survives to tracker, we get no updates here to control on
-
+        if (tobiLogger != null && tobiLogger.isEnabled()) {
+            float ballX = Float.NaN, ballY = Float.NaN;
+            float ballVelX = Float.NaN, ballVelY = Float.NaN;
+            if (tracker.ball != null && tracker.ball.getLocation() != null) {
+                ballX = tracker.ball.getLocation().x;
+                ballY = tracker.ball.getLocation().y;
+                if (tracker.ball.getVelocityPPS() != null) {
+                    ballVelX = tracker.ball.getVelocityPPS().x;
+                    ballVelY = tracker.ball.getVelocityPPS().y;
+                }
+            }
+            //         pan tilt targetX targetY ballX ballY ballVelX ballVelY");
+            tobiLogger.log(String.format("%f %f %f %f %f %f %f %f",
+                    labyrinthHardware.panValue, labyrinthHardware.tiltValue,
+                    target.x, target.y,
+                    ballX, ballY,
+                    ballVelX, ballVelY
+            ));
+        }
         return out;
     }
     private Point2D.Float futurePosErrPix = new Point2D.Float();
@@ -161,16 +182,16 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
                 pControl.setLocation(proportionalGain * futurePosErrPix.x, proportionalGain * futurePosErrPix.y); // towards target
 
-				// derivative error is vector rate of change of position error which is related to ball velocity by projection of ball
+                // derivative error is vector rate of change of position error which is related to ball velocity by projection of ball
                 // velocity onto position error vector, not just velocity
-				//                float dotVelPos=velPPS.x*futurePosErrPix.x+velPPS.y*futurePosErrPix.y; // positive if vel in direction of vector connecting from future pos to target
+                //                float dotVelPos=velPPS.x*futurePosErrPix.x+velPPS.y*futurePosErrPix.y; // positive if vel in direction of vector connecting from future pos to target
                 //                float futurePosErrLength=(float)futurePosErrPix.distance(0,0); // length of future pos error vector
                 //                if(futurePosErrLength<1e-1f){
                 //                    futurePosErrLength=1e-1f;
                 //                }
                 //
                 //                float cosAngle=dotVelPos/futurePosErrLength;
-				// projection of ball velocity onto pos error vector
+                // projection of ball velocity onto pos error vector
                 //                derivErrorPPS.setLocation(futurePosErrPix.x*cosAngle, futurePosErrPix.y*cosAngle); // points in direction of ball motion projected onto pos error vector
                 derivErrorPPS.setLocation(velPPS.x, velPPS.y); // points in direction of ball motion
 
@@ -197,7 +218,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                 iControl.y = windupLimit(iControl.y, intLim);
 				//                System.out.println("ierr= "+iControl);
 
-				//                pTilt.setLocation(pControl.x, pControl.y);
+                //                pTilt.setLocation(pControl.x, pControl.y);
                 //                iTilt.setLocation(iControl.x, iControl.y);
                 //                dTilt.setLocation(dControl.x, dControl.y);
                 float xtilt = pControl.x + dControl.x + iControl.x;
@@ -219,7 +240,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         }
     }
 
-	//    private void findTarget() {
+    //    private void findTarget() {
     //        if (mousePosition != null) {
     //            target = mousePosition;
     //        } else {
@@ -245,6 +266,21 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     @Override
     public void initFilter() {
         resetFilter();
+    }
+
+    public void doStartLogging() {
+        if (tobiLogger == null) {
+            tobiLogger = new TobiLogger("LabyrinthBallController", " LabyrinthBallController logging data\nt pan tilt targetX targetY ballX ballY ballVelX ballVelY");
+        }
+        tobiLogger.setEnabled(true);
+
+    }
+
+    public void doStopLogging() {
+        if (tobiLogger != null) {
+            tobiLogger.setEnabled(false);
+        }
+
     }
 
     /**
@@ -450,7 +486,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
      */
     @Override
     public void update(Observable o, Object arg) {
-		//        if (arg instanceof UpdateMessage) {
+        //        if (arg instanceof UpdateMessage) {
         //            UpdateMessage m = (UpdateMessage) arg;
         //            if (isControllerEnabled()) {
         //                control(m.packet, timeUs());
@@ -461,7 +497,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     int timeUs() {
         return (int) (System.nanoTime() >> 10);
     }
-	//    /**
+    //    /**
     //     * @return the mousePosition
     //     */
     //    private Point2D.Float getDesiredPosition() {
@@ -478,7 +514,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     private float tau, Q;
 
     private void computePoles() {
-		// compute the pole locations and resulting tau and Q given PID parameters
+        // compute the pole locations and resulting tau and Q given PID parameters
         // TODO doesn't include integral term yet
         tau = (float) Math.sqrt(1 / (gravConstantPixPerSec2 * proportionalGain));
         Q = proportionalGain / derivativeGain;
@@ -551,7 +587,9 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             return;
         }
         Point2D.Float pf = new Point2D.Float(p.x, p.y);
-        nav.setNextPathPoint(tracker.map.findNextPathPoint(pf));
+        nav.reset();
+        nav.setCurrenPathPoint(tracker.map.findNearestPathPoint(pf));
+        nav.setNextPathPoint(nav.getCurrenPathPoint().next());
     }
 
     public enum Message {

@@ -31,8 +31,10 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.filter.MedianLowpassFilter;
 import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap.PathPoint;
 import ch.unizh.ini.jaer.projects.virtualslotcar.Histogram2DFilter;
-import eu.seebetter.ini.chips.davis.HotPixelFilter;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import net.sf.jaer.eventprocessing.filter.RotateFilter;
+import net.sf.jaer.graphics.AEFrameChipRenderer;
 
 /**
  * Specialized tracker for ball location.
@@ -40,7 +42,7 @@ import net.sf.jaer.eventprocessing.filter.RotateFilter;
  * @author tobi
  */
 @Description("Ball tracker for labyrinth game")
-public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotater, Observer {
+public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotater, Observer, PropertyChangeListener {
 
     // filters and filter chain
     FilterChain filterChain;
@@ -52,10 +54,12 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     // private fields, not properties
     BasicEvent startingEvent = new BasicEvent();
     int lastTimestamp = 0;
-    GLCanvas glCanvas = null;
-    private ChipCanvas canvas;
     private float[] compArray = new float[4];
     private LabyrinthBallController controller = null; // must check if null when used
+    protected boolean addedPropertyChangeListener = false;  // must do lazy add of us as listener to chip because renderer is not there yet when this is constructed
+    private float ballRadiusPixels = getFloat("ballRadiusPixels", 4);
+    private float SUBFRAME_DIMENSION_PIXELS_MULTIPLE_OF_BALL_DIAMETER = 3;
+    private StaticBallTracker staticBallTracker = null;
 
     public LabyrinthBallTracker(AEChip chip, LabyrinthBallController controller) {
         this(chip);
@@ -74,15 +78,12 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         filterChain.add(new Histogram2DFilter(chip));
 //        filterChain.add(new net.sf.jaer.eventprocessing.filter.DepressingSynapseFilter(chip));
         filterChain.add(new BackgroundActivityFilter(chip));
-		//        filterChain.add(new CircularConvolutionFilter(chip));
+        //        filterChain.add(new CircularConvolutionFilter(chip));
         //        filterChain.add(new SubSamplingBandpassFilter(chip)); // TODO preferences should save enabled state of filters
         filterChain.add((tracker = new RectangularClusterTracker(chip)));
         tracker.addObserver(this);
         setEnclosedFilterChain(filterChain);
         String s = " Labyrinth Tracker";
-        if ((chip.getCanvas() != null) && (chip.getCanvas().getCanvas() != null)) {
-            glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
-        }
         setPropertyTooltip("clusterSize", "size (starting) in fraction of chip max size");
         setPropertyTooltip("mixingFactor", "how much cluster is moved towards an event, as a fraction of the distance from the cluster to the event");
         setPropertyTooltip("velocityPoints", "the number of recent path points (one per packet of events) to use for velocity vector regression");
@@ -95,10 +96,15 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         setPropertyTooltip("disableServos", "disables the servo motors by turning off the PWM control signals; digital servos may not relax however becuase they remember the previous settings");
         setPropertyTooltip("maxNumClusters", "Sets the maximum potential number of clusters");
         setPropertyTooltip("velocityMedianFilterNumSamples", "number of velocity samples to median filter for ball velocity");
+        setPropertyTooltip("ballRadiusPixels", "radius of ball in pixels used for locating ball in subframe static image");
     }
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
+        if (!addedPropertyChangeListener) {
+            ((AEFrameChipRenderer) chip.getRenderer()).getSupport().addPropertyChangeListener(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
+            addedPropertyChangeListener = true;
+        }
         out = getEnclosedFilterChain().filterPacket(in);
         if (tracker.getNumClusters() > 0) {
             // find most likely ball cluster from all the clusters. This is the one with most mass.
@@ -190,6 +196,10 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
                 glu.gluDisk(quad, 0, 2, 8, 1);
                 gl.glPopMatrix();
             }
+        }
+
+        if (staticBallTracker != null) {
+            staticBallTracker.draw(gl);
         }
 
         MultilineAnnotationTextRenderer.renderMultilineString(String.format("Ball tracker:\npoint=%d", ball == null ? -1 : map.findClosestIndex(ball.location, 10, true)));
@@ -396,4 +406,197 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         getSupport().firePropertyChange("velocityMedianFilterNumSamples", old, velocityMedianFilterNumSamples);
     }
 
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if (evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE) {
+            if (staticBallTracker == null) {
+                staticBallTracker = new StaticBallTracker();
+            }
+            staticBallTracker.locateBall();
+        }
+    }
+
+    /**
+     * @return the ballRadiusPixels
+     */
+    public float getBallRadiusPixels() {
+        return ballRadiusPixels;
+    }
+
+    /**
+     * @param ballRadiusPixels the ballRadiusPixels to set
+     */
+    public void setBallRadiusPixels(float ballRadiusPixels) {
+        this.ballRadiusPixels = ballRadiusPixels;
+        putFloat("ballRadiusPixels", ballRadiusPixels);
+    }
+
+    private class StaticBallTracker {
+
+        private SubFrame subFrame = null;
+        private final BallDetector ballDetector;
+
+        private StaticBallTracker() {
+            this.ballDetector = new BallDetector();
+        }
+
+        public void draw(GL2 gl) {
+            if (subFrame != null) {
+                subFrame.draw(gl);
+            }
+            ballDetector.draw(gl);
+        }
+
+        private void locateBall() {
+            AEFrameChipRenderer renderer = (AEFrameChipRenderer) (chip.getRenderer());
+            int dim = (int) (ballRadiusPixels * 2 * SUBFRAME_DIMENSION_PIXELS_MULTIPLE_OF_BALL_DIAMETER);
+            if (subFrame == null || subFrame.dim != dim) {
+                subFrame = new SubFrame(dim);
+            }
+            subFrame.fill(renderer);
+            ballDetector.convolve(subFrame);
+
+        }
+
+        private class SubFrame {
+
+            float[][] frame;
+            int dim;
+            int x0, x1, y0, y1;
+            float sum;
+
+            private SubFrame(int dim) {
+                this.dim = dim;
+                frame = new float[dim][dim];
+
+            }
+
+            private void fill(AEFrameChipRenderer renderer) {
+                if (ball == null) {
+                    return;
+                }
+                Point2D.Float bl = ball.getLocation();
+                int sy = chip.getSizeY();
+                int sx = chip.getSizeX();
+                int cx = Math.round(bl.x);
+                int cy = Math.round(bl.y);
+
+                x0 = cx - dim / 2;
+                if (x0 < 0) {
+                    x0 = 0;
+                } else if (x0 + dim > sx) {
+                    x0 = sx - dim;
+                }
+                y0 = cy - dim / 2;
+                if (y0 < 0) {
+                    y0 = 0;
+                } else if (y0 + dim > sy) {
+                    y0 = sy - dim;
+                }
+
+                x1 = x0 + dim;
+                y1 = y0 + dim;
+
+                // extract ball subframe
+                int xx = 0, yy = 0;
+                sum = 0;
+                for (int x = x0; x < x1; x++) {
+                    yy = 0;
+                    for (int y = y0; y < y1; y++) {  // take every xstride, ystride pixels as output
+                        float v = 0;
+                        v = renderer.getApsGrayValueAtPixel(x, y);
+                        frame[xx][yy++] = v;
+                        sum += v;
+                    }
+                    xx++;
+                }
+            }
+
+            public String toString() {
+                return String.format("SubFrame with %d x %d pixels", dim, dim);
+            }
+
+            public void draw(GL2 gl) {
+                gl.glLineWidth(2);
+                gl.glColor4f(0, 0, .3f, .1f);
+                gl.glRectf(x0, y0, x0 + dim, y0 + dim);
+            }
+        }
+
+        private class BallDetector {
+
+            // basically a black spot of size of ball, with zero sum
+            int kernelDim;
+            float[][] output; // output of convolution, has dim subFrame.dim-ballRadius
+            float[][] kernel; // size of ball, filled with zeros outside circle of ball
+            int dim;
+            float maxvalue;
+            int maxx, maxy;
+
+            void convolve(SubFrame subFrame) {
+                // sums up pixel values in disk region and outputs the result
+                updateKernel();
+                if (output == null || dim != subFrame.dim - kernelDim) {
+                    dim = subFrame.dim - kernelDim; // TODO check size
+                    output = new float[dim][dim];
+                }
+                maxvalue = Float.NEGATIVE_INFINITY;
+                for (int x = 0; x < dim; x++) {
+                    for (int y = 0; y < dim; y++) {
+                        float sum = 0;
+                        for (int i = 0; i < kernelDim; i++) {
+                            for (int j = 0; j < kernelDim; j++) {
+                                sum += kernel[i][j] * subFrame.frame[x + i][y + j];
+                            }
+                        }
+                        output[x][y] = subFrame.sum + sum;
+                        if (sum > maxvalue) {
+                            maxvalue = sum;
+                            maxx = x + kernelDim / 2;
+                            maxy = y + kernelDim / 2;
+                        }
+                    }
+                }
+
+            }
+
+            void updateKernel() {
+                if (kernel == null || (int) ballRadiusPixels != kernelDim) {
+                    kernelDim = (int) ballRadiusPixels;
+                    kernel = new float[kernelDim][kernelDim];
+                    for (int x = 0; x < kernelDim; x++) {
+                        for (int y = 0; y < kernelDim; y++) {
+                            double dx = x - kernelDim / 2;
+                            double dy = y - kernelDim / 2;
+                            double r = Math.sqrt(dx * dx + dy * dy);
+                            if (r <= kernelDim) {
+                                kernel[x][y] = -1;
+                            } else {
+                                kernel[x][y] = 0;
+                            }
+                        }
+                    }
+
+                }
+
+            }
+
+            public void draw(GL2 gl) {
+                if(maxvalue<=0) return;
+                gl.glColor4f(1, 1, 1, .2f);
+                float xc = subFrame.x0 + maxx, yc = subFrame.y0 + maxy;
+                if (quad == null) {
+                    quad = glu.gluNewQuadric();
+                }
+
+                gl.glPushMatrix();
+                gl.glTranslatef(xc,yc, 0);
+                glu.gluQuadricDrawStyle(quad, GLU.GLU_LINE);
+                gl.glLineWidth(2f);
+                glu.gluDisk(quad, 0, ballRadiusPixels, 16, 1);
+                gl.glPopMatrix();
+
+            }
+        }
+    }
 }

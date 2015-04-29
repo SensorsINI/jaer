@@ -122,6 +122,14 @@ public class LabyrinthGame extends EventFilter2DMouseAdaptor {
         controller.doJiggleTable();
     }
     
+    public void doStartLogging(){
+        controller.doStartLogging();
+    }
+    
+    public void doStopLogging(){
+        controller.doStopLogging();
+    }
+    
     public void doStopJiggle(){
         controller.doStopJiggle();
     }

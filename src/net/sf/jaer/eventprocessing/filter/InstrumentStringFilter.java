@@ -46,7 +46,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
 
 @Description("Measures the frequency of vibrating structures")
-@DevelopmentStatus(DevelopmentStatus.Status.Stable)
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class InstrumentStringFilter extends EventFilter2D implements Observer, FrameAnnotater {
 
 	final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
