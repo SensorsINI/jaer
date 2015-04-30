@@ -54,6 +54,9 @@ public class LabyrinthGame extends EventFilter2DMouseAdaptor {
         setPropertyTooltip("stopJiggle", "stop the current jiggling");
         setPropertyTooltip("enableControl", "enable ball controller");
         setPropertyTooltip("disableControl", "disable ball controller");
+        setPropertyTooltip("startLogging", "start logging controller output (see status output for filename)");
+        setPropertyTooltip("stopLogging", "stop logging controller output (see status output for filename)");
+        setPropertyTooltip("captureBackgroundImage", "capture next image frame as background image, for background model for static ball localizaiton");
     }
 
     @Override
@@ -129,6 +132,15 @@ public class LabyrinthGame extends EventFilter2DMouseAdaptor {
     public void doStopLogging(){
         controller.doStopLogging();
     }
+    
+    public void doCaptureBackgroundImage(){
+        controller.tracker.doCaptureBackgroundImage();
+    }
+    
+           public void doClearBackgroundImage(){
+          controller.tracker.doClearBackgroundImage();
+       }
+
     
     public void doStopJiggle(){
         controller.doStopJiggle();

@@ -170,7 +170,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             target = nav.findTarget();
 
             if (target != null) {
-                futurePos.setLocation(ball.getLocation());
+                futurePos.setLocation(tracker.getBallLocation());
                 Point2D.Float velPPS = tracker.getBallVelocity();
                 // future position of ball is given by ball velocity times delay
                 if (controllerDelayMs > 0) {
@@ -329,7 +329,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                 gl.glLineWidth(2f);
                 gl.glColor4f(.25f, .25f, 0, .3f);
                 gl.glBegin(GL.GL_LINES);
-                gl.glVertex2f(tracker.getBall().getLocation().x, tracker.getBall().getLocation().y);
+                gl.glVertex2f(tracker.getBallLocation().x, tracker.getBallLocation().y);
                 gl.glVertex2f(target.x, target.y);
                 gl.glEnd();
             }

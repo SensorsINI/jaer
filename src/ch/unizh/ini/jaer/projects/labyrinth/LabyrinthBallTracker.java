@@ -33,6 +33,7 @@ import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap.PathPoint;
 import ch.unizh.ini.jaer.projects.virtualslotcar.Histogram2DFilter;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.Arrays;
 import net.sf.jaer.eventprocessing.filter.RotateFilter;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 
@@ -84,6 +85,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         tracker.addObserver(this);
         setEnclosedFilterChain(filterChain);
         String s = " Labyrinth Tracker";
+        staticBallTracker = new StaticBallTracker();
         setPropertyTooltip("clusterSize", "size (starting) in fraction of chip max size");
         setPropertyTooltip("mixingFactor", "how much cluster is moved towards an event, as a fraction of the distance from the cluster to the event");
         setPropertyTooltip("velocityPoints", "the number of recent path points (one per packet of events) to use for velocity vector regression");
@@ -97,6 +99,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         setPropertyTooltip("maxNumClusters", "Sets the maximum potential number of clusters");
         setPropertyTooltip("velocityMedianFilterNumSamples", "number of velocity samples to median filter for ball velocity");
         setPropertyTooltip("ballRadiusPixels", "radius of ball in pixels used for locating ball in subframe static image");
+        setPropertyTooltip("captureBackgroundImage", "capture next image frame as background image, for background model for static ball localizaiton");
     }
 
     @Override
@@ -213,6 +216,31 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     public RectangularClusterTracker.Cluster getBall() {
         return ball;
     }
+
+    /**
+     * Returns ball location from event tracker if it has a value, otherwise
+     * from the convolution based tracker
+     *
+     * @return
+     */
+    public Point2D.Float getBallLocation() {
+        if (ball != null && ball.isVisible()) {
+            return ball.getLocation();
+        } else {
+            return staticBallTracker.getBallLocation();
+        }
+    }
+
+    private final Point2D.Float zeroVelocity = new Point2D.Float(0, 0);
+
+    public Point2D.Float getBallVelocityPPS() {
+        if (ball != null && ball.isVisible()) {
+            return ball.getVelocityPPS();
+        } else {
+            return zeroVelocity;
+        }
+    }
+
     int velocityMedianFilterLengthSamples = getInt("velocityMedianFilterLengthSamples", 9);
     MedianLowpassFilter velxfilter = new MedianLowpassFilter(velocityMedianFilterLengthSamples);
     MedianLowpassFilter velyfilter = new MedianLowpassFilter(velocityMedianFilterLengthSamples);
@@ -343,6 +371,14 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         map.doLoadMap();
     }
 
+    public void doCaptureBackgroundImage() {
+        staticBallTracker.doCaptureBackgroundImage();
+    }
+
+    public void doClearBackgroundImage() {
+        staticBallTracker.doClearBackgroundImage();
+    }
+
     public synchronized void doClearMap() {
         map.doClearMap();
     }
@@ -409,9 +445,6 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE) {
-            if (staticBallTracker == null) {
-                staticBallTracker = new StaticBallTracker();
-            }
             staticBallTracker.locateBall();
         }
     }
@@ -435,9 +468,26 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
 
         private SubFrame subFrame = null;
         private final BallDetector ballDetector;
+        public float ballX = Float.NaN, ballY = Float.NaN;
+        private Point2D.Float location = new Point2D.Float(ballX, ballY);
+        private float[][] backgroundImage;
+        private boolean captureBackground = false;
 
         private StaticBallTracker() {
             this.ballDetector = new BallDetector();
+        }
+
+        public void doCaptureBackgroundImage() {
+            captureBackground = true;
+        }
+
+        public void doClearBackgroundImage() {
+            if (backgroundImage == null) {
+                return;
+            }
+            for (float[] f : backgroundImage) {
+                Arrays.fill(f, 0);
+            }
         }
 
         public void draw(GL2 gl) {
@@ -454,8 +504,12 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
                 subFrame = new SubFrame(dim);
             }
             subFrame.fill(renderer);
-            ballDetector.convolve(subFrame);
+            ballDetector.detectBallLocation(subFrame);
 
+        }
+
+        private Point2D.Float getBallLocation() {
+            return location;
         }
 
         private class SubFrame {
@@ -463,7 +517,8 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
             float[][] frame;
             int dim;
             int x0, x1, y0, y1;
-            float sum;
+            float avg;
+            int n;  // total number pixels
 
             private SubFrame(int dim) {
                 this.dim = dim;
@@ -472,12 +527,24 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
             }
 
             private void fill(AEFrameChipRenderer renderer) {
+                int sy = chip.getSizeY();
+                int sx = chip.getSizeX();
+                if (captureBackground) {
+                    captureBackground = false;
+                    if (backgroundImage == null || backgroundImage.length != chip.getSizeX() || backgroundImage[0].length != chip.getSizeY()) {
+                        backgroundImage = new float[chip.getSizeX()][chip.getSizeY()];
+                    }
+                    for (int x = 0; x < sx; x++) {
+                        for (int y = y0; y < sy; y++) {  // take every xstride, ystride pixels as output
+                            backgroundImage[x][y] = renderer.getApsGrayValueAtPixel(x, y);
+                        }
+                    }
+
+                }
                 if (ball == null) {
                     return;
                 }
                 Point2D.Float bl = ball.getLocation();
-                int sy = chip.getSizeY();
-                int sx = chip.getSizeX();
                 int cx = Math.round(bl.x);
                 int cy = Math.round(bl.y);
 
@@ -499,17 +566,20 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
 
                 // extract ball subframe
                 int xx = 0, yy = 0;
-                sum = 0;
+                float sum = 0;
                 for (int x = x0; x < x1; x++) {
                     yy = 0;
                     for (int y = y0; y < y1; y++) {  // take every xstride, ystride pixels as output
                         float v = 0;
-                        v = renderer.getApsGrayValueAtPixel(x, y);
+                        v = renderer.getApsGrayValueAtPixel(x, y) 
+                                - (backgroundImage!=null?(backgroundImage[x][y]):0);
                         frame[xx][yy++] = v;
                         sum += v;
                     }
                     xx++;
                 }
+                n = dim * dim;
+                avg = sum / n;
             }
 
             public String toString() {
@@ -526,14 +596,25 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         private class BallDetector {
 
             // basically a black spot of size of ball, with zero sum
-            int kernelDim;
-            float[][] output; // output of convolution, has dim subFrame.dim-ballRadius
-            float[][] kernel; // size of ball, filled with zeros outside circle of ball
-            int dim;
-            float maxvalue;
-            int maxx, maxy;
+            private int kernelDim;
+            private float[][] output; // output of convolution, has dim subFrame.dim-ballRadius
+            private float[][] kernel; // size of ball, filled with zeros outside circle of ball
+            private int dim;
+            private int m; // sum of weights = sum of nonzero (+1) values
+            public float maxvalue;
+            private int maxx, maxy;
 
-            void convolve(SubFrame subFrame) {
+            void detectBallLocation(SubFrame subFrame) {
+                // we have sum of all pixels
+                // from sum we can compute the lightness of each pixel compared to average.
+                // then to compute the ball location, we look for a black disk. We do this by
+                // computing each pixel's value relative to average value (lightness), then by summing all
+                // pixels outide the disk multiplied by +1 and adding all pixels inside the disk multiplied by -1.
+                // Then if the pixels inside the disk are dark, they will have negative lightness and the product of lightness
+                // and kernel weight (-1) will be positive. For pixels outside the disk, their lightness may be postive
+                // and when they are multiplied by +1 they will be positive. The sum of these inside and outside sums will then
+                // be maximum for a black disk on a white background.
+
                 // sums up pixel values in disk region and outputs the result
                 updateKernel();
                 if (output == null || dim != subFrame.dim - kernelDim) {
@@ -549,20 +630,24 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
                                 sum += kernel[i][j] * subFrame.frame[x + i][y + j];
                             }
                         }
-                        output[x][y] = subFrame.sum + sum;
-                        if (sum > maxvalue) {
-                            maxvalue = sum;
+                        final float out = 2 * (subFrame.avg * m - sum);
+                        output[x][y] = out;  // output is sum of all pixels
+                        if (out > maxvalue) {
+                            maxvalue = out;
                             maxx = x + kernelDim / 2;
                             maxy = y + kernelDim / 2;
                         }
                     }
                 }
-
+                ballX = subFrame.x0 + maxx;
+                ballY = subFrame.y0 + maxy;
+                location.setLocation(ballX, ballY);
             }
 
             void updateKernel() {
                 if (kernel == null || (int) ballRadiusPixels != kernelDim) {
                     kernelDim = (int) ballRadiusPixels;
+                    m = 0;
                     kernel = new float[kernelDim][kernelDim];
                     for (int x = 0; x < kernelDim; x++) {
                         for (int y = 0; y < kernelDim; y++) {
@@ -570,7 +655,8 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
                             double dy = y - kernelDim / 2;
                             double r = Math.sqrt(dx * dx + dy * dy);
                             if (r <= kernelDim) {
-                                kernel[x][y] = -1;
+                                kernel[x][y] = 1; // disk is 1 where the disk is, zero otherwise
+                                m++;
                             } else {
                                 kernel[x][y] = 0;
                             }
@@ -582,15 +668,16 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
             }
 
             public void draw(GL2 gl) {
-                if(maxvalue<=0) return;
+                if (maxvalue <= 0 || Float.isNaN(ballX) || Float.isNaN(ballY)) {
+                    return;
+                }
                 gl.glColor4f(1, 1, 1, .2f);
-                float xc = subFrame.x0 + maxx, yc = subFrame.y0 + maxy;
                 if (quad == null) {
                     quad = glu.gluNewQuadric();
                 }
 
                 gl.glPushMatrix();
-                gl.glTranslatef(xc,yc, 0);
+                gl.glTranslatef(ballX, ballY, 0);
                 glu.gluQuadricDrawStyle(quad, GLU.GLU_LINE);
                 gl.glLineWidth(2f);
                 glu.gluDisk(quad, 0, ballRadiusPixels, 16, 1);
