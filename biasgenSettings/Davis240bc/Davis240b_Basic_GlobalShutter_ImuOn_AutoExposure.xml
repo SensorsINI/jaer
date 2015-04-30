@@ -275,7 +275,7 @@
                 <entry key="DepressingSynapseFilter.weight" value="2.313778E-4"/>
                 <entry key="RotateFilter.rotate90deg" value="false"/>
                 <entry key="DAVIS240B.sbret10" value="false"/>
-                <entry key="DAVIS240B.globalShutter" value="true"/>
+                <entry key="DAVIS240B.GlobalShutter" value="true"/>
                 <entry key="Steadicam.positionComputer" value="VORSensor"/>
                 <entry key="Steadicam.cornerFreqHz" value="0.1"/>
                 <entry key="Steadicam.filterEnabled" value="false"/>

@@ -276,7 +276,6 @@
                 <entry key="DepressingSynapseFilter.weight" value="2.313778E-4"/>
                 <entry key="RotateFilter.rotate90deg" value="false"/>
                 <entry key="DAVIS240C.sbret10" value="false"/>
-                <entry key="DAVIS240C.globalShutter" value="false"/>
                 <entry key="Steadicam.positionComputer" value="VORSensor"/>
                 <entry key="Steadicam.cornerFreqHz" value="0.1"/>
                 <entry key="Steadicam.filterEnabled" value="true"/>
@@ -775,7 +774,6 @@
                 <entry key="DAVIS240B.AddressedIPotCF.ApsROSFBn.Type" value="NORMAL"/>
                 <entry key="DAVIS240B.typeNCalib" value="false"/>
                 <entry key="DAVIS240B.sbret10" value="false"/>
-                <entry key="DAVIS240B.globalShutter" value="true"/>
                 <entry key="DAVIS240B.showImageHistogram" value="false"/>
                 <entry key="DAVIS240B.autoshotThresholdEvents" value="0"/>
                 <entry key="DAVIS240B.showIMU" value="true"/>
@@ -983,7 +981,6 @@
                 <entry key="Davis346B.ShiftedSourceBias.SSP.VoltageLevel" value="SplitGate"/>
                 <entry key="Davis346B.ShiftedSourceBias.apsOverflowLevel.BufBitValue" value="6"/>
                 <entry key="Davis346B.ShiftedSourceBias.apsOverflowLevel.VdacBitValue" value="23"/>
-                <entry key="Davis346B.globalShutter" value="false"/>
                 <entry key="Davis346B.hotPixelSuppression" value="false"/>
                 <entry key="Davis346B.nArow" value="false"/>
                 <entry key="Davis346B.nChipReset" value="true"/>
@@ -1173,7 +1170,6 @@
                 <entry key="DavisRGBW640.AdjustOVG1Lo" value="true"/>
                 <entry key="DavisRGBW640.AdjustOVG2Lo" value="false"/>
                 <entry key="DavisRGBW640.AdjustTX2OVG2Hi" value="false"/>
-                <entry key="DavisRGBW640.GlobalShutter" value="false"/>
                 <entry key="DavisRGBW640.ResetCalibNeuron" value="true"/>
                 <entry key="DavisRGBW640.ResetTestPixel" value="true"/>
                 <entry key="DavisRGBW640.SelectGrayCounter" value="true"/>
@@ -1204,7 +1200,6 @@
                 <entry key="DavisRGBW640.TestADC" value="false"/>
                 <entry key="DavisRGBW640.TypeNCalibNeuron" value="false"/>
                 <entry key="DavisRGBW640.UseAOut" value="false"/>
-                <entry key="DavisRGBW640.globalShutter" value="false"/>
                 <entry key="DavisRGBW640.hotPixelSuppression" value="false"/>
                 <entry key="DavisRGBW640.nArow" value="false"/>
                 <entry key="DavisRGBW640.nChipReset" value="true"/>
@@ -1407,7 +1402,6 @@
                 <entry key="Davis208PixelParade.ResetTestPixel" value="true"/>
                 <entry key="Davis208PixelParade.AERnArow" value="false"/>
                 <entry key="Davis208PixelParade.UseAOut" value="false"/>
-                <entry key="Davis208PixelParade.GlobalShutter" value="false"/>
                 <entry key="Davis208PixelParade.SelectGrayCounter" value="true"/>
                 <entry key="Davis208PixelParade.TestADC" value="false"/>
                 <entry key="Davis208PixelParade.SelPreAmpAvgxD" value="false"/>
