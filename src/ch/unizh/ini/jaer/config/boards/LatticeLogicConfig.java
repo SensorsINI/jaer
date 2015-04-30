@@ -294,91 +294,91 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 				}
 				else if (buf.limit() == 39) { // DAVIS RGB
 					// Exposure (in cycles, from us)
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 7,
-						(((buf.getShort(36) & 0xFFFF) << 8) | (buf.get(38) & 0xFF)) * ADC_CLOCK_FREQ_CYCLES);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 13,
+						(((buf.getShort(16) & 0xFFFF) << 8) | (buf.get(18) & 0xFF)) * ADC_CLOCK_FREQ_CYCLES);
 
 					// ColSettle
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 10,
-						buf.getShort(34) & 0xFFFF);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 16,
+						buf.getShort(14) & 0xFFFF);
 
 					// RowSettle
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 11,
-						buf.getShort(32) & 0xFFFF);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 17,
+						buf.getShort(12) & 0xFFFF);
 
 					// ResSettle
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 9,
-						buf.getShort(30) & 0xFFFF);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 15,
+						buf.getShort(10) & 0xFFFF);
 
 					// Frame Delay (in cycles, from us)
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 8,
-						(buf.getShort(28) & 0xFFFF) * ADC_CLOCK_FREQ_CYCLES);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 14,
+						(buf.getShort(8) & 0xFFFF) * ADC_CLOCK_FREQ_CYCLES);
 
 					// IMU Run
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 0,
-						buf.get(27) & 0x01);
+						buf.get(7) & 0x01);
 
 					// RS/GS
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 2,
-						((buf.get(27) & 0x02) != 0) ? (0) : (1));
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 8,
+						((buf.get(7) & 0x02) != 0) ? (0) : (1));
 
 					// IMU DLPF
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 7,
-						buf.get(25) & 0x07);
+						buf.get(5) & 0x07);
 
 					// IMU SampleRateDivider
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 6,
-						buf.get(24) & 0xFF);
+						buf.get(4) & 0xFF);
 
 					// IMU Gyro Scale
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 9,
-						(buf.get(23) >> 3) & 0x03);
+						(buf.get(3) >> 3) & 0x03);
 
 					// IMU Accel Scale
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 8,
-						(buf.get(22) >> 3) & 0x03);
+						(buf.get(2) >> 3) & 0x03);
 
 					// NullSettle
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 12,
-						buf.getShort(20) & 0xFFFF);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 18,
+						buf.getShort(0) & 0xFFFF);
 
 					// Transfer_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 32,
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 38,
 						buf.getShort(18) & 0xFFFF);
 
 					// RSFDSettle_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 33,
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 39,
 						buf.getShort(16) & 0xFFFF);
 
 					// RSCpReset_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 34,
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 40,
 						buf.getShort(14) & 0xFFFF);
 
 					// RSCpSettle_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 35,
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 41,
 						buf.getShort(12) & 0xFFFF);
 
 					// GSPDReset_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 36,
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 42,
 						buf.getShort(10) & 0xFFFF);
 
 					// GSResetFall_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 37,
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 43,
 						buf.getShort(8) & 0xFFFF);
 
 					// GSTXFall_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 38,
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 44,
 						buf.getShort(6) & 0xFFFF);
 
 					// GSFDReset_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 39,
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 45,
 						buf.getShort(4) & 0xFFFF);
 
 					// GSCpResetFD_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 40,
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 46,
 						buf.getShort(2) & 0xFFFF);
 
 					// GSCpResetSettle_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 41,
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 47,
 						buf.getShort(0) & 0xFFFF);
 				}
 			}
