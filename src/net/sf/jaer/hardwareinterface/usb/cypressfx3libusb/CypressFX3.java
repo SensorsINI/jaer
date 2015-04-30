@@ -682,8 +682,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		// Slow down DVS ACK for rows on small boards.
 		if (getPID() == (short) 0x841B) {
-			spiConfigSend(CypressFX3.FPGA_DVS, (short) 1, 14);
-			spiConfigSend(CypressFX3.FPGA_DVS, (short) 3, 4);
+			spiConfigSend(CypressFX3.FPGA_DVS, (short) 3, 14);
+			spiConfigSend(CypressFX3.FPGA_DVS, (short) 5, 4);
 		}
 
 		spiConfigSend(CypressFX3.FPGA_USB, (short) 0, 1);
@@ -691,9 +691,9 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		spiConfigSend(CypressFX3.FPGA_MUX, (short) 1, 1);
 		spiConfigSend(CypressFX3.FPGA_MUX, (short) 0, 1);
 
-		spiConfigSend(CypressFX3.FPGA_DVS, (short) 0, 1);
+		spiConfigSend(CypressFX3.FPGA_DVS, (short) 2, 1);
 
-		spiConfigSend(CypressFX3.FPGA_APS, (short) 0, 1);
+		spiConfigSend(CypressFX3.FPGA_APS, (short) 4, 1);
 
 		spiConfigSend(CypressFX3.FPGA_IMU, (short) 0, 1);
 
@@ -711,9 +711,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		try {
 			spiConfigSend(CypressFX3.FPGA_EXTINPUT, (short) 0, 0);
 			spiConfigSend(CypressFX3.FPGA_IMU, (short) 0, 0);
-			spiConfigSend(CypressFX3.FPGA_APS, (short) 1, 0); // Ensure ADC turns off.
-			spiConfigSend(CypressFX3.FPGA_APS, (short) 0, 0);
-			spiConfigSend(CypressFX3.FPGA_DVS, (short) 0, 0);
+			spiConfigSend(CypressFX3.FPGA_APS, (short) 4, 0);
+			spiConfigSend(CypressFX3.FPGA_DVS, (short) 2, 0);
 			spiConfigSend(CypressFX3.FPGA_MUX, (short) 3, 0); // Ensure chip turns off.
 			spiConfigSend(CypressFX3.FPGA_MUX, (short) 1, 0); // Turn off timestamp too.
 			spiConfigSend(CypressFX3.FPGA_MUX, (short) 0, 0);

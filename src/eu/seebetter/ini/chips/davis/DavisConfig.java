@@ -338,7 +338,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
         getVideoControl().getContrastContoller().addObserver(videoParameterControlPanel);
         // ParameterControlPanel to listen to Observerable
         // changes in videoControl
-        
+
         // biasgen
         JPanel combinedBiasShiftedSourcePanel = new JPanel();
         videoControlPanel.add(new JLabel(
@@ -791,7 +791,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
         if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
             // Translate Row-only Events is now in the logic.
             try {
-                ((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_DVS, (short) 6,
+                ((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_DVS, (short) 8,
                         (translateRowOnlyEvents) ? (0) : (1));
             } catch (HardwareInterfaceException e) {
                 // TODO Auto-generated catch block
@@ -1223,7 +1223,10 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
         public DavisVideoContrastController getContrastContoller() {
             if(chip.getRenderer() instanceof AEFrameChipRenderer){
                 return ((AEFrameChipRenderer)(chip.getRenderer())).getContrastController();
-            }else throw new RuntimeException("Cannot return a video contrast controller for the image output for the current renderer, which is "+chip.getRenderer());
+            }
+			else {
+				throw new RuntimeException("Cannot return a video contrast controller for the image output for the current renderer, which is "+chip.getRenderer());
+			}
         }
 
     }
