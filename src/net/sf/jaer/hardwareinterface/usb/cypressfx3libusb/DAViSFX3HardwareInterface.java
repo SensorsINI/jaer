@@ -60,6 +60,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	private static final int CHIP_DAVIS640 = 6;
 	private static final int CHIP_DAVISRGB = 7;
 	private static final int CHIP_DAVIS208 = 8;
+	private static final int CHIP_DAVIS346C = 9;
 
 	/**
 	 * This reader understands the format of raw USB data and translates to the
@@ -74,6 +75,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 		private int dvsLastY;
 		private boolean dvsGotY;
+		private final boolean dvsFlipXY;
 
 		private static final int APS_READOUT_TYPES_NUM = 3;
 		private static final int APS_READOUT_RESET = 0;
@@ -85,6 +87,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private boolean apsRGBPixelOffsetDirection;
 		private final short[] apsCountX;
 		private final short[] apsCountY;
+		private final boolean apsFlipX;
+		private final boolean apsFlipY;
 
 		private static final int IMU_DATA_LENGTH = 7;
 		private final short[] imuEvents;
@@ -102,6 +106,12 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 			imuEvents = new short[RetinaAEReader.IMU_DATA_LENGTH];
 
 			chipID = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 1);
+
+			int chipAPSStreamStart = spiConfigReceive(CypressFX3.FPGA_APS, (short) 2);
+			apsFlipX = (chipAPSStreamStart & 0x02) != 0;
+			apsFlipY = (chipAPSStreamStart & 0x01) != 0;
+
+			dvsFlipXY = (chipID == CHIP_DAVIS346A) || (chipID == CHIP_DAVIS346B) || (chipID == CHIP_DAVIS640);
 		}
 
 		private int getSizeX() {
@@ -413,9 +423,17 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									// old logic, we have to flip it here, so that the chip class extractor
 									// can flip it back. Backwards compatibility with recordings is the main
 									// motivation to do this hack.
-									buffer.getAddresses()[eventCounter] = ((dvsLastY << DavisChip.YSHIFT) & DavisChip.YMASK)
-										| (((getSizeX() - 1 - data) << DavisChip.XSHIFT) & DavisChip.XMASK)
-										| (((code & 0x01) << DavisChip.POLSHIFT) & DavisChip.POLMASK);
+									if (dvsFlipXY) {
+										buffer.getAddresses()[eventCounter] = ((data << DavisChip.YSHIFT) & DavisChip.YMASK)
+											| (((getSizeY() - 1 - dvsLastY) << DavisChip.XSHIFT) & DavisChip.XMASK)
+											| (((code & 0x01) << DavisChip.POLSHIFT) & DavisChip.POLMASK);
+									}
+									else {
+										buffer.getAddresses()[eventCounter] = ((dvsLastY << DavisChip.YSHIFT) & DavisChip.YMASK)
+											| (((getSizeX() - 1 - data) << DavisChip.XSHIFT) & DavisChip.XMASK)
+											| (((code & 0x01) << DavisChip.POLSHIFT) & DavisChip.POLMASK);
+									}
+
 									buffer.getTimestamps()[eventCounter++] = currentTimestamp;
 								}
 
@@ -435,19 +453,24 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 								// The DAVIS240c chip is flipped along the X axis. This means it's first reading
 								// out the leftmost columns, and not the rightmost ones as in all the other chips.
 								// So, if a 240c is detected, we don't do the artificial sign flip here.
-								int xPos,
-								yPos;
-								if (chipID == CHIP_DAVIS240C) {
-									xPos = apsCountX[apsCurrentReadoutType];
-								}
-								else {
+								int xPos, yPos;
+
+								if (apsFlipX) {
 									xPos = getSizeX() - 1 - apsCountX[apsCurrentReadoutType];
 								}
-								if (chipID == CHIP_DAVISRGB) {
-									yPos = getSizeY() - 1 - apsCountY[apsCurrentReadoutType] - apsRGBPixelOffset;
+								else {
+									xPos = apsCountX[apsCurrentReadoutType];
+								}
+
+								if (apsFlipY) {
+									yPos = getSizeY() - 1 - apsCountY[apsCurrentReadoutType];
 								}
 								else {
-									yPos = getSizeY() - 1 - apsCountY[apsCurrentReadoutType];
+									yPos = apsCountY[apsCurrentReadoutType];
+								}
+
+								if (chipID == CHIP_DAVISRGB) {
+									yPos -= apsRGBPixelOffset;
 								}
 
 								// Flip for some new chips.
