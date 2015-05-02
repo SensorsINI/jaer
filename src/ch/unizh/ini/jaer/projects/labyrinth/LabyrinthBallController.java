@@ -144,8 +144,9 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
                     ballVelY = tracker.ball.getVelocityPPS().y;
                 }
             }
-            //         pan tilt targetX targetY ballX ballY ballVelX ballVelY");
-            tobiLogger.log(String.format("%f %f %f %f %f %f %f %f",
+            //         timestamp pan tilt targetX targetY ballX ballY ballVelX ballVelY");
+            tobiLogger.log(String.format("%d %f %f %f %f %f %f %f %f",
+                    in.getLastTimestamp(),
                     labyrinthHardware.panValue, labyrinthHardware.tiltValue,
                     target.x, target.y,
                     ballX, ballY,
@@ -270,7 +271,8 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 
     public void doStartLogging() {
         if (tobiLogger == null) {
-            tobiLogger = new TobiLogger("LabyrinthBallController", " LabyrinthBallController logging data\nt pan tilt targetX targetY ballX ballY ballVelX ballVelY");
+            tobiLogger = new TobiLogger("LabyrinthBallController",
+                    " LabyrinthBallController logging data\nt timestamp pan tilt targetX targetY ballX ballY ballVelX ballVelY");
         }
         tobiLogger.setEnabled(true);
 
@@ -1003,4 +1005,15 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             this.nextPathPoint = nextPathPoint;
         }
     }
+
+    public synchronized void doCollectHistogram() {
+        tracker.doCollectHistogram();
+    }
+
+    public synchronized void doFreezeHistogram() {
+        tracker.doFreezeHistogram();
+    }
+    
+    
+    
 }

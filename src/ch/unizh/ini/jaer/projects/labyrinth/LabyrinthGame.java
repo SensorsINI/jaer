@@ -57,6 +57,9 @@ public class LabyrinthGame extends EventFilter2DMouseAdaptor {
         setPropertyTooltip("startLogging", "start logging controller output (see status output for filename)");
         setPropertyTooltip("stopLogging", "stop logging controller output (see status output for filename)");
         setPropertyTooltip("captureBackgroundImage", "capture next image frame as background image, for background model for static ball localizaiton");
+        setPropertyTooltip("clearBackgroundImage", "clear background image, for background model for static ball localizaiton");
+        setPropertyTooltip("collectBackgroundEventMask", "start capturing background activity");
+        setPropertyTooltip("freezeBackgroundEventMask", "freeze background activity");
     }
 
     @Override
@@ -152,5 +155,15 @@ public class LabyrinthGame extends EventFilter2DMouseAdaptor {
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() - 5);
         MultilineAnnotationTextRenderer.renderMultilineString("LabyrinthGate: State=" + state.toString());
     }
+
+    public synchronized void doCollectBackgroundEventMask() {
+        controller.doCollectHistogram();
+    }
+
+    public synchronized void doFreezeBackgroundEventMask() {
+        controller.doFreezeHistogram();
+    }
+    
+    
 
 }

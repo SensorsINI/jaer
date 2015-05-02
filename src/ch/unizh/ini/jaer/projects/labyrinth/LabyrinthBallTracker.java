@@ -11,7 +11,6 @@ import java.util.Observer;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.awt.GLCanvas;
 import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
 
@@ -25,7 +24,6 @@ import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 import net.sf.jaer.eventprocessing.filter.XYTypeFilter;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
-import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.filter.MedianLowpassFilter;
@@ -34,6 +32,7 @@ import ch.unizh.ini.jaer.projects.virtualslotcar.Histogram2DFilter;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Arrays;
+import net.sf.jaer.eventprocessing.filter.CircularConvolutionFilter;
 import net.sf.jaer.eventprocessing.filter.RotateFilter;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 
@@ -61,6 +60,9 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     private float ballRadiusPixels = getFloat("ballRadiusPixels", 4);
     private float SUBFRAME_DIMENSION_PIXELS_MULTIPLE_OF_BALL_DIAMETER = 3;
     private StaticBallTracker staticBallTracker = null;
+    private final Histogram2DFilter histogram2DFilter;
+    private boolean ballFilterEnabled=getBoolean("ballFilterEnabled",true);
+    private CircularConvolutionFilter ballFilter=null;
 
     public LabyrinthBallTracker(AEChip chip, LabyrinthBallController controller) {
         this(chip);
@@ -76,7 +78,9 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         filterChain.add(new XYTypeFilter(chip));
 //        filterChain.add(new HotPixelFilter(chip));
 //        filterChain.add(new LabyrinthDavisTrackFilter(chip));
-        filterChain.add(new Histogram2DFilter(chip));
+        filterChain.add(histogram2DFilter=new Histogram2DFilter(chip));
+        
+        filterChain.add((ballFilter=new CircularConvolutionFilter(chip)));
 //        filterChain.add(new net.sf.jaer.eventprocessing.filter.DepressingSynapseFilter(chip));
         filterChain.add(new BackgroundActivityFilter(chip));
         //        filterChain.add(new CircularConvolutionFilter(chip));
@@ -686,4 +690,17 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
             }
         }
     }
+
+    public synchronized void doCollectHistogram() {
+        histogram2DFilter.doCollectHistogram();
+    }
+
+    public synchronized void doFreezeHistogram() {
+        histogram2DFilter.doFreezeHistogram();
+    }
+    
+    
+    
+    
+    
 }
