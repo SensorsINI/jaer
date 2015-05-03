@@ -75,7 +75,9 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 		private int dvsLastY;
 		private boolean dvsGotY;
-		private final boolean dvsFlipXY;
+		private final boolean dvsInvertXY;
+		private final int dvsSizeX;
+		private final int dvsSizeY;
 
 		private static final int APS_READOUT_TYPES_NUM = 3;
 		private static final int APS_READOUT_RESET = 0;
@@ -87,8 +89,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private boolean apsRGBPixelOffsetDirection;
 		private final short[] apsCountX;
 		private final short[] apsCountY;
+		private final boolean apsInvertXY;
 		private final boolean apsFlipX;
 		private final boolean apsFlipY;
+		private final int apsSizeX;
+		private final int apsSizeY;
 
 		private static final int IMU_DATA_LENGTH = 7;
 		private final short[] imuEvents;
@@ -107,29 +112,18 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 			chipID = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 1);
 
+			apsSizeX = spiConfigReceive(CypressFX3.FPGA_APS, (short) 0);
+			apsSizeY = spiConfigReceive(CypressFX3.FPGA_APS, (short) 1);
+
 			int chipAPSStreamStart = spiConfigReceive(CypressFX3.FPGA_APS, (short) 2);
+			apsInvertXY = (chipAPSStreamStart & 0x04) != 0;
 			apsFlipX = (chipAPSStreamStart & 0x02) != 0;
 			apsFlipY = (chipAPSStreamStart & 0x01) != 0;
 
-			dvsFlipXY = (chipID == CHIP_DAVIS346A) || (chipID == CHIP_DAVIS346B) || (chipID == CHIP_DAVIS640);
-		}
+			dvsSizeX = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 0);
+			dvsSizeY = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 1);
 
-		private int getSizeX() {
-			if ((chipID == CHIP_DAVIS346A) || (chipID == CHIP_DAVIS346B) || (chipID == CHIP_DAVIS640)
-				|| (chipID == CHIP_DAVISRGB)) {
-				return chip.getSizeY();
-			}
-
-			return chip.getSizeX();
-		}
-
-		private int getSizeY() {
-			if ((chipID == CHIP_DAVIS346A) || (chipID == CHIP_DAVIS346B) || (chipID == CHIP_DAVIS640)
-				|| (chipID == CHIP_DAVISRGB)) {
-				return chip.getSizeX();
-			}
-
-			return chip.getSizeY();
+			dvsInvertXY = (spiConfigReceive(CypressFX3.FPGA_DVS, (short) 2) & 0x04) != 0;
 		}
 
 		private void checkMonotonicTimestamp() {
@@ -263,7 +257,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										CypressFX3.log.fine("APS Frame End event received.");
 
 										for (int j = 0; j < RetinaAEReader.APS_READOUT_TYPES_NUM; j++) {
-											int checkValue = getSizeX();
+											int checkValue = apsSizeX;
 
 											// Check reset read against zero if
 											// disabled.
@@ -309,7 +303,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									case 13: // APS Column End
 										CypressFX3.log.fine("APS Column End event received.");
 
-										if (apsCountY[apsCurrentReadoutType] != getSizeY()) {
+										if (apsCountY[apsCurrentReadoutType] != apsSizeY) {
 											CypressFX3.log.severe("APS Column End: wrong row count ["
 												+ apsCurrentReadoutType + " - " + apsCountY[apsCurrentReadoutType]
 												+ "] detected.");
@@ -385,8 +379,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 							case 1: // Y address
 								// Check range conformity.
-								if (data >= getSizeY()) {
-									CypressFX3.log.severe("DVS: Y address out of range (0-" + (getSizeY() - 1) + "): "
+								if (data >= dvsSizeY) {
+									CypressFX3.log.severe("DVS: Y address out of range (0-" + (dvsSizeY - 1) + "): "
 										+ data + ".");
 									break; // Skip invalid Y address (don't update lastY).
 								}
@@ -409,8 +403,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 							case 2: // X address, Polarity OFF
 							case 3: // X address, Polarity ON
 								// Check range conformity.
-								if (data >= getSizeX()) {
-									CypressFX3.log.severe("DVS: X address out of range (0-" + (getSizeX() - 1) + "): "
+								if (data >= dvsSizeX) {
+									CypressFX3.log.severe("DVS: X address out of range (0-" + (dvsSizeX - 1) + "): "
 										+ data + ".");
 									break; // Skip invalid event.
 								}
@@ -423,14 +417,14 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									// old logic, we have to flip it here, so that the chip class extractor
 									// can flip it back. Backwards compatibility with recordings is the main
 									// motivation to do this hack.
-									if (dvsFlipXY) {
+									if (dvsInvertXY) {
 										buffer.getAddresses()[eventCounter] = ((data << DavisChip.YSHIFT) & DavisChip.YMASK)
-											| (((getSizeY() - 1 - dvsLastY) << DavisChip.XSHIFT) & DavisChip.XMASK)
+											| (((dvsSizeY - 1 - dvsLastY) << DavisChip.XSHIFT) & DavisChip.XMASK)
 											| (((code & 0x01) << DavisChip.POLSHIFT) & DavisChip.POLMASK);
 									}
 									else {
 										buffer.getAddresses()[eventCounter] = ((dvsLastY << DavisChip.YSHIFT) & DavisChip.YMASK)
-											| (((getSizeX() - 1 - data) << DavisChip.XSHIFT) & DavisChip.XMASK)
+											| (((dvsSizeX - 1 - data) << DavisChip.XSHIFT) & DavisChip.XMASK)
 											| (((code & 0x01) << DavisChip.POLSHIFT) & DavisChip.POLMASK);
 									}
 
@@ -444,7 +438,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 							case 4: // APS ADC sample
 								// Let's check that apsCountY is not above the maximum. This could happen
 								// if start/end of column events are discarded (no wait on transfer stall).
-								if (apsCountY[apsCurrentReadoutType] >= getSizeY()) {
+								if (apsCountY[apsCurrentReadoutType] >= apsSizeY) {
 									CypressFX3.log
 										.fine("APS ADC sample: row count is at maximum, discarding further samples.");
 									break;
@@ -453,17 +447,18 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 								// The DAVIS240c chip is flipped along the X axis. This means it's first reading
 								// out the leftmost columns, and not the rightmost ones as in all the other chips.
 								// So, if a 240c is detected, we don't do the artificial sign flip here.
-								int xPos, yPos;
+								int xPos;
+								int yPos;
 
 								if (apsFlipX) {
-									xPos = getSizeX() - 1 - apsCountX[apsCurrentReadoutType];
+									xPos = apsSizeX - 1 - apsCountX[apsCurrentReadoutType];
 								}
 								else {
 									xPos = apsCountX[apsCurrentReadoutType];
 								}
 
 								if (apsFlipY) {
-									yPos = getSizeY() - 1 - apsCountY[apsCurrentReadoutType];
+									yPos = apsSizeY - 1 - apsCountY[apsCurrentReadoutType];
 								}
 								else {
 									yPos = apsCountY[apsCurrentReadoutType];
@@ -473,9 +468,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									yPos -= apsRGBPixelOffset;
 								}
 
-								// Flip for some new chips.
-								if ((chipID == CHIP_DAVIS346A) || (chipID == CHIP_DAVIS346B)
-									|| (chipID == CHIP_DAVIS640) || (chipID == CHIP_DAVISRGB)) {
+								if (apsInvertXY) {
 									int temp = xPos;
 									xPos = yPos;
 									yPos = temp;

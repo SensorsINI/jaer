@@ -791,7 +791,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
         if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
             // Translate Row-only Events is now in the logic.
             try {
-                ((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_DVS, (short) 8,
+                ((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_DVS, (short) 9,
                         (translateRowOnlyEvents) ? (0) : (1));
             } catch (HardwareInterfaceException e) {
                 // TODO Auto-generated catch block

@@ -403,7 +403,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 
 				// nChipReset
 				if (index == 776) {
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_DVS, (short) 2, bytes[0]);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_DVS, (short) 3, bytes[0]);
 				}
 			}
 
