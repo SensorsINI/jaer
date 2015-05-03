@@ -8,6 +8,8 @@ package capacaccia2015;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -15,9 +17,11 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
- *
+ * Example to compute location
  * @author tobi
  */
+@Description("Example to compute mean event location")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class MeanTracker extends EventFilter2D implements FrameAnnotater{
 
     float xMean=0f, yMean=0f;
