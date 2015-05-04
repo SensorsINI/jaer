@@ -67,9 +67,13 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
 
         OutputEventIterator oi = out.outputIterator();
         for (Object o : in) {
-            if(o==null) continue;
+            if (o == null) {
+                continue;
+            }
             PolarityEvent e = (PolarityEvent) o;
             if (e.isSpecial() || e.isFilteredOut()) {
+                PolarityEvent oe = (PolarityEvent) oi.nextOutput();
+                oe.copyFrom(e);
                 continue;
             }
             x = e.x;
@@ -130,14 +134,13 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
                 yp + ((-negativeKernelRadius - .5f) * sz),
                 xp + ((negativeKernelRadius + .5f) * sz),
                 yp + ((negativeKernelRadius + .5f) * sz));
-        gl.glColor4f(0,0,1,.5f);
+        gl.glColor4f(0, 0, 1, .5f);
         gl.glBegin(GL.GL_LINE_LOOP);
-        gl.glVertex2f(xp + ((-negativeKernelRadius - .5f) * sz),yp + ((-negativeKernelRadius - .5f) * sz));
-        gl.glVertex2f(xp + ((negativeKernelRadius - .5f) * sz),yp + ((-negativeKernelRadius - .5f) * sz));
-        gl.glVertex2f(xp + ((negativeKernelRadius - .5f) * sz),yp + ((negativeKernelRadius - .5f) * sz));
-        gl.glVertex2f(xp + ((-negativeKernelRadius - .5f) * sz),yp + ((negativeKernelRadius - .5f) * sz));
+        gl.glVertex2f(xp + ((-negativeKernelRadius - .5f) * sz), yp + ((-negativeKernelRadius - .5f) * sz));
+        gl.glVertex2f(xp + ((negativeKernelRadius - .5f) * sz), yp + ((-negativeKernelRadius - .5f) * sz));
+        gl.glVertex2f(xp + ((negativeKernelRadius - .5f) * sz), yp + ((negativeKernelRadius - .5f) * sz));
+        gl.glVertex2f(xp + ((-negativeKernelRadius - .5f) * sz), yp + ((negativeKernelRadius - .5f) * sz));
         gl.glEnd();
-        
 
         // draw each positive kernel pixel on top
         for (Splatt s : splatts) {
