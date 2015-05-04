@@ -1294,7 +1294,6 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
     public class DavisChipConfigChain extends ChipConfigChain {
 
         // Config Bits
-
         OnchipConfigBit resetCalibNeuron = new OnchipConfigBit(chip, "ResetCalibNeuron", 0,
                 "turns the bias generator integrate and fire calibration neuron off", true);
         OnchipConfigBit typeNCalibNeuron = new OnchipConfigBit(
@@ -1442,24 +1441,24 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 
         class DigitalOutputMap extends OutputMap {
 
-            DigitalOutputMap() {
+        	DigitalOutputMap() {
                 for (int i = 0; i < 16; i++) {
                     put(i, i, "DigOut " + i);
                 }
             }
         }
 
-        class AnalogOutputMux extends OutputMux {
+        public class AnalogOutputMux extends OutputMux {
 
-            AnalogOutputMux(int n) {
+            public AnalogOutputMux(int n) {
                 super(sbChip, 4, 8, (new VoltageOutputMap()));
                 setName("Voltages" + n);
             }
         }
 
-        class DigitalOutputMux extends OutputMux {
+        public class DigitalOutputMux extends OutputMux {
 
-            DigitalOutputMux(int n) {
+        	public DigitalOutputMux(int n) {
                 super(sbChip, 4, 16, (new DigitalOutputMap()));
                 setName("LogicSignals" + n);
             }

@@ -1,5 +1,6 @@
 package eu.seebetter.ini.chips.bafilter;
 
+import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -9,15 +10,14 @@ import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
+import ch.unizh.ini.jaer.config.onchip.OutputMux;
 import eu.seebetter.ini.chips.davis.DavisConfig;
 import eu.seebetter.ini.chips.davis.DavisTowerBaseConfig;
 import eu.seebetter.ini.chips.davis.TowerOnChip6BitVDAC;
 import eu.seebetter.ini.chips.davis.imu.ImuControl;
 
 /**
- * Base configuration for Davis208PixelParade on Tower wafer designs
- *
- * @author Hongjie
+ * Base configuration for BA filter chip (AERCorrFilter).
  */
 public class BAFilterChipConfig extends DavisTowerBaseConfig {
 
@@ -27,65 +27,47 @@ public class BAFilterChipConfig extends DavisTowerBaseConfig {
 		setPotArray(new AddressedIPotArray(this)); // garbage collect IPots added in super by making this new potArray
 
 		vdacs = new TowerOnChip6BitVDAC[8];
-		// TODO fix this code for actual vdacs
-		// getPotArray().addPot(new TowerOnChip6BitVDAC(this, "", 0, 0, ""));
-                // https://docs.google.com/spreadsheet/ccc?key=0AuXeirzvZroNdHNLMWVldWVJdkdqNGNxOG5ZOFdXcHc#gid=10
-		getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "Vth", 0, 0,
-				"Threshold Voltage for the comparator")); //different/
-		getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "Vrs", 1, 1,
-				"Resetting voltage for the Capacitor"));  //different/
-		/*getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "ADC_RefHigh", 2, 2,
-				"The upper limit of the input voltage to the on chip ADC"));
-		getPotArray()
-			.addPot(
-				new TowerOnChip6BitVDAC(this, "ADC_RefLow", 3, 3,
-					"The lower limit of the input voltage to the on chip ADC"));
-		getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "AdcTestVoltageAI", 4, 4,
-				"A fixed voltage to test the on-chip ADC if it's configured to test mode, unused"));
-		getPotArray()
-			.addPot(
-				new TowerOnChip6BitVDAC(this, "ResetHpxBv", 5, 5,
-					"High voltage to be kept for the Hp pixel of Sim Bamford"));
-		getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "RefSsbxBv", 6, 6,
-				"Set OffsetBns, the shifted source bias voltage of the pre-amplifier with VDAC"));
-		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "Unconnected", 7, 7, "Unused, no effect"));*/
+		// https://docs.google.com/spreadsheet/ccc?key=0AuXeirzvZroNdHNLMWVldWVJdkdqNGNxOG5ZOFdXcHc#gid=10
+
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "Vth", 0, 0, "Threshold Voltage for the comparator"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "Vrs", 1, 1, "Resetting voltage for the capacitor"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "Unused1", 2, 2, "Unused"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "Unused2", 3, 3, "Unused"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "Unused3", 4, 4, "Unused"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "Unused4", 5, 5, "Unused"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "Unused5", 6, 6, "Unused"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "Unused6", 7, 7, "Unused"));
 
 		try {
 			// added from gdoc
 			// https://docs.google.com/spreadsheet/ccc?key=0AuXeirzvZroNdHNLMWVldWVJdkdqNGNxOG5ZOFdXcHc#gid=6
-			// private AddressedIPotCF diffOn, diffOff, refr, pr, sf, diff;
-			addAIPot("LocalBufBn,n,normal,Local buffer strength"); // 8 commen
-			addAIPot("PadFollBn,n,normal,Follower-pad buffer strength"); // 9 commen
-			diff = addAIPot("DiffBn,n,normal,DVS differenciator gain"); // 10  nonused
-			diffOn = addAIPot("OnBn,n,normal,DVS on event threshold"); // 11  nonused
-			diffOff = addAIPot("OffBn,n,normal,DVS off event threshold"); // 12  nonused
-			addAIPot("PixInvBn,n,normal,DVS request inversion static inverter strength"); // 13  nonused
-			addAIPot("BiasComp,p,normal,Photoreceptor bias current"); // 14  different
-			sf = addAIPot("PrSFBp,p,normal,Photoreceptor follower bias current"); // 15 nonused
-			refr = addAIPot("RefrBp,p,normal,DVS refractory period"); // 16 nonused nonused
-			addAIPot("ReadoutBufBp,p,normal,APS analog readout buffer strangth");// 17 nonused
-			addAIPot("ApsROSFBn,n,normal,APS readout source follower strength"); // 18 nonused
-			addAIPot("ADCcompBp,p,normal,ADC comparator gain"); // 19 nonused
-			addAIPot("ILeak,n,normal,Column arbiter request pull-down"); // 20 different nonused
-			addAIPot("DACBufBp,p,normal,ADC ramp buffer strength"); // 21 nonused
-			addAIPot("LcolTimeoutBn,n,normal,No column request timeout"); // 22 nonused
-			addAIPot("AEPdBn,n,normal,Request encoder static pulldown strength"); // 23 nonused
-			addAIPot("AEPuXBp,p,normal,AER column pullup strength"); // 24 nonused
-			addAIPot("AEPuYBp,p,normal,AER row pullup strength"); // 25 nonused
-			addAIPot("IFRefrBn,n,normal,Bias calibration refractory period"); // 26  commen
-			addAIPot("IFThrBn,n,normal,Bias calibration neuron threshold"); // 27 commen
-			addAIPot("RegBiasBp,p,normal,Bias of OTA fixing the shifted source bias OffsetBn of the pre-amplifier"); // 28 nonused
-			addAIPot("Blk2P,p,normal,Ununsed P type"); // 29 nonused
-			addAIPot("RefSsbxBn,n,normal,Set OffsetBns the shifted source bias voltage of the pre-amplifier with NBias");// 30 nonused
-			addAIPot("Blk2N,n,normal,Ununsed N type");// 31 nonused
-			addAIPot("Blk3N,n,normal,Ununsed N type");// 32 nonused
-			addAIPot("Blk4N,n,normal,Ununsed N type");// 33 nonused
-			addAIPot("BiasBuffer,n,normal,Biasgen buffer strength");// 34 commen
+			addAIPot("LocalBufBn,n,normal,Local buffer strength"); // 8
+			addAIPot("PadFollBn,n,normal,Follower-pad buffer strength"); // 9
+			diff = addAIPot("Blk1N,n,normal,Unused N type"); // 10 unused
+			diffOn = addAIPot("Blk2N,n,normal,Unused N type"); // 11 unused
+			diffOff = addAIPot("Blk3N,n,normal,Unused N type"); // 12 unused
+			addAIPot("Blk4N,n,normal,Unused N type"); // 13 unused
+			addAIPot("BiasComp,p,normal,Photoreceptor bias current"); // 14
+			sf = addAIPot("Blk5N,n,normal,Unused N type"); // 15 unused
+			refr = addAIPot("Blk6N,n,normal,Unused N type"); // 16 unused
+			addAIPot("Blk7N,n,normal,Unused N type");// 17 unused
+			addAIPot("Blk8N,n,normal,Unused N type"); // 18 unused
+			addAIPot("Blk9N,n,normal,Unused N type"); // 19 unused
+			addAIPot("ILeak,n,normal,Column arbiter request pull-down"); // 20 unused
+			addAIPot("Blk10N,n,normal,Unused N type"); // 21 unused
+			addAIPot("Blk11N,n,normal,Unused N type"); // 22 unused
+			addAIPot("Blk12N,n,normal,Unused N type"); // 23 unused
+			addAIPot("Blk13N,n,normal,Unused N type"); // 24 unused
+			addAIPot("Blk14N,n,normal,Unused N type"); // 25 unused
+			addAIPot("IFRefrBn,n,normal,Bias calibration refractory period"); // 26
+			addAIPot("IFThrBn,n,normal,Bias calibration neuron threshold"); // 27
+			addAIPot("Blk15N,n,normal,Unused N type"); // 28 unused
+			addAIPot("Blk16N,n,normal,Unused N type"); // 29 unused
+			addAIPot("Blk17N,n,normal,Unused N type");// 30 unused
+			addAIPot("Blk18N,n,normal,Ununsed N type");// 31 unused
+			addAIPot("Blk19N,n,normal,Ununsed N type");// 32 unused
+			addAIPot("Blk20N,n,normal,Ununsed N type");// 33 unused
+			addAIPot("BiasBuffer,n,normal,Biasgen buffer strength");// 34
 
 			// shifted sources
 			ssn = new ShiftedSourceBiasCF(this);
@@ -104,7 +86,6 @@ public class BAFilterChipConfig extends DavisTowerBaseConfig {
 
 			ssBiases[1] = ssn;
 			ssBiases[0] = ssp;
-
 		}
 		catch (Exception e) {
 			throw new Error(e.toString());
@@ -112,14 +93,14 @@ public class BAFilterChipConfig extends DavisTowerBaseConfig {
 
 		// graphicOptions
 		videoControl = new DavisConfig.VideoControl();
-		videoControl.addObserver(this); ///nonused
+		videoControl.addObserver(this); // unused
 
 		// on-chip configuration chain
 		chipConfigChain = new BAFilterChipConfigChain(chip);
-		chipConfigChain.addObserver(this); //changed
+		chipConfigChain.addObserver(this); // changed
 
 		// imuControl
-		imuControl = new ImuControl(this);  //nonused
+		imuControl = new ImuControl(this); // unused
 
 		setBatchEditOccurring(true);
 		loadPreferences();
@@ -132,35 +113,157 @@ public class BAFilterChipConfig extends DavisTowerBaseConfig {
 		}
 	}
 
-        
-        /* change this BAFilterChipConfigChain to real BAFilterChipCongfigChain important ones. 
-        https://docs.google.com/spreadsheet/ccc?key=0AjvXOhBHjRhedEQtTFBUOHY1NzVPZ3VxdWZCcklrbnc#gid=10 */
-        
-	public class BAFilterChipConfigChain extends DavisTowerBaseConfig.DavisTowerBaseChipConfigChain {
-		OnchipConfigBit SelPreAmpAvgxD = new OnchipConfigBit(chip, "SelPreAmpAvgxD", 9,
-			"If 1, connect PreAmpAvgxA to calibration neuron, if 0, commongate", false);
-		OnchipConfigBit SelBiasRefxD = new OnchipConfigBit(chip, "SelBiasRefxD", 10,
-			"If 1, select Nbias Blk1N, if 0, VDAC VblkV2", true);
-		OnchipConfigBit SelSensexD = new OnchipConfigBit(chip, "SelSensexD", 11,
-			"If 0, hook refractory bias to Vdd (unselect)", true);
-		OnchipConfigBit SelPosFbxD = new OnchipConfigBit(chip, "SelPosFbxD", 12,
-			"If 0, hook refractory bias to Vdd (unselect)", true);
-		OnchipConfigBit SelHpxD = new OnchipConfigBit(chip, "SelHpxD", 13,
-			"If 0, hook refractory bias to Vdd (unselect)", true);
+	/*
+	 * change this BAFilterChipConfigChain to real BAFilterChipCongfigChain important ones.
+	 * https://docs.google.com/spreadsheet/ccc?key=0AjvXOhBHjRhedEQtTFBUOHY1NzVPZ3VxdWZCcklrbnc#gid=10
+	 */
+	public class BAFilterChipConfigChain extends DavisConfig.DavisChipConfigChain {
+		// Config Bits
+		OnchipConfigBit resetCalibNeuron = new OnchipConfigBit(chip, "ResetCalibNeuron", 0,
+			"turns the bias generator integrate and fire calibration neuron off", true);
+		OnchipConfigBit typeNCalibNeuron = new OnchipConfigBit(
+			chip,
+			"TypeNCalibNeuron",
+			1,
+			"make the bias generator intgrate and fire calibration neuron configured to measure N type biases; otherwise measures P-type currents",
+			false);
+		OnchipConfigBit useAOut = new OnchipConfigBit(chip, "UseAOut", 2,
+			"turn the pads for the analog MUX outputs on", false);
+		OnchipConfigBit chipIDX0 = new OnchipConfigBit(chip, "chipIDX0", 3, "chipIDX0", false);
+		OnchipConfigBit chipIDX1 = new OnchipConfigBit(chip, "chipIDX1", 4, "chipIDX1", false);
+		OnchipConfigBit AMCX0 = new OnchipConfigBit(chip, "AMCX0", 5, "AMCX0", false);
+		OnchipConfigBit AMCX1 = new OnchipConfigBit(chip, "AMCX1", 6, "AMCX1", false);
+		OnchipConfigBit AMDX0 = new OnchipConfigBit(chip, "AMDX0", 7, "AMDX0", false);
+		OnchipConfigBit AMDX1 = new OnchipConfigBit(chip, "AMDX1", 8, "AMDX1", false);
+		OnchipConfigBit chipIDY0 = new OnchipConfigBit(chip, "chipIDY0", 9, "chipIDY0", false);
+		OnchipConfigBit chipIDY1 = new OnchipConfigBit(chip, "chipIDY1", 10, "chipIDY1", false);
+		OnchipConfigBit AMCY0 = new OnchipConfigBit(chip, "AMCY0", 11, "AMCY0", false);
+		OnchipConfigBit AMCY1 = new OnchipConfigBit(chip, "AMCY1", 12, "AMCY1", false);
+		OnchipConfigBit AMDY0 = new OnchipConfigBit(chip, "AMDY0", 13, "AMDY0", false);
+		OnchipConfigBit AMDY1 = new OnchipConfigBit(chip, "AMDY1", 14, "AMDY1", false);
+
+		// Muxes
+		OutputMux[] amuxes = { new AnalogOutputMux(1), new AnalogOutputMux(2), new AnalogOutputMux(3),
+			new AnalogOutputMux(4) };
+		OutputMux[] dmuxes = { new DigitalOutputMux(1), new DigitalOutputMux(2), new DigitalOutputMux(3),
+			new DigitalOutputMux(4) };
+		OutputMux[] bmuxes = { new DigitalOutputMux(0) };
 
 		public BAFilterChipConfigChain(Chip chip) {
 			super(chip);
+			getHasPreferenceList().add(this);
 
-			configBits[9] = SelPreAmpAvgxD;
-			configBits[9].addObserver(this);
-			configBits[10] = SelBiasRefxD;
-			configBits[10].addObserver(this);
-			configBits[11] = SelSensexD;
-			configBits[11].addObserver(this);
-			configBits[12] = SelPosFbxD;
-			configBits[12].addObserver(this);
-			configBits[13] = SelHpxD;
-			configBits[13].addObserver(this);
+			TOTAL_CONFIG_BITS = 24;
+
+			configBits = new OnchipConfigBit[TOTAL_CONFIG_BITS];
+			configBits[0] = resetCalibNeuron;
+			configBits[1] = typeNCalibNeuron;
+			configBits[2] = useAOut;
+			configBits[3] = chipIDX0;
+			configBits[4] = chipIDX1;
+			configBits[5] = AMCX0;
+			configBits[6] = AMCX0;
+			configBits[7] = AMDX0;
+			configBits[8] = AMDX0;
+			configBits[9] = chipIDY0;
+			configBits[10] = chipIDY1;
+			configBits[11] = AMCY0;
+			configBits[12] = AMCY0;
+			configBits[13] = AMDY0;
+			configBits[14] = AMDY0;
+
+			for (OnchipConfigBit b : configBits) {
+				if (b != null) {
+					b.addObserver(this);
+				}
+			}
+
+			muxes.addAll(Arrays.asList(bmuxes));
+			muxes.addAll(Arrays.asList(dmuxes)); // 4 digital muxes, first in list since at end of chain - bits must be
+			// sent first, before any biasgen bits
+			muxes.addAll(Arrays.asList(amuxes)); // finally send the 3 voltage muxes
+
+			for (OutputMux m : muxes) {
+				m.addObserver(this);
+				m.setChip(chip);
+			}
+
+			bmuxes[0].setName("BiasOutMux");
+
+			bmuxes[0].put(0, "IFThrBn");
+			bmuxes[0].put(1, "AEPuYBp");
+			bmuxes[0].put(2, "AEPuXBp");
+			bmuxes[0].put(3, "LColTimeout");
+			bmuxes[0].put(4, "AEPdBn");
+			bmuxes[0].put(5, "RefrBp");
+			bmuxes[0].put(6, "PrSFBp");
+			bmuxes[0].put(7, "PrBp");
+			bmuxes[0].put(8, "PixInvBn");
+			bmuxes[0].put(9, "LocalBufBn");
+			bmuxes[0].put(10, "ApsROSFBn");
+			bmuxes[0].put(11, "DiffCasBnc");
+			bmuxes[0].put(12, "ApsCasBpc");
+			bmuxes[0].put(13, "OffBn");
+			bmuxes[0].put(14, "OnBn");
+			bmuxes[0].put(15, "DiffBn");
+
+			dmuxes[0].setName("DigMux3");
+			dmuxes[1].setName("DigMux2");
+			dmuxes[2].setName("DigMux1");
+			dmuxes[3].setName("DigMux0");
+
+			for (int i = 0; i < 4; i++) {
+				dmuxes[i].put(0, "AY179right");
+				dmuxes[i].put(1, "Acol");
+				dmuxes[i].put(2, "ColArbTopA");
+				dmuxes[i].put(3, "ColArbTopR");
+				dmuxes[i].put(4, "FF1");
+				dmuxes[i].put(5, "FF2");
+				dmuxes[i].put(6, "Rcarb");
+				dmuxes[i].put(7, "Rcol");
+				dmuxes[i].put(8, "Rrow");
+				dmuxes[i].put(9, "RxarbE");
+				dmuxes[i].put(10, "nAX0");
+				dmuxes[i].put(11, "nArowBottom");
+				dmuxes[i].put(12, "nArowTop");
+				dmuxes[i].put(13, "nRxOn");
+
+			}
+
+			dmuxes[3].put(14, "AY179");
+			dmuxes[3].put(15, "RY179");
+			dmuxes[2].put(14, "AY179");
+			dmuxes[2].put(15, "RY179");
+			dmuxes[1].put(14, "biasCalibSpike");
+			dmuxes[1].put(15, "nRY179right");
+			dmuxes[0].put(14, "nResetRxCol");
+			dmuxes[0].put(15, "nRYtestpixel");
+
+			amuxes[0].setName("AnaMux3");
+			amuxes[1].setName("AnaMux2");
+			amuxes[2].setName("AnaMux1");
+			amuxes[3].setName("AnaMux0");
+
+			for (int i = 0; i < 4; i++) {
+				amuxes[i].put(0, "on");
+				amuxes[i].put(1, "off");
+				amuxes[i].put(2, "vdiff");
+				amuxes[i].put(3, "nResetPixel");
+				amuxes[i].put(4, "pr");
+				amuxes[i].put(5, "pd");
+			}
+
+			amuxes[0].put(6, "calibNeuron");
+			amuxes[0].put(7, "nTimeout_AI");
+
+			amuxes[1].put(6, "apsgate");
+			amuxes[1].put(7, "apsout");
+
+			amuxes[2].put(6, "apsgate");
+			amuxes[2].put(7, "apsout");
+
+			amuxes[3].put(6, "apsgate");
+			amuxes[3].put(7, "apsout");
 		}
 	}
 }
