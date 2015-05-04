@@ -160,7 +160,7 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
 //        checkOutputPacketEventType(in);
 //        OutputEventIterator outItr = getOutputPacket().outputIterator();
         for (BasicEvent e : in) {
-            if (e.isSpecial() || e.isFilteredOut() || e.x >= chip.getSizeX() || e.y >= chip.getSizeY()) {
+            if (e==null || e.isSpecial() || e.isFilteredOut() || e.x >= chip.getSizeX() || e.y >= chip.getSizeY()) {
                 continue; // don't learn special events
             }
             if (learnHotPixels) {
