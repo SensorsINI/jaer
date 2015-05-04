@@ -35,7 +35,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  *
  * @author tobi
  */
-@Description("Allows accumulating a histogram of active pixels, \n" +
+@Description("Does a kind of background modeling by allowing accumulating a histogram of active pixels, \n" +
 " * and then filtering out the active pixels, or the inactive ones, depending on <i>invertFiltering</i>.")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class Histogram2DFilter extends EventFilter2D implements FrameAnnotater, Serializable {
@@ -87,7 +87,7 @@ public class Histogram2DFilter extends EventFilter2D implements FrameAnnotater, 
         int nOut=0;
         OutputEventIterator outItr=getOutputPacket().getOutputIterator();
         for (BasicEvent e : in) {
-            if (e.isSpecial()) {
+            if (e==null || e.isSpecial() || e.isFilteredOut()) {
                 continue;
             }
             if(e.x>=numX || e.y>=numY || e.x<0 || e.y<0){ // ignore special events, e.g. with negative address
