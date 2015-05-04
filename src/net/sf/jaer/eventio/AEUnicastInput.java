@@ -618,6 +618,16 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
 //        }
     }
 
+    @Override
+    public boolean isSpinnakerProtocolEnabled() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void setSpinnakerProtocolEnabled(boolean yes) {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
     private class Reader extends Thread {
 
         volatile boolean maxSizeExceeded = false;

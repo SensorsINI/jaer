@@ -164,5 +164,18 @@ public interface AEUnicastSettings {
      * @return  true if using System.nanoTime/1000, false if using source timestamps.
      */
     public boolean isLocalTimestampEnabled();
+    
+    /** Is the special SpiNNaker mode enabled, as specified in 
+     * https://capocaccia.ethz.ch/capo/wiki/2015/universalaer15
+     * 
+     * @return true if enabled
+     */
+    public boolean isSpinnakerProtocolEnabled();
+    
+    /** Sets SpiNNaker protocol enabled as specified in https://capocaccia.ethz.ch/capo/wiki/2015/universalaer15
+     * 
+     * @param yes true
+     */
+    public void setSpinnakerProtocolEnabled(boolean yes);
      
 }
