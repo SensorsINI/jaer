@@ -372,11 +372,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             if (f == null) {
                                     return "Couldn't start logging to filename=" + filename + ", startlogging returned " + f + "\n";
                             } else {
-                                    return "starting logging to " + f + "\n";
+                                    return "starting logging to " + f.getAbsoluteFile() + "\n";
                             }
                     } else if (command.getCmdName().equals(REMOTE_STOP_LOGGING)) {
-                            stopLogging(false); // don't confirm filename
-                            return "stopped logging\n";
+                            File f=stopLogging(false); // don't confirm filename
+                            return "stopped logging to file "+f.getAbsolutePath()+"\n";
                     } else if (command.getCmdName().equals(REMOTE_TOGGLE_SYNCHRONIZED_LOGGING)) {
                             if ((jaerViewer != null) && jaerViewer.isSyncEnabled() && (jaerViewer.getViewers().size() > 1)) {
                                     jaerViewer.toggleSynchronizedLogging();
@@ -4687,7 +4687,7 @@ two interfaces). otherwise force user choice.
 		if (!filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION) && !filename.toLowerCase().endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION)) {
 			// allow both extensions for  backward compatibility
 			filename = filename + AEDataFile.DATA_FILE_EXTENSION;
-			log.info("Appended extension AEDataFile.DATA_FILE_EXTENSION " + AEDataFile.DATA_FILE_EXTENSION + " to make filename=" + filename);
+			log.info("Appended extension " + AEDataFile.DATA_FILE_EXTENSION + " to make filename=" + filename);
 		}
 		try {
 			loggingFile = new File(filename);
@@ -4720,7 +4720,7 @@ two interfaces). otherwise force user choice.
 			if (loggingTimeLimit > 0) {
 				loggingStartTime = System.currentTimeMillis();
 			}
-			log.info("starting logging to " + loggingFile);
+			log.info("starting logging to " + loggingFile.getAbsolutePath());
 			//            aemon.resetTimestamps();
 
 		} catch (FileNotFoundException e) {
@@ -4859,7 +4859,7 @@ two interfaces). otherwise force user choice.
 								prefs.put("AEViewer.lastLoggingFolder", lastLoggingFolder.getCanonicalPath());
 								recentFiles.addFile(newFile);
 								loggingFile = newFile; // so that we play it back if it was saved and playback immediately is selected
-								log.info("renamed logging file to " + newFile);
+								log.info("renamed logging file to " + newFile.getAbsolutePath());
 							} else {
 								// confirm overwrite
 								int overwrite = JOptionPane.showConfirmDialog(chooser, "Overwrite file \"" + newFile + "\"?", "Overwrite file?", JOptionPane.WARNING_MESSAGE, JOptionPane.OK_CANCEL_OPTION);
