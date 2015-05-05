@@ -340,42 +340,41 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 						buf.getShort(0) & 0xFFFF);
 				}
 				else if (buf.limit() == 39) { // DAVIS RGB
-                                    System.out.println("New config send");
 					// Exposure (in cycles, from us)
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 13,
-						(((buf.getShort(16) & 0xFFFF) << 8) | (buf.get(18) & 0xFF)) * ADC_CLOCK_FREQ_CYCLES);
+						(((buf.getShort(36) & 0xFFFF) << 8) | (buf.get(38) & 0xFF)) * ADC_CLOCK_FREQ_CYCLES);
 
 					// RowSettle
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 17,
-						buf.getShort(12) & 0xFFFF);
+						buf.getShort(32) & 0xFFFF);
 
 					// Frame Delay (in cycles, from us)
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 14,
-						(buf.getShort(8) & 0xFFFF) * ADC_CLOCK_FREQ_CYCLES);
+						(buf.getShort(28) & 0xFFFF) * ADC_CLOCK_FREQ_CYCLES);
 
 					// IMU Run
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 0,
-						buf.get(7) & 0x01);
+						buf.get(27) & 0x01);
 
 					// RS/GS
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 8,
-						((buf.get(7) & 0x02) != 0) ? (0) : (1));
+						((buf.get(27) & 0x02) != 0) ? (0) : (1));
 
 					// IMU DLPF
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 7,
-						buf.get(5) & 0x07);
+						buf.get(25) & 0x07);
 
 					// IMU SampleRateDivider
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 6,
-						buf.get(4) & 0xFF);
+						buf.get(24) & 0xFF);
 
 					// IMU Gyro Scale
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 9,
-						(buf.get(3) >> 3) & 0x03);
+						(buf.get(23) >> 3) & 0x03);
 
 					// IMU Accel Scale
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 8,
-						(buf.get(2) >> 3) & 0x03);
+						(buf.get(22) >> 3) & 0x03);
 
 					// Transfer_D
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 38,
