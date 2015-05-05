@@ -340,21 +340,14 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 						buf.getShort(0) & 0xFFFF);
 				}
 				else if (buf.limit() == 39) { // DAVIS RGB
+                                    System.out.println("New config send");
 					// Exposure (in cycles, from us)
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 13,
 						(((buf.getShort(16) & 0xFFFF) << 8) | (buf.get(18) & 0xFF)) * ADC_CLOCK_FREQ_CYCLES);
 
-					// ColSettle
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 16,
-						buf.getShort(14) & 0xFFFF);
-
 					// RowSettle
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 17,
 						buf.getShort(12) & 0xFFFF);
-
-					// ResSettle
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 15,
-						buf.getShort(10) & 0xFFFF);
 
 					// Frame Delay (in cycles, from us)
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 14,
@@ -383,10 +376,6 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 					// IMU Accel Scale
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 8,
 						(buf.get(2) >> 3) & 0x03);
-
-					// NullSettle
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 18,
-						buf.getShort(0) & 0xFFFF);
 
 					// Transfer_D
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 38,
