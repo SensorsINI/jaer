@@ -107,7 +107,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	static public final short VID = USBInterface.VID_THESYCON;
 	static public final short PID_DVS128_REV0 = (short) 0x8400;
 	/** For CochleaAMS devices */
-	static public final short PID_COCHLEAAMS = (short) 0x8405;
+	static public final short PID_COCHLEAAMS = (short) 0x8406; //WAS 8405, changed by Damir to 8406 to match the actual lsusb cochleaAMS1c PID
 	static public final short PID_TMPDIFF128_RETINA = (short) 0x8700;
 	// static public final short PID_TMPDIFF128_FX2_SMALL_BOARD=(short)0x8701;
 	// not used anymore, replace with new

@@ -258,8 +258,8 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
        enableThisChipMenu(true);
           adcSamples = new CochleaAMS1cADCSamples(this); // need biasgen / scanner first
        helpsep=getAeViewer().addHelpItem(new JSeparator());
-        help1=getAeViewer().addHelpURLItem("https://svn.code.sf.net/p/jaer/code/jAER/trunk/src/ch/unizh/ini/jaer/chip/cochlea/doc-files/cochleaams1c.pdf", "CochleaAMS1c PCB design", "Protel design of board");
-        help2=getAeViewer().addHelpURLItem("https://svn.code.sf.net/p/jaer/code/jAER/trunk/src/ch/unizh/ini/jaer/chip/cochlea/doc-files/0_README_CochleaAMS1c.pdf", "CochleaAMS1c README", "README file for CochleaAMS1c");
+        help1=getAeViewer().addHelpURLItem("https://svn.ini.uzh.ch/repos/tobi/cochlea/pcbs/CochleaAMS1c_USB/cochleaams1c.pdf", "CochleaAMS1c PCB design", "Protel design of board");
+        help2=getAeViewer().addHelpURLItem("https://svn.ini.uzh.ch/repos/tobi/cochlea/pcbs/CochleaAMS1c_USB/0_README_CochleaAMS1c.pdf", "CochleaAMS1c README", "README file for CochleaAMS1c");
      }
 
     /**
@@ -745,17 +745,17 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
                 hardwareInterface = null;
                 return;
             }
-            if (hw instanceof CochleaAMS1cHardwareInterface) {
+//            if (hw instanceof CochleaAMS1cHardwareInterface) {
                 hardwareInterface = hw;
-                cypress = (CypressFX2) hardwareInterface;
-                log.info("set hardwareInterface CochleaAMS1cHardwareInterface=" + hardwareInterface.toString());
+//                cypress = (CypressFX2) hardwareInterface;
+//                log.info("set hardwareInterface CochleaAMS1cHardwareInterface=" + hardwareInterface.toString());
                 try {
                     sendConfiguration();
                     //                resetAERComm();
                 } catch (HardwareInterfaceException ex) {
                     log.warning(ex.toString());
                 }
-            }
+ //           }
         }
         /** Vendor request command understood by the cochleaAMS1c firmware in connection with  VENDOR_REQUEST_SEND_BIAS_BYTES */
         public final short CMD_IPOT = 1, CMD_RESET_EQUALIZER = 2,
@@ -827,8 +827,13 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
             if (debug) {
                 log.info(sb.toString());
             }
-            if (cypress != null) {
-                cypress.sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) (0xffff & cmd), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
+            if (getHardwareInterface() != null) {
+                if(getHardwareInterface() instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2)
+                    ((net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2) getHardwareInterface()).sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) (0xffff & cmd), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
+                else if(getHardwareInterface() instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2)
+                    ((net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2) getHardwareInterface()).sendVendorRequest(CypressFX2.VENDOR_REQUEST_SEND_BIAS_BYTES, (short) (0xffff & cmd), (short) (0xffff & index), bytes); // & to prevent sign extension for negative shorts
+
+                    
             }
         }
 
@@ -930,7 +935,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
         }
 
         // sends complete configuration information to multiple shift registers and off chip DACs
-        void sendConfiguration() throws HardwareInterfaceException {
+        public void sendConfiguration() throws HardwareInterfaceException {
             if (!isOpen()) {
                 open();
             }

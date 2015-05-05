@@ -39,6 +39,8 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 		// CypressFX2Mapper.class);
 		addDeviceToMap(CypressFX2.VID, CypressFX2.PID_DVS128_REV0, CypressFX2DVS128HardwareInterface.class);
 		addDeviceToMap(CypressFX2.VID, CypressFX2.PID_TMPDIFF128_RETINA, CypressFX2TmpdiffRetinaHardwareInterface.class);
+		addDeviceToMap(CypressFX2.VID, CypressFX2.PID_COCHLEAAMS, CochleaAMS1cHardwareInterface.class);
+                
 		// addDeviceToMap(CypressFX2.VID, CypressFX2.PID_USBAERmini2,
 		// CypressFX2MonitorSequencer.class);
 		addDeviceToMap(CypressFX2.VID, ApsDvsHardwareInterface.PID, ApsDvsHardwareInterface.class);
@@ -98,9 +100,11 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 		final DeviceDescriptor devDesc = new DeviceDescriptor();
 
 		for (final Device dev : devList) {
+                    
 			LibUsb.getDeviceDescriptor(dev, devDesc);
 
 			final ImmutablePair<Short, Short> vidPid = new ImmutablePair<>(devDesc.idVendor(), devDesc.idProduct());
+                        
 
 			// Check that the device is not already bound to any other driver.
 			final DeviceHandle devHandle = new DeviceHandle();
