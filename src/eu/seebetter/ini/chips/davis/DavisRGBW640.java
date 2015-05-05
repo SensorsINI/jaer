@@ -165,7 +165,7 @@ public class DavisRGBW640 extends Davis346BaseCamera {
 						e.polarity = (data & DavisChip.POLMASK) == DavisChip.POLMASK ? ApsDvsEventRGBW.Polarity.On
 							: ApsDvsEventRGBW.Polarity.Off;
 						e.type = (byte) ((data & DavisChip.POLMASK) == DavisChip.POLMASK ? 1 : 0);
-						e.x = (short) (2 * (((data & DavisChip.XMASK) >>> DavisChip.XSHIFT)));
+						e.x = (short) (2 * (319 - ((data & DavisChip.XMASK) >>> DavisChip.XSHIFT)));
 						e.y = (short) (2 * ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT));
 						e.setIsDVS(true);
 						e.setColorFilter(ColorFilter.W);
