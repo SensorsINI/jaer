@@ -172,64 +172,111 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 			// Send chip shift register (diagnostic).
 			if (cmd == CMD_CHIP_CONFIG) {
 				if (((CypressFX3) getHardwareInterface()).getPID() == DAViSFX3HardwareInterface.PID) {
-					int bMux0 = (bytes[6] & 0x0F);
-					int aMux0 = (bytes[6] & 0xF0);
-					int aMux1 = (bytes[5] & 0x0F);
-					int aMux2 = (bytes[5] & 0xF0);
-					int ResetCalibNeuron = ((bytes[4] & 0x01) >>> 0);
-					int TypeNCalibNeuron = ((bytes[4] & 0x02) >>> 1);
-					int ResetTestPixel = ((bytes[4] & 0x04) >>> 2);
-					int HotPixelSuppression = ((bytes[4] & 0x08) >>> 3);
-					int AERnArow = ((bytes[4] & 0x10) >>> 4);
-					int UseAOut = ((bytes[4] & 0x20) >>> 5);
-					int GlobalShutter = ((bytes[4] & 0x40) >>> 6);
-					int SelectGrayCounter = ((bytes[4] & 0x80) >>> 7);
-					int TestADC = ((bytes[3] & 0x01) >>> 0);
-					int AdjustOVG1Lo = ((bytes[3] & 0x02) >>> 1); // This is 'SelPreAmpAvgxD' for PixelParade.
-					int AdjustOVG2Lo = ((bytes[3] & 0x04) >>> 2); // This is 'SelBiasRefxD' for PixelParade.
-					int AdjustTX2OVG2Hi = ((bytes[3] & 0x08) >>> 3); // This is 'SelSensexD' for PixelParade.
-					int SelPosFbxD = ((bytes[3] & 0x10) >>> 4);
-					int SelHpxD = ((bytes[3] & 0x20) >>> 5);
-					// bytes[2] left unused.
-					int dMux0 = (bytes[1] & 0x0F);
-					int dMux1 = (bytes[1] & 0xF0);
-					int dMux2 = (bytes[0] & 0x0F);
-					int dMux3 = (bytes[0] & 0xF0);
+					if (bytes.length == 8) {
+						// AERCorrFilter has longer config chain due to additional AnalogMux.
+						int bMux0 = (bytes[7] & 0xF0);
+						int aMux0 = (bytes[6] & 0x0F);
+						int aMux1 = (bytes[6] & 0xF0);
+						int aMux2 = (bytes[5] & 0x0F);
+						int aMux3 = (bytes[5] & 0xF0);
+						int ResetCalibNeuron = ((bytes[4] & 0x01) >>> 0);
+						int TypeNCalibNeuron = ((bytes[4] & 0x02) >>> 1);
+						int UseAOut = ((bytes[4] & 0x04) >>> 2);
+						int chipIDX0 = ((bytes[4] & 0x08) >>> 3);
+						int chipIDX1 = ((bytes[4] & 0x10) >>> 4);
+						int AMCX0 = ((bytes[4] & 0x20) >>> 5);
+						int AMCX1 = ((bytes[4] & 0x40) >>> 6);
+						int AMDX0 = ((bytes[4] & 0x80) >>> 7);
+						int AMDX1 = ((bytes[3] & 0x01) >>> 0);
+						int chipIDY0 = ((bytes[3] & 0x02) >>> 1);
+						int chipIDY1 = ((bytes[3] & 0x04) >>> 2);
+						int AMCY0 = ((bytes[3] & 0x08) >>> 3);
+						int AMCY1 = ((bytes[3] & 0x10) >>> 4);
+						int AMDY0 = ((bytes[3] & 0x20) >>> 5);
+						int AMDY1 = ((bytes[3] & 0x40) >>> 6);
+						// bytes[2] left unused.
+						int dMux0 = (bytes[1] & 0x0F);
+						int dMux1 = (bytes[1] & 0xF0);
+						int dMux2 = (bytes[0] & 0x0F);
+						int dMux3 = (bytes[0] & 0xF0);
 
-					// Send out config bits to proper addresses.
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 128, dMux0);
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 129, dMux1);
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 130, dMux2);
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 131, dMux3);
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 132, aMux0);
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 133, aMux1);
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 134, aMux2);
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 135, bMux0);
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 136,
-						ResetCalibNeuron);
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 137,
-						TypeNCalibNeuron);
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 138,
-						ResetTestPixel);
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 139,
-						HotPixelSuppression);
-					((CypressFX3) getHardwareInterface())
-						.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 140, AERnArow);
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 141, UseAOut);
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 142,
-						GlobalShutter);
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 143,
-						SelectGrayCounter);
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 144, TestADC);
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 145,
-						AdjustOVG1Lo);
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 146,
-						AdjustOVG2Lo);
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 147,
-						AdjustTX2OVG2Hi);
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 148,
-						SelPosFbxD);
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 149, SelHpxD);
+						// Send out config bits to proper addresses.
+						CypressFX3 hwInt = ((CypressFX3) getHardwareInterface());
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 128, dMux0);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 129, dMux1);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 130, dMux2);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 131, dMux3);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 132, aMux0);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 133, aMux1);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 134, aMux2);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 135, aMux3);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 136, bMux0);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 137, ResetCalibNeuron);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 138, TypeNCalibNeuron);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 139, UseAOut);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 140, chipIDX0);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 141, chipIDX1);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 142, AMCX0);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 143, AMCX1);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 144, AMDX0);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 145, AMDX1);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 146, chipIDY0);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 147, chipIDY1);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 148, AMCY0);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 149, AMCY1);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 150, AMDY0);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 151, AMDY1);
+					}
+					else {
+						int bMux0 = (bytes[6] & 0x0F);
+						int aMux0 = (bytes[6] & 0xF0);
+						int aMux1 = (bytes[5] & 0x0F);
+						int aMux2 = (bytes[5] & 0xF0);
+						int ResetCalibNeuron = ((bytes[4] & 0x01) >>> 0);
+						int TypeNCalibNeuron = ((bytes[4] & 0x02) >>> 1);
+						int ResetTestPixel = ((bytes[4] & 0x04) >>> 2);
+						int HotPixelSuppression = ((bytes[4] & 0x08) >>> 3);
+						int AERnArow = ((bytes[4] & 0x10) >>> 4);
+						int UseAOut = ((bytes[4] & 0x20) >>> 5);
+						int GlobalShutter = ((bytes[4] & 0x40) >>> 6);
+						int SelectGrayCounter = ((bytes[4] & 0x80) >>> 7);
+						int TestADC = ((bytes[3] & 0x01) >>> 0);
+						int AdjustOVG1Lo = ((bytes[3] & 0x02) >>> 1); // This is 'SelPreAmpAvgxD' for PixelParade.
+						int AdjustOVG2Lo = ((bytes[3] & 0x04) >>> 2); // This is 'SelBiasRefxD' for PixelParade.
+						int AdjustTX2OVG2Hi = ((bytes[3] & 0x08) >>> 3); // This is 'SelSensexD' for PixelParade.
+						int SelPosFbxD = ((bytes[3] & 0x10) >>> 4);
+						int SelHpxD = ((bytes[3] & 0x20) >>> 5);
+						// bytes[2] left unused.
+						int dMux0 = (bytes[1] & 0x0F);
+						int dMux1 = (bytes[1] & 0xF0);
+						int dMux2 = (bytes[0] & 0x0F);
+						int dMux3 = (bytes[0] & 0xF0);
+
+						// Send out config bits to proper addresses.
+						CypressFX3 hwInt = ((CypressFX3) getHardwareInterface());
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 128, dMux0);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 129, dMux1);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 130, dMux2);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 131, dMux3);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 132, aMux0);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 133, aMux1);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 134, aMux2);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 135, bMux0);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 136, ResetCalibNeuron);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 137, TypeNCalibNeuron);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 138, ResetTestPixel);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 139, HotPixelSuppression);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 140, AERnArow);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 141, UseAOut);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 142, GlobalShutter);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 143, SelectGrayCounter);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 144, TestADC);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 145, AdjustOVG1Lo);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 146, AdjustOVG2Lo);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 147, AdjustTX2OVG2Hi);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 148, SelPosFbxD);
+						hwInt.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 149, SelHpxD);
+					}
 				}
 				else {
 					((CypressFX3) getHardwareInterface()).sendVendorRequest(VR_CHIP_DIAG, (short) 0, (short) 0, bytes);
@@ -426,15 +473,16 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 	 */
 	protected CPLDShiftRegister cpldConfig = new CPLDShiftRegister();
 
-        /** Sends the entire configuration but only if getHardwareInterface()!=null
-         *
-         * @throws HardwareInterfaceException
-         */
+	/**
+	 * Sends the entire configuration but only if getHardwareInterface()!=null
+	 *
+	 * @throws HardwareInterfaceException
+	 */
 	protected void sendCPLDConfig() throws HardwareInterfaceException {
-            if(getHardwareInterface()==null) {
-				return;
-			}
-            if (cpldConfig.getShiftRegisterLength() > 0) {
+		if (getHardwareInterface() == null) {
+			return;
+		}
+		if (cpldConfig.getShiftRegisterLength() > 0) {
 			byte[] bytes = cpldConfig.getBytes();
 			// log.info("Send CPLD Config: "+cpldConfig.toString());
 			sendFx2ConfigCommand(CMD_CPLD_CONFIG, 0, bytes);
@@ -630,7 +678,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 
 		// biases
 		if (getPotArray() == null) {
-                        log.info("null pot array, AEChip is still in constuction");
+			log.info("null pot array, AEChip is still in constuction");
 			return false;
 		}
 		AddressedIPotArray ipots = (AddressedIPotArray) potArray;

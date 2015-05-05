@@ -142,13 +142,6 @@ public class BAFilterChipConfig extends DavisTowerBaseConfig {
 		OnchipConfigBit AMDY0 = new OnchipConfigBit(chip, "AMDY0", 13, "AMDY0", false);
 		OnchipConfigBit AMDY1 = new OnchipConfigBit(chip, "AMDY1", 14, "AMDY1", false);
 
-		// Muxes
-		OutputMux[] amuxes = { new AnalogOutputMux(1), new AnalogOutputMux(2), new AnalogOutputMux(3),
-			new AnalogOutputMux(4) };
-		OutputMux[] dmuxes = { new DigitalOutputMux(1), new DigitalOutputMux(2), new DigitalOutputMux(3),
-			new DigitalOutputMux(4) };
-		OutputMux[] bmuxes = { new DigitalOutputMux(0) };
-
 		public BAFilterChipConfigChain(Chip chip) {
 			super(chip);
 			getHasPreferenceList().add(this);
@@ -162,15 +155,15 @@ public class BAFilterChipConfig extends DavisTowerBaseConfig {
 			configBits[3] = chipIDX0;
 			configBits[4] = chipIDX1;
 			configBits[5] = AMCX0;
-			configBits[6] = AMCX0;
+			configBits[6] = AMCX1;
 			configBits[7] = AMDX0;
-			configBits[8] = AMDX0;
+			configBits[8] = AMDX1;
 			configBits[9] = chipIDY0;
 			configBits[10] = chipIDY1;
 			configBits[11] = AMCY0;
-			configBits[12] = AMCY0;
+			configBits[12] = AMCY1;
 			configBits[13] = AMDY0;
-			configBits[14] = AMDY0;
+			configBits[14] = AMDY1;
 
 			for (OnchipConfigBit b : configBits) {
 				if (b != null) {
@@ -178,6 +171,22 @@ public class BAFilterChipConfig extends DavisTowerBaseConfig {
 				}
 			}
 
+			amuxes = new OutputMux[4];
+			amuxes[0] = new AnalogOutputMux(1);
+			amuxes[1] = new AnalogOutputMux(2);
+			amuxes[2] = new AnalogOutputMux(3);
+			amuxes[3] = new AnalogOutputMux(4);
+
+			dmuxes = new OutputMux[4];
+			dmuxes[0] = new DigitalOutputMux(1);
+			dmuxes[1] = new DigitalOutputMux(2);
+			dmuxes[2] = new DigitalOutputMux(3);
+			dmuxes[3] = new DigitalOutputMux(4);
+
+			bmuxes = new OutputMux[1];
+			bmuxes[0] = new DigitalOutputMux(0);
+
+			muxes.clear();
 			muxes.addAll(Arrays.asList(bmuxes));
 			muxes.addAll(Arrays.asList(dmuxes)); // 4 digital muxes, first in list since at end of chain - bits must be
 			// sent first, before any biasgen bits
