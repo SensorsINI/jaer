@@ -266,7 +266,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 											}
 
 											// Reset2 read only ever needs to be checked for RGBW DAVIS.
-											if ((j == RetinaAEReader.APS_READOUT_CPRESET) && (chipID != CHIP_DAVISRGB)) {
+											if (j == RetinaAEReader.APS_READOUT_CPRESET) {
 												checkValue = 0;
 											}
 
