@@ -5,6 +5,8 @@
  */
 package eu.seebetter.ini.chips.davis;
 
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.event.ApsDvsEvent;
@@ -16,8 +18,6 @@ import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
-import net.sf.jaer.Description;
-import net.sf.jaer.DevelopmentStatus;
 
 /**
  * CDAVIS camera with heterogenous mixture of DAVIS and RGB APS global shutter
@@ -165,8 +165,7 @@ public class DavisRGBW640 extends Davis346BaseCamera {
 						e.polarity = (data & DavisChip.POLMASK) == DavisChip.POLMASK ? ApsDvsEventRGBW.Polarity.On
 							: ApsDvsEventRGBW.Polarity.Off;
 						e.type = (byte) ((data & DavisChip.POLMASK) == DavisChip.POLMASK ? 1 : 0);
-						e.x = (short) (2 * ((((data & DavisChip.XMASK) >>> DavisChip.XSHIFT)) - 160));
-						// TODO: why -160 here ???
+						e.x = (short) (2 * (((data & DavisChip.XMASK) >>> DavisChip.XSHIFT)));
 						e.y = (short) (2 * ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT));
 						e.setIsDVS(true);
 						e.setColorFilter(ColorFilter.W);
