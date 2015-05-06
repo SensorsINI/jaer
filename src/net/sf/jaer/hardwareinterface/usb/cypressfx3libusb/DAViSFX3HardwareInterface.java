@@ -465,7 +465,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 								}
 
 								if (chipID == CHIP_DAVISRGB) {
-									yPos -= apsRGBPixelOffset;
+									yPos += apsRGBPixelOffset;
 								}
 
 								if (apsInvertXY) {

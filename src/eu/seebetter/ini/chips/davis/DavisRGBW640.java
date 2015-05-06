@@ -322,5 +322,12 @@ public class DavisRGBW640 extends Davis346BaseCamera {
 			return address;
 		}
 
+		public boolean firstFrameAddress(short x, short y) {
+			return (x == 0) && (y == 0);
+		}
+
+		public boolean lastFrameAddress(short x, short y) {
+			return (x == (getSizeX() - 1)) && (y == (getSizeY() - 1));
+		}
 	} // extractor
 }
