@@ -11,12 +11,14 @@
  */
 package net.sf.jaer.eventio;
 import java.io.IOException;
+import static java.lang.Integer.min;
 
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.DatagramChannel;
 import java.util.concurrent.Exchanger;
 import java.util.logging.Logger;
@@ -101,6 +103,33 @@ public class AEUnicastOutput implements AEUnicastSettings{
         consumerThread.start();
         log.info("opened AEUnicastOutput on local port="+socket.getLocalPort()+" with bufferSize="+getBufferSize());
     }
+    
+     /**
+     * Writes the SpiNNaker AER protocol datagram header as defined at Capo Caccia 2015.
+     */
+    private void writeSpiNNakerHeader(ByteBuffer buf, int number_of_events) throws IOException
+    {
+        int byte0= 0;
+        //bit 7=0 : it's a spike, not a command
+        if(use4ByteAddrTs)    byte0 |= 0b01000000; //bit 6 : define the size of addresses and timestamps
+        if(timestampsEnabled) byte0 |= 0b00100000; //but 5 : timestamps enabled
+        //bits 4 and 3 = 0 : No payload
+        //bit 2 = 0 : no key prefix
+        //bit 1 = 0 : no timestamp prefix
+        //bit 0 = 0 : no payload prefix
+        buf.put((byte)(byte0 & 0xFF));
+
+        //Byte 1 : number of events
+        if(number_of_events < 0 || number_of_events > 255)
+            throw new IllegalArgumentException("number_of_events in one packet must be between 0 and 255");
+        buf.put((byte)(number_of_events&0xff));
+        
+        //byte 2 : packet counter
+        writeSequenceNumberByte(buf);
+        
+        //byte 3 : reserved = 0
+        buf.put((byte)0);
+    }
 
     /**
      * Writes the packet out as sequence of address/timestamp's, just as they came as input from the device.
@@ -131,8 +160,37 @@ public class AEUnicastOutput implements AEUnicastSettings{
         int[] ts = ae.getTimestamps();
 
         try{
-            if(isSpinnakerProtocolEnabled()){
-                throw new UnsupportedOperationException();
+            if(isSpinnakerProtocolEnabled()) {
+                currentBuf.order(ByteOrder.LITTLE_ENDIAN);
+                for (int i_offset = 0; i_offset < nEvents; i_offset += 255) { //for each packet
+                    int packet_end_i= min(i_offset+255,nEvents);
+                    writeSpiNNakerHeader(currentBuf, packet_end_i-i_offset);
+                    for (int i = i_offset; i < packet_end_i; i++) { //for each event in the packet
+                        //timestamp
+                        int t = 0;
+                        if (timestampsEnabled) {
+                            if (!localTimestampsEnabled) {
+                                t = ts[i];
+                            } else {
+                                t = (int) System.nanoTime() / 1000;
+                            }
+                        }
+                        //send ADDRs and Ts
+                        if (use4ByteAddrTs) {
+                            currentBuf.putInt(addr[i]);
+                            if (timestampsEnabled) {
+                                currentBuf.putInt((int) (timestampMultiplierReciprocal * t));
+                            }
+                        } else {
+                            currentBuf.putShort((short) addr[i]);
+                            if (timestampsEnabled) {
+                                currentBuf.putInt((int) (timestampMultiplierReciprocal * t));
+                            }
+                        }
+                        //No payload.
+                    }
+                    sendPacket();
+                }
             }else{
                 // write the sequence number for this DatagramPacket to the buf for this ByteArrayOutputStream
                 maybeWriteSequenceNumber(currentBuf);
@@ -227,8 +285,20 @@ public class AEUnicastOutput implements AEUnicastSettings{
     private void maybeWriteSequenceNumber (ByteBuffer buf) throws IOException{
         if ( isSequenceNumberEnabled() ){
 //            log.info("sequence number="+packetSequenceNumber);
-            buf.putInt(swab(packetSequenceNumber++));
+            if(packetSequenceNumber < Integer.MAX_VALUE) //ensure that this number is positive
+                packetSequenceNumber++;
+            else
+                packetSequenceNumber= 0;
+            buf.putInt(swab(packetSequenceNumber));
         }
+    }
+    
+    private void writeSequenceNumberByte (ByteBuffer buf) throws IOException{
+        if(packetSequenceNumber < Integer.MAX_VALUE) //ensure that this number is positive
+            packetSequenceNumber++;
+        else
+            packetSequenceNumber= 0;
+        buf.put((byte)(packetSequenceNumber & 0xFF)); //write the last byte only (we ensured it's positive so don't worry about 2-complement)
     }
 
     @Override

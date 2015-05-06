@@ -8,6 +8,7 @@ package net.sf.jaer.eventio;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.IOException;
+import static java.lang.Integer.min;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -71,6 +72,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private float timestampMultiplier = prefs.getFloat("AEUnicastInput.timestampMultiplier", DEFAULT_TIMESTAMP_MULTIPLIER);
     private boolean use4ByteAddrTs = prefs.getBoolean("AEUnicastInput.use4ByteAddrTs", DEFAULT_USE_4_BYTE_ADDR_AND_TIMESTAMP);
     private boolean localTimestampsEnabled = prefs.getBoolean("AEUnicastOutput.localTimestampsEnabled", false);
+    private boolean spinnakerProtocolEnabled=prefs.getBoolean("AEUnicastInput.spinnakerProtocolEnabled", false);
     boolean stopme = false;
     private DatagramChannel channel;
     private int datagramCounter = 0;
@@ -112,7 +114,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
         availableBufferQueue.clear();
         for(int i=0;i<NBUFFERS;i++){
             ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
-            buffer.order(swapBytesEnabled ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
+            buffer.order(swapBytesEnabled || spinnakerProtocolEnabled ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN); //spinnaker always uses little endian
             availableBufferQueue.add(buffer);
         }
         filledBufferQueue.clear();
@@ -207,7 +209,8 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                 }
             }
             buffer.flip();
-            checkSequenceNumber(buffer);
+            if(!spinnakerProtocolEnabled) //spinnaker protocol calls it later (counter in header)
+                checkSequenceNumber(buffer);
 //            if(exchanger.size()>10){
 //                log.info("filled queue of datagrams has "+exchanger.size()+" buffers");
 //            }
@@ -238,36 +241,76 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
      * @param packet to add events to.
      */
     private void extractEvents(ByteBuffer buffer, AENetworkRawPacket packet) {
-        // extract the ae data and add events to the packet we are presently filling
-        int seqNumLength = sequenceNumberEnabled ? Integer.SIZE / 8 : 0;
-        int eventSize = eventSize();
-        //log.info("event size " + eventSize);
-        int nEventsInPacket = (buffer.limit() - seqNumLength) / eventSize;
-        //log.info("nr of events " + nEventsInPacket);
-        //deprecated ... int ts = !timestampsEnabled || localTimestampsEnabled ? (int)( System.nanoTime() / 1000 ) : 0; // if no timestamps coming, add system clock for all.
-        int ts = !timestampsEnabled || localTimestampsEnabled ? (int) (((System.nanoTime() / 1000) << 32) >> 32) : 0; // if no timestamps coming, add system clock for all.
-        //log.info("nanoTime shift " +(int)( ((System.nanoTime()/1000) <<32)>>32));
-        final int startingIndex = packet.getNumEvents();
-        final int newPacketLength = startingIndex + nEventsInPacket;
-        packet.ensureCapacity(newPacketLength);
-        final int[] addresses = packet.getAddresses();
-        final int[] timestamps = packet.getTimestamps();
+        
+        if(isSpinnakerProtocolEnabled()) {
+            // Read header
+            byte byte0= buffer.get();
+            if((byte0 & 0b10000000) != 0) throw new UnsupportedOperationException("Command packets not supported yet.");
+            if(use4ByteAddrTs != ((byte0 & 0b01000000) != 0)) throw new IllegalStateException("use4ByteAddrTs conflict btw header and user setting.");
+            if((!timestampsEnabled || localTimestampsEnabled) != ((byte0 & 0b00100000) == 0)) throw new IllegalStateException("timestamp enabling conflict btw header and user setting.");
+            //we ignore payloads, but need their sizes to skip them
+            int payload_size; //payload size in bytes
+            {
+                boolean bit1, bit0;
+                bit1= ((byte0 & 0b00010000) != 0);
+                bit0= ((byte0 & 0b00001000) != 0);
+                if(!bit0 && !bit1) payload_size= 0; //no payload
+                else if(bit0 && !bit1) payload_size= 2; //16bit
+                else if(!bit0 && bit1) payload_size= 4; //32bit
+                else payload_size= 16; //128bit
+            }
+            //if(payload_size != 0) throw new UnsupportedOperationException("Payloads not supported.");
+            //key prefix
+            if((byte0 & 0b00000100) != 0) throw new UnsupportedOperationException("Key prefixes are not supported.");
+            //timestamp prefix
+            if((byte0 & 0b00000010) != 0) throw new UnsupportedOperationException("Timestamp prefixes are not supported.");
+            //payload prefix
+            if((byte0 & 0b00000001) != 0) throw new UnsupportedOperationException("Payload prefixes are not supported.");
+            
+            //read number of events
+            int nEventsInPacket= buffer.get() & 0xff;
+            int eventSize= 2*(use4ByteAddrTs ? 4 : 2) + payload_size;
+            int computednEventsInPacket= (buffer.limit()-4)/eventSize;
+            if(computednEventsInPacket != nEventsInPacket)
+            {
+                nEventsInPacket= min(computednEventsInPacket,nEventsInPacket);
+                log.warning("Mismatch between number of events claimed by header and the computed one from packet size. Using smallest one.");
+            }
+            
+            //packet counter
+            int packetNumber= buffer.get() & 0xff;
+            if (sequenceNumberEnabled) {
+                datagramSequenceNumber = packetNumber; // swab(buffer.getInt());
+    //                log.info("recieved packet with sequence number "+packetSequenceNumber);
+                if (datagramSequenceNumber != datagramCounter) {
+                    log.warning(String.format("Dropped %d packets. (Incoming packet sequence number (%d) doesn't match expected packetCounter (%d), resetting packetCounter)", datagramSequenceNumber - datagramCounter, datagramSequenceNumber, datagramCounter));
+                    datagramCounter = datagramSequenceNumber;
+                }
+                if(datagramCounter < 255)
+                    datagramCounter++;
+                else
+                    datagramCounter= 0;
+            }
+            
+            //Reserved byte, just ignore it
+            buffer.get();
+            
+            //read events
+            int ts = !timestampsEnabled || localTimestampsEnabled ? (int) (((System.nanoTime() / 1000) << 32) >> 32) : 0; // if no timestamps coming, add system clock for all.
+            final int startingIndex = packet.getNumEvents();
+            final int newPacketLength = startingIndex + nEventsInPacket;
+            packet.ensureCapacity(newPacketLength);
+            final int[] addresses = packet.getAddresses();
+            final int[] timestamps = packet.getTimestamps();
 
-        for (int i = 0; i < nEventsInPacket; i++) {
-            if (addressFirstEnabled) {
+            for (int i = 0; i < nEventsInPacket; i++) {
                 if (use4ByteAddrTs) {
-                    eventRaw.address = buffer.getInt(); // swab(buffer.getInt()); // swapInt is switched to handle big endian event sources (like ARC camera)
-                    //log.info("address " + eventRaw.address);
-                    //int v=buffer.getInt();
-                    // if timestamps are enabled, they have to be read out even if they are not used because of local timestamps
+                    eventRaw.address = buffer.getInt();
+                    
+                    //timestamps, only if enabled and non local
                     if (timestampsEnabled && !localTimestampsEnabled) {
-                        int rawTime = buffer.getInt(); //swab(v);
-                        //                  if(rawTime<lastts) {
-                        //                      System.out.println("backwards timestamp at event "+i+"of "+nEventsInPacket);
-                        //                  }else if(rawTime!=lastts){
-                        //                      System.out.println("time jump at event "+i+"of "+nEventsInPacket);
-                        //                  }
-                        //                  lastts=rawTime;
+                        int rawTime = buffer.getInt();
+
                         int zeroedRawTime;
                         if (readTimeZeroAlready) {
                             // TODO TDS sends 32 bit timestamp which overflows after multiplication
@@ -278,7 +321,6 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                             timeZero = rawTime;
                             zeroedRawTime = 0;
                         }
-//                        int v3 = 0xffff & v2; // TODO hack for TDS sensor which uses all 32 bits causing overflow after multiplication by multiplier and int cast
                         float floatFinalTime = timestampMultiplier * zeroedRawTime;
                         int finalTime;
                         if ((floatFinalTime >= Integer.MAX_VALUE) || (floatFinalTime <= Integer.MIN_VALUE)) {
@@ -288,15 +330,14 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                             finalTime = (int) floatFinalTime;
                         }
                         eventRaw.timestamp = finalTime;
-                    } else {
-                        //SmartEyeTDS
+                    } else { //ignore remote timestamp
                         eventRaw.timestamp = ts;
-                        //read out buffer with timestamp
                         buffer.getInt();
                         //log.info("local timestamp " + ts);
                     }
                 } else {
-                    eventRaw.address = buffer.getShort() & 0xffff; // swab(buffer.getShort()); // swapInt is switched to handle big endian event sources (like ARC camera)
+                    eventRaw.address = buffer.getShort();
+                    
 //                    eventRaw.timestamp=(int) (timestampMultiplier*(int) swab(buffer.getShort()));
                     if (!localTimestampsEnabled && timestampsEnabled) {
                         eventRaw.timestamp = (int) (timestampMultiplier * buffer.getShort());
@@ -304,36 +345,113 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                         eventRaw.timestamp = ts;
                     }
                 }
-            } else {
-                if (use4ByteAddrTs) {
-//                    eventRaw.timestamp=(int) (swab(buffer.getInt()));
-//                    eventRaw.address=swab(buffer.getInt());
-                    if (!localTimestampsEnabled && timestampsEnabled) {
-                        eventRaw.timestamp = ((buffer.getInt()));
-                    } else {
-                        eventRaw.timestamp = ts;
-                    }
-                    eventRaw.address = (buffer.getInt());
-                } else {
-//                    eventRaw.timestamp=(int) (swab(buffer.getShort()));
-//                    eventRaw.address=(int) (timestampMultiplier*(int) swab(buffer.getShort()));
-                    if (!localTimestampsEnabled && timestampsEnabled) {
-                        eventRaw.timestamp = ((buffer.getShort()));  // TODO check if need AND with 0xffff to avoid negative timestamps
-                    } else {
-                        eventRaw.timestamp = ts;
-                    }
-                    eventRaw.address = (int) (timestampMultiplier * (buffer.getShort() & 0xffff));
-                }
+                
+                //ignore payload
+                for(int tmpi=0 ; tmpi < payload_size ; tmpi++) buffer.get();
+
+                // alternative is to directly add to arrays of packet for speed, to bypass the capacity checking
+    //            packet.addEvent(eventRaw);
+                addresses[startingIndex + i] = eventRaw.address;
+                timestamps[startingIndex + i] = eventRaw.timestamp;
             }
+            packet.setNumEvents(newPacketLength);            
+        } else {
+            // extract the ae data and add events to the packet we are presently filling
+            int seqNumLength = sequenceNumberEnabled ? Integer.SIZE / 8 : 0;
+            int eventSize = eventSize();
+            //log.info("event size " + eventSize);
+            int nEventsInPacket = (buffer.limit() - seqNumLength) / eventSize;
+            //log.info("nr of events " + nEventsInPacket);
+            //deprecated ... int ts = !timestampsEnabled || localTimestampsEnabled ? (int)( System.nanoTime() / 1000 ) : 0; // if no timestamps coming, add system clock for all.
+            int ts = !timestampsEnabled || localTimestampsEnabled ? (int) (((System.nanoTime() / 1000) << 32) >> 32) : 0; // if no timestamps coming, add system clock for all.
+            //log.info("nanoTime shift " +(int)( ((System.nanoTime()/1000) <<32)>>32));
+            final int startingIndex = packet.getNumEvents();
+            final int newPacketLength = startingIndex + nEventsInPacket;
+            packet.ensureCapacity(newPacketLength);
+            final int[] addresses = packet.getAddresses();
+            final int[] timestamps = packet.getTimestamps();
 
-            // alternative is to directly add to arrays of packet for speed, to bypass the capacity checking
-//            packet.addEvent(eventRaw);
-            addresses[startingIndex + i] = eventRaw.address;
-            timestamps[startingIndex + i] = eventRaw.timestamp;
+            for (int i = 0; i < nEventsInPacket; i++) {
+                if (addressFirstEnabled) {
+                    if (use4ByteAddrTs) {
+                        eventRaw.address = buffer.getInt(); // swab(buffer.getInt()); // swapInt is switched to handle big endian event sources (like ARC camera)
+                        //log.info("address " + eventRaw.address);
+                        //int v=buffer.getInt();
+                        // if timestamps are enabled, they have to be read out even if they are not used because of local timestamps
+                        if (timestampsEnabled && !localTimestampsEnabled) {
+                            int rawTime = buffer.getInt(); //swab(v);
+                            //                  if(rawTime<lastts) {
+                            //                      System.out.println("backwards timestamp at event "+i+"of "+nEventsInPacket);
+                            //                  }else if(rawTime!=lastts){
+                            //                      System.out.println("time jump at event "+i+"of "+nEventsInPacket);
+                            //                  }
+                            //                  lastts=rawTime;
+                            int zeroedRawTime;
+                            if (readTimeZeroAlready) {
+                                // TODO TDS sends 32 bit timestamp which overflows after multiplication
+                                // by timestampMultiplier and cast to int jaer timestamp
+                                zeroedRawTime = rawTime - timeZero;
+                            } else {
+                                readTimeZeroAlready = true;
+                                timeZero = rawTime;
+                                zeroedRawTime = 0;
+                            }
+    //                        int v3 = 0xffff & v2; // TODO hack for TDS sensor which uses all 32 bits causing overflow after multiplication by multiplier and int cast
+                            float floatFinalTime = timestampMultiplier * zeroedRawTime;
+                            int finalTime;
+                            if ((floatFinalTime >= Integer.MAX_VALUE) || (floatFinalTime <= Integer.MIN_VALUE)) {
+                                timeZero = rawTime; // after overflow reset timezero
+                                finalTime = Integer.MIN_VALUE + (int) (floatFinalTime - Integer.MAX_VALUE); // Change to -2k seconds now - was: wrap around at 2k seconds, back to 0 seconds. TODO different than hardware which wraps back to -2k seconds
+                            } else {
+                                finalTime = (int) floatFinalTime;
+                            }
+                            eventRaw.timestamp = finalTime;
+                        } else {
+                            //SmartEyeTDS
+                            eventRaw.timestamp = ts;
+                            //read out buffer with timestamp
+                            buffer.getInt();
+                            //log.info("local timestamp " + ts);
+                        }
+                    } else {
+                        eventRaw.address = buffer.getShort() & 0xffff; // swab(buffer.getShort()); // swapInt is switched to handle big endian event sources (like ARC camera)
+    //                    eventRaw.timestamp=(int) (timestampMultiplier*(int) swab(buffer.getShort()));
+                        if (!localTimestampsEnabled && timestampsEnabled) {
+                            eventRaw.timestamp = (int) (timestampMultiplier * buffer.getShort());
+                        } else {
+                            eventRaw.timestamp = ts;
+                        }
+                    }
+                } else {
+                    if (use4ByteAddrTs) {
+    //                    eventRaw.timestamp=(int) (swab(buffer.getInt()));
+    //                    eventRaw.address=swab(buffer.getInt());
+                        if (!localTimestampsEnabled && timestampsEnabled) {
+                            eventRaw.timestamp = ((buffer.getInt()));
+                        } else {
+                            eventRaw.timestamp = ts;
+                        }
+                        eventRaw.address = (buffer.getInt());
+                    } else {
+    //                    eventRaw.timestamp=(int) (swab(buffer.getShort()));
+    //                    eventRaw.address=(int) (timestampMultiplier*(int) swab(buffer.getShort()));
+                        if (!localTimestampsEnabled && timestampsEnabled) {
+                            eventRaw.timestamp = ((buffer.getShort()));  // TODO check if need AND with 0xffff to avoid negative timestamps
+                        } else {
+                            eventRaw.timestamp = ts;
+                        }
+                        eventRaw.address = (int) (timestampMultiplier * (buffer.getShort() & 0xffff));
+                    }
+                }
 
+                // alternative is to directly add to arrays of packet for speed, to bypass the capacity checking
+    //            packet.addEvent(eventRaw);
+                addresses[startingIndex + i] = eventRaw.address;
+                timestamps[startingIndex + i] = eventRaw.timestamp;
+
+            }
+            packet.setNumEvents(newPacketLength);
         }
-        packet.setNumEvents(newPacketLength);
-
     }
 
     @Override
@@ -620,12 +738,13 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
 
     @Override
     public boolean isSpinnakerProtocolEnabled() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        return spinnakerProtocolEnabled;
     }
 
     @Override
     public void setSpinnakerProtocolEnabled(boolean yes) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        spinnakerProtocolEnabled=yes;
+        prefs.putBoolean("AEUnicastInput.spinnakerProtocolEnabled", yes);
     }
 
     private class Reader extends Thread {
