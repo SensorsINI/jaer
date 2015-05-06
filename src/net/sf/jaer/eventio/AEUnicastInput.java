@@ -8,7 +8,6 @@ package net.sf.jaer.eventio;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.IOException;
-import static java.lang.Integer.min;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -50,8 +49,8 @@ import net.sf.jaer.aemonitor.EventRaw;
  *
  * @see #setAddressFirstEnabled
  * @see #setSequenceNumberEnabled
- 
- 
+
+
  */
 public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener {
 
@@ -84,7 +83,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private Semaphore pauseSemaphore = new Semaphore(1);
     private volatile boolean paused = false;
     private Reader readingThread = null;
- 
+
     /**
      * Constructs an instance of AEUnicastInput and binds it to the default
      * port. The port preference value may have been modified from the
@@ -109,7 +108,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
         this();
         setPort(port);
     }
-    
+
     private void allocateBufffers(){
         availableBufferQueue.clear();
         for(int i=0;i<NBUFFERS;i++){
@@ -119,7 +118,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
         }
         filledBufferQueue.clear();
     }
-    
+
     private void freeBuffers(){
         availableBufferQueue.clear();
         filledBufferQueue.clear(); // allow GC to collect these references
@@ -187,7 +186,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private SocketAddress receiveDatagramAndPutToExchanger(AENetworkRawPacket packet) {
         SocketAddress client = null;
         try {
-            ByteBuffer buffer=availableBufferQueue.take(); // buffer must be cleared by readPacket 
+            ByteBuffer buffer=availableBufferQueue.take(); // buffer must be cleared by readPacket
 //            ByteBuffer buffer = ByteBuffer.allocateDirect(bufferSize);
 //            buffer.order(swapBytesEnabled ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
 
@@ -209,8 +208,9 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                 }
             }
             buffer.flip();
-            if(!spinnakerProtocolEnabled) //spinnaker protocol calls it later (counter in header)
-                checkSequenceNumber(buffer);
+            if(!spinnakerProtocolEnabled) {
+				checkSequenceNumber(buffer);
+			}
 //            if(exchanger.size()>10){
 //                log.info("filled queue of datagrams has "+exchanger.size()+" buffers");
 //            }
@@ -241,42 +241,62 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
      * @param packet to add events to.
      */
     private void extractEvents(ByteBuffer buffer, AENetworkRawPacket packet) {
-        
+
         if(isSpinnakerProtocolEnabled()) {
             // Read header
             byte byte0= buffer.get();
-            if((byte0 & 0b10000000) != 0) throw new UnsupportedOperationException("Command packets not supported yet.");
-            if(use4ByteAddrTs != ((byte0 & 0b01000000) != 0)) throw new IllegalStateException("use4ByteAddrTs conflict btw header and user setting.");
-            if((!timestampsEnabled || localTimestampsEnabled) != ((byte0 & 0b00100000) == 0)) throw new IllegalStateException("timestamp enabling conflict btw header and user setting.");
+            if((byte0 & 0b10000000) != 0) {
+				throw new UnsupportedOperationException("Command packets not supported yet.");
+			}
+            if(use4ByteAddrTs != ((byte0 & 0b01000000) != 0)) {
+				throw new IllegalStateException("use4ByteAddrTs conflict btw header and user setting.");
+			}
+            if((!timestampsEnabled || localTimestampsEnabled) != ((byte0 & 0b00100000) == 0)) {
+				throw new IllegalStateException("timestamp enabling conflict btw header and user setting.");
+			}
             //we ignore payloads, but need their sizes to skip them
             int payload_size; //payload size in bytes
             {
                 boolean bit1, bit0;
                 bit1= ((byte0 & 0b00010000) != 0);
                 bit0= ((byte0 & 0b00001000) != 0);
-                if(!bit0 && !bit1) payload_size= 0; //no payload
-                else if(bit0 && !bit1) payload_size= 2; //16bit
-                else if(!bit0 && bit1) payload_size= 4; //32bit
-                else payload_size= 16; //128bit
+                if(!bit0 && !bit1) {
+					payload_size= 0; //no payload
+				}
+				else if(bit0 && !bit1) {
+					payload_size= 2; //16bit
+				}
+				else if(!bit0 && bit1) {
+					payload_size= 4; //32bit
+				}
+				else {
+					payload_size= 16; //128bit
+				}
             }
             //if(payload_size != 0) throw new UnsupportedOperationException("Payloads not supported.");
             //key prefix
-            if((byte0 & 0b00000100) != 0) throw new UnsupportedOperationException("Key prefixes are not supported.");
+            if((byte0 & 0b00000100) != 0) {
+				throw new UnsupportedOperationException("Key prefixes are not supported.");
+			}
             //timestamp prefix
-            if((byte0 & 0b00000010) != 0) throw new UnsupportedOperationException("Timestamp prefixes are not supported.");
+            if((byte0 & 0b00000010) != 0) {
+				throw new UnsupportedOperationException("Timestamp prefixes are not supported.");
+			}
             //payload prefix
-            if((byte0 & 0b00000001) != 0) throw new UnsupportedOperationException("Payload prefixes are not supported.");
-            
+            if((byte0 & 0b00000001) != 0) {
+				throw new UnsupportedOperationException("Payload prefixes are not supported.");
+			}
+
             //read number of events
             int nEventsInPacket= buffer.get() & 0xff;
-            int eventSize= 2*(use4ByteAddrTs ? 4 : 2) + payload_size;
+            int eventSize= (2*(use4ByteAddrTs ? 4 : 2)) + payload_size;
             int computednEventsInPacket= (buffer.limit()-4)/eventSize;
             if(computednEventsInPacket != nEventsInPacket)
             {
-                nEventsInPacket= min(computednEventsInPacket,nEventsInPacket);
+                nEventsInPacket= Math.min(computednEventsInPacket,nEventsInPacket);
                 log.warning("Mismatch between number of events claimed by header and the computed one from packet size. Using smallest one.");
             }
-            
+
             //packet counter
             int packetNumber= buffer.get() & 0xff;
             if (sequenceNumberEnabled) {
@@ -286,15 +306,17 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                     log.warning(String.format("Dropped %d packets. (Incoming packet sequence number (%d) doesn't match expected packetCounter (%d), resetting packetCounter)", datagramSequenceNumber - datagramCounter, datagramSequenceNumber, datagramCounter));
                     datagramCounter = datagramSequenceNumber;
                 }
-                if(datagramCounter < 255)
-                    datagramCounter++;
-                else
-                    datagramCounter= 0;
+                if(datagramCounter < 255) {
+					datagramCounter++;
+				}
+				else {
+					datagramCounter= 0;
+				}
             }
-            
+
             //Reserved byte, just ignore it
             buffer.get();
-            
+
             //read events
             int ts = !timestampsEnabled || localTimestampsEnabled ? (int) (((System.nanoTime() / 1000) << 32) >> 32) : 0; // if no timestamps coming, add system clock for all.
             final int startingIndex = packet.getNumEvents();
@@ -306,7 +328,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             for (int i = 0; i < nEventsInPacket; i++) {
                 if (use4ByteAddrTs) {
                     eventRaw.address = buffer.getInt();
-                    
+
                     //timestamps, only if enabled and non local
                     if (timestampsEnabled && !localTimestampsEnabled) {
                         int rawTime = buffer.getInt();
@@ -337,7 +359,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                     }
                 } else {
                     eventRaw.address = buffer.getShort();
-                    
+
 //                    eventRaw.timestamp=(int) (timestampMultiplier*(int) swab(buffer.getShort()));
                     if (!localTimestampsEnabled && timestampsEnabled) {
                         eventRaw.timestamp = (int) (timestampMultiplier * buffer.getShort());
@@ -345,16 +367,18 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                         eventRaw.timestamp = ts;
                     }
                 }
-                
+
                 //ignore payload
-                for(int tmpi=0 ; tmpi < payload_size ; tmpi++) buffer.get();
+                for(int tmpi=0 ; tmpi < payload_size ; tmpi++) {
+					buffer.get();
+				}
 
                 // alternative is to directly add to arrays of packet for speed, to bypass the capacity checking
     //            packet.addEvent(eventRaw);
                 addresses[startingIndex + i] = eventRaw.address;
                 timestamps[startingIndex + i] = eventRaw.timestamp;
             }
-            packet.setNumEvents(newPacketLength);            
+            packet.setNumEvents(newPacketLength);
         } else {
             // extract the ae data and add events to the packet we are presently filling
             int seqNumLength = sequenceNumberEnabled ? Integer.SIZE / 8 : 0;
