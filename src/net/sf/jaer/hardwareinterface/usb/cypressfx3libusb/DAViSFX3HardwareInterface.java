@@ -417,10 +417,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									// old logic, we have to flip it here, so that the chip class extractor
 									// can flip it back. Backwards compatibility with recordings is the main
 									// motivation to do this hack.
-                                                                    
-                                                                        // Invert polarity for PixelParade high gain pixels (DavisSense), because of
-                                                                        // negative gain from pre-amplifier.
-                                                                        final byte polarity = (chipID == CHIP_DAVIS208 && data < 192) ? ((byte) (~code)) : (code);
+
+									// Invert polarity for PixelParade high gain pixels (DavisSense), because of
+									// negative gain from pre-amplifier.
+									final byte polarity = ((chipID == CHIP_DAVIS208) && (data < 192)) ? ((byte) (~code))
+										: (code);
 
 									if (dvsInvertXY) {
 										buffer.getAddresses()[eventCounter] = ((data << DavisChip.YSHIFT) & DavisChip.YMASK)
