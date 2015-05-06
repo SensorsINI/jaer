@@ -105,7 +105,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
                 if (displayEvents) {
                     if ((xsel >= 0) && (ysel >= 0)) { // find correct mouse pixel interpretation to make sounds for
                         // large pixels
-                        int xs = (xsel>>>1)<<1, ys = (ysel>>>1)<<1;
+                        int xs = (xsel >>> 1) << 1, ys = (ysel >>> 1) << 1;
                         if ((e.x == xs) && (e.y == ys)) {
                             playSpike(type);
                         }
@@ -278,7 +278,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
             }
         }
     }
-    
+
     private float normalizeEvent(float value) {
         if (value < 0) {
             value = 0;
@@ -450,16 +450,16 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
         if (isSeparateAPSByColor()) {
             ColorFilter color = ((ApsDvsEventRGBW) e).getColorFilter();
 
-            if (color == ColorFilter.R) {
+            if (color == ColorFilter.G) {
                 x = x / 2;
                 y = (y / 2) + 240;
-            } else if (color == ColorFilter.G) {
+            } else if (color == ColorFilter.R) {
                 x = (x / 2) + 320;
                 y = (y / 2) + 240;
-            } else if (color == ColorFilter.B) {
+            } else if (color == ColorFilter.W) {
                 x = (x / 2) + 320;
                 y = y / 2;
-            } else { // W
+            } else { // B
                 x = x / 2;
                 y = y / 2;
             }
@@ -478,38 +478,38 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
             float[] image = pixBuffer.array();
             for (int y = 0; y < chip.getSizeY(); y++) {
                 for (int x = 0; x < chip.getSizeX(); x++) {
-                    if ((y % 2) == 1) {
-                        //row 1, 3, 5 ... 479, from top of the image, contianing W and B
-                        if ((x % 2) == 0) { //W
+                    if ((y % 2) == 0) {
+                        //row 0, 2, 4 ... 478, from bottom of the image, contianing W and B
+                        if ((x % 2) == 1) { //W
                             //interpolating R for W
-                            if (y == chip.getSizeY() - 1) {
+                            if (y == 0) {
                                 //bottom egde of W
-                                image[getIndex(x, y)] = image[getIndex(x, y - 1)];
+                                image[getIndex(x, y)] = image[getIndex(x, y + 1)];
                             } else {
                                 //rest of W
                                 image[getIndex(x, y)] = 0.5f * (image[getIndex(x, y + 1)] + image[getIndex(x, y - 1)]);
                             }
                             //interpolating B for W
-                            if (x == 0) {
-                                //left edge of W
-                                image[getIndex(x, y) + 2] = image[getIndex(x + 1, y) + 2];
+                            if (x == chip.getSizeX() - 1) {
+                                //right edge of W
+                                image[getIndex(x, y) + 2] = image[getIndex(x - 1, y) + 2];
                             } else {
                                 //rest of W
                                 image[getIndex(x, y) + 2] = 0.5f * (image[getIndex(x - 1, y) + 2] + image[getIndex(x + 1, y) + 2]);
                             }
                             //interpolating G for W
-                            if (y == chip.getSizeY() - 1) {
+                            if (y == 0) {
                                 //bottom edge of W
-                                if (x == 0) {
-                                    //bottom left corner of W
-                                    image[getIndex(x, y) + 1] = image[getIndex(x + 1, y - 1) + 1];
+                                if (x == chip.getSizeX() - 1) {
+                                    //bottom right corner of W
+                                    image[getIndex(x, y) + 1] = image[getIndex(x - 1, y + 1) + 1];
                                 } else {
                                     //rest of the bottom edge of W
-                                    image[getIndex(x, y) + 1] = 0.5f * (image[getIndex(x + 1, y - 1) + 1] + image[getIndex(x - 1, y - 1) + 1]);
+                                    image[getIndex(x, y) + 1] = 0.5f * (image[getIndex(x + 1, y + 1) + 1] + image[getIndex(x - 1, y + 1) + 1]);
                                 }
-                            } else if (x == 0) {
-                                //left edge of W excluding bottom left corner
-                                image[getIndex(x, y) + 1] = 0.5f * (image[getIndex(x + 1, y + 1) + 1] + image[getIndex(x + 1, y - 1) + 1]);
+                            } else if (x == chip.getSizeX() - 1) {
+                                //right edge of W excluding bottom right corner
+                                image[getIndex(x, y) + 1] = 0.5f * (image[getIndex(x - 1, y + 1) + 1] + image[getIndex(x - 1, y - 1) + 1]);
                             } else {
                                 // rest of W
                                 image[getIndex(x, y) + 1] = 0.25f * (image[getIndex(x + 1, y + 1) + 1] + image[getIndex(x + 1, y - 1) + 1]
@@ -517,76 +517,76 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
                             }
                         } else { //B
                             //interpolating R for B
-                            if (y == chip.getSizeY() - 1) {
+                            if (y == 0) {
                                 //bottom edge of B
-                                if (x == chip.getSizeX() - 1) {
-                                    //bottom right corner of B
-                                    image[getIndex(x, y)] = image[getIndex(x - 1, y - 1)];
+                                if (x == 0) {
+                                    //bottom left corner of B
+                                    image[getIndex(x, y)] = image[getIndex(x + 1, y + 1)];
                                 } else {
                                     //rest of the bottom edge of B
-                                    image[getIndex(x, y)] = 0.5f * (image[getIndex(x - 1, y - 1)] + image[getIndex(x + 1, y - 1)]);
+                                    image[getIndex(x, y)] = 0.5f * (image[getIndex(x - 1, y + 1)] + image[getIndex(x + 1, y + 1)]);
                                 }
-                            } else if (x == chip.getSizeX() - 1) {
-                                //right edge of B excluding bottom right corner
-                                image[getIndex(x, y)] = 0.5f * (image[getIndex(x - 1, y + 1)] + image[getIndex(x - 1, y - 1)]);
+                            } else if (x == 0) {
+                                //left edge of B excluding bottom left corner
+                                image[getIndex(x, y)] = 0.5f * (image[getIndex(x + 1, y + 1)] + image[getIndex(x + 1, y - 1)]);
                             } else {
                                 // rest of B
                                 image[getIndex(x, y)] = 0.25f * (image[getIndex(x - 1, y - 1)] + image[getIndex(x - 1, y + 1)]
                                         + image[getIndex(x + 1, y - 1)] + image[getIndex(x + 1, y + 1)]);
                             }
                             //interpolating G for B
-                            if (y == chip.getSizeY() - 1) {
+                            if (y == 0) {
                                 //bottom egde of B
-                                image[getIndex(x, y) + 1] = image[getIndex(x, y - 1) + 1];
+                                image[getIndex(x, y) + 1] = image[getIndex(x, y + 1) + 1];
                             } else {
                                 //rest of B
                                 image[getIndex(x, y) + 1] = 0.5f * (image[getIndex(x, y - 1) + 1] + image[getIndex(x, y + 1) + 1]);
                             }
                         }
                     } else {
-                        //row 0, 2, 4 ... 478, from top of the image, contianing R and G
-                        if ((x % 2) == 0) { //R
+                        //row 1, 3, 5 ... 479, from bottom of the image, contianing R and G
+                        if ((x % 2) == 1) { //R
                             //interpolation B for R
-                            if (y == 0) {
+                            if (y == chip.getSizeY() - 1) {
                                 //top edge of R
-                                if (x == 0) {
-                                    //top left corner of R
-                                    image[getIndex(x, y) + 2] = image[getIndex(x + 1, y + 1) + 2];
+                                if (x == chip.getSizeX() - 1) {
+                                    //top right corner of R
+                                    image[getIndex(x, y) + 2] = image[getIndex(x - 1, y - 1) + 2];
                                 } else {
                                     //rest of the top edge of R
-                                    image[getIndex(x, y) + 2] = 0.5f * (image[getIndex(x - 1, y + 1) + 2] + image[getIndex(x + 1, y + 1) + 2]);
+                                    image[getIndex(x, y) + 2] = 0.5f * (image[getIndex(x - 1, y - 1) + 2] + image[getIndex(x + 1, y - 1) + 2]);
                                 }
-                            } else if (x == 0) {
-                                //left edge of R excluding top left corner
-                                image[getIndex(x, y) + 2] = 0.5f * (image[getIndex(x + 1, y + 1) + 2] + image[getIndex(x + 1, y - 1) + 2]);
+                            } else if (x == chip.getSizeX() - 1) {
+                                //right edge of R excluding top right corner
+                                image[getIndex(x, y) + 2] = 0.5f * (image[getIndex(x - 1, y + 1) + 2] + image[getIndex(x - 1, y - 1) + 2]);
                             } else {
                                 // rest of R
                                 image[getIndex(x, y) + 2] = 0.25f * (image[getIndex(x - 1, y - 1) + 2] + image[getIndex(x - 1, y + 1) + 2]
                                         + image[getIndex(x + 1, y - 1) + 2] + image[getIndex(x + 1, y + 1) + 2]);
                             }
                             //interpolating G for R
-                            if (x == 0) {
-                                //left egde of R
-                                image[getIndex(x, y) + 1] = image[getIndex(x + 1, y) + 1];
+                            if (x == chip.getSizeX() - 1) {
+                                //right egde of R
+                                image[getIndex(x, y) + 1] = image[getIndex(x - 1, y) + 1];
                             } else {
                                 //rest of R
                                 image[getIndex(x, y) + 1] = 0.5f * (image[getIndex(x - 1, y) + 1] + image[getIndex(x + 1, y) + 1]);
                             }
                         } else { //G
                             //interpolating R for G
-                            if (x == chip.getSizeX() - 1) {
-                                //right egde of G
-                                image[getIndex(x, y)] = image[getIndex(x - 1, y)];
+                            if (x == 0) {
+                                //left egde of G
+                                image[getIndex(x, y)] = image[getIndex(x + 1, y)];
                             } else {
-                                //rest of R
+                                //rest of G
                                 image[getIndex(x, y)] = 0.5f * (image[getIndex(x - 1, y)] + image[getIndex(x + 1, y)]);
                             }
                             //interpolating B for G
-                            if (y == 0) {
+                            if (y == chip.getSizeY() - 1) {
                                 //top egde of G
-                                image[getIndex(x, y) + 2] = image[getIndex(x, y + 1) + 2];
+                                image[getIndex(x, y) + 2] = image[getIndex(x, y - 1) + 2];
                             } else {
-                                //rest of R
+                                //rest of G
                                 image[getIndex(x, y) + 2] = 0.5f * (image[getIndex(x, y - 1) + 2] + image[getIndex(x, y + 1) + 2]);
                             }
                         }
