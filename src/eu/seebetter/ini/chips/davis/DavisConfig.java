@@ -172,6 +172,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	protected float onOffBalance = 1;
 	protected float threshold = 1;
 	protected boolean translateRowOnlyEvents;
+	protected boolean externalAERControlEnabled;
 	JPanel userFriendlyControls;
 
 	public DavisConfig(Chip chip) {
@@ -518,6 +519,10 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		return translateRowOnlyEvents;
 	}
 
+	public boolean isExternalAERControlEnabled() {
+		return externalAERControlEnabled;
+	}
+
 	@Override
 	public boolean isUseAutoContrast() {
 		if (getVideoControl() == null) {
@@ -809,6 +814,22 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			try {
 				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_DVS, (short) 9,
 					(translateRowOnlyEvents) ? (0) : (1));
+			}
+			catch (HardwareInterfaceException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+
+	public void setExternalAERControlEnabled(boolean externalAERControlEnabled) {
+		this.externalAERControlEnabled = externalAERControlEnabled;
+
+		if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
+			// Translate Row-only Events is now in the logic.
+			try {
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_DVS, (short) 10,
+					(externalAERControlEnabled) ? (1) : (0));
 			}
 			catch (HardwareInterfaceException e) {
 				// TODO Auto-generated catch block
@@ -1631,6 +1652,28 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 					}
 				});
 			chipConfigPanel.add(eventTranslationControlPanel);
+
+			// External AER control panel (CAVIAR)
+			JPanel externalAERControlPanel = new JPanel();
+			externalAERControlPanel.setBorder(new TitledBorder("DVS external AER control"));
+			externalAERControlPanel.setLayout(new BoxLayout(externalAERControlPanel, BoxLayout.Y_AXIS));
+
+			final Action externalAERControlAction = new AbstractAction("Enable external AER Control") {
+				{
+					putValue(Action.SHORT_DESCRIPTION,
+						"<html>Control wheter AER ACK is controlled by our logic or external systems like CAVIAR.");
+					putValue(Action.SELECTED_KEY, externalAERControlEnabled);
+				}
+
+				@Override
+				public void actionPerformed(ActionEvent evt) {
+					setExternalAERControlEnabled(!isExternalAERControlEnabled());
+				}
+			};
+			final JRadioButton externalAERControlButton = new JRadioButton(externalAERControlAction);
+			externalAERControlPanel.add(externalAERControlButton);
+
+			chipConfigPanel.add(externalAERControlPanel);
 
 			return chipConfigPanel;
 		}
