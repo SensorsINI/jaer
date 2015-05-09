@@ -62,7 +62,7 @@ abstract public class DavisChip extends AETemporalConstastRetina {
     /**
      * Property change events fired when these properties change
      */
-    public static final String PROPERTY_FRAME_RATE_HZ = "ApsDvsChip.FRAME_RATE_HZ", PROPERTY_MEASURED_EXPOSURE_MS = "ApsDvsChip.EXPOSURE_MS";
+    public static final String PROPERTY_FRAME_RATE_HZ = "DavisChip.FRAME_RATE_HZ", PROPERTY_MEASURED_EXPOSURE_MS = "ApsDvsChip.EXPOSURE_MS";
 
     public static final String PROPERTY_AUTO_EXPOSURE_ENABLED = "autoExposureEnabled"; 
 

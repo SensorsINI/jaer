@@ -37,6 +37,9 @@ import net.sf.jaer.util.SpikeSound;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
+import eu.seebetter.ini.chips.DavisChip;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import net.sf.jaer.DevelopmentStatus;
 
 /**
@@ -50,7 +53,7 @@ import net.sf.jaer.DevelopmentStatus;
  */
 @Description("Collects and displays statistics for a selected range of pixels / cells")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class CellStatsProber extends EventFilter2D implements FrameAnnotater, MouseListener, MouseMotionListener, Observer {
+public class CellStatsProber extends EventFilter2D implements FrameAnnotater, MouseListener, MouseMotionListener, Observer,PropertyChangeListener {
 
     public static DevelopmentStatus getDevelopementStatus() {
         return DevelopmentStatus.Beta;
@@ -81,6 +84,8 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     private Point currentMousePoint = null;
     private int[] currentAddress = null;
     EngineeringFormat engFmt = new EngineeringFormat();
+    private boolean resetOnBiasChange=getBoolean("resetOnBiasChange",true);
+    private boolean addedBiasgenPropChangeListener=false;
 
     public CellStatsProber(AEChip chip) {
         super(chip);
@@ -108,7 +113,8 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         setPropertyTooltip(h, "individualISIsEnabled", "enables individual ISI statistics for each cell in selection. Disabling lumps all cells into one for ISI computation.");
         setPropertyTooltip(h, "separateEventTypes", "Separate average histogram into individual event types for each pixel. If unchecked, then all event types for a pixel are lumped together for ISIs.");
         setPropertyTooltip(h, "scaleHistogramsIncludingOverflow", "Scales histograms to include overflows for ISIs that are outside of range");
-
+        
+        chip.getSupport().addPropertyChangeListener(this);
     }
 
     public void displayStats(GLAutoDrawable drawable) {
@@ -382,6 +388,10 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     synchronized public void update(Observable o, Object arg) {
         currentAddress = new int[chip.getNumCellTypes()];
         Arrays.fill(currentAddress, -1);
+        if(!addedBiasgenPropChangeListener && chip.getBiasgen()!=null){
+            chip.getBiasgen().getSupport().addPropertyChangeListener(this);
+            addedBiasgenPropChangeListener=true;
+        }
     }
 
 	//    /**
@@ -936,4 +946,13 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             putBoolean("isiAutoScalingEnabled", isiAutoScalingEnabled);
         }
     }
+    
+      @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if(isFilterEnabled() && resetOnBiasChange && evt.getSource() instanceof AEChip && !evt.getPropertyName().equals(DavisChip.PROPERTY_FRAME_RATE_HZ)){
+            resetFilter();
+            log.info("reset filter on "+evt.toString());
+        }
+    }
+
 }

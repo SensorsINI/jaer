@@ -53,7 +53,7 @@ public class ListClasses {
 
     static final Logger log = Logger.getLogger("net.sf.jaer.util");
     private static boolean debug = false;
-    private static final int INIT_SIZE = 500, SIZE_INC = 500;
+    private static final int INIT_SIZE = 4000;
 
     private static void usage() {
         System.err.println(
@@ -117,15 +117,7 @@ public class ListClasses {
                 while (fileNames.hasMoreElements()) {
                     entry = fileNames.nextElement();
                     boolean skipThis = false;
-                    for (String s : IGNORED_CLASSPATH) {
-                        if (entry.getName().startsWith(s)) {
-                            if (debug) {
-                                log.log(Level.INFO, "skipping {0} because it starts with {1}", new Object[]{entry.getName(), s});
-                            }
-                            skipThis = true;
-                            break;
-                        }
-                    }
+                    skipThis = isIgnored(entry.getName(), skipThis);
                     if (!skipThis && entry.getName().endsWith(".class")) {
                         files.add(entry.getName());
                     }
@@ -144,6 +136,19 @@ public class ListClasses {
             log.info("found "+files.size()+" class files in "+jarFile.getName());
         }
         return files;
+    }
+
+    private static boolean isIgnored(String name, boolean skipThis) {
+        for (String s : IGNORED_CLASSPATH) {
+            if (name.startsWith(s)) {
+                if (debug) {
+                    log.log(Level.INFO, "skipping {0} because it starts with {1}", new Object[]{name, s});
+                }
+                skipThis = true;
+                break;
+            }
+        }
+        return skipThis;
     }
 
     private static List<String> loadClassesFromDir(String fileNames[]) {
