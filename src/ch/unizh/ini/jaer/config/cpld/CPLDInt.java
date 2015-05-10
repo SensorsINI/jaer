@@ -15,6 +15,7 @@ import ch.unizh.ini.jaer.config.ConfigInt;
  */
 public class CPLDInt extends CPLDConfigValue implements ConfigInt, HasPreference {
 
+    private static int MAX_WARNINGS=2;
     volatile int value;
     int def;
 
@@ -34,8 +35,11 @@ public class CPLDInt extends CPLDConfigValue implements ConfigInt, HasPreference
         this.msb = msb;
         this.def = def;
         key = "CPLDInt." + name;
-        if (msb - lsb != 31) {
+        if (msb - lsb != 31  && MAX_WARNINGS-->0) {
             log.warning("only counted " + (msb - lsb + 1) + " bits, but there should usually be 32 in a CPLDInt like we are (" + this+")");
+        }
+        if(MAX_WARNINGS==0){
+            log.warning("supressing further warnings");
         }
         loadPreference();
     }

@@ -29,6 +29,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.filter.MedianLowpassFilter;
 import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap.PathPoint;
 import ch.unizh.ini.jaer.projects.virtualslotcar.Histogram2DFilter;
+import eu.seebetter.ini.chips.davis.HotPixelFilter;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Arrays;
@@ -61,8 +62,16 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     private float SUBFRAME_DIMENSION_PIXELS_MULTIPLE_OF_BALL_DIAMETER = 3;
     private StaticBallTracker staticBallTracker = null;
     private final Histogram2DFilter histogram2DFilter;
-    private boolean ballFilterEnabled=getBoolean("ballFilterEnabled",true);
-    private CircularConvolutionFilter ballFilter=null;
+    private boolean ballFilterEnabled = getBoolean("ballFilterEnabled", true);
+    private CircularConvolutionFilter ballFilter = null;
+    protected boolean staticBallTrackerEnabled = getBoolean("staticBallTrackerEnabled", true);
+    
+     private enum TrackingState {
+
+        Tracking, LostTracking, InitialState
+    }
+    private TrackingState trackingState = TrackingState.InitialState;
+    
 
     public LabyrinthBallTracker(AEChip chip, LabyrinthBallController controller) {
         this(chip);
@@ -76,11 +85,11 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         filterChain.add(map);
         filterChain.add(new RotateFilter(chip));
         filterChain.add(new XYTypeFilter(chip));
-//        filterChain.add(new HotPixelFilter(chip));
+        filterChain.add(new HotPixelFilter(chip));
 //        filterChain.add(new LabyrinthDavisTrackFilter(chip));
-        filterChain.add(histogram2DFilter=new Histogram2DFilter(chip));
-        
-        filterChain.add((ballFilter=new CircularConvolutionFilter(chip)));
+        filterChain.add(histogram2DFilter = new Histogram2DFilter(chip));
+
+        filterChain.add((ballFilter = new CircularConvolutionFilter(chip)));
 //        filterChain.add(new net.sf.jaer.eventprocessing.filter.DepressingSynapseFilter(chip));
         filterChain.add(new BackgroundActivityFilter(chip));
         //        filterChain.add(new CircularConvolutionFilter(chip));
@@ -104,8 +113,10 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         setPropertyTooltip("velocityMedianFilterNumSamples", "number of velocity samples to median filter for ball velocity");
         setPropertyTooltip("ballRadiusPixels", "radius of ball in pixels used for locating ball in subframe static image");
         setPropertyTooltip("captureBackgroundImage", "capture next image frame as background image, for background model for static ball localizaiton");
+        setPropertyTooltip("staticBallTrackerEnabled", "enable static ball localizaiton to (re)initialize tracking");
     }
 
+   
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!addedPropertyChangeListener) {
@@ -113,29 +124,31 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
             addedPropertyChangeListener = true;
         }
         out = getEnclosedFilterChain().filterPacket(in);
-        if (tracker.getNumClusters() > 0) {
+        if (tracker.getNumVisibleClusters() > 0) {
             // find most likely ball cluster from all the clusters. This is the one with most mass.
             float max = Float.MIN_VALUE;
+            float minDist = Float.MAX_VALUE;
+            Cluster possibleBall = null;
             synchronized (tracker) {
                 for (Cluster c : tracker.getClusters()) {
                     if (!c.isVisible()) {
                         continue;
-                    }
+                        }
                     Point2D.Float l = c.getLocation();
                     final int b = 5;
                     if ((l.x < -b) || (l.x > (chip.getSizeX() + b)) || (l.y < -b) || (l.y > (chip.getSizeY() + b))) {
                         continue;
-                    }
+                }
                     float mass = c.getMass();
                     if (mass > max) {
                         max = mass;
                         ball = c;
-                    }
+            }
                 }
             }
         } else {
-            ball = null;
-        }
+                ball = null;
+            }
         if (!in.isEmpty()) {
             lastTimestamp = in.getLastTimestamp();
         }
@@ -151,11 +164,12 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     }
 
     protected void createBall(Point2D.Float location) {
-        getEnclosedFilterChain().reset();
+//        getEnclosedFilterChain().reset();
         // TODO somehow need to spawn an initial cluster at the starting location
         Cluster b = tracker.createCluster(new BasicEvent(lastTimestamp, (short) location.x, (short) location.y, (byte) 0));
         b.setMass(10000); // some big number
         tracker.getClusters().add(b);
+        ball = b;
     }
 
     @Override
@@ -476,6 +490,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         private Point2D.Float location = new Point2D.Float(ballX, ballY);
         private float[][] backgroundImage;
         private boolean captureBackground = false;
+        private boolean backgroundImageCaptured = false;
 
         private StaticBallTracker() {
             this.ballDetector = new BallDetector();
@@ -492,9 +507,13 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
             for (float[] f : backgroundImage) {
                 Arrays.fill(f, 0);
             }
+            backgroundImageCaptured = false;
         }
 
         public void draw(GL2 gl) {
+            if (!staticBallTrackerEnabled) {
+                return;
+            }
             if (subFrame != null) {
                 subFrame.draw(gl);
             }
@@ -502,6 +521,9 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         }
 
         private void locateBall() {
+            if (!staticBallTrackerEnabled) {
+                return;
+            }
             AEFrameChipRenderer renderer = (AEFrameChipRenderer) (chip.getRenderer());
             int dim = (int) (ballRadiusPixels * 2 * SUBFRAME_DIMENSION_PIXELS_MULTIPLE_OF_BALL_DIAMETER);
             if (subFrame == null || subFrame.dim != dim) {
@@ -539,8 +561,17 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
                         backgroundImage = new float[chip.getSizeX()][chip.getSizeY()];
                     }
                     for (int x = 0; x < sx; x++) {
-                        for (int y = y0; y < sy; y++) {  // take every xstride, ystride pixels as output
+                        for (int y = 0; y < sy; y++) {  // take every xstride, ystride pixels as output
                             backgroundImage[x][y] = renderer.getApsGrayValueAtPixel(x, y);
+                        }
+                    }
+                    backgroundImageCaptured = true;
+
+                } else if (backgroundImageCaptured) {
+                    // subtract from image to show difference to user
+                    for (int x = 0; x < sx; x++) {
+                        for (int y = 0; y < sy; y++) {  // take every xstride, ystride pixels as output
+                            renderer.setApsGrayValueAtPixel(x, y, .5f + renderer.getApsGrayValueAtPixel(x, y) - backgroundImage[x][y]);
                         }
                     }
 
@@ -575,8 +606,8 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
                     yy = 0;
                     for (int y = y0; y < y1; y++) {  // take every xstride, ystride pixels as output
                         float v = 0;
-                        v = renderer.getApsGrayValueAtPixel(x, y) 
-                                - (backgroundImage!=null?(backgroundImage[x][y]):0);
+                        v = renderer.getApsGrayValueAtPixel(x, y)
+                                - (backgroundImage != null ? (backgroundImage[x][y]) : 0);
                         frame[xx][yy++] = v;
                         sum += v;
                     }
@@ -675,14 +706,14 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
                 if (maxvalue <= 0 || Float.isNaN(ballX) || Float.isNaN(ballY)) {
                     return;
                 }
-                gl.glColor4f(1, 1, 1, .2f);
+                gl.glColor4f(0, .4f, 0, .2f);
                 if (quad == null) {
                     quad = glu.gluNewQuadric();
                 }
 
                 gl.glPushMatrix();
                 gl.glTranslatef(ballX, ballY, 0);
-                glu.gluQuadricDrawStyle(quad, GLU.GLU_LINE);
+                glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
                 gl.glLineWidth(2f);
                 glu.gluDisk(quad, 0, ballRadiusPixels, 16, 1);
                 gl.glPopMatrix();
@@ -698,9 +729,20 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     public synchronized void doFreezeHistogram() {
         histogram2DFilter.doFreezeHistogram();
     }
-    
-    
-    
-    
-    
+
+    /**
+     * @return the staticBallTrackerEnabled
+     */
+    public boolean isStaticBallTrackerEnabled() {
+        return staticBallTrackerEnabled;
+    }
+
+    /**
+     * @param staticBallTrackerEnabled the staticBallTrackerEnabled to set
+     */
+    public void setStaticBallTrackerEnabled(boolean staticBallTrackerEnabled) {
+        this.staticBallTrackerEnabled = staticBallTrackerEnabled;
+        putBoolean("staticBallTrackerEnabled", staticBallTrackerEnabled);
+    }
+
 }

@@ -88,7 +88,7 @@ public class RemoteControl /* implements RemoteControlled */{
     public final String PROMPT = "> ";
     private boolean promptEnabled = true;
     private Thread T;
-    private static final int MAX_WARNINGS=5;
+    private static final int MAX_WARNINGS=2;
     private int warningCount=0;
 
     /** Makes a new RemoteControl on the default port */

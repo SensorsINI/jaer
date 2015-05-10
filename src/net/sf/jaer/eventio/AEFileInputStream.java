@@ -78,6 +78,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
    private static final int NUMBER_LINE_SEPARATORS = 2; // number of line separators which AEFileOutputStream
                                                        // (writeHeaderLine) is writing to ae data files.
                                                        // important for calculation of header offset
+   
+   public static int NUM_HEADER_LINES_TO_PRINT=15;
 
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     static Logger log = Logger.getLogger("net.sf.jaer.eventio");
@@ -1027,10 +1029,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         }
         // we don't map yet until we know eventSize
         StringBuilder sb = new StringBuilder();
-        sb.append("File header:");
+        sb.append("File header (clipped to "+NUM_HEADER_LINES_TO_PRINT+" lines: \n");
+        int nLines=0;
         for ( String str:header ){
             sb.append(str);
             sb.append(lineSeparator); // "\n");
+            if(nLines++>NUM_HEADER_LINES_TO_PRINT) break;
         }
         log.info(sb.toString());
         bufferedHeaderReader = null; // mark for GC

@@ -178,6 +178,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater,Obse
                 }
             } else if ( o instanceof PolarityEvent ){
                 PolarityEvent e = (PolarityEvent)o;
+                if(e.isSpecial() || e.isFilteredOut()) continue;
                 nright++;
                 polyAddEventX(e.x,e.y,e.timestamp);
                 nleft++;
@@ -236,48 +237,48 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater,Obse
             updateCurrentEstimateY();
 
             lowX = currentBaseX + 0 * currentSlopeX;
-            highX = currentBaseX + 127 * currentSlopeX;
+            highX = currentBaseX + chip.getSizeX() * currentSlopeX;
 
             gl.glLineWidth(5.0f);
             gl.glColor3f(1,0,0);
             gl.glBegin(GL2.GL_LINES);
             gl.glVertex2d(lowX,0);
-            gl.glVertex2d(highX,127);
+            gl.glVertex2d(highX,chip.getSizeY());
             gl.glEnd();
 
             gl.glColor3f(.5f,0,0);
             gl.glLineWidth(1.0f);
             gl.glBegin(GL2.GL_LINES);
             gl.glVertex2d(lowX + polyStddev,0);
-            gl.glVertex2d(highX + polyStddev,127);
+            gl.glVertex2d(highX + polyStddev,chip.getSizeY());
             gl.glEnd();
             gl.glBegin(GL2.GL_LINES);
             gl.glVertex2d(lowX - polyStddev,0);
-            gl.glVertex2d(highX - polyStddev,127);
+            gl.glVertex2d(highX - polyStddev,chip.getSizeY());
             gl.glEnd();
         }
 
         if ( displayYEvents ){       // draw Y-line
 //            updateCurrentEstimateY();
             lowX = currentBaseY + 0 * currentSlopeY;
-            highX = currentBaseY + 127 * currentSlopeY;
+            highX = currentBaseY + chip.getSizeX() * currentSlopeY;
 
             gl.glLineWidth(5.0f);
             gl.glColor3f(0,1,0);
             gl.glBegin(GL2.GL_LINES);
             gl.glVertex2d(lowX,0);
-            gl.glVertex2d(highX,127);
+            gl.glVertex2d(highX,chip.getSizeY());
             gl.glEnd();
 
             gl.glColor3f(0,0.5f,0);
             gl.glLineWidth(1.0f);
             gl.glBegin(GL2.GL_LINES);
             gl.glVertex2d(lowX + polyStddev,0);
-            gl.glVertex2d(highX + polyStddev,127);
+            gl.glVertex2d(highX + polyStddev,chip.getSizeY());
             gl.glEnd();
             gl.glBegin(GL2.GL_LINES);
             gl.glVertex2d(lowX - polyStddev,0);
-            gl.glVertex2d(highX - polyStddev,127);
+            gl.glVertex2d(highX - polyStddev,chip.getSizeY());
             gl.glEnd();
         }
     }
