@@ -36,8 +36,9 @@ import java.beans.PropertyChangeEvent;
  * texture which is a power of two multiple of image size, so watch out for
  * getWidth and getHeight; they return this value and not the number of pixels
  * being rendered from the chip.
- * 
- * Besides the pixmaps for APS samples and ON and OFF events, an additional pixmap is provided for pixel annotation; see {@link #getAnnotateMap() }.
+ *
+ * Besides the pixmaps for APS samples and ON and OFF events, an additional
+ * pixmap is provided for pixel annotation; see {@link #getAnnotateMap() }.
  *
  * @author christian, tobi
  * @see ChipRendererDisplayMethod
@@ -49,21 +50,34 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      */
     public static final String EVENT_NEW_FRAME_AVAILBLE = "newFrameAvailable";
 
-    /** Set true after we have added a property change listener */
+    /**
+     * Set true after we have added a property change listener
+     */
     protected boolean addedPropertyChangeListener = false;
     public int textureWidth; //due to hardware acceloration reasons, has to be a 2^x with x a natural number
     public int textureHeight; //due to hardware acceloration reasons, has to be a 2^x with x a natural number
 
-    /** Fields used to reduce method calls */
+    /**
+     * Fields used to reduce method calls
+     */
     protected int sizeX, sizeY, maxADC, numEventTypes;
 
-    /** Used to mark time of frame event */
+    /**
+     * Used to mark time of frame event
+     */
     protected int timestamp = 0;
-    /** low pass temporal filter that computes time-averaged min and max gray values */
+    /**
+     * low pass temporal filter that computes time-averaged min and max gray
+     * values
+     */
     protected LowpassFilter2d autoContrast2DLowpassRangeFilter = new LowpassFilter2d();  // 2 lp values are min and max log intensities from each frame
-    /** min and max values of rendered gray values */
+    /**
+     * min and max values of rendered gray values
+     */
     protected float minValue, maxValue, annotateAlpha;
-    /** RGBA rendering colors for ON and OFF DVS events */
+    /**
+     * RGBA rendering colors for ON and OFF DVS events
+     */
     protected float[] onColor, offColor;
 
     /**
@@ -77,16 +91,19 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     private final int histStep = 4; // histogram bin step in ADC counts of 1024 levels
     private SimpleHistogram adcSampleValueHistogram1 = new SimpleHistogram(0, histStep, (DavisChip.MAX_ADC + 1) / histStep, 0);
     private SimpleHistogram adcSampleValueHistogram2 = new SimpleHistogram(0, histStep, (DavisChip.MAX_ADC + 1) / histStep, 0);
-    /** Histogram objects used to collect APS statistics */
+    /**
+     * Histogram objects used to collect APS statistics
+     */
     protected SimpleHistogram currentHist = adcSampleValueHistogram1, nextHist = adcSampleValueHistogram2;
-    
-    protected DavisVideoContrastController contrastController=null;
 
-    /** Boolean on whether to compute the histogram of gray levels */
+    protected DavisVideoContrastController contrastController = null;
+
+    /**
+     * Boolean on whether to compute the histogram of gray levels
+     */
     protected boolean computeHistograms = false;
     private boolean displayAnnotation = false;
 
- 
     public AEFrameChipRenderer(AEChip chip) {
         super(chip);
         if (chip.getNumPixels() == 0) {
@@ -176,10 +193,10 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         offMap.limit(n);
     }
 
-    public synchronized void clearAnnotationMap(){
+    public synchronized void clearAnnotationMap() {
         resetAnnotationFrame(0);
     }
-    
+
     @Override
     public synchronized void resetAnnotationFrame(float resetValue) {
         checkPixmapAllocation();
@@ -232,10 +249,14 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
     }
 
-    /** warning counter for some warnings */
+    /**
+     * warning counter for some warnings
+     */
     protected int warningCount = 0;
 
-    /** interval to print warning messages */
+    /**
+     * interval to print warning messages
+     */
     protected static int WARNING_INTERVAL = 100;
 
     @Override
@@ -307,7 +328,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                     }
                     updateEventMaps(e);
                 }
-            } else if (!backwards && isAdcSampleFlag && displayFrames ) { // TODO need to handle single step updates here
+            } else if (!backwards && isAdcSampleFlag && displayFrames) { // TODO need to handle single step updates here
                 updateFrameBuffer(e);
             }
         }
@@ -365,7 +386,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 return;
             }
             int val = ((int) buf[index] - e.getAdcSample());
-            if ((val>=0) && (val < minValue)) { // tobi only update min if it is >0, to deal with sensors with bad column read, like 240C
+            if ((val >= 0) && (val < minValue)) { // tobi only update min if it is >0, to deal with sensors with bad column read, like 240C
                 minValue = val;
             } else if (val > maxValue) {
                 maxValue = val;
@@ -404,7 +425,9 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     protected void endFrame() {
         System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
-        if(contrastController!=null && minValue!=Float.MAX_VALUE && maxValue!=Float.MIN_VALUE) contrastController.endFrame(minValue, maxValue, timestamp);
+        if (contrastController != null && minValue != Float.MAX_VALUE && maxValue != Float.MIN_VALUE) {
+            contrastController.endFrame(minValue, maxValue, timestamp);
+        }
         getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILBLE, null, this); // TODO document what is sent and send something reasonable
     }
 
@@ -492,8 +515,9 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     protected final int INTERVAL_BETWEEEN_OUT_OF_BOUNDS_EXCEPTIONS_PRINTED_MS = 1000;
     protected long lastWarningPrintedTimeMs = Integer.MAX_VALUE;
 
-    /** Returns index to R (red) value in RGBA pixmap
-     * 
+    /**
+     * Returns index to R (red) value in RGBA pixmap
+     *
      * @param e
      * @return index to red entry in RGBA pixmap
      */
@@ -547,7 +571,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         getSupport().firePropertyChange(EVENT_COLOR_SCALE_CHANGE, old, colorScale);
     }
 
-    /** computes power of two value that is equal to or greater than argument
+    /**
+     * computes power of two value that is equal to or greater than argument
      *
      * @param n value, e.g. 3
      * @return power of two that is >=n, e.g. 4
@@ -639,6 +664,20 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         int k = getPixMapIndex(x, y);
         float[] pm = pixmap.array();
         return (pm[k] + pm[k + 1] + pm[k + 2]) / 3;
+    }
+
+    /** Sets RGB color components all to same gray value g
+     * 
+     * @param x pixel x, 0,0 is LL corner
+     * @param y pixel y
+     * @param g gray value in range 0-1
+     */
+    public void setApsGrayValueAtPixel(int x, int y, float g) {
+        int k = getPixMapIndex(x, y);
+        float[] pm = pixmap.array();
+        pm[k] = g;
+        pm[k + 1] = g;
+        pm[k + 2] = g;
     }
 
     /**
@@ -752,10 +791,11 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      * @return the gray value
      */
     private float normalizeFramePixel(float value) {
-        if(contrastController!=null)
-        return contrastController.normalizePixelGrayValue(value, maxADC);
-        else
+        if (contrastController != null) {
+            return contrastController.normalizePixelGrayValue(value, maxADC);
+        } else {
             return 0;
+        }
     }
 
     private float normalizeEvent(float value) {
@@ -766,8 +806,6 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
         return value;
     }
-
-  
 
     public int getMaxADC() {
         return maxADC;
@@ -820,7 +858,9 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     }
 
     /**
-     * Sets the alpha of the annotation layer. This alpha determines the transparency of the annotation.
+     * Sets the alpha of the annotation layer. This alpha determines the
+     * transparency of the annotation.
+     *
      * @param annotateAlpha the annotateAlpha to set
      */
     public void setAnnotateAlpha(float annotateAlpha) {
@@ -829,6 +869,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     /**
      * Returns whether the annotation layer is displayed
+     *
      * @return the displayAnnotation
      */
     public boolean isDisplayAnnotation() {
@@ -837,7 +878,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     /**
      * Sets whether the annotation layer is displayed.
-     * 
+     *
      * @param displayAnnotation the displayAnnotation to set
      */
     public void setDisplayAnnotation(boolean displayAnnotation) {
@@ -863,7 +904,6 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         return ((DvsDisplayConfigInterface) chip.getBiasgen()).isDisplayEvents();
     }
 
-   
     /**
      * @return the contrastController
      */
@@ -919,10 +959,5 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         super.propertyChange(pce); //To change body of generated methods, choose Tools | Templates.
         chip.getBiasgen().getSupport().firePropertyChange(pce); // pass on events to chip configuration
     }
-
-    
-    
-    
-    
 
 }
