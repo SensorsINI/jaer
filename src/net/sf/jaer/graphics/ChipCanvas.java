@@ -426,9 +426,11 @@ public class ChipCanvas implements GLEventListener, Observer {
 	public void setDisplayMethod(final String description) {
 		for (final DisplayMethod method : getDisplayMethods()) {
 			String s = description;
-			final int ind = s.lastIndexOf('.');
-			s = s.substring(ind + 1);
-			if (method.getDescription().equals(s)) {
+			final int indDot = s.lastIndexOf('.');
+			final int indDollar = s.lastIndexOf('$');
+			String sDot = s.substring(indDot + 1);
+			String sDollar = s.substring(indDollar + 1);
+			if (method.getDescription().equals(sDot)  || method.getDescription().equalsIgnoreCase(sDollar)) {
 				// log.info("setting display method=" + m);
 				setDisplayMethod(method);
 				return;
