@@ -131,7 +131,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         fragmentShader = gl.glCreateShader(GL2ES2.GL_FRAGMENT_SHADER);
         checkGLError(gl, "creating shaders and shader program");
 
-        String vsrc = readFromStream(JOGL2GLSLExample.class
+        String vsrc = readFromStream(SpaceTimeRollingEventDisplayMethod.class
                 .getResourceAsStream("SpaceTimeRollingEventDisplayMethod_Vertex.glsl"));
         gl.glShaderSource(vertexShader, 1, new String[]{vsrc}, (int[]) null, 0);
         gl.glCompileShader(vertexShader);
@@ -143,7 +143,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
         checkGLError(gl, "compiling vertex shader");
 
-        String fsrc = readFromStream(JOGL2GLSLExample.class
+        String fsrc = readFromStream(SpaceTimeRollingEventDisplayMethod.class
                 .getResourceAsStream("SpaceTimeRollingEventDisplayMethod_Fragment.glsl"));
         gl.glShaderSource(fragmentShader, 1, new String[]{fsrc}, (int[]) null, 0);
         gl.glCompileShader(fragmentShader);
