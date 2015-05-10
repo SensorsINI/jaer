@@ -480,41 +480,58 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     @Override
     public void clearMarks() {
-        aeFileInputStream.clearMarks();
+        if (aeFileInputStream != null) {
+            aeFileInputStream.clearMarks();
+        }
     }
 
     @Override
     public long getMarkInPosition() {
+        if (aeFileInputStream == null) {
+            return -1;
+        }
         return aeFileInputStream.getMarkInPosition();
     }
 
     @Override
     public long getMarkOutPosition() {
+        if (aeFileInputStream == null) {
+            return -1;
+        }
         return aeFileInputStream.getMarkOutPosition();
     }
 
     @Override
     public boolean isMarkInSet() {
+        if (aeFileInputStream == null) {
+            return false;
+        }
         return aeFileInputStream.isMarkInSet();
     }
 
     @Override
     public boolean isMarkOutSet() {
+        if (aeFileInputStream == null) {
+            return false;
+        }
         return aeFileInputStream.isMarkOutSet();
     }
 
     @Override
     public long setMarkIn() {
+        if(aeFileInputStream==null) return -1;
         return aeFileInputStream.setMarkIn();
     }
 
     @Override
     public long setMarkOut() {
-        return aeFileInputStream.setMarkOut();
+         if(aeFileInputStream==null) return -1;
+       return aeFileInputStream.setMarkOut();
     }
 
     @Override
     public void setFractionalPosition(float frac) {
+        if(aeFileInputStream==null) return;
         aeFileInputStream.setFractionalPosition(frac);
     }
 
@@ -541,7 +558,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     public AEFileInputStream getAEInputStream() {
         return aeFileInputStream;
     }
-    
+
     /**
      * Returns state of repeat.
      *
