@@ -91,7 +91,9 @@ public class ChipCanvas implements GLEventListener, Observer {
 	/** Default scaling from chip pixel to screen pixels */
 	protected static final float SCALE_DEFAULT = 4f;
 	protected AEViewer aeViewer;
+        /** angle in degrees around x axis of 3d display*/
 	protected float anglex = prefs.getFloat("ChipCanvas.anglex", 5);
+        /** angle in degrees around y axis of 3d display*/
 	protected float angley = prefs.getFloat("ChipCanvas.angley", 10);
 	private Chip2D chip;
 	protected final int colorScale = 255;
