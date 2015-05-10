@@ -37,6 +37,7 @@ import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.ChipRendererDisplayMethod;
 import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.graphics.SpaceTimeEventDisplayMethod;
+import net.sf.jaer.graphics.SpaceTimeRollingEventDisplayMethod;
 import net.sf.jaer.util.avioutput.JaerAviWriter;
 
 /**
@@ -122,6 +123,7 @@ public class AEChip extends Chip2D {
 
         getCanvas().addDisplayMethod(new ChipRendererDisplayMethod(getCanvas()));
         getCanvas().addDisplayMethod(new SpaceTimeEventDisplayMethod(getCanvas()));
+//        getCanvas().addDisplayMethod(new SpaceTimeRollingEventDisplayMethod(getCanvas()));
 //        getCanvas().addDisplayMethod(new Histogram3dDisplayMethod(getCanvas())); // preesntly broken - tobi
 
         //set default display method
