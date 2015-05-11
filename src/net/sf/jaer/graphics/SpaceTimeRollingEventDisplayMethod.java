@@ -77,9 +77,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     int fragmentShader;
     int vao;
     int vbo;
-    final int polarity_vert = 0;
-    final int v_vert = 1;
-    final int polarity_frag = 0;
+//    final int polarity_vert = 0;
+    final int v_vert = 0;
+//    final int polarity_frag = 0;
     private int BUF_INITIAL_SIZE_EVENTS = 20000;
     private int BUF_SIZE_INCREMENT_FACTOR = 2;
     ByteBuffer eventBuffer;
@@ -88,52 +88,23 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     int sx, sy, smax;
     private int timeSlice = 0;
     private PMVMatrix pmvMatrix; // our own matrix stack that we manipulate ourselves, independent of GPU pipeline
+    FloatBuffer mv = FloatBuffer.allocate(16);
+    FloatBuffer proj = FloatBuffer.allocate(16);
     int mvId;
     int projId;
     ArrayList<BasicEvent> eventList = new ArrayList(BUF_INITIAL_SIZE_EVENTS), eventListTmp = new ArrayList(BUF_INITIAL_SIZE_EVENTS);
     private int timeWindowUs = 100000;
+    private static int EVENT_SIZE_BYTES = (Float.SIZE / 8) * 3;// size of event in shader ByteBuffer
 
     /**
      * Creates a new instance of SpaceTimeEventDisplayMethod
      */
     public SpaceTimeRollingEventDisplayMethod(final ChipCanvas chipCanvas) {
         super(chipCanvas);
-        this.eventBuffer = ByteBuffer.allocateDirect(BUF_INITIAL_SIZE_EVENTS * (Float.SIZE / 8) * 4);
-        pmvMatrix = new PMVMatrix();
-//        eventBuffer.order(ByteOrder.LITTLE_ENDIAN);
+        this.eventBuffer = ByteBuffer.allocateDirect(BUF_INITIAL_SIZE_EVENTS * EVENT_SIZE_BYTES);
+        eventBuffer.order(ByteOrder.LITTLE_ENDIAN);
     }
 
-    /* 
-    
-     struct Event {
-     GLfloat polarity;
-     GLfloat x, y, t;
-     };
-    
-     GLuint polarity_vert = 0;
-     GLuint v_vert = 1;
-     GLuint polarity_frag = 0;
-
-     void
-     generate_buffers() {
-     glGenVertexArrays(1, &vao);
-     glBindVertexArray(vao);
-
-     glGenBuffers(1, &vbo);
-     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-
-     
-     glVertexAttribPointer(polarity_vert, 1, GL_FLOAT, GL_FALSE, sizeof(Event),
-     reinterpret_cast<void*>(offsetof(Event, polarity)));
-     GL_CHECK_ERROR();
-
-     glVertexAttribPointer(v_vert, 3, GL_FLOAT, GL_FALSE, sizeof(Event),
-     reinterpret_cast<void*>(offsetof(Event, x)));
-     GL_CHECK_ERROR();
-     }
-
-     
-     */
     private void installShaders(GL2 gl) throws IOException {
         if (shadersInstalled) {
             return;
@@ -193,14 +164,13 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         checkGLError(gl, "setting up vertex array and vertex buffer");
 
         gl.glBindBuffer(GL.GL_ARRAY_BUFFER, vbo);
-        gl.glBindAttribLocation(shaderprogram, polarity_vert, "polarity"); // symbolic names in vertex and fragment shaders
+//        gl.glBindAttribLocation(shaderprogram, polarity_vert, "polarity"); // symbolic names in vertex and fragment shaders
         gl.glBindAttribLocation(shaderprogram, v_vert, "v");
-        gl.glBindAttribLocation(shaderprogram, polarity_frag, "frag_polarity");
+//        gl.glBindAttribLocation(shaderprogram, polarity_frag, "frag_polarity");
         checkGLError(gl, "binding shader attributes");
 
-        int stride = 4 * Float.SIZE / 8;
-        gl.glVertexAttribPointer(v_vert, 3, GL.GL_FLOAT, false, stride, 0);
-        gl.glVertexAttribPointer(polarity_vert, 1, GL.GL_FLOAT, false, stride, 3);
+        gl.glVertexAttribPointer(v_vert, 3, GL.GL_FLOAT, false, EVENT_SIZE_BYTES, 0);
+//        gl.glVertexAttribPointer(polarity_vert, 1, GL.GL_FLOAT, false, EVENT_SIZE_BYTES, 3);
         checkGLError(gl, "setting vertex attribute pointers");
         mvId = gl.glGetUniformLocation(shaderprogram, "mv");
         projId = gl.glGetUniformLocation(shaderprogram, "proj");
@@ -253,42 +223,53 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         // the time that is displayed in rolling window is some multiple of either current frame duration (for live playback) or timeslice (for recorded playback)
         int colorScale = getRenderer().getColorScale(); // use color scale to determine multiple, up and down arrows set it then
         if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.LIVE) {
-            timeWindowUs = dt * colorScale;
+            int frameDurationUs=(int)(1e6f/chip.getAeViewer().getFrameRater().getDesiredFPS());
+            timeWindowUs =  frameDurationUs * colorScale;
         } else if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
             timeWindowUs = chip.getAeViewer().getAePlayer().getTimesliceUs() * colorScale;
         } else {
             timeWindowUs = 100000;
         }
-        eventListTmp.clear();
-
-        int tstart = t1 - timeWindowUs;
-        for (BasicEvent ev : eventList) {
-            if (ev.timestamp > tstart) {
-                eventListTmp.add(ev);
-            }
-        }
-        eventList.clear();
-        eventList.addAll(eventListTmp);
+        pruneOldEvents(t1);
 
         sx = chip.getSizeX();
         sy = chip.getSizeY();
         smax = chip.getMaxSize();
 
+        addEventsToEventList(packet, chip);
+
+        if (eventBuffer.capacity() <= eventList.size() * EVENT_SIZE_BYTES) {
+            eventBuffer = ByteBuffer.allocateDirect(eventList.size() * EVENT_SIZE_BYTES);
+            eventBuffer.order(ByteOrder.LITTLE_ENDIAN);
+        }
+        eventBuffer.clear();// TODO should not really clear, rather should erase old events
+
+        for (BasicEvent ev : eventList) {
+            z = (float) smax * (ev.timestamp - t1) / timeWindowUs; // z goes from 0 (oldest) to 1 (youngest)
+//                    computeRGBFromZ(z, rgb);
+
+            eventBuffer.putFloat(ev.x); // all vertices normalized to 0-1 range
+            eventBuffer.putFloat(ev.y);
+            eventBuffer.putFloat(z);
+        }
+        eventBuffer.flip();
+        renderEvents(gl, drawable, eventBuffer, eventList.size(), dt);
+
+    }
+
+    private int addEventsToEventList(final EventPacket packet, final AEChip chip1) {
         Iterator evItr = packet.iterator();
         if (packet instanceof ApsDvsEventPacket) {
             final ApsDvsEventPacket apsPacket = (ApsDvsEventPacket) packet;
             evItr = apsPacket.fullIterator();
-            if ((config == null) && (chip != null) && (chip instanceof DavisChip)) {
-                config = (DavisDisplayConfigInterface) chip.getBiasgen();
+            if ((config == null) && (chip1 != null) && (chip1 instanceof DavisChip)) {
+                config = (DavisDisplayConfigInterface) chip1.getBiasgen();
             }
             if (config != null) {
                 displayEvents = config.isDisplayEvents();
                 displayFrames = config.isDisplayFrames();
             }
         }
-
-        eventBuffer.clear();// TODO should not really clear, rather should erase old events
-        eventBuffer.order(ByteOrder.LITTLE_ENDIAN);
         int nEvents = 0;
         while (evItr.hasNext()) {
             final BasicEvent ev = (BasicEvent) evItr.next();
@@ -304,33 +285,21 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             }
             eventList.add(ev);
         }
-        try {
-            for (BasicEvent ev : eventList) {
-                z = (float) smax * (ev.timestamp - t0) / timeWindowUs; // z goes from 0 (oldest) to 1 (youngest)
-//                    computeRGBFromZ(z, rgb);
-
-                eventBuffer.putFloat(ev.x); // all vertices normalized to 0-1 range
-                eventBuffer.putFloat(ev.y);
-                eventBuffer.putFloat(z);
-                eventBuffer.putFloat(ev.address & 1); // hack for polarity TODO get rid of polarity for generic chip use
-//            eventBuffer.putFloat((float) (ev.address & 1)); // hack for polarity TODO get rid of polarity for generic chip use
-                nEvents++;
-            }
-            eventBuffer.flip();
-            renderEvents(gl, drawable, eventBuffer, nEvents, dt);
-        } catch (BufferOverflowException e) {
-            ByteBuffer tmpBuffer = ByteBuffer.allocateDirect(eventBuffer.capacity() * BUF_SIZE_INCREMENT_FACTOR);
-            tmpBuffer.order(ByteOrder.LITTLE_ENDIAN);
-            eventBuffer.flip();
-            tmpBuffer.put(eventBuffer);
-            eventBuffer = tmpBuffer;
-            log.info("increased ByteBuffer to " + eventBuffer.capacity() + " bytes");
-        }
-
+        return nEvents;
     }
 
-    FloatBuffer mv = FloatBuffer.allocate(16);
-    FloatBuffer proj = FloatBuffer.allocate(16);
+    private void pruneOldEvents(final int t1) {
+        eventListTmp.clear();
+
+        int tstart = t1 - timeWindowUs;
+        for (BasicEvent ev : eventList) {
+            if (ev.timestamp > tstart) {
+                eventListTmp.add(ev);
+            }
+        }
+        eventList.clear();
+        eventList.addAll(eventListTmp);
+    }
 
     void renderEvents(GL2 gl, GLAutoDrawable drawable, ByteBuffer b, int nEvents, int dt) {
         gl.glClearColor(0, 0, 0, 0);
@@ -393,7 +362,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         checkGLError(gl, "setting model/view matrix");
 
         gl.glBindVertexArray(vao);
-        gl.glEnableVertexAttribArray(polarity_vert);
+//        gl.glEnableVertexAttribArray(polarity_vert);
         gl.glEnableVertexAttribArray(v_vert);
         gl.glBindBuffer(GL.GL_ARRAY_BUFFER, vbo);
         gl.glBufferData(GL.GL_ARRAY_BUFFER, b.limit(), b, GL2ES2.GL_STREAM_DRAW);
