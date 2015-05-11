@@ -485,7 +485,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
             if(usingTimeout) {
                 return (cursor<size)&&!timeLimitTimer.isTimedOut();
             } else {
-                while((cursor<size) && elementData[cursor].isFilteredOut()) {filteredOutCount++; cursor++;} // TODO can get null events here which causes null pointer exception; not clear how this is possible
+                while((cursor<size) && elementData[cursor]!=null && elementData[cursor].isFilteredOut()) {filteredOutCount++; cursor++;} // TODO can get null events here which causes null pointer exception; not clear how this is possible
                 return cursor<size;
             }
         }
