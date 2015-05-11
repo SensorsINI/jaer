@@ -227,7 +227,7 @@ public class DavisRGBW640 extends Davis346BaseCamera {
                         frameExposureStartTimestampUs = timestamp;
                     }
                     if (pixFirst && getDavisConfig().getApsReadoutControl().isGlobalShutterMode()
-                            && (readoutType == ApsDvsEventRGBW.ReadoutType.ResetRead)) { // GS
+                            && (readoutType == ApsDvsEventRGBW.ReadoutType.SignalRead)) { // GS
                         createApsFlagEvent(outItr, ApsDvsEventRGBW.ReadoutType.SOF, timestamp);
 
                         frameIntervalUs = timestamp - frameExposureStartTimestampUs;
