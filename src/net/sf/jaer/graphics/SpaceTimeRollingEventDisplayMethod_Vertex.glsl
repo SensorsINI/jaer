@@ -13,7 +13,7 @@ void main() {
 	// transform vp to homogeneous coordinate
 	vec4 vh = vec4(v, 1);
 	gl_Position = proj * mv * vh; // must be this order
-	gl_PointSize = 4.0;
+	gl_PointSize = 8.0;
 	frag_polarity = polarity; // (v[0] + 1.0) / 2.0 * 1.0 * polarity;
 	// frag_v = v;
 }

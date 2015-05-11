@@ -123,7 +123,7 @@ public class AEChip extends Chip2D {
 
         getCanvas().addDisplayMethod(new ChipRendererDisplayMethod(getCanvas()));
         getCanvas().addDisplayMethod(new SpaceTimeEventDisplayMethod(getCanvas()));
-//        getCanvas().addDisplayMethod(new SpaceTimeRollingEventDisplayMethod(getCanvas()));
+        getCanvas().addDisplayMethod(new SpaceTimeRollingEventDisplayMethod(getCanvas()));
 //        getCanvas().addDisplayMethod(new Histogram3dDisplayMethod(getCanvas())); // preesntly broken - tobi
 
         //set default display method
