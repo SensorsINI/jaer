@@ -261,9 +261,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
     }
 
-    private void addEventsToEventList(final EventPacket packet) {
-        for (Object o : packet) {
-            BasicEvent e = (BasicEvent) o;
+    private void addEventsToEventList(final EventPacket<BasicEvent> packet) {
+        for (BasicEvent e : packet) {
+//            BasicEvent e = (BasicEvent) o;
             if (e.isSpecial() || e.isFilteredOut()) {
                 continue;
             }
