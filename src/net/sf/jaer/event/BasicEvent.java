@@ -129,7 +129,7 @@ public class BasicEvent implements EventInterface<BasicEvent>, BasicEventInterfa
         this.address = e.address;
         this.special = e.special;
         this.source = e.source;
-        this.setFilteredOut(e.isFilteredOut());
+        this.filteredOut=e.filteredOut;
         //        this.filteredAway=e.filteredAway;
     }
     
