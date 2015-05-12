@@ -294,10 +294,10 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glLoadIdentity();
 //        gl.glPushMatrix();
         ClipArea clip = getChipCanvas().getClipArea();
-//        gl.glRotatef(getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the y axis
-//        gl.glRotatef(getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
-        gl.glRotatef(-15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
-        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -timeWindowUs, timeWindowUs * 2);
+        gl.glRotatef(getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the y axis
+        gl.glRotatef(-getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
+//        gl.glRotatef(-15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
+        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -timeWindowUs*1, timeWindowUs * 3);
 //        glu.gluPerspective(22, (float)drawable.getSurfaceWidth()/drawable.getSurfaceHeight(), .1, timeWindowUs*100);
 //        glu.gluPerspective(30, (float)sx/sy, .1, timeWindowUs*1.1f);
 //        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, .1f, timeWindowUs*20);
@@ -305,12 +305,13 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //        gl.glTranslatef(sx/2, sy/2, -1);
 //        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, .1f, timeWindowUs * 10);
 //        gl.glTranslatef(sx, sy, 1);
-//        gl.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
+        gl.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
         checkGLError(gl, "setting projection");
 
 //        getChipCanvas().setDefaultProjection(gl, drawable);
         gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
         gl.glLoadIdentity();
+        gl.glScalef(1,1,2);
 //        gl.glTranslatef(0, 0, -timeWindowUs);
 //        glu.gluLookAt(0, 0, 0,
 //                0, 0, -1,
