@@ -297,7 +297,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glRotatef(getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the y axis
         gl.glRotatef(-getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
 //        gl.glRotatef(-15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
-        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -timeWindowUs*1, timeWindowUs * 3);
+        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -timeWindowUs*4, timeWindowUs * 8);
 //        glu.gluPerspective(22, (float)drawable.getSurfaceWidth()/drawable.getSurfaceHeight(), .1, timeWindowUs*100);
 //        glu.gluPerspective(30, (float)sx/sy, .1, timeWindowUs*1.1f);
 //        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, .1f, timeWindowUs*20);
@@ -311,7 +311,8 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //        getChipCanvas().setDefaultProjection(gl, drawable);
         gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
         gl.glLoadIdentity();
-        gl.glScalef(1,1,2);
+        gl.glTranslatef(0, 0, 0);
+        gl.glScalef(1,1,8);
 //        gl.glTranslatef(0, 0, -timeWindowUs);
 //        glu.gluLookAt(0, 0, 0,
 //                0, 0, -1,
@@ -361,7 +362,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glEnd();
 
         // draw axes labels x,y,t. See tutorial at http://jerome.jouvie.free.fr/OpenGl/Tutorials/Tutorial18.php
-        final int font = GLUT.BITMAP_HELVETICA_18;
+        final int font = GLUT.BITMAP_TIMES_ROMAN_24;
         final int FS = 1; // distance in pixels of text from endZoom of axis
         gl.glRasterPos3f(sx, 0, 0);
         glut.glutBitmapString(font, "x=" + sx);
