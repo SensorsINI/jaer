@@ -753,7 +753,7 @@ public class EventPacket<E extends BasicEvent> implements /*EventPacketInterface
     @Override
     public String toString() {
         int sz=getSize();
-        String s="EventPacket #"+this.hashCode()+" holding "+getEventClass().getSimpleName()+" with size="+sz+" capacity="+capacity+" inputIterator="+inputIterator+" outputIterator="+outputIterator;
+        String s="EventPacket #"+this.hashCode()+" holding "+getEventClass().getSimpleName()+" with size="+sz+" capacity="+capacity+" inputIterator="+inputIterator+" outputIterator="+outputIterator+" filteredOutCount="+filteredOutCount;
         return s;
     }
 
