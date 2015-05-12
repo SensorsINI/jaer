@@ -82,7 +82,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //    final int polarity_frag = 0;
     private int BUF_INITIAL_SIZE_EVENTS = 20000;
     private int BUF_SIZE_INCREMENT_FACTOR = 2;
-    ByteBuffer eventBuffer;
+    ByteBuffer eventVertexBuffer;
     float rsx = 1;
     float rsy = 1;
     int sx, sy, smax;
@@ -100,8 +100,8 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
      */
     public SpaceTimeRollingEventDisplayMethod(final ChipCanvas chipCanvas) {
         super(chipCanvas);
-        this.eventBuffer = ByteBuffer.allocateDirect(BUF_INITIAL_SIZE_EVENTS * EVENT_SIZE_BYTES);
-        eventBuffer.order(ByteOrder.LITTLE_ENDIAN);
+        this.eventVertexBuffer = ByteBuffer.allocateDirect(BUF_INITIAL_SIZE_EVENTS * EVENT_SIZE_BYTES);
+        eventVertexBuffer.order(ByteOrder.LITTLE_ENDIAN);
     }
 
     private void installShaders(GL2 gl) throws IOException {
@@ -181,12 +181,11 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         checkGLError(gl, "getting IDs for uniform modelview and projection matrices in shaders");
     }
 
-    private void uninstallShaders(GL2 gl) {
-//        gl.glDetachShader(shaderprogram, vertexShader);
-//        gl.glDetachShader(shaderprogram, fragmentShader);
-//
-//        checkGLError(gl);
-
+    private void checkEventBufferAllocation(int sizeEvents) {
+        if (eventVertexBuffer.capacity() <= sizeEvents * EVENT_SIZE_BYTES) {
+            eventVertexBuffer = ByteBuffer.allocateDirect(eventList.size() * EVENT_SIZE_BYTES);
+            eventVertexBuffer.order(ByteOrder.LITTLE_ENDIAN);
+        }
     }
 
     @Override
@@ -228,9 +227,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         int colorScale = getRenderer().getColorScale(); // use color scale to determine multiple, up and down arrows set it then
         if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.LIVE) {
             int frameDurationUs = (int) (1e6f / chip.getAeViewer().getFrameRater().getDesiredFPS());
-            timeWindowUs = frameDurationUs * (1<<colorScale);
+            timeWindowUs = frameDurationUs * (1 << colorScale);
         } else if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
-            timeWindowUs = chip.getAeViewer().getAePlayer().getTimesliceUs() * (1<<colorScale);
+            timeWindowUs = chip.getAeViewer().getAePlayer().getTimesliceUs() * (1 << colorScale);
         } else {
             timeWindowUs = 100000;
         }
@@ -242,22 +241,18 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         smax = chip.getMaxSize();
 
         addEventsToEventList(packet);
-
-        if (eventBuffer.capacity() <= eventList.size() * EVENT_SIZE_BYTES) {
-            eventBuffer = ByteBuffer.allocateDirect(eventList.size() * EVENT_SIZE_BYTES);
-            eventBuffer.order(ByteOrder.LITTLE_ENDIAN);
-        }
-        eventBuffer.clear();// TODO should not really clear, rather should erase old events
+        checkEventBufferAllocation(eventList.size());
+        eventVertexBuffer.clear();// TODO should not really clear, rather should erase old events
 
         for (BasicEvent ev : eventList) {
-            eventBuffer.putFloat(ev.x);
-            eventBuffer.putFloat(ev.y);
-            eventBuffer.putFloat(ev.timestamp - t1);
+            eventVertexBuffer.putFloat(ev.x);
+            eventVertexBuffer.putFloat(ev.y);
+            eventVertexBuffer.putFloat(ev.timestamp - t1); // negative z
         }
-        eventBuffer.flip();
+        eventVertexBuffer.flip();
         checkGLError(gl, "set uniform t0 and t1");
 
-        renderEvents(gl, drawable, eventBuffer, eventList.size(), t0, t1);
+        renderEvents(gl, drawable, eventVertexBuffer, eventList.size(), t0, t1);
 
     }
 
@@ -267,7 +262,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             if (e.isSpecial() || e.isFilteredOut()) {
                 continue;
             }
-            eventList.add(e);
+            BasicEvent ne=new BasicEvent();
+            ne.copyFrom(e);
+            eventList.add(ne); // must do this unfortunately because otherwise the original event object in this list will be reused for a later packet
         }
     }
 
@@ -297,10 +294,11 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glLoadIdentity();
 //        gl.glPushMatrix();
         ClipArea clip = getChipCanvas().getClipArea();
-        gl.glRotatef(getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the y axis
-        gl.glRotatef(getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
-        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -timeWindowUs, timeWindowUs*2);
-//        glu.gluPerspective(99, (float)drawable.getSurfaceWidth()/drawable.getSurfaceHeight(), .1, timeWindowUs*1.1f);
+//        gl.glRotatef(getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the y axis
+//        gl.glRotatef(getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
+        gl.glRotatef(-15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
+        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -timeWindowUs, timeWindowUs * 2);
+//        glu.gluPerspective(22, (float)drawable.getSurfaceWidth()/drawable.getSurfaceHeight(), .1, timeWindowUs*100);
 //        glu.gluPerspective(30, (float)sx/sy, .1, timeWindowUs*1.1f);
 //        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, .1f, timeWindowUs*20);
 //        gl.glFrustumf(0,sx, 0, sy, .1f, timeWindowUs*20);
@@ -313,6 +311,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //        getChipCanvas().setDefaultProjection(gl, drawable);
         gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
         gl.glLoadIdentity();
+//        gl.glTranslatef(0, 0, -timeWindowUs);
 //        glu.gluLookAt(0, 0, 0,
 //                0, 0, -1,
 //                0, 1, 0);
@@ -364,14 +363,13 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         final int font = GLUT.BITMAP_HELVETICA_18;
         final int FS = 1; // distance in pixels of text from endZoom of axis
         gl.glRasterPos3f(sx, 0, 0);
-//        gl.glRasterPos3f(chip.getSizeX() + FS, 0, 0);
         glut.glutBitmapString(font, "x=" + sx);
         gl.glRasterPos3f(0, sy, 0);
-//        gl.glRasterPos3f(0, chip.getSizeY() + FS, 0);
         glut.glutBitmapString(font, "y=" + sy);
+        gl.glRasterPos3f(0, 0, zz);
+        glut.glutBitmapString(font, "t=" + engFmt.format((t0 - t1) * AEConstants.TICK_DEFAULT_US * 1e-6f) + "s");
         gl.glRasterPos3f(0, 0, 0);
-//        gl.glRasterPos3f(0, 0, chip.getMaxSize() + FS);
-        glut.glutBitmapString(font, "t=" + engFmt.format((t1 - t0) * AEConstants.TICK_DEFAULT_US * 1e-6f) + "s");
+        glut.glutBitmapString(font, "t=0");
         checkGLError(gl, "drawing axes labels");
 
         // draw points using shaders
