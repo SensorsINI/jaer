@@ -91,7 +91,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     private static int EVENT_SIZE_BYTES = (Float.SIZE / 8) * 3;// size of event in shader ByteBuffer
     private int axesDisplayListId = -1;
     private boolean regenerateAxesDisplayList = true;
-    private int aspectRatio=4; // depth of 3d cube compared to max of x and y chip dimension
+    private int aspectRatio = 4; // depth of 3d cube compared to max of x and y chip dimension
 
     /**
      * Creates a new instance of SpaceTimeEventDisplayMethod
@@ -241,8 +241,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         sx = chip.getSizeX();
         sy = chip.getSizeY();
         smax = chip.getMaxSize();
-        tfac=(float)(smax*aspectRatio)/timeWindowUs;
-        
+        tfac = (float) (smax * aspectRatio) / timeWindowUs;
 
         addEventsToEventList(packet);
         checkEventBufferAllocation(eventList.size());
@@ -251,12 +250,12 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         for (BasicEvent ev : eventList) {
             eventVertexBuffer.putFloat(ev.x);
             eventVertexBuffer.putFloat(ev.y);
-            eventVertexBuffer.putFloat(tfac*(ev.timestamp - t1)); // negative z
+            eventVertexBuffer.putFloat(tfac * (ev.timestamp - t1)); // negative z
         }
         eventVertexBuffer.flip();
         checkGLError(gl, "set uniform t0 and t1");
 
-        renderEvents(gl, drawable, eventVertexBuffer, eventList.size(), 1e-6f*timeWindowUs, smax*aspectRatio);
+        renderEvents(gl, drawable, eventVertexBuffer, eventList.size(), 1e-6f * timeWindowUs, smax * aspectRatio);
     }
 
     private void addEventsToEventList(final EventPacket<BasicEvent> packet) {
@@ -295,15 +294,11 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
         if (regenerateAxesDisplayList) {
             regenerateAxesDisplayList = false;
-            if(axesDisplayListId>0){
+            if (axesDisplayListId > 0) {
                 gl.glDeleteLists(axesDisplayListId, 1);
             }
             axesDisplayListId = gl.glGenLists(1);
             gl.glNewList(axesDisplayListId, GL2.GL_COMPILE);
-            gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
-            gl.glLoadIdentity();
-            gl.glTranslatef(0, 0, 0);
-            gl.glScalef(1, 1, 8);
 //        gl.glTranslatef(0, 0, -timeWindowUs);
 //        glu.gluLookAt(0, 0, 0,
 //                0, 0, -1,
@@ -368,11 +363,11 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glLoadIdentity();
 //        gl.glPushMatrix();
         ClipArea clip = getChipCanvas().getClipArea();
-//        gl.glRotatef(-15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
+//        gl.glRotatef(15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
         gl.glRotatef(getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the y axis
         gl.glRotatef(getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
-        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -zmax * 4, zmax * 4);
-        gl.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
+        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, zmax * 4, -zmax * 4);
+//        gl.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
 //        gl.glTranslatef(sx/2, sy/2, zmax);
 //        glu.gluPerspective(33, (float)drawable.getSurfaceWidth()/drawable.getSurfaceHeight(), .1, zmax*9);
 //        gl.glTranslatef(-sx/2, -sy/2, -zmax);
@@ -383,6 +378,10 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //        gl.glTranslatef(sx, sy, 1);
         checkGLError(gl, "setting projection");
 
+        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
+        gl.glLoadIdentity();
+        gl.glTranslatef(0, 0, 0);
+        gl.glScalef(1, 1, 4);
         gl.glCallList(axesDisplayListId);
 
 //        getChipCanvas().setDefaultProjection(gl, drawable);
