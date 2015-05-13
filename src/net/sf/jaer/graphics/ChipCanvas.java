@@ -1295,6 +1295,8 @@ public class ChipCanvas implements GLEventListener, Observer {
 			setZoomEnabled(false);
 			zoomFactor = 1;
 			getZoom().setStartPoint(new Point(0, 0));
+			final int sx = chip.getSizeX(), sy = chip.getSizeY(); // chip size
+                        centerPoint.setLocation(sx/2, sy/2);
 			// getZoom().setEndPoint(new Point(getChip().getSizeX(), getChip().getSizeY()));
 			// if (!System.getProperty("os.name").contains("Mac")) {//crashes on mac os x 10.5
 			// GL g = drawable.getGL();
