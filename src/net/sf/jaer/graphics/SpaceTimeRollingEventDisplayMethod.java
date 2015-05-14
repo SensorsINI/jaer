@@ -77,8 +77,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     private int vbo;
     final int v_vert = 0;
     private final int BUF_INITIAL_SIZE_EVENTS = 20000;
-    private final int BUF_SIZE_INCREMENT_FACTOR = 2;
-    ByteBuffer eventVertexBuffer;
+    ByteBuffer eventVertexBuffer, eventVertexBufferTmp;
     int sx, sy, smax;
     float tfac;
 //    private int timeSlice = 0;
@@ -98,8 +97,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
      */
     public SpaceTimeRollingEventDisplayMethod(final ChipCanvas chipCanvas) {
         super(chipCanvas);
-        this.eventVertexBuffer = ByteBuffer.allocateDirect(BUF_INITIAL_SIZE_EVENTS * EVENT_SIZE_BYTES);
-        eventVertexBuffer.order(ByteOrder.LITTLE_ENDIAN);
+        checkEventBufferAllocation(BUF_INITIAL_SIZE_EVENTS);
     }
 
     private void installShaders(GL2 gl) throws IOException {
@@ -364,11 +362,13 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //        gl.glPushMatrix();
         ClipArea clip = getChipCanvas().getClipArea();
 //        gl.glRotatef(15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
-//        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -zmax * 4, zmax * 4);
+        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -zmax * 4, zmax * 4);
+        gl.glTranslatef(0, 0, -1*zmax);
         gl.glRotatef(getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
         gl.glRotatef(getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the y axis
-        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, zmax*2f,zmax*1f);
-//        gl.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
+        gl.glTranslatef(0, 0, 1*zmax);
+//        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, zmax*2f,zmax*1f);
+        gl.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
 //        gl.glTranslatef(sx/2, sy/2, zmax);
 //        glu.gluPerspective(33, (float)drawable.getSurfaceWidth()/drawable.getSurfaceHeight(), .1, zmax*9);
 //        gl.glTranslatef(-sx/2, -sy/2, -zmax);
@@ -380,8 +380,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
         gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
         gl.glLoadIdentity();
-        gl.glTranslatef(0, 0, -zmax*2);
-//        gl.glScalef(1, 1, 1);
+        gl.glTranslatef(0, 0, -zmax);
+        final float s=1f/2;
+        gl.glScalef(s, s, s);
         gl.glCallList(axesDisplayListId);
 
 //        getChipCanvas().setDefaultProjection(gl, drawable);
