@@ -77,7 +77,6 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     private int vbo;
     final int v_vert = 0;
     private final int BUF_INITIAL_SIZE_EVENTS = 20000;
-    ByteBuffer eventVertexBuffer, eventVertexBufferTmp;
     int sx, sy, smax;
     float tfac;
 //    private int timeSlice = 0;
@@ -85,6 +84,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     private final FloatBuffer proj = FloatBuffer.allocate(16);
     private int idMv, idProj, idt0, idt1;
     private final ArrayList<BasicEvent> eventList = new ArrayList(BUF_INITIAL_SIZE_EVENTS), eventListTmp = new ArrayList(BUF_INITIAL_SIZE_EVENTS);
+    ByteBuffer eventVertexBuffer, eventVertexBufferTmp;
     private int timeWindowUs = 100000, t0;
     private static final int EVENT_SIZE_BYTES = (Float.SIZE / 8) * 3;// size of event in shader ByteBuffer
     private int axesDisplayListId = -1;
@@ -93,6 +93,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
     /**
      * Creates a new instance of SpaceTimeEventDisplayMethod
+     *
      * @param chipCanvas
      */
     public SpaceTimeRollingEventDisplayMethod(final ChipCanvas chipCanvas) {
@@ -178,7 +179,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     }
 
     private void checkEventBufferAllocation(int sizeEvents) {
-        if (eventVertexBuffer.capacity() <= sizeEvents * EVENT_SIZE_BYTES) {
+        if (eventVertexBuffer == null || eventVertexBuffer.capacity() <= sizeEvents * EVENT_SIZE_BYTES) {
             eventVertexBuffer = ByteBuffer.allocateDirect(eventList.size() * EVENT_SIZE_BYTES);
             eventVertexBuffer.order(ByteOrder.LITTLE_ENDIAN);
         }
@@ -281,10 +282,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     }
 
     void renderEvents(GL2 gl, GLAutoDrawable drawable, ByteBuffer b, int nEvents, float dtS, float zmax) {
-        gl.glClearColor(0, 0, 0, 0);
+        gl.glClearColor(0, 0, 0, 1);
         gl.glClear(GL.GL_COLOR_BUFFER_BIT);
         // axes
-        gl.glColor3f(0, 0, 1);
         gl.glLineWidth(1f);
         if (glu == null) {
             glu = new GLU();
@@ -306,8 +306,11 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
 //        gl.glPushMatrix();
             // axes
+            gl.glDisable(GL2.GL_LIGHTING);
+            gl.glShadeModel(GL2.GL_SMOOTH);
             gl.glBegin(GL.GL_LINES);
 
+            gl.glColor3f(0, 0, 1);
             gl.glVertex3f(0, 0, 0);
             gl.glVertex3f(sx, 0, 0);
 
@@ -320,13 +323,21 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             gl.glVertex3f(sx, sy, 0);
             gl.glVertex3f(0, sy, 0);
 
+            gl.glColor3f(0, 0, 1);
             gl.glVertex3f(0, 0, 0);
+            gl.glColor3f(.7f, 0, 0);
             gl.glVertex3f(0, 0, -zmax);
+            gl.glColor3f(0, 0, 1);
             gl.glVertex3f(sx, 0, 0);
+            gl.glColor3f(.7f, 0, 0);
             gl.glVertex3f(sx, 0, -zmax);
+            gl.glColor3f(0, 0, 1);
             gl.glVertex3f(0, sy, 0);
+            gl.glColor3f(.7f, 0, 0);
             gl.glVertex3f(0, sy, -zmax);
+            gl.glColor3f(0, 0, 1);
             gl.glVertex3f(sx, sy, 0);
+            gl.glColor3f(.7f, 0, 0);
             gl.glVertex3f(sx, sy, -zmax);
 
             gl.glVertex3f(0, 0, -zmax);
@@ -342,18 +353,25 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             gl.glVertex3f(0, sy, -zmax);
 
             gl.glEnd();
+            gl.glShadeModel(GL2.GL_FLAT);
 
             // draw axes labels x,y,t. See tutorial at http://jerome.jouvie.free.fr/OpenGl/Tutorials/Tutorial18.php
             final int font = GLUT.BITMAP_TIMES_ROMAN_24;
             final int FS = 1; // distance in pixels of text from endZoom of axis
+            float w;
+            gl.glColor3f(0, 0, 1);
             gl.glRasterPos3f(sx, 0, 0);
             glut.glutBitmapString(font, "x=" + sx);
             gl.glRasterPos3f(0, sy, 0);
             glut.glutBitmapString(font, "y=" + sy);
-            gl.glRasterPos3f(0, 0, -zmax);
-            glut.glutBitmapString(font, "t=" + engFmt.format(-dtS) + "s");
-            gl.glRasterPos3f(0, 0, 0);
+            w=glut.glutBitmapLength(font, "t=0");
+            gl.glRasterPos3f(-w, 0, 0);
             glut.glutBitmapString(font, "t=0");
+            gl.glColor3f(.7f, 0, 0);
+            String tMaxString="t=" + engFmt.format(-dtS) + "s";
+            w=glut.glutBitmapLength(font, tMaxString);
+            gl.glRasterPos3f(-w, 0, -zmax);
+            glut.glutBitmapString(font, tMaxString );
             checkGLError(gl, "drawing axes labels");
             gl.glEndList();
         }
@@ -363,10 +381,10 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         ClipArea clip = getChipCanvas().getClipArea();
 //        gl.glRotatef(15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
         gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -zmax * 4, zmax * 4);
-        gl.glTranslatef(0, 0, -1*zmax);
+        gl.glTranslatef(0, 0, -1 * zmax);
         gl.glRotatef(getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
         gl.glRotatef(getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the y axis
-        gl.glTranslatef(0, 0, 1*zmax);
+        gl.glTranslatef(0, 0, 1 * zmax);
 //        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, zmax*2f,zmax*1f);
         gl.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
 //        gl.glTranslatef(sx/2, sy/2, zmax);
@@ -381,7 +399,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
         gl.glLoadIdentity();
         gl.glTranslatef(0, 0, -zmax);
-        final float s=1f/2;
+        final float s = 1f / 2;
         gl.glScalef(s, s, s);
         gl.glCallList(axesDisplayListId);
 
