@@ -290,6 +290,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             glu = new GLU();
         }
 
+        final float modelScale = 1f / 2;
         if (regenerateAxesDisplayList) {
             regenerateAxesDisplayList = false;
             if (axesDisplayListId > 0) {
@@ -364,14 +365,14 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             glut.glutBitmapString(font, "x=" + sx);
             gl.glRasterPos3f(0, sy, 0);
             glut.glutBitmapString(font, "y=" + sy);
-            w=glut.glutBitmapLength(font, "t=0");
-            gl.glRasterPos3f(-w, 0, 0);
+            w = glut.glutBitmapLength(font, "t=0");
+            gl.glRasterPos3f(-w*modelScale, 0, 0);
             glut.glutBitmapString(font, "t=0");
             gl.glColor3f(.7f, 0, 0);
-            String tMaxString="t=" + engFmt.format(-dtS) + "s";
-            w=glut.glutBitmapLength(font, tMaxString);
-            gl.glRasterPos3f(-w, 0, -zmax);
-            glut.glutBitmapString(font, tMaxString );
+            String tMaxString = "t=" + engFmt.format(-dtS) + "s";
+            w = glut.glutBitmapLength(font, tMaxString);
+            gl.glRasterPos3f(-w*modelScale, 0, -zmax);
+            glut.glutBitmapString(font, tMaxString);
             checkGLError(gl, "drawing axes labels");
             gl.glEndList();
         }
@@ -399,8 +400,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
         gl.glLoadIdentity();
         gl.glTranslatef(0, 0, -zmax);
-        final float s = 1f / 2;
-        gl.glScalef(s, s, s);
+        gl.glScalef(modelScale, modelScale, modelScale);
         gl.glCallList(axesDisplayListId);
 
 //        getChipCanvas().setDefaultProjection(gl, drawable);
