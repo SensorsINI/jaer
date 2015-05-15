@@ -283,7 +283,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
     void renderEvents(GL2 gl, GLAutoDrawable drawable, ByteBuffer b, int nEvents, float dtS, float zmax) {
         gl.glClearColor(0, 0, 0, 1);
-        gl.glClear(GL.GL_COLOR_BUFFER_BIT);
+        gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
         // axes
         gl.glLineWidth(1f);
         if (glu == null) {
@@ -307,8 +307,6 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
 //        gl.glPushMatrix();
             // axes
-            gl.glDisable(GL2.GL_LIGHTING);
-            gl.glShadeModel(GL2.GL_SMOOTH);
             gl.glBegin(GL.GL_LINES);
 
             gl.glColor3f(0, 0, 1);
@@ -366,12 +364,12 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             gl.glRasterPos3f(0, sy, 0);
             glut.glutBitmapString(font, "y=" + sy);
             w = glut.glutBitmapLength(font, "t=0");
-            gl.glRasterPos3f(-w*modelScale, 0, 0);
+            gl.glRasterPos3f(-w * modelScale, 0, 0);
             glut.glutBitmapString(font, "t=0");
             gl.glColor3f(.7f, 0, 0);
             String tMaxString = "t=" + engFmt.format(-dtS) + "s";
             w = glut.glutBitmapLength(font, tMaxString);
-            gl.glRasterPos3f(-w*modelScale, 0, -zmax);
+            gl.glRasterPos3f(-w * modelScale, 0, -zmax);
             glut.glutBitmapString(font, tMaxString);
             checkGLError(gl, "drawing axes labels");
             gl.glEndList();
@@ -396,6 +394,14 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, .1f, timeWindowUs * 10);
 //        gl.glTranslatef(sx, sy, 1);
         checkGLError(gl, "setting projection");
+        gl.glDisable(GL2.GL_LIGHTING);
+        gl.glShadeModel(GL2.GL_SMOOTH);
+        gl.glEnable(GL.GL_DEPTH_TEST);
+        gl.glDepthMask(true);
+        gl.glEnable(GL.GL_BLEND);
+        gl.glBlendFunc(GL.GL_ONE, GL.GL_ONE);
+        gl.glBlendEquation(GL.GL_FUNC_ADD);
+        checkGLError(gl, "setting blend function");
 
         gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
         gl.glLoadIdentity();
@@ -438,12 +444,6 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glBufferData(GL.GL_ARRAY_BUFFER, b.limit(), b, GL2ES2.GL_STREAM_DRAW);
         checkGLError(gl, "binding vertex buffers");
 
-//        gl.glEnable(GL.GL_DEPTH_TEST);
-//        gl.glDepthMask(true);
-//        gl.glEnable(GL.GL_BLEND);
-//        gl.glBlendFunc(GL.GL_ONE, GL.GL_ONE);
-//        gl.glBlendEquation(GL.GL_FUNC_ADD);
-//        checkGLError(gl, "setting blend function");
         // draw
         gl.glDrawArrays(GL.GL_POINTS, 0, nEvents);
         checkGLError(gl, "drawArrays");
