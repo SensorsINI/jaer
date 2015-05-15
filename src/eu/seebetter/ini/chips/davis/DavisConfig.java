@@ -173,6 +173,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	protected float threshold = 1;
 	protected boolean translateRowOnlyEvents;
 	protected boolean externalAERControlEnabled;
+	protected boolean apsGuaranteedImageTransfer;
 	JPanel userFriendlyControls;
 
 	public DavisConfig(Chip chip) {
@@ -523,6 +524,10 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		return externalAERControlEnabled;
 	}
 
+	public boolean isAPSGuaranteedImageTransfer() {
+		return apsGuaranteedImageTransfer;
+	}
+
 	@Override
 	public boolean isUseAutoContrast() {
 		if (getVideoControl() == null) {
@@ -830,6 +835,27 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			try {
 				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_DVS, (short) 10,
 					(externalAERControlEnabled) ? (1) : (0));
+			}
+			catch (HardwareInterfaceException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+
+	public void setAPSGuaranteedImageTransfer(boolean apsGuaranteedImageTransfer) {
+		this.apsGuaranteedImageTransfer = apsGuaranteedImageTransfer;
+
+		if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
+			try {
+				if (apsGuaranteedImageTransfer) {
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 6, 1);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_MUX, (short) 5, 0);
+				}
+				else {
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 6, 0);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_MUX, (short) 5, 1);
+				}
 			}
 			catch (HardwareInterfaceException e) {
 				// TODO Auto-generated catch block
@@ -1674,6 +1700,28 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			externalAERControlPanel.add(externalAERControlButton);
 
 			chipConfigPanel.add(externalAERControlPanel);
+
+			// APS Guaranteed Image Transfer control panel
+			JPanel apsGuaranteedImageTransferPanel = new JPanel();
+			apsGuaranteedImageTransferPanel.setBorder(new TitledBorder("APS Guaranteed Image Transfer"));
+			apsGuaranteedImageTransferPanel.setLayout(new BoxLayout(apsGuaranteedImageTransferPanel, BoxLayout.Y_AXIS));
+
+			final Action apsGuaranteedImageTransferAction = new AbstractAction("Ensure APS data transfer") {
+				{
+					putValue(Action.SHORT_DESCRIPTION,
+							"<html>Ensure APS data is never dropped when going through logic and FIFO buffers.");
+					putValue(Action.SELECTED_KEY, apsGuaranteedImageTransfer);
+				}
+
+				@Override
+				public void actionPerformed(ActionEvent evt) {
+					setAPSGuaranteedImageTransfer(!isAPSGuaranteedImageTransfer());
+				}
+			};
+			final JRadioButton apsGuaranteedImageTransferButton = new JRadioButton(apsGuaranteedImageTransferAction);
+			apsGuaranteedImageTransferPanel.add(apsGuaranteedImageTransferButton);
+
+			chipConfigPanel.add(apsGuaranteedImageTransferPanel);
 
 			return chipConfigPanel;
 		}
