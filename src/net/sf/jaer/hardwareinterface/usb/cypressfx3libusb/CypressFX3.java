@@ -691,12 +691,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		spiConfigSend(CypressFX3.FPGA_MUX, (short) 1, 1);
 		spiConfigSend(CypressFX3.FPGA_MUX, (short) 0, 1);
 
-		spiConfigSend(CypressFX3.FPGA_DVS, (short) 3, 1);
-
-		spiConfigSend(CypressFX3.FPGA_APS, (short) 4, 1);
-
-		spiConfigSend(CypressFX3.FPGA_IMU, (short) 0, 1);
-
 		spiConfigSend(CypressFX3.FPGA_EXTINPUT, (short) 0, 1);
 
 		inEndpointEnabled = true;
