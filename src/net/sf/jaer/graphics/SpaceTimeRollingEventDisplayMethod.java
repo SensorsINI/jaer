@@ -290,7 +290,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             glu = new GLU();
         }
 
-        final float modelScale = 1f / 2;
+        final float modelScale = 1f / 2; // evertthing is drawn at this scale
         if (regenerateAxesDisplayList) {
             regenerateAxesDisplayList = false;
             if (axesDisplayListId > 0) {
@@ -366,7 +366,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             w = glut.glutBitmapLength(font, "t=0");
             gl.glRasterPos3f(-w * modelScale, 0, 0);
             glut.glutBitmapString(font, "t=0");
-            gl.glColor3f(.7f, 0, 0);
+            gl.glColor3f(.5f, 0, 0);
             String tMaxString = "t=" + engFmt.format(-dtS) + "s";
             w = glut.glutBitmapLength(font, tMaxString);
             gl.glRasterPos3f(-w * modelScale, 0, -zmax);
@@ -377,15 +377,16 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
         gl.glLoadIdentity();
 //        gl.glPushMatrix();
-        ClipArea clip = getChipCanvas().getClipArea();
+        ClipArea clip = getChipCanvas().getClipArea(); // get the clip computed by fancy algorithm in chipcanvas that properly makes ortho clips to maintain pixel aspect ratio and put blank space or left/right or top/bottom depending on chip aspect ratio and window aspect ratio
+        
 //        gl.glRotatef(15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
-        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -zmax * 4, zmax * 4);
+//        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -zmax * 4, zmax * 4);
+        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, zmax*1.5f,zmax*.3f);
         gl.glTranslatef(0, 0, -1 * zmax);
         gl.glRotatef(getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
         gl.glRotatef(getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the y axis
-        gl.glTranslatef(0, 0, 1 * zmax);
-//        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, zmax*2f,zmax*1f);
         gl.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
+        gl.glTranslatef(0, 0, 1 * zmax);
 //        gl.glTranslatef(sx/2, sy/2, zmax);
 //        glu.gluPerspective(33, (float)drawable.getSurfaceWidth()/drawable.getSurfaceHeight(), .1, zmax*9);
 //        gl.glTranslatef(-sx/2, -sy/2, -zmax);
