@@ -183,9 +183,16 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             eventVertexBuffer = ByteBuffer.allocateDirect(sizeEvents * EVENT_SIZE_BYTES);
             eventVertexBuffer.order(ByteOrder.LITTLE_ENDIAN);
         }
-        if(eventList==null) eventList = new ArrayList(sizeEvents);
-        if(eventListTmp==null) eventListTmp = new ArrayList(sizeEvents);
+        if (eventList == null) {
+            eventList = new ArrayList(sizeEvents);
+        }
+        if (eventListTmp == null) {
+            eventListTmp = new ArrayList(sizeEvents);
+        }
     }
+
+    private EventPacket lastPacketDisplayed = null;
+    private int previousLasttimestamp = 0;
 
     @Override
     public void display(final GLAutoDrawable drawable) {
@@ -210,52 +217,58 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
         // render events
         final EventPacket packet = (EventPacket) chip.getLastData();
-        if (packet == null) {
-            log.warning("null packet to render");
-            return;
+        boolean dirty = false;
+        if (packet.getLastTimestamp() != previousLasttimestamp) {
+            dirty = true;
         }
-        final int n = packet.getSize();
-        if (n == 0) {
-            return;
-        }
-        final int t0ThisPacket = packet.getFirstTimestamp();
-        final int t1 = packet.getLastTimestamp();
+        previousLasttimestamp = packet.getLastTimestamp();
+        if (dirty) {
+            if (packet == null) {
+                log.warning("null packet to render");
+                return;
+            }
+            final int n = packet.getSize();
+            if (n == 0) {
+                return;
+            }
+            final int t0ThisPacket = packet.getFirstTimestamp();
+            final int t1 = packet.getLastTimestamp();
 //        final int dtThisPacket = t1 - t0ThisPacket + 1;
-        // the time that is displayed in rolling window is some multiple of either current frame duration (for live playback) or timeslice (for recorded playback)
-        int colorScale = getRenderer().getColorScale(); // use color scale to determine multiple, up and down arrows set it then
-        int newTimeWindowUs;
-        if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.LIVE) {
-            int frameDurationUs = (int) (1e6f / chip.getAeViewer().getFrameRater().getDesiredFPS());
-            newTimeWindowUs = frameDurationUs * (1 << colorScale);
-        } else if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
-            newTimeWindowUs = chip.getAeViewer().getAePlayer().getTimesliceUs() * (1 << colorScale);
-        } else {
-            newTimeWindowUs = 100000;
+            // the time that is displayed in rolling window is some multiple of either current frame duration (for live playback) or timeslice (for recorded playback)
+            int colorScale = getRenderer().getColorScale(); // use color scale to determine multiple, up and down arrows set it then
+            int newTimeWindowUs;
+            if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.LIVE) {
+                int frameDurationUs = (int) (1e6f / chip.getAeViewer().getFrameRater().getDesiredFPS());
+                newTimeWindowUs = frameDurationUs * (1 << colorScale);
+            } else if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
+                newTimeWindowUs = chip.getAeViewer().getAePlayer().getTimesliceUs() * (1 << colorScale);
+            } else {
+                newTimeWindowUs = 100000;
+            }
+            if (newTimeWindowUs != timeWindowUs) {
+                regenerateAxesDisplayList = true;
+            }
+            timeWindowUs = newTimeWindowUs;
+            t0 = t1 - timeWindowUs;
+            pruneOldEvents(t0);
+
+            sx = chip.getSizeX();
+            sy = chip.getSizeY();
+            smax = chip.getMaxSize();
+            tfac = (float) (smax * aspectRatio) / timeWindowUs;
+
+            addEventsToEventList(packet);
+            checkEventBufferAllocation(eventList.size());
+            eventVertexBuffer.clear();// TODO should not really clear, rather should erase old events
+
+            for (BasicEvent ev : eventList) {
+                eventVertexBuffer.putFloat(ev.x);
+                eventVertexBuffer.putFloat(ev.y);
+                eventVertexBuffer.putFloat(tfac * (ev.timestamp - t1)); // negative z
+            }
+            eventVertexBuffer.flip();
+            checkGLError(gl, "set uniform t0 and t1");
         }
-        if (newTimeWindowUs != timeWindowUs) {
-            regenerateAxesDisplayList = true;
-        }
-        timeWindowUs = newTimeWindowUs;
-        t0 = t1 - timeWindowUs;
-        pruneOldEvents(t0);
-
-        sx = chip.getSizeX();
-        sy = chip.getSizeY();
-        smax = chip.getMaxSize();
-        tfac = (float) (smax * aspectRatio) / timeWindowUs;
-
-        addEventsToEventList(packet);
-        checkEventBufferAllocation(eventList.size());
-        eventVertexBuffer.clear();// TODO should not really clear, rather should erase old events
-
-        for (BasicEvent ev : eventList) {
-            eventVertexBuffer.putFloat(ev.x);
-            eventVertexBuffer.putFloat(ev.y);
-            eventVertexBuffer.putFloat(tfac * (ev.timestamp - t1)); // negative z
-        }
-        eventVertexBuffer.flip();
-        checkGLError(gl, "set uniform t0 and t1");
-
         renderEvents(gl, drawable, eventVertexBuffer, eventList.size(), 1e-6f * timeWindowUs, smax * aspectRatio);
     }
 
