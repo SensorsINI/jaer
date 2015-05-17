@@ -76,14 +76,14 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     private int vao;
     private int vbo;
     final int v_vert = 0;
-    private final int BUF_INITIAL_SIZE_EVENTS = 20000;
+    private final int BUF_INITIAL_SIZE_EVENTS = 100000;
     int sx, sy, smax;
     float tfac;
 //    private int timeSlice = 0;
     private final FloatBuffer mv = FloatBuffer.allocate(16);
     private final FloatBuffer proj = FloatBuffer.allocate(16);
     private int idMv, idProj, idt0, idt1;
-    private final ArrayList<BasicEvent> eventList = new ArrayList(BUF_INITIAL_SIZE_EVENTS), eventListTmp = new ArrayList(BUF_INITIAL_SIZE_EVENTS);
+    private ArrayList<BasicEvent> eventList = null, eventListTmp = null;
     ByteBuffer eventVertexBuffer, eventVertexBufferTmp;
     private int timeWindowUs = 100000, t0;
     private static final int EVENT_SIZE_BYTES = (Float.SIZE / 8) * 3;// size of event in shader ByteBuffer
@@ -98,7 +98,6 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
      */
     public SpaceTimeRollingEventDisplayMethod(final ChipCanvas chipCanvas) {
         super(chipCanvas);
-        checkEventBufferAllocation(BUF_INITIAL_SIZE_EVENTS);
     }
 
     private void installShaders(GL2 gl) throws IOException {
@@ -106,6 +105,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             return;
         }
         gl.glEnable(GL3.GL_PROGRAM_POINT_SIZE);
+        checkEventBufferAllocation(BUF_INITIAL_SIZE_EVENTS);
 
         shadersInstalled = true;
         IntBuffer b = IntBuffer.allocate(8); // buffer to hold return values
@@ -180,9 +180,11 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
     private void checkEventBufferAllocation(int sizeEvents) {
         if (eventVertexBuffer == null || eventVertexBuffer.capacity() <= sizeEvents * EVENT_SIZE_BYTES) {
-            eventVertexBuffer = ByteBuffer.allocateDirect(eventList.size() * EVENT_SIZE_BYTES);
+            eventVertexBuffer = ByteBuffer.allocateDirect(sizeEvents * EVENT_SIZE_BYTES);
             eventVertexBuffer.order(ByteOrder.LITTLE_ENDIAN);
         }
+        if(eventList==null) eventList = new ArrayList(sizeEvents);
+        if(eventListTmp==null) eventListTmp = new ArrayList(sizeEvents);
     }
 
     @Override
@@ -378,10 +380,10 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glLoadIdentity();
 //        gl.glPushMatrix();
         ClipArea clip = getChipCanvas().getClipArea(); // get the clip computed by fancy algorithm in chipcanvas that properly makes ortho clips to maintain pixel aspect ratio and put blank space or left/right or top/bottom depending on chip aspect ratio and window aspect ratio
-        
+
 //        gl.glRotatef(15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
 //        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -zmax * 4, zmax * 4);
-        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, zmax*1.5f,zmax*.3f);
+        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, zmax * 1.5f, zmax * .3f);
         gl.glTranslatef(0, 0, -1 * zmax);
         gl.glRotatef(getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
         gl.glRotatef(getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the y axis
