@@ -415,6 +415,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glDisable(GL2.GL_LIGHTING);
         gl.glShadeModel(GL2.GL_SMOOTH);
         gl.glDisable(GL.GL_BLEND);
+        gl.glEnable(GL2.GL_POINT_SMOOTH);
 //        gl.glEnable(GL.GL_BLEND);
 //        gl.glBlendFunc(GL.GL_ONE, GL.GL_ONE);
 //        gl.glBlendEquation(GL.GL_FUNC_ADD);
