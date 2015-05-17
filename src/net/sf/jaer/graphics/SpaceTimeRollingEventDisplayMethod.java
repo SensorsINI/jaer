@@ -297,8 +297,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     }
 
     void renderEvents(GL2 gl, GLAutoDrawable drawable, ByteBuffer b, int nEvents, float dtS, float zmax) {
-        gl.glClearColor(0, 0, 0, 1);
-        gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
+        gl.glDepthMask(true);
+        gl.glDepthFunc(GL.GL_GEQUAL);
+        gl.glEnable(GL.GL_DEPTH_TEST);
         // axes
         gl.glLineWidth(1f);
         if (glu == null) {
@@ -322,6 +323,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
 //        gl.glPushMatrix();
             // axes
+            gl.glLineWidth(2);
             gl.glBegin(GL.GL_LINES);
 
             gl.glColor3f(0, 0, 1);
@@ -339,19 +341,19 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
             gl.glColor3f(0, 0, 1);
             gl.glVertex3f(0, 0, 0);
-            gl.glColor3f(.7f, 0, 0);
+            gl.glColor3f(.5f, 0, 0);
             gl.glVertex3f(0, 0, -zmax);
             gl.glColor3f(0, 0, 1);
             gl.glVertex3f(sx, 0, 0);
-            gl.glColor3f(.7f, 0, 0);
+            gl.glColor3f(.5f, 0, 0);
             gl.glVertex3f(sx, 0, -zmax);
             gl.glColor3f(0, 0, 1);
             gl.glVertex3f(0, sy, 0);
-            gl.glColor3f(.7f, 0, 0);
+            gl.glColor3f(.5f, 0, 0);
             gl.glVertex3f(0, sy, -zmax);
             gl.glColor3f(0, 0, 1);
             gl.glVertex3f(sx, sy, 0);
-            gl.glColor3f(.7f, 0, 0);
+            gl.glColor3f(.5f, 0, 0);
             gl.glVertex3f(sx, sy, -zmax);
 
             gl.glVertex3f(0, 0, -zmax);
@@ -412,12 +414,15 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         checkGLError(gl, "setting projection");
         gl.glDisable(GL2.GL_LIGHTING);
         gl.glShadeModel(GL2.GL_SMOOTH);
-        gl.glEnable(GL.GL_DEPTH_TEST);
-        gl.glDepthMask(true);
-        gl.glEnable(GL.GL_BLEND);
-        gl.glBlendFunc(GL.GL_ONE, GL.GL_ONE);
-        gl.glBlendEquation(GL.GL_FUNC_ADD);
+        gl.glDisable(GL.GL_BLEND);
+//        gl.glEnable(GL.GL_BLEND);
+//        gl.glBlendFunc(GL.GL_ONE, GL.GL_ONE);
+//        gl.glBlendEquation(GL.GL_FUNC_ADD);
         checkGLError(gl, "setting blend function");
+
+        gl.glClearColor(0, 0, 0, 1);
+        gl.glClearDepthf(0);
+        gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
 
         gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
         gl.glLoadIdentity();
