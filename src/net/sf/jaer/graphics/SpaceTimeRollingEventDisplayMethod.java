@@ -1,38 +1,16 @@
 /*
  * ChipRendererDisplayMethod.java
- * 
+ *
  * Created on May 4, 2006, 9:07 PM
- * 
+ *
  * To change this template, choose Tools | Template Manager
  * and open the template in the editor.
- * 
- * 
+ *
+ *
  * Copyright May 4, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 package net.sf.jaer.graphics;
 
-import java.util.Iterator;
-
-import com.jogamp.opengl.GL;
-import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GL2ES2;
-import com.jogamp.opengl.GL3;
-import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.fixedfunc.GLMatrixFunc;
-import com.jogamp.opengl.glu.GLU;
-import com.jogamp.opengl.util.PMVMatrix;
-
-import eu.seebetter.ini.chips.davis.DavisDisplayConfigInterface;
-import net.sf.jaer.event.ApsDvsEvent;
-import net.sf.jaer.event.ApsDvsEventPacket;
-import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.util.EngineeringFormat;
-
-import com.jogamp.opengl.util.gl2.GLUT;
-
-import eu.seebetter.ini.chips.DavisChip;
-import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -41,10 +19,27 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.Scanner;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.graphics.ChipCanvas.ClipArea;
+import net.sf.jaer.util.EngineeringFormat;
+
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GL2ES1;
+import com.jogamp.opengl.GL2ES2;
+import com.jogamp.opengl.GL3;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.fixedfunc.GLLightingFunc;
+import com.jogamp.opengl.fixedfunc.GLMatrixFunc;
+import com.jogamp.opengl.glu.GLU;
+import com.jogamp.opengl.util.gl2.GLUT;
+
+import eu.seebetter.ini.chips.davis.DavisDisplayConfigInterface;
 
 /**
  * Displays events in space time using a rolling view where old events are
@@ -172,14 +167,14 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         idProj = gl.glGetUniformLocation(shaderprogram, "proj");
         idt0 = gl.glGetUniformLocation(shaderprogram, "t0");
         idt1 = gl.glGetUniformLocation(shaderprogram, "t1");
-        if (idMv < 0 || idProj < 0 || idt0 < 0 || idt1 < 0) {
+        if ((idMv < 0) || (idProj < 0) || (idt0 < 0) || (idt1 < 0)) {
             throw new RuntimeException("cannot locate uniform variable idMv, idProj, idt0 or idt1 in shader program");
         }
         checkGLError(gl, "getting IDs for uniform modelview and projection matrices in shaders");
     }
 
     private void checkEventBufferAllocation(int sizeEvents) {
-        if (eventVertexBuffer == null || eventVertexBuffer.capacity() <= sizeEvents * EVENT_SIZE_BYTES) {
+        if ((eventVertexBuffer == null) || (eventVertexBuffer.capacity() <= (sizeEvents * EVENT_SIZE_BYTES))) {
             eventVertexBuffer = ByteBuffer.allocateDirect(sizeEvents * EVENT_SIZE_BYTES);
             eventVertexBuffer.order(ByteOrder.LITTLE_ENDIAN);
         }
@@ -217,16 +212,16 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
         // render events
         final EventPacket packet = (EventPacket) chip.getLastData();
+        if (packet == null) {
+            log.warning("null packet to render");
+            return;
+        }
         boolean dirty = false;
         if (packet.getLastTimestamp() != previousLasttimestamp) {
             dirty = true;
         }
         previousLasttimestamp = packet.getLastTimestamp();
         if (dirty) {
-            if (packet == null) {
-                log.warning("null packet to render");
-                return;
-            }
             final int n = packet.getSize();
             if (n == 0) {
                 return;
@@ -369,7 +364,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             gl.glVertex3f(0, sy, -zmax);
 
             gl.glEnd();
-            gl.glShadeModel(GL2.GL_FLAT);
+            gl.glShadeModel(GLLightingFunc.GL_FLAT);
 
             // draw axes labels x,y,t. See tutorial at http://jerome.jouvie.free.fr/OpenGl/Tutorials/Tutorial18.php
             final int font = GLUT.BITMAP_TIMES_ROMAN_24;
@@ -412,10 +407,10 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, .1f, timeWindowUs * 10);
 //        gl.glTranslatef(sx, sy, 1);
         checkGLError(gl, "setting projection");
-        gl.glDisable(GL2.GL_LIGHTING);
-        gl.glShadeModel(GL2.GL_SMOOTH);
+        gl.glDisable(GLLightingFunc.GL_LIGHTING);
+        gl.glShadeModel(GLLightingFunc.GL_SMOOTH);
         gl.glDisable(GL.GL_BLEND);
-        gl.glEnable(GL2.GL_POINT_SMOOTH);
+        gl.glEnable(GL2ES1.GL_POINT_SMOOTH);
 //        gl.glEnable(GL.GL_BLEND);
 //        gl.glBlendFunc(GL.GL_ONE, GL.GL_ONE);
 //        gl.glBlendEquation(GL.GL_FUNC_ADD);
@@ -446,17 +441,17 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //        pmvMatrix.glLoadIdentity();
 //        pmvMatrix.glGetFloatv(GL2.GL_MODELVIEW_MATRIX, mv);
 //        checkGLError(gl, "using shader program");
-        gl.glGetFloatv(GL2.GL_PROJECTION_MATRIX, proj);
+        gl.glGetFloatv(GLMatrixFunc.GL_PROJECTION_MATRIX, proj);
 //        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
 //        gl.glLoadIdentity();
-        gl.glGetFloatv(GL2.GL_MODELVIEW_MATRIX, mv);
+        gl.glGetFloatv(GLMatrixFunc.GL_MODELVIEW_MATRIX, mv);
         gl.glUniformMatrix4fv(idMv, 1, false, mv);
         gl.glUniformMatrix4fv(idProj, 1, false, proj);
 
         checkGLError(gl, "setting model/view matrix");
 
-        gl.glUniform1f(idt0, (float) -zmax);
-        gl.glUniform1f(idt1, (float) 0);
+        gl.glUniform1f(idt0, -zmax);
+        gl.glUniform1f(idt1, 0);
         checkGLError(gl, "setting t0 or t1 for buffer");
 
         gl.glBindVertexArray(vao);
