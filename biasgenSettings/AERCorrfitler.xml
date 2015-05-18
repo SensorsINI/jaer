@@ -257,12 +257,12 @@
                 <entry key="BAFilterChip.AMDY0" value="false"/>
                 <entry key="BAFilterChip.AMDY1" value="true"/>
                 <entry key="AnalogOutputMux.AnaMux3.selectedChannel" value="-1"/>
-                <entry key="BAFilterChip.ShiftedSourceBias.SSP.RefValue" value="0"/>
-                <entry key="BAFilterChip.ShiftedSourceBias.SSP.RegBitValue" value="63"/>
+                <entry key="BAFilterChip.ShiftedSourceBias.SSP.RefValue" value="1"/>
+                <entry key="BAFilterChip.ShiftedSourceBias.SSP.RegBitValue" value="33"/>
                 <entry key="BAFilterChip.ShiftedSourceBias.SSP.OperatingMode" value="ShiftedSource"/>
                 <entry key="BAFilterChip.ShiftedSourceBias.SSP.VoltageLevel" value="SplitGate"/>
-                <entry key="BAFilterChip.ShiftedSourceBias.SSN.RefValue" value="0"/>
-                <entry key="BAFilterChip.ShiftedSourceBias.SSN.RegBitValue" value="63"/>
+                <entry key="BAFilterChip.ShiftedSourceBias.SSN.RefValue" value="1"/>
+                <entry key="BAFilterChip.ShiftedSourceBias.SSN.RegBitValue" value="33"/>
                 <entry key="BAFilterChip.ShiftedSourceBias.SSN.OperatingMode" value="ShiftedSource"/>
                 <entry key="BAFilterChip.ShiftedSourceBias.SSN.VoltageLevel" value="SplitGate"/>
                 <entry key="aeReaderFifoSize" value="32768"/>
