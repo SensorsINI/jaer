@@ -40,6 +40,8 @@ import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.util.gl2.GLUT;
 
 import eu.seebetter.ini.chips.davis.DavisDisplayConfigInterface;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JMenu;
 
 /**
  * Displays events in space time using a rolling view where old events are
@@ -411,9 +413,13 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glShadeModel(GLLightingFunc.GL_SMOOTH);
         gl.glDisable(GL.GL_BLEND);
         gl.glEnable(GL2ES1.GL_POINT_SMOOTH);
-//        gl.glEnable(GL.GL_BLEND);
-//        gl.glBlendFunc(GL.GL_ONE, GL.GL_ONE);
-//        gl.glBlendEquation(GL.GL_FUNC_ADD);
+        gl.glEnable(GL.GL_BLEND);
+        if (additiveColorMenuItem.isSelected()) {
+            gl.glBlendFunc(GL.GL_ONE, GL.GL_ONE);
+        } else {
+            gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+        }
+        gl.glBlendEquation(GL.GL_FUNC_ADD);
         checkGLError(gl, "setting blend function");
 
         gl.glClearColor(0, 0, 0, 1);
@@ -519,6 +525,32 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
 
         return buffer.toString();
+    }
+
+    private JMenu displayMenu = null;
+    JCheckBoxMenuItem additiveColorMenuItem = null;
+
+    @Override
+    protected void onDeregistration() {
+        if (displayMenu == null) {
+            return;
+        }
+        AEChip aeChip = (AEChip) chip;
+        AEViewer viewer = aeChip.getAeViewer();
+        viewer.removeMenu(displayMenu);
+    }
+
+    @Override
+    protected void onRegistration() {
+        if (chip == null) {
+            return;
+        }
+        AEChip aeChip = (AEChip) chip;
+        AEViewer viewer = aeChip.getAeViewer();
+        displayMenu = new JMenu("3-D Display Options");
+        additiveColorMenuItem = new JCheckBoxMenuItem("Enable additive color");
+        displayMenu.add(additiveColorMenuItem);
+        viewer.addMenu(displayMenu);
     }
 
 }

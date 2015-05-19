@@ -9,6 +9,6 @@ void main() {
     float g=f;
     if(f>.5)
         g=1-g;
-    frag_color =  (.75*f1+.25) * vec4(r, g, b, 1.0); 
+    frag_color =  (.75*f1+.25) * vec4(r, g, b, .5); 
 }
 

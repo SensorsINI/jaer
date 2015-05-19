@@ -292,7 +292,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
             }
 
             if (getAeViewer() != null) {
-                getAeViewer().setMenu(thisChipMenu);
+                getAeViewer().addMenu(thisChipMenu);
             }
 
         } else { // disable menu

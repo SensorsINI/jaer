@@ -158,7 +158,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                 chipMenu.add(syncEnabledMenuItem);
             }
             if (getAeViewer() != null) {
-                getAeViewer().setMenu(chipMenu);
+                getAeViewer().addMenu(chipMenu);
             }
         } else {
             // disable menu

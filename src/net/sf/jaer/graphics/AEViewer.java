@@ -5737,7 +5737,7 @@ two interfaces). otherwise force user choice.
      * @param menu the menu
      * @see #removeMenu(javax.swing.JMenu)
      */
-    public void setMenu(JMenu menu) {
+    public void addMenu(JMenu menu) {
         JMenuBar b = getJMenuBar();
         int n = b.getMenuCount();
         // check for existing and replace
@@ -5767,7 +5767,7 @@ two interfaces). otherwise force user choice.
      * Removes existing JMenu in AEViewer.
      *
      * @param menu the menu
-     * @see #setMenu(javax.swing.JMenu)
+     * @see #addMenu(javax.swing.JMenu)
      */
     public void removeMenu(JMenu menu) {
         JMenuBar b = getJMenuBar();

@@ -339,7 +339,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                 dvs128Menu.add(ledMenu);
             }
             if (getAeViewer() != null) {
-                getAeViewer().setMenu(dvs128Menu);
+                getAeViewer().addMenu(dvs128Menu);
             }
 
         } else { // disable menu

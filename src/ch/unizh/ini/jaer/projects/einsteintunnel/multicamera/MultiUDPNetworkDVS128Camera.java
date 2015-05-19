@@ -140,7 +140,7 @@ public class MultiUDPNetworkDVS128Camera extends DVS128 implements NetworkChip, 
     @Override
     public void setAeViewer(AEViewer v) {
         if (v != null) {
-            v.setMenu(chipMenu);
+            v.addMenu(chipMenu);
         }
     }
 
