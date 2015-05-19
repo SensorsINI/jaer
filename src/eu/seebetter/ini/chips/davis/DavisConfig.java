@@ -174,6 +174,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	protected boolean translateRowOnlyEvents;
 	protected boolean externalAERControlEnabled;
 	protected boolean apsGuaranteedImageTransfer;
+	protected boolean hardwareBAFilterEnabled;
 	JPanel userFriendlyControls;
 
 	public DavisConfig(Chip chip) {
@@ -528,6 +529,10 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		return apsGuaranteedImageTransfer;
 	}
 
+	public boolean isHardwareBAFilterEnabled() {
+		return hardwareBAFilterEnabled;
+	}
+
 	@Override
 	public boolean isUseAutoContrast() {
 		if (getVideoControl() == null) {
@@ -855,6 +860,25 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 				else {
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 6, 0);
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_MUX, (short) 5, 1);
+				}
+			}
+			catch (HardwareInterfaceException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+
+	public void setHardwareBAFilterEnabled(boolean hardwareBAFilterEnabled) {
+		this.hardwareBAFilterEnabled = hardwareBAFilterEnabled;
+
+		if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
+			try {
+				if (hardwareBAFilterEnabled) {
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_DVS, (short) 29, 1);
+				}
+				else {
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_DVS, (short) 29, 0);
 				}
 			}
 			catch (HardwareInterfaceException e) {
@@ -1709,7 +1733,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			final Action apsGuaranteedImageTransferAction = new AbstractAction("Ensure APS data transfer") {
 				{
 					putValue(Action.SHORT_DESCRIPTION,
-							"<html>Ensure APS data is never dropped when going through logic and FIFO buffers.");
+						"<html>Ensure APS data is never dropped when going through logic and FIFO buffers.");
 					putValue(Action.SELECTED_KEY, apsGuaranteedImageTransfer);
 				}
 
@@ -1722,6 +1746,28 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			apsGuaranteedImageTransferPanel.add(apsGuaranteedImageTransferButton);
 
 			chipConfigPanel.add(apsGuaranteedImageTransferPanel);
+
+			// External, hardware BA filter control panel
+			JPanel hardwareBAFilterEnabledPanel = new JPanel();
+			hardwareBAFilterEnabledPanel.setBorder(new TitledBorder("Hardware BA Filter"));
+			hardwareBAFilterEnabledPanel.setLayout(new BoxLayout(hardwareBAFilterEnabledPanel, BoxLayout.Y_AXIS));
+
+			final Action hardwareBAFilterEnabledAction = new AbstractAction("Enable hardware BA filter") {
+				{
+					putValue(Action.SHORT_DESCRIPTION,
+						"<html>Enable hardware background-activity filter (FX3 boards only. Logic or AERCorrFilter).");
+					putValue(Action.SELECTED_KEY, hardwareBAFilterEnabled);
+				}
+
+				@Override
+				public void actionPerformed(ActionEvent evt) {
+					setHardwareBAFilterEnabled(!isHardwareBAFilterEnabled());
+				}
+			};
+			final JRadioButton hardwareBAFilterEnabledButton = new JRadioButton(hardwareBAFilterEnabledAction);
+			hardwareBAFilterEnabledPanel.add(hardwareBAFilterEnabledButton);
+
+			chipConfigPanel.add(hardwareBAFilterEnabledPanel);
 
 			return chipConfigPanel;
 		}
