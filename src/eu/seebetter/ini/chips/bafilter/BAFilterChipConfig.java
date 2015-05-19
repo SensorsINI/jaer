@@ -222,57 +222,71 @@ public class BAFilterChipConfig extends DavisTowerBaseConfig {
 			dmuxes[3].setName("DigMux0");
 
 			for (int i = 0; i < 4; i++) {
-				dmuxes[i].put(0, "AY179right");
-				dmuxes[i].put(1, "Acol");
-				dmuxes[i].put(2, "ColArbTopA");
-				dmuxes[i].put(3, "ColArbTopR");
-				dmuxes[i].put(4, "FF1");
-				dmuxes[i].put(5, "FF2");
-				dmuxes[i].put(6, "Rcarb");
-				dmuxes[i].put(7, "Rcol");
-				dmuxes[i].put(8, "Rrow");
-				dmuxes[i].put(9, "RxarbE");
-				dmuxes[i].put(10, "nAX0");
-				dmuxes[i].put(11, "nArowBottom");
-				dmuxes[i].put(12, "nArowTop");
-				dmuxes[i].put(13, "nRxOn");
+				dmuxes[i].put(0, "DXTest<5>");
+				dmuxes[i].put(1, "DXTest<6>");
+				dmuxes[i].put(2, "LatchXTest");
+				dmuxes[i].put(3, "PXselT<127>");
+				dmuxes[i].put(4, "DYTest<5>");
+				dmuxes[i].put(5, "DYTest<6>");
+				dmuxes[i].put(6, "LatchYTest");
+				dmuxes[i].put(7, "PYselT<127>");
+				dmuxes[i].put(8, "biasCalibSpike");
+				dmuxes[i].put(9, "RsTest");
+				dmuxes[i].put(10, "PselTest");
+				dmuxes[i].put(11, "PoutTest");
+				dmuxes[i].put(12, "PoutTest");
+				dmuxes[i].put(13, "PoutTest");
 
 			}
 
-			dmuxes[3].put(14, "AY179");
-			dmuxes[3].put(15, "RY179");
-			dmuxes[2].put(14, "AY179");
-			dmuxes[2].put(15, "RY179");
-			dmuxes[1].put(14, "biasCalibSpike");
-			dmuxes[1].put(15, "nRY179right");
-			dmuxes[0].put(14, "nResetRxCol");
-			dmuxes[0].put(15, "nRYtestpixel");
+			dmuxes[3].put(14, "PselTest");
+			dmuxes[3].put(15, "PoutTest");
+			dmuxes[2].put(14, "biasCalibSpike");
+			dmuxes[2].put(15, "RsTest");
+			dmuxes[1].put(14, "PoutTest");
+			dmuxes[1].put(15, "PoutTest");
+			dmuxes[0].put(14, "PoutTest");
+			dmuxes[0].put(15, "PoutTest");
 
 			amuxes[0].setName("AnaMux3");
 			amuxes[1].setName("AnaMux2");
 			amuxes[2].setName("AnaMux1");
 			amuxes[3].setName("AnaMux0");
 
-			for (int i = 0; i < 4; i++) {
-				amuxes[i].put(0, "on");
-				amuxes[i].put(1, "off");
-				amuxes[i].put(2, "vdiff");
-				amuxes[i].put(3, "nResetPixel");
-				amuxes[i].put(4, "pr");
-				amuxes[i].put(5, "pd");
-			}
-
-			amuxes[0].put(6, "calibNeuron");
+                        amuxes[0].put(0, "calibNeuron");
+			amuxes[0].put(1, "calibNeuron");
+			amuxes[0].put(2, "nTimeout_AI");
+                        amuxes[0].put(3, "calibNeuron");
+			amuxes[0].put(4, "nTimeout_AI");
+			amuxes[0].put(5, "nTimeout_AI");
+                        amuxes[0].put(6, "calibNeuron");
 			amuxes[0].put(7, "nTimeout_AI");
+                        amuxes[1].put(0, "calibNeuron");
+			amuxes[1].put(1, "calibNeuron");
+			amuxes[1].put(2, "nTimeout_AI");
+                        amuxes[1].put(3, "calibNeuron");
+			amuxes[1].put(4, "nTimeout_AI");
+			amuxes[1].put(5, "nTimeout_AI");
+                        amuxes[1].put(6, "calibNeuron");
+			amuxes[1].put(7, "nTimeout_AI"); 
+                        amuxes[3].put(0, "calibNeuron");
+			amuxes[3].put(1, "calibNeuron");
+			amuxes[3].put(2, "nTimeout_AI");
+                        amuxes[3].put(3, "calibNeuron");
+			amuxes[3].put(4, "nTimeout_AI");
+			amuxes[3].put(5, "nTimeout_AI");
+                        amuxes[3].put(6, "calibNeuron");
+			amuxes[3].put(7, "nTimeout_AI");
+                        amuxes[4].put(0, "calibNeuron");
+			amuxes[4].put(1, "calibNeuron");
+			amuxes[4].put(2, "nTimeout_AI");
+                        amuxes[4].put(3, "calibNeuron");
+			amuxes[4].put(4, "nTimeout_AI");
+			amuxes[4].put(5, "nTimeout_AI");
+                        amuxes[4].put(6, "calibNeuron");
+			amuxes[4].put(7, "nTimeout_AI");
 
-			amuxes[1].put(6, "apsgate");
-			amuxes[1].put(7, "apsout");
-
-			amuxes[2].put(6, "apsgate");
-			amuxes[2].put(7, "apsout");
-
-			amuxes[3].put(6, "apsgate");
-			amuxes[3].put(7, "apsout");
+			
 		}
 	}
 }

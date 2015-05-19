@@ -16,9 +16,9 @@
                 <entry key="FilterChain.timeLimitEnabled" value="false"/>
                 <entry key="FilterChain.timeLimitMs" value="10"/>
                 <entry key="Info.useLocalTimeZone" value="true"/>
-                <entry key="VideoControl.displayFrames" value="true"/>
+                <entry key="VideoControl.displayFrames" value="false"/>
                 <entry key="VideoControl.displayEvents" value="true"/>
-                <entry key="DavisBaseCamera.bgTabbedPaneSelectedIndex" value="2"/>
+                <entry key="DavisBaseCamera.bgTabbedPaneSelectedIndex" value="0"/>
                 <entry key="class eu.seebetter.ini.chips.bafilter.BAFilterChip.preferredDisplayMethod" value="eu.seebetter.ini.chips.davis.DavisBaseCamera$DavisDisplayMethod"/>
                 <entry key="XYTypeFilter.filterEnabled" value="false"/>
                 <entry key="RotateFilter.filterEnabled" value="false"/>
@@ -210,7 +210,7 @@
                 <entry key="Masterbias.internalResistorUsed" value="false"/>
                 <entry key="BAFilterChip.nChipReset" value="true"/>
                 <entry key="BAFilterChip.powerDown" value="false"/>
-                <entry key="BAFilterChip.runAdc" value="true"/>
+                <entry key="BAFilterChip.runAdc" value="false"/>
                 <entry key="BAFilterChip.runCpld" value="true"/>
                 <entry key="CPLDInt.exposure" value="0"/>
                 <entry key="CPLDInt.resSettle" value="0"/>
