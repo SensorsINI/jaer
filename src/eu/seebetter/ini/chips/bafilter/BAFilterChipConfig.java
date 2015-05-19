@@ -269,6 +269,14 @@ public class BAFilterChipConfig extends DavisTowerBaseConfig {
 			amuxes[1].put(5, "nTimeout_AI");
                         amuxes[1].put(6, "calibNeuron");
 			amuxes[1].put(7, "nTimeout_AI"); 
+                        amuxes[2].put(0, "calibNeuron");
+			amuxes[2].put(1, "calibNeuron");
+			amuxes[2].put(2, "nTimeout_AI");
+                        amuxes[2].put(3, "calibNeuron");
+			amuxes[2].put(4, "nTimeout_AI");
+			amuxes[2].put(5, "nTimeout_AI");
+                        amuxes[2].put(6, "calibNeuron");
+			amuxes[2].put(7, "nTimeout_AI");
                         amuxes[3].put(0, "calibNeuron");
 			amuxes[3].put(1, "calibNeuron");
 			amuxes[3].put(2, "nTimeout_AI");
@@ -277,14 +285,7 @@ public class BAFilterChipConfig extends DavisTowerBaseConfig {
 			amuxes[3].put(5, "nTimeout_AI");
                         amuxes[3].put(6, "calibNeuron");
 			amuxes[3].put(7, "nTimeout_AI");
-                        amuxes[4].put(0, "calibNeuron");
-			amuxes[4].put(1, "calibNeuron");
-			amuxes[4].put(2, "nTimeout_AI");
-                        amuxes[4].put(3, "calibNeuron");
-			amuxes[4].put(4, "nTimeout_AI");
-			amuxes[4].put(5, "nTimeout_AI");
-                        amuxes[4].put(6, "calibNeuron");
-			amuxes[4].put(7, "nTimeout_AI");
+
 
 			
 		}
