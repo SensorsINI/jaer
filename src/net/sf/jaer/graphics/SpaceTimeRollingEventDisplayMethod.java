@@ -79,7 +79,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //    private int timeSlice = 0;
     private final FloatBuffer mv = FloatBuffer.allocate(16);
     private final FloatBuffer proj = FloatBuffer.allocate(16);
-    private int idMv, idProj, idt0, idt1;
+    private int idMv, idProj, idt0, idt1, idPointSize;
     private ArrayList<BasicEvent> eventList = null, eventListTmp = null;
     ByteBuffer eventVertexBuffer, eventVertexBufferTmp;
     private int timeWindowUs = 100000, t0;
@@ -87,6 +87,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     private int axesDisplayListId = -1;
     private boolean regenerateAxesDisplayList = true;
     private final int aspectRatio = 4; // depth of 3d cube compared to max of x and y chip dimension
+    private float pointSize = 4f;
 
     /**
      * Creates a new instance of SpaceTimeEventDisplayMethod
@@ -169,8 +170,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         idProj = gl.glGetUniformLocation(shaderprogram, "proj");
         idt0 = gl.glGetUniformLocation(shaderprogram, "t0");
         idt1 = gl.glGetUniformLocation(shaderprogram, "t1");
-        if ((idMv < 0) || (idProj < 0) || (idt0 < 0) || (idt1 < 0)) {
-            throw new RuntimeException("cannot locate uniform variable idMv, idProj, idt0 or idt1 in shader program");
+        idPointSize = gl.glGetUniformLocation(shaderprogram, "pointSize");
+        if ((idMv < 0) || (idProj < 0) || (idt0 < 0) || (idt1 < 0) || (idPointSize < 0)) {
+            throw new RuntimeException("cannot locate uniform variable idMv, idProj, idt0, idt1, or idPointSize in shader program");
         }
         checkGLError(gl, "getting IDs for uniform modelview and projection matrices in shaders");
     }
@@ -458,6 +460,12 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
         gl.glUniform1f(idt0, -zmax);
         gl.glUniform1f(idt1, 0);
+        if (largePointsMenuItem.isSelected()) {
+            pointSize = 12;
+        } else {
+            pointSize = 4;
+        }
+        gl.glUniform1f(idPointSize, pointSize);
         checkGLError(gl, "setting t0 or t1 for buffer");
 
         gl.glBindVertexArray(vao);
@@ -528,7 +536,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     }
 
     private JMenu displayMenu = null;
-    JCheckBoxMenuItem additiveColorMenuItem = null;
+    JCheckBoxMenuItem additiveColorMenuItem = null, largePointsMenuItem = null;
 
     @Override
     protected void onDeregistration() {
@@ -549,7 +557,10 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         AEViewer viewer = aeChip.getAeViewer();
         displayMenu = new JMenu("3-D Display Options");
         additiveColorMenuItem = new JCheckBoxMenuItem("Enable additive color");
+        largePointsMenuItem = new JCheckBoxMenuItem("Enable large event points");
         displayMenu.add(additiveColorMenuItem);
+        displayMenu.add(largePointsMenuItem);
+        displayMenu.getPopupMenu().setLightWeightPopupEnabled(false);
         viewer.addMenu(displayMenu);
     }
 
