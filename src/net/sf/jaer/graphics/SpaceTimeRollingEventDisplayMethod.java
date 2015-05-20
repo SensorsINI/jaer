@@ -320,7 +320,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
 //        gl.glPushMatrix();
             // axes
-            gl.glLineWidth(2);
+            gl.glLineWidth(12);
             gl.glBegin(GL.GL_LINES);
 
             gl.glColor3f(0, 0, 1);
