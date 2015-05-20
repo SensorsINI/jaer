@@ -46,6 +46,8 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
+import java.awt.Shape;
+import java.awt.font.FontRenderContext;
 
 /**
  * Abstract base camera class for SeeBetter DAVIS cameras.
@@ -858,7 +860,15 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             setMeasuredExposureMs((float) exposureDurationUs / 1000);
             final String s = String.format("Frame: %d; Exposure %.2f ms; Frame rate: %.2f Hz", getFrameCount(),
                     exposureMs, frameRateHz);
-            exposureRenderer.draw3D(s, 0, getSizeY() + (DavisDisplayMethod.FONTSIZE / 2), 0, .5f);
+            FontRenderContext frc=exposureRenderer.getFontRenderContext();
+            Rectangle2D r=exposureRenderer.getBounds(s);
+            Rectangle2D rt=frc.getTransform().createTransformedShape(r).getBounds2D();
+            float ps=getChipCanvas().getScale();
+            float w=(float)rt.getWidth()*ps;
+            float scale=.75f*ps*getSizeX()/w;
+            // determine width of string in pixels and scale accordingly
+//            final float sw=s.length()* exposureRenderer.getCharWidth(' ');
+            exposureRenderer.draw3D(s, 0, getSizeY() + (DavisDisplayMethod.FONTSIZE / 2), 0, scale);
             exposureRenderer.end3DRendering();
 
             final int nframes = frameCount % DavisDisplayMethod.FRAME_COUNTER_BAR_LENGTH_FRAMES;
