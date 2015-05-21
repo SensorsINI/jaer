@@ -174,11 +174,11 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 				if (((CypressFX3) getHardwareInterface()).getPID() == DAViSFX3HardwareInterface.PID) {
 					if (bytes.length == 8) {
 						// AERCorrFilter has longer config chain due to additional AnalogMux.
-						int bMux0 = (bytes[7] & 0xF0);
+						int bMux0 = (bytes[7] & 0xF0) >> 4;
 						int aMux0 = (bytes[6] & 0x0F);
-						int aMux1 = (bytes[6] & 0xF0);
+						int aMux1 = (bytes[6] & 0xF0) >> 4;
 						int aMux2 = (bytes[5] & 0x0F);
-						int aMux3 = (bytes[5] & 0xF0);
+						int aMux3 = (bytes[5] & 0xF0) >> 4;
 						int ResetCalibNeuron = ((bytes[4] & 0x01) >>> 0);
 						int TypeNCalibNeuron = ((bytes[4] & 0x02) >>> 1);
 						int UseAOut = ((bytes[4] & 0x04) >>> 2);
@@ -196,9 +196,9 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 						int AMDY1 = ((bytes[3] & 0x40) >>> 6);
 						// bytes[2] left unused.
 						int dMux0 = (bytes[1] & 0x0F);
-						int dMux1 = (bytes[1] & 0xF0);
+						int dMux1 = (bytes[1] & 0xF0) >> 4;
 						int dMux2 = (bytes[0] & 0x0F);
-						int dMux3 = (bytes[0] & 0xF0);
+						int dMux3 = (bytes[0] & 0xF0) >> 4;
 
 						// Send out config bits to proper addresses.
 						CypressFX3 hwInt = ((CypressFX3) getHardwareInterface());
@@ -229,9 +229,9 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 					}
 					else {
 						int bMux0 = (bytes[6] & 0x0F);
-						int aMux0 = (bytes[6] & 0xF0);
+						int aMux0 = (bytes[6] & 0xF0) >> 4;
 						int aMux1 = (bytes[5] & 0x0F);
-						int aMux2 = (bytes[5] & 0xF0);
+						int aMux2 = (bytes[5] & 0xF0) >> 4;
 						int ResetCalibNeuron = ((bytes[4] & 0x01) >>> 0);
 						int TypeNCalibNeuron = ((bytes[4] & 0x02) >>> 1);
 						int ResetTestPixel = ((bytes[4] & 0x04) >>> 2);
@@ -248,9 +248,9 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 						int SelHpxD = ((bytes[3] & 0x20) >>> 5);
 						// bytes[2] left unused.
 						int dMux0 = (bytes[1] & 0x0F);
-						int dMux1 = (bytes[1] & 0xF0);
+						int dMux1 = (bytes[1] & 0xF0) >> 4;
 						int dMux2 = (bytes[0] & 0x0F);
-						int dMux3 = (bytes[0] & 0xF0);
+						int dMux3 = (bytes[0] & 0xF0) >> 4;
 
 						// Send out config bits to proper addresses.
 						CypressFX3 hwInt = ((CypressFX3) getHardwareInterface());
