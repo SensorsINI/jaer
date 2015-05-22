@@ -26,6 +26,7 @@ import net.sf.jaer.graphics.RetinaRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
+import net.sf.jaer.DevelopmentStatus;
 
 /**
  * Describes retina and its event extractor and bias generator.
@@ -42,7 +43,8 @@ import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
  * SeeBetter 30 is build in UMC18 RF/MM process and has a 31.2u pixel pitch.
  * @author tobi, christian, minhao
  */
-@Description("SeeBetter30 version 1.0")
+@Description("SeeBetter30 version 1.0, DVS with ADM encoder and high gain preamplifiers, Minhao Yang INI")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class SeeBetter30 extends AETemporalConstastRetina {
     
     // following define bit masks for various hardware data types. 
