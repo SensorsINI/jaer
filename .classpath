@@ -3,6 +3,7 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="src" path="subprojects/JSpikeStack/src"/>
 	<classpathentry kind="lib" path="jars/javacv/javacpp.jar"/>
+	<classpathentry kind="lib" path="jars/javacv/javacv.jar"/>
 	<classpathentry kind="lib" path="jars/swing-layout-1.0.4.jar"/>
 	<classpathentry kind="lib" path="jars/UsbIoJava.jar"/>
 	<classpathentry kind="lib" path="jars/commons-net-3.3.jar">
@@ -38,7 +39,7 @@
 	<classpathentry kind="lib" path="jars/comm.jar"/>
 	<classpathentry kind="lib" path="jars/betterbeansbinding-1.3.0-all.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
-	<classpathentry kind="lib" path="jars/jblas-1.2.3.jar"/>
+	<classpathentry kind="lib" path="jars/jblas-1.2.4.jar"/>
 	<classpathentry kind="lib" path="jars/JEvtLearn.jar"/>
 	<classpathentry kind="lib" path="jars/uncommons-maths-1.2.3.jar"/>
 	<classpathentry kind="lib" path="jars/USBTransferThread-0.9.6.jar"/>
@@ -50,7 +51,7 @@
 	<classpathentry kind="lib" path="jars/usb4java/libusb4java-1.2.0-windows-x86_64.jar"/>
 	<classpathentry kind="lib" path="jars/usb4java/libusb4java-1.2.0-windows-x86.jar"/>
 	<classpathentry kind="lib" path="jars/usb4java/usb4java-1.2.0.jar"/>
-	<classpathentry kind="lib" path="jars/commons-lang3-3.3.2.jar"/>
+	<classpathentry kind="lib" path="jars/commons-lang3-3.4.jar"/>
 	<classpathentry kind="lib" path="jars/nrjavaserial-3.9.3.jar"/>
 	<classpathentry kind="lib" path="jars/javacv/opencv-linux-x86_64.jar"/>
 	<classpathentry kind="lib" path="jars/javacv/opencv-linux-x86.jar"/>
