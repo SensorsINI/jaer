@@ -416,7 +416,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glDisable(GL.GL_BLEND);
         gl.glEnable(GL2ES1.GL_POINT_SMOOTH);
         gl.glEnable(GL.GL_BLEND);
-        if (additiveColorMenuItem.isSelected()) {
+        if (additiveColorMenuItem==null || additiveColorMenuItem.isSelected()) {
             gl.glBlendFunc(GL.GL_ONE, GL.GL_ONE);
         } else {
             gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
@@ -460,7 +460,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
         gl.glUniform1f(idt0, -zmax);
         gl.glUniform1f(idt1, 0);
-        if (largePointsMenuItem.isSelected()) {
+        if (largePointsMenuItem!=null && largePointsMenuItem.isSelected()) {
             pointSize = 12;
         } else {
             pointSize = 4;
@@ -555,6 +555,10 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
         AEChip aeChip = (AEChip) chip;
         AEViewer viewer = aeChip.getAeViewer();
+        if(viewer==null ){
+            log.warning("cannot add menu item to control SpaceTimeRollingEventDisplayMethod, AEViewer is null");
+            return;
+        }
         displayMenu = new JMenu("3-D Display Options");
         additiveColorMenuItem = new JCheckBoxMenuItem("Enable additive color");
         largePointsMenuItem = new JCheckBoxMenuItem("Enable large event points");
