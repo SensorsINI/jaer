@@ -699,7 +699,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
 
         @Override
         public String toString() {
-            return String.format("%10d events, %15s eps", count, engFmt.format(filteredRate));
+            return String.format("%10d events, %15s eps average", count, engFmt.format(filteredRate));
         }
 
         /**
@@ -738,7 +738,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             float scale=.3f;
             if (rateEnabled) {
                 scale=TextRendererScale.draw3dScale(renderer, toString(), getChip().getCanvas().getScale(), 
-                        chip.getSizeX(), .5f);
+                        chip.getSizeX(), .75f);
                 int ypos=chip.getSizeY() - 4;
                 if(ypos<chip.getSizeY()/2) ypos=chip.getSizeY()/2;
                 renderer.draw3D(toString(), 1, chip.getSizeY() - 4, 0, scale); // TODO fix string n lines
