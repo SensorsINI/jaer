@@ -140,8 +140,8 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         endPoint = p;
         startx = min(startPoint.x, endPoint.x);
         starty = min(startPoint.y, endPoint.y);
-        endx = max(startPoint.x, endPoint.x);
-        endy = max(startPoint.y, endPoint.y);
+        endx = max(startPoint.x, endPoint.x)+1;
+        endy = max(startPoint.y, endPoint.y)+1;
         int w = endx - startx;
         int h = endy - starty;
         selection = new Rectangle(startx, starty, w, h);
