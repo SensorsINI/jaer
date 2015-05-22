@@ -41,6 +41,7 @@ import eu.seebetter.ini.chips.DavisChip;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.util.TextRendererScale;
 
 /**
  * Collects and displays statistics for a selected range of pixels / cells.
@@ -92,7 +93,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         if ((chip.getCanvas() != null) && (chip.getCanvas().getCanvas() != null)) {
             canvas = chip.getCanvas();
             glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
-            renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 10), true, true);
+            renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
         }
         currentAddress = new int[chip.getNumCellTypes()];
         Arrays.fill(currentAddress, -1);
@@ -734,17 +735,22 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
 			//            renderer.beginRendering(drawable.getWidth(), drawable.getHeight());
             // optionally set the color
             renderer.setColor(1, 1, 1, 0.8f);
+            float scale=.3f;
             if (rateEnabled) {
-                renderer.draw3D(toString(), 1, chip.getSizeY() - 4, 0, .5f); // TODO fix string n lines
+                scale=TextRendererScale.draw3dScale(renderer, toString(), getChip().getCanvas().getScale(), 
+                        chip.getSizeX(), .5f);
+                int ypos=chip.getSizeY() - 4;
+                if(ypos<chip.getSizeY()/2) ypos=chip.getSizeY()/2;
+                renderer.draw3D(toString(), 1, chip.getSizeY() - 4, 0, scale); // TODO fix string n lines
             }
             // ... more draw commands, color changes, etc.
             renderer.end3DRendering();
 
             // draw hist
             if (isiHistEnabled) {
-                renderer.draw3D(String.format("%d", isiMinUs), -1, -3, 0, 0.5f);
-                renderer.draw3D(String.format("%d", isiMaxUs), chip.getSizeX() - 8, -3, 0, 0.5f);
-                renderer.draw3D(logISIEnabled ? "log" : "linear", -15, -3, 0, 0.5f);
+                renderer.draw3D(String.format("%d", isiMinUs), -1, -6, 0, scale);
+                renderer.draw3D(String.format("%d", isiMaxUs), chip.getSizeX() - 8, -6, 0, scale);
+                renderer.draw3D(logISIEnabled ? "log" : "linear", -15, -6, 0, scale);
 
                 if (individualISIsEnabled) {
                     if (showAverageISIHistogram) {
@@ -789,7 +795,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                             binTime = (float) Math.exp((((float) currentMousePoint.x / chip.getSizeX()) * (stats.logIsiMax - stats.logIsiMin)) + stats.logIsiMin);
                         }
                         gl.glColor3fv(SELECT_COLOR, 0);
-                        renderer.draw3D(String.format("%.0f us", binTime), currentMousePoint.x, -4, 0, .5f);
+                        renderer.draw3D(String.format("%.0f us", binTime), currentMousePoint.x, -6, 0, scale);
                         gl.glLineWidth(3);
                         gl.glColor3fv(SELECT_COLOR, 0);
                         gl.glBegin(GL2.GL_LINES);
