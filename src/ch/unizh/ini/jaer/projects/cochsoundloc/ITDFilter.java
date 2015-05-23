@@ -1044,7 +1044,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
 		return display;
 	}
 
-	public void setDisplay(boolean display) {
+	synchronized public void setDisplay(boolean display) {
 		getPrefs().putBoolean("ITDFilter.display", display);
 		getSupport().firePropertyChange("display", this.display, display);
 		this.display = display;
