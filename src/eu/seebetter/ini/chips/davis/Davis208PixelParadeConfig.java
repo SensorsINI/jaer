@@ -42,14 +42,14 @@ public class Davis208PixelParadeConfig extends DavisTowerBaseConfig {
 		getPotArray().addPot(
 			new TowerOnChip6BitVDAC(this, "AdcTestVoltageAI", 4, 4,
 				"A fixed voltage to test the on-chip ADC if it's configured to test mode, unused"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "Unconnected", 5, 5, "Unused, no effect"));
 		getPotArray()
 			.addPot(
-				new TowerOnChip6BitVDAC(this, "ResetHpxBv", 5, 5,
+				new TowerOnChip6BitVDAC(this, "ResetHpxBv", 6, 6,
 					"High voltage to be kept for the Hp pixel of Sim Bamford"));
 		getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "RefSsbxBv", 6, 6,
+			new TowerOnChip6BitVDAC(this, "RefSsbxBv", 7, 7,
 				"Set OffsetBns, the shifted source bias voltage of the pre-amplifier with VDAC"));
-		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "Unconnected", 7, 7, "Unused, no effect"));
 
 		try {
 			// added from gdoc
