@@ -360,7 +360,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
             } else if (val > maxValue) {
                 maxValue = val;
             }
-            if (computeHistograms) {
+            if (computeHistograms && e.getColorFilter()==ColorFilter.W) {
                 nextHist.add(val);
             }
             float fval = normalizeFramePixel(val);
