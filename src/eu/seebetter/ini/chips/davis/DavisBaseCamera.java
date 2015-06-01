@@ -46,6 +46,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
+import java.awt.Color;
 import java.awt.Shape;
 import java.awt.font.FontRenderContext;
 import net.sf.jaer.util.TextRendererScale;
@@ -106,9 +107,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         setPixelHeightUm(18.5f);
         setPixelWidthUm(18.5f);
 
-
         setEventExtractor(new DavisEventExtractor(this));
-
 
         davisDisplayMethod = new DavisDisplayMethod(this);
         getCanvas().addDisplayMethod(davisDisplayMethod);
@@ -125,8 +124,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         autoExposureController = new AutoExposureController(this);
 
     }
-
-
 
     @Override
     public void controlExposure() {
@@ -262,7 +259,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     }
 
     public boolean firstFrameAddress(short x, short y) {
-        return (x == (getSizeX()-1)) && (y == (getSizeY()-1));
+        return (x == (getSizeX() - 1)) && (y == (getSizeY() - 1));
     }
 
     public boolean lastFrameAddress(short x, short y) {
@@ -382,7 +379,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         // Check which logic we are and send the TS Master/Slave command if we are old logic.
         // TODO: this needs to be done.
     }
-
 
     /**
      * The event extractor. Each pixel has two polarities 0 and 1.
@@ -714,8 +710,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         private static final int FONTSIZE = 10;
         private static final int FRAME_COUNTER_BAR_LENGTH_FRAMES = 10;
 
-        private final TextRenderer exposureRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN,
-                DavisDisplayMethod.FONTSIZE), true, true);
+        private TextRenderer exposureRenderer = null;
 
         public DavisDisplayMethod(final DavisBaseCamera chip) {
             super(chip.getCanvas());
@@ -727,7 +722,13 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
             super.display(drawable);
 
+            if (exposureRenderer == null) {
+                exposureRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN,
+                        DavisDisplayMethod.FONTSIZE), true, true);
+            }
+
             if (isTimestampMaster == false) {
+                exposureRenderer.setColor(Color.WHITE);
                 exposureRenderer.begin3DRendering();
                 exposureRenderer.draw3D("Slave camera", 0, -(DavisDisplayMethod.FONTSIZE / 2), 0, .5f);
                 exposureRenderer.end3DRendering();
@@ -854,6 +855,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         private void exposureRender(final GL2 gl) {
             gl.glPushMatrix();
 
+            exposureRenderer.setColor(Color.WHITE);
             exposureRenderer.begin3DRendering();
             if (frameIntervalUs > 0) {
                 setFrameRateHz((float) 1000000 / frameIntervalUs);
@@ -861,7 +863,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             setMeasuredExposureMs((float) exposureDurationUs / 1000);
             final String s = String.format("Frame: %d; Exposure %.2f ms; Frame rate: %.2f Hz", getFrameCount(),
                     exposureMs, frameRateHz);
-            float scale=TextRendererScale.draw3dScale(exposureRenderer, s, getChipCanvas().getScale(), getSizeX(), .75f);
+            float scale = TextRendererScale.draw3dScale(exposureRenderer, s, getChipCanvas().getScale(), getSizeX(), .75f);
             // determine width of string in pixels and scale accordingly
             exposureRenderer.draw3D(s, 0, getSizeY() + (DavisDisplayMethod.FONTSIZE / 2), 0, scale);
             exposureRenderer.end3DRendering();
@@ -878,17 +880,19 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     }
 
     /**
-     * A convenience method that returns the Biasgen object cast to DavisConfig. This object contains all configuration of the
-     * camera. This method was added for use in all configuration classes of subclasses fo DavisBaseCamera.
+     * A convenience method that returns the Biasgen object cast to DavisConfig.
+     * This object contains all configuration of the camera. This method was
+     * added for use in all configuration classes of subclasses fo
+     * DavisBaseCamera.
      *
      * @return the configuration object
      * @author tobi
      */
     protected DavisConfig getDavisConfig() {
-        return (DavisConfig)getBiasgen();
+        return (DavisConfig) getBiasgen();
     }
 
-       @Override
+    @Override
     public void setPowerDown(final boolean powerDown) {
         getDavisConfig().powerDown.set(powerDown);
         try {
