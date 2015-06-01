@@ -25,6 +25,7 @@ import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DAVIS240BaseCamera;
 import eu.seebetter.ini.chips.davis.DavisAutoShooter;
+import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
 import java.beans.PropertyChangeEvent;
 
@@ -281,8 +282,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     protected void renderApsDvsEvents(EventPacket pkt) {
 
-        if (getChip() instanceof DAVIS240BaseCamera) {
-            computeHistograms = ((DAVIS240BaseCamera) chip).isShowImageHistogram() || ((DavisChip) chip).isAutoExposureEnabled();
+        if (getChip() instanceof DavisBaseCamera) {
+            computeHistograms = ((DavisBaseCamera) chip).isShowImageHistogram() || ((DavisChip) chip).isAutoExposureEnabled();
         }
 
         if (!accumulateEnabled) {
