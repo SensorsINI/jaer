@@ -246,7 +246,7 @@ public class DavisRGBW640 extends Davis346BaseCamera {
                     e.setColorFilter(ColorFilter);
 
 					// TODO: figure out exposure for both GS and RS, and start of frame for GS.
-                    if (pixLast && !getDavisConfig().getApsReadoutControl().isGlobalShutterMode() && (readoutType == ApsDvsEventRGBW.ReadoutType.SignalRead)) {
+                    if (pixLast && !getDavisConfig().getApsReadoutControl().isGlobalShutterMode() && (readoutType == ApsDvsEventRGBW.ReadoutType.CpResetRead)) {
 			// if we use ResetRead+SignalRead+C readout, OR, if we use ResetRead-SignalRead readout and we
                         // are at last APS pixel, then write EOF event
                         // insert a new "end of frame" event not present in original data
@@ -260,7 +260,7 @@ public class DavisRGBW640 extends Davis346BaseCamera {
                         setFrameCount(getFrameCount() + 1);
                     }
                     
-                    if (pixLast && getDavisConfig().getApsReadoutControl().isGlobalShutterMode() && (readoutType == ApsDvsEventRGBW.ReadoutType.ResetRead)) {
+                    if (pixLast && getDavisConfig().getApsReadoutControl().isGlobalShutterMode() && (readoutType == ApsDvsEventRGBW.ReadoutType.CpResetRead)) {
 			// if we use ResetRead+SignalRead+C readout, OR, if we use ResetRead-SignalRead readout and we
                         // are at last APS pixel, then write EOF event
                         // insert a new "end of frame" event not present in original data

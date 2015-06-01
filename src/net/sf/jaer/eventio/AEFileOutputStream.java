@@ -26,7 +26,7 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
         
     // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
     /** buffer size for this output stream */
-    public static final int OUTPUT_BUFFER_SIZE = 8192; 
+    public static final int OUTPUT_BUFFER_SIZE = 8192*4; 
     
     /** 
      * Creates a new instance of AEOutputStream and writes the header. If there is any IOException a stack trace is printed.
