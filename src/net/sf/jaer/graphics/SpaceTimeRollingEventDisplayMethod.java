@@ -390,9 +390,11 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             checkGLError(gl, "drawing axes labels");
             gl.glEndList();
         }
+//        gl.glMatrixMode(GLMatrixFunc.GL_TEXTURE_MATRIX);
+//        gl.glPushMatrix();
         gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
         gl.glLoadIdentity();
-//        gl.glPushMatrix();
+        gl.glPushMatrix();
         ClipArea clip = getChipCanvas().getClipArea(); // get the clip computed by fancy algorithm in chipcanvas that properly makes ortho clips to maintain pixel aspect ratio and put blank space or left/right or top/bottom depending on chip aspect ratio and window aspect ratio
 
 //        gl.glRotatef(15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
@@ -478,13 +480,16 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         // draw
         gl.glDrawArrays(GL.GL_POINTS, 0, nEvents);
         checkGLError(gl, "drawArrays");
+        gl.glBindVertexArray(0); // to use TextRenderers elsewhere; see http://forum.jogamp.org/TextRenderer-my-text-won-t-show-td4029291.html
         gl.glUseProgram(0);
         checkGLError(gl, "disable program");
 //
 //        gl.glPopMatrix(); // pop out so that shader uses matrix without applying it twice
-//        gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
-//        gl.glPopMatrix(); // pop out so that shader uses matrix without applying it twice
-//        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
+//       gl.glMatrixMode(GLMatrixFunc.GL_TEXTURE_MATRIX);
+//        gl.glPopMatrix();
+        gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
+        gl.glPopMatrix(); // pop out so that shader uses matrix without applying it twice
+        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
         // re-enable depth sorting for everything else
 //        gl.glDepthMask(true);
     }
