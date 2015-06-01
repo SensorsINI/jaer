@@ -773,7 +773,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             gl.glLineWidth(3);
 
             final float vectorScale = 1.5f;
-            final float textScale = .2f;
+            final float textScale = TextRendererScale.draw3dScale(imuTextRenderer, "XXX.XXf,%XXX.XXf dps", getChipCanvas().getScale(), getSizeX(), .1f);
             final float trans = .7f;
             float x, y;
 
