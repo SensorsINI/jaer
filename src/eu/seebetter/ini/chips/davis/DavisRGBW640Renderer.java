@@ -63,8 +63,8 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
     @Override
     protected void renderApsDvsEvents(EventPacket pkt) {
 
-        if (getChip() instanceof DAVIS240BaseCamera) {
-            computeHistograms = ((DAVIS240BaseCamera) chip).isShowImageHistogram()
+        if (getChip() instanceof DavisBaseCamera) {
+            computeHistograms = ((DavisBaseCamera) chip).isShowImageHistogram()
                     || ((DavisChip) chip).isAutoExposureEnabled();
         }
 
