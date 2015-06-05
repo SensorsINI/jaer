@@ -316,7 +316,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 
 					// Frame Delay (in cycles, from us)
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 14,
-						(buf.getShort(8) & 0xFFFF) * ADC_CLOCK_FREQ_CYCLES * 16);
+						(buf.getShort(8) & 0xFFFF) * ADC_CLOCK_FREQ_CYCLES);
 
 					// IMU Run
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 0,
@@ -357,7 +357,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 
 					// Frame Delay (in cycles, from us)
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 14,
-						(buf.getShort(28) & 0xFFFF) * ADC_CLOCK_FREQ_CYCLES * 16);
+						(buf.getShort(28) & 0xFFFF) * ADC_CLOCK_FREQ_CYCLES);
 
 					// IMU Run
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 0,
