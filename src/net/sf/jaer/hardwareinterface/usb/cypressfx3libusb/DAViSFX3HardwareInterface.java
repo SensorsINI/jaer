@@ -35,7 +35,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 	/** The USB product ID of this device */
 	static public final short PID = (short) 0x841A;
-	static public final short DID = (short) 0x0000;
+	static public final short PID_FX2 = (short) 0x841B;
 
 	/**
 	 * Starts reader buffer pool thread and enables in endpoints for AEs. This
@@ -266,7 +266,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 											}
 
 											// Reset2 read only ever needs to be checked for RGBW DAVIS.
-											if (j == RetinaAEReader.APS_READOUT_CPRESET && chipID != CHIP_DAVISRGB) {
+											if ((j == RetinaAEReader.APS_READOUT_CPRESET) && (chipID != CHIP_DAVISRGB)) {
 												checkValue = 0;
 											}
 

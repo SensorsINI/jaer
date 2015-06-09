@@ -36,10 +36,9 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
 		// HardwareInterfaces.
 		addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID, DAViSFX3HardwareInterface.class);
 
-		addDeviceToMap(CypressFX3.VID, (short) 0x841B, DAViSFX3HardwareInterface.class);
+		addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID_FX2, DAViSFX3HardwareInterface.class);
 
-		// Add blank device for flashing.
-		addDeviceToMap(CypressFX3.VID_BLANK, CypressFX3.PID_BLANK, CypressFX3.class);
+		addDeviceToMap(CypressFX3.VID, CochleaFX3HardwareInterface.PID, CochleaFX3HardwareInterface.class);
 
 		// Initialize LibUsb.
 		LibUsb.init(null);
@@ -130,13 +129,11 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
 	/**
 	 * returns the n-th interface in the list, the model depends on the PID.
 	 * <p>
-	 * For unknown or blank device PID a bare Cypress FX2 is returned, which
-	 * should be discarded after it is used to download to the device RAM some
-	 * preferred default firmware. A new Cypress FX2 should then be manufactured
-	 * that will be correctly constructed here.
+	 * For unknown or blank device PID a bare Cypress FX2 is returned, which should be discarded after it is used to
+	 * download to the device RAM some preferred default firmware. A new Cypress FX2 should then be manufactured that
+	 * will be correctly constructed here.
 	 * <p>
-	 * This method hard-codes the mapping from VID/PID and the HardwareInterface
-	 * object that is constructed for it.
+	 * This method hard-codes the mapping from VID/PID and the HardwareInterface object that is constructed for it.
 	 *
 	 * @param n
 	 *            the number to instantiate (0 based)
