@@ -193,6 +193,7 @@ public class CochleaLP extends CochleaChip implements Observer {
 
 		private final List<HasPreference> hasPreferencesList = new ArrayList<>();
 		final List<SPIConfigValue> spiConfigValues = new ArrayList<>();
+		final List<CochleaChannel> cochleaChannels = new ArrayList<>();
 
 		/**
 		 * The DAC on the board. Specified with 5V reference even though Vdd=3.3 because the internal 2.5V reference is
@@ -270,7 +271,7 @@ public class CochleaLP extends CochleaChip implements Observer {
 
 			// DAC control
 			spiConfigValues
-			.add(new SPIConfigBit("DACRun", "Enable external DAC.", CypressFX3.FPGA_DAC, (short) 0, true));
+				.add(new SPIConfigBit("DACRun", "Enable external DAC.", CypressFX3.FPGA_DAC, (short) 0, true));
 
 			// Multiplexer
 			spiConfigValues.add(new SPIConfigBit("MultiplexerRun", "Run the main data multiplexer.",
@@ -309,7 +310,15 @@ public class CochleaLP extends CochleaChip implements Observer {
 				hasPreferencesList.add(cfgVal);
 			}
 
-			// TODO: add 64 audio channels.
+			// Add the 64 cochlea channels.
+			for (int i = 0; i < 64; i++) {
+				cochleaChannels.add(new CochleaChannel("Channel " + i, "Cochlea channel " + i + " configuration.", i));
+			}
+
+			for (final CochleaChannel chan : cochleaChannels) {
+				chan.addObserver(this);
+				hasPreferencesList.add(chan);
+			}
 
 			setBatchEditOccurring(true);
 			loadPreferences();
@@ -432,9 +441,9 @@ public class CochleaLP extends CochleaChip implements Observer {
 						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) 6, 1);
 						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) 6, 0);
 
-						// Wait 2ms to ensure operation is completed.
+						// Wait 1ms to ensure operation is completed.
 						try {
-							Thread.sleep(2);
+							Thread.sleep(1);
 						}
 						catch (final InterruptedException e) {
 							// Nothing to do here.
@@ -451,7 +460,25 @@ public class CochleaLP extends CochleaChip implements Observer {
 
 						fx3HwIntf.spiConfigSend(cfgInt.getModuleAddr(), cfgInt.getParamAddr(), cfgInt.get());
 					}
-					// TODO: channel config.
+					else if (observable instanceof CochleaChannel) {
+						final CochleaChannel chan = (CochleaChannel) observable;
+
+						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 160, chan.getChannelAddress());
+						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 162,
+							chan.computeBinaryRepresentation());
+
+						// Toggle SET flag.
+						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 163, 1);
+						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 163, 0);
+
+						// Wait 2ms to ensure operation is completed.
+						try {
+							Thread.sleep(2);
+						}
+						catch (final InterruptedException e) {
+							// Nothing to do here.
+						}
+					}
 					else {
 						super.update(observable, object); // super (Biasgen) handles others, e.g. masterbias
 					}
@@ -484,7 +511,9 @@ public class CochleaLP extends CochleaChip implements Observer {
 				update(spiCfg, null);
 			}
 
-			// TODO: send channel config.
+			for (final CochleaChannel chan : cochleaChannels) {
+				update(chan, null);
+			}
 		}
 	}
 
@@ -869,22 +898,24 @@ public class CochleaLP extends CochleaChip implements Observer {
 
 		@Override
 		public String toString() {
-			return String.format("CochleaChannel {configName=%s, prefKey=%s}", getName(), getPreferencesKey());
+			return String.format("CochleaChannel {configName=%s, prefKey=%s, channelAddress=%d}", getName(),
+				getPreferencesKey(), getChannelAddress());
+		}
+
+		public int computeBinaryRepresentation() {
+			return 0;
 		}
 
 		@Override
 		public void loadPreference() {
-			// TODO Auto-generated method stub
 		}
 
 		@Override
 		public void storePreference() {
-			// TODO Auto-generated method stub
 		}
 
 		@Override
 		public void preferenceChange(final PreferenceChangeEvent evt) {
-			// TODO Auto-generated method stub
 		}
 	}
 }
