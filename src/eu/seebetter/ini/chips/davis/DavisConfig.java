@@ -547,6 +547,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		setAeReaderFifoSize(getChip().getPrefs().getInt("aeReaderFifoSize", 1 << 15));
 		setAeReaderNumBuffers(getChip().getPrefs().getInt("aeReaderNumBuffers", 4));
 		setTranslateRowOnlyEvents(getChip().getPrefs().getBoolean("translateRowOnlyEvents", false));
+		setAPSGuaranteedImageTransfer(getChip().getPrefs().getBoolean("apsGuaranteedImageTransfer", true));
 		setCaptureEvents(isCaptureEventsEnabled()); // just to call propertyChangeListener that sets GUI buttons
 		setDisplayEvents(isDisplayEvents()); // just to call propertyChangeListener that sets GUI buttons
 		setCaptureFramesEnabled(isCaptureFramesEnabled());
@@ -902,6 +903,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		getChip().getPrefs().putInt("aeReaderFifoSize", aeReaderFifoSize);
 		getChip().getPrefs().putInt("aeReaderNumBuffers", aeReaderNumBuffers);
 		getChip().getPrefs().putBoolean("translateRowOnlyEvents", translateRowOnlyEvents);
+		getChip().getPrefs().putBoolean("apsGuaranteedImageTransfer", apsGuaranteedImageTransfer);
 	}
 
 	protected void tabbedPaneMouseClicked(MouseEvent evt) {
@@ -1733,7 +1735,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			final Action apsGuaranteedImageTransferAction = new AbstractAction("Ensure APS data transfer") {
 				{
 					putValue(Action.SHORT_DESCRIPTION,
-						"<html>Ensure APS data is never dropped when going through logic and FIFO buffers.");
+						"<html>Ensure APS data is never dropped when going through logic and FIFO buffers; <br>frames can still be dropped if packet rendering max size is exceeded <br>(see option USB/Set rendering AE packet size).");
 					putValue(Action.SELECTED_KEY, apsGuaranteedImageTransfer);
 				}
 
