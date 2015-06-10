@@ -270,7 +270,7 @@ public class CochleaLP extends CochleaChip implements Observer {
 
 			// DAC control
 			spiConfigValues
-				.add(new SPIConfigBit("DACRun", "Enable external DAC.", CypressFX3.FPGA_DAC, (short) 0, true));
+			.add(new SPIConfigBit("DACRun", "Enable external DAC.", CypressFX3.FPGA_DAC, (short) 0, true));
 
 			// Multiplexer
 			spiConfigValues.add(new SPIConfigBit("MultiplexerRun", "Run the main data multiplexer.",
@@ -291,17 +291,18 @@ public class CochleaLP extends CochleaChip implements Observer {
 				CypressFX3.FPGA_DVS, (short) 10, false));
 
 			// Chip diagnostic chain
-			spiConfigValues.add(new SPIConfigInt("ChipResetCapConfigADM", "", CypressFX3.FPGA_CHIPBIAS, (short) 128, 2,
-				0));
-			spiConfigValues.add(new SPIConfigInt("ChipDelayCapConfigADM", "", CypressFX3.FPGA_CHIPBIAS, (short) 129, 3,
-				0));
-			spiConfigValues.add(new SPIConfigBit("ChipComparatorSelfOsc", "", CypressFX3.FPGA_CHIPBIAS, (short) 130,
-				false));
-			spiConfigValues.add(new SPIConfigInt("ChipLNAGainConfig", "", CypressFX3.FPGA_CHIPBIAS, (short) 131, 3, 0));
-			spiConfigValues.add(new SPIConfigBit("ChipLNADoubleInputSelect", "", CypressFX3.FPGA_CHIPBIAS, (short) 132,
-				false));
-			spiConfigValues.add(new SPIConfigBit("ChipTestScannerBias", "", CypressFX3.FPGA_CHIPBIAS, (short) 133,
-				false));
+			spiConfigValues.add(new SPIConfigInt("ChipResetCapConfigADM", "Reset cap configuration in ADM.",
+				CypressFX3.FPGA_CHIPBIAS, (short) 128, 2, 0));
+			spiConfigValues.add(new SPIConfigInt("ChipDelayCapConfigADM", "Delay cap configuration in ADM.",
+				CypressFX3.FPGA_CHIPBIAS, (short) 129, 3, 0));
+			spiConfigValues.add(new SPIConfigBit("ChipComparatorSelfOsc", "Comparator self-oscillation enable.",
+				CypressFX3.FPGA_CHIPBIAS, (short) 130, false));
+			spiConfigValues.add(new SPIConfigInt("ChipLNAGainConfig", "LNA gain configuration.",
+				CypressFX3.FPGA_CHIPBIAS, (short) 131, 3, 0));
+			spiConfigValues.add(new SPIConfigBit("ChipLNADoubleInputSelect", "LNA double or single input selection.",
+				CypressFX3.FPGA_CHIPBIAS, (short) 132, false));
+			spiConfigValues.add(new SPIConfigBit("ChipTestScannerBias", "Test scanner bias enable.",
+				CypressFX3.FPGA_CHIPBIAS, (short) 133, false));
 
 			for (final SPIConfigValue cfgVal : spiConfigValues) {
 				cfgVal.addObserver(this);
@@ -491,67 +492,6 @@ public class CochleaLP extends CochleaChip implements Observer {
 	 * Extract cochlea events from CochleaAMS1c including the ADC samples that are intermixed with cochlea AER data.
 	 * <p>
 	 * The event class returned by the extractor is CochleaAMSEvent.
-	 * <p>
-	 * The 10 bits of AER address are mapped as follows
-	 *
-	 * <pre>
-	 * TX0 - AE0
-	 * TX1 - AE1
-	 * ...
-	 * TX7 - AE7
-	 * TY0 - AE8
-	 * TY1 - AE9
-	 * AE15:10 are unused and are unconnected - they should be masked out in software.
-	 * </pre>
-	 *
-	 * <table border="1px">
-	 * <tr>
-	 * <td>15
-	 * <td>14
-	 * <td>13
-	 * <td>12
-	 * <td>11
-	 * <td>10
-	 * <td>9
-	 * <td>8
-	 * <td>7
-	 * <td>6
-	 * <td>5
-	 * <td>4
-	 * <td>3
-	 * <td>2
-	 * <td>1
-	 * <td>0
-	 * <tr>
-	 * <td>x
-	 * <td>x
-	 * <td>x
-	 * <td>x
-	 * <td>x
-	 * <td>x
-	 * <td>TH1
-	 * <td>TH0
-	 * <td>CH5
-	 * <td>CH4
-	 * <td>CH3
-	 * <td>CH2
-	 * <td>CH1
-	 * <td>CH0
-	 * <td>EAR
-	 * <td>LPFBPF
-	 * </table>
-	 * <ul>
-	 * <li>
-	 * TH1:0 are the ganglion cell. TH1:0=00 is the one biased with Vth1, TH1:0=01 is biased with Vth2, etc. TH1:0=11 is
-	 * biased with Vth4. Vth1 and Vth4 are external voltage biaes.
-	 * <li>
-	 * CH5:0 are the channel address. 0 is the base (input) responsive to high frequencies. 63 is the apex responding to
-	 * low frequencies.
-	 * <li>
-	 * EAR is the binaural ear. EAR=0 is left ear, EAR=1 is right ear.
-	 * <li>
-	 * LPFBPF is the ganglion cell type. LPFBPF=1 is a low-pass neuron, LPFBPF=0 is a band-pass neuron.
-	 * </ul>
 	 */
 	public class Extractor extends TypedEventExtractor<CochleaAMSEvent> {
 
@@ -719,11 +659,6 @@ public class CochleaLP extends CochleaChip implements Observer {
 		public String toString() {
 			return String.format("AbstractConfigValue {configName=%s, prefKey=%s}", getName(), getPreferencesKey());
 		}
-
-		@Override
-		public synchronized void setChanged() {
-			super.setChanged();
-		}
 	}
 
 	public abstract class SPIConfigValue extends AbstractConfigValue {
@@ -876,6 +811,80 @@ public class CochleaLP extends CochleaChip implements Observer {
 		@Override
 		public void storePreference() {
 			getPrefs().putInt(getPreferencesKey(), get());
+		}
+	}
+
+	public class CochleaChannel extends Observable implements PreferenceChangeListener, HasPreference, ConfigBase {
+
+		private final String configName, toolTip, prefKey;
+		private final int channelAddress;
+
+		private boolean comparatorSelfOscillationEnable;
+		private final int comparatorSelfOscillationEnablePosition = 19;
+
+		private int delayCapConfigADM;
+		private final int delayCapConfigADMLength = 3;
+		private final int delayCapConfigADMPosition = 16;
+
+		private int resetCapConfigADM;
+		private final int resetCapConfigADMLength = 2;
+		private final int resetCapConfigADMPosition = 14;
+
+		private int lnaGainConfig;
+		private final int lnaGainConfigLength = 3;
+		private final int lnaGainConfigPosition = 11;
+
+		private int attenuatorConfig;
+		private final int attenuatorConfigLength = 3;
+		private final int attenuatorConfigPosition = 8;
+
+		private int qTuning;
+		private final int qTuningLength = 8;
+		private final int qTuningPosition = 0;
+
+		public CochleaChannel(final String configName, final String toolTip, final int channelAddr) {
+			this.configName = configName;
+			this.toolTip = toolTip;
+			channelAddress = channelAddr;
+			prefKey = getClass().getSimpleName() + "." + configName;
+		}
+
+		@Override
+		public String getName() {
+			return configName;
+		}
+
+		@Override
+		public String getDescription() {
+			return toolTip;
+		}
+
+		public int getChannelAddress() {
+			return channelAddress;
+		}
+
+		public String getPreferencesKey() {
+			return prefKey;
+		}
+
+		@Override
+		public String toString() {
+			return String.format("CochleaChannel {configName=%s, prefKey=%s}", getName(), getPreferencesKey());
+		}
+
+		@Override
+		public void loadPreference() {
+			// TODO Auto-generated method stub
+		}
+
+		@Override
+		public void storePreference() {
+			// TODO Auto-generated method stub
+		}
+
+		@Override
+		public void preferenceChange(final PreferenceChangeEvent evt) {
+			// TODO Auto-generated method stub
 		}
 	}
 }
