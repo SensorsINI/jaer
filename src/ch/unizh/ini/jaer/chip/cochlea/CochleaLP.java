@@ -848,6 +848,9 @@ public class CochleaLP extends CochleaChip implements Observer {
 		private final String configName, toolTip, prefKey;
 		private final int channelAddress;
 
+		private int configValue;
+		private final int configValueLength = 20;
+
 		private boolean comparatorSelfOscillationEnable;
 		private final int comparatorSelfOscillationEnablePosition = 19;
 
@@ -876,6 +879,9 @@ public class CochleaLP extends CochleaChip implements Observer {
 			this.toolTip = toolTip;
 			channelAddress = channelAddr;
 			prefKey = getClass().getSimpleName() + "." + configName;
+
+			loadPreference();
+			getPrefs().addPreferenceChangeListener(this);
 		}
 
 		@Override
@@ -902,20 +908,155 @@ public class CochleaLP extends CochleaChip implements Observer {
 				getPreferencesKey(), getChannelAddress());
 		}
 
+		public boolean isComparatorSelfOscillationEnable() {
+			return comparatorSelfOscillationEnable;
+		}
+
+		public void setComparatorSelfOscillationEnable(final boolean comparatorSelfOscillationEnable) {
+			this.comparatorSelfOscillationEnable = comparatorSelfOscillationEnable;
+
+			// Update main backing value.
+			setFullValueComponents(comparatorSelfOscillationEnable, getDelayCapConfigADM(), getResetCapConfigADM(),
+				getLnaGainConfig(), getAttenuatorConfig(), getqTuning());
+		}
+
+		public int getDelayCapConfigADM() {
+			return delayCapConfigADM;
+		}
+
+		public void setDelayCapConfigADM(final int delayCapConfigADM) {
+			checkValueLimits(delayCapConfigADM, delayCapConfigADMLength);
+
+			this.delayCapConfigADM = delayCapConfigADM;
+
+			// Update main backing value.
+			setFullValueComponents(isComparatorSelfOscillationEnable(), delayCapConfigADM, getResetCapConfigADM(),
+				getLnaGainConfig(), getAttenuatorConfig(), getqTuning());
+		}
+
+		public int getResetCapConfigADM() {
+			return resetCapConfigADM;
+		}
+
+		public void setResetCapConfigADM(final int resetCapConfigADM) {
+			checkValueLimits(resetCapConfigADM, resetCapConfigADMLength);
+
+			this.resetCapConfigADM = resetCapConfigADM;
+
+			// Update main backing value.
+			setFullValueComponents(isComparatorSelfOscillationEnable(), getDelayCapConfigADM(), resetCapConfigADM,
+				getLnaGainConfig(), getAttenuatorConfig(), getqTuning());
+		}
+
+		public int getLnaGainConfig() {
+			return lnaGainConfig;
+		}
+
+		public void setLnaGainConfig(final int lnaGainConfig) {
+			checkValueLimits(lnaGainConfig, lnaGainConfigLength);
+
+			this.lnaGainConfig = lnaGainConfig;
+
+			// Update main backing value.
+			setFullValueComponents(isComparatorSelfOscillationEnable(), getDelayCapConfigADM(), getResetCapConfigADM(),
+				lnaGainConfig, getAttenuatorConfig(), getqTuning());
+		}
+
+		public int getAttenuatorConfig() {
+			return attenuatorConfig;
+		}
+
+		public void setAttenuatorConfig(final int attenuatorConfig) {
+			checkValueLimits(attenuatorConfig, attenuatorConfigLength);
+
+			this.attenuatorConfig = attenuatorConfig;
+
+			// Update main backing value.
+			setFullValueComponents(isComparatorSelfOscillationEnable(), getDelayCapConfigADM(), getResetCapConfigADM(),
+				getLnaGainConfig(), attenuatorConfig, getqTuning());
+		}
+
+		public int getqTuning() {
+			return qTuning;
+		}
+
+		public void setqTuning(final int qTuning) {
+			checkValueLimits(qTuning, qTuningLength);
+
+			this.qTuning = qTuning;
+
+			// Update main backing value.
+			setFullValueComponents(isComparatorSelfOscillationEnable(), getDelayCapConfigADM(), getResetCapConfigADM(),
+				getLnaGainConfig(), getAttenuatorConfig(), qTuning);
+		}
+
+		private synchronized int getFullValue() {
+			return configValue;
+		}
+
+		private synchronized void setFullValue(final int fullValue) {
+			checkValueLimits(fullValue, configValueLength);
+
+			if (configValue != fullValue) {
+				setChanged();
+			}
+
+			configValue = fullValue;
+
+			notifyObservers();
+		}
+
+		private void setFullValueComponents(final boolean compSelfOsc, final int delayADM, final int resetADM,
+			final int lnaGain, final int attenuator, final int qTuning) {
+			int value = 0;
+
+			value |= (compSelfOsc) ? (1 << comparatorSelfOscillationEnablePosition) : (0);
+			value |= (delayADM << delayCapConfigADMPosition);
+			value |= (resetADM << resetCapConfigADMPosition);
+			value |= (lnaGain << lnaGainConfigPosition);
+			value |= (attenuator << attenuatorConfigPosition);
+			value |= (qTuning << qTuningPosition);
+
+			setFullValue(value);
+		}
+
+		private void checkValueLimits(final int value, final int maxLength) {
+			if ((value < 0) || (value >= (1 << maxLength))) {
+				throw new IllegalArgumentException("Attempted to store value=" + value
+					+ ", which is larger than the maximum permitted value of " + (1 << maxLength) + " or negative, in "
+					+ this);
+			}
+		}
+
 		public int computeBinaryRepresentation() {
-			return 0;
+			return getFullValue();
+		}
+
+		@Override
+		public void preferenceChange(final PreferenceChangeEvent e) {
+			if (e.getKey().equals(getPreferencesKey())) {
+				final int newVal = Integer.parseInt(e.getNewValue());
+				setFullValue(newVal);
+			}
 		}
 
 		@Override
 		public void loadPreference() {
+			setFullValue(getPrefs().getInt(getPreferencesKey(), 0));
+
+			// Also update the various components of the full config value on preference load.
+			comparatorSelfOscillationEnable = ((configValue >>> comparatorSelfOscillationEnablePosition) == 1) ? (true)
+				: (false);
+			delayCapConfigADM = (configValue >>> delayCapConfigADMPosition) & ((1 << delayCapConfigADMLength) - 1);
+			resetCapConfigADM = (configValue >>> resetCapConfigADMPosition) & ((1 << resetCapConfigADMLength) - 1);
+			lnaGainConfig = (configValue >>> lnaGainConfigPosition) & ((1 << lnaGainConfigLength) - 1);
+			attenuatorConfig = (configValue >>> attenuatorConfigPosition) & ((1 << attenuatorConfigLength) - 1);
+			qTuning = (configValue >>> qTuningPosition) & ((1 << qTuningLength) - 1);
 		}
 
 		@Override
 		public void storePreference() {
-		}
-
-		@Override
-		public void preferenceChange(final PreferenceChangeEvent evt) {
+			getPrefs().putInt(getPreferencesKey(), getFullValue());
 		}
 	}
 }
