@@ -129,14 +129,14 @@ public class DavisRGBW640Config extends DavisTowerBaseConfig {
 			ssn.setName("SSN");
 			ssn.setTooltipString("n-type shifted source that generates a regulated voltage near ground");
 			ssn.addObserver(this);
-			ssn.setAddress(35);
+			ssn.setAddress(36);
 
 			ssp = new ShiftedSourceBiasCF(this);
 			ssp.setSex(Pot.Sex.P);
 			ssp.setName("SSP");
 			ssp.setTooltipString("p-type shifted source that generates a regulated voltage near Vdd");
 			ssp.addObserver(this);
-			ssp.setAddress(36);
+			ssp.setAddress(35);
 
 			ssBiases[1] = ssn;
 			ssBiases[0] = ssp;
