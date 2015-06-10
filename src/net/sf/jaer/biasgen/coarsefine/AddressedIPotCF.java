@@ -213,7 +213,7 @@ public class AddressedIPotCF extends AddressedIPot {
         v = v + (ratio >= 1 ? 1 : -1); // ensure at least one step unit of change up or down depending on ratio >1 or <1
         if(v<1){
             v=1; // prevent zero value
-        } 
+        }
 //        log.info("changing bit value from "+getFineBitValue()+" to "+v);
 //        if (v < 1 ) {
 //            setCoarseBitValue(getPreferedCoarseBitValue()+1); // sign inversion on coarse bits means increment bit value here
@@ -448,7 +448,7 @@ public class AddressedIPotCF extends AddressedIPot {
     }
 
     /** Computes the actual bit pattern to be sent to chip based on configuration values */
-    protected int computeBinaryRepresentation(){
+    public int computeBinaryRepresentation(){
         int ret=0;
         if(isEnabled()) {
 			ret|=enabledMask;
@@ -475,7 +475,7 @@ public class AddressedIPotCF extends AddressedIPot {
 
     /** Computes the bit pattern to be sent to chip based on configuration values,
      * without changing the coarse value at all and assuming higher number is higher bias. */
-    protected int computeCleanBinaryRepresentation(){
+    public int computeCleanBinaryRepresentation(){
         int ret=0;
         if(isEnabled()) {
 			ret|=enabledMask;

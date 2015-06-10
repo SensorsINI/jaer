@@ -64,7 +64,7 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
     protected int refBitValue = (1 << numRegBiasBits) - 1;
     /** Max bias bit value */
     public int maxRefBitValue = (1 << numRefBiasBits) - 1;
-    
+
     protected final String SETREGBITVAL = "setregbitval_", SETVLEVEL = "setvlevel_", SETMODE = "setmode_", SETREFBITVAL = "setrefbitval_";
 
     public ShiftedSourceBiasCF(Biasgen biasgen) {
@@ -122,7 +122,7 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
         for (int i = 0; i < a.length; i++) {
             Enum e = a[i];
             sb.append(e.toString());
-            if (i < a.length - 1) {
+            if (i < (a.length - 1)) {
                 sb.append("|");
             }
         }
@@ -168,7 +168,7 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
     public JComponent makeGUIPotControl() {
         return new ShiftedSourceControlsCF(this);
     }
-    
+
     public int getRefBitValue() {
         return refBitValue;
     }
@@ -218,7 +218,7 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
         }
         return n;
     }
-    
+
     /** returns clipped value of potential new value for buffer bit value, constrained by limits of hardware.
      *
      * @param o candidate new value.
@@ -236,15 +236,15 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
     }
 
     /** Computes the actual bit pattern to be sent to chip based on configuration values.
-     * The order of the bits from the input end of the shift register is 
+     * The order of the bits from the input end of the shift register is
      * operating mode config bits, buffer bias current code bits, voltage level config bits, voltage level code bits.
      */
-    protected int computeBinaryRepresentation() {
+    public int computeBinaryRepresentation() {
         int ret = ((OperatingMode.mask & getOperatingMode().bits()) //0x0003
                 | (regBiasMask& (regBitValue << Integer.numberOfTrailingZeros(regBiasMask))) // 0xfc00
                 | (VoltageLevel.mask & (getVoltageLevel().bits())) // 0x0300
-                | (refBiasMask& (bitValue << Integer.numberOfTrailingZeros(refBiasMask)))
-                &0xffff); // 0x00fc
+                | ((refBiasMask& (bitValue << Integer.numberOfTrailingZeros(refBiasMask)))
+                &0xffff)); // 0x00fc
      //   System.out.println("bit value = "+Integer.toBinaryString(bitValue << Integer.numberOfTrailingZeros(refBiasMask))+" for "+this);
 //        log.info("binary value="+Integer.toBinaryString(ret)+" for "+this);
         return ret;
@@ -260,8 +260,8 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
         }
         return out;
     }
-    
-    
+
+
     /** returns a byte[] with the short binary representation in big endian order (MSB to LSB) of the binary representation
      * of the shifted source to be written to the SPI port.
      * The SPI routine writes bytes in the order passed from here. The bits in each byte are written in big endian order, msb to lsb.
@@ -342,7 +342,7 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
     @Override
     public final void loadPreferences() {
         String s = prefsKey() + SEP;
-        
+
         int bv = prefs.getInt(s + KEY_REFVALUE, 0);
         setRefBitValue(bv);
         int bbv = prefs.getInt(s + KEY_REGVALUE, maxRegBitValue);
@@ -360,7 +360,7 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
         int v = prefs.getInt(key, 0);
         return v;
     }
-    
+
 
 
     /** sets the bit value based on desired current and {@link #masterbias} current.
@@ -379,10 +379,10 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
      * @return current in amps */
     public float getRegCurrent() {
         float im = masterbias.getCurrent();
-        float i = im * getRegBitValue() / maxRegBitValue;
+        float i = (im * getRegBitValue()) / maxRegBitValue;
         return i;
     }
-    
+
     /** sets the bit value based on desired current and {@link #masterbias} current.
      * Observers are notified if value changes.
      *@param current in amps
@@ -399,12 +399,12 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
      * @return current in amps */
     public float getRefCurrent() {
         float im = masterbias.getCurrent();
-        float i = im * getRefBitValue() / maxRefBitValue;
+        float i = (im * getRefBitValue()) / maxRefBitValue;
         return i;
     }
-    
+
     public void updateBitValue(){
-        this.bitValue = refBitValue+(int)(regBitValue << (numRefBiasBits)); 
+        this.bitValue = refBitValue+(regBitValue << (numRefBiasBits));
     }
 
     @Override
@@ -516,5 +516,5 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
     public OperatingMode getOperatingMode() {
         return operatingMode;
     }
-    
+
 }
