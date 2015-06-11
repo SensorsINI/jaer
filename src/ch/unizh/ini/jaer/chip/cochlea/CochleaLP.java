@@ -264,10 +264,8 @@ public class CochleaLP extends CochleaChip implements Observer {
 			// Scanner
 			spiConfigValues.add(new SPIConfigBit("ScannerEnable", "Enable scanner output.", CypressFX3.FPGA_SCANNER,
 				(short) 0, false));
-			spiConfigValues.add(new SPIConfigBit("ScannerEar", "Which ear to scan out.", CypressFX3.FPGA_SCANNER,
-				(short) 1, false));
-			spiConfigValues.add(new SPIConfigInt("ScannerChannel", "Which channel to scan out for that ear.",
-				CypressFX3.FPGA_SCANNER, (short) 3, 6, 0));
+			spiConfigValues.add(new SPIConfigInt("ScannerChannel", "Which channel to scan out.",
+				CypressFX3.FPGA_SCANNER, (short) 1, 7, 0));
 
 			// DAC control
 			spiConfigValues
