@@ -266,6 +266,8 @@ public class CochleaLP extends CochleaChip implements Observer {
 				(short) 0, false));
 			spiConfigValues.add(new SPIConfigInt("ScannerChannel", "Which channel to scan out.",
 				CypressFX3.FPGA_SCANNER, (short) 1, 7, 0));
+			spiConfigValues.add(new SPIConfigBit("TestAEREnable", "Enable Test AER output instead of normal AER.",
+				CypressFX3.FPGA_SCANNER, (short) 2, false));
 
 			// DAC control
 			spiConfigValues
