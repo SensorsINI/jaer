@@ -196,10 +196,9 @@ public class CochleaLP extends CochleaChip implements Observer {
 		final List<CochleaChannel> cochleaChannels = new ArrayList<>();
 
 		/**
-		 * The DAC on the board. Specified with 5V reference even though Vdd=3.3 because the internal 2.5V reference is
-		 * used and so that the VPot controls display correct voltage. One DAC, 16 channels.
+		 * One DAC, 16 channels. Internal 1.25V reference is used, so VOUT in range 0-2.5V. VDD is 2.8V.
 		 */
-		private final DAC dac = new DAC(16, 12, 0, 5.6f, 2.8f);
+		private final DAC dac = new DAC(16, 12, 0, 2.5f, 2.8f);
 
 		final AddressedIPotArray ipots = new AddressedIPotArray(this);
 		final PotArray vpots = new PotArray(this);
