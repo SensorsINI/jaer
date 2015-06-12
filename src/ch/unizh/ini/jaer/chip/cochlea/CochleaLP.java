@@ -199,7 +199,7 @@ public class CochleaLP extends CochleaChip implements Observer {
 		 * The DAC on the board. Specified with 5V reference even though Vdd=3.3 because the internal 2.5V reference is
 		 * used and so that the VPot controls display correct voltage. One DAC, 16 channels.
 		 */
-		private final DAC dac = new DAC(16, 12, 0, 5f, 3.3f);
+		private final DAC dac = new DAC(16, 12, 0, 5.6f, 2.8f);
 
 		final AddressedIPotArray ipots = new AddressedIPotArray(this);
 		final PotArray vpots = new PotArray(this);
@@ -276,6 +276,8 @@ public class CochleaLP extends CochleaChip implements Observer {
 			// Multiplexer
 			spiConfigValues.add(new SPIConfigBit("MultiplexerRun", "Run the main data multiplexer.",
 				CypressFX3.FPGA_MUX, (short) 0, true));
+                        spiConfigValues.add(new SPIConfigBit("ForceBiasEnable", "Force the biases to be always ON.",
+				CypressFX3.FPGA_MUX, (short) 3, false));
 
 			// Generic AER from chip
 			spiConfigValues.add(new SPIConfigBit("AERRun", "Run the main AER state machine.", CypressFX3.FPGA_DVS,

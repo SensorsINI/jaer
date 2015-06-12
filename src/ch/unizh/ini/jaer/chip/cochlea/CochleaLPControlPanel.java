@@ -118,6 +118,7 @@ public final class CochleaLPControlPanel extends javax.swing.JPanel implements O
 			final JTextField tf0 = new JTextField();
 			tf0.setToolTipText(chan.getName() + " - Delay cap configuration in ADM.");
 			tf0.setText(Integer.toString(chan.getDelayCapConfigADM()));
+                        tf0.setMinimumSize(new Dimension(200, 20));
 			tf0.setPreferredSize(new Dimension(200, 20));
 			tf0.setMaximumSize(new Dimension(200, 30));
 			tf0.addActionListener(new CochleaChannelIntAction(chan, 0));
@@ -126,6 +127,7 @@ public final class CochleaLPControlPanel extends javax.swing.JPanel implements O
 			final JTextField tf1 = new JTextField();
 			tf1.setToolTipText(chan.getName() + " - Reset cap configuration in ADM.");
 			tf1.setText(Integer.toString(chan.getResetCapConfigADM()));
+                        tf1.setMinimumSize(new Dimension(200, 20));
 			tf1.setPreferredSize(new Dimension(200, 20));
 			tf1.setMaximumSize(new Dimension(200, 30));
 			tf1.addActionListener(new CochleaChannelIntAction(chan, 1));
@@ -134,6 +136,7 @@ public final class CochleaLPControlPanel extends javax.swing.JPanel implements O
 			final JTextField tf2 = new JTextField();
 			tf2.setToolTipText(chan.getName() + " - LNA gain configuration.");
 			tf2.setText(Integer.toString(chan.getLnaGainConfig()));
+                        tf2.setMinimumSize(new Dimension(200, 20));
 			tf2.setPreferredSize(new Dimension(200, 20));
 			tf2.setMaximumSize(new Dimension(200, 30));
 			tf2.addActionListener(new CochleaChannelIntAction(chan, 2));
@@ -142,6 +145,7 @@ public final class CochleaLPControlPanel extends javax.swing.JPanel implements O
 			final JTextField tf3 = new JTextField();
 			tf3.setToolTipText(chan.getName() + " - Attenuator configuration.");
 			tf3.setText(Integer.toString(chan.getAttenuatorConfig()));
+                        tf3.setMinimumSize(new Dimension(200, 20));
 			tf3.setPreferredSize(new Dimension(200, 20));
 			tf3.setMaximumSize(new Dimension(200, 30));
 			tf3.addActionListener(new CochleaChannelIntAction(chan, 3));
@@ -150,6 +154,7 @@ public final class CochleaLPControlPanel extends javax.swing.JPanel implements O
 			final JTextField tf4 = new JTextField();
 			tf4.setToolTipText(chan.getName() + " - QTuning configuration.");
 			tf4.setText(Integer.toString(chan.getqTuning()));
+                        tf4.setMinimumSize(new Dimension(200, 20));
 			tf4.setPreferredSize(new Dimension(200, 20));
 			tf4.setMaximumSize(new Dimension(200, 30));
 			tf4.addActionListener(new CochleaChannelIntAction(chan, 4));
@@ -194,6 +199,9 @@ public final class CochleaLPControlPanel extends javax.swing.JPanel implements O
 
 				tf.setText(Integer.toString(intVal.get()));
 			}
+                        else if (observable instanceof CochleaChannel) {
+				// TODO: ignore for now.
+			}
 			else {
 				log.warning("unknown observable " + observable + " , not sending anything");
 			}
@@ -232,7 +240,7 @@ public final class CochleaLPControlPanel extends javax.swing.JPanel implements O
 			final JTextField tf = (JTextField) e.getSource();
 
 			try {
-				intConfig.set(Integer.parseInt(tf.getText()));
+                                intConfig.set(Integer.parseInt(tf.getText()));
 				setFileModified();
 
 				tf.setBackground(Color.white);
