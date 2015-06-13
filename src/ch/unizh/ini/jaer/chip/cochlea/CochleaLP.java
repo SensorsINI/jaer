@@ -10,7 +10,6 @@ import java.util.prefs.PreferenceChangeEvent;
 import java.util.prefs.PreferenceChangeListener;
 
 import javax.swing.JPanel;
-import javax.swing.JTabbedPane;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -190,16 +189,24 @@ public class CochleaLP extends CochleaChip implements Observer {
 	}
 
 	public class Biasgen extends net.sf.jaer.biasgen.Biasgen implements net.sf.jaer.biasgen.ChipControlPanel {
+		// All preferences, excluding biases.
+		private final List<AbstractConfigValue> allPreferencesList = new ArrayList<>();
 
-		private final List<HasPreference> hasPreferencesList = new ArrayList<>();
-		final List<SPIConfigValue> spiConfigValues = new ArrayList<>();
+		// Preferences by category.
 		final List<CochleaChannel> cochleaChannels = new ArrayList<>();
+		final List<SPIConfigValue> aerControl = new ArrayList<>();
+		final List<SPIConfigValue> scannerControl = new ArrayList<>();
+		final List<SPIConfigValue> chipDiagChain = new ArrayList<>();
 
 		/**
 		 * One DAC, 16 channels. Internal 1.25V reference is used, so VOUT in range 0-2.5V. VDD is 2.8V.
 		 */
 		private final DAC dac = new DAC(16, 12, 0, 2.5f, 2.8f);
 
+		final SPIConfigBit dacRun;
+
+		// All bias types.
+		final SPIConfigBit biasForceEnable;
 		final AddressedIPotArray ipots = new AddressedIPotArray(this);
 		final PotArray vpots = new PotArray(this);
 		final ShiftedSourceBiasCF[] ssBiases = new ShiftedSourceBiasCF[2];
@@ -259,66 +266,77 @@ public class CochleaLP extends CochleaChip implements Observer {
 			// vpots.addPot(new VPot(getChip(), "NC", dac, 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			// vpots.addPot(new VPot(getChip(), "NC", dac, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 
-			// New logic SPI configuration values
-			// Scanner
-			spiConfigValues.add(new SPIConfigBit("ScannerEnable", "Enable scanner output.", CypressFX3.FPGA_SCANNER,
+			// New logic SPI configuration values.
+			// Scanner module
+			scannerControl.add(new SPIConfigBit("ScannerEnable", "Enable scanner output.", CypressFX3.FPGA_SCANNER,
 				(short) 0, false));
-			spiConfigValues.add(new SPIConfigInt("ScannerChannel", "Which channel to scan out.",
+			scannerControl.add(new SPIConfigInt("ScannerChannel", "Which channel to scan out.",
 				CypressFX3.FPGA_SCANNER, (short) 1, 7, 0));
-			spiConfigValues.add(new SPIConfigBit("TestAEREnable", "Enable Test AER output instead of normal AER.",
-				CypressFX3.FPGA_SCANNER, (short) 2, false));
+
+			for (final SPIConfigValue cfgVal : scannerControl) {
+				cfgVal.addObserver(this);
+				allPreferencesList.add(cfgVal);
+			}
 
 			// DAC control
-			spiConfigValues
-				.add(new SPIConfigBit("DACRun", "Enable external DAC.", CypressFX3.FPGA_DAC, (short) 0, true));
+			dacRun = new SPIConfigBit("DACRun", "Enable external DAC.", CypressFX3.FPGA_DAC, (short) 0, false);
+			dacRun.addObserver(this);
+			allPreferencesList.add(dacRun);
 
-			// Multiplexer
-			spiConfigValues.add(new SPIConfigBit("MultiplexerRun", "Run the main data multiplexer.",
-				CypressFX3.FPGA_MUX, (short) 0, true));
-                        spiConfigValues.add(new SPIConfigBit("ForceBiasEnable", "Force the biases to be always ON.",
-				CypressFX3.FPGA_MUX, (short) 3, false));
+			// Multiplexer module
+			biasForceEnable = new SPIConfigBit("ForceBiasEnable", "Force the biases to be always ON.",
+				CypressFX3.FPGA_MUX, (short) 3, false);
+			biasForceEnable.addObserver(this);
+			allPreferencesList.add(biasForceEnable);
 
 			// Generic AER from chip
-			spiConfigValues.add(new SPIConfigBit("AERRun", "Run the main AER state machine.", CypressFX3.FPGA_DVS,
-				(short) 3, true));
-			spiConfigValues.add(new SPIConfigInt("AERAckDelay", "Delay AER ACK by this many cycles.",
-				CypressFX3.FPGA_DVS, (short) 4, 6, 0));
-			spiConfigValues.add(new SPIConfigInt("AERAckExtension", "Extend AER ACK by this many cycles.",
+			aerControl.add(new SPIConfigBit("TestAEREnable", "Enable Test AER output instead of normal AER.",
+				CypressFX3.FPGA_SCANNER, (short) 2, false)); // In scanner module for convenience.
+			aerControl.add(new SPIConfigBit("AERRun", "Run the main AER state machine.", CypressFX3.FPGA_DVS,
+				(short) 3, false));
+			aerControl.add(new SPIConfigInt("AERAckDelay", "Delay AER ACK by this many cycles.", CypressFX3.FPGA_DVS,
+				(short) 4, 6, 0));
+			aerControl.add(new SPIConfigInt("AERAckExtension", "Extend AER ACK by this many cycles.",
 				CypressFX3.FPGA_DVS, (short) 6, 6, 0));
-			spiConfigValues.add(new SPIConfigBit("AERWaitOnTransferStall",
+			aerControl.add(new SPIConfigBit("AERWaitOnTransferStall",
 				"Wether the AER state machine should wait or continue servicing the AER bus when the FIFOs are full.",
 				CypressFX3.FPGA_DVS, (short) 8, false));
-			spiConfigValues.add(new SPIConfigBit("AERExternalAERControl",
+			aerControl.add(new SPIConfigBit("AERExternalAERControl",
 				"Do not control/ACK the AER bus anymore, but let it be done by an external device.",
 				CypressFX3.FPGA_DVS, (short) 10, false));
 
-			// Chip diagnostic chain
-			spiConfigValues.add(new SPIConfigInt("ChipResetCapConfigADM", "Reset cap configuration in ADM.",
-				CypressFX3.FPGA_CHIPBIAS, (short) 128, 2, 0));
-			spiConfigValues.add(new SPIConfigInt("ChipDelayCapConfigADM", "Delay cap configuration in ADM.",
-				CypressFX3.FPGA_CHIPBIAS, (short) 129, 3, 0));
-			spiConfigValues.add(new SPIConfigBit("ChipComparatorSelfOsc", "Comparator self-oscillation enable.",
-				CypressFX3.FPGA_CHIPBIAS, (short) 130, false));
-			spiConfigValues.add(new SPIConfigInt("ChipLNAGainConfig", "LNA gain configuration.",
-				CypressFX3.FPGA_CHIPBIAS, (short) 131, 3, 0));
-			spiConfigValues.add(new SPIConfigBit("ChipLNADoubleInputSelect", "LNA double or single input selection.",
-				CypressFX3.FPGA_CHIPBIAS, (short) 132, false));
-			spiConfigValues.add(new SPIConfigBit("ChipTestScannerBias", "Test scanner bias enable.",
-				CypressFX3.FPGA_CHIPBIAS, (short) 133, false));
-
-			for (final SPIConfigValue cfgVal : spiConfigValues) {
+			for (final SPIConfigValue cfgVal : aerControl) {
 				cfgVal.addObserver(this);
-				hasPreferencesList.add(cfgVal);
+				allPreferencesList.add(cfgVal);
 			}
 
-			// Add the 64 cochlea channels.
+			// Chip diagnostic chain
+			chipDiagChain.add(new SPIConfigInt("ChipResetCapConfigADM", "Reset cap configuration in ADM.",
+				CypressFX3.FPGA_CHIPBIAS, (short) 128, 2, 0));
+			chipDiagChain.add(new SPIConfigInt("ChipDelayCapConfigADM", "Delay cap configuration in ADM.",
+				CypressFX3.FPGA_CHIPBIAS, (short) 129, 3, 0));
+			chipDiagChain.add(new SPIConfigBit("ChipComparatorSelfOsc", "Comparator self-oscillation enable.",
+				CypressFX3.FPGA_CHIPBIAS, (short) 130, false));
+			chipDiagChain.add(new SPIConfigInt("ChipLNAGainConfig", "LNA gain configuration.",
+				CypressFX3.FPGA_CHIPBIAS, (short) 131, 3, 0));
+			chipDiagChain.add(new SPIConfigBit("ChipLNADoubleInputSelect", "LNA double or single input selection.",
+				CypressFX3.FPGA_CHIPBIAS, (short) 132, false));
+			chipDiagChain.add(new SPIConfigBit("ChipTestScannerBias", "Test scanner bias enable.",
+				CypressFX3.FPGA_CHIPBIAS, (short) 133, false));
+
+			for (final SPIConfigValue cfgVal : chipDiagChain) {
+				cfgVal.addObserver(this);
+				allPreferencesList.add(cfgVal);
+			}
+
+			// Create the 64 cochlea channels.
 			for (int i = 0; i < 64; i++) {
 				cochleaChannels.add(new CochleaChannel("Channel " + i, "Cochlea channel " + i + " configuration.", i));
 			}
 
 			for (final CochleaChannel chan : cochleaChannels) {
 				chan.addObserver(this);
-				hasPreferencesList.add(chan);
+				allPreferencesList.add(chan);
 			}
 
 			setBatchEditOccurring(true);
@@ -330,8 +348,8 @@ public class CochleaLP extends CochleaChip implements Observer {
 		final public void loadPreferences() {
 			super.loadPreferences();
 
-			if (hasPreferencesList != null) {
-				for (final HasPreference hp : hasPreferencesList) {
+			if (allPreferencesList != null) {
+				for (final HasPreference hp : allPreferencesList) {
 					hp.loadPreference();
 				}
 			}
@@ -353,7 +371,7 @@ public class CochleaLP extends CochleaChip implements Observer {
 
 		@Override
 		public void storePreferences() {
-			for (final HasPreference hp : hasPreferencesList) {
+			for (final HasPreference hp : allPreferencesList) {
 				hp.storePreference();
 			}
 
@@ -373,11 +391,7 @@ public class CochleaLP extends CochleaChip implements Observer {
 			final JPanel panel = new JPanel();
 			panel.setLayout(new BorderLayout());
 
-			final JTabbedPane pane = new JTabbedPane();
-			pane.addTab("Expert controls", new CochleaLPControlPanel(CochleaLP.this));
-			// pane.setSelectedIndex(0);
-
-			panel.add(pane, BorderLayout.CENTER);
+			panel.add(new CochleaLPControlPanel(CochleaLP.this), BorderLayout.CENTER);
 
 			return panel;
 		}
@@ -508,12 +522,8 @@ public class CochleaLP extends CochleaChip implements Observer {
 				update(vPot, null);
 			}
 
-			for (final SPIConfigValue spiCfg : spiConfigValues) {
+			for (final AbstractConfigValue spiCfg : allPreferencesList) {
 				update(spiCfg, null);
-			}
-
-			for (final CochleaChannel chan : cochleaChannels) {
-				update(chan, null);
 			}
 		}
 	}
@@ -844,9 +854,7 @@ public class CochleaLP extends CochleaChip implements Observer {
 		}
 	}
 
-	public class CochleaChannel extends Observable implements PreferenceChangeListener, HasPreference, ConfigBase {
-
-		private final String configName, toolTip, prefKey;
+	public class CochleaChannel extends AbstractConfigValue implements ConfigBase {
 		private final int channelAddress;
 
 		private int configValue;
@@ -876,31 +884,16 @@ public class CochleaLP extends CochleaChip implements Observer {
 		private final int qTuningPosition = 0;
 
 		public CochleaChannel(final String configName, final String toolTip, final int channelAddr) {
-			this.configName = configName;
-			this.toolTip = toolTip;
+			super(configName, toolTip);
+
 			channelAddress = channelAddr;
-			prefKey = getClass().getSimpleName() + "." + configName;
 
 			loadPreference();
 			getPrefs().addPreferenceChangeListener(this);
 		}
 
-		@Override
-		public String getName() {
-			return configName;
-		}
-
-		@Override
-		public String getDescription() {
-			return toolTip;
-		}
-
 		public int getChannelAddress() {
 			return channelAddress;
-		}
-
-		public String getPreferencesKey() {
-			return prefKey;
 		}
 
 		@Override
