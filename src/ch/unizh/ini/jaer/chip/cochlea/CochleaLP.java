@@ -1,6 +1,5 @@
 package ch.unizh.ini.jaer.chip.cochlea;
 
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
@@ -388,12 +387,7 @@ public class CochleaLP extends CochleaChip implements Observer {
 
 		@Override
 		public JPanel buildControlPanel() {
-			final JPanel panel = new JPanel();
-			panel.setLayout(new BorderLayout());
-
-			panel.add(new CochleaLPControlPanel(CochleaLP.this), BorderLayout.CENTER);
-
-			return panel;
+			return new CochleaLPControlPanel(CochleaLP.this);
 		}
 
 		@Override

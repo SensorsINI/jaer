@@ -1,6 +1,5 @@
 package ch.unizh.ini.jaer.chip.cochlea;
 
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -17,7 +16,6 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
-import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 
@@ -356,7 +354,7 @@ public final class CochleaLPControlPanel extends JPanel implements Observer {
 
 		channelPanel = new JPanel();
 		channelPanel.setLayout(new BoxLayout(channelPanel, BoxLayout.Y_AXIS));
-		tabbedPane.addTab("Channels", new JScrollPane(channelPanel));
+		tabbedPane.addTab("Channels", channelPanel);
 
 		scannerPanel = new JPanel();
 		scannerPanel.setLayout(new BoxLayout(scannerPanel, BoxLayout.Y_AXIS));
@@ -370,9 +368,7 @@ public final class CochleaLPControlPanel extends JPanel implements Observer {
 		chipDiagPanel.setLayout(new BoxLayout(chipDiagPanel, BoxLayout.Y_AXIS));
 		tabbedPane.addTab("Chip Diag Config", chipDiagPanel);
 
-		revalidate();
-
-		add(tabbedPane, BorderLayout.CENTER);
+		add(tabbedPane);
 	}
 
 	private JPanel onchipBiasgenPanel;
