@@ -45,9 +45,9 @@ public class AEOutputStream extends DataOutputStream {
     }
 
     /**
-     * Writes the packet out as sequence of address/timestamp's, just as they came as input from the device. The notion of a packet is discarded
+     * Writes the raw (device) address-event packet out as sequence of address/timestamp's, just as they came as input from the device. The notion of a packet is discarded
      *to simplify later reading an input stream from the output stream result.  A null or empty packet returns immediately without writing anything.
-     *@param ae a raw addresse-event packet
+     *@param ae a raw address-event packet
      */
     public void writePacket(AEPacketRaw ae) throws IOException {
         if(ae==null ) return;
@@ -64,7 +64,7 @@ public class AEOutputStream extends DataOutputStream {
     }
 
     /**
-     *  Writes a packet of events to the stream, using the event's address and timestamp. Each event is written by
+     *  Writes a "cooked" packet of BasicEvent events to the stream, using the event's address and timestamp. Each event is written by
      * <pre>
            writeInt(e.address);
             writeInt(e.timestamp);
