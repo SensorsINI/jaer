@@ -9,8 +9,8 @@ import eu.seebetter.ini.chips.DavisChip;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.io.IOException;
+import java.nio.FloatBuffer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.jaer.Description;
@@ -18,8 +18,8 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
-import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.util.avioutput.AbstractAviWriter;
 
 /**
@@ -33,15 +33,17 @@ import net.sf.jaer.util.avioutput.AbstractAviWriter;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DavisFrameAviWriter extends AbstractAviWriter {
 
-    ApsFrameExtractor apsFrameExtractor;
+//    ApsFrameExtractor apsFrameExtractor;
     DavisChip apsDvsChip = null;
+    private boolean rendererPropertyChangeListenerAdded=false;
+    private AEFrameChipRenderer renderer=null;
 
     public DavisFrameAviWriter(AEChip chip) {
         super(chip);
         FilterChain filterChain = new FilterChain(chip);
-        apsFrameExtractor = new ApsFrameExtractor(chip);
-        apsFrameExtractor.getSupport().addPropertyChangeListener(this);
-        filterChain.add(apsFrameExtractor);
+//        apsFrameExtractor = new ApsFrameExtractor(chip);
+//        apsFrameExtractor.getSupport().addPropertyChangeListener(this);
+//        filterChain.add(apsFrameExtractor);
         setEnclosedFilterChain(filterChain);
         setPropertyTooltip("saveAVIFileAs", "Opens the output file. The AVI file is in RAW format with pixel values 0-255 coming from ApsFrameExtractor displayed frames, which are offset and scaled by it.");
         setPropertyTooltip("closeFile", "Closes the output file if it is open.");
@@ -52,42 +54,50 @@ public class DavisFrameAviWriter extends AbstractAviWriter {
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         super.filterPacket(in); // adds propertychangelistener for rewind event
+        if(!rendererPropertyChangeListenerAdded){
+            rendererPropertyChangeListenerAdded=true;
+            renderer=(AEFrameChipRenderer)chip.getRenderer();
+            renderer.getSupport().addPropertyChangeListener(this);
+        }
         apsDvsChip = (DavisChip) chip;
-        apsFrameExtractor.filterPacket(in);
+//        apsFrameExtractor.filterPacket(in);
         return in;
     }
 
-    @Override
-    public void resetFilter() {
-        apsFrameExtractor.resetFilter();
-    }
-
-    @Override
-    public void initFilter() {
-        apsFrameExtractor.initFilter();
-    }
+//    @Override
+//    public void resetFilter() {
+//        apsFrameExtractor.resetFilter();
+//    }
+//
+//    @Override
+//    public void initFilter() {
+//        apsFrameExtractor.initFilter();
+//    }
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (aviOutputStream != null && evt.getPropertyName() == ApsFrameExtractor.EVENT_NEW_FRAME) {
-            float[] frame = apsFrameExtractor.getNewFrame();
+        if (aviOutputStream != null && evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE) {
+            FloatBuffer frame = ((AEFrameChipRenderer)chip.getRenderer()).getPixBuffer();
 
             BufferedImage bufferedImage = new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_3BYTE_BGR);
             WritableRaster raster = bufferedImage.getRaster();
             int sx = chip.getSizeX(), sy = chip.getSizeY();
             for (int y = 0; y < sy; y++) {
                 for (int x = 0; x < sx; x++) {
-                    int k = apsFrameExtractor.getIndex(x, y);
+                    int k = renderer.getPixMapIndex(x, y);
 //                    bufferedImage.setRGB(x, y, (int) (frame[k] * 1024));
-                    int v = (int) (frame[k] * 255), yy = sy - y - 1; // must flip image vertially according to java convention that image starts at upper left
-                    raster.setSample(x, yy, 0, v);
-                    raster.setSample(x, yy, 1, v);
-                    raster.setSample(x, yy, 2, v);
+                    int yy=yy = sy - y - 1;
+                    int r = (int) (frame.get(k) * 255); // must flip image vertially according to java convention that image starts at upper left
+                    int g = (int) (frame.get(k+1) * 255); // must flip image vertially according to java convention that image starts at upper left
+                    int b = (int) (frame.get(k+2) * 255); // must flip image vertially according to java convention that image starts at upper left
+                    raster.setSample(x, yy, 0, r);
+                    raster.setSample(x, yy, 1, g);
+                    raster.setSample(x, yy, 2, b);
                 }
             }
             try {
                 aviOutputStream.writeFrame(bufferedImage);
-                int timestamp = apsFrameExtractor.getLastFrameTimestamp();
+                int timestamp = renderer.getTimestampFrameEnd();
                 writeTimecode(timestamp);
                 incrementFramecountAndMaybeCloseOutput();
 
