@@ -369,7 +369,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
             buf[index + 2] = fval;
             buf[index + 3] = 1;
         } else if (e.isEndOfFrame()) {
-            endFrame();
+            endFrame(e.timestamp);
             SimpleHistogram tmp = currentHist;
             if (computeHistograms) {
                 currentHist = nextHist;
@@ -472,7 +472,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
     }
 
     @Override
-    protected void endFrame() {
+    protected void endFrame(int ts) {
         if (!isSeparateAPSByColor()) {
             //color interpolation
             float[] image = pixBuffer.array();
@@ -599,7 +599,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
             System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
         }
         if (contrastController != null) {
-            contrastController.endFrame(minValue, maxValue, timestamp);
+            contrastController.endFrame(minValue, maxValue, timestampFrameStart);
         }
         getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILBLE, null, this); // TODO document what is sent and send something reasonable
     }
