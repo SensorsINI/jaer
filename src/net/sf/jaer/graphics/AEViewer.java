@@ -4691,7 +4691,8 @@ two interfaces). otherwise force user choice.
 		}
 		try {
 			loggingFile = new File(filename);
-			loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile), AEFileOutputStream.OUTPUT_BUFFER_SIZE), chip); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
+//			loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile), AEFileOutputStream.OUTPUT_BUFFER_SIZE), chip); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
+			loggingOutputStream = new AEFileOutputStream(new FileOutputStream(loggingFile), chip); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
 			loggingEnabled = true;
 
 			if(playMode==PlayMode.PLAYBACK){ // add change listener for rewind to stop logging
@@ -4798,7 +4799,7 @@ two interfaces). otherwise force user choice.
 			loggingButton.setText("Start logging");
 			loggingMenuItem.setText("Start logging data");
 			try {
-				log.info("stopped logging at " + AEDataFile.DATE_FORMAT.format(new Date()));
+				log.info("stopped logging at " + AEDataFile.DATE_FORMAT.format(new Date())+" with "+loggingOutputStream);
 				synchronized (loggingOutputStream) {
 					loggingEnabled = false;
 					loggingOutputStream.close();
