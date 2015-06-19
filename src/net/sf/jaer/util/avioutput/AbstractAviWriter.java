@@ -50,7 +50,7 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
     protected File timecodeFile = null;
     protected FileWriter timecodeWriter = null;
     protected boolean closeOnRewind = getBoolean("closeOnRewind", true);
-    protected boolean propertyChangeListenerAdded = false;
+    private boolean chipPropertyChangeListenerAdded = false;
     protected AVIOutputStream.VideoFormat format = AVIOutputStream.VideoFormat.valueOf(getString("format", AVIOutputStream.VideoFormat.RAW.toString()));
     protected int maxFrames = getInt("maxFrames", 0);
     protected float compressionQuality = getFloat("compressionQuality", 0.9f);
@@ -73,10 +73,10 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if (!propertyChangeListenerAdded) {
+        if (!chipPropertyChangeListenerAdded) {
             if (chip.getAeViewer() != null) {
                 chip.getAeViewer().addPropertyChangeListener(AEInputStream.EVENT_REWIND, this);
-                propertyChangeListenerAdded = true;
+                chipPropertyChangeListenerAdded = true;
             }
         }
         return in;
