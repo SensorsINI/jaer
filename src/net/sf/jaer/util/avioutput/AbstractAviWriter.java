@@ -9,6 +9,7 @@ import com.jogamp.common.nio.Buffers;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.awt.GLCanvas;
 import java.awt.Desktop;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
@@ -29,6 +30,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
@@ -54,7 +56,7 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
     protected AVIOutputStream.VideoFormat format = AVIOutputStream.VideoFormat.valueOf(getString("format", AVIOutputStream.VideoFormat.RAW.toString()));
     protected int maxFrames = getInt("maxFrames", 0);
     protected float compressionQuality = getFloat("compressionQuality", 0.9f);
-    private String[] additionalComments=null;
+    private String[] additionalComments = null;
 
     public AbstractAviWriter(AEChip chip) {
         super(chip);
@@ -62,13 +64,15 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
         setPropertyTooltip("closeFile", "Closes the output file if it is open.");
         setPropertyTooltip("writeTimecodeFile", "writes a file alongside AVI file (with suffix " + TIMECODE_SUFFIX + ") that maps from AVI frame to AER timestamp for that frame (the frame end timestamp)");
         setPropertyTooltip("closeOnRewind", "closes recording on rewind event, to allow unattended operation");
+        setPropertyTooltip("resizeWindowTo16To9Format", "resizes AEViewer window to 19:9 format");
+        setPropertyTooltip("resizeWindowTo4To3Format", "resizes AEViewer window to 4:3 format");
         setPropertyTooltip("format", "video file is writtent to this output format (note that RLE will throw exception because OpenGL frames are not 4 or 8 bit images)");
         setPropertyTooltip("maxFrames", "file is automatically closed after this many frames have been written; set to 0 to disable");
         setPropertyTooltip("framesWritten", "READONLY, shows number of frames written");
         setPropertyTooltip("compressionQuality", "In PNG or JPG format, sets compression quality; 0 is lowest quality and 1 is highest, 0.9 is default value");
         setPropertyTooltip("showFolderInDesktop", "Opens the folder containging the last-written AVI file");
         chip.getSupport().addPropertyChangeListener(this);
-        
+
     }
 
     @Override
@@ -88,6 +92,33 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
 
     @Override
     public void initFilter() {
+    }
+
+    public void doResizeWindowTo4To3Format() {
+        resizeWindowTo(640, 480);
+
+    }
+
+    public void doResizeWindowTo16To9Format() {
+        resizeWindowTo(640, 360);
+
+    }
+
+    private void resizeWindowTo(int w, int h) {
+        AEViewer v = chip.getAeViewer();
+        if (v == null) {
+            log.warning("No AEViewer");
+            return;
+        }
+        GLCanvas c = (GLCanvas)(chip.getCanvas().getCanvas());
+        if (c == null) {
+            log.warning("No Canvas to resize");
+            return;
+        }
+        int ww=c.getWidth(), hh=c.getHeight();
+        v.setSize(w, h);
+        c.revalidate();
+        int ww2=c.getWidth(), hh2=c.getHeight();
     }
 
     public void doShowFolderInDesktop() {
@@ -163,11 +194,13 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
 
     }
 
-    /** Opens AVI output stream and optionally the timecode file.
-     * 
+    /**
+     * Opens AVI output stream and optionally the timecode file.
+     *
      * @param f the file
-     * @param additionalComments additional comments to be written to timecode file, Comment header characters are added if not supplied.
-     * 
+     * @param additionalComments additional comments to be written to timecode
+     * file, Comment header characters are added if not supplied.
+     *
      */
     private void openAVIOutputStream(File f, String[] additionalComments) {
         try {
@@ -183,10 +216,14 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
                 timecodeWriter = new FileWriter(timecodeFile);
                 timecodeWriter.write(String.format("# timecode file relating frames of AVI file to AER timestamps\n"));
                 timecodeWriter.write(String.format("# written %s\n", new Date().toString()));
-                if(additionalComments!=null){
-                    for(String st:additionalComments){
-                        if(!st.startsWith("#")) st="# "+st;
-                        if(!st.endsWith("\n")) st=st+"\n";
+                if (additionalComments != null) {
+                    for (String st : additionalComments) {
+                        if (!st.startsWith("#")) {
+                            st = "# " + st;
+                        }
+                        if (!st.endsWith("\n")) {
+                            st = st + "\n";
+                        }
                         timecodeWriter.write(st);
                     }
                 }
@@ -326,8 +363,8 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
      * @param framesWritten the framesWritten to set
      */
     public void setFramesWritten(int framesWritten) {
-        int old=this.framesWritten;
-        this.framesWritten=framesWritten;
+        int old = this.framesWritten;
+        this.framesWritten = framesWritten;
         getSupport().firePropertyChange("framesWritten", old, framesWritten);
     }
 
@@ -350,9 +387,8 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
         this.compressionQuality = compressionQuality;
         putFloat("compressionQuality", compressionQuality);
     }
-    
-    
-      @Override
+
+    @Override
     public void propertyChange(PropertyChangeEvent evt) {
         if (closeOnRewind && evt.getPropertyName() == AEInputStream.EVENT_REWIND) {
             doCloseFile();
@@ -368,6 +404,7 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
 
     /**
      * Sets array of additional comment strings to be written to timecode file.
+     *
      * @param additionalComments the additionalComments to set
      */
     public void setAdditionalComments(String[] additionalComments) {
