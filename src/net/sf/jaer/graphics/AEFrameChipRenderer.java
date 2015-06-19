@@ -66,7 +66,13 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     /**
      * Used to mark time of frame event
      */
-    protected int timestamp = 0;
+    protected int timestampFrameStart = 0;
+    
+    /**
+     * Used to mark time of frame event
+     */
+    protected int timestampFrameEnd = 0;
+    
     /**
      * low pass temporal filter that computes time-averaged min and max gray
      * values
@@ -404,7 +410,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             buf[index + 2] = fval;
             buf[index + 3] = 1;
         } else if (e.isEndOfFrame()) {
-            endFrame();
+            endFrame(e.timestamp);
             SimpleHistogram tmp = currentHist;
             if (computeHistograms) {
                 currentHist = nextHist;
@@ -417,17 +423,18 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     }
 
     protected void startFrame(int ts) {
-        timestamp = ts;
+        timestampFrameStart = ts;
         maxValue = Float.MIN_VALUE;
         minValue = Float.MAX_VALUE;
         System.arraycopy(grayBuffer.array(), 0, pixBuffer.array(), 0, pixBuffer.array().length);
 
     }
 
-    protected void endFrame() {
+    protected void endFrame(int ts) {
+        timestampFrameEnd=ts;
         System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
         if (contrastController != null && minValue != Float.MAX_VALUE && maxValue != Float.MIN_VALUE) {
-            contrastController.endFrame(minValue, maxValue, timestamp);
+            contrastController.endFrame(minValue, maxValue, timestampFrameEnd);
         }
         getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILBLE, null, this); // TODO document what is sent and send something reasonable
     }
@@ -959,6 +966,22 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     public void propertyChange(PropertyChangeEvent pce) {
         super.propertyChange(pce); //To change body of generated methods, choose Tools | Templates.
         chip.getBiasgen().getSupport().firePropertyChange(pce); // pass on events to chip configuration
+    }
+
+    /**
+     * Returns the timestamp of the pixel read out at the start of the frame readout (not the exposure start)
+     * @return the timestampFrameStart
+     */
+    public int getTimestampFrameStart() {
+        return timestampFrameStart;
+    }
+
+    /**
+     * Returns the timestamp of the pixel read out at end of the frame (not the exposure end)
+     * @return the timestampFrameEnd
+     */
+    public int getTimestampFrameEnd() {
+        return timestampFrameEnd;
     }
 
 }
