@@ -191,7 +191,7 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
         if (!e.isSampleEvent()) {
             return;
         }
-        //if(e.isStartOfFrame())timestamp=e.timestamp;
+        //if(e.isStartOfFrame())timestampFrameStart=e.timestampFrameStart;
         ApsDvsEvent.ReadoutType type = e.getReadoutType();
         float val = e.getAdcSample();
         int idx = getIndex(e.x, e.y);
@@ -275,9 +275,9 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
         }
     }
 
-    /** Returns timestamp of last frame, which is the timestamp of the frame end event
+    /** Returns timestampFrameStart of last frame, which is the timestampFrameStart of the frame end event
      * 
-     * @return the timestamp (usually in us)
+     * @return the timestampFrameStart (usually in us)
      */
     public int getLastFrameTimestamp() {
         return lastFrameTimestamp;
