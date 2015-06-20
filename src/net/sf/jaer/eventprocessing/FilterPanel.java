@@ -1,4 +1,4 @@
-/*
+/*//GEN-LINE:variables
  * FilterPanel.java
  *
  * Created on October 31, 2005, 8:13 PM
@@ -11,6 +11,7 @@ import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.Insets;
+import java.awt.KeyboardFocusManager;
 import java.awt.SystemColor;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
@@ -32,7 +33,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Set;
 import java.util.logging.Logger;
 import javax.swing.AbstractButton;
@@ -897,6 +897,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             add(label);
 
             tf = new JTextField("", 8);
+            tf.setFocusTraversalKeys(KeyboardFocusManager.FORWARD_TRAVERSAL_KEYS, Collections.EMPTY_SET);
+            // see http://blog.marcnuri.com/blog/defaul...e-cellRenderer/2007/06/06/Detecting-Tab-Key-Pressed-Event-in-JTextField-s-Event-VK-TAB-KeyPressed
+            // otherwise TAB will just pass over field without entering a new value
             tf.setMaximumSize(new Dimension(100, 50));
             tf.setToolTipText("Integer control: use arrow keys or mouse wheel to change value by factor. Shift constrains to simple inc/dec");
             try {
@@ -920,10 +923,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 public void actionPerformed(ActionEvent e) {
                     try {
                         NumberFormat format = NumberFormat.getNumberInstance();
-                        int y=format.parse(tf.getText()).intValue();
+                        int y = format.parse(tf.getText()).intValue();
                         w.invoke(filter, new Integer(y)); // write int value
                     } catch (ParseException pe) {
-    //Handle exception
+                        //Handle exception
                     } catch (NumberFormatException fe) {
                         tf.selectAll();
                     } catch (InvocationTargetException ite) {
@@ -937,6 +940,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
                 @Override
                 public void keyPressed(java.awt.event.KeyEvent evt) {
+
                     try {
                         Integer x = (Integer) r.invoke(filter);
                         initValue = x.intValue();
@@ -1010,77 +1014,102 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         }
 
                     }
-
-                }
-            });
-            tf.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
-
-                @Override
-                public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
-                    try {
-                        Integer x = (Integer) r.invoke(filter);
-                        initValue = x.intValue();
-//                        System.out.println("x="+x);
-                    } catch (InvocationTargetException e) {
-                        e.printStackTrace();
-                    } catch (IllegalAccessException e) {
-                        e.printStackTrace();
+                    if (evt.getKeyCode() == evt.VK_TAB) {
+                        try {
+                            NumberFormat format = NumberFormat.getNumberInstance();
+                            int y = format.parse(tf.getText()).intValue();
+                            w.invoke(filter, new Integer(y)); // write int value
+                            fixIntValue(tf, r);
+                        } catch (ParseException pe) {
+                            //Handle exception
+                        } catch (NumberFormatException fe) {
+                            tf.selectAll();
+                        } catch (InvocationTargetException ite) {
+                            ite.printStackTrace();
+                        } catch (IllegalAccessException iae) {
+                            iae.printStackTrace();
+                        }
+                        KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
+                        manager.focusNextComponent();
                     }
-                    int code = evt.getWheelRotation();
-                    int mod = evt.getModifiers();
-                    boolean shift = evt.isShiftDown();
-                    if (!shift) {
-                        if (code < 0) {
+                }
+            }
+            );
+            tf.addMouseWheelListener(
+                    new java.awt.event.MouseWheelListener() {
+
+                        @Override
+                        public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt
+                        ) {
                             try {
-                                nval = initValue;
-                                if (Math.round(initValue * wheelFactor) == initValue) {
-                                    nval++;
-                                } else {
-                                    nval = Math.round(initValue * wheelFactor);
-                                }
-                                w.invoke(filter, new Integer(nval));
-                                tf.setText(new Integer(nval).toString());
-                                fixIntValue(tf, r);
-                            } catch (InvocationTargetException ite) {
-                                ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
-                                iae.printStackTrace();
+                                Integer x = (Integer) r.invoke(filter);
+                                initValue = x.intValue();
+//                        System.out.println("x="+x);
+                            } catch (InvocationTargetException e) {
+                                e.printStackTrace();
+                            } catch (IllegalAccessException e) {
+                                e.printStackTrace();
                             }
-                        } else if (code > 0) {
-                            try {
-                                nval = initValue;
-                                if (Math.round(initValue / wheelFactor) == initValue) {
-                                    nval--;
-                                } else {
-                                    nval = Math.round(initValue / wheelFactor);
+                            int code = evt.getWheelRotation();
+                            int mod = evt.getModifiers();
+                            boolean shift = evt.isShiftDown();
+                            if (!shift) {
+                                if (code < 0) {
+                                    try {
+                                        nval = initValue;
+                                        if (Math.round(initValue * wheelFactor) == initValue) {
+                                            nval++;
+                                        } else {
+                                            nval = Math.round(initValue * wheelFactor);
+                                        }
+                                        w.invoke(filter, new Integer(nval));
+                                        tf.setText(new Integer(nval).toString());
+                                        fixIntValue(tf, r);
+                                    } catch (InvocationTargetException ite) {
+                                        ite.printStackTrace();
+                                    } catch (IllegalAccessException iae) {
+                                        iae.printStackTrace();
+                                    }
+                                } else if (code > 0) {
+                                    try {
+                                        nval = initValue;
+                                        if (Math.round(initValue / wheelFactor) == initValue) {
+                                            nval--;
+                                        } else {
+                                            nval = Math.round(initValue / wheelFactor);
+                                        }
+                                        if (nval < 0) {
+                                            nval = 0;
+                                        }
+                                        w.invoke(filter, new Integer(nval));
+                                        tf.setText(new Integer(nval).toString());
+                                        fixIntValue(tf, r);
+                                    } catch (InvocationTargetException ite) {
+                                        ite.printStackTrace();
+                                    } catch (IllegalAccessException iae) {
+                                        iae.printStackTrace();
+                                    }
                                 }
-                                if (nval < 0) {
-                                    nval = 0;
-                                }
-                                w.invoke(filter, new Integer(nval));
-                                tf.setText(new Integer(nval).toString());
-                                fixIntValue(tf,r);
-                            } catch (InvocationTargetException ite) {
-                                ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
-                                iae.printStackTrace();
                             }
                         }
                     }
-                }
-            });
-            tf.addFocusListener(new FocusListener() {
+            );
+            tf.addFocusListener(
+                    new FocusListener() {
 
-                @Override
-                public void focusGained(FocusEvent e) {
-                    tf.setSelectionStart(0);
-                    tf.setSelectionEnd(tf.getText().length());
-                }
+                        @Override
+                        public void focusGained(FocusEvent e
+                        ) {
+                            tf.setSelectionStart(0);
+                            tf.setSelectionEnd(tf.getText().length());
+                        }
 
-                @Override
-                public void focusLost(FocusEvent e) {
-                }
-            });
+                        @Override
+                        public void focusLost(FocusEvent e
+                        ) {
+                        }
+                    }
+            );
         }
     }
 
@@ -1093,6 +1122,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             tf.setText(s);
         } catch (Exception e) {
             e.printStackTrace();
+
         }
 
     }
@@ -1595,17 +1625,20 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             if (p.getPropertyType() == Integer.TYPE) {
                 int min = (Integer) minMethod.invoke(filter);
                 int max = (Integer) maxMethod.invoke(filter);
-                params = new SliderParams(Integer.class, min, max, 0, 0);
+                params
+                        = new SliderParams(Integer.class, min, max, 0, 0);
             } else if (p.getPropertyType() == Float.TYPE) {
                 float min = (Float) minMethod.invoke(filter);
                 float max = (Float) maxMethod.invoke(filter);
-                params = new SliderParams(Integer.class, 0, 0, min, max);
+                params
+                        = new SliderParams(Integer.class, 0, 0, min, max);
             }
         } catch (NoSuchMethodException e) {
         } catch (Exception iae) {
             log.warning(iae.toString() + " for property " + p + " in filter " + filter);
         }
         return params;
+
     }
 
     class Point2DControl extends JPanel implements HasSetter {
@@ -1673,7 +1706,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             public void actionPerformed(ActionEvent e) {
 //                    System.out.println(e);
                 try {
-                    Object arg=null;
+                    Object arg = null;
                     writeMethod.invoke(filter, arg);
                     set(null);
                 } catch (InvocationTargetException ite) {
@@ -1762,7 +1795,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
     }
 
-    // Addition by Peter: Allow user to add custom filter controls
+// Addition by Peter: Allow user to add custom filter controls
 //    ArrayList<JPanel> customControls=new ArrayList();
     JPanel controlPanel;
 
