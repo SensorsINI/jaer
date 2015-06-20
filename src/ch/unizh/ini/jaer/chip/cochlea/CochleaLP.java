@@ -41,6 +41,10 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import javax.swing.JComponent;
+import javax.swing.JScrollPane;
 
 @Description("Low-power binaural AER silicon cochlea with 64 channels")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
@@ -385,10 +389,15 @@ public class CochleaLP extends CochleaChip implements Observer {
 			super.storePreferences();
 		}
 
-		@Override
-		public JPanel buildControlPanel() {
-			return new CochleaLPControlPanel(CochleaLP.this);
-		}
+            @Override
+            public JPanel buildControlPanel() {
+                JPanel panel = new JPanel();
+                panel.setLayout(new BorderLayout());
+                JComponent c = new CochleaLPControlPanel(CochleaLP.this);
+                c.setPreferredSize(new Dimension(1000, 800));
+                panel.add(new JScrollPane(c));
+                return panel;
+            }
 
 		@Override
 		public void setHardwareInterface(final BiasgenHardwareInterface hw) {
