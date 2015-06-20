@@ -41,6 +41,7 @@ import net.sf.jaer.util.TobiLogger;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
+import net.sf.jaer.util.TextRendererScale;
 
 /** Annotates the rendered data stream canvas with additional information like a
  * clock with absolute time, a bar showing instantaneous activity rate, a graph
@@ -293,10 +294,11 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 			gl.glPopMatrix();
 			gl.glPushMatrix();
 			gl.glTranslatef(0, (int) (chip.getSizeY() * .5f), 1);
-			gl.glScalef(.2f, .2f, 1);
+//			gl.glScalef(.2f, .2f, 1);
 			maxRateString = engFmt.format(maxRate) + "eps";
+                        float scale=TextRendererScale.draw3dScale(renderer, maxRateString, chip.getCanvas().getScale(), chip.getCanvas().getCanvas().getWidth(), .1f);
 			renderer.begin3DRendering();
-			renderer.draw(maxRateString, 0, 0);
+			renderer.draw3D(maxRateString, 0, 0,0,scale);
 			renderer.end3DRendering();
 			gl.glPopMatrix();
 		}
