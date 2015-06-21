@@ -84,15 +84,21 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
         }
 
         // Add cochlea channel configuration GUI.
+        final int CHAN_PER_COL = 16;
+        int chanCount = 0;
+        JPanel colPan = new JPanel();
+        colPan.setLayout(new BoxLayout(colPan, BoxLayout.Y_AXIS));
+        colPan.setAlignmentY(0); // puts panel at top
+
         for (final CochleaChannel chan : biasgen.cochleaChannels) {
-            final JPanel pan = new JPanel();
-            pan.setAlignmentX(Component.LEFT_ALIGNMENT);
-            pan.setLayout(new BoxLayout(pan, BoxLayout.X_AXIS));
+            final JPanel cPan = new JPanel();
+//            cPan.setAlignmentX(Component.LEFT_ALIGNMENT);
+            cPan.setLayout(new BoxLayout(cPan, BoxLayout.X_AXIS));
 
             final JLabel label = new JLabel(chan.getName());
             label.setToolTipText("<html>" + chan.toString() + "<br>" + chan.getDescription()
                     + "<br>Enter value or use mouse wheel or arrow keys to change value.");
-            pan.add(label);
+            cPan.add(label);
 
             final JRadioButton but = new JRadioButton();
             but.setToolTipText("Comparator self-oscillation enable.");
@@ -106,59 +112,67 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
                     setFileModified();
                 }
             });
-            pan.add(but);
+            cPan.add(but);
 
             final JTextField tf0 = new JTextField();
             tf0.setToolTipText(chan.getName() + " - Delay cap configuration in ADM.");
             tf0.setText(Integer.toString(chan.getDelayCapConfigADM()));
-            tf0.setMinimumSize(new Dimension(200, TF_WIDTH));
-            tf0.setPreferredSize(new Dimension(200, TF_WIDTH));
-            tf0.setMaximumSize(new Dimension(200, TF_MAX_WIDTH));
+            tf0.setMinimumSize(new Dimension(TF_MIN_W, TF_HEIGHT));
+            tf0.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
+            tf0.setMaximumSize(new Dimension(TF_MAX_W, TF_MAX_HEIGHT));
             tf0.addActionListener(new CochleaChannelIntAction(chan, 0));
-            pan.add(tf0);
+            cPan.add(tf0);
 
             final JTextField tf1 = new JTextField();
             tf1.setToolTipText(chan.getName() + " - Reset cap configuration in ADM.");
             tf1.setText(Integer.toString(chan.getResetCapConfigADM()));
-            tf1.setMinimumSize(new Dimension(200, TF_WIDTH));
-            tf1.setPreferredSize(new Dimension(200, TF_WIDTH));
-            tf1.setMaximumSize(new Dimension(200, TF_MAX_WIDTH));
+            tf1.setMinimumSize(new Dimension(TF_MIN_W, TF_HEIGHT));
+            tf1.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
+            tf1.setMaximumSize(new Dimension(TF_MAX_W, TF_MAX_HEIGHT));
             tf1.addActionListener(new CochleaChannelIntAction(chan, 1));
-            pan.add(tf1);
+            cPan.add(tf1);
 
             final JTextField tf2 = new JTextField();
             tf2.setToolTipText(chan.getName() + " - LNA gain configuration.");
             tf2.setText(Integer.toString(chan.getLnaGainConfig()));
-            tf2.setMinimumSize(new Dimension(200, TF_WIDTH));
-            tf2.setPreferredSize(new Dimension(200, TF_WIDTH));
-            tf2.setMaximumSize(new Dimension(200, TF_MAX_WIDTH));
+            tf2.setMinimumSize(new Dimension(TF_MIN_W, TF_HEIGHT));
+            tf2.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
+            tf2.setMaximumSize(new Dimension(TF_MAX_W, TF_MAX_HEIGHT));
             tf2.addActionListener(new CochleaChannelIntAction(chan, 2));
-            pan.add(tf2);
+            cPan.add(tf2);
 
             final JTextField tf3 = new JTextField();
             tf3.setToolTipText(chan.getName() + " - Attenuator configuration.");
             tf3.setText(Integer.toString(chan.getAttenuatorConfig()));
-            tf3.setMinimumSize(new Dimension(200, TF_WIDTH));
-            tf3.setPreferredSize(new Dimension(200, TF_WIDTH));
-            tf3.setMaximumSize(new Dimension(200, TF_MAX_WIDTH));
+            tf3.setMinimumSize(new Dimension(TF_MIN_W, TF_HEIGHT));
+            tf3.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
+            tf3.setMaximumSize(new Dimension(TF_MAX_W, TF_MAX_HEIGHT));
             tf3.addActionListener(new CochleaChannelIntAction(chan, 3));
-            pan.add(tf3);
+            cPan.add(tf3);
 
             final JTextField tf4 = new JTextField();
             tf4.setToolTipText(chan.getName() + " - QTuning configuration.");
             tf4.setText(Integer.toString(chan.getqTuning()));
-            tf4.setMinimumSize(new Dimension(200, TF_WIDTH));
-            tf4.setPreferredSize(new Dimension(200, TF_WIDTH));
-            tf4.setMaximumSize(new Dimension(200, TF_MAX_WIDTH));
+            tf4.setMinimumSize(new Dimension(TF_MIN_W, TF_HEIGHT));
+            tf4.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
+            tf4.setMaximumSize(new Dimension(TF_MAX_W, TF_MAX_HEIGHT));
             tf4.addActionListener(new CochleaChannelIntAction(chan, 4));
-            pan.add(tf4);
+            cPan.add(tf4);
 
-            channelPanel.add(pan);
             chan.addObserver(this);
+            colPan.add(cPan);
+            chanCount++;
+            if (chanCount % CHAN_PER_COL == 0) {
+                channelPanel.add(colPan);
+                colPan = new JPanel();
+                colPan.setLayout(new BoxLayout(colPan, BoxLayout.Y_AXIS));
+                colPan.setAlignmentY(0);
+            }
         }
     }
-    private static final int TF_MAX_WIDTH = 15;
-    private static final int TF_WIDTH = 6;
+    private static final int TF_MAX_HEIGHT = 15;
+    private static final int TF_HEIGHT = 6;
+    private static final int TF_MIN_W = 15, TF_PREF_W = 20, TF_MAX_W = 40;
 
     private void makeSPIBitConfig(final SPIConfigBit bitVal, final JPanel panel) {
         final JRadioButton but = new JRadioButton(bitVal.getName() + ": " + bitVal.getDescription());
@@ -184,8 +198,8 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
 
         final JTextField tf = new JTextField();
         tf.setText(Integer.toString(intVal.get()));
-        tf.setPreferredSize(new Dimension(200, TF_WIDTH));
-        tf.setMaximumSize(new Dimension(200, TF_MAX_WIDTH));
+        tf.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
+        tf.setMaximumSize(new Dimension(TF_MAX_W, TF_MAX_HEIGHT));
         tf.addActionListener(new SPIConfigIntAction(intVal));
         pan.add(tf);
 
@@ -345,26 +359,24 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
 
         offchipDACPanel = new JPanel();
         offchipDACPanel.setLayout(new BoxLayout(offchipDACPanel, BoxLayout.Y_AXIS));
-        addTab("Off-chip biases (DAC)",  (offchipDACPanel));
+        addTab("Off-chip biases (DAC)", (offchipDACPanel));
 
         channelPanel = new JPanel();
-        channelPanel.setLayout(new BoxLayout(channelPanel, BoxLayout.Y_AXIS));
-        addTab("Channels",  (channelPanel));
-
+        channelPanel.setLayout(new BoxLayout(channelPanel, BoxLayout.X_AXIS));
+        addTab("Channels", (channelPanel));
 
         scannerPanel = new JPanel();
         scannerPanel.setLayout(new BoxLayout(scannerPanel, BoxLayout.Y_AXIS));
-        addTab("Scanner Config",  (scannerPanel));
+        addTab("Scanner Config", (scannerPanel));
 
         aerPanel = new JPanel();
         aerPanel.setLayout(new BoxLayout(aerPanel, BoxLayout.Y_AXIS));
-        addTab("AER Config",  (aerPanel));
+        addTab("AER Config", (aerPanel));
 
         chipDiagPanel = new JPanel();
         chipDiagPanel.setLayout(new BoxLayout(chipDiagPanel, BoxLayout.Y_AXIS));
-        addTab("Chip Diag Config",  (chipDiagPanel));
+        addTab("Chip Diag Config", (chipDiagPanel));
 
-  
     }
 
     private JPanel onchipBiasgenPanel;
