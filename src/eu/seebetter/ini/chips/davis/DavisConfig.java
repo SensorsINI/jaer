@@ -62,6 +62,7 @@ import ch.unizh.ini.jaer.config.onchip.OutputMux;
 import eu.seebetter.ini.chips.davis.imu.ImuAccelScale;
 import eu.seebetter.ini.chips.davis.imu.ImuControl;
 import eu.seebetter.ini.chips.davis.imu.ImuControlPanel;
+import javax.swing.JScrollPane;
 
 /**
  * Base class for configuration of Davis cameras
@@ -293,6 +294,8 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	public JPanel buildControlPanel() {
 		// if(displayControlPanel!=null) return displayControlPanel;
 		configPanel = new JPanel();
+                JScrollPane scrollPane=new JScrollPane();
+                scrollPane.add(configPanel);
 		configPanel.setLayout(new BorderLayout());
 		debugControls = chip.getPrefs().getBoolean("debugControls", false);
 		// add a reset button on top of everything
@@ -355,7 +358,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		combinedBiasShiftedSourcePanel.add(new ShiftedSourceControlsCF(ssp));
 		configTabbedPane.addTab("Bias Current Control", combinedBiasShiftedSourcePanel);
 		// muxes
-		configTabbedPane.addTab("Debug Output MUX control", getChipConfigChain().buildMuxControlPanel());
+		configTabbedPane.addTab("Debug Output MUX control", new JScrollPane(getChipConfigChain().buildMuxControlPanel()));
 		// aps readout
 		JPanel apsReadoutPanel = new JPanel();
 		apsReadoutPanel

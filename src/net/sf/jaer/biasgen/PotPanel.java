@@ -16,6 +16,7 @@ import java.util.Comparator;
 import java.util.logging.Logger;
 
 import javax.swing.AbstractButton;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -89,6 +90,7 @@ public class PotPanel extends javax.swing.JPanel implements FocusListener {
         componentList=new ArrayList<JComponent>();
         Collections.sort(potList, new PotDisplayComparator());
         potsPanel=new JPanel();
+        potsPanel.setAlignmentX(RIGHT_ALIGNMENT);
         potsPanel.getInsets().set(0, 0, 0, 0);
         potsPanel.setLayout(new BoxLayout(potsPanel, BoxLayout.Y_AXIS));
         scrollPane=new JScrollPane(potsPanel);
@@ -96,15 +98,17 @@ public class PotPanel extends javax.swing.JPanel implements FocusListener {
         add(scrollPane);
         for(Pot p : potList) {
             JComponent s=p.makeGUIPotControl(); // make a bias control gui component
+            s.setAlignmentX(RIGHT_ALIGNMENT);
             potsPanel.add(s);
             componentList.add(s);
             addBorderSetter(s);
         }
-        JPanel fillPanel=new JPanel();
-        fillPanel.setMinimumSize(new Dimension(0, 0));
-        fillPanel.setPreferredSize(new Dimension(0, 0));
-        fillPanel.setMaximumSize(new Dimension(32767, 32767));
-        potsPanel.add(fillPanel); // spacer at bottom so biases don't stretch out too much
+        potsPanel.add(Box.createVerticalGlue());
+//        JPanel fillPanel=new JPanel();
+//        fillPanel.setMinimumSize(new Dimension(0, 0));
+//        fillPanel.setPreferredSize(new Dimension(0, 0));
+//        fillPanel.setMaximumSize(new Dimension(32767, 32767));
+//        potsPanel.add(fillPanel); // spacer at bottom so biases don't stretch out too much
     }
     private class PotDisplayComparator implements Comparator<Pot> {
         public int compare(Pot p1, Pot p2) {

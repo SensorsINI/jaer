@@ -56,17 +56,16 @@ ArrayList<Pot> pots;
         globalValuePanel = new javax.swing.JPanel();
         jLabel2 = new javax.swing.JLabel();
         globalValueTextField = new javax.swing.JTextField();
+        filler1 = new javax.swing.Box.Filler(new java.awt.Dimension(0, 0), new java.awt.Dimension(0, 0), new java.awt.Dimension(32767, 0));
         headerPanel = new javax.swing.JPanel();
         nameLabel = new javax.swing.JLabel();
-        jPanel4 = new javax.swing.JPanel();
         sexLabel = new javax.swing.JLabel();
-        jPanel1 = new javax.swing.JPanel();
         typeLabel = new javax.swing.JLabel();
+        filler2 = new javax.swing.Box.Filler(new java.awt.Dimension(0, 0), new java.awt.Dimension(0, 0), new java.awt.Dimension(32767, 0));
         sliderAndValuePanel = new javax.swing.JPanel();
         physicalValueTextField = new javax.swing.JTextField();
         bitValueTextField = new javax.swing.JTextField();
         bitPatternTextField = new javax.swing.JTextField();
-        jPanel2 = new javax.swing.JPanel();
 
         setMaximumSize(new java.awt.Dimension(2147483647, 50));
         setMinimumSize(new java.awt.Dimension(151, 50));
@@ -75,13 +74,15 @@ ArrayList<Pot> pots;
         setVerifyInputWhenFocusTarget(false);
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
 
-        filterPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+        filterPanel.setLayout(new javax.swing.BoxLayout(filterPanel, javax.swing.BoxLayout.X_AXIS));
 
         jLabel1.setLabelFor(filterTextField);
         jLabel1.setText("Filter");
         filterPanel.add(jLabel1);
 
         filterTextField.setColumns(20);
+        filterTextField.setMinimumSize(new java.awt.Dimension(100, 20));
+        filterTextField.setPreferredSize(new java.awt.Dimension(100, 20));
         filterTextField.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 filterTextFieldActionPerformed(evt);
@@ -111,6 +112,7 @@ ArrayList<Pot> pots;
             }
         });
         globalValuePanel.add(globalValueTextField);
+        globalValuePanel.add(filler1);
 
         filterPanel.add(globalValuePanel);
 
@@ -121,8 +123,8 @@ ArrayList<Pot> pots;
         headerPanel.setPreferredSize(new java.awt.Dimension(254, 25));
         headerPanel.setLayout(new javax.swing.BoxLayout(headerPanel, javax.swing.BoxLayout.X_AXIS));
 
-        nameLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 12));
-        nameLabel.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        nameLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 12)); // NOI18N
+        nameLabel.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
         nameLabel.setText("name");
         nameLabel.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
         nameLabel.setMaximumSize(new java.awt.Dimension(100, 15));
@@ -130,27 +132,26 @@ ArrayList<Pot> pots;
         nameLabel.setPreferredSize(new java.awt.Dimension(85, 15));
         headerPanel.add(nameLabel);
 
-        jPanel4.setPreferredSize(new java.awt.Dimension(3, 0));
-        headerPanel.add(jPanel4);
-
         sexLabel.setText("sex");
         sexLabel.setToolTipText("Sex (N- or P-type)");
+        sexLabel.setMaximumSize(new java.awt.Dimension(32000, 14));
         sexLabel.setMinimumSize(new java.awt.Dimension(17, 10));
+        sexLabel.setPreferredSize(new java.awt.Dimension(30, 14));
         headerPanel.add(sexLabel);
-
-        jPanel1.setPreferredSize(new java.awt.Dimension(3, 0));
-        headerPanel.add(jPanel1);
 
         typeLabel.setText("type");
         typeLabel.setToolTipText("Type (Normal or Cascode)");
+        typeLabel.setMaximumSize(new java.awt.Dimension(32000, 14));
         typeLabel.setMinimumSize(new java.awt.Dimension(17, 10));
+        typeLabel.setPreferredSize(new java.awt.Dimension(30, 14));
         headerPanel.add(typeLabel);
+        headerPanel.add(filler2);
 
-        sliderAndValuePanel.setLayout(new java.awt.BorderLayout());
+        sliderAndValuePanel.setLayout(new javax.swing.BoxLayout(sliderAndValuePanel, javax.swing.BoxLayout.X_AXIS));
         headerPanel.add(sliderAndValuePanel);
 
-        physicalValueTextField.setColumns(15);
         physicalValueTextField.setEditable(false);
+        physicalValueTextField.setColumns(15);
         physicalValueTextField.setFont(new java.awt.Font("Courier New", 0, 10)); // NOI18N
         physicalValueTextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
         physicalValueTextField.setText("physical value");
@@ -175,8 +176,8 @@ ArrayList<Pot> pots;
         });
         headerPanel.add(physicalValueTextField);
 
-        bitValueTextField.setColumns(10);
         bitValueTextField.setEditable(false);
+        bitValueTextField.setColumns(10);
         bitValueTextField.setFont(new java.awt.Font("Courier New", 0, 10)); // NOI18N
         bitValueTextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
         bitValueTextField.setText("bit value");
@@ -201,8 +202,8 @@ ArrayList<Pot> pots;
         });
         headerPanel.add(bitValueTextField);
 
-        bitPatternTextField.setColumns(15);
         bitPatternTextField.setEditable(false);
+        bitPatternTextField.setColumns(15);
         bitPatternTextField.setFont(new java.awt.Font("Monospaced", 0, 10)); // NOI18N
         bitPatternTextField.setText("bit pattern");
         bitPatternTextField.setToolTipText("bit value as bits");
@@ -210,12 +211,6 @@ ArrayList<Pot> pots;
         bitPatternTextField.setMaximumSize(new java.awt.Dimension(100, 2147483647));
         bitPatternTextField.setMinimumSize(new java.awt.Dimension(17, 10));
         headerPanel.add(bitPatternTextField);
-
-        jPanel2.setMaximumSize(new java.awt.Dimension(0, 32767));
-        jPanel2.setMinimumSize(new java.awt.Dimension(0, 10));
-        jPanel2.setPreferredSize(new java.awt.Dimension(0, 10));
-        jPanel2.setRequestFocusEnabled(false);
-        headerPanel.add(jPanel2);
 
         add(headerPanel);
     }// </editor-fold>//GEN-END:initComponents
@@ -274,6 +269,8 @@ private void physicalValueTextFieldKeyPressed(java.awt.event.KeyEvent evt) {//GE
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JTextField bitPatternTextField;
     private javax.swing.JTextField bitValueTextField;
+    private javax.swing.Box.Filler filler1;
+    private javax.swing.Box.Filler filler2;
     private javax.swing.JPanel filterPanel;
     private javax.swing.JTextField filterTextField;
     private javax.swing.JPanel globalValuePanel;
@@ -281,9 +278,6 @@ private void physicalValueTextFieldKeyPressed(java.awt.event.KeyEvent evt) {//GE
     private javax.swing.JPanel headerPanel;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
-    private javax.swing.JPanel jPanel1;
-    private javax.swing.JPanel jPanel2;
-    private javax.swing.JPanel jPanel4;
     private javax.swing.JLabel nameLabel;
     private javax.swing.JTextField physicalValueTextField;
     private javax.swing.JLabel sexLabel;

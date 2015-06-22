@@ -27,7 +27,13 @@ import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigBit;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigInt;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigValue;
 import java.awt.BorderLayout;
+import java.awt.FlowLayout;
+import java.awt.Rectangle;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import javax.swing.Box;
 import javax.swing.JScrollPane;
+import javax.swing.Scrollable;
 
 public final class CochleaLPControlPanel extends JTabbedPane implements Observer {
 
@@ -46,13 +52,21 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
 
         initComponents();
 
-        makeSPIBitConfig(biasgen.biasForceEnable, onchipBiasgenPanel);
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent evt) {
+                tabbedPaneMouseClicked(evt);
+            }
+        });
 
-        biasgen.setPotArray(biasgen.ipots);
-        onchipBiasgenPanel.add(new BiasgenPanel(getBiasgen()));
+        makeSPIBitConfig(biasgen.biasForceEnable, onchipBiasgenPanel);
 
         onchipBiasgenPanel.add(new ShiftedSourceControlsCF(biasgen.ssBiases[0]));
         onchipBiasgenPanel.add(new ShiftedSourceControlsCF(biasgen.ssBiases[1]));
+        biasgen.setPotArray(biasgen.ipots);
+        onchipBiasgenPanel.add(new BiasgenPanel(getBiasgen()));
+
+       onchipBiasgenPanel.add(Box.createVerticalGlue()); // push up to prevent expansion of PotPanel
 
         makeSPIBitConfig(biasgen.dacRun, offchipDACPanel);
 
@@ -84,7 +98,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
         }
 
         // Add cochlea channel configuration GUI.
-        final int CHAN_PER_COL = 16;
+        final int CHAN_PER_COL = 32;
         int chanCount = 0;
         JPanel colPan = new JPanel();
         colPan.setLayout(new BoxLayout(colPan, BoxLayout.Y_AXIS));
@@ -169,18 +183,26 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
                 colPan.setAlignmentY(0);
             }
         }
+        setTabLayoutPolicy(WRAP_TAB_LAYOUT);
+        channelPanel.setPreferredSize(new Dimension(600, 600));
+        channelPanel.revalidate();
+        setPreferredSize(new Dimension(800, 600));
+        revalidate();
+        
+        setSelectedIndex(chip.getPrefs().getInt("CochleaLPControlPanel.bgTabbedPaneSelectedIndex",0));
     }
+
     private static final int TF_MAX_HEIGHT = 15;
     private static final int TF_HEIGHT = 6;
     private static final int TF_MIN_W = 15, TF_PREF_W = 20, TF_MAX_W = 40;
 
     private void makeSPIBitConfig(final SPIConfigBit bitVal, final JPanel panel) {
-        final JRadioButton but = new JRadioButton(bitVal.getName() + ": " + bitVal.getDescription());
+        final JRadioButton but = new JRadioButton("<html>"+bitVal.getName() + ": " + bitVal.getDescription());
         but.setToolTipText("<html>" + bitVal.toString() + "<br>Select to set bit, clear to clear bit.");
         but.setSelected(bitVal.isSet());
         but.setAlignmentX(Component.LEFT_ALIGNMENT);
         but.addActionListener(new SPIConfigBitAction(bitVal));
-
+       
         panel.add(but);
         configValueMap.put(bitVal, but);
         bitVal.addObserver(this);
@@ -355,6 +377,7 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
 
         onchipBiasgenPanel = new JPanel();
         onchipBiasgenPanel.setLayout(new BoxLayout(onchipBiasgenPanel, BoxLayout.Y_AXIS));
+        onchipBiasgenPanel.setAlignmentX(LEFT_ALIGNMENT);
         addTab("On-chip biases (biasgen)", (onchipBiasgenPanel));
 
         offchipDACPanel = new JPanel();
@@ -374,9 +397,14 @@ public final class CochleaLPControlPanel extends JTabbedPane implements Observer
         addTab("AER Config", (aerPanel));
 
         chipDiagPanel = new JPanel();
+        chipDiagPanel.setAlignmentX(LEFT_ALIGNMENT);
         chipDiagPanel.setLayout(new BoxLayout(chipDiagPanel, BoxLayout.Y_AXIS));
         addTab("Chip Diag Config", (chipDiagPanel));
 
+    }
+
+    protected void tabbedPaneMouseClicked(MouseEvent evt) {
+        chip.getPrefs().putInt("CochleaLPControlPanel.bgTabbedPaneSelectedIndex", getSelectedIndex());
     }
 
     private JPanel onchipBiasgenPanel;

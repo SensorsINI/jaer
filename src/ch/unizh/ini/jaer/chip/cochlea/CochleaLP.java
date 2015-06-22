@@ -302,10 +302,10 @@ public class CochleaLP extends CochleaChip implements Observer {
 			aerControl.add(new SPIConfigInt("AERAckExtension", "Extend AER ACK by this many cycles.",
 				CypressFX3.FPGA_DVS, (short) 6, 6, 0));
 			aerControl.add(new SPIConfigBit("AERWaitOnTransferStall",
-				"Wether the AER state machine should wait or continue servicing the AER bus when the FIFOs are full.",
+				"Whether the AER state machine should wait,<br> or continue servicing the AER bus when the FIFOs are full.",
 				CypressFX3.FPGA_DVS, (short) 8, false));
 			aerControl.add(new SPIConfigBit("AERExternalAERControl",
-				"Do not control/ACK the AER bus anymore, but let it be done by an external device.",
+				"Do not control/ACK the AER bus anymore, <br>but let it be done by an external device.",
 				CypressFX3.FPGA_DVS, (short) 10, false));
 
 			for (final SPIConfigValue cfgVal : aerControl) {
@@ -395,7 +395,7 @@ public class CochleaLP extends CochleaChip implements Observer {
                 panel.setLayout(new BorderLayout());
                 JComponent c = new CochleaLPControlPanel(CochleaLP.this);
                 c.setPreferredSize(new Dimension(1000, 800));
-                panel.add(new JScrollPane(c));
+                panel.add(new JScrollPane(c),BorderLayout.CENTER);
                 return panel;
             }
 

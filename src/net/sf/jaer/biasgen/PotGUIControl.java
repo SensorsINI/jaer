@@ -158,19 +158,15 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
     private void initComponents() {
 
         nameLabel = new javax.swing.JLabel();
-        jPanel4 = new javax.swing.JPanel();
         sexLabel = new javax.swing.JLabel();
-        jPanel1 = new javax.swing.JPanel();
         typeLabel = new javax.swing.JLabel();
         sliderAndValuePanel = new javax.swing.JPanel();
         bitValueTextField = new javax.swing.JTextField();
         bitPatternTextField = new javax.swing.JTextField();
-        jPanel2 = new javax.swing.JPanel();
+        filler1 = new javax.swing.Box.Filler(new java.awt.Dimension(0, 0), new java.awt.Dimension(0, 0), new java.awt.Dimension(32767, 0));
 
         setFocusable(false);
         setMaximumSize(new java.awt.Dimension(2147483647, 75));
-        setMinimumSize(new java.awt.Dimension(151, 15));
-        setPreferredSize(new java.awt.Dimension(250, 20));
         addAncestorListener(new javax.swing.event.AncestorListener() {
             public void ancestorMoved(javax.swing.event.AncestorEvent evt) {
             }
@@ -180,43 +176,41 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
             public void ancestorRemoved(javax.swing.event.AncestorEvent evt) {
             }
         });
-        setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.LINE_AXIS));
+        setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.X_AXIS));
 
-        nameLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 12));
+        nameLabel.setFont(new java.awt.Font("Microsoft Sans Serif", 1, 12)); // NOI18N
         nameLabel.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
         nameLabel.setText("name");
+        nameLabel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
         nameLabel.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
-        nameLabel.setMaximumSize(new java.awt.Dimension(100, 15));
+        nameLabel.setMaximumSize(new java.awt.Dimension(200, 15));
         nameLabel.setMinimumSize(new java.awt.Dimension(17, 10));
-        nameLabel.setPreferredSize(new java.awt.Dimension(85, 15));
+        nameLabel.setPreferredSize(new java.awt.Dimension(100, 15));
         add(nameLabel);
-
-        jPanel4.setFocusable(false);
-        jPanel4.setPreferredSize(new java.awt.Dimension(3, 0));
-        add(jPanel4);
 
         sexLabel.setText("sex");
         sexLabel.setToolTipText("Sex (N- or P-type)");
+        sexLabel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(255, 51, 204)));
+        sexLabel.setMaximumSize(new java.awt.Dimension(60, 14));
         sexLabel.setMinimumSize(new java.awt.Dimension(17, 10));
+        sexLabel.setPreferredSize(new java.awt.Dimension(50, 14));
         add(sexLabel);
-
-        jPanel1.setFocusable(false);
-        jPanel1.setPreferredSize(new java.awt.Dimension(3, 0));
-        add(jPanel1);
 
         typeLabel.setText("type");
         typeLabel.setToolTipText("Type (Normal or Cascode)");
-        typeLabel.setMaximumSize(new java.awt.Dimension(100, 25));
+        typeLabel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(255, 204, 0)));
+        typeLabel.setMaximumSize(new java.awt.Dimension(80, 25));
         typeLabel.setMinimumSize(new java.awt.Dimension(17, 10));
-        typeLabel.setPreferredSize(new java.awt.Dimension(75, 18));
+        typeLabel.setPreferredSize(new java.awt.Dimension(80, 18));
         add(typeLabel);
 
+        sliderAndValuePanel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 153, 153)));
         sliderAndValuePanel.setFocusable(false);
-        sliderAndValuePanel.setLayout(new java.awt.BorderLayout());
+        sliderAndValuePanel.setLayout(new javax.swing.BoxLayout(sliderAndValuePanel, javax.swing.BoxLayout.X_AXIS));
         add(sliderAndValuePanel);
 
         bitValueTextField.setColumns(8);
-        bitValueTextField.setFont(new java.awt.Font("Courier New", 0, 10));
+        bitValueTextField.setFont(new java.awt.Font("Courier New", 0, 10)); // NOI18N
         bitValueTextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
         bitValueTextField.setText("bitValue");
         bitValueTextField.setToolTipText("bit value as an int");
@@ -240,9 +234,9 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
         });
         add(bitValueTextField);
 
-        bitPatternTextField.setColumns(10);
         bitPatternTextField.setEditable(false);
-        bitPatternTextField.setFont(new java.awt.Font("Monospaced", 0, 10));
+        bitPatternTextField.setColumns(10);
+        bitPatternTextField.setFont(new java.awt.Font("Monospaced", 0, 10)); // NOI18N
         bitPatternTextField.setText("bitPattern");
         bitPatternTextField.setToolTipText("bit value as bits");
         bitPatternTextField.setFocusable(false);
@@ -250,13 +244,7 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
         bitPatternTextField.setMinimumSize(new java.awt.Dimension(17, 10));
         bitPatternTextField.setPreferredSize(new java.awt.Dimension(71, 10));
         add(bitPatternTextField);
-
-        jPanel2.setFocusable(false);
-        jPanel2.setMaximumSize(new java.awt.Dimension(0, 32767));
-        jPanel2.setMinimumSize(new java.awt.Dimension(0, 10));
-        jPanel2.setPreferredSize(new java.awt.Dimension(0, 10));
-        jPanel2.setRequestFocusEnabled(false);
-        add(jPanel2);
+        add(filler1);
     }// </editor-fold>//GEN-END:initComponents
 
         
@@ -386,9 +374,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JTextField bitPatternTextField;
     private javax.swing.JTextField bitValueTextField;
-    private javax.swing.JPanel jPanel1;
-    private javax.swing.JPanel jPanel2;
-    private javax.swing.JPanel jPanel4;
+    private javax.swing.Box.Filler filler1;
     private javax.swing.JLabel nameLabel;
     private javax.swing.JLabel sexLabel;
     private javax.swing.JPanel sliderAndValuePanel;

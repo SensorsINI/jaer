@@ -12,6 +12,7 @@
 
 package net.sf.jaer.biasgen.VDAC;
 
+import java.awt.Component;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 
@@ -30,7 +31,8 @@ public class VPotGUIControl extends JPanel {
     /** Creates a new instance of IPotGUIControl */
     public VPotGUIControl(VPot pot) {
         this.pot=pot;
-        setLayout(new BoxLayout(this,BoxLayout.X_AXIS));
+        setLayout(new BoxLayout(this,BoxLayout.X_AXIS)); 
+        setAlignmentX(Component.LEFT_ALIGNMENT);
         generalControls=new PotGUIControl(pot);
         sliderTextControl=new VPotSliderTextControl(pot);
         generalControls.getSliderAndValuePanel().add(sliderTextControl);

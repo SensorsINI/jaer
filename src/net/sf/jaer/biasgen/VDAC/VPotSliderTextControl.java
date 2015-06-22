@@ -140,9 +140,10 @@ public class VPotSliderTextControl extends JPanel implements Observer, StateEdit
 
         slider = new javax.swing.JSlider();
         valueTextField = new javax.swing.JTextField();
-        jPanel2 = new javax.swing.JPanel();
 
         setFocusable(false);
+        setMinimumSize(new java.awt.Dimension(100, 15));
+        setPreferredSize(new java.awt.Dimension(200, 20));
         addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
                 formMouseEntered(evt);
@@ -168,14 +169,7 @@ public class VPotSliderTextControl extends JPanel implements Observer, StateEdit
         slider.setToolTipText("");
         slider.setValue(0);
         slider.setAlignmentX(0.0F);
-        slider.setMaximumSize(new java.awt.Dimension(32767, 50));
-        slider.setMinimumSize(new java.awt.Dimension(36, 10));
-        slider.setPreferredSize(new java.awt.Dimension(150, 10));
-        slider.addChangeListener(new javax.swing.event.ChangeListener() {
-            public void stateChanged(javax.swing.event.ChangeEvent evt) {
-                sliderStateChanged(evt);
-            }
-        });
+        slider.setPreferredSize(new java.awt.Dimension(100, 23));
         slider.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mousePressed(java.awt.event.MouseEvent evt) {
                 sliderMousePressed(evt);
@@ -184,15 +178,25 @@ public class VPotSliderTextControl extends JPanel implements Observer, StateEdit
                 sliderMouseReleased(evt);
             }
         });
+        slider.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                sliderStateChanged(evt);
+            }
+        });
         add(slider);
 
         valueTextField.setColumns(8);
-        valueTextField.setFont(new java.awt.Font("Courier New", 0, 11));
+        valueTextField.setFont(new java.awt.Font("Courier New", 0, 11)); // NOI18N
         valueTextField.setHorizontalAlignment(javax.swing.JTextField.TRAILING);
         valueTextField.setText("value");
         valueTextField.setToolTipText("Enter voltage here. Up and Down arrows change values.");
         valueTextField.setMaximumSize(new java.awt.Dimension(100, 2147483647));
         valueTextField.setMinimumSize(new java.awt.Dimension(11, 15));
+        valueTextField.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
+            public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
+                valueTextFieldMouseWheelMoved(evt);
+            }
+        });
         valueTextField.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 valueTextFieldActionPerformed(evt);
@@ -211,19 +215,7 @@ public class VPotSliderTextControl extends JPanel implements Observer, StateEdit
                 valueTextFieldKeyPressed(evt);
             }
         });
-        valueTextField.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
-            public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
-                valueTextFieldMouseWheelMoved(evt);
-            }
-        });
         add(valueTextField);
-
-        jPanel2.setFocusable(false);
-        jPanel2.setMaximumSize(new java.awt.Dimension(0, 32767));
-        jPanel2.setMinimumSize(new java.awt.Dimension(0, 20));
-        jPanel2.setPreferredSize(new java.awt.Dimension(0, 20));
-        jPanel2.setRequestFocusEnabled(false);
-        add(jPanel2);
     }// </editor-fold>//GEN-END:initComponents
 
     private void valueTextFieldFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_valueTextFieldFocusLost
@@ -411,7 +403,6 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         ; // override this to actually get a state stored!!
     }
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JPanel jPanel2;
     private javax.swing.JSlider slider;
     private javax.swing.JTextField valueTextField;
     // End of variables declaration//GEN-END:variables
