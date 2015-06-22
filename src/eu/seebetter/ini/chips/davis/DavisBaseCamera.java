@@ -773,37 +773,11 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             gl.glLineWidth(3);
 
             final float vectorScale = 1.5f;
-            final float textScale = TextRendererScale.draw3dScale(imuTextRenderer, "XXX.XXf,%XXX.XXf dps", getChipCanvas().getScale(), getSizeX(), .1f);
+            final float textScale = TextRendererScale.draw3dScale(imuTextRenderer, "XXX.XXf,%XXX.XXf dps", getChipCanvas().getScale(), getSizeX(), .3f);
             final float trans = .7f;
             float x, y;
 
-            // gyro pan/tilt
-            gl.glColor3f(1f, 0, 1);
-            gl.glBegin(GL.GL_LINES);
-            gl.glVertex2f(0, 0);
-            x = (vectorScale * imuSample.getGyroYawY() * getSizeY()) / IMUSample.getFullScaleGyroDegPerSec();
-            y = (vectorScale * imuSample.getGyroTiltX() * getSizeX()) / IMUSample.getFullScaleGyroDegPerSec();
-            gl.glVertex2f(x, y);
-            gl.glEnd();
-
-            imuTextRenderer.begin3DRendering();
-            imuTextRenderer.setColor(1f, 0, 1, trans);
-            imuTextRenderer.draw3D(String.format("%.2f,%.2f dps", imuSample.getGyroYawY(), imuSample.getGyroTiltX()),
-                    x, y + 5, 0, textScale); // x,y,z, scale factor
-            imuTextRenderer.end3DRendering();
-
-            // gyro roll
-            x = (vectorScale * imuSample.getGyroRollZ() * getSizeY()) / IMUSample.getFullScaleGyroDegPerSec();
-            y = chip.getSizeY() * .25f;
-            gl.glBegin(GL.GL_LINES);
-            gl.glVertex2f(0, y);
-            gl.glVertex2f(x, y);
-            gl.glEnd();
-
-            imuTextRenderer.begin3DRendering();
-            imuTextRenderer.draw3D(String.format("%.2f dps", imuSample.getGyroRollZ()), x, y, 0, textScale);
-            imuTextRenderer.end3DRendering();
-
+ 
             // acceleration x,y
             x = (vectorScale * imuSample.getAccelX() * getSizeX()) / IMUSample.getFullScaleAccelG();
             y = (vectorScale * imuSample.getAccelY() * getSizeY()) / IMUSample.getFullScaleAccelG();
@@ -836,6 +810,33 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             final String saz = String.format("%.2f g", imuSample.getAccelZ());
             final Rectangle2D rect = imuTextRenderer.getBounds(saz);
             imuTextRenderer.draw3D(saz, az, -(float) rect.getHeight() * textScale * 0.5f, 0, textScale);
+            imuTextRenderer.end3DRendering();
+
+           // gyro pan/tilt
+            gl.glColor3f(1f, 0, 1);
+            gl.glBegin(GL.GL_LINES);
+            gl.glVertex2f(0, 0);
+            x = (vectorScale * imuSample.getGyroYawY() * getSizeY()) / IMUSample.getFullScaleGyroDegPerSec();
+            y = (vectorScale * imuSample.getGyroTiltX() * getSizeX()) / IMUSample.getFullScaleGyroDegPerSec();
+            gl.glVertex2f(x, y);
+            gl.glEnd();
+
+            imuTextRenderer.begin3DRendering();
+            imuTextRenderer.setColor(1f, 0, 1, trans);
+            imuTextRenderer.draw3D(String.format("%.2f,%.2f dps", imuSample.getGyroYawY(), imuSample.getGyroTiltX()),
+                    x, y + 5, 0, textScale); // x,y,z, scale factor
+            imuTextRenderer.end3DRendering();
+
+            // gyro roll
+            x = (vectorScale * imuSample.getGyroRollZ() * getSizeY()) / IMUSample.getFullScaleGyroDegPerSec();
+            y = chip.getSizeY() * .25f;
+            gl.glBegin(GL.GL_LINES);
+            gl.glVertex2f(0, y);
+            gl.glVertex2f(x, y);
+            gl.glEnd();
+
+            imuTextRenderer.begin3DRendering();
+            imuTextRenderer.draw3D(String.format("%.2f dps", imuSample.getGyroRollZ()), x, y, 0, textScale);
             imuTextRenderer.end3DRendering();
 
             // color annotation to show what is being rendered
