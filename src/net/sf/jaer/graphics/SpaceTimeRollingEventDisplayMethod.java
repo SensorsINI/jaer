@@ -375,17 +375,17 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             final int FS = 1; // distance in pixels of text from endZoom of axis
             float w;
             gl.glColor3f(0, 0, 1);
-            gl.glRasterPos3f(sx, 0, 0);
+            gl.glRasterPos3f(sx*1.05f, 0, 0);
             glut.glutBitmapString(font, "x=" + sx);
-            gl.glRasterPos3f(0, sy, 0);
+            gl.glRasterPos3f(0, sy*1.05f, 0);
             glut.glutBitmapString(font, "y=" + sy);
             w = glut.glutBitmapLength(font, "t=0");
-            gl.glRasterPos3f(-w * modelScale, 0, 0);
+            gl.glRasterPos3f(-2*w * modelScale, 0, 0);
             glut.glutBitmapString(font, "t=0");
             gl.glColor3f(.5f, 0, 0);
             String tMaxString = "t=" + engFmt.format(-dtS) + "s";
             w = glut.glutBitmapLength(font, tMaxString);
-            gl.glRasterPos3f(-w * modelScale, 0, -zmax);
+            gl.glRasterPos3f(sx*1.05f, 0, -zmax);
             glut.glutBitmapString(font, tMaxString);
             checkGLError(gl, "drawing axes labels");
             gl.glEndList();
