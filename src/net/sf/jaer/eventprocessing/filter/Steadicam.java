@@ -42,8 +42,11 @@ import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
+import java.util.concurrent.ArrayBlockingQueue;
 
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
@@ -74,8 +77,8 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         VORSensor
     };
     private CameraRotationEstimator cameraRotationEstimator = null; //PositionComputer.valueOf(get("positionComputer", "OpticalGyro"));
-    private float gainTranslation = getFloat("gainTranslation", 1f);
-    private float gainVelocity = getFloat("gainVelocity", 1);
+//    private float gainTranslation = getFloat("gainTranslation", 1f);
+//    private float gainVelocity = getFloat("gainVelocity", 1);
     private float gainPanTiltServos = getFloat("gainPanTiltServos", 1);
     private boolean feedforwardEnabled = getBoolean("feedforwardEnabled", false);
     private boolean panTiltEnabled = getBoolean("panTiltEnabled", false);
@@ -130,6 +133,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
     private int sx2, sy2;
     private boolean transformImageEnabled = getBoolean("transformImageEnabled", true);
     private int lastFrameNumber = 0;
+    protected float imuLagMs = getFloat("imuLagMs", 1.8f);
 
     private boolean addedViewerPropertyChangeListener = false;
 
@@ -153,36 +157,37 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
 
         setCameraRotationEstimator(cameraRotationEstimator); // init filter enabled states
         initFilter(); // init filters for motion compensation
-        String transform = "Transform", pantilt = "Pan-Tilt";
+        String transform = "Transform", pantilt = "Pan-Tilt", display = "Display", imu = "IMU";
 
         setPropertyTooltip("cameraRotationEstimator", "specifies which method is used to measure camera rotation");
-        setPropertyTooltip(pantilt, "gainTranslation", "gain applied to measured scene translation to affect electronic or mechanical output");
-        setPropertyTooltip(pantilt, "gainVelocity", "gain applied to measured scene velocity times the weighted-average cluster aqe to affect electronic or mechanical output");
-        setPropertyTooltip(pantilt, "gainPanTiltServos", "gain applied to translation for pan/tilt servo values");
-        setPropertyTooltip("feedforwardEnabled", "enables motion computation on stabilized output of filter rather than input (only during use of DirectionSelectiveFilter)");
+//        setPropertyTooltip(pantilt, "gainTranslation", "gain applied to measured scene translation to affect electronic or mechanical output");
+//        setPropertyTooltip(pantilt, "gainVelocity", "gain applied to measured scene velocity times the weighted-average cluster aqe to affect electronic or mechanical output");
+//        setPropertyTooltip(pantilt, "gainPanTiltServos", "gain applied to translation for pan/tilt servo values");
+        setPropertyTooltip("feedforwardEnabled", "enables optical flow motion computation on stabilized output of filter rather than input (only during use of DirectionSelectiveFilter)");
         setPropertyTooltip(pantilt, "panTiltEnabled", "enables use of pan/tilt servos for camera");
         setPropertyTooltip("electronicStabilizationEnabled", "stabilize by shifting events according to the PositionComputer");
-        setPropertyTooltip("flipContrast", "flips contrast of output events depending on x*y sign of motion - should maintain colors of edges");
+        setPropertyTooltip(display, "flipContrast", "flips contrast of output events depending on x*y sign of motion - should maintain colors of edges");
 //        setPropertyTooltip("cornerFreqHz", "sets highpass corner frequency in Hz for stabilization - frequencies smaller than this will not be stabilized and transform will return to zero on this time scale");
-        setPropertyTooltip("annotateEnclosedEnabled", "showing tracking or motion filter output annotation of output, for setting up parameters of enclosed filters");
-        setPropertyTooltip("opticalGyroTauLowpassMs", "lowpass filter time constant in ms for optical gyro camera rotation measure");
-        setPropertyTooltip("opticalGyroRotationEnabled", "enables rotation in transform");
-        setPropertyTooltip("vestibularStabilizationEnabled", "use the gyro/accelometer to provide transform");
-        setPropertyTooltip("zeroGyro", "zeros the gyro output. Sensor should be stationary for period of 1-2 seconds during zeroing");
-        setPropertyTooltip("eraseGyroZero", "Erases the gyro zero values");
-        setPropertyTooltip("transformImageEnabled", "Transforms rendering of the APS image (note that the APS image data is unaffected; this is only for demo purposes)");
+        setPropertyTooltip(display, "annotateEnclosedEnabled", "showing tracking or motion filter output annotation of output, for setting up parameters of enclosed filters");
+        setPropertyTooltip(transform, "opticalGyroTauLowpassMs", "lowpass filter time constant in ms for optical gyro camera rotation measure");
+        setPropertyTooltip(transform, "opticalGyroRotationEnabled", "enables rotation in transform");
+        setPropertyTooltip(transform, "vestibularStabilizationEnabled", "use the gyro/accelometer to provide transform");
+        setPropertyTooltip(imu, "zeroGyro", "zeros the gyro output. Sensor should be stationary for period of 1-2 seconds during zeroing");
+        setPropertyTooltip(imu, "eraseGyroZero", "Erases the gyro zero values");
+        setPropertyTooltip(transform, "transformImageEnabled", "Transforms rendering of the APS image (note that the APS image data is unaffected; this is only for demo purposes)");
 
-        setPropertyTooltip("sampleIntervalMs", "sensor sample interval in ms, min 4ms, powers of two, e.g. 4,8,16,32...");
+//        setPropertyTooltip("sampleIntervalMs", "sensor sample interval in ms, min 4ms, powers of two, e.g. 4,8,16,32...");
         setPropertyTooltip(transform, "highpassTauMsTranslation", "highpass filter time constant in ms to relax transform back to zero for translation (pan, tilt) components");
         setPropertyTooltip(transform, "highpassTauMsRotation", "highpass filter time constant in ms to relax transform back to zero for rotation (roll) component");
         setPropertyTooltip(transform, "lensFocalLengthMm", "sets lens focal length in mm to adjust the scaling from camera rotation to pixel space");
-        setPropertyTooltip("zeroGyro", "zeros the gyro output. Sensor should be stationary for period of 1-2 seconds during zeroing");
-        setPropertyTooltip("eraseGyroZero", "Erases the gyro zero values");
+        setPropertyTooltip(imu, "zeroGyro", "zeros the gyro output. Sensor should be stationary for period of 1-2 seconds during zeroing");
+        setPropertyTooltip(imu, "eraseGyroZero", "Erases the gyro zero values");
         setPropertyTooltip(transform, "transformResetLimitDegrees", "If transform translations exceed this limit in degrees the transform is automatically reset to 0");
-        setPropertyTooltip(transform, "showTransformRectangle", "Disable to not show the red transform square and red cross hairs");
-        setPropertyTooltip(transform, "showGrid", "Enabled to show a grid to allow judging the degree of stabilization");
+        setPropertyTooltip(display, "showTransformRectangle", "Disable to not show the red transform square and red cross hairs");
+        setPropertyTooltip(display, "showGrid", "Enabled to show a grid to allow judging the degree of stabilization");
         setPropertyTooltip(transform, "disableRotation", "Disables rotational part of transform");
         setPropertyTooltip(transform, "disableTranslation", "Disables translations part of transform");
+        setPropertyTooltip(imu, "imuLagMs", "absolute delay/lag of IMU in ms");
 
         rollFilter.setTauMs(highpassTauMsRotation);
         panTranslationFilter.setTauMs(highpassTauMsTranslation);
@@ -208,7 +213,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
             chip.getAeViewer().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
             addTimeStampsResetPropertyChangeListener = true;
         }
-        checkOutputPacketEventType(in);
+        checkOutputPacketEventType(chip.getEventClass());
         transformList.clear(); // empty list of transforms to be applied
         // The call to enclosed filters issues callbacks to us periodically via updates that fills transform list, in case of enclosed filters.
         // this is not the case when using integrated IMU which generates IMUSamples in the event stream.
@@ -226,6 +231,8 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
             sxm1 = chip.getSizeX() - 1;
             sym1 = chip.getSizeY() - 1;
 
+            OutputEventIterator outItr = out.outputIterator();
+
             for (Object o : in) {
                 if (o == null) {
                     log.warning("null event passed in, returning input packet");
@@ -238,7 +245,10 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
                         if (ev instanceof IMUSample) {
                             // TODO hack, we mark IMUSamples in EventExtractor that are actually ApsDvsEvent as non-special so we can detect them here
 //                            System.out.println("at position "+i+" got "+ev);
-                            IMUSample s = (IMUSample) ev;
+                            IMUSample s = (IMUSample) ev; // because of imuLagMs this IMU sample should actually be applied to samples from the past
+                            // to achieve this backwards application of the IMU samples we hold the older events in a FIFO and pop events from the FIFO until 
+                            // the event timestamp catches up to the current IMUSample timestamp - imuLagMs.
+
                             if (s.imuSampleEvent) {
                                 lastTransform = updateTransform(s);
                                 if (transformImageEnabled && lastTransform != null && chip instanceof DavisChip && chip.getAeViewer() != null && chip.getCanvas() != null && chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA) {
@@ -258,32 +268,45 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
                                 continue; // next event
                             }
                         }
+
                         break;
                     default:
                         lastTransform = transformItr.next();
                 }
+                pushEvent(ev);
+//                System.out.print(">");
 
-                if (getLastTransform() != null) {
-                    // apply transform Re+T. First center events from middle of array at 0,0, then transform, then move them back to their origin
-                    int nx = ev.x - sx2, ny = ev.y - sy2;
-                    ev.x = (short) ((((getLastTransform().cosAngle * nx) - (getLastTransform().sinAngle * ny)) + getLastTransform().translationPixels.x) + sx2);
-                    ev.y = (short) (((getLastTransform().sinAngle * nx) + (getLastTransform().cosAngle * ny) + getLastTransform().translationPixels.y) + sy2);
-                    ev.address = chip.getEventExtractor().getAddressFromCell(ev.x, ev.y, ev.getType()); // so event is logged properly to disk
-                }
+                PolarityEvent be = null;
+                while ((be = peekEvent()) != null && (be.timestamp <= ev.timestamp - imuLagMs * 1000 || be.timestamp > ev.timestamp)) {
+                    be = popEvent();
+//                    System.out.print("<");
+                    if (!(be instanceof IMUSample)) {
+                        if (lastTransform != null) {
 
-                if ((ev.x > sxm1) || (ev.x < 0) || (ev.y > sym1) || (ev.y < 0)) {
-                    ev.setFilteredOut(true); // TODO this gradually fills the packet with filteredOut events, which are never seen afterwards because the iterator filters them out in the reused packet.
-                    continue; // discard events outside chip limits for now, because we can't render them presently, although they are valid events
-                } else {
-                    ev.setFilteredOut(false);
-                }
-                // deal with flipping contrast of output event depending on direction of motion, to make things appear the same regardless of camera rotationRad
+                            // apply transform Re+T. First center events from middle of array at 0,0, then transform, then move them back to their origin
+                            int nx = be.x - sx2, ny = be.y - sy2;
+                            be.x = (short) ((((lastTransform.cosAngle * nx) - (lastTransform.sinAngle * ny)) + lastTransform.translationPixels.x) + sx2);
+                            be.y = (short) (((lastTransform.sinAngle * nx) + (lastTransform.cosAngle * ny) + lastTransform.translationPixels.y) + sy2);
+                            be.address = chip.getEventExtractor().getAddressFromCell(be.x, be.y, be.getType()); // so event is logged properly to disk
+                        }
 
-                if (flipContrast) {
-                    if (evenMotion) {
-                        ev.type = (byte) (1 - ev.type); // don't let contrast flip when direction changes, try to stabilze contrast  by flipping it as well
-                        ev.polarity = ev.polarity == PolarityEvent.Polarity.On ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
+                        if ((be.x > sxm1) || (be.x < 0) || (be.y > sym1) || (be.y < 0)) {
+                            be.setFilteredOut(true); // TODO this gradually fills the packet with filteredOut events, which are never seen afterwards because the iterator filters them out in the reused packet.
+                            continue; // discard events outside chip limits for now, because we can't render them presently, although they are valid events
+                        } else {
+                            be.setFilteredOut(false);
+                        }
+                        // deal with flipping contrast of output event depending on direction of motion, to make things appear the same regardless of camera rotationRad
+
+                        if (flipContrast) {
+                            if (evenMotion) {
+                                be.type = (byte) (1 - be.type); // don't let contrast flip when direction changes, try to stabilze contrast  by flipping it as well
+                                be.polarity = be.polarity == PolarityEvent.Polarity.On ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
+                            }
+                        }
                     }
+                    outItr.nextOutput().copyFrom(be);
+
                 }
             } // event iterator
 //            if(transformImageEnabled && lastTransform!=null && chip.getAeViewer()!=null && chip.getCanvas()!=null && chip.getCanvas().getDisplayMethod() instanceof ChipRendererDisplayMethodRGBA){
@@ -307,7 +330,31 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
                 panTilt.close();
             }
         }
-        return in;
+        return getOutputPacket();
+    }
+
+    final int INIITAL_QUEUE_SIZE = 10000;
+    ArrayBlockingQueue<ApsDvsEvent> eventQueue = new ArrayBlockingQueue<ApsDvsEvent>(INIITAL_QUEUE_SIZE);
+
+    private void pushEvent(PolarityEvent ev) {
+        ApsDvsEvent ne = new ApsDvsEvent();
+        ne.copyFrom(ev);
+        if (!eventQueue.offer(ne)) {
+            // increase queue size
+            ArrayBlockingQueue<ApsDvsEvent> newQueue = new ArrayBlockingQueue<ApsDvsEvent>(eventQueue.size() * 2);
+            log.info("increased event queue to " + newQueue.remainingCapacity() + " events");
+            newQueue.addAll(eventQueue);
+            eventQueue = newQueue;
+            eventQueue.offer(ne);
+        };
+    }
+
+    private PolarityEvent popEvent() {
+        return eventQueue.poll();
+    }
+
+    private PolarityEvent peekEvent() {
+        return eventQueue.peek();
     }
 
     /**
@@ -524,7 +571,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
         if (gl == null) {
             return;
         }
-        if (showTransformRectangle && (getLastTransform() != null) && isElectronicStabilizationEnabled()) {
+        if (showTransformRectangle && (lastTransform != null) && isElectronicStabilizationEnabled()) {
             // draw transform
             gl.glPushMatrix();
 
@@ -532,8 +579,8 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
             gl.glColor3f(1, 0, 0);
 
             // translate and rotate
-            gl.glTranslatef(getLastTransform().translationPixels.x + sx2, getLastTransform().translationPixels.y + sy2, 0);
-            gl.glRotatef((float) ((getLastTransform().rotationRad * 180) / Math.PI), 0, 0, 1);
+            gl.glTranslatef(lastTransform.translationPixels.x + sx2, lastTransform.translationPixels.y + sy2, 0);
+            gl.glRotatef((float) ((lastTransform.rotationRad * 180) / Math.PI), 0, 0, 1);
 
             // draw xhairs on frame to help show locations of objects and if they have moved.
             gl.glBegin(GL.GL_LINES); // sequence of individual segments, in pairs of vertices
@@ -565,12 +612,12 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
             final int s = chip.getMaxSize() / 8;
             final int n = chip.getMaxSize() / s;
             gl.glBegin(GL.GL_LINES);
-            for (int i = 0; i < n ; i++) {
+            for (int i = 0; i < n; i++) {
                 final int x = i * s;
                 gl.glVertex2i(x, 0);
                 gl.glVertex2i(x, sy2 * 2);
             }
-            for (int i = 0; i < n ; i++) {
+            for (int i = 0; i < n; i++) {
                 final int y = i * s;
                 gl.glVertex2i(0, y);
                 gl.glVertex2i(sx2 * 2, y);
@@ -646,6 +693,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
                 panTilt.close();
             }
         }
+        eventQueue.clear();
         initialized = false;
     }
 
@@ -1018,5 +1066,20 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Applicat
     public void setShowGrid(boolean showGrid) {
         this.showGrid = showGrid;
         putBoolean("showGrid", showGrid);
+    }
+
+    /**
+     * @return the imuLagMs
+     */
+    public float getImuLagMs() {
+        return imuLagMs;
+    }
+
+    /**
+     * @param imuLagMs the imuLagMs to set
+     */
+    public void setImuLagMs(float imuLagMs) {
+        this.imuLagMs = imuLagMs;
+        putFloat("imuLagMs", imuLagMs);
     }
 }
