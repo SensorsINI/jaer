@@ -5,7 +5,6 @@
  */
 package ch.unizh.ini.jaer.projects.davis.frames;
 
-import eu.seebetter.ini.chips.DavisChip;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.beans.PropertyChangeEvent;
@@ -13,6 +12,7 @@ import java.io.IOException;
 import java.nio.FloatBuffer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -21,6 +21,7 @@ import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.util.avioutput.AbstractAviWriter;
+import eu.seebetter.ini.chips.DavisChip;
 
 /**
  * Writes AVI file from DAVIS APS frames, using ApsFrameExtractor. The AVI file
@@ -76,7 +77,7 @@ public class DavisFrameAviWriter extends AbstractAviWriter {
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (aviOutputStream != null && evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE) {
+        if ((aviOutputStream != null) && (evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)) {
             FloatBuffer frame = ((AEFrameChipRenderer)chip.getRenderer()).getPixBuffer();
 
             BufferedImage bufferedImage = new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_3BYTE_BGR);
@@ -86,7 +87,7 @@ public class DavisFrameAviWriter extends AbstractAviWriter {
                 for (int x = 0; x < sx; x++) {
                     int k = renderer.getPixMapIndex(x, y);
 //                    bufferedImage.setRGB(x, y, (int) (frame[k] * 1024));
-                    int yy=yy = sy - y - 1;
+                    int yy = sy - y - 1;
                     int r = (int) (frame.get(k) * 255); // must flip image vertially according to java convention that image starts at upper left
                     int g = (int) (frame.get(k+1) * 255); // must flip image vertially according to java convention that image starts at upper left
                     int b = (int) (frame.get(k+2) * 255); // must flip image vertially according to java convention that image starts at upper left
