@@ -18,7 +18,7 @@ import net.sf.jaer.event.TypedEvent;
 /**
  * Base camera for Tower Davis128 cameras
  *
- * @author Diederik
+ * @author Diederik Paul Moeys, Luca Longinotti
  */
 @Description("Davis128 base class for 128x128 pixel sensitive APS-DVS DAVIS sensor")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)

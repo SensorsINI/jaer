@@ -14,7 +14,7 @@ import eu.seebetter.ini.chips.davis.imu.ImuControl;
 /**
  * Base configuration for Davis208PixelParade on Tower wafer designs
  *
- * @author Diederik
+  * @author Diederik Paul Moeys, Luca Longinotti
  */
 public class Davis208PixelParadeConfig extends DavisTowerBaseConfig {
 

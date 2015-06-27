@@ -34,7 +34,7 @@ import static net.sf.jaer.graphics.AEChipRenderer.NUM_TIME_COLORS;
  * getWidth and getHeight; they return this value and not the number of pixels
  * being rendered from the chip.
  *
- * @author christian, tobi
+  * @author Diederik Paul Moeys, Luca Longinotti
  * @see ChipRendererDisplayMethod
  */
 public class Davis208PixelParadeRenderer extends AEFrameChipRenderer {
