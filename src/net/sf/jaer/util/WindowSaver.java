@@ -116,8 +116,9 @@ public class WindowSaver implements AWTEventListener {
         boolean resize = false; // set true if window is too big for screen
         final String name = frame.getTitle().replaceAll(" ", "");
 
+        // screen UL corner is 0,0
         int x = preferences.getInt(name + ".x", 0);
-        int y = preferences.getInt(name + ".y", 0);
+        int y = preferences.getInt(name + ".y", 0); // UL corner
         int w = preferences.getInt(name + ".w", DEFAULT_WIDTH);
         int h = preferences.getInt(name + ".h", DEFAULT_HEIGHT);
         if (w != DEFAULT_WIDTH | h != DEFAULT_HEIGHT) {
@@ -166,12 +167,13 @@ public class WindowSaver implements AWTEventListener {
             x = 0;
         }
         if (y < lowerInset) {
-            log.info("window y origin is < lowerInset, moving back to " + lowerInset);
-            y = lowerInset;
+            log.info("window y origin is < lowerInset, moving back to " + 0);
+            y = 0;
         }
         if (x + w > sd.width || y + h > sd.height) {
-            log.info("window extends over edge of screen, moving back to origin");
-            x = y = 0;
+            log.info("window extends over edge of screen, moving back to UL origin");
+            x = 0;
+            y=0;
         }
         if (h > sd.height - lowerInset) {
             log.info("window height (" + h + ") is bigger than screen height minus WINDOWS_TASK_BAR_HEIGHT (" + (sd.height - WINDOWS_TASK_BAR_HEIGHT) + "), resizing height");
@@ -197,10 +199,10 @@ public class WindowSaver implements AWTEventListener {
         final int w2=w, h2=h, x2=x, y2=y;
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
-                frame.setLocation(x2, y2);
                 if (resize2 && !(frame instanceof DontResize)) {
                     frame.setSize(new Dimension(w2, h2));
                 }
+                frame.setLocation(x2, y2);  // sets UL corner position to these values
 //        log.info("loaded settings location for "+frame.getName());
                 framemap.put(name, frame);
                 frame.validate();
