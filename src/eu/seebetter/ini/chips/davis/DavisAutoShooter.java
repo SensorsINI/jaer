@@ -75,14 +75,14 @@ public class DavisAutoShooter extends EventFilter2D implements FrameAnnotater {
         if(!showAnnotation) return;
         GL2 gl = drawable.getGL().getGL2();
         gl.glColor3f(0,0,1);
-        float x1=chip.getSizeX()*(float)(eventsSinceLastShot>>10)/eventCountThresholdKEvents;
+        float x1=chip.getSizeX()*((float)(eventsSinceLastShot>>10))/eventCountThresholdKEvents;
         gl.glRectf(0,0, x1, 2);
-        float x2=chip.getSizeX()*(float)(eventRateEstimator.getFilteredEventRate())/eventRateThresholdHz;
+        float x2=chip.getSizeX()*((float)(eventRateEstimator.getFilteredEventRate()))/eventRateThresholdHz;
         gl.glRectf(0,4, x2, 6);
         
         textRenderer.setColor(1, 1, 1, 0.4f); //rgba
         textRenderer.begin3DRendering();
-        String s = String.format("kevents accum.: %6d, rate keps: %8.2f, snapshot triggered=%s", eventsSinceLastShot >> 10, eventRateEstimator.getFilteredEventRate()*1e-3f, snapshotTriggered);
+        String s = String.format("kevents accum.: %4d, rate keps: %6.2f, snapshot triggered=%s", eventsSinceLastShot >> 10, eventRateEstimator.getFilteredEventRate()*1e-3f, snapshotTriggered);
         textRenderer.draw3D(s, 0, 0, 0, .25f);
         textRenderer.end3DRendering();
     }
