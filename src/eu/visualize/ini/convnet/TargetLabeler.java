@@ -82,6 +82,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     private boolean[] labeledFractions = new boolean[N_FRACTIONS];  // to annotate graphically what has been labeled so far in event stream
     private boolean showLabeledFraction = getBoolean("showLabeledFraction", true);
     private boolean showHelpText = getBoolean("showHelpText", true);
+    protected int maxTargets=getInt("maxTargets",8);
+    protected int currentTargetTypeID=getInt("currentTargetTypeID",0);
 
     private boolean propertyChangeListenerAdded = false;
     private String DEFAULT_FILENAME = "locations.txt";
@@ -104,6 +106,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         setPropertyTooltip("loadLocations", "loads locations from a file");
         setPropertyTooltip("showLabeledFraction", "shows labeled part of input by a bar with red=unlabeled, green=labeled, blue=current position in events");
         setPropertyTooltip("showHelpText", "shows help text on screen. Uncheck to hide");
+        setPropertyTooltip("maxTargets", "maximum number of simultaneous targets to label");
+        setPropertyTooltip("currentTargetTypeID", "ID code of current target to be labeled");
         Arrays.fill(labeledFractions, false);
     }
 
@@ -150,7 +154,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     @Override
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
-        if(!isFilterEnabled()) return;
+        if (!isFilterEnabled()) {
+            return;
+        }
         if (chip.getAeViewer().getPlayMode() != AEViewer.PlayMode.PLAYBACK) {
             return;
         }
@@ -196,7 +202,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 gl.glRectf(x, y, x + dx, y + dy);
                 x += dx;
             }
-            float curPosFrac = (float) filePositionEvents / fileLengthEvents;
+            float curPosFrac = ((float) filePositionEvents) / fileLengthEvents;
             x = curPosFrac * chip.getSizeX();
             y = y + dy;
             gl.glColor3f(1, 1, 1);
@@ -379,15 +385,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 }
                 break;
             case AEInputStream.EVENT_INIT:
-                if (chip.getAeInputStream() != null) {
-                    firstInputStreamTimestamp = chip.getAeInputStream().getFirstTimestamp();
-                    lastTimestamp = chip.getAeInputStream().getLastTimestamp();
-                    inputStreamDuration = chip.getAeInputStream().getDurationUs();
-                    fileLengthEvents = chip.getAeInputStream().size();
-                    if (inputStreamDuration > 0) {
-                        fixLabeledFraction();
-                    }
-                }
+                fixLabeledFraction();
                 break;
         }
     }
@@ -628,12 +626,20 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     private void fixLabeledFraction() {
-        if (targetLocations == null || targetLocations.isEmpty()) {
-            Arrays.fill(labeledFractions, false);
-            return;
-        }
-        for (TargetLocation t : targetLocations.values()) {
-            updateLabeledFractions(t);
+        if (chip.getAeInputStream() != null) {
+            firstInputStreamTimestamp = chip.getAeInputStream().getFirstTimestamp();
+            lastTimestamp = chip.getAeInputStream().getLastTimestamp();
+            inputStreamDuration = chip.getAeInputStream().getDurationUs();
+            fileLengthEvents = chip.getAeInputStream().size();
+            if (inputStreamDuration > 0) {
+                if (targetLocations == null || targetLocations.isEmpty()) {
+                    Arrays.fill(labeledFractions, false);
+                    return;
+                }
+                for (TargetLocation t : targetLocations.values()) {
+                    updateLabeledFractions(t);
+                }
+            }
         }
     }
 
@@ -666,5 +672,45 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         this.showHelpText = showHelpText;
         putBoolean("showHelpText", showHelpText);
     }
+
+    @Override
+    public synchronized void setFilterEnabled(boolean yes) {
+        super.setFilterEnabled(yes); //To change body of generated methods, choose Tools | Templates.
+        fixLabeledFraction();
+    }
+
+    /**
+     * @return the maxTargets
+     */
+    public int getMaxTargets() {
+        return maxTargets;
+    }
+
+    /**
+     * @param maxTargets the maxTargets to set
+     */
+    public void setMaxTargets(int maxTargets) {
+        this.maxTargets = maxTargets;
+    }
+
+    /**
+     * @return the currentTargetTypeID
+     */
+    public int getCurrentTargetTypeID() {
+        return currentTargetTypeID;
+    }
+
+    /**
+     * @param currentTargetTypeID the currentTargetTypeID to set
+     */
+    public void setCurrentTargetTypeID(int currentTargetTypeID) {
+        if(currentTargetTypeID>=maxTargets){
+            currentTargetTypeID=maxTargets;
+        }
+        this.currentTargetTypeID = currentTargetTypeID;
+        putInt("currentTargetTypeID",currentTargetTypeID);
+    }
+    
+    
 
 }
