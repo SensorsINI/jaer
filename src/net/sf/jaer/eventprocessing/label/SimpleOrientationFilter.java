@@ -106,12 +106,7 @@ public class SimpleOrientationFilter extends AbstractOrientationFilter{
         for ( Object ein:in ){
             PolarityEvent e = (PolarityEvent)ein;
             
-            if(e.isSpecial() || (e instanceof IMUSample && ((IMUSample)e).imuSampleEvent)){
-                continue;
-            }
-            
-            if(e.isFilteredOut()){
-                log.warning("should not see this filteredOut event here: "+e.toString());
+            if(e.isFilteredOut() || e.isSpecial() || (e instanceof IMUSample && ((IMUSample)e).imuSampleEvent)){
                 continue;
             }
             
@@ -136,8 +131,8 @@ public class SimpleOrientationFilter extends AbstractOrientationFilter{
             if ( eye == 1 ){
                 type = type << 1;
             }
-            if(x<0||y<0||type<0){
-                log.warning("negative coordinate for event "+e.toString());
+            if(x<0||y<0||type<0||x>=sizex||y>=sizey){
+                log.warning("coordinate for event "+e.toString()+" is out of bounds");
                 continue;
             }
             lastTimesMap[x][y][type] = e.timestamp;
