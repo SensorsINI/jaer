@@ -38,7 +38,7 @@ public class TypeCoincidenceFilter extends EventFilter2D implements Observer, Fr
 //    protected int maxDtThreshold=prefs.getInt("DvsOrientationFilter.maxDtThreshold",Integer.MAX_VALUE);
     private int minDtThreshold = getInt("TypeCoincidenceFilter.minDtThreshold", 10000);
     private int subSampleBy = getInt("TypeCoincidenceFilter.subSampleBy", 0);
-    protected boolean annotateEnclosedEnabled=getBoolean("annotateEnclosedEnabled", true);
+    protected boolean annotateEnclosedEnabled = getBoolean("annotateEnclosedEnabled", true);
     static final int MAX_DIST = 5;
     private int dist = getInt("TypeCoincidenceFilter.dist", 0);
     static final int NUM_INPUT_CELL_TYPES = 4;
@@ -67,8 +67,8 @@ public class TypeCoincidenceFilter extends EventFilter2D implements Observer, Fr
         allocateMap();
         if (oriFilter == null) {
             oriFilter = new SimpleOrientationFilter(chip);
+            setEnclosedFilter(oriFilter);
         }
-        setEnclosedFilter(oriFilter);
     }
 
     static final int PADDING = MAX_DIST * 2, P = MAX_DIST;
@@ -146,7 +146,7 @@ public class TypeCoincidenceFilter extends EventFilter2D implements Observer, Fr
                     // in neighborhood, compute dt between this event and prior events at orthog orientation
                     int dt = e.timestamp - lastTimesMap[ex + x + P][ey + y + P][orthOri];
                     // now write output cell if previous event within minDtThreshold
-                    if (dt < minDtThreshold && dt>=0) {
+                    if (dt < minDtThreshold && dt >= 0) {
                         PolarityEvent oe = (PolarityEvent) outItr.nextOutput();
                         oe.copyFrom(e);
                         break breakOut;
