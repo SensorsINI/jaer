@@ -266,5 +266,21 @@ public class RecentFiles {
         fileList.removeAll(removeList);
     }
     
+    /** Returns most recent folder
+     * 
+     * @return most recent folder
+     */
+    public File getMostRecentFolder(){
+        return folderList==null? null:folderList.get(0);
+    }
+    
+    /** Returns most recent file
+     * 
+     * @return most recent file
+     */
+    public File getMostRecentFile(){
+        return fileList==null? null:fileList.get(0);
+    }
+    
     
 }
