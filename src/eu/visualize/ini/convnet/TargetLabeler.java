@@ -66,7 +66,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     private Point mousePoint = null;
     final float labelRadius = 5f;
     private GLUquadric mouseQuad = null;
-    private TreeMap<Integer, TargetLocation> targetLocations = new TreeMap();
+    private TreeMap<Integer, SimultaneouTargetLocations> targetLocations = new TreeMap();
     private TargetLocation targetLocation = null;
     private DavisChip apsDvsChip = null;
     private int lastFrameNumber = -1;
@@ -83,9 +83,10 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     private boolean[] targetPresentInFractions = new boolean[N_FRACTIONS];  // to annotate graphically what has been labeled so far in event stream
     private boolean showLabeledFraction = getBoolean("showLabeledFraction", true);
     private boolean showHelpText = getBoolean("showHelpText", true);
-    protected int maxTargets = getInt("maxTargets", 8);
+//    protected int maxTargets = getInt("maxTargets", 8);
     protected int currentTargetTypeID = getInt("currentTargetTypeID", 0);
-    private ArrayList<TargetLocation> currentTargets=new ArrayList(10);
+    private ArrayList<TargetLocation> currentTargets = new ArrayList(10); // currently valid targets
+    protected boolean eraseSamplesEnabled = false;
 
     private boolean propertyChangeListenerAdded = false;
     private String DEFAULT_FILENAME = "locations.txt";
@@ -94,8 +95,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     // file statistics
     private long firstInputStreamTimestamp = 0, lastInputStreamTimestamp = 0, inputStreamDuration = 0;
     private long filePositionEvents = 0, fileLengthEvents = 0;
-    private int filePositionTimestamp=0;
-            
+    private int filePositionTimestamp = 0;
+
     public TargetLabeler(AEChip chip) {
         super(chip);
         if (chip instanceof DavisChip) {
@@ -103,14 +104,16 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         }
         setPropertyTooltip("minTargetPointIntervalUs", "minimum interval between target positions in the database in us");
         setPropertyTooltip("targetRadius", "drawn radius of target in pixels");
-        setPropertyTooltip("maxTimeLastTargetLocationValidUs", "this time after last sample, the data is shown as not yet been labeled");
+        setPropertyTooltip("maxTimeLastTargetLocationValidUs", "this time after last sample, the data is shown as not yet been labeled. This time specifies how long a specified target location is valid after its last specified location.");
         setPropertyTooltip("saveLocations", "saves target locations");
         setPropertyTooltip("saveLocationsAs", "show file dialog to save target locations to a new file");
         setPropertyTooltip("loadLocations", "loads locations from a file");
-        setPropertyTooltip("showLabeledFraction", "shows labeled part of input by a bar with red=unlabeled, green=labeled, blue=current position in events");
+        setPropertyTooltip("clearLocations", "clears all existing targets");
+        setPropertyTooltip("showLabeledFraction", "shows labeled part of input by a bar with red=unlabeled, green=labeled, blue=current position");
         setPropertyTooltip("showHelpText", "shows help text on screen. Uncheck to hide");
-        setPropertyTooltip("maxTargets", "maximum number of simultaneous targets to label");
-        setPropertyTooltip("currentTargetTypeID", "ID code of current target to be labeled");
+//        setPropertyTooltip("maxTargets", "maximum number of simultaneous targets to label");
+        setPropertyTooltip("currentTargetTypeID", "ID code of current target to be labeled, e.g., 0=dog, 1=cat, etc. User must keep track of the mapping from ID codes to target classes.");
+        setPropertyTooltip("eraseSamplesEnabled", "Use this mode erase all samples from current time.");
         Arrays.fill(labeledFractions, false);
         Arrays.fill(targetPresentInFractions, false);
     }
@@ -174,11 +177,16 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         MultilineAnnotationTextRenderer.setScale(.3f);
         StringBuilder sb = new StringBuilder();
         if (showHelpText) {
-            sb.append("Shift + Ctrl + mouse position: Specify target location\nShift: Specify no target seen\n");
+            sb.append("Shift + !Ctrl + mouse position: Specify no target present\nClt + !Shift + mouse position: Specify currentTargetTypeID is present at mouse location\n");
             MultilineAnnotationTextRenderer.renderMultilineString(sb.toString());
 
-            MultilineAnnotationTextRenderer.renderMultilineString(String.format("%d TargetLocation samples specified\nFirst sample time: %.1fs, Last sample time: %.1fs\nCurrent frame number: %d", targetLocations.size(), minSampleTimestamp * 1e-6f, maxSampleTimestamp * 1e-6f, currentFrameNumber));
         }
+        MultilineAnnotationTextRenderer.renderMultilineString(String.format("%d TargetLocation samples specified\nFirst sample time: %.1fs, Last sample time: %.1fs\nCurrent frame number: %d\nCurrent # targets: %d",
+                targetLocations.size(),
+                minSampleTimestamp * 1e-6f,
+                maxSampleTimestamp * 1e-6f,
+                currentFrameNumber,
+                currentTargets.size()));
         if (shiftPressed && !ctlPressed) {
             MultilineAnnotationTextRenderer.renderMultilineString("Specifying no target");
         } else if (shiftPressed && ctlPressed) {
@@ -186,12 +194,11 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         } else {
             MultilineAnnotationTextRenderer.renderMultilineString("Playing recorded target locations");
         }
-        for(TargetLocation t:currentTargets){
-            if(t.location!=null){
+        for (TargetLocation t : currentTargets) {
+            if (t.location != null) {
                 t.draw(drawable, gl);
             }
         }
-      
 
         // show labeled parts
         if (showLabeledFraction && inputStreamDuration > 0) {
@@ -206,15 +213,15 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 } else {
                     gl.glColor3f(1, 0, 0);
                 }
-                gl.glRectf(x-dx/2, y, x + dx/2, y + dy * (1 + (targetPresentInFractions[i]?1:0)));
+                gl.glRectf(x - dx / 2, y, x + dx / 2, y + dy * (1 + (targetPresentInFractions[i] ? 1 : 0)));
 //                gl.glRectf(x-dx/2, y, x + dx/2, y + dy * (1 + (currentTargets.size())));
                 x += dx;
             }
-            float curPosFrac = ((float) (filePositionTimestamp-firstInputStreamTimestamp) / inputStreamDuration);
+            float curPosFrac = ((float) (filePositionTimestamp - firstInputStreamTimestamp) / inputStreamDuration);
             x = curPosFrac * chip.getSizeX();
             y = y + dy;
             gl.glColor3f(1, 1, 1);
-            gl.glRectf(x - dx/2, y - dy * 2, x + dx/2, y + dy);
+            gl.glRectf(x - dx / 2, y - dy * 2, x + dx / 2, y + dy);
         }
 
     }
@@ -225,6 +232,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         maxSampleTimestamp = Integer.MIN_VALUE;
         Arrays.fill(labeledFractions, false);
         Arrays.fill(targetPresentInFractions, false);
+        currentTargets.clear();
     }
 
     synchronized public void doSaveLocationsAs() {
@@ -278,7 +286,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             }
         }
 
-        currentTargets.clear();
+//        currentTargets.clear();
         for (BasicEvent e : in) {
             if (e.isSpecial()) {
                 continue;
@@ -297,31 +305,41 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     lastFrameNumber = newFrameNumber;
                 }
 
-                // show the nearest TargetLocation if at least minTargetPointIntervalUs has passed by,
-                // or "No target" if the location was previously
                 if (((long) e.timestamp - (long) lastTimestamp) >= minTargetPointIntervalUs) {
+
+                                   // show the nearest TargetLocation if at least minTargetPointIntervalUs has passed by,
+                    // or "No target" if the location was previously
+                    Map.Entry<Integer, SimultaneouTargetLocations> mostRecentTargetsBeforeThisEvent = targetLocations.lowerEntry(e.timestamp);
+                    if (mostRecentTargetsBeforeThisEvent != null) {
+                        for (TargetLocation t : mostRecentTargetsBeforeThisEvent.getValue()) {
+                            if ((t == null) || ((t != null) && (e.timestamp - t.timestamp) > maxTimeLastTargetLocationValidUs)) {
+                                targetLocation = null;
+                            } else {
+                                if (targetLocation != t) {
+                                    targetLocation = t;
+                                    currentTargets.add(targetLocation);
+//                        System.out.println("added "+targetLocation);
+                                    updateLabeledFractions(targetLocation.timestamp);
+                                }
+                            }
+                        }
+                    }
+
                     lastTimestamp = e.timestamp;
                     // find next saved target location that is just before this time (lowerEntry)
-                    Map.Entry<Integer, TargetLocation> mostRecentLocationBeforeThisEvent = targetLocations.lowerEntry(e.timestamp);
-                    if ((mostRecentLocationBeforeThisEvent == null) || ((mostRecentLocationBeforeThisEvent != null) && ((mostRecentLocationBeforeThisEvent.getValue() != null) && ((e.timestamp - mostRecentLocationBeforeThisEvent.getValue().timestamp) > maxTimeLastTargetLocationValidUs)))) {
-                        targetLocation = null;
-                    } else {
-                        targetLocation = mostRecentLocationBeforeThisEvent.getValue();
-                        currentTargets.add(targetLocation);
-                        updateLabeledFractions(targetLocation);
-                    }
                     TargetLocation newTargetLocation = null;
-                    if (shiftPressed && ctlPressed && (mousePoint != null)) {
+                    if (!shiftPressed && ctlPressed && (mousePoint != null)) { // specify (additional) target present
                         // add a labeled location sample
-                        maybeRemovePreviouslyRecordedSample(mostRecentLocationBeforeThisEvent, e, lastNewTargetLocation);
+                        maybeEraseSamples(mostRecentTargetsBeforeThisEvent, e, lastNewTargetLocation);
                         newTargetLocation = new TargetLocation(currentFrameNumber, e.timestamp, mousePoint, currentTargetTypeID);
-                        targetLocations.put(e.timestamp, newTargetLocation);
+
+                        addSample(e.timestamp, newTargetLocation);
                         currentTargets.add(newTargetLocation);
 
-                    } else if (shiftPressed && !ctlPressed) {
-                        maybeRemovePreviouslyRecordedSample(mostRecentLocationBeforeThisEvent, e, lastNewTargetLocation);
+                    } else if (shiftPressed && !ctlPressed) { // specify no target present now
+                        maybeEraseSamples(mostRecentTargetsBeforeThisEvent, e, lastNewTargetLocation);
                         newTargetLocation = new TargetLocation(currentFrameNumber, e.timestamp, null, -1);
-                        targetLocations.put(e.timestamp, newTargetLocation);
+                        addSample(e.timestamp, newTargetLocation);
                     }
                     if (newTargetLocation != null) {
                         if (newTargetLocation.timestamp > maxSampleTimestamp) {
@@ -339,14 +357,32 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
             }
         }
+
+        //prune list of current targets to their valid lifetime, and remove leftover targets in the future
+        ArrayList<TargetLocation> removeList = new ArrayList();
+        for (TargetLocation t : currentTargets) {
+            if (t.timestamp + maxTimeLastTargetLocationValidUs < in.getLastTimestamp() || t.timestamp > in.getLastTimestamp()) {
+                removeList.add(t);
+            }
+        }
+        currentTargets.removeAll(removeList);
         return in;
     }
 
-    private void maybeRemovePreviouslyRecordedSample(Map.Entry<Integer, TargetLocation> entry, BasicEvent e, TargetLocation lastSampleAdded) {
-        if ((entry != null) && (entry.getValue() != lastSampleAdded) && ((e.timestamp - entry.getKey()) < minTargetPointIntervalUs)) {
-            log.info("removing previous " + entry.getValue() + " because entry.getValue()!=lastSampleAdded=" + (entry.getValue() != lastSampleAdded) + " && timestamp difference " + (e.timestamp - entry.getKey()) + " is < " + minTargetPointIntervalUs);
-
-            targetLocations.remove(entry.getKey());
+    private void maybeEraseSamples(Map.Entry<Integer, SimultaneouTargetLocations> entry, BasicEvent e, TargetLocation lastSampleAdded) {
+        if (!eraseSamplesEnabled || entry == null) {
+            return;
+        }
+        boolean removed = false;
+        for (TargetLocation t : entry.getValue()) { // ArrayList of TargetLocation
+            if ((t != null) && (t != lastSampleAdded) && ((e.timestamp - entry.getKey()) < minTargetPointIntervalUs)) {
+                log.info("removing previous " + entry.getValue() + " because entry.getValue()!=lastSampleAdded=" + (t != lastSampleAdded) + " && timestamp difference " + (e.timestamp - entry.getKey()) + " is < " + minTargetPointIntervalUs);
+                targetLocations.remove(entry.getKey());
+                removed = true;
+            }
+        }
+        if (removed) {
+            entry = null;
         }
     }
 
@@ -375,7 +411,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             case AEInputStream.EVENT_POSITION:
                 filePositionEvents = (long) evt.getNewValue();
                 filePositionTimestamp = chip.getAeInputStream().getMostRecentTimestamp();
-               break;
+                break;
             case AEInputStream.EVENT_REWIND:
             case AEInputStream.EVENT_REPOSITIONED:
                 log.info("rewind to start or mark position or reposition event " + evt.toString());
@@ -386,11 +422,11 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         return;
                     }
                     int timestamp = chip.getAeInputStream().getMostRecentTimestamp();
-                    Map.Entry<Integer, TargetLocation> targetBeforeRewind = targetLocations.lowerEntry(timestamp);
-                    if (targetBeforeRewind != null) {
-                        currentFrameNumber = targetBeforeRewind.getValue().frameNumber;
+                    Map.Entry<Integer, SimultaneouTargetLocations> targetsBeforeRewind = targetLocations.lowerEntry(timestamp);
+                    if (targetsBeforeRewind != null) {
+                        currentFrameNumber = targetsBeforeRewind.getValue().get(0).frameNumber;
                         lastFrameNumber = currentFrameNumber - 1;
-                        lastTimestamp = targetBeforeRewind.getValue().timestamp;
+                        lastTimestamp = targetsBeforeRewind.getValue().get(0).timestamp;
                     } else {
                         currentFrameNumber = 0;
                         lastFrameNumber = currentFrameNumber - 1;
@@ -496,6 +532,15 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         return targetLocation;
     }
 
+    private void addSample(int timestamp, TargetLocation newTargetLocation) {
+        SimultaneouTargetLocations s = targetLocations.get(timestamp);
+        if (s == null) {
+            s = new SimultaneouTargetLocations();
+            targetLocations.put(timestamp, s);
+        }
+        s.add(newTargetLocation);
+    }
+
     private class TargetLocationComparator implements Comparator<TargetLocation> {
 
         @Override
@@ -504,26 +549,33 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         }
 
     }
-    
-    private final Color[] targetTypeColors={Color.BLUE,Color.CYAN, Color.GREEN, Color.MAGENTA, Color.ORANGE, Color.PINK, Color.RED};
 
-    public class TargetLocation {
+    private final Color[] targetTypeColors = {Color.BLUE, Color.CYAN, Color.GREEN, Color.MAGENTA, Color.ORANGE, Color.PINK, Color.RED};
+
+    /**
+     * List of targets simultaneously present at a particular timestamp
+     */
+    private class SimultaneouTargetLocations extends ArrayList<TargetLocation> {
+
+    }
+
+    private class TargetLocation {
 
         int timestamp;
         int frameNumber;
         Point location;
-        int targetTypeID;
+        int targetClassID; // class of target, i.e. car, person
 
         public TargetLocation(int frameNumber, int timestamp, Point location, int targetTypeID) {
             this.frameNumber = frameNumber;
             this.timestamp = timestamp;
             this.location = location != null ? new Point(location) : null;
-            this.targetTypeID = targetTypeID;
+            this.targetClassID = targetTypeID;
         }
 
         private void draw(GLAutoDrawable drawable, GL2 gl) {
 
-            if (getTargetLocation().location == null) {
+            if (getTargetLocation() != null && getTargetLocation().location == null) {
                 textRenderer.beginRendering(drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
                 textRenderer.draw("Target not visible", chip.getSizeX() / 2, chip.getSizeY() / 2);
                 textRenderer.endRendering();
@@ -531,8 +583,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             }
             gl.glPushMatrix();
             gl.glTranslatef(location.x, location.y, 0f);
-            float[] compArray=new float[4];
-            gl.glColor3fv(targetTypeColors[targetTypeID%targetTypeColors.length].getColorComponents(compArray),0);
+            float[] compArray = new float[4];
+            gl.glColor3fv(targetTypeColors[targetClassID % targetTypeColors.length].getColorComponents(compArray), 0);
 //            gl.glColor4f(0, 1, 0, .5f);
             if (mouseQuad == null) {
                 mouseQuad = glu.gluNewQuadric();
@@ -554,14 +606,15 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             FileWriter writer = new FileWriter(f);
             writer.write(String.format("# target locations\n"));
             writer.write(String.format("# written %s\n", new Date().toString()));
-            writer.write("# maxTargets=" + maxTargets+"\n");
+//            writer.write("# maxTargets=" + maxTargets+"\n");
             writer.write(String.format("# frameNumber timestamp x y targetTypeID\n"));
-            for (Map.Entry<Integer, TargetLocation> entry : targetLocations.entrySet()) {
-                TargetLocation l = entry.getValue();
-                if (l.location != null) {
-                    writer.write(String.format("%d %d %d %d %d\n", l.frameNumber, l.timestamp, l.location.x, l.location.y, l.targetTypeID));
-                } else {
-                    writer.write(String.format("%d %d -1 -1 -1\n", l.frameNumber, l.timestamp));
+            for (Map.Entry<Integer, SimultaneouTargetLocations> entry : targetLocations.entrySet()) {
+                for (TargetLocation l : entry.getValue()) {
+                    if (l.location != null) {
+                        writer.write(String.format("%d %d %d %d %d\n", l.frameNumber, l.timestamp, l.location.x, l.location.y, l.targetClassID));
+                    } else {
+                        writer.write(String.format("%d %d -1 -1 -1\n", l.frameNumber, l.timestamp));
+                    }
                 }
             }
             writer.close();
@@ -615,9 +668,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         try {
                             targetTypeID = scanner.nextInt();
                         } catch (NoSuchElementException e) {
-                              // older type file with only single target and no targetTypeID
+                            // older type file with only single target and no targetClassID
                         }
-                       targetLocation = new TargetLocation(frame, ts,
+                        targetLocation = new TargetLocation(frame, ts,
                                 new Point(x, y),
                                 targetTypeID); // read target location
                     } catch (NoSuchElementException ex2) {
@@ -626,8 +679,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     if (targetLocation.location.x == -1 && targetLocation.location.y == -1) {
                         targetLocation.location = null;
                     }
-                    targetLocations.put(targetLocation.timestamp, targetLocation);
-                    updateLabeledFractions(targetLocation);
+                    addSample(targetLocation.timestamp, targetLocation);
+                    updateLabeledFractions(targetLocation.timestamp);
                     if (targetLocation != null) {
                         if (targetLocation.timestamp > maxSampleTimestamp) {
                             maxSampleTimestamp = targetLocation.timestamp;
@@ -649,16 +702,16 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         }
     }
 
-    private void updateLabeledFractions(TargetLocation targetLocation) {
+    private void updateLabeledFractions(int timestamp) {
         if (targetLocation == null) {
             return;
         }
         if (inputStreamDuration == 0) {
             return;
         }
-        int frac = (int) Math.floor(N_FRACTIONS * ((float) (targetLocation.timestamp - firstInputStreamTimestamp)) / inputStreamDuration);
+        int frac = (int) Math.floor(N_FRACTIONS * ((float) (timestamp - firstInputStreamTimestamp)) / inputStreamDuration);
         labeledFractions[frac] = true;
-        targetPresentInFractions[frac]=(targetLocation.location==null?false:true);
+        targetPresentInFractions[frac] = (targetLocation.location == null ? false : true);
     }
 
     private void fixLabeledFraction() {
@@ -672,7 +725,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     Arrays.fill(labeledFractions, false);
                     return;
                 }
-                for (TargetLocation t : targetLocations.values()) {
+                for (int t : targetLocations.keySet()) {
                     updateLabeledFractions(t);
                 }
             }
@@ -715,20 +768,19 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         fixLabeledFraction();
     }
 
-    /**
-     * @return the maxTargets
-     */
-    public int getMaxTargets() {
-        return maxTargets;
-    }
-
-    /**
-     * @param maxTargets the maxTargets to set
-     */
-    public void setMaxTargets(int maxTargets) {
-        this.maxTargets = maxTargets;
-    }
-
+//    /**
+//     * @return the maxTargets
+//     */
+//    public int getMaxTargets() {
+//        return maxTargets;
+//    }
+//
+//    /**
+//     * @param maxTargets the maxTargets to set
+//     */
+//    public void setMaxTargets(int maxTargets) {
+//        this.maxTargets = maxTargets;
+//    }
     /**
      * @return the currentTargetTypeID
      */
@@ -740,11 +792,25 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
      * @param currentTargetTypeID the currentTargetTypeID to set
      */
     public void setCurrentTargetTypeID(int currentTargetTypeID) {
-        if (currentTargetTypeID >= maxTargets) {
-            currentTargetTypeID = maxTargets;
-        }
+//        if (currentTargetTypeID >= maxTargets) {
+//            currentTargetTypeID = maxTargets;
+//        }
         this.currentTargetTypeID = currentTargetTypeID;
         putInt("currentTargetTypeID", currentTargetTypeID);
+    }
+
+    /**
+     * @return the eraseSamplesEnabled
+     */
+    public boolean isEraseSamplesEnabled() {
+        return eraseSamplesEnabled;
+    }
+
+    /**
+     * @param relabelSingleTargetEnabled the eraseSamplesEnabled to set
+     */
+    public void setEraseSamplesEnabled(boolean relabelSingleTargetEnabled) {
+        this.eraseSamplesEnabled = relabelSingleTargetEnabled;
     }
 
 }
