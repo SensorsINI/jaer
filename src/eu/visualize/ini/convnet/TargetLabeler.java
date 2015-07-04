@@ -96,6 +96,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     private long firstInputStreamTimestamp = 0, lastInputStreamTimestamp = 0, inputStreamDuration = 0;
     private long filePositionEvents = 0, fileLengthEvents = 0;
     private int filePositionTimestamp = 0;
+    private boolean warnSave = true;
 
     public TargetLabeler(AEChip chip) {
         super(chip);
@@ -242,16 +243,35 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             return;
         }
         lastFileName = c.getSelectedFile().toString();
-        if (c.getSelectedFile().exists()) {
-            int r = JOptionPane.showConfirmDialog(glCanvas, "File " + c.getSelectedFile().toString() + " already exists, overwrite it?");
+        // end filename with -targets.txt
+        File f = c.getSelectedFile();
+        String s = f.getPath();
+        if (!s.endsWith("-targets.txt")) {
+            int idxdot = s.lastIndexOf('.');
+            if (idxdot > 0) {
+                s = s.substring(0, idxdot);
+            }
+            s = s + "-targets.txt";
+            f = new File(s);
+        }
+         if (f.exists()) {
+            int r = JOptionPane.showConfirmDialog(glCanvas, "File " + f.toString() + " already exists, overwrite it?");
             if (r != JOptionPane.OK_OPTION) {
                 return;
             }
         }
-        saveLocations(c.getSelectedFile());
+       saveLocations(f);
+        warnSave = false;
     }
 
     synchronized public void doSaveLocations() {
+        if (warnSave) {
+            int ret = JOptionPane.showConfirmDialog(chip.getAeViewer().getFilterFrame(), "Really overwrite " + lastFileName + " ?", "Overwrite warning", JOptionPane.WARNING_MESSAGE);
+            if (ret != JOptionPane.YES_OPTION) {
+                log.info("save canceled");
+                return;
+            }
+        }
         File f = new File(lastFileName);
         saveLocations(new File(lastFileName));
     }
@@ -434,6 +454,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 break;
             case AEInputStream.EVENT_INIT:
                 fixLabeledFraction();
+                warnSave = true;
                 break;
         }
     }
@@ -538,7 +559,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     private int getFractionOfFileDuration(int timestamp) {
-        if(inputStreamDuration==0) return 0;
+        if (inputStreamDuration == 0) {
+            return 0;
+        }
         return (int) Math.floor(N_FRACTIONS * ((float) (timestamp - firstInputStreamTimestamp)) / inputStreamDuration);
     }
 
