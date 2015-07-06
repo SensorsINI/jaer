@@ -6,6 +6,7 @@
 package eu.visualize.ini.convnet;
 
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Font;
 import java.awt.Point;
 import java.awt.event.KeyEvent;
@@ -19,16 +20,15 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 import java.util.TreeMap;
 
-import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.glu.GLU;
-import com.jogamp.opengl.glu.GLUquadric;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 
@@ -39,16 +39,16 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.glu.GLU;
+import com.jogamp.opengl.glu.GLUquadric;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.DavisChip;
-import java.awt.Cursor;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.NoSuchElementException;
-import net.sf.jaer.graphics.AEViewer;
 
 /**
  * Labels location of target using mouse GUI in recorded data for later
@@ -201,7 +201,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         }
 
         // show labeled parts
-        if (showLabeledFraction && inputStreamDuration > 0) {
+        if (showLabeledFraction && (inputStreamDuration > 0)) {
             float dx = chip.getSizeX() / (float) N_FRACTIONS;
             float y = chip.getSizeY() / 5;
             float dy = chip.getSizeY() / 50;
@@ -213,7 +213,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 } else {
                     gl.glColor3f(1, 0, 0);
                 }
-                gl.glRectf(x - dx / 2, y, x + dx / 2, y + dy * (1 + (targetPresentInFractions[i] ? 1 : 0)));
+                gl.glRectf(x - (dx / 2), y, x + (dx / 2), y + (dy * (1 + (targetPresentInFractions[i] ? 1 : 0))));
 //                gl.glRectf(x-dx/2, y, x + dx/2, y + dy * (1 + (currentTargets.size())));
                 x += dx;
             }
@@ -221,7 +221,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             x = curPosFrac * chip.getSizeX();
             y = y + dy;
             gl.glColor3f(1, 1, 1);
-            gl.glRectf(x - dx / 2, y - dy * 2, x + dx / 2, y + dy);
+            gl.glRectf(x - (dx / 2), y - (dy * 2), x + (dx / 2), y + dy);
         }
 
     }
@@ -331,7 +331,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     Map.Entry<Integer, SimultaneouTargetLocations> mostRecentTargetsBeforeThisEvent = targetLocations.lowerEntry(e.timestamp);
                     if (mostRecentTargetsBeforeThisEvent != null) {
                         for (TargetLocation t : mostRecentTargetsBeforeThisEvent.getValue()) {
-                            if ((t == null) || ((t != null) && (e.timestamp - t.timestamp) > maxTimeLastTargetLocationValidUs)) {
+                            if ((t == null) || ((t != null) && ((e.timestamp - t.timestamp) > maxTimeLastTargetLocationValidUs))) {
                                 targetLocation = null;
                             } else {
                                 if (targetLocation != t) {
@@ -377,7 +377,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         //prune list of current targets to their valid lifetime, and remove leftover targets in the future
         ArrayList<TargetLocation> removeList = new ArrayList();
         for (TargetLocation t : currentTargets) {
-            if (t.timestamp + maxTimeLastTargetLocationValidUs < in.getLastTimestamp() || t.timestamp > in.getLastTimestamp()) {
+            if (((t.timestamp + maxTimeLastTargetLocationValidUs) < in.getLastTimestamp()) || (t.timestamp > in.getLastTimestamp())) {
                 removeList.add(t);
             }
         }
@@ -386,7 +386,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     private void maybeEraseSamples(Map.Entry<Integer, SimultaneouTargetLocations> entry, BasicEvent e, TargetLocation lastSampleAdded) {
-        if (!eraseSamplesEnabled || entry == null) {
+        if (!eraseSamplesEnabled || (entry == null)) {
             return;
         }
         boolean removed = false;
@@ -562,7 +562,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         if (inputStreamDuration == 0) {
             return 0;
         }
-        return (int) Math.floor(N_FRACTIONS * ((float) (timestamp - firstInputStreamTimestamp)) / inputStreamDuration);
+        return (int) Math.floor((N_FRACTIONS * ((float) (timestamp - firstInputStreamTimestamp))) / inputStreamDuration);
     }
 
     private class TargetLocationComparator implements Comparator<TargetLocation> {
@@ -583,7 +583,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     }
 
-    private class TargetLocation {
+    class TargetLocation {
 
         int timestamp;
         int frameNumber;
@@ -698,9 +698,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                                 new Point(x, y),
                                 targetTypeID); // read target location
                     } catch (NoSuchElementException ex2) {
-                        throw new IOException("couldn't parse file " + f == null ? "null" : f.toString() + ", got InputMismatchException on line: " + s);
+                        throw new IOException(("couldn't parse file " + f) == null ? "null" : f.toString() + ", got InputMismatchException on line: " + s);
                     }
-                    if (targetLocation.location.x == -1 && targetLocation.location.y == -1) {
+                    if ((targetLocation.location.x == -1) && (targetLocation.location.y == -1)) {
                         targetLocation.location = null;
                     }
                     addSample(targetLocation.timestamp, targetLocation);
@@ -717,9 +717,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 }
                 log.info("done loading " + f);
             } catch (FileNotFoundException ex) {
-                JOptionPane.showMessageDialog(glCanvas, "couldn't find file " + f == null ? "null" : f.toString() + ": got exception " + ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
+                JOptionPane.showMessageDialog(glCanvas, ("couldn't find file " + f) == null ? "null" : f.toString() + ": got exception " + ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
             } catch (IOException ex) {
-                JOptionPane.showMessageDialog(glCanvas, "IOException with file " + f == null ? "null" : f.toString() + ": got exception " + ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
+                JOptionPane.showMessageDialog(glCanvas, ("IOException with file " + f) == null ? "null" : f.toString() + ": got exception " + ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
             }
         } finally {
             setCursor(Cursor.getDefaultCursor());
@@ -756,7 +756,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             inputStreamDuration = chip.getAeInputStream().getDurationUs();
             fileLengthEvents = chip.getAeInputStream().size();
             if (inputStreamDuration > 0) {
-                if (targetLocations == null || targetLocations.isEmpty()) {
+                if ((targetLocations == null) || targetLocations.isEmpty()) {
                     Arrays.fill(labeledFractions, false);
                     return;
                 }
