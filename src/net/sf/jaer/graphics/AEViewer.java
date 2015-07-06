@@ -37,7 +37,6 @@ import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
-import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -791,13 +790,28 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             // add remote control commands
             // TODO encapsulate all this and command processor
             try {
-                    remoteControl = new RemoteControl(REMOTE_CONTROL_PORT);
+            		int remoteControlPort = REMOTE_CONTROL_PORT;
+
+            		while (remoteControlPort <= (REMOTE_CONTROL_PORT + 10)) {
+            			try {
+            				remoteControl = new RemoteControl(remoteControlPort);
+            			}
+            			catch (SocketException e) {
+            				// Port already in use, try next.
+            				remoteControlPort++;
+            				continue;
+            			}
+
+            			// Worked!
+            			break;
+            		}
+
                     remoteControl.addCommandListener(this, REMOTE_START_LOGGING + " <filename>", "starts logging ae data to a file");
                     remoteControl.addCommandListener(this, REMOTE_STOP_LOGGING, "stops logging ae data to a file");
                     remoteControl.addCommandListener(this, REMOTE_TOGGLE_SYNCHRONIZED_LOGGING, "starts synchronized logging ae data to a set of files with aeidx filename automatically timstamped"); // TODO allow sync logging to a chosen file - change startLogging to do sync logging if viewers are synchronized
                     remoteControl.addCommandListener(this, REMOTE_ZERO_TIMESTAMPS, "zeros timestamps on all AEViewers");
                     log.info("created " + remoteControl + " for remote control of some AEViewer functions");
-            } catch (SocketException ex) {
+            } catch (Exception ex) {
                     log.warning(ex.toString());
             }
             setTitleAccordingToState();
