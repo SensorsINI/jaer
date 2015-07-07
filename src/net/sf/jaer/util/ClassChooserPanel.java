@@ -808,6 +808,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     }//GEN-LAST:event_includeDescriptionCBActionPerformed
 
     private void onlyStableCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_onlyStableCBActionPerformed
+        if(availClassesListModel==null) return;  // not ready yet
         includeExperimentalCB.setEnabled(onlyStableCB.isSelected());
         String s = availFilterTextField.getText();
         availClassesListModel.filter(s);
