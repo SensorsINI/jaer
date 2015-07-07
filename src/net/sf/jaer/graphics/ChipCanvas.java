@@ -63,7 +63,7 @@ import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
-import java.awt.geom.Point2D;
+import java.awt.Toolkit;
 
 /**
  * Superclass for classes that paint rendered AE data to graphics devices.
@@ -597,7 +597,7 @@ public class ChipCanvas implements GLEventListener, Observer {
      * @return the AEChip pixel, clipped to the bounds of the AEChip.
      */
     public Point getPixelFromPoint(final Point mp) {
-        final double wcoord[] = new double[4];// wx, wy, wz;// returned xyz coords
+        final double wcoord[] = new double[3];// wx, wy, wz;// returned xyz coords
         // this method depends on current GL context being the one that is used for rendering.
         // the display method should not push/pop the matrix stacks!!
         if (mp == null) {
@@ -605,6 +605,10 @@ public class ChipCanvas implements GLEventListener, Observer {
             return new Point(chip.getSizeX() / 2, chip.getSizeY() / 2);
         }
         try {
+            if (hasRetinaDisplay()) {
+                mp.x *= 2;
+                mp.y *= 2;
+            }
             final int ret = drawable.getContext().makeCurrent();
             if (ret != GLContext.CONTEXT_CURRENT) {
                 throw new GLException("couldn't make context current");
@@ -802,8 +806,8 @@ public class ChipCanvas implements GLEventListener, Observer {
                         // position in window.
                         float dx = e.getX() - mouseDragStartPoint.x;
                         float dy = e.getY() - mouseDragStartPoint.y;
-                        origin3dx = origin3dMouseDragStartPoint.x + Math.round((getChip().getMaxSize() * ((float) dx )) / drawable.getWidth());
-                        origin3dy = origin3dMouseDragStartPoint.y + Math.round((getChip().getMaxSize() * ( (float) -dy)) / drawable.getHeight());
+                        origin3dx = origin3dMouseDragStartPoint.x + Math.round((getChip().getMaxSize() * ((float) dx)) / drawable.getWidth());
+                        origin3dy = origin3dMouseDragStartPoint.y + Math.round((getChip().getMaxSize() * ((float) -dy)) / drawable.getHeight());
                     }
                 }
                 repaint(100);
@@ -1584,4 +1588,31 @@ public class ChipCanvas implements GLEventListener, Observer {
     // public void setInsets(Insets insets) {
     // this.insets = insets;
     // }
+    
+    private boolean checkedRetinaDisplay = false;
+    private boolean hasRetinaDisplayTrue = false;
+
+    /**
+     * hack from
+     * http://stackoverflow.com/questions/20767708/how-do-you-detect-a-retina-display-in-java
+     * used to multiply mouse coordinates by two in case of retina display; see
+     * http://forum.lwjgl.org/index.php?topic=5084.0
+     *
+     * @return true if running on platform with retina display. Value is cached
+     * in VM to avoid runtime cost penalty of multiple calls.
+     */
+    public boolean hasRetinaDisplay() {
+        if (!checkedRetinaDisplay) {
+            Object obj = Toolkit.getDefaultToolkit()
+                    .getDesktopProperty(
+                            "apple.awt.contentScaleFactor");
+            checkedRetinaDisplay=true;
+            if (obj instanceof Float) {
+                Float f = (Float) obj;
+                int scale = f.intValue();
+                hasRetinaDisplayTrue = (scale == 2); // 1 indicates a regular mac display.
+            }
+        }
+        return hasRetinaDisplayTrue;
+    }
 }
