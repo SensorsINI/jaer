@@ -63,7 +63,9 @@ import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
-import java.awt.Toolkit;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.lang.reflect.Field;
 
 /**
  * Superclass for classes that paint rendered AE data to graphics devices.
@@ -605,7 +607,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             return new Point(chip.getSizeX() / 2, chip.getSizeY() / 2);
         }
         try {
-            if (hasRetinaDisplay()) {
+            if (hasAppleRetinaDisplay()) {
                 mp.x *= 2;
                 mp.y *= 2;
             }
@@ -1588,31 +1590,42 @@ public class ChipCanvas implements GLEventListener, Observer {
     // public void setInsets(Insets insets) {
     // this.insets = insets;
     // }
-    
-    private boolean checkedRetinaDisplay = false;
-    private boolean hasRetinaDisplayTrue = false;
+    private static boolean checkedRetinaDisplay = false;
+    private static boolean hasRetinaDisplayTrue = false;
 
     /**
      * hack from
-     * http://stackoverflow.com/questions/20767708/how-do-you-detect-a-retina-display-in-java
+     * https://bulenkov.com/2013/06/23/retina-support-in-oracle-jdk-1-7/
      * used to multiply mouse coordinates by two in case of retina display; see
      * http://forum.lwjgl.org/index.php?topic=5084.0
      *
      * @return true if running on platform with retina display. Value is cached
      * in VM to avoid runtime cost penalty of multiple calls.
      */
-    public boolean hasRetinaDisplay() {
-        if (!checkedRetinaDisplay) {
-            Object obj = Toolkit.getDefaultToolkit()
-                    .getDesktopProperty(
-                            "apple.awt.contentScaleFactor");
-            checkedRetinaDisplay=true;
-            if (obj instanceof Float) {
-                Float f = (Float) obj;
-                int scale = f.intValue();
-                hasRetinaDisplayTrue = (scale == 2); // 1 indicates a regular mac display.
-            }
+    public static boolean hasAppleRetinaDisplay() {
+        if(checkedRetinaDisplay){
+            return hasRetinaDisplayTrue;
         }
+        checkedRetinaDisplay=true;
+        //other OS and JVM specific checks...
+        GraphicsEnvironment env = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        final GraphicsDevice device = env.getDefaultScreenDevice();
+
+        try {
+            Field field = device.getClass().getDeclaredField("scale");
+
+            if (field != null) {
+                field.setAccessible(true);
+                Object scale = field.get(device);
+
+                if (scale instanceof Integer && ((Integer) scale).intValue() == 2) {
+                    hasRetinaDisplayTrue=true;
+                }
+            }
+        } catch (Exception ignore) {
+        }
+        //...
         return hasRetinaDisplayTrue;
     }
+
 }
