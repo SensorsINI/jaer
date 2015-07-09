@@ -30,6 +30,7 @@ import eu.seebetter.ini.chips.DavisChip;
  *
  * @author Tobi
  */
+
 @Description("Writes AVI file from DAVIS APS frames, using ApsFrameExtractor. This AVI has spatial resolution the same as the AEChip (not the display resolution)")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DavisFrameAviWriter extends AbstractAviWriter {

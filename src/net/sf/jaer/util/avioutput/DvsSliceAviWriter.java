@@ -99,10 +99,10 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     
 
     @Override
-    public synchronized void doSaveAVIFileAs() {
+    public synchronized void doStartRecordingAndSaveAVIAs() {
         String[] s={"dimx="+dimx,"dimy="+dimy,"grayScale="+grayScale,"dvsMinEvents="+dvsMinEvents,"format="+format.toString(),"compressionQuality="+compressionQuality};
         setAdditionalComments(s);
-        super.doSaveAVIFileAs(); //To change body of generated methods, choose Tools | Templates.
+        super.doStartRecordingAndSaveAVIAs(); //To change body of generated methods, choose Tools | Templates.
     }
     
     

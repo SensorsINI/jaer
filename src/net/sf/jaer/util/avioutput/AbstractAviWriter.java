@@ -60,7 +60,7 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
 
     public AbstractAviWriter(AEChip chip) {
         super(chip);
-        setPropertyTooltip("saveAVIFileAs", "Opens the output file. The AVI file is in RAW format with pixel values 0-255 coming from ApsFrameExtractor displayed frames, which are offset and scaled by it.");
+        setPropertyTooltip("startRecordingAndSaveAVIAs", "Opens the output file and starts writing to it. The AVI file is in RAW format with pixel values 0-255 coming from ApsFrameExtractor displayed frames, which are offset and scaled by it.");
         setPropertyTooltip("closeFile", "Closes the output file if it is open.");
         setPropertyTooltip("writeTimecodeFile", "writes a file alongside AVI file (with suffix " + TIMECODE_SUFFIX + ") that maps from AVI frame to AER timestamp for that frame (the frame end timestamp)");
         setPropertyTooltip("closeOnRewind", "closes recording on rewind event, to allow unattended operation");
@@ -137,7 +137,7 @@ public class AbstractAviWriter extends EventFilter2D implements FrameAnnotater, 
         }
     }
 
-    synchronized public void doSaveAVIFileAs() {
+    synchronized public void doStartRecordingAndSaveAVIAs() {
         if (aviOutputStream != null) {
             JOptionPane.showMessageDialog(null, "AVI output stream is already opened");
             return;
