@@ -31,7 +31,8 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
 
     protected GLCanvas glCanvas;
     protected ChipCanvas chipCanvas;
-    private final float CURSOR_SIZE_CHIP_PIXELS = 7;
+    /** Cursor size for drawn mouse cursor when filter is selected. */
+    protected final float CURSOR_SIZE_CHIP_PIXELS = 7;
     protected GLU glu = new GLU();
     protected GLUquadric quad = null;
     private boolean hasBlendChecked = false, hasBlend = false;
