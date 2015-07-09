@@ -5,6 +5,7 @@
  */
 package eu.visualize.ini.convnet;
 
+import ch.unizh.ini.jaer.hardware.pantilt.PanTiltCalibrationPoint;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Font;
@@ -44,11 +45,20 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.awt.GLCanvas;
 import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.DavisChip;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import java.util.HashMap;
+import java.util.Vector;
+import net.sf.jaer.eventio.AEFileInputStream;
 
 /**
  * Labels location of target using mouse GUI in recorded data for later
@@ -87,10 +97,13 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     protected int currentTargetTypeID = getInt("currentTargetTypeID", 0);
     private ArrayList<TargetLocation> currentTargets = new ArrayList(10); // currently valid targets
     protected boolean eraseSamplesEnabled = false;
+    private HashMap<String, String> mapDataFilenameToTargetFilename = new HashMap();
 
     private boolean propertyChangeListenerAdded = false;
     private String DEFAULT_FILENAME = "locations.txt";
     private String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
+
+    private String lastDataFilename = null;
 
     // file statistics
     private long firstInputStreamTimestamp = 0, lastInputStreamTimestamp = 0, inputStreamDuration = 0;
@@ -117,6 +130,18 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         setPropertyTooltip("eraseSamplesEnabled", "Use this mode erase all samples from current time.");
         Arrays.fill(labeledFractions, false);
         Arrays.fill(targetPresentInFractions, false);
+        try {
+            byte[] bytes = getPrefs().getByteArray("TargetLabeler.hashmap", null);
+            if (bytes != null) {
+                ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
+                mapDataFilenameToTargetFilename = (HashMap<String, String>) in.readObject();
+                in.close();
+                log.info("loaded mapDataFilenameToTargetFilename: " + mapDataFilenameToTargetFilename.size() + " entries");
+            } else {
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -161,18 +186,58 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
-        super.annotate(drawable);
+
         if (!isFilterEnabled()) {
             return;
         }
         if (chip.getAeViewer().getPlayMode() != AEViewer.PlayMode.PLAYBACK) {
             return;
         }
+        GL2 gl = drawable.getGL().getGL2();
+        chipCanvas = chip.getCanvas();
+        if (chipCanvas == null) {
+            return;
+        }
+        glCanvas = (GLCanvas) chipCanvas.getCanvas();
+        if (glCanvas == null) {
+            return;
+        }
+        if (isSelected()) {
+            Point mp = glCanvas.getMousePosition();
+            Point p = chipCanvas.getPixelFromPoint(mp);
+            if (p == null) {
+                return;
+            }
+            checkBlend(gl);
+            float[] compArray = new float[4];
+            gl.glColor3fv(targetTypeColors[currentTargetTypeID % targetTypeColors.length].getColorComponents(compArray), 0);
+            gl.glLineWidth(3f);
+            gl.glPushMatrix();
+            gl.glTranslatef(p.x, p.y, 0);
+            gl.glBegin(GL2.GL_LINES);
+            gl.glVertex2f(0, -CURSOR_SIZE_CHIP_PIXELS / 2);
+            gl.glVertex2f(0, +CURSOR_SIZE_CHIP_PIXELS / 2);
+            gl.glVertex2f(-CURSOR_SIZE_CHIP_PIXELS / 2, 0);
+            gl.glVertex2f(+CURSOR_SIZE_CHIP_PIXELS / 2, 0);
+            gl.glEnd();
+            gl.glTranslatef(.5f, -.5f, 0);
+            gl.glBegin(GL2.GL_LINES);
+            gl.glVertex2f(0, -CURSOR_SIZE_CHIP_PIXELS / 2);
+            gl.glVertex2f(0, +CURSOR_SIZE_CHIP_PIXELS / 2);
+            gl.glVertex2f(-CURSOR_SIZE_CHIP_PIXELS / 2, 0);
+            gl.glVertex2f(+CURSOR_SIZE_CHIP_PIXELS / 2, 0);
+            gl.glEnd();
+//            if (quad == null) {
+//                quad = glu.gluNewQuadric();
+//            }
+//            glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
+//            glu.gluDisk(quad, 0, 3, 32, 1);
+            gl.glPopMatrix();
+        }
         if (textRenderer == null) {
             textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36));
             textRenderer.setColor(1, 1, 1, 1);
         }
-        GL2 gl = drawable.getGL().getGL2();
         MultilineAnnotationTextRenderer.setColor(Color.CYAN);
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .9f);
         MultilineAnnotationTextRenderer.setScale(.3f);
@@ -236,8 +301,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     synchronized public void doSaveLocationsAs() {
-        JFileChooser c = new JFileChooser(lastFileName);
-        c.setSelectedFile(new File(lastFileName));
+        String fn = mapDataFilenameToTargetFilename.getOrDefault(lastDataFilename, DEFAULT_FILENAME);
+        JFileChooser c = new JFileChooser(fn);
+        c.setSelectedFile(new File(fn));
         int ret = c.showSaveDialog(glCanvas);
         if (ret != JFileChooser.APPROVE_OPTION) {
             return;
@@ -254,13 +320,13 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             s = s + "-targets.txt";
             f = new File(s);
         }
-         if (f.exists()) {
+        if (f.exists()) {
             int r = JOptionPane.showConfirmDialog(glCanvas, "File " + f.toString() + " already exists, overwrite it?");
             if (r != JOptionPane.OK_OPTION) {
                 return;
             }
         }
-       saveLocations(f);
+        saveLocations(f);
         warnSave = false;
     }
 
@@ -455,6 +521,10 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             case AEInputStream.EVENT_INIT:
                 fixLabeledFraction();
                 warnSave = true;
+                if (evt.getNewValue() instanceof AEFileInputStream) {
+                    File f = ((AEFileInputStream) evt.getNewValue()).getFile();
+                    lastDataFilename = f.getPath();
+                }
                 break;
         }
     }
@@ -645,6 +715,21 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             log.info("wrote locations to file " + f.getAbsolutePath());
             lastFileName = f.toString();
             putString("lastFileName", lastFileName);
+            if (lastDataFilename != null) {
+                mapDataFilenameToTargetFilename.put(lastDataFilename, lastFileName);
+            }
+            try {
+                // Serialize to a byte array
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                ObjectOutput oos = new ObjectOutputStream(bos);
+                oos.writeObject(mapDataFilenameToTargetFilename);
+                oos.close();
+                // Get the bytes of the serialized object
+                byte[] buf = bos.toByteArray();
+                getPrefs().putByteArray("TargetLabeler.hashmap", buf);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(glCanvas, ex.toString(), "Couldn't save locations", JOptionPane.WARNING_MESSAGE, null);
             return;
@@ -716,6 +801,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     s = reader.readLine();
                 }
                 log.info("done loading " + f);
+                if (lastDataFilename != null) {
+                    mapDataFilenameToTargetFilename.put(lastDataFilename, f.getPath());
+                }
             } catch (FileNotFoundException ex) {
                 JOptionPane.showMessageDialog(glCanvas, ("couldn't find file " + f) == null ? "null" : f.toString() + ": got exception " + ex.toString(), "Couldn't load locations", JOptionPane.WARNING_MESSAGE, null);
             } catch (IOException ex) {
