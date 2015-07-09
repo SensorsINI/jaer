@@ -140,8 +140,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * the size of the memory mapped part of the input file. This window is
      * centered over the file position except at the start and end of the file.
      */
-    private int CHUNK_SIZE_EVENTS = 1 << 22; // 4Me=32MB
-    private int chunkSizeBytes = CHUNK_SIZE_EVENTS * EVENT16_SIZE; // size of memory mapped file chunk, depends on event size and number of events to map, initialized as though we didn't have a file header
+    private int CHUNK_SIZE_EVENTS = 1 << 25;
+    private int chunkSizeBytes = CHUNK_SIZE_EVENTS * EVENT32_SIZE; // size of memory mapped file chunk, depends on event size and number of events to map, initialized as though we didn't have a file header
 
     /**
      * the packet used for reading events.
@@ -1126,7 +1126,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             chunksMapped = 0;
             System.gc();
 //            System.runFinalization(); // caused deadlock on rewind where AEViewer.viewLoop was wating for finalization thread to run (which waited for Thread to join), while holding AEFileInputStream, while AWT thread was waiting for same AEFileInputStream
-            log.info("ran garbage collection after mapping chunk " + chunkNumber);
+//            log.info("ran garbage collection after mapping chunk " + chunkNumber);
         }
 //        log.info("mapped chunk # "+chunkNumber+" of "+numChunks);
     }
@@ -1267,7 +1267,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     /**
-     * Call to signal first read from file.
+     * Called to signal first read from file. Fires PropertyChange AEInputStream.EVENT_INIT, with new value this.
      */
     protected void fireInitPropertyChange() {
         getSupport().firePropertyChange(AEInputStream.EVENT_INIT, null, this);
