@@ -55,7 +55,7 @@ public class AEInputStream implements Closeable {
      * <li>EVENT_MARKSET means the mark has just been set on the stream for
      * later possible rewind 
      * <li>EVENT_MARKS_CLEARED means the marks were cleared
-     * <li>EVENT_INIT is called after initialization of the input stream,
+     * <li>EVENT_INIT is called after initialization of the input stream, with new value this
      * <li>EVENT_NON_MONOTONIC_TIMESTAMP a non-monotonic timestamp was detected
      * <li>EVENT_REPOSITIONED the input stream has been repositioned (e.g. by using slider in AEPlayer) to a new position
      * </ul>
