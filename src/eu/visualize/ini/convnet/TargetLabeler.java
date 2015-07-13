@@ -58,6 +58,7 @@ import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.util.HashMap;
 import java.util.Vector;
+import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.eventio.AEFileInputStream;
 
 /**
@@ -347,6 +348,19 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             lastFileName = chip.getAeViewer().getRecentFiles().getMostRecentFolder().getName();
         }
         JFileChooser c = new JFileChooser(lastFileName);
+        c.setFileFilter(new FileFilter() {
+
+            @Override
+            public boolean accept(File f) {
+                return f.isDirectory() || f.getName().toLowerCase().endsWith(".txt");
+            }
+
+            @Override
+            public String getDescription() {
+                return "Text target label files";
+            }
+        });
+        c.setMultiSelectionEnabled(false);
         c.setSelectedFile(new File(lastFileName));
         int ret = c.showOpenDialog(glCanvas);
         if (ret != JFileChooser.APPROVE_OPTION) {
