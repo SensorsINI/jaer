@@ -16,14 +16,14 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
 public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
-	private static String TN_IP = "192.168.1.1";
-	private static int TN_PORT = 4554;
+	private static String TN_IP = "192.168.1.31";
+	private static int TN_PORT = 5000;
 	private static int TN_MAX_EVENTS = 2048;
 
 	private DatagramSocket socket;
 	private InetAddress address;
 
-	private boolean firstRun = true;
+	private boolean firstRun;
 
 	private int baseTS;
 	private int lastTS;
@@ -35,13 +35,13 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 
 	public CochleaAMS1cTNSender(final AEChip chip) {
 		super(chip);
-		// TODO Auto-generated constructor stub
+		chip.addObserver(this);
+		initFilter();
 	}
 
 	@Override
 	public void update(final Observable arg0, final Object arg1) {
 		// TODO Auto-generated method stub
-
 	}
 
 	@Override
@@ -71,22 +71,7 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 			// just add the transformed event to the packet, up
 			// to a certain packet size, and then send that packet.
 			if (evtTS == lastTS) {
-				// Encode Cochlea event into TN format.
-				// UDP Packet Spike Word(s):
-				// # [31:16] 16b core_id
-				// # [15:8] 8b axon
-				// # [7:0] 8b deltaT (delay from base_time)
-				int tnEvt = 0;
-
-				// Use channels as core_id.
-				tnEvt |= (evt.getX() & 0xFFFF) << 16;
-				// Use other data as axon.
-				tnEvt |= (evt.getY() & 0xFF) << 8;
-				// deltaT is always zero in this scheme.
-
-				// Packet format is centered around 32bit integers.
-				dataBuf.putInt(tnEvt);
-				eventCounter++;
+				encodeCochleaEvent(evt);
 
 				// Send packet if full (max events reached).
 				if (eventCounter == CochleaAMS1cTNSender.TN_MAX_EVENTS) {
@@ -97,6 +82,8 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 			// send "tick" packets to have TrueNorth advance its
 			// millisecond global clock.
 			else {
+				encodeCochleaEvent(evt);
+
 				sendDataPacket();
 
 				int tsDifference = evtTS - lastTS;
@@ -113,6 +100,25 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 		return in;
 	}
 
+	private void encodeCochleaEvent(final CochleaAMSEvent evt) {
+		// Encode Cochlea event into TN format.
+		// UDP Packet Spike Word(s):
+		// # [31:16] 16b core_id
+		// # [15:8] 8b axon
+		// # [7:0] 8b deltaT (delay from base_time)
+		int tnEvt = 0;
+
+		// Use channels as core_id.
+		tnEvt |= (evt.getX() & 0xFFFF) << 16;
+		// Use other data as axon.
+		tnEvt |= (evt.getY() & 0xFF) << 8;
+		// deltaT is always zero in this scheme.
+
+		// Packet format is centered around 32bit integers.
+		dataBuf.putInt(tnEvt);
+		eventCounter++;
+	}
+
 	private void sendDataPacket() {
 		// Set header fields.
 		// Header0 carries information about the number of spikes, and some packet ID#s.
@@ -122,7 +128,7 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 			((0 & 0xF) << 8) | // 4 bits, 11:8
 			((2 & 0xFF) << 0))); // 8 Bits, 7:0
 
-		dataBuf.putInt(1, baseTS); // 32 bits = ~50 days at 1ms ticks.
+		dataBuf.putInt(4, baseTS); // 32 bits = ~50 days at 1ms ticks.
 
 		final DatagramPacket packet = new DatagramPacket(dataBuf.array(), dataBuf.limit(), address,
 			CochleaAMS1cTNSender.TN_PORT);
@@ -154,7 +160,7 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 			((0 & 0xF) << 8) | // 4 bits, 11:8
 			((2 & 0xFF) << 0))); // 8 Bits, 7:0
 
-		tickBuf.putInt(1, baseTS); // 32 bits = ~50 days at 1ms ticks.
+		tickBuf.putInt(4, baseTS); // 32 bits = ~50 days at 1ms ticks.
 
 		final DatagramPacket packet = new DatagramPacket(tickBuf.array(), tickBuf.limit(), address,
 			CochleaAMS1cTNSender.TN_PORT);
@@ -175,27 +181,39 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 
 	@Override
 	public void resetFilter() {
-		// TODO Auto-generated method stub
+		if (socket != null) {
+			socket.close();
+		}
+
+		initFilter();
 	}
 
 	@Override
 	public void initFilter() {
+		// Set default for variables.
+		firstRun = true;
+
+		baseTS = 0;
+		lastTS = 0;
+		eventCounter = 0;
+		packetCounter = 0;
+
 		// Little endian buffers.
 		dataBuf.order(ByteOrder.LITTLE_ENDIAN);
 		tickBuf.order(ByteOrder.LITTLE_ENDIAN);
 
 		// Prepare data buffer: starts after 16 byte header.
 		dataBuf.putInt(0, 0); // Packet options, set later.
-		dataBuf.putInt(1, 0); // Base time, set later.
-		dataBuf.putInt(2, 1); // 1 means NO TICK.
-		dataBuf.putInt(3, 0); // Always zero.
+		dataBuf.putInt(4, 0); // Base time, set later.
+		dataBuf.putInt(8, 1); // 1 means NO TICK.
+		dataBuf.putInt(12, 0); // Always zero.
 		dataBuf.position(16);
 
 		// Prepare tick buffer: only 16 byte header.
 		tickBuf.putInt(0, 0); // Packet options, set later.
-		tickBuf.putInt(1, 0); // Base time, set later.
-		tickBuf.putInt(2, 0); // 0 means TICK.
-		tickBuf.putInt(3, 0); // Always zero.
+		tickBuf.putInt(4, 0); // Base time, set later.
+		tickBuf.putInt(8, 0); // 0 means TICK.
+		tickBuf.putInt(12, 0); // Always zero.
 
 		// Get a datagram socket
 		try {
