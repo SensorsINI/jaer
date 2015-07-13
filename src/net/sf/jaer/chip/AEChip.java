@@ -10,7 +10,9 @@
 package net.sf.jaer.chip;
 
 import eu.seebetter.ini.chips.davis.HotPixelFilter;
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -415,18 +417,20 @@ public class AEChip extends Chip2D {
      * @throws IOException 
      */
     public void writeAdditionalAEFileOutputStreamHeader(AEFileOutputStream os) throws IOException, BackingStoreException {
+        log.info("writing preferences for "+this.toString()+" to "+os);
         os.writeHeaderLine(" AEChip: " + this.getClass().getName());
         ByteArrayOutputStream bos = new ByteArrayOutputStream(100000);
         getPrefs().exportSubtree(bos);
         bos.flush();
         os.writeHeaderLine("Start of Preferences for this AEChip");
-
+        
         BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(bos.toByteArray())));
         String line = null;
         while ((line = reader.readLine()) != null) {
             os.writeHeaderLine(line);
         }
         os.writeHeaderLine("End of Preferences for this AEChip");
+        log.info("done writing preferences to "+os);
 
     }
 }
