@@ -32,7 +32,7 @@ import javax.swing.JSeparator;
  */
 public class RecentFiles {
     transient Preferences prefs;
-    ArrayList<File> fileList, folderList;
+    ArrayList<File> fileList; // contains files and folders mixed together
     transient JMenu fileMenu;
     transient ActionListener listener;
     int menuPosition=0;
@@ -268,18 +268,26 @@ public class RecentFiles {
     
     /** Returns most recent folder
      * 
-     * @return most recent folder
+     * @return most recent folder, or null if there is none
      */
     public File getMostRecentFolder(){
-        return folderList==null? null:folderList.get(0);
+        if(fileList==null || fileList.isEmpty()) return null;
+        for(File f:fileList){
+            if(f.isDirectory()) return f;
+        }
+        return null;
     }
     
     /** Returns most recent file
      * 
-     * @return most recent file
+     * @return most recent file, or null if there is none
      */
     public File getMostRecentFile(){
-        return fileList==null? null:fileList.get(0);
+        if(fileList==null || fileList.isEmpty()) return null;
+        for(File f:fileList){
+            if(f.isFile()) return f;
+        }
+        return null;   
     }
     
     

@@ -103,6 +103,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     private boolean propertyChangeListenerAdded = false;
     private String DEFAULT_FILENAME = "locations.txt";
     private String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
+    protected boolean showStatistics = getBoolean("showStatistics", true);
 
     private String lastDataFilename = null;
 
@@ -126,9 +127,10 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         setPropertyTooltip("clearLocations", "clears all existing targets");
         setPropertyTooltip("showLabeledFraction", "shows labeled part of input by a bar with red=unlabeled, green=labeled, blue=current position");
         setPropertyTooltip("showHelpText", "shows help text on screen. Uncheck to hide");
+        setPropertyTooltip("showStatistics", "shows statistics");
 //        setPropertyTooltip("maxTargets", "maximum number of simultaneous targets to label");
         setPropertyTooltip("currentTargetTypeID", "ID code of current target to be labeled, e.g., 0=dog, 1=cat, etc. User must keep track of the mapping from ID codes to target classes.");
-        setPropertyTooltip("eraseSamplesEnabled", "Use this mode erase all samples from current time.");
+        setPropertyTooltip("eraseSamplesEnabled", "Use this mode erase all samples from current time and replace with current target labeling by mouse+shift+ctl.");
         Arrays.fill(labeledFractions, false);
         Arrays.fill(targetPresentInFractions, false);
         try {
@@ -247,18 +249,20 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             sb.append("Shift + !Ctrl + mouse position: Specify no target present\n i.e. mark data as looked at\nClt + Shift + mouse position: Specify currentTargetTypeID is present at mouse location\n");
             MultilineAnnotationTextRenderer.renderMultilineString(sb.toString());
         }
-        MultilineAnnotationTextRenderer.renderMultilineString(String.format("%d TargetLocation samples specified\nFirst sample time: %.1fs, Last sample time: %.1fs\nCurrent frame number: %d\nCurrent # targets: %d",
-                targetLocations.size(),
-                minSampleTimestamp * 1e-6f,
-                maxSampleTimestamp * 1e-6f,
-                currentFrameNumber,
-                currentTargets.size()));
-        if (shiftPressed && !ctlPressed) {
-            MultilineAnnotationTextRenderer.renderMultilineString("Specifying no target");
-        } else if (shiftPressed && ctlPressed) {
-            MultilineAnnotationTextRenderer.renderMultilineString("Specifying target location");
-        } else {
-            MultilineAnnotationTextRenderer.renderMultilineString("Playing recorded target locations");
+        if (showStatistics) {
+            MultilineAnnotationTextRenderer.renderMultilineString(String.format("%d TargetLocation samples specified\nFirst sample time: %.1fs, Last sample time: %.1fs\nCurrent frame number: %d\nCurrent # targets: %d",
+                    targetLocations.size(),
+                    minSampleTimestamp * 1e-6f,
+                    maxSampleTimestamp * 1e-6f,
+                    currentFrameNumber,
+                    currentTargets.size()));
+            if (shiftPressed && !ctlPressed) {
+                MultilineAnnotationTextRenderer.renderMultilineString("Specifying no target");
+            } else if (shiftPressed && ctlPressed) {
+                MultilineAnnotationTextRenderer.renderMultilineString("Specifying target location");
+            } else {
+                MultilineAnnotationTextRenderer.renderMultilineString("Playing recorded target locations");
+            }
         }
         for (TargetLocation t : currentTargets) {
             if (t.location != null) {
@@ -344,8 +348,14 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     synchronized public void doLoadLocations() {
-        if (lastFileName.equals(DEFAULT_FILENAME)) {
-            lastFileName = chip.getAeViewer().getRecentFiles().getMostRecentFolder().getName();
+        lastFileName = mapDataFilenameToTargetFilename.getOrDefault(lastDataFilename, DEFAULT_FILENAME);
+        if (lastFileName != null && lastFileName.equals(DEFAULT_FILENAME)) {
+            File f = chip.getAeViewer().getRecentFiles().getMostRecentFile();
+            if (f == null) {
+                lastFileName = DEFAULT_FILENAME;
+            } else {
+                lastFileName = f.getPath();
+            }
         }
         JFileChooser c = new JFileChooser(lastFileName);
         c.setFileFilter(new FileFilter() {
@@ -498,49 +508,6 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     @Override
     public void initFilter() {
-    }
-
-    @Override
-    public void propertyChange(PropertyChangeEvent evt
-    ) {
-        switch (evt.getPropertyName()) {
-            case AEInputStream.EVENT_POSITION:
-                filePositionEvents = (long) evt.getNewValue();
-                filePositionTimestamp = chip.getAeInputStream().getMostRecentTimestamp();
-                break;
-            case AEInputStream.EVENT_REWIND:
-            case AEInputStream.EVENT_REPOSITIONED:
-                log.info("rewind to start or mark position or reposition event " + evt.toString());
-                if (evt.getNewValue() instanceof Long) {
-                    long position = (long) evt.getNewValue();
-                    if (chip.getAeInputStream() == null) {
-                        log.warning("AE input stream is null, cannot determine timestamp after rewind");
-                        return;
-                    }
-                    int timestamp = chip.getAeInputStream().getMostRecentTimestamp();
-                    Map.Entry<Integer, SimultaneouTargetLocations> targetsBeforeRewind = targetLocations.lowerEntry(timestamp);
-                    if (targetsBeforeRewind != null) {
-                        currentFrameNumber = targetsBeforeRewind.getValue().get(0).frameNumber;
-                        lastFrameNumber = currentFrameNumber - 1;
-                        lastTimestamp = targetsBeforeRewind.getValue().get(0).timestamp;
-                    } else {
-                        currentFrameNumber = 0;
-                        lastFrameNumber = currentFrameNumber - 1;
-                        lastInputStreamTimestamp = Integer.MIN_VALUE;
-                    }
-                } else {
-                    log.warning("couldn't determine stream position after rewind from PropertyChangeEvent " + evt.toString());
-                }
-                break;
-            case AEInputStream.EVENT_INIT:
-                fixLabeledFraction();
-                warnSave = true;
-                if (evt.getNewValue() instanceof AEFileInputStream) {
-                    File f = ((AEFileInputStream) evt.getNewValue()).getFile();
-                    lastDataFilename = f.getPath();
-                }
-                break;
-        }
     }
 
     /**
@@ -847,6 +814,10 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             return;
         }
         int frac = getFractionOfFileDuration(timestamp);
+        if (frac < 0 || frac >= labeledFractions.length) {
+            log.warning("fraction " + frac + " is out of range " + labeledFractions.length + ", something is wrong");
+            return;
+        }
         labeledFractions[frac] = true;
         targetPresentInFractions[frac] = true;
     }
@@ -948,6 +919,63 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
      */
     public void setEraseSamplesEnabled(boolean relabelSingleTargetEnabled) {
         this.eraseSamplesEnabled = relabelSingleTargetEnabled;
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        switch (evt.getPropertyName()) {
+            case AEInputStream.EVENT_POSITION:
+                filePositionEvents = (long) evt.getNewValue();
+                filePositionTimestamp = chip.getAeInputStream().getMostRecentTimestamp();
+                break;
+            case AEInputStream.EVENT_REWIND:
+            case AEInputStream.EVENT_REPOSITIONED:
+                log.info("rewind to start or mark position or reposition event " + evt.toString());
+                if (evt.getNewValue() instanceof Long) {
+                    long position = (long) evt.getNewValue();
+                    if (chip.getAeInputStream() == null) {
+                        log.warning("AE input stream is null, cannot determine timestamp after rewind");
+                        return;
+                    }
+                    int timestamp = chip.getAeInputStream().getMostRecentTimestamp();
+                    Map.Entry<Integer, SimultaneouTargetLocations> targetsBeforeRewind = targetLocations.lowerEntry(timestamp);
+                    if (targetsBeforeRewind != null) {
+                        currentFrameNumber = targetsBeforeRewind.getValue().get(0).frameNumber;
+                        lastFrameNumber = currentFrameNumber - 1;
+                        lastTimestamp = targetsBeforeRewind.getValue().get(0).timestamp;
+                    } else {
+                        currentFrameNumber = 0;
+                        lastFrameNumber = currentFrameNumber - 1;
+                        lastInputStreamTimestamp = Integer.MIN_VALUE;
+                    }
+                } else {
+                    log.warning("couldn't determine stream position after rewind from PropertyChangeEvent " + evt.toString());
+                }
+                break;
+            case AEInputStream.EVENT_INIT:
+                fixLabeledFraction();
+                warnSave = true;
+                if (evt.getNewValue() instanceof AEFileInputStream) {
+                    File f = ((AEFileInputStream) evt.getNewValue()).getFile();
+                    lastDataFilename = f.getPath();
+                }
+                break;
+        }
+    }
+
+    /**
+     * @return the showStatistics
+     */
+    public boolean isShowStatistics() {
+        return showStatistics;
+    }
+
+    /**
+     * @param showStatistics the showStatistics to set
+     */
+    public void setShowStatistics(boolean showStatistics) {
+        this.showStatistics = showStatistics;
+        putBoolean("showStatistics", showStatistics);
     }
 
 }
