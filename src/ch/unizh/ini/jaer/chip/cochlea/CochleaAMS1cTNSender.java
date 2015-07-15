@@ -20,6 +20,9 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 	private int TN_PORT = getInt("TN_PORT", 5000);
 	private int TN_MAX_EVENTS = getInt("TN_MAX_EVENTS", 2048);
 
+	private int TN_CORE_OFFSET = getInt("TN_CORE_OFFSET", 0);
+	private boolean TN_CORE_SINGLE = getBoolean("TN_CORE_SINGLE", false);
+
 	private DatagramSocket socket;
 	private InetAddress address;
 
@@ -51,7 +54,7 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 		try {
 			address = InetAddress.getByName(TN_IP);
 		}
-		catch (UnknownHostException e) {
+		catch (final UnknownHostException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -73,6 +76,24 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 	public void setTNMaxEvents(final int TN_MAX_EVENTS) {
 		this.TN_MAX_EVENTS = TN_MAX_EVENTS;
 		putInt("TN_MAX_EVENTS", TN_MAX_EVENTS);
+	}
+
+	public int getTNCoreOffset() {
+		return TN_CORE_OFFSET;
+	}
+
+	public void setTNCoreOffset(final int TN_CORE_OFFSET) {
+		this.TN_CORE_OFFSET = TN_CORE_OFFSET;
+		putInt("TN_CORE_OFFSET", TN_CORE_OFFSET);
+	}
+
+	public boolean isTNCoreSingle() {
+		return TN_CORE_SINGLE;
+	}
+
+	public void setTNCoreSingle(final boolean TN_CORE_SINGLE) {
+		this.TN_CORE_SINGLE = TN_CORE_SINGLE;
+		putBoolean("TN_CORE_SINGLE", TN_CORE_SINGLE);
 	}
 
 	@Override
@@ -142,13 +163,27 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 		// # [31:16] 16b core_id
 		// # [15:8] 8b axon
 		// # [7:0] 8b deltaT (delay from base_time)
-		int tnEvt = 0;
 
-		// Use channels as core_id.
-		tnEvt |= (evt.getX() & 0xFFFF) << 16;
-		// Use other data as axon.
-		tnEvt |= (evt.getY() & 0xFF) << 8;
-		// deltaT is always zero in this scheme.
+		// Apply offset to hit other cores.
+		int tnTargetCore = TN_CORE_OFFSET;
+		int tnTargetAxon;
+
+		if (TN_CORE_SINGLE) {
+			// In single core mode, we keep the default core,
+			// and map all channels into axons.
+			tnTargetAxon = evt.getX();
+		}
+		else {
+			// Use channels as core_id.
+			tnTargetCore += evt.getX();
+
+			// Use other data as axon.
+			tnTargetAxon = evt.getY();
+		}
+
+		int tnEvt = 0; // deltaT is always zero in this scheme.
+		tnEvt |= (tnTargetCore & 0xFFFF) << 16;
+		tnEvt |= (tnTargetAxon & 0xFF) << 8;
 
 		// Packet format is centered around 32bit integers.
 		dataBuf.putInt(tnEvt);
@@ -253,7 +288,7 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 		try {
 			socket = new DatagramSocket();
 		}
-		catch (SocketException e) {
+		catch (final SocketException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -261,7 +296,7 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 		try {
 			address = InetAddress.getByName(TN_IP);
 		}
-		catch (UnknownHostException e) {
+		catch (final UnknownHostException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
