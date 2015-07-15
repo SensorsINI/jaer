@@ -16,9 +16,9 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
 public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
-	private static String TN_IP = "192.168.1.31";
-	private static int TN_PORT = 5000;
-	private static int TN_MAX_EVENTS = 2048;
+	private String TN_IP = getString("TN_IP", "192.168.1.1");
+	private int TN_PORT = getInt("TN_PORT", 5000);
+	private int TN_MAX_EVENTS = getInt("TN_MAX_EVENTS", 2048);
 
 	private DatagramSocket socket;
 	private InetAddress address;
@@ -30,13 +30,49 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 	private int eventCounter;
 	private int packetCounter;
 
-	private final ByteBuffer dataBuf = ByteBuffer.allocate(4 * (4 + CochleaAMS1cTNSender.TN_MAX_EVENTS));
+	private final ByteBuffer dataBuf = ByteBuffer.allocate(4 * (4 + TN_MAX_EVENTS));
 	private final ByteBuffer tickBuf = ByteBuffer.allocate(4 * 4);
 
 	public CochleaAMS1cTNSender(final AEChip chip) {
 		super(chip);
 		chip.addObserver(this);
 		initFilter();
+	}
+
+	public String getTNIP() {
+		return TN_IP;
+	}
+
+	public void setTNIP(final String TN_IP) {
+		this.TN_IP = TN_IP;
+		putString("TN_IP", TN_IP);
+
+		// Update IP address object for UDP sending.
+		try {
+			address = InetAddress.getByName(TN_IP);
+		}
+		catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	public int getTNPort() {
+		return TN_PORT;
+	}
+
+	public void setTNPort(final int TN_PORT) {
+		this.TN_PORT = TN_PORT;
+		putInt("TN_PORT", TN_PORT);
+	}
+
+	public int getTNMaxEvents() {
+		return TN_MAX_EVENTS;
+	}
+
+	public void setTNMaxEvents(final int TN_MAX_EVENTS) {
+		this.TN_MAX_EVENTS = TN_MAX_EVENTS;
+		putInt("TN_MAX_EVENTS", TN_MAX_EVENTS);
 	}
 
 	@Override
@@ -74,7 +110,7 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 				encodeCochleaEvent(evt);
 
 				// Send packet if full (max events reached).
-				if (eventCounter == CochleaAMS1cTNSender.TN_MAX_EVENTS) {
+				if (eventCounter == TN_MAX_EVENTS) {
 					sendDataPacket();
 				}
 			}
@@ -130,8 +166,7 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 
 		dataBuf.putInt(4, baseTS); // 32 bits = ~50 days at 1ms ticks.
 
-		final DatagramPacket packet = new DatagramPacket(dataBuf.array(), dataBuf.limit(), address,
-			CochleaAMS1cTNSender.TN_PORT);
+		final DatagramPacket packet = new DatagramPacket(dataBuf.array(), dataBuf.limit(), address, TN_PORT);
 
 		try {
 			// Send request
@@ -162,8 +197,7 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 
 		tickBuf.putInt(4, baseTS); // 32 bits = ~50 days at 1ms ticks.
 
-		final DatagramPacket packet = new DatagramPacket(tickBuf.array(), tickBuf.limit(), address,
-			CochleaAMS1cTNSender.TN_PORT);
+		final DatagramPacket packet = new DatagramPacket(tickBuf.array(), tickBuf.limit(), address, TN_PORT);
 
 		try {
 			// Send request
@@ -218,13 +252,16 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 		// Get a datagram socket
 		try {
 			socket = new DatagramSocket();
-			address = InetAddress.getByName(CochleaAMS1cTNSender.TN_IP);
-
-			// Connect UDP socket so that we can only send to
-			// that IP:Port combination.
-			socket.connect(address, CochleaAMS1cTNSender.TN_PORT);
 		}
-		catch (SocketException | UnknownHostException e) {
+		catch (SocketException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		try {
+			address = InetAddress.getByName(TN_IP);
+		}
+		catch (UnknownHostException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
