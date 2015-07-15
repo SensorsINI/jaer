@@ -1,5 +1,6 @@
 package net.sf.jaer.util.avioutput;
 
+import ch.unizh.ini.jaer.projects.davis.frames.DavisFrameAviWriter;
 import eu.visualize.ini.convnet.DvsSubsamplerToFrame;
 import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
@@ -8,6 +9,11 @@ import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.io.IOException;
 import com.jogamp.opengl.GLAutoDrawable;
+import java.awt.image.WritableRaster;
+import java.beans.PropertyChangeEvent;
+import java.nio.FloatBuffer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -17,7 +23,9 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
+import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
@@ -30,7 +38,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  */
 @Description("Writes out AVI movie with DVS constant-number-of-event slices as AVI frame images with desired output resolution")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotater{
+public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotater {
 
     private DvsSubsamplerToFrame dvsSubsampler = null;
     private int dimx, dimy, grayScale;
@@ -38,6 +46,10 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     private JFrame frame = null;
     public ImageDisplay display;
     private boolean showOutput;
+    private volatile boolean newFrameAvailable = false;
+    protected boolean writeDvsSliceImageOnApsFrame = getBoolean("writeDvsSliceImageOnApsFrame", false);
+    private boolean rendererPropertyChangeListenerAdded=false;
+    private AEFrameChipRenderer renderer=null;
 
     public DvsSliceAviWriter(AEChip chip) {
         super(chip);
@@ -50,7 +62,8 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         setPropertyTooltip("dimx", "width of AVI frame");
         setPropertyTooltip("dimy", "height of AVI frame");
         setPropertyTooltip("showOutput", "shows output in JFrame/ImageDisplay");
-        setPropertyTooltip("dvsMinEvents", "minimum number of events to run net on DVS timeslice");
+        setPropertyTooltip("dvsMinEvents", "minimum number of events to run net on DVS timeslice (only if writeDvsSliceImageOnApsFrame is false)");
+        setPropertyTooltip("writeDvsSliceImageOnApsFrame", "write DVS slice image for each APS frame (dvsMinEvents ignored)");
     }
 
     @Override
@@ -58,7 +71,12 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
 //        frameExtractor.filterPacket(in); // extracts frames with nornalization (brightness, contrast) and sends to apsNet on each frame in PropertyChangeListener
         // send DVS timeslice to convnet
         super.filterPacket(in);
-        final int sizeX = chip.getSizeX();
+       if(!rendererPropertyChangeListenerAdded){
+            rendererPropertyChangeListenerAdded=true;
+            renderer=(AEFrameChipRenderer)chip.getRenderer();
+            renderer.getSupport().addPropertyChangeListener(this);
+        }
+       final int sizeX = chip.getSizeX();
         final int sizeY = chip.getSizeY();
         checkSubsampler();
         for (BasicEvent e : in) {
@@ -67,7 +85,9 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             }
             PolarityEvent p = (PolarityEvent) e;
             dvsSubsampler.addEvent(p, sizeX, sizeY);
-            if (dvsSubsampler.getAccumulatedEventCount() > dvsMinEvents) {
+            if ((writeDvsSliceImageOnApsFrame && newFrameAvailable)
+                    || (!writeDvsSliceImageOnApsFrame && dvsSubsampler.getAccumulatedEventCount() > dvsMinEvents)) {
+                if(writeDvsSliceImageOnApsFrame) newFrameAvailable=false;
                 maybeShowOutput(dvsSubsampler);
                 if (aviOutputStream != null) {
                     BufferedImage bi = toImage(dvsSubsampler);
@@ -89,27 +109,25 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        if(dvsSubsampler==null) return;
-        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY()*.8f);
+        if (dvsSubsampler == null) {
+            return;
+        }
+        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .8f);
         MultilineAnnotationTextRenderer.setScale(.3f);
-        String s=String.format("mostOffCount=%d\n mostOnCount=%d",dvsSubsampler.getMostOffCount(),dvsSubsampler.getMostOnCount());
+        String s = String.format("mostOffCount=%d\n mostOnCount=%d", dvsSubsampler.getMostOffCount(), dvsSubsampler.getMostOnCount());
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
-    
-    
 
     @Override
     public synchronized void doStartRecordingAndSaveAVIAs() {
-        String[] s={"dimx="+dimx,"dimy="+dimy,"grayScale="+grayScale,"dvsMinEvents="+dvsMinEvents,"format="+format.toString(),"compressionQuality="+compressionQuality};
+        String[] s = {"dimx=" + dimx, "dimy=" + dimy, "grayScale=" + grayScale, "dvsMinEvents=" + dvsMinEvents, "format=" + format.toString(), "compressionQuality=" + compressionQuality};
         setAdditionalComments(s);
         super.doStartRecordingAndSaveAVIAs(); //To change body of generated methods, choose Tools | Templates.
     }
-    
-    
 
     private void checkSubsampler() {
         if (dvsSubsampler == null || dimx * dimy != dvsSubsampler.getnPixels()) {
-            if(aviOutputStream!=null && dvsSubsampler!=null){
+            if (aviOutputStream != null && dvsSubsampler != null) {
                 log.info("closing existing output file because output resolution has changed");
                 doCloseFile();
             }
@@ -126,8 +144,11 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 int b = (int) (255 * subSampler.getValueAtPixel(x, y));
                 int g = b;
                 int r = b;
-
-                bd[(dimx - y - 1) * dimy + x] = (b << 16) | (g << 8) | r | 0xFF000000;
+                int idx=(dimy - y - 1) * dimx + x;
+                if(idx>=bd.length){
+                    throw new RuntimeException(String.format("index %d out of bounds for x=%d y=%d",idx,x,y));
+                }
+                bd[idx] = (b << 16) | (g << 8) | r | 0xFF000000;
             }
         }
 
@@ -163,9 +184,9 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         if (!frame.isVisible()) {
             frame.setVisible(true);
         }
-        if(display.getWidth()!=dimx || display.getHeight()!=dimy){
-             display.setImageSize(dimx, dimy);
-       }
+        if (display.getWidth() != dimx || display.getHeight() != dimy) {
+            display.setImageSize(dimx, dimy);
+        }
         for (int x = 0; x < dimx; x++) {
             for (int y = 0; y < dimy; y++) {
                 display.setPixmapGray(x, y, subSampler.getValueAtPixel(x, y));
@@ -255,6 +276,31 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         if (dvsSubsampler != null) {
             dvsSubsampler.setColorScale(grayScale);
         }
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if ((aviOutputStream != null) && (evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)) {
+            newFrameAvailable = true;
+
+        } else if (isCloseOnRewind() && evt.getPropertyName() == AEInputStream.EVENT_REWIND) {
+            doCloseFile();
+        }
+    }
+
+    /**
+     * @return the writeDvsSliceImageOnApsFrame
+     */
+    public boolean isWriteDvsSliceImageOnApsFrame() {
+        return writeDvsSliceImageOnApsFrame;
+    }
+
+    /**
+     * @param writeDvsSliceImageOnApsFrame the writeDvsSliceImageOnApsFrame to
+     * set
+     */
+    public void setWriteDvsSliceImageOnApsFrame(boolean writeDvsSliceImageOnApsFrame) {
+        this.writeDvsSliceImageOnApsFrame = writeDvsSliceImageOnApsFrame;
     }
 
 }
