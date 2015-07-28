@@ -77,8 +77,10 @@ public class DavisFrameAviWriter extends AbstractAviWriter {
 //    }
 
     @Override
-    public void propertyChange(PropertyChangeEvent evt) {
-        if ((aviOutputStream != null) && (evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)) {
+    synchronized public void propertyChange(PropertyChangeEvent evt) {
+        if ((aviOutputStream != null) 
+                && (evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)
+                && !chip.getAeViewer().isPaused()) {
             FloatBuffer frame = ((AEFrameChipRenderer)chip.getRenderer()).getPixBuffer();
 
             BufferedImage bufferedImage = new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_3BYTE_BGR);

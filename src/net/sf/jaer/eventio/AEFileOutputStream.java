@@ -63,6 +63,9 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
             writeHeaderLine(" created " + new Date());
 
             // optionally write chip-specific info
+            if(chip.getHardwareInterface()!=null){
+                writeHeaderLine(" HardwareInterface: "+ chip.getHardwareInterface().toString());
+            }
             if (chip != null) {
                 chip.writeAdditionalAEFileOutputStreamHeader(this);
             }

@@ -33,6 +33,7 @@ public class AutoExposureController extends Observable implements HasPropertyToo
     private float lowBoundary;
     private float highBoundary;
     private boolean pidControllerEnabled;
+    protected boolean centerWeighted;
 
     public AutoExposureController(final DavisBaseCamera davisChip) {
         super();
@@ -43,12 +44,14 @@ public class AutoExposureController extends Observable implements HasPropertyToo
         lowBoundary = davisChip.getPrefs().getFloat("AutoExposureController.lowBoundary", 0.25F);
         highBoundary = davisChip.getPrefs().getFloat("AutoExposureController.highBoundary", 0.75F);
         pidControllerEnabled = davisChip.getPrefs().getBoolean("pidControllerEnabled", false);
+        centerWeighted=davisChip.getPrefs().getBoolean("centerWeighted", false);
         tooltipSupport.setPropertyTooltip("expDelta", "fractional change of exposure when under or overexposed");
         tooltipSupport.setPropertyTooltip("underOverFractionThreshold", "fraction of pixel values under xor over exposed to trigger exposure change");
         tooltipSupport.setPropertyTooltip("lowBoundary", "Upper edge of histogram range considered as low values");
         tooltipSupport.setPropertyTooltip("highBoundary", "Lower edge of histogram range considered as high values");
         tooltipSupport.setPropertyTooltip("autoExposureEnabled", "Exposure time is automatically controlled when this flag is true");
         tooltipSupport.setPropertyTooltip("pidControllerEnabled", "<html>Enable proportional integral derivative (actually just proportional) controller rather than fixed-size step control. <p><i>expDelta</i> is multiplied by the fractional error from mid-range exposure when <i>pidControllerEnabled</i> is set");
+        tooltipSupport.setPropertyTooltip("centerWeighted", "<html>Enable center-weighted control so that center of image is weighted more heavily in controlling exposure");
     }
 
     @Override
@@ -199,6 +202,20 @@ public class AutoExposureController extends Observable implements HasPropertyToo
     public void setPidControllerEnabled(boolean pidControllerEnabled) {
         this.pidControllerEnabled = pidControllerEnabled;
         davisChip.getPrefs().putBoolean("pidControllerEnabled", pidControllerEnabled);
+    }
+
+    /**
+     * @return the centerWeighted
+     */
+    public boolean isCenterWeighted() {
+        return centerWeighted;
+    }
+
+    /**
+     * @param centerWeighted the centerWeighted to set
+     */
+    public void setCenterWeighted(boolean centerWeighted) {
+        this.centerWeighted = centerWeighted;
     }
 
 }

@@ -47,6 +47,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     public ImageDisplay display;
     private boolean showOutput;
     private volatile boolean newFrameAvailable = false;
+    private int endOfFrameTimestamp=0, lastTimestamp=0;
     protected boolean writeDvsSliceImageOnApsFrame = getBoolean("writeDvsSliceImageOnApsFrame", false);
     private boolean rendererPropertyChangeListenerAdded=false;
     private AEFrameChipRenderer renderer=null;
@@ -63,7 +64,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         setPropertyTooltip("dimy", "height of AVI frame");
         setPropertyTooltip("showOutput", "shows output in JFrame/ImageDisplay");
         setPropertyTooltip("dvsMinEvents", "minimum number of events to run net on DVS timeslice (only if writeDvsSliceImageOnApsFrame is false)");
-        setPropertyTooltip("writeDvsSliceImageOnApsFrame", "write DVS slice image for each APS frame (dvsMinEvents ignored)");
+        setPropertyTooltip("writeDvsSliceImageOnApsFrame", "<html>write DVS slice image for each APS frame end event (dvsMinEvents ignored).<br>The frame is written at the end of frame APS event.<br><b>Warning: to capture all frames, ensure that playback time slices are slow enough that all frames are rendered</b>");
     }
 
     @Override
@@ -84,9 +85,11 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 continue;
             }
             PolarityEvent p = (PolarityEvent) e;
+            lastTimestamp=e.timestamp;
             dvsSubsampler.addEvent(p, sizeX, sizeY);
-            if ((writeDvsSliceImageOnApsFrame && newFrameAvailable)
-                    || (!writeDvsSliceImageOnApsFrame && dvsSubsampler.getAccumulatedEventCount() > dvsMinEvents)) {
+            if ((writeDvsSliceImageOnApsFrame && newFrameAvailable && e.timestamp>=endOfFrameTimestamp)
+                    || (!writeDvsSliceImageOnApsFrame && dvsSubsampler.getAccumulatedEventCount() > dvsMinEvents)
+                    && !chip.getAeViewer().isPaused()) {
                 if(writeDvsSliceImageOnApsFrame) newFrameAvailable=false;
                 maybeShowOutput(dvsSubsampler);
                 if (aviOutputStream != null) {
@@ -103,6 +106,9 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 }
                 dvsSubsampler.clear();
             }
+        }
+        if(writeDvsSliceImageOnApsFrame && lastTimestamp-endOfFrameTimestamp>1000000){
+            log.warning("last frame event was received more than 1s ago; maybe you need to enable Display Frames in the User Control Panel?");
         }
         return in;
     }
@@ -278,15 +284,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         }
     }
 
-    @Override
-    public void propertyChange(PropertyChangeEvent evt) {
-        if ((aviOutputStream != null) && (evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)) {
-            newFrameAvailable = true;
-
-        } else if (isCloseOnRewind() && evt.getPropertyName() == AEInputStream.EVENT_REWIND) {
-            doCloseFile();
-        }
-    }
+  
 
     /**
      * @return the writeDvsSliceImageOnApsFrame
@@ -301,6 +299,17 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
      */
     public void setWriteDvsSliceImageOnApsFrame(boolean writeDvsSliceImageOnApsFrame) {
         this.writeDvsSliceImageOnApsFrame = writeDvsSliceImageOnApsFrame;
+        putBoolean("writeDvsSliceImageOnApsFrame", writeDvsSliceImageOnApsFrame);
     }
 
+      @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        if ((evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE)) {
+            AEFrameChipRenderer renderer=(AEFrameChipRenderer)evt.getNewValue();
+            endOfFrameTimestamp=renderer.getTimestampFrameEnd();
+            newFrameAvailable = true;
+        } else if (isCloseOnRewind() && evt.getPropertyName() == AEInputStream.EVENT_REWIND) {
+            doCloseFile();
+        }
+    }
 }
