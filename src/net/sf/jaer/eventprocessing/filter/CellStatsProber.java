@@ -38,6 +38,9 @@ import net.sf.jaer.util.filter.LowpassFilter;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.DavisChip;
+import eu.seebetter.ini.chips.davis.Davis240Config;
+import eu.seebetter.ini.chips.davis.DavisBaseCamera;
+import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import net.sf.jaer.DevelopmentStatus;
@@ -955,7 +958,13 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     
       @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if(isFilterEnabled() && resetOnBiasChange && evt.getSource() instanceof AEChip && !evt.getPropertyName().equals(DavisChip.PROPERTY_FRAME_RATE_HZ)){
+        if(isFilterEnabled() 
+                && resetOnBiasChange 
+                && evt.getSource() instanceof AEChip 
+                && !evt.getPropertyName().equals(DavisChip.PROPERTY_FRAME_RATE_HZ) 
+                && !evt.getPropertyName().equals(DavisVideoContrastController.AGC_VALUES) 
+                && !evt.getPropertyName().equals(DavisChip.PROPERTY_MEASURED_EXPOSURE_MS) 
+                ){
             resetFilter();
             log.info("reset filter on "+evt.toString());
         }
