@@ -740,7 +740,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             }
 
             // draw sample histogram
-            if (showImageHistogram && (renderer instanceof AEFrameChipRenderer)) {
+            if (showImageHistogram && getDavisConfig().isDisplayFrames() && (renderer instanceof AEFrameChipRenderer)) {
                 // System.out.println("drawing hist");
                 final int size = 100;
                 final AbstractHistogram hist = ((AEFrameChipRenderer) renderer).getAdcSampleValueHistogram();

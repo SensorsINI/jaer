@@ -145,9 +145,9 @@ public class DavisVideoContrastController extends Observable {
                 autoContrast = 5;
             }
             getSupport().firePropertyChange(AGC_VALUES, null, new Point2D.Float(autoBrightness, autoContrast)); // inform listeners (GUI) of new AGC min/max filterd log intensity values
-            if (debugPrintCounter++ % DEBUG_PRINT_INTERVAL == 0) {
-                log.info(this.toString());
-            }
+//            if (debugPrintCounter++ % DEBUG_PRINT_INTERVAL == 0) {
+//                log.info(this.toString());
+//            }
         }
     }
 

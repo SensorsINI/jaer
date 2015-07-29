@@ -41,11 +41,6 @@ public class Davis128Renderer extends AEFrameChipRenderer {
 
     protected FloatBuffer pixBuffer2;
 
-    /**
-     * PropertyChange
-     */
-    public static final String AGC_VALUES = "AGCValuesChanged";
-
     public Davis128Renderer(AEChip chip) {
         super(chip);
         if (chip.getNumPixels() == 0) {
