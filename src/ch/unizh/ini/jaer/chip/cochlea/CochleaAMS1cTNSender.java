@@ -14,6 +14,7 @@ import java.util.Observer;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent.Ear;
 
 public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 	private String TN_IP = getString("TN_IP", "192.168.1.1");
@@ -172,6 +173,11 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 			// In single core mode, we keep the default core,
 			// and map all channels into axons.
 			tnTargetAxon = evt.getX();
+
+			// Left ear axons 0-63, right ear axons 64-127.
+			if (evt.getEar() == Ear.RIGHT) {
+				tnTargetAxon += 64;
+			}
 		}
 		else {
 			// Use channels as core_id.
