@@ -465,9 +465,57 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
     public boolean isSeparateAPSByColor() {
         return ((DavisDisplayConfigInterface) chip.getBiasgen()).isSeparateAPSByColor();
     }
+    
+    public boolean isAutoWhiteBalance() {
+        return ((DavisDisplayConfigInterface) chip.getBiasgen()).isAutoWhiteBalance();
+    }
 
     @Override
     protected void endFrame(int ts) {
+        if (!isAutoWhiteBalance()) {
+            //white balance
+            float[] image = pixBuffer.array();
+            float Rtotal = 0, Gtotal = 0, Btotal = 0;
+            for (int y = 0; y < chip.getSizeY(); y++) {
+                for (int x = 0; x < chip.getSizeX(); x++) {
+                    if ((y % 2) == 0) {
+                        //row 0, 2, 4 ... 478, from bottom of the image, contianing W and B
+                        if ((x % 2) == 0) { //B
+                            Btotal = Btotal + image[getIndex(x, y)];
+                        }
+                    } else {
+                        //row 1, 3, 5 ... 479, from bottom of the image, contianing R and G
+                        if ((x % 2) == 1) { //R
+                            Rtotal = Rtotal + image[getIndex(x, y)];
+                        } else { //G
+                            Gtotal = Gtotal + image[getIndex(x, y)];
+                        }
+                    }
+                }
+            }
+            for (int y = 0; y < chip.getSizeY(); y++) {
+                for (int x = 0; x < chip.getSizeX(); x++) {
+                    if ((y % 2) == 0) {
+                        //row 0, 2, 4 ... 478, from bottom of the image, contianing W and B
+                        if ((x % 2) == 0) { //B
+                            image[getIndex(x, y)] = (Gtotal/Btotal)*image[getIndex(x, y)];
+                            if (image[getIndex(x, y)]>1) {
+                                image[getIndex(x, y)] = 1;
+                            }
+                        }
+                    } else {
+                        //row 1, 3, 5 ... 479, from bottom of the image, contianing R and G
+                        if ((x % 2) == 1) { //R
+                            image[getIndex(x, y)] = (Gtotal/Rtotal)*image[getIndex(x, y)];
+                            if (image[getIndex(x, y)]>1) {
+                                image[getIndex(x, y)] = 1;
+                            }
+                        } 
+                    }
+                }
+            }
+        }
+        
         if (!isSeparateAPSByColor()) {
             //color interpolation
             float[] image = pixBuffer.array();

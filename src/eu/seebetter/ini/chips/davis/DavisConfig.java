@@ -1165,6 +1165,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		public boolean displayEvents = chip.getPrefs().getBoolean("VideoControl.displayEvents", true);
 		public boolean displayFrames = chip.getPrefs().getBoolean("VideoControl.displayFrames", true);
 		public boolean separateAPSByColor = chip.getPrefs().getBoolean("VideoControl.separateAPSByColor", false);
+                public boolean autoWhiteBalance = chip.getPrefs().getBoolean("VideoControl.autoWhiteBalance", true);
 		// on crappy beamer output
 		private PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
 
@@ -1217,6 +1218,10 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		public boolean isSeparateAPSByColor() {
 			return separateAPSByColor;
 		}
+                
+                public boolean isAutoWhiteBalance() {
+			return autoWhiteBalance;
+		}
 
 		/**
 		 * @param displayFrames
@@ -1225,6 +1230,11 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		public void setSeparateAPSByColor(boolean separateAPSByColor) {
 			this.separateAPSByColor = separateAPSByColor;
 			chip.getPrefs().putBoolean("VideoControl.separateAPSByColor", separateAPSByColor);
+		}
+                
+                public void setAutoWhiteBalance(boolean autoWhiteBalance) {
+			this.autoWhiteBalance = autoWhiteBalance;
+			chip.getPrefs().putBoolean("VideoControl.autoWhiteBalance", autoWhiteBalance);
 		}
 
 		/**
@@ -1786,6 +1796,15 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 
 		return getVideoControl().isSeparateAPSByColor();
 	}
+        
+        @Override
+	public boolean isAutoWhiteBalance() {
+		if (getVideoControl() == null) {
+			return false;
+		}
+
+		return getVideoControl().isAutoWhiteBalance();
+	}
 
 	@Override
 	public void setSeparateAPSByColor(boolean yes) {
@@ -1793,5 +1812,12 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			return;
 		}
 		getVideoControl().setSeparateAPSByColor(yes);
+	}
+        
+	public void setAutoWhiteBalance(boolean yes) {
+		if (getVideoControl() == null) {
+			return;
+		}
+		getVideoControl().setAutoWhiteBalance(yes);
 	}
 }

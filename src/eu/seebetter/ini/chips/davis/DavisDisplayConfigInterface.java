@@ -78,6 +78,8 @@ public interface DavisDisplayConfigInterface extends DvsDisplayConfigInterface {
     abstract public void setDisplayImu(boolean yes);
 
     abstract public boolean isSeparateAPSByColor();
+    
+    abstract public boolean isAutoWhiteBalance();
 
     abstract public void setSeparateAPSByColor(boolean yes);
 
