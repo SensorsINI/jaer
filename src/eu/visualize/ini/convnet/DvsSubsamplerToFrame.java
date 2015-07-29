@@ -17,8 +17,8 @@ import net.sf.jaer.event.PolarityEvent;
  */
 public class DvsSubsamplerToFrame {
 
-    private final int width;
-    private final int height;
+    private final int width; // width of output
+    private final int height; // height of output
     private final int nPixels;
     private final float[] pixmap;
     private final int[] eventSum;
@@ -68,8 +68,13 @@ public class DvsSubsamplerToFrame {
         if (e.isSpecial() || e.isFilteredOut()) {
             return;
         }
-        int x = (int) Math.floor(((float) e.x / srcWidth) * width);
-        int y = (int) Math.floor(((float) e.y / srcHeight) * height);
+        int x = e.x, y = e.y;
+        if (srcWidth != width) {
+            x = (int) Math.floor(((float) e.x / srcWidth) * width);
+        }
+        if (srcHeight != height) {
+            y = (int) Math.floor(((float) e.y / srcHeight) * height);
+        }
         int k = getIndex(x, y);
         int sum = eventSum[k];
         sum += (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
@@ -79,7 +84,7 @@ public class DvsSubsamplerToFrame {
             mostOffCount = sum;
         }
         eventSum[k] = sum;
-        float pmv = .5f + sum * colorScaleRecip/2;
+        float pmv = .5f + sum * colorScaleRecip / 2;
         if (pmv > 1) {
             pmv = 1;
         } else if (pmv < 0) {
