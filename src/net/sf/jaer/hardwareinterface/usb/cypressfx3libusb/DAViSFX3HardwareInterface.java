@@ -271,8 +271,12 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 											}
 
 											if (apsCountX[j] != checkValue) {
-												CypressFX3.log.severe("APS Frame End: wrong column count [" + j + " - "
-													+ apsCountX[j] + "] detected.");
+												CypressFX3.log
+													.severe("APS Frame End: wrong column count ["
+														+ j
+														+ " - "
+														+ apsCountX[j]
+														+ "] detected. You might want to enable 'Ensure APS data transfer' under 'HW Configuration -> Chip Configuration' to improve this.");
 											}
 										}
 
@@ -304,9 +308,12 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										CypressFX3.log.fine("APS Column End event received.");
 
 										if (apsCountY[apsCurrentReadoutType] != apsSizeY) {
-											CypressFX3.log.severe("APS Column End: wrong row count ["
-												+ apsCurrentReadoutType + " - " + apsCountY[apsCurrentReadoutType]
-												+ "] detected.");
+											CypressFX3.log
+												.severe("APS Column End: wrong row count ["
+													+ apsCurrentReadoutType
+													+ " - "
+													+ apsCountY[apsCurrentReadoutType]
+													+ "] detected. You might want to enable 'Ensure APS data transfer' under 'HW Configuration -> Chip Configuration' to improve this.");
 										}
 
 										apsCountX[apsCurrentReadoutType]++;
