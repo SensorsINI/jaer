@@ -4356,7 +4356,7 @@ two interfaces). otherwise force user choice.
 		getRenderer().setColorScale(getRenderer().getColorScale() + 1);
 		//        System.out.println("interrupting viewloop");
 		//        repaint();
-		interruptViewloop();
+		//interruptViewloop();
 	}//GEN-LAST:event_decreaseContrastMenuItemActionPerformed
 
 	private void increaseContrastMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_increaseContrastMenuItemActionPerformed
@@ -4364,7 +4364,7 @@ two interfaces). otherwise force user choice.
 		//        viewLoop.rerenderFlagDone=false;
 		getRenderer().setColorScale(getRenderer().getColorScale() - 1);
 		//        System.out.println("interrupting viewloop");
-		interruptViewloop();
+		//interruptViewloop();
 		//        repaint();
 	}//GEN-LAST:event_increaseContrastMenuItemActionPerformed
 

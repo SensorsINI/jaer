@@ -606,37 +606,39 @@ public class ChipCanvas implements GLEventListener, Observer {
             // log.warning("null Point (outside entire canvas?), returning center pixel");
             return new Point(chip.getSizeX() / 2, chip.getSizeY() / 2);
         }
-        try {
-            if (hasAppleRetinaDisplay()) {
-                mp.x *= 2;
-                mp.y *= 2;
-            }
-            final int ret = drawable.getContext().makeCurrent();
-            if (ret != GLContext.CONTEXT_CURRENT) {
-                throw new GLException("couldn't make context current");
-            }
+        synchronized (drawable) {
+            try {
+                if (hasAppleRetinaDisplay()) {
+                    mp.x *= 2;
+                    mp.y *= 2;
+                }
+                final int ret = drawable.getContext().makeCurrent();
+                if (ret != GLContext.CONTEXT_CURRENT) {
+                    throw new GLException("couldn't make context current");
+                }
 
-            final int viewport[] = new int[4];
-            final double mvmatrix[] = new double[16];
-            final double projmatrix[] = new double[16];
-            int realy = 0;// GL y coord pos
-            // set up a floatbuffer to getString the depth buffer value of the mouse position
-            final FloatBuffer fb = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asFloatBuffer();
-            final GL2 gl = drawable.getContext().getGL().getGL2();
-            gl.glGetIntegerv(GL.GL_VIEWPORT, viewport, 0);
-            gl.glGetDoublev(GLMatrixFunc.GL_MODELVIEW_MATRIX, mvmatrix, 0);
-            gl.glGetDoublev(GLMatrixFunc.GL_PROJECTION_MATRIX, projmatrix, 0);
-            /* note viewport[3] is height of window in pixels */
-            realy = viewport[3] - (int) mp.getY() - 1;
-            // Get the depth buffer value at the mouse position. have to do height-mouseY, as GL puts 0,0 in the bottom
-            // left, not top left.
-            gl.glReadPixels(mp.x, realy, 1, 1, GL2ES2.GL_DEPTH_COMPONENT, GL.GL_FLOAT, fb);
-            final float z = 0; // fb.getString(0);
-            glu.gluUnProject(mp.getX(), realy, z, mvmatrix, 0, projmatrix, 0, viewport, 0, wcoord, 0);
-        } catch (final GLException e) {
-            log.warning("couldn't make GL context current, mouse position meaningless: " + e.toString());
-        } finally {
-            drawable.getContext().release();
+                final int viewport[] = new int[4];
+                final double mvmatrix[] = new double[16];
+                final double projmatrix[] = new double[16];
+                int realy = 0;// GL y coord pos
+                // set up a floatbuffer to getString the depth buffer value of the mouse position
+                final FloatBuffer fb = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+                final GL2 gl = drawable.getContext().getGL().getGL2();
+                gl.glGetIntegerv(GL.GL_VIEWPORT, viewport, 0);
+                gl.glGetDoublev(GLMatrixFunc.GL_MODELVIEW_MATRIX, mvmatrix, 0);
+                gl.glGetDoublev(GLMatrixFunc.GL_PROJECTION_MATRIX, projmatrix, 0);
+                /* note viewport[3] is height of window in pixels */
+                realy = viewport[3] - (int) mp.getY() - 1;
+                // Get the depth buffer value at the mouse position. have to do height-mouseY, as GL puts 0,0 in the bottom
+                // left, not top left.
+                gl.glReadPixels(mp.x, realy, 1, 1, GL2ES2.GL_DEPTH_COMPONENT, GL.GL_FLOAT, fb);
+                final float z = 0; // fb.getString(0);
+                glu.gluUnProject(mp.getX(), realy, z, mvmatrix, 0, projmatrix, 0, viewport, 0, wcoord, 0);
+            } catch (final GLException e) {
+                log.warning("couldn't make GL context current, mouse position meaningless: " + e.toString());
+            } finally {
+                drawable.getContext().release();
+            }
         }
         final Point p = new Point();
         p.x = (int) Math.round(wcoord[0]);
@@ -839,17 +841,21 @@ public class ChipCanvas implements GLEventListener, Observer {
      * @see #display(com.jogamp.opengl.GLAutoDrawable)
      */
     public void paintFrame() {
-        try {
-            drawable.getContext().makeCurrent();
-            drawable.display(); // we call the drawable's display method that ends up calling us back via our local
-            // display(GLAutoDrawable)!! very important to get this right
-        } catch (final GLException e) {
-            if (!(e.getCause() instanceof InterruptedException)) {
-                log.warning(e.toString());
-            }
-        } catch (final RuntimeException ie) {
-            if (!(ie.getCause() instanceof InterruptedException)) {
-                log.warning(ie.toString());
+        synchronized (drawable) {
+            try {
+//                drawable.getContext().makeCurrent();
+                drawable.display(); // we call the drawable's display method that ends up calling us back via our local
+                // display(GLAutoDrawable)!! very important to get this right
+            } catch (final GLException e) {
+                if (!(e.getCause() instanceof InterruptedException)) {
+                    log.warning(e.toString());
+                }
+            } catch (final RuntimeException ie) {
+                if (!(ie.getCause() instanceof InterruptedException)) {
+                    log.warning(ie.toString());
+                }
+            } finally {
+//                drawable.getContext().release();
             }
         }
     }
@@ -1574,7 +1580,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 
     }
 
-	// /**
+    // /**
     // * Returns the insets in pixels for the chip canvas inside the GLCanvas
     // * @return the insets
     // */
@@ -1596,18 +1602,18 @@ public class ChipCanvas implements GLEventListener, Observer {
 
     /**
      * hack from
-     * https://bulenkov.com/2013/06/23/retina-support-in-oracle-jdk-1-7/
-     * used to multiply mouse coordinates by two in case of retina display; see
+     * https://bulenkov.com/2013/06/23/retina-support-in-oracle-jdk-1-7/ used to
+     * multiply mouse coordinates by two in case of retina display; see
      * http://forum.lwjgl.org/index.php?topic=5084.0
      *
      * @return true if running on platform with retina display. Value is cached
      * in VM to avoid runtime cost penalty of multiple calls.
      */
     public static boolean hasAppleRetinaDisplay() {
-        if(checkedRetinaDisplay){
+        if (checkedRetinaDisplay) {
             return hasRetinaDisplayTrue;
         }
-        checkedRetinaDisplay=true;
+        checkedRetinaDisplay = true;
         //other OS and JVM specific checks...
         GraphicsEnvironment env = GraphicsEnvironment.getLocalGraphicsEnvironment();
         final GraphicsDevice device = env.getDefaultScreenDevice();
@@ -1620,7 +1626,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                 Object scale = field.get(device);
 
                 if (scale instanceof Integer && ((Integer) scale).intValue() == 2) {
-                    hasRetinaDisplayTrue=true;
+                    hasRetinaDisplayTrue = true;
                 }
             }
         } catch (Exception ignore) {
