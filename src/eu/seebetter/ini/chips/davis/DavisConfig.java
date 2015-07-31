@@ -1166,6 +1166,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		public boolean displayFrames = chip.getPrefs().getBoolean("VideoControl.displayFrames", true);
 		public boolean separateAPSByColor = chip.getPrefs().getBoolean("VideoControl.separateAPSByColor", false);
                 public boolean autoWhiteBalance = chip.getPrefs().getBoolean("VideoControl.autoWhiteBalance", true);
+                public boolean colorCorrection = chip.getPrefs().getBoolean("VideoControl.colorCorrection", true);
 		// on crappy beamer output
 		private PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
 
@@ -1222,6 +1223,10 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
                 public boolean isAutoWhiteBalance() {
 			return autoWhiteBalance;
 		}
+                
+                public boolean isColorCorrection() {
+			return colorCorrection;
+		}
 
 		/**
 		 * @param displayFrames
@@ -1235,6 +1240,11 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
                 public void setAutoWhiteBalance(boolean autoWhiteBalance) {
 			this.autoWhiteBalance = autoWhiteBalance;
 			chip.getPrefs().putBoolean("VideoControl.autoWhiteBalance", autoWhiteBalance);
+		}
+                
+                public void setColorCorrection(boolean colorCorrection) {
+			this.colorCorrection = colorCorrection;
+			chip.getPrefs().putBoolean("VideoControl.colorCorrection", colorCorrection);
 		}
 
 		/**
@@ -1804,6 +1814,15 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		}
 
 		return getVideoControl().isAutoWhiteBalance();
+	}
+        
+        @Override
+	public boolean isColorCorrection() {
+		if (getVideoControl() == null) {
+			return false;
+		}
+
+		return getVideoControl().isColorCorrection();
 	}
 
 	@Override

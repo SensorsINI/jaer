@@ -80,6 +80,8 @@ public interface DavisDisplayConfigInterface extends DvsDisplayConfigInterface {
     abstract public boolean isSeparateAPSByColor();
     
     abstract public boolean isAutoWhiteBalance();
+    
+    abstract public boolean isColorCorrection();
 
     abstract public void setSeparateAPSByColor(boolean yes);
 
