@@ -5,7 +5,6 @@
  */
 package eu.visualize.ini.convnet;
 
-import ch.unizh.ini.jaer.hardware.pantilt.PanTiltCalibrationPoint;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Font;
@@ -16,15 +15,21 @@ import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
@@ -32,17 +37,20 @@ import java.util.TreeMap;
 
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.filechooser.FileFilter;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
+import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.awt.GLCanvas;
@@ -51,15 +59,6 @@ import com.jogamp.opengl.glu.GLUquadric;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.DavisChip;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutput;
-import java.io.ObjectOutputStream;
-import java.util.HashMap;
-import java.util.Vector;
-import javax.swing.filechooser.FileFilter;
-import net.sf.jaer.eventio.AEFileInputStream;
 
 /**
  * Labels location of target using mouse GUI in recorded data for later
@@ -217,14 +216,14 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             gl.glLineWidth(3f);
             gl.glPushMatrix();
             gl.glTranslatef(p.x, p.y, 0);
-            gl.glBegin(GL2.GL_LINES);
+            gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(0, -CURSOR_SIZE_CHIP_PIXELS / 2);
             gl.glVertex2f(0, +CURSOR_SIZE_CHIP_PIXELS / 2);
             gl.glVertex2f(-CURSOR_SIZE_CHIP_PIXELS / 2, 0);
             gl.glVertex2f(+CURSOR_SIZE_CHIP_PIXELS / 2, 0);
             gl.glEnd();
             gl.glTranslatef(.5f, -.5f, 0);
-            gl.glBegin(GL2.GL_LINES);
+            gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(0, -CURSOR_SIZE_CHIP_PIXELS / 2);
             gl.glVertex2f(0, +CURSOR_SIZE_CHIP_PIXELS / 2);
             gl.glVertex2f(-CURSOR_SIZE_CHIP_PIXELS / 2, 0);
@@ -306,7 +305,10 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     synchronized public void doSaveLocationsAs() {
-        String fn = mapDataFilenameToTargetFilename.getOrDefault(lastDataFilename, DEFAULT_FILENAME);
+        String fn = mapDataFilenameToTargetFilename.get(lastDataFilename);
+        if (fn == null) {
+        	fn = DEFAULT_FILENAME;
+        }
         JFileChooser c = new JFileChooser(fn);
         c.setSelectedFile(new File(fn));
         int ret = c.showSaveDialog(glCanvas);
@@ -348,8 +350,11 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     synchronized public void doLoadLocations() {
-        lastFileName = mapDataFilenameToTargetFilename.getOrDefault(lastDataFilename, DEFAULT_FILENAME);
-        if (lastFileName != null && lastFileName.equals(DEFAULT_FILENAME)) {
+        lastFileName = mapDataFilenameToTargetFilename.get(lastDataFilename);
+        if (lastFileName == null) {
+        	lastFileName = DEFAULT_FILENAME;
+        }
+        if ((lastFileName != null) && lastFileName.equals(DEFAULT_FILENAME)) {
             File f = chip.getAeViewer().getRecentFiles().getMostRecentFile();
             if (f == null) {
                 lastFileName = DEFAULT_FILENAME;
@@ -814,7 +819,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             return;
         }
         int frac = getFractionOfFileDuration(timestamp);
-        if (frac < 0 || frac >= labeledFractions.length) {
+        if ((frac < 0) || (frac >= labeledFractions.length)) {
             log.warning("fraction " + frac + " is out of range " + labeledFractions.length + ", something is wrong");
             return;
         }
