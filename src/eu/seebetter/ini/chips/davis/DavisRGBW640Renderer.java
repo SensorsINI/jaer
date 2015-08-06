@@ -503,22 +503,22 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
                         //row 0, 2, 4 ... 478, from bottom of the image, contianing W and B
                         if ((x % 2) == 0) { //B
                             image[getIndex(x, y)] = (Gtotal / Btotal) * image[getIndex(x, y)];
-                            if (image[getIndex(x, y)] > 1) {
-                                image[getIndex(x, y)] = 1;
-                            }
+//                            if (image[getIndex(x, y)] > 1) {
+//                                image[getIndex(x, y)] = 1;
+//                            }
                         }
                     } else {
                         //row 1, 3, 5 ... 479, from bottom of the image, contianing R and G
                         if ((x % 2) == 1) { //R
                             image[getIndex(x, y)] = (Gtotal / Rtotal) * image[getIndex(x, y)];
-                            if (image[getIndex(x, y)] > 1) {
-                                image[getIndex(x, y)] = 1;
-                            }
+//                            if (image[getIndex(x, y)] > 1) {
+//                                image[getIndex(x, y)] = 1;
+//                            }
                         }
                     }
                 }
             }
-            System.arraycopy(image, 0, pixBuffer.array(), 0, pixBuffer.array().length);
+            //System.arraycopy(image, 0, pixBuffer.array(), 0, pixBuffer.array().length);
             System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
         }
 
@@ -643,7 +643,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
                     image[getIndex(x, y) + 3] = 1;
                 }
             }
-            System.arraycopy(image, 0, pixBuffer.array(), 0, pixBuffer.array().length);
+            //System.arraycopy(image, 0, pixBuffer.array(), 0, pixBuffer.array().length);
             System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
         } else {
             System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
@@ -653,30 +653,35 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
             float[] image = pixBuffer.array();
             for (int y = 0; y < chip.getSizeY(); y++) {
                 for (int x = 0; x < chip.getSizeX(); x++) {
-                    image[getIndex(x, y)] = (255 * image[getIndex(x, y)] + 49 * image[getIndex(x, y) + 1] - 120 * image[getIndex(x, y) + 2] + 42) / 255;
-                    image[getIndex(x, y) + 1] = (-188 * image[getIndex(x, y)] + 384 * image[getIndex(x, y) + 1] - 38 * image[getIndex(x, y) + 2] + 56) / 255;
-                    image[getIndex(x, y) + 2] = (-138 * image[getIndex(x, y)] - 215 * image[getIndex(x, y) + 1] + 721 * image[getIndex(x, y) + 2] + 58) / 255;
-                    if (image[getIndex(x, y)] < 0) {
-                        image[getIndex(x, y)] = 0;
-                    }
-                    if (image[getIndex(x, y)] > 1) {
-                        image[getIndex(x, y)] = 1;
-                    }
-                    if (image[getIndex(x, y) + 1] < 0) {
-                        image[getIndex(x, y) + 1] = 0;
-                    }
-                    if (image[getIndex(x, y) + 1] > 1) {
-                        image[getIndex(x, y) + 1] = 1;
-                    }
-                    if (image[getIndex(x, y) + 2] < 0) {
-                        image[getIndex(x, y) + 2] = 0;
-                    }
-                    if (image[getIndex(x, y) + 2] > 1) {
-                        image[getIndex(x, y) + 2] = 1;
-                    }
+                    // Get current RGB values, since we modify them later on.
+                    float R_original = image[getIndex(x, y)];
+                    float G_original = image[getIndex(x, y) + 1];
+                    float B_original = image[getIndex(x, y) + 2];
+                    
+                    image[getIndex(x, y)] = (423.0f * R_original + 28.0f * G_original - 137.0f * B_original + 29.0f) / 255.0f;
+                    image[getIndex(x, y) + 1] = (-254.0f * R_original + 545.0f * G_original + 10.0f * B_original + 37.0f) / 255.0f;
+                    image[getIndex(x, y) + 2] = (-278.0f * R_original - 533.0f * G_original + 1100.0f * B_original + 37.0f) / 255.0f;
+//                    if (image[getIndex(x, y)] < 0) {
+//                        image[getIndex(x, y)] = 0;
+//                    }
+//                    if (image[getIndex(x, y)] > 1) {
+//                        image[getIndex(x, y)] = 1;
+//                    }
+//                    if (image[getIndex(x, y) + 1] < 0) {
+//                        image[getIndex(x, y) + 1] = 0;
+//                    }
+//                    if (image[getIndex(x, y) + 1] > 1) {
+//                        image[getIndex(x, y) + 1] = 1;
+//                    }
+//                    if (image[getIndex(x, y) + 2] < 0) {
+//                        image[getIndex(x, y) + 2] = 0;
+//                    }
+//                    if (image[getIndex(x, y) + 2] > 1) {
+//                        image[getIndex(x, y) + 2] = 1;
+//                    }
                 }
             }
-            System.arraycopy(image, 0, pixBuffer.array(), 0, pixBuffer.array().length);
+            //System.arraycopy(image, 0, pixBuffer.array(), 0, pixBuffer.array().length);
             System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
         }
 
