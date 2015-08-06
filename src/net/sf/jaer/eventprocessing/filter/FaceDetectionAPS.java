@@ -66,7 +66,7 @@ import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import eu.seebetter.ini.chips.DavisChip;
 
 
-@Description("Method to acquire a frame from a stream of APS sample events")
+@Description("Detect Faces with OpenCV and label data for later supervised learning.")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class FaceDetectionAPS extends EventFilter2D implements Observer /* Observer needed to get change events on chip construction */{
 
@@ -108,7 +108,7 @@ public class FaceDetectionAPS extends EventFilter2D implements Observer /* Obser
     private AEFileOutputStream face_loggingOutputStream;
     private String face_defaultLoggingFolderName = System.getProperty("user.dir");
     // lastLoggingFolder starts off at user.dir which is startup folder "host/java" where .exe launcher lives
-    private String face_loggingFolder = "filterSettings/OpenCV_Nets/Labeled_data/";
+    private String face_loggingFolder = "filterSettings/OpenCV_Nets/Labeled_data";
     private File face_loggingFile;
     private File face_labelFile;
     private int face_maxLogFileSizeMB = prefs().getInt("DataLogger.maxLogFileSizeMB", 100);
@@ -974,17 +974,15 @@ public class FaceDetectionAPS extends EventFilter2D implements Observer /* Obser
        }
        try {
            face_loggingFile = new File(filename);
-
-           face_loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(face_loggingFile), 100000));
+           face_loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(face_loggingFile), 100000), chip);
            face_loggingEnabled = true;
-           getSupport().firePropertyChange("dace_loggingEnabled", null, true);
+           getSupport().firePropertyChange("face_loggingEnabled", null, true);
            log.info("starting logging to " + face_loggingFile);
-
        } catch (IOException e) {
            face_loggingFile = null;
            log.warning("exception on starting to log data to file "+filename+": "+e);
            face_loggingEnabled=false;
-           getSupport().firePropertyChange("dace_loggingEnabled", null, false);
+           getSupport().firePropertyChange("face_loggingEnabled", null, false);
        }
 
        return face_loggingFile;
@@ -1030,13 +1028,11 @@ public class FaceDetectionAPS extends EventFilter2D implements Observer /* Obser
            return null;
        }
 
-       log.warning("SAVING LABELED DATA IN ###############################" +filename);
-       File lf = face_startLogging(filename);
-       log.warning("FILENAME ################"+filename);
+       log.info("SAVING LABELED DATA IN ###############################\n" +filename);
+       log.info("FILENAME label ################> "+filename+"_label.txt");
        file_labels = new File(filename+"_label.txt");
-       //if file doesnt exists, then create it
+       //if file doesn't exists, then create it
 		if(!file_labels.exists()){
-			log.warning("CREATING FILE");
 			try {
 				file_labels.createNewFile();
 			}
@@ -1062,10 +1058,11 @@ public class FaceDetectionAPS extends EventFilter2D implements Observer /* Obser
 		}
 		catch (IOException e) {
 			// TODO Auto-generated catch block
-			log.warning("FILEWRITER SUCKS ###################################################################");
 			e.printStackTrace();
 		}
        face_bytesWritten = 0;
+       File lf = face_startLogging(filename);
+       log.info("AER DATA FILENAME ################> "+lf);
        return lf;
 
    }
