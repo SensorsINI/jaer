@@ -5463,7 +5463,7 @@ two interfaces). otherwise force user choice.
     }//GEN-LAST:event_setMarkOutMIActionPerformed
 
     private void flashyMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_flashyMenuItemActionPerformed
-        lanchFlashy();
+        launchFlashy();
     }//GEN-LAST:event_flashyMenuItemActionPerformed
 
 	/** Returns desired frame rate of FrameRater
@@ -5978,7 +5978,7 @@ two interfaces). otherwise force user choice.
 		}
 	}
 
-    private void lanchFlashy() {
+    private void launchFlashy() {
         JOptionPane.showMessageDialog(this, "<html>Launching flashy from jAER is not supported yet. <p>See the Help menu", "Not supported yet", JOptionPane.WARNING_MESSAGE);
     }
 
