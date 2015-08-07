@@ -11,9 +11,9 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
+import eu.seebetter.ini.chips.davis.DavisBaseCamera;
+import java.awt.Point;
 import java.util.Iterator;
-import java.util.Observable;
-import java.util.Observer;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -42,7 +42,8 @@ public class RotateFilter extends EventFilter2D {
     private float angleDeg = getFloat("angleDeg", 0f);
     private float cosAng = (float) Math.cos(angleDeg * Math.PI / 180);
     private float sinAng = (float) Math.sin(angleDeg * Math.PI / 180);
-
+   private    boolean davisCamera=false;
+   
     /**
      * Creates a new instance of RotateFilter
      */
@@ -53,7 +54,9 @@ public class RotateFilter extends EventFilter2D {
         setPropertyTooltip("invertY", "flips Y; to rotate 180 deg set both invertX and invertY");
         setPropertyTooltip("invertX", "flips X; to rotate 180 deg set both invertX and invertY");
         setPropertyTooltip("angleDeg", "CCW rotation angle in degrees");
-    }
+        if(chip instanceof DavisBaseCamera) davisCamera=true;
+        checkDavisApsHack();
+   }
 
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         short tmp;
@@ -72,7 +75,7 @@ public class RotateFilter extends EventFilter2D {
         while (itr.hasNext()) {
             Object o = itr.next();
             BasicEvent e = (BasicEvent) o;
-            if (e.isSpecial() || (davisCamera && e.x == -1 && e.y == -1)) {
+            if (e.isSpecial() || (davisCamera && (e.x == -1 && e.y == -1))) {
                 continue;  // TODO hack to avoid transforming "flag events"; see DavisBaseCamera line 617 createApsFlagEvent()
             }
             if (swapXY) {
@@ -142,6 +145,7 @@ public class RotateFilter extends EventFilter2D {
     public void setInvertY(boolean invertY) {
         this.invertY = invertY;
         putBoolean("invertY", invertY);
+       checkDavisApsHack();
     }
 
     public boolean isInvertX() {
@@ -151,6 +155,7 @@ public class RotateFilter extends EventFilter2D {
     public void setInvertX(boolean invertX) {
         this.invertX = invertX;
         putBoolean("invertX", invertX);
+        checkDavisApsHack();
     }
 
     /**
@@ -171,5 +176,14 @@ public class RotateFilter extends EventFilter2D {
         putFloat("angleDeg", angleDeg);
         cosAng = (float) Math.cos(angleDeg * Math.PI / 180);
         sinAng = (float) Math.sin(angleDeg * Math.PI / 180);
+    }
+
+    private void checkDavisApsHack() {
+        if(!davisCamera) return;
+        if(!(invertX && invertY)) return;
+        DavisBaseCamera d=(DavisBaseCamera)chip;
+        Point tmp=d.getApsFirstPixelReadOut();
+        d.setApsFirstPixelReadOut(d.getApsLastPixelReadOut());
+        d.setApsLastPixelReadOut(tmp);
     }
 }
