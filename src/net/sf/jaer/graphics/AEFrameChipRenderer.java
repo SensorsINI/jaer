@@ -23,11 +23,10 @@ import net.sf.jaer.util.filter.LowpassFilter2d;
 import net.sf.jaer.util.histogram.SimpleHistogram;
 import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
 import eu.seebetter.ini.chips.DavisChip;
-import eu.seebetter.ini.chips.davis.DAVIS240BaseCamera;
-import eu.seebetter.ini.chips.davis.DavisAutoShooter;
 import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
 import java.beans.PropertyChangeEvent;
+import java.util.Random;
 
 /**
  * Class adapted from AEChipRenderer to render not only AE events but also
@@ -67,12 +66,12 @@ public class AEFrameChipRenderer extends AEChipRenderer {
      * Used to mark time of frame event
      */
     protected int timestampFrameStart = 0;
-    
+
     /**
      * Used to mark time of frame event
      */
     protected int timestampFrameEnd = 0;
-    
+
     /**
      * low pass temporal filter that computes time-averaged min and max gray
      * values
@@ -373,6 +372,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         }
     }
 
+    private Random random = new Random();
+
     protected void updateFrameBuffer(ApsDvsEvent e) {
         float[] buf = pixBuffer.array();
         // TODO if playing backwards, then frame will come out white because B sample comes before A
@@ -401,7 +402,18 @@ public class AEFrameChipRenderer extends AEChipRenderer {
             // right here sample-reset value of this pixel is in val
 
             if (computeHistograms) {
-                nextHist.add(val);
+                if (!((DavisChip) chip).getAutoExposureController().isCenterWeighted()) {
+                    nextHist.add(val);
+                } else {
+                    // randomly add histogram values to histogram depending on distance from center of image
+                    // to implement a simple form of center weighting of the histogram
+                    float d = 1 - Math.abs(((float) e.x - sizeX / 2) / sizeX) + Math.abs(((float) e.y - sizeY / 2) / sizeY); // d is zero at center, 1 at corners
+                    d*=d;
+                    float r = random.nextFloat();
+                    if (r > d) {
+                        nextHist.add(val);
+                    }
+                }
             }
             float fval = normalizeFramePixel(val);
 //            fval=.5f;
@@ -431,7 +443,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     }
 
     protected void endFrame(int ts) {
-        timestampFrameEnd=ts;
+        timestampFrameEnd = ts;
         System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
         if (contrastController != null && minValue != Float.MAX_VALUE && maxValue != Float.MIN_VALUE) {
             contrastController.endFrame(minValue, maxValue, timestampFrameEnd);
@@ -674,8 +686,9 @@ public class AEFrameChipRenderer extends AEChipRenderer {
         return (pm[k] + pm[k + 1] + pm[k + 2]) / 3;
     }
 
-    /** Sets RGB color components all to same gray value g
-     * 
+    /**
+     * Sets RGB color components all to same gray value g
+     *
      * @param x pixel x, 0,0 is LL corner
      * @param y pixel y
      * @param g gray value in range 0-1
@@ -969,7 +982,9 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     }
 
     /**
-     * Returns the timestamp of the pixel read out at the start of the frame readout (not the exposure start)
+     * Returns the timestamp of the pixel read out at the start of the frame
+     * readout (not the exposure start)
+     *
      * @return the timestampFrameStart
      */
     public int getTimestampFrameStart() {
@@ -977,7 +992,9 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     }
 
     /**
-     * Returns the timestamp of the pixel read out at end of the frame (not the exposure end)
+     * Returns the timestamp of the pixel read out at end of the frame (not the
+     * exposure end)
+     *
      * @return the timestampFrameEnd
      */
     public int getTimestampFrameEnd() {

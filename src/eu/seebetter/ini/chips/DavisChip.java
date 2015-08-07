@@ -7,6 +7,7 @@ package eu.seebetter.ini.chips;
 import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.davis.frames.DavisFrameAviWriter;
+import eu.seebetter.ini.chips.davis.AutoExposureController;
 import eu.seebetter.ini.chips.davis.DavisAutoShooter;
 import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import net.sf.jaer.eventprocessing.filter.ApsDvsEventFilter;
@@ -140,6 +141,12 @@ abstract public class DavisChip extends AETemporalConstastRetina {
      *
      */
     abstract public void controlExposure();
+    
+    /** Returns the automatic APS exposure controller
+     * 
+     * @return the controller
+     */
+    abstract public AutoExposureController getAutoExposureController();
 
     /**
      * Sets threshold for automatically triggers snapshot images
@@ -190,5 +197,7 @@ abstract public class DavisChip extends AETemporalConstastRetina {
      * @return the frameCount
      */
     public abstract int getFrameCount();
+    
+    
 
 }
