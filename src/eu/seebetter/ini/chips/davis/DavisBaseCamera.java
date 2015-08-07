@@ -47,8 +47,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.awt.Color;
-import java.awt.Shape;
-import java.awt.font.FontRenderContext;
+import java.awt.Point;
 import net.sf.jaer.util.TextRendererScale;
 
 /**
@@ -71,6 +70,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     protected JMenu chipMenu = null;
     JFrame controlFrame = null;
     protected int exposureDurationUs; // internal measured variable, set during rendering. Duration of frame expsosure in
+
     /**
      * holds measured variable in ms for GUI rendering
      */
@@ -129,6 +129,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     public void controlExposure() {
         getAutoExposureController().controlExposure();
     }
+    
 
     /**
      * Enables or disable DVS128 menu in AEViewer
@@ -171,6 +172,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     /**
      * @return the autoExposureController
      */
+    @Override
     public AutoExposureController getAutoExposureController() {
         return autoExposureController;
     }
@@ -252,18 +254,44 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     public boolean isAutoExposureEnabled() {
         return getAutoExposureController().isAutoExposureEnabled();
     }
+    
+    
 
     @Override
     public boolean isShowImageHistogram() {
         return showImageHistogram;
     }
 
+    /**
+     * These points are the first and last pixel APS read out from the array.
+     * Subclasses must set and use these values in the firstFrameAddress and
+     * lastFrameAddress methods and event filters that transform the APS
+     * addresses can modify these values to properly account for the order of
+     * readout, e.g. in RotateFilter.
+      *
+     */
+    protected Point apsFirstPixelReadOut = null, apsLastPixelReadOut = null;
+
+    /**
+     * Subclasses should set the apsFirstPixelReadOut and apsLastPixelReadOut
+     * @param x the x location of APS readout
+     * @param y the y location of APS readout
+     * @see #apsFirstPixelReadOut
+     */
     public boolean firstFrameAddress(short x, short y) {
-        return (x == (getSizeX() - 1)) && (y == (getSizeY() - 1));
+        final boolean yes = (x == apsFirstPixelReadOut.x) && (y == apsFirstPixelReadOut.y);
+        return yes;
     }
 
+    /**
+     * Subclasses should set the apsFirstPixelReadOut and apsLastPixelReadOut
+     * @param x the x location of APS readout
+     * @param y the y location of APS readout
+     * @see #apsLastPixelReadOut
+     */
     public boolean lastFrameAddress(short x, short y) {
-        return (x == 0) && (y == 0); //To change body of generated methods, choose Tools | Templates.
+        final boolean yes = (x == apsLastPixelReadOut.x) && (y == apsLastPixelReadOut.y);
+        return yes;
     }
 
     @Override
@@ -434,6 +462,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             final int n = in.getNumEvents(); // addresses.length;
             int sx1 = chip.getSizeX() - 1;
             int sy1 = chip.getSizeY() - 1;
+            final boolean rollingShutter = !getDavisConfig().getApsReadoutControl().isGlobalShutterMode();
 
             final int[] datas = in.getAddresses();
             final int[] timestamps = in.getTimestamps();
@@ -547,7 +576,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     if (pixFirst && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)) {
                         createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOF, timestamp);
 
-                        if (!getDavisConfig().getApsReadoutControl().isGlobalShutterMode()) {
+                        if (rollingShutter) {
                             // rolling shutter start of exposureControlRegister (SOE)
                             createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamp);
                             frameIntervalUs = timestamp - frameExposureStartTimestampUs;
@@ -556,7 +585,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     }
 
                     if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)
-                            && getDavisConfig().getApsReadoutControl().isGlobalShutterMode()) {
+                            && !rollingShutter) {
                         // global shutter start of exposureControlRegister (SOE)
                         createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamp);
                         frameIntervalUs = timestamp - frameExposureStartTimestampUs;
@@ -578,6 +607,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                         createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOE, timestamp);
                         frameExposureEndTimestampUs = timestamp;
                         exposureDurationUs = timestamp - frameExposureStartTimestampUs;
+//                        log.info("pixFirst on frame " + getFrameCount());
                     }
 
                     if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
@@ -592,6 +622,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                         }
 
                         setFrameCount(getFrameCount() + 1);
+//                        log.info("      pixLast on frame " + getFrameCount());
                     }
                 }
             }
@@ -631,6 +662,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             a.timestamp = timestamp;
             a.x = -1;
             a.y = -1;
+            a.address = -1;
             a.readoutType = flag;
             return a;
         }
@@ -655,8 +687,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                 final ApsDvsEvent e = (ApsDvsEvent) evItr.next();
                 // not writing out these EOF events (which were synthesized on extraction) results in reconstructed
                 // packets with giant time gaps, reason unknown
-                if (e.isEndOfFrame()) {
-                    continue; // these EOF events were synthesized from data in first place
+                if (e.isFilteredOut() || e.isEndOfFrame() || e.isStartOfFrame() || e.isStartOfExposure() || e.isEndOfExposure()) {
+                    continue; // these flag events were synthesized from data in first place
                 }
                 ts[k] = e.timestamp;
                 a[k++] = reconstructRawAddressFromEvent(e);
@@ -777,7 +809,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             final float trans = .7f;
             float x, y;
 
- 
             // acceleration x,y
             x = (vectorScale * imuSample.getAccelX() * getSizeX()) / IMUSample.getFullScaleAccelG();
             y = (vectorScale * imuSample.getAccelY() * getSizeY()) / IMUSample.getFullScaleAccelG();
@@ -812,7 +843,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             imuTextRenderer.draw3D(saz, az, -(float) rect.getHeight() * textScale * 0.5f, 0, textScale);
             imuTextRenderer.end3DRendering();
 
-           // gyro pan/tilt
+            // gyro pan/tilt
             gl.glColor3f(1f, 0, 1);
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(0, 0);
@@ -933,6 +964,34 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     public void takeSnapshot() {
         snapshot = true;
         getDavisConfig().getApsReadoutControl().setAdcEnabled(true);
+    }
+
+    /**
+     * @return the apsFirstPixelReadOut
+     */
+    public Point getApsFirstPixelReadOut() {
+        return apsFirstPixelReadOut;
+    }
+
+    /**
+     * @param apsFirstPixelReadOut the apsFirstPixelReadOut to set
+     */
+    public void setApsFirstPixelReadOut(Point apsFirstPixelReadOut) {
+        this.apsFirstPixelReadOut = apsFirstPixelReadOut;
+    }
+
+    /**
+     * @return the apsLastPixelReadOut
+     */
+    public Point getApsLastPixelReadOut() {
+        return apsLastPixelReadOut;
+    }
+
+    /**
+     * @param apsLastPixelReadOut the apsLastPixelReadOut to set
+     */
+    public void setApsLastPixelReadOut(Point apsLastPixelReadOut) {
+        this.apsLastPixelReadOut = apsLastPixelReadOut;
     }
 
 }
