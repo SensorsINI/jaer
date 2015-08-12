@@ -8,9 +8,11 @@
  */
 package net.sf.jaer.graphics;
 
+import java.beans.PropertyChangeEvent;
 import java.nio.FloatBuffer;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Random;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
@@ -25,8 +27,6 @@ import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
-import java.beans.PropertyChangeEvent;
-import java.util.Random;
 
 /**
  * Class adapted from AEChipRenderer to render not only AE events but also
@@ -394,6 +394,9 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 return;
             }
             int val = ((int) buf[index] - e.getAdcSample());
+            if (val < 0) {
+            	val = 0;
+            }
             if ((val >= 0) && (val < minValue)) { // tobi only update min if it is >0, to deal with sensors with bad column read, like 240C
                 minValue = val;
             } else if (val > maxValue) {
@@ -407,7 +410,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 } else {
                     // randomly add histogram values to histogram depending on distance from center of image
                     // to implement a simple form of center weighting of the histogram
-                    float d = 1 - Math.abs(((float) e.x - sizeX / 2) / sizeX) + Math.abs(((float) e.y - sizeY / 2) / sizeY); // d is zero at center, 1 at corners
+                    float d = (1 - Math.abs(((float) e.x - (sizeX / 2)) / sizeX)) + Math.abs(((float) e.y - (sizeY / 2)) / sizeY); // d is zero at center, 1 at corners
                     d*=d;
                     float r = random.nextFloat();
                     if (r > d) {
@@ -416,7 +419,6 @@ public class AEFrameChipRenderer extends AEChipRenderer {
                 }
             }
             float fval = normalizeFramePixel(val);
-//            fval=.5f;
             buf[index] = fval;
             buf[index + 1] = fval;
             buf[index + 2] = fval;
@@ -445,7 +447,7 @@ public class AEFrameChipRenderer extends AEChipRenderer {
     protected void endFrame(int ts) {
         timestampFrameEnd = ts;
         System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
-        if (contrastController != null && minValue != Float.MAX_VALUE && maxValue != Float.MIN_VALUE) {
+        if ((contrastController != null) && (minValue != Float.MAX_VALUE) && (maxValue != Float.MIN_VALUE)) {
             contrastController.endFrame(minValue, maxValue, timestampFrameEnd);
         }
         getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILBLE, null, this); // TODO document what is sent and send something reasonable
