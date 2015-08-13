@@ -5,6 +5,8 @@
  */
 package eu.seebetter.ini.chips.davis;
 
+import java.awt.Point;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 
@@ -19,15 +21,8 @@ public class Davis346cBSI extends Davis346BaseCamera {
 	public Davis346cBSI() {
 		setName("Davis346cBSI");
 		setDefaultPreferencesFile("biasgenSettings/Davis346cBSI/DAVIS346cBSI_Test.xml");
-	}
 
-	@Override
-	public boolean firstFrameAddress(short x, short y) {
-		return (x == (getSizeX() - 1)) && (y == 0);
-	}
-
-	@Override
-	public boolean lastFrameAddress(short x, short y) {
-		return (x == 0) && (y == (getSizeY() - 1));
+		apsFirstPixelReadOut = new Point(getSizeX() - 1, 0);
+		apsLastPixelReadOut = new Point(0, getSizeY() - 1);
 	}
 }

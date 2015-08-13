@@ -5,7 +5,9 @@
  */
 package eu.seebetter.ini.chips.davis;
 
+import java.awt.Color;
 import java.awt.Font;
+import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.geom.Rectangle2D;
@@ -35,6 +37,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
+import net.sf.jaer.util.TextRendererScale;
 import net.sf.jaer.util.histogram.AbstractHistogram;
 
 import com.jogamp.opengl.GL;
@@ -46,9 +49,6 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
-import java.awt.Color;
-import java.awt.Point;
-import net.sf.jaer.util.TextRendererScale;
 
 /**
  * Abstract base camera class for SeeBetter DAVIS cameras.
@@ -123,13 +123,15 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         }
         autoExposureController = new AutoExposureController(this);
 
+        apsFirstPixelReadOut = new Point(getSizeX() - 1, getSizeY() - 1);
+        apsLastPixelReadOut = new Point(0, 0);
     }
 
     @Override
     public void controlExposure() {
         getAutoExposureController().controlExposure();
     }
-    
+
 
     /**
      * Enables or disable DVS128 menu in AEViewer
@@ -254,8 +256,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     public boolean isAutoExposureEnabled() {
         return getAutoExposureController().isAutoExposureEnabled();
     }
-    
-    
+
+
 
     @Override
     public boolean isShowImageHistogram() {
