@@ -119,6 +119,7 @@ public class JAERViewer {
         Thread.UncaughtExceptionHandler handler = new LoggingThreadGroup("jAER UncaughtExceptionHandler");
         Thread.setDefaultUncaughtExceptionHandler(handler);
 
+        
         final java.awt.SplashScreen splash = java.awt.SplashScreen.getSplashScreen();
         if (splash != null) {
             new SplashHandler(splash);
@@ -126,6 +127,18 @@ public class JAERViewer {
             log.warning("no Java 6 splash screen to animate");
         }
 
+               // GLProfile and GLCapabilities should be equal across all shared GL drawable/context.
+        // tobi implemented this from user guide for JOGL that suggests a shared drawable context for all uses of JOGL
+        GLProfile.initSingleton(); // recommneded by https://sites.google.com/site/justinscsstuff/jogl-tutorial-2 especially for linux systems
+        final GLCapabilities caps = new GLCapabilities(GLProfile.getDefault()) ;
+        final GLProfile glp = caps.getGLProfile();
+        final boolean createNewDevice = true; // use 'own' display device!
+        sharedDrawable = GLDrawableFactory.getFactory(glp).createDummyAutoDrawable(null, createNewDevice, caps, null);
+        sharedDrawable.display(); // triggers GLContext object creation and native realization. sharedDrawable is a static variable that can be used by all AEViewers and file preview dialogs
+        log.info("JOGL version information: "+JoglVersion.getInstance().toString());
+
+        
+        
 //        if(true){
 //        throw new RuntimeException("test exception");
 //        }
@@ -137,15 +150,7 @@ public class JAERViewer {
 
         SwingUtilities.invokeLater(new RunningThread());
  
-        // GLProfile and GLCapabilities should be equal across all shared GL drawable/context.
-        // tobi implemented this from user guide for JOGL that suggests a shared drawable context for all uses of JOGL
-        final GLCapabilities caps = new GLCapabilities(GLProfile.getDefault()) ;
-        final GLProfile glp = caps.getGLProfile();
-        final boolean createNewDevice = true; // use 'own' display device!
-        sharedDrawable = GLDrawableFactory.getFactory(glp).createDummyAutoDrawable(null, createNewDevice, caps, null);
-        sharedDrawable.display(); // triggers GLContext object creation and native realization. sharedDrawable is a static variable that can be used by all AEViewers and file preview dialogs
-        log.info("JOGL version information: "+JoglVersion.getInstance().toString());
-        try {
+         try {
             // Create temp file.
             File temp = new File("JAERViewerRunning.txt");
 
