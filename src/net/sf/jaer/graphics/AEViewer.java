@@ -1218,13 +1218,14 @@ two interfaces). otherwise force user choice.
             }
     }
 
-    synchronized void makeCanvas() {
+    void makeCanvas() {
+        synchronized (getTreeLock()) {
             if (chipCanvas != null) {
-                    getImagePanel().remove(chipCanvas.getCanvas());
+                getImagePanel().remove(chipCanvas.getCanvas());
             }
             if (chip == null) {
-                    log.warning("null chip, not making canvas");
-                    return;
+                log.warning("null chip, not making canvas");
+                return;
             }
             chipCanvas = chip.getCanvas();
             getImagePanel().add(chipCanvas.getCanvas(), BorderLayout.CENTER);
@@ -1235,10 +1236,11 @@ two interfaces). otherwise force user choice.
             viewMenu.add(chipCanvas.getDisplayMethodMenu());
             displayMethodMenu = chipCanvas.getDisplayMethodMenu();
             viewMenu.invalidate();
+        }
 
             //        validate();
-            //        pack();
-            // causes a lot of flashing ... Toolkit.getDefaultToolkit().setDynamicLayout(true); // dynamic resizing  -- see if this bombs!
+        //        pack();
+        // causes a lot of flashing ... Toolkit.getDefaultToolkit().setDynamicLayout(true); // dynamic resizing  -- see if this bombs!
     }
 
     /** This method sets the "current file" which sets the field, the preferences of the last file, and the window title. It does not
