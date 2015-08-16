@@ -32,7 +32,6 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.eventprocessing.processortype.Application;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -66,7 +65,7 @@ import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
  */
 @Description("Compenstates global scene translation and rotation to stabilize scene like a SteadiCam, using built-in IMU or other methods of estimation of camera rotation.")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class Steadicam extends EventFilter2D implements FrameAnnotater, Application, Observer, PropertyChangeListener {
+public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer, PropertyChangeListener {
 
     /**
      * Classes that compute camera rotationRad estimate based on scene shift and

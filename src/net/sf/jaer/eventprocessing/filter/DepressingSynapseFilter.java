@@ -41,7 +41,7 @@ licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_Genera
  */
 @Description("Filters out rapidly firing input using depressing probabalistic synapse model")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class DepressingSynapseFilter extends EventFilter2D implements FrameAnnotater, net.sf.jaer.eventprocessing.processortype.Filter {
+public class DepressingSynapseFilter extends EventFilter2D implements FrameAnnotater {
 
 	private static Random random = new Random();
 	private Neurons neurons;
