@@ -11,6 +11,8 @@ import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.geom.Rectangle2D;
+import java.io.File;
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -21,25 +23,6 @@ import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 
-import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.biasgen.BiasgenHardwareInterface;
-import net.sf.jaer.chip.Chip;
-import net.sf.jaer.chip.RetinaExtractor;
-import net.sf.jaer.event.ApsDvsEvent;
-import net.sf.jaer.event.ApsDvsEventPacket;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
-import net.sf.jaer.event.TypedEvent;
-import net.sf.jaer.graphics.AEFrameChipRenderer;
-import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
-import net.sf.jaer.graphics.DisplayMethod;
-import net.sf.jaer.hardwareinterface.HardwareInterface;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.util.RemoteControlCommand;
-import net.sf.jaer.util.RemoteControlled;
-import net.sf.jaer.util.TextRendererScale;
-import net.sf.jaer.util.histogram.AbstractHistogram;
-
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
@@ -49,6 +32,25 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
+import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.biasgen.BiasgenHardwareInterface;
+import net.sf.jaer.chip.Chip;
+import net.sf.jaer.chip.RetinaExtractor;
+import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.TypedEvent;
+import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.graphics.AEFrameChipRenderer;
+import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
+import net.sf.jaer.graphics.DisplayMethod;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.util.RemoteControlCommand;
+import net.sf.jaer.util.RemoteControlled;
+import net.sf.jaer.util.TextRendererScale;
+import net.sf.jaer.util.histogram.AbstractHistogram;
 
 /**
  * Abstract base camera class for SeeBetter DAVIS cameras.
@@ -386,6 +388,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
      */
     @Override
     public void setHardwareInterface(final HardwareInterface hardwareInterface) {
+    	frameCount = 0;
+
         this.hardwareInterface = hardwareInterface;
         try {
             if (getBiasgen() == null) {
@@ -398,6 +402,13 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             Chip.log.warning(e.getMessage() + ": probably this chip object has a biasgen but the hardware interface doesn't, ignoring");
         }
     }
+
+	@Override
+	public AEFileInputStream constuctFileInputStream(File file) throws IOException {
+		frameCount = 0;
+
+		return (super.constuctFileInputStream(file));
+	}
 
     @Override
     public void setShowImageHistogram(final boolean yes) {
@@ -902,7 +913,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             exposureRenderer.draw3D(s, 0, getSizeY() + (DavisDisplayMethod.FONTSIZE / 2), 0, scale);
             exposureRenderer.end3DRendering();
 
-            final int nframes = frameCount % DavisDisplayMethod.FRAME_COUNTER_BAR_LENGTH_FRAMES;
+            final int nframes = getFrameCount() % DavisDisplayMethod.FRAME_COUNTER_BAR_LENGTH_FRAMES;
             final int rectw = getSizeX() / DavisDisplayMethod.FRAME_COUNTER_BAR_LENGTH_FRAMES;
             gl.glColor4f(1, 1, 1, .5f);
             for (int i = 0; i < nframes; i++) {
