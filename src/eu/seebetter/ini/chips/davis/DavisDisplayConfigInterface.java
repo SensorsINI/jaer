@@ -16,7 +16,7 @@ public interface DavisDisplayConfigInterface extends DvsDisplayConfigInterface {
     public static final String PROPERTY_IMU_DISPLAY_ENABLED = "IMU_DISPLAY_ENABLED", PROPERTY_IMU_ENABLED = "IMU_ENABLED", PROPERTY_IMU_DLPF_CHANGED = "IMU_DLPF_CHANGED", PROPERTY_IMU_SAMPLE_RATE_CHANGED = "IMU_SAMPLE_RATE_CHANGED", PROPERTY_IMU_GYRO_SCALE_CHANGED = "IMU_GYRO_SCALE_CHANGED", PROPERTY_IMU_ACCEL_SCALE_CHANGED = "IMU_ACCEL_SCALE_CHANGED";
     public static final String PROPERTY_CAPTURE_FRAMES_ENABLED = "PROPERTY_CAPTURE_FRAMES_ENABLED", PROPERTY_DISPLAY_FRAMES_ENABLED = "PROPERTY_DISPLAY_FRAMES_ENABLED";
     public static final String PROPERTY_CAPTURE_EVENTS_ENABLED = "PROPERTY_CAPTURE_EVENTS_ENABLED", PROPERTY_DISPLAY_EVENTS_ENABLED = "PROPERTY_DISPLAY_EVENTS_ENABLED";
-   
+
     public static final String PROPERTY_GLOBAL_SHUTTER_MODE_ENABLED = "PROPERTY_GLOBAL_SHUTTER_MODE_ENABLED";
     public static final String PROPERTY_TRANSLATE_ROW_ONLY_EVENTS = "PROPERTY_TRANSLATE_ROW_ONLY_EVENTS";
 
@@ -78,10 +78,12 @@ public interface DavisDisplayConfigInterface extends DvsDisplayConfigInterface {
     abstract public void setDisplayImu(boolean yes);
 
     abstract public boolean isSeparateAPSByColor();
-    
+
     abstract public boolean isAutoWhiteBalance();
-    
+
     abstract public boolean isColorCorrection();
+
+    abstract public boolean isGlobalShutter();
 
     abstract public void setSeparateAPSByColor(boolean yes);
 

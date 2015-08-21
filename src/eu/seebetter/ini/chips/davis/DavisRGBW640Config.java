@@ -8,14 +8,14 @@ package eu.seebetter.ini.chips.davis;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import ch.unizh.ini.jaer.config.cpld.CPLDInt;
+import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
+import eu.seebetter.ini.chips.davis.imu.ImuControl;
 import net.sf.jaer.biasgen.AddressedIPotArray;
 import net.sf.jaer.biasgen.Pot;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import ch.unizh.ini.jaer.config.cpld.CPLDInt;
-import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
-import eu.seebetter.ini.chips.davis.imu.ImuControl;
 
 /**
  * Base configuration for Davis356 (ApsDvs346) on Tower wafer designs
@@ -23,73 +23,41 @@ import eu.seebetter.ini.chips.davis.imu.ImuControl;
  * @author tobi
  */
 public class DavisRGBW640Config extends DavisTowerBaseConfig {
-	protected CPLDInt Transfer_D = new CPLDInt(chip, 167, 152, (1 << 16) - 1, "Transfer_D",
-		"Transfer time counter (3 in GS, 1 in RS).", 0);
-	protected CPLDInt RSFDSettle_D = new CPLDInt(chip, 183, 168, (1 << 12) - 1, "RSFDSettle_D",
-		"RS counter 0.", 0);
-	protected CPLDInt RSCpReset_D = new CPLDInt(chip, 199, 184, (1 << 12) - 1, "RSCpReset_D",
-		"RS counter 2.", 0);
-	protected CPLDInt RSCpSettle_D = new CPLDInt(chip, 215, 200, (1 << 12) - 1, "RSCpSettle_D",
-		"RS counter 3.", 0);
-	protected CPLDInt GSPDReset_D = new CPLDInt(chip, 231, 216, (1 << 12) - 1, "GSPDReset_D",
-		"GS counter 0.", 0);
-	protected CPLDInt GSResetFall_D = new CPLDInt(chip, 247, 232, (1 << 12) - 1, "GSResetFall_D",
-		"GS counter 2.", 0);
-	protected CPLDInt GSTXFall_D = new CPLDInt(chip, 263, 248, (1 << 12) - 1, "GSTXFall_D",
-		"GS counter 4.", 0);
-	protected CPLDInt GSFDReset_D = new CPLDInt(chip, 279, 264, (1 << 12) - 1, "GSFDReset_D",
-		"GS counter 5.", 0);
-	protected CPLDInt GSCpResetFD_D = new CPLDInt(chip, 295, 280, (1 << 12) - 1, "GSCpResetFD_D",
-		"GS counter 6.", 0);
-	protected CPLDInt GSCpResetSettle_D = new CPLDInt(chip, 311, 296, (1 << 12) - 1, "GSCpResetSettle_D",
-		"GS counter 7.", 0);
+	protected CPLDInt Transfer_D = new CPLDInt(chip, 167, 152, (1 << 16) - 1, "Transfer_D", "Transfer time counter (3 in GS, 1 in RS).", 0);
+	protected CPLDInt RSFDSettle_D = new CPLDInt(chip, 183, 168, (1 << 12) - 1, "RSFDSettle_D", "RS counter 0.", 0);
+	protected CPLDInt GSPDReset_D = new CPLDInt(chip, 199, 184, (1 << 12) - 1, "GSPDReset_D", "GS counter 0.", 0);
+	protected CPLDInt GSResetFall_D = new CPLDInt(chip, 215, 200, (1 << 12) - 1, "GSResetFall_D", "GS counter 1.", 0);
+	protected CPLDInt GSTXFall_D = new CPLDInt(chip, 231, 216, (1 << 12) - 1, "GSTXFall_D", "GS counter 2.", 0);
+	protected CPLDInt GSFDReset_D = new CPLDInt(chip, 247, 232, (1 << 12) - 1, "GSFDReset_D", "GS counter 3.", 0);
 
 	public DavisRGBW640Config(Chip chip) {
 		super(chip);
 
 		addConfigValue(Transfer_D);
 		addConfigValue(RSFDSettle_D);
-		addConfigValue(RSCpReset_D);
-		addConfigValue(RSCpSettle_D);
 		addConfigValue(GSPDReset_D);
 		addConfigValue(GSResetFall_D);
 		addConfigValue(GSTXFall_D);
 		addConfigValue(GSFDReset_D);
-		addConfigValue(GSCpResetFD_D);
-		addConfigValue(GSCpResetSettle_D);
 
 		setPotArray(new AddressedIPotArray(this)); // garbage collect IPots added in super by making this new potArray
 
 		vdacs = new TowerOnChip6BitVDAC[8];
 		// TODO fix this code for actual vdacs
 		// getPotArray().addPot(new TowerOnChip6BitVDAC(this, "", 0, 0, ""));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ApsCasBpc", 0, 0,
+			"N-type cascode for protecting drain of DVS photoreceptor log feedback FET from APS transients"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "OVG1Lo", 1, 1,
+			"Logic low level of the overflow gate in the DAVIS pixel if it's configured as adjustable"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "OVG2Lo", 2, 2,
+			"Logic low level of the overflow gate in the APS pixel if it's configured as adjustable"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "TX2OVG2Hi", 3, 3,
+			"Logic high level of the overflow gate and transfer gate in the APS pixel if it's configured as adjustable"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "Gnd07", 4, 4, "Elevated ground source at 0.7V for producing 4V reset signals"));
 		getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "ApsCasBpc", 0, 0,
-				"N-type cascode for protecting drain of DVS photoreceptor log feedback FET from APS transients"));
-		getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "OVG1Lo", 1, 1,
-				"Logic low level of the overflow gate in the DAVIS pixel if it's configured as adjustable"));
-		getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "OVG2Lo", 2, 2,
-				"Logic low level of the overflow gate in the APS pixel if it's configured as adjustable"));
-		getPotArray()
-			.addPot(
-				new TowerOnChip6BitVDAC(this, "TX2OVG2Hi", 3, 3,
-					"Logic high level of the overflow gate and transfer gate in the APS pixel if it's configured as adjustable"));
-		getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "Gnd07", 4, 4,
-				"Elevated ground source at 0.7V for producing 4V reset signals"));
-		getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "VTestADC", 5, 5,
-				"A fixed voltage to test the on-chip ADC if it's configured to test mode"));
-		getPotArray()
-			.addPot(
-				new TowerOnChip6BitVDAC(this, "ADCRefHigh", 6, 6,
-					"The upper limit of the input voltage to the on chip ADC"));
-		getPotArray()
-			.addPot(
-				new TowerOnChip6BitVDAC(this, "ADCRefLow", 7, 7,
-					"The lower limit of the input voltage to the on chip ADC"));
+			new TowerOnChip6BitVDAC(this, "VTestADC", 5, 5, "A fixed voltage to test the on-chip ADC if it's configured to test mode"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADCRefHigh", 6, 6, "The upper limit of the input voltage to the on chip ADC"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADCRefLow", 7, 7, "The lower limit of the input voltage to the on chip ADC"));
 
 		try {
 			// added from gdoc
@@ -200,10 +168,6 @@ public class DavisRGBW640Config extends DavisTowerBaseConfig {
 			tooltipSupport.setPropertyTooltip("Transfer_D", Transfer_D.getDescription());
 			RSFDSettle_D.addObserver(this);
 			tooltipSupport.setPropertyTooltip("RSFDSettle_D", RSFDSettle_D.getDescription());
-			RSCpReset_D.addObserver(this);
-			tooltipSupport.setPropertyTooltip("RSCpReset_D", RSCpReset_D.getDescription());
-			RSCpSettle_D.addObserver(this);
-			tooltipSupport.setPropertyTooltip("RSCpSettle_D", RSCpSettle_D.getDescription());
 			GSPDReset_D.addObserver(this);
 			tooltipSupport.setPropertyTooltip("GSPDReset_D", GSPDReset_D.getDescription());
 			GSResetFall_D.addObserver(this);
@@ -212,10 +176,6 @@ public class DavisRGBW640Config extends DavisTowerBaseConfig {
 			tooltipSupport.setPropertyTooltip("GSTXFall_D", GSTXFall_D.getDescription());
 			GSFDReset_D.addObserver(this);
 			tooltipSupport.setPropertyTooltip("GSFDReset_D", GSFDReset_D.getDescription());
-			GSCpResetFD_D.addObserver(this);
-			tooltipSupport.setPropertyTooltip("GSCpResetFD_D", GSCpResetFD_D.getDescription());
-			GSCpResetSettle_D.addObserver(this);
-			tooltipSupport.setPropertyTooltip("GSCpResetSettle_D", GSCpResetSettle_D.getDescription());
 		}
 
 		public void setTransfer_D(int cc) {
@@ -232,22 +192,6 @@ public class DavisRGBW640Config extends DavisTowerBaseConfig {
 
 		public int getRSFDSettle_D() {
 			return RSFDSettle_D.get();
-		}
-
-		public void setRSCpReset_D(int cc) {
-			RSCpReset_D.set(cc);
-		}
-
-		public int getRSCpReset_D() {
-			return RSCpReset_D.get();
-		}
-
-		public void setRSCpSettle_D(int cc) {
-			RSCpSettle_D.set(cc);
-		}
-
-		public int getRSCpSettle_D() {
-			return RSCpSettle_D.get();
 		}
 
 		public void setGSPDReset_D(int cc) {
@@ -280,22 +224,6 @@ public class DavisRGBW640Config extends DavisTowerBaseConfig {
 
 		public int getGSFDReset_D() {
 			return GSFDReset_D.get();
-		}
-
-		public void setGSCpResetFD_D(int cc) {
-			GSCpResetFD_D.set(cc);
-		}
-
-		public int getGSCpResetFD_D() {
-			return GSCpResetFD_D.get();
-		}
-
-		public void setGSCpResetSettle_D(int cc) {
-			GSCpResetSettle_D.set(cc);
-		}
-
-		public int getGSCpResetSettle_D() {
-			return GSCpResetSettle_D.get();
 		}
 	}
 }

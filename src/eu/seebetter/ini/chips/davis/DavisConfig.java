@@ -25,9 +25,25 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
+import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.border.TitledBorder;
 
+import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
+import ch.unizh.ini.jaer.config.MuxControlPanel;
+import ch.unizh.ini.jaer.config.OutputMap;
+import ch.unizh.ini.jaer.config.boards.LatticeLogicConfig;
+import ch.unizh.ini.jaer.config.cpld.CPLDByte;
+import ch.unizh.ini.jaer.config.cpld.CPLDConfigValue;
+import ch.unizh.ini.jaer.config.cpld.CPLDInt;
+import ch.unizh.ini.jaer.config.fx2.PortBit;
+import ch.unizh.ini.jaer.config.fx2.TriStateablePortBit;
+import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
+import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
+import ch.unizh.ini.jaer.config.onchip.OutputMux;
+import eu.seebetter.ini.chips.davis.imu.ImuAccelScale;
+import eu.seebetter.ini.chips.davis.imu.ImuControl;
+import eu.seebetter.ini.chips.davis.imu.ImuControlPanel;
 import net.sf.jaer.biasgen.AddressedIPot;
 import net.sf.jaer.biasgen.AddressedIPotArray;
 import net.sf.jaer.biasgen.Biasgen.HasPreference;
@@ -47,22 +63,6 @@ import net.sf.jaer.util.HasPropertyTooltips;
 import net.sf.jaer.util.HexString;
 import net.sf.jaer.util.ParameterControlPanel;
 import net.sf.jaer.util.PropertyTooltipSupport;
-import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
-import ch.unizh.ini.jaer.config.MuxControlPanel;
-import ch.unizh.ini.jaer.config.OutputMap;
-import ch.unizh.ini.jaer.config.boards.LatticeLogicConfig;
-import ch.unizh.ini.jaer.config.cpld.CPLDByte;
-import ch.unizh.ini.jaer.config.cpld.CPLDConfigValue;
-import ch.unizh.ini.jaer.config.cpld.CPLDInt;
-import ch.unizh.ini.jaer.config.fx2.PortBit;
-import ch.unizh.ini.jaer.config.fx2.TriStateablePortBit;
-import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
-import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
-import ch.unizh.ini.jaer.config.onchip.OutputMux;
-import eu.seebetter.ini.chips.davis.imu.ImuAccelScale;
-import eu.seebetter.ini.chips.davis.imu.ImuControl;
-import eu.seebetter.ini.chips.davis.imu.ImuControlPanel;
-import javax.swing.JScrollPane;
 
 /**
  * Base class for configuration of Davis cameras
@@ -81,49 +81,28 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	// portA
 	protected PortBit runCpld = new PortBit(chip, "a3", "runCpld",
 		"(A3) Set high to run CPLD which enables event capture, low to hold logic in reset", true);
-	protected PortBit runAdc = new PortBit(chip, "c0", "runAdc",
-		"(C0) High to run ADC. Bound together with adcEnabled.", true);
+	protected PortBit runAdc = new PortBit(chip, "c0", "runAdc", "(C0) High to run ADC. Bound together with adcEnabled.", true);
 	// portE
 	/**
 	 * Bias generator power down bit
 	 */
-	protected PortBit powerDown = new PortBit(chip, "e2", "powerDown",
-		"(E2) High to disable master bias and tie biases to default rails", false);
+	protected PortBit powerDown = new PortBit(chip, "e2", "powerDown", "(E2) High to disable master bias and tie biases to default rails",
+		false);
 	protected PortBit nChipReset = new PortBit(chip, "e3", "nChipReset",
 		"(E3) Low to reset AER circuits and hold pixels in reset, High to run", true); // shouldn't need to manipulate
 
 	// *********** CPLD *********************
 	// CPLD shift register contents specified here by CPLDInt and CPLDBit
-	protected CPLDInt exposureControlRegister = new CPLDInt(
-		chip,
-		23,
-		0,
-		(1 << 20) - 1,
-		"exposure",
+	protected CPLDInt exposureControlRegister = new CPLDInt(chip, 23, 0, (1 << 20) - 1, "exposure",
 		"global shutter exposure time between reset and readout phases; interpretation depends on whether rolling or global shutter readout is used.",
 		0);
-	protected CPLDInt colSettle = new CPLDInt(
-		chip,
-		39,
-		24,
-		(1 << 7) - 1,
-		"colSettle",
+	protected CPLDInt colSettle = new CPLDInt(chip, 39, 24, (1 << 7) - 1, "colSettle",
 		"time in 30MHz clock cycles to settle after column select before readout; allows all pixels in column to drive in parallel the row readout lines (like resSettle)",
 		0);
-	protected CPLDInt rowSettle = new CPLDInt(
-		chip,
-		55,
-		40,
-		(1 << 6) - 1,
-		"rowSettle",
+	protected CPLDInt rowSettle = new CPLDInt(chip, 55, 40, (1 << 6) - 1, "rowSettle",
 		"time in 30MHz clock cycles for pixel source follower to settle after each pixel's row select before ADC conversion; this is the fastest process of readout. In new logic value must be <64.",
 		0);
-	public CPLDInt resSettle = new CPLDInt(
-		chip,
-		71,
-		56,
-		(1 << 7) - 1,
-		"resSettle",
+	public CPLDInt resSettle = new CPLDInt(chip, 71, 56, (1 << 7) - 1, "resSettle",
 		"time in 30MHz clock cycles  to settle after column reset before readout; allows all pixels in column to drive in parallel the row readout lines (like colSettle)",
 		0);
 	protected CPLDInt frameDelayControlRegister = new CPLDInt(chip, 87, 72, (1 << 16) - 1, "frameDelay",
@@ -141,8 +120,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	 * Scale Range / Sensitivity
 	 */
 	public CPLDByte miscControlBits = new CPLDByte(chip, 95, 88, 3, "miscControlBits",
-		"Bit0: IMU run (0=stop, 1=run). Bit1: Rolling shutter (0=global shutter, 1=rolling shutter). Bits2-7: unused ",
-		(byte) 1);
+		"Bit0: IMU run (0=stop, 1=run). Bit1: Rolling shutter (0=global shutter, 1=rolling shutter). Bits2-7: unused ", (byte) 1);
 	// See Invensense MPU-6100 IMU datasheet RM-MPU-6100A.pdf
 	public CPLDByte imu0PowerMgmtClkRegConfig = new CPLDByte(chip, 103, 96, 255, "imu0_PWR_MGMT_1",
 		"1=Disable sleep, select x axis gyro as clock source", (byte) 1); // PWR_MGMT_1
@@ -150,12 +128,11 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		"1=digital low pass filter DLPF: FS=1kHz, Gyro 188Hz, 1.9ms delay ", (byte) 1); // CONFIG
 	public CPLDByte imu2SamplerateDividerConfig = new CPLDByte(chip, 119, 112, 255, "imu2_SMPLRT_DIV",
 		"0=sample rate divider: 1 Khz sample rate when DLPF is enabled", (byte) 0); // SMPLRT_DIV
-	public CPLDByte imu3GyroConfig = new CPLDByte(chip, 127, 120, 255, "imu3_GYRO_CONFIG",
-		"8=500 deg/s, 65.5 LSB per deg/s ", (byte) 8); // GYRO_CONFIG:
+	public CPLDByte imu3GyroConfig = new CPLDByte(chip, 127, 120, 255, "imu3_GYRO_CONFIG", "8=500 deg/s, 65.5 LSB per deg/s ", (byte) 8); // GYRO_CONFIG:
 	public CPLDByte imu4AccelConfig = new CPLDByte(chip, 135, 128, 255, "imu4_ACCEL_CONFIG",
 		"ACCEL_CONFIG: Bits 4:3 code AFS_SEL. 8=4g, 8192 LSB per g", (byte) 8); // ACCEL_CONFIG:
-	protected CPLDInt nullSettle = new CPLDInt(chip, 151, 136, (1 << 5) - 1, "nullSettle",
-		"time to remain in NULL state between columns", 0);
+	protected CPLDInt nullSettle = new CPLDInt(chip, 151, 136, (1 << 5) - 1, "nullSettle", "time to remain in NULL state between columns",
+		0);
 	// these pots for DVSTweaks
 	protected AddressedIPotCF diffOn, diffOff, refr, pr, sf, diff;
 
@@ -294,8 +271,8 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	public JPanel buildControlPanel() {
 		// if(displayControlPanel!=null) return displayControlPanel;
 		configPanel = new JPanel();
-                JScrollPane scrollPane=new JScrollPane();
-                scrollPane.add(configPanel);
+		JScrollPane scrollPane = new JScrollPane();
+		scrollPane.add(configPanel);
 		configPanel.setLayout(new BorderLayout());
 		debugControls = chip.getPrefs().getBoolean("debugControls", false);
 		// add a reset button on top of everything
@@ -312,8 +289,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		// add action to display user friendly controls toggled either next to expert controls or in another tab
 		final Action toggleDebugControlsAction = new AbstractAction("Toggle debug controls") {
 			{
-				putValue(Action.SHORT_DESCRIPTION,
-					"Toggles display of user friendly controls next to other tabbed panes for debugging");
+				putValue(Action.SHORT_DESCRIPTION, "Toggles display of user friendly controls next to other tabbed panes for debugging");
 			}
 
 			@Override
@@ -350,8 +326,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 
 		// biasgen
 		JPanel combinedBiasShiftedSourcePanel = new JPanel();
-		videoControlPanel.add(new JLabel(
-			"<html>Low-level control of on-chip bias currents and voltages. <p>These are only for experts!"));
+		videoControlPanel.add(new JLabel("<html>Low-level control of on-chip bias currents and voltages. <p>These are only for experts!"));
 		combinedBiasShiftedSourcePanel.setLayout(new BoxLayout(combinedBiasShiftedSourcePanel, BoxLayout.Y_AXIS));
 		combinedBiasShiftedSourcePanel.add(super.buildControlPanel());
 		combinedBiasShiftedSourcePanel.add(new ShiftedSourceControlsCF(ssn));
@@ -361,9 +336,8 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		configTabbedPane.addTab("Debug Output MUX control", new JScrollPane(getChipConfigChain().buildMuxControlPanel()));
 		// aps readout
 		JPanel apsReadoutPanel = new JPanel();
-		apsReadoutPanel
-			.add(new JLabel(
-				"<html>Low-level control of APS frame readout. <p>Hover over value fields to see explanations. <b>Incorrect settings will result in unusable output."));
+		apsReadoutPanel.add(new JLabel(
+			"<html>Low-level control of APS frame readout. <p>Hover over value fields to see explanations. <b>Incorrect settings will result in unusable output."));
 		apsReadoutPanel.setLayout(new BoxLayout(apsReadoutPanel, BoxLayout.Y_AXIS));
 		configTabbedPane.add("APS Readout Control", apsReadoutPanel);
 		apsReadoutParameterControlPanel = new ParameterControlPanel(getApsReadoutControl());
@@ -382,9 +356,8 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		// autoexposure
 		if (chip instanceof DavisBaseCamera) {
 			JPanel autoExposurePanel = new JPanel();
-			autoExposurePanel
-				.add(new JLabel(
-					"<html>Automatic exposure control.<p>The settings here determine when and by how much the exposure value should be changed. <p> The strategy followed attempts to avoid a sitation <b> where too many pixels are under- or over-exposed. Hover over entry fields to see explanations."));
+			autoExposurePanel.add(new JLabel(
+				"<html>Automatic exposure control.<p>The settings here determine when and by how much the exposure value should be changed. <p> The strategy followed attempts to avoid a sitation <b> where too many pixels are under- or over-exposed. Hover over entry fields to see explanations."));
 			autoExposurePanel.setLayout(new BoxLayout(autoExposurePanel, BoxLayout.Y_AXIS));
 			configTabbedPane.add("APS Autoexposure Control", autoExposurePanel);
 			autoExposurePanel.add(new ParameterControlPanel(((DavisBaseCamera) chip).getAutoExposureController()));
@@ -579,8 +552,8 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		}
 		else if (((aeReaderFifoSize) & (aeReaderFifoSize - 1)) != 0) {
 			int newval = Integer.highestOneBit(aeReaderFifoSize - 1);
-			log.warning("tried to set a non-power-of-two value " + aeReaderFifoSize
-				+ "; rounding down to nearest power of two which is " + newval);
+			log.warning(
+				"tried to set a non-power-of-two value " + aeReaderFifoSize + "; rounding down to nearest power of two which is " + newval);
 			aeReaderFifoSize = newval;
 		}
 		this.aeReaderFifoSize = aeReaderFifoSize;
@@ -821,13 +794,11 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	public void setTranslateRowOnlyEvents(boolean translateRowOnlyEvents) {
 		boolean old = this.translateRowOnlyEvents;
 		this.translateRowOnlyEvents = translateRowOnlyEvents;
-		getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_TRANSLATE_ROW_ONLY_EVENTS, old,
-			this.translateRowOnlyEvents);
+		getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_TRANSLATE_ROW_ONLY_EVENTS, old, this.translateRowOnlyEvents);
 		if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
 			// Translate Row-only Events is now in the logic.
 			try {
-				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_DVS, (short) 9,
-					(translateRowOnlyEvents) ? (0) : (1));
+				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_DVS, (short) 9, (translateRowOnlyEvents) ? (0) : (1));
 			}
 			catch (HardwareInterfaceException e) {
 				// TODO Auto-generated catch block
@@ -1042,10 +1013,8 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			tooltipSupport.setPropertyTooltip("frameDelayUS", getFrameDelayControlRegister().getDescription());
 			nullSettle.addObserver(this);
 			tooltipSupport.setPropertyTooltip("nullSettleCC", nullSettle.getDescription());
-			tooltipSupport
-				.setPropertyTooltip(
-					"globalShutterMode",
-					"Has no effect on Davis240a camera. On Davis240b/c cameras, enables global shutter readout. If disabled, enables rolling shutter readout.");
+			tooltipSupport.setPropertyTooltip("globalShutterMode",
+				"Has no effect on Davis240a camera. On Davis240b/c cameras, enables global shutter readout. If disabled, enables rolling shutter readout.");
 		}
 
 		public boolean isAdcEnabled() {
@@ -1058,8 +1027,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			// TODO we must always call listeners because by loading prefs, we maybe have changed runAdc but not been
 			// informed of those changes, because
 			// we are not registered directly as listeners on the bit itself....
-			getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_CAPTURE_FRAMES_ENABLED, null,
-				runAdc.isSet());
+			getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_CAPTURE_FRAMES_ENABLED, null, runAdc.isSet());
 			// if (oldval != yes) {
 			setChanged();
 			notifyObservers(); // inform ParameterControlPanel
@@ -1079,8 +1047,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			miscControlBits.set(newval);
 			// Update chip config chain.
 			((DavisConfig.DavisChipConfigChain) getChipConfigChain()).globalShutter.set(yes);
-			getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_GLOBAL_SHUTTER_MODE_ENABLED, oldbool,
-				yes);
+			getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_GLOBAL_SHUTTER_MODE_ENABLED, oldbool, yes);
 			setChanged();
 			notifyObservers(); // inform ParameterControlPanel
 		}
@@ -1143,8 +1110,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			// these updates are generated by the ParameterControlPanel when properties are changed; here we fire the
 			// PropertyChangeEvents to update listeners on this configuration class
 			if (o == runAdc) {
-				getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_CAPTURE_FRAMES_ENABLED, null,
-					runAdc.isSet());
+				getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_CAPTURE_FRAMES_ENABLED, null, runAdc.isSet());
 			}
 			else if (o == getFrameDelayControlRegister()) {
 				getSupport().firePropertyChange(PROPERTY_FRAME_DELAY_US, arg, getFrameDelayControlRegister().get());
@@ -1165,8 +1131,8 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		public boolean displayEvents = chip.getPrefs().getBoolean("VideoControl.displayEvents", true);
 		public boolean displayFrames = chip.getPrefs().getBoolean("VideoControl.displayFrames", true);
 		public boolean separateAPSByColor = chip.getPrefs().getBoolean("VideoControl.separateAPSByColor", false);
-                public boolean autoWhiteBalance = chip.getPrefs().getBoolean("VideoControl.autoWhiteBalance", true);
-                public boolean colorCorrection = chip.getPrefs().getBoolean("VideoControl.colorCorrection", true);
+		public boolean autoWhiteBalance = chip.getPrefs().getBoolean("VideoControl.autoWhiteBalance", true);
+		public boolean colorCorrection = chip.getPrefs().getBoolean("VideoControl.colorCorrection", true);
 		// on crappy beamer output
 		private PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
 
@@ -1175,19 +1141,15 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			getHasPreferenceList().add(this);
 			tooltipSupport.setPropertyTooltip("displayEvents", "display DVS events");
 			tooltipSupport.setPropertyTooltip("displayFrames", "display APS frames");
-			tooltipSupport.setPropertyTooltip("useAutoContrast",
-				"automatically set the display contrast for APS frames");
+			tooltipSupport.setPropertyTooltip("useAutoContrast", "automatically set the display contrast for APS frames");
 			tooltipSupport.setPropertyTooltip("brightness",
 				"sets the brightness for APS frames, which is the lowest level of display intensity. Default is 0.");
 			tooltipSupport.setPropertyTooltip("contrast",
 				"sets the contrast for APS frames, which multiplies sample values by this quantity. Default is 1.");
-			tooltipSupport
-				.setPropertyTooltip("gamma",
-					"sets the display gamma for APS frames, which applies a power law to optimize display for e.g. monitors. Default is 1.");
-			tooltipSupport
-				.setPropertyTooltip(
-					"autoContrastControlTimeConstantMs",
-					"Time constant in ms for autocontrast control. This is the lowpasss filter time constant for min and max image values to automatically scale image to 0-1 range.");
+			tooltipSupport.setPropertyTooltip("gamma",
+				"sets the display gamma for APS frames, which applies a power law to optimize display for e.g. monitors. Default is 1.");
+			tooltipSupport.setPropertyTooltip("autoContrastControlTimeConstantMs",
+				"Time constant in ms for autocontrast control. This is the lowpasss filter time constant for min and max image values to automatically scale image to 0-1 range.");
 		}
 
 		/**
@@ -1208,8 +1170,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			if (chip.getAeViewer() != null) {
 				chip.getAeViewer().interruptViewloop();
 			}
-			getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_DISPLAY_FRAMES_ENABLED, old,
-				displayFrames);
+			getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_DISPLAY_FRAMES_ENABLED, old, displayFrames);
 			if (old != displayFrames) {
 				setChanged();
 				notifyObservers(); // inform ParameterControlPanel
@@ -1219,12 +1180,12 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		public boolean isSeparateAPSByColor() {
 			return separateAPSByColor;
 		}
-                
-                public boolean isAutoWhiteBalance() {
+
+		public boolean isAutoWhiteBalance() {
 			return autoWhiteBalance;
 		}
-                
-                public boolean isColorCorrection() {
+
+		public boolean isColorCorrection() {
 			return colorCorrection;
 		}
 
@@ -1236,13 +1197,13 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			this.separateAPSByColor = separateAPSByColor;
 			chip.getPrefs().putBoolean("VideoControl.separateAPSByColor", separateAPSByColor);
 		}
-                
-                public void setAutoWhiteBalance(boolean autoWhiteBalance) {
+
+		public void setAutoWhiteBalance(boolean autoWhiteBalance) {
 			this.autoWhiteBalance = autoWhiteBalance;
 			chip.getPrefs().putBoolean("VideoControl.autoWhiteBalance", autoWhiteBalance);
 		}
-                
-                public void setColorCorrection(boolean colorCorrection) {
+
+		public void setColorCorrection(boolean colorCorrection) {
 			this.colorCorrection = colorCorrection;
 			chip.getPrefs().putBoolean("VideoControl.colorCorrection", colorCorrection);
 		}
@@ -1265,8 +1226,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			if (chip.getAeViewer() != null) {
 				chip.getAeViewer().interruptViewloop();
 			}
-			getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_DISPLAY_EVENTS_ENABLED, old,
-				displayEvents);
+			getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_DISPLAY_EVENTS_ENABLED, old, displayEvents);
 			if (old != displayEvents) {
 				setChanged();
 				notifyObservers(); // inform ParameterControlPanel
@@ -1429,17 +1389,12 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		// Config Bits
 		OnchipConfigBit resetCalibNeuron = new OnchipConfigBit(chip, "ResetCalibNeuron", 0,
 			"turns the bias generator integrate and fire calibration neuron off", true);
-		OnchipConfigBit typeNCalibNeuron = new OnchipConfigBit(
-			chip,
-			"TypeNCalibNeuron",
-			1,
+		OnchipConfigBit typeNCalibNeuron = new OnchipConfigBit(chip, "TypeNCalibNeuron", 1,
 			"make the bias generator intgrate and fire calibration neuron configured to measure N type biases; otherwise measures P-type currents",
 			false);
-		OnchipConfigBit resetTestPixel = new OnchipConfigBit(chip, "ResetTestPixel", 2,
-			"keeps the test pixel in reset", true);
+		OnchipConfigBit resetTestPixel = new OnchipConfigBit(chip, "ResetTestPixel", 2, "keeps the test pixel in reset", true);
 		OnchipConfigBit AERnArow = new OnchipConfigBit(chip, "AERnArow", 4, "use nArow in the AER state machine", false);
-		OnchipConfigBit useAOut = new OnchipConfigBit(chip, "UseAOut", 5,
-			"turn the pads for the analog MUX outputs on", false);
+		OnchipConfigBit useAOut = new OnchipConfigBit(chip, "UseAOut", 5, "turn the pads for the analog MUX outputs on", false);
 		OnchipConfigBit globalShutter = new OnchipConfigBit(chip, "GlobalShutter", 6,
 			"Use the global shutter or not (no effect on DAVIS240a cameras). ", false);
 
@@ -1806,8 +1761,8 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 
 		return getVideoControl().isSeparateAPSByColor();
 	}
-        
-        @Override
+
+	@Override
 	public boolean isAutoWhiteBalance() {
 		if (getVideoControl() == null) {
 			return false;
@@ -1815,8 +1770,8 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 
 		return getVideoControl().isAutoWhiteBalance();
 	}
-        
-        @Override
+
+	@Override
 	public boolean isColorCorrection() {
 		if (getVideoControl() == null) {
 			return false;
@@ -1826,13 +1781,22 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	}
 
 	@Override
+	public boolean isGlobalShutter() {
+		if (getApsReadoutControl() == null) {
+			return false;
+		}
+
+		return getApsReadoutControl().isGlobalShutterMode();
+	}
+
+	@Override
 	public void setSeparateAPSByColor(boolean yes) {
 		if (getVideoControl() == null) {
 			return;
 		}
 		getVideoControl().setSeparateAPSByColor(yes);
 	}
-        
+
 	public void setAutoWhiteBalance(boolean yes) {
 		if (getVideoControl() == null) {
 			return;

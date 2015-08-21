@@ -13,6 +13,14 @@ import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import ch.unizh.ini.jaer.config.AbstractConfigValue;
+import ch.unizh.ini.jaer.config.cpld.CPLDConfigValue;
+import ch.unizh.ini.jaer.config.cpld.CPLDShiftRegister;
+import ch.unizh.ini.jaer.config.dac.DAC;
+import ch.unizh.ini.jaer.config.dac.DACchannel;
+import ch.unizh.ini.jaer.config.dac.DACchannelArray;
+import ch.unizh.ini.jaer.config.fx2.PortBit;
+import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
 import net.sf.jaer.biasgen.AddressedIPot;
 import net.sf.jaer.biasgen.AddressedIPotArray;
 import net.sf.jaer.biasgen.Biasgen;
@@ -26,14 +34,6 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DAViSFX3HardwareInterface;
-import ch.unizh.ini.jaer.config.AbstractConfigValue;
-import ch.unizh.ini.jaer.config.cpld.CPLDConfigValue;
-import ch.unizh.ini.jaer.config.cpld.CPLDShiftRegister;
-import ch.unizh.ini.jaer.config.dac.DAC;
-import ch.unizh.ini.jaer.config.dac.DACchannel;
-import ch.unizh.ini.jaer.config.dac.DACchannelArray;
-import ch.unizh.ini.jaer.config.fx2.PortBit;
-import ch.unizh.ini.jaer.config.onchip.ChipConfigChain;
 
 /**
  *
@@ -346,7 +346,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 18,
 						buf.getShort(0) & 0xFFFF);
 				}
-				else if (buf.limit() == 39) { // DAVIS RGB
+				else if (buf.limit() == 31) { // DAVIS RGB
 					// Exposure (in cycles, from us)
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 13,
 						(((buf.getShort(36) & 0xFFFF) << 8) | (buf.get(38) & 0xFF)) * ADC_CLOCK_FREQ_CYCLES);
@@ -384,44 +384,28 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 						(buf.get(22) >> 3) & 0x03);
 
 					// Transfer_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 38,
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 50,
 						buf.getShort(18) & 0xFFFF);
 
 					// RSFDSettle_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 39,
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 51,
 						buf.getShort(16) & 0xFFFF);
 
-					// RSCpReset_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 40,
-						buf.getShort(14) & 0xFFFF);
-
-					// RSCpSettle_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 41,
-						buf.getShort(12) & 0xFFFF);
-
 					// GSPDReset_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 42,
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 52,
 						buf.getShort(10) & 0xFFFF);
 
 					// GSResetFall_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 43,
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 53,
 						buf.getShort(8) & 0xFFFF);
 
 					// GSTXFall_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 44,
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 54,
 						buf.getShort(6) & 0xFFFF);
 
 					// GSFDReset_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 45,
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 55,
 						buf.getShort(4) & 0xFFFF);
-
-					// GSCpResetFD_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 46,
-						buf.getShort(2) & 0xFFFF);
-
-					// GSCpResetSettle_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 47,
-						buf.getShort(0) & 0xFFFF);
 				}
 			}
 
