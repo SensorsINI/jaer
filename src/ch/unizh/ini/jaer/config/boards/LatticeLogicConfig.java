@@ -59,8 +59,8 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 	 */
 	public final Fx2ConfigCmd CMD_IPOT = new Fx2ConfigCmd(1, "IPOT"), CMD_AIPOT = new Fx2ConfigCmd(2, "AIPOT"),
 		CMD_SCANNER = new Fx2ConfigCmd(3, "SCANNER"), CMD_CHIP_CONFIG = new Fx2ConfigCmd(4, "CHIP"),
-		CMD_SETBIT = new Fx2ConfigCmd(5, "SETBIT"), CMD_VDAC = new Fx2ConfigCmd(6, "VDAC"),
-		CMD_INITDAC = new Fx2ConfigCmd(7, "INITDAC"), CMD_CPLD_CONFIG = new Fx2ConfigCmd(8, "CPLD");
+		CMD_SETBIT = new Fx2ConfigCmd(5, "SETBIT"), CMD_VDAC = new Fx2ConfigCmd(6, "VDAC"), CMD_INITDAC = new Fx2ConfigCmd(7, "INITDAC"),
+		CMD_CPLD_CONFIG = new Fx2ConfigCmd(8, "CPLD");
 	public final String[] CMD_NAMES = { "IPOT", "AIPOT", "SCANNER", "CHIP", "SETBIT", "VDAC", "INITDAC", "CPLD" };
 	final byte[] emptyByteArray = new byte[0];
 
@@ -143,15 +143,15 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 		}
 
 		if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX2)) {
-			((CypressFX2) getHardwareInterface()).sendVendorRequest(VR_WRITE_CONFIG, (short) (0xffff & cmd.code),
-				(short) (0xffff & index), bytes); // & to prevent sign extension
-													// for negative shorts
+			((CypressFX2) getHardwareInterface()).sendVendorRequest(VR_WRITE_CONFIG, (short) (0xffff & cmd.code), (short) (0xffff & index),
+				bytes); // & to prevent sign extension
+						// for negative shorts
 		}
 
 		if ((getHardwareInterface() != null)
 			&& (getHardwareInterface() instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2)) {
-			((net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2) getHardwareInterface()).sendVendorRequest(
-				VR_WRITE_CONFIG, (short) (0xffff & cmd.code), (short) (0xffff & index), bytes);
+			((net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2) getHardwareInterface()).sendVendorRequest(VR_WRITE_CONFIG,
+				(short) (0xffff & cmd.code), (short) (0xffff & index), bytes);
 		}
 
 		// Support FX3 firmware with its own special Vendor Request.
@@ -159,13 +159,12 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 			// Send biases to chip (addressed ones, AIPOT).
 			if (cmd == CMD_AIPOT) {
 				if (((CypressFX3) getHardwareInterface()).getPID() == DAViSFX3HardwareInterface.PID) {
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS,
-						(short) (bytes[0] & 0xFFFF),
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) (bytes[0] & 0xFFFF),
 						ByteBuffer.wrap(Arrays.copyOfRange(bytes, 1, 3)).getShort() & 0xFFFF);
 				}
 				else {
-					((CypressFX3) getHardwareInterface()).sendVendorRequest(VR_CHIP_BIAS, (short) (bytes[0] & 0xFFFF),
-						(short) 0, Arrays.copyOfRange(bytes, 1, 3));
+					((CypressFX3) getHardwareInterface()).sendVendorRequest(VR_CHIP_BIAS, (short) (bytes[0] & 0xFFFF), (short) 0,
+						Arrays.copyOfRange(bytes, 1, 3));
 				}
 			}
 
@@ -303,109 +302,88 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 						(((buf.getShort(16) & 0xFFFF) << 8) | (buf.get(18) & 0xFF)) * ADC_CLOCK_FREQ_CYCLES);
 
 					// ColSettle
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 16,
-						buf.getShort(14) & 0xFFFF);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 16, buf.getShort(14) & 0xFFFF);
 
 					// RowSettle
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 17,
-						buf.getShort(12) & 0xFFFF);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 17, buf.getShort(12) & 0xFFFF);
 
 					// ResSettle
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 15,
-						buf.getShort(10) & 0xFFFF);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 15, buf.getShort(10) & 0xFFFF);
 
 					// Frame Delay (in cycles, from us)
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 14,
 						(buf.getShort(8) & 0xFFFF) * ADC_CLOCK_FREQ_CYCLES);
 
 					// IMU Run
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 0,
-						buf.get(7) & 0x01);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 0, buf.get(7) & 0x01);
 
 					// RS/GS
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 8,
 						((buf.get(7) & 0x02) != 0) ? (0) : (1));
 
 					// IMU DLPF
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 7,
-						buf.get(5) & 0x07);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 7, buf.get(5) & 0x07);
 
 					// IMU SampleRateDivider
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 6,
-						buf.get(4) & 0xFF);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 6, buf.get(4) & 0xFF);
 
 					// IMU Gyro Scale
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 9,
-						(buf.get(3) >> 3) & 0x03);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 9, (buf.get(3) >> 3) & 0x03);
 
 					// IMU Accel Scale
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 8,
-						(buf.get(2) >> 3) & 0x03);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 8, (buf.get(2) >> 3) & 0x03);
 
 					// NullSettle
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 18,
-						buf.getShort(0) & 0xFFFF);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 18, buf.getShort(0) & 0xFFFF);
 				}
 				else if (buf.limit() == 31) { // DAVIS RGB
 					// Exposure (in cycles, from us)
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 13,
-						(((buf.getShort(36) & 0xFFFF) << 8) | (buf.get(38) & 0xFF)) * ADC_CLOCK_FREQ_CYCLES);
+						(((buf.getShort(28) & 0xFFFF) << 8) | (buf.get(30) & 0xFF)) * ADC_CLOCK_FREQ_CYCLES);
 
 					// RowSettle
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 17,
-						buf.getShort(32) & 0xFFFF);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 17, buf.getShort(24) & 0xFFFF);
 
 					// Frame Delay (in cycles, from us)
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 14,
-						(buf.getShort(28) & 0xFFFF) * ADC_CLOCK_FREQ_CYCLES);
+						(buf.getShort(20) & 0xFFFF) * ADC_CLOCK_FREQ_CYCLES);
 
 					// IMU Run
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 0,
-						buf.get(27) & 0x01);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 0, buf.get(19) & 0x01);
 
 					// RS/GS
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 8,
-						((buf.get(27) & 0x02) != 0) ? (0) : (1));
+						((buf.get(19) & 0x02) != 0) ? (0) : (1));
 
 					// IMU DLPF
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 7,
-						buf.get(25) & 0x07);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 7, buf.get(17) & 0x07);
 
 					// IMU SampleRateDivider
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 6,
-						buf.get(24) & 0xFF);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 6, buf.get(16) & 0xFF);
 
 					// IMU Gyro Scale
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 9,
-						(buf.get(23) >> 3) & 0x03);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 9, (buf.get(15) >> 3) & 0x03);
 
 					// IMU Accel Scale
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 8,
-						(buf.get(22) >> 3) & 0x03);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_IMU, (short) 8, (buf.get(14) >> 3) & 0x03);
 
 					// Transfer_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 50,
-						buf.getShort(18) & 0xFFFF);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 50, buf.getShort(10) & 0xFFFF);
 
 					// RSFDSettle_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 51,
-						buf.getShort(16) & 0xFFFF);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 51, buf.getShort(8) & 0xFFFF);
 
 					// GSPDReset_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 52,
-						buf.getShort(10) & 0xFFFF);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 52, buf.getShort(6) & 0xFFFF);
 
 					// GSResetFall_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 53,
-						buf.getShort(8) & 0xFFFF);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 53, buf.getShort(4) & 0xFFFF);
 
 					// GSTXFall_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 54,
-						buf.getShort(6) & 0xFFFF);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 54, buf.getShort(2) & 0xFFFF);
 
 					// GSFDReset_D
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 55,
-						buf.getShort(4) & 0xFFFF);
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_APS, (short) 55, buf.getShort(0) & 0xFFFF);
 				}
 			}
 
@@ -423,8 +401,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 
 				// powerDown
 				if (index == 772) {
-					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_MUX, (short) 3,
-						(bytes[0] != 0) ? (0) : (1));
+					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_MUX, (short) 3, (bytes[0] != 0) ? (0) : (1));
 				}
 
 				// nChipReset
@@ -486,8 +463,7 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 			String d = ",";
 			StringTokenizer t = new StringTokenizer(s, d);
 			if (t.countTokens() != 2) {
-				throw new Error("only " + t.countTokens() + " tokens in pot " + s
-					+ "; use , to separate tokens for name,tooltip");
+				throw new Error("only " + t.countTokens() + " tokens in pot " + s + "; use , to separate tokens for name,tooltip");
 			}
 			String name = t.nextToken();
 			String tip = t.nextToken();
@@ -612,9 +588,8 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 			String tip = t.nextToken();
 
 			int address = getPotArray().getNumPots();
-			getPotArray().addPot(
-				ret = new AddressedIPotCF(this, name, address++, type, sex, false, true,
-					AddressedIPotCF.maxCoarseBitValue / 2, AddressedIPotCF.maxFineBitValue, address, tip));
+			getPotArray().addPot(ret = new AddressedIPotCF(this, name, address++, type, sex, false, true,
+				AddressedIPotCF.maxCoarseBitValue / 2, AddressedIPotCF.maxFineBitValue, address, tip));
 		}
 		catch (Exception e) {
 			throw new Error(e.toString());
@@ -768,8 +743,8 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 	}
 
 	/**
-     *
-     */
+	 *
+	 */
 	@Override
 	public void loadPreference() {
 		super.loadPreferences();
@@ -799,8 +774,8 @@ public class LatticeLogicConfig extends Biasgen implements HasPreference {
 	}
 
 	/**
-     *
-     */
+	 *
+	 */
 	@Override
 	public void storePreference() {
 		super.storePreferences();
