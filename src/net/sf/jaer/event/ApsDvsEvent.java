@@ -12,7 +12,7 @@ public class ApsDvsEvent extends PolarityEvent {
     /** The readout type of the multiple readouts: ResetRead is the readout of reset level, SignalRead is the readout of first sample, C, is the readout of 2nd sample, etc.
      * Normally only ResetRead and SignalRead are used and the CDS is done in digital domain by subtracting ResetRead-SignalRead readings.
      */
-    public enum ReadoutType {DVS,ResetRead,SignalRead,CpResetRead,SOF,EOF,SOE,EOE,IMU,Null};
+    public enum ReadoutType {DVS,ResetRead,SignalRead,SOF,EOF,SOE,EOE,IMU,Null};
 
     /** The ADC sample value. Has value -1 by convention for non-sample events. */
     public int adcSample = 0;
@@ -112,11 +112,7 @@ public class ApsDvsEvent extends PolarityEvent {
     public boolean isSignalRead(){
         return readoutType == ReadoutType.SignalRead;
     }
-    
-    public boolean isCpResetRead(){
-        return readoutType == ReadoutType.CpResetRead;
-    }
-    
+
     /**
      * Flags if this sample is from the start of the frame.
      * @return the startOfFrame
