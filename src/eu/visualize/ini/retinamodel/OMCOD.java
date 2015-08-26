@@ -25,9 +25,9 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter;
 import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
-import net.sf.jaer.event.orientation.ApsDvsMotionOrientationEvent;
+//import net.sf.jaer.event.orientation.ApsDvsMotionOrientationEvent;
 import net.sf.jaer.eventprocessing.filter.Info;
-import net.sf.jaer.eventprocessing.label.ApsDvsDirectionSelectiveFilter;
+//import net.sf.jaer.eventprocessing.label.ApsDvsDirectionSelectiveFilter;
 
 //-- end packages ------------------------------------------------------------//
 //****************************************************************************//
@@ -55,7 +55,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private EventRateEstimator eventRateFilter;
     private BackgroundActivityFilter backgroundActivityFilter;
     private HotPixelFilter hotPixelFilter;
-    private ApsDvsDirectionSelectiveFilter dirFilter;
+//    private ApsDvsDirectionSelectiveFilter dirFilter;
     private Info info;
     private Subunits subunits;
     private int nxmax;
@@ -144,10 +144,10 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 
         eventRateFilter = new EventRateEstimator(chip);
         eventRateFilter.setEventRateTauMs(eventRateTauMs);
-        dirFilter = new ApsDvsDirectionSelectiveFilter(chip);
+//        dirFilter = new ApsDvsDirectionSelectiveFilter(chip);
         info = new Info(chip);
 
-        setEnclosedFilter(dirFilter);
+//        setEnclosedFilter(dirFilter);
         //setEnclosedFilter(median);
 
         backgroundActivityFilter = new BackgroundActivityFilter(chip);
@@ -239,7 +239,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         //if (!(in.getEventPrototype() instanceof PolarityEvent)) {
 
         //return 
-        EventPacket temp = (EventPacket) eventRateFilter.filterPacket(dirFilter.filterPacket(backgroundActivityFilter.filterPacket(hotPixelFilter.filterPacket(in))));
+//        EventPacket temp = (EventPacket) eventRateFilter.filterPacket(dirFilter.filterPacket(backgroundActivityFilter.filterPacket(hotPixelFilter.filterPacket(in))));
+        EventPacket temp = (EventPacket) eventRateFilter.filterPacket(backgroundActivityFilter.filterPacket(hotPixelFilter.filterPacket(in)));
 
         //if (in instanceof ApsDvsEventPacket) {
         checkOutputPacketEventType(in); // make sure memory is allocated to avoid leak. 
@@ -257,7 +258,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         float lastTime = 0;
 
         for (Object o : temp) {
-            ApsDvsMotionOrientationEvent e = (ApsDvsMotionOrientationEvent) o;
+            PolarityEvent e = (PolarityEvent) o;
 
             if (e.special) {
                 continue;
