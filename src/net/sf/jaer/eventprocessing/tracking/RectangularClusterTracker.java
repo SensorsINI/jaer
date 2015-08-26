@@ -63,7 +63,7 @@ import net.sf.jaer.util.DrawGL;
 public class RectangularClusterTracker extends EventFilter2D implements Observer, ClusterTrackerInterface, FrameAnnotater, MouseListener/*, PreferenceChangeListener*/ {
     // TODO split out the Cluster object as it's own class.
     // TODO delegate worker object to update the clusters (RectangularClusterTrackerDelegate)
-
+//    public TelluridePatchExtractor TelluridePatchExtractor = new TelluridePatchExtractor();
     /**
      * scaling can't make cluster bigger or smaller than this ratio to default
      * cluster size.
@@ -1529,6 +1529,15 @@ public class RectangularClusterTracker extends EventFilter2D implements Observer
             // centered and has origin = 0
             gl.glTranslatef(location.x, location.y, 0);
 
+//            // Obtaining the patch coordinates for Telluride 2015 ------------//
+//            TelluridePatchExtractor.setXcoordinate((int) location.x);
+//            TelluridePatchExtractor.setYcoordinate((int) location.y);
+//            TelluridePatchExtractor.setClusterSize((int) radiusX * 2);
+//            TelluridePatchExtractor.setTimeStamp((int) getLastEventTimestamp());
+//            TelluridePatchExtractor.setClusterID((int) hashCode());
+//            TelluridePatchExtractor.printToFile();
+//            //----------------------------------------------------------------//
+               
             if (visibilityFlag) {
                 gl.glColor3fv(rgb, 0);
                 gl.glLineWidth(BOX_LINE_WIDTH);
