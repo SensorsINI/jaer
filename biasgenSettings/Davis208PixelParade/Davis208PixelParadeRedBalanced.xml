@@ -610,7 +610,7 @@
                 <entry key="MedianTracker.tauUs" value="16137"/>
                 <entry key="CPLDInt.nullSettle" value="31"/>
                 <entry key="DavisBaseCamera.bgTabbedPaneSelectedIndex" value="2"/>
-                <entry key="Davis208PixelParade.ShiftedSourceBias.apsOverflowLevel.VdacBitValue" value="11"/>
+                <entry key="Davis208PixelParade.ShiftedSourceBias.apsOverflowLevel.VdacBitValue" value="20"/>
                 <entry key="Davis208PixelParade.ShiftedSourceBias.apsOverflowLevel.BufBitValue" value="1"/>
                 <entry key="Davis208PixelParade.ShiftedSourceBias.ApsCas.VdacBitValue" value="21"/>
                 <entry key="Davis208PixelParade.ShiftedSourceBias.ApsCas.BufBitValue" value="6"/>
@@ -622,7 +622,7 @@
                 <entry key="Davis208PixelParade.ShiftedSourceBias.AdcTestVoltageAI.BufBitValue" value="0"/>
                 <entry key="Davis208PixelParade.ShiftedSourceBias.ResetHpxBv.VdacBitValue" value="63"/>
                 <entry key="Davis208PixelParade.ShiftedSourceBias.ResetHpxBv.BufBitValue" value="7"/>
-                <entry key="Davis208PixelParade.ShiftedSourceBias.RefSsbxBv.VdacBitValue" value="9"/>
+                <entry key="Davis208PixelParade.ShiftedSourceBias.RefSsbxBv.VdacBitValue" value="17"/>
                 <entry key="Davis208PixelParade.ShiftedSourceBias.RefSsbxBv.BufBitValue" value="7"/>
                 <entry key="Davis208PixelParade.ShiftedSourceBias.Unconnected.VdacBitValue" value="0"/>
                 <entry key="Davis208PixelParade.ShiftedSourceBias.Unconnected.BufBitValue" value="0"/>
@@ -633,7 +633,7 @@
                 <entry key="Davis208PixelParade.AddressedIPotCF.LocalBufBn.Sex" value="N"/>
                 <entry key="Davis208PixelParade.AddressedIPotCF.LocalBufBn.Type" value="NORMAL"/>
                 <entry key="Davis208PixelParade.AddressedIPotCF.PadFollBn.BitValueCoarse" value="0"/>
-                <entry key="Davis208PixelParade.AddressedIPotCF.PadFollBn.BitValueFine" value="208"/>
+                <entry key="Davis208PixelParade.AddressedIPotCF.PadFollBn.BitValueFine" value="227"/>
                 <entry key="Davis208PixelParade.AddressedIPotCF.PadFollBn.Enabled" value="true"/>
                 <entry key="Davis208PixelParade.AddressedIPotCF.PadFollBn.LowCurrent" value="false"/>
                 <entry key="Davis208PixelParade.AddressedIPotCF.PadFollBn.Sex" value="N"/>
@@ -758,8 +758,8 @@
                 <entry key="Davis208PixelParade.AddressedIPotCF.Blk2P.LowCurrent" value="false"/>
                 <entry key="Davis208PixelParade.AddressedIPotCF.Blk2P.Sex" value="P"/>
                 <entry key="Davis208PixelParade.AddressedIPotCF.Blk2P.Type" value="NORMAL"/>
-                <entry key="Davis208PixelParade.AddressedIPotCF.RefSsbxBn.BitValueCoarse" value="5"/>
-                <entry key="Davis208PixelParade.AddressedIPotCF.RefSsbxBn.BitValueFine" value="255"/>
+                <entry key="Davis208PixelParade.AddressedIPotCF.RefSsbxBn.BitValueCoarse" value="3"/>
+                <entry key="Davis208PixelParade.AddressedIPotCF.RefSsbxBn.BitValueFine" value="11"/>
                 <entry key="Davis208PixelParade.AddressedIPotCF.RefSsbxBn.Enabled" value="true"/>
                 <entry key="Davis208PixelParade.AddressedIPotCF.RefSsbxBn.LowCurrent" value="false"/>
                 <entry key="Davis208PixelParade.AddressedIPotCF.RefSsbxBn.Sex" value="N"/>
@@ -783,7 +783,7 @@
                 <entry key="Davis208PixelParade.AddressedIPotCF.Blk4N.Sex" value="N"/>
                 <entry key="Davis208PixelParade.AddressedIPotCF.Blk4N.Type" value="NORMAL"/>
                 <entry key="Davis208PixelParade.AddressedIPotCF.BiasBuffer.BitValueCoarse" value="0"/>
-                <entry key="Davis208PixelParade.AddressedIPotCF.BiasBuffer.BitValueFine" value="109"/>
+                <entry key="Davis208PixelParade.AddressedIPotCF.BiasBuffer.BitValueFine" value="255"/>
                 <entry key="Davis208PixelParade.AddressedIPotCF.BiasBuffer.Enabled" value="true"/>
                 <entry key="Davis208PixelParade.AddressedIPotCF.BiasBuffer.LowCurrent" value="false"/>
                 <entry key="Davis208PixelParade.AddressedIPotCF.BiasBuffer.Sex" value="N"/>
