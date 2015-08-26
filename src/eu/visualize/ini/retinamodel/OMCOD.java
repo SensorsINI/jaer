@@ -3,6 +3,10 @@
 //----------------------------------------------------------------------------//
 package eu.visualize.ini.retinamodel;
 
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import static com.jogamp.opengl.GLProfile.GL2;
+import com.jogamp.opengl.glu.GLU;
 import eu.seebetter.ini.chips.davis.HotPixelFilter;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -11,13 +15,9 @@ import java.util.Observer;
 import java.util.Random;
 import java.util.*;
 
-import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.glu.GLU;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
@@ -25,6 +25,9 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter;
 import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
+import net.sf.jaer.event.orientation.ApsDvsMotionOrientationEvent;
+import net.sf.jaer.eventprocessing.filter.Info;
+import net.sf.jaer.eventprocessing.label.ApsDvsDirectionSelectiveFilter;
 
 //-- end packages ------------------------------------------------------------//
 //****************************************************************************//
@@ -52,6 +55,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private EventRateEstimator eventRateFilter;
     private BackgroundActivityFilter backgroundActivityFilter;
     private HotPixelFilter hotPixelFilter;
+    private ApsDvsDirectionSelectiveFilter dirFilter;
+    private Info info;
     private Subunits subunits;
     private int nxmax;
     private int nymax;
@@ -139,6 +144,11 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 
         eventRateFilter = new EventRateEstimator(chip);
         eventRateFilter.setEventRateTauMs(eventRateTauMs);
+        dirFilter = new ApsDvsDirectionSelectiveFilter(chip);
+        info = new Info(chip);
+
+        setEnclosedFilter(dirFilter);
+        //setEnclosedFilter(median);
 
         backgroundActivityFilter = new BackgroundActivityFilter(chip);
         backgroundActivityFilter.setDt((int) dtBackgroundUs);
@@ -226,19 +236,29 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
-        if (!(in.getEventPrototype() instanceof PolarityEvent)) {
-            return eventRateFilter.filterPacket(backgroundActivityFilter.filterPacket(hotPixelFilter.filterPacket(in)));
-        }
-        if (in instanceof ApsDvsEventPacket) {
-            checkOutputPacketEventType(eventRateFilter.filterPacket(backgroundActivityFilter.filterPacket(hotPixelFilter.filterPacket(in)))); // make sure memory is allocated to avoid leak. 
-            // we don't use output packet but it is necesary to iterate over DVS events only
-        }
-        clearOutputPacket();
+        //if (!(in.getEventPrototype() instanceof PolarityEvent)) {
+
+        //return 
+        EventPacket temp = (EventPacket) eventRateFilter.filterPacket(dirFilter.filterPacket(backgroundActivityFilter.filterPacket(hotPixelFilter.filterPacket(in))));
+
+        //if (in instanceof ApsDvsEventPacket) {
+        checkOutputPacketEventType(in); // make sure memory is allocated to avoid leak. 
+        // we don't use output packet but it is necesary to iterate over DVS events only
+        //}
+        //clearOutputPacket();
         if (subunits == null) {
             resetFilter();
         }
-        for (Object o : hotPixelFilter.filterPacket(in)) {
-            PolarityEvent e = (PolarityEvent) o;
+
+        if (temp == null) {
+            return in;
+        }
+
+        float lastTime = 0;
+
+        for (Object o : temp) {
+            ApsDvsMotionOrientationEvent e = (ApsDvsMotionOrientationEvent) o;
+
             if (e.special) {
                 continue;
             }
@@ -252,6 +272,29 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 lastOMCODSpikeCheckTimestampUs = e.timestamp;
                 OMCODModel.update(e.timestamp);
             }
+            lastTime = e.timestamp;
+        }
+
+        PrintStream p; // declare a print stream object     
+        //------------------------------------------------------------------------------
+        // Log eventRate
+        if (startLogging == true) {
+            try {
+                // Create a new file output stream
+                FileOutputStream outR = new FileOutputStream(new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\eventRate.txt"), true);
+                // Connect print stream to the output stream
+                p = new PrintStream(outR);
+                p.print(eventRateFilter.getFilteredEventRate());
+                p.print(", ");
+                p.println(lastTime);
+                p.close();
+            } catch (Exception x) {
+                System.err.println("Error writing to file");
+            }
+        }
+        if (deleteLogging == true) {
+            File fout = new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\eventRate.txt");
+            fout.delete();
         }
 
         return in;
@@ -430,7 +473,17 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             }
             OMCODModel.resetSpikeCount();
         }
+        if (eventRateFilter.getFilteredEventRate() > 15000||eventRateFilter.getFilteredEventRate() < 30000) {
+            showTracker1 = true;
+        }
+        if (eventRateFilter.getFilteredEventRate() > 30000) {
+            showTracker1 = false;
+        }
         if (showTracker1) {
+            if (eventRateFilter.getFilteredEventRate() < 2000) {
+                showTracker1 = false;
+            }
+
             // Reset tracker after a second of no OMC events 
             // (current timestamp - timestamp of last spiked OMC)
             if (lastOMCODSpikeCheckTimestampUs - lastTimeStampSpikeArray[lastSpikedOMC[0]][lastSpikedOMC[1]] > 5000000) {
@@ -458,7 +511,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             // Yellow contour 1
             gl.glPushMatrix();
             gl.glColor3f(1.0f, 1.0f, 0.0f);
-            gl.glBegin(GL2.GL_LINE_STRIP);
+            gl.glBegin(gl.GL_LINE_STRIP);
             gl.glVertex2f(findClusterCorners()[0] << getSubunitSubsamplingBits(), (findClusterCorners()[2]) << getSubunitSubsamplingBits());
             gl.glVertex2f(findClusterCorners()[1] + 2 << getSubunitSubsamplingBits(), (findClusterCorners()[2]) << getSubunitSubsamplingBits());
             gl.glVertex2f(findClusterCorners()[1] + 2 << getSubunitSubsamplingBits(), (findClusterCorners()[3] + 2) << getSubunitSubsamplingBits());
@@ -486,13 +539,13 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             gl.glPopMatrix();
 
             // Send data to RosNodePublisher (-90 to center for davis, -64 for DVS128)
-            if (lastOMCODSpikeCheckTimestampUs - timeStampRosUs > getUpdateRosEveryUs()) {
-                RosNodePublisher.setXcoordinate((findCenterOfMass(findClusterCorners())[0] << getSubunitSubsamplingBits()) - 90);
-                RosNodePublisher.setYcoordinate((findCenterOfMass(findClusterCorners())[1] << getSubunitSubsamplingBits()) - 90);
-                RosNodePublisher.setZcoordinate(distanceToTravel(((findClusterCorners()[1] + 2) << getSubunitSubsamplingBits())
-                        - (findClusterCorners()[0] << getSubunitSubsamplingBits())));
-                timeStampRosUs = lastOMCODSpikeCheckTimestampUs;
-            }
+            //if (lastOMCODSpikeCheckTimestampUs - timeStampRosUs > getUpdateRosEveryUs()) {
+            //    RosNodePublisher.setXcoordinate((findCenterOfMass(findClusterCorners())[0] << getSubunitSubsamplingBits()) - 90);
+            //    RosNodePublisher.setYcoordinate((findCenterOfMass(findClusterCorners())[1] << getSubunitSubsamplingBits()) - 90);
+            //    RosNodePublisher.setZcoordinate(distanceToTravel(((findClusterCorners()[1] + 2) << getSubunitSubsamplingBits())
+            //            - (findClusterCorners()[0] << getSubunitSubsamplingBits())));
+            //    timeStampRosUs = lastOMCODSpikeCheckTimestampUs;
+            //}
         }
 
         if (showTracker2) {
@@ -580,6 +633,20 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         renderer.draw3D(
                 "Object at: " + distanceToTravel(((findClusterCorners()[1] + 2) << getSubunitSubsamplingBits())
                         - (findClusterCorners()[0] << getSubunitSubsamplingBits())) + " m", -55, 40, 0, .4f); // x y width height
+
+        if (eventRateFilter.getFilteredEventRate() < 20000) {
+            renderer.setColor(0, 1, 0, 1f);
+            renderer.draw3D("Fixed robot", 10, 100, 1, 4f); // x y width height
+        }
+        if (eventRateFilter.getFilteredEventRate() > 300000) {
+            renderer.setColor(0, 0, 1, 1f);
+            renderer.draw3D("Close turn! false alarm", 10, 50, 1, 4f); // x y width height
+        }
+        if (eventRateFilter.getFilteredEventRate() > 150000 && eventRateFilter.getFilteredEventRate() < 300000) {
+            renderer.setColor(1, 0, 0, 1f);
+            renderer.draw3D("I see the robot", 10, 50, 1, 4f); // x y width height
+        }
+
         renderer.end3DRendering();
 
         // render all the subunits now
@@ -1087,7 +1154,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 try {
                     if (omcx == 0 && omcy == 0) {
                         // Create a new file output stream
-                        FileOutputStream out = new FileOutputStream(new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\inhibitionArray1.txt"), true);
+                        FileOutputStream out = new FileOutputStream(new File("C:\\Users\\Diederik Paul Moeys\\Desktop\\inhibitionArray.txt"), true);
                         // Connect print stream to the output stream
                         p = new PrintStream(out);
                         p.print(inhibitionArray[omcx][omcy]);
