@@ -606,7 +606,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             // log.warning("null Point (outside entire canvas?), returning center pixel");
             return new Point(chip.getSizeX() / 2, chip.getSizeY() / 2);
         }
-        synchronized (drawable.getTreeLock()) {
+//        synchronized (drawable.getTreeLock()) {
             try {
                 if (hasAppleRetinaDisplay()) {
                     mp.x *= 2;
@@ -639,7 +639,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             } finally {
                 drawable.getContext().release();
             }
-        }
+//        }
         final Point p = new Point();
         p.x = (int) Math.round(wcoord[0]);
         p.y = (int) Math.round(wcoord[1]);
@@ -841,7 +841,7 @@ public class ChipCanvas implements GLEventListener, Observer {
      * @see #display(com.jogamp.opengl.GLAutoDrawable)
      */
     public void paintFrame() {
-        synchronized (drawable.getTreeLock()) {
+//        synchronized (drawable.getTreeLock()) {
             try {
 //                drawable.getContext().makeCurrent();
                 drawable.display(); // we call the drawable's display method that ends up calling us back via our local
@@ -857,7 +857,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             } finally {
 //                drawable.getContext().release();
             }
-        }
+//        }
     }
 
     public void removeGLEventListener(final GLEventListener listener) {
