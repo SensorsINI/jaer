@@ -10,18 +10,17 @@ import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.Observer;
 import java.util.Random;
-import java.util.*;
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.filter.LowpassFilter;
 import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
 //import net.sf.jaer.event.orientation.ApsDvsMotionOrientationEvent;
-import net.sf.jaer.eventprocessing.filter.Info;
 //import net.sf.jaer.eventprocessing.label.ApsDvsDirectionSelectiveFilter;
 //****************************************************************************//
 
@@ -41,11 +40,11 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private final OMCODModel OMCODModel = new OMCODModel();
     public RosNodePublisher RosNodePublisher = new RosNodePublisher();
     //private final LowpassFilter medianCMFilter = new LowpassFilter(1);
-    private EventRateEstimator eventRateFilter;
-    private BackgroundActivityFilter backgroundActivityFilter;
-    private HotPixelFilter hotPixelFilter;
+    private final EventRateEstimator eventRateFilter;
+    private final BackgroundActivityFilter backgroundActivityFilter;
+    private final HotPixelFilter hotPixelFilter;
+    private final FilterChain trackingFilterChain;
 //    private ApsDvsDirectionSelectiveFilter dirFilter;
-    private Info info;
     private Subunits subunits;
     private int nxmax;
     private int nymax;
@@ -106,8 +105,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private int clusterSize = getInt("clusterSize", 4);
     private float focalLengthM = getFloat("focalLengthM", 0.001f);
     private float objectRealWidthXM = getFloat("objectRealWidthXM", 0.5f);
-    private float eventRateTauMs = getFloat("eventRateTauMs", 100f);
-    private float dtBackgroundUs = getFloat("dtBackgroundUs", 100000f);
     private int neuronDecayTimeconstantMs = getInt("neuronDecayTimeconstantMs", 100);
     private int operationRange = getInt("operationRange", 4);
     private int updateRosEveryUs = getInt("updateRosEveryUs", 100);
@@ -138,87 +135,56 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         this.lastSpikedOMCTracker2 = new int[2][getClusterSize()];
         this.lastSpikedOMCArray = new int[2][getClusterSize()];
 
-        eventRateFilter = new EventRateEstimator(chip);
-        eventRateFilter.setEventRateTauMs(eventRateTauMs);
-//        dirFilter = new ApsDvsDirectionSelectiveFilter(chip);
-        info = new Info(chip);
-
-//        setEnclosedFilter(dirFilter);
-        //setEnclosedFilter(median);
+        trackingFilterChain = new FilterChain(chip);
         backgroundActivityFilter = new BackgroundActivityFilter(chip);
-        backgroundActivityFilter.setDt((int) dtBackgroundUs);
-        backgroundActivityFilter.setSubsampleBy(0);
         hotPixelFilter = new HotPixelFilter(chip);
+        eventRateFilter = new EventRateEstimator(chip);
+        trackingFilterChain.add(backgroundActivityFilter);
+        trackingFilterChain.add(hotPixelFilter);
+        trackingFilterChain.add(eventRateFilter);
+        setEnclosedFilterChain(trackingFilterChain); // labels enclosed filters as being enclosed
+//        backgroundActivityFilter.setEnclosedFilter(hotPixelFilter); // marks xYFilter as enclosed by tracker
+//        hotPixelFilter.setEnclosedFilter(eventRateFilter);    // tracker is enclosed by this
+////        eventRateFilter.setEnclosed(true, this);   // same for servoArm
+        setEnclosedFilterChain(trackingFilterChain);
+        trackingFilterChain.reset();
 
         chip.addObserver(this);
         final String use = "1) Key Parameters", fix = "3) Fixed Parameters", disp = "2) Display", logging = "4) Logging";
 //------------------------------------------------------------------------------
-        setPropertyTooltip(disp, "showSubunits", "Enables showing subunit activity "
-                + "annotation over retina output");
-        setPropertyTooltip(disp, "showAllOMCoutputs", "Enables showing of all OMC"
-                + "outputs only");
-        setPropertyTooltip(fix, "subunitSubsamplingBits", "Each subunit integrates "
-                + "events from 2^n by 2^n pixels, where n=subunitSubsamplingBits");
-        setPropertyTooltip(fix, "synapticWeight", "Subunit activity inputs to the "
-                + "objectMotion neuron are weighted this much; use to adjust "
-                + "response magnitude");
+        setPropertyTooltip(disp, "showSubunits", "Enables showing subunit activity annotation over retina output");
+        setPropertyTooltip(disp, "showAllOMCoutputs", "Enables showing of all OMC outputs only");
+        setPropertyTooltip(fix, "subunitSubsamplingBits", "Each subunit integrates events from 2^n by 2^n pixels, where n=subunitSubsamplingBits");
+        setPropertyTooltip(fix, "synapticWeight", "Subunit activity inputs to the objectMotion neuron are weighted this much; use to adjust response magnitude");
         setPropertyTooltip(fix, "vmemIncrease", "Increase in vmem per event received");
-        setPropertyTooltip(use, "subunitDecayTimeconstantMs", "Subunit activity "
-                + "decays with this time constant in ms");
+        setPropertyTooltip(use, "subunitDecayTimeconstantMs", "Subunit activity decays with this time constant in ms");
         setPropertyTooltip(use, "neuronDecayTimeconstantMs", "decay Tau of IF neuron");
-        setPropertyTooltip(disp, "enableSpikeSound", "Enables audio spike output from "
-                + "objectMotion cell");
-        setPropertyTooltip(fix, "maxSpikeRateHz", "Maximum spike rate of objectMotion "
-                + "cell in Hz");
-        setPropertyTooltip(fix, "centerExcitationToSurroundInhibitionRatio",
-                "Inhibitory ON subunits are weighted by factor more than "
-                + "excitatory OFF subunit activity to the object motion "
-                + "cell");
-        setPropertyTooltip(fix, "minUpdateIntervalUs", "subunits activities are "
-                + "decayed to zero at least this often in us, even if they "
-                + "receive no input");
-        setPropertyTooltip(fix, "surroundSuppressionEnabled", "subunits are "
-                + "suppressed by surrounding activity of same type; reduces "
-                + "response to global dimming");
-        setPropertyTooltip(disp, "subunitActivityBlobRadiusScale", "The blobs "
-                + "represeting subunit activation are scaled by this factor");
-        setPropertyTooltip(use, "integrateAndFireThreshold", "The ganglion cell will "
-                + "fire if the difference between excitation and inhibition "
-                + "overcomes this threshold");
-        setPropertyTooltip(use, "increaseInThreshold", "increase in threshold of "
-                + "OMC neuron depending on activity");
-        setPropertyTooltip(fix, "poissonFiringEnabled", "The ganglion cell fires "
-                + "according to Poisson rate model for net synaptic input");
-        setPropertyTooltip(fix, "nonLinearityOrder", "The non-linear order of the "
-                + "subunits' value before the total sum");
-        setPropertyTooltip(logging, "startLogging", "Start logging inhibition and "
-                + "excitation");
-        setPropertyTooltip(logging, "deleteLogging", "Delete the logging of inhibition "
-                + "and excitation");
-        setPropertyTooltip(disp, "barsHeight", "set the magnitute of cen and sur if "
-                + "the inhibition and excitation are out of range");
-        setPropertyTooltip(fix, "excludedEdgeSubunits", "Set the number of subunits "
-                + "excluded from computation at the edge");
-        setPropertyTooltip(fix, "Saturation", "Set the maximum contribution of "
-                + "a single subunit, where it saturates");
-        setPropertyTooltip(use, "exponentialToTanh", "Switch from exponential "
-                + "non-linearity to exponential tangent");
-        setPropertyTooltip(disp, "showXcoord", "decide which Object Motion Cell to "
-                + "show by selecting the X coordinate of the center");
-        setPropertyTooltip(disp, "showYcoord", "decide which Object Motion Cell to "
-                + "show by selecting the Y coordinate of the center");
-        setPropertyTooltip(fix, "clusterSize", "decide how many Object Motion Cells' "
-                + "outputs to integrate to get an envelope of the prey");
+        setPropertyTooltip(disp, "enableSpikeSound", "Enables audio spike output from objectMotion cell");
+        setPropertyTooltip(fix, "maxSpikeRateHz", "Maximum spike rate of objectMotion cell in Hz");
+        setPropertyTooltip(fix, "centerExcitationToSurroundInhibitionRatio", "Inhibitory ON subunits are weighted by factor more than excitatory OFF subunit activity to the object motion cell");
+        setPropertyTooltip(fix, "minUpdateIntervalUs", "subunits activities are decayed to zero at least this often in us, even if they receive no input");
+        setPropertyTooltip(fix, "surroundSuppressionEnabled", "subunits are suppressed by surrounding activity of same type; reduces response to global dimming");
+        setPropertyTooltip(disp, "subunitActivityBlobRadiusScale", "The blobs represeting subunit activation are scaled by this factor");
+        setPropertyTooltip(use, "integrateAndFireThreshold", "The ganglion cell will fire if the difference between excitation and inhibition overcomes this threshold");
+        setPropertyTooltip(use, "increaseInThreshold", "increase in threshold of OMC neuron depending on activity");
+        setPropertyTooltip(fix, "poissonFiringEnabled", "The ganglion cell fires according to Poisson rate model for net synaptic input");
+        setPropertyTooltip(fix, "nonLinearityOrder", "The non-linear order of the subunits' value before the total sum");
+        setPropertyTooltip(logging, "startLogging", "Start logging inhibition and excitation");
+        setPropertyTooltip(logging, "deleteLogging", "Delete the logging of inhibition and excitation");
+        setPropertyTooltip(disp, "barsHeight", "set the magnitute of cen and sur if the inhibition and excitation are out of range");
+        setPropertyTooltip(fix, "excludedEdgeSubunits", "Set the number of subunits excluded from computation at the edge");
+        setPropertyTooltip(fix, "Saturation", "Set the maximum contribution of a single subunit, where it saturates");
+        setPropertyTooltip(use, "exponentialToTanh", "Switch from exponential non-linearity to exponential tangent");
+        setPropertyTooltip(disp, "showXcoord", "decide which Object Motion Cell to show by selecting the X coordinate of the center");
+        setPropertyTooltip(disp, "showYcoord", "decide which Object Motion Cell to show by selecting the Y coordinate of the center");
+        setPropertyTooltip(fix, "clusterSize", "decide how many Object Motion Cells' outputs to integrate to get an envelope of the prey");
         setPropertyTooltip(disp, "showQuadrants", "show the quadrants of motion");
         setPropertyTooltip(disp, "showTrackerCellsOnly", "show only cells in tracker 1");
         setPropertyTooltip(disp, "showTracker1", "show tracker 1");
         setPropertyTooltip(disp, "showTracker2", "show tracker 2");
         setPropertyTooltip(disp, "showSpecificOMCoutput", "show specific OMC output");
-        setPropertyTooltip(fix, "objectRealWidthXM", "Object's to be followed real "
-                + "width in meters");
+        setPropertyTooltip(fix, "objectRealWidthXM", "Object's to be followed real width in meters");
         setPropertyTooltip(fix, "focalLengthM", "Lenses' focal length in meters");
-        setPropertyTooltip(fix, "eventRateTauMs", "Tau of lowpass of event rate");
-        setPropertyTooltip(use, "dtBackgroundUs", "Tau of Background activity filter");
         setPropertyTooltip(use, "operationRange", "Spatial correlation distance");
         setPropertyTooltip(fix, "updateRosEveryUs", "Update ROS every set us");
         setPropertyTooltip(disp, "waitingTimeRstMs", "Reset tracker every set ms");
@@ -236,9 +202,9 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         //if (!(in.getEventPrototype() instanceof PolarityEvent)) {
         //return 
 //        EventPacket temp = (EventPacket) eventRateFilter.filterPacket(dirFilter.filterPacket(backgroundActivityFilter.filterPacket(hotPixelFilter.filterPacket(in))));
-        EventPacket temp = (EventPacket) eventRateFilter.filterPacket(backgroundActivityFilter.filterPacket(hotPixelFilter.filterPacket(in)));
+        EventPacket temp = (EventPacket) getEnclosedFilterChain().filterPacket(in);
         //if (in instanceof ApsDvsEventPacket) {
-        checkOutputPacketEventType(eventRateFilter.filterPacket(backgroundActivityFilter.filterPacket(hotPixelFilter.filterPacket(in)))); // make sure memory is allocated to avoid leak. 
+        checkOutputPacketEventType(getEnclosedFilterChain().filterPacket(in)); // make sure memory is allocated to avoid leak. 
         // we don't use output packet but it is necesary to iterate over DVS events only
         //}
         //clearOutputPacket();
@@ -251,7 +217,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         float lastTime = 0;
         for (Object o : temp) {
             PolarityEvent e = (PolarityEvent) o;
-            if (e.special) {
+            if (e.special || e.isFilteredOut()) {
                 continue;
             }
             subunits.update(e);
@@ -563,7 +529,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //            glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
 //            glu.gluDisk(quad, 0, 3, 32, 1);
 //            gl.glPopMatrix();
-
             // Send data to RosNodePublisher (-90 to center for davis, -64 for DVS128)
             //if (lastOMCODSpikeCheckTimestampUs - timeStampRosUs > getUpdateRosEveryUs()) {
             //    RosNodePublisher.setXcoordinate((findCenterOfMass(findClusterCorners())[0] << getSubunitSubsamplingBits()) - 90);
@@ -985,41 +950,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
-
-////----------------------------------------------------------------------------//
-////-- Center of mass finder method --------------------------------------------//
-////----------------------------------------------------------------------------// 
-//    int[] findMedianCenterOfMass(int[][] arrayOfSpikedCells) {
-//        int[] medianCenterOfMass = new int[2];
-//        int xPosition[] = new int[getClusterSize()];
-//        int yPosition[] = new int[getClusterSize()];
-//        for (int i = 0; i < getClusterSize(); i++) {
-//            xPosition[i] = arrayOfSpikedCells[0][i];
-//            yPosition[i] = arrayOfSpikedCells[1][i];
-//        }
-//        Arrays.sort(xPosition);
-//        Arrays.sort(yPosition);
-//
-//        double pos1x = Math.floor((xPosition.length - 1) / 2);
-//        double pos2x = Math.ceil((xPosition.length - 1) / 2);
-//        double pos1y = Math.floor((yPosition.length - 1) / 2);
-//        double pos2y = Math.ceil((yPosition.length - 1) / 2);
-//
-//        if (pos1x == pos2x) {
-//            medianCenterOfMass[0] = xPosition[(int) pos1x];
-//        } else {
-//            medianCenterOfMass[0] = (xPosition[(int) pos1x] + xPosition[(int) pos2x]) / 2;
-//        }
-//
-//        if (pos1y == pos2y) {
-//            medianCenterOfMass[1] = yPosition[(int) pos1y];
-//        } else {
-//            medianCenterOfMass[1] = (yPosition[(int) pos1y] + yPosition[(int) pos2y]) / 2;
-//        }
-//        return medianCenterOfMass;
-//    }
-////----------------------------------------------------------------------------//
-////----------------------------------------------------------------------------//
 
 //----------------------------------------------------------------------------//
 //-- Directions method -------------------------------------------------------//
@@ -1877,30 +1807,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         putBoolean("surroundSuppressionEnabled", surroundSuppressionEnabled);
     }
 //------------------------------------------------------------------------------
-    // @return the eventRateTauMs
-
-    public float getEventRateTauMs() {
-        return eventRateTauMs;
-    }
-
-    // @param eventRateTauMs the eventRateTauMs to set
-    public void setEventRateTauMs(float eventRateTauMs) {
-        this.eventRateTauMs = eventRateTauMs;
-        putFloat("eventRateTauMs", eventRateTauMs);
-    }
-//------------------------------------------------------------------------------
-    // @return the dtBackgroundUs
-
-    public float getDtBackgroundUs() {
-        return dtBackgroundUs;
-    }
-
-    // @param dtBackgroundUs the dtBackgroundUs to set
-    public void setDtBackgroundUs(float dtBackgroundUs) {
-        this.dtBackgroundUs = dtBackgroundUs;
-        putFloat("dtBackgroundUs", dtBackgroundUs);
-    }
-//------------------------------------------------------------------------------
     // @return the operationRange
 
     public int getOperationRange() {
@@ -1961,6 +1867,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         this.showAllOMCoutputs = showAllOMCoutputs;
         putBoolean("showAllOMCoutputs", showAllOMCoutputs);
     }
-//------------------------------------------------------------------------------//-- Class OMCOD -------------------------------------------------------------//
+//------------------------------------------------------------------------------
+//-- Class OMCOD -------------------------------------------------------------//
 //****************************************************************************//
 }
