@@ -78,7 +78,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     private CircularConvolutionFilter ballFilter = null;
     protected boolean staticBallTrackerEnabled = getBoolean("staticBallTrackerEnabled", true);
     private boolean saveSubframesEnabled = getBoolean("saveSubframesEnabled", false);
-    private int writtenSubframeCount = 0;
+    private int subFramesWrittenCount = 0;
     private String subFrameSaveFolderPath = null;
 
     private enum TrackingState {
@@ -546,7 +546,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
             subFrame.fill(renderer);
             ballDetector.detectBallLocation(subFrame);
             if (saveSubframesEnabled) {
-                subFrame.saveImage(writtenSubframeCount++);
+                subFrame.saveImage(subFramesWrittenCount++);
             }
 
         }
@@ -794,6 +794,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     public void setSaveSubframesEnabled(boolean saveSubframesEnabled) {
         this.saveSubframesEnabled = saveSubframesEnabled;
         if (saveSubframesEnabled) {
+            subFramesWrittenCount=0;
             DateFormat loggingFilenameDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ssZ");
             String dateString = loggingFilenameDateFormat.format(new Date());
             String folderName = "LabyrinthSubframes-"+dateString;
