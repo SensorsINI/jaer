@@ -539,7 +539,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
                 return;
             }
             AEFrameChipRenderer renderer = (AEFrameChipRenderer) (chip.getRenderer());
-            int dim = (int) (ballRadiusPixels * 2 * SUBFRAME_DIMENSION_PIXELS_MULTIPLE_OF_BALL_DIAMETER);
+            int dim = 36; // (int) (ballRadiusPixels * 2 * SUBFRAME_DIMENSION_PIXELS_MULTIPLE_OF_BALL_DIAMETER);
             if (subFrame == null || subFrame.dim != dim) {
                 subFrame = new SubFrame(dim);
             }
