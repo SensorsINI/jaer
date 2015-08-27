@@ -4,6 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.labyrinth;
 
+import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import java.awt.geom.Point2D;
 import java.util.Observable;
 import java.util.Observer;
@@ -30,9 +31,20 @@ import net.sf.jaer.util.filter.MedianLowpassFilter;
 import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap.PathPoint;
 import ch.unizh.ini.jaer.projects.virtualslotcar.Histogram2DFilter;
 import eu.seebetter.ini.chips.davis.HotPixelFilter;
+import java.awt.image.BufferedImage;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.imageio.ImageIO;
+import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventprocessing.filter.CircularConvolutionFilter;
 import net.sf.jaer.eventprocessing.filter.RotateFilter;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
@@ -65,13 +77,15 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     private boolean ballFilterEnabled = getBoolean("ballFilterEnabled", true);
     private CircularConvolutionFilter ballFilter = null;
     protected boolean staticBallTrackerEnabled = getBoolean("staticBallTrackerEnabled", true);
-    
-     private enum TrackingState {
+    private boolean saveSubframesEnabled = getBoolean("saveSubframesEnabled", false);
+    private int writtenSubframeCount = 0;
+    private String subFrameSaveFolderPath = null;
+
+    private enum TrackingState {
 
         Tracking, LostTracking, InitialState
     }
     private TrackingState trackingState = TrackingState.InitialState;
-    
 
     public LabyrinthBallTracker(AEChip chip, LabyrinthBallController controller) {
         this(chip);
@@ -114,9 +128,9 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
         setPropertyTooltip("ballRadiusPixels", "radius of ball in pixels used for locating ball in subframe static image");
         setPropertyTooltip("captureBackgroundImage", "capture next image frame as background image, for background model for static ball localizaiton");
         setPropertyTooltip("staticBallTrackerEnabled", "enable static ball localizaiton to (re)initialize tracking");
+        setPropertyTooltip("saveSubframesEnabled", "saves each subframe to a PNG file");
     }
 
-   
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         if (!addedPropertyChangeListener) {
@@ -133,22 +147,22 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
                 for (Cluster c : tracker.getClusters()) {
                     if (!c.isVisible()) {
                         continue;
-                        }
+                    }
                     Point2D.Float l = c.getLocation();
                     final int b = 5;
                     if ((l.x < -b) || (l.x > (chip.getSizeX() + b)) || (l.y < -b) || (l.y > (chip.getSizeY() + b))) {
                         continue;
-                }
+                    }
                     float mass = c.getMass();
                     if (mass > max) {
                         max = mass;
                         ball = c;
-            }
+                    }
                 }
             }
         } else {
-                ball = null;
-            }
+            ball = null;
+        }
         if (!in.isEmpty()) {
             lastTimestamp = in.getLastTimestamp();
         }
@@ -531,6 +545,9 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
             }
             subFrame.fill(renderer);
             ballDetector.detectBallLocation(subFrame);
+            if (saveSubframesEnabled) {
+                subFrame.saveImage(writtenSubframeCount++);
+            }
 
         }
 
@@ -625,6 +642,25 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
                 gl.glLineWidth(2);
                 gl.glColor4f(0, 0, .3f, .1f);
                 gl.glRectf(x0, y0, x0 + dim, y0 + dim);
+            }
+
+            public void saveImage(int frameCount) {
+                String fn = "labyrinth-subframe-" + frameCount + ".png";
+                BufferedImage theImage = new BufferedImage(dim, dim, BufferedImage.TYPE_INT_RGB);
+                for (int y = 0; y < dim; y++) {
+                    for (int x = 0; x < dim; x++) {
+                        float v = frame[x][y];
+                        int value = (int) (256 * v) << 16 | (int) (256 * v) << 8 | (int) (256 * v);
+                        theImage.setRGB(x, y, value);
+                    }
+                }
+                File outputfile = new File(subFrameSaveFolderPath + File.separator + fn);
+                try {
+                    ImageIO.write(theImage, "png", outputfile);
+                    log.info("wrote " + outputfile.getPath());
+                } catch (IOException ex) {
+                    Logger.getLogger(ApsFrameExtractor.class.getName()).log(Level.SEVERE, null, ex);
+                }
             }
         }
 
@@ -743,6 +779,35 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     public void setStaticBallTrackerEnabled(boolean staticBallTrackerEnabled) {
         this.staticBallTrackerEnabled = staticBallTrackerEnabled;
         putBoolean("staticBallTrackerEnabled", staticBallTrackerEnabled);
+    }
+
+    /**
+     * @return the saveSubframesEnabled
+     */
+    public boolean isSaveSubframesEnabled() {
+        return saveSubframesEnabled;
+    }
+
+    /**
+     * @param saveSubframesEnabled the saveSubframesEnabled to set
+     */
+    public void setSaveSubframesEnabled(boolean saveSubframesEnabled) {
+        this.saveSubframesEnabled = saveSubframesEnabled;
+        if (saveSubframesEnabled) {
+            DateFormat loggingFilenameDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH-mm-ssZ");
+            String dateString = loggingFilenameDateFormat.format(new Date());
+            String folderName = "LabyrinthSubframes-"+dateString;
+            File f = new File(folderName);
+            if (f.exists()) {
+                subFrameSaveFolderPath = folderName;
+            } else {
+                if (f.mkdir()) {
+                    subFrameSaveFolderPath = folderName;
+                } else {
+                    log.warning("could not create folder to hold subframe images; folder name was " + folderName);
+                }
+            }
+        }
     }
 
 }
