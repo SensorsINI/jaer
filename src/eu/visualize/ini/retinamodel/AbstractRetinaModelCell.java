@@ -30,9 +30,9 @@ import com.jogamp.opengl.util.awt.TextRenderer;
  */
 public abstract class AbstractRetinaModelCell extends EventFilter2D implements FrameAnnotater, Observer {
 
-    protected boolean showSubunits = getBoolean("showSubunits", true);
-    protected boolean showOutputCell = getBoolean("showOutputCell", true);
-    protected int subunitSubsamplingBits = getInt("subunitSubsamplingBits", 4); // each
+    protected boolean showSubunits = getBoolean("showSubunits", false);
+    protected boolean showOutputCell = getBoolean("showOutputCell", false);
+    protected int subunitSubsamplingBits = getInt("subunitSubsamplingBits", 3); // each
     // subunit
     // is
     // 2^n
@@ -48,7 +48,7 @@ public abstract class AbstractRetinaModelCell extends EventFilter2D implements F
     boolean hasBlendChecked = false;
     boolean hasBlend = false;
     protected boolean enableSpikeSound = getBoolean("enableSpikeSound", true);
-    protected boolean poissonFiringEnabled = getBoolean("poissonFiringEnabled", true);
+    protected boolean poissonFiringEnabled = getBoolean("poissonFiringEnabled", false);
 
     public AbstractRetinaModelCell(AEChip chip) {
         super(chip);

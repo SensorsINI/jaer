@@ -105,7 +105,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private int clusterSize = getInt("clusterSize", 4);
     private float focalLengthM = getFloat("focalLengthM", 0.001f);
     private float objectRealWidthXM = getFloat("objectRealWidthXM", 0.5f);
-    private int neuronDecayTimeconstantMs = getInt("neuronDecayTimeconstantMs", 100);
+    private float neuronDecayTimeconstantMs = getInt("neuronDecayTimeconstantMs", 29);
     private int operationRange = getInt("operationRange", 4);
     private int updateRosEveryUs = getInt("updateRosEveryUs", 100);
     private int waitingTimeRstMs = getInt("waitingTimeRstMs", 500000);
@@ -456,7 +456,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                 gl.glPushMatrix();
                 renderer.begin3DRendering();
                 renderer.setColor(12, 0, 1, .3f);
-                renderer.draw3D("OMC( " + lastSpikedOMC[0] + " , " + lastSpikedOMC[1] + " )", -55, 60, 0, .4f);
+                renderer.draw3D("OMCspike( " + lastSpikedOMC[0] + " , " + lastSpikedOMC[1] + " )", -80, 20, 0, .4f);
                 renderer.end3DRendering();
                 enableSpikeDraw = false;
                 gl.glPopMatrix();
@@ -487,9 +487,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             }
             // Reset tracker after a second of no OMC events in its neighbourhood 
             // (current timestamp - timestamp of last spiked OMC of tracker, spatially correlated then)
-            if (lastOMCODSpikeCheckTimestampUs - lastTimeStampSpikeArray[lastSpikedOMCTracker2[0][counter1]][lastSpikedOMCTracker2[1][counter1]] > 1000 * getWaitingTimeRstMs()) {
+            if (lastOMCODSpikeCheckTimestampUs - lastTimeStampSpikeArray[lastSpikedOMCTracker2[0][counter2]][lastSpikedOMCTracker2[1][counter2]] > 1000 * getWaitingTimeRstMs()) {
                 resetTracker2();
-
             }
         }
         if (showTracker1 && !showSpecificOMCoutput && showAllOMCoutputs && !rememberReset1) {
@@ -520,15 +519,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
             glu.gluDisk(quad, 0, 3, 32, 1);
             gl.glPopMatrix();
-
-//            // Draw median center of mass 
-//            gl.glPushMatrix();
-//            gl.glTranslatef((findMedianCenterOfMass(lastSpikedOMCArray)[0] + 1) << getSubunitSubsamplingBits(),
-//                    (findMedianCenterOfMass(lastSpikedOMCArray)[1] + 1) << getSubunitSubsamplingBits(), 5);
-//            gl.glColor4f(0, 1, 255, .3f);
-//            glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
-//            glu.gluDisk(quad, 0, 3, 32, 1);
-//            gl.glPopMatrix();
             // Send data to RosNodePublisher (-90 to center for davis, -64 for DVS128)
             //if (lastOMCODSpikeCheckTimestampUs - timeStampRosUs > getUpdateRosEveryUs()) {
             //    RosNodePublisher.setXcoordinate((findCenterOfMass(findClusterCorners())[0] << getSubunitSubsamplingBits()) - 90);
@@ -590,40 +580,33 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 
         renderer.begin3DRendering();
 
-        renderer.setColor(
-                1, 1, 0, .3f);
-        renderer.draw3D(
-                "OMCshow( " + getShowXcoord() + " , " + getShowYcoord() + " )", -55, 30, 0, .4f); // x y width height
-        renderer.setColor(
-                1, 1, 0, .3f);
-        renderer.draw3D(
-                "OMCini: " + inhibitionArray[getShowXcoord()][getShowYcoord()], -55, 90, 0, .4f); // x y width height
-        renderer.setColor(
-                1, 1, 0, .3f);
-        renderer.draw3D(
-                "OMCex: " + excitationArray[getShowXcoord()][getShowYcoord()], -55, 80, 0, .4f); // x y width height
-        renderer.setColor(
-                1, 1, 0, .3f);
-        renderer.draw3D(
-                "OMCmem: " + membraneStateArray[getShowXcoord()][getShowYcoord()], -55, 100, 0, .4f); // x y width height
-        renderer.setColor(
-                1, 1, 0, .3f);
-        renderer.draw3D(
-                "Average Event Rate: " + eventRateFilter.getFilteredEventRate() + " Ev/s", -55, 70, 0, .4f); // x y width height
-        renderer.setColor(
-                1, 1, 0, .3f);
-        renderer.draw3D(
-                "Current Threshold: " + IFthreshold, -55, 110, 0, .4f); // x y width height
-        renderer.setColor(
-                1, 1, 0, .3f);
-        directions(findCenterOfMass(findClusterCorners()));
-        renderer.draw3D(
-                "Direction: " + direction, -55, 50, 0, .4f); // x y width height
-        renderer.setColor(
-                1, 1, 0, .3f);
-        renderer.draw3D(
-                "Object at: " + distanceToTravel(((findClusterCorners()[1] + 2) << getSubunitSubsamplingBits())
-                        - (findClusterCorners()[0] << getSubunitSubsamplingBits())) + " m", -55, 40, 0, .4f); // x y width height
+        renderer.setColor(1, 1, 0, .3f);
+        renderer.draw3D("OMCshow( " + getShowXcoord() + " , " + getShowYcoord() + " )", -80, 30, 0, .4f); // x y width height
+
+        renderer.setColor(1, 1, 0, .3f);
+        renderer.draw3D("Avg Event Rate: " + eventRateFilter.getFilteredEventRate() + " Ev/s", -80, 40, 0, .4f); // x y width height
+
+        renderer.setColor(1, 1, 0, .3f);
+        renderer.draw3D("OMCex: " + excitationArray[getShowXcoord()][getShowYcoord()], -80, 50, 0, .4f); // x y width height
+
+        renderer.setColor(1, 1, 0, .3f);
+        renderer.draw3D("OMCini: " + inhibitionArray[getShowXcoord()][getShowYcoord()], -80, 60, 0, .4f); // x y width height
+
+        renderer.setColor(1, 1, 0, .3f);
+        renderer.draw3D("OMCmem: " + membraneStateArray[getShowXcoord()][getShowYcoord()], -80, 70, 0, .4f); // x y width height
+
+        renderer.setColor(1, 1, 0, .3f);
+        renderer.draw3D("IF Threshold: " + IFthreshold, -80, 80, 0, .4f); // x y width height
+
+        if (showQuadrants) {
+            renderer.setColor(1, 1, 0, .3f);
+            renderer.draw3D("Object at: " + distanceToTravel(((findClusterCorners()[1] + 2) << getSubunitSubsamplingBits())
+                    - (findClusterCorners()[0] << getSubunitSubsamplingBits())) + " m", -80, 90, 0, .4f); // x y width height
+
+            renderer.setColor(1, 1, 0, .3f);
+            directions(findCenterOfMass(findClusterCorners()));
+            renderer.draw3D("Direction: " + direction, -80, 100, 0, .4f); // x y width height
+        }
 //        trying to detect robot
 //        if (eventRateFilter.getFilteredEventRate() < 20000) {
 //            renderer.setColor(0, 1, 0, 1f);
@@ -961,23 +944,23 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         int divisionY = (int) (chip.getSizeY() >> getSubunitSubsamplingBits()) / 3;
 
         if (CMx > 0 && CMy > 0 && CMx < divisionX && CMy < divisionY) { //1
-            direction = "[1] Bottom-Left: Turn Left";
+            direction = "[1] Turn Left";
         } else if (CMx > divisionX && CMy > 0 && CMx < nxmax - divisionX && CMy < divisionY) { //2
-            direction = "[2] Bottom-Center: Stay still";
+            direction = "[2] Stay still";
         } else if (CMx > nxmax - divisionX && CMy > 0 && CMx < nxmax && CMy < divisionY) { //3
-            direction = "[3] Bottom-Right: Turn Right";
+            direction = "[3] Turn Right";
         } else if (CMx > 0 && CMy > divisionY && CMx < divisionX && CMy < nymax - divisionY) { //4
-            direction = "[4] Center-Left: Go + Turn Left";
+            direction = "[4] Go + Turn Left";
         } else if (CMx > divisionX && CMy > divisionY && CMx < nxmax - divisionX && CMy < nymax - divisionY) { //5
-            direction = "[5] Center: Go straight";
+            direction = "[5] Go straight";
         } else if (CMx > nxmax - divisionX && CMy > divisionY && CMx < nxmax && CMy < nymax - divisionY) { //6
-            direction = "[6] Center-Right: ? Go + Turn Right";
+            direction = "[6] Go + Turn Right";
         } else if (CMx > 0 && CMy > nymax - divisionY && CMx < divisionX && CMy < nymax) { //7
-            direction = "[7] Top-Left: ? Go more + Turn Left";
+            direction = "[7] Go more + Turn Left";
         } else if (CMx > divisionX && CMy > nymax - divisionY && CMx < nxmax - divisionX && CMy < nymax) { //8
-            direction = "[8] Top-Center: ? Go more straight";
+            direction = "[8] Go more straight";
         } else if (CMx > nxmax - divisionX && CMy > nymax - divisionY && CMx < nxmax && CMy < nymax) { //9
-            direction = "[9] Top-Right: ? Go more + Turn Right";
+            direction = "[9] Go more + Turn Right";
         }
     }
 //----------------------------------------------------------------------------//
@@ -1498,14 +1481,14 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 //------------------------------------------------------------------------------
 
-    public int getNeuronDecayTimeconstantMs() {
+    public float getNeuronDecayTimeconstantMs() {
         return neuronDecayTimeconstantMs;
     }
 
     // @param neuronDecayTimeconstantMs the neuronDecayTimeconstantMs to set
-    public synchronized void setNeuronDecayTimeconstantMs(int neuronDecayTimeconstantMs) {
+    public synchronized void setNeuronDecayTimeconstantMs(float neuronDecayTimeconstantMs) {
         this.neuronDecayTimeconstantMs = neuronDecayTimeconstantMs;
-        putInt("neuronDecayTimeconstantMs", neuronDecayTimeconstantMs);
+        putFloat("neuronDecayTimeconstantMs", neuronDecayTimeconstantMs);
     }
 //------------------------------------------------------------------------------
 
