@@ -46,6 +46,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private final FilterChain trackingFilterChain;
 //    private ApsDvsDirectionSelectiveFilter dirFilter;
     private Subunits subunits;
+    private int lastOMCODSpikeCheckTimestampUs;
     private int nxmax;
     private int nymax;
     private float IFthreshold;
@@ -56,8 +57,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private int lastIndex1 = 0;
     private int counter2 = 0;
     private int lastIndex2 = 0;
-    private boolean rememberReset1 = false;
-    private boolean rememberReset2 = false;
+    private boolean rememberReset1 = true;
+    private boolean rememberReset2 = true;
     private boolean notHere1 = false;
     private boolean notHere2 = false;
     private int probabilityOfCorrectness = 5;
@@ -150,7 +151,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         trackingFilterChain.reset();
 
         chip.addObserver(this);
-        final String use = "1) Key Parameters", fix = "3) Fixed Parameters", disp = "2) Display", logging = "4) Logging";
+        final String use = "1) Key Parameters", fix = "3) Fixed Parameters", disp = "2) Display", log = "4) Logging";
 //------------------------------------------------------------------------------
         setPropertyTooltip(disp, "showSubunits", "Enables showing subunit activity annotation over retina output");
         setPropertyTooltip(disp, "showAllOMCoutputs", "Enables showing of all OMC outputs only");
@@ -169,8 +170,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         setPropertyTooltip(use, "increaseInThreshold", "increase in threshold of OMC neuron depending on activity");
         setPropertyTooltip(fix, "poissonFiringEnabled", "The ganglion cell fires according to Poisson rate model for net synaptic input");
         setPropertyTooltip(fix, "nonLinearityOrder", "The non-linear order of the subunits' value before the total sum");
-        setPropertyTooltip(logging, "startLogging", "Start logging inhibition and excitation");
-        setPropertyTooltip(logging, "deleteLogging", "Delete the logging of inhibition and excitation");
+        setPropertyTooltip(log, "startLogging", "Start logging inhibition and excitation");
+        setPropertyTooltip(log, "deleteLogging", "Delete the logging of inhibition and excitation");
         setPropertyTooltip(disp, "barsHeight", "set the magnitute of cen and sur if the inhibition and excitation are out of range");
         setPropertyTooltip(fix, "excludedEdgeSubunits", "Set the number of subunits excluded from computation at the edge");
         setPropertyTooltip(fix, "Saturation", "Set the maximum contribution of a single subunit, where it saturates");
@@ -191,8 +192,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
-
-    private int lastOMCODSpikeCheckTimestampUs = 0;
 
 //----------------------------------------------------------------------------//
 //-- Filter packet method ----------------------------------------------------//
@@ -307,6 +306,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 
                 //Tracker 1
                 if (rememberReset1) { // Start anywhere after reset
+                    System.out.println("resetting");
                     if (showTracker2) {
                         for (int j = 0; j < getClusterSize(); j++) {// check if the value you want to restart from is already in Tracker 2
                             for (int i = 0; i < 2; i++) {
@@ -327,7 +327,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                                 }
                             }
                         }
-                        rememberReset1 = false;
+                        rememberReset1 = false;System.out.println("restart");
                     }
                     notHere1 = false;
                 }
@@ -476,15 +476,23 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         if (showTracker1 || showTracker2) {
             // Reset tracker after a second of no OMC events after half second
             // (current timestamp - timestamp of last spiked OMC)
+            if (lastOMCODSpikeCheckTimestampUs - lastTimeStampSpikeArray[lastSpikedOMC[0]][lastSpikedOMC[1]] < -1000 * getWaitingTimeRstMs()) {//reset if changing a video with different timestamp!
+                resetTracker1();
+                resetTracker2();
+            }
             if (lastOMCODSpikeCheckTimestampUs - lastTimeStampSpikeArray[lastSpikedOMC[0]][lastSpikedOMC[1]] > 1000 * getWaitingTimeRstMs()) {
                 resetTracker1();
                 resetTracker2();
             }
+        }
+        if (showTracker1) {
             // Reset tracker after a second of no OMC events in its neighbourhood 
             // (current timestamp - timestamp of last spiked OMC of tracker, spatially correlated then)
             if (lastOMCODSpikeCheckTimestampUs - lastTimeStampSpikeArray[lastSpikedOMCTracker1[0][counter1]][lastSpikedOMCTracker1[1][counter1]] > 1000 * getWaitingTimeRstMs()) {
                 resetTracker1();
             }
+        }
+        if (showTracker2) {
             // Reset tracker after a second of no OMC events in its neighbourhood 
             // (current timestamp - timestamp of last spiked OMC of tracker, spatially correlated then)
             if (lastOMCODSpikeCheckTimestampUs - lastTimeStampSpikeArray[lastSpikedOMCTracker2[0][counter2]][lastSpikedOMCTracker2[1][counter2]] > 1000 * getWaitingTimeRstMs()) {
