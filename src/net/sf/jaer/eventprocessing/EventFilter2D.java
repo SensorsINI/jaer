@@ -8,37 +8,40 @@ import java.awt.Component;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.swing.JPanel;
+
 import net.sf.jaer.aemonitor.AEConstants;
-import net.sf.jaer.chip.*;
-import net.sf.jaer.event.*;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 
-/** A filter that filters or otherwise processes a packet of events. 
- * <code>EventFilter2D</code> is the base class  for all processing methods in jAER. 
+/** A filter that filters or otherwise processes a packet of events.
+ * <code>EventFilter2D</code> is the base class  for all processing methods in jAER.
  * <p>
  * The method <code>filterPacket</code> is called when data is available to be processed.
  * A subclass implements <code>filterPacket</code> along with <code>resetFilter</code>.
- * 
+ *
  * @author tobi */
 abstract public class EventFilter2D extends EventFilter {
 
-    /** The built-in reference to the output packet. This packet is 
-     * uninitialized (to save memory) by default. To create this packet, use 
+    /** The built-in reference to the output packet. This packet is
+     * uninitialized (to save memory) by default. To create this packet, use
      * one of the <code>checkOutputPacketEventType</code> methods.
      * <p>
-     * When processing events in subtypes of EventPacket 
-     * (like {@link ApsDvsEventPacket}) that may contain other kinds of events 
+     * When processing events in subtypes of EventPacket
+     * (like {@link ApsDvsEventPacket}) that may contain other kinds of events
      * than asynchronous pixel events (like APS image sensor samples), then
-     * it may be necessary to write output events to a different output packet 
+     * it may be necessary to write output events to a different output packet
      * than the built in <code>out</code>packet. See {@link ApsDvsEventPacket}.
-     * 
-     * @see EventFilter2D#checkOutputPacketEventType(net.sf.jaer.event.EventPacket) 
+     *
+     * @see EventFilter2D#checkOutputPacketEventType(net.sf.jaer.event.EventPacket)
      * @see EventFilter2D#checkOutputPacketEventType(java.lang.Class) */
     protected EventPacket out = null;
-    
+
     /** Returns reference to the built-in output packet.
-     * @return the out packet. 
+     * @return the out packet.
      * @see #out */
     protected EventPacket getOutputPacket(){
         return out;
@@ -47,7 +50,7 @@ abstract public class EventFilter2D extends EventFilter {
     /** This field is used for update callbacks on this packet. */
     protected float currentUpdateIntervalMs;
 
-    /** Resets the output packet to be a new packet if none has been 
+    /** Resets the output packet to be a new packet if none has been
      * constructed or clears the packet if it exists */
     protected void clearOutputPacket() {
         if (out == null) {
@@ -56,17 +59,17 @@ abstract public class EventFilter2D extends EventFilter {
             out.clear();
         }
     }
-    
-    /** Checks the built-in <code>out</code> packet to make sure it holds the 
-     * same type as the input packet. 
-     * This method is used for filters that must pass output that has same 
-     * event type as input. Unlike the other checkOutputPacketEventType method, 
-     * this also ensures that the output EventPacket is of the correct class, 
-     * e.g. if it is a subclass of EventPacket, but only if 
-     * {@link EventPacket#setBypassPacket()} has been called. I.e., the user 
-     * must set {@link EventPacket#bypassPacket}. 
+
+    /** Checks the built-in <code>out</code> packet to make sure it holds the
+     * same type as the input packet.
+     * This method is used for filters that must pass output that has same
+     * event type as input. Unlike the other checkOutputPacketEventType method,
+     * this also ensures that the output EventPacket is of the correct class,
+     * e.g. if it is a subclass of EventPacket, but only if
+     * {@link EventPacket#setBypassPacket()} has been called. I.e., the user
+     * must set {@link EventPacket#bypassPacket}.
      * <p>
-     * This method also copies fields from the input packet to the output 
+     * This method also copies fields from the input packet to the output
      * packet, e.g. <code>systemModificationTimeNs</code>.
      * @param in the input packet
      * @see #out */
@@ -74,25 +77,24 @@ abstract public class EventFilter2D extends EventFilter {
 //        if(out==in){
 //            log.warning("output packet is the same as input packet; this call will clear input packet which is probably not what you want");
 //        }
-        if (out != null && out.getEventClass() == in.getEventClass() && out.getClass() == in.getClass()) {
+        if ((out != null) && (out.getEventClass() == in.getEventClass()) && (out.getClass() == in.getClass())) {
             out.systemModificationTimeNs=in.systemModificationTimeNs;
             out.clear();
         }else{
             out = in.constructNewPacket();
         }
-        in.setOutputPacket(out);
     }
-    
-    /** Checks <code>out</code>  packet to make sure it holds the same type of events as the given class. 
-     * This method is used for filters that must pass output that has a 
-     * particular output type.  This method does not ensure that the output 
+
+    /** Checks <code>out</code>  packet to make sure it holds the same type of events as the given class.
+     * This method is used for filters that must pass output that has a
+     * particular output type.  This method does not ensure that the output
      * packet is of the correct subtype of EventPacket.
      * @param outClass the output packet event type class.
      * @see #out
      * @see EventPacket#constructNewPacket
      * @see #checkOutputPacketEventType(java.lang.Class) */
     protected void checkOutputPacketEventType(Class<? extends BasicEvent> outClass) {
-        if (out == null || out.getEventClass() == null || out.getEventClass() != outClass) {
+        if ((out == null) || (out.getEventClass() == null) || (out.getEventClass() != outClass)) {
             out = new EventPacket(outClass);
             try {
                 out.setEventPrototype(outClass.newInstance());
@@ -100,11 +102,11 @@ abstract public class EventFilter2D extends EventFilter {
                 Logger.getLogger(EventFilter2D.class.getName()).log(Level.SEVERE, null, ex);
             } catch (IllegalAccessException ex) {
                 Logger.getLogger(EventFilter2D.class.getName()).log(Level.SEVERE, null, ex);
-            } 
+            }
         }
         out.clear();
     }
-    
+
     /** Subclasses implement this method to define custom processing.
      * @param in the input packet
      * @return the output packet */
@@ -115,7 +117,7 @@ abstract public class EventFilter2D extends EventFilter {
         super(chip);
         this.chip = chip;
     }
-    
+
     /** overrides EventFilter type in EventFilter */
     protected EventFilter2D enclosedFilter;
 
@@ -151,12 +153,12 @@ abstract public class EventFilter2D extends EventFilter {
             out = null; // garbage collect
         }
     }
- 
+
     private int nextUpdateTimeUs = 0; // next timestamp we should update cluster list
     private boolean updateTimeInitialized = false;// to initialize time for cluster list update
     private int lastUpdateTimeUs=0;
 
-    /** Checks for passage of interval of at least updateIntervalMs since the last update and 
+    /** Checks for passage of interval of at least updateIntervalMs since the last update and
      * notifies Observers if time has passed.
      * Observers are called with an UpdateMessage formed from the current packet and the current timestamp.
      * @param packet the current data
@@ -164,14 +166,14 @@ abstract public class EventFilter2D extends EventFilter {
      * @return true if Observers were notified.
      */
     public boolean maybeCallUpdateObservers(EventPacket packet, int timestamp) {
-        if (!updateTimeInitialized || currentUpdateIntervalMs != chip.getFilterChain().getUpdateIntervalMs()) {
-            nextUpdateTimeUs = (int) (timestamp + chip.getFilterChain().getUpdateIntervalMs() * 1000 / AEConstants.TICK_DEFAULT_US);
+        if (!updateTimeInitialized || (currentUpdateIntervalMs != chip.getFilterChain().getUpdateIntervalMs())) {
+            nextUpdateTimeUs = (int) (timestamp + ((chip.getFilterChain().getUpdateIntervalMs() * 1000) / AEConstants.TICK_DEFAULT_US));
             updateTimeInitialized = true; // TODO may not be handled correctly after rewind of filter
             currentUpdateIntervalMs = chip.getFilterChain().getUpdateIntervalMs();
         }
         // ensure observers are called by next event after upateIntervalUs
-        if (timestamp >= nextUpdateTimeUs || timestamp<lastUpdateTimeUs /* handle rewind of time */) {
-            nextUpdateTimeUs = (int) (timestamp + chip.getFilterChain().getUpdateIntervalMs() * 1000 / AEConstants.TICK_DEFAULT_US);
+        if ((timestamp >= nextUpdateTimeUs) || (timestamp<lastUpdateTimeUs /* handle rewind of time */)) {
+            nextUpdateTimeUs = (int) (timestamp + ((chip.getFilterChain().getUpdateIntervalMs() * 1000) / AEConstants.TICK_DEFAULT_US));
 //            log.info("notifying update observers after "+(timestamp-lastUpdateTimeUs)+"us");
             setChanged();
             notifyObservers(new UpdateMessage(this, packet, timestamp));
@@ -191,7 +193,7 @@ abstract public class EventFilter2D extends EventFilter {
         notifyObservers(new UpdateMessage(this, packet, timestamp));
     }
 
-    /** Supplied as object for update. 
+    /** Supplied as object for update.
      * @see #maybeCallUpdateObservers */
     public class UpdateMessage{
         /** The packet that needs the update. */
@@ -202,10 +204,10 @@ abstract public class EventFilter2D extends EventFilter {
         EventFilter2D source;
 
         /** When a filter calls for an update of listeners it supplies this object.
-         * 
+         *
          * @param source - the source of the update
          * @param packet - the EventPacket
-         * @param timestamp - the timestamp in us (typically) of the update 
+         * @param timestamp - the timestamp in us (typically) of the update
          */
         public UpdateMessage(EventFilter2D source, EventPacket packet, int timestamp ) {
             this.packet = packet;
@@ -213,75 +215,88 @@ abstract public class EventFilter2D extends EventFilter {
             this.source = source;
         }
 
-        public String toString(){
+        @Override
+		public String toString(){
             return "UpdateMessage source="+source+" packet="+packet+" timestamp="+timestamp;
         }
     }
-    
+
     // <editor-fold defaultstate="collapsed" desc=" Peter's Bells & Whistles " >
-    
+
     ArrayList<JPanel> customControls; // List of added controls
-    
+
     ArrayList<Component> customDisplays=new ArrayList(); // List of added displays
-    
+
     /** Add your own display to the display area */
     public void addDisplay(Component disp)
     {
         customDisplays.add(disp);
-        
-        if (this.getChip().getAeViewer().globalized) 
-            this.getChip().getAeViewer().getJaerViewer().globalViewer.addDisplayWriter(disp);
-        else
-            this.getChip().getAeViewer().getImagePanel().add(disp,BorderLayout.EAST);
+
+        if (this.getChip().getAeViewer().globalized) {
+			this.getChip().getAeViewer().getJaerViewer().globalViewer.addDisplayWriter(disp);
+		}
+		else {
+			this.getChip().getAeViewer().getImagePanel().add(disp,BorderLayout.EAST);
+		}
     }
-    
+
     /** Remove all displays that you added */
     public void removeDisplays()
     {
-        if (this.getChip().getAeViewer()==null)
-            return;
-        
-        if (this.getChip().getAeViewer().globalized) 
-            for (Component c:customDisplays)
-                this.getChip().getAeViewer().getJaerViewer().globalViewer.removeDisplay(c);
-        else 
-            for (Component c:customDisplays)
-              this.getChip().getAeViewer().getImagePanel().remove(c);
+        if (this.getChip().getAeViewer()==null) {
+			return;
+		}
+
+        if (this.getChip().getAeViewer().globalized) {
+			for (Component c:customDisplays) {
+				this.getChip().getAeViewer().getJaerViewer().globalViewer.removeDisplay(c);
+			}
+		}
+		else {
+			for (Component c:customDisplays) {
+				this.getChip().getAeViewer().getImagePanel().remove(c);
+			}
+		}
     }
-        
+
     /** Add a panel to the filter controls */
     public void addControls(JPanel controls)
     {
 //        this.getChip().getAeViewer().getJaerViewer().globalViewer.addControlsToFilter(controls, this);
-        
+
         getControlPanel().addCustomControls(controls);
-        
+
     }
-    
+
     /** Remove all added controls */
     public void removeControls()
     {   FilterPanel p=getControlPanel();
-        if (p!=null)
-            p.removeCustomControls();
+        if (p!=null) {
+			p.removeCustomControls();
+		}
     }
-    
+
     /** Retrieves the control panel for this filter, allowing you to customize it */
     private FilterPanel getControlPanel()
     {
-        if((this.getChip().getAeViewer())==null)
-            return null;
-        
-        if (this.getChip().getAeViewer().globalized) //
-            return this.getChip().getAeViewer().getJaerViewer().globalViewer.procNet.getControlPanelFromFilter(this);
-        else // Backwards compatibility
+        if((this.getChip().getAeViewer())==null) {
+			return null;
+		}
+
+        if (this.getChip().getAeViewer().globalized) {
+			return this.getChip().getAeViewer().getJaerViewer().globalViewer.procNet.getControlPanelFromFilter(this);
+		}
+		else // Backwards compatibility
         {
-            if (this.getChip().getAeViewer().getFilterFrame()==null)
-                return null;
-            else
-                return this.getChip().getAeViewer().getFilterFrame().getFilterPanelForFilter(this);
-            
+            if (this.getChip().getAeViewer().getFilterFrame()==null) {
+				return null;
+			}
+			else {
+				return this.getChip().getAeViewer().getFilterFrame().getFilterPanelForFilter(this);
+			}
+
         }
     }
-    
+
     // </editor-fold>
 }

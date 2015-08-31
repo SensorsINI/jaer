@@ -19,7 +19,7 @@ import net.sf.jaer.event.TypedEvent;
 public class TypedEventRateEstimator extends EventRateEstimator {
 
     private int numCellTypes = 0;
-    private EventPacket<BasicEvent>[] typedEventPackets = null;
+    private EventPacket<? extends BasicEvent>[] typedEventPackets = null;
     private EventRateEstimator[] eventRateEstimators = null;
     protected boolean measureIndividualTypesEnabled=getBoolean("measureIndividualTypesEnabled", true);
 
@@ -27,15 +27,17 @@ public class TypedEventRateEstimator extends EventRateEstimator {
         super(chip);
         setPropertyTooltip("measureIndividualTypesEnabled", "measures cells types individually rather than lumping all types into one overall rate measure");
     }
-    
+
     public int getNumCellTypes(){
         return numCellTypes;
     }
-    
+
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         super.filterPacket(in); // measure overall event rate and send updates to observers that listen for these updates
-        if(!isMeasureIndividualTypesEnabled()) return in;
+        if(!isMeasureIndividualTypesEnabled()) {
+			return in;
+		}
         checkOutputPacketEventType(in);
         if (numCellTypes != in.getNumCellTypes()) {                     // build tmp packets to hold different types of events
             numCellTypes = in.getNumCellTypes();
@@ -90,7 +92,7 @@ public class TypedEventRateEstimator extends EventRateEstimator {
     }
 
     public float getInstantaneousEventRate(int i) {
-        if (i < 0 || i >= numCellTypes) {
+        if ((i < 0) || (i >= numCellTypes)) {
             return Float.NaN;
         } else {
             return eventRateEstimators[i].getInstantaneousEventRate();
@@ -98,14 +100,16 @@ public class TypedEventRateEstimator extends EventRateEstimator {
     }
 
     public float getFilteredEventRate(int i) {
-        if(!measureIndividualTypesEnabled) return super.getFilteredEventRate();
-        if (i < 0 || i >= numCellTypes) {
+        if(!measureIndividualTypesEnabled) {
+			return super.getFilteredEventRate();
+		}
+        if ((i < 0) || (i >= numCellTypes)) {
             return Float.NaN;
         } else {
             return eventRateEstimators[i].getFilteredEventRate();
         }
     }
-    
+
     @Override
     public float getInstantaneousEventRate() {
         if (numCellTypes == 0) {
@@ -165,5 +169,5 @@ public class TypedEventRateEstimator extends EventRateEstimator {
         putBoolean("measureIndividualTypesEnabled", measureIndividualTypesEnabled);
     }
 
- 
+
 }

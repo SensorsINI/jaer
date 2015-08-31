@@ -21,7 +21,7 @@ import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
 public class ChannelEventRateEstimator extends EventRateEstimator {
 
     private int numChannels = 0;
-    private EventPacket<BasicEvent>[] typedEventPackets = null;
+    private EventPacket<? extends BasicEvent>[] typedEventPackets = null;
     private EventRateEstimator[] eventRateEstimators = null;
     protected boolean measureIndividualChannelsEnabled=getBoolean("measureIndividualTypesEnabled", true);
 
@@ -29,22 +29,24 @@ public class ChannelEventRateEstimator extends EventRateEstimator {
         super(chip);
         setPropertyTooltip("measureIndividualTypesEnabled", "measures the channel activity for each cochlea channel seperatly");
     }
-    
+
     public int getNumChannels(){
         return numChannels;
     }
-    
+
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
         super.filterPacket(in); // measure overall event rate and send updates to observers that listen for these updates
-        if(!isMeasureIndividualChannelsEnabled()) return in;
+        if(!isMeasureIndividualChannelsEnabled()) {
+			return in;
+		}
         checkOutputPacketEventType(in);
         if (numChannels != chip.getSizeX()) {                     // build tmp packets to hold events of different channels
             numChannels = chip.getSizeX();
             typedEventPackets = new EventPacket[numChannels];
             eventRateEstimators=new EventRateEstimator[numChannels];
             for (int i = 0; i < numChannels; i++) {     //construct an eventRateEstimator for each channel
-                typedEventPackets[i] = in.constructNewPacket();                
+                typedEventPackets[i] = in.constructNewPacket();
                 eventRateEstimators[i] = new EventRateEstimator(chip);
                 eventRateEstimators[i].setEventRateTauMs(getEventRateTauMs());
                 eventRateEstimators[i].setMaxRate(getMaxRate());
@@ -90,7 +92,7 @@ public class ChannelEventRateEstimator extends EventRateEstimator {
     }
 
     public float getInstantaneousEventRate(int i) {
-        if (i < 0 || i >= numChannels) {
+        if ((i < 0) || (i >= numChannels)) {
             return Float.NaN;
         } else {
             return eventRateEstimators[i].getInstantaneousEventRate();
@@ -98,14 +100,16 @@ public class ChannelEventRateEstimator extends EventRateEstimator {
     }
 
     public float getFilteredEventRate(int i) {
-        if(!measureIndividualChannelsEnabled) return super.getFilteredEventRate();
-        if (i < 0 || i >= numChannels) {
+        if(!measureIndividualChannelsEnabled) {
+			return super.getFilteredEventRate();
+		}
+        if ((i < 0) || (i >= numChannels)) {
             return Float.NaN;
         } else {
             return eventRateEstimators[i].getFilteredEventRate();
         }
     }
-    
+
     @Override
     public float getInstantaneousEventRate() {
         if (numChannels == 0) {
@@ -165,5 +169,5 @@ public class ChannelEventRateEstimator extends EventRateEstimator {
         putBoolean("measureIndividualTypesEnabled", measureIndividualChannelsEnabled);
     }
 
- 
+
 }
