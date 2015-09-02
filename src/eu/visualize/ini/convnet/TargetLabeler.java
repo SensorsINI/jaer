@@ -931,6 +931,10 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         switch (evt.getPropertyName()) {
             case AEInputStream.EVENT_POSITION:
                 filePositionEvents = (long) evt.getNewValue();
+                if(chip.getAeInputStream()==null){
+                    log.warning("null input stream, cannot get most recent timestamp");
+                    return;
+                }
                 filePositionTimestamp = chip.getAeInputStream().getMostRecentTimestamp();
                 break;
             case AEInputStream.EVENT_REWIND:
