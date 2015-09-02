@@ -306,7 +306,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 
                 //Tracker 1
                 if (rememberReset1) { // Start anywhere after reset
-                    System.out.println("resetting");
                     if (showTracker2) {
                         for (int j = 0; j < getClusterSize(); j++) {// check if the value you want to restart from is already in Tracker 2
                             for (int i = 0; i < 2; i++) {
@@ -327,7 +326,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                                 }
                             }
                         }
-                        rememberReset1 = false;System.out.println("restart");
+                        rememberReset1 = false;
                     }
                     notHere1 = false;
                 }
@@ -521,8 +520,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 
             // Draw center of mass 1
             gl.glPushMatrix();
-            gl.glTranslatef((findCenterOfMass(findClusterCorners())[0] + 1) << getSubunitSubsamplingBits(),
-                    (findCenterOfMass(findClusterCorners())[1] + 1) << getSubunitSubsamplingBits(), 5);
+            gl.glTranslatef((findCenterOfMass(findClusterCorners())[0] + (1<< getSubunitSubsamplingBits())) ,
+                    (findCenterOfMass(findClusterCorners())[1] + (1<< getSubunitSubsamplingBits())), 5);
             gl.glColor4f(0, 0, 1, .4f);
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
             glu.gluDisk(quad, 0, 3, 32, 1);
@@ -559,8 +558,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 
             // Draw center of mass 2
             gl.glPushMatrix();
-            gl.glTranslatef((findCenterOfMass(findClusterCorners())[2] + 1) << getSubunitSubsamplingBits(),
-                    (findCenterOfMass(findClusterCorners())[3] + 1) << getSubunitSubsamplingBits(), 5);
+            gl.glTranslatef((findCenterOfMass(findClusterCorners())[2]+ (1<< getSubunitSubsamplingBits())),
+                    (findCenterOfMass(findClusterCorners())[3]+ (1<< getSubunitSubsamplingBits())), 5);
             gl.glColor4f(1, 0, 0, .4f);
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
             glu.gluDisk(quad, 0, 3, 32, 1);
@@ -635,21 +634,21 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         gridOn(drawable);
 
         gl.glPopMatrix();
-        if (showTracker1) {
-            // Render probability of Correctness of tracker 1
-            gl.glPushMatrix();
-            renderer.begin3DRendering();
-            renderer.setColor(0, 1, 255, .3f);
-            renderer.draw3D("Probability", -20, 0, 0, .4f);
-            renderer.end3DRendering();
-            subunits.render(gl);
-            gl.glPopMatrix();
-
-            gl.glPushMatrix();
-            gl.glColor4f(0, 1, 255, .3f);
-            gl.glRectf(-10, 4, -5, 4 + 20 * probabilityOfCorrectness);
-            gl.glPopMatrix();
-        }
+//        if (showTracker1) {
+//            // Render probability of Correctness of tracker 1
+//            gl.glPushMatrix();
+//            renderer.begin3DRendering();
+//            renderer.setColor(0, 1, 255, .3f);
+//            renderer.draw3D("Probability", -20, 0, 0, .4f);
+//            renderer.end3DRendering();
+//            subunits.render(gl);
+//            gl.glPopMatrix();
+//
+//            gl.glPushMatrix();
+//            gl.glColor4f(0, 1, 255, .3f);
+//            gl.glRectf(-10, 4, -5, 4 + 20 * probabilityOfCorrectness);
+//            gl.glPopMatrix();
+//        }
 
         gl.glPopMatrix();
     }
@@ -923,16 +922,16 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
 //-- Center of mass finder method --------------------------------------------//
 //----------------------------------------------------------------------------// 
-    int[] findCenterOfMass(int[] corners) {
-        int minx1 = corners[0];
-        int maxx1 = corners[1];
-        int miny1 = corners[2];
-        int maxy1 = corners[3];
-        int minx2 = corners[4];
-        int maxx2 = corners[5];
-        int miny2 = corners[6];
-        int maxy2 = corners[7];
-        int[] centerOfMass = new int[4];
+    float[] findCenterOfMass(int[] corners) {
+        int minx1 = corners[0]<< getSubunitSubsamplingBits();
+        int maxx1 = corners[1]<< getSubunitSubsamplingBits();
+        int miny1 = corners[2]<< getSubunitSubsamplingBits();
+        int maxy1 = corners[3]<< getSubunitSubsamplingBits();
+        int minx2 = corners[4]<< getSubunitSubsamplingBits();
+        int maxx2 = corners[5]<< getSubunitSubsamplingBits();
+        int miny2 = corners[6]<< getSubunitSubsamplingBits();
+        int maxy2 = corners[7]<< getSubunitSubsamplingBits();
+        float[] centerOfMass = new float[4];
         centerOfMass[0] = (minx1 + maxx1) / 2;// Find x of CM
         centerOfMass[1] = (miny1 + maxy1) / 2; // Find y of CM
         centerOfMass[2] = (minx2 + maxx2) / 2;// Find x of CM
@@ -945,29 +944,31 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
 //-- Directions method -------------------------------------------------------//
 //----------------------------------------------------------------------------// 
-    void directions(int[] centerOfMass) {
-        int CMx = centerOfMass[0];
-        int CMy = centerOfMass[1];
-        int divisionX = (int) (chip.getSizeX() >> getSubunitSubsamplingBits()) / 3;
-        int divisionY = (int) (chip.getSizeY() >> getSubunitSubsamplingBits()) / 3;
-
+    void directions(float[] centerOfMass) {
+        float CMx = centerOfMass[0];
+        float CMy = centerOfMass[1];
+        int divisionX = (int) (chip.getSizeX()) / 3;
+        int divisionY = (int) (chip.getSizeY()) / 3;
+        float nxmaxS = nxmax<< getSubunitSubsamplingBits();
+        float nymaxS = nymax<< getSubunitSubsamplingBits();
+        
         if (CMx > 0 && CMy > 0 && CMx < divisionX && CMy < divisionY) { //1
             direction = "[1] Turn Left";
-        } else if (CMx > divisionX && CMy > 0 && CMx < nxmax - divisionX && CMy < divisionY) { //2
+        } else if (CMx > divisionX && CMy > 0 && CMx < nxmaxS - divisionX && CMy < divisionY) { //2
             direction = "[2] Stay still";
-        } else if (CMx > nxmax - divisionX && CMy > 0 && CMx < nxmax && CMy < divisionY) { //3
+        } else if (CMx > nxmaxS - divisionX && CMy > 0 && CMx < nxmaxS && CMy < divisionY) { //3
             direction = "[3] Turn Right";
-        } else if (CMx > 0 && CMy > divisionY && CMx < divisionX && CMy < nymax - divisionY) { //4
+        } else if (CMx > 0 && CMy > divisionY && CMx < divisionX && CMy < nymaxS - divisionY) { //4
             direction = "[4] Go + Turn Left";
-        } else if (CMx > divisionX && CMy > divisionY && CMx < nxmax - divisionX && CMy < nymax - divisionY) { //5
+        } else if (CMx > divisionX && CMy > divisionY && CMx < nxmaxS - divisionX && CMy < nymaxS - divisionY) { //5
             direction = "[5] Go straight";
-        } else if (CMx > nxmax - divisionX && CMy > divisionY && CMx < nxmax && CMy < nymax - divisionY) { //6
+        } else if (CMx > nxmaxS - divisionX && CMy > divisionY && CMx < nxmaxS && CMy < nymaxS - divisionY) { //6
             direction = "[6] Go + Turn Right";
-        } else if (CMx > 0 && CMy > nymax - divisionY && CMx < divisionX && CMy < nymax) { //7
+        } else if (CMx > 0 && CMy > nymaxS - divisionY && CMx < divisionX && CMy < nymaxS) { //7
             direction = "[7] Go more + Turn Left";
-        } else if (CMx > divisionX && CMy > nymax - divisionY && CMx < nxmax - divisionX && CMy < nymax) { //8
+        } else if (CMx > divisionX && CMy > nymaxS - divisionY && CMx < nxmaxS - divisionX && CMy < nymaxS) { //8
             direction = "[8] Go more straight";
-        } else if (CMx > nxmax - divisionX && CMy > nymax - divisionY && CMx < nxmax && CMy < nymax) { //9
+        } else if (CMx > nxmaxS - divisionX && CMy > nymaxS - divisionY && CMx < nxmaxS && CMy < nymaxS) { //9
             direction = "[9] Go more + Turn Right";
         }
     }
@@ -1516,7 +1517,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //------------------------------------------------------------------------------
     // @return the clusterSize
 
-    private int getClusterSize() {
+    public int getClusterSize() {
         return clusterSize;
     }
 
@@ -1642,7 +1643,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //------------------------------------------------------------------------------
     // @return the excludedEdgeSubunits
 
-    private int getExcludedEdgeSubunits() {
+    public int getExcludedEdgeSubunits() {
         return excludedEdgeSubunits;
     }
 
