@@ -301,7 +301,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                     }
                 }
 
-                //Tracker 1
+                //Tracker 1 reset
                 if (rememberReset1) { // Start anywhere after reset
                     if (showTracker2) {
                         for (int j = 0; j < getClusterSize(); j++) {// check if the value you want to restart from is already in Tracker 2
@@ -328,8 +328,10 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                     notHere1 = false;
                 }
 
-                if ((Math.abs((lastSpikedOMC[0] - lastSpikedOMCTracker1[0][lastIndex])) < getOperationRange())
-                        && (Math.abs((lastSpikedOMC[1] - lastSpikedOMCTracker1[1][lastIndex])) < getOperationRange())
+
+                // Tracker 1 cluster
+                if ((Math.abs((lastSpikedOMC[0] - lastSpikedOMCTracker1[0][lastIndex1])) < getOperationRange())
+                        && (Math.abs((lastSpikedOMC[1] - lastSpikedOMCTracker1[1][lastIndex1])) < getOperationRange())
                         ||// Spatial correlation with last spike
                         //spatial correlation with corners
                         ((Math.abs((lastSpikedOMC[0] - findClusterCorners()[0])) < getOperationRange())
@@ -357,45 +359,44 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                             lastSpikedOMCTracker1[i][counter1] = lastSpikedOMC[1];
                         }
                     }
-                    probabilityOfCorrectness = 5;
+//                    probabilityOfCorrectness = 5;
                 } else { // If outside operation range, reevaluate decision
                     //Probability count
-                    probabilityOfCorrectness = probabilityOfCorrectness - 1;
-
-                    if (probabilityOfCorrectness == 0) {
-                        resetTracker1();
-                        probabilityOfCorrectness = 5;
-                    }
-
-                    //Tracker 2
-                    if (rememberReset2) { // Start anywhere after reset
-                        if (showTracker1) {
-                            for (int j = 0; j < getClusterSize(); j++) {// check if the value you want to restart from is already in Tracker 1
-                                for (int i = 0; i < 2; i++) {
-                                    if ((lastSpikedOMCTracker1[i][j] == lastSpikedOMC[0])
-                                            && (lastSpikedOMCTracker1[i][j] == lastSpikedOMC[1])) {
-                                        notHere2 = true; // yes it is
-                                    }
+//                    probabilityOfCorrectness = probabilityOfCorrectness - 1;
+//
+//                    if (probabilityOfCorrectness == 0) {
+//                        resetTracker1();
+//                        probabilityOfCorrectness = 5;
+//                    }
+                //Tracker 2 reset
+                if (rememberReset2) { // Start anywhere after reset
+                    if (showTracker1) {
+                        for (int j = 0; j < getClusterSize(); j++) {// check if the value you want to restart from is already in Tracker 1
+                            for (int i = 0; i < 2; i++) {
+                                if ((lastSpikedOMCTracker1[i][j] == lastSpikedOMC[0])
+                                        && (lastSpikedOMCTracker1[i][j] == lastSpikedOMC[1])) {
+                                    notHere2 = true; // yes it is
                                 }
                             }
                         }
-                        if (!showTracker1 || !notHere2) { // if tracker 1 is not active or it contains already the cell, proceed without reset
-                            for (int j = 0; j < getClusterSize(); j++) {
-                                for (int i = 0; i < 2; i++) {
-                                    if (i == 0) {
-                                        lastSpikedOMCTracker2[i][j] = lastSpikedOMC[0];
-                                    } else {
-                                        lastSpikedOMCTracker2[i][j] = lastSpikedOMC[1];
-                                    }
+                    }
+                    if (!showTracker1 || !notHere2) { // if tracker 1 is not active or it contains already the cell, proceed without reset
+                        for (int j = 0; j < getClusterSize(); j++) {
+                            for (int i = 0; i < 2; i++) {
+                                if (i == 0) {
+                                    lastSpikedOMCTracker2[i][j] = lastSpikedOMC[0];
+                                } else {
+                                    lastSpikedOMCTracker2[i][j] = lastSpikedOMC[1];
                                 }
                             }
-                            rememberReset2 = false;
                         }
-                        notHere2 = false;
+                        rememberReset2 = false;
                     }
-
-                    if ((Math.abs((lastSpikedOMC[0] - lastSpikedOMCTracker2[0][lastIndex])) < getOperationRange())
-                            && (Math.abs((lastSpikedOMC[1] - lastSpikedOMCTracker2[1][lastIndex])) < getOperationRange())
+                    notHere2 = false;
+                }
+                    // Tracker 2 cluster
+                    if ((Math.abs((lastSpikedOMC[0] - lastSpikedOMCTracker2[0][lastIndex2])) < getOperationRange())
+                            && (Math.abs((lastSpikedOMC[1] - lastSpikedOMCTracker2[1][lastIndex2])) < getOperationRange())
                             ||// Spatial correlation with last spike
                             //spatial correlation with corners
                             ((Math.abs((lastSpikedOMC[0] - findClusterCorners()[4])) < getOperationRange())
@@ -441,10 +442,10 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                                 (lastSpikedOMCTracker1[1][counter1] + 2 << getSubunitSubsamplingBits()));
                     }
                     if (showTracker2) {
-                        gl.glRectf((lastSpikedOMCTracker2[0][counter1] << getSubunitSubsamplingBits()),
-                                (lastSpikedOMCTracker2[1][counter1] << getSubunitSubsamplingBits()),
-                                (lastSpikedOMCTracker2[0][counter1] + 2 << getSubunitSubsamplingBits()),
-                                (lastSpikedOMCTracker2[1][counter1] + 2 << getSubunitSubsamplingBits()));
+                        gl.glRectf((lastSpikedOMCTracker2[0][counter2] << getSubunitSubsamplingBits()),
+                                (lastSpikedOMCTracker2[1][counter2] << getSubunitSubsamplingBits()),
+                                (lastSpikedOMCTracker2[0][counter2] + 2 << getSubunitSubsamplingBits()),
+                                (lastSpikedOMCTracker2[1][counter2] + 2 << getSubunitSubsamplingBits()));
                     }
                 }
                 gl.glPopMatrix();
@@ -517,8 +518,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 
             // Draw center of mass 1
             gl.glPushMatrix();
-            gl.glTranslatef((findCenterOfMass(findClusterCorners())[0] + (1<< getSubunitSubsamplingBits())) ,
-                    (findCenterOfMass(findClusterCorners())[1] + (1<< getSubunitSubsamplingBits())), 5);
+            gl.glTranslatef((findCenterOfMass(findClusterCorners())[0] + (1 << getSubunitSubsamplingBits())),
+                    (findCenterOfMass(findClusterCorners())[1] + (1 << getSubunitSubsamplingBits())), 5);
             gl.glColor4f(0, 0, 1, .4f);
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
             glu.gluDisk(quad, 0, 3, 32, 1);
@@ -555,8 +556,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 
             // Draw center of mass 2
             gl.glPushMatrix();
-            gl.glTranslatef((findCenterOfMass(findClusterCorners())[2]+ (1<< getSubunitSubsamplingBits())),
-                    (findCenterOfMass(findClusterCorners())[3]+ (1<< getSubunitSubsamplingBits())), 5);
+            gl.glTranslatef((findCenterOfMass(findClusterCorners())[2] + (1 << getSubunitSubsamplingBits())),
+                    (findCenterOfMass(findClusterCorners())[3] + (1 << getSubunitSubsamplingBits())), 5);
             gl.glColor4f(1, 0, 0, .4f);
             glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
             glu.gluDisk(quad, 0, 3, 32, 1);
@@ -724,6 +725,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
     public void resetTracker1() {
         rememberReset1 = true;
+        direction = "Thinking";
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -733,6 +735,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
     public void resetTracker2() {
         rememberReset2 = true;
+        direction = "Thinking";
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//
@@ -920,14 +923,14 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //-- Center of mass finder method --------------------------------------------//
 //----------------------------------------------------------------------------// 
     float[] findCenterOfMass(int[] corners) {
-        int minx1 = corners[0]<< getSubunitSubsamplingBits();
-        int maxx1 = corners[1]<< getSubunitSubsamplingBits();
-        int miny1 = corners[2]<< getSubunitSubsamplingBits();
-        int maxy1 = corners[3]<< getSubunitSubsamplingBits();
-        int minx2 = corners[4]<< getSubunitSubsamplingBits();
-        int maxx2 = corners[5]<< getSubunitSubsamplingBits();
-        int miny2 = corners[6]<< getSubunitSubsamplingBits();
-        int maxy2 = corners[7]<< getSubunitSubsamplingBits();
+        int minx1 = corners[0] << getSubunitSubsamplingBits();
+        int maxx1 = corners[1] << getSubunitSubsamplingBits();
+        int miny1 = corners[2] << getSubunitSubsamplingBits();
+        int maxy1 = corners[3] << getSubunitSubsamplingBits();
+        int minx2 = corners[4] << getSubunitSubsamplingBits();
+        int maxx2 = corners[5] << getSubunitSubsamplingBits();
+        int miny2 = corners[6] << getSubunitSubsamplingBits();
+        int maxy2 = corners[7] << getSubunitSubsamplingBits();
         float[] centerOfMass = new float[4];
         centerOfMass[0] = (minx1 + maxx1) / 2;// Find x of CM
         centerOfMass[1] = (miny1 + maxy1) / 2; // Find y of CM
@@ -946,9 +949,9 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         float CMy = centerOfMass[1];
         int divisionX = (int) (chip.getSizeX()) / 3;
         int divisionY = (int) (chip.getSizeY()) / 3;
-        float nxmaxS = nxmax<< getSubunitSubsamplingBits();
-        float nymaxS = nymax<< getSubunitSubsamplingBits();
-        
+        float nxmaxS = nxmax << getSubunitSubsamplingBits();
+        float nymaxS = nymax << getSubunitSubsamplingBits();
+
         if (CMx > 0 && CMy > 0 && CMx < divisionX && CMy < divisionY) { //1
             direction = "[1] Turn Left";
         } else if (CMx > divisionX && CMy > 0 && CMx < nxmaxS - divisionX && CMy < divisionY) { //2
