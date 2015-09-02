@@ -144,9 +144,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         trackingFilterChain.add(hotPixelFilter);
         trackingFilterChain.add(eventRateFilter);
         setEnclosedFilterChain(trackingFilterChain); // labels enclosed filters as being enclosed
-//        backgroundActivityFilter.setEnclosedFilter(hotPixelFilter); // marks xYFilter as enclosed by tracker
-//        hotPixelFilter.setEnclosedFilter(eventRateFilter);    // tracker is enclosed by this
-////        eventRateFilter.setEnclosed(true, this);   // same for servoArm
         setEnclosedFilterChain(trackingFilterChain);
         trackingFilterChain.reset();
 
