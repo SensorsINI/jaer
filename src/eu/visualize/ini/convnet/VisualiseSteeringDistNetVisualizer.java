@@ -32,7 +32,44 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
 
     private boolean hideOutput = getBoolean("hideOutput", false);
     private TargetLabeler targetLabeler = null;
-    private int totalDecisions = 0, correct = 0, incorrect = 0;
+
+    private class DecodedTargetLocation {
+
+        float x = Float.NaN, y = Float.NaN;
+        boolean visible = false;
+
+        public DecodedTargetLocation(float x, float y, boolean visible) {
+            this.x = x;
+            this.y = y;
+            this.visible = visible;
+        }
+
+        public DecodedTargetLocation(DeepLearnCnnNetwork net) {
+            if (net == null || net.outputLayer == null || net.outputLayer.activations == null || net.outputLayer.activations.length != 6) {
+                throw new RuntimeException("null net or output layer or output wrong type");
+            }
+            float[] o = net.outputLayer.activations;
+            int sx = getChip().getSizeX(), sy = getChip().getSizeY();
+            /*
+             function [visible,x,y]=decodeTargetLocation(o,width)
+             if o(5) > o(6)
+             visible=1;
+             else
+             visible=0;
+             end
+
+             x=width/2*(o(2)-o(1))+width/2;
+             y=width/2*(o(4)-o(3))+width/2;
+             */
+            if (o[4] > o[5]) {
+                visible = true;
+                x = sx / 2 * (o[1] - o[0]) + sx / 2;
+                y = sy / 2 * (o[3] - o[2]) + sy / 2;
+            } else {
+                visible = false;
+            }
+        }
+    }
 
     public VisualiseSteeringDistNetVisualizer(AEChip chip) {
         super(chip);
@@ -53,20 +90,15 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
     }
 
     private Boolean correctDescisionFromTargetLabeler(TargetLabeler targetLabeler, DeepLearnCnnNetwork net) {
+        DecodedTargetLocation netLocation = new DecodedTargetLocation(net);
         if (targetLabeler.getTargetLocation() == null) {
             return null; // no location labeled for this time
         }
         Point p = targetLabeler.getTargetLocation().location;
         if (p == null) {
-            if (net.outputLayer.maxActivatedUnit == 3) {
-                return true; // no target seen
-            }
+
         } else {
-            int x = p.x;
-            int third = (x * 3) / chip.getSizeX();
-            if (third == net.outputLayer.maxActivatedUnit) {
-                return true;
-            }
+
         }
         return false;
     }
@@ -74,9 +106,6 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
     @Override
     public void resetFilter() {
         super.resetFilter();
-        totalDecisions = 0;
-        correct = 0;
-        incorrect = 0;
 
     }
 
@@ -104,24 +133,17 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
         }
         GL2 gl = drawable.getGL().getGL2();
         checkBlend(gl);
-        int third = chip.getSizeX() / 3;
         int sy = chip.getSizeY();
         if (apsNet != null && apsNet.outputLayer != null && apsNet.outputLayer.activations != null && isProcessAPSFrames()) {
-            drawDecisionOutput(third, gl, sy, apsNet, Color.RED);
+            drawDecisionOutput(gl, sy, apsNet, Color.RED);
         }
         if (dvsNet != null && dvsNet.outputLayer != null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
-            drawDecisionOutput(third, gl, sy, dvsNet, Color.YELLOW);
-        }
-
-        if (totalDecisions > 0) {
-            float errorRate = (float) incorrect / totalDecisions;
-            String s = String.format("Error rate %.2f%% (total=%d correct=%d incorrect=%d)\n", errorRate * 100, totalDecisions, correct, incorrect);
-            MultilineAnnotationTextRenderer.renderMultilineString(s);
+            drawDecisionOutput(gl, sy, dvsNet, Color.YELLOW);
         }
 
     }
 
-    private void drawDecisionOutput(int third, GL2 gl, int sy, DeepLearnCnnNetwork net, Color color) {
+    private void drawDecisionOutput(GL2 gl, int sy, DeepLearnCnnNetwork net, Color color) {
         /*
          function showTarget(o,width,color);
          if nargin<3
@@ -139,21 +161,17 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
          alpha(t,0.2)
          hold off; 
          */
-        float[] a = net.outputLayer.activations;
+        DecodedTargetLocation t = new DecodedTargetLocation(net);
+        if (t.visible == false) {
+            return;
+        }
         float r = color.getRed() / 255f, g = color.getGreen() / 255f, b = color.getBlue() / 255f;
         float[] cv = color.getColorComponents(null);
-        final float brightness = .3f; // brightness scale
-        for (int i = 0; i < 3; i++) {
-            int x0 = third * i;
-            int x1 = x0 + third;
-            float shade = brightness * net.outputLayer.activations[i];
-            gl.glColor3f((shade * r), (shade * g), (shade * b));
-            gl.glRecti(x0, 0, x1, sy);
-            gl.glRecti(x0, 0, x1, sy);
-        }
-        float shade = brightness * net.outputLayer.activations[3]; // no target
-        gl.glColor3f((shade * r), (shade * g), (shade * b));
-        gl.glRecti(0, 0, chip.getSizeX(), sy / 8);
+        final float brightness = .1f; // brightness scale
+
+        gl.glColor4f(r, g, b,brightness);
+        final float rd=chip.getSizeY()/10*(1-5*t.y/chip.getSizeY());
+        gl.glRectf(t.x - rd, t.y - rd, t.x + rd, t.y + rd);
     }
 
     /**
@@ -177,15 +195,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
             super.propertyChange(evt);
         } else {
             DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
-            Boolean correctDecision = correctDescisionFromTargetLabeler(targetLabeler, net);
-            if (correctDecision != null) {
-                totalDecisions++;
-                if (correctDecision) {
-                    correct++;
-                } else {
-                    incorrect++;
-                }
-            }
+
         }
     }
 
