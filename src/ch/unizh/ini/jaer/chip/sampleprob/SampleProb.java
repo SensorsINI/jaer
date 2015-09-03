@@ -1,15 +1,11 @@
-package ch.unizh.ini.jaer.chip.cochlea;
+package ch.unizh.ini.jaer.chip.sampleprob;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Observable;
 import java.util.Observer;
-import java.util.prefs.PreferenceChangeEvent;
-import java.util.prefs.PreferenceChangeListener;
-import java.util.prefs.Preferences;
 
 import javax.swing.JComponent;
 import javax.swing.JPanel;
@@ -19,11 +15,19 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
 
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cRollingCochleagramADCDisplayMethod;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaAMSEvent;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaChip;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaLP;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.AbstractConfigValue;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.CochleaChannel;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigBit;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigInt;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigValue;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.biasgen.AddressedIPotArray;
-import net.sf.jaer.biasgen.Biasgen.HasPreference;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.biasgen.Pot;
 import net.sf.jaer.biasgen.Pot.Sex;
@@ -38,7 +42,6 @@ import net.sf.jaer.chip.Chip;
 import net.sf.jaer.chip.TypedEventExtractor;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
-import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethod;
 import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -47,26 +50,26 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 
-@Description("Low-power binaural AER silicon cochlea with 64 channels")
+@Description("Probabilistic Sample circuit")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class CochleaLP extends CochleaChip implements Observer {
+public class SampleProb extends CochleaChip implements Observer {
 	private final GLUT glut = new GLUT();
 
-	/** Creates a new instance of CochleaLP */
-	public CochleaLP() {
+	/** Creates a new instance of SampleProb */
+	public SampleProb() {
 		super();
 		addObserver(this);
 
-		setName("CochleaLP");
+		setName("SampleProb");
 		setEventClass(CochleaAMSEvent.class);
 
 		setSizeX(64);
 		setSizeY(4);
 		setNumCellTypes(4);
 
-		setRenderer(new Renderer(this));
-		setBiasgen(new CochleaLP.Biasgen(this));
-		setEventExtractor(new CochleaLP.Extractor(this));
+		setRenderer(new CochleaLP.Renderer(this));
+		setBiasgen(new SampleProb.Biasgen(this));
+		setEventExtractor(new SampleProb.Extractor(this));
 
 		getCanvas().setBorderSpacePixels(40);
 		getCanvas().addDisplayMethod(new CochleaAMS1cRollingCochleagramADCDisplayMethod(getCanvas()));
@@ -120,30 +123,6 @@ public class CochleaLP extends CochleaChip implements Observer {
 		}
 	}
 
-	public static class Renderer extends AEChipRenderer {
-		private boolean didit = false;
-
-		public Renderer(final AEChip chip) {
-			super(chip);
-		}
-
-		@Override
-		protected void checkTypeColors(final int numCellTypes) {
-			if (didit) {
-				return;
-			}
-			didit = true;
-			super.checkTypeColors(numCellTypes);
-			final Color[] colors = { Color.green, Color.red, Color.green, Color.red };
-			int ind = 0;
-			for (int i = 0; i < 4; i++) {
-				for (int j = 0; j < 4; j++) {
-					colors[i].getRGBColorComponents(typeColorRGBComponents[ind++]);
-				}
-			}
-		}
-	}
-
 	/**
 	 * Updates AEViewer specialized menu items according to capabilities of
 	 * HardwareInterface.
@@ -180,7 +159,7 @@ public class CochleaLP extends CochleaChip implements Observer {
 		this.hardwareInterface = hardwareInterface;
 		try {
 			if (getBiasgen() == null) {
-				setBiasgen(new CochleaLP.Biasgen(this));
+				setBiasgen(new SampleProb.Biasgen(this));
 			}
 			else {
 				getBiasgen().setHardwareInterface((BiasgenHardwareInterface) hardwareInterface);
@@ -196,9 +175,7 @@ public class CochleaLP extends CochleaChip implements Observer {
 		private final List<AbstractConfigValue> allPreferencesList = new ArrayList<>();
 
 		// Preferences by category.
-		final List<CochleaChannel> cochleaChannels = new ArrayList<>();
 		final List<SPIConfigValue> aerControl = new ArrayList<>();
-		final List<SPIConfigValue> scannerControl = new ArrayList<>();
 		final List<SPIConfigValue> chipDiagChain = new ArrayList<>();
 
 		/**
@@ -216,7 +193,7 @@ public class CochleaLP extends CochleaChip implements Observer {
 
 		public Biasgen(final Chip chip) {
 			super(chip);
-			setName("CochleaLP.Biasgen");
+			setName("SampleProb.Biasgen");
 
 			ipots.addPot(new AddressedIPotCF(this, "VBNIBias", 0, Type.NORMAL, Sex.N, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
 				AddressedIPotCF.maxFineBitValue, 1, "IBias transistor gate"));
@@ -270,17 +247,6 @@ public class CochleaLP extends CochleaChip implements Observer {
 			// vpots.addPot(new VPot(getChip(), "NC", dac, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 
 			// New logic SPI configuration values.
-			// Scanner module
-			scannerControl
-				.add(new SPIConfigBit("ScannerEnable", "Enable scanner output.", CypressFX3.FPGA_SCANNER, (short) 0, false, getPrefs()));
-			scannerControl.add(
-				new SPIConfigInt("ScannerChannel", "Which channel to scan out.", CypressFX3.FPGA_SCANNER, (short) 1, 7, 0, getPrefs()));
-
-			for (final SPIConfigValue cfgVal : scannerControl) {
-				cfgVal.addObserver(this);
-				allPreferencesList.add(cfgVal);
-			}
-
 			// DAC control
 			dacRun = new SPIConfigBit("DACRun", "Enable external DAC.", CypressFX3.FPGA_DAC, (short) 0, false, getPrefs());
 			dacRun.addObserver(this);
@@ -332,16 +298,6 @@ public class CochleaLP extends CochleaChip implements Observer {
 				allPreferencesList.add(cfgVal);
 			}
 
-			// Create the 64 cochlea channels.
-			for (int i = 0; i < 64; i++) {
-				cochleaChannels.add(new CochleaChannel("Channel " + i, "Cochlea channel " + i + " configuration.", i));
-			}
-
-			for (final CochleaChannel chan : cochleaChannels) {
-				chan.addObserver(this);
-				allPreferencesList.add(chan);
-			}
-
 			setBatchEditOccurring(true);
 			loadPreferences();
 			setBatchEditOccurring(false);
@@ -391,9 +347,9 @@ public class CochleaLP extends CochleaChip implements Observer {
 
 		@Override
 		public JPanel buildControlPanel() {
-			JPanel panel = new JPanel();
+			final JPanel panel = new JPanel();
 			panel.setLayout(new BorderLayout());
-			JComponent c = new CochleaLPControlPanel(CochleaLP.this);
+			final JComponent c = new SampleProbControlPanel(SampleProb.this);
 			c.setPreferredSize(new Dimension(1000, 800));
 			panel.add(new JScrollPane(c), BorderLayout.CENTER);
 			return panel;
@@ -647,409 +603,6 @@ public class CochleaLP extends CochleaChip implements Observer {
 		@Override
 		public byte getTypeFromAddress(final int addr) {
 			return (byte) getYFromAddress(addr);
-		}
-	}
-
-	interface ConfigBase {
-
-		void addObserver(Observer o);
-
-		String getName();
-
-		String getDescription();
-	}
-
-	interface ConfigBit extends ConfigBase {
-
-		boolean isSet();
-
-		void set(boolean yes);
-	}
-
-	interface ConfigInt extends ConfigBase {
-
-		int get();
-
-		void set(int v) throws IllegalArgumentException;
-	}
-
-	public static abstract class AbstractConfigValue extends Observable implements PreferenceChangeListener, HasPreference {
-
-		private final String configName, toolTip, prefKey;
-
-		public AbstractConfigValue(final String configName, final String toolTip) {
-			this.configName = configName;
-			this.toolTip = toolTip;
-			prefKey = getClass().getSimpleName() + "." + configName;
-		}
-
-		public String getName() {
-			return configName;
-		}
-
-		public String getDescription() {
-			return toolTip;
-		}
-
-		public String getPreferencesKey() {
-			return prefKey;
-		}
-
-		@Override
-		public String toString() {
-			return String.format("AbstractConfigValue {configName=%s, prefKey=%s}", getName(), getPreferencesKey());
-		}
-	}
-
-	public static abstract class SPIConfigValue extends AbstractConfigValue {
-
-		private final short moduleAddr, paramAddr;
-		private final int numBits;
-
-		public SPIConfigValue(final String configName, final String toolTip, final short moduleAddr, final short paramAddr,
-			final int numBits) {
-			super(configName, toolTip);
-
-			this.moduleAddr = moduleAddr;
-			this.paramAddr = paramAddr;
-			this.numBits = numBits;
-		}
-
-		public short getModuleAddr() {
-			return moduleAddr;
-		}
-
-		public short getParamAddr() {
-			return paramAddr;
-		}
-
-		public int getNumBits() {
-			return numBits;
-		}
-
-		@Override
-		public String toString() {
-			return String.format("SPIConfigValue {configName=%s, prefKey=%s, moduleAddr=%d, paramAddr=%d, numBits=%d}", getName(),
-				getPreferencesKey(), getModuleAddr(), getParamAddr(), getNumBits());
-		}
-	}
-
-	public static class SPIConfigBit extends SPIConfigValue implements ConfigBit {
-
-		private final boolean defaultValue;
-		private boolean value;
-		private Preferences sprefs;
-
-		public SPIConfigBit(final String configName, final String toolTip, final short moduleAddr, final short paramAddr,
-			final boolean defaultValue, Preferences sprefs) {
-			super(configName, toolTip, moduleAddr, paramAddr, 1);
-
-			this.defaultValue = defaultValue;
-
-			this.sprefs = sprefs;
-			loadPreference();
-			sprefs.addPreferenceChangeListener(this);
-		}
-
-		@Override
-		public boolean isSet() {
-			return value;
-		}
-
-		@Override
-		public void set(final boolean value) {
-			if (this.value != value) {
-				setChanged();
-			}
-
-			this.value = value;
-
-			notifyObservers();
-		}
-
-		@Override
-		public String toString() {
-			return String.format("SPIConfigBit {configName=%s, prefKey=%s, moduleAddr=%d, paramAddr=%d, numBits=%d, default=%b}", getName(),
-				getPreferencesKey(), getModuleAddr(), getParamAddr(), getNumBits(), defaultValue);
-		}
-
-		@Override
-		public void preferenceChange(final PreferenceChangeEvent e) {
-			if (e.getKey().equals(getPreferencesKey())) {
-				final boolean newVal = Boolean.parseBoolean(e.getNewValue());
-				set(newVal);
-			}
-		}
-
-		@Override
-		public void loadPreference() {
-			set(sprefs.getBoolean(getPreferencesKey(), defaultValue));
-		}
-
-		@Override
-		public void storePreference() {
-			sprefs.putBoolean(getPreferencesKey(), isSet());
-		}
-	}
-
-	public static class SPIConfigInt extends SPIConfigValue implements ConfigInt {
-
-		private final int defaultValue;
-		private int value;
-		private Preferences sprefs;
-
-		public SPIConfigInt(final String configName, final String toolTip, final short moduleAddr, final short paramAddr, final int numBits,
-			final int defaultValue, Preferences sprefs) {
-			super(configName, toolTip, moduleAddr, paramAddr, numBits);
-
-			this.defaultValue = defaultValue;
-
-			this.sprefs = sprefs;
-			loadPreference();
-			sprefs.addPreferenceChangeListener(this);
-		}
-
-		@Override
-		public int get() {
-			return value;
-		}
-
-		@Override
-		public void set(final int value) {
-			if ((value < 0) || (value >= (1 << getNumBits()))) {
-				throw new IllegalArgumentException("Attempted to store value=" + value
-					+ ", which is larger than the maximum permitted value of " + (1 << getNumBits()) + " or negative, in " + this);
-			}
-
-			if (this.value != value) {
-				setChanged();
-			}
-
-			this.value = value;
-
-			notifyObservers();
-		}
-
-		@Override
-		public String toString() {
-			return String.format("SPIConfigInt {configName=%s, prefKey=%s, moduleAddr=%d, paramAddr=%d, numBits=%d, default=%d}", getName(),
-				getPreferencesKey(), getModuleAddr(), getParamAddr(), getNumBits(), defaultValue);
-		}
-
-		@Override
-		public void preferenceChange(final PreferenceChangeEvent e) {
-			if (e.getKey().equals(getPreferencesKey())) {
-				final int newVal = Integer.parseInt(e.getNewValue());
-				set(newVal);
-			}
-		}
-
-		@Override
-		public void loadPreference() {
-			set(sprefs.getInt(getPreferencesKey(), defaultValue));
-		}
-
-		@Override
-		public void storePreference() {
-			sprefs.putInt(getPreferencesKey(), get());
-		}
-	}
-
-	public class CochleaChannel extends AbstractConfigValue implements ConfigBase {
-		private final int channelAddress;
-
-		private int configValue;
-		private final int configValueLength = 20;
-
-		private boolean comparatorSelfOscillationEnable;
-		private final int comparatorSelfOscillationEnablePosition = 19;
-
-		private int delayCapConfigADM;
-		private final int delayCapConfigADMLength = 3;
-		private final int delayCapConfigADMPosition = 16;
-
-		private int resetCapConfigADM;
-		private final int resetCapConfigADMLength = 2;
-		private final int resetCapConfigADMPosition = 14;
-
-		private int lnaGainConfig;
-		private final int lnaGainConfigLength = 3;
-		private final int lnaGainConfigPosition = 11;
-
-		private int attenuatorConfig;
-		private final int attenuatorConfigLength = 3;
-		private final int attenuatorConfigPosition = 8;
-
-		private int qTuning;
-		private final int qTuningLength = 8;
-		private final int qTuningPosition = 0;
-
-		public CochleaChannel(final String configName, final String toolTip, final int channelAddr) {
-			super(configName, toolTip);
-
-			channelAddress = channelAddr;
-
-			loadPreference();
-			getPrefs().addPreferenceChangeListener(this);
-		}
-
-		public int getChannelAddress() {
-			return channelAddress;
-		}
-
-		@Override
-		public String toString() {
-			return String.format("CochleaChannel {configName=%s, prefKey=%s, channelAddress=%d}", getName(), getPreferencesKey(),
-				getChannelAddress());
-		}
-
-		public boolean isComparatorSelfOscillationEnable() {
-			return comparatorSelfOscillationEnable;
-		}
-
-		public void setComparatorSelfOscillationEnable(final boolean comparatorSelfOscillationEnable) {
-			this.comparatorSelfOscillationEnable = comparatorSelfOscillationEnable;
-
-			// Update main backing value.
-			setFullValueComponents(comparatorSelfOscillationEnable, getDelayCapConfigADM(), getResetCapConfigADM(), getLnaGainConfig(),
-				getAttenuatorConfig(), getqTuning());
-		}
-
-		public int getDelayCapConfigADM() {
-			return delayCapConfigADM;
-		}
-
-		public void setDelayCapConfigADM(final int delayCapConfigADM) {
-			checkValueLimits(delayCapConfigADM, delayCapConfigADMLength);
-
-			this.delayCapConfigADM = delayCapConfigADM;
-
-			// Update main backing value.
-			setFullValueComponents(isComparatorSelfOscillationEnable(), delayCapConfigADM, getResetCapConfigADM(), getLnaGainConfig(),
-				getAttenuatorConfig(), getqTuning());
-		}
-
-		public int getResetCapConfigADM() {
-			return resetCapConfigADM;
-		}
-
-		public void setResetCapConfigADM(final int resetCapConfigADM) {
-			checkValueLimits(resetCapConfigADM, resetCapConfigADMLength);
-
-			this.resetCapConfigADM = resetCapConfigADM;
-
-			// Update main backing value.
-			setFullValueComponents(isComparatorSelfOscillationEnable(), getDelayCapConfigADM(), resetCapConfigADM, getLnaGainConfig(),
-				getAttenuatorConfig(), getqTuning());
-		}
-
-		public int getLnaGainConfig() {
-			return lnaGainConfig;
-		}
-
-		public void setLnaGainConfig(final int lnaGainConfig) {
-			checkValueLimits(lnaGainConfig, lnaGainConfigLength);
-
-			this.lnaGainConfig = lnaGainConfig;
-
-			// Update main backing value.
-			setFullValueComponents(isComparatorSelfOscillationEnable(), getDelayCapConfigADM(), getResetCapConfigADM(), lnaGainConfig,
-				getAttenuatorConfig(), getqTuning());
-		}
-
-		public int getAttenuatorConfig() {
-			return attenuatorConfig;
-		}
-
-		public void setAttenuatorConfig(final int attenuatorConfig) {
-			checkValueLimits(attenuatorConfig, attenuatorConfigLength);
-
-			this.attenuatorConfig = attenuatorConfig;
-
-			// Update main backing value.
-			setFullValueComponents(isComparatorSelfOscillationEnable(), getDelayCapConfigADM(), getResetCapConfigADM(), getLnaGainConfig(),
-				attenuatorConfig, getqTuning());
-		}
-
-		public int getqTuning() {
-			return qTuning;
-		}
-
-		public void setqTuning(final int qTuning) {
-			checkValueLimits(qTuning, qTuningLength);
-
-			this.qTuning = qTuning;
-
-			// Update main backing value.
-			setFullValueComponents(isComparatorSelfOscillationEnable(), getDelayCapConfigADM(), getResetCapConfigADM(), getLnaGainConfig(),
-				getAttenuatorConfig(), qTuning);
-		}
-
-		private synchronized int getFullValue() {
-			return configValue;
-		}
-
-		private synchronized void setFullValue(final int fullValue) {
-			checkValueLimits(fullValue, configValueLength);
-
-			if (configValue != fullValue) {
-				setChanged();
-			}
-
-			configValue = fullValue;
-
-			notifyObservers();
-		}
-
-		private void setFullValueComponents(final boolean compSelfOsc, final int delayADM, final int resetADM, final int lnaGain,
-			final int attenuator, final int qTuning) {
-			int value = 0;
-
-			value |= (compSelfOsc) ? (1 << comparatorSelfOscillationEnablePosition) : (0);
-			value |= (delayADM << delayCapConfigADMPosition);
-			value |= (resetADM << resetCapConfigADMPosition);
-			value |= (lnaGain << lnaGainConfigPosition);
-			value |= (attenuator << attenuatorConfigPosition);
-			value |= (qTuning << qTuningPosition);
-
-			setFullValue(value);
-		}
-
-		private void checkValueLimits(final int value, final int maxLength) {
-			if ((value < 0) || (value >= (1 << maxLength))) {
-				throw new IllegalArgumentException("Attempted to store value=" + value
-					+ ", which is larger than the maximum permitted value of " + (1 << maxLength) + " or negative, in " + this);
-			}
-		}
-
-		public int computeBinaryRepresentation() {
-			return getFullValue();
-		}
-
-		@Override
-		public void preferenceChange(final PreferenceChangeEvent e) {
-			if (e.getKey().equals(getPreferencesKey())) {
-				final int newVal = Integer.parseInt(e.getNewValue());
-				setFullValue(newVal);
-			}
-		}
-
-		@Override
-		public void loadPreference() {
-			setFullValue(getPrefs().getInt(getPreferencesKey(), 0));
-
-			// Also update the various components of the full config value on preference load.
-			comparatorSelfOscillationEnable = ((configValue >>> comparatorSelfOscillationEnablePosition) == 1) ? (true) : (false);
-			delayCapConfigADM = (configValue >>> delayCapConfigADMPosition) & ((1 << delayCapConfigADMLength) - 1);
-			resetCapConfigADM = (configValue >>> resetCapConfigADMPosition) & ((1 << resetCapConfigADMLength) - 1);
-			lnaGainConfig = (configValue >>> lnaGainConfigPosition) & ((1 << lnaGainConfigLength) - 1);
-			attenuatorConfig = (configValue >>> attenuatorConfigPosition) & ((1 << attenuatorConfigLength) - 1);
-			qTuning = (configValue >>> qTuningPosition) & ((1 << qTuningLength) - 1);
-		}
-
-		@Override
-		public void storePreference() {
-			getPrefs().putInt(getPreferencesKey(), getFullValue());
 		}
 	}
 }

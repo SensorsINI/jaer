@@ -11,10 +11,10 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 
+import org.usb4java.Device;
+
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-
-import org.usb4java.Device;
 
 /**
  * Adds functionality of apsDVS sensors to based CypressFX3Biasgen class. The
@@ -48,6 +48,7 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 
 	private static final int CHIP_COCHLEALP = 11;
 	private static final int CHIP_COCHLEA4EAR = 12;
+	private static final int CHIP_SAMPLEPROB = 13; // Reuse Cochlea code for SampleProb chip.
 
 	/**
 	 * This reader understands the format of raw USB data and translates to the
@@ -70,17 +71,19 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 			if (chipID == CHIP_COCHLEALP) {
 				aerMaxAddress = 256;
 			}
-			else {
-				// CHIP_COCHLEA4EAR
+			else if (chipID == CHIP_COCHLEA4EAR) {
 				aerMaxAddress = 1024;
+			}
+			else {
+				// CHIP_SAMPLEPROB
+				aerMaxAddress = 16;
 			}
 		}
 
 		private void checkMonotonicTimestamp() {
 			if (currentTimestamp <= lastTimestamp) {
-				CypressFX3.log.severe(toString() + ": non strictly-monotonic timestamp detected: lastTimestamp="
-					+ lastTimestamp + ", currentTimestamp=" + currentTimestamp + ", difference="
-					+ (lastTimestamp - currentTimestamp) + ".");
+				CypressFX3.log.severe(toString() + ": non strictly-monotonic timestamp detected: lastTimestamp=" + lastTimestamp
+					+ ", currentTimestamp=" + currentTimestamp + ", difference=" + (lastTimestamp - currentTimestamp) + ".");
 			}
 		}
 
@@ -155,8 +158,7 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 							case 1: // AER address
 								// Check range conformity.
 								if (data >= aerMaxAddress) {
-									CypressFX3.log.severe("AER: address out of range (0-" + (aerMaxAddress - 1) + "): "
-										+ data + ".");
+									CypressFX3.log.severe("AER: address out of range (0-" + (aerMaxAddress - 1) + "): " + data + ".");
 									break; // Skip invalid AER address.
 								}
 
@@ -182,9 +184,8 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 								// Check monotonicity of timestamps.
 								checkMonotonicTimestamp();
 
-								CypressFX3.log.fine(String.format(
-									"Timestamp wrap event received on %s with multiplier of %d.", super.toString(),
-									data));
+								CypressFX3.log.fine(
+									String.format("Timestamp wrap event received on %s with multiplier of %d.", super.toString(), data));
 								break;
 
 							default:
