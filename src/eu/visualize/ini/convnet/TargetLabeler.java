@@ -252,8 +252,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             MultilineAnnotationTextRenderer.renderMultilineString(String.format("%d TargetLocation samples specified\nFirst sample time: %.1fs, Last sample time: %.1fs\nCurrent frame number: %d\nCurrent # targets: %d",
                     targetLocations.size(),
                     minSampleTimestamp * 1e-6f,
-                    maxSampleTimestamp * 1e-6f,
-                    currentFrameNumber,
+                    maxSampleTimestamp * 1e-6f, getCurrentFrameNumber(),
                     currentTargets.size()));
             if (shiftPressed && !ctlPressed) {
                 MultilineAnnotationTextRenderer.renderMultilineString("Specifying no target");
@@ -444,7 +443,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     if (shiftPressed && ctlPressed && (mousePoint != null)) { // specify (additional) target present
                         // add a labeled location sample
                         maybeEraseSamples(mostRecentTargetsBeforeThisEvent, e, lastNewTargetLocation);
-                        newTargetLocation = new TargetLocation(currentFrameNumber, e.timestamp, mousePoint, currentTargetTypeID);
+                        newTargetLocation = new TargetLocation(getCurrentFrameNumber(), e.timestamp, mousePoint, currentTargetTypeID);
 
                         addSample(e.timestamp, newTargetLocation);
                         currentTargets.add(newTargetLocation);
@@ -950,11 +949,11 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     Map.Entry<Integer, SimultaneouTargetLocations> targetsBeforeRewind = targetLocations.lowerEntry(timestamp);
                     if (targetsBeforeRewind != null) {
                         currentFrameNumber = targetsBeforeRewind.getValue().get(0).frameNumber;
-                        lastFrameNumber = currentFrameNumber - 1;
+                        lastFrameNumber = getCurrentFrameNumber() - 1;
                         lastTimestamp = targetsBeforeRewind.getValue().get(0).timestamp;
                     } else {
                         currentFrameNumber = 0;
-                        lastFrameNumber = currentFrameNumber - 1;
+                        lastFrameNumber = getCurrentFrameNumber() - 1;
                         lastInputStreamTimestamp = Integer.MIN_VALUE;
                     }
                 } else {
@@ -985,6 +984,13 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     public void setShowStatistics(boolean showStatistics) {
         this.showStatistics = showStatistics;
         putBoolean("showStatistics", showStatistics);
+    }
+
+    /**
+     * @return the currentFrameNumber
+     */
+    public int getCurrentFrameNumber() {
+        return currentFrameNumber;
     }
 
 }
