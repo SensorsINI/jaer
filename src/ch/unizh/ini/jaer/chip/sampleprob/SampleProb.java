@@ -106,11 +106,11 @@ public class SampleProb extends CochleaChip implements Observer {
 		final List<SPIConfigValue> aerControl = new ArrayList<>();
 
 		/**
-		 * Three DACs, 16 channels. Internal 1.25V reference is used, so VOUT in range 0-2.5V. VDD is 2.8V.
+		 * Three DACs, 16 channels. Internal 2.5V reference is used, so VOUT in range 0-5.0V. VDD is 3.3V.
 		 */
-		private final DAC dac1 = new DAC(16, 14, 0, 2.5f, 3.3f);
-		private final DAC dac2 = new DAC(16, 14, 0, 2.5f, 3.3f);
-		private final DAC dac3 = new DAC(16, 14, 0, 2.5f, 3.3f);
+		private final DAC dac1 = new DAC(16, 14, 0, 5.0f, 3.3f);
+		private final DAC dac2 = new DAC(16, 14, 0, 5.0f, 3.3f);
+		private final DAC dac3 = new DAC(16, 14, 0, 5.0f, 3.3f);
 
 		final SPIConfigBit dacRun;
 
