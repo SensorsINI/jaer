@@ -42,8 +42,9 @@ public class RotateFilter extends EventFilter2D {
     private float angleDeg = getFloat("angleDeg", 0f);
     private float cosAng = (float) Math.cos(angleDeg * Math.PI / 180);
     private float sinAng = (float) Math.sin(angleDeg * Math.PI / 180);
-   private    boolean davisCamera=false;
-   
+    private boolean davisCamera = false;
+    Point origFirstPixel = null, origLastPixel = null;
+
     /**
      * Creates a new instance of RotateFilter
      */
@@ -54,9 +55,11 @@ public class RotateFilter extends EventFilter2D {
         setPropertyTooltip("invertY", "flips Y; to rotate 180 deg set both invertX and invertY");
         setPropertyTooltip("invertX", "flips X; to rotate 180 deg set both invertX and invertY");
         setPropertyTooltip("angleDeg", "CCW rotation angle in degrees");
-        if(chip instanceof DavisBaseCamera) davisCamera=true;
+        if (chip instanceof DavisBaseCamera) {
+            davisCamera = true;
+        }
         checkDavisApsHack();
-   }
+    }
 
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         short tmp;
@@ -66,7 +69,7 @@ public class RotateFilter extends EventFilter2D {
         Iterator itr;
         boolean davisCamera;
         checkDavisApsHack();
-       if (in instanceof ApsDvsEventPacket) {
+        if (in instanceof ApsDvsEventPacket) {
             itr = ((ApsDvsEventPacket) in).fullIterator();
             davisCamera = true;
         } else {
@@ -178,11 +181,22 @@ public class RotateFilter extends EventFilter2D {
     }
 
     private void checkDavisApsHack() {
-        if(!davisCamera) return;
-        if(!(invertX && invertY)) return;
-        DavisBaseCamera d=(DavisBaseCamera)chip;
-        Point tmp=d.getApsFirstPixelReadOut();
-        d.setApsFirstPixelReadOut(d.getApsLastPixelReadOut());
-        d.setApsLastPixelReadOut(tmp);
+        if (!davisCamera) {
+            return;
+        }
+        DavisBaseCamera d = (DavisBaseCamera) chip;
+        if (origFirstPixel == null) {
+            origFirstPixel = d.getApsFirstPixelReadOut();
+        }
+        if (origLastPixel == null) {
+            origLastPixel = d.getApsLastPixelReadOut();
+        }
+        if (!(invertX && invertY)) {
+            d.setApsFirstPixelReadOut(origFirstPixel);
+            d.setApsLastPixelReadOut(origLastPixel);
+        } else {
+            d.setApsFirstPixelReadOut(origLastPixel);
+            d.setApsLastPixelReadOut(origFirstPixel);
+        }
     }
 }
