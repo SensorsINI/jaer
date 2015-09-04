@@ -65,7 +65,8 @@ public class RotateFilter extends EventFilter2D {
         final int sx2 = sx / 2, sy2 = sy / 2;
         Iterator itr;
         boolean davisCamera;
-        if (in instanceof ApsDvsEventPacket) {
+        checkDavisApsHack();
+       if (in instanceof ApsDvsEventPacket) {
             itr = ((ApsDvsEventPacket) in).fullIterator();
             davisCamera = true;
         } else {
@@ -145,7 +146,6 @@ public class RotateFilter extends EventFilter2D {
     public void setInvertY(boolean invertY) {
         this.invertY = invertY;
         putBoolean("invertY", invertY);
-       checkDavisApsHack();
     }
 
     public boolean isInvertX() {
@@ -155,7 +155,6 @@ public class RotateFilter extends EventFilter2D {
     public void setInvertX(boolean invertX) {
         this.invertX = invertX;
         putBoolean("invertX", invertX);
-        checkDavisApsHack();
     }
 
     /**
