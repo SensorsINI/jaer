@@ -46,7 +46,7 @@ public final class SampleProbControlPanel extends JTabbedPane implements Observe
 
 		addMouseListener(new MouseAdapter() {
 			@Override
-			public void mouseClicked(MouseEvent evt) {
+			public void mouseClicked(final MouseEvent evt) {
 				tabbedPaneMouseClicked(evt);
 			}
 		});
@@ -74,8 +74,8 @@ public final class SampleProbControlPanel extends JTabbedPane implements Observe
 
 		// TODO: mask to load input data file, use chipDiagPanel.
 
-		setTabLayoutPolicy(WRAP_TAB_LAYOUT);
-		setPreferredSize(new Dimension(800, 600));
+		setTabLayoutPolicy(JTabbedPane.WRAP_TAB_LAYOUT);
+		setPreferredSize(new Dimension(1024, 768));
 		revalidate();
 
 		setSelectedIndex(chip.getPrefs().getInt("SampleProbControlPanel.bgTabbedPaneSelectedIndex", 0));
@@ -83,7 +83,7 @@ public final class SampleProbControlPanel extends JTabbedPane implements Observe
 
 	private static final int TF_MAX_HEIGHT = 15;
 	private static final int TF_HEIGHT = 6;
-	private static final int TF_MIN_W = 15, TF_PREF_W = 20, TF_MAX_W = 40;
+	private static final int TF_PREF_W = 20, TF_MAX_W = 40;
 
 	private void makeSPIBitConfig(final SPIConfigBit bitVal, final JPanel panel) {
 		final JRadioButton but = new JRadioButton("<html>" + bitVal.getName() + ": " + bitVal.getDescription());
@@ -109,8 +109,8 @@ public final class SampleProbControlPanel extends JTabbedPane implements Observe
 
 		final JTextField tf = new JTextField();
 		tf.setText(Integer.toString(intVal.get()));
-		tf.setPreferredSize(new Dimension(TF_PREF_W, TF_HEIGHT));
-		tf.setMaximumSize(new Dimension(TF_MAX_W, TF_MAX_HEIGHT));
+		tf.setPreferredSize(new Dimension(SampleProbControlPanel.TF_PREF_W, SampleProbControlPanel.TF_HEIGHT));
+		tf.setMaximumSize(new Dimension(SampleProbControlPanel.TF_MAX_W, SampleProbControlPanel.TF_MAX_HEIGHT));
 		tf.addActionListener(new SPIConfigIntAction(intVal));
 		pan.add(tf);
 
@@ -215,7 +215,7 @@ public final class SampleProbControlPanel extends JTabbedPane implements Observe
 
 		onchipBiasgenPanel = new JPanel();
 		onchipBiasgenPanel.setLayout(new BoxLayout(onchipBiasgenPanel, BoxLayout.Y_AXIS));
-		onchipBiasgenPanel.setAlignmentX(LEFT_ALIGNMENT);
+		onchipBiasgenPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		addTab("On-chip biases (biasgen)", (onchipBiasgenPanel));
 
 		offchipDACPanel = new JPanel();
@@ -227,13 +227,13 @@ public final class SampleProbControlPanel extends JTabbedPane implements Observe
 		addTab("AER Config", (aerPanel));
 
 		chipDiagPanel = new JPanel();
-		chipDiagPanel.setAlignmentX(LEFT_ALIGNMENT);
+		chipDiagPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		chipDiagPanel.setLayout(new BoxLayout(chipDiagPanel, BoxLayout.Y_AXIS));
 		addTab("Chip Diag Config", (chipDiagPanel));
 
 	}
 
-	protected void tabbedPaneMouseClicked(MouseEvent evt) {
+	protected void tabbedPaneMouseClicked(final MouseEvent evt) {
 		chip.getPrefs().putInt("SampleProbControlPanel.bgTabbedPaneSelectedIndex", getSelectedIndex());
 	}
 

@@ -234,8 +234,6 @@ public class SampleProb extends CochleaChip implements Observer {
 				allPreferencesList.add(cfgVal);
 			}
 
-			// TODO: Load input data.
-
 			setBatchEditOccurring(true);
 			loadPreferences();
 			setBatchEditOccurring(false);
