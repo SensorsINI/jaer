@@ -22,12 +22,10 @@ import javax.swing.JRadioButton;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 
-import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.CochleaChannel;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigBit;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigInt;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigValue;
 import net.sf.jaer.biasgen.BiasgenPanel;
-import net.sf.jaer.biasgen.coarsefine.ShiftedSourceControlsCF;
 
 public final class SampleProbControlPanel extends JTabbedPane implements Observer {
 
@@ -55,8 +53,6 @@ public final class SampleProbControlPanel extends JTabbedPane implements Observe
 
 		makeSPIBitConfig(biasgen.biasForceEnable, onchipBiasgenPanel);
 
-		onchipBiasgenPanel.add(new ShiftedSourceControlsCF(biasgen.ssBiases[0]));
-		onchipBiasgenPanel.add(new ShiftedSourceControlsCF(biasgen.ssBiases[1]));
 		biasgen.setPotArray(biasgen.ipots);
 		onchipBiasgenPanel.add(new BiasgenPanel(getBiasgen()));
 
@@ -76,14 +72,7 @@ public final class SampleProbControlPanel extends JTabbedPane implements Observe
 			}
 		}
 
-		for (final SPIConfigValue cfgVal : biasgen.chipDiagChain) {
-			if (cfgVal instanceof SPIConfigBit) {
-				makeSPIBitConfig((SPIConfigBit) cfgVal, chipDiagPanel);
-			}
-			else if (cfgVal instanceof SPIConfigInt) {
-				makeSPIIntConfig((SPIConfigInt) cfgVal, chipDiagPanel);
-			}
-		}
+		// TODO: mask to load input data file, use chipDiagPanel.
 
 		setTabLayoutPolicy(WRAP_TAB_LAYOUT);
 		setPreferredSize(new Dimension(800, 600));
@@ -163,9 +152,6 @@ public final class SampleProbControlPanel extends JTabbedPane implements Observe
 				final JTextField tf = (JTextField) configValueMap.get(intVal);
 
 				tf.setText(Integer.toString(intVal.get()));
-			}
-			else if (observable instanceof CochleaChannel) {
-				// TODO: ignore for now.
 			}
 			else {
 				log.warning("unknown observable " + observable + " , not sending anything");

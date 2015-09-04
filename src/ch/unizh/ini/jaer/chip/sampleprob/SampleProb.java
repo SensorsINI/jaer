@@ -11,41 +11,29 @@ import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 
-import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.util.gl2.GLUT;
-
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1cRollingCochleagramADCDisplayMethod;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMSEvent;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaChip;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaLP;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.AbstractConfigValue;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.CochleaChannel;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigBit;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigInt;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigValue;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.biasgen.AddressedIPotArray;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
+import net.sf.jaer.biasgen.IPot;
+import net.sf.jaer.biasgen.IPotArray;
 import net.sf.jaer.biasgen.Pot;
-import net.sf.jaer.biasgen.Pot.Sex;
-import net.sf.jaer.biasgen.Pot.Type;
 import net.sf.jaer.biasgen.PotArray;
 import net.sf.jaer.biasgen.VDAC.DAC;
 import net.sf.jaer.biasgen.VDAC.VPot;
-import net.sf.jaer.biasgen.coarsefine.AddressedIPotCF;
-import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.chip.TypedEventExtractor;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
-import net.sf.jaer.graphics.ChipRendererDisplayMethod;
-import net.sf.jaer.graphics.DisplayMethod;
-import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.graphics.SpaceTimeEventDisplayMethod;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
@@ -53,8 +41,6 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 @Description("Probabilistic Sample circuit")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class SampleProb extends CochleaChip implements Observer {
-	private final GLUT glut = new GLUT();
-
 	/** Creates a new instance of SampleProb */
 	public SampleProb() {
 		super();
@@ -63,9 +49,9 @@ public class SampleProb extends CochleaChip implements Observer {
 		setName("SampleProb");
 		setEventClass(CochleaAMSEvent.class);
 
-		setSizeX(64);
-		setSizeY(4);
-		setNumCellTypes(4);
+		setSizeX(16);
+		setSizeY(1);
+		setNumCellTypes(1);
 
 		setRenderer(new CochleaLP.Renderer(this));
 		setBiasgen(new SampleProb.Biasgen(this));
@@ -73,54 +59,6 @@ public class SampleProb extends CochleaChip implements Observer {
 
 		getCanvas().setBorderSpacePixels(40);
 		getCanvas().addDisplayMethod(new CochleaAMS1cRollingCochleagramADCDisplayMethod(getCanvas()));
-
-		for (final DisplayMethod m : getCanvas().getDisplayMethods()) {
-			if ((m instanceof ChipRendererDisplayMethod) || (m instanceof SpaceTimeEventDisplayMethod)) {
-				// add labels on frame of chip for these xy chip displays
-				m.addAnnotator(new FrameAnnotater() {
-					@Override
-					public void setAnnotationEnabled(final boolean yes) {
-						// Nothing to do here.
-					}
-
-					@Override
-					public boolean isAnnotationEnabled() {
-						return true;
-					}
-
-					// renders the string starting at x,y,z with angleDeg angle CCW from horizontal in degrees
-					public void renderStrokeFontString(final GL2 gl, final float x, final float y, final float z, final float angleDeg,
-						final String s) {
-						final int font = GLUT.STROKE_ROMAN;
-						final float scale = 2f / 104f; // chars will be about 1 pixel wide
-						gl.glPushMatrix();
-						gl.glTranslatef(x, y, z);
-						gl.glRotatef(angleDeg, 0, 0, 1);
-						gl.glScalef(scale, scale, scale);
-						gl.glLineWidth(2);
-						for (final char c : s.toCharArray()) {
-							glut.glutStrokeCharacter(font, c);
-						}
-						gl.glPopMatrix();
-					} // chars about 104 model units wide
-
-					@Override
-					public void annotate(final GLAutoDrawable drawable) {
-						final GL2 gl = drawable.getGL().getGL2();
-						gl.glPushMatrix();
-						{
-							gl.glColor3f(1, 1, 1); // must set color before raster position (raster position is like
-							// glVertex)
-							renderStrokeFontString(gl, -1, (16 / 2) - 5, 0, 90, "cell type");
-							renderStrokeFontString(gl, (sizeX / 2) - 4, -3, 0, 0, "channel");
-							renderStrokeFontString(gl, 0, -3, 0, 0, "hi fr");
-							renderStrokeFontString(gl, sizeX - 15, -3, 0, 0, "low fr");
-						}
-						gl.glPopMatrix();
-					}
-				});
-			}
-		}
 	}
 
 	/**
@@ -135,16 +73,6 @@ public class SampleProb extends CochleaChip implements Observer {
 	@Override
 	public void update(final Observable o, final Object arg) {
 		// Nothing to do here.
-	}
-
-	@Override
-	public void onDeregistration() {
-		super.onDeregistration();
-	}
-
-	@Override
-	public void onRegistration() {
-		super.onRegistration();
 	}
 
 	/**
@@ -176,75 +104,104 @@ public class SampleProb extends CochleaChip implements Observer {
 
 		// Preferences by category.
 		final List<SPIConfigValue> aerControl = new ArrayList<>();
-		final List<SPIConfigValue> chipDiagChain = new ArrayList<>();
 
 		/**
-		 * One DAC, 16 channels. Internal 1.25V reference is used, so VOUT in range 0-2.5V. VDD is 2.8V.
+		 * Three DACs, 16 channels. Internal 1.25V reference is used, so VOUT in range 0-2.5V. VDD is 2.8V.
 		 */
-		private final DAC dac = new DAC(16, 12, 0, 2.5f, 2.8f);
+		private final DAC dac1 = new DAC(16, 14, 0, 2.5f, 3.3f);
+		private final DAC dac2 = new DAC(16, 14, 0, 2.5f, 3.3f);
+		private final DAC dac3 = new DAC(16, 14, 0, 2.5f, 3.3f);
 
 		final SPIConfigBit dacRun;
 
 		// All bias types.
 		final SPIConfigBit biasForceEnable;
-		final AddressedIPotArray ipots = new AddressedIPotArray(this);
+		final IPotArray ipots = new IPotArray(this);
 		final PotArray vpots = new PotArray(this);
-		final ShiftedSourceBiasCF[] ssBiases = new ShiftedSourceBiasCF[2];
 
 		public Biasgen(final Chip chip) {
 			super(chip);
 			setName("SampleProb.Biasgen");
 
-			ipots.addPot(new AddressedIPotCF(this, "VBNIBias", 0, Type.NORMAL, Sex.N, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
-				AddressedIPotCF.maxFineBitValue, 1, "IBias transistor gate"));
-			ipots.addPot(new AddressedIPotCF(this, "VBNTest", 1, Type.NORMAL, Sex.N, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
-				AddressedIPotCF.maxFineBitValue, 2, "Test circuits"));
-			ipots.addPot(new AddressedIPotCF(this, "VBPScan", 8, Type.NORMAL, Sex.P, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
-				AddressedIPotCF.maxFineBitValue, 3, "Scanner"));
-			ipots.addPot(new AddressedIPotCF(this, "AEPdBn", 11, Type.NORMAL, Sex.N, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
-				AddressedIPotCF.maxFineBitValue, 4, "AER"));
-			ipots.addPot(new AddressedIPotCF(this, "AEPuYBp", 14, Type.NORMAL, Sex.P, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
-				AddressedIPotCF.maxFineBitValue, 5, "AER"));
-			ipots.addPot(new AddressedIPotCF(this, "BiasBuffer", 19, Type.NORMAL, Sex.N, false, true, AddressedIPotCF.maxCoarseBitValue / 2,
-				AddressedIPotCF.maxFineBitValue, 6, "Buffer bias generator"));
+			ipots.addPot(new IPot(this, "Bias0", 0, IPot.Type.NORMAL, IPot.Sex.N, 0, 0, "Bias0"));
+			ipots.addPot(new IPot(this, "Bias1", 1, IPot.Type.NORMAL, IPot.Sex.N, 0, 1, "Bias1"));
+			ipots.addPot(new IPot(this, "Bias2", 2, IPot.Type.NORMAL, IPot.Sex.N, 0, 2, "Bias2"));
+			ipots.addPot(new IPot(this, "Bias3", 3, IPot.Type.NORMAL, IPot.Sex.N, 0, 3, "Bias3"));
+			ipots.addPot(new IPot(this, "Bias4", 4, IPot.Type.NORMAL, IPot.Sex.N, 0, 4, "Bias4"));
+			ipots.addPot(new IPot(this, "Bias5", 5, IPot.Type.NORMAL, IPot.Sex.N, 0, 5, "Bias5"));
+			ipots.addPot(new IPot(this, "Bias6", 6, IPot.Type.NORMAL, IPot.Sex.N, 0, 6, "Bias6"));
+			ipots.addPot(new IPot(this, "Bias7", 7, IPot.Type.NORMAL, IPot.Sex.N, 0, 7, "Bias7"));
+			ipots.addPot(new IPot(this, "Bias8", 8, IPot.Type.NORMAL, IPot.Sex.N, 0, 8, "Bias8"));
+			ipots.addPot(new IPot(this, "Bias9", 9, IPot.Type.NORMAL, IPot.Sex.N, 0, 9, "Bias9"));
+			ipots.addPot(new IPot(this, "Bias10", 10, IPot.Type.NORMAL, IPot.Sex.N, 0, 10, "Bias10"));
+			ipots.addPot(new IPot(this, "Bias11", 11, IPot.Type.NORMAL, IPot.Sex.N, 0, 11, "Bias11"));
+			ipots.addPot(new IPot(this, "Bias12", 12, IPot.Type.NORMAL, IPot.Sex.N, 0, 12, "Bias12"));
+			ipots.addPot(new IPot(this, "Bias13", 13, IPot.Type.NORMAL, IPot.Sex.N, 0, 13, "Bias13"));
+			ipots.addPot(new IPot(this, "Bias14", 14, IPot.Type.NORMAL, IPot.Sex.N, 0, 14, "Bias14"));
+			ipots.addPot(new IPot(this, "Bias15", 15, IPot.Type.NORMAL, IPot.Sex.N, 0, 15, "Bias15"));
+			ipots.addPot(new IPot(this, "Bias16", 16, IPot.Type.NORMAL, IPot.Sex.N, 0, 16, "Bias16"));
+			ipots.addPot(new IPot(this, "Bias17", 17, IPot.Type.NORMAL, IPot.Sex.N, 0, 17, "Bias17"));
+			ipots.addPot(new IPot(this, "Bias18", 18, IPot.Type.NORMAL, IPot.Sex.N, 0, 18, "Bias18"));
+			ipots.addPot(new IPot(this, "Bias19", 19, IPot.Type.NORMAL, IPot.Sex.N, 0, 19, "Bias19"));
+			ipots.addPot(new IPot(this, "Bias20", 20, IPot.Type.NORMAL, IPot.Sex.N, 0, 20, "Bias20"));
+			ipots.addPot(new IPot(this, "Bias21", 21, IPot.Type.NORMAL, IPot.Sex.N, 0, 21, "Bias21"));
+			ipots.addPot(new IPot(this, "Bias22", 22, IPot.Type.NORMAL, IPot.Sex.N, 0, 22, "Bias22"));
 
 			setPotArray(ipots);
 
-			// shifted sources
-			final ShiftedSourceBiasCF ssp = new ShiftedSourceBiasCF(this);
-			ssp.setSex(Pot.Sex.P);
-			ssp.setName("SSP");
-			ssp.setTooltipString("p-type shifted source that generates a regulated voltage near Vdd");
-			ssp.setAddress(20);
-			ssp.addObserver(this);
+			// DAC1 channels (16)
+			vpots.addPot(new VPot(getChip(), "VHazardrefD00", dac1, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VHazardrefD01", dac1, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VHazardrefD02", dac1, 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VHazardrefD03", dac1, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VHazardrefD04", dac1, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VHazardrefD05", dac1, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VHazardrefD06", dac1, 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VHazardrefD07", dac1, 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VHazardrefD08", dac1, 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VHazardrefD09", dac1, 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VHazardrefD10", dac1, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VHazardrefD11", dac1, 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VHazardrefD12", dac1, 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VHazardrefD13", dac1, 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VHazardrefD14", dac1, 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "Vsrc1Bns", dac1, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 
-			final ShiftedSourceBiasCF ssn = new ShiftedSourceBiasCF(this);
-			ssn.setSex(Pot.Sex.N);
-			ssn.setName("SSN");
-			ssn.setTooltipString("n-type shifted source that generates a regulated voltage near ground");
-			ssn.setAddress(21);
-			ssn.addObserver(this);
+			// DAC2 channels (16)
+			vpots.addPot(new VPot(getChip(), "VnoiseExt04", dac2, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt00", dac2, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt01", dac2, 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt02", dac2, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt03", dac2, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt05", dac2, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt06", dac2, 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt08", dac2, 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt12", dac2, 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt07", dac2, 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt10", dac2, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt11", dac2, 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt13", dac2, 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt14", dac2, 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt15", dac2, 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt09", dac2, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 
-			ssBiases[0] = ssp;
-			ssBiases[1] = ssn;
-
-			// DAC channels (16)
-			// vpots.addPot(new VPot(getChip(), "NC", dac, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			// vpots.addPot(new VPot(getChip(), "NC", dac, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VMID", dac, 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VREF1_Filter", dac, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VREF2_Filter", dac, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VREF_MOD", dac, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VREFH_MOD", dac, 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VREFL_MOD", dac, 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VREFH_COM", dac, 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VREFL_COM", dac, 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VOCM1/2", dac, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "Resistors1", dac, 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "Resistors2", dac, 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			// vpots.addPot(new VPot(getChip(), "NC", dac, 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			// vpots.addPot(new VPot(getChip(), "NC", dac, 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			// vpots.addPot(new VPot(getChip(), "NC", dac, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// DAC3 channels (16)
+			// vpots.addPot(new VPot(getChip(), "NC", dac3, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac3, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac3, 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac3, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac3, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VRVGrefh", dac3, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VRVGrefl", dac3, 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VRVGrefm", dac3, 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac3, 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac3, 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac3, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac3, 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac3, 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac3, 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac3, 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac3, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 
 			// New logic SPI configuration values.
 			// DAC control
@@ -259,8 +216,6 @@ public class SampleProb extends CochleaChip implements Observer {
 			allPreferencesList.add(biasForceEnable);
 
 			// Generic AER from chip
-			aerControl.add(new SPIConfigBit("TestAEREnable", "Enable Test AER output instead of normal AER.", CypressFX3.FPGA_SCANNER,
-				(short) 2, false, getPrefs())); // In scanner module for convenience.
 			aerControl
 				.add(new SPIConfigBit("AERRun", "Run the main AER state machine.", CypressFX3.FPGA_DVS, (short) 3, false, getPrefs()));
 			aerControl.add(
@@ -279,24 +234,7 @@ public class SampleProb extends CochleaChip implements Observer {
 				allPreferencesList.add(cfgVal);
 			}
 
-			// Chip diagnostic chain
-			chipDiagChain.add(new SPIConfigInt("ChipResetCapConfigADM", "Reset cap configuration in ADM.", CypressFX3.FPGA_CHIPBIAS,
-				(short) 128, 2, 0, getPrefs()));
-			chipDiagChain.add(new SPIConfigInt("ChipDelayCapConfigADM", "Delay cap configuration in ADM.", CypressFX3.FPGA_CHIPBIAS,
-				(short) 129, 3, 0, getPrefs()));
-			chipDiagChain.add(new SPIConfigBit("ChipComparatorSelfOsc", "Comparator self-oscillation enable.", CypressFX3.FPGA_CHIPBIAS,
-				(short) 130, false, getPrefs()));
-			chipDiagChain.add(
-				new SPIConfigInt("ChipLNAGainConfig", "LNA gain configuration.", CypressFX3.FPGA_CHIPBIAS, (short) 131, 3, 0, getPrefs()));
-			chipDiagChain.add(new SPIConfigBit("ChipLNADoubleInputSelect", "LNA double or single input selection.",
-				CypressFX3.FPGA_CHIPBIAS, (short) 132, false, getPrefs()));
-			chipDiagChain.add(new SPIConfigBit("ChipTestScannerBias", "Test scanner bias enable.", CypressFX3.FPGA_CHIPBIAS, (short) 133,
-				false, getPrefs()));
-
-			for (final SPIConfigValue cfgVal : chipDiagChain) {
-				cfgVal.addObserver(this);
-				allPreferencesList.add(cfgVal);
-			}
+			// TODO: Load input data.
 
 			setBatchEditOccurring(true);
 			loadPreferences();
@@ -313,12 +251,6 @@ public class SampleProb extends CochleaChip implements Observer {
 				}
 			}
 
-			if (ssBiases != null) {
-				for (final ShiftedSourceBiasCF sSrc : ssBiases) {
-					sSrc.loadPreferences();
-				}
-			}
-
 			if (ipots != null) {
 				ipots.loadPreferences();
 			}
@@ -332,10 +264,6 @@ public class SampleProb extends CochleaChip implements Observer {
 		public void storePreferences() {
 			for (final HasPreference hp : allPreferencesList) {
 				hp.storePreference();
-			}
-
-			for (final ShiftedSourceBiasCF sSrc : ssBiases) {
-				sSrc.storePreferences();
 			}
 
 			ipots.storePreferences();
@@ -392,19 +320,23 @@ public class SampleProb extends CochleaChip implements Observer {
 				final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
 
 				try {
-					if (observable instanceof AddressedIPotCF) {
-						final AddressedIPotCF iPot = (AddressedIPotCF) observable;
+					if (observable instanceof IPot) {
+						final IPot iPot = (IPot) observable;
 
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) iPot.getAddress(),
-							iPot.computeCleanBinaryRepresentation());
-					}
-					else if (observable instanceof ShiftedSourceBiasCF) {
-						final ShiftedSourceBiasCF iPot = (ShiftedSourceBiasCF) observable;
-
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) iPot.getAddress(), iPot.computeBinaryRepresentation());
+						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) iPot.getShiftRegisterNumber(), iPot.getBitValue());
 					}
 					else if (observable instanceof VPot) {
 						final VPot vPot = (VPot) observable;
+
+						if (vPot.getDac() == dac1) {
+							fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) 1, 0); // Select DAC1.
+						}
+						else if (vPot.getDac() == dac2) {
+							fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) 1, 1); // Select DAC2.
+						}
+						else {
+							fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) 1, 2); // Select DAC3.
+						}
 
 						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) 2, 0x03); // Select input data register.
 						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) 3, vPot.getChannel());
@@ -432,24 +364,6 @@ public class SampleProb extends CochleaChip implements Observer {
 
 						fx3HwIntf.spiConfigSend(cfgInt.getModuleAddr(), cfgInt.getParamAddr(), cfgInt.get());
 					}
-					else if (observable instanceof CochleaChannel) {
-						final CochleaChannel chan = (CochleaChannel) observable;
-
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 160, chan.getChannelAddress());
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 162, chan.computeBinaryRepresentation());
-
-						// Toggle SET flag.
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 163, 1);
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 163, 0);
-
-						// Wait 2ms to ensure operation is completed.
-						try {
-							Thread.sleep(2);
-						}
-						catch (final InterruptedException e) {
-							// Nothing to do here.
-						}
-					}
 					else {
 						super.update(observable, object); // super (Biasgen) handles others, e.g. masterbias
 					}
@@ -464,10 +378,6 @@ public class SampleProb extends CochleaChip implements Observer {
 		public void sendConfiguration() throws HardwareInterfaceException {
 			if (!isOpen()) {
 				open();
-			}
-
-			for (final ShiftedSourceBiasCF sSrc : ssBiases) {
-				update(sSrc, null);
 			}
 
 			for (final Pot iPot : ipots.getPots()) {
@@ -530,24 +440,12 @@ public class SampleProb extends CochleaChip implements Observer {
 
 			final int n = in.getNumEvents();
 
-			int skipBy = 1, incEach = 0, j = 0;
-
-			if (isSubSamplingEnabled()) {
-				skipBy = n / getSubsampleThresholdEventCount();
-				incEach = getSubsampleThresholdEventCount() / (n % getSubsampleThresholdEventCount());
-			}
-
-			if (skipBy == 0) {
-				incEach = 0;
-				skipBy = 1;
-			}
-
 			final int[] addresses = in.getAddresses();
 			final int[] timestamps = in.getTimestamps();
 
 			final OutputEventIterator<CochleaAMSEvent> outItr = out.outputIterator();
 
-			for (int i = 0; i < n; i += skipBy) {
+			for (int i = 0; i < n; i++) {
 				final int addr = addresses[i];
 				final int ts = timestamps[i];
 
@@ -555,54 +453,10 @@ public class SampleProb extends CochleaChip implements Observer {
 
 				e.address = addr;
 				e.timestamp = ts;
-				e.x = getXFromAddress(addr);
-				e.y = getYFromAddress(addr);
-				e.type = getTypeFromAddress(addr);
-
-				j++;
-				if (j == incEach) {
-					j = 0;
-					i++;
-				}
+				e.x = (short) (addr & 0x0F);
+				e.y = 1;
+				e.type = 1;
 			}
-		}
-
-		/**
-		 * Overrides default extractor so that cochlea channels are returned,
-		 * numbered from x=0 (base, high frequencies, input end) to x=63 (apex, low frequencies).
-		 *
-		 * @param addr
-		 *            raw address.
-		 * @return channel, from 0 to 63.
-		 */
-		@Override
-		public short getXFromAddress(final int addr) {
-			return (short) ((addr & 0xFC) >>> 2);
-		}
-
-		/**
-		 * Overrides default extractor to spread all outputs from a tap (left/right, polarity ON/OFF) into a
-		 * single unique y address that can be displayed in the 2d histogram.
-		 *
-		 * @param addr
-		 *            the raw address
-		 * @return the Y address
-		 */
-		@Override
-		public short getYFromAddress(final int addr) {
-			return (short) (addr & 0x03);
-		}
-
-		/**
-		 * Overrides default extract to define type of event the same as the Y address.
-		 *
-		 * @param addr
-		 *            the raw address.
-		 * @return the type
-		 */
-		@Override
-		public byte getTypeFromAddress(final int addr) {
-			return (byte) getYFromAddress(addr);
 		}
 	}
 }
