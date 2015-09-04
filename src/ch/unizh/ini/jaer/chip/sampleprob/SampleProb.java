@@ -104,6 +104,7 @@ public class SampleProb extends CochleaChip implements Observer {
 
 		// Preferences by category.
 		final List<SPIConfigValue> aerControl = new ArrayList<>();
+		final List<SPIConfigValue> chipControl = new ArrayList<>();
 
 		/**
 		 * Three DACs, 16 channels. Internal 2.5V reference is used, so VOUT in range 0-5.0V. VDD is 3.3V.
@@ -123,29 +124,30 @@ public class SampleProb extends CochleaChip implements Observer {
 			super(chip);
 			setName("SampleProb.Biasgen");
 
-			ipots.addPot(new IPot(this, "Bias0", 0, IPot.Type.NORMAL, IPot.Sex.N, 0, 0, "Bias0"));
-			ipots.addPot(new IPot(this, "Bias1", 1, IPot.Type.NORMAL, IPot.Sex.N, 0, 1, "Bias1"));
-			ipots.addPot(new IPot(this, "Bias2", 2, IPot.Type.NORMAL, IPot.Sex.N, 0, 2, "Bias2"));
-			ipots.addPot(new IPot(this, "Bias3", 3, IPot.Type.NORMAL, IPot.Sex.N, 0, 3, "Bias3"));
-			ipots.addPot(new IPot(this, "Bias4", 4, IPot.Type.NORMAL, IPot.Sex.N, 0, 4, "Bias4"));
-			ipots.addPot(new IPot(this, "Bias5", 5, IPot.Type.NORMAL, IPot.Sex.N, 0, 5, "Bias5"));
-			ipots.addPot(new IPot(this, "Bias6", 6, IPot.Type.NORMAL, IPot.Sex.N, 0, 6, "Bias6"));
-			ipots.addPot(new IPot(this, "Bias7", 7, IPot.Type.NORMAL, IPot.Sex.N, 0, 7, "Bias7"));
-			ipots.addPot(new IPot(this, "Bias8", 8, IPot.Type.NORMAL, IPot.Sex.N, 0, 8, "Bias8"));
-			ipots.addPot(new IPot(this, "Bias9", 9, IPot.Type.NORMAL, IPot.Sex.N, 0, 9, "Bias9"));
-			ipots.addPot(new IPot(this, "Bias10", 10, IPot.Type.NORMAL, IPot.Sex.N, 0, 10, "Bias10"));
-			ipots.addPot(new IPot(this, "Bias11", 11, IPot.Type.NORMAL, IPot.Sex.N, 0, 11, "Bias11"));
-			ipots.addPot(new IPot(this, "Bias12", 12, IPot.Type.NORMAL, IPot.Sex.N, 0, 12, "Bias12"));
-			ipots.addPot(new IPot(this, "Bias13", 13, IPot.Type.NORMAL, IPot.Sex.N, 0, 13, "Bias13"));
-			ipots.addPot(new IPot(this, "Bias14", 14, IPot.Type.NORMAL, IPot.Sex.N, 0, 14, "Bias14"));
-			ipots.addPot(new IPot(this, "Bias15", 15, IPot.Type.NORMAL, IPot.Sex.N, 0, 15, "Bias15"));
-			ipots.addPot(new IPot(this, "Bias16", 16, IPot.Type.NORMAL, IPot.Sex.N, 0, 16, "Bias16"));
-			ipots.addPot(new IPot(this, "Bias17", 17, IPot.Type.NORMAL, IPot.Sex.N, 0, 17, "Bias17"));
-			ipots.addPot(new IPot(this, "Bias18", 18, IPot.Type.NORMAL, IPot.Sex.N, 0, 18, "Bias18"));
-			ipots.addPot(new IPot(this, "Bias19", 19, IPot.Type.NORMAL, IPot.Sex.N, 0, 19, "Bias19"));
-			ipots.addPot(new IPot(this, "Bias20", 20, IPot.Type.NORMAL, IPot.Sex.N, 0, 20, "Bias20"));
-			ipots.addPot(new IPot(this, "Bias21", 21, IPot.Type.NORMAL, IPot.Sex.N, 0, 21, "Bias21"));
-			ipots.addPot(new IPot(this, "Bias22", 22, IPot.Type.NORMAL, IPot.Sex.N, 0, 22, "Bias22"));
+			// Use shift-register number as address.
+			ipots.addPot(new IPot(this, "Bias0", 5, IPot.Type.NORMAL, IPot.Sex.N, 0, 0, "Bias0"));
+			ipots.addPot(new IPot(this, "Bias1", 6, IPot.Type.NORMAL, IPot.Sex.N, 0, 1, "Bias1"));
+			ipots.addPot(new IPot(this, "Bias2", 7, IPot.Type.NORMAL, IPot.Sex.N, 0, 2, "Bias2"));
+			ipots.addPot(new IPot(this, "Bias3", 8, IPot.Type.NORMAL, IPot.Sex.N, 0, 3, "Bias3"));
+			ipots.addPot(new IPot(this, "Bias4", 9, IPot.Type.NORMAL, IPot.Sex.N, 0, 4, "Bias4"));
+			ipots.addPot(new IPot(this, "Bias5", 10, IPot.Type.NORMAL, IPot.Sex.N, 0, 5, "Bias5"));
+			ipots.addPot(new IPot(this, "Bias6", 11, IPot.Type.NORMAL, IPot.Sex.N, 0, 6, "Bias6"));
+			ipots.addPot(new IPot(this, "Bias7", 12, IPot.Type.NORMAL, IPot.Sex.N, 0, 7, "Bias7"));
+			ipots.addPot(new IPot(this, "Bias8", 13, IPot.Type.NORMAL, IPot.Sex.N, 0, 8, "Bias8"));
+			ipots.addPot(new IPot(this, "Bias9", 14, IPot.Type.NORMAL, IPot.Sex.N, 0, 9, "Bias9"));
+			ipots.addPot(new IPot(this, "Bias10", 15, IPot.Type.NORMAL, IPot.Sex.N, 0, 10, "Bias10"));
+			ipots.addPot(new IPot(this, "Bias11", 16, IPot.Type.NORMAL, IPot.Sex.N, 0, 11, "Bias11"));
+			ipots.addPot(new IPot(this, "Bias12", 17, IPot.Type.NORMAL, IPot.Sex.N, 0, 12, "Bias12"));
+			ipots.addPot(new IPot(this, "Bias13", 18, IPot.Type.NORMAL, IPot.Sex.N, 0, 13, "Bias13"));
+			ipots.addPot(new IPot(this, "Bias14", 19, IPot.Type.NORMAL, IPot.Sex.N, 0, 14, "Bias14"));
+			ipots.addPot(new IPot(this, "Bias15", 20, IPot.Type.NORMAL, IPot.Sex.N, 0, 15, "Bias15"));
+			ipots.addPot(new IPot(this, "Bias16", 21, IPot.Type.NORMAL, IPot.Sex.N, 0, 16, "Bias16"));
+			ipots.addPot(new IPot(this, "Bias17", 22, IPot.Type.NORMAL, IPot.Sex.N, 0, 17, "Bias17"));
+			ipots.addPot(new IPot(this, "Bias18", 23, IPot.Type.NORMAL, IPot.Sex.N, 0, 18, "Bias18"));
+			ipots.addPot(new IPot(this, "Bias19", 24, IPot.Type.NORMAL, IPot.Sex.N, 0, 19, "Bias19"));
+			ipots.addPot(new IPot(this, "Bias20", 25, IPot.Type.NORMAL, IPot.Sex.N, 0, 20, "Bias20"));
+			ipots.addPot(new IPot(this, "Bias21", 26, IPot.Type.NORMAL, IPot.Sex.N, 0, 21, "Bias21"));
+			ipots.addPot(new IPot(this, "Bias22", 27, IPot.Type.NORMAL, IPot.Sex.N, 0, 22, "Bias22"));
 
 			setPotArray(ipots);
 
@@ -230,6 +232,22 @@ public class SampleProb extends CochleaChip implements Observer {
 				false, getPrefs()));
 
 			for (final SPIConfigValue cfgVal : aerControl) {
+				cfgVal.addObserver(this);
+				allPreferencesList.add(cfgVal);
+			}
+
+			// Additional chip configuration
+			chipControl.add(new SPIConfigInt("MasterBias", "", CypressFX3.FPGA_CHIPBIAS, (short) 0, 8, 0, getPrefs()));
+			chipControl.add(new SPIConfigInt("SelSpikeExtend", "", CypressFX3.FPGA_CHIPBIAS, (short) 1, 3, 0, getPrefs()));
+			chipControl.add(new SPIConfigInt("SelHazardIV", "", CypressFX3.FPGA_CHIPBIAS, (short) 2, 8, 0, getPrefs()));
+			chipControl.add(new SPIConfigBit("SelCH", "", CypressFX3.FPGA_CHIPBIAS, (short) 3, false, getPrefs()));
+			chipControl.add(new SPIConfigBit("SelNS", "", CypressFX3.FPGA_CHIPBIAS, (short) 4, false, getPrefs()));
+			chipControl.add(new SPIConfigBit("ClockEnable", "Enable clock generation for RNG.", CypressFX3.FPGA_CHIPBIAS, (short) 40, false,
+				getPrefs()));
+			chipControl.add(new SPIConfigInt("ClockPeriod", "Period of RNG clock in cycles at 120MHz.", CypressFX3.FPGA_CHIPBIAS,
+				(short) 41, 20, 0, getPrefs()));
+
+			for (final SPIConfigValue cfgVal : chipControl) {
 				cfgVal.addObserver(this);
 				allPreferencesList.add(cfgVal);
 			}
