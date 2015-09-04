@@ -30,12 +30,12 @@ import javax.swing.JTextField;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
-import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigBit;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigInt;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigValue;
 import net.sf.jaer.biasgen.BiasgenPanel;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigBit;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigInt;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigValue;
 
 public final class SampleProbControlPanel extends JTabbedPane implements Observer {
 
@@ -229,8 +229,7 @@ public final class SampleProbControlPanel extends JTabbedPane implements Observe
 						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 129, (short) address);
 
 						// Set data to write to memory.
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 130,
-							(short) (Integer.parseUnsignedInt(valueText) & 0x3F));
+						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 130, (short) (Integer.parseInt(valueText) & 0x3F));
 
 						// Toggle SET command.
 						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 131, (short) 1);
