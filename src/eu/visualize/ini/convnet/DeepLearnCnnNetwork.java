@@ -1,8 +1,8 @@
 /*
-* To change this license header, choose License Headers in Project Properties.
-* To change this template file, choose Tools | Templates
-* and open the template in the editor.
-*/
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
 package eu.visualize.ini.convnet;
 
 import static net.sf.jaer.eventprocessing.EventFilter.log;
@@ -25,55 +25,55 @@ import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ImageDisplay;
 
 /**
-* Simple convolutional neural network (CNN) data structure to hold CNN from
-* Matlab DeepLearnToolbox. Replicates the computation in matlab function
-* cnnff.m, which is as follows:
-* <pre>
-*
-* function net = cnnff(net, x)
-* n = numel(net.layers);
-* net.layers{1}.activations{1} = x;
-* inputmaps = 1;
-* * for l = 2 : n   %  for each layer
-* if strcmp(net.layers{l}.type, 'c')
-* %  !!below can probably be handled by insane matrix operations
-* for j = 1 : net.layers{l}.outputmaps   %  for each output map
-* %  create temp output map
-* z = zeros(size(net.layers{l - 1}.activations{1}) - [net.layers{l}.kernelsize - 1 net.layers{l}.kernelsize - 1 0]);
-* for i = 1 : inputmaps   %  for each input map
-* %  convolve with corresponding kernel and add to temp output map
-* z = z + convn(net.layers{l - 1}.activations{i}, net.layers{l}.k{i}{j}, 'valid');
-* end
-* %  add bias, pass through nonlinearity
-* net.layers{l}.activations{j} = sigm(z + net.layers{l}.b{j});
-* end
-* %  set number of input maps to this layers number of outputmaps
-* inputmaps = net.layers{l}.outputmaps;
-* elseif strcmp(net.layers{l}.type, 's')
-* %  downsample
-* for j = 1 : inputmaps
-* z = convn(net.layers{l - 1}.activations{j}, ones(net.layers{l}.scale) / (net.layers{l}.scale ^ 2), 'valid');   %  !! replace with variable
-* net.layers{l}.activations{j} = z(1 : net.layers{l}.scale : end, 1 : net.layers{l}.scale : end, :);
-* end
-* end
-* end
-*
-* %  concatenate all end layer feature maps into vector
-* net.fv = [];
-* for j = 1 : numel(net.layers{n}.activations)
-* sa = size(net.layers{n}.activations{j});
-* net.fv = [net.fv; reshape(net.layers{n}.activations{j}, sa(1) * sa(2), sa(3))];
-* end
-* %  feedforward into output perceptrons
-* net.o = sigm(net.ffW * net.fv + repmat(net.ffb, 1, size(net.fv, 2)));
-*
-* end
-*
-*
-* </pre>
-*
+ * Simple convolutional neural network (CNN) data structure to hold CNN from
+ * Matlab DeepLearnToolbox. Replicates the computation in matlab function
+ * cnnff.m, which is as follows:
+ * <pre>
+ *
+ * function net = cnnff(net, x)
+ * n = numel(net.layers);
+ * net.layers{1}.activations{1} = x;
+ * inputmaps = 1;
+ * * for l = 2 : n   %  for each layer
+ * if strcmp(net.layers{l}.type, 'c')
+ * %  !!below can probably be handled by insane matrix operations
+ * for j = 1 : net.layers{l}.outputmaps   %  for each output map
+ * %  create temp output map
+ * z = zeros(size(net.layers{l - 1}.activations{1}) - [net.layers{l}.kernelsize - 1 net.layers{l}.kernelsize - 1 0]);
+ * for i = 1 : inputmaps   %  for each input map
+ * %  convolve with corresponding kernel and add to temp output map
+ * z = z + convn(net.layers{l - 1}.activations{i}, net.layers{l}.k{i}{j}, 'valid');
+ * end
+ * %  add bias, pass through nonlinearity
+ * net.layers{l}.activations{j} = sigm(z + net.layers{l}.b{j});
+ * end
+ * %  set number of input maps to this layers number of outputmaps
+ * inputmaps = net.layers{l}.outputmaps;
+ * elseif strcmp(net.layers{l}.type, 's')
+ * %  downsample
+ * for j = 1 : inputmaps
+ * z = convn(net.layers{l - 1}.activations{j}, ones(net.layers{l}.scale) / (net.layers{l}.scale ^ 2), 'valid');   %  !! replace with variable
+ * net.layers{l}.activations{j} = z(1 : net.layers{l}.scale : end, 1 : net.layers{l}.scale : end, :);
+ * end
+ * end
+ * end
+ *
+ * %  concatenate all end layer feature maps into vector
+ * net.fv = [];
+ * for j = 1 : numel(net.layers{n}.activations)
+ * sa = size(net.layers{n}.activations{j});
+ * net.fv = [net.fv; reshape(net.layers{n}.activations{j}, sa(1) * sa(2), sa(3))];
+ * end
+ * %  feedforward into output perceptrons
+ * net.o = sigm(net.ffW * net.fv + repmat(net.ffb, 1, size(net.fv, 2)));
+ *
+ * end
+ *
+ *
+ * </pre>
+ * 
 * @author tobi
-*/
+ */
 public class DeepLearnCnnNetwork {
 
     int nLayers;
@@ -90,6 +90,9 @@ public class DeepLearnCnnNetwork {
     private boolean normalizeActivationDisplayGlobally = true;
     private boolean hideConvLayers = true;
     private String xmlFilename = null;
+    private boolean printActivations = false;
+    private boolean printWeights = false;
+
     /**
      * This PropertyChange is emitted when either APS or DVS net outputs. The
      * new value is the network. The old value is null.
@@ -111,12 +114,12 @@ public class DeepLearnCnnNetwork {
      * @return the vector of output values
      * @see #getActivations
      */
-    public float[] processDownsampleFrame(AEFrameChipRenderer frame) {
+    public float[] processDownsampledFrame(AEFrameChipRenderer frame) {
 
         inputLayer.processDownsampledFrame(frame);
         return processLayers();
     }
-    
+
     /**
      * Computes the output of the network from an input activationsFrame
      *
@@ -138,9 +141,9 @@ public class DeepLearnCnnNetwork {
      * @param inputLayerinput
      * @return the network output
      */
-    public float[] processNetwork(InputLayer inputLayerInput){
-    	this.inputLayer = inputLayerInput;
-    	return processLayers();
+    public float[] processNetwork(InputLayer inputLayerInput) {
+        this.inputLayer = inputLayerInput;
+        return processLayers();
     }
 
     private float[] processLayers() {
@@ -149,6 +152,12 @@ public class DeepLearnCnnNetwork {
         }
         outputLayer.compute(layers[nLayers - 1]);
         getSupport().firePropertyChange(EVENT_MADE_DECISION, null, this);
+        if (isPrintActivations()) {
+            printActivations();
+        }
+        if (isPrintWeights()) {
+            printWeights();
+        }
         return outputLayer.activations;
     }
 
@@ -170,6 +179,26 @@ public class DeepLearnCnnNetwork {
             activationsFrame.setVisible(true);
         }
 
+    }
+
+    void printActivations() {
+        System.out.println("\n\n\n****************************************************\nActivations");
+        for (Layer l : layers) {
+            l.printActivations();
+        }
+        if (outputLayer != null) {
+            outputLayer.printActivations();
+        }
+    }
+
+    void printWeights() {
+        System.out.println("\n\n\n****************************************************\nWeights");
+        for (Layer l : layers) {
+            l.printWeights();
+        }
+        if (outputLayer != null) {
+            outputLayer.printWeights();
+        }
     }
 
     public JFrame drawKernels() {
@@ -243,7 +272,7 @@ public class DeepLearnCnnNetwork {
          */
         int index;
         /**
-         * Activations
+         * Activations - output of layer
          */
         float[] activations;
 
@@ -281,7 +310,7 @@ public class DeepLearnCnnNetwork {
         }
 
         /**
-         * Return the activation of this layer
+         * Return the activation (output) of this layer
          *
          * @param map the output map
          * @param x
@@ -289,6 +318,20 @@ public class DeepLearnCnnNetwork {
          * @return activation from 0-1
          */
         abstract public float a(int map, int x, int y);
+
+        public void printActivations() {
+            if (!printActivations) {
+                return;
+            }
+            System.out.println(String.format("Activations of Layer %s", toString()));
+        }
+
+        public void printWeights() {
+            if (!isPrintWeights()) {
+                return;
+            }
+            System.out.println(String.format("Weights of Layer %s", toString()));
+        }
 
     }
 
@@ -349,8 +392,8 @@ public class DeepLearnCnnNetwork {
                     v = renderer.getApsGrayValueAtPixel((int) Math.floor(x), (int) Math.floor(y));
                     // TODO remove only for debug
                     if (inputClampedToIncreasingIntegers) {
-                        v = (float) (xo + yo) / (dimx + dimy); // make image that is x+y, for debugging
-//                        v = (float) (yo) / (dimy);
+//                        v = (float) (xo + yo) / (dimx + dimy); // make image that is x+y, for debugging
+                        v = (float) (yo) / (dimy);
                     } else if (inputClampedTo1) {
                         v = .5f;
                     }
@@ -361,7 +404,7 @@ public class DeepLearnCnnNetwork {
             }
             return activations;
         }
-        
+
         /**
          * Computes the output from input frame.
          *
@@ -379,14 +422,14 @@ public class DeepLearnCnnNetwork {
             }
             int frameHeight = renderer.getChip().getSizeY();
             int frameWidth = renderer.getChip().getSizeX();
-            int dimx2 = dimx/2;
-            int dimy2 = dimy/2;
-            if(xOffset < dimx2 || xOffset > frameWidth-dimx2 || yOffset < dimy2 || xOffset > frameWidth-dimy2){
-                log.warning("Cannot process input frame patch with x offset: "+xOffset+" and y Offset: "+yOffset+" because frame measures only "+frameWidth+" x "+frameHeight);
+            int dimx2 = dimx / 2;
+            int dimy2 = dimy / 2;
+            if (xOffset < dimx2 || xOffset > frameWidth - dimx2 || yOffset < dimy2 || xOffset > frameWidth - dimy2) {
+                log.warning("Cannot process input frame patch with x offset: " + xOffset + " and y Offset: " + yOffset + " because frame measures only " + frameWidth + " x " + frameHeight);
                 return null;
             }
-            for (int y = yOffset-dimy2; y < yOffset+dimy2; y ++) {
-                for (int x = xOffset-dimx2; x < xOffset+dimx2; x ++) {  // take every xstride, ystride pixels as output
+            for (int y = yOffset - dimy2; y < yOffset + dimy2; y++) {
+                for (int x = xOffset - dimx2; x < xOffset + dimx2; x++) {  // take every xstride, ystride pixels as output
                     float v = 0;
                     v = renderer.getApsGrayValueAtPixel((int) Math.floor(x), (int) Math.floor(y));
                     // TODO remove only for debug
@@ -396,8 +439,8 @@ public class DeepLearnCnnNetwork {
                     } else if (inputClampedTo1) {
                         v = .5f;
                     }
-                    activations[o(dimy - (y -(yOffset-dimy2))- 1, x -(xOffset-dimx2)  )] = v;
-                   // activations[o(dimy - y % dimy- 1, x % dimx )] = v; // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
+                    activations[o(dimy - (y - (yOffset - dimy2)) - 1, x - (xOffset - dimx2))] = v;
+                    // activations[o(dimy - y % dimy- 1, x % dimx )] = v; // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
                 }
             }
             return activations;
@@ -405,9 +448,9 @@ public class DeepLearnCnnNetwork {
 
         /**
          * Computes the output from input frame. The frame can be either a
-gray-scale frame[] with a single entry per pixel, or it can be an RGB
-frame[] with 3 sample (RGB) per pixel. The appropriate extraction is
-done in processDownsampledFrame by the FrameType parameter.
+         * gray-scale frame[] with a single entry per pixel, or it can be an RGB
+         * frame[] with 3 sample (RGB) per pixel. The appropriate extraction is
+         * done in processDownsampledFrame by the FrameType parameter.
          *
          * @param subsampler the DVS subsampled input
          * @return the vector of network output values
@@ -428,7 +471,7 @@ done in processDownsampledFrame by the FrameType parameter.
         }
 
         int o(int x, int y) {
-            if(((dimy * x) + y)<0) {
+            if (((dimy * x) + y) < 0) {
                 System.out.print("a");
             }
             return (dimy * x) + y;  // activations of input layer are stored by column and then row, as in matlab array that is taken by (:)
@@ -443,6 +486,19 @@ done in processDownsampledFrame by the FrameType parameter.
         public String toString() {
             return String.format("index=%d Input layer; dimx=%d dimy=%d nUnits=%d",
                     index, dimx, dimy, nUnits);
+        }
+
+        @Override
+        public void printActivations() {
+            super.printActivations();
+            System.out.println("Activations:");
+            for (int y = 0; y < dimx; y++) {
+                System.out.print(String.format("y=%6d ", y));
+                for (int x = 0; x < dimx; x++) {
+                    System.out.print(String.format("%6.4f ", activations[o(x, y)]));
+                }
+                System.out.println("");
+            }
         }
 
         @Override
@@ -563,6 +619,52 @@ done in processDownsampledFrame by the FrameType parameter.
         }
 
         @Override
+        public void printActivations() {
+            super.printActivations();
+            System.out.println("Activations:");
+            for (int map = 0; map < nOutputMaps; map++) {
+                System.out.print(String.format("map=%6d\n", map));
+                for (int y = 0; y < outputMapDim; y++) {
+                    System.out.print(String.format("y=%6d ", y));
+                    for (int x = 0; x < outputMapDim; x++) {
+                        System.out.print(String.format("%6.4f ", activations[o(map, x, y)]));
+                    }
+                    System.out.println("");
+                }
+            }
+        }
+
+        @Override
+        public void printWeights() {
+            super.printWeights();
+            System.out.println("Biases:");
+            for (int b = 0; b < biases.length; b++) {
+                System.out.print(String.format("%+6.4f ", biases[b]));
+            }
+            System.out.println("");
+            System.out.println("Weights:");
+            for (int kernel = 0; kernel < nOutputMaps; kernel++) {
+                System.out.println("Output map #" + kernel);
+                for (int inputFeatureMapNumber = 0; inputFeatureMapNumber < nInputMaps; inputFeatureMapNumber++) {
+                    System.out.println("Input map #" + inputFeatureMapNumber);
+                    System.out.print("x= ");
+                    for (int x = 0; x < kernelDim; x++) {
+                        System.out.print(String.format("%7d ", x));
+                    }
+                    System.out.print("\n  ");
+
+                    for (int y = 0; y < kernelDim; y++) {
+                        for (int x = 0; x < kernelDim; x++) {
+                            System.out.print(String.format("%+6.4f ", kernels[k(inputFeatureMapNumber, kernel, x, y)]));
+                        }
+                        System.out.print("\n  ");
+
+                    }
+                }
+            }
+        }
+
+        @Override
         public void initializeConstants() {
             singleKernelLength = kernelDim * kernelDim;
             halfKernelDim = kernelDim / 2;
@@ -627,7 +729,7 @@ done in processDownsampledFrame by the FrameType parameter.
                 }
             }
 
-            applyBiasAndNonlinearity();
+//            applyBiasAndNonlinearity();
         }
 
         // convolves a given kernel over the inputMap and accumulates output to activations
@@ -646,7 +748,7 @@ done in processDownsampledFrame by the FrameType parameter.
         }
 
         // computes single kernel inner product summed result centered on x,y in inputMap
-        // DANGER DANGER - note that in matlab the conv2/convn function do convolutions by flipping the kernel matrix and then doing 2d sum-of-products.
+        // DANGER DANGER - note that in matlab the conv2/convn function do convolutions by flipping in x and y (not transposing, but mirroring) the kernel matrix and then doing 2d sum-of-products.
         // So the sum-of-product results are not just the sum of products of corresponding x,y entries.
         private float convsingle(Layer input, int outputMap, int inputMap, int xincenter, int yincenter) {
             float sum = 0;
@@ -658,9 +760,9 @@ done in processDownsampledFrame by the FrameType parameter.
 //                    sum += 1;
 //                    sum += input.a(inputMap, inx, iny);
                     sum += kernels[k(inputMap, outputMap, kernelDim - xx - 1, kernelDim - yy - 1)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
-                    iny++;
+//                    iny++;
                 }
-                inx++;
+//                inx++;
             }
 //            return 1; //1; // debug
             return sum; //1; // debug
@@ -736,7 +838,7 @@ done in processDownsampledFrame by the FrameType parameter.
                 activationDisplays[map].display();
             }
         }
-        
+
         private void drawKernels() {
             if (!isVisible() || (kernels == null)) {
                 return;
@@ -1232,6 +1334,34 @@ done in processDownsampledFrame by the FrameType parameter.
      */
     public void setNormalizeActivationDisplayGlobally(boolean normalizeActivationDisplayGlobally) {
         this.normalizeActivationDisplayGlobally = normalizeActivationDisplayGlobally;
+    }
+
+    /**
+     * @return the printActivations
+     */
+    public boolean isPrintActivations() {
+        return printActivations;
+    }
+
+    /**
+     * @param printActivations the printActivations to set
+     */
+    public void setPrintActivations(boolean printActivations) {
+        this.printActivations = printActivations;
+    }
+
+    /**
+     * @return the printWeights
+     */
+    public boolean isPrintWeights() {
+        return printWeights;
+    }
+
+    /**
+     * @param printWeights the printWeights to set
+     */
+    public void setPrintWeights(boolean printWeights) {
+        this.printWeights = printWeights;
     }
 
 }

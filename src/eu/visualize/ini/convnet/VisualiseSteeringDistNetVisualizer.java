@@ -32,6 +32,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
 
     private boolean hideOutput = getBoolean("hideOutput", false);
     private TargetLabeler targetLabeler = null;
+    private boolean printOutputsEnabled=false;
 
     private class DecodedTargetLocation {
 
@@ -80,6 +81,9 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
         setEnclosedFilterChain(chain);
         apsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
         dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
+        String visualizer="Visualizer";
+        setPropertyTooltip(visualizer, "printOutputsEnabled", "prints to console the network final output values");
+        setPropertyTooltip(visualizer, "hideOutput", "hides the network output histogram");
     }
 
     @Override
@@ -193,10 +197,32 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
     public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getPropertyName() != DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
             super.propertyChange(evt);
+            if(isPrintOutputsEnabled()){
+                float[] fa=apsNet.outputLayer.activations;
+                System.out.print(targetLabeler.getCurrentFrameNumber()+" ");
+                for(float f:fa){
+                    System.out.print(String.format("%.5f ",f));
+                }
+                System.out.print("\n");
+            }
         } else {
             DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
 
         }
+    }
+
+    /**
+     * @return the printOutputsEnabled
+     */
+    public boolean isPrintOutputsEnabled() {
+        return printOutputsEnabled;
+    }
+
+    /**
+     * @param printOutputsEnabled the printOutputsEnabled to set
+     */
+    public void setPrintOutputsEnabled(boolean printOutputsEnabled) {
+        this.printOutputsEnabled = printOutputsEnabled;
     }
 
 }

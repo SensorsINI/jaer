@@ -29,10 +29,10 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
 
 /**
-* Computes CNN from DAVIS APS frames.
-*
+ * Computes CNN from DAVIS APS frames.
+ * 
 * @author tobi
-*/
+ */
 @Description("Computes CNN from DAVIS APS frames")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DavisDeepLearnCnnProcessor extends EventFilter2D implements PropertyChangeListener, FrameAnnotater {
@@ -72,8 +72,12 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         setPropertyTooltip(disp, "showActivations", "draws the network activations in a separate JFrame");
         setPropertyTooltip(disp, "hideSubsamplingLayers", "hides layers that are subsampling conv layers");
         setPropertyTooltip(disp, "hideConvLayers", "hides conv layers");
+        setPropertyTooltip(disp, "normalizeActivationDisplayGlobally", "normalizes the activations of layers globally across features");
+        setPropertyTooltip(disp, "normalizeKernelDisplayWeightsGlobally", "normalizes the weights globally across layer");
         setPropertyTooltip(deb, "inputClampedTo1", "clamps network input image to fixed value (1) for debugging");
         setPropertyTooltip(deb, "inputClampedToIncreasingIntegers", "clamps network input image to idx of matrix, increasing integers, for debugging");
+        setPropertyTooltip(deb, "printActivations", "prints out activations of APS net layers for debugging");
+        setPropertyTooltip(deb, "printWeights", "prints out weights of APS net layers for debugging");
         setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame");
         setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame");
         setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame");
@@ -135,11 +139,11 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         setCursor(new Cursor(Cursor.WAIT_CURSOR));
         try {
             if (apsNet != null) {
-                JFrame frame=apsNet.drawKernels();
+                JFrame frame = apsNet.drawKernels();
                 frame.setTitle("APS net kernel weights");
             }
             if (dvsNet != null) {
-                JFrame frame=dvsNet.drawKernels();
+                JFrame frame = dvsNet.drawKernels();
                 frame.setTitle("DVS net kernel weights");
             }
         } finally {
@@ -218,7 +222,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             if (measurePerformance) {
                 startTime = System.nanoTime();
             }
-            float[] outputs = apsNet.processDownsampleFrame((AEFrameChipRenderer) (chip.getRenderer()));
+            float[] outputs = apsNet.processDownsampledFrame((AEFrameChipRenderer) (chip.getRenderer()));
             if (measurePerformance) {
                 long dt = System.nanoTime() - startTime;
                 float ms = 1e-6f * dt;
@@ -316,25 +320,25 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 //        putFloat("uniformBias", uniformBias);
 //    }
     // apsNet computation debug methods
-//    public boolean isInputClampedTo1() {
-//        return apsNet == null ? false : apsNet.isInputClampedTo1();
-//    }
-//
-//    public void setInputClampedTo1(boolean inputClampedTo1) {
-//        if (apsNet != null) {
-//            apsNet.setInputClampedTo1(inputClampedTo1);
-//        }
-//    }
-//
-//    public boolean isInputClampedToIncreasingIntegers() {
-//        return apsNet == null ? false : apsNet.isInputClampedToIncreasingIntegers();
-//    }
-//
-//    public void setInputClampedToIncreasingIntegers(boolean inputClampedTo1) {
-//        if (apsNet != null) {
-//            apsNet.setInputClampedToIncreasingIntegers(inputClampedTo1);
-//        }
-//    }
+    public boolean isInputClampedTo1() {
+        return apsNet == null ? false : apsNet.isInputClampedTo1();
+    }
+
+    public void setInputClampedTo1(boolean inputClampedTo1) {
+        if (apsNet != null) {
+            apsNet.setInputClampedTo1(inputClampedTo1);
+        }
+    }
+
+    public boolean isInputClampedToIncreasingIntegers() {
+        return apsNet == null ? false : apsNet.isInputClampedToIncreasingIntegers();
+    }
+
+    public void setInputClampedToIncreasingIntegers(boolean inputClampedTo1) {
+        if (apsNet != null) {
+            apsNet.setInputClampedToIncreasingIntegers(inputClampedTo1);
+        }
+    }
     /**
      * @return the measurePerformance
      */
@@ -443,10 +447,9 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     }
 
     public void setNormalizeKernelDisplayWeightsGlobally(boolean normalizeKernelDisplayWeightsGlobally) {
-        if (apsNet == null) {
-            return;
+        if (apsNet != null) {
+            apsNet.setNormalizeKernelDisplayWeightsGlobally(normalizeKernelDisplayWeightsGlobally);
         }
-        apsNet.setNormalizeKernelDisplayWeightsGlobally(normalizeKernelDisplayWeightsGlobally);
         if (dvsNet != null) {
             dvsNet.setNormalizeKernelDisplayWeightsGlobally(normalizeKernelDisplayWeightsGlobally);
         }
@@ -461,13 +464,36 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     }
 
     public void setNormalizeActivationDisplayGlobally(boolean normalizeActivationDisplayGlobally) {
-        if (apsNet == null) {
-            return;
+        if (apsNet != null) {
+            apsNet.setNormalizeActivationDisplayGlobally(normalizeActivationDisplayGlobally);
         }
-        apsNet.setNormalizeActivationDisplayGlobally(normalizeActivationDisplayGlobally);
         if (dvsNet != null) {
             dvsNet.setNormalizeActivationDisplayGlobally(normalizeActivationDisplayGlobally);
         }
     }
+
+    public boolean isPrintActivations() {
+        if(apsNet==null) return false;
+        return apsNet.isPrintActivations();
+    }
+
+    public void setPrintActivations(boolean printActivations) {
+        if(apsNet==null) return;
+        apsNet.setPrintActivations(printActivations);
+    }
+
+    public boolean isPrintWeights() {
+       if(apsNet==null) return false;
+        return apsNet.isPrintWeights();
+    }
+
+    public void setPrintWeights(boolean printWeights) {
+        if(apsNet==null) return;
+        apsNet.setPrintWeights(printWeights);
+    }
+    
+    
+    
+    
 
 }
