@@ -94,7 +94,7 @@ public class ApsDvsEvent extends PolarityEvent {
      * @return true if this is an ADC sample
      */
     public boolean isSampleEvent() {
-        return (this.readoutType != ReadoutType.Null) && (this.readoutType != ReadoutType.DVS);
+        return (this.readoutType != ReadoutType.Null) && (this.readoutType != ReadoutType.DVS); // TODO needs check for IMU sample as well
     }
 
     public boolean isAPSSample(){
