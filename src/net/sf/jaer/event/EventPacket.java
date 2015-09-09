@@ -316,7 +316,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
 	 * @return an iterator that can iterate over the events.
 	 */
 	public Iterator<E> inputIterator() {
-		if (inputIterator == null) {
+		if (inputIterator == null || (inputIterator.getClass()!=InItr.class)) {
 			inputIterator = new InItr();
 		}
 		else {
