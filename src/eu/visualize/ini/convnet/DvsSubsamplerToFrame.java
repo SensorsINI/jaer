@@ -76,6 +76,9 @@ public class DvsSubsamplerToFrame {
             y = (int) Math.floor(((float) e.y / srcHeight) * height);
         }
         int k = getIndex(x, y);
+        if(k<0 || k>eventSum.length){
+            throw new RuntimeException("index out of bounds for event "+e.toString()+" with srcWidth="+srcWidth+" srcHeight="+srcHeight);
+        }
         int sum = eventSum[k];
         sum += (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
         if (sum > mostOnCount) {
