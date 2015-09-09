@@ -124,8 +124,10 @@ public class Davis128 extends DavisBaseCamera {
 							i += IMUSample.SIZE_EVENTS - 1;
 							incompleteIMUSampleException = null;
 							imuSample = possibleSample; // asking for sample from AEChip now gives this value, but no
-							// access to intermediate IMU samples
+							// Ensure IMUSamples are marked correctly as such: special, imuSampleEvent, and NOT ADC
+							imuSample.special = true;
 							imuSample.imuSampleEvent = true;
+							imuSample.adcSample = -1; // NOT an ADC sample
 							outItr.writeToNextOutput(imuSample); // also write the event out to the next output event
 							// slot
 							continue;
