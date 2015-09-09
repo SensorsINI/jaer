@@ -73,7 +73,7 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E> {
 	 */
 	@Override
 	public Iterator<E> inputIterator() {
-		if (inputIterator == null) {
+		if (inputIterator == null || !(inputIterator instanceof ApsDvsEventPacket.InDvsItr)) {
 			inputIterator = new InDvsItr();
 		}
 		else {
