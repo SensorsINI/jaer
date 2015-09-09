@@ -135,5 +135,10 @@ public class ApsDvsEventPacket<E extends ApsDvsEvent> extends EventPacket<E> {
 
 			return cursor < size;
 		}
+
+		@Override
+		public String toString() {
+			return "InputEventIterator (DVS ONLY) cursor=" + cursor + " for packet with size=" + size;
+		}
 	}
 }
