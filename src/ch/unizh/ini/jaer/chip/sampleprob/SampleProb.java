@@ -125,29 +125,29 @@ public class SampleProb extends CochleaChip implements Observer {
 			setName("SampleProb.Biasgen");
 
 			// Use shift-register number as address.
-			ipots.addPot(new IPot(this, "Bias0", 5, IPot.Type.NORMAL, IPot.Sex.N, 0, 0, "Bias0"));
-			ipots.addPot(new IPot(this, "Bias1", 6, IPot.Type.NORMAL, IPot.Sex.N, 0, 1, "Bias1"));
-			ipots.addPot(new IPot(this, "Bias2", 7, IPot.Type.NORMAL, IPot.Sex.N, 0, 2, "Bias2"));
-			ipots.addPot(new IPot(this, "Bias3", 8, IPot.Type.NORMAL, IPot.Sex.N, 0, 3, "Bias3"));
-			ipots.addPot(new IPot(this, "Bias4", 9, IPot.Type.NORMAL, IPot.Sex.N, 0, 4, "Bias4"));
-			ipots.addPot(new IPot(this, "Bias5", 10, IPot.Type.NORMAL, IPot.Sex.N, 0, 5, "Bias5"));
-			ipots.addPot(new IPot(this, "Bias6", 11, IPot.Type.NORMAL, IPot.Sex.N, 0, 6, "Bias6"));
-			ipots.addPot(new IPot(this, "Bias7", 12, IPot.Type.NORMAL, IPot.Sex.N, 0, 7, "Bias7"));
-			ipots.addPot(new IPot(this, "Bias8", 13, IPot.Type.NORMAL, IPot.Sex.N, 0, 8, "Bias8"));
-			ipots.addPot(new IPot(this, "Bias9", 14, IPot.Type.NORMAL, IPot.Sex.N, 0, 9, "Bias9"));
-			ipots.addPot(new IPot(this, "Bias10", 15, IPot.Type.NORMAL, IPot.Sex.N, 0, 10, "Bias10"));
-			ipots.addPot(new IPot(this, "Bias11", 16, IPot.Type.NORMAL, IPot.Sex.N, 0, 11, "Bias11"));
-			ipots.addPot(new IPot(this, "Bias12", 17, IPot.Type.NORMAL, IPot.Sex.N, 0, 12, "Bias12"));
-			ipots.addPot(new IPot(this, "Bias13", 18, IPot.Type.NORMAL, IPot.Sex.N, 0, 13, "Bias13"));
-			ipots.addPot(new IPot(this, "Bias14", 19, IPot.Type.NORMAL, IPot.Sex.N, 0, 14, "Bias14"));
-			ipots.addPot(new IPot(this, "Bias15", 20, IPot.Type.NORMAL, IPot.Sex.N, 0, 15, "Bias15"));
-			ipots.addPot(new IPot(this, "Bias16", 21, IPot.Type.NORMAL, IPot.Sex.N, 0, 16, "Bias16"));
-			ipots.addPot(new IPot(this, "Bias17", 22, IPot.Type.NORMAL, IPot.Sex.N, 0, 17, "Bias17"));
-			ipots.addPot(new IPot(this, "Bias18", 23, IPot.Type.NORMAL, IPot.Sex.N, 0, 18, "Bias18"));
-			ipots.addPot(new IPot(this, "Bias19", 24, IPot.Type.NORMAL, IPot.Sex.N, 0, 19, "Bias19"));
-			ipots.addPot(new IPot(this, "Bias20", 25, IPot.Type.NORMAL, IPot.Sex.N, 0, 20, "Bias20"));
-			ipots.addPot(new IPot(this, "Bias21", 26, IPot.Type.NORMAL, IPot.Sex.N, 0, 21, "Bias21"));
-			ipots.addPot(new IPot(this, "Bias22", 27, IPot.Type.NORMAL, IPot.Sex.N, 0, 22, "Bias22"));
+			ipots.addPot(new SimpleIPot(this, "Bias0", 5, IPot.Type.NORMAL, IPot.Sex.N, 0, 0, "Bias0"));
+			ipots.addPot(new SimpleIPot(this, "Bias1", 6, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 1, "Bias1"));
+			ipots.addPot(new SimpleIPot(this, "Bias2", 7, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 2, "Bias2"));
+			ipots.addPot(new SimpleIPot(this, "Bias3", 8, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 3, "Bias3"));
+			ipots.addPot(new SimpleIPot(this, "Bias4", 9, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 4, "Bias4"));
+			ipots.addPot(new SimpleIPot(this, "Bias5", 10, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 5, "Bias5"));
+			ipots.addPot(new SimpleIPot(this, "Bias6", 11, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 6, "Bias6"));
+			ipots.addPot(new SimpleIPot(this, "Bias7", 12, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 7, "Bias7"));
+			ipots.addPot(new SimpleIPot(this, "Bias8", 13, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 8, "Bias8"));
+			ipots.addPot(new SimpleIPot(this, "Bias9", 14, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 9, "Bias9"));
+			ipots.addPot(new SimpleIPot(this, "Bias10", 15, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 10, "Bias10"));
+			ipots.addPot(new SimpleIPot(this, "Bias11", 16, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 11, "Bias11"));
+			ipots.addPot(new SimpleIPot(this, "Bias12", 17, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 12, "Bias12"));
+			ipots.addPot(new SimpleIPot(this, "Bias13", 18, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 13, "Bias13"));
+			ipots.addPot(new SimpleIPot(this, "Bias14", 19, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 14, "Bias14"));
+			ipots.addPot(new SimpleIPot(this, "Bias15", 20, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 15, "Bias15"));
+			ipots.addPot(new SimpleIPot(this, "Bias16", 21, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 16, "Bias16"));
+			ipots.addPot(new SimpleIPot(this, "Bias17", 22, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 17, "Bias17"));
+			ipots.addPot(new SimpleIPot(this, "Bias18", 23, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 18, "Bias18"));
+			ipots.addPot(new SimpleIPot(this, "Bias19", 24, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 19, "Bias19"));
+			ipots.addPot(new SimpleIPot(this, "Bias20", 25, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 20, "Bias20"));
+			ipots.addPot(new SimpleIPot(this, "Bias21", 26, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 21, "Bias21"));
+			ipots.addPot(new SimpleIPot(this, "Bias22", 27, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 22, "Bias22"));
 
 			setPotArray(ipots);
 
@@ -470,8 +470,8 @@ public class SampleProb extends CochleaChip implements Observer {
 				e.address = addr;
 				e.timestamp = ts;
 				e.x = (short) (addr & 0x0F);
-				e.y = 1;
-				e.type = 1;
+				e.y = 0;
+				e.type = 0;
 			}
 		}
 	}
