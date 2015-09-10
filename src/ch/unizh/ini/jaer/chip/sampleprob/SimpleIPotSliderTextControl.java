@@ -221,8 +221,8 @@ public class SimpleIPotSliderTextControl extends JPanel implements Observer, Sta
 		valueTextField.setText("value");
 		valueTextField.setToolTipText("Enter bias current here. Up and Down arrows change values.");
 		valueTextField.setMaximumSize(new java.awt.Dimension(100, 2147483647));
-		valueTextField.setMinimumSize(new java.awt.Dimension(50, 15));
-		valueTextField.setPreferredSize(new java.awt.Dimension(60, 15));
+		valueTextField.setMinimumSize(new java.awt.Dimension(65, 15));
+		valueTextField.setPreferredSize(new java.awt.Dimension(70, 15));
 		valueTextField.addActionListener(new java.awt.event.ActionListener() {
 			@Override
 			public void actionPerformed(final java.awt.event.ActionEvent evt) {
