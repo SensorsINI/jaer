@@ -116,6 +116,7 @@ public class SimpleIPotSliderTextControl extends JPanel implements Observer, Sta
 
 		slider.setValue(bitValueFromSliderValue(slider));
 		valueTextField.setText(Integer.toString(pot.getBitValue()));
+		valueBitLabel.setText(String.format("%24s", Integer.toBinaryString(pot.getBitValue())));
 	}
 
 	// following two methods compute slider/bit value inverses
@@ -155,6 +156,7 @@ public class SimpleIPotSliderTextControl extends JPanel implements Observer, Sta
 
 		slider = new javax.swing.JSlider();
 		valueTextField = new javax.swing.JTextField();
+		valueBitLabel = new javax.swing.JLabel();
 		jPanel2 = new javax.swing.JPanel();
 
 		setFocusable(false);
@@ -213,14 +215,14 @@ public class SimpleIPotSliderTextControl extends JPanel implements Observer, Sta
 		});
 		add(slider);
 
-		valueTextField.setColumns(6);
+		valueTextField.setColumns(8);
 		valueTextField.setFont(new java.awt.Font("Courier New", 0, 11));
 		valueTextField.setHorizontalAlignment(SwingConstants.TRAILING);
 		valueTextField.setText("value");
 		valueTextField.setToolTipText("Enter bias current here. Up and Down arrows change values.");
 		valueTextField.setMaximumSize(new java.awt.Dimension(100, 2147483647));
-		valueTextField.setMinimumSize(new java.awt.Dimension(11, 15));
-		valueTextField.setPreferredSize(new java.awt.Dimension(53, 15));
+		valueTextField.setMinimumSize(new java.awt.Dimension(40, 15));
+		valueTextField.setPreferredSize(new java.awt.Dimension(50, 15));
 		valueTextField.addActionListener(new java.awt.event.ActionListener() {
 			@Override
 			public void actionPerformed(final java.awt.event.ActionEvent evt) {
@@ -251,6 +253,14 @@ public class SimpleIPotSliderTextControl extends JPanel implements Observer, Sta
 			}
 		});
 		add(valueTextField);
+
+		valueBitLabel.setFont(new java.awt.Font("Courier New", 0, 11));
+		valueBitLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+		valueBitLabel.setText("                        ");
+		valueBitLabel.setMaximumSize(new java.awt.Dimension(300, 2147483647));
+		valueBitLabel.setMinimumSize(new java.awt.Dimension(100, 15));
+		valueBitLabel.setPreferredSize(new java.awt.Dimension(200, 15));
+		add(valueBitLabel);
 
 		jPanel2.setFocusable(false);
 		jPanel2.setMaximumSize(new java.awt.Dimension(0, 32767));
@@ -466,6 +476,7 @@ public class SimpleIPotSliderTextControl extends JPanel implements Observer, Sta
 	private javax.swing.JPanel jPanel2;
 	private javax.swing.JSlider slider;
 	private javax.swing.JTextField valueTextField;
+	private javax.swing.JLabel valueBitLabel;
 	// End of variables declaration//GEN-END:variables
 
 	public JSlider getSlider() {
