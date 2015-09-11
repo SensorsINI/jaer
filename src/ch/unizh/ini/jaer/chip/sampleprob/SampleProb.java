@@ -151,7 +151,7 @@ public class SampleProb extends CochleaChip implements Observer {
 
 			setPotArray(ipots);
 
-			// DAC1 channels (16)
+			// DAC1 channels (16) (SSN_DAC1)
 			vpots.addPot(new VPot(getChip(), "VHazardrefD00", dac1, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "VHazardrefD01", dac1, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "VHazardrefD02", dac1, 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
@@ -169,41 +169,41 @@ public class SampleProb extends CochleaChip implements Observer {
 			vpots.addPot(new VPot(getChip(), "VHazardrefD14", dac1, 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 			vpots.addPot(new VPot(getChip(), "Vsrc1Bns", dac1, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 
-			// DAC2 channels (16)
-			vpots.addPot(new VPot(getChip(), "VnoiseExt04", dac2, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VnoiseExt00", dac2, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VnoiseExt01", dac2, 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VnoiseExt02", dac2, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VnoiseExt03", dac2, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VnoiseExt05", dac2, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VnoiseExt06", dac2, 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VnoiseExt08", dac2, 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VnoiseExt12", dac2, 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VnoiseExt07", dac2, 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VnoiseExt10", dac2, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VnoiseExt11", dac2, 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VnoiseExt13", dac2, 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VnoiseExt14", dac2, 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VnoiseExt15", dac2, 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VnoiseExt09", dac2, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// DAC2 channels (16) (SSN_DAC2)
+			// vpots.addPot(new VPot(getChip(), "NC", dac2, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac2, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac2, 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac2, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac2, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VRVGrefh", dac2, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VRVGrefl", dac2, 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VRVGrefm", dac2, 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac2, 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac2, 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac2, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac2, 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac2, 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac2, 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac2, 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// vpots.addPot(new VPot(getChip(), "NC", dac2, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 
-			// DAC3 channels (16)
-			// vpots.addPot(new VPot(getChip(), "NC", dac3, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			// vpots.addPot(new VPot(getChip(), "NC", dac3, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			// vpots.addPot(new VPot(getChip(), "NC", dac3, 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			// vpots.addPot(new VPot(getChip(), "NC", dac3, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			// vpots.addPot(new VPot(getChip(), "NC", dac3, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VRVGrefh", dac3, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VRVGrefl", dac3, 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			vpots.addPot(new VPot(getChip(), "VRVGrefm", dac3, 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			// vpots.addPot(new VPot(getChip(), "NC", dac3, 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			// vpots.addPot(new VPot(getChip(), "NC", dac3, 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			// vpots.addPot(new VPot(getChip(), "NC", dac3, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			// vpots.addPot(new VPot(getChip(), "NC", dac3, 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			// vpots.addPot(new VPot(getChip(), "NC", dac3, 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			// vpots.addPot(new VPot(getChip(), "NC", dac3, 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			// vpots.addPot(new VPot(getChip(), "NC", dac3, 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
-			// vpots.addPot(new VPot(getChip(), "NC", dac3, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			// DAC3 channels (16) (SSN_DAC3)
+			vpots.addPot(new VPot(getChip(), "VnoiseExt04", dac3, 0, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt00", dac3, 1, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt01", dac3, 2, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt02", dac3, 3, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt03", dac3, 4, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt05", dac3, 5, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt06", dac3, 6, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt08", dac3, 7, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt12", dac3, 8, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt07", dac3, 9, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt10", dac3, 10, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt11", dac3, 11, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt13", dac3, 12, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt14", dac3, 13, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt15", dac3, 14, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
+			vpots.addPot(new VPot(getChip(), "VnoiseExt09", dac3, 15, Pot.Type.NORMAL, Pot.Sex.N, 0, 0, ""));
 
 			// New logic SPI configuration values.
 			// DAC control
