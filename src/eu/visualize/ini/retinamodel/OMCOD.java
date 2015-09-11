@@ -147,7 +147,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         trackingFilterChain.reset();
 
         chip.addObserver(this);
-        final String use = "1) Key Parameters", fix = "3) Fixed Parameters", disp = "2) Display", log = "4) Logging";
+        final String use = "1) Key Parameters", fix = "3) Fixed Parameters", disp = "2) Display", logging = "4) Logging";
 //------------------------------------------------------------------------------
         setPropertyTooltip(disp, "showSubunits", "Enables showing subunit activity annotation over retina output");
         setPropertyTooltip(disp, "showAllOMCoutputs", "Enables showing of all OMC outputs only");
@@ -166,8 +166,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         setPropertyTooltip(use, "increaseInThreshold", "increase in threshold of OMC neuron depending on activity");
         setPropertyTooltip(fix, "poissonFiringEnabled", "The ganglion cell fires according to Poisson rate model for net synaptic input");
         setPropertyTooltip(fix, "nonLinearityOrder", "The non-linear order of the subunits' value before the total sum");
-        setPropertyTooltip(log, "startLogging", "Start logging inhibition and excitation");
-        setPropertyTooltip(log, "deleteLogging", "Delete the logging of inhibition and excitation");
+        setPropertyTooltip(logging, "startLogging", "Start logging inhibition and excitation");
+        setPropertyTooltip(logging, "deleteLogging", "Delete the logging of inhibition and excitation");
         setPropertyTooltip(disp, "barsHeight", "set the magnitute of cen and sur if the inhibition and excitation are out of range");
         setPropertyTooltip(fix, "excludedEdgeSubunits", "Set the number of subunits excluded from computation at the edge");
         setPropertyTooltip(fix, "Saturation", "Set the maximum contribution of a single subunit, where it saturates");
@@ -505,6 +505,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             // Yellow contour 1
             gl.glPushMatrix();
             gl.glColor3f(1.0f, 1.0f, 0.0f);
+            gl.glLineWidth(3);
             gl.glBegin(GL2.GL_LINE_STRIP);
             gl.glVertex2f(findClusterCorners()[0] << getSubunitSubsamplingBits(), (findClusterCorners()[2]) << getSubunitSubsamplingBits());
             gl.glVertex2f(findClusterCorners()[1] + 2 << getSubunitSubsamplingBits(), (findClusterCorners()[2]) << getSubunitSubsamplingBits());
@@ -543,6 +544,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             // Blue contour 2
             gl.glPushMatrix();
             gl.glColor3f(0.0f, 0.0f, 1.0f);
+            gl.glLineWidth(3);
             gl.glBegin(GL2.GL_LINE_STRIP);
             gl.glVertex2f(findClusterCorners()[4] << getSubunitSubsamplingBits(), (findClusterCorners()[6]) << getSubunitSubsamplingBits());
             gl.glVertex2f(findClusterCorners()[5] + 2 << getSubunitSubsamplingBits(), (findClusterCorners()[6]) << getSubunitSubsamplingBits());
@@ -672,7 +674,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         this.dtUSspikeArray = new int[nxmax - 2 * getExcludedEdgeSubunits()][nymax - 2 * getExcludedEdgeSubunits()];
         this.lastSpikedOMC = new int[2];
         this.lastSpikedOMCTracker1 = new int[2][getClusterSize()];
-        this.lastSpikedOMCTracker1 = new int[2][getClusterSize()];
+        this.lastSpikedOMCTracker2 = new int[2][getClusterSize()];
         for (int j = 0; j < getClusterSize(); j++) {
             for (int i = 0; i < 2; i++) {
                 if (i == 0) {
@@ -1177,6 +1179,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
         synchronized private void reset() {
             // Reset size
+            nxmax = chip.getSizeX() >> getSubunitSubsamplingBits();
+            nymax = chip.getSizeY() >> getSubunitSubsamplingBits();
             ntot = (nxmax - getExcludedEdgeSubunits()) * (nymax - getExcludedEdgeSubunits());
             subunits = new Subunit[nxmax - 2 * getExcludedEdgeSubunits()][nymax - 2 * getExcludedEdgeSubunits()];
             for (int x = getExcludedEdgeSubunits(); x < nxmax - getExcludedEdgeSubunits(); x++) {
