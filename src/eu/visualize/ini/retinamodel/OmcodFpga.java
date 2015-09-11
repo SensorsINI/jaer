@@ -213,6 +213,34 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
             gl.glPopMatrix();
             spikeRateHz[getShowXcoord()][getShowYcoord()] = 0;
         }
+        // Green background to show where the inhibition is
+        gl.glPushMatrix();
+        gl.glColor4f(0, 1, 0, 0.1f);
+        gl.glRectf((0 << subsample),
+                (0 << subsample),
+                ((nxmax) << subsample),
+                ((nymax) << subsample));
+        gl.glPopMatrix();
+        // Red squares to show where the cells are
+        for (int omcx = 1; omcx < (nxmax - 1); omcx += 4) {// 4 corners
+            for (int omcy = 1; omcy < (nymax - 1); omcy += 4) {
+                gl.glPushMatrix();
+                gl.glColor4f(1, 0, 0, 0.1f); //4 side centers
+                gl.glRectf((omcx << subsample),
+                        (omcy << subsample),
+                        (omcx + 2 << subsample),
+                        (omcy + 2 << subsample));
+                gl.glPopMatrix();
+            }
+        }
+
+        gl.glPushMatrix();// central center
+        gl.glColor4f(1, 0, 0, 0.1f);
+        gl.glRectf((3 << subsample),
+                (3 << subsample),
+                (3 + 2 << subsample),
+                (3 + 2 << subsample));
+        gl.glPopMatrix();
 
         if (showAllOMCoutputs) { // Dispaly outputs of OMC that fire
             if (enableSpikeDraw && nSpikesArray[lastSpikedOMC[0]][lastSpikedOMC[1]] != 0) {
@@ -236,7 +264,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
                 }
                 // Render all outputs
                 gl.glPushMatrix();
-                gl.glColor4f(1, 0, 1, 1f); // Violet outputs of OMCs
+                gl.glColor4f(1, 0, 0, 1f); // Violet outputs of OMCs
                 gl.glRectf((lastSpikedOMC[0] << subsample),
                         (lastSpikedOMC[1] << subsample),
                         (lastSpikedOMC[0] + 2 << subsample),
@@ -268,7 +296,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
                     // motion vector points in direction of motion, *from* dir value (minus sign) which points in direction from prevous event
                     gl.glPushMatrix();
                     gl.glColor4f(1, 1, 0, 1f); // Violet outputs of OMCs
-                    gl.glLineWidth(3);
+                    gl.glLineWidth(10);
                     DrawGL.drawVector(gl, (lastSpikedOMCArray[0][counterP] + 1) << subsample,
                             lastSpikedOMCArray[1][counterP] + 1 << subsample,
                             ((lastSpikedOMC[0] + 1) << subsample) - ((lastSpikedOMCArray[0][counterP] + 1) << subsample),
@@ -653,8 +681,8 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
         synchronized private boolean update(int timestamp) {
             // compute subunit input to us
             float inhibition = subunits.computeInhibitionToOutputCell();
-            for (int omcx = 1; omcx < (nxmax - 1); omcx += 3) {// 4 corners
-                for (int omcy = 1; omcy < (nymax - 1); omcy += 3) {
+            for (int omcx = 1; omcx < (nxmax - 1); omcx += 4) {// 4 corners
+                for (int omcy = 1; omcy < (nymax - 1); omcy += 4) {
                     timeStampArray[omcx][omcy] = timestamp;
                     netSynapticInputArray[omcx][omcy] = (subunits.computeExcitationToOutputCell(omcx, omcy) - inhibition);
                     dtUSarray[omcx][omcy] = timeStampArray[omcx][omcy] - lastTimeStampArray[omcx][omcy];
