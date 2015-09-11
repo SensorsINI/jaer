@@ -15,19 +15,7 @@ public class SimpleIPot extends IPot {
 
 	public SimpleIPot(final Biasgen biasgen, final String name, final int shiftRegisterNumber, final Type type, final Sex sex,
 		final int bitValue, final int displayPosition, final String tooltipString) {
-		this(biasgen);
-		setName(name);
-		setType(type);
-		setSex(sex);
-		this.bitValue = bitValue;
-		this.displayPosition = displayPosition;
-		this.tooltipString = tooltipString;
-		this.shiftRegisterNumber = shiftRegisterNumber;
-		loadPreferences(); // do this after name is set
-		if (chip.getRemoteControl() != null) {
-			chip.getRemoteControl().addCommandListener(this, String.format("seti_%s bitvalue", getName()),
-				"Set the bitValue of IPot " + getName());
-		}
+		super(biasgen, name, shiftRegisterNumber, type, sex, bitValue, displayPosition, tooltipString);
 	}
 
 	@Override
@@ -36,14 +24,10 @@ public class SimpleIPot extends IPot {
 	}
 
 	private class SimpleIPotGUIControl extends JPanel {
-
-		/**
-		 *
-		 */
 		private static final long serialVersionUID = -1233363354588859515L;
+
 		private SimpleIPotSliderTextControl sliderTextControl = null;
 		private PotGUIControl generalControls = null;
-		private final IPot pot;
 
 		/**
 		 * Creates a new instance of IPotGUIControl
@@ -52,7 +36,6 @@ public class SimpleIPot extends IPot {
 		 *            the IPot to control
 		 */
 		public SimpleIPotGUIControl(final IPot pot) {
-			this.pot = pot;
 			setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 			getInsets().set(0, 0, 0, 0);
 			generalControls = new PotGUIControl(pot);
