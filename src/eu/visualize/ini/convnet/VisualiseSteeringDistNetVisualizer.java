@@ -195,6 +195,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
+        if(!isFilterEnabled()) return;
         if (evt.getPropertyName() != DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
             super.propertyChange(evt);
             if(isPrintOutputsEnabled()){

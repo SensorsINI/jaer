@@ -392,8 +392,8 @@ public class DeepLearnCnnNetwork {
                     v = renderer.getApsGrayValueAtPixel((int) Math.floor(x), (int) Math.floor(y));
                     // TODO remove only for debug
                     if (inputClampedToIncreasingIntegers) {
-//                        v = (float) (xo + yo) / (dimx + dimy); // make image that is x+y, for debugging
-                        v = (float) (yo) / (dimy);
+                        v = (float) (xo + yo); // make image that is x+y, for debugging
+//                        v = (float) (yo) / (dimy);
                     } else if (inputClampedTo1) {
                         v = .5f;
                     }
@@ -470,7 +470,7 @@ public class DeepLearnCnnNetwork {
             return activations;
         }
 
-        int o(int x, int y) {
+        private int o(int x, int y) {
             if (((dimy * x) + y) < 0) {
                 System.out.print("a");
             }
@@ -591,22 +591,22 @@ public class DeepLearnCnnNetwork {
      */
     public class ConvLayer extends Layer {
 
-        int nInputMaps;
-        int nOutputMaps; //
-        int kernelDim, singleKernelLength, halfKernelDim, kernelWeightsPerOutputMap, nKernels;
-        float[] biases;
+        private int nInputMaps;
+        private int nOutputMaps; //
+        private int kernelDim, singleKernelLength, halfKernelDim, kernelWeightsPerOutputMap, nKernels;
+        private float[] biases;
         float minWeight = Float.POSITIVE_INFINITY, maxWeight = Float.NEGATIVE_INFINITY;
         /**
          * @see #k(int, int, int, int)
          */
-        float[] kernels;
+        private float[] kernels;
         private int inputMapLength; // length of single input map out of input.activations
         private int inputMapDim; // size of single input map, sqrt of inputMapLength for square input (TODO assumes square input)
-        int outputMapLength; // length of single output map vector; biases.length/nOutputMaps, calculated during processDownsampledFrame()
-        int outputMapDim;  // dimension of single output map, calculated during processDownsampledFrame()
-        int activationsLength;
-        ImageDisplay[] activationDisplays = null;
-        ImageDisplay[][] kernelDisplays = null;
+        private int outputMapLength; // length of single output map vector; biases.length/nOutputMaps, calculated during processDownsampledFrame()
+        private int outputMapDim;  // dimension of single output map, calculated during processDownsampledFrame()
+        private int activationsLength;
+        private ImageDisplay[] activationDisplays = null;
+        private ImageDisplay[][] kernelDisplays = null;
 
         public ConvLayer(int index) {
             super(index);
@@ -752,6 +752,7 @@ public class DeepLearnCnnNetwork {
         // So the sum-of-product results are not just the sum of products of corresponding x,y entries.
         private float convsingle(Layer input, int outputMap, int inputMap, int xincenter, int yincenter) {
             float sum = 0;
+//            int nterms=0;
             // march over kernel y and x
             for (int xx = 0; xx < kernelDim; xx++) { // kernel coordinate
                 int inx = (xincenter + xx) - halfKernelDim; // input coordinate
@@ -761,6 +762,7 @@ public class DeepLearnCnnNetwork {
 //                    sum += input.a(inputMap, inx, iny);
                     sum += kernels[k(inputMap, outputMap, kernelDim - xx - 1, kernelDim - yy - 1)] * input.a(inputMap, inx, iny); // NOTE flip of kernel to match matlab convention of reversing kernel as though doing time-based convolution
 //                    iny++;
+//                    nterms++;
                 }
 //                inx++;
             }
