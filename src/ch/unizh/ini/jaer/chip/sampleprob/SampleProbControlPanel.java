@@ -31,12 +31,12 @@ import javax.swing.JTextField;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
-import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigBit;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigInt;
-import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigValue;
 import net.sf.jaer.biasgen.BiasgenPanel;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigBit;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigInt;
+import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigValue;
 
 public final class SampleProbControlPanel extends JTabbedPane implements Observer {
 
@@ -217,6 +217,10 @@ public final class SampleProbControlPanel extends JTabbedPane implements Observe
 			try (BufferedReader r = new BufferedReader(new FileReader(inputDataFile))) {
 				int channel = 0;
 				String valuesLine;
+
+				// Ensure BlockRAM memory is cleared (toggle CLEARALL command).
+				fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 132, (short) 1);
+				fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 132, (short) 0);
 
 				while ((valuesLine = r.readLine()) != null) {
 					final String[] valuesText = valuesLine.split(",");
