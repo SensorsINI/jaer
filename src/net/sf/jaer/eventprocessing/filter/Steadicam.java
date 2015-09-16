@@ -45,6 +45,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEInputStream;
@@ -118,7 +119,8 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
     // calibration
     private boolean calibrating = false; // used to flag calibration state
     private int calibrationSampleCount = 0;
-    private int CALIBRATION_SAMPLES = 800; // 400 samples /sec
+    private int NUM_CALIBRATION_SAMPLES_DEFAULT = 800; // 400 samples /sec
+    protected int numCalibrationSamples=getInt("numCalibrationSamples",NUM_CALIBRATION_SAMPLES_DEFAULT);
     private CalibrationFilter panCalibrator, tiltCalibrator, rollCalibrator;
     TextRenderer imuTextRenderer = null;
     private boolean showTransformRectangle = getBoolean("showTransformRectangle", true);
@@ -135,6 +137,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
     protected float imuLagMs = getFloat("imuLagMs", 1.8f);
 
     private boolean addedViewerPropertyChangeListener = false;
+    ApsDvsEventPacket outputPacket=null;
 
     /**
      * Creates a new instance of SceneStabilizer
@@ -173,6 +176,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
         setPropertyTooltip(transform, "vestibularStabilizationEnabled", "use the gyro/accelometer to provide transform");
         setPropertyTooltip(imu, "zeroGyro", "zeros the gyro output. Sensor should be stationary for period of 1-2 seconds during zeroing");
         setPropertyTooltip(imu, "eraseGyroZero", "Erases the gyro zero values");
+        setPropertyTooltip(imu, "numCalibrationSamples", "Number of calibration samples from IMU to average for offset correction");
         setPropertyTooltip(transform, "transformImageEnabled", "Transforms rendering of the APS image (note that the APS image data is unaffected; this is only for demo purposes)");
 
 //        setPropertyTooltip("sampleIntervalMs", "sensor sample interval in ms, min 4ms, powers of two, e.g. 4,8,16,32...");
@@ -212,12 +216,14 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
             chip.getAeViewer().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
             addTimeStampsResetPropertyChangeListener = true;
         }
-        checkOutputPacketEventType(chip.getEventClass());
+        if(outputPacket==null){
+            outputPacket=new ApsDvsEventPacket(in.getEventClass());
+        }
         transformList.clear(); // empty list of transforms to be applied
         // The call to enclosed filters issues callbacks to us periodically via updates that fills transform list, in case of enclosed filters.
         // this is not the case when using integrated IMU which generates IMUSamples in the event stream.
         getEnclosedFilterChain().filterPacket(in);
-//        System.out.println("new steadicam input packet "+in);
+//        System.outputPacket.println("new steadicam input packet "+in);
         if (electronicStabilizationEnabled) { // here we stabilize by using the measured camera rotationRad to counter-transform the events
             // transform events in place, no need to copy to output packet
 //            checkOutputPacketEventType(in);
@@ -230,20 +236,28 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
             sxm1 = chip.getSizeX() - 1;
             sym1 = chip.getSizeY() - 1;
 
-            OutputEventIterator outItr = out.outputIterator();
-
-            for (Object o : in) {
+            OutputEventIterator outItr = outputPacket.outputIterator();
+            if(!(in instanceof ApsDvsEventPacket)){
+                log.warning("input packet is not an ApsDvsEventPacket, disabling filter");
+                setFilterEnabled(false);
+                return in;
+            }
+            ApsDvsEventPacket in2=(ApsDvsEventPacket)in;
+            Iterator itr=in2.fullIterator();
+            while(itr.hasNext()) {
+                Object o=itr.next();
                 if (o == null) {
                     log.warning("null event passed in, returning input packet");
                     return in;
                 }
 //                i++;
-                PolarityEvent ev = (PolarityEvent) o;
+                
+                ApsDvsEvent ev = (ApsDvsEvent) o;
                 switch (cameraRotationEstimator) {
                     case VORSensor:
                         if (ev instanceof IMUSample) {
                             // TODO hack, we mark IMUSamples in EventExtractor that are actually ApsDvsEvent as non-special so we can detect them here
-//                            System.out.println("at position "+i+" got "+ev);
+//                            System.outputPacket.println("at position "+i+" got "+ev);
                             IMUSample s = (IMUSample) ev; // because of imuLagMs this IMU sample should actually be applied to samples from the past
                             // to achieve this backwards application of the IMU samples we hold the older events in a FIFO and pop events from the FIFO until 
                             // the event timestamp catches up to the current IMUSample timestamp - imuLagMs.
@@ -256,7 +270,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
                                     int frameEndTimestamp = apsDvsChip.getFrameExposureEndTimestampUs();
                                     int frameCounter = apsDvsChip.getFrameCount();
                                     if (frameEndTimestamp >= frameStartTimestamp && lastTransform.timestamp >= frameEndTimestamp && frameCounter > lastFrameNumber) {
-                                        // if a frame has been read out, then save the last transform to apply to rendering this frame
+                                        // if a frame has been read outputPacket, then save the last transform to apply to rendering this frame
                                         imageTransform = lastTransform;
                                         lastFrameNumber = frameCounter; // only set transfrom once per frame, as soon as we have a tranform for it.
                                         ChipRendererDisplayMethodRGBA displayMethod = (ChipRendererDisplayMethodRGBA) chip.getCanvas().getDisplayMethod(); // TODO not ideal (tobi)
@@ -273,12 +287,12 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
                         lastTransform = transformItr.next();
                 }
                 pushEvent(ev);
-//                System.out.print(">");
+//                System.outputPacket.print(">");
 
-                PolarityEvent be = null;
+                ApsDvsEvent be = null;
                 while ((be = peekEvent()) != null && (be.timestamp <= ev.timestamp - imuLagMs * 1000 || be.timestamp > ev.timestamp)) {
                     be = popEvent();
-//                    System.out.print("<");
+//                    System.outputPacket.print("<");
                     if (!(be instanceof IMUSample)) {
                         if (lastTransform != null) {
 
@@ -290,7 +304,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
                         }
 
                         if ((be.x > sxm1) || (be.x < 0) || (be.y > sym1) || (be.y < 0)) {
-                            be.setFilteredOut(true); // TODO this gradually fills the packet with filteredOut events, which are never seen afterwards because the iterator filters them out in the reused packet.
+                            be.setFilteredOut(true); // TODO this gradually fills the packet with filteredOut events, which are never seen afterwards because the iterator filters them outputPacket in the reused packet.
                             continue; // discard events outside chip limits for now, because we can't render them presently, although they are valid events
                         } else {
                             be.setFilteredOut(false);
@@ -329,13 +343,13 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
                 panTilt.close();
             }
         }
-        return getOutputPacket();
+        return outputPacket;
     }
 
     final int INIITAL_QUEUE_SIZE = 10000;
     ArrayBlockingQueue<ApsDvsEvent> eventQueue = new ArrayBlockingQueue<ApsDvsEvent>(INIITAL_QUEUE_SIZE);
 
-    private void pushEvent(PolarityEvent ev) {
+    private void pushEvent(ApsDvsEvent ev) {
         ApsDvsEvent ne = new ApsDvsEvent();
         ne.copyFrom(ev);
         if (!eventQueue.offer(ne)) {
@@ -348,11 +362,11 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
         };
     }
 
-    private PolarityEvent popEvent() {
+    private ApsDvsEvent popEvent() {
         return eventQueue.poll();
     }
 
-    private PolarityEvent peekEvent() {
+    private ApsDvsEvent peekEvent() {
         return eventQueue.peek();
     }
 
@@ -388,7 +402,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
         }
         if (flushCounter-- >= 0) {
             return null;  // flush some samples if the timestamps have been reset and we need to discard some samples here
-        }//        System.out.println(imuSample.toString());
+        }//        System.outputPacket.println(imuSample.toString());
         int timestamp = imuSample.getTimestampUs();
         float dtS = (timestamp - lastImuTimestamp) * 1e-6f;
         lastImuTimestamp = timestamp;
@@ -401,7 +415,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
         rollRate = imuSample.getGyroRollZ();
         if (calibrating) {
             calibrationSampleCount++;
-            if (calibrationSampleCount > CALIBRATION_SAMPLES) {
+            if (calibrationSampleCount > numCalibrationSamples) {
                 calibrating = false;
                 panOffset = panCalibrator.computeAverage();
                 tiltOffset = tiltCalibrator.computeAverage();
@@ -409,7 +423,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
                 putFloat("panOffset", panOffset);
                 putFloat("tiltOffset", tiltOffset);
                 putFloat("rollOffset", rollOffset);
-                log.info(String.format("calibration finished. %d samples averaged to (pan,tilt,roll)=(%.3f,%.3f,%.3f)", CALIBRATION_SAMPLES, panOffset, tiltOffset, rollOffset));
+                log.info(String.format("calibration finished. %d samples averaged to (pan,tilt,roll)=(%.3f,%.3f,%.3f)", numCalibrationSamples, panOffset, tiltOffset, rollOffset));
             } else {
                 panCalibrator.addSample(panRate);
                 tiltCalibrator.addSample(tiltRate);
@@ -555,7 +569,7 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
             }
             imuTextRenderer.begin3DRendering();
             imuTextRenderer.setColor(1, 1, 1, 1);
-            final String saz = String.format("Don't move sensor (Calibrating %d/%d)", calibrationSampleCount, CALIBRATION_SAMPLES);
+            final String saz = String.format("Don't move sensor (Calibrating %d/%d)", calibrationSampleCount, numCalibrationSamples);
             Rectangle2D rect = imuTextRenderer.getBounds(saz);
             final float scale = .25f;
             imuTextRenderer.draw3D(saz, (chip.getSizeX() / 2) - (((float) rect.getWidth() * scale) / 2), chip.getSizeY() / 2, 0, scale); //
@@ -584,9 +598,9 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
             // draw xhairs on frame to help show locations of objects and if they have moved.
             gl.glBegin(GL.GL_LINES); // sequence of individual segments, in pairs of vertices
             gl.glVertex2f(0, 0);  // start at origin
-            gl.glVertex2f(sx2, 0);  // out to right
+            gl.glVertex2f(sx2, 0);  // outputPacket to right
             gl.glVertex2f(0, 0);  // origin
-            gl.glVertex2f(-sx2, 0); // out to left
+            gl.glVertex2f(-sx2, 0); // outputPacket to left
             gl.glVertex2f(0, 0);  // origin
             gl.glVertex2f(0, sy2); // up
             gl.glVertex2f(0, 0);  // origin
@@ -1080,5 +1094,20 @@ public class Steadicam extends EventFilter2D implements FrameAnnotater, Observer
     public void setImuLagMs(float imuLagMs) {
         this.imuLagMs = imuLagMs;
         putFloat("imuLagMs", imuLagMs);
+    }
+
+    /**
+     * @return the numCalibrationSamples
+     */
+    public int getNumCalibrationSamples() {
+        return numCalibrationSamples;
+    }
+
+    /**
+     * @param numCalibrationSamples the numCalibrationSamples to set
+     */
+    public void setNumCalibrationSamples(int numCalibrationSamples) {
+        this.numCalibrationSamples = numCalibrationSamples;
+        putInt("numCalibrationSamples",numCalibrationSamples);
     }
 }
