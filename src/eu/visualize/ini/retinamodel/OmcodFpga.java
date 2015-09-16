@@ -37,12 +37,10 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
 
     private final OmcodFpgaModel OmcodFpgaModel = new OmcodFpgaModel();
     public RosNodePublisher RosNodePublisher = new RosNodePublisher();
-    //private final LowpassFilter medianCMFilter = new LowpassFilter(1);
     private final EventRateEstimator eventRateFilter;
     private final BackgroundActivityFilter backgroundActivityFilter;
     private final HotPixelFilter hotPixelFilter;
     private final FilterChain trackingFilterChain;
-//    private ApsDvsDirectionSelectiveFilter dirFilter;
     private Subunits subunits;
     private int lastOmcodFpgaSpikeCheckTimestampUs;
     private int nxmax;
@@ -67,8 +65,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
     private int[][] lastSpikedOMCTracker1; // save the OMC cells that last spiked
     private int[][] lastSpikedOMCTracker2; // save the OMC cells that last spiked
     private int[] lastSpikedOMC; // save the OMC cell that last spiked
-    private int[][] lastSpikedOMCArray; // save the OMC cells that last spiked
-//------------------------------------------------------------------------------    
+    private int[][] lastSpikedOMCArray; // save the OMC cells that last spiked    
     private float synapticWeight = getFloat("synapticWeight", 100f);
     private float vmemIncrease = getFloat("vmemIncrease", 100f);
     private float centerExcitationToSurroundInhibitionRatio = getFloat("centerExcitationToSurroundInhibitionRatio", 1.7f);
@@ -81,7 +78,6 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
     private int Saturation = getInt("Saturation", 100);
     private boolean showSpecificOMCoutput = getBoolean("showSpecificOMCoutput", false);
     private boolean showAllOMCoutputs = getBoolean("showAllOMCoutputs", true);
-    private float neuronDecayTimeconstantMs = getInt("neuronDecayTimeconstantMs", 29);
     private int waitingTimeRstMs = getInt("waitingTimeRstMs", 500000);
     final int subsample = 4;
 //------------------------------------------------------------------------------
@@ -119,13 +115,10 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
 
         chip.addObserver(this);
         final String use = "1) Key Parameters", fix = "3) Fixed Parameters", disp = "2) Display", logging = "4) Logging";
-//------------------------------------------------------------------------------
         setPropertyTooltip(disp, "showSubunits", "Enables showing subunit activity annotation over retina output");
         setPropertyTooltip(disp, "showAllOMCoutputs", "Enables showing of all OMC outputs only");
         setPropertyTooltip(fix, "synapticWeight", "Subunit activity inputs to the objectMotion neuron are weighted this much; use to adjust response magnitude");
         setPropertyTooltip(fix, "vmemIncrease", "Increase in vmem per event received");
-        setPropertyTooltip(use, "subunitDecayTimeconstantMs", "Subunit activity decays with this time constant in ms");
-        setPropertyTooltip(use, "neuronDecayTimeconstantMs", "decay Tau of IF neuron");
         setPropertyTooltip(disp, "enableSpikeSound", "Enables audio spike output from objectMotion cell");
         setPropertyTooltip(fix, "maxSpikeRateHz", "Maximum spike rate of objectMotion cell in Hz");
         setPropertyTooltip(fix, "centerExcitationToSurroundInhibitionRatio", "Inhibitory ON subunits are weighted by factor more than excitatory OFF subunit activity to the object motion cell");
@@ -479,18 +472,16 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
                 lastUpdateTimestamp = e.timestamp;
 
                 // update Neuron RGC
-                float decayFactor2 = (float) Math.exp(-dt / (1000 * neuronDecayTimeconstantMs));
                 for (int omcx = 0; omcx < (nymax - 1); omcx++) {
                     for (int omcy = 0; omcy < (nymax - 1); omcy++) {
-                        membraneStateArray[omcx][omcy] *= decayFactor2;
+                        membraneStateArray[omcx][omcy] *= 0.5;
                     }
                 }
 
                 // now update all subunits to RC decay activity toward zero
-                float decayFactor1 = (float) Math.exp(-dt / (1000 * subunitDecayTimeconstantMs));
                 for (int x = 0; x < nxmax; x++) {
                     for (int y = 0; y < nymax; y++) {
-                        subunits[x][y].decayBy(decayFactor1);
+                        subunits[x][y].decayBy(0.5f);
                     }
                 }
             }
@@ -507,17 +498,14 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
             inhibitionValue = 0;
             for (int x = 0; x < (nxmax); x++) {
                 for (int y = 0; y < (nymax); y++) {
-//------------------------------------------------------------------------------
                     // Multiply by 2
                     if (2 * synapticWeight * subunits[x][y].computeInputToCell() < Saturation) { // If squared subunit less than limit
                         inhibitionValue += (float) synapticWeight * subunits[x][y].computeInputToCell() * 2;
                     } else {
                         inhibitionValue += Saturation;
                     }
-//------------------------------------------------------------------------------
                 }
             }
-//------------------------------------------------------------------------------
             inhibitionValue /= ntot; // Divide by the number of subunits to normalise
             return inhibitionValue;
         }
@@ -693,7 +681,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
                     membraneStateArray[omcx][omcy] += netSynapticInputArray[omcx][omcy] * dtUSarray[omcx][omcy] * 1e-6f;
                     if (eventRateFilter.getFilteredEventRate() > 100000) {
                         IFthreshold = integrateAndFireThreshold + increaseInThreshold;
-                    } else if (eventRateFilter.getFilteredEventRate() < 400) {
+                    } else if (eventRateFilter.getFilteredEventRate() < 500) {
                         IFthreshold = 10000; //Just very high if only noise is present
                     } else {
                         IFthreshold = integrateAndFireThreshold;
@@ -808,23 +796,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
 
 //----------------------------------------------------------------------------//
 //-- Set and Get methods -----------------------------------------------------//
-//----------------------------------------------------------------------------//
-// @return the subunitDecayTimeconstantMs
-    public float getSubunitDecayTimeconstantMs() {
-        return subunitDecayTimeconstantMs;
-    }
-//------------------------------------------------------------------------------
-
-    public float getNeuronDecayTimeconstantMs() {
-        return neuronDecayTimeconstantMs;
-    }
-
-    // @param neuronDecayTimeconstantMs the neuronDecayTimeconstantMs to set
-    public synchronized void setNeuronDecayTimeconstantMs(float neuronDecayTimeconstantMs) {
-        this.neuronDecayTimeconstantMs = neuronDecayTimeconstantMs;
-        putFloat("neuronDecayTimeconstantMs", neuronDecayTimeconstantMs);
-    }
-//------------------------------------------------------------------------------    
+//----------------------------------------------------------------------------//   
     // @return the subunitActivityBlobRadiusScale
 
     public float getSubunitActivityBlobRadiusScale() {

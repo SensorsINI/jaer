@@ -44,7 +44,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private final BackgroundActivityFilter backgroundActivityFilter;
     private final HotPixelFilter hotPixelFilter;
     private final FilterChain trackingFilterChain;
-//    private ApsDvsDirectionSelectiveFilter dirFilter;
     private Subunits subunits;
     private int lastOMCODSpikeCheckTimestampUs;
     private int nxmax;
@@ -627,11 +626,12 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //        }
 
         renderer.end3DRendering();
-
+	gl.glPopMatrix();
+        gl.glPopMatrix();
         // render all the subunits now
         gridOn(drawable);
 
-        gl.glPopMatrix();
+        
 //        if (showTracker1) {
 //            // Render probability of Correctness of tracker 1
 //            gl.glPushMatrix();
@@ -648,7 +648,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //            gl.glPopMatrix();
 //        }
 
-        gl.glPopMatrix();
+
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//    
@@ -749,6 +749,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             int divisionX = (int) (chip.getSizeX() >> getSubunitSubsamplingBits()) / 3;
             int divisionY = (int) (chip.getSizeY() >> getSubunitSubsamplingBits()) / 3;
             //1
+            gl.glLineWidth(1);
             gl.glPushMatrix();
             gl.glColor3f(1.0f, 0.0f, 0.0f);
             gl.glBegin(GL2.GL_LINE_STRIP);
