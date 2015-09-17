@@ -36,6 +36,19 @@ import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
+import org.opencv.core.Core;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.core.MatOfRect;
+import org.opencv.core.Point;
+import org.opencv.core.Rect;
+import org.opencv.core.Scalar;
+import org.opencv.core.Size;
+import org.opencv.imgproc.Imgproc;
+import org.opencv.objdetect.CascadeClassifier;
+
+import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
+import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -51,20 +64,6 @@ import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.ImageDisplay.Legend;
 import net.sf.jaer.util.DATFileFilter;
 
-import org.opencv.core.Core;
-import org.opencv.core.CvType;
-import org.opencv.core.Mat;
-import org.opencv.core.MatOfRect;
-import org.opencv.core.Point;
-import org.opencv.core.Rect;
-import org.opencv.core.Scalar;
-import org.opencv.core.Size;
-import org.opencv.imgproc.Imgproc;
-import org.opencv.objdetect.CascadeClassifier;
-
-import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
-import eu.seebetter.ini.chips.DavisChip;
-
 
 @Description("Detect Faces with OpenCV and label data for later supervised learning.")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
@@ -73,6 +72,10 @@ public class FaceDetectionAPS extends EventFilter2D implements Observer /* Obser
     private JFrame apsFrame = null;
     public ImageDisplay apsDisplay;
     private DavisChip apsChip = null;
+    private DavisChip apsDvsChip = null;
+    private int lastFrameNumber = -1;
+    private int currentFrameNumber = -1;
+    private int targetTypeIDface = 0;
     private boolean newFrame, useExtRender = false; // useExtRender means using something like OpenCV to render the data. If false, the displayBuffer is displayed
     private float[] resetBuffer, signalBuffer;
     /** Raw pixel values from sensor, before conversion, brightness, etc.*/
@@ -96,7 +99,7 @@ public class FaceDetectionAPS extends EventFilter2D implements Observer /* Obser
      */
     public static final String EVENT_NEW_FRAME = AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE;
     private int lastFrameTimestamp=-1;
-    private BufferedImage taggedImage;
+    //private BufferedImage taggedImage;
 
 	static {
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME); //add library opencv
@@ -149,6 +152,9 @@ public class FaceDetectionAPS extends EventFilter2D implements Observer /* Obser
 
     public FaceDetectionAPS(AEChip chip) {
         super(chip);
+        if (chip instanceof DavisChip) {
+            apsDvsChip = ((DavisChip) chip);
+        }
         apsDisplay = ImageDisplay.createOpenGLCanvas();
         apsFrame = new JFrame("APS Frame");
         apsFrame.setPreferredSize(new Dimension(400, 400));
@@ -177,6 +183,9 @@ public class FaceDetectionAPS extends EventFilter2D implements Observer /* Obser
         setPropertyTooltip("displayBrightness", "Offset for the rendering of the APS display");
         setPropertyTooltip("extractionMethod", "Method to extract a frame; CDSframe is the final result after subtracting signal from reset frame. Signal and reset frames are the raw sensor output before correlated double sampling.");
         setPropertyTooltip("showAPSFrameDisplay", "Shows the JFrame frame display if true");
+
+        //load locations
+        setPropertyTooltip("loadLocations", "loads locations from a file");
 
         //final String cont = "Control", params = "Parameters";
         setPropertyTooltip( "face_loggingEnabled", "Enable to start logging data");
@@ -234,6 +243,21 @@ public class FaceDetectionAPS extends EventFilter2D implements Observer /* Obser
  	    loglabeledData(packet);
 
         checkMaps();
+        if (apsDvsChip != null) {
+
+            // update actual frame number, starting from 0 at start of recording (for playback or after rewind)
+            // this can be messed up by jumping in the file using slider
+            int newFrameNumber = apsDvsChip.getFrameCount();
+            if (newFrameNumber != lastFrameNumber) {
+                if (newFrameNumber > lastFrameNumber) {
+                    currentFrameNumber++;
+                } else if (newFrameNumber < lastFrameNumber) {
+                    currentFrameNumber--;
+                }
+                lastFrameNumber = newFrameNumber;
+            }
+        }
+
 
         if (packet == null) {
             return null;
@@ -277,7 +301,7 @@ public class FaceDetectionAPS extends EventFilter2D implements Observer /* Obser
 	        		//for ( EventPacket e:eventPacket ){
 	                int ts = eventPacket.getFirstTimestamp();
 	                //log.warning("TIMESTAMP " + ts);
-	                string = String.format("%d\t%f\t%f\t%d\t%d\n", ts, element.getloc_x(),element.getloc_y(), element.getw(), element.geth());
+	                string = String.format("%d\t%d\t%d\t%d\t%d\t%d\t%d\n", currentFrameNumber, ts, Math.round(element.getloc_x()), Math.round(chip.getSizeY() - element.getloc_y()), targetTypeIDface, element.getw(), element.geth());
 	            	try {
 	            		bufferWritter.write(string);
 	            		//bufferWritter.newLine();
@@ -1052,7 +1076,7 @@ public class FaceDetectionAPS extends EventFilter2D implements Observer /* Obser
     	try {
 			bufferWritter.append("# LABEL DATA from OPEN CV\n");
 			bufferWritter.append("# The format of the file is timestamp, loc_x, loc_y, width, and height of the face (in pixels)\n");
-			bufferWritter.append("# timestamp loc_x loc_y dimx dimy\n");
+			bufferWritter.append("# framenumber timestamp loc_x loc_y targetTypeID dimx dimy\n");
 			bufferWritter.flush();
 			bufferWritter.close();
 		}

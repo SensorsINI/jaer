@@ -39,6 +39,15 @@ import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileFilter;
 
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.awt.GLCanvas;
+import com.jogamp.opengl.glu.GLU;
+import com.jogamp.opengl.glu.GLUquadric;
+import com.jogamp.opengl.util.awt.TextRenderer;
+
+import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -49,16 +58,6 @@ import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
-
-import com.jogamp.opengl.GL;
-import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.awt.GLCanvas;
-import com.jogamp.opengl.glu.GLU;
-import com.jogamp.opengl.glu.GLUquadric;
-import com.jogamp.opengl.util.awt.TextRenderer;
-
-import eu.seebetter.ini.chips.DavisChip;
 
 /**
  * Labels location of target using mouse GUI in recorded data for later
@@ -443,7 +442,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     if (shiftPressed && ctlPressed && (mousePoint != null)) { // specify (additional) target present
                         // add a labeled location sample
                         maybeEraseSamples(mostRecentTargetsBeforeThisEvent, e, lastNewTargetLocation);
-                        newTargetLocation = new TargetLocation(getCurrentFrameNumber(), e.timestamp, mousePoint, currentTargetTypeID);
+                        newTargetLocation = new TargetLocation(getCurrentFrameNumber(), e.timestamp, mousePoint, currentTargetTypeID, targetRadius, targetRadius);
 
                         addSample(e.timestamp, newTargetLocation);
                         currentTargets.add(newTargetLocation);
@@ -642,14 +641,18 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
         int timestamp;
         int frameNumber;
-        Point location;
+        Point location; // center of target location
         int targetClassID; // class of target, i.e. car, person
+        int dimx; // dimension of target x
+        int dimy; // y
 
-        public TargetLocation(int frameNumber, int timestamp, Point location, int targetTypeID) {
+        public TargetLocation(int frameNumber, int timestamp, Point location, int targetTypeID, int dimx, int dimy) {
             this.frameNumber = frameNumber;
             this.timestamp = timestamp;
             this.location = location != null ? new Point(location) : null;
             this.targetClassID = targetTypeID;
+            this.dimx = dimx;
+            this.dimy = dimy;
         }
 
         private void draw(GLAutoDrawable drawable, GL2 gl) {
@@ -669,7 +672,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 mouseQuad = glu.gluNewQuadric();
             }
             glu.gluQuadricDrawStyle(mouseQuad, GLU.GLU_LINE);
-            glu.gluDisk(mouseQuad, getTargetRadius(), getTargetRadius() + 1, 32, 1);
+            glu.gluDisk(mouseQuad, dimx/2, (dimy/2) +1, 32, 1);
+            	//getTargetRadius(), getTargetRadius() + 1, 32, 1);
             gl.glPopMatrix();
         }
 
@@ -690,7 +694,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             for (Map.Entry<Integer, SimultaneouTargetLocations> entry : targetLocations.entrySet()) {
                 for (TargetLocation l : entry.getValue()) {
                     if (l.location != null) {
-                        writer.write(String.format("%d %d %d %d %d\n", l.frameNumber, l.timestamp, l.location.x, l.location.y, l.targetClassID));
+                        writer.write(String.format("%d %d %d %d %d\n", l.frameNumber, l.timestamp, l.location.x, l.location.y, l.targetClassID, l.dimx, l.dimy));
                     } else {
                         writer.write(String.format("%d %d -1 -1 -1\n", l.frameNumber, l.timestamp));
                     }
@@ -759,14 +763,25 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         int x = scanner.nextInt();
                         int y = scanner.nextInt();
                         int targetTypeID = 0;
+                        int targetdimx = targetRadius;
+                        int targetdimy = targetRadius;
                         try {
                             targetTypeID = scanner.nextInt();
+                            try {
+                            	// added target dimensions compatibility
+                            	targetdimx = scanner.nextInt();
+                            	targetdimy = scanner.nextInt();
+                            	}catch (NoSuchElementException e) {
+                                // older type file with only single target and no targetClassID and no x,y dimensions
+                            	}
                         } catch (NoSuchElementException e) {
-                            // older type file with only single target and no targetClassID
+                            // older type file with only single target
                         }
                         targetLocation = new TargetLocation(frame, ts,
                                 new Point(x, y),
-                                targetTypeID); // read target location
+                                targetTypeID,
+                                targetdimx,
+                                targetdimy); // read target location
                     } catch (NoSuchElementException ex2) {
                         throw new IOException(("couldn't parse file " + f) == null ? "null" : f.toString() + ", got InputMismatchException on line: " + s);
                     }
@@ -930,7 +945,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         switch (evt.getPropertyName()) {
             case AEInputStream.EVENT_POSITION:
                 filePositionEvents = (long) evt.getNewValue();
-                if(chip.getAeViewer().getAePlayer()==null || chip.getAeViewer().getAePlayer().getAEInputStream()==null){
+                if((chip.getAeViewer().getAePlayer()==null) || (chip.getAeViewer().getAePlayer().getAEInputStream()==null)){
                     log.warning("null input stream, cannot get most recent timestamp");
                     return;
                 }
