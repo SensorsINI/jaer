@@ -58,7 +58,6 @@ public class RotateFilter extends EventFilter2D {
         if (chip instanceof DavisBaseCamera) {
             davisCamera = true;
         }
-        checkDavisApsHack();
     }
 
     public EventPacket<?> filterPacket(EventPacket<?> in) {
@@ -181,7 +180,7 @@ public class RotateFilter extends EventFilter2D {
     }
 
     private void checkDavisApsHack() {
-        if (!davisCamera) {
+        if (!davisCamera  || !isFilterEnabled()) { // try to prevent swapping corners when this filter is not actually filtering! (tobi)
             return;
         }
         DavisBaseCamera d = (DavisBaseCamera) chip;

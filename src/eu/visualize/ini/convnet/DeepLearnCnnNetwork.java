@@ -17,6 +17,7 @@ import java.util.Arrays;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GL2ES3;
+import java.util.Random;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -115,6 +116,9 @@ public class DeepLearnCnnNetwork {
      * @see #getActivations
      */
     public float[] processDownsampledFrame(AEFrameChipRenderer frame) {
+        if (inputLayer == null) {
+            return null;
+        }
 
         inputLayer.processDownsampledFrame(frame);
         return processLayers();
@@ -147,7 +151,7 @@ public class DeepLearnCnnNetwork {
     }
 
     private float[] processLayers() {
-        for (int i = 1; i < nLayers; i++) {
+        for (int i = 1; i < nLayers; i++) { // skip input layer, whose activations are computed by reading in frame and downsampling it
             layers[i].compute(layers[i - 1]);
         }
         outputLayer.compute(layers[nLayers - 1]);
@@ -382,6 +386,11 @@ public class DeepLearnCnnNetwork {
             // activationsFrame has width*height pixels
             // for first pass we just downsample every width/dimx pixel in x and every height/dimy pixel in y
             // TODO change to subsample (averaging)
+            Random r = null;
+            if (inputClampedToIncreasingIntegers) {
+                r=new Random();
+                r.setSeed(0);
+            }
             float xstride = (float) frameWidth / dimx, ystride = (float) frameHeight / dimy;
             int xo, yo = 0;
             loop:
@@ -392,7 +401,9 @@ public class DeepLearnCnnNetwork {
                     v = renderer.getApsGrayValueAtPixel((int) Math.floor(x), (int) Math.floor(y));
                     // TODO remove only for debug
                     if (inputClampedToIncreasingIntegers) {
-                        v = (float) (xo + yo); // make image that is x+y, for debugging
+//                        v = r.nextInt(16); // make image that is x+y, for debugging
+//                        v = (float) (xo + yo); // make image that is x+y, for debugging
+                        v = (float) (xo*dimy + yo); // make image that is x+y, for debugging
 //                        v = (float) (yo) / (dimy);
                     } else if (inputClampedTo1) {
                         v = .5f;
@@ -495,7 +506,7 @@ public class DeepLearnCnnNetwork {
             for (int y = 0; y < dimx; y++) {
                 System.out.print(String.format("y=%6d ", y));
                 for (int x = 0; x < dimx; x++) {
-                    System.out.print(String.format("%6.4f ", activations[o(x, y)]));
+                    System.out.print(String.format("%6.2g ", activations[o(x, y)]));
                 }
                 System.out.println("");
             }
@@ -627,7 +638,7 @@ public class DeepLearnCnnNetwork {
                 for (int y = 0; y < outputMapDim; y++) {
                     System.out.print(String.format("y=%6d ", y));
                     for (int x = 0; x < outputMapDim; x++) {
-                        System.out.print(String.format("%6.4f ", activations[o(map, x, y)]));
+                        System.out.print(String.format("%6.2g ", activations[o(map, x, y)]));
                     }
                     System.out.println("");
                 }
@@ -639,7 +650,7 @@ public class DeepLearnCnnNetwork {
             super.printWeights();
             System.out.println("Biases:");
             for (int b = 0; b < biases.length; b++) {
-                System.out.print(String.format("%+6.4f ", biases[b]));
+                System.out.print(String.format("%+6.3g ", biases[b]));
             }
             System.out.println("");
             System.out.println("Weights:");
@@ -655,7 +666,7 @@ public class DeepLearnCnnNetwork {
 
                     for (int y = 0; y < kernelDim; y++) {
                         for (int x = 0; x < kernelDim; x++) {
-                            System.out.print(String.format("%+6.4f ", kernels[k(inputFeatureMapNumber, kernel, x, y)]));
+                            System.out.print(String.format("%+6.2g ", kernels[k(inputFeatureMapNumber, kernel, x, y)]));
                         }
                         System.out.print("\n  ");
 
@@ -729,7 +740,7 @@ public class DeepLearnCnnNetwork {
                 }
             }
 
-//            applyBiasAndNonlinearity();
+            applyBiasAndNonlinearity();
         }
 
         // convolves a given kernel over the inputMap and accumulates output to activations
