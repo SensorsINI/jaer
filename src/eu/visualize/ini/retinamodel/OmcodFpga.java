@@ -101,6 +101,8 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
         this.timeStampSpikeArray = new int[nxmax][nymax];
         this.lastTimeStampSpikeArray = new int[nxmax][nymax];
         this.dtUSspikeArray = new int[nxmax][nymax];
+        this.lastSpikedOMC = new int[2];
+        this.lastSpikedOMCArray = new int[2][2];
 
         trackingFilterChain = new FilterChain(chip);
         backgroundActivityFilter = new BackgroundActivityFilter(chip);
