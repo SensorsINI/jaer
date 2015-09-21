@@ -11,6 +11,7 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.sun.deploy.uitoolkit.impl.fx.ui.FXUIFactory;
 import eu.visualize.ini.convnet.DeepLearnCnnNetwork.OutputLayer;
 import javax.swing.SwingUtilities;
 import net.sf.jaer.Description;
@@ -32,45 +33,10 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
 
     private boolean hideOutput = getBoolean("hideOutput", false);
     private TargetLabeler targetLabeler = null;
-    private boolean printOutputsEnabled=false;
-
-    private class DecodedTargetLocation {
-
-        float x = Float.NaN, y = Float.NaN;
-        boolean visible = false;
-
-        public DecodedTargetLocation(float x, float y, boolean visible) {
-            this.x = x;
-            this.y = y;
-            this.visible = visible;
-        }
-
-        public DecodedTargetLocation(DeepLearnCnnNetwork net) {
-            if (net == null || net.outputLayer == null || net.outputLayer.activations == null || net.outputLayer.activations.length != 6) {
-                throw new RuntimeException("null net or output layer or output wrong type");
-            }
-            float[] o = net.outputLayer.activations;
-            int sx = getChip().getSizeX(), sy = getChip().getSizeY();
-            /*
-             function [visible,x,y]=decodeTargetLocation(o,width)
-             if o(5) > o(6)
-             visible=1;
-             else
-             visible=0;
-             end
-
-             x=width/2*(o(2)-o(1))+width/2;
-             y=width/2*(o(4)-o(3))+width/2;
-             */
-            if (o[4] > o[5]) {
-                visible = true;
-                x = sx / 2 * (o[1] - o[0]) + sx / 2;
-                y = sy / 2 * (o[3] - o[2]) + sy / 2;
-            } else {
-                visible = false;
-            }
-        }
-    }
+    private boolean printOutputsEnabled = false;
+    private Error error = new Error();
+    DecodedTargetLocation decodedTargetLocation = null;
+    private boolean showErrorStatistics=getBoolean("showErrorStatistics", true);
 
     public VisualiseSteeringDistNetVisualizer(AEChip chip) {
         super(chip);
@@ -79,11 +45,12 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
         chain.add(targetLabeler);
         setEnclosedFilterChain(chain);
-        apsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
-        dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
-        String visualizer="Visualizer";
+        apsNet.getSupport().addPropertyChangeListener(this);
+        dvsNet.getSupport().addPropertyChangeListener(this);
+        String visualizer = "Visualizer";
         setPropertyTooltip(visualizer, "printOutputsEnabled", "prints to console the network final output values");
         setPropertyTooltip(visualizer, "hideOutput", "hides the network output histogram");
+        setPropertyTooltip(visualizer, "showErrorStatistics", "shows error statistics");
     }
 
     @Override
@@ -144,6 +111,12 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
         if (dvsNet != null && dvsNet.outputLayer != null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
             drawDecisionOutput(gl, sy, dvsNet, Color.YELLOW);
         }
+        
+        if(isShowErrorStatistics()){
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY()*.6f);
+            MultilineAnnotationTextRenderer.renderMultilineString(error.toString());
+            
+        }
 
     }
 
@@ -161,21 +134,20 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
          hold on;
          x = [x-r x+r x+r x-r];
          y = [y-r y-r y+r y+r];
-         t = fill(x,y,color);
-         alpha(t,0.2)
+         decodedTargetLocation = fill(x,y,color);
+         alpha(decodedTargetLocation,0.2)
          hold off; 
          */
-        DecodedTargetLocation t = new DecodedTargetLocation(net);
-        if (t.visible == false) {
+        if (decodedTargetLocation.visible == false) {
             return;
         }
         float r = color.getRed() / 255f, g = color.getGreen() / 255f, b = color.getBlue() / 255f;
         float[] cv = color.getColorComponents(null);
         final float brightness = .1f; // brightness scale
 
-        gl.glColor4f(r, g, b,brightness);
-        final float rd=chip.getSizeY()/10*(1-5*t.y/chip.getSizeY());
-        gl.glRectf(t.x - rd, t.y - rd, t.x + rd, t.y + rd);
+        gl.glColor4f(r, g, b, brightness);
+        final float rd = chip.getSizeY() / 10 * (1 - 5 * decodedTargetLocation.y / chip.getSizeY());
+        gl.glRectf(decodedTargetLocation.x - rd, decodedTargetLocation.y - rd, decodedTargetLocation.x + rd, decodedTargetLocation.y + rd);
     }
 
     /**
@@ -195,21 +167,24 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if(!isFilterEnabled()) return;
-        if (evt.getPropertyName() != DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
+        if (!isFilterEnabled()) {
+            return;
+        }
+        if (evt.getPropertyName() == DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
             super.propertyChange(evt);
-            if(isPrintOutputsEnabled()){
-                float[] fa=apsNet.outputLayer.activations;
-                System.out.print(targetLabeler.getCurrentFrameNumber()+" ");
-                for(float f:fa){
-                    System.out.print(String.format("%.5f ",f));
+            decodedTargetLocation=new DecodedTargetLocation(apsNet); // TODO assumes only APS network used
+            error.addSample(targetLabeler.getTargetLocation(), decodedTargetLocation);
+            if (isPrintOutputsEnabled()) {
+                float[] fa = apsNet.outputLayer.activations;
+                System.out.print(targetLabeler.getCurrentFrameNumber() + " ");
+                for (float f : fa) {
+                    System.out.print(String.format("%.5f ", f));
                 }
                 System.out.print("\n");
             }
-        } else {
-            DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
+            error.addSample(targetLabeler.getTargetLocation(), decodedTargetLocation);
 
-        }
+        } 
     }
 
     /**
@@ -224,6 +199,114 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
      */
     public void setPrintOutputsEnabled(boolean printOutputsEnabled) {
         this.printOutputsEnabled = printOutputsEnabled;
+    }
+
+    /**
+     * @return the showErrorStatistics
+     */
+    public boolean isShowErrorStatistics() {
+        return showErrorStatistics;
+    }
+
+    /**
+     * @param showErrorStatistics the showErrorStatistics to set
+     */
+    public void setShowErrorStatistics(boolean showErrorStatistics) {
+        this.showErrorStatistics = showErrorStatistics;
+        putBoolean("showErrorStatistics",showErrorStatistics);
+    }
+
+    private class DecodedTargetLocation {
+
+        float x = Float.NaN, y = Float.NaN;
+        boolean visible = false;
+
+        public DecodedTargetLocation(float x, float y, boolean visible) {
+            this.x = x;
+            this.y = y;
+            this.visible = visible;
+        }
+
+        public DecodedTargetLocation(DeepLearnCnnNetwork net) {
+            if (net == null || net.outputLayer == null || net.outputLayer.activations == null || net.outputLayer.activations.length != 6) {
+                throw new RuntimeException("null net or output layer or output wrong type");
+            }
+            float[] o = net.outputLayer.activations;
+            int sx = getChip().getSizeX(), sy = getChip().getSizeY();
+            /*
+             function [visible,x,y]=decodeTargetLocation(o,width)
+             if o(5) > o(6)
+             visible=1;
+             else
+             visible=0;
+             end
+
+             x=width/2*(o(2)-o(1))+width/2;
+             y=width/2*(o(4)-o(3))+width/2;
+             */
+            if (o[4] > o[5]) {
+                visible = true;
+                x = sx / 2 * (o[1] - o[0]) + sx / 2;
+                y = sy / 2 * (o[3] - o[2]) + sy / 2;
+            } else {
+                visible = false;
+            }
+        }
+    }
+
+    private class Error {
+
+        int count;
+        int falsePositiveVisibleCount, falseNegativeVisibleCount;
+        float sum2dx, sum2dy;
+
+        public Error() {
+            reset();
+        }
+
+        void reset() {
+            count = 0;
+            falsePositiveVisibleCount = 0;
+            falseNegativeVisibleCount = 0;
+            sum2dx = 0;
+            sum2dy = 0;
+        }
+
+        void addSample(TargetLabeler.TargetLocation gtTargetLocation, DecodedTargetLocation outLocation) {
+            if (gtTargetLocation == null || outLocation == null) {
+                return;
+            }
+            count++;
+            if (gtTargetLocation.location == null && outLocation.visible == true) {
+                falsePositiveVisibleCount++;
+            } else if (gtTargetLocation.location != null && outLocation.visible == false) {
+                falseNegativeVisibleCount++;
+            }
+            if (gtTargetLocation.location != null && outLocation != null) {
+                float dx = gtTargetLocation.location.x - outLocation.x;
+                float dy = gtTargetLocation.location.y - outLocation.y;
+                sum2dx += dx * dx;
+                sum2dy += dy * dy;
+            }
+        }
+
+        @Override
+        public String toString() {
+            if (targetLabeler.hasLocations() == false) {
+                return "Error: No ground truth target locations loaded";
+            }
+            if (count == 0) {
+                return "Error: no samples yet";
+            }
+            return String.format("Error: N=%d, %4.1f%% false pos, %4.1f%% false neg, dx=%4.1f pix, dy==%4.1f",
+                    count,
+                    100f * falsePositiveVisibleCount / count,
+                    100f * falsePositiveVisibleCount / count,
+                    Math.sqrt(sum2dx) / count,
+                    Math.sqrt(sum2dy) / count
+            );
+        }
+
     }
 
 }
