@@ -9,11 +9,12 @@ import java.awt.Color;
 import java.awt.Point;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+
+import javax.swing.SwingUtilities;
+
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
-import com.sun.deploy.uitoolkit.impl.fx.ui.FXUIFactory;
-import eu.visualize.ini.convnet.DeepLearnCnnNetwork.OutputLayer;
-import javax.swing.SwingUtilities;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -105,17 +106,17 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
         GL2 gl = drawable.getGL().getGL2();
         checkBlend(gl);
         int sy = chip.getSizeY();
-        if (apsNet != null && apsNet.outputLayer != null && apsNet.outputLayer.activations != null && isProcessAPSFrames()) {
+        if ((apsNet != null) && (apsNet.outputLayer != null) && (apsNet.outputLayer.activations != null) && isProcessAPSFrames()) {
             drawDecisionOutput(gl, sy, apsNet, Color.RED);
         }
-        if (dvsNet != null && dvsNet.outputLayer != null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
+        if ((dvsNet != null) && (dvsNet.outputLayer != null) && (dvsNet.outputLayer.activations != null) && isProcessDVSTimeSlices()) {
             drawDecisionOutput(gl, sy, dvsNet, Color.YELLOW);
         }
-        
+
         if(isShowErrorStatistics()){
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY()*.6f);
             MultilineAnnotationTextRenderer.renderMultilineString(error.toString());
-            
+
         }
 
     }
@@ -136,7 +137,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
          y = [y-r y-r y+r y+r];
          decodedTargetLocation = fill(x,y,color);
          alpha(decodedTargetLocation,0.2)
-         hold off; 
+         hold off;
          */
         if (decodedTargetLocation.visible == false) {
             return;
@@ -146,7 +147,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
         final float brightness = .1f; // brightness scale
 
         gl.glColor4f(r, g, b, brightness);
-        final float rd = chip.getSizeY() / 10 * (1 - 5 * decodedTargetLocation.y / chip.getSizeY());
+        final float rd = (chip.getSizeY() / 10) * (1 - ((5 * decodedTargetLocation.y) / chip.getSizeY()));
         gl.glRectf(decodedTargetLocation.x - rd, decodedTargetLocation.y - rd, decodedTargetLocation.x + rd, decodedTargetLocation.y + rd);
     }
 
@@ -184,7 +185,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
             }
             error.addSample(targetLabeler.getTargetLocation(), decodedTargetLocation);
 
-        } 
+        }
     }
 
     /**
@@ -228,7 +229,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
         }
 
         public DecodedTargetLocation(DeepLearnCnnNetwork net) {
-            if (net == null || net.outputLayer == null || net.outputLayer.activations == null || net.outputLayer.activations.length != 6) {
+            if ((net == null) || (net.outputLayer == null) || (net.outputLayer.activations == null) || (net.outputLayer.activations.length != 6)) {
                 throw new RuntimeException("null net or output layer or output wrong type");
             }
             float[] o = net.outputLayer.activations;
@@ -246,8 +247,8 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
              */
             if (o[4] > o[5]) {
                 visible = true;
-                x = sx / 2 * (o[1] - o[0]) + sx / 2;
-                y = sy / 2 * (o[3] - o[2]) + sy / 2;
+                x = ((sx / 2) * (o[1] - o[0])) + (sx / 2);
+                y = ((sy / 2) * (o[3] - o[2])) + (sy / 2);
             } else {
                 visible = false;
             }
@@ -273,16 +274,16 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
         }
 
         void addSample(TargetLabeler.TargetLocation gtTargetLocation, DecodedTargetLocation outLocation) {
-            if (gtTargetLocation == null || outLocation == null) {
+            if ((gtTargetLocation == null) || (outLocation == null)) {
                 return;
             }
             count++;
-            if (gtTargetLocation.location == null && outLocation.visible == true) {
+            if ((gtTargetLocation.location == null) && (outLocation.visible == true)) {
                 falsePositiveVisibleCount++;
-            } else if (gtTargetLocation.location != null && outLocation.visible == false) {
+            } else if ((gtTargetLocation.location != null) && (outLocation.visible == false)) {
                 falseNegativeVisibleCount++;
             }
-            if (gtTargetLocation.location != null && outLocation != null) {
+            if ((gtTargetLocation.location != null) && (outLocation != null)) {
                 float dx = gtTargetLocation.location.x - outLocation.x;
                 float dy = gtTargetLocation.location.y - outLocation.y;
                 sum2dx += dx * dx;
@@ -300,8 +301,8 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
             }
             return String.format("Error: N=%d, %4.1f%% false pos, %4.1f%% false neg, dx=%4.1f pix, dy==%4.1f",
                     count,
-                    100f * falsePositiveVisibleCount / count,
-                    100f * falsePositiveVisibleCount / count,
+                    (100f * falsePositiveVisibleCount) / count,
+                    (100f * falsePositiveVisibleCount) / count,
                     Math.sqrt(sum2dx) / count,
                     Math.sqrt(sum2dy) / count
             );
