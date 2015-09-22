@@ -692,8 +692,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 
 		if ((devicePID == (short) 0x841C) && (chipID == CochleaFX3HardwareInterface.CHIP_SAMPLEPROB)) {
-			spiConfigSend(CypressFX3.FPGA_DVS, (short) 4, 63);
-			spiConfigSend(CypressFX3.FPGA_DVS, (short) 6, 8);
+			spiConfigSend(CypressFX3.FPGA_DVS, (short) 4, 140);
+			spiConfigSend(CypressFX3.FPGA_DVS, (short) 6, 20);
 		}
 
 		spiConfigSend(CypressFX3.FPGA_USB, (short) 0, 1);
