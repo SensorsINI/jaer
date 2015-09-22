@@ -17,6 +17,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
+import org.usb4java.BufferUtils;
+import org.usb4java.Device;
+import org.usb4java.DeviceDescriptor;
+import org.usb4java.DeviceHandle;
+import org.usb4java.LibUsb;
+
 import li.longi.USBTransferThread.RestrictedTransfer;
 import li.longi.USBTransferThread.RestrictedTransferCallback;
 import li.longi.USBTransferThread.USBTransferThread;
@@ -33,12 +39,6 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
-
-import org.usb4java.BufferUtils;
-import org.usb4java.Device;
-import org.usb4java.DeviceDescriptor;
-import org.usb4java.DeviceHandle;
-import org.usb4java.LibUsb;
 
 /**
  * Devices that use the CypressFX3 and the USBIO driver, e.g. the DVS retinas,
@@ -682,10 +682,18 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			return;
 		}
 
+		short devicePID = getPID();
+		int chipID = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 1);
+
 		// Slow down DVS ACK for rows on small boards.
-		if (getPID() == (short) 0x841B) {
+		if (devicePID == (short) 0x841B) {
 			spiConfigSend(CypressFX3.FPGA_DVS, (short) 4, 14);
 			spiConfigSend(CypressFX3.FPGA_DVS, (short) 6, 4);
+		}
+
+		if ((devicePID == (short) 0x841C) && (chipID == CochleaFX3HardwareInterface.CHIP_SAMPLEPROB)) {
+			spiConfigSend(CypressFX3.FPGA_DVS, (short) 4, 63);
+			spiConfigSend(CypressFX3.FPGA_DVS, (short) 6, 8);
 		}
 
 		spiConfigSend(CypressFX3.FPGA_USB, (short) 0, 1);

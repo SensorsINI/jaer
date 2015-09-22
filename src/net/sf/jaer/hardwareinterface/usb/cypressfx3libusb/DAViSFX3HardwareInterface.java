@@ -50,16 +50,16 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		HardwareInterfaceException.clearException();
 	}
 
-	private static final int CHIP_DAVIS240A = 0;
-	private static final int CHIP_DAVIS240B = 1;
-	private static final int CHIP_DAVIS240C = 2;
-	private static final int CHIP_DAVIS128 = 3;
-	private static final int CHIP_DAVIS346A = 4;
-	private static final int CHIP_DAVIS346B = 5;
-	private static final int CHIP_DAVIS640 = 6;
-	private static final int CHIP_DAVISRGB = 7;
-	private static final int CHIP_DAVIS208 = 8;
-	private static final int CHIP_DAVIS346C = 9;
+	public static final int CHIP_DAVIS240A = 0;
+	public static final int CHIP_DAVIS240B = 1;
+	public static final int CHIP_DAVIS240C = 2;
+	public static final int CHIP_DAVIS128 = 3;
+	public static final int CHIP_DAVIS346A = 4;
+	public static final int CHIP_DAVIS346B = 5;
+	public static final int CHIP_DAVIS640 = 6;
+	public static final int CHIP_DAVISRGB = 7;
+	public static final int CHIP_DAVIS208 = 8;
+	public static final int CHIP_DAVIS346C = 9;
 
 	/**
 	 * This reader understands the format of raw USB data and translates to the

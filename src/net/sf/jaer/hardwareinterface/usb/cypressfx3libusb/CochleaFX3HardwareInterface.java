@@ -46,9 +46,9 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 		HardwareInterfaceException.clearException();
 	}
 
-	private static final int CHIP_COCHLEALP = 11;
-	private static final int CHIP_COCHLEA4EAR = 12;
-	private static final int CHIP_SAMPLEPROB = 13; // Reuse Cochlea code for SampleProb chip.
+	public static final int CHIP_COCHLEALP = 11;
+	public static final int CHIP_COCHLEA4EAR = 12;
+	public static final int CHIP_SAMPLEPROB = 13; // Reuse Cochlea code for SampleProb chip.
 
 	/**
 	 * This reader understands the format of raw USB data and translates to the
