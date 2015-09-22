@@ -20,6 +20,7 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /**
@@ -78,7 +79,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
     @Override
     public void resetFilter() {
         super.resetFilter();
-
+        error.reset();
     }
 
     @Override
@@ -171,7 +172,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
         if (!isFilterEnabled()) {
             return;
         }
-        if (evt.getPropertyName() == DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
+        if (evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE) {
             super.propertyChange(evt);
             decodedTargetLocation=new DecodedTargetLocation(apsNet); // TODO assumes only APS network used
             error.addSample(targetLabeler.getTargetLocation(), decodedTargetLocation);
@@ -253,6 +254,13 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
                 visible = false;
             }
         }
+
+        @Override
+        public String toString() {
+            return String.format("DecodedTargetLocation: visible=%s x=%.1f y=%.1f",Boolean.toString(visible),x,y);
+        }
+        
+        
     }
 
     private class Error {
@@ -283,7 +291,9 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
             } else if ((gtTargetLocation.location != null) && (outLocation.visible == false)) {
                 falseNegativeVisibleCount++;
             }
-            if ((gtTargetLocation.location != null) && (outLocation != null)) {
+
+            if (gtTargetLocation.location != null && outLocation != null && outLocation.visible==true) {
+
                 float dx = gtTargetLocation.location.x - outLocation.x;
                 float dy = gtTargetLocation.location.y - outLocation.y;
                 sum2dx += dx * dx;
