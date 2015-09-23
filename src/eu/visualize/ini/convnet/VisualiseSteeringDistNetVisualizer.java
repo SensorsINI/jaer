@@ -38,7 +38,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
     private boolean printOutputsEnabled = false;
     private Error error = new Error();
     DecodedTargetLocation decodedTargetLocation = null;
-    private boolean showErrorStatistics=getBoolean("showErrorStatistics", true);
+    private boolean showErrorStatistics = getBoolean("showErrorStatistics", true);
 
     public VisualiseSteeringDistNetVisualizer(AEChip chip) {
         super(chip);
@@ -53,6 +53,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
         setPropertyTooltip(visualizer, "printOutputsEnabled", "prints to console the network final output values");
         setPropertyTooltip(visualizer, "hideOutput", "hides the network output histogram");
         setPropertyTooltip(visualizer, "showErrorStatistics", "shows error statistics");
+        apsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
     }
 
     @Override
@@ -114,8 +115,8 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
             drawDecisionOutput(gl, sy, dvsNet, Color.YELLOW);
         }
 
-        if(isShowErrorStatistics()){
-            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY()*.6f);
+        if (isShowErrorStatistics()) {
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .6f);
             MultilineAnnotationTextRenderer.renderMultilineString(error.toString());
 
         }
@@ -174,7 +175,8 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
         }
         if (evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE) {
             super.propertyChange(evt);
-            decodedTargetLocation=new DecodedTargetLocation(apsNet); // TODO assumes only APS network used
+        } else if (evt.getPropertyName() == DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
+            decodedTargetLocation = new DecodedTargetLocation(apsNet); // TODO assumes only APS network used
             error.addSample(targetLabeler.getTargetLocation(), decodedTargetLocation);
             if (isPrintOutputsEnabled()) {
                 float[] fa = apsNet.outputLayer.activations;
@@ -215,7 +217,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
      */
     public void setShowErrorStatistics(boolean showErrorStatistics) {
         this.showErrorStatistics = showErrorStatistics;
-        putBoolean("showErrorStatistics",showErrorStatistics);
+        putBoolean("showErrorStatistics", showErrorStatistics);
     }
 
     private class DecodedTargetLocation {
@@ -230,7 +232,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
         }
 
         public DecodedTargetLocation(DeepLearnCnnNetwork net) {
-            if ((net == null) || (net.outputLayer == null) || (net.outputLayer.activations == null) || (net.outputLayer.activations.length != 6)) {
+            if ((net == null) || (net.outputLayer == null) || (net.outputLayer.activations == null) || (net.outputLayer.activations.length != 3)) {
                 throw new RuntimeException("null net or output layer or output wrong type");
             }
             float[] o = net.outputLayer.activations;
@@ -246,10 +248,10 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
              x=width/2*(o(2)-o(1))+width/2;
              y=width/2*(o(4)-o(3))+width/2;
              */
-            if (o[4] > o[5]) {
+            if (o[2] > .5) {
                 visible = true;
-                x = ((sx / 2) * (o[1] - o[0])) + (sx / 2);
-                y = ((sy / 2) * (o[3] - o[2])) + (sy / 2);
+                x = sx * o[0];
+                y = sy * o[1];
             } else {
                 visible = false;
             }
@@ -257,10 +259,9 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
 
         @Override
         public String toString() {
-            return String.format("DecodedTargetLocation: visible=%s x=%.1f y=%.1f",Boolean.toString(visible),x,y);
+            return String.format("DecodedTargetLocation: visible=%s x=%.1f y=%.1f", Boolean.toString(visible), x, y);
         }
-        
-        
+
     }
 
     private class Error {
@@ -292,7 +293,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
                 falseNegativeVisibleCount++;
             }
 
-            if (gtTargetLocation.location != null && outLocation != null && outLocation.visible==true) {
+            if (gtTargetLocation.location != null && outLocation != null && outLocation.visible == true) {
 
                 float dx = gtTargetLocation.location.x - outLocation.x;
                 float dy = gtTargetLocation.location.y - outLocation.y;
