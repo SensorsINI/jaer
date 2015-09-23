@@ -47,8 +47,8 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
         chain.add(targetLabeler);
         setEnclosedFilterChain(chain);
-        apsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION,this);
-        dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION,this);
+        apsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
+        dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
         String visualizer = "Visualizer";
         setPropertyTooltip(visualizer, "printOutputsEnabled", "prints to console the network final output values");
         setPropertyTooltip(visualizer, "hideOutput", "hides the network output histogram");
@@ -149,7 +149,8 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
         final float brightness = .1f; // brightness scale
 
         gl.glColor4f(r, g, b, brightness);
-        final float rd = (chip.getSizeY() / 10) * (1 - ((5 * decodedTargetLocation.y) / chip.getSizeY()));
+        
+        final float rd = (chip.getSizeY() / 10) * (1 - 5*( (decodedTargetLocation.y-sy/2) / sy));
         gl.glRectf(decodedTargetLocation.x - rd, decodedTargetLocation.y - rd, decodedTargetLocation.x + rd, decodedTargetLocation.y + rd);
     }
 
@@ -274,7 +275,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
 
         void reset() {
             count = 0;
-            countVisible=0;
+            countVisible = 0;
             falsePositiveVisibleCount = 0;
             falseNegativeVisibleCount = 0;
             sum2dx = 0;
@@ -282,10 +283,10 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
         }
 
         void addSample(TargetLabeler.TargetLocation gtTargetLocation, DecodedTargetLocation outLocation) {
+            count++;
             if ((gtTargetLocation == null) || (outLocation == null)) {
                 return;
             }
-            count++;
             if ((gtTargetLocation.location == null) && (outLocation.visible == true)) {
                 falsePositiveVisibleCount++;
             } else if ((gtTargetLocation.location != null) && (outLocation.visible == false)) {
@@ -313,8 +314,8 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
                     count,
                     (100f * falsePositiveVisibleCount) / count,
                     (100f * falsePositiveVisibleCount) / count,
-                    Math.sqrt(sum2dx) / countVisible,
-                    Math.sqrt(sum2dy) / countVisible
+                    Math.sqrt(sum2dx / countVisible),
+                    Math.sqrt(sum2dy / countVisible)
             );
         }
 
