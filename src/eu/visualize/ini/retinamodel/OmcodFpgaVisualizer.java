@@ -156,8 +156,37 @@ public class OmcodFpgaVisualizer extends AbstractRetinaModelCell implements Fram
 
         if (DrawFire) {
             // Render all outputs
+            int colorR = 0;
+            int colorG = 0;
+            int colorB = 0;
             gl.glPushMatrix();
-            gl.glColor4f(1, 0, 0, 1f); // Violet outputs of OMCs
+            if ((lastSpikedOMC[0] == 1) && (lastSpikedOMC[1] == 1)) {
+                colorR = 0;
+                colorG = 1;
+                colorB = 0;
+            }
+            if ((lastSpikedOMC[0] == 5) && (lastSpikedOMC[1] == 1)) {
+                colorR = 0;
+                colorG = 0;
+                colorB = 1;
+            }
+            if ((lastSpikedOMC[0] == 1) && (lastSpikedOMC[1] == 5)) {
+                colorR = 1;
+                colorG = 0;
+                colorB = 1;
+            }
+            if ((lastSpikedOMC[0] == 5) && (lastSpikedOMC[1] == 5)) {
+                colorR = 0;
+                colorG = 1;
+                colorB = 1;
+            }
+            if ((lastSpikedOMC[0] == 3) && (lastSpikedOMC[1] == 3)) {
+                colorR = 1;
+                colorG = 0;
+                colorB = 0;
+            }
+            gl.glColor4f(colorR, colorG, colorB, 1f); // colors of OMC outputs
+
             gl.glRectf((lastSpikedOMC[0] << subsample),
                     (lastSpikedOMC[1] << subsample),
                     (lastSpikedOMC[0] + 2 << subsample),
@@ -184,7 +213,7 @@ public class OmcodFpgaVisualizer extends AbstractRetinaModelCell implements Fram
             //Render Arrow
             // motion vector points in direction of motion, *from* dir value (minus sign) which points in direction from prevous event
             gl.glPushMatrix();
-            gl.glColor4f(1, 1, 0, 1f); // Violet outputs of OMCs
+            gl.glColor4f(1, 1, 0, 1f);
             gl.glLineWidth(10);
             DrawGL.drawVector(gl, (lastSpikedOMCArray[0][counterP] + 1) << subsample,
                     lastSpikedOMCArray[1][counterP] + 1 << subsample,
