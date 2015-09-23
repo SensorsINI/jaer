@@ -388,7 +388,7 @@ public class DeepLearnCnnNetwork {
             // TODO change to subsample (averaging)
             Random r = null;
             if (inputClampedToIncreasingIntegers) {
-                r=new Random();
+                r = new Random();
                 r.setSeed(0);
             }
             float xstride = (float) frameWidth / dimx, ystride = (float) frameHeight / dimy;
@@ -403,7 +403,7 @@ public class DeepLearnCnnNetwork {
                     if (inputClampedToIncreasingIntegers) {
 //                        v = r.nextInt(16); // make image that is x+y, for debugging
 //                        v = (float) (xo + yo); // make image that is x+y, for debugging
-                        v = (float) (xo*dimy + yo); // make image that is x+y, for debugging
+                        v = (float) (xo * dimy + yo); // make image that is x+y, for debugging
 //                        v = (float) (yo) / (dimy);
                     } else if (inputClampedTo1) {
                         v = .5f;
@@ -413,6 +413,7 @@ public class DeepLearnCnnNetwork {
                 }
                 yo++;
             }
+            normalizeInputFrame(activations);
             return activations;
         }
 
@@ -454,6 +455,7 @@ public class DeepLearnCnnNetwork {
                     // activations[o(dimy - y % dimy- 1, x % dimx )] = v; // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
                 }
             }
+            normalizeInputFrame(activations);
             return activations;
         }
 
@@ -572,6 +574,28 @@ public class DeepLearnCnnNetwork {
             this.inputClampedToIncreasingIntegers = inputClampedToIncreasingIntegers;
         }
 
+        /**
+         * Normalizes frames to have zero mean and variance=1
+         *
+         * @param activations
+         */
+        private void normalizeInputFrame(float[] activations) {
+            int n = activations.length;
+            float sum = 0, sum2 = 0;
+            for (float f : activations) {
+                sum += f;
+                sum2 += (f * f);
+            }
+            float m = sum / n;
+            float std = sum2 / n;
+            if (n == 0) {
+                std = 1;
+            }
+            float r = 1 / std;
+            for (int i = 0; i < n; i++) {
+                activations[i] = r * (activations[i] - m);
+            }
+        }
     }
 
     /**
