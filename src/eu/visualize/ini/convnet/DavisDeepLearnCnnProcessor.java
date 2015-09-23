@@ -59,10 +59,6 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 
     public DavisDeepLearnCnnProcessor(AEChip chip) {
         super(chip);
-        FilterChain chain = new FilterChain(chip);
-//        chain.add(frameExtractor);
-//        setEnclosedFilterChain(chain);
-//        frameExtractor.getSupport().addPropertyChangeListener(ApsFrameExtractor.EVENT_NEW_FRAME, this);
         String deb = "3. Debug", disp = "1. Display", anal = "2. Analysis";
         setPropertyTooltip("loadApsNetworkFromXML", "For the APS frame, load an XML file containing a CNN exported from DeepLearnToolbox by cnntoxml.m");
         setPropertyTooltip("loadDVSTimesliceNetworkFromXML", "For the DVS time slices, load an XML file containing a CNN exported from DeepLearnToolbox by cnntoxml.m");
@@ -188,6 +184,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 
     @Override
     public void resetFilter() {
+        
     }
 
     @Override

@@ -47,13 +47,12 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
         chain.add(targetLabeler);
         setEnclosedFilterChain(chain);
-        apsNet.getSupport().addPropertyChangeListener(this);
-        dvsNet.getSupport().addPropertyChangeListener(this);
+        apsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION,this);
+        dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION,this);
         String visualizer = "Visualizer";
         setPropertyTooltip(visualizer, "printOutputsEnabled", "prints to console the network final output values");
         setPropertyTooltip(visualizer, "hideOutput", "hides the network output histogram");
         setPropertyTooltip(visualizer, "showErrorStatistics", "shows error statistics");
-        apsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
     }
 
     @Override
@@ -80,6 +79,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
     @Override
     public void resetFilter() {
         super.resetFilter();
+        targetLabeler.resetFilter();
         error.reset();
     }
 
@@ -186,8 +186,6 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
                 }
                 System.out.print("\n");
             }
-            error.addSample(targetLabeler.getTargetLocation(), decodedTargetLocation);
-
         }
     }
 
@@ -266,7 +264,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
 
     private class Error {
 
-        int count;
+        int count, countVisible;
         int falsePositiveVisibleCount, falseNegativeVisibleCount;
         float sum2dx, sum2dy;
 
@@ -276,6 +274,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
 
         void reset() {
             count = 0;
+            countVisible=0;
             falsePositiveVisibleCount = 0;
             falseNegativeVisibleCount = 0;
             sum2dx = 0;
@@ -294,7 +293,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
             }
 
             if (gtTargetLocation.location != null && outLocation != null && outLocation.visible == true) {
-
+                countVisible++;
                 float dx = gtTargetLocation.location.x - outLocation.x;
                 float dy = gtTargetLocation.location.y - outLocation.y;
                 sum2dx += dx * dx;
@@ -310,12 +309,12 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
             if (count == 0) {
                 return "Error: no samples yet";
             }
-            return String.format("Error: N=%d, %4.1f%% false pos, %4.1f%% false neg, dx=%4.1f pix, dy==%4.1f",
+            return String.format("Error: N=%d, false pos=%4.1f%%, false neg=%4.1f%%, dx=%4.1f pix, dy==%4.1f",
                     count,
                     (100f * falsePositiveVisibleCount) / count,
                     (100f * falsePositiveVisibleCount) / count,
-                    Math.sqrt(sum2dx) / count,
-                    Math.sqrt(sum2dy) / count
+                    Math.sqrt(sum2dx) / countVisible,
+                    Math.sqrt(sum2dy) / countVisible
             );
         }
 

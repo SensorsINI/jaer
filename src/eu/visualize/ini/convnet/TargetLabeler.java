@@ -507,6 +507,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     @Override
     public void resetFilter() {
+        
+        
     }
 
     @Override
