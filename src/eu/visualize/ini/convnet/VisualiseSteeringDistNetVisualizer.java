@@ -39,6 +39,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
     private Error error = new Error();
     DecodedTargetLocation decodedTargetLocation = null;
     private boolean showErrorStatistics = getBoolean("showErrorStatistics", true);
+    private float yRange = getFloat("yRange", 1), yOffset = getFloat("yOffset", 0); // scaling from network output to actual y target location
 
     public VisualiseSteeringDistNetVisualizer(AEChip chip) {
         super(chip);
@@ -53,6 +54,8 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
         setPropertyTooltip(visualizer, "printOutputsEnabled", "prints to console the network final output values");
         setPropertyTooltip(visualizer, "hideOutput", "hides the network output histogram");
         setPropertyTooltip(visualizer, "showErrorStatistics", "shows error statistics");
+        setPropertyTooltip(visualizer, "yRange","computes decoded y output from YActual = ySize * ( (yRange * Youtput)+ yOffset )");
+        setPropertyTooltip(visualizer, "yOffset","computes decoded y output from YActual = ySize * ( (yRange * Youtput)+ yOffset )");
     }
 
     @Override
@@ -149,8 +152,8 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
         final float brightness = .1f; // brightness scale
 
         gl.glColor4f(r, g, b, brightness);
-        
-        final float rd = (chip.getSizeY() / 10) * (1 - 5*( (decodedTargetLocation.y-sy/2) / sy));
+
+        final float rd = (chip.getSizeY() / 10) * (1 - 5 * ((decodedTargetLocation.y - sy / 2) / sy));
         gl.glRectf(decodedTargetLocation.x - rd, decodedTargetLocation.y - rd, decodedTargetLocation.x + rd, decodedTargetLocation.y + rd);
     }
 
@@ -219,6 +222,36 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
         putBoolean("showErrorStatistics", showErrorStatistics);
     }
 
+    /**
+     * @return the yRange
+     */
+    public float getyRange() {
+        return yRange;
+    }
+
+    /**
+     * @param yRange the yRange to set
+     */
+    public void setyRange(float yRange) {
+        this.yRange = yRange;
+        putFloat("yRange", yRange);
+    }
+
+    /**
+     * @return the yOffset
+     */
+    public float getyOffset() {
+        return yOffset;
+    }
+
+    /**
+     * @param yOffset the yOffset to set
+     */
+    public void setyOffset(float yOffset) {
+        this.yOffset = yOffset;
+        putFloat("yOffset", yOffset);
+    }
+
     private class DecodedTargetLocation {
 
         float x = Float.NaN, y = Float.NaN;
@@ -250,7 +283,7 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
             if (o[2] > .5) {
                 visible = true;
                 x = sx * o[0];
-                y = sy * o[1];
+                y = sy * (1-(yRange*o[1]+yOffset));
             } else {
                 visible = false;
             }
