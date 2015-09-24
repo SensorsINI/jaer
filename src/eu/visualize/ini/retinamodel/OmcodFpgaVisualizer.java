@@ -57,25 +57,25 @@ public class OmcodFpgaVisualizer extends AbstractRetinaModelCell implements Fram
                 continue;
             }
             // Check for firing cells and annotate
-            if ((e.x == 32 && e.y == 32) || (e.x == 96 && e.y == 32) || (e.x == 32 && e.y == 96) || (e.x == 96 && e.y == 96) || (e.x == 64 && e.y == 64)) {
+            if ((e.x == 31 && e.y == 32) || (e.x == 95 && e.y == 32) || (e.x == 31 && e.y == 96) || (e.x == 95 && e.y == 96) || (e.x == 63 && e.y == 64)) {
                 //Store all spiked cells
-                if (e.x == 32 && e.y == 32) {
+                if (e.x == 31 && e.y == 32) {
                     lastSpikedOMC[0] = 1;
                     lastSpikedOMC[1] = 1;
                 }
-                if (e.x == 96 && e.y == 32) {
+                if (e.x == 95 && e.y == 32) {
                     lastSpikedOMC[0] = 5;
                     lastSpikedOMC[1] = 1;
                 }
-                if (e.x == 32 && e.y == 96) {
+                if (e.x == 31 && e.y == 96) {
                     lastSpikedOMC[0] = 1;
                     lastSpikedOMC[1] = 5;
                 }
-                if (e.x == 96 && e.y == 96) {
+                if (e.x == 95 && e.y == 96) {
                     lastSpikedOMC[0] = 5;
                     lastSpikedOMC[1] = 5;
                 }
-                if (e.x == 64 && e.y == 64) {
+                if (e.x == 63 && e.y == 64) {
                     lastSpikedOMC[0] = 3;
                     lastSpikedOMC[1] = 3;
                 }
