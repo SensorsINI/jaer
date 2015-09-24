@@ -305,7 +305,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     synchronized public void doSaveLocationsAs() {
         String fn = mapDataFilenameToTargetFilename.get(lastDataFilename);
         if (fn == null) {
-        	fn = DEFAULT_FILENAME;
+            fn = DEFAULT_FILENAME;
         }
         JFileChooser c = new JFileChooser(fn);
         c.setSelectedFile(new File(fn));
@@ -350,7 +350,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     synchronized public void doLoadLocations() {
         lastFileName = mapDataFilenameToTargetFilename.get(lastDataFilename);
         if (lastFileName == null) {
-        	lastFileName = DEFAULT_FILENAME;
+            lastFileName = DEFAULT_FILENAME;
         }
         if ((lastFileName != null) && lastFileName.equals(DEFAULT_FILENAME)) {
             File f = chip.getAeViewer().getRecentFiles().getMostRecentFile();
@@ -507,8 +507,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
 
     @Override
     public void resetFilter() {
-        
-        
+
     }
 
     @Override
@@ -674,8 +673,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 mouseQuad = glu.gluNewQuadric();
             }
             glu.gluQuadricDrawStyle(mouseQuad, GLU.GLU_LINE);
-            glu.gluDisk(mouseQuad, dimx/2, (dimy/2) +1, 32, 1);
-            	//getTargetRadius(), getTargetRadius() + 1, 32, 1);
+            glu.gluDisk(mouseQuad, dimx / 2, (dimy / 2) + 1, 32, 1);
+            //getTargetRadius(), getTargetRadius() + 1, 32, 1);
             gl.glPopMatrix();
         }
 
@@ -770,12 +769,12 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         try {
                             targetTypeID = scanner.nextInt();
                             try {
-                            	// added target dimensions compatibility
-                            	targetdimx = scanner.nextInt();
-                            	targetdimy = scanner.nextInt();
-                            	}catch (NoSuchElementException e) {
+                                // added target dimensions compatibility
+                                targetdimx = scanner.nextInt();
+                                targetdimy = scanner.nextInt();
+                            } catch (NoSuchElementException e) {
                                 // older type file with only single target and no targetClassID and no x,y dimensions
-                            	}
+                            }
                         } catch (NoSuchElementException e) {
                             // older type file with only single target
                         }
@@ -816,6 +815,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         }
     }
 
+    int maxDataHasTargetWarningCount = 10;
+
     /**
      * marks this point in time as reviewed already
      *
@@ -836,7 +837,12 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         }
         int frac = getFractionOfFileDuration(timestamp);
         if ((frac < 0) || (frac >= labeledFractions.length)) {
-            log.warning("fraction " + frac + " is out of range " + labeledFractions.length + ", something is wrong");
+            if (maxDataHasTargetWarningCount-- > 0) {
+                log.warning("fraction " + frac + " is out of range " + labeledFractions.length + ", something is wrong");
+            }
+            if (maxDataHasTargetWarningCount == 0) {
+                log.warning("suppressing futher warnings");
+            }
             return;
         }
         labeledFractions[frac] = true;
@@ -947,7 +953,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         switch (evt.getPropertyName()) {
             case AEInputStream.EVENT_POSITION:
                 filePositionEvents = (long) evt.getNewValue();
-                if((chip.getAeViewer().getAePlayer()==null) || (chip.getAeViewer().getAePlayer().getAEInputStream()==null)){
+                if ((chip.getAeViewer().getAePlayer() == null) || (chip.getAeViewer().getAePlayer().getAEInputStream() == null)) {
                     log.warning("null input stream, cannot get most recent timestamp");
                     return;
                 }
