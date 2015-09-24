@@ -33,6 +33,7 @@ public class OmcodFpgaVisualizer extends AbstractRetinaModelCell implements Fram
     private int[] lastSpikedOMC; // save the OMC cell that last spiked
     private int[][] lastSpikedOMCArray; // save the OMC cells that last spiked    
     final int subsample = 4;
+    private boolean switchTo9OMCs = getBoolean("switchTo9OMCs", true);
 
     public OmcodFpgaVisualizer(AEChip chip) {
         super(chip);
@@ -41,6 +42,8 @@ public class OmcodFpgaVisualizer extends AbstractRetinaModelCell implements Fram
         this.lastSpikedOMC = new int[2];
         this.lastSpikedOMCArray = new int[3][2];
         chip.addObserver(this);
+        final String use = "Parameters";
+        setPropertyTooltip(use, "switchTo9OMCs", "Switch to 9 OMC design visualization");
     }
 
     @Override
@@ -57,39 +60,88 @@ public class OmcodFpgaVisualizer extends AbstractRetinaModelCell implements Fram
                 continue;
             }
             // Check for firing cells and annotate
-            if ((e.x == 31 && e.y == 32) || (e.x == 95 && e.y == 32) || (e.x == 31 && e.y == 96) || (e.x == 95 && e.y == 96) || (e.x == 63 && e.y == 64)) {
+            if ((e.x == 31 && e.y == 32) || (e.x == 95 && e.y == 32) || (e.x == 31 && e.y == 96)
+                    || (e.x == 95 && e.y == 96) || (e.x == 63 && e.y == 64) || (e.x == 63 && e.y == 96)
+                    || (e.x == 63 && e.y == 32) || (e.x == 31 && e.y == 64) || (e.x == 95 && e.y == 64)) {
                 //Store all spiked cells
                 if (e.x == 31 && e.y == 32) {
                     lastSpikedOMC[0] = 1;
                     lastSpikedOMC[1] = 1;
+                    lastOMCTimeStamp = e.timestamp;
+                    DrawFire = true;
                 }
                 if (e.x == 95 && e.y == 32) {
                     lastSpikedOMC[0] = 5;
                     lastSpikedOMC[1] = 1;
+                    lastOMCTimeStamp = e.timestamp;
+                    DrawFire = true;
                 }
                 if (e.x == 31 && e.y == 96) {
                     lastSpikedOMC[0] = 1;
                     lastSpikedOMC[1] = 5;
+                    lastOMCTimeStamp = e.timestamp;
+                    DrawFire = true;
                 }
                 if (e.x == 95 && e.y == 96) {
                     lastSpikedOMC[0] = 5;
                     lastSpikedOMC[1] = 5;
+                    lastOMCTimeStamp = e.timestamp;
+                    DrawFire = true;
                 }
                 if (e.x == 63 && e.y == 64) {
                     lastSpikedOMC[0] = 3;
                     lastSpikedOMC[1] = 3;
+                    lastOMCTimeStamp = e.timestamp;
+                    DrawFire = true;
                 }
-                lastOMCTimeStamp = e.timestamp;
-                DrawFire = true;
-                for (int i = 0; i < 3; i++) {
-                    if (i == 0) { //store x
-                        lastSpikedOMCArray[i][counter] = lastSpikedOMC[0];
+                if (switchTo9OMCs) {
+                    if (e.x == 95 && e.y == 64) {
+                        lastSpikedOMC[0] = 5;
+                        lastSpikedOMC[1] = 3;
+                        lastOMCTimeStamp = e.timestamp;
+                        DrawFire = true;
                     }
-                    if (i == 1) { //store y
-                        lastSpikedOMCArray[i][counter] = lastSpikedOMC[1];
+                    if (e.x == 31 && e.y == 64) {
+                        lastSpikedOMC[0] = 1;
+                        lastSpikedOMC[1] = 3;
+                        lastOMCTimeStamp = e.timestamp;
+                        DrawFire = true;
                     }
-                    if (i == 2) { //store timestamp
-                        lastSpikedOMCArray[i][counter] = lastOMCTimeStamp;
+                    if (e.x == 63 && e.y == 96) {
+                        lastSpikedOMC[0] = 3;
+                        lastSpikedOMC[1] = 5;
+                        lastOMCTimeStamp = e.timestamp;
+                        DrawFire = true;
+                    }
+                    if (e.x == 63 && e.y == 32) {
+                        lastSpikedOMC[0] = 3;
+                        lastSpikedOMC[1] = 1;
+                        lastOMCTimeStamp = e.timestamp;
+                        DrawFire = true;
+                    }
+                    for (int i = 0; i < 3; i++) {
+                        if (i == 0) { //store x
+                            lastSpikedOMCArray[i][counter] = lastSpikedOMC[0];
+                        }
+                        if (i == 1) { //store y
+                            lastSpikedOMCArray[i][counter] = lastSpikedOMC[1];
+                        }
+                        if (i == 2) { //store timestamp
+                            lastSpikedOMCArray[i][counter] = lastOMCTimeStamp;
+                        }
+                    }
+                }
+                if (!switchTo9OMCs) {
+                    for (int i = 0; i < 3; i++) {
+                        if (i == 0) { //store x
+                            lastSpikedOMCArray[i][counter] = lastSpikedOMC[0];
+                        }
+                        if (i == 1) { //store y
+                            lastSpikedOMCArray[i][counter] = lastSpikedOMC[1];
+                        }
+                        if (i == 2) { //store timestamp
+                            lastSpikedOMCArray[i][counter] = lastOMCTimeStamp;
+                        }
                     }
                 }
             }
@@ -124,24 +176,38 @@ public class OmcodFpgaVisualizer extends AbstractRetinaModelCell implements Fram
                 ((nymax) << subsample));
         gl.glPopMatrix();
         // Red squares to show where the cells are
-        for (int omcx = 1; omcx < (nxmax - 1); omcx += 4) {// 4 corners
-            for (int omcy = 1; omcy < (nymax - 1); omcy += 4) {
-                gl.glPushMatrix();
-                gl.glColor4f(1, 0, 0, 0.1f); //4 side centers
-                gl.glRectf((omcx << subsample),
-                        (omcy << subsample),
-                        (omcx + 2 << subsample),
-                        (omcy + 2 << subsample));
-                gl.glPopMatrix();
+        if (!switchTo9OMCs) {
+            for (int omcx = 1; omcx < (nxmax - 1); omcx += 4) {// 4 corners
+                for (int omcy = 1; omcy < (nymax - 1); omcy += 4) {
+                    gl.glPushMatrix();
+                    gl.glColor4f(1, 0, 0, 0.1f); //4 side centers
+                    gl.glRectf((omcx << subsample),
+                            (omcy << subsample),
+                            (omcx + 2 << subsample),
+                            (omcy + 2 << subsample));
+                    gl.glPopMatrix();
+                }
+            }
+            gl.glPushMatrix();// central center
+            gl.glColor4f(1, 0, 0, 0.1f);
+            gl.glRectf((3 << subsample),
+                    (3 << subsample),
+                    (3 + 2 << subsample),
+                    (3 + 2 << subsample));
+            gl.glPopMatrix();
+        } else {
+            for (int omcx = 1; omcx < (nxmax - 1); omcx += 2) {// 9 cells
+                for (int omcy = 1; omcy < (nymax - 1); omcy += 2) {
+                    gl.glPushMatrix();
+                    gl.glColor4f(1, 0, 0, 0.1f); //4 side centers
+                    gl.glRectf((omcx << subsample),
+                            (omcy << subsample),
+                            (omcx + 2 << subsample),
+                            (omcy + 2 << subsample));
+                    gl.glPopMatrix();
+                }
             }
         }
-        gl.glPushMatrix();// central center
-        gl.glColor4f(1, 0, 0, 0.1f);
-        gl.glRectf((3 << subsample),
-                (3 << subsample),
-                (3 + 2 << subsample),
-                (3 + 2 << subsample));
-        gl.glPopMatrix();
 
         if (counter < 2 - 1) {
             counter++;
@@ -185,6 +251,29 @@ public class OmcodFpgaVisualizer extends AbstractRetinaModelCell implements Fram
                 colorG = 0;
                 colorB = 0;
             }
+            if ((lastSpikedOMC[0] == 1) && (lastSpikedOMC[1] == 3)) {
+                colorR = 1;
+                colorG = 0;
+                colorB = 0;
+            }
+            if ((lastSpikedOMC[0] == 5) && (lastSpikedOMC[1] == 3)) {
+                colorR = 1;
+                colorG = 0;
+                colorB = 0;
+            }
+            if ((lastSpikedOMC[0] == 3) && (lastSpikedOMC[1] == 5)) {
+                colorR = 1;
+                colorG = 0;
+                colorB = 0;
+            }
+            if ((lastSpikedOMC[0] == 3) && (lastSpikedOMC[1] == 1)) {
+                colorR = 1;
+                colorG = 0;
+                colorB = 0;
+            }
+            colorR = 1;
+            colorG = 0;
+            colorB = 0;
             gl.glColor4f(colorR, colorG, colorB, 1f); // colors of OMC outputs
 
             gl.glRectf((lastSpikedOMC[0] << subsample),
@@ -209,19 +298,19 @@ public class OmcodFpgaVisualizer extends AbstractRetinaModelCell implements Fram
                 }
             }
         }
-        if (!(lastSpikedOMC[0] == lastSpikedOMCArray[0][counterP])) {
-            //Render Arrow
-            // motion vector points in direction of motion, *from* dir value (minus sign) which points in direction from prevous event
-            gl.glPushMatrix();
-            gl.glColor4f(1, 1, 0, 1f);
-            gl.glLineWidth(10);
-            DrawGL.drawVector(gl, (lastSpikedOMCArray[0][counterP] + 1) << subsample,
-                    lastSpikedOMCArray[1][counterP] + 1 << subsample,
-                    ((lastSpikedOMC[0] + 1) << subsample) - ((lastSpikedOMCArray[0][counterP] + 1) << subsample),
-                    ((lastSpikedOMC[1] + 1) << subsample) - ((lastSpikedOMCArray[1][counterP] + 1) << subsample),
-                    1 << subsample, 1);
-            gl.glPopMatrix();
-        }
+//        if (!(lastSpikedOMC[0] == lastSpikedOMCArray[0][counterP])) {
+//            //Render Arrow
+//            // motion vector points in direction of motion, *from* dir value (minus sign) which points in direction from prevous event
+//            gl.glPushMatrix();
+//            gl.glColor4f(1, 1, 0, 1f);
+//            gl.glLineWidth(10);
+//            DrawGL.drawVector(gl, (lastSpikedOMCArray[0][counterP] + 1) << subsample,
+//                    lastSpikedOMCArray[1][counterP] + 1 << subsample,
+//                    ((lastSpikedOMC[0] + 1) << subsample) - ((lastSpikedOMCArray[0][counterP] + 1) << subsample),
+//                    ((lastSpikedOMC[1] + 1) << subsample) - ((lastSpikedOMCArray[1][counterP] + 1) << subsample),
+//                    1 << subsample, 1);
+//            gl.glPopMatrix();
+//        }
         counterP = counter;
 
         gl.glPopMatrix();
@@ -247,6 +336,17 @@ public class OmcodFpgaVisualizer extends AbstractRetinaModelCell implements Fram
                 }
             }
         }
+    }
+
+    // @return the switchTo9OMCs
+    public boolean isSwitchTo9OMCs() {
+        return switchTo9OMCs;
+    }
+
+    // @param switchTo9OMCs the switchTo9OMCs to set
+    public void setSwitchTo9OMCs(boolean switchTo9OMCs) {
+        this.switchTo9OMCs = switchTo9OMCs;
+        putBoolean("switchTo9OMCs", switchTo9OMCs);
     }
 
     @Override
