@@ -71,7 +71,7 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
 			if (os instanceof FileOutputStream) {
 				channel = ((FileOutputStream) os).getChannel();
 				AEOutputStream.log.info("using ByteBuffer with " + BUF_SIZE_EVENTS + " events to buffer disk writes");
-				byteBuf = ByteBuffer.allocateDirect(BUF_SIZE_EVENTS * Integer.BYTES * 2);
+				byteBuf = ByteBuffer.allocateDirect(BUF_SIZE_EVENTS * (Integer.SIZE / 8) * 2);
 			}
 		}
 		catch (final BackingStoreException ex) {
