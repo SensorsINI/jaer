@@ -30,13 +30,14 @@ public class ATCFpgaConfig extends EventFilter2D {
     private int cmCellAVG = getInt("cmCellAVG", 1);
     private boolean trackerEnable = getBoolean("trackerEnable", true);
     private boolean Reset = getBoolean("Reset", false);
-    private int bgaFilterDeltaT = getInt("bgaFilterDeltaT", 10000);
+    private int bgaFilterDeltaT = getInt("bgaFilterDeltaT", 100);
     private int bgaNeighbors = getInt("bgaNeighbors", 8);
     // OMC parameters
     private int IFthreshold = getInt("IFthreshold", 5);
     private int DecayTimeMs = getInt("DecayTimeMs", 2);
     private int ExcitationStrength = getInt("ExcitationStrength", 1);
-
+    private int Saturation = getInt("Saturation", 1);
+    private int InhibitionStrength = getInt("InhibitionStrength", 1);
     // FPGA clock speed in MegaHertz (MHz) for time conversion.
     private final int CLOCK_SPEED = 50;
 
@@ -64,6 +65,8 @@ public class ATCFpgaConfig extends EventFilter2D {
         setPropertyTooltip(omc, "IFthreshold", "Integrate and Fire threshold of OMCs");
         setPropertyTooltip(omc, "DecayTimeMs", "Time intervals at which the subunits of the OMC are decayed");
         setPropertyTooltip(omc, "ExcitationStrength", "Factor that multiplies normalised excitation");
+        setPropertyTooltip(omc, "Saturation", "Saturation of subunits");
+        setPropertyTooltip(omc, "InhibitionStrength", "Factor that multiplies normalised inhibition");
     }
 
     // OMC parameters
@@ -117,8 +120,42 @@ public class ATCFpgaConfig extends EventFilter2D {
     public static int getMaxExcitationStrength() {
         return 128;
     }
-    // End of OMC parameters
 
+    public void setSaturation(final int Saturation) {
+        this.Saturation = Saturation;
+        putInt("Saturation", Saturation);
+    }
+
+    public int getSaturation() {
+        return Saturation;
+    }
+
+    public static int getMinSaturation() {
+        return 1;
+    }
+
+    public static int getMaxSaturation() {
+        return 128;
+    }
+
+    public void setInhibitionStrength(final int InhibitionStrength) {
+        this.InhibitionStrength = InhibitionStrength;
+        putInt("InhibitionStrength", InhibitionStrength);
+    }
+
+    public int getInhibitionStrength() {
+        return InhibitionStrength;
+    }
+
+    public static int getMinInhibitionStrength() {
+        return 0;
+    }
+
+    public static int getMaxInhibitionStrength() {
+        return 128;
+    }
+
+    // End of OMC parameters
     // End of Configuration of OMC
     synchronized public void doConfigureOMC() {
         // Verify that we have a USB device to send to.
@@ -127,8 +164,8 @@ public class ATCFpgaConfig extends EventFilter2D {
         }
         // Convert ms time into clock cycles.
         final int sendDecayTimeMs = getInt("DecayTimeMs", 0) / (CLOCK_SPEED * 10 ^ (-6));
+
         int sendExcitationStrength = 1;
-        
         if (getInt("ExcitationStrength", 0) == 0) {
             sendExcitationStrength = 0;
         } else if (getInt("ExcitationStrength", 0) == 1) {
@@ -148,18 +185,63 @@ public class ATCFpgaConfig extends EventFilter2D {
         } else if (getInt("ExcitationStrength", 0) == 128) {
             sendExcitationStrength = 128;
         }
-        // Send all the OMC configuration.
-        sendCommand((byte) 240, (byte) (IFthreshold & 0xFF), true); //F0 240
-        sendCommand((byte) 241, (byte) ((IFthreshold >>> 8) & 0xFF), true); //F1 241
-        sendCommand((byte) 242, (byte) ((IFthreshold >>> 16) & 0xFF), true); //F2 242
-        sendCommand((byte) 243, (byte) ((IFthreshold >>> 24) & 0xFF), true); //F3 243
-        sendCommand((byte) 244, (byte) (sendDecayTimeMs & 0xFF), true); //F4 244
-        sendCommand((byte) 245, (byte) ((sendDecayTimeMs >>> 8) & 0xFF), true); //F5 245
-        sendCommand((byte) 246, (byte) ((sendDecayTimeMs >>> 16) & 0xFF), true); //F6 246
-        sendCommand((byte) 247, (byte) ((sendDecayTimeMs >>> 24) & 0xFF), true); //F7 247
-        sendCommand((byte) 248, (byte) (sendExcitationStrength & 0xFF), true); //F8 248
-        sendCommand((byte) 0, (byte) 0, false);
 
+        int sendSaturation = 1;
+        if (getInt("Saturation", 0) == 1) {
+            sendSaturation = 1;
+        } else if (getInt("Saturation", 0) >= 2 && getInt("Saturation", 0) < 4) {
+            sendSaturation = 2;
+        } else if (getInt("Saturation", 0) >= 4 && getInt("Saturation", 0) < 8) {
+            sendSaturation = 4;
+        } else if (getInt("Saturation", 0) >= 8 && getInt("Saturation", 0) < 16) {
+            sendSaturation = 8;
+        } else if (getInt("Saturation", 0) >= 16 && getInt("Saturation", 0) < 32) {
+            sendSaturation = 16;
+        } else if (getInt("Saturation", 0) >= 32 && getInt("Saturation", 0) < 64) {
+            sendSaturation = 32;
+        } else if (getInt("Saturation", 0) >= 64 && getInt("Saturation", 0) < 128) {
+            sendSaturation = 64;
+        } else if (getInt("Saturation", 0) == 128) {
+            sendSaturation = 128;
+        }
+
+        int sendInhibitionStrength = 1;
+        if (getInt("InhibitionStrength", 0) == 0) {
+            sendInhibitionStrength = 0;
+        } else if (getInt("InhibitionStrength", 0) == 1) {
+            sendInhibitionStrength = 1;
+        } else if (getInt("InhibitionStrength", 0) >= 2 && getInt("InhibitionStrength", 0) < 4) {
+            sendInhibitionStrength = 2;
+        } else if (getInt("InhibitionStrength", 0) >= 4 && getInt("InhibitionStrength", 0) < 8) {
+            sendInhibitionStrength = 4;
+        } else if (getInt("InhibitionStrength", 0) >= 8 && getInt("InhibitionStrength", 0) < 16) {
+            sendInhibitionStrength = 8;
+        } else if (getInt("InhibitionStrength", 0) >= 16 && getInt("InhibitionStrength", 0) < 32) {
+            sendInhibitionStrength = 16;
+        } else if (getInt("InhibitionStrength", 0) >= 32 && getInt("InhibitionStrength", 0) < 64) {
+            sendInhibitionStrength = 32;
+        } else if (getInt("InhibitionStrength", 0) >= 64 && getInt("InhibitionStrength", 0) < 128) {
+            sendInhibitionStrength = 64;
+        } else if (getInt("InhibitionStrength", 0) == 128) {
+            sendInhibitionStrength = 128;
+        }
+        for (int i = 0; i <= 5; i++) {
+            // Send all the OMC configuration.
+            sendCommand((byte) 240, (byte) (IFthreshold & 0xFF), true); //F0 240
+            sendCommand((byte) 241, (byte) ((IFthreshold >>> 8) & 0xFF), true); //F1 241
+            sendCommand((byte) 242, (byte) ((IFthreshold >>> 16) & 0xFF), true); //F2 242
+            sendCommand((byte) 243, (byte) ((IFthreshold >>> 24) & 0xFF), true); //F3 243
+            sendCommand((byte) 244, (byte) (sendDecayTimeMs & 0xFF), true); //F4 244
+            sendCommand((byte) 245, (byte) ((sendDecayTimeMs >>> 8) & 0xFF), true); //F5 245
+            sendCommand((byte) 246, (byte) ((sendDecayTimeMs >>> 16) & 0xFF), true); //F6 246
+            sendCommand((byte) 247, (byte) ((sendDecayTimeMs >>> 24) & 0xFF), true); //F7 247
+            sendCommand((byte) 248, (byte) (sendExcitationStrength & 0xFF), true); //F8 248
+            sendCommand((byte) 249, (byte) (sendSaturation & 0xFF), true); //F9 249
+            sendCommand((byte) 250, (byte) (sendInhibitionStrength & 0xFF), true); //FA 250
+            sendCommand((byte) 0, (byte) 0, false);
+            System.out.print("Sending ");
+            System.out.println(i);
+        }
     }
     // End of Configuration of OMC
 
