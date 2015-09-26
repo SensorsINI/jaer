@@ -180,10 +180,12 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
         if (evt.getPropertyName() == AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE) {
             super.propertyChange(evt);
         } else if (evt.getPropertyName() == DeepLearnCnnNetwork.EVENT_MADE_DECISION) {
-            decodedTargetLocation = new DecodedTargetLocation(apsNet); // TODO assumes only APS network used
+            DeepLearnCnnNetwork net=null;
+            if(processAPSFrames) net=apsNet; else net=dvsNet;
+            decodedTargetLocation = new DecodedTargetLocation(net); // TODO assumes only one network used
             error.addSample(targetLabeler.getTargetLocation(), decodedTargetLocation);
             if (isPrintOutputsEnabled()) {
-                float[] fa = apsNet.outputLayer.activations;
+                float[] fa = net.outputLayer.activations;
                 System.out.print(targetLabeler.getCurrentFrameNumber() + " ");
                 for (float f : fa) {
                     System.out.print(String.format("%.5f ", f));
@@ -280,10 +282,14 @@ public class VisualiseSteeringDistNetVisualizer extends DavisDeepLearnCnnProcess
              x=width/2*(o(2)-o(1))+width/2;
              y=width/2*(o(4)-o(3))+width/2;
              */
+            final float b=.25f; // offset of training input from zero
+            final float r=.5f; //ramge of training input .25 to .75
+            
             if (o[2] > .5) {
                 visible = true;
-                x = sx * o[0];
-                y = sy * (1-(yRange*o[1]+yOffset));
+                x = sx * ((o[0]-b)/r);
+                
+                y = sy * (1-(yRange*((o[1]-b)/r)+yOffset));
             } else {
                 visible = false;
             }
