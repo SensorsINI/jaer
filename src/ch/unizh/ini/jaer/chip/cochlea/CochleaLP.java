@@ -298,8 +298,8 @@ public class CochleaLP extends CochleaChip implements Observer {
 			aerControl
 				.add(new SPIConfigBit("AERRun", "Run the main AER state machine.", CypressFX3.FPGA_DVS, (short) 3, false, getPrefs()));
 			aerControl.add(
-				new SPIConfigInt("AERAckDelay", "Delay AER ACK by this many cycles.", CypressFX3.FPGA_DVS, (short) 4, 6, 0, getPrefs()));
-			aerControl.add(new SPIConfigInt("AERAckExtension", "Extend AER ACK by this many cycles.", CypressFX3.FPGA_DVS, (short) 6, 6, 0,
+				new SPIConfigInt("AERAckDelay", "Delay AER ACK by this many cycles.", CypressFX3.FPGA_DVS, (short) 4, 12, 0, getPrefs()));
+			aerControl.add(new SPIConfigInt("AERAckExtension", "Extend AER ACK by this many cycles.", CypressFX3.FPGA_DVS, (short) 6, 12, 0,
 				getPrefs()));
 			aerControl.add(new SPIConfigBit("AERWaitOnTransferStall",
 				"Whether the AER state machine should wait,<br> or continue servicing the AER bus when the FIFOs are full.",
