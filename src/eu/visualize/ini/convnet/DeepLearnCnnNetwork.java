@@ -587,7 +587,7 @@ public class DeepLearnCnnNetwork {
                 sum2 += (f * f);
             }
             float m = sum / n;
-            float std = sum2 / n;
+            float std = sum2 / n-m*m;
             if (n == 0) {
                 std = 1;
             }
