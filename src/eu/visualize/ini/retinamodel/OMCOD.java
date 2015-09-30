@@ -63,6 +63,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private int probabilityOfCorrectness = 5;
     private int timeStampRosUs;
     private float inhibitionValue;
+    private float startTime;
+    private float endTime;
     private float[][] excitationArray;
     private float[][] membraneStateArray;
     private float[][] netSynapticInputArray;
@@ -223,6 +225,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             if (dt > minUpdateIntervalUs) {
                 lastOMCODSpikeCheckTimestampUs = e.timestamp;
                 OMCODModel.update(e.timestamp);
+                startTime = System.nanoTime();
             }
             lastTime = e.timestamp;
         }
@@ -626,12 +629,11 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //        }
 
         renderer.end3DRendering();
-	gl.glPopMatrix();
+        gl.glPopMatrix();
         gl.glPopMatrix();
         // render all the subunits now
         gridOn(drawable);
 
-        
 //        if (showTracker1) {
 //            // Render probability of Correctness of tracker 1
 //            gl.glPushMatrix();
@@ -647,8 +649,6 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //            gl.glRectf(-10, 4, -5, 4 + 20 * probabilityOfCorrectness);
 //            gl.glPopMatrix();
 //        }
-
-
     }
 //----------------------------------------------------------------------------//
 //----------------------------------------------------------------------------//    
@@ -1370,12 +1370,15 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                             spike(timeStampArray[omcx][omcy], omcx, omcy);
                             membraneStateArray[omcx][omcy] = 0;
                             result = true;
+
                         } else if (membraneStateArray[omcx][omcy] < -10) {
                             membraneStateArray[omcx][omcy] = 0;
                             result = false;
                         } else {
                             result = false;
                         }
+                            endTime = System.nanoTime();
+                            System.out.println(endTime - startTime);
                     }
                 }
             }

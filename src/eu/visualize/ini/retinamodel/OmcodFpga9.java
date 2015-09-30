@@ -33,7 +33,7 @@ import net.sf.jaer.util.DrawGL;
 //****************************************************************************//
 
 //-- Main class OmcodFpga --------------------------------------------------------//
-public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater, Observer {
+public class OmcodFpga9 extends AbstractRetinaModelCell implements FrameAnnotater, Observer {
 
     private final OmcodFpgaModel OmcodFpgaModel = new OmcodFpgaModel();
     public RosNodePublisher RosNodePublisher = new RosNodePublisher();
@@ -87,7 +87,7 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
 //----------------------------------------------------------------------------//
 //-- Initialise and ToolTip method -------------------------------------------//
 //----------------------------------------------------------------------------//
-    public OmcodFpga(AEChip chip) {
+    public OmcodFpga9(AEChip chip) {
         super(chip);
         this.enableSpikeDraw = false;
         this.nxmax = chip.getSizeX() >> subsample;
@@ -219,8 +219,8 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
                 ((nymax) << subsample));
         gl.glPopMatrix();
         // Red squares to show where the cells are
-        for (int omcx = 1; omcx < (nxmax - 1); omcx += 4) {// 4 corners
-            for (int omcy = 1; omcy < (nymax - 1); omcy += 4) {
+        for (int omcx = 1; omcx < (nxmax - 1); omcx += 2) {// 4 corners
+            for (int omcy = 1; omcy < (nymax - 1); omcy += 2) {
                 gl.glPushMatrix();
                 gl.glColor4f(1, 0, 0, 0.1f); //4 side centers
                 gl.glRectf((omcx << subsample),
@@ -230,14 +230,6 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
                 gl.glPopMatrix();
             }
         }
-
-        gl.glPushMatrix();// central center
-        gl.glColor4f(1, 0, 0, 0.1f);
-        gl.glRectf((3 << subsample),
-                (3 << subsample),
-                (3 + 2 << subsample),
-                (3 + 2 << subsample));
-        gl.glPopMatrix();
 
         if (showAllOMCoutputs) { // Dispaly outputs of OMC that fire
             if (enableSpikeDraw && nSpikesArray[lastSpikedOMC[0]][lastSpikedOMC[1]] != 0) {
@@ -674,8 +666,8 @@ public class OmcodFpga extends AbstractRetinaModelCell implements FrameAnnotater
         synchronized private boolean update(int timestamp) {
             // compute subunit input to us
             float inhibition = subunits.computeInhibitionToOutputCell();
-            for (int omcx = 1; omcx < (nxmax - 1); omcx += 4) {// 4 corners
-                for (int omcy = 1; omcy < (nymax - 1); omcy += 4) {
+            for (int omcx = 1; omcx < (nxmax - 1); omcx += 2) {// 4 corners
+                for (int omcy = 1; omcy < (nymax - 1); omcy += 2) {
                     timeStampArray[omcx][omcy] = timestamp;
                     netSynapticInputArray[omcx][omcy] = (subunits.computeExcitationToOutputCell(omcx, omcy) - inhibition);
                     dtUSarray[omcx][omcy] = timeStampArray[omcx][omcy] - lastTimeStampArray[omcx][omcy];
