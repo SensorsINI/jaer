@@ -480,6 +480,7 @@ public class DeepLearnCnnNetwork {
                     activations[o(dimy - y - 1, x)] = subsampler.getValueAtPixel(x, y); // NOTE transpose and flip of image here which is actually the case in matlab code (image must be drawn in matlab as transpose to be correct orientation)
                 }
             }
+            normalizeInputFrame(activations);
             return activations;
         }
 
@@ -534,7 +535,7 @@ public class DeepLearnCnnNetwork {
             }
             for (int x = 0; x < dimx; x++) {
                 for (int y = 0; y < dimy; y++) {
-                    imageDisplay.setPixmapGray(y, dimx - x - 1, a(0, x, y));
+                    imageDisplay.setPixmapGray(y, dimx - x - 1, .5f+a(0, x, y)/4); // try to fit mean 0 std 1 into 0-1 range nicely by offset and gain of .5
                 }
             }
             imageDisplay.repaint();
