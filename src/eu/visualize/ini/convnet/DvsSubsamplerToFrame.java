@@ -6,6 +6,7 @@
 package eu.visualize.ini.convnet;
 
 import java.util.Arrays;
+
 import net.sf.jaer.event.PolarityEvent;
 
 /**
@@ -56,6 +57,46 @@ public class DvsSubsamplerToFrame {
         mostOnCount = Integer.MIN_VALUE;
     }
 
+
+    /**
+     * Adds event from a source event location to the new coordinates
+     *
+     * @param e
+     * @param srcWidth width of originating source sensor, e.g. 240 for DAVIS240
+     * @param srcHeight height of source address space
+     */
+    public void addEventInNewCoordinates(PolarityEvent e, int newx, int newy) {
+        // find element here that contains this event
+        if (e.isSpecial() || e.isFilteredOut()) {
+            return;
+        }
+        if( (newx <= width) && (newy <= height) && (newx >= 0) && (newy >=0) ){
+	        int x = e.x, y = e.y;
+	        x = (int) Math.floor(((newx) ));
+	        y = (int) Math.floor(((newy) ));
+	        int k = getIndex(x, y);
+	        int sum = eventSum[k];
+	        sum += (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
+	        if (sum > mostOnCount) {
+	            mostOnCount = sum;
+	        } else if (sum < mostOffCount) {
+	            mostOffCount = sum;
+	        }
+	        eventSum[k] = sum;
+	        float pmv = .5f + ((sum * colorScaleRecip) / 2);
+	        if (pmv > 1) {
+	            pmv = 1;
+	        } else if (pmv < 0) {
+	            pmv = 0;
+	        }
+	        pixmap[k] = pmv;
+	        accumulatedEventCount++;
+        }else{
+        	throw new RuntimeException("index out of bounds for event "+e.toString()+" with newx="+newx+" newy="+newy);
+        }
+
+    }
+
     /**
      * Adds event from a source event location to the map
      *
@@ -76,7 +117,7 @@ public class DvsSubsamplerToFrame {
             y = (int) Math.floor(((float) e.y / srcHeight) * height);
         }
         int k = getIndex(x, y);
-        if(k<0 || k>eventSum.length){
+        if((k<0) || (k>eventSum.length)){
             throw new RuntimeException("index out of bounds for event "+e.toString()+" with srcWidth="+srcWidth+" srcHeight="+srcHeight);
         }
         int sum = eventSum[k];
@@ -87,7 +128,7 @@ public class DvsSubsamplerToFrame {
             mostOffCount = sum;
         }
         eventSum[k] = sum;
-        float pmv = .5f + sum * colorScaleRecip / 2;
+        float pmv = .5f + ((sum * colorScaleRecip) / 2);
         if (pmv > 1) {
             pmv = 1;
         } else if (pmv < 0) {
@@ -103,7 +144,7 @@ public class DvsSubsamplerToFrame {
     }
 
     public int getIndex(int x, int y) {
-        return y + height * x;
+        return y + (height * x);
     }
 
     /**

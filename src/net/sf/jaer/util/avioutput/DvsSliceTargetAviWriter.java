@@ -19,6 +19,7 @@ import java.io.ObjectInputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
@@ -38,7 +39,9 @@ import com.jogamp.opengl.awt.GLCanvas;
 import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
 
+import eu.seebetter.ini.chips.davis.HotPixelFilter;
 import eu.visualize.ini.convnet.DvsSubsamplerToFrame;
+import eu.visualize.ini.convnet.TargetLabeler;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -46,6 +49,10 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEInputStream;
+import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
+import net.sf.jaer.eventprocessing.tracking.EinsteinClusterTracker;
+import net.sf.jaer.eventprocessing.tracking.EinsteinClusterTracker.Cluster;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -67,6 +74,7 @@ implements FrameAnnotater {
 	private static final int CURSOR_SIZE_CHIP_PIXELS = 3;
 	private DvsSubsamplerToFrame dvsSubsampler = null;
     private int dimx, dimy, grayScale;
+    private int hotpixelColumn  = getInt("hotpixelColumn", 0);
     private int dvsMinEvents = getInt("dvsMinEvents", 10000);
     private JFrame frame = null;
     public ImageDisplay display;
@@ -74,6 +82,7 @@ implements FrameAnnotater {
     private volatile boolean newFrameAvailable = false;
     private int endOfFrameTimestamp=0, lastTimestamp=0;
     protected boolean writeDvsSliceImageOnApsFrame = getBoolean("writeDvsSliceImageOnApsFrame", false);
+    protected boolean doPositiveLabel = getBoolean("doPositiveLabel", true);
     private boolean rendererPropertyChangeListenerAdded=false;
     private AEFrameChipRenderer renderer=null;
     private HashMap<String, String> mapDataFilenameToTargetFilename = new HashMap();
@@ -94,12 +103,21 @@ implements FrameAnnotater {
     private boolean[] targetPresentInFractions = new
     boolean[N_FRACTIONS];  // to annotate graphically what has beenlabeled so far in event stream
     private ArrayList<TargetLocation> currentTargets = new ArrayList(10); // currently valid targets
+    private java.util.List<DvsSubsamplerToFrame> currentdvsSubsampler = new LinkedList<DvsSubsamplerToFrame>();
+	//private ArrayList<DvsSubsamplerToFrame> currentdvsSubsampler = new ArrayList(10); // currently valid subsampler
 	private ChipCanvas chipCanvas;
 	private GLCanvas glCanvas;
     private int minTargetPointIntervalUs = getInt("minTargetPointIntervalUs", 10000);
     private int maxTimeLastTargetLocationValidUs = getInt("maxTimeLastTargetLocationValidUs", 100000);
-
-
+    private int random_shift_x = 0;//Minx + (int)(Math.random() * ((Maxx - Minx) + 1));
+    private int random_shift_y = 0;//Miny + (int)(Math.random() * ((Maxy - Miny) + 1));
+    // Include Einstein Tracker
+    private EinsteinClusterTracker trackCluster=new EinsteinClusterTracker(chip);
+    private final BackgroundActivityFilter backgroundActivityFilter;
+    private final HotPixelFilter hotPixelFilter;
+    private final TargetLabeler targetLabelerFilter;
+    private java.util.List<Cluster> clusters = new LinkedList<Cluster>();
+    private int nextUpdateTimeUs = 0;
 
     public DvsSliceTargetAviWriter(AEChip chip) {
         super(chip);
@@ -107,16 +125,28 @@ implements FrameAnnotater {
         dimy = getInt("dimy", 36);
         grayScale = getInt("grayScale", 100);
         showOutput = getBoolean("showOutput", true);
+        trackCluster.setEnclosed(true, this);
+        FilterChain filterChain=new FilterChain(chip);
+        backgroundActivityFilter = new BackgroundActivityFilter(chip);
+        hotPixelFilter = new HotPixelFilter(chip);
+        targetLabelerFilter = new TargetLabeler(chip);
+        filterChain.add(trackCluster);
+        filterChain.add(backgroundActivityFilter);
+        filterChain.add(hotPixelFilter);
+        filterChain.add(targetLabelerFilter);
+        setEnclosedFilterChain(filterChain);
         DEFAULT_FILENAME = "DvsTargetAvi.avi";
         setPropertyTooltip("grayScale", "1/grayScale is the amount by which each DVS event is added to time slice 2D gray-level histogram");
         setPropertyTooltip("dimx", "width of AVI frame");
         setPropertyTooltip("dimy", "height of AVI frame");
+        setPropertyTooltip("hotpixelColumn", "Do not consider spikes from this column");
         setPropertyTooltip("loadLocations", "loads locations from a file");
         setPropertyTooltip("showOutput", "shows output in JFrame/ImageDisplay");
         setPropertyTooltip("dvsMinEvents", "minimum number of events to run net on DVS timeslice (only if writeDvsSliceImageOnApsFrame is false)");
         setPropertyTooltip("writeDvsSliceImageOnApsFrame", "<html>write DVS slice image for each APS frame end event (dvsMinEvents ignored).<br>The frame is written at the end of frame APS event.<br><b>Warning: to capture all frames, ensure that playback time slices are slow enough that all frames are rendered</b>");
         setPropertyTooltip("minTargetPointIntervalUs", "minimum interval between target positions in the database in us");
         setPropertyTooltip("maxTimeLastTargetLocationValidUs", "this time after last sample, the data is shown as not yet been labeled. This time specifies how long a specified target location is valid after its last specified location.");
+        setPropertyTooltip("doPositiveLabel", "<html>send positive target to slicer or negative targets.");
 
 
         Arrays.fill(labeledFractions, false);
@@ -141,7 +171,9 @@ implements FrameAnnotater {
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
 //        frameExtractor.filterPacket(in); // extracts frames with nornalization (brightness, contrast) and sends to apsNet on each frame in PropertyChangeListener
         // send DVS timeslice to convnet
+    	getEnclosedFilterChain().filterPacket(in);
         super.filterPacket(in);
+        //EventPacket temp = getEnclosedFilterChain().filterPacket(in);
        if(!rendererPropertyChangeListenerAdded){
             rendererPropertyChangeListenerAdded=true;
             renderer=(AEFrameChipRenderer)chip.getRenderer();
@@ -150,7 +182,30 @@ implements FrameAnnotater {
         final int sizeX = chip.getSizeX();
         final int sizeY = chip.getSizeY();
         checkSubsampler();
+        clusters = trackCluster.getClusters();
+        //for (Cluster c : clusters) {
+        //	c.updateClusterList(in,in.timestamp);
+        //}
+        int tmp_cluster_x,tmp_cluster_y,radius;
 
+        //add tracked clusters to lists of current targets
+    	int counter = 0;
+        for (Cluster c : clusters) {
+        	//targetLocation = null;
+        	c.getLocation();
+			radius = (int) c.getRadius();
+			targetLocation = new TargetLocation(targetLabelerFilter.getCurrentFrameNumber(), c.getLastEventTimestamp(),
+                new Point((int) c.getLocation().x, (int) c.getLocation().y),
+                0, //only faces for the moment
+                radius,
+                radius); // read target location
+				currentTargets.add(targetLocation);
+				markDataHasTarget(targetLocation.timestamp);
+        		//currentTargets.add(targetLocation);
+
+        }
+        TargetLocation newTargetLocation = null;
+        lastNewTargetLocation = newTargetLocation;
 
         for (BasicEvent e : in) {
             if (e.isSpecial() || e.isFilteredOut()) {
@@ -158,30 +213,30 @@ implements FrameAnnotater {
             }
             PolarityEvent p = (PolarityEvent) e;
 
-            //check if events is in target window, if yes add it to the subsampler
             if (((long) e.timestamp - (long) lastTimestamp) >= minTargetPointIntervalUs) {
                 // show the nearest TargetLocation if at least minTargetPointIntervalUs has passed by,
                 // or "No target" if the location was previously
                 Map.Entry<Integer, SimultaneouTargetLocations> mostRecentTargetsBeforeThisEvent = targetLocations.lowerEntry(e.timestamp);
-                if (mostRecentTargetsBeforeThisEvent != null) {
-                    for (TargetLocation t : mostRecentTargetsBeforeThisEvent.getValue()) {
-                        if ((t == null) || ((t != null) && ((e.timestamp - t.timestamp) > maxTimeLastTargetLocationValidUs))) {
-                            targetLocation = null;
-                        } else {
-                            if (targetLocation != t) {
-                                targetLocation = t;
-                                currentTargets.add(targetLocation);
-                                markDataHasTarget(targetLocation.timestamp);
-                            }
-                        }
-                    }
+	            if (mostRecentTargetsBeforeThisEvent != null) {
+	                    for (TargetLocation t : mostRecentTargetsBeforeThisEvent.getValue()) {
+	                        if ((t == null) || ((t != null) && ((e.timestamp - t.timestamp) > maxTimeLastTargetLocationValidUs))) {
+	                            targetLocation = null;
+	                        } else {
+	                            if (targetLocation != t) {
+	                                targetLocation = t;
+	                                currentTargets.add(targetLocation);
+	                                markDataHasTarget(targetLocation.timestamp);
+	                            }
+	                        }
+	                    }
+	                lastTimestamp = e.timestamp;
+	                // find next saved target location that is just before this time (lowerEntry)
+	                //TargetLocation newTargetLocation = null;
+	                lastNewTargetLocation = newTargetLocation;
+	             }
 
-                lastTimestamp = e.timestamp;
-                // find next saved target location that is just before this time (lowerEntry)
-                TargetLocation newTargetLocation = null;
 
-                lastNewTargetLocation = newTargetLocation;
-             }
+
             }
             if (e.timestamp < lastTimestamp) {
                 lastTimestamp = e.timestamp;
@@ -196,52 +251,56 @@ implements FrameAnnotater {
             currentTargets.removeAll(removeList);
             // TO DO multiple targets per time..
             // it should produce one dvsSubampler image per target
+        	double x_max;
+        	double x_min;
+        	double y_max;
+        	double y_min;
             for (TargetLocation t : currentTargets) {
                 if (t.location != null) {
                 	//add this event into the dvsSubsampler if it is an event that is part of the tracked patch (target)
-                	double x_max = t.location.getX() + (t.dimx/2.0);
-                	double x_min = t.location.getX() - (t.dimx/2.0);
-                	double y_max = t.location.getY() + (t.dimy/2.0);
-                	double y_min = t.location.getY() - (t.dimy/2.0);
-                	if( (p.x <= x_max) && (p.x >= x_min)  && (p.y <= y_max) && (p.y >= y_min)){
-                		// re-scale p to x_min,x_max=y_min,y_max
-                		//p.setX( (short) (t.location.getX()/(sizeX)) );
-                		//p.setY( (short) (t.location.getY()/(sizeY)) );
-                		//System.out.println(p.x);
-                		//System.out.println(p.y);
-                		dvsSubsampler.addEvent(p, sizeX, sizeY);
-                        if ((writeDvsSliceImageOnApsFrame && newFrameAvailable && (e.timestamp>=endOfFrameTimestamp))
-                                || ((!writeDvsSliceImageOnApsFrame && (dvsSubsampler.getAccumulatedEventCount() > dvsMinEvents))
-                                && !chip.getAeViewer().isPaused())) {
-                            if(writeDvsSliceImageOnApsFrame) {
-                                newFrameAvailable=false;
-                            }
-                            maybeShowOutput(dvsSubsampler);
-                            if (aviOutputStream != null) {
-                                BufferedImage bi = toImage(dvsSubsampler);
-                                try {
-                                    writeTimecode(e.timestamp);
-                                    aviOutputStream.writeFrame(bi);
-                                    incrementFramecountAndMaybeCloseOutput();
-                                } catch (IOException ex) {
-                                    log.warning(ex.toString());
-                                    ex.printStackTrace();
-                                    setFilterEnabled(false);
-                                }
-                            }
-                            dvsSubsampler.clear();
-                        }
+                    	 x_max = t.location.getX() + (t.dimx/2.0);
+                    	 x_min = t.location.getX() - (t.dimx/2.0);
+                    	 y_max = t.location.getY() + (t.dimy/2.0);
+                    	 y_min = t.location.getY() - (t.dimy/2.0);
+	                	if( (p.x < x_max) && (p.x > x_min)  && (p.y < y_max) && (p.y > y_min)){
+	                		// re-scale p to x_min,x_max=y_min,y_max
+	                		int newx =  (int) (((((p.getX() - t.location.getX())/(t.dimx+2))*dimx) + (dimx/2.0)) ) ;
+	                		int newy =  (int) (((((p.getY() - t.location.getY())/(t.dimy+2))*dimy) + (dimy/2.0)) ) ;
+	                		for (DvsSubsamplerToFrame thissub : currentdvsSubsampler) {
+								//thissub.addEventInNewCoordinates(p, newx, newy);
+		                		dvsSubsampler.addEventInNewCoordinates(p, newx, newy);
+		                        if ((writeDvsSliceImageOnApsFrame && newFrameAvailable && (e.timestamp>=endOfFrameTimestamp))
+		                                || ((!writeDvsSliceImageOnApsFrame && (dvsSubsampler.getAccumulatedEventCount() > dvsMinEvents))
+		                                && !chip.getAeViewer().isPaused())) {
+		                            if(writeDvsSliceImageOnApsFrame) {
+		                                newFrameAvailable=false;
+		                            }
+		                            maybeShowOutput(dvsSubsampler);
+		                            if (aviOutputStream != null) {
+		                                BufferedImage bi = toImage(dvsSubsampler);
+		                                try {
+		                                    writeTimecode(e.timestamp);
+		                                    aviOutputStream.writeFrame(bi);
+		                                    incrementFramecountAndMaybeCloseOutput();
+		                                } catch (IOException ex) {
+		                                    log.warning(ex.toString());
+		                                    ex.printStackTrace();
+		                                    setFilterEnabled(false);
+		                                }
+		                            }
+		                            dvsSubsampler.clear();
+		                        }
+	                		}
 
-                	}
-
+	                	}
 
                 }
-
-
-
             }
 
         }
+
+        //System.out.println(counter);
+
         if(writeDvsSliceImageOnApsFrame && ((lastTimestamp-endOfFrameTimestamp)>1000000)){
             log.warning("last frame event was received more than 1s ago; maybe you need to enable Display Frames in the User Control Panel?");
         }
@@ -321,6 +380,7 @@ implements FrameAnnotater {
                 t.draw(drawable, gl);
             }
         }
+        trackCluster.annotate(drawable);
 
     }
 
@@ -417,6 +477,22 @@ implements FrameAnnotater {
     public void setDvsMinEvents(int dvsMinEvents) {
         this.dvsMinEvents = dvsMinEvents;
         putInt("dvsMinEvents", dvsMinEvents);
+    }
+
+
+    /**
+     * @return the hotpixelCoumn
+     */
+    public int getHotpixelCoumn() {
+        return hotpixelColumn;
+    }
+
+    /**
+     * @param dimx the dimx to set
+     */
+    public void setHotpixelColumn(int hotpixelColumn) {
+        this.hotpixelColumn = hotpixelColumn;
+        putInt("hotpixelColumn", hotpixelColumn);
     }
 
     /**
@@ -693,6 +769,31 @@ implements FrameAnnotater {
     public boolean isWriteDvsSliceImageOnApsFrame() {
         return writeDvsSliceImageOnApsFrame;
     }
+
+
+    /**
+     * @return the doPositiveLabel
+     */
+    public boolean isDoPositiveLabel() {
+        return doPositiveLabel;
+    }
+
+    /**
+     * @param writeDvsSliceImageOnApsFrame the writeDvsSliceImageOnApsFrame to
+     * set
+     */
+    public void setDoPositiveLabel(boolean doPositiveLabel) {
+        this.doPositiveLabel = doPositiveLabel;
+        if(doPositiveLabel){
+        	random_shift_x = 0;//Minx + (int)(Math.random() * ((Maxx - Minx) + 1));
+        	random_shift_y = 0;//Minx + (int)(Math.random() * ((Maxx - Minx) + 1));
+        }else{
+        	random_shift_x = dimx + (int)(Math.random() * (((2.0*dimx) - dimx) + 1));
+        	random_shift_y = dimy + (int)(Math.random() * (((2.0*dimy) - dimy) + 1));
+        }
+        putBoolean("doPositiveLabel", doPositiveLabel);
+    }
+
 
     /**
      * @param writeDvsSliceImageOnApsFrame the writeDvsSliceImageOnApsFrame to
