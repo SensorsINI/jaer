@@ -63,7 +63,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  * Writes out AVI movie with DVS time or event slices as AVI frame images with
  * desired output resolution
  *
- * @author Tobi Delbruck
+ * @author Tobi Delbruck, Federico Corradi
  */
 @Description("Writes out AVI movie with DVS constant-number-of-event slices as AVI frame images with desired output resolution")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
@@ -103,7 +103,7 @@ implements FrameAnnotater {
     private boolean[] targetPresentInFractions = new
     boolean[N_FRACTIONS];  // to annotate graphically what has beenlabeled so far in event stream
     private ArrayList<TargetLocation> currentTargets = new ArrayList(10); // currently valid targets
-    private java.util.List<DvsSubsamplerToFrame> currentdvsSubsampler = new LinkedList<DvsSubsamplerToFrame>();
+    private ArrayList<DvsSubsamplerToFrame> currentdvsSubsampler = new ArrayList(10);
 	//private ArrayList<DvsSubsamplerToFrame> currentdvsSubsampler = new ArrayList(10); // currently valid subsampler
 	private ChipCanvas chipCanvas;
 	private GLCanvas glCanvas;
@@ -182,17 +182,12 @@ implements FrameAnnotater {
         final int sizeX = chip.getSizeX();
         final int sizeY = chip.getSizeY();
         checkSubsampler();
+        //checkSubsamplers();
         clusters = trackCluster.getClusters();
-        //for (Cluster c : clusters) {
-        //	c.updateClusterList(in,in.timestamp);
-        //}
-        int tmp_cluster_x,tmp_cluster_y,radius;
-
+        int radius;
         //add tracked clusters to lists of current targets
     	int counter = 0;
         for (Cluster c : clusters) {
-        	//targetLocation = null;
-        	c.getLocation();
 			radius = (int) c.getRadius();
 			targetLocation = new TargetLocation(targetLabelerFilter.getCurrentFrameNumber(), c.getLastEventTimestamp(),
                 new Point((int) c.getLocation().x, (int) c.getLocation().y),
@@ -201,9 +196,9 @@ implements FrameAnnotater {
                 radius); // read target location
 				currentTargets.add(targetLocation);
 				markDataHasTarget(targetLocation.timestamp);
-        		//currentTargets.add(targetLocation);
-
         }
+		//System.out.println(String.format("we have n: %d cluster",counter));
+
         TargetLocation newTargetLocation = null;
         lastNewTargetLocation = newTargetLocation;
 
@@ -212,7 +207,6 @@ implements FrameAnnotater {
                 continue;
             }
             PolarityEvent p = (PolarityEvent) e;
-
             if (((long) e.timestamp - (long) lastTimestamp) >= minTargetPointIntervalUs) {
                 // show the nearest TargetLocation if at least minTargetPointIntervalUs has passed by,
                 // or "No target" if the location was previously
@@ -231,11 +225,8 @@ implements FrameAnnotater {
 	                    }
 	                lastTimestamp = e.timestamp;
 	                // find next saved target location that is just before this time (lowerEntry)
-	                //TargetLocation newTargetLocation = null;
 	                lastNewTargetLocation = newTargetLocation;
 	             }
-
-
 
             }
             if (e.timestamp < lastTimestamp) {
@@ -255,20 +246,44 @@ implements FrameAnnotater {
         	double x_min;
         	double y_max;
         	double y_min;
+        	counter = -1 ;
+        	int numlocx = trackCluster.getMaxNumClusters();
+        	int curretlocx = 0;
+        	int currentnumtargets = currentTargets.size();
+        	int[] location_x;
+        	location_x = new int[currentnumtargets];
+        	for(int i =0; i<currentnumtargets; i++){
+        		location_x[i] = -1;
+        	}
             for (TargetLocation t : currentTargets) {
+            	counter++;
                 if (t.location != null) {
-                	//add this event into the dvsSubsampler if it is an event that is part of the tracked patch (target)
-                    	 x_max = t.location.getX() + (t.dimx/2.0);
-                    	 x_min = t.location.getX() - (t.dimx/2.0);
-                    	 y_max = t.location.getY() + (t.dimy/2.0);
-                    	 y_min = t.location.getY() - (t.dimy/2.0);
+                		//add this event into the dvsSubsampler if it is an event that is part of the tracked patch (target)
+                    	if( location_x[counter] == -1 ){
+                    		location_x[counter] = (int) t.location.getX();
+                    		curretlocx = counter;
+                    	}else{
+                    		for(int i =0; i<currentnumtargets; i++){
+	                    		if(location_x[i] == (int) t.location.getX() ){
+	                    			curretlocx = i;
+	                    		}
+                    		}
+                    	}
+                    	//currentlocx is the current target id...
+                    	//NB!! one spike can be part of multiple targets
+                    	//System.out.println(curretlocx)
+                		x_max = t.location.getX() + (t.dimx/2.0);
+                    	x_min = t.location.getX() - (t.dimx/2.0);
+                    	y_max = t.location.getY() + (t.dimy/2.0);
+                    	y_min = t.location.getY() - (t.dimy/2.0);
 	                	if( (p.x < x_max) && (p.x > x_min)  && (p.y < y_max) && (p.y > y_min)){
-	                		// re-scale p to x_min,x_max=y_min,y_max
-	                		int newx =  (int) (((((p.getX() - t.location.getX())/(t.dimx+2))*dimx) + (dimx/2.0)) ) ;
-	                		int newy =  (int) (((((p.getY() - t.location.getY())/(t.dimy+2))*dimy) + (dimy/2.0)) ) ;
-	                		for (DvsSubsamplerToFrame thissub : currentdvsSubsampler) {
+	                		// re-scale p to subsampler window and split it between targets
+	                		int newx =  (int) (((((p.getX() - t.location.getX())/(t.dimx+2))*dimx) + (dimx/2.0)) ); //shift by the counter for different targets
+	                		newx =  (newx/currentnumtargets)*(curretlocx+1); //automatically resize based on the number of target presents.. requires long life time of targets
+	                		int newy =  (int) (((((p.getY() - t.location.getY())/(t.dimy+2))*dimy) + (dimy/2.0)) );
+	                		// for (DvsSubsamplerToFrame thissub : currentdvsSubsampler) {
 								//thissub.addEventInNewCoordinates(p, newx, newy);
-		                		dvsSubsampler.addEventInNewCoordinates(p, newx, newy);
+	                			dvsSubsampler.addEventInNewCoordinates(p, newx, newy);
 		                        if ((writeDvsSliceImageOnApsFrame && newFrameAvailable && (e.timestamp>=endOfFrameTimestamp))
 		                                || ((!writeDvsSliceImageOnApsFrame && (dvsSubsampler.getAccumulatedEventCount() > dvsMinEvents))
 		                                && !chip.getAeViewer().isPaused())) {
@@ -289,12 +304,11 @@ implements FrameAnnotater {
 		                                }
 		                            }
 		                            dvsSubsampler.clear();
-		                        }
+		                       // }
 	                		}
 
 	                	}
-
-                }
+                 }
             }
 
         }
@@ -383,7 +397,6 @@ implements FrameAnnotater {
         trackCluster.annotate(drawable);
 
     }
-
 
 
     @Override
@@ -788,8 +801,8 @@ implements FrameAnnotater {
         	random_shift_x = 0;//Minx + (int)(Math.random() * ((Maxx - Minx) + 1));
         	random_shift_y = 0;//Minx + (int)(Math.random() * ((Maxx - Minx) + 1));
         }else{
-        	random_shift_x = dimx + (int)(Math.random() * (((2.0*dimx) - dimx) + 1));
-        	random_shift_y = dimy + (int)(Math.random() * (((2.0*dimy) - dimy) + 1));
+        	random_shift_x = 0;//dimx + (int)(Math.random() * (((2.0*dimx) - dimx) + 1));
+        	random_shift_y = 0;//dimy + (int)(Math.random() * (((2.0*dimy) - dimy) + 1));
         }
         putBoolean("doPositiveLabel", doPositiveLabel);
     }
