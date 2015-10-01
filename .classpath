@@ -65,5 +65,6 @@
 			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="jAER_1.5/filterSettings/OpenCV_Nets/lib/lib"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="lib" path="jars/jmatio.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
