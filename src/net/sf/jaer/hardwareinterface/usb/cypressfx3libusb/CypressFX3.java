@@ -137,6 +137,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	// report status
 
 	public static final byte VR_FPGA_CONFIG = (byte) 0xBF;
+	public static final byte VR_FPGA_CONFIG_MULTIPLE = (byte) 0xC0;
 
 	protected final static short CONFIG_INDEX = 0;
 	protected final static short CONFIG_NB_OF_INTERFACES = 1;
