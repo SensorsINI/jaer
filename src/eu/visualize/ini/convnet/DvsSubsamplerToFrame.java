@@ -72,9 +72,7 @@ public class DvsSubsamplerToFrame {
         }
         if( (newx <= width) && (newy <= height) && (newx >= 0) && (newy >=0) ){
 	        int x = e.x, y = e.y;
-	        x = (int) Math.floor(((newx) ));
-	        y = (int) Math.floor(((newy) ));
-	        int k = getIndex(x, y);
+	        int k = getIndex(newx, newy);
 	        int sum = eventSum[k];
 	        sum += (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
 	        if (sum > mostOnCount) {

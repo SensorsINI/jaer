@@ -418,7 +418,6 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 }
 
                 if (((long) e.timestamp - (long) lastTimestamp) >= minTargetPointIntervalUs) {
-
                     // show the nearest TargetLocation if at least minTargetPointIntervalUs has passed by,
                     // or "No target" if the location was previously
                     Map.Entry<Integer, SimultaneouTargetLocations> mostRecentTargetsBeforeThisEvent = targetLocations.lowerEntry(e.timestamp);
