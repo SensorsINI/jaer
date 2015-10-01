@@ -131,7 +131,7 @@ public class SimpleOrientationFilter extends AbstractOrientationFilter{
             if ( eye == 1 ){
                 type = type << 1;
             }
-            if(x<0||y<0||type<0||x>=sizex||y>=sizey){
+            if(x<0||y<0||type<0||x>sizex||y>sizey){ // sizex and sizey are one less than number of cols and rows
                 log.warning("coordinate for event "+e.toString()+" is out of bounds");
                 continue;
             }
