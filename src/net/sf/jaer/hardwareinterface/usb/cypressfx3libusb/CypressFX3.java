@@ -12,7 +12,8 @@ import java.nio.CharBuffer;
 import java.nio.IntBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
-import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
@@ -216,8 +217,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 				deviceDescriptor = new DeviceDescriptor();
 				status = LibUsb.getDeviceDescriptor(device, deviceDescriptor);
 				if (status != LibUsb.SUCCESS) {
-					throw new HardwareInterfaceException("populateDescriptors(): getDeviceDescriptor: "
-						+ LibUsb.errorName(status));
+					throw new HardwareInterfaceException("populateDescriptors(): getDeviceDescriptor: " + LibUsb.errorName(status));
 				}
 			}
 
@@ -310,8 +310,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		final int status = LibUsb.claimInterface(deviceHandle, 0);
 		if (status != LibUsb.SUCCESS) {
-			throw new HardwareInterfaceException("Unable to acquire device for exclusive use: "
-				+ LibUsb.errorName(status));
+			throw new HardwareInterfaceException("Unable to acquire device for exclusive use: " + LibUsb.errorName(status));
 		}
 	}
 
@@ -321,8 +320,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		final int status = LibUsb.releaseInterface(deviceHandle, 0);
 		if (status != LibUsb.SUCCESS) {
-			throw new HardwareInterfaceException("Unable to release device from exclusive use: "
-				+ LibUsb.errorName(status));
+			throw new HardwareInterfaceException("Unable to release device from exclusive use: " + LibUsb.errorName(status));
 		}
 	}
 
@@ -651,6 +649,78 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	public final static short FPGA_SCANNER = 8;
 	public final static short FPGA_USB = 9;
 
+	public class SPIConfigSequence {
+		private class SPIConfigParameter {
+			private final byte moduleAddr;
+			private final byte paramAddr;
+			private final byte[] param;
+
+			public SPIConfigParameter(final short moduleAddr, final short paramAddr, final int param) {
+				final byte[] configBytes = new byte[4];
+
+				configBytes[0] = (byte) ((param >>> 24) & 0x00FF);
+				configBytes[1] = (byte) ((param >>> 16) & 0x00FF);
+				configBytes[2] = (byte) ((param >>> 8) & 0x00FF);
+				configBytes[3] = (byte) ((param >>> 0) & 0x00FF);
+
+				this.moduleAddr = (byte) moduleAddr;
+				this.paramAddr = (byte) paramAddr;
+				this.param = configBytes;
+			}
+
+			public byte getModuleAddr() {
+				return moduleAddr;
+			}
+
+			public byte getParamAddr() {
+				return paramAddr;
+			}
+
+			public byte[] getParam() {
+				return param;
+			}
+		}
+
+		private final List<SPIConfigParameter> configList;
+
+		public SPIConfigSequence() {
+			configList = new ArrayList<>();
+		}
+
+		private boolean canAddConfig() {
+			// Max number of 6 bytes elements in 4096 bytes buffer is 682.
+			return (configList.size() < 682);
+		}
+
+		public void addConfig(final short moduleAddr, final short paramAddr, final int param) throws HardwareInterfaceException {
+			if (!canAddConfig()) {
+				// Send current config, clean up for new one.
+				sendConfigSequence();
+			}
+
+			configList.add(new SPIConfigParameter(moduleAddr, paramAddr, param));
+		}
+
+		public void sendConfigSequence() throws HardwareInterfaceException {
+			// Build byte buffer and send it. 6 bytes per config parameter.
+			final ByteBuffer buffer = BufferUtils.allocateByteBuffer(configList.size() * 6);
+
+			for (final SPIConfigParameter cfg : configList) {
+				buffer.put(cfg.getModuleAddr());
+				buffer.put(cfg.getParamAddr());
+				buffer.put(cfg.getParam());
+			}
+
+			sendVendorRequest(CypressFX3.VR_FPGA_CONFIG_MULTIPLE, (short) configList.size(), (short) 0, buffer);
+
+			clearConfig();
+		}
+
+		private void clearConfig() {
+			configList.clear();
+		}
+	}
+
 	public synchronized void spiConfigSend(final short moduleAddr, final short paramAddr, final int param)
 		throws HardwareInterfaceException {
 		final byte[] configBytes = new byte[4];
@@ -663,8 +733,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, moduleAddr, paramAddr, configBytes);
 	}
 
-	public synchronized int spiConfigReceive(final short moduleAddr, final short paramAddr)
-		throws HardwareInterfaceException {
+	public synchronized int spiConfigReceive(final short moduleAddr, final short paramAddr) throws HardwareInterfaceException {
 		int returnedParam = 0;
 
 		final ByteBuffer configBytes = sendVendorRequestIN(CypressFX3.VR_FPGA_CONFIG, moduleAddr, paramAddr, 4);
@@ -683,8 +752,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			return;
 		}
 
-		short devicePID = getPID();
-		int chipID = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 1);
+		final short devicePID = getPID();
 
 		// Slow down DVS ACK for rows on small boards.
 		if (devicePID == (short) 0x841B) {
@@ -719,8 +787,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			spiConfigSend(CypressFX3.FPGA_USB, (short) 0, 0);
 		}
 		catch (final HardwareInterfaceException e) {
-			CypressFX3.log
-				.info("disableINEndpoint: couldn't send vendor request to disable IN transfers--it could be that device is gone or sendor is OFF and and completing GPIF cycle");
+			CypressFX3.log.info(
+				"disableINEndpoint: couldn't send vendor request to disable IN transfers--it could be that device is gone or sendor is OFF and and completing GPIF cycle");
 		}
 
 		inEndpointEnabled = false;
@@ -743,29 +811,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 */
 	private class AsyncStatusThread {
 		USBTransferThread usbTransfer;
-		CypressFX3 monitor;
-
-		AsyncStatusThread(final CypressFX3 monitor) {
-			this.monitor = monitor;
-		}
-
-		public void startThread() {
-			if (!isOpen()) {
-				try {
-					open();
-				}
-				catch (final HardwareInterfaceException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-
-			CypressFX3.log.info("Starting AsyncStatusThread");
-			usbTransfer = new USBTransferThread(monitor.deviceHandle, CypressFX3.STATUS_ENDPOINT_ADDRESS,
-				LibUsb.TRANSFER_TYPE_INTERRUPT, new ProcessStatusMessages(), 4, 64);
-			usbTransfer.setName("AsyncStatusThread");
-			usbTransfer.start();
-		}
 
 		public void stopThread() {
 			usbTransfer.interrupt();
@@ -775,53 +820,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			}
 			catch (final InterruptedException e) {
 				CypressFX3.log.severe("Failed to join AsyncStatusThread");
-			}
-		}
-
-		private class ProcessStatusMessages implements RestrictedTransferCallback {
-			@Override
-			public void prepareTransfer(final RestrictedTransfer transfer) {
-				// Nothing to do here.
-			}
-
-			@Override
-			public void processTransfer(final RestrictedTransfer transfer) {
-				if (transfer.status() != LibUsb.TRANSFER_COMPLETED) {
-					if (transfer.status() != LibUsb.TRANSFER_CANCELLED) {
-						CypressFX3.log.warning("Error waiting for completion of read on status pipe: "
-							+ LibUsb.errorName(transfer.status()));
-					}
-
-					return;
-				}
-
-				if (transfer.actualLength() > 0) {
-					final byte msg = transfer.buffer().get(0);
-
-					switch (msg) {
-						case 0x00:
-							final int errorCode = transfer.buffer().get(1) & 0xFF;
-
-							final int timeStamp = transfer.buffer().getInt(2);
-
-							final byte[] errorMsgBytes = new byte[transfer.buffer().limit() - 6];
-							transfer.buffer().position(6);
-							transfer.buffer().get(errorMsgBytes, 0, errorMsgBytes.length);
-							transfer.buffer().position(0);
-							final String errorMsg = new String(errorMsgBytes, StandardCharsets.UTF_8);
-
-							final String output = String.format("%s - Error: 0x%02X, Time: %d\n", errorMsg, errorCode,
-								timeStamp);
-
-							CypressFX3.log.warning("FX3 error message received - " + output);
-
-							break;
-
-						default:
-							// Nothing to do here.
-							break;
-					}
-				}
 			}
 		}
 	}
@@ -899,9 +897,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			}
 
 			CypressFX3.log.info("Starting AEReader");
-			usbTransfer = new USBTransferThread(monitor.deviceHandle, CypressFX3.AE_MONITOR_ENDPOINT_ADDRESS,
-				LibUsb.TRANSFER_TYPE_BULK, new ProcessAEData(), getNumBuffers(), getFifoSize(), null, null,
-				new Runnable() {
+			usbTransfer = new USBTransferThread(monitor.deviceHandle, CypressFX3.AE_MONITOR_ENDPOINT_ADDRESS, LibUsb.TRANSFER_TYPE_BULK,
+				new ProcessAEData(), getNumBuffers(), getFifoSize(), null, null, new Runnable() {
 					@Override
 					public void run() {
 						monitor.close();
@@ -979,8 +976,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 						}
 					}
 					else {
-						CypressFX3.log.warning("ProcessAEData: Bytes transferred: " + transfer.actualLength()
-							+ "  Status: " + LibUsb.errorName(transfer.status()));
+						CypressFX3.log.warning("ProcessAEData: Bytes transferred: " + transfer.actualLength() + "  Status: "
+							+ LibUsb.errorName(transfer.status()));
 					}
 				}
 			}
@@ -997,8 +994,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		@Override
 		public void setFifoSize(int fifoSize) {
 			if (fifoSize < AEReader.CYPRESS_FIFO_SIZE) {
-				CypressFX3.log
-					.warning("CypressFX3 fifo size clipped to device FIFO size " + AEReader.CYPRESS_FIFO_SIZE);
+				CypressFX3.log.warning("CypressFX3 fifo size clipped to device FIFO size " + AEReader.CYPRESS_FIFO_SIZE);
 				fifoSize = AEReader.CYPRESS_FIFO_SIZE;
 			}
 
@@ -1094,8 +1090,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			// filter object may getString called by both AEReader threads at
 			// the "same time"
 			if (chip.getHardwareInterface() instanceof StereoPairHardwareInterface) {
-				final StereoPairHardwareInterface stereoInterface = (StereoPairHardwareInterface) chip
-					.getHardwareInterface();
+				final StereoPairHardwareInterface stereoInterface = (StereoPairHardwareInterface) chip.getHardwareInterface();
 				if (stereoInterface.getAemonLeft() == CypressFX3.this) {
 					stereoInterface.labelLeftEye(realTimeRawPacket);
 				}
@@ -1162,7 +1157,9 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 	}
 
-	/** @return the size of the double buffer raw packet for AEs */
+	/**
+	 * @return the size of the double buffer raw packet for AEs
+	 */
 	@Override
 	public int getAEBufferSize() {
 		return aeBufferSize; // aePacketRawPool.writeBuffer().getCapacity();
@@ -1182,8 +1179,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	@Override
 	public void setAEBufferSize(final int size) {
 		if ((size < 1000) || (size > 1000000)) {
-			CypressFX3.log.warning("ignoring unreasonable aeBufferSize of " + size
-				+ ", choose a more reasonable size between 1000 and 1000000");
+			CypressFX3.log
+				.warning("ignoring unreasonable aeBufferSize of " + size + ", choose a more reasonable size between 1000 and 1000000");
 			return;
 		}
 		aeBufferSize = size;
@@ -1355,8 +1352,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 			if (!success) {
 				throw new HardwareInterfaceException(
-					"open(): couldn't reopen device after firmware download and re-enumeration: "
-						+ LibUsb.errorName(status));
+					"open(): couldn't reopen device after firmware download and re-enumeration: " + LibUsb.errorName(status));
 			}
 			else {
 				throw new HardwareInterfaceException(
@@ -1366,8 +1362,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		// Initialize device.
 		if (deviceDescriptor.bNumConfigurations() != 1) {
-			throw new HardwareInterfaceException("number of configurations=" + deviceDescriptor.bNumConfigurations()
-				+ " is not 1 like it should be");
+			throw new HardwareInterfaceException(
+				"number of configurations=" + deviceDescriptor.bNumConfigurations() + " is not 1 like it should be");
 		}
 
 		final IntBuffer activeConfig = BufferUtils.allocateIntBuffer();
@@ -1386,15 +1382,14 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		CypressFX3.log.info("open(): device opened");
 
 		if (LibUsb.getDeviceSpeed(device) == LibUsb.SPEED_FULL) {
-			CypressFX3.log
-				.warning("Device is not operating at USB 2.0 High Speed, performance will be limited to about 300 keps");
+			CypressFX3.log.warning("Device is not operating at USB 2.0 High Speed, performance will be limited to about 300 keps");
 		}
 
 		// start the thread that listens for device status information.
 		// This is only preset on FX3 devices.
 		if (getPID() == DAViSFX3HardwareInterface.PID) {
-			//asyncStatusThread = new AsyncStatusThread(this);
-			//asyncStatusThread.startThread();
+			// asyncStatusThread = new AsyncStatusThread(this);
+			// asyncStatusThread.startThread();
 			// TODO: fix USBTransferThread to only use one thread to handle USB events.
 		}
 	}
@@ -1436,8 +1431,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			deviceHandle = new DeviceHandle();
 			status = LibUsb.open(device, deviceHandle);
 			if (status != LibUsb.SUCCESS) {
-				throw new HardwareInterfaceException("open_minimal_close(): failed to open device: "
-					+ LibUsb.errorName(status));
+				throw new HardwareInterfaceException("open_minimal_close(): failed to open device: " + LibUsb.errorName(status));
 			}
 		}
 
@@ -1481,8 +1475,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 			if (!success) {
 				throw new HardwareInterfaceException(
-					"open_minimal_close(): couldn't reopen device after firmware download and re-enumeration: "
-						+ LibUsb.errorName(status));
+					"open_minimal_close(): couldn't reopen device after firmware download and re-enumeration: " + LibUsb.errorName(status));
 			}
 			else {
 				throw new HardwareInterfaceException(
@@ -1548,7 +1541,9 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		return deviceDescriptor.idProduct();
 	}
 
-	/** @return bcdDevice (the binary coded decimel device version */
+	/**
+	 * @return bcdDevice (the binary coded decimel device version
+	 */
 	@Override
 	public short getDID() { // this is not part of USB spec in device
 		// descriptor.
@@ -1610,8 +1605,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * @param index
 	 *            the "index" of the request (bIndex USB field)
 	 */
-	synchronized public void sendVendorRequest(final byte request, final short value, final short index)
-		throws HardwareInterfaceException {
+	synchronized public void sendVendorRequest(final byte request, final short value, final short index) throws HardwareInterfaceException {
 		sendVendorRequest(request, value, index, (ByteBuffer) null);
 	}
 
@@ -1628,8 +1622,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * @param bytes
 	 *            the data which is to be transmitted to the device
 	 */
-	synchronized public void sendVendorRequest(final byte request, final short value, final short index,
-		final byte[] bytes) throws HardwareInterfaceException {
+	synchronized public void sendVendorRequest(final byte request, final short value, final short index, final byte[] bytes)
+		throws HardwareInterfaceException {
 		sendVendorRequest(request, value, index, bytes, 0, bytes.length);
 	}
 
@@ -1650,8 +1644,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * @param length
 	 *            number of bytes to copy, starting at position pos
 	 */
-	synchronized public void sendVendorRequest(final byte request, final short value, final short index,
-		final byte[] bytes, final int pos, final int length) throws HardwareInterfaceException {
+	synchronized public void sendVendorRequest(final byte request, final short value, final short index, final byte[] bytes, final int pos,
+		final int length) throws HardwareInterfaceException {
 		final ByteBuffer dataBuffer = BufferUtils.allocateByteBuffer(length);
 
 		dataBuffer.put(bytes, pos, length);
@@ -1676,8 +1670,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 *            the data which is to be transmitted to the device (null means
 	 *            no data)
 	 */
-	synchronized public void sendVendorRequest(final byte request, final short value, final short index,
-		ByteBuffer dataBuffer) throws HardwareInterfaceException {
+	synchronized public void sendVendorRequest(final byte request, final short value, final short index, ByteBuffer dataBuffer)
+		throws HardwareInterfaceException {
 		if (!isOpen()) {
 			open();
 		}
@@ -1693,13 +1687,13 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		final int status = LibUsb.controlTransfer(deviceHandle, bmRequestType, request, value, index, dataBuffer, 0);
 		if (status < LibUsb.SUCCESS) {
-			throw new HardwareInterfaceException("Unable to send vendor OUT request " + String.format("0x%x", request)
-				+ ": " + LibUsb.errorName(status));
+			throw new HardwareInterfaceException(
+				"Unable to send vendor OUT request " + String.format("0x%x", request) + ": " + LibUsb.errorName(status));
 		}
 
 		if (status != dataBuffer.capacity()) {
-			throw new HardwareInterfaceException("Wrong number of bytes transferred, wanted: " + dataBuffer.capacity()
-				+ ", got: " + status);
+			throw new HardwareInterfaceException(
+				"Wrong number of bytes transferred, wanted: " + dataBuffer.capacity() + ", got: " + status);
 		}
 	}
 
@@ -1718,8 +1712,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 *            (must be greater than 0)
 	 * @return a buffer containing the data requested from the device
 	 */
-	synchronized public ByteBuffer sendVendorRequestIN(final byte request, final short value, final short index,
-		final int dataLength) throws HardwareInterfaceException {
+	synchronized public ByteBuffer sendVendorRequestIN(final byte request, final short value, final short index, final int dataLength)
+		throws HardwareInterfaceException {
 		if (dataLength == 0) {
 			throw new HardwareInterfaceException("Unable to send vendor IN request with dataLength of zero!");
 		}
@@ -1734,13 +1728,12 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		final int status = LibUsb.controlTransfer(deviceHandle, bmRequestType, request, value, index, dataBuffer, 0);
 		if (status < LibUsb.SUCCESS) {
-			throw new HardwareInterfaceException("Unable to send vendor IN request " + String.format("0x%x", request)
-				+ ": " + LibUsb.errorName(status));
+			throw new HardwareInterfaceException(
+				"Unable to send vendor IN request " + String.format("0x%x", request) + ": " + LibUsb.errorName(status));
 		}
 
 		if (status != dataLength) {
-			throw new HardwareInterfaceException("Wrong number of bytes transferred, wanted: " + dataLength + ", got: "
-				+ status);
+			throw new HardwareInterfaceException("Wrong number of bytes transferred, wanted: " + dataLength + ", got: " + status);
 		}
 
 		// Update ByteBuffer internal limit to show how much was successfully
@@ -1827,8 +1820,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 * @return true if blank
 	 */
 	protected boolean isBlankDevice() {
-		if ((deviceDescriptor.idVendor() == CypressFX3.VID_BLANK)
-			&& (deviceDescriptor.idProduct() == CypressFX3.PID_BLANK)) {
+		if ((deviceDescriptor.idVendor() == CypressFX3.VID_BLANK) && (deviceDescriptor.idProduct() == CypressFX3.PID_BLANK)) {
 			// log.warning("blank CypressFX3 detected");
 			return true;
 		}

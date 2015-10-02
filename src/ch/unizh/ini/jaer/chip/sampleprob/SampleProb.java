@@ -37,6 +37,7 @@ import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3.SPIConfigSequence;
 
 @Description("Probabilistic Sample circuit")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
@@ -125,29 +126,29 @@ public class SampleProb extends CochleaChip implements Observer {
 			setName("SampleProb.Biasgen");
 
 			// Use shift-register number as address.
-			ipots.addPot(new SimpleIPot(this, "Bias0", 5, IPot.Type.NORMAL, IPot.Sex.N, 0, 0, "Bias0"));
-			ipots.addPot(new SimpleIPot(this, "Bias1", 6, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 1, "Bias1"));
-			ipots.addPot(new SimpleIPot(this, "Bias2", 7, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 2, "Bias2"));
-			ipots.addPot(new SimpleIPot(this, "Bias3", 8, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 3, "Bias3"));
-			ipots.addPot(new SimpleIPot(this, "Bias4", 9, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 4, "Bias4"));
-			ipots.addPot(new SimpleIPot(this, "Bias5", 10, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 5, "Bias5"));
-			ipots.addPot(new SimpleIPot(this, "Bias6", 11, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 6, "Bias6"));
-			ipots.addPot(new SimpleIPot(this, "Bias7", 12, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 7, "Bias7"));
-			ipots.addPot(new SimpleIPot(this, "Bias8", 13, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 8, "Bias8"));
-			ipots.addPot(new SimpleIPot(this, "Bias9", 14, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 9, "Bias9"));
-			ipots.addPot(new SimpleIPot(this, "Bias10", 15, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 10, "Bias10"));
-			ipots.addPot(new SimpleIPot(this, "Bias11", 16, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 11, "Bias11"));
-			ipots.addPot(new SimpleIPot(this, "Bias12", 17, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 12, "Bias12"));
-			ipots.addPot(new SimpleIPot(this, "Bias13", 18, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 13, "Bias13"));
-			ipots.addPot(new SimpleIPot(this, "Bias14", 19, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 14, "Bias14"));
-			ipots.addPot(new SimpleIPot(this, "Bias15", 20, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 15, "Bias15"));
-			ipots.addPot(new SimpleIPot(this, "Bias16", 21, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 16, "Bias16"));
-			ipots.addPot(new SimpleIPot(this, "Bias17", 22, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 17, "Bias17"));
-			ipots.addPot(new SimpleIPot(this, "Bias18", 23, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 18, "Bias18"));
-			ipots.addPot(new SimpleIPot(this, "Bias19", 24, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 19, "Bias19"));
-			ipots.addPot(new SimpleIPot(this, "Bias20", 25, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 20, "Bias20"));
-			ipots.addPot(new SimpleIPot(this, "Bias21", 26, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 21, "Bias21"));
-			ipots.addPot(new SimpleIPot(this, "Bias22", 27, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 22, "Bias22"));
+			ipots.addPot(new SimpleIPot(this, "VpdbiasTxBn", 5, IPot.Type.NORMAL, IPot.Sex.N, 0, 0, "VpdbiasTxBn"));
+			ipots.addPot(new SimpleIPot(this, "VaBp", 6, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 1, "VaBp"));
+			ipots.addPot(new SimpleIPot(this, "VbBp", 7, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 2, "VbBp"));
+			ipots.addPot(new SimpleIPot(this, "VcBp", 8, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 3, "VcBp"));
+			ipots.addPot(new SimpleIPot(this, "VHazardresBp15", 9, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 4, "VHazardresBp15"));
+			ipots.addPot(new SimpleIPot(this, "VHazardresBp14", 10, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 5, "VHazardresBp14"));
+			ipots.addPot(new SimpleIPot(this, "VHazardresBp13", 11, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 6, "VHazardresBp13"));
+			ipots.addPot(new SimpleIPot(this, "VHazardresBp12", 12, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 7, "VHazardresBp12"));
+			ipots.addPot(new SimpleIPot(this, "VHazardresBp11", 13, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 8, "VHazardresBp11"));
+			ipots.addPot(new SimpleIPot(this, "VHazardresBp10", 14, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 9, "VHazardresBp10"));
+			ipots.addPot(new SimpleIPot(this, "VHazardresBp9", 15, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 10, "VHazardresBp9"));
+			ipots.addPot(new SimpleIPot(this, "VHazardresBp8", 16, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 11, "VHazardresBp8"));
+			ipots.addPot(new SimpleIPot(this, "VHazardresBp7", 17, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 12, "VHazardresBp7"));
+			ipots.addPot(new SimpleIPot(this, "VHazardresBp6", 18, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 13, "VHazardresBp6"));
+			ipots.addPot(new SimpleIPot(this, "VHazardresBp5", 19, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 14, "VHazardresBp5"));
+			ipots.addPot(new SimpleIPot(this, "VHazardresBp4", 20, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 15, "VHazardresBp4"));
+			ipots.addPot(new SimpleIPot(this, "VHazardresBp3", 21, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 16, "VHazardresBp3"));
+			ipots.addPot(new SimpleIPot(this, "VHazardresBp2", 22, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 17, "VHazardresBp2"));
+			ipots.addPot(new SimpleIPot(this, "VHazardresBp1", 23, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 18, "VHazardresBp1"));
+			ipots.addPot(new SimpleIPot(this, "VHazardresBp0", 24, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 19, "VHazardresBp0"));
+			ipots.addPot(new SimpleIPot(this, "VreqPuTxBp", 25, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 20, "VreqPuTxBp"));
+			ipots.addPot(new SimpleIPot(this, "VfollBn", 26, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 21, "VfollBn"));
+			ipots.addPot(new SimpleIPot(this, "VRVGBn", 27, SimpleIPot.Type.NORMAL, SimpleIPot.Sex.N, 0, 22, "VRVGBn"));
 
 			setPotArray(ipots);
 
@@ -344,23 +345,28 @@ public class SampleProb extends CochleaChip implements Observer {
 					else if (observable instanceof VPot) {
 						final VPot vPot = (VPot) observable;
 
+						final SPIConfigSequence configSequence = fx3HwIntf.new SPIConfigSequence();
+
 						if (vPot.getDac() == dac1) {
-							fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) 1, 0); // Select DAC1.
+							configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 1, 0); // Select DAC1.
 						}
 						else if (vPot.getDac() == dac2) {
-							fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) 1, 1); // Select DAC2.
+							configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 1, 1); // Select DAC2.
 						}
 						else {
-							fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) 1, 2); // Select DAC3.
+							configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 1, 2); // Select DAC3.
 						}
 
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) 2, 0x03); // Select input data register.
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) 3, vPot.getChannel());
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) 5, vPot.getBitValue());
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 2, 0x03); // Select input data register.
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 3, vPot.getChannel());
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 5, vPot.getBitValue());
 
 						// Toggle SET flag.
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) 6, 1);
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_DAC, (short) 6, 0);
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 1);
+						configSequence.addConfig(CypressFX3.FPGA_DAC, (short) 6, 0);
+
+						// Commit configuration.
+						configSequence.sendConfigSequence();
 
 						// Wait 1ms to ensure operation is completed.
 						try {

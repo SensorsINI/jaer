@@ -31,12 +31,13 @@ import javax.swing.JTextField;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
-import net.sf.jaer.biasgen.BiasgenPanel;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigBit;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigInt;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaLP.SPIConfigValue;
+import net.sf.jaer.biasgen.BiasgenPanel;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3.SPIConfigSequence;
 
 public final class SampleProbControlPanel extends JTabbedPane implements Observer {
 
@@ -218,33 +219,38 @@ public final class SampleProbControlPanel extends JTabbedPane implements Observe
 				int channel = 0;
 				String valuesLine;
 
+				final SPIConfigSequence configSequence = fx3HwIntf.new SPIConfigSequence();
+
 				// Ensure BlockRAM memory is cleared (toggle CLEARALL command).
-				fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 132, (short) 1);
-				fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 132, (short) 0);
+				configSequence.addConfig(CypressFX3.FPGA_CHIPBIAS, (short) 132, (short) 1);
+				configSequence.addConfig(CypressFX3.FPGA_CHIPBIAS, (short) 132, (short) 0);
 
 				while ((valuesLine = r.readLine()) != null) {
 					final String[] valuesText = valuesLine.split(",");
 
 					// Set channel.
-					fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 128, (short) channel);
+					configSequence.addConfig(CypressFX3.FPGA_CHIPBIAS, (short) 128, (short) channel);
 
 					int address = 0;
 					for (final String valueText : valuesText) {
 						// Set increasing address.
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 129, (short) address);
+						configSequence.addConfig(CypressFX3.FPGA_CHIPBIAS, (short) 129, (short) address);
 
 						// Set data to write to memory.
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 130, (short) (Integer.parseInt(valueText) & 0x3F));
+						configSequence.addConfig(CypressFX3.FPGA_CHIPBIAS, (short) 130, (short) (Integer.parseInt(valueText) & 0x3F));
 
 						// Toggle SET command.
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 131, (short) 1);
-						fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 131, (short) 0);
+						configSequence.addConfig(CypressFX3.FPGA_CHIPBIAS, (short) 131, (short) 1);
+						configSequence.addConfig(CypressFX3.FPGA_CHIPBIAS, (short) 131, (short) 0);
 
 						address++;
 					}
 
 					channel++;
 				}
+
+				// Commit configuration.
+				configSequence.sendConfigSequence();
 			}
 			catch (IOException | NumberFormatException | HardwareInterfaceException e) {
 				// TODO Auto-generated catch block
