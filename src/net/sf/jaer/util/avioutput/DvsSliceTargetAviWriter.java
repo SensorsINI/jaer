@@ -51,8 +51,8 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
-import net.sf.jaer.eventprocessing.tracking.EinsteinClusterTracker;
-import net.sf.jaer.eventprocessing.tracking.EinsteinClusterTracker.Cluster;
+import net.sf.jaer.eventprocessing.tracking.FermiClusterTracker;
+import net.sf.jaer.eventprocessing.tracking.FermiClusterTracker.Cluster;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -111,13 +111,14 @@ implements FrameAnnotater {
     private int maxTimeLastTargetLocationValidUs = getInt("maxTimeLastTargetLocationValidUs", 100000);
     private int random_shift_x = 0;//Minx + (int)(Math.random() * ((Maxx - Minx) + 1));
     private int random_shift_y = 0;//Miny + (int)(Math.random() * ((Maxy - Miny) + 1));
-    // Include Einstein Tracker
-    private EinsteinClusterTracker trackCluster=new EinsteinClusterTracker(chip);
+    // Include Fermi Tracker
+    private FermiClusterTracker trackCluster=new FermiClusterTracker(chip);
     private final BackgroundActivityFilter backgroundActivityFilter;
     private final HotPixelFilter hotPixelFilter;
     private final TargetLabeler targetLabelerFilter;
     private java.util.List<Cluster> clusters = new LinkedList<Cluster>();
     private int nextUpdateTimeUs = 0;
+    private int maxNumTargets =  getInt("maxNumTargets", 5);
 
     public DvsSliceTargetAviWriter(AEChip chip) {
         super(chip);
@@ -139,7 +140,7 @@ implements FrameAnnotater {
         setPropertyTooltip("grayScale", "1/grayScale is the amount by which each DVS event is added to time slice 2D gray-level histogram");
         setPropertyTooltip("dimx", "width of AVI frame");
         setPropertyTooltip("dimy", "height of AVI frame");
-        setPropertyTooltip("hotpixelColumn", "Do not consider spikes from this column");
+        setPropertyTooltip("maxNumTargets", "Maximum number of targets to keep track of");
         setPropertyTooltip("loadLocations", "loads locations from a file");
         setPropertyTooltip("showOutput", "shows output in JFrame/ImageDisplay");
         setPropertyTooltip("dvsMinEvents", "minimum number of events to run net on DVS timeslice (only if writeDvsSliceImageOnApsFrame is false)");
@@ -255,58 +256,97 @@ implements FrameAnnotater {
         	for(int i =0; i<currentnumtargets; i++){
         		location_x[i] = -1;
         	}
+        	int[] eventinTargets = new int[currentnumtargets];
+    		//eventinTargets list of number of target that contains this event
+    	    //loop over target and count number of targets that contains this events
+        	counter = 0;
+        	//init no location for this target
+        	for(int i=0; i<currentnumtargets; i++){
+        		eventinTargets[i] = -1;
+        	}
+    		for (TargetLocation t : currentTargets) {
+            	//currentlocx is the current target id...
+            	//TODO!! one spike can be part of multiple targets
+            	//System.out.println(curretlocx)
+        		x_max = t.location.getX() + (t.dimx/2.0);
+            	x_min = t.location.getX() - (t.dimx/2.0);
+            	y_max = t.location.getY() + (t.dimy/2.0);
+            	y_min = t.location.getY() - (t.dimy/2.0);
+            	if( (p.x < x_max) && (p.x > x_min)  && (p.y < y_max) && (p.y > y_min)){
+            		//it is part of this cluster
+            		eventinTargets[counter] = counter;
+            	}
+            	counter++;
+    		}
+    		counter = -1;
             for (TargetLocation t : currentTargets) {
             	counter++;
                 if (t.location != null) {
-                		//add this event into the dvsSubsampler if it is an event that is part of the tracked patch (target)
-                    	if( location_x[counter] == -1 ){
-                    		location_x[counter] = (int) t.location.getX();
-                    		curretlocx = counter;
-                    	}else{
-                    		for(int i =0; i<currentnumtargets; i++){
+	                	//currentlocx is the current target id...
+	                	//TODO!! one spike can be part of multiple targets
+	                	//System.out.println(curretlocx)
+	            		//x_max = t.location.getX() + (t.dimx/2.0);
+	                	//x_min = t.location.getX() - (t.dimx/2.0);
+	                	//y_max = t.location.getY() + (t.dimy/2.0);
+	                	//y_min = t.location.getY() - (t.dimy/2.0);
+	                	//get the current target location for this event, associate target num and event
+	                	if( location_x[counter] == -1 ){
+	                		location_x[counter] = (int) t.location.getX();
+	                		curretlocx = counter;
+	                	}else{
+	                		for(int i =0; i<currentnumtargets; i++){
 	                    		if(location_x[i] == (int) t.location.getX() ){
 	                    			curretlocx = i;
 	                    		}
-                    		}
-                    	}
-                    	//currentlocx is the current target id...
-                    	//NB!! one spike can be part of multiple targets
-                    	//System.out.println(curretlocx)
-                		x_max = t.location.getX() + (t.dimx/2.0);
-                    	x_min = t.location.getX() - (t.dimx/2.0);
-                    	y_max = t.location.getY() + (t.dimy/2.0);
-                    	y_min = t.location.getY() - (t.dimy/2.0);
-	                	if( (p.x < x_max) && (p.x > x_min)  && (p.y < y_max) && (p.y > y_min)){
-	                		// re-scale p to subsampler window and split it between targets
-	                		int newx =  (int) (((((p.getX() - t.location.getX())/(t.dimx+2))*dimx) + (dimx/2.0)) ); //shift by the counter for different targets
-	                		newx =  (newx/currentnumtargets)*(curretlocx+1); //automatically resize based on the number of target presents.. requires long life time of targets
-	                		int newy =  (int) (((((p.getY() - t.location.getY())/(t.dimy+2))*dimy) + (dimy/2.0)) );
-	                		// for (DvsSubsamplerToFrame thissub : currentdvsSubsampler) {
-								//thissub.addEventInNewCoordinates(p, newx, newy);
-	                			dvsSubsampler.addEventInNewCoordinates(p, newx, newy);
-		                        if ((writeDvsSliceImageOnApsFrame && newFrameAvailable && (e.timestamp>=endOfFrameTimestamp))
-		                                || ((!writeDvsSliceImageOnApsFrame && (dvsSubsampler.getAccumulatedEventCount() > dvsMinEvents))
-		                                && !chip.getAeViewer().isPaused())) {
-		                            if(writeDvsSliceImageOnApsFrame) {
-		                                newFrameAvailable=false;
-		                            }
-		                            maybeShowOutput(dvsSubsampler);
-		                            if (aviOutputStream != null) {
-		                                BufferedImage bi = toImage(dvsSubsampler);
-		                                try {
-		                                    writeTimecode(e.timestamp);
-		                                    aviOutputStream.writeFrame(bi);
-		                                    incrementFramecountAndMaybeCloseOutput();
-		                                } catch (IOException ex) {
-		                                    log.warning(ex.toString());
-		                                    ex.printStackTrace();
-		                                    setFilterEnabled(false);
-		                                }
-		                            }
-		                            dvsSubsampler.clear();
-		                       // }
 	                		}
+	                	}
+                		//add this event into the dvsSubsampler if it is an event that is part of the tracked patch (target)
+                		// check in how many target this event could be
+	                	if(curretlocx < maxNumTargets){
+			                if(eventinTargets[curretlocx] != -1){ //this event is in target
+			                		   // for (DvsSubsamplerToFrame thissub : currentdvsSubsampler) {
+									   //thissub.addEventInNewCoordinates(p, newx, newy);
+			                		   //check in all targets and add this events in respective target position
+			                		    for( int i = 0; i< currentnumtargets; i++){
+			                		    	if(currentnumtargets < maxNumTargets){
+				                		    	if( eventinTargets[i]!= -1 ){
+				                		    		//event is in this target
+						                		    int newx =  (int) (((((p.getX() - t.location.getX())/(t.dimx+2))*dimx) + (dimx/2.0)) ); //shift by the counter for different targets
+							                		newx =  ( (i*(dimx/maxNumTargets))+(newx/maxNumTargets)); //automatically resize based on the number of target presents.. requires long life time of targets
+							                		int newy =  (int) (((((p.getY() - t.location.getY())/(t.dimy+2))*dimy) + (dimy/2.0)) );
+						                			dvsSubsampler.addEventInNewCoordinates(p, newx, newy);
 
+				                		    	}
+			                		    	}
+			                		    }
+			                		    //int newx =  (int) (((((p.getX() - t.location.getX())/(t.dimx+2))*dimx) + (dimx/2.0)) ); //shift by the counter for different targets
+				                		//newx =  ( (curretlocx*(dimx/maxNumTargets))+(newx/maxNumTargets)); //automatically resize based on the number of target presents.. requires long life time of targets
+				                		//int newy =  (int) (((((p.getY() - t.location.getY())/(t.dimy+2))*dimy) + (dimy/2.0)) );
+			                			//dvsSubsampler.addEventInNewCoordinates(p, newx, newy);
+				                        if ((writeDvsSliceImageOnApsFrame && newFrameAvailable && (e.timestamp>=endOfFrameTimestamp))
+				                                || ((!writeDvsSliceImageOnApsFrame && (dvsSubsampler.getAccumulatedEventCount() > dvsMinEvents))
+				                                && !chip.getAeViewer().isPaused())) {
+				                            if(writeDvsSliceImageOnApsFrame) {
+				                                newFrameAvailable=false;
+				                            }
+				                            maybeShowOutput(dvsSubsampler);
+				                            if (aviOutputStream != null) {
+				                                BufferedImage bi = toImage(dvsSubsampler);
+				                                try {
+				                                    writeTimecode(e.timestamp);
+				                                    aviOutputStream.writeFrame(bi);
+				                                    incrementFramecountAndMaybeCloseOutput();
+				                                } catch (IOException ex) {
+				                                    log.warning(ex.toString());
+				                                    ex.printStackTrace();
+				                                    setFilterEnabled(false);
+				                                }
+				                            }
+				                            dvsSubsampler.clear();
+				                       // }
+			                		}
+
+			                }
 	                	}
                  }
             }
@@ -389,12 +429,15 @@ implements FrameAnnotater {
             gl.glPopMatrix();
         }
 
-        for (TargetLocation t : currentTargets) {
-            if (t.location != null) {
-                t.draw(drawable, gl);
-            }
+        if(currentTargets.size() > 1){
+	        for (TargetLocation t : currentTargets) {
+	            if (t.location != null) {
+	                t.draw(drawable, gl);
+	            }
         }
+
         trackCluster.annotate(drawable);
+        }
 
     }
 
@@ -521,6 +564,21 @@ implements FrameAnnotater {
     synchronized public void setDimx(int dimx) {
         this.dimx = dimx;
         putInt("dimx", dimx);
+    }
+
+    /**
+     * @param maxNumTargets the maxNumTargets to set
+     */
+    synchronized public void setMaxNumTargets(int maxNumTargets) {
+        this.maxNumTargets = maxNumTargets;
+        putInt("maxNumTargets", maxNumTargets);
+    }
+
+    /**
+     * @return the getMaxNumTargets
+     */
+    public int getMaxNumTargets() {
+        return maxNumTargets;
     }
 
     /**
