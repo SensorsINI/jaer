@@ -166,7 +166,7 @@ public class OmcodFpgaVisualizer extends AbstractRetinaModelCell implements Fram
         gl.glEnable(GL2.GL_BLEND);
         gl.glBlendFunc(GL2.GL_SRC_ALPHA, GL2.GL_ONE_MINUS_SRC_ALPHA);
         gl.glBlendEquation(GL2.GL_FUNC_ADD);
-        gl.glPushMatrix();
+        //gl.glPushMatrix();
         // Green background to show where the inhibition is
         gl.glPushMatrix();
         gl.glColor4f(0, 1, 0, 0.1f);
@@ -313,8 +313,8 @@ public class OmcodFpgaVisualizer extends AbstractRetinaModelCell implements Fram
 //        }
         counterP = counter;
 
-        gl.glPopMatrix();
-        gl.glPopMatrix();
+        //gl.glPopMatrix();
+        //gl.glPopMatrix();
     }
 
     @Override

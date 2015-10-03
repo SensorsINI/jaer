@@ -63,8 +63,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
     private int probabilityOfCorrectness = 5;
     private int timeStampRosUs;
     private float inhibitionValue;
-    private float startTime;
-    private float endTime;
+    //private float startTime;
+    //private float endTime;
     private float[][] excitationArray;
     private float[][] membraneStateArray;
     private float[][] netSynapticInputArray;
@@ -225,7 +225,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
             if (dt > minUpdateIntervalUs) {
                 lastOMCODSpikeCheckTimestampUs = e.timestamp;
                 OMCODModel.update(e.timestamp);
-                startTime = System.nanoTime();
+                //startTime = System.nanoTime();
             }
             lastTime = e.timestamp;
         }
@@ -1377,8 +1377,8 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
                         } else {
                             result = false;
                         }
-                            endTime = System.nanoTime();
-                            System.out.println(endTime - startTime);
+                            //endTime = System.nanoTime();
+                            //System.out.println(endTime - startTime);
                     }
                 }
             }

@@ -51,8 +51,8 @@ public class OmcodFpga9 extends AbstractRetinaModelCell implements FrameAnnotate
     private int counterP = 0;
     private int lastIndex = 0;
     private float inhibitionValue;
-    private float startTime;
-    private float endTime;
+    //private float startTime;
+    //private float endTime;
     private float[][] excitationArray;
     private float[][] membraneStateArray;
     private float[][] netSynapticInputArray;
@@ -466,7 +466,7 @@ public class OmcodFpga9 extends AbstractRetinaModelCell implements FrameAnnotate
             }
             if (dt > minUpdateIntervalUs) {
                 lastUpdateTimestamp = e.timestamp;
-                startTime = System.nanoTime();
+                //startTime = System.nanoTime();
 
                 // update Neuron RGC
                 for (int omcx = 0; omcx < (nymax - 1); omcx++) {
@@ -722,8 +722,8 @@ public class OmcodFpga9 extends AbstractRetinaModelCell implements FrameAnnotate
             } else {
                 result = false;
             }
-            endTime = System.nanoTime();
-            System.out.println(endTime - startTime);
+            //endTime = System.nanoTime();
+            //System.out.println(endTime - startTime);
             // end nasty coding!!
             return result;
         }
