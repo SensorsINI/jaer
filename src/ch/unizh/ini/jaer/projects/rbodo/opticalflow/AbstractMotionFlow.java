@@ -38,6 +38,8 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
         setPropertyTooltip(smoo,"fitOrder","Order of fitting polynomial used for smoothing");
     }
     
+    // Compute the convolution coefficients of a two-dimensional Savitzky-Golay
+    // filter used to smooth the data.
     final synchronized void computeSavitzkyGolayCoefficients() {
         A = new double[(2*searchDistance+1)*(2*searchDistance+1)][(fitOrder+1)*(fitOrder+2)/2];
         a = new double[Math.round((fitOrder+1)*(fitOrder+2)/4f)][Math.round((fitOrder+1)*(fitOrder+2)/4f)];

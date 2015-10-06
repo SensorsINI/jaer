@@ -39,9 +39,9 @@ public class ImuFlow extends AbstractMotionFlowIMU {
             v = imuFlowEstimator.getV();
             if (measureAccuracy || discardOutliersEnabled) setGroundTruth();
             if (accuracyTests()) continue;
-            //exportFlowToMatlab(2500000,2600000); // for IMU_pan_APS
-            //exportFlowToMatlab(1360000,1430000); // for IMU_roll_APS
-            exportFlowToMatlab(295500000,296500000); // for IMU_pan_boxes_APS
+            //exportFlowToMatlab(2500000,2600000); // for IMU_APS_translSin
+            //exportFlowToMatlab(1360000,1430000); // for IMU_APS_rotDisk
+            //exportFlowToMatlab(295500000,296500000); // for IMU_APS_translBoxes
             writeOutputEvent();
             if (measureAccuracy) motionFlowStatistics.update(vx,vy,v,vxGT,vyGT,vGT);
         }

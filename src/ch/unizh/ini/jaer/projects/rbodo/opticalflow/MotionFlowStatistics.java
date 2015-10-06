@@ -13,6 +13,11 @@ import java.util.logging.Level;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 
 /**
+ * This class computes and prints several objects of interest when evaluating
+ * optical flow performance: The average angular error, (relative) average end-
+ * point error, processing time, and event density (fraction of events that
+ * successfully passed the filter). It also computes global motion averages 
+ * (translation, rotation and expansion).
  * For global translation, rotation and expansion we average over all the 
  * individual translation (expansion, rotation) values of one packet. 
  * We compute the Standard Deviation (not Standard Error) because we are 

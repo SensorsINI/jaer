@@ -350,6 +350,8 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     }
     // </editor-fold>
     
+    // Prints the surface of active events in the neighborhood of a certain pixel.
+    // Used for debugging and visualization of algorithm in MATLAB.
     synchronized private void printNeighborhood() {
         if (neighborhood == null) return;
         neighb = "[";

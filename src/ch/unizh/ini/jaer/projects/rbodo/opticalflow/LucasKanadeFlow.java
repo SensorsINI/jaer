@@ -78,6 +78,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
         super.annotate(drawable);
         
         // Draws an event-histogram in the neighborhood of the event.
+        // Used for debugging and visualization of the algorithm.
 //        if (!isFilterEnabled()) return;
 //        GL2 gl = drawable.getGL().getGL2();
 //        if (gl == null) return;
@@ -236,8 +237,8 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
                 }
                 // The temporal intensity gradient tempDerivNeighb is estimated 
                 // by the event density events/s in the time interval maxDtThreshold.
+                if (secondTempDerivative) tempDerivNeighb[ii] /= maxDtThreshold*1e-6f;
                 tempDerivNeighb[ii] *= 20; // Derivative approximation contains some systematic error
-                if (secondTempDerivative) tempDerivNeighb[ii] /= maxDtThreshold;
                 ii++;
             }
     }
@@ -281,6 +282,8 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
     }
     // </editor-fold>
     
+    // Prints the event-rate function in the neighborhood of a certain pixel.
+    // Used for debugging and visualization of algorithm in MATLAB.
     synchronized private void printNeighborhood() {
         deriv = "[";
         for (j = 0; j < spatDerivNeighb.length; j++)

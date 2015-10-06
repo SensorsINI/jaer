@@ -36,10 +36,10 @@ import net.sf.jaer.util.DrawGL;
 
 /**
  * Abstract base class for motion flow filters. 
- * Several methods were taken from AbstractDirectionSelectiveFilter and Steadicam
- * and slightly modified. 
  * The filters that extend this class use different methods to compute the
  * optical flow vectors and override the filterPacket method in this class.
+ * Several methods were taken from AbstractDirectionSelectiveFilter and Steadicam
+ * and slightly modified. 
  * @author rbodo
  */
 
@@ -203,6 +203,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
     }
     
+    // Allows importing two 2D-arrays containing the x-/y- components of the 
+    // motion flow field used as ground truth.
     synchronized public void doImportGTfromMatlab() {
         JFileChooser chooser = new JFileChooser();
         chooser.setDialogTitle("Choose ground truth file");
@@ -219,6 +221,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
     }
     
+    // Allows exporting flow vectors that were accumulated between tmin and tmax
+    // to a mat-file which can be processed in MATLAB.
     public void exportFlowToMatlab(final int tmin, final int tmax) {
         if (!exportedFlowToMatlab) {
             int firstTs = dirPacket.getFirstTimestamp();
@@ -250,6 +254,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         }
     }
     
+    // This function is called for every event to assign the local ground truth
+    // (vxGT,vyGT) at location (x,y) a value from the imported ground truth field
+    // (vxGTframe,vyGTframe).
     void setGroundTruth() {
         if (importedGTfromMatlab) {
             if (ts >= tsGTframe[0][0] && ts < tsGTframe[0][1]) {
@@ -578,10 +585,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     /**
      * @return true if ...
      * 1) the event lies outside the chip.
-     * 2) the event lies outside specified spatial bounds.
-     * 3) the event's subsampled address falls on a pixel location that has 
+     * 2) the event's subsampled address falls on a pixel location that has 
      *    already had an event within this packet. We don't want to process or 
-     *    render it.
+     *    render it. Important: This prevents events to acccumulate at the same
+     *    pixel location, which is an essential part of the Lucas-Kanade method.
+     *    Therefore, subsampling should be avoided in LucasKanadeFlow when the
+     *    goal is to optimize accuracy.
      * @param d equals the spatial search distance plus some extra spacing needed
      *        for applying finite differences to calculate gradients.
      */
@@ -593,6 +602,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
         } return true;
     }
      
+    // Returns true if the event lies outside certain spatial bounds.
     synchronized boolean xyFilter() {
         return x < xMin || x >= xMax || y < yMin || y >= yMax;
     }
