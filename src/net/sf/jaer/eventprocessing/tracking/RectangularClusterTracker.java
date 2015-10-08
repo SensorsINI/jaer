@@ -346,6 +346,8 @@ public class RectangularClusterTracker extends EventFilter2D
 				logFrameNumber = ev.timestamp / loggingIntervalUs;
 				// Change the last flag to 'true' if needing a more easily parseable data format.
 				clusterLogger.logClusters(ae, logFrameNumber, ev.timestamp, false);
+                                //change false(printparsable) to true if you want parsable output printed. it prints the frame no and all the 5 parameters for the particles 
+                                //in one line 
 			}
 		}
 	}
@@ -1461,6 +1463,7 @@ public class RectangularClusterTracker extends EventFilter2D
 
 		protected void updateAverageEventDistance(float m) {
 			float m1 = 1 - m;
+                        //m is specified when calling this method, it is the mixing factor.
 			averageEventDistance = (m1 * averageEventDistance) + (m * distanceToLastEvent);
 			averageEventXDistance = (m1 * averageEventXDistance) + (m * xDistanceToLastEvent);
 			averageEventYDistance = (m1 * averageEventYDistance) + (m * yDistanceToLastEvent);
