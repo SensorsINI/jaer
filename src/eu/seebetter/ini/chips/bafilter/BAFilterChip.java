@@ -14,8 +14,8 @@ import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class BAFilterChip extends DavisBaseCamera {
 
-	public static final short WIDTH_PIXELS = 255;
-	public static final short HEIGHT_PIXELS = 255;
+	public static final short WIDTH_PIXELS = 256;
+	public static final short HEIGHT_PIXELS = 256;
 	protected BAFilterChipConfig baConfig;
 
 	/**
