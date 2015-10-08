@@ -239,52 +239,52 @@ public class BAFilterChipConfig extends DavisTowerBaseConfig {
 
 			}
 
-			dmuxes[3].put(14, "PselTest");
-			dmuxes[3].put(15, "PoutTest");
-			dmuxes[2].put(14, "biasCalibSpike");
-			dmuxes[2].put(15, "RsTest");
-			dmuxes[1].put(14, "PoutTest");
-			dmuxes[1].put(15, "PoutTest");
-			dmuxes[0].put(14, "PoutTest");
+			dmuxes[0].put(14, "PselTest");
 			dmuxes[0].put(15, "PoutTest");
+			dmuxes[1].put(14, "biasCalibSpike");
+			dmuxes[1].put(15, "RsTest");
+			dmuxes[2].put(14, "PoutTest");
+			dmuxes[2].put(15, "PoutTest");
+			dmuxes[3].put(14, "PoutTest");
+			dmuxes[3].put(15, "PoutTest");
 
 			amuxes[0].setName("AnaMux3");
 			amuxes[1].setName("AnaMux2");
 			amuxes[2].setName("AnaMux1");
 			amuxes[3].setName("AnaMux0");
 
-                        amuxes[0].put(0, "apsOUT<22>");
-			amuxes[0].put(1, "apsOUT<23>");
-			amuxes[0].put(2, "apsOUT<25>");
-                        amuxes[0].put(3, "apsOUT<24>");
-			amuxes[0].put(4, "out1Test");
-			amuxes[0].put(5, "VfollowerBn");
-                        amuxes[0].put(6, " apsOUT<9> ");
-			amuxes[0].put(7, " apsOUT<8> ");
-                        amuxes[1].put(0, " VcapTest");
-			amuxes[1].put(1, " apsOUT<7>");
-			amuxes[1].put(2, " apsOUT<7>");
-                        amuxes[1].put(3, " apsOUT<7>");
-			amuxes[1].put(4, " apsOUT<7>");
-			amuxes[1].put(5, " apsOUT<7>");
-                        amuxes[1].put(6, "apsOUT<7>");
-			amuxes[1].put(7, "apsOUT<7>"); 
-                        amuxes[2].put(0, "VinTest");
-			amuxes[2].put(1, "apsOUT<7>");
-			amuxes[2].put(2, "apsOUT<7>");
-                        amuxes[2].put(3, "apsOUT<7>");
-			amuxes[2].put(4, "apsOUT<7>");
-			amuxes[2].put(5, "apsOUT<7>");
+                        amuxes[3].put(0, "apsOUT<22>");
+			amuxes[3].put(1, "apsOUT<23>");
+			amuxes[3].put(2, "apsOUT<25>");
+                        amuxes[3].put(3, "apsOUT<24>");
+			amuxes[3].put(4, "out1Test");
+			amuxes[3].put(5, "VfollowerBn");
+                        amuxes[3].put(6, " apsOUT<9> ");
+			amuxes[3].put(7, " apsOUT<8> ");
+                        amuxes[2].put(0, " VcapTest");
+			amuxes[2].put(1, " apsOUT<7>");
+			amuxes[2].put(2, " apsOUT<7>");
+                        amuxes[2].put(3, " apsOUT<7>");
+			amuxes[2].put(4, " apsOUT<7>");
+			amuxes[2].put(5, " apsOUT<7>");
                         amuxes[2].put(6, "apsOUT<7>");
-			amuxes[2].put(7, "apsOUT<7>");
-                        amuxes[3].put(0, "apsOUT<7>");
-			amuxes[3].put(1, "apsOUT<7>");
-			amuxes[3].put(2, "apsOUT<7>");
-                        amuxes[3].put(3, "apsOUT<7>");
-			amuxes[3].put(4, "apsOUT<7>");
-			amuxes[3].put(5, "CalibNeuronVmAO");
-                        amuxes[3].put(6, "calibNeuron");
-			amuxes[3].put(7, "CalibNeuronVmAO");
+			amuxes[2].put(7, "apsOUT<7>"); 
+                        amuxes[1].put(0, "VinTest");
+			amuxes[1].put(1, "apsOUT<7>");
+			amuxes[1].put(2, "apsOUT<7>");
+                        amuxes[1].put(3, "apsOUT<7>");
+			amuxes[1].put(4, "apsOUT<7>");
+			amuxes[1].put(5, "apsOUT<7>");
+                        amuxes[1].put(6, "apsOUT<7>");
+			amuxes[1].put(7, "apsOUT<7>");
+                        amuxes[0].put(0, "apsOUT<7>");
+			amuxes[0].put(1, "apsOUT<7>");
+			amuxes[0].put(2, "apsOUT<7>");
+                        amuxes[0].put(3, "apsOUT<7>");
+			amuxes[0].put(4, "apsOUT<7>");
+			amuxes[0].put(5, "CalibNeuronVmAO");
+                        amuxes[0].put(6, "calibNeuron");
+			amuxes[0].put(7, "CalibNeuronVmAO");
 
 
 			
