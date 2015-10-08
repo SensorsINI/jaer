@@ -59,7 +59,8 @@ public class HeatMapCNN extends DavisDeepLearnCnnProcessor{
         dvsNet.getSupport().addPropertyChangeListener(DeepLearnCnnNetwork.EVENT_MADE_DECISION, this);
         renderer = (AEFrameChipRenderer) chip.getRenderer();
     }
-
+// initialization
+    
     @Override
     public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
         targetLabeler.filterPacket(in);
