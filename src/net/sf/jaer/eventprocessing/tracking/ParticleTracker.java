@@ -40,8 +40,8 @@ import net.sf.jaer.graphics.FrameAnnotater;
 @Description("Tracks multiple objects using a particle filter approach")
 public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Observer{
 	private java.util.List<Cluster> clusters = new LinkedList<Cluster>();
-	private int[][] lastCluster = new int[ 128 ][ 128 ];
-	private int[][] lastEvent = new int[ 128 ][ 128 ];
+	private int[][] lastCluster = new int[ 240 ][ 180 ];
+	private int[][] lastEvent = new int[ 240 ][ 180 ];
 	private int next_cluster_id = 1;
 	protected Random random = new Random();
 	private PrintStream logStream = null;
@@ -482,7 +482,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
 		float new_event_weight;
 		//int surround=2;
 
-		if ( ( x >= 0 ) && ( x < 128 ) && ( y >= 0 ) && ( y < 128 ) && ( lastCluster[x][y] < lowest_id ) && ( lastEvent[x][y] >= time_limit ) ){
+		if ( ( x >= 0 ) && ( x < 240 ) && ( y >= 0 ) && ( y < 180 ) && ( lastCluster[x][y] < lowest_id ) && ( lastEvent[x][y] >= time_limit ) ){
 			if ( c == null ){
 				c = new DiffusedCluster(0,0,lastEvent[x][y]);
 			}
@@ -546,8 +546,8 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
 		new_clusters_from = next_cluster_id;
 		// the next foor loop builds up a list of clusters based on all connected alive events in the pixels
 		// and assignes new cluster ids in the lastCluster array. This new id, the old id and the cluster are stored ina temporary list
-		for ( x = 0 ; x < 128 ; x++ ){
-			for ( y = 0 ; y < 128 ; y++ ){
+		for ( x = 0 ; x < 240 ; x++ ){
+			for ( y = 0 ; y < 180 ; y++ ){
 				this_pixel_old_id = lastCluster[x][y];
 				try{
 					dc = diffuseCluster(x,y,next_cluster_id,time_limit,new_clusters_from,null);
@@ -779,8 +779,8 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
 		int i, j;
 		clusters.clear();
 		next_cluster_id = 1;
-		for ( i = 0 ; i < 128 ; i++ ){
-			for ( j = 0 ; j < 128 ; j++ ){
+		for ( i = 0 ; i < 240 ; i++ ){
+			for ( j = 0 ; j < 180 ; j++ ){
 				lastCluster[i][j] = -1;
 				lastEvent[i][j] = -1;
 			}
@@ -850,8 +850,8 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
 		for ( Cluster c:clusters ){
 			rgb = c.color.getRGBComponents(null);
 			if ( c.mass > clusterMinMass4Display ){
-				sx = 4;
-				sy = 4;
+				sx = 14;
+				sy = 14;
 				if ( c.em ){
 					gl.glLineWidth(2);
 				} else{
@@ -860,8 +860,8 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater,Obs
 				gl.glColor3fv(rgb,0);
 				//gl.glColor3f(.5f,.7f,.1f);
 			} else{
-				sx = (int)( (4.0 * c.mass) / clusterMinMass4Display );
-				sy = (int)( (4.0 * c.mass) / clusterMinMass4Display );
+				sx = (int)( (14.0 * c.mass) / clusterMinMass4Display );
+				sy = (int)( (14.0 * c.mass) / clusterMinMass4Display );
 				gl.glLineWidth((float).2);
 				//gl.glColor3fv(rgb,0);
 				gl.glColor3f(.1f,.2f,.1f);
