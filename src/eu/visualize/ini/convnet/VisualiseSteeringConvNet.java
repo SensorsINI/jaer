@@ -29,6 +29,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor implements PropertyChangeListener {
 
+    private static final int LEFT=0, CENTER=1, RIGHT=2, INVISIBLE=3; // define output cell types
     private boolean hideOutput = getBoolean("hideOutput", false);
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
     private TargetLabeler targetLabeler = null;
@@ -107,7 +108,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         checkBlend(gl);
         int third = chip.getSizeX() / 3;
         int sy = chip.getSizeY();
-        if (apsNet != null && apsNet.outputLayer!=null && apsNet.outputLayer.activations != null && isProcessAPSFrames()) {
+        if (apsNet != null && apsNet.outputLayer!=null && apsNet.outputLayer.activations != null && (isProcessAPSFrames() | isProcessAPSDVSTogetherInAPSNet())) {
             drawDecisionOutput(third, gl, sy, apsNet, Color.RED);
         }
         if (dvsNet != null && dvsNet.outputLayer!=null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
