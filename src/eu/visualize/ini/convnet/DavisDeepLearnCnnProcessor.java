@@ -46,8 +46,9 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     private float uniformWeight = getFloat("uniformWeight", 0);
     private float uniformBias = getFloat("uniformBias", 0);
     protected boolean measurePerformance = getBoolean("measurePerformance", false);
+    protected boolean processAPSFrames = getBoolean("processAPSDVSTogetherInAPSNet", true);
+    protected boolean processAPSDVSTogetherInAPSNet = getBoolean("processAPSFrames", false);
     private boolean processDVSTimeSlices = getBoolean("processDVSTimeSlices", false);
-    protected boolean processAPSFrames = getBoolean("processAPSFrames", true);
     protected boolean addedPropertyChangeListener = false;  // must do lazy add of us as listener to chip because renderer is not there yet when this is constructed
     private int dvsMinEvents = getInt("dvsMinEvents", 10000);
 
@@ -55,7 +56,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     public ImageDisplay inputImageDisplay;
 
     private DvsSubsamplerToFrame dvsSubsampler = null;
-    private int dvsColorScale = getInt("dvsColorScale", 32); // 1/dvsColorScale is amount each event color the timeslice in subsampled timeslice input
+    private int dvsColorScale = getInt("dvsColorScale", 200); // 1/dvsColorScale is amount each event color the timeslice in subsampled timeslice input
 
     public DavisDeepLearnCnnProcessor(AEChip chip) {
         super(chip);
@@ -79,6 +80,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame");
         setPropertyTooltip(anal, "processAPSFrames", "sends APS frames to convnet");
         setPropertyTooltip(anal, "processDVSTimeSlices", "sends DVS time slices to convnet");
+        setPropertyTooltip(anal, "processAPSDVSTogetherInAPSNet", "sends APS frames and DVS time slices to single convnet");
         setPropertyTooltip(anal, "dvsColorScale", "1/dvsColorScale is the amount by which each DVS event is added to time slice 2D gray-level histogram");
         setPropertyTooltip(anal, "dvsMinEvents", "minimum number of events to run net on DVS timeslice");
         initFilter();
@@ -102,6 +104,8 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
         lastAPSNetXMLFilename = c.getSelectedFile().toString();
         putString("lastAPSNetXMLFilename", lastAPSNetXMLFilename);
         apsNet.loadFromXMLFile(c.getSelectedFile());
+        dvsSubsampler = new DvsSubsamplerToFrame(apsNet.inputLayer.dimx, apsNet.inputLayer.dimy, getDvsColorScale());
+
     }
 
     /**
@@ -156,7 +160,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 //        frameExtractor.filterPacket(in); // extracts frames with nornalization (brightness, contrast) and sends to apsNet on each frame in PropertyChangeListener
         // send DVS timeslice to convnet
 
-        if (dvsNet != null && processDVSTimeSlices) {
+        if ((dvsNet != null && processDVSTimeSlices) || (apsNet != null && processAPSDVSTogetherInAPSNet)) {
             final int sizeX = chip.getSizeX();
             final int sizeY = chip.getSizeY();
             for (BasicEvent e : in) {
@@ -167,7 +171,12 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
                     if (measurePerformance) {
                         startTime = System.nanoTime();
                     }
-                    dvsNet.processDvsTimeslice(dvsSubsampler);
+                    if (processDVSTimeSlices) {
+                        dvsNet.processDvsTimeslice(dvsSubsampler);
+                    }
+                    if (processAPSDVSTogetherInAPSNet) {
+                        apsNet.processDvsTimeslice(dvsSubsampler);
+                    }
                     dvsSubsampler.clear();
                     if (measurePerformance) {
                         long dt = System.nanoTime() - startTime;
@@ -184,7 +193,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 
     @Override
     public void resetFilter() {
-        
+
     }
 
     @Override
@@ -209,7 +218,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         // new activationsFrame is available, process it
-        if (apsNet != null && processAPSFrames) {
+        if ((apsNet != null && (processAPSFrames | processAPSDVSTogetherInAPSNet))) {
 //            float[] frame = frameExtractor.getNewFrame();
 //            if (frame == null || frame.length == 0 || frameExtractor.getWidth() == 0) {
 //                return;
@@ -235,7 +244,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     public void annotate(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
         if (showActivations) {
-            if (apsNet != null && processAPSFrames) {
+            if (apsNet != null && (processAPSFrames | processAPSDVSTogetherInAPSNet)) {
                 apsNet.drawActivations();
             }
             if (dvsNet != null && processDVSTimeSlices) {
@@ -245,7 +254,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
 
         if (showOutputAsBarChart) {
             final float lineWidth = 2;
-            if (apsNet.outputLayer != null && processAPSFrames) {
+            if (apsNet.outputLayer != null && (processAPSFrames | processAPSDVSTogetherInAPSNet)) {
                 apsNet.outputLayer.annotateHistogram(gl, chip.getSizeX(), chip.getSizeY(), lineWidth, Color.RED);
             }
             if (dvsNet.outputLayer != null && processDVSTimeSlices) {
@@ -336,6 +345,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             apsNet.setInputClampedToIncreasingIntegers(inputClampedTo1);
         }
     }
+
     /**
      * @return the measurePerformance
      */
@@ -380,8 +390,10 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
      * @param processDVSTimeSlices the processDVSTimeSlices to set
      */
     public void setProcessDVSTimeSlices(boolean processDVSTimeSlices) {
+        boolean old=this.processDVSTimeSlices;
         this.processDVSTimeSlices = processDVSTimeSlices;
         putBoolean("processDVSTimeSlices", processDVSTimeSlices);
+        getSupport().firePropertyChange("processDVSTimeSlices", old, processDVSTimeSlices);
     }
 
     /**
@@ -395,8 +407,10 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
      * @param processAPSFrames the processAPSFrames to set
      */
     public void setProcessAPSFrames(boolean processAPSFrames) {
+        boolean old=this.processAPSFrames;
         this.processAPSFrames = processAPSFrames;
         putBoolean("processAPSFrames", processAPSFrames);
+        getSupport().firePropertyChange("processAPSFrames", old, processAPSFrames);
     }
 
     /**
@@ -470,27 +484,51 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     }
 
     public boolean isPrintActivations() {
-        if(apsNet==null) return false;
+        if (apsNet == null) {
+            return false;
+        }
         return apsNet.isPrintActivations();
     }
 
     public void setPrintActivations(boolean printActivations) {
-        if(apsNet==null) return;
+        if (apsNet == null) {
+            return;
+        }
         apsNet.setPrintActivations(printActivations);
     }
 
     public boolean isPrintWeights() {
-       if(apsNet==null) return false;
+        if (apsNet == null) {
+            return false;
+        }
         return apsNet.isPrintWeights();
     }
 
     public void setPrintWeights(boolean printWeights) {
-        if(apsNet==null) return;
+        if (apsNet == null) {
+            return;
+        }
         apsNet.setPrintWeights(printWeights);
     }
-    
-    
-    
-    
+
+    /**
+     * @return the processAPSDVSTogetherInAPSNet
+     */
+    public boolean isProcessAPSDVSTogetherInAPSNet() {
+        return processAPSDVSTogetherInAPSNet;
+    }
+
+    /**
+     * @param processAPSDVSTogetherInAPSNet the processAPSDVSTogetherInAPSNet to
+     * set
+     */
+    public void setProcessAPSDVSTogetherInAPSNet(boolean processAPSDVSTogetherInAPSNet) {
+        this.processAPSDVSTogetherInAPSNet = processAPSDVSTogetherInAPSNet;
+        putBoolean("processAPSDVSTogetherInAPSNet", processAPSDVSTogetherInAPSNet);
+        if (processAPSDVSTogetherInAPSNet) {
+            setProcessAPSFrames(false);
+            setProcessDVSTimeSlices(false);
+        }
+    }
 
 }
