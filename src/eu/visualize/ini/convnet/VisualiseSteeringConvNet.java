@@ -142,7 +142,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             gl.glColor3f((shade * r), (shade * g), (shade * b));
             gl.glRecti(0, 0, chip.getSizeX(), sy / 8);
 
-        } else if (decision < 3) {
+        } else if (decision!=INVISIBLE) {
             int x0 = third * decision;
             int x1 = x0 + third;
             float shade = .5f;

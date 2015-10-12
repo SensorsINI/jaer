@@ -46,8 +46,8 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     private float uniformWeight = getFloat("uniformWeight", 0);
     private float uniformBias = getFloat("uniformBias", 0);
     protected boolean measurePerformance = getBoolean("measurePerformance", false);
-    protected boolean processAPSFrames = getBoolean("processAPSDVSTogetherInAPSNet", true);
-    protected boolean processAPSDVSTogetherInAPSNet = getBoolean("processAPSFrames", false);
+    protected boolean processAPSFrames = getBoolean("processAPSFrames", true);
+    protected boolean processAPSDVSTogetherInAPSNet = getBoolean("processAPSDVSTogetherInAPSNet", false);
     private boolean processDVSTimeSlices = getBoolean("processDVSTimeSlices", false);
     protected boolean addedPropertyChangeListener = false;  // must do lazy add of us as listener to chip because renderer is not there yet when this is constructed
     private int dvsMinEvents = getInt("dvsMinEvents", 10000);
