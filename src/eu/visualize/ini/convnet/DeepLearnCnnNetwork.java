@@ -588,11 +588,11 @@ public class DeepLearnCnnNetwork {
                 sum2 += (f * f);
             }
             float m = sum / n;
-            float std = sum2 / n-m*m;
+            float var = (sum2 / n)-(m*m);
             if (n == 0) {
-                std = 1;
+                var = 1;
             }
-            float r = 1 / std;
+            float r = (float)(1 / Math.sqrt(var));
             for (int i = 0; i < n; i++) {
                 activations[i] = r * (activations[i] - m);
             }
