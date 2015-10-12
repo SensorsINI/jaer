@@ -203,6 +203,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
             File f = new File(lastAPSNetXMLFilename);
             if (f.exists() && f.isFile()) {
                 apsNet.loadFromXMLFile(f);
+                dvsSubsampler = new DvsSubsamplerToFrame(apsNet.inputLayer.dimx, apsNet.inputLayer.dimy, getDvsColorScale());
             }
         }
         if (lastDVSNetXMLFilename != null) {
@@ -390,7 +391,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
      * @param processDVSTimeSlices the processDVSTimeSlices to set
      */
     public void setProcessDVSTimeSlices(boolean processDVSTimeSlices) {
-        boolean old=this.processDVSTimeSlices;
+        boolean old = this.processDVSTimeSlices;
         this.processDVSTimeSlices = processDVSTimeSlices;
         putBoolean("processDVSTimeSlices", processDVSTimeSlices);
         getSupport().firePropertyChange("processDVSTimeSlices", old, processDVSTimeSlices);
@@ -407,7 +408,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
      * @param processAPSFrames the processAPSFrames to set
      */
     public void setProcessAPSFrames(boolean processAPSFrames) {
-        boolean old=this.processAPSFrames;
+        boolean old = this.processAPSFrames;
         this.processAPSFrames = processAPSFrames;
         putBoolean("processAPSFrames", processAPSFrames);
         getSupport().firePropertyChange("processAPSFrames", old, processAPSFrames);
