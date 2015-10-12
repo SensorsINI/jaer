@@ -1110,10 +1110,10 @@ public class DeepLearnCnnNetwork {
             float dx = (float) (width) / (activations.length);
             float sy = (float) (height) / 1;
 
-            gl.glBegin(GL.GL_LINES);
-            gl.glVertex2f(1, 1);
-            gl.glVertex2f(width - 1, 1);
-            gl.glEnd();
+//            gl.glBegin(GL.GL_LINES);
+//            gl.glVertex2f(1, 1);
+//            gl.glVertex2f(width - 1, 1);
+//            gl.glEnd();
 
             gl.glBegin(GL.GL_LINE_STRIP);
             for (int i = 0; i < activations.length; i++) {
