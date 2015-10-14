@@ -11,6 +11,7 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import java.util.Arrays;
 import javax.swing.SwingUtilities;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -29,11 +30,12 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor implements PropertyChangeListener {
 
-    private static final int LEFT=0, CENTER=1, RIGHT=2, INVISIBLE=3; // define output cell types
+    private static final int LEFT = 0, CENTER = 1, RIGHT = 2, INVISIBLE = 3; // define output cell types
     private boolean hideOutput = getBoolean("hideOutput", false);
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
     private TargetLabeler targetLabeler = null;
     private int totalDecisions = 0, correct = 0, incorrect = 0;
+    private Error error = new Error();
 
     public VisualiseSteeringConvNet(AEChip chip) {
         super(chip);
@@ -54,31 +56,31 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         return out;
     }
 
-    private Boolean correctDescisionFromTargetLabeler(TargetLabeler targetLabeler, DeepLearnCnnNetwork net) {
-        if (targetLabeler.getTargetLocation() == null) {
-            return null; // no location labeled for this time
-        }
-        Point p = targetLabeler.getTargetLocation().location;
-        if (p == null) {
-            if (net.outputLayer.maxActivatedUnit == 3) {
-                return true; // no target seen
-            }
-        } else {
-            int x = p.x;
-            int third = (x * 3) / chip.getSizeX();
-            if (third == net.outputLayer.maxActivatedUnit) {
-                return true;
-            }
-        }
-        return false;
-    }
-
+//    private Boolean correctDescisionFromTargetLabeler(TargetLabeler targetLabeler, DeepLearnCnnNetwork net) {
+//        if (targetLabeler.getTargetLocation() == null) {
+//            return null; // no location labeled for this time
+//        }
+//        Point p = targetLabeler.getTargetLocation().location;
+//        if (p == null) {
+//            if (net.outputLayer.maxActivatedUnit == 3) {
+//                return true; // no target seen
+//            }
+//        } else {
+//            int x = p.x;
+//            int third = (x * 3) / chip.getSizeX();
+//            if (third == net.outputLayer.maxActivatedUnit) {
+//                return true;
+//            }
+//        }
+//        return false;
+//    }
     @Override
     public void resetFilter() {
         super.resetFilter();
         totalDecisions = 0;
         correct = 0;
         incorrect = 0;
+        error.reset();
 
     }
 
@@ -108,18 +110,19 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         checkBlend(gl);
         int third = chip.getSizeX() / 3;
         int sy = chip.getSizeY();
-        if (apsNet != null && apsNet.outputLayer!=null && apsNet.outputLayer.activations != null && (isProcessAPSFrames() | isProcessAPSDVSTogetherInAPSNet())) {
+        if (apsNet != null && apsNet.outputLayer != null && apsNet.outputLayer.activations != null && (isProcessAPSFrames() | isProcessAPSDVSTogetherInAPSNet())) {
             drawDecisionOutput(third, gl, sy, apsNet, Color.RED);
         }
-        if (dvsNet != null && dvsNet.outputLayer!=null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
+        if (dvsNet != null && dvsNet.outputLayer != null && dvsNet.outputLayer.activations != null && isProcessDVSTimeSlices()) {
             drawDecisionOutput(third, gl, sy, dvsNet, Color.YELLOW);
         }
 
-        if (totalDecisions > 0) {
-            float errorRate = (float) incorrect / totalDecisions;
-            String s = String.format("Error rate %.2f%% (total=%d correct=%d incorrect=%d)\n", errorRate * 100, totalDecisions, correct, incorrect);
-            MultilineAnnotationTextRenderer.renderMultilineString(s);
-        }
+        MultilineAnnotationTextRenderer.renderMultilineString(error.toString());
+//        if (totalDecisions > 0) {
+//            float errorRate = (float) incorrect / totalDecisions;
+//            String s = String.format("Error rate %.2f%% (total=%d correct=%d incorrect=%d)\n", errorRate * 100, totalDecisions, correct, incorrect);
+//            MultilineAnnotationTextRenderer.renderMultilineString(s);
+//        }
 
     }
 
@@ -142,7 +145,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             gl.glColor3f((shade * r), (shade * g), (shade * b));
             gl.glRecti(0, 0, chip.getSizeX(), sy / 8);
 
-        } else if (decision!=INVISIBLE) {
+        } else if (decision != INVISIBLE) {
             int x0 = third * decision;
             int x1 = x0 + third;
             float shade = .5f;
@@ -187,16 +190,93 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             super.propertyChange(evt);
         } else {
             DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
-            Boolean correctDecision = correctDescisionFromTargetLabeler(targetLabeler, net);
-            if (correctDecision != null) {
-                totalDecisions++;
-                if (correctDecision) {
-                    correct++;
-                } else {
-                    incorrect++;
-                }
-            }
+            error.addSample(targetLabeler.getTargetLocation(), net.outputLayer.maxActivatedUnit);
+//            Boolean correctDecision = correctDescisionFromTargetLabeler(targetLabeler, net);
+//            if (correctDecision != null) {
+//                totalDecisions++;
+//                if (correctDecision) {
+//                    correct++;
+//                } else {
+//                    incorrect++;
+//                }
+//            }
         }
     }
 
+    private class Error {
+
+        int totalCount, totalCorrect, totalIncorrect;
+        int[] correct = new int[4], incorrect = new int[4], count = new int[4];
+        int pixelErrorAllowedForSteering = getInt("pixelErrorAllowedForSteering", 10);
+
+        public Error() {
+            reset();
+        }
+
+        void reset() {
+            totalCount = 0;
+            totalCorrect = 0;
+            totalIncorrect = 0;
+            Arrays.fill(correct, 0);
+            Arrays.fill(incorrect, 0);
+            Arrays.fill(count, 0);
+        }
+
+        void addSample(TargetLabeler.TargetLocation gtTargetLocation, int descision) {
+            totalCount++;
+            if ((gtTargetLocation == null)) {
+                return;
+            }
+
+            int third = chip.getSizeX() / 3;
+
+            if (gtTargetLocation.location != null) {
+                int x = (int) Math.floor(gtTargetLocation.location.x);
+                int gtDescision = x / third;
+                if (gtDescision < 0 || gtDescision > 3) {
+                    return; // bad descision output, should not happen
+                }
+                count[gtDescision]++;
+                if (gtDescision == descision) {
+                    correct[gtDescision]++;
+                    totalCorrect++;
+                } else {
+                    incorrect[gtDescision]++;
+                    totalIncorrect++;
+                }
+
+            } else {
+                count[INVISIBLE]++;
+                if (descision == INVISIBLE) {
+                    correct[INVISIBLE]++;
+                    totalCorrect++;
+                } else {
+                    incorrect[INVISIBLE]++;
+                    totalIncorrect++;
+                }
+            }
+        }
+
+        @Override
+        public String toString() {
+            if (targetLabeler.hasLocations() == false) {
+                return "Error: No ground truth target locations loaded";
+            }
+            if (totalCount == 0) {
+                return "Error: no samples yet";
+            }
+            StringBuilder sb = new StringBuilder("Error rates: ");
+            sb.append(String.format(" Total=%.1f%% (%d/%d) (", (100f * totalIncorrect) / totalCount, totalIncorrect, totalCount));
+            for (int i = 0; i < 4; i++) {
+                if (count[i] == 0) {
+                    sb.append(String.format(" 0/0 "));
+                } else {
+                    sb.append(String.format(" %.1f%% (%d)", (100f * incorrect[i]) / count[i], count[i]));
+                }
+            }
+            sb.append(")");
+            return sb.toString();
+        }
+
+    }
 }

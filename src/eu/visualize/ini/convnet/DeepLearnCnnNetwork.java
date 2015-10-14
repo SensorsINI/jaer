@@ -167,6 +167,7 @@ public class DeepLearnCnnNetwork {
 
     void drawActivations() {
         checkActivationsFrame();
+        if(layers==null) return;
         for (Layer l : layers) {
             if ((l instanceof ConvLayer) && hideConvLayers) {
                 continue;
