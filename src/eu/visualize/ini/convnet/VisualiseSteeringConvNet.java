@@ -190,7 +190,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             super.propertyChange(evt);
         } else {
             DeepLearnCnnNetwork net = (DeepLearnCnnNetwork) evt.getNewValue();
-            error.addSample(targetLabeler.getTargetLocation(), net.outputLayer.maxActivatedUnit);
+            error.addSample(targetLabeler.getTargetLocation(), net.outputLayer.maxActivatedUnit, net.isLastInputTypeProcessedWasApsFrame());
 //            Boolean correctDecision = correctDescisionFromTargetLabeler(targetLabeler, net);
 //            if (correctDecision != null) {
 //                totalDecisions++;
@@ -208,6 +208,8 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         int totalCount, totalCorrect, totalIncorrect;
         int[] correct = new int[4], incorrect = new int[4], count = new int[4];
         int pixelErrorAllowedForSteering = getInt("pixelErrorAllowedForSteering", 10);
+        int dvsTotalCount, dvsCorrect, dvsIncorrect;
+        int apsTotalCount, apsCorrect, apsIncorrect;
 
         public Error() {
             reset();
@@ -220,12 +222,23 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             Arrays.fill(correct, 0);
             Arrays.fill(incorrect, 0);
             Arrays.fill(count, 0);
+            dvsTotalCount = 0;
+            dvsCorrect = 0;
+            dvsIncorrect = 0;
+            apsTotalCount = 0;
+            apsCorrect = 0;
+            apsIncorrect = 0;
         }
 
-        void addSample(TargetLabeler.TargetLocation gtTargetLocation, int descision) {
+        void addSample(TargetLabeler.TargetLocation gtTargetLocation, int descision, boolean apsType) {
             totalCount++;
             if ((gtTargetLocation == null)) {
                 return;
+            }
+            if (apsType) {
+                apsTotalCount++;
+            } else {
+                dvsTotalCount++;
             }
 
             int third = chip.getSizeX() / 3;
@@ -240,9 +253,19 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 if (gtDescision == descision) {
                     correct[gtDescision]++;
                     totalCorrect++;
+                    if (apsType) {
+                        apsCorrect++;
+                    } else {
+                        dvsCorrect++;
+                    }
                 } else {
                     incorrect[gtDescision]++;
                     totalIncorrect++;
+                    if (apsType) {
+                        apsIncorrect++;
+                    } else {
+                        dvsIncorrect++;
+                    }
                 }
 
             } else {
@@ -250,9 +273,19 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 if (descision == INVISIBLE) {
                     correct[INVISIBLE]++;
                     totalCorrect++;
+                    if (apsType) {
+                        apsCorrect++;
+                    } else {
+                        dvsCorrect++;
+                    }
                 } else {
                     incorrect[INVISIBLE]++;
                     totalIncorrect++;
+                    if (apsType) {
+                        apsIncorrect++;
+                    } else {
+                        dvsIncorrect++;
+                    }
                 }
             }
         }
@@ -266,7 +299,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                 return "Error: no samples yet";
             }
             StringBuilder sb = new StringBuilder("Error rates: ");
-            sb.append(String.format(" Total=%.1f%% (%d/%d) (", (100f * totalIncorrect) / totalCount, totalIncorrect, totalCount));
+            sb.append(String.format(" Total=%.1f%% (%d/%d) \n(", (100f * totalIncorrect) / totalCount, totalIncorrect, totalCount));
             for (int i = 0; i < 4; i++) {
                 if (count[i] == 0) {
                     sb.append(String.format(" 0/0 "));
@@ -274,6 +307,10 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                     sb.append(String.format(" %.1f%% (%d)", (100f * incorrect[i]) / count[i], count[i]));
                 }
             }
+            sb.append(String.format("\naps=%.1f%% (%d/%d) dvs=%.1f%% (%d/%d)", 
+                    (100f * apsIncorrect) / apsTotalCount, apsIncorrect, apsTotalCount,
+                    (100f * dvsIncorrect) / dvsTotalCount, dvsIncorrect, dvsTotalCount));
+
             sb.append(")");
             return sb.toString();
         }

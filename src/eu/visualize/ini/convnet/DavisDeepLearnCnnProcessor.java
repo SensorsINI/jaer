@@ -175,7 +175,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
                         dvsNet.processDvsTimeslice(dvsSubsampler);
                     }
                     if (processAPSDVSTogetherInAPSNet) {
-                        apsNet.processDvsTimeslice(dvsSubsampler);
+                        apsNet.processDvsTimeslice(dvsSubsampler); // generates PropertyChange EVENT_MADE_DECISION
                     }
                     dvsSubsampler.clear();
                     if (measurePerformance) {

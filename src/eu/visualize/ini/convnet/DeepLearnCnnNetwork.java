@@ -93,7 +93,8 @@ public class DeepLearnCnnNetwork {
     private String xmlFilename = null;
     private boolean printActivations = false;
     private boolean printWeights = false;
-
+    protected boolean lastInputTypeProcessedWasApsFrame=false;
+    
     /**
      * This PropertyChange is emitted when either APS or DVS net outputs. The
      * new value is the network. The old value is null.
@@ -104,6 +105,7 @@ public class DeepLearnCnnNetwork {
 
     public float[] processDvsTimeslice(DvsSubsamplerToFrame subsampler) {
         inputLayer.processDvsTimeslice(subsampler);
+        setLastInputTypeProcessedWasApsFrame(false);
         return processLayers();
 
     }
@@ -121,6 +123,7 @@ public class DeepLearnCnnNetwork {
         }
 
         inputLayer.processDownsampledFrame(frame);
+        setLastInputTypeProcessedWasApsFrame(true);
         return processLayers();
     }
 
@@ -136,6 +139,7 @@ public class DeepLearnCnnNetwork {
     public float[] processInputPatchFrame(AEFrameChipRenderer frame, int offX, int offY) {
 
         inputLayer.processInputFramePatch(frame, offX, offY);
+        setLastInputTypeProcessedWasApsFrame(true);
         return processLayers();
     }
 
@@ -264,6 +268,20 @@ public class DeepLearnCnnNetwork {
      */
     public PropertyChangeSupport getSupport() {
         return support;
+    }
+
+    /**
+     * @return the lastInputTypeProcessedWasApsFrame
+     */
+    public boolean isLastInputTypeProcessedWasApsFrame() {
+        return lastInputTypeProcessedWasApsFrame;
+    }
+
+    /**
+     * @param lastInputTypeProcessedWasApsFrame the lastInputTypeProcessedWasApsFrame to set
+     */
+    public void setLastInputTypeProcessedWasApsFrame(boolean lastInputTypeProcessedWasApsFrame) {
+        this.lastInputTypeProcessedWasApsFrame = lastInputTypeProcessedWasApsFrame;
     }
 
     abstract public class Layer {
