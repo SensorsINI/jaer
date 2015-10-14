@@ -351,6 +351,14 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 										break;
 
+									case 32:
+									case 33:
+									case 34:
+									case 35:
+										// APS ROI region information.
+										// TODO: ROI not supported in jAER currently.
+										break;
+
 									default:
 										CypressFX3.log.severe("Caught special event that can't be handled.");
 										break;
@@ -545,6 +553,16 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 										imuCount++;
 
+										break;
+
+									case 1:
+										// APS ROI Size Part 1 (bits 15-8).
+										// TODO: ROI not supported in jAER currently.
+										break;
+
+									case 2:
+										// APS ROI Size Part 2 (bits 7-0).
+										// TODO: ROI not supported in jAER currently.
 										break;
 
 									default:
