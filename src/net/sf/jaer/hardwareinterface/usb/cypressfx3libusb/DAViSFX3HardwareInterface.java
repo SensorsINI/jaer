@@ -35,6 +35,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	/** The USB product ID of this device */
 	static public final short PID = (short) 0x841A;
 	static public final short PID_FX2 = (short) 0x841B;
+	static public final int REQUIRED_FIRMWARE_VERSION = 2;
+	static public final int REQUIRED_LOGIC_REVISION = 7449;
 
 	/**
 	 * Starts reader buffer pool thread and enables in endpoints for AEs. This
@@ -100,6 +102,21 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 		public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
 			super(cypress);
+
+			// Verify device firmware version and logic revision.
+			final int usbFWVersion = getDID() & 0x00FF;
+			if (usbFWVersion < DAViSFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION) {
+				throw new HardwareInterfaceException(String.format(
+					"Device firmware version too old. You have version %d; but at least version %d is required. Please updated by following the Flashy upgrade documentation at 'https://goo.gl/TGM0w1'.",
+					usbFWVersion, DAViSFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION));
+			}
+
+			final int logicRevision = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 0);
+			if (logicRevision < DAViSFX3HardwareInterface.REQUIRED_LOGIC_REVISION) {
+				throw new HardwareInterfaceException(String.format(
+					"Device logic revision too old. You have revision %d; but at least revision %d is required. Please updated by following the Flashy upgrade documentation at 'https://goo.gl/TGM0w1'.",
+					logicRevision, DAViSFX3HardwareInterface.REQUIRED_LOGIC_REVISION));
+			}
 
 			apsCountX = new short[RetinaAEReader.APS_READOUT_TYPES_NUM];
 			apsCountY = new short[RetinaAEReader.APS_READOUT_TYPES_NUM];

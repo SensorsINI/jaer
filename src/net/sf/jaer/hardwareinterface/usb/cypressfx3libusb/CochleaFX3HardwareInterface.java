@@ -31,6 +31,8 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 
 	/** The USB product ID of this device */
 	static public final short PID = (short) 0x841C;
+	static public final int REQUIRED_FIRMWARE_VERSION = 2;
+	static public final int REQUIRED_LOGIC_REVISION = 0;
 
 	/**
 	 * Starts reader buffer pool thread and enables in endpoints for AEs. This
@@ -66,12 +68,27 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 		public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
 			super(cypress);
 
+			// Verify device firmware version and logic revision.
+			final int usbFWVersion = getDID() & 0x00FF;
+			if (usbFWVersion < CochleaFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION) {
+				throw new HardwareInterfaceException(String.format(
+					"Device firmware version too old. You have version %d; but at least version %d is required. Please updated by following the Flashy upgrade documentation at 'https://goo.gl/TGM0w1'.",
+					usbFWVersion, CochleaFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION));
+			}
+
+			final int logicRevision = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 0);
+			if (logicRevision < CochleaFX3HardwareInterface.REQUIRED_LOGIC_REVISION) {
+				throw new HardwareInterfaceException(String.format(
+					"Device logic revision too old. You have revision %d; but at least revision %d is required. Please updated by following the Flashy upgrade documentation at 'https://goo.gl/TGM0w1'.",
+					logicRevision, CochleaFX3HardwareInterface.REQUIRED_LOGIC_REVISION));
+			}
+
 			chipID = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 1);
 
-			if (chipID == CHIP_COCHLEALP) {
+			if (chipID == CochleaFX3HardwareInterface.CHIP_COCHLEALP) {
 				aerMaxAddress = 256;
 			}
-			else if (chipID == CHIP_COCHLEA4EAR) {
+			else if (chipID == CochleaFX3HardwareInterface.CHIP_COCHLEA4EAR) {
 				aerMaxAddress = 1024;
 			}
 			else {
