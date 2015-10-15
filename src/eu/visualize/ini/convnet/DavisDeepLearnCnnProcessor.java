@@ -55,7 +55,7 @@ public class DavisDeepLearnCnnProcessor extends EventFilter2D implements Propert
     private JFrame imageDisplayFrame = null;
     public ImageDisplay inputImageDisplay;
 
-    private DvsSubsamplerToFrame dvsSubsampler = null;
+    protected DvsSubsamplerToFrame dvsSubsampler = null;
     private int dvsColorScale = getInt("dvsColorScale", 200); // 1/dvsColorScale is amount each event color the timeslice in subsampled timeslice input
 
     public DavisDeepLearnCnnProcessor(AEChip chip) {

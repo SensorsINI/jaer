@@ -8,6 +8,7 @@ package eu.visualize.ini.convnet;
 import java.util.Arrays;
 
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
  * Subsamples DVS input ON and OFF events to a desired "frame" resolution. By
@@ -29,6 +30,10 @@ public class DvsSubsamplerToFrame {
     private int accumulatedEventCount = 0;
     private int lastTimestamp = Integer.MIN_VALUE;
     private int mostOffCount = Integer.MAX_VALUE, mostOnCount = Integer.MIN_VALUE;
+    LowpassFilter frameIntervalFilter = new LowpassFilter(1000);
+    private int startTimestamp = 0;
+    private boolean cleared = true;
+    private int lastIntervalUs=0;
 
     /**
      * Makes a new DvsSubsamplingTimesliceConvNetInput
@@ -55,8 +60,8 @@ public class DvsSubsamplerToFrame {
         accumulatedEventCount = 0;
         mostOffCount = Integer.MAX_VALUE;
         mostOnCount = Integer.MIN_VALUE;
+        cleared = true;
     }
-
 
     /**
      * Adds event from a source event location to the new coordinates
@@ -70,27 +75,28 @@ public class DvsSubsamplerToFrame {
         if (e.isSpecial() || e.isFilteredOut()) {
             return;
         }
-        if( (newx <= width) && (newy <= height) && (newx >= 0) && (newy >=0) ){
-	        int x = e.x, y = e.y;
-	        int k = getIndex(newx, newy);
-	        int sum = eventSum[k];
-	        sum += (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
-	        if (sum > mostOnCount) {
-	            mostOnCount = sum;
-	        } else if (sum < mostOffCount) {
-	            mostOffCount = sum;
-	        }
-	        eventSum[k] = sum;
-	        float pmv = .5f + ((sum * colorScaleRecip) / 2);
-	        if (pmv > 1) {
-	            pmv = 1;
-	        } else if (pmv < 0) {
-	            pmv = 0;
-	        }
-	        pixmap[k] = pmv;
-	        accumulatedEventCount++;
-        }else{
-        	throw new RuntimeException("index out of bounds for event "+e.toString()+" with newx="+newx+" newy="+newy);
+        initialize(e);
+        if ((newx <= width) && (newy <= height) && (newx >= 0) && (newy >= 0)) {
+            int x = e.x, y = e.y;
+            int k = getIndex(newx, newy);
+            int sum = eventSum[k];
+            sum += (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
+            if (sum > mostOnCount) {
+                mostOnCount = sum;
+            } else if (sum < mostOffCount) {
+                mostOffCount = sum;
+            }
+            eventSum[k] = sum;
+            float pmv = .5f + ((sum * colorScaleRecip) / 2);
+            if (pmv > 1) {
+                pmv = 1;
+            } else if (pmv < 0) {
+                pmv = 0;
+            }
+            pixmap[k] = pmv;
+            accumulatedEventCount++;
+        } else {
+            throw new RuntimeException("index out of bounds for event " + e.toString() + " with newx=" + newx + " newy=" + newy);
         }
 
     }
@@ -107,6 +113,7 @@ public class DvsSubsamplerToFrame {
         if (e.isSpecial() || e.isFilteredOut()) {
             return;
         }
+        initialize(e);
         int x = e.x, y = e.y;
         if (srcWidth != width) {
             x = (int) Math.floor(((float) e.x / srcWidth) * width);
@@ -115,8 +122,8 @@ public class DvsSubsamplerToFrame {
             y = (int) Math.floor(((float) e.y / srcHeight) * height);
         }
         int k = getIndex(x, y);
-        if((k<0) || (k>eventSum.length)){
-            throw new RuntimeException("index out of bounds for event "+e.toString()+" with srcWidth="+srcWidth+" srcHeight="+srcHeight);
+        if ((k < 0) || (k > eventSum.length)) {
+            throw new RuntimeException("index out of bounds for event " + e.toString() + " with srcWidth=" + srcWidth + " srcHeight=" + srcHeight);
         }
         int sum = eventSum[k];
         sum += (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
@@ -209,4 +216,24 @@ public class DvsSubsamplerToFrame {
         return mostOnCount;
     }
 
+    private void initialize(PolarityEvent e) {
+        if (cleared) {
+            cleared = false;
+            int lastStartTimestamp = startTimestamp;
+            startTimestamp = e.timestamp;
+            lastIntervalUs = startTimestamp - lastStartTimestamp;
+            if (lastStartTimestamp != 0) {
+                frameIntervalFilter.filter(lastIntervalUs, startTimestamp);
+            }
+        }
+    }
+
+    public float getFilteredSubsamplerIntervalUs()
+    {
+        return frameIntervalFilter.getValue();
+    }
+    
+    public int getLastSubsamplerFrameIntervalUs(){
+        return lastIntervalUs;
+    }
 }

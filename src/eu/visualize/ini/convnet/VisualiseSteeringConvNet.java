@@ -34,7 +34,6 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     private boolean hideOutput = getBoolean("hideOutput", false);
     private boolean showAnalogDecisionOutput = getBoolean("showAnalogDecisionOutput", false);
     private TargetLabeler targetLabeler = null;
-    private int totalDecisions = 0, correct = 0, incorrect = 0;
     private Error error = new Error();
 
     public VisualiseSteeringConvNet(AEChip chip) {
@@ -87,9 +86,6 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
     @Override
     public void resetFilter() {
         super.resetFilter();
-        totalDecisions = 0;
-        correct = 0;
-        incorrect = 0;
         error.reset();
 
     }
@@ -127,7 +123,9 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
             drawDecisionOutput(third, gl, sy, dvsNet, Color.YELLOW);
         }
 
+        MultilineAnnotationTextRenderer.renderMultilineString(String.format("DVS subsampler, inst/avg interval %6.1f/%6.1f ms", dvsSubsampler.getLastSubsamplerFrameIntervalUs()*1e-3f, dvsSubsampler.getFilteredSubsamplerIntervalUs()*1e-3f));
         MultilineAnnotationTextRenderer.renderMultilineString(error.toString());
+        
 //        if (totalDecisions > 0) {
 //            float errorRate = (float) incorrect / totalDecisions;
 //            String s = String.format("Error rate %.2f%% (total=%d correct=%d incorrect=%d)\n", errorRate * 100, totalDecisions, correct, incorrect);
