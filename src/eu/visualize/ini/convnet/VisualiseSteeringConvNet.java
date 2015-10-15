@@ -39,8 +39,10 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 
     public VisualiseSteeringConvNet(AEChip chip) {
         super(chip);
-        setPropertyTooltip("showAnalogDecisionOutput", "shows output units as analog shading");
-        setPropertyTooltip("hideOutput", "hides output units");
+        String s="Steering Output";
+        setPropertyTooltip(s,"showAnalogDecisionOutput", "shows output units as analog shading rather than binary");
+        setPropertyTooltip(s,"hideOutput", "hides output unit rendering as shading over sensor image");
+        setPropertyTooltip(s,"pixelErrorAllowedForSteering", "If ground truth location is within this many pixels of closest border then the descision is still counted as corret");
         FilterChain chain = new FilterChain(chip);
         targetLabeler = new TargetLabeler(chip); // used to validate whether descisions are correct or not
         chain.add(targetLabeler);
@@ -54,6 +56,14 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
         targetLabeler.filterPacket(in);
         EventPacket out = super.filterPacket(in);
         return out;
+    }
+
+    public int getPixelErrorAllowedForSteering() {
+        return error.getPixelErrorAllowedForSteering();
+    }
+
+    public void setPixelErrorAllowedForSteering(int pixelErrorAllowedForSteering) {
+        error.setPixelErrorAllowedForSteering(pixelErrorAllowedForSteering);
     }
 
 //    private Boolean correctDescisionFromTargetLabeler(TargetLabeler targetLabeler, DeepLearnCnnNetwork net) {
@@ -207,7 +217,7 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
 
         int totalCount, totalCorrect, totalIncorrect;
         int[] correct = new int[4], incorrect = new int[4], count = new int[4];
-        int pixelErrorAllowedForSteering = getInt("pixelErrorAllowedForSteering", 10);
+        protected int pixelErrorAllowedForSteering = getInt("pixelErrorAllowedForSteering", 10);
         int dvsTotalCount, dvsCorrect, dvsIncorrect;
         int apsTotalCount, apsCorrect, apsIncorrect;
 
@@ -259,12 +269,35 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                         dvsCorrect++;
                     }
                 } else {
-                    incorrect[gtDescision]++;
-                    totalIncorrect++;
-                    if (apsType) {
-                        apsIncorrect++;
+                    if (getPixelErrorAllowedForSteering() == 0) {
+                        incorrect[gtDescision]++;
+                        totalIncorrect++;
+                        if (apsType) {
+                            apsIncorrect++;
+                        } else {
+                            dvsIncorrect++;
+                        }
                     } else {
-                        dvsIncorrect++;
+                        boolean wrong = true;
+                        // might be error but maybe not if the descision is e.g. to left and the target location is just over the border to middle
+                        float gtX = gtTargetLocation.location.x;
+                        if (descision == LEFT && gtX < third + pixelErrorAllowedForSteering) {
+                            wrong = false;
+                        } else if (descision == CENTER && gtX >= third - pixelErrorAllowedForSteering && gtX <= 2 * third + pixelErrorAllowedForSteering) {
+                            wrong = false;
+                        } else if (descision == RIGHT && gtX >= 2 * third - pixelErrorAllowedForSteering) {
+                            wrong = false;
+                        }
+                        if (wrong) {
+                            incorrect[gtDescision]++;
+                            totalIncorrect++;
+                            if (apsType) {
+                                apsIncorrect++;
+                            } else {
+                                dvsIncorrect++;
+                            }
+
+                        }
                     }
                 }
 
@@ -307,12 +340,28 @@ public class VisualiseSteeringConvNet extends DavisDeepLearnCnnProcessor impleme
                     sb.append(String.format(" %.1f%% (%d)", (100f * incorrect[i]) / count[i], count[i]));
                 }
             }
-            sb.append(String.format("\naps=%.1f%% (%d/%d) dvs=%.1f%% (%d/%d)", 
+            sb.append(String.format("\naps=%.1f%% (%d/%d) dvs=%.1f%% (%d/%d)",
                     (100f * apsIncorrect) / apsTotalCount, apsIncorrect, apsTotalCount,
                     (100f * dvsIncorrect) / dvsTotalCount, dvsIncorrect, dvsTotalCount));
 
             sb.append(")");
             return sb.toString();
+        }
+
+        /**
+         * @return the pixelErrorAllowedForSteering
+         */
+        public int getPixelErrorAllowedForSteering() {
+            return pixelErrorAllowedForSteering;
+        }
+
+        /**
+         * @param pixelErrorAllowedForSteering the pixelErrorAllowedForSteering
+         * to set
+         */
+        public void setPixelErrorAllowedForSteering(int pixelErrorAllowedForSteering) {
+            this.pixelErrorAllowedForSteering = pixelErrorAllowedForSteering;
+            putInt("pixelErrorAllowedForSteering", pixelErrorAllowedForSteering);
         }
 
     }

@@ -348,7 +348,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     synchronized public void doLoadLocations() {
-        lastFileName = mapDataFilenameToTargetFilename.get(lastDataFilename);
+        if (lastFileName == null) {
+            lastFileName = mapDataFilenameToTargetFilename.get(lastDataFilename);
+        }
         if (lastFileName == null) {
             lastFileName = DEFAULT_FILENAME;
         }
@@ -741,6 +743,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     synchronized private void loadLocations(File f) {
+        long startMs = System.currentTimeMillis();
         log.info("loading " + f);
         try {
             setCursor(new Cursor(Cursor.WAIT_CURSOR));
@@ -756,8 +759,8 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     s = reader.readLine();
                 }
                 log.info("header lines on " + f.getAbsolutePath() + " are\n" + sb.toString());
-                while (s != null) {
-                    Scanner scanner = new Scanner(s);
+                Scanner scanner = new Scanner(reader);
+                while (scanner.hasNext()) {
                     try {
                         int frame = scanner.nextInt();
                         int ts = scanner.nextInt();
@@ -766,18 +769,20 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                         int targetTypeID = 0;
                         int targetdimx = targetRadius;
                         int targetdimy = targetRadius;
-                        try {
-                            targetTypeID = scanner.nextInt();
-                            try {
-                                // added target dimensions compatibility
-                                targetdimx = scanner.nextInt();
-                                targetdimy = scanner.nextInt();
-                            } catch (NoSuchElementException e) {
-                                // older type file with only single target and no targetClassID and no x,y dimensions
-                            }
-                        } catch (NoSuchElementException e) {
-                            // older type file with only single target
+                        // see if more tokens in this line
+                        String mt = scanner.findInLine("\\d+");
+                        if (mt != null) {
+                            targetTypeID = Integer.parseInt(scanner.match().group());
                         }
+                        mt = scanner.findInLine("\\d+");
+                        if (mt != null) {
+                            targetdimx = Integer.parseInt(scanner.match().group());
+                        }
+                        mt = scanner.findInLine("\\d+");
+                        if (mt != null) {
+                            targetdimy = Integer.parseInt(scanner.match().group());
+                        }
+
                         targetLocation = new TargetLocation(frame, ts,
                                 new Point(x, y),
                                 targetTypeID,
@@ -799,9 +804,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                             minSampleTimestamp = targetLocation.timestamp;
                         }
                     }
-                    s = reader.readLine();
                 }
-                log.info("done loading " + f);
+                long endMs = System.currentTimeMillis();
+                log.info("Took " + (endMs - startMs) + " ms to load " + f);
                 if (lastDataFilename != null) {
                     mapDataFilenameToTargetFilename.put(lastDataFilename, f.getPath());
                 }
