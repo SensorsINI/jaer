@@ -81,6 +81,7 @@ import javax.swing.JSeparator;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 
+import ch.unizh.ini.jaer.chip.retina.DVS128;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -137,7 +138,6 @@ import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.SubclassFinder;
 import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
-import ch.unizh.ini.jaer.chip.retina.DVS128;
 
 /**
  * This is the main jAER interface to the user. The main event loop "ViewLoop" is here; see ViewLoop.run(). AEViewer shows AE chip live view and allows for controlling view and recording and playing back events from files and network connections.
@@ -1957,6 +1957,7 @@ two interfaces). otherwise force user choice.
 							aemon.close(); // TODO check if this is OK -tobi
 						}//                                e.printStackTrace();
 						nullifyHardware();
+						stopMe();
 
 						return true;
 					} catch (ClassCastException cce) {

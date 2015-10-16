@@ -12,6 +12,7 @@ import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 
 import javax.swing.JOptionPane;
+import javax.swing.SwingWorker;
 
 import org.usb4java.Device;
 
@@ -76,7 +77,17 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 				final String updateString = String.format(
 					"Device firmware version too old. You have version %d; but at least version %d is required. Please updated by following the Flashy upgrade documentation at 'https://goo.gl/TGM0w1'.",
 					usbFWVersion, CochleaFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION);
-				JOptionPane.showMessageDialog(null, updateString);
+
+				final SwingWorker<Void, Void> strWorker = new SwingWorker<Void, Void>() {
+					@Override
+					public Void doInBackground() {
+						JOptionPane.showMessageDialog(null, updateString);
+
+						return (null);
+					}
+				};
+				strWorker.execute();
+
 				throw new HardwareInterfaceException(updateString);
 			}
 
@@ -85,7 +96,17 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 				final String updateString = String.format(
 					"Device logic revision too old. You have revision %d; but at least revision %d is required. Please updated by following the Flashy upgrade documentation at 'https://goo.gl/TGM0w1'.",
 					logicRevision, CochleaFX3HardwareInterface.REQUIRED_LOGIC_REVISION);
-				JOptionPane.showMessageDialog(null, updateString);
+
+				final SwingWorker<Void, Void> strWorker = new SwingWorker<Void, Void>() {
+					@Override
+					public Void doInBackground() {
+						JOptionPane.showMessageDialog(null, updateString);
+
+						return (null);
+					}
+				};
+				strWorker.execute();
+
 				throw new HardwareInterfaceException(updateString);
 			}
 
