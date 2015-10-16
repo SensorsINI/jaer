@@ -18,6 +18,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
+import javax.swing.JOptionPane;
+import javax.swing.SwingWorker;
+
 import org.usb4java.BufferUtils;
 import org.usb4java.Device;
 import org.usb4java.DeviceDescriptor;
@@ -522,6 +525,47 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	@Override
 	public int getNumEventsAcquired() {
 		return lastEventsAcquired.getNumEvents();
+	}
+
+	/**
+	 * Check the firmware and logic versions against required ones and display an error if not met.
+	 */
+	protected void checkFirmwareLogic(final int requiredFirmwareVersion, final int requiredLogicRevision)
+		throws HardwareInterfaceException {
+		final StringBuilder updateStringBuilder = new StringBuilder();
+
+		// Verify device firmware version and logic revision.
+		final int usbFWVersion = getDID() & 0x00FF;
+		if (usbFWVersion < requiredFirmwareVersion) {
+			updateStringBuilder
+				.append(String.format("Device firmware version too old. You have version %d; but at least version %d is required.\n",
+					usbFWVersion, requiredFirmwareVersion));
+		}
+
+		final int logicRevision = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 0);
+		if (logicRevision < requiredLogicRevision) {
+			updateStringBuilder
+				.append(String.format("Device logic revision too old. You have revision %d; but at least revision %d is required.\n",
+					logicRevision, requiredLogicRevision));
+		}
+
+		if (updateStringBuilder.length() > 0) {
+			updateStringBuilder.append("Please updated by following the Flashy upgrade documentation at 'https://goo.gl/TGM0w1'.");
+
+			final String updateString = updateStringBuilder.toString();
+
+			final SwingWorker<Void, Void> strWorker = new SwingWorker<Void, Void>() {
+				@Override
+				public Void doInBackground() {
+					JOptionPane.showMessageDialog(null, updateString);
+
+					return (null);
+				}
+			};
+			strWorker.execute();
+
+			throw new HardwareInterfaceException(updateString);
+		}
 	}
 
 	/**
@@ -1208,21 +1252,15 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 */
 	@Override
 	public synchronized void setEventAcquisitionEnabled(final boolean enable) throws HardwareInterfaceException {
-		/*
-		 * tobi commented synchronized but "deadlock" occurs only in debug mode,
-		 * to try to solve problem of locking in
-		 * exit menu because AEViewer waits on Thread.join but hardware
-		 * interface is owned by AWT-EventQueue
-		 * synchronized
-		 */
-		// log.info("setting event acquisition="+enable);
-		setInEndpointEnabled(enable);
+		// Start reader before sending data enable commands.
 		if (enable) {
 			startAEReader();
 		}
 		else {
 			stopAEReader();
 		}
+
+		setInEndpointEnabled(enable);
 	}
 
 	@Override

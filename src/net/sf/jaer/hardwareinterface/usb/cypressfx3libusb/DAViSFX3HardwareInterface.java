@@ -12,9 +12,6 @@ import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 import java.util.Arrays;
 
-import javax.swing.JOptionPane;
-import javax.swing.SwingWorker;
-
 import org.usb4java.Device;
 
 import eu.seebetter.ini.chips.DavisChip;
@@ -106,44 +103,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
 			super(cypress);
 
-			// Verify device firmware version and logic revision.
-			final int usbFWVersion = getDID() & 0x00FF;
-			if (usbFWVersion < DAViSFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION) {
-				final String updateString = String.format(
-					"Device firmware version too old. You have version %d; but at least version %d is required. Please updated by following the Flashy upgrade documentation at 'https://goo.gl/TGM0w1'.",
-					usbFWVersion, DAViSFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION);
-
-				final SwingWorker<Void, Void> strWorker = new SwingWorker<Void, Void>() {
-					@Override
-					public Void doInBackground() {
-						JOptionPane.showMessageDialog(null, updateString);
-
-						return (null);
-					}
-				};
-				strWorker.execute();
-
-				throw new HardwareInterfaceException(updateString);
-			}
-
-			final int logicRevision = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 0);
-			if (logicRevision < DAViSFX3HardwareInterface.REQUIRED_LOGIC_REVISION) {
-				final String updateString = String.format(
-					"Device logic revision too old. You have revision %d; but at least revision %d is required. Please updated by following the Flashy upgrade documentation at 'https://goo.gl/TGM0w1'.",
-					logicRevision, DAViSFX3HardwareInterface.REQUIRED_LOGIC_REVISION);
-
-				final SwingWorker<Void, Void> strWorker = new SwingWorker<Void, Void>() {
-					@Override
-					public Void doInBackground() {
-						JOptionPane.showMessageDialog(null, updateString);
-
-						return (null);
-					}
-				};
-				strWorker.execute();
-
-				throw new HardwareInterfaceException(updateString);
-			}
+			checkFirmwareLogic(DAViSFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION, DAViSFX3HardwareInterface.REQUIRED_LOGIC_REVISION);
 
 			apsCountX = new short[RetinaAEReader.APS_READOUT_TYPES_NUM];
 			apsCountY = new short[RetinaAEReader.APS_READOUT_TYPES_NUM];
