@@ -542,8 +542,12 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 
 		try {
-			spiConfigSend(CypressFX3.FPGA_MUX, (short) 2, 1);
-			spiConfigSend(CypressFX3.FPGA_MUX, (short) 2, 0);
+			final SPIConfigSequence configSequence = new SPIConfigSequence();
+
+			configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 2, 1);
+			configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 2, 0);
+
+			configSequence.sendConfigSequence();
 		}
 		catch (final HardwareInterfaceException e) {
 			CypressFX3.log.warning("CypressFX3.resetTimestamps: couldn't send vendor request to reset timestamps");
@@ -752,20 +756,22 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			return;
 		}
 
-		final short devicePID = getPID();
+		final SPIConfigSequence configSequence = new SPIConfigSequence();
 
 		// Slow down DVS ACK for rows on small boards.
-		if (devicePID == (short) 0x841B) {
-			spiConfigSend(CypressFX3.FPGA_DVS, (short) 4, 14);
-			spiConfigSend(CypressFX3.FPGA_DVS, (short) 6, 4);
+		if (getPID() == DAViSFX3HardwareInterface.PID_FX2) {
+			configSequence.addConfig(CypressFX3.FPGA_DVS, (short) 4, 14);
+			configSequence.addConfig(CypressFX3.FPGA_DVS, (short) 6, 4);
 		}
 
-		spiConfigSend(CypressFX3.FPGA_USB, (short) 0, 1);
+		configSequence.addConfig(CypressFX3.FPGA_USB, (short) 0, 1);
 
-		spiConfigSend(CypressFX3.FPGA_MUX, (short) 1, 1);
-		spiConfigSend(CypressFX3.FPGA_MUX, (short) 0, 1);
+		configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 1, 1);
+		configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 0, 1);
 
-		spiConfigSend(CypressFX3.FPGA_EXTINPUT, (short) 0, 1);
+		configSequence.addConfig(CypressFX3.FPGA_EXTINPUT, (short) 0, 1);
+
+		configSequence.sendConfigSequence();
 
 		inEndpointEnabled = true;
 	}
@@ -777,14 +783,18 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	 */
 	protected synchronized void disableINEndpoint() {
 		try {
-			spiConfigSend(CypressFX3.FPGA_EXTINPUT, (short) 0, 0);
-			spiConfigSend(CypressFX3.FPGA_IMU, (short) 0, 0);
-			spiConfigSend(CypressFX3.FPGA_APS, (short) 4, 0);
-			spiConfigSend(CypressFX3.FPGA_DVS, (short) 3, 0);
-			spiConfigSend(CypressFX3.FPGA_MUX, (short) 3, 0); // Ensure chip turns off.
-			spiConfigSend(CypressFX3.FPGA_MUX, (short) 1, 0); // Turn off timestamp too.
-			spiConfigSend(CypressFX3.FPGA_MUX, (short) 0, 0);
-			spiConfigSend(CypressFX3.FPGA_USB, (short) 0, 0);
+			final SPIConfigSequence configSequence = new SPIConfigSequence();
+
+			configSequence.addConfig(CypressFX3.FPGA_EXTINPUT, (short) 0, 0);
+			configSequence.addConfig(CypressFX3.FPGA_IMU, (short) 0, 0);
+			configSequence.addConfig(CypressFX3.FPGA_APS, (short) 4, 0);
+			configSequence.addConfig(CypressFX3.FPGA_DVS, (short) 3, 0);
+			configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 3, 0); // Ensure chip turns off.
+			configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 1, 0); // Turn off timestamp too.
+			configSequence.addConfig(CypressFX3.FPGA_MUX, (short) 0, 0);
+			configSequence.addConfig(CypressFX3.FPGA_USB, (short) 0, 0);
+
+			configSequence.sendConfigSequence();
 		}
 		catch (final HardwareInterfaceException e) {
 			CypressFX3.log.info(
