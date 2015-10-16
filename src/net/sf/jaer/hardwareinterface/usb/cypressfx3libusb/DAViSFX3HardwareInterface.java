@@ -108,18 +108,20 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 			// Verify device firmware version and logic revision.
 			final int usbFWVersion = getDID() & 0x00FF;
 			if (usbFWVersion < DAViSFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION) {
-				JOptionPane.showMessageDialog(null,
-					String.format(
-						"Device firmware version too old. You have version %d; but at least version %d is required. Please updated by following the Flashy upgrade documentation at 'https://goo.gl/TGM0w1'.",
-						usbFWVersion, DAViSFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION));
+				final String updateString = String.format(
+					"Device firmware version too old. You have version %d; but at least version %d is required. Please updated by following the Flashy upgrade documentation at 'https://goo.gl/TGM0w1'.",
+					usbFWVersion, DAViSFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION);
+				JOptionPane.showMessageDialog(null, updateString);
+				throw new HardwareInterfaceException(updateString);
 			}
 
 			final int logicRevision = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 0);
 			if (logicRevision < DAViSFX3HardwareInterface.REQUIRED_LOGIC_REVISION) {
-				JOptionPane.showMessageDialog(null,
-					String.format(
-						"Device logic revision too old. You have revision %d; but at least revision %d is required. Please updated by following the Flashy upgrade documentation at 'https://goo.gl/TGM0w1'.",
-						logicRevision, DAViSFX3HardwareInterface.REQUIRED_LOGIC_REVISION));
+				final String updateString = String.format(
+					"Device logic revision too old. You have revision %d; but at least revision %d is required. Please updated by following the Flashy upgrade documentation at 'https://goo.gl/TGM0w1'.",
+					logicRevision, DAViSFX3HardwareInterface.REQUIRED_LOGIC_REVISION);
+				JOptionPane.showMessageDialog(null, updateString);
+				throw new HardwareInterfaceException(updateString);
 			}
 
 			apsCountX = new short[RetinaAEReader.APS_READOUT_TYPES_NUM];
