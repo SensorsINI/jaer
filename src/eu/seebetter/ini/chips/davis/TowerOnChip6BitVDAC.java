@@ -4,15 +4,14 @@
  */
 package eu.seebetter.ini.chips.davis;
 
-import static net.sf.jaer.biasgen.coarsefine.AddressedIPotCF.ACTUAL_MASTER_BIAS_CURRENT;
-import static net.sf.jaer.biasgen.coarsefine.AddressedIPotCF.RATIO_COARSE_CURRENT_STEP;
-
 import java.util.prefs.PreferenceChangeEvent;
 
 import javax.swing.JComponent;
 
 import net.sf.jaer.biasgen.AddressedIPot;
 import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.biasgen.Pot;
+import net.sf.jaer.biasgen.coarsefine.AddressedIPotCF;
 
 /**
  * A 6-bit R2R VDAC with 3-bit buffer current control.
@@ -57,14 +56,14 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 */
 	private static final int[] COARSE_CODE_MAP = { 0, 1, 2, 3, 4, 5, 6, 7 };
 
-	private int getCoarseCodeFromBufferBitValue(int bitValue) {
+	private int getCoarseCodeFromBufferBitValue(final int bitValue) {
 		if ((bitValue < 0) || (bitValue > 7)) {
 			throw new IllegalArgumentException("bitValue outside of range 0-7");
 		}
-		return COARSE_CODE_MAP[bitValue];
+		return TowerOnChip6BitVDAC.COARSE_CODE_MAP[bitValue];
 	}
 
-	public TowerOnChip6BitVDAC(Biasgen biasgen) {
+	public TowerOnChip6BitVDAC(final Biasgen biasgen) {
 		super(biasgen);
 
 	}
@@ -83,7 +82,8 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 *            a String to display to user of GUI telling them what
 	 *            the pots does
 	 */
-	public TowerOnChip6BitVDAC(Biasgen biasgen, String name, int address, int displayPosition, String tooltipString) {
+	public TowerOnChip6BitVDAC(final Biasgen biasgen, final String name, final int address, final int displayPosition,
+		final String tooltipString) {
 		this(biasgen);
 		numBits = numVdacBits; // should come out 16 bits=2 bytes overrides IPot value of 24
 		setName(name);
@@ -116,8 +116,8 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 * @param vdacBitValue
 	 *            the value of vdac bits
 	 */
-	public void setVdacBitValue(int vdacBitValue) {
-		int oldBitValue = this.vdacBitValue;
+	public void setVdacBitValue(final int vdacBitValue) {
+		final int oldBitValue = this.vdacBitValue;
 		this.vdacBitValue = clippedVdacBitValue(vdacBitValue);
 		updateBitValue();
 		if (vdacBitValue != oldBitValue) {
@@ -137,8 +137,8 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 *            the value which has maxBufBitValue as maximum and
 	 *            specifies fraction of master bias
 	 */
-	public void setBufferBitValue(int bufferBitValue) {
-		int oldBitValue = this.bufferBitValue;
+	public void setBufferBitValue(final int bufferBitValue) {
+		final int oldBitValue = this.bufferBitValue;
 		this.bufferBitValue = clippedBufferBitValue(bufferBitValue);
 		updateBitValue();
 		if (bufferBitValue != oldBitValue) {
@@ -155,7 +155,7 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 *            candidate new value.
 	 * @return allowed value.
 	 */
-	protected int clippedBufferBitValue(int o) {
+	protected int clippedBufferBitValue(final int o) {
 		int n = o; // new value
 		if (o < 0) {
 			n = 0;
@@ -174,7 +174,7 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 *            candidate new value.
 	 * @return allowed value.
 	 */
-	protected int clippedVdacBitValue(int o) {
+	protected int clippedVdacBitValue(final int o) {
 		int n = o; // new value
 		if (o < 0) {
 			n = 0;
@@ -192,9 +192,9 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 * config bits, voltage level code bits.
 	 */
 	protected int computeBinaryRepresentation() {
-		int realBufferBitValue = getCoarseCodeFromBufferBitValue(bufferBitValue);
+		final int realBufferBitValue = getCoarseCodeFromBufferBitValue(bufferBitValue);
 
-		int ret = ((bufferBitMask & (realBufferBitValue << Integer.numberOfTrailingZeros(bufferBitMask)))
+		final int ret = ((bufferBitMask & (realBufferBitValue << Integer.numberOfTrailingZeros(bufferBitMask)))
 			| (vdacBitMask & (vdacBitValue << Integer.numberOfTrailingZeros(vdacBitMask)))) & 0xFFFF;
 
 		return ret;
@@ -213,11 +213,11 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 */
 	@Override
 	public byte[] getBinaryRepresentation() {
-		int n = 3; // two plus address
+		final int n = 3; // two plus address
 		if (bytes == null) {
 			bytes = new byte[n];
 		}
-		int val = computeBinaryRepresentation();
+		final int val = computeBinaryRepresentation();
 		int k = 1;
 		for (int i = bytes.length - 2; i >= 0; i--) {
 			bytes[k++] = (byte) (0xff & (val >>> (i * 8)));
@@ -242,32 +242,32 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	static String SEP = ".";
 
 	@Override
-	public void preferenceChange(PreferenceChangeEvent e) {
+	public void preferenceChange(final PreferenceChangeEvent e) {
 		// TODO we get pref change events here but by this time the new values have already been set and there is no
 		// change in value so the GUI elements are not updated
 		try {
-			String base = prefsKey() + SEP;
-			String key = e.getKey();
+			final String base = prefsKey() + TowerOnChip6BitVDAC.SEP;
+			final String key = e.getKey();
 			if (!key.startsWith(base)) {
 				return;
 			}
-			String val = e.getNewValue();
+			final String val = e.getNewValue();
 			// log.info("key="+key+" value="+val);
-			if (key.equals(base + KEY_VDAC_VALUE)) {
+			if (key.equals(base + TowerOnChip6BitVDAC.KEY_VDAC_VALUE)) {
 				if (getVdacBitValue() != Integer.parseInt(val)) {
-					log.info("reference voltage bit value change from preferences");
+					Pot.log.info("reference voltage bit value change from preferences");
 				}
 				setVdacBitValue(Integer.parseInt(val));
 			}
-			else if (key.equals(base + KEY_BUFFER_VALUE)) {
+			else if (key.equals(base + TowerOnChip6BitVDAC.KEY_BUFFER_VALUE)) {
 				if (getBufferBitValue() != Integer.parseInt(val)) {
-					log.info("regulator bit value changed from preferences");
+					Pot.log.info("regulator bit value changed from preferences");
 				}
 				setBufferBitValue(Integer.parseInt(val));
 			}
 		}
-		catch (Exception ex) {
-			log.warning("while responding to preference change event " + e + ", caught " + ex.toString());
+		catch (final Exception ex) {
+			Pot.log.warning("while responding to preference change event " + e + ", caught " + ex.toString());
 		}
 	}
 
@@ -276,9 +276,9 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 */
 	@Override
 	public void storePreferences() {
-		String s = prefsKey() + SEP;
-		prefs.putInt(s + KEY_VDAC_VALUE, getVdacBitValue());
-		prefs.putInt(s + KEY_BUFFER_VALUE, getBufferBitValue());
+		final String s = prefsKey() + TowerOnChip6BitVDAC.SEP;
+		prefs.putInt(s + TowerOnChip6BitVDAC.KEY_VDAC_VALUE, getVdacBitValue());
+		prefs.putInt(s + TowerOnChip6BitVDAC.KEY_BUFFER_VALUE, getBufferBitValue());
 		setModified(false);
 	}
 
@@ -288,11 +288,11 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 */
 	@Override
 	public final void loadPreferences() {
-		String s = prefsKey() + SEP;
+		final String s = prefsKey() + TowerOnChip6BitVDAC.SEP;
 
-		int bv = prefs.getInt(s + KEY_VDAC_VALUE, 0);
+		final int bv = prefs.getInt(s + TowerOnChip6BitVDAC.KEY_VDAC_VALUE, 0);
 		setVdacBitValue(bv);
-		int bbv = prefs.getInt(s + KEY_BUFFER_VALUE, maxBufBitValue);
+		final int bbv = prefs.getInt(s + TowerOnChip6BitVDAC.KEY_BUFFER_VALUE, maxBufBitValue);
 		setBufferBitValue(bbv);
 		setModified(false);
 		updateBitValue();
@@ -303,8 +303,8 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 */
 	@Override
 	public int getPreferedBitValue() {
-		String key = prefsKey();
-		int v = prefs.getInt(key, 0);
+		final String key = prefsKey();
+		final int v = prefs.getInt(key, 0);
 		return v;
 	}
 
@@ -316,9 +316,9 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 *            in amps
 	 * @return actual float value of current after resolution clipping.
 	 */
-	public float setBufferCurrent(float current) {
+	public float setBufferCurrent(final float current) {
 
-		double im = ACTUAL_MASTER_BIAS_CURRENT; // TODO real MasterBias
+		final double im = AddressedIPotCF.ACTUAL_MASTER_BIAS_CURRENT; // TODO real MasterBias
 		setBufferBitValue((int) Math.round((Math.log(current / im) / Math.log(8)) + 5));
 		return getBufferCurrent();
 	}
@@ -330,8 +330,9 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 * @return current in amps
 	 */
 	public float getBufferCurrent() {
-		float im = ACTUAL_MASTER_BIAS_CURRENT; // largest coarse current is about 8^2 times master current
-		float i = (float) (im * Math.pow(RATIO_COARSE_CURRENT_STEP, getBufferBitValue() - 5));
+		final float im = AddressedIPotCF.ACTUAL_MASTER_BIAS_CURRENT; // largest coarse current is about 8^2 times master
+																		// current
+		final float i = (float) (im * Math.pow(AddressedIPotCF.RATIO_COARSE_CURRENT_STEP, getBufferBitValue() - 5));
 		return i;
 	}
 
@@ -343,8 +344,8 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 *            in volts
 	 * @return actual float value of voltage after resolution clipping.
 	 */
-	public float setVdacVoltage(float voltage) {
-		setVdacBitValue((int) Math.floor((voltage / VDD_VOLTAGE) * maxVdacBitValue));
+	public float setVdacVoltage(final float voltage) {
+		setVdacBitValue((int) Math.floor((voltage / TowerOnChip6BitVDAC.VDD_VOLTAGE) * maxVdacBitValue));
 		return getVdacVoltage();
 	}
 
@@ -355,18 +356,17 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 * @return current in amps
 	 */
 	public float getVdacVoltage() {
-		float v = (vdacBitValue * VDD_VOLTAGE) / maxVdacBitValue;
+		final float v = (vdacBitValue * TowerOnChip6BitVDAC.VDD_VOLTAGE) / maxVdacBitValue;
 		return v;
 	}
 
 	public void updateBitValue() {
-		this.bitValue = (bufferBitValue << (numBufferBits)) + (vdacBitValue << (numVdacBits));
+		bitValue = (bufferBitValue << (numBufferBits)) + (vdacBitValue << (numVdacBits));
 	}
 
 	@Override
 	public String toString() {
-		return "TowerOnChip6BitVDACControl name=" + name + " vdacBitValue=" + vdacBitValue + " bufferBitValue="
-			+ bufferBitValue;
+		return "TowerOnChip6BitVDACControl name=" + name + " vdacBitValue=" + vdacBitValue + " bufferBitValue=" + bufferBitValue;
 	}
 
 	/**
@@ -393,11 +393,11 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 * @return true if all parameters are identical, otherwise false.
 	 */
 	@Override
-	public boolean equals(Object obj) {
+	public boolean equals(final Object obj) {
 		if (!(obj instanceof TowerOnChip6BitVDAC)) {
 			return false;
 		}
-		TowerOnChip6BitVDAC other = (TowerOnChip6BitVDAC) obj;
+		final TowerOnChip6BitVDAC other = (TowerOnChip6BitVDAC) obj;
 		if (!getName().equals(other.getName())) {
 			return false;
 		}

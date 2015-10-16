@@ -30,7 +30,7 @@ public class DavisRGBW640Config extends DavisTowerBaseConfig {
 	protected CPLDInt GSTXFall_D = new CPLDInt(chip, 231, 216, (1 << 12) - 1, "GSTXFall_D", "GS counter 2.", 0);
 	protected CPLDInt GSFDReset_D = new CPLDInt(chip, 247, 232, (1 << 12) - 1, "GSFDReset_D", "GS counter 3.", 0);
 
-	public DavisRGBW640Config(Chip chip) {
+	public DavisRGBW640Config(final Chip chip) {
 		super(chip);
 
 		addConfigValue(Transfer_D);
@@ -110,7 +110,7 @@ public class DavisRGBW640Config extends DavisTowerBaseConfig {
 			ssBiases[0] = ssp;
 
 		}
-		catch (Exception e) {
+		catch (final Exception e) {
 			throw new Error(e.toString());
 		} // TODO fix this code for actual vdacs
 
@@ -134,7 +134,7 @@ public class DavisRGBW640Config extends DavisTowerBaseConfig {
 		try {
 			sendConfiguration(this);
 		}
-		catch (HardwareInterfaceException ex) {
+		catch (final HardwareInterfaceException ex) {
 			Logger.getLogger(DAVIS240BaseCamera.class.getName()).log(Level.SEVERE, null, ex);
 		}
 	}
@@ -144,7 +144,7 @@ public class DavisRGBW640Config extends DavisTowerBaseConfig {
 		OnchipConfigBit adjustOVG2Lo = new OnchipConfigBit(chip, "AdjustOVG2Lo", 10, "Adjust OVG2 Low.", false);
 		OnchipConfigBit adjustTX2OVG2Hi = new OnchipConfigBit(chip, "AdjustTX2OVG2Hi", 11, "Adjust TX2OVG2Hi.", false);
 
-		public DavisRGBW640ChipConfigChain(Chip chip) {
+		public DavisRGBW640ChipConfigChain(final Chip chip) {
 			super(chip);
 
 			// DavisRGBW640 has no global shutter config bit, it's a pad.
@@ -178,7 +178,7 @@ public class DavisRGBW640Config extends DavisTowerBaseConfig {
 			tooltipSupport.setPropertyTooltip("GSFDReset_D", GSFDReset_D.getDescription());
 		}
 
-		public void setTransfer_D(int cc) {
+		public void setTransfer_D(final int cc) {
 			Transfer_D.set(cc);
 		}
 
@@ -186,7 +186,7 @@ public class DavisRGBW640Config extends DavisTowerBaseConfig {
 			return Transfer_D.get();
 		}
 
-		public void setRSFDSettle_D(int cc) {
+		public void setRSFDSettle_D(final int cc) {
 			RSFDSettle_D.set(cc);
 		}
 
@@ -194,7 +194,7 @@ public class DavisRGBW640Config extends DavisTowerBaseConfig {
 			return RSFDSettle_D.get();
 		}
 
-		public void setGSPDReset_D(int cc) {
+		public void setGSPDReset_D(final int cc) {
 			GSPDReset_D.set(cc);
 		}
 
@@ -202,7 +202,7 @@ public class DavisRGBW640Config extends DavisTowerBaseConfig {
 			return GSPDReset_D.get();
 		}
 
-		public void setGSResetFall_D(int cc) {
+		public void setGSResetFall_D(final int cc) {
 			GSResetFall_D.set(cc);
 		}
 
@@ -210,7 +210,7 @@ public class DavisRGBW640Config extends DavisTowerBaseConfig {
 			return GSResetFall_D.get();
 		}
 
-		public void setGSTXFall_D(int cc) {
+		public void setGSTXFall_D(final int cc) {
 			GSTXFall_D.set(cc);
 		}
 
@@ -218,7 +218,7 @@ public class DavisRGBW640Config extends DavisTowerBaseConfig {
 			return GSTXFall_D.get();
 		}
 
-		public void setGSFDReset_D(int cc) {
+		public void setGSFDReset_D(final int cc) {
 			GSFDReset_D.set(cc);
 		}
 

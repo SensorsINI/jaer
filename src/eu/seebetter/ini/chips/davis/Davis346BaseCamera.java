@@ -5,10 +5,10 @@
  */
 package eu.seebetter.ini.chips.davis;
 
+import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.Description;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
-import eu.seebetter.ini.chips.DavisChip;
 
 /**
  * Base camera for Tower Davis346 cameras
@@ -27,8 +27,8 @@ abstract public class Davis346BaseCamera extends DavisBaseCamera {
 	 */
 	public Davis346BaseCamera() {
 		setName("DAVIS346BaseCamera");
-		setSizeX(WIDTH_PIXELS);
-		setSizeY(HEIGHT_PIXELS);
+		setSizeX(Davis346BaseCamera.WIDTH_PIXELS);
+		setSizeY(Davis346BaseCamera.HEIGHT_PIXELS);
 
 		setBiasgen(davisConfig = new DavisTowerBaseConfig(this));
 

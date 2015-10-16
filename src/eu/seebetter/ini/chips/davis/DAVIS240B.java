@@ -6,6 +6,7 @@
 package eu.seebetter.ini.chips.davis;
 
 import java.awt.Point;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 
@@ -18,10 +19,10 @@ import net.sf.jaer.DevelopmentStatus;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DAVIS240B extends DAVIS240BaseCamera {
 
-    public DAVIS240B() {
-        setName("DAVIS240B");
-        setDefaultPreferencesFile("biasgenSettings/Davis240b/Davis240bBasic_GlobalShutter_ImuOn_AutoExposure.xml");
-        apsFirstPixelReadOut = new Point(getSizeX() - 1, getSizeY() - 1);
-        apsLastPixelReadOut = new Point(0, 0);
-    }
+	public DAVIS240B() {
+		setName("DAVIS240B");
+		setDefaultPreferencesFile("biasgenSettings/Davis240b/Davis240bBasic_GlobalShutter_ImuOn_AutoExposure.xml");
+		apsFirstPixelReadOut = new Point(getSizeX() - 1, getSizeY() - 1);
+		apsLastPixelReadOut = new Point(0, 0);
+	}
 }

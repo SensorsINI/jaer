@@ -46,7 +46,7 @@ import eu.seebetter.ini.chips.davis.imu.ImuControl;
 import eu.seebetter.ini.chips.davis.imu.ImuControlPanel;
 import net.sf.jaer.biasgen.AddressedIPot;
 import net.sf.jaer.biasgen.AddressedIPotArray;
-import net.sf.jaer.biasgen.Biasgen.HasPreference;
+import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.IPot;
 import net.sf.jaer.biasgen.Masterbias;
 import net.sf.jaer.biasgen.Pot;
@@ -69,7 +69,7 @@ import net.sf.jaer.util.PropertyTooltipSupport;
  *
  * @author tobi
  */
-public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfigInterface, DavisTweaks, HasPreference {
+public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfigInterface, DavisTweaks {
 
 	public static final String PROPERTY_EXPOSURE_DELAY_US = "PROPERTY_EXPOSURE_DELAY_US";
 	public static final String PROPERTY_FRAME_DELAY_US = "PROPERTY_FRAME_DELAY_US";
@@ -155,7 +155,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	protected boolean hardwareBAFilterEnabled;
 	JPanel userFriendlyControls;
 
-	public DavisConfig(Chip chip) {
+	public DavisConfig(final Chip chip) {
 		super(chip);
 		setName("DavisConfig");
 
@@ -231,7 +231,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			addAIPot("apsOverflowLevel,n,normal,special overflow level bias ");
 			addAIPot("biasBuffer,n,normal,special buffer bias ");
 		}
-		catch (Exception e) {
+		catch (final Exception e) {
 			throw new Error(e.toString());
 		}
 
@@ -255,7 +255,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		try {
 			sendConfiguration(this);
 		}
-		catch (HardwareInterfaceException ex) {
+		catch (final HardwareInterfaceException ex) {
 			Logger.getLogger(DAVIS240BaseCamera.class.getName()).log(Level.SEVERE, null, ex);
 		}
 	}
@@ -271,7 +271,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	public JPanel buildControlPanel() {
 		// if(displayControlPanel!=null) return displayControlPanel;
 		configPanel = new JPanel();
-		JScrollPane scrollPane = new JScrollPane();
+		final JScrollPane scrollPane = new JScrollPane();
 		scrollPane.add(configPanel);
 		configPanel.setLayout(new BorderLayout());
 		debugControls = chip.getPrefs().getBoolean("debugControls", false);
@@ -282,7 +282,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			}
 
 			@Override
-			public void actionPerformed(ActionEvent evt) {
+			public void actionPerformed(final ActionEvent evt) {
 				resetChip();
 			}
 		};
@@ -293,11 +293,11 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			}
 
 			@Override
-			public void actionPerformed(ActionEvent evt) {
+			public void actionPerformed(final ActionEvent evt) {
 				toggleDebugControls();
 			}
 		};
-		JPanel specialButtons = new JPanel();
+		final JPanel specialButtons = new JPanel();
 		specialButtons.setLayout(new BoxLayout(specialButtons, BoxLayout.X_AXIS));
 		specialButtons.add(new JButton(resetChipAction));
 		specialButtons.add(new JButton(toggleDebugControlsAction));
@@ -313,7 +313,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			configTabbedPane.add("<html><strong><font color=\"red\">User-Friendly Controls", userFriendlyControls);
 		}
 		// graphics
-		JPanel videoControlPanel = new JPanel();
+		final JPanel videoControlPanel = new JPanel();
 		videoControlPanel.add(new JLabel("<html>Controls display of APS video frame data"));
 		videoControlPanel.setLayout(new BoxLayout(videoControlPanel, BoxLayout.Y_AXIS));
 		configTabbedPane.add("Video Control", videoControlPanel);
@@ -325,7 +325,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		// changes in videoControl
 
 		// biasgen
-		JPanel combinedBiasShiftedSourcePanel = new JPanel();
+		final JPanel combinedBiasShiftedSourcePanel = new JPanel();
 		videoControlPanel.add(new JLabel("<html>Low-level control of on-chip bias currents and voltages. <p>These are only for experts!"));
 		combinedBiasShiftedSourcePanel.setLayout(new BoxLayout(combinedBiasShiftedSourcePanel, BoxLayout.Y_AXIS));
 		combinedBiasShiftedSourcePanel.add(super.buildControlPanel());
@@ -335,7 +335,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		// muxes
 		configTabbedPane.addTab("Debug Output MUX control", new JScrollPane(getChipConfigChain().buildMuxControlPanel()));
 		// aps readout
-		JPanel apsReadoutPanel = new JPanel();
+		final JPanel apsReadoutPanel = new JPanel();
 		apsReadoutPanel.add(new JLabel(
 			"<html>Low-level control of APS frame readout. <p>Hover over value fields to see explanations. <b>Incorrect settings will result in unusable output."));
 		apsReadoutPanel.setLayout(new BoxLayout(apsReadoutPanel, BoxLayout.Y_AXIS));
@@ -348,14 +348,14 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		// DavisUserControlPanel
 
 		// IMU control
-		JPanel imuControlPanel = new JPanel();
+		final JPanel imuControlPanel = new JPanel();
 		imuControlPanel.add(new JLabel("<html>Low-level control of integrated inertial measurement unit."));
 		imuControlPanel.setLayout(new BoxLayout(imuControlPanel, BoxLayout.Y_AXIS));
 		configTabbedPane.add("IMU Control", imuControlPanel);
 		imuControlPanel.add(new ImuControlPanel(this));
 		// autoexposure
 		if (chip instanceof DavisBaseCamera) {
-			JPanel autoExposurePanel = new JPanel();
+			final JPanel autoExposurePanel = new JPanel();
 			autoExposurePanel.add(new JLabel(
 				"<html>Automatic exposure control.<p>The settings here determine when and by how much the exposure value should be changed. <p> The strategy followed attempts to avoid a sitation <b> where too many pixels are under- or over-exposed. Hover over entry fields to see explanations."));
 			autoExposurePanel.setLayout(new BoxLayout(autoExposurePanel, BoxLayout.Y_AXIS));
@@ -363,20 +363,20 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			autoExposurePanel.add(new ParameterControlPanel(((DavisBaseCamera) chip).getAutoExposureController()));
 		}
 		// chip config
-		JPanel chipConfigPanel = getChipConfigChain().getChipConfigPanel();
+		final JPanel chipConfigPanel = getChipConfigChain().getChipConfigPanel();
 		configTabbedPane.addTab("Chip configuration", chipConfigPanel);
 		configPanel.add(configTabbedPane, BorderLayout.CENTER);
 		// only select panel after all added
 		try {
 			configTabbedPane.setSelectedIndex(chip.getPrefs().getInt("DavisBaseCamera.bgTabbedPaneSelectedIndex", 0));
 		}
-		catch (IndexOutOfBoundsException e) {
+		catch (final IndexOutOfBoundsException e) {
 			configTabbedPane.setSelectedIndex(0);
 		}
 		// add listener to store last selected tab
 		configTabbedPane.addMouseListener(new MouseAdapter() {
 			@Override
-			public void mouseClicked(MouseEvent evt) {
+			public void mouseClicked(final MouseEvent evt) {
 				tabbedPaneMouseClicked(evt);
 			}
 		});
@@ -536,7 +536,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	 *
 	 */
 	protected void resetChip() {
-		log.info("resetting AER communication");
+		Biasgen.log.info("resetting AER communication");
 		nChipReset.set(false);
 		nChipReset.set(true);
 	}
@@ -551,8 +551,8 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			aeReaderFifoSize = 1 << 8;
 		}
 		else if (((aeReaderFifoSize) & (aeReaderFifoSize - 1)) != 0) {
-			int newval = Integer.highestOneBit(aeReaderFifoSize - 1);
-			log.warning(
+			final int newval = Integer.highestOneBit(aeReaderFifoSize - 1);
+			Biasgen.log.warning(
 				"tried to set a non-power-of-two value " + aeReaderFifoSize + "; rounding down to nearest power of two which is " + newval);
 			aeReaderFifoSize = newval;
 		}
@@ -564,13 +564,13 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	 *            the aeReaderNumBuffers to set
 	 */
 	@Override
-	public void setAeReaderNumBuffers(int aeReaderNumBuffers) {
+	public void setAeReaderNumBuffers(final int aeReaderNumBuffers) {
 		this.aeReaderNumBuffers = aeReaderNumBuffers;
 	}
 
 	@Override
-	public void setAutoShotEventThreshold(int threshold) {
-		this.autoShotThreshold = threshold;
+	public void setAutoShotEventThreshold(final int threshold) {
+		autoShotThreshold = threshold;
 	}
 
 	/**
@@ -587,7 +587,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		else if (val < -1) {
 			val = -1;
 		}
-		float old = bandwidth;
+		final float old = bandwidth;
 		if (old == val) {
 			return;
 		}
@@ -600,7 +600,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	}
 
 	@Override
-	public void setBrightness(float brightness) {
+	public void setBrightness(final float brightness) {
 		if (getVideoControl() == null) {
 			return;
 		}
@@ -608,11 +608,11 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	}
 
 	@Override
-	public void setCaptureEvents(boolean selected) {
+	public void setCaptureEvents(final boolean selected) {
 		if (nChipReset == null) {
 			return;
 		}
-		boolean old = nChipReset.isSet();
+		nChipReset.isSet();
 		nChipReset.set(selected);
 		getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_CAPTURE_EVENTS_ENABLED, null, selected); // TODO
 		// have
@@ -637,7 +637,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	}
 
 	@Override
-	public void setCaptureFramesEnabled(boolean yes) {
+	public void setCaptureFramesEnabled(final boolean yes) {
 		if (getApsReadoutControl() == null) {
 			return;
 		}
@@ -645,7 +645,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	}
 
 	@Override
-	public void setContrast(float contrast) {
+	public void setContrast(final float contrast) {
 		if (getVideoControl() == null) {
 			return;
 		}
@@ -653,7 +653,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	}
 
 	@Override
-	public void setDisplayEvents(boolean displayEvents) {
+	public void setDisplayEvents(final boolean displayEvents) {
 		if (getVideoControl() == null) {
 			return;
 		}
@@ -661,7 +661,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	}
 
 	@Override
-	public void setDisplayFrames(boolean displayFrames) {
+	public void setDisplayFrames(final boolean displayFrames) {
 		if (getVideoControl() == null) {
 			return;
 		}
@@ -669,13 +669,13 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	}
 
 	@Override
-	public void setDisplayImu(boolean yes) {
+	public void setDisplayImu(final boolean yes) {
 		getImuControl().setDisplayImu(yes);
 	}
 
 	// @Override
-	public void setExposureDelayMs(float ms) {
-		int expUs = (int) (ms * 1000);
+	public void setExposureDelayMs(final float ms) {
+		final int expUs = (int) (ms * 1000);
 		getApsReadoutControl().setExposureDelayUS(expUs);
 	}
 
@@ -685,8 +685,8 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	}
 
 	// @Override
-	public void setFrameDelayMs(float ms) {
-		int fdUs = (int) (ms * 1000);
+	public void setFrameDelayMs(final float ms) {
+		final int fdUs = (int) (ms * 1000);
 		getApsReadoutControl().setFrameDelayUS(fdUs);
 	}
 
@@ -697,7 +697,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	}
 
 	@Override
-	public void setGamma(float gamma) {
+	public void setGamma(final float gamma) {
 		if (getVideoControl() == null) {
 			return;
 		}
@@ -705,7 +705,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	}
 
 	@Override
-	public void setImuEnabled(boolean yes) {
+	public void setImuEnabled(final boolean yes) {
 		getImuControl().setImuEnabled(yes);
 	}
 
@@ -724,7 +724,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		else if (val < -1) {
 			val = -1;
 		}
-		float old = maxFiringRate;
+		final float old = maxFiringRate;
 		if (old == val) {
 			return;
 		}
@@ -748,7 +748,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		else if (val < -1) {
 			val = -1;
 		}
-		float old = onOffBalance;
+		final float old = onOffBalance;
 		if (old == val) {
 			return;
 		}
@@ -772,7 +772,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		else if (val < -1) {
 			val = -1;
 		}
-		float old = threshold;
+		final float old = threshold;
 		if (old == val) {
 			return;
 		}
@@ -791,8 +791,8 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	 *            true to translate these parasitic events.
 	 */
 	@Override
-	public void setTranslateRowOnlyEvents(boolean translateRowOnlyEvents) {
-		boolean old = this.translateRowOnlyEvents;
+	public void setTranslateRowOnlyEvents(final boolean translateRowOnlyEvents) {
+		final boolean old = this.translateRowOnlyEvents;
 		this.translateRowOnlyEvents = translateRowOnlyEvents;
 		getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_TRANSLATE_ROW_ONLY_EVENTS, old, this.translateRowOnlyEvents);
 		if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
@@ -800,14 +800,14 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			try {
 				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_DVS, (short) 9, (translateRowOnlyEvents) ? (0) : (1));
 			}
-			catch (HardwareInterfaceException e) {
+			catch (final HardwareInterfaceException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
 	}
 
-	public void setExternalAERControlEnabled(boolean externalAERControlEnabled) {
+	public void setExternalAERControlEnabled(final boolean externalAERControlEnabled) {
 		this.externalAERControlEnabled = externalAERControlEnabled;
 
 		if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
@@ -816,14 +816,14 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 				((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_DVS, (short) 10,
 					(externalAERControlEnabled) ? (1) : (0));
 			}
-			catch (HardwareInterfaceException e) {
+			catch (final HardwareInterfaceException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
 	}
 
-	public void setAPSGuaranteedImageTransfer(boolean apsGuaranteedImageTransfer) {
+	public void setAPSGuaranteedImageTransfer(final boolean apsGuaranteedImageTransfer) {
 		this.apsGuaranteedImageTransfer = apsGuaranteedImageTransfer;
 
 		if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
@@ -837,14 +837,14 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_MUX, (short) 5, 1);
 				}
 			}
-			catch (HardwareInterfaceException e) {
+			catch (final HardwareInterfaceException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
 	}
 
-	public void setHardwareBAFilterEnabled(boolean hardwareBAFilterEnabled) {
+	public void setHardwareBAFilterEnabled(final boolean hardwareBAFilterEnabled) {
 		this.hardwareBAFilterEnabled = hardwareBAFilterEnabled;
 
 		if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
@@ -856,7 +856,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 					((CypressFX3) getHardwareInterface()).spiConfigSend(CypressFX3.FPGA_DVS, (short) 29, 0);
 				}
 			}
-			catch (HardwareInterfaceException e) {
+			catch (final HardwareInterfaceException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
@@ -864,7 +864,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	}
 
 	@Override
-	public void setUseAutoContrast(boolean useAutoContrast) {
+	public void setUseAutoContrast(final boolean useAutoContrast) {
 		if (getVideoControl() == null) {
 			return;
 		}
@@ -880,7 +880,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		getChip().getPrefs().putBoolean("apsGuaranteedImageTransfer", apsGuaranteedImageTransfer);
 	}
 
-	protected void tabbedPaneMouseClicked(MouseEvent evt) {
+	protected void tabbedPaneMouseClicked(final MouseEvent evt) {
 		chip.getPrefs().putInt("DavisBaseCamera.bgTabbedPaneSelectedIndex", configTabbedPane.getSelectedIndex());
 	}
 
@@ -922,7 +922,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	 *            notifyChange - not used at present
 	 */
 	@Override
-	public synchronized void update(Observable observable, Object object) {
+	public synchronized void update(final Observable observable, final Object object) {
 		// thread safe to ensure gui cannot
 		// retrigger this while it is sending
 		// something
@@ -957,8 +957,8 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			else if (observable instanceof TriStateablePortBit) {
 				// tristateable should come first before configbit
 				// since it is subclass
-				TriStateablePortBit b = (TriStateablePortBit) observable;
-				byte[] bytes = { (byte) ((b.isSet() ? (byte) 1 : (byte) 0) | (b.isHiZ() ? (byte) 2 : (byte) 0)) };
+				final TriStateablePortBit b = (TriStateablePortBit) observable;
+				final byte[] bytes = { (byte) ((b.isSet() ? (byte) 1 : (byte) 0) | (b.isHiZ() ? (byte) 2 : (byte) 0)) };
 				sendFx2ConfigCommand(CMD_SETBIT, b.getPortbit(), bytes); // sends value=CMD_SETBIT, index=portbit with
 				// (port(b=0,d=1,e=2)<<8)|bitmask(e.g.
 				// 00001000) in MSB/LSB, byte[0]= OR of
@@ -966,8 +966,8 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 				// tristate, unset if driving port
 			}
 			else if (observable instanceof PortBit) {
-				PortBit b = (PortBit) observable;
-				byte[] bytes = { b.isSet() ? (byte) 1 : (byte) 0 };
+				final PortBit b = (PortBit) observable;
+				final byte[] bytes = { b.isSet() ? (byte) 1 : (byte) 0 };
 				sendFx2ConfigCommand(CMD_SETBIT, b.getPortbit(), bytes); // sends value=CMD_SETBIT, index=portbit with
 				// (port(b=0,d=1,e=2)<<8)|bitmask(e.g.
 				// 00001000) in MSB/LSB, byte[0]=value (1,0)
@@ -982,8 +982,8 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 				super.update(observable, object); // super (SeeBetterConfig) handles others, e.g. masterbias
 			}
 		}
-		catch (HardwareInterfaceException e) {
-			log.warning("On update() caught " + e.toString());
+		catch (final HardwareInterfaceException e) {
+			Biasgen.log.warning("On update() caught " + e.toString());
 		}
 	}
 
@@ -1021,8 +1021,8 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			return runAdc.isSet();
 		}
 
-		public void setAdcEnabled(boolean yes) {
-			boolean oldval = runAdc.isSet();
+		public void setAdcEnabled(final boolean yes) {
+			runAdc.isSet();
 			runAdc.set(yes);
 			// TODO we must always call listeners because by loading prefs, we maybe have changed runAdc but not been
 			// informed of those changes, because
@@ -1039,10 +1039,11 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			return (miscControlBits.get() & 2) == 0; // bit clear is global shutter, bit set is rolling shutter
 		}
 
-		public void setGlobalShutterMode(boolean yes) {
-			int oldval = miscControlBits.get();
-			boolean oldbool = isGlobalShutterMode();
-			int newval = (oldval & (~2)) | (yes ? 0 : 2); // set bit1=1 to select rolling shutter mode, 0 for global
+		public void setGlobalShutterMode(final boolean yes) {
+			final int oldval = miscControlBits.get();
+			final boolean oldbool = isGlobalShutterMode();
+			final int newval = (oldval & (~2)) | (yes ? 0 : 2); // set bit1=1 to select rolling shutter mode, 0 for
+																// global
 			// shutter mode
 			miscControlBits.set(newval);
 			// Update chip config chain.
@@ -1052,32 +1053,32 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			notifyObservers(); // inform ParameterControlPanel
 		}
 
-		public void setColSettleCC(int cc) {
+		public void setColSettleCC(final int cc) {
 			colSettle.set(cc);
 		}
 
-		public void setRowSettleCC(int cc) {
+		public void setRowSettleCC(final int cc) {
 			rowSettle.set(cc);
 		}
 
-		public void setResSettleCC(int cc) {
+		public void setResSettleCC(final int cc) {
 			resSettle.set(cc);
 		}
 
-		public void setFrameDelayUS(int cc) {
+		public void setFrameDelayUS(final int cc) {
 			// int old=frameDelayControlRegister.get();
 			getFrameDelayControlRegister().set(cc);
 			// getSupport().firePropertyChange(PROPERTY_FRAME_DELAY_US, old, getFrameDelayUS()); // already fired from
 			// CPLDInt and caught by update of ApsReadoutControl which fires the property change
 		}
 
-		public void setExposureDelayUS(int cc) {
+		public void setExposureDelayUS(final int cc) {
 			// int old=getExposureDelayUS();
 			getExposureControlRegister().set(cc);
 			// getSupport().firePropertyChange(PROPERTY_EXPOSURE_DELAY_US, old, getExposureDelayUS());
 		}
 
-		public void setNullSettleCC(int cc) {
+		public void setNullSettleCC(final int cc) {
 			nullSettle.set(cc);
 		}
 
@@ -1106,22 +1107,22 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		}
 
 		@Override
-		public void update(Observable o, Object arg) {
+		public void update(final Observable o, final Object arg) {
 			// these updates are generated by the ParameterControlPanel when properties are changed; here we fire the
 			// PropertyChangeEvents to update listeners on this configuration class
 			if (o == runAdc) {
 				getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_CAPTURE_FRAMES_ENABLED, null, runAdc.isSet());
 			}
 			else if (o == getFrameDelayControlRegister()) {
-				getSupport().firePropertyChange(PROPERTY_FRAME_DELAY_US, arg, getFrameDelayControlRegister().get());
+				getSupport().firePropertyChange(DavisConfig.PROPERTY_FRAME_DELAY_US, arg, getFrameDelayControlRegister().get());
 			}
 			else if (o == getExposureControlRegister()) {
-				getSupport().firePropertyChange(PROPERTY_EXPOSURE_DELAY_US, arg, exposureControlRegister.get());
+				getSupport().firePropertyChange(DavisConfig.PROPERTY_EXPOSURE_DELAY_US, arg, exposureControlRegister.get());
 			}
 		}
 
 		@Override
-		public String getPropertyTooltip(String propertyName) {
+		public String getPropertyTooltip(final String propertyName) {
 			return tooltipSupport.getPropertyTooltip(propertyName);
 		}
 	}
@@ -1134,7 +1135,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		public boolean autoWhiteBalance = chip.getPrefs().getBoolean("VideoControl.autoWhiteBalance", true);
 		public boolean colorCorrection = chip.getPrefs().getBoolean("VideoControl.colorCorrection", true);
 		// on crappy beamer output
-		private PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
+		private final PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
 
 		public VideoControl() {
 			super();
@@ -1163,8 +1164,8 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		 * @param displayFrames
 		 *            the displayFrames to set
 		 */
-		public void setDisplayFrames(boolean displayFrames) {
-			boolean old = this.displayFrames;
+		public void setDisplayFrames(final boolean displayFrames) {
+			final boolean old = this.displayFrames;
 			this.displayFrames = displayFrames;
 			chip.getPrefs().putBoolean("VideoControl.displayFrames", displayFrames);
 			if (chip.getAeViewer() != null) {
@@ -1193,17 +1194,17 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		 * @param displayFrames
 		 *            the displayFrames to set
 		 */
-		public void setSeparateAPSByColor(boolean separateAPSByColor) {
+		public void setSeparateAPSByColor(final boolean separateAPSByColor) {
 			this.separateAPSByColor = separateAPSByColor;
 			chip.getPrefs().putBoolean("VideoControl.separateAPSByColor", separateAPSByColor);
 		}
 
-		public void setAutoWhiteBalance(boolean autoWhiteBalance) {
+		public void setAutoWhiteBalance(final boolean autoWhiteBalance) {
 			this.autoWhiteBalance = autoWhiteBalance;
 			chip.getPrefs().putBoolean("VideoControl.autoWhiteBalance", autoWhiteBalance);
 		}
 
-		public void setColorCorrection(boolean colorCorrection) {
+		public void setColorCorrection(final boolean colorCorrection) {
 			this.colorCorrection = colorCorrection;
 			chip.getPrefs().putBoolean("VideoControl.colorCorrection", colorCorrection);
 		}
@@ -1219,8 +1220,8 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		 * @param displayEvents
 		 *            the displayEvents to set
 		 */
-		public void setDisplayEvents(boolean displayEvents) {
-			boolean old = this.displayEvents;
+		public void setDisplayEvents(final boolean displayEvents) {
+			final boolean old = this.displayEvents;
 			this.displayEvents = displayEvents;
 			chip.getPrefs().putBoolean("VideoControl.displayEvents", displayEvents);
 			if (chip.getAeViewer() != null) {
@@ -1237,7 +1238,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			return getContrastContoller().isUseAutoContrast();
 		}
 
-		public void setUseAutoContrast(boolean useAutoContrast) {
+		public void setUseAutoContrast(final boolean useAutoContrast) {
 			getContrastContoller().setUseAutoContrast(useAutoContrast);
 		}
 
@@ -1245,7 +1246,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			return getContrastContoller().getContrast();
 		}
 
-		public void setContrast(float contrast) {
+		public void setContrast(final float contrast) {
 			getContrastContoller().setContrast(contrast);
 		}
 
@@ -1253,7 +1254,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			return getContrastContoller().getBrightness();
 		}
 
-		public void setBrightness(float brightness) {
+		public void setBrightness(final float brightness) {
 			getContrastContoller().setBrightness(brightness);
 		}
 
@@ -1261,7 +1262,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			return getContrastContoller().getGamma();
 		}
 
-		public void setGamma(float gamma) {
+		public void setGamma(final float gamma) {
 			getContrastContoller().setGamma(gamma);
 		}
 
@@ -1269,12 +1270,12 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			return getContrastContoller().getAutoContrastTimeconstantMs();
 		}
 
-		public void setAutoContrastTimeconstantMs(float tauMs) {
+		public void setAutoContrastTimeconstantMs(final float tauMs) {
 			getContrastContoller().setAutoContrastTimeconstantMs(tauMs);
 		}
 
 		@Override
-		public void update(Observable o, Object arg) {
+		public void update(final Observable o, final Object arg) {
 			setChanged();
 			notifyObservers(arg);
 			// if (o == ) {
@@ -1305,7 +1306,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		}
 
 		@Override
-		public String getPropertyTooltip(String propertyName) {
+		public String getPropertyTooltip(final String propertyName) {
 			return tooltipSupport.getPropertyTooltip(propertyName);
 		}
 
@@ -1316,17 +1317,14 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			if (chip.getRenderer() instanceof AEFrameChipRenderer) {
 				return ((AEFrameChipRenderer) (chip.getRenderer())).getContrastController();
 			}
-			else {
-				throw new RuntimeException(
-					"Cannot return a video contrast controller for the image output for the current renderer, which is "
-						+ chip.getRenderer());
-			}
-		}
 
+			throw new RuntimeException(
+				"Cannot return a video contrast controller for the image output for the current renderer, which is " + chip.getRenderer());
+		}
 	}
 
-	public String[] choices() {
-		String[] s = new String[ImuAccelScale.values().length];
+	public static String[] choices() {
+		final String[] s = new String[ImuAccelScale.values().length];
 		for (int i = 0; i < ImuAccelScale.values().length; i++) {
 			s[i] = ImuAccelScale.values()[i].fullScaleString;
 		}
@@ -1403,7 +1401,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		protected OutputMux[] dmuxes;
 		protected OutputMux[] bmuxes;
 
-		public DavisChipConfigChain(Chip chip) {
+		public DavisChipConfigChain(final Chip chip) {
 			super(chip);
 			getHasPreferenceList().add(this);
 
@@ -1418,7 +1416,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			configBits[5] = useAOut;
 			configBits[6] = globalShutter;
 
-			for (OnchipConfigBit b : configBits) {
+			for (final OnchipConfigBit b : configBits) {
 				if (b != null) {
 					b.addObserver(this);
 				}
@@ -1443,7 +1441,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			// sent first, before any biasgen bits
 			muxes.addAll(Arrays.asList(amuxes)); // finally send the 3 voltage muxes
 
-			for (OutputMux m : muxes) {
+			for (final OutputMux m : muxes) {
 				m.addObserver(this);
 				m.setChip(chip);
 			}
@@ -1524,7 +1522,12 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 
 		class VoltageOutputMap extends OutputMap {
 
-			final void put(int k, int v) {
+			/**
+			 *
+			 */
+			private static final long serialVersionUID = 6879327648740466775L;
+
+			final void put(final int k, final int v) {
 				put(k, v, "Voltage " + k);
 			}
 
@@ -1542,6 +1545,11 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 
 		class DigitalOutputMap extends OutputMap {
 
+			/**
+			 *
+			 */
+			private static final long serialVersionUID = -6746104146330795823L;
+
 			DigitalOutputMap() {
 				for (int i = 0; i < 16; i++) {
 					put(i, i, "DigOut " + i);
@@ -1551,7 +1559,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 
 		public class AnalogOutputMux extends OutputMux {
 
-			public AnalogOutputMux(int n) {
+			public AnalogOutputMux(final int n) {
 				super(sbChip, 4, 8, (new VoltageOutputMap()));
 				setName("Voltages" + n);
 			}
@@ -1559,7 +1567,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 
 		public class DigitalOutputMux extends OutputMux {
 
-			public DigitalOutputMux(int n) {
+			public DigitalOutputMux(final int n) {
 				super(sbChip, 4, 16, (new DigitalOutputMap()));
 				setName("LogicSignals" + n);
 			}
@@ -1568,23 +1576,23 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		@Override
 		public String getBitString() {
 			// System.out.print("dig muxes ");
-			String dMuxBits = getMuxBitString(dmuxes);
+			final String dMuxBits = getMuxBitString(dmuxes);
 			// System.out.print("config bits ");
-			String configBitString = getConfigBitString();
+			final String configBitString = getConfigBitString();
 			// System.out.print("analog muxes ");
-			String aMuxBits = getMuxBitString(amuxes);
+			final String aMuxBits = getMuxBitString(amuxes);
 			// System.out.print("bias muxes ");
-			String bMuxBits = getMuxBitString(bmuxes);
+			final String bMuxBits = getMuxBitString(bmuxes);
 
-			String chipConfigChainString = (dMuxBits + configBitString + aMuxBits + bMuxBits);
+			final String chipConfigChainString = (dMuxBits + configBitString + aMuxBits + bMuxBits);
 			// System.out.println("On chip config chain: "+chipConfigChain);
 
 			return chipConfigChainString; // returns bytes padded at end
 		}
 
-		String getMuxBitString(OutputMux[] muxs) {
-			StringBuilder s = new StringBuilder();
-			for (OutputMux m : muxs) {
+		String getMuxBitString(final OutputMux[] muxs) {
+			final StringBuilder s = new StringBuilder();
+			for (final OutputMux m : muxs) {
 				s.append(m.getBitString());
 			}
 			// System.out.println(s);
@@ -1592,7 +1600,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 		}
 
 		String getConfigBitString() {
-			StringBuilder s = new StringBuilder();
+			final StringBuilder s = new StringBuilder();
 			for (int i = 0; i < (TOTAL_CONFIG_BITS - getConfigBits().length); i++) {
 				s.append("0");
 			}
@@ -1615,13 +1623,13 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 
 		@Override
 		public JPanel getChipConfigPanel() {
-			JPanel chipConfigPanel = new JPanel();
+			final JPanel chipConfigPanel = new JPanel();
 			chipConfigPanel.setLayout(new BoxLayout(chipConfigPanel, BoxLayout.Y_AXIS));
 
 			// On-Chip config bits
-			JPanel extraPanel = new JPanel();
+			final JPanel extraPanel = new JPanel();
 			extraPanel.setLayout(new BoxLayout(extraPanel, BoxLayout.Y_AXIS));
-			for (OnchipConfigBit b : getConfigBits()) {
+			for (final OnchipConfigBit b : getConfigBits()) {
 				if (b != null) {
 					extraPanel.add(new JRadioButton(b.getAction()));
 				}
@@ -1630,15 +1638,15 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			chipConfigPanel.add(extraPanel);
 
 			// FX2 port bits
-			JPanel portBitsPanel = new JPanel();
+			final JPanel portBitsPanel = new JPanel();
 			portBitsPanel.setLayout(new BoxLayout(portBitsPanel, BoxLayout.Y_AXIS));
-			for (PortBit p : portBits) {
+			for (final PortBit p : portBits) {
 				portBitsPanel.add(new JRadioButton(p.getAction()));
 			}
 			portBitsPanel.setBorder(new TitledBorder("Cypress FX2 port bits"));
 			chipConfigPanel.add(portBitsPanel);
 
-			JPanel miscControlBitsPanel = new JPanel();
+			final JPanel miscControlBitsPanel = new JPanel();
 			miscControlBitsPanel.setLayout(new BoxLayout(miscControlBitsPanel, BoxLayout.Y_AXIS));
 			final JLabel miscControlBitsLabel = new JLabel(HexString.toString(miscControlBits.get()));
 			miscControlBitsPanel.add(miscControlBitsLabel);
@@ -1647,13 +1655,13 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			miscControlBits.addObserver(new Observer() {
 
 				@Override
-				public void update(Observable o, Object o1) {
+				public void update(final Observable o, final Object o1) {
 					miscControlBitsLabel.setText(HexString.toString(miscControlBits.get()));
 				}
 			});
 
 			// event translation control
-			JPanel eventTranslationControlPanel = new JPanel();
+			final JPanel eventTranslationControlPanel = new JPanel();
 			eventTranslationControlPanel.setBorder(new TitledBorder("DVS event translation control"));
 			eventTranslationControlPanel.setLayout(new BoxLayout(eventTranslationControlPanel, BoxLayout.Y_AXIS));
 			// add a reset button on top of everything
@@ -1667,7 +1675,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 				}
 
 				@Override
-				public void actionPerformed(ActionEvent evt) {
+				public void actionPerformed(final ActionEvent evt) {
 					setTranslateRowOnlyEvents(!isTranslateRowOnlyEvents());
 				}
 			};
@@ -1677,14 +1685,14 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 				new PropertyChangeListener() {
 
 					@Override
-					public void propertyChange(PropertyChangeEvent evt) {
+					public void propertyChange(final PropertyChangeEvent evt) {
 						translateRowOnlyEventsButton.setSelected((boolean) evt.getNewValue());
 					}
 				});
 			chipConfigPanel.add(eventTranslationControlPanel);
 
 			// External AER control panel (CAVIAR)
-			JPanel externalAERControlPanel = new JPanel();
+			final JPanel externalAERControlPanel = new JPanel();
 			externalAERControlPanel.setBorder(new TitledBorder("DVS external AER control"));
 			externalAERControlPanel.setLayout(new BoxLayout(externalAERControlPanel, BoxLayout.Y_AXIS));
 
@@ -1696,7 +1704,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 				}
 
 				@Override
-				public void actionPerformed(ActionEvent evt) {
+				public void actionPerformed(final ActionEvent evt) {
 					setExternalAERControlEnabled(!isExternalAERControlEnabled());
 				}
 			};
@@ -1706,7 +1714,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			chipConfigPanel.add(externalAERControlPanel);
 
 			// APS Guaranteed Image Transfer control panel
-			JPanel apsGuaranteedImageTransferPanel = new JPanel();
+			final JPanel apsGuaranteedImageTransferPanel = new JPanel();
 			apsGuaranteedImageTransferPanel.setBorder(new TitledBorder("APS Guaranteed Image Transfer"));
 			apsGuaranteedImageTransferPanel.setLayout(new BoxLayout(apsGuaranteedImageTransferPanel, BoxLayout.Y_AXIS));
 
@@ -1718,7 +1726,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 				}
 
 				@Override
-				public void actionPerformed(ActionEvent evt) {
+				public void actionPerformed(final ActionEvent evt) {
 					setAPSGuaranteedImageTransfer(!isAPSGuaranteedImageTransfer());
 				}
 			};
@@ -1728,7 +1736,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 			chipConfigPanel.add(apsGuaranteedImageTransferPanel);
 
 			// External, hardware BA filter control panel
-			JPanel hardwareBAFilterEnabledPanel = new JPanel();
+			final JPanel hardwareBAFilterEnabledPanel = new JPanel();
 			hardwareBAFilterEnabledPanel.setBorder(new TitledBorder("Hardware BA Filter"));
 			hardwareBAFilterEnabledPanel.setLayout(new BoxLayout(hardwareBAFilterEnabledPanel, BoxLayout.Y_AXIS));
 
@@ -1740,7 +1748,7 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 				}
 
 				@Override
-				public void actionPerformed(ActionEvent evt) {
+				public void actionPerformed(final ActionEvent evt) {
 					setHardwareBAFilterEnabled(!isHardwareBAFilterEnabled());
 				}
 			};
@@ -1790,14 +1798,14 @@ public class DavisConfig extends LatticeLogicConfig implements DavisDisplayConfi
 	}
 
 	@Override
-	public void setSeparateAPSByColor(boolean yes) {
+	public void setSeparateAPSByColor(final boolean yes) {
 		if (getVideoControl() == null) {
 			return;
 		}
 		getVideoControl().setSeparateAPSByColor(yes);
 	}
 
-	public void setAutoWhiteBalance(boolean yes) {
+	public void setAutoWhiteBalance(final boolean yes) {
 		if (getVideoControl() == null) {
 			return;
 		}

@@ -33,8 +33,8 @@ public class Davis208PixelParade extends DavisBaseCamera {
 	public Davis208PixelParade() {
 		setName("Davis208PixelParade");
 		setDefaultPreferencesFile("biasgenSettings/Davis208PixelParade/Davis208PixelParade.xml");
-		setSizeX(WIDTH_PIXELS);
-		setSizeY(HEIGHT_PIXELS);
+		setSizeX(Davis208PixelParade.WIDTH_PIXELS);
+		setSizeY(Davis208PixelParade.HEIGHT_PIXELS);
 		setBiasgen(davisConfig = new Davis208PixelParadeConfig(this));
 		setEventExtractor(new Davis208PixelParadeEventExtractor(this));
 		apsDVSrenderer = new Davis208PixelParadeRenderer(this); // must be called after configuration is constructed,
@@ -71,7 +71,12 @@ public class Davis208PixelParade extends DavisBaseCamera {
 	 */
 	public class Davis208PixelParadeEventExtractor extends DavisBaseCamera.DavisEventExtractor {
 
-		public Davis208PixelParadeEventExtractor(DavisBaseCamera chip) {
+		/**
+		 *
+		 */
+		private static final long serialVersionUID = -4188273144095925364L;
+
+		public Davis208PixelParadeEventExtractor(final DavisBaseCamera chip) {
 			super(chip);
 		}
 
@@ -99,8 +104,8 @@ public class Davis208PixelParade extends DavisBaseCamera {
 				return out;
 			}
 			final int n = in.getNumEvents(); // addresses.length;
-			int sx1 = chip.getSizeX() - 1;
-			int sy1 = chip.getSizeY() - 1;
+			final int sx1 = chip.getSizeX() - 1;
+			chip.getSizeY();
 
 			final int[] datas = in.getAddresses();
 			final int[] timestamps = in.getTimestamps();
@@ -199,8 +204,8 @@ public class Davis208PixelParade extends DavisBaseCamera {
 					// right place, before the actual APS event denoting (0, 0) for example.
 					final int timestamp = timestamps[i];
 
-					short x = (short) (((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
-					short y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
+					final short x = (short) (((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
+					final short y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
 
 					ApsDvsEventRGBW.ColorFilter ColorFilter = ApsDvsEventRGBW.ColorFilter.Null;
 					if (((x % 2) == 1) && ((y % 2) == 1)) {
@@ -282,11 +287,6 @@ public class Davis208PixelParade extends DavisBaseCamera {
 					if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
 						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamp);
 
-						if (snapshot) {
-							snapshot = false;
-							getDavisConfig().getApsReadoutControl().setAdcEnabled(false);
-						}
-
 						setFrameCount(getFrameCount() + 1);
 					}
 				}
@@ -302,7 +302,7 @@ public class Davis208PixelParade extends DavisBaseCamera {
 
 		@Override
 		protected ApsDvsEventRGBW nextApsDvsEvent(final OutputEventIterator outItr) {
-			ApsDvsEvent e = super.nextApsDvsEvent(outItr);
+			final ApsDvsEvent e = super.nextApsDvsEvent(outItr);
 
 			if (e instanceof ApsDvsEventRGBW) {
 				((ApsDvsEventRGBW) e).setColorFilter(null);
@@ -333,11 +333,11 @@ public class Davis208PixelParade extends DavisBaseCamera {
 			return address;
 		}
 
-		public boolean firstFrameAddress(short x, short y) {
+		public boolean firstFrameAddress(final short x, final short y) {
 			return (x == 0) && (y == 0);
 		}
 
-		public boolean lastFrameAddress(short x, short y) {
+		public boolean lastFrameAddress(final short x, final short y) {
 			return (x == (getSizeX() - 1)) && (y == (getSizeY() - 1));
 		}
 	} // extractor

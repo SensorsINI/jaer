@@ -9,13 +9,14 @@ import java.util.Observable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
+import eu.seebetter.ini.chips.davis.imu.ImuControl;
 import net.sf.jaer.biasgen.AddressedIPotArray;
+import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.Pot;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
-import eu.seebetter.ini.chips.davis.imu.ImuControl;
 
 /**
  * Base configuration for tower wafer Davis chips that use the Tower wafer bias
@@ -27,7 +28,7 @@ public class DavisTowerBaseConfig extends DavisConfig {
 
 	protected TowerOnChip6BitVDAC[] vdacs;
 
-	public DavisTowerBaseConfig(Chip chip) {
+	public DavisTowerBaseConfig(final Chip chip) {
 		super(chip);
 
 		setPotArray(new AddressedIPotArray(this)); // garbage collect IPots added in super by making this new potArray
@@ -36,20 +37,13 @@ public class DavisTowerBaseConfig extends DavisConfig {
 		// TODO fix this code for actual vdacs
 
 		// getPotArray().addPot(new TowerOnChip6BitVDAC(this, "", 0, 0, ""));
-		getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "apsOverflowLevel", 0, 0,
-				"Sets reset level gate voltage of APS reset FET to prevent overflow causing DVS events"));
-		getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "ApsCas", 1, 0,
-				"n-type cascode for protecting drain of DVS photoreceptor log feedback FET from APS transients"));
-		getPotArray()
-			.addPot(
-				new TowerOnChip6BitVDAC(this, "ADC_RefHigh", 2, 0,
-					"on-chip column-parallel APS ADC upper conversion limit"));
-		getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "ADC_RefLow", 3, 0, "on-chip column-parallel APS ADC ADC lower limit"));
-		getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "AdcTestVoltagexAI", 4, 0, "Voltage supply for testing the ADC"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "apsOverflowLevel", 0, 0,
+			"Sets reset level gate voltage of APS reset FET to prevent overflow causing DVS events"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ApsCas", 1, 0,
+			"n-type cascode for protecting drain of DVS photoreceptor log feedback FET from APS transients"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADC_RefHigh", 2, 0, "on-chip column-parallel APS ADC upper conversion limit"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADC_RefLow", 3, 0, "on-chip column-parallel APS ADC ADC lower limit"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "AdcTestVoltagexAI", 4, 0, "Voltage supply for testing the ADC"));
 		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "BlkV1", 5, 0, "unused"));
 		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "BlkV2", 6, 0, "unused"));
 		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "BlkV3", 7, 0, "unused"));
@@ -104,7 +98,7 @@ public class DavisTowerBaseConfig extends DavisConfig {
 			ssBiases[1] = ssn;
 			ssBiases[0] = ssp;
 		}
-		catch (Exception e) {
+		catch (final Exception e) {
 			throw new Error(e.toString());
 		}
 
@@ -128,13 +122,13 @@ public class DavisTowerBaseConfig extends DavisConfig {
 		try {
 			sendConfiguration(this);
 		}
-		catch (HardwareInterfaceException ex) {
+		catch (final HardwareInterfaceException ex) {
 			Logger.getLogger(DAVIS240BaseCamera.class.getName()).log(Level.SEVERE, null, ex);
 		}
 	}
 
 	@Override
-	public synchronized void update(Observable observable, Object object) {
+	public synchronized void update(final Observable observable, final Object object) {
 		super.update(observable, object);
 
 		try {
@@ -142,18 +136,18 @@ public class DavisTowerBaseConfig extends DavisConfig {
 				sendOnChipConfig();
 			}
 		}
-		catch (HardwareInterfaceException e) {
-			log.warning("On update() caught " + e.toString());
+		catch (final HardwareInterfaceException e) {
+			Biasgen.log.warning("On update() caught " + e.toString());
 		}
 	}
 
 	public class DavisTowerBaseChipConfigChain extends DavisChipConfigChain {
 		OnchipConfigBit selectGrayCounter = new OnchipConfigBit(chip, "SelectGrayCounter", 7,
 			"Select internal gray counter, if disabled, external gray code is used.", true);
-		OnchipConfigBit testADC = new OnchipConfigBit(chip, "TestADC", 8,
-			"Pass ADC Test Voltage to internal ADC instead of pixel voltage.", false);
+		OnchipConfigBit testADC = new OnchipConfigBit(chip, "TestADC", 8, "Pass ADC Test Voltage to internal ADC instead of pixel voltage.",
+			false);
 
-		public DavisTowerBaseChipConfigChain(Chip chip) {
+		public DavisTowerBaseChipConfigChain(final Chip chip) {
 			super(chip);
 
 			configBits[7] = selectGrayCounter;

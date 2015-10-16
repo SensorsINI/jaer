@@ -5,11 +5,11 @@
  */
 package eu.seebetter.ini.chips.davis;
 
+import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
-import eu.seebetter.ini.chips.DavisChip;
 
 /**
  * Davis640 camera
@@ -30,8 +30,8 @@ public class Davis640 extends DavisBaseCamera {
 	public Davis640() {
 		setName("DAVIS640");
 		setDefaultPreferencesFile("biasgenSettings/Davis640/Davis640.xml");
-		setSizeX(WIDTH_PIXELS);
-		setSizeY(HEIGHT_PIXELS);
+		setSizeX(Davis640.WIDTH_PIXELS);
+		setSizeY(Davis640.HEIGHT_PIXELS);
 
 		setBiasgen(davisConfig = new DavisTowerBaseConfig(this));
 

@@ -3,22 +3,22 @@ package eu.seebetter.ini.chips.davis;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
+import eu.seebetter.ini.chips.davis.imu.ImuControl;
 import net.sf.jaer.biasgen.AddressedIPotArray;
 import net.sf.jaer.biasgen.Pot;
 import net.sf.jaer.biasgen.coarsefine.ShiftedSourceBiasCF;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
-import eu.seebetter.ini.chips.davis.imu.ImuControl;
 
 /**
  * Base configuration for Davis208PixelParade on Tower wafer designs
  *
-  * @author Diederik Paul Moeys, Luca Longinotti
+ * @author Diederik Paul Moeys, Luca Longinotti
  */
 public class Davis208PixelParadeConfig extends DavisTowerBaseConfig {
 
-	public Davis208PixelParadeConfig(Chip chip) {
+	public Davis208PixelParadeConfig(final Chip chip) {
 		super(chip);
 
 		setPotArray(new AddressedIPotArray(this)); // garbage collect IPots added in super by making this new potArray
@@ -26,30 +26,18 @@ public class Davis208PixelParadeConfig extends DavisTowerBaseConfig {
 		vdacs = new TowerOnChip6BitVDAC[8];
 		// TODO fix this code for actual vdacs
 		// getPotArray().addPot(new TowerOnChip6BitVDAC(this, "", 0, 0, ""));
-		getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "apsOverflowLevel", 0, 0,
-				"Logic low level of the overflow gate in the DAVIS pixel if it's configured as adjustable"));
-		getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "ApsCas", 1, 1,
-				"N-type cascode for protecting drain of DVS photoreceptor log feedback FET from APS transients"));
-		getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "ADC_RefHigh", 2, 2,
-				"The upper limit of the input voltage to the on chip ADC"));
-		getPotArray()
-			.addPot(
-				new TowerOnChip6BitVDAC(this, "ADC_RefLow", 3, 3,
-					"The lower limit of the input voltage to the on chip ADC"));
-		getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "AdcTestVoltageAI", 4, 4,
-				"A fixed voltage to test the on-chip ADC if it's configured to test mode, unused"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "apsOverflowLevel", 0, 0,
+			"Logic low level of the overflow gate in the DAVIS pixel if it's configured as adjustable"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ApsCas", 1, 1,
+			"N-type cascode for protecting drain of DVS photoreceptor log feedback FET from APS transients"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADC_RefHigh", 2, 2, "The upper limit of the input voltage to the on chip ADC"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ADC_RefLow", 3, 3, "The lower limit of the input voltage to the on chip ADC"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "AdcTestVoltageAI", 4, 4,
+			"A fixed voltage to test the on-chip ADC if it's configured to test mode, unused"));
 		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "Unconnected", 5, 5, "Unused, no effect"));
-		getPotArray()
-			.addPot(
-				new TowerOnChip6BitVDAC(this, "ResetHpxBv", 6, 6,
-					"High voltage to be kept for the Hp pixel of Sim Bamford"));
-		getPotArray().addPot(
-			new TowerOnChip6BitVDAC(this, "RefSsbxBv", 7, 7,
-				"Set OffsetBns, the shifted source bias voltage of the pre-amplifier with VDAC"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "ResetHpxBv", 6, 6, "High voltage to be kept for the Hp pixel of Sim Bamford"));
+		getPotArray().addPot(new TowerOnChip6BitVDAC(this, "RefSsbxBv", 7, 7,
+			"Set OffsetBns, the shifted source bias voltage of the pre-amplifier with VDAC"));
 
 		try {
 			// added from gdoc
@@ -102,7 +90,7 @@ public class Davis208PixelParadeConfig extends DavisTowerBaseConfig {
 			ssBiases[0] = ssp;
 
 		}
-		catch (Exception e) {
+		catch (final Exception e) {
 			throw new Error(e.toString());
 		} // TODO fix this code for actual vdacs
 
@@ -123,7 +111,7 @@ public class Davis208PixelParadeConfig extends DavisTowerBaseConfig {
 		try {
 			sendConfiguration(this);
 		}
-		catch (HardwareInterfaceException ex) {
+		catch (final HardwareInterfaceException ex) {
 			Logger.getLogger(Davis208PixelParade.class.getName()).log(Level.SEVERE, null, ex);
 		}
 	}
@@ -131,16 +119,12 @@ public class Davis208PixelParadeConfig extends DavisTowerBaseConfig {
 	public class Davis208PixelParadeChipConfigChain extends DavisTowerBaseChipConfigChain {
 		OnchipConfigBit SelPreAmpAvgxD = new OnchipConfigBit(chip, "SelPreAmpAvgxD", 9,
 			"If 1, connect PreAmpAvgxA to calibration neuron, if 0, commongate", false);
-		OnchipConfigBit SelBiasRefxD = new OnchipConfigBit(chip, "SelBiasRefxD", 10,
-			"If 1, select Nbias Blk1N, if 0, VDAC VblkV2", true);
-		OnchipConfigBit SelSensexD = new OnchipConfigBit(chip, "SelSensexD", 11,
-			"If 0, hook refractory bias to Vdd (unselect)", true);
-		OnchipConfigBit SelPosFbxD = new OnchipConfigBit(chip, "SelPosFbxD", 12,
-			"If 0, hook refractory bias to Vdd (unselect)", true);
-		OnchipConfigBit SelHpxD = new OnchipConfigBit(chip, "SelHpxD", 13,
-			"If 0, hook refractory bias to Vdd (unselect)", true);
+		OnchipConfigBit SelBiasRefxD = new OnchipConfigBit(chip, "SelBiasRefxD", 10, "If 1, select Nbias Blk1N, if 0, VDAC VblkV2", true);
+		OnchipConfigBit SelSensexD = new OnchipConfigBit(chip, "SelSensexD", 11, "If 0, hook refractory bias to Vdd (unselect)", true);
+		OnchipConfigBit SelPosFbxD = new OnchipConfigBit(chip, "SelPosFbxD", 12, "If 0, hook refractory bias to Vdd (unselect)", true);
+		OnchipConfigBit SelHpxD = new OnchipConfigBit(chip, "SelHpxD", 13, "If 0, hook refractory bias to Vdd (unselect)", true);
 
-		public Davis208PixelParadeChipConfigChain(Chip chip) {
+		public Davis208PixelParadeChipConfigChain(final Chip chip) {
 			super(chip);
 
 			configBits[9] = SelPreAmpAvgxD;

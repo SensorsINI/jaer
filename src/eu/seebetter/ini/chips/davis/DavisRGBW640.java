@@ -36,8 +36,8 @@ public class DavisRGBW640 extends Davis346BaseCamera {
 	public DavisRGBW640() {
 		setName("DavisRGBW640");
 		setDefaultPreferencesFile("biasgenSettings/DavisRGBW640/DavisRGBW640.xml");
-		setSizeX(WIDTH_PIXELS);
-		setSizeY(HEIGHT_PIXELS);
+		setSizeX(DavisRGBW640.WIDTH_PIXELS);
+		setSizeY(DavisRGBW640.HEIGHT_PIXELS);
 
 		setEventClass(ApsDvsEventRGBW.class);
 
@@ -64,7 +64,12 @@ public class DavisRGBW640 extends Davis346BaseCamera {
 	 */
 	public class DavisRGBWEventExtractor extends DavisBaseCamera.DavisEventExtractor {
 
-		public DavisRGBWEventExtractor(DavisBaseCamera chip) {
+		/**
+		 *
+		 */
+		private static final long serialVersionUID = -4739546277540104560L;
+
+		public DavisRGBWEventExtractor(final DavisBaseCamera chip) {
 			super(chip);
 		}
 
@@ -92,8 +97,8 @@ public class DavisRGBW640 extends Davis346BaseCamera {
 				return out;
 			}
 			final int n = in.getNumEvents(); // addresses.length;
-			int sx1 = chip.getSizeX() - 1;
-			int sy1 = chip.getSizeY() - 1;
+			chip.getSizeX();
+			chip.getSizeY();
 
 			final int[] datas = in.getAddresses();
 			final int[] timestamps = in.getTimestamps();
@@ -180,8 +185,8 @@ public class DavisRGBW640 extends Davis346BaseCamera {
 					// right place, before the actual APS event denoting (0, 0) for example.
 					final int timestamp = timestamps[i];
 
-					short x = (short) (((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
-					short y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
+					final short x = (short) (((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
+					final short y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
 
 					ApsDvsEventRGBW.ColorFilter ColorFilter = ApsDvsEventRGBW.ColorFilter.Null;
 					if (((x % 2) == 1) && ((y % 2) == 1)) {
@@ -257,11 +262,6 @@ public class DavisRGBW640 extends Davis346BaseCamera {
 						// insert a new "end of frame" event not present in original data
 						createApsFlagEvent(outItr, ApsDvsEventRGBW.ReadoutType.EOF, timestamp);
 
-						if (snapshot) {
-							snapshot = false;
-							getDavisConfig().getApsReadoutControl().setAdcEnabled(false);
-						}
-
 						setFrameCount(getFrameCount() + 1);
 					}
 
@@ -271,11 +271,6 @@ public class DavisRGBW640 extends Davis346BaseCamera {
 						// are at last APS pixel, then write EOF event
 						// insert a new "end of frame" event not present in original data
 						createApsFlagEvent(outItr, ApsDvsEventRGBW.ReadoutType.EOF, timestamp);
-
-						if (snapshot) {
-							snapshot = false;
-							getDavisConfig().getApsReadoutControl().setAdcEnabled(false);
-						}
 
 						setFrameCount(getFrameCount() + 1);
 					}
@@ -292,7 +287,7 @@ public class DavisRGBW640 extends Davis346BaseCamera {
 
 		@Override
 		protected ApsDvsEventRGBW nextApsDvsEvent(final OutputEventIterator outItr) {
-			ApsDvsEvent e = super.nextApsDvsEvent(outItr);
+			final ApsDvsEvent e = super.nextApsDvsEvent(outItr);
 
 			if (e instanceof ApsDvsEventRGBW) {
 				((ApsDvsEventRGBW) e).setColorFilter(null);
@@ -332,11 +327,11 @@ public class DavisRGBW640 extends Davis346BaseCamera {
 			return address;
 		}
 
-		public boolean firstFrameAddress(short x, short y) {
+		public boolean firstFrameAddress(final short x, final short y) {
 			return (x == 0) && (y == 0);
 		}
 
-		public boolean lastFrameAddress(short x, short y) {
+		public boolean lastFrameAddress(final short x, final short y) {
 			return (x == (getSizeX() - 1)) && (y == (getSizeY() - 1));
 		}
 	} // extractor

@@ -20,6 +20,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.orientation.OrientationEventInterface;
+import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.AEFrameChipRenderer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethod;
 import net.sf.jaer.util.histogram.SimpleHistogram;
@@ -36,7 +37,7 @@ import net.sf.jaer.util.histogram.SimpleHistogram;
  * @see ChipRendererDisplayMethod
  */
 public class DavisRGBW640Renderer extends AEFrameChipRenderer {
-	public DavisRGBW640Renderer(AEChip chip) {
+	public DavisRGBW640Renderer(final AEChip chip) {
 		super(chip);
 		if (chip.getNumPixels() == 0) {
 			log.warning("chip has zero pixels; is the constuctor of AEFrameChipRenderer called before size of the AEChip is set?");
@@ -51,7 +52,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 	}
 
 	@Override
-	protected void renderApsDvsEvents(EventPacket pkt) {
+	protected void renderApsDvsEvents(final EventPacket pkt) {
 
 		if (getChip() instanceof DavisBaseCamera) {
 			computeHistograms = ((DavisBaseCamera) chip).isShowImageHistogram() || ((DavisChip) chip).isAutoExposureEnabled();
@@ -63,37 +64,37 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 				resetAnnotationFrame(0.0f);
 			}
 		}
-		ApsDvsEventPacket packet = (ApsDvsEventPacket) pkt;
+		final ApsDvsEventPacket packet = (ApsDvsEventPacket) pkt;
 
 		checkPixmapAllocation();
 		resetSelectedPixelEventCount(); // TODO fix locating pixel with xsel ysel
 
 		this.packet = packet;
 		if (!(packet.getEventPrototype() instanceof ApsDvsEvent)) {
-			if ((warningCount++ % WARNING_INTERVAL) == 0) {
+			if ((warningCount++ % AEFrameChipRenderer.WARNING_INTERVAL) == 0) {
 				log.warning("wrong input event class, got " + packet.getEventPrototype() + " but we need to have " + ApsDvsEvent.class);
 			}
 			return;
 		}
-		boolean displayEvents = isDisplayEvents(), displayFrames = isDisplayFrames(), paused = chip.getAeViewer().isPaused(),
+		final boolean displayEvents = isDisplayEvents(), displayFrames = isDisplayFrames(), paused = chip.getAeViewer().isPaused(),
 			backwards = packet.getDurationUs() < 0;
 
-		Iterator allItr = packet.fullIterator();
+		final Iterator allItr = packet.fullIterator();
 		setSpecialCount(0);
 		while (allItr.hasNext()) {
 			// The iterator only iterates over the DVS events
-			ApsDvsEventRGBW e = (ApsDvsEventRGBW) allItr.next();
+			final ApsDvsEventRGBW e = (ApsDvsEventRGBW) allItr.next();
 			if (e.isSpecial()) {
 				setSpecialCount(specialCount + 1); // TODO optimize special count increment
 				continue;
 			}
-			int type = e.getType();
-			boolean isAdcSampleFlag = e.isSampleEvent();
+			final int type = e.getType();
+			final boolean isAdcSampleFlag = e.isSampleEvent();
 			if (!isAdcSampleFlag) {
 				if (displayEvents) {
 					if ((xsel >= 0) && (ysel >= 0)) { // find correct mouse pixel interpretation to make sounds for
 						// large pixels
-						int xs = (xsel >>> 1) << 1, ys = (ysel >>> 1) << 1;
+						final int xs = (xsel >>> 1) << 1, ys = (ysel >>> 1) << 1;
 						if ((e.x == xs) && (e.y == ys)) {
 							playSpike(type);
 						}
@@ -109,10 +110,10 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 	}
 
 	@Override
-	protected void updateEventMaps(PolarityEvent e) {
+	protected void updateEventMaps(final PolarityEvent e) {
 		float[] map;
-		int index = getIndex(e);
-		boolean fill = !isSeparateAPSByColor();
+		final int index = getIndex(e);
+		final boolean fill = !isSeparateAPSByColor();
 		if (packet.getNumCellTypes() > 2) {
 			map = onMap.array();
 		}
@@ -131,12 +132,12 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 				setSpecialCount(specialCount + 1); // TODO optimize special count increment
 				return;
 			}
-			int type = e.getType();
+			final int type = e.getType();
 			if ((e.x == xsel) && (e.y == ysel)) {
 				playSpike(type);
 			}
-			int ind = getPixMapIndex(e.x, e.y);
-			float[] c = typeColorRGBComponents[type];
+			final int ind = getPixMapIndex(e.x, e.y);
+			final float[] c = typeColorRGBComponents[type];
 			float alpha = map[index + 3] + (1.0f / colorScale);
 			alpha = normalizeEvent(alpha);
 			if ((e instanceof OrientationEventInterface) && (((OrientationEventInterface) e).isHasOrientation() == false)) {
@@ -182,9 +183,9 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 			}
 		}
 		else if (colorMode == ColorMode.ColorTime) {
-			int ts0 = packet.getFirstTimestamp();
-			float dt = packet.getDurationUs();
-			int ind = (int) Math.floor(((NUM_TIME_COLORS - 1) * (e.timestamp - ts0)) / dt);
+			final int ts0 = packet.getFirstTimestamp();
+			final float dt = packet.getDurationUs();
+			int ind = (int) Math.floor(((AEChipRenderer.NUM_TIME_COLORS - 1) * (e.timestamp - ts0)) / dt);
 			if (ind < 0) {
 				ind = 0;
 			}
@@ -211,9 +212,9 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 			}
 		}
 		else if (colorMode == ColorMode.GrayTime) {
-			int ts0 = packet.getFirstTimestamp();
-			float dt = packet.getDurationUs();
-			float v = 0.95f - (0.95f * ((e.timestamp - ts0) / dt));
+			final int ts0 = packet.getFirstTimestamp();
+			final float dt = packet.getDurationUs();
+			final float v = 0.95f - (0.95f * ((e.timestamp - ts0) / dt));
 			map[index] = v;
 			map[index + 1] = v;
 			map[index + 2] = v;
@@ -294,23 +295,23 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 	 *            the ADC sample event
 	 */
 	// @Override
-	protected void updateFrameBuffer(ApsDvsEventRGBW e) {
-		float[] buf = pixBuffer.array();
+	protected void updateFrameBuffer(final ApsDvsEventRGBW e) {
+		final float[] buf = pixBuffer.array();
 
 		// TODO if playing backwards, then frame will come out white because B sample comes before A
 		if (e.isStartOfFrame()) {
 			startFrame(e.timestamp);
 		}
 		else if ((e.isResetRead() && !isGlobalShutter()) || (e.isSignalRead() && isGlobalShutter())) {
-			int index = getIndex(e);
+			final int index = getIndex(e);
 			if ((index < 0) || (index >= buf.length)) {
 				return;
 			}
-			int val = e.getAdcSample();
+			final int val = e.getAdcSample();
 			buf[index] = val;
 		}
 		else if ((e.isSignalRead() && !isGlobalShutter()) || (e.isResetRead() && isGlobalShutter())) {
-			int index = getIndex(e);
+			final int index = getIndex(e);
 			if ((index < 0) || (index >= buf.length)) {
 				return;
 			}
@@ -334,7 +335,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 			if (computeHistograms && (e.getColorFilter() == ColorFilter.W)) {
 				nextHist.add(val);
 			}
-			float fval = normalizeFramePixel(val);
+			final float fval = normalizeFramePixel(val);
 			buf[index] = fval;
 			buf[index + 1] = fval;
 			buf[index + 2] = fval;
@@ -342,7 +343,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 		}
 		else if (e.isEndOfFrame()) {
 			endFrame(e.timestamp);
-			SimpleHistogram tmp = currentHist;
+			final SimpleHistogram tmp = currentHist;
 			if (computeHistograms) {
 				currentHist = nextHist;
 				nextHist = tmp;
@@ -369,10 +370,10 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 	 *            the ADC value
 	 * @return the gray value
 	 */
-	private float normalizeFramePixel(float value) {
+	private float normalizeFramePixel(final float value) {
 		float v;
 		if (!isUseAutoContrast()) { // fixed rendering computed here
-			float gamma = getGamma();
+			final float gamma = getGamma();
 			if (gamma == 1.0f) {
 				v = ((getContrast() * value) + getBrightness()) / maxADC;
 			}
@@ -381,9 +382,9 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 			}
 		}
 		else {
-			java.awt.geom.Point2D.Float filter2d = autoContrast2DLowpassRangeFilter.getValue2d();
-			float offset = filter2d.x;
-			float range = (filter2d.y - filter2d.x);
+			final java.awt.geom.Point2D.Float filter2d = autoContrast2DLowpassRangeFilter.getValue2d();
+			final float offset = filter2d.x;
+			final float range = (filter2d.y - filter2d.x);
 			v = ((value - offset)) / (range);
 			// System.out.println("offset="+offset+" range="+range+" value="+value+" v="+v);
 		}
@@ -396,7 +397,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 		return v;
 	}
 
-	protected int getIndex(int x, int y) {
+	protected int getIndex(final int x, final int y) {
 		return 4 * (x + (y * textureWidth));
 	}
 
@@ -409,7 +410,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 	 * @return the index
 	 */
 	@Override
-	protected int getIndex(BasicEvent e) {
+	protected int getIndex(final BasicEvent e) {
 		int x = e.x, y = e.y;
 
 		if ((x < 0) || (y < 0) || (x >= sizeX) || (y >= sizeY)) {
@@ -422,7 +423,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 			return -1;
 		}
 		if (isSeparateAPSByColor()) {
-			ColorFilter color = ((ApsDvsEventRGBW) e).getColorFilter();
+			final ColorFilter color = ((ApsDvsEventRGBW) e).getColorFilter();
 
 			if (color == ColorFilter.G) {
 				x = x / 2;
@@ -461,10 +462,10 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 	}
 
 	@Override
-	protected void endFrame(int ts) {
+	protected void endFrame(final int ts) {
 		if (isAutoWhiteBalance()) {
 			// white balance
-			float[] image = pixBuffer.array();
+			final float[] image = pixBuffer.array();
 			float Rtotal = 0, Gtotal = 0, Btotal = 0;
 			for (int y = 0; y < chip.getSizeY(); y++) {
 				for (int x = 0; x < chip.getSizeX(); x++) {
@@ -513,7 +514,7 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 
 		if (!isSeparateAPSByColor()) {
 			// color interpolation
-			float[] image = pixBuffer.array();
+			final float[] image = pixBuffer.array();
 			for (int y = 0; y < chip.getSizeY(); y++) {
 				for (int x = 0; x < chip.getSizeX(); x++) {
 					if ((y % 2) == 0) {
@@ -660,13 +661,13 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 		}
 
 		if (isColorCorrection() && !isSeparateAPSByColor()) {
-			float[] image = pixBuffer.array();
+			final float[] image = pixBuffer.array();
 			for (int y = 0; y < chip.getSizeY(); y++) {
 				for (int x = 0; x < chip.getSizeX(); x++) {
 					// Get current RGB values, since we modify them later on.
-					float R_original = image[getIndex(x, y)];
-					float G_original = image[getIndex(x, y) + 1];
-					float B_original = image[getIndex(x, y) + 2];
+					final float R_original = image[getIndex(x, y)];
+					final float G_original = image[getIndex(x, y) + 1];
+					final float B_original = image[getIndex(x, y) + 2];
 
 					image[getIndex(x, y)] = ((((423.0f * R_original) + (28.0f * G_original)) - (137.0f * B_original)) + 29.0f) / 255.0f;
 					image[getIndex(x, y) + 1] = ((-254.0f * R_original) + (545.0f * G_original) + (10.0f * B_original) + 37.0f) / 255.0f;
@@ -699,7 +700,8 @@ public class DavisRGBW640Renderer extends AEFrameChipRenderer {
 		if (contrastController != null) {
 			contrastController.endFrame(minValue, maxValue, timestampFrameStart);
 		}
-		getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILBLE, null, this); // TODO document what is sent and send
-																				// something reasonable
+		getSupport().firePropertyChange(AEFrameChipRenderer.EVENT_NEW_FRAME_AVAILBLE, null, this); // TODO document what
+																									// is sent and send
+		// something reasonable
 	}
 }

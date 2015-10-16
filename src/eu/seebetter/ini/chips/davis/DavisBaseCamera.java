@@ -47,6 +47,8 @@ import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3.SPIConfigSequence;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.TextRendererScale;
@@ -101,7 +103,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 	protected IMUSample imuSample; // latest IMUSample from sensor
 	protected boolean isTimestampMaster = true;
 	protected boolean showImageHistogram = getPrefs().getBoolean("showImageHistogram", false);
-	protected boolean snapshot = false;
 	protected JMenuItem syncEnabledMenuItem = null;
 	protected DavisDisplayMethod davisDisplayMethod = null;
 
@@ -154,7 +155,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 				syncEnabledMenuItem.setToolTipText("<html>Sets this device as timestamp master");
 				syncEnabledMenuItem.addActionListener(new ActionListener() {
 					@Override
-					public void actionPerformed(final ActionEvent evt) {
+					public void actionPerformed(@SuppressWarnings("unused") final ActionEvent evt) {
 						Chip.log.info("setting sync/timestamp master to " + syncEnabledMenuItem.isSelected());
 						isTimestampMaster = syncEnabledMenuItem.isSelected();
 						updateTSMasterState();
@@ -286,7 +287,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 	 *            the y location of APS readout
 	 * @see #apsFirstPixelReadOut
 	 */
-	public boolean firstFrameAddress(short x, short y) {
+	public boolean firstFrameAddress(final short x, final short y) {
 		final boolean yes = (x == apsFirstPixelReadOut.x) && (y == apsFirstPixelReadOut.y);
 		return yes;
 	}
@@ -300,7 +301,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 	 *            the y location of APS readout
 	 * @see #apsLastPixelReadOut
 	 */
-	public boolean lastFrameAddress(short x, short y) {
+	public boolean lastFrameAddress(final short x, final short y) {
 		final boolean yes = (x == apsLastPixelReadOut.x) && (y == apsLastPixelReadOut.y);
 		return yes;
 	}
@@ -323,9 +324,10 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 		if (getAeViewer() == null) {
 			return;
 		}
-		helpMenuItem1 = getAeViewer().addHelpURLItem(HELP_URL_RETINA, "Product overview", "Opens product overview guide");
-		helpMenuItem2 = getAeViewer().addHelpURLItem(USER_GUIDE_URL_DAVIS240, "DAVIS240 user guide", "Opens DAVIS240 user guide");
-		helpMenuItem3 = getAeViewer().addHelpURLItem(USER_GUIDE_URL_FLASHY, "Flashy user guide",
+		helpMenuItem1 = getAeViewer().addHelpURLItem(DavisBaseCamera.HELP_URL_RETINA, "Product overview", "Opens product overview guide");
+		helpMenuItem2 = getAeViewer().addHelpURLItem(DavisBaseCamera.USER_GUIDE_URL_DAVIS240, "DAVIS240 user guide",
+			"Opens DAVIS240 user guide");
+		helpMenuItem3 = getAeViewer().addHelpURLItem(DavisBaseCamera.USER_GUIDE_URL_FLASHY, "Flashy user guide",
 			"User guide for external tool flashy for firmware/logic updates to devices using the libusb driver");
 		enableChipMenu(true);
 	}
@@ -419,7 +421,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 	}
 
 	@Override
-	public AEFileInputStream constuctFileInputStream(File file) throws IOException {
+	public AEFileInputStream constuctFileInputStream(final File file) throws IOException {
 		frameCount = 0;
 
 		return (super.constuctFileInputStream(file));
@@ -490,8 +492,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 				return out;
 			}
 			final int n = in.getNumEvents(); // addresses.length;
-			int sx1 = chip.getSizeX() - 1;
-			int sy1 = chip.getSizeY() - 1;
+			final int sx1 = chip.getSizeX() - 1;
+			chip.getSizeY();
 			final boolean rollingShutter = !getDavisConfig().getApsReadoutControl().isGlobalShutterMode();
 
 			final int[] datas = in.getAddresses();
@@ -643,11 +645,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
 					if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
 						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamp);
-
-						if (snapshot) {
-							snapshot = false;
-							getDavisConfig().getApsReadoutControl().setAdcEnabled(false);
-						}
 
 						setFrameCount(getFrameCount() + 1);
 					}
@@ -814,9 +811,9 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
 			// Draw last IMU output
 			if ((getDavisConfig() != null) && getDavisConfig().isDisplayImu() && (chip instanceof DavisBaseCamera)) {
-				final IMUSample imuSample = ((DavisBaseCamera) chip).getImuSample();
-				if (imuSample != null) {
-					imuRender(drawable, imuSample);
+				final IMUSample imuSampleRender = ((DavisBaseCamera) chip).getImuSample();
+				if (imuSampleRender != null) {
+					imuRender(drawable, imuSampleRender);
 				}
 			}
 		}
@@ -824,7 +821,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 		TextRenderer imuTextRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 36));
 		GLUquadric accelCircle = null;
 
-		private void imuRender(final GLAutoDrawable drawable, final IMUSample imuSample) {
+		private void imuRender(final GLAutoDrawable drawable, final IMUSample imuSampleRender) {
 			// System.out.println("on rendering: "+imuSample.toString());
 			final GL2 gl = drawable.getGL().getGL2();
 			gl.glPushMatrix();
@@ -839,8 +836,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			float x, y;
 
 			// acceleration x,y
-			x = (vectorScale * imuSample.getAccelX() * getSizeX()) / IMUSample.getFullScaleAccelG();
-			y = (vectorScale * imuSample.getAccelY() * getSizeY()) / IMUSample.getFullScaleAccelG();
+			x = (vectorScale * imuSampleRender.getAccelX() * getSizeX()) / IMUSample.getFullScaleAccelG();
+			y = (vectorScale * imuSampleRender.getAccelY() * getSizeY()) / IMUSample.getFullScaleAccelG();
 			gl.glColor3f(0, 1, 0);
 			gl.glBegin(GL.GL_LINES);
 			gl.glVertex2f(0, 0);
@@ -849,7 +846,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
 			imuTextRenderer.begin3DRendering();
 			imuTextRenderer.setColor(0, .5f, 0, trans);
-			imuTextRenderer.draw3D(String.format("%.2f,%.2f g", imuSample.getAccelX(), imuSample.getAccelY()), x, y, 0, textScale); // x,y,z,
+			imuTextRenderer.draw3D(String.format("%.2f,%.2f g", imuSampleRender.getAccelX(), imuSampleRender.getAccelY()), x, y, 0, textScale); // x,y,z,
 																																	// scale
 																																	// factor
 			imuTextRenderer.end3DRendering();
@@ -861,14 +858,14 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			if (accelCircle == null) {
 				accelCircle = glu.gluNewQuadric();
 			}
-			final float az = ((vectorScale * imuSample.getAccelZ() * getSizeY())) / IMUSample.getFullScaleAccelG();
+			final float az = ((vectorScale * imuSampleRender.getAccelZ() * getSizeY())) / IMUSample.getFullScaleAccelG();
 			final float rim = .5f;
 			glu.gluQuadricDrawStyle(accelCircle, GLU.GLU_FILL);
 			glu.gluDisk(accelCircle, az - rim, az + rim, 16, 1);
 
 			imuTextRenderer.begin3DRendering();
 			imuTextRenderer.setColor(0, .5f, 0, trans);
-			final String saz = String.format("%.2f g", imuSample.getAccelZ());
+			final String saz = String.format("%.2f g", imuSampleRender.getAccelZ());
 			final Rectangle2D rect = imuTextRenderer.getBounds(saz);
 			imuTextRenderer.draw3D(saz, az, -(float) rect.getHeight() * textScale * 0.5f, 0, textScale);
 			imuTextRenderer.end3DRendering();
@@ -877,19 +874,19 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			gl.glColor3f(1f, 0, 1);
 			gl.glBegin(GL.GL_LINES);
 			gl.glVertex2f(0, 0);
-			x = (vectorScale * imuSample.getGyroYawY() * getSizeY()) / IMUSample.getFullScaleGyroDegPerSec();
-			y = (vectorScale * imuSample.getGyroTiltX() * getSizeX()) / IMUSample.getFullScaleGyroDegPerSec();
+			x = (vectorScale * imuSampleRender.getGyroYawY() * getSizeY()) / IMUSample.getFullScaleGyroDegPerSec();
+			y = (vectorScale * imuSampleRender.getGyroTiltX() * getSizeX()) / IMUSample.getFullScaleGyroDegPerSec();
 			gl.glVertex2f(x, y);
 			gl.glEnd();
 
 			imuTextRenderer.begin3DRendering();
 			imuTextRenderer.setColor(1f, 0, 1, trans);
-			imuTextRenderer.draw3D(String.format("%.2f,%.2f dps", imuSample.getGyroYawY(), imuSample.getGyroTiltX()), x, y + 5, 0,
+			imuTextRenderer.draw3D(String.format("%.2f,%.2f dps", imuSampleRender.getGyroYawY(), imuSampleRender.getGyroTiltX()), x, y + 5, 0,
 				textScale); // x,y,z, scale factor
 			imuTextRenderer.end3DRendering();
 
 			// gyro roll
-			x = (vectorScale * imuSample.getGyroRollZ() * getSizeY()) / IMUSample.getFullScaleGyroDegPerSec();
+			x = (vectorScale * imuSampleRender.getGyroRollZ() * getSizeY()) / IMUSample.getFullScaleGyroDegPerSec();
 			y = chip.getSizeY() * .25f;
 			gl.glBegin(GL.GL_LINES);
 			gl.glVertex2f(0, y);
@@ -897,14 +894,14 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			gl.glEnd();
 
 			imuTextRenderer.begin3DRendering();
-			imuTextRenderer.draw3D(String.format("%.2f dps", imuSample.getGyroRollZ()), x, y, 0, textScale);
+			imuTextRenderer.draw3D(String.format("%.2f dps", imuSampleRender.getGyroRollZ()), x, y, 0, textScale);
 			imuTextRenderer.end3DRendering();
 
 			// color annotation to show what is being rendered
 			imuTextRenderer.begin3DRendering();
 			imuTextRenderer.setColor(1, 1, 1, trans);
 			final String ratestr = String.format("IMU: timestamp=%-+9.3fs last dtMs=%-6.1fms  avg dtMs=%-6.1fms",
-				1e-6f * imuSample.getTimestampUs(), imuSample.getDeltaTimeUs() * .001f, IMUSample.getAverageSampleIntervalUs() / 1000);
+				1e-6f * imuSampleRender.getTimestampUs(), imuSampleRender.getDeltaTimeUs() * .001f, IMUSample.getAverageSampleIntervalUs() / 1000);
 			final Rectangle2D raterect = imuTextRenderer.getBounds(ratestr);
 			imuTextRenderer.draw3D(ratestr, -(float) raterect.getWidth() * textScale * 0.5f * .7f, -12, 0, textScale * .7f); // x,y,z,
 																																// scale
@@ -924,7 +921,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			}
 			setMeasuredExposureMs((float) exposureDurationUs / 1000);
 			final String s = String.format("Frame: %d; Exposure %.2f ms; Frame rate: %.2f Hz", getFrameCount(), exposureMs, frameRateHz);
-			float scale = TextRendererScale.draw3dScale(exposureRenderer, s, getChipCanvas().getScale(), getSizeX(), .75f);
+			final float scale = TextRendererScale.draw3dScale(exposureRenderer, s, getChipCanvas().getScale(), getSizeX(), .75f);
 			// determine width of string in pixels and scale accordingly
 			exposureRenderer.draw3D(s, 0, getSizeY() + (DavisDisplayMethod.FONTSIZE / 2), 0, scale);
 			exposureRenderer.end3DRendering();
@@ -993,8 +990,20 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 	 */
 	@Override
 	public void takeSnapshot() {
-		snapshot = true;
-		getDavisConfig().getApsReadoutControl().setAdcEnabled(true);
+		// Use a multi-command to send enable and then disable in quickest possible
+		// succession to the APS state machine.
+		final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
+		final SPIConfigSequence configSequence = fx3HwIntf.new SPIConfigSequence();
+
+		try {
+			configSequence.addConfig(CypressFX3.FPGA_APS, (short) 4, 1);
+			configSequence.addConfig(CypressFX3.FPGA_APS, (short) 4, 0);
+
+			configSequence.sendConfigSequence();
+		}
+		catch (final HardwareInterfaceException e) {
+			// Ignore.
+		}
 	}
 
 	/**
@@ -1008,7 +1017,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 	 * @param apsFirstPixelReadOut
 	 *            the apsFirstPixelReadOut to set
 	 */
-	public void setApsFirstPixelReadOut(Point apsFirstPixelReadOut) {
+	public void setApsFirstPixelReadOut(final Point apsFirstPixelReadOut) {
 		this.apsFirstPixelReadOut = apsFirstPixelReadOut;
 	}
 
@@ -1023,7 +1032,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 	 * @param apsLastPixelReadOut
 	 *            the apsLastPixelReadOut to set
 	 */
-	public void setApsLastPixelReadOut(Point apsLastPixelReadOut) {
+	public void setApsLastPixelReadOut(final Point apsLastPixelReadOut) {
 		this.apsLastPixelReadOut = apsLastPixelReadOut;
 	}
 

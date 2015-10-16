@@ -4,8 +4,8 @@
  */
 package eu.seebetter.ini.chips.davis;
 
-import net.sf.jaer.chip.Chip;
 import ch.unizh.ini.jaer.config.onchip.OnchipConfigBit;
+import net.sf.jaer.chip.Chip;
 
 /**
  * Bias generator, On-chip diagnostic readout, video acquisition and rendering
@@ -21,7 +21,7 @@ public class Davis240Config extends DavisConfig {
 	 * @param chip
 	 *            the chip this configuration belongs to
 	 */
-	public Davis240Config(Chip chip) {
+	public Davis240Config(final Chip chip) {
 		super(chip);
 		setName("Davis240Config");
 
@@ -32,14 +32,11 @@ public class Davis240Config extends DavisConfig {
 	}
 
 	public class Davis240ChipConfigChain extends DavisChipConfigChain {
-		OnchipConfigBit specialPixelControl = new OnchipConfigBit(
-			chip,
-			"SpecialPixelControl",
-			3,
+		OnchipConfigBit specialPixelControl = new OnchipConfigBit(chip, "SpecialPixelControl", 3,
 			"<html>DAVIS240a: enable hot pixel suppression circuit. <p>DAViS240b: enable experimental pixel stripes on right side of array. <p>DAViS240c: no effect.",
 			false);
 
-		public Davis240ChipConfigChain(Chip chip) {
+		public Davis240ChipConfigChain(final Chip chip) {
 			super(chip);
 
 			configBits[3] = specialPixelControl;

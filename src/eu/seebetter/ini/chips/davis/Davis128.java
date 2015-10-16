@@ -33,8 +33,8 @@ public class Davis128 extends DavisBaseCamera {
 	public Davis128() {
 		setName("Davis128");
 		setDefaultPreferencesFile("biasgenSettings/Davis128/Davis128.xml");
-		setSizeX(WIDTH_PIXELS);
-		setSizeY(HEIGHT_PIXELS);
+		setSizeX(Davis128.WIDTH_PIXELS);
+		setSizeY(Davis128.HEIGHT_PIXELS);
 		setBiasgen(davisConfig = new DavisConfig(this));
 		setEventExtractor(new Davis128EventExtractor(this));
 		apsDVSrenderer = new Davis128Renderer(this); // must be called after configuration is constructed, because it
@@ -70,7 +70,12 @@ public class Davis128 extends DavisBaseCamera {
 	 */
 	public class Davis128EventExtractor extends DavisBaseCamera.DavisEventExtractor {
 
-		public Davis128EventExtractor(DavisBaseCamera chip) {
+		/**
+		 *
+		 */
+		private static final long serialVersionUID = -130532611830199045L;
+
+		public Davis128EventExtractor(final DavisBaseCamera chip) {
 			super(chip);
 		}
 
@@ -98,8 +103,8 @@ public class Davis128 extends DavisBaseCamera {
 				return out;
 			}
 			final int n = in.getNumEvents(); // addresses.length;
-			int sx1 = chip.getSizeX() - 1;
-			int sy1 = chip.getSizeY() - 1;
+			final int sx1 = chip.getSizeX() - 1;
+			chip.getSizeY();
 
 			final int[] datas = in.getAddresses();
 			final int[] timestamps = in.getTimestamps();
@@ -198,8 +203,8 @@ public class Davis128 extends DavisBaseCamera {
 					// right place, before the actual APS event denoting (0, 0) for example.
 					final int timestamp = timestamps[i];
 
-					short x = (short) (((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
-					short y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
+					final short x = (short) (((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
+					final short y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
 
 					ApsDvsEventRGBW.ColorFilter ColorFilter = ApsDvsEventRGBW.ColorFilter.Null;
 					if (((x % 2) == 1) && ((y % 2) == 1)) {
@@ -281,11 +286,6 @@ public class Davis128 extends DavisBaseCamera {
 					if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
 						createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamp);
 
-						if (snapshot) {
-							snapshot = false;
-							getDavisConfig().getApsReadoutControl().setAdcEnabled(false);
-						}
-
 						setFrameCount(getFrameCount() + 1);
 					}
 				}
@@ -301,7 +301,7 @@ public class Davis128 extends DavisBaseCamera {
 
 		@Override
 		protected ApsDvsEventRGBW nextApsDvsEvent(final OutputEventIterator outItr) {
-			ApsDvsEvent e = super.nextApsDvsEvent(outItr);
+			final ApsDvsEvent e = super.nextApsDvsEvent(outItr);
 
 			if (e instanceof ApsDvsEventRGBW) {
 				((ApsDvsEventRGBW) e).setColorFilter(null);
@@ -332,11 +332,11 @@ public class Davis128 extends DavisBaseCamera {
 			return address;
 		}
 
-		public boolean firstFrameAddress(short x, short y) {
+		public boolean firstFrameAddress(final short x, final short y) {
 			return (x == 0) && (y == 0);
 		}
 
-		public boolean lastFrameAddress(short x, short y) {
+		public boolean lastFrameAddress(final short x, final short y) {
 			return (x == (getSizeX() - 1)) && (y == (getSizeY() - 1));
 		}
 	} // extractor

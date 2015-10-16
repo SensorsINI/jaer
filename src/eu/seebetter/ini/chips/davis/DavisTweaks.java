@@ -8,8 +8,9 @@ import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
 
 /**
  * Extends DVSTweaks to add controls for APS readout
+ *
  * @author tobi
  */
-public interface DavisTweaks extends DVSTweaks{
-    
+public interface DavisTweaks extends DVSTweaks {
+
 }

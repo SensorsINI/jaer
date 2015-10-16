@@ -17,8 +17,8 @@ import net.sf.jaer.DevelopmentStatus;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DAVIS240A extends DAVIS240BaseCamera {
 
-    public DAVIS240A() {
-        setName("DAVIS240A");
-        setDefaultPreferencesFile("biasgenSettings/Davis240a/David240aBasic.xml");
-    }
+	public DAVIS240A() {
+		setName("DAVIS240A");
+		setDefaultPreferencesFile("biasgenSettings/Davis240a/David240aBasic.xml");
+	}
 }
