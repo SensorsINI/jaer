@@ -550,7 +550,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 
 		if (updateStringBuilder.length() > 0) {
-			updateStringBuilder.append("Please updated by following the Flashy upgrade documentation at 'https://goo.gl/TGM0w1'.");
+			updateStringBuilder.append("Please updated by following the Flashy upgrade documentation at 'http://inilabs.com/support/reflashing/'.");
 
 			final String updateString = updateStringBuilder.toString();
 
