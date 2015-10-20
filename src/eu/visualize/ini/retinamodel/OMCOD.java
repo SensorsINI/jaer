@@ -567,17 +567,17 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
         }
         if (showSubunits && showSpecificOMCoutput && !showAllOMCoutputs) { // Show subunits bars
             gl.glPushMatrix();
-            gl.glColor4f(0, 1, 0, .3f);
+            gl.glColor4f(0, 1, 0, 1);
             gl.glRectf(-10, 4, -5, 4 + barsHeight * inhibitionValue);
-            gl.glColor4f(1, 0, 0, .3f);
+            gl.glColor4f(1, 0, 0, 1);
             gl.glRectf(-20, 4, -15, 4 + barsHeight * excitationArray[getShowXcoord()][getShowYcoord()]);
             gl.glPopMatrix();
             gl.glPushMatrix();
             renderer.begin3DRendering();
-            renderer.setColor(0, 1, 0, .3f);
-            renderer.draw3D("sur", -10, 0, 0, .4f);
-            renderer.setColor(1, 0, 0, .3f);
-            renderer.draw3D("cen", -20, 0, 0, .4f);
+            renderer.setColor(0, 1, 0, 1);
+            renderer.draw3D("sur", -10, 0, 0, 0.4f);
+            renderer.setColor(1, 0, 0, 1);
+            renderer.draw3D("cen", -20, 0, 0, 0.4f);
             renderer.end3DRendering();
             subunits.render(gl);
             gl.glPopMatrix();
@@ -1198,7 +1198,7 @@ public class OMCOD extends AbstractRetinaModelCell implements FrameAnnotater, Ob
 //----------------------------------------------------------------------------//
         private void render(GL2 gl) {
             if (showSubunits && showSpecificOMCoutput && !showAllOMCoutputs) {
-                final float alpha = .2f;
+                final float alpha = .5f;
                 glu.gluQuadricDrawStyle(quad, GLU.GLU_FILL);
                 int off = (1 << (getSubunitSubsamplingBits())) / 2;
                 for (int x = getExcludedEdgeSubunits(); x < (nxmax - getExcludedEdgeSubunits()); x++) {
