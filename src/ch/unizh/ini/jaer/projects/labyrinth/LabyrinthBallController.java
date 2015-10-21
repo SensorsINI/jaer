@@ -66,7 +66,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     // fields
     LabyrinthHardware labyrinthHardware;
     LabyrinthBallTracker tracker = null;
-    HandDetector handDetector = null;
+//    HandDetector handDetector = null;
     // filter chain
     FilterChain filterChain;
     // state stuff
@@ -95,7 +95,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     public LabyrinthBallController(AEChip chip) {
         super(chip);
 
-        handDetector = new HandDetector(chip);
+//        handDetector = new HandDetector(chip);
         tracker = new LabyrinthBallTracker(chip, this);
         tracker.addObserver(this);
         labyrinthHardware = new LabyrinthHardware(chip);
@@ -104,7 +104,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         filterChain = new FilterChain(chip);
 
         filterChain.add(labyrinthHardware);
-        filterChain.add(handDetector);
+//        filterChain.add(handDetector);
         filterChain.add(tracker);
 
         setEnclosedFilterChain(filterChain);
@@ -161,9 +161,9 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     long lastTimeBallDetected = 0;
 
     private void control(EventPacket in, int timestamp) {
-        if (handDetector.isHandDetected()) {
-            return;
-        }
+//        if (handDetector.isHandDetected()) {
+//            return;
+//        }
         if (tracker.getBall() != null) {
             lastTimeBallDetected = System.currentTimeMillis();
             Cluster ball = tracker.getBall();
@@ -1006,13 +1006,13 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         }
     }
 
-    public synchronized void doCollectHistogram() {
-        tracker.doCollectHistogram();
-    }
-
-    public synchronized void doFreezeHistogram() {
-        tracker.doFreezeHistogram();
-    }
+//    public synchronized void doCollectHistogram() {
+//        tracker.doCollectHistogram();
+//    }
+//
+//    public synchronized void doFreezeHistogram() {
+//        tracker.doFreezeHistogram();
+//    }
     
     
     

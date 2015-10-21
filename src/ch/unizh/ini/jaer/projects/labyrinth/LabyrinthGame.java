@@ -20,7 +20,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  * @author tobi
  */
 @Description("Top level labyinth game class")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class LabyrinthGame extends EventFilter2DMouseAdaptor {
 
     LabyrinthBallController controller;
@@ -42,7 +42,7 @@ public class LabyrinthGame extends EventFilter2DMouseAdaptor {
         filterChain = new FilterChain(chip);
 
 //        filterChain.add(new RotateFilter(chip));
-        filterChain.add(virtualBall);
+//        filterChain.add(virtualBall);
         filterChain.add(controller);
         setEnclosedFilterChain(filterChain);
         setPropertyTooltip("clearMap", "clears the map; use for bare table");
@@ -156,13 +156,13 @@ public class LabyrinthGame extends EventFilter2DMouseAdaptor {
         MultilineAnnotationTextRenderer.renderMultilineString("LabyrinthGate: State=" + state.toString());
     }
 
-    public synchronized void doCollectBackgroundEventMask() {
-        controller.doCollectHistogram();
-    }
-
-    public synchronized void doFreezeBackgroundEventMask() {
-        controller.doFreezeHistogram();
-    }
+//    public synchronized void doCollectBackgroundEventMask() {
+//        controller.doCollectHistogram();
+//    }
+//
+//    public synchronized void doFreezeBackgroundEventMask() {
+//        controller.doFreezeHistogram();
+//    }
     
     
 
