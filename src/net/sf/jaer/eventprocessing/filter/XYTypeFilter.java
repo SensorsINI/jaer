@@ -32,6 +32,7 @@ import com.jogamp.opengl.awt.GLCanvas;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
@@ -140,18 +141,27 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
         if (n == 0) {
             return in;
         }
-        checkOutputPacketEventType(in);
-        OutputEventIterator outItr = out.outputIterator();
+//        checkOutputPacketEventType(in);
+//        OutputEventIterator outItr = out.outputIterator();
         if (selecting) {
             return in;
         }
 
+        Iterator itr=null;
+        if(in instanceof ApsDvsEventPacket){
+            itr=((ApsDvsEventPacket)in).fullIterator();
+        }else{
+            itr=in.inputIterator();
+        }
         // for each event only write it to the tmp buffers if it matches
-        for (Object obj : in) {
-            BasicEvent e = (BasicEvent) obj;
+        while(itr.hasNext()){
+//        for (Object obj : in) {
+            BasicEvent e = (BasicEvent) (itr.next());
             if (e.isFilteredOut()) {
                 continue;
             }
+            block(e);
+            
             if (multiSelectionEnabled) {
                 if (selectionList.isEmpty()) {
                     return in;
@@ -159,7 +169,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
                 if (!invertEnabled) {
                     for (SelectionRectangle r : selectionList) {
                         if (r.contains(e)) {
-                            pass(outItr, e);
+                            pass( e);
                             break;
                         }
                     }
@@ -171,7 +181,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
                         }
                     }
                     if (!blocked) {
-                        pass(outItr, e);
+                        pass( e);
                     }
 
                 }
@@ -188,9 +198,9 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
                     if ((te.type < startType) || (te.type > endType)) {
                         continue;
                     }
-                    pass(outItr, te);
+                    pass(te);
                 } else {
-                    pass(outItr, e);
+                    pass( e);
                 }
             } else {
                 // if we pass all outside tests then any test pass event
@@ -203,22 +213,30 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
                     if (!((te.type < startType) || (te.type > endType))) {
                         continue;
                     }
-                    pass(outItr, te);
+                    pass(te);
                 } else {
-                    pass(outItr, e);
+                    pass(e);
                 }
             }
         }
 
-        return out;
+        return in;
     }
 
-    private void pass(OutputEventIterator outItr, BasicEvent e) {
-        outItr.nextOutput().copyFrom(e);
+//    private void pass(OutputEventIterator outItr, BasicEvent e) {
+//        outItr.nextOutput().copyFrom(e);
+//    }
+//
+//    private void pass(OutputEventIterator outItr, TypedEvent te) {
+//        outItr.nextOutput().copyFrom(te);
+//    }
+    
+    private void pass(BasicEvent e){
+        e.setFilteredOut(false);
     }
-
-    private void pass(OutputEventIterator outItr, TypedEvent te) {
-        outItr.nextOutput().copyFrom(te);
+    
+    private void block(BasicEvent e){
+        e.setFilteredOut(true);
     }
 
     @Override
