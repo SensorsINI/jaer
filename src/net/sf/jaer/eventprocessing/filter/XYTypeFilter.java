@@ -278,7 +278,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
         boolean old = this.xEnabled;
         this.xEnabled = xEnabled;
         getPrefs().putBoolean("XYTypeFilter.xEnabled", xEnabled);
-        getSupport().firePropertyChange("xEnabled", old, xEnabled);
+        getSupport().firePropertyChange("XEnabled", old, xEnabled);
 
     }
 
@@ -318,7 +318,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Obser
         boolean old = this.yEnabled;
         this.yEnabled = yEnabled;
         getPrefs().putBoolean("XYTypeFilter.yEnabled", yEnabled);
-        getSupport().firePropertyChange("yEnabled", old, yEnabled);
+        getSupport().firePropertyChange("YEnabled", old, yEnabled);
 
     }
 
