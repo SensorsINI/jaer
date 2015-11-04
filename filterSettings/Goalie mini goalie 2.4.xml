@@ -17,6 +17,7 @@
                 <map>
                   <entry key="FilterChain.timeLimitEnabled" value="false"/>
                   <entry key="FilterChain.timeLimitMs" value="10"/>
+                  <entry key="Info.useLocalTimeZone" value="true"/>
                   <entry key="DVS128.IPot.cas" value="1992"/>
                   <entry key="DVS128.IPot.injGnd" value="1108364"/>
                   <entry key="DVS128.IPot.reqPd" value="16777215"/>
@@ -32,14 +33,19 @@
                   <entry key="Masterbias.rx" value="8200.0"/>
                   <entry key="Masterbias.rint" value="46000.0"/>
                   <entry key="defaultPreferencesWereLoaded" value="true"/>
-                  <entry key="DVS128.selectedBiasgenControlTab" value="0"/>
-                  <entry key="Masterbias.internalResistorUsed" value="false"/>
                   <entry key="XYTypeFilter.filterEnabled" value="false"/>
                   <entry key="RotateFilter.filterEnabled" value="false"/>
-                  <entry key="BackgroundActivityFilter.filterEnabled" value="false"/>
+                  <entry key="BackgroundActivityFilter.filterEnabled" value="true"/>
+                  <entry key="RefractoryFilter.filterEnabled" value="true"/>
+                  <entry key="HotPixelFilter.filterEnabled" value="true"/>
+                  <entry key="Info.filterEnabled" value="false"/>
+                  <entry key="JaerAviWriter.filterEnabled" value="false"/>
+                  <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAHdwQAAAAHdAAvbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5YWVR5cGVGaWx0ZXJ0AC9uZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlJvdGF0ZUZpbHRlcnQAO25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuQmFja2dyb3VuZEFjdGl2aXR5RmlsdGVydAA+bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLnRyYWNraW5nLlJlY3Rhbmd1bGFyQ2x1c3RlclRyYWNrZXJ0AC9jaC51bml6aC5pbmkuamFlci5wcm9qZWN0cy50b2JpLmdvYWxpZS5TZXJ2b0FybXQAK2V1LnNlZWJldHRlci5pbmkuY2hpcHMuZGF2aXMuSG90UGl4ZWxGaWx0ZXJ0AC1jaC51bml6aC5pbmkuamFlci5wcm9qZWN0cy50b2JpLmdvYWxpZS5Hb2FsaWV4"/>
+                  <entry key="DVS128.selectedBiasgenControlTab" value="0"/>
                   <entry key="FilterFrame.lastFilterSelected" value="class ch.unizh.ini.jaer.projects.tobi.goalie.Goalie"/>
+                  <entry key="Goalie.filterEnabled" value="true"/>
+                  <entry key="Masterbias.internalResistorUsed" value="false"/>
                   <entry key="BackgroundActivityFilter.dt" value="4848"/>
-                  <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAGdwQAAAAGdAAvbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5YWVR5cGVGaWx0ZXJ0AC9uZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlJvdGF0ZUZpbHRlcnQAO25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuQmFja2dyb3VuZEFjdGl2aXR5RmlsdGVydAA+bmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLnRyYWNraW5nLlJlY3Rhbmd1bGFyQ2x1c3RlclRyYWNrZXJ0AC9jaC51bml6aC5pbmkuamFlci5wcm9qZWN0cy50b2JpLmdvYWxpZS5TZXJ2b0FybXQALWNoLnVuaXpoLmluaS5qYWVyLnByb2plY3RzLnRvYmkuZ29hbGllLkdvYWxpZXg="/>
                   <entry key="DirectionSelectiveFilter.filterEnabled" value="false"/>
                   <entry key="class ch.unizh.ini.jaer.chip.retina.DVS128.preferredDisplayMethod" value="net.sf.jaer.graphics.ChipRendererDisplayMethod"/>
                   <entry key="RectangularClusterTracker.clusterLifetimeWithoutSupport" value="10000"/>
@@ -91,33 +97,30 @@
                   <entry key="ServoReaction.goalieMode" value="false"/>
                   <entry key="ServoArm.filterEnabled" value="false"/>
                   <entry key="ServoReaction.filterEnabled" value="false"/>
-                  <entry key="Goalie.filterEnabled" value="true"/>
                   <entry key="StereoGoalie.filterEnabled" value="false"/>
-                  <entry key="Goalie.maxYToUseVelocity" value="126"/>
-                  <entry key="Goalie.pixelsToEdgeOfGoal" value="28"/>
-                  <entry key="Goalie.pixelsToTipOfArm" value="20"/>
-                  <entry key="Goalie.rangeOutsideViewToBlockPixels" value="0"/>
-                  <entry key="Goalie.topRowsToIgnore" value="0"/>
+                  <entry key="Goalie.maxYToUseVelocity" value="128"/>
+                  <entry key="Goalie.pixelsToEdgeOfGoal" value="25"/>
+                  <entry key="Goalie.pixelsToTipOfArm" value="16"/>
+                  <entry key="Goalie.rangeOutsideViewToBlockPixels" value="12"/>
+                  <entry key="Goalie.topRowsToIgnore" value="1"/>
                   <entry key="Goalie.minPathPointsToUseVelocity" value="10"/>
                   <entry key="Goalie.relaxationDelayMs" value="250"/>
                   <entry key="Goalie.restIntervalSec" value="13"/>
                   <entry key="Goalie.sleepDelaySec" value="3"/>
                   <entry key="Goalie.wakeupBallDistance" value="1.0E-9"/>
                   <entry key="Goalie.ballShootingSpeed" value="0"/>
-                  <entry key="Goalie.learnTimeMs" value="259318"/>
-                  <entry key="Goalie.useSoonest" value="false"/>
-                  <entry key="Goalie.durationOfBallShooting" value="9"/>
-                  <entry key="FilterChain.processingMode" value="ACQUISITION"/>
+                  <entry key="Goalie.learnTimeMs" value="100000"/>
+                  <entry key="Goalie.useSoonest" value="true"/>
+                  <entry key="Goalie.durationOfBallShooting" value="11"/>
+                  <entry key="FilterChain.processingMode" value="RENDERING"/>
                   <entry key="AEChip.subSamplingEnabled" value="false"/>
-                  <entry key="Goalie.maxPlayingTimeBeforeRestSec" value="86"/>
+                  <entry key="Goalie.maxPlayingTimeBeforeRestSec" value="1299"/>
                   <entry key="Goalie.useVelocityForGoalie" value="true"/>
                   <entry key="Goalie.parallaxFactor" value="1.0"/>
                   <entry key="RectangularClusterTracker.vanishingPoint.x" value="NaN"/>
                   <entry key="RectangularClusterTracker.vanishingPoint.y" value="NaN"/>
                   <entry key="ClusterBasedOpticalFlow.vanishingPoint.x" value="NaN"/>
                   <entry key="ClusterBasedOpticalFlow.vanishingPoint.y" value="NaN"/>
-                  <entry key="Info.useLocalTimeZone" value="true"/>
-                  <entry key="Info.filterEnabled" value="false"/>
                   <entry key="CellStatsProber.filterEnabled" value="false"/>
                   <entry key="Info.maxSamples" value="1030"/>
                   <entry key="DepressingSynapseFilter.filterEnabled" value="false"/>
@@ -139,7 +142,6 @@
                   <entry key="CellStatsProber.isiMaxUs" value="5692"/>
                   <entry key="CellStatsProber.showIndividualISIHistograms" value="false"/>
                   <entry key="CellStatsProber.rateTauMs" value="17.958555"/>
-                  <entry key="RefractoryFilter.filterEnabled" value="true"/>
                   <entry key="RefractoryFilter.refractoryPeriodUs" value="30081"/>
                   <entry key="RepetitiousFilter.filterEnabled" value="false"/>
                   <entry key="Info.eventRate" value="true"/>
@@ -596,6 +598,7 @@
                   <entry key="CircularConvolutionFilter.radius" value="3"/>
                   <entry key="CircularConvolutionFilter.threshold" value="5.25334"/>
                   <entry key="CircularConvolutionFilter.tauMs" value="153.67372"/>
+                  <entry key="HotPixelFilter.HotPixelSet" value="rO0ABXVyABNbTGphdmEubGFuZy5PYmplY3Q7kM5YnxBzKWwCAAB4cAAAAAA="/>
                 </map>
                 <node name="ch">
                   <map/>
@@ -736,62 +739,62 @@
                               <map/>
                               <node name="Goalie">
                                 <map>
+                                  <entry key="RectangularClusterTracker.vanishingPoint.x" value="67.0"/>
+                                  <entry key="RectangularClusterTracker.vanishingPoint.y" value="140.0"/>
                                   <entry key="RectangularClusterTracker.clusterMassDecayTauUs" value="109223"/>
                                   <entry key="RectangularClusterTracker.maxNumClusters" value="11"/>
-                                  <entry key="RectangularClusterTracker.clusterSize" value="0.2990145"/>
+                                  <entry key="RectangularClusterTracker.clusterSize" value="0.249"/>
                                   <entry key="RectangularClusterTracker.numEventsStoredInCluster" value="100"/>
                                   <entry key="RectangularClusterTracker.thresholdMassForVisibleCluster" value="213"/>
                                   <entry key="XYTypeFilter.xEnabled" value="true"/>
                                   <entry key="XYTypeFilter.yEnabled" value="true"/>
                                   <entry key="XYTypeFilter.typeEnabled" value="false"/>
-                                  <entry key="XYTypeFilter.startY" value="28"/>
+                                  <entry key="XYTypeFilter.startY" value="25"/>
                                   <entry key="XYTypeFilter.endY" value="128"/>
                                   <entry key="XYTypeFilter.startX" value="0"/>
                                   <entry key="XYTypeFilter.endX" value="128"/>
-                                  <entry key="ServoArm.learned_k" value="-0.0014296348"/>
-                                  <entry key="ServoArm.learned_d" value="0.5976907"/>
-                                  <entry key="GoalieTableFilter.top" value="117"/>
+                                  <entry key="ServoArm.learned_k" value="-0.0071831"/>
+                                  <entry key="ServoArm.learned_d" value="1.230463"/>
+                                  <entry key="GoalieTableFilter.top" value="128"/>
                                   <entry key="GoalieTableFilter.x1" value="113"/>
                                   <entry key="GoalieTableFilter.x0" value="20"/>
                                   <entry key="GoalieTableFilter.bottom" value="0"/>
-                                  <entry key="ServoArm.learningLeftSamplingBoundary" value="261.5"/>
+                                  <entry key="ServoArm.learningLeftSamplingBoundary" value="517.7517"/>
                                   <entry key="ServoArm.acceptableAccuracyPixels" value="2.0"/>
                                   <entry key="BackgroundActivityFilter.dt" value="32265"/>
                                   <entry key="XYTypeFilter.startType" value="0"/>
                                   <entry key="XYTypeFilter.endType" value="1"/>
                                   <entry key="XYTypeFilter.multiSelection" value="rO0ABXVyAAJbSU26YCZ26rKlAgAAeHAAAAAAdXEAfgAAAAAAAHVxAH4AAAAAAAB1cQB+AAAAAAAA"/>
                                   <entry key="RectangularClusterTracker.colorClustersDifferentlyEnabled" value="false"/>
-                                  <entry key="RectangularClusterTracker.showAllClusters" value="true"/>
+                                  <entry key="RectangularClusterTracker.showAllClusters" value="false"/>
                                   <entry key="RectangularClusterTracker.showClusterEps" value="false"/>
-                                  <entry key="RectangularClusterTracker.showClusterMass" value="true"/>
+                                  <entry key="RectangularClusterTracker.showClusterMass" value="false"/>
                                   <entry key="RectangularClusterTracker.showClusterNumber" value="false"/>
                                   <entry key="RectangularClusterTracker.showClusterRadius" value="false"/>
                                   <entry key="RectangularClusterTracker.smoothMove" value="false"/>
                                   <entry key="RectangularClusterTracker.showClusterVelocity" value="true"/>
                                   <entry key="RectangularClusterTracker.useEllipticalClusters" value="false"/>
                                   <entry key="RectangularClusterTracker.useNearestCluster" value="true"/>
-                                  <entry key="ServoArm.servoLimitLeft" value="0.26151296"/>
-                                  <entry key="ServoArm.servoLimitRight" value="0.7835"/>
+                                  <entry key="ServoArm.servoLimitLeft" value="0.51777774"/>
+                                  <entry key="ServoArm.servoLimitRight" value="1.0"/>
                                   <entry key="ServoArm.visualFeedbackControlEnabled" value="false"/>
-                                  <entry key="ServoArm.learningRightSamplingBoundary" value="0.783"/>
+                                  <entry key="ServoArm.learningRightSamplingBoundary" value="0.99932826"/>
                                   <entry key="RectangularClusterTracker.thresholdVelocityForVisibleCluster" value="0.0"/>
-                                  <entry key="ServoArm.servoNumber" value="0"/>
+                                  <entry key="ServoArm.servoNumber" value="3"/>
                                   <entry key="RectangularClusterTracker.initializeVelocityToAverage" value="false"/>
                                   <entry key="RectangularClusterTracker.clusterLoggingMethod" value="LogClusters"/>
                                   <entry key="RectangularClusterTracker.frictionTauMs" value="NaN"/>
                                   <entry key="RectangularClusterTracker.surround" value="2.1"/>
-                                  <entry key="RectangularClusterTracker.velocityVectorScaling" value="0.04624613"/>
+                                  <entry key="RectangularClusterTracker.velocityVectorScaling" value="0.105445795"/>
                                   <entry key="RectangularClusterTracker.velAngDiffDegToNotMerge" value="66.149994"/>
                                   <entry key="RectangularClusterTracker.enableClusterExitPurging" value="true"/>
                                   <entry key="RectangularClusterTracker.surroundInhibitionEnabled" value="false"/>
                                   <entry key="RectangularClusterTracker.growMergedSizeEnabled" value="false"/>
                                   <entry key="RectangularClusterTracker.useOffPolarityOnlyEnabled" value="false"/>
                                   <entry key="RectangularClusterTracker.dynamicAngleEnabled" value="false"/>
-                                  <entry key="RectangularClusterTracker.vanishingPoint.x" value="67.0"/>
-                                  <entry key="RectangularClusterTracker.vanishingPoint.y" value="140.0"/>
                                   <entry key="ServoArm.visualFeedbackProportionalGain" value="0.82270265"/>
-                                  <entry key="RectangularClusterTracker.mixingFactor" value="0.016761905"/>
-                                  <entry key="RectangularClusterTracker.velocityTauMs" value="17.265772"/>
+                                  <entry key="RectangularClusterTracker.mixingFactor" value="0.0162"/>
+                                  <entry key="RectangularClusterTracker.velocityTauMs" value="35.894268"/>
                                   <entry key="RectangularClusterTracker.clusterLifetimeWithoutSupport" value="10000"/>
                                   <entry key="RectangularClusterTracker.thresholdEventsForVisibleCluster" value="30"/>
                                   <entry key="RectangularClusterTracker.highwayPerspectiveEnabled" value="true"/>
@@ -799,11 +802,14 @@
                                   <entry key="RectangularClusterTracker.showPaths" value="false"/>
                                   <entry key="RectangularClusterTracker.dontMergeEver" value="false"/>
                                   <entry key="RectangularClusterTracker.filterEventsEnabled" value="false"/>
+                                  <entry key="ServoArm.visualFeedbackPIDControllerTauMs" value="5.0"/>
                                 </map>
                               </node>
                               <node name="ServoArm">
                                 <map>
-                                  <entry key="RectangularClusterTracker.clusterMassDecayTauUs" value="10000"/>
+                                  <entry key="RectangularClusterTracker.vanishingPoint.x" value="NaN"/>
+                                  <entry key="RectangularClusterTracker.vanishingPoint.y" value="NaN"/>
+                                  <entry key="RectangularClusterTracker.clusterMassDecayTauUs" value="118540"/>
                                   <entry key="RectangularClusterTracker.maxNumClusters" value="1"/>
                                   <entry key="RectangularClusterTracker.clusterSize" value="0.15f"/>
                                   <entry key="RectangularClusterTracker.numEventsStoredInCluster" value="100"/>
@@ -814,15 +820,17 @@
                                   <entry key="XYTypeFilter.startX" value="0"/>
                                   <entry key="XYTypeFilter.endX" value="128"/>
                                   <entry key="XYTypeFilter.startY" value="0"/>
-                                  <entry key="XYTypeFilter.endY" value="28"/>
+                                  <entry key="XYTypeFilter.endY" value="25"/>
                                   <entry key="RectangularClusterTracker.filterEventsEnabled" value="false"/>
                                   <entry key="StereoClusterTracker.maxNumClusters" value="1"/>
-                                  <entry key="RectangularClusterTracker.vanishingPoint.x" value="NaN"/>
-                                  <entry key="RectangularClusterTracker.vanishingPoint.y" value="NaN"/>
-                                  <entry key="RectangularClusterTracker.mixingFactor" value="0.006"/>
+                                  <entry key="RectangularClusterTracker.mixingFactor" value="0.001"/>
                                   <entry key="RectangularClusterTracker.velocityTauMs" value="200.0"/>
                                   <entry key="RectangularClusterTracker.clusterLifetimeWithoutSupport" value="10000"/>
                                   <entry key="RectangularClusterTracker.thresholdEventsForVisibleCluster" value="30"/>
+                                  <entry key="RectangularClusterTracker.showPaths" value="false"/>
+                                  <entry key="RectangularClusterTracker.useNearestCluster" value="true"/>
+                                  <entry key="RectangularClusterTracker.showClusterVelocity" value="false"/>
+                                  <entry key="RectangularClusterTracker.velocityVectorScaling" value="0.12738411"/>
                                 </map>
                               </node>
                               <node name="StereoGoalie">
