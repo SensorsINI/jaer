@@ -32,6 +32,9 @@ import net.sf.jaer.stereopsis.StereoChipInterface;
 import net.sf.jaer.stereopsis.Stereopsis;
 import ch.unizh.ini.jaer.chip.retina.DVS128;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.graphics.ChipRendererDisplayMethod;
+import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
+import net.sf.jaer.graphics.DisplayMethod;
 /**
  * A stereo pair of Tmpdiff128 retinas each with its own separate but time-synchronized hardware interface. 
  * Differs from the usual AEChip object in that it also overrides #getHardwareInterface and #setHardwareInterface
@@ -58,6 +61,16 @@ public class DVS128StereoPair extends DVS128 implements StereoChipInterface{
         setBiasgen(new Biasgen(this));
         setLeft(left);
         setRight(right);
+        ArrayList<DisplayMethod> ms=getCanvas().getDisplayMethods();
+        DisplayMethod rgbaDm=null;
+        for(DisplayMethod m:ms){
+            if(m instanceof ChipRendererDisplayMethodRGBA) rgbaDm=m;
+        }
+        if(rgbaDm!=null) getCanvas().removeDisplayMethod(rgbaDm);
+        DisplayMethod m = new ChipRendererDisplayMethod(this.getCanvas()); // remove method that is incompatible with renderer
+        getCanvas().addDisplayMethod(m);
+        getCanvas().setDisplayMethod(m);
+        
 
 //        getFilterChain().add(new StereoTranslateRotate(this));
 //        getFilterChain().add(new StereoVergenceFilter(this));
