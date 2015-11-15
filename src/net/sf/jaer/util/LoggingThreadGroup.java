@@ -21,7 +21,7 @@ public class LoggingThreadGroup extends ThreadGroup {
      * Thread and Throwable passed in here are passed to a Logger named
      * "UncaughtExceptionLogger" which has the handler LoggingWindowHandler.
      */
-    public void uncaughtException(Thread t, Throwable e) {
+    public void uncaughtException(Thread thread, Throwable throwable) {
         // Initialize logger once
         if (logger == null) {
             logger = Logger.getLogger("UncaughtExceptionLogger");
@@ -29,17 +29,28 @@ public class LoggingThreadGroup extends ThreadGroup {
             logger.addHandler(handler);
         }
         try {
-            logger.log(Level.WARNING, t == null ? "(null thread supplied)" : t.toString(), e == null ? "(null exception)" : e.toString());
+            logger.log(Level.WARNING, thread == null ? "(null thread supplied)" : thread.toString(), throwable == null ? "(null exception)" : throwable.toString());
         } catch (RuntimeException rte) {
-            System.out.println((t == null ? "(null thread supplied)" : t.toString()) + ": " + (e == null ? "(null exception)" : e.toString()));
-            if(e!=null){
-                e.printStackTrace();
+            System.out.println((thread == null ? "(null thread supplied)" : thread.toString()) + ": " + (throwable == null ? "(null exception)" : throwable.toString()));
+            if (throwable != null) {
+                throwable.printStackTrace();
             }
         }
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
-        if (e != null) {
-            e.printStackTrace(pw);
+        if (thread != null) { // throwable might have a null stack trace because of some optimization of JVM (tobi)
+            if (throwable == null) {
+                new Throwable().printStackTrace(pw); // get stack trace if throwable is somehow null
+
+            } else { // even if throwable is not null, if it doesn't have stack trace, get one from current thread
+                StackTraceElement[] st = throwable.getStackTrace();
+                if (st == null || st.length == 0) {
+                    new Throwable().printStackTrace(pw); // get stack trace if throwable is somehow null
+                }
+            }
+        }
+        if (throwable != null) {
+            throwable.printStackTrace(pw);
         } else {
             sw.write("(null exception, cannot provide stack trace)");
         }
