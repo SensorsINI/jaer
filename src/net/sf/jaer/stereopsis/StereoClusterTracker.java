@@ -31,6 +31,8 @@ import net.sf.jaer.util.PlayWavFile;
 import net.sf.jaer.util.filter.LowpassFilter3D;
 
 import com.jogamp.opengl.util.gl2.GLUT;
+import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.util.DrawGL;
 /**
  * Extends ClusterTracker to track objects in 3-d space. The StereoCluster is extended to include disparity information and the events
@@ -38,6 +40,8 @@ import net.sf.jaer.util.DrawGL;
  *
  * @author tobi
  */
+@Description("Extends RectangularClusterTracker to track BinocularEvents by adding a disparity to each BinocularCluster")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class StereoClusterTracker extends RectangularClusterTracker{
 	private Logger log = Logger.getLogger ("StereoClassTracker");
 	private float velocityMixingFactor = getFloat ("velocityMixingFactor",.001f);
@@ -659,7 +663,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 					//                    }
 
 					if (isDisplayStereoClusterAnnotation()) {
-						int font = GLUT.BITMAP_TIMES_ROMAN_10;
+						int font = GLUT.BITMAP_TIMES_ROMAN_24;
 						GLUT glut = chip.getCanvas().getGlut();
 						gl.glColor3f(1, 1, 1);
 
@@ -672,7 +676,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 
 			if ( isDisplayStereoClusterAnnotation() && (getNearestCluster () != null) ){
 				StereoCluster c = getNearestCluster ();
-				int font = GLUT.BITMAP_TIMES_ROMAN_10;
+				int font = GLUT.BITMAP_TIMES_ROMAN_24;
 				GLUT glut = chip.getCanvas ().getGlut ();
 				gl.glColor3f (1,1,1);
 
