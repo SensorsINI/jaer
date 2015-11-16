@@ -674,8 +674,9 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 mouseQuad = glu.gluNewQuadric();
             }
             glu.gluQuadricDrawStyle(mouseQuad, GLU.GLU_LINE);
-            glu.gluDisk(mouseQuad, getTargetRadius(), getTargetRadius(), 32, 1);
-//            glu.gluDisk(mouseQuad, dimx / 2, (dimy / 2) + 1, 32, 1);
+            //glu.gluDisk(mouseQuad, getTargetRadius(), getTargetRadius(), 32, 1);
+            int maxDim = Math.max(dimx,dimy);
+            glu.gluDisk(mouseQuad, maxDim/2, (maxDim/2)+0.1, 32, 1);
             //getTargetRadius(), getTargetRadius() + 1, 32, 1);
             gl.glPopMatrix();
         }
