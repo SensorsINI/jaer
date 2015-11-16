@@ -1,6 +1,5 @@
 package net.sf.jaer.graphics;
 
-import com.jogamp.opengl.GLException;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.event.KeyAdapter;
@@ -11,12 +10,17 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
+
+import com.jogamp.opengl.GLException;
+
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.graphics.AEViewer.PlayMode;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.IndexFileFilter;
@@ -62,7 +66,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     @Override
     public boolean isChoosingFile() {
-        return fileChooser != null && fileChooser.isVisible();
+        return (fileChooser != null) && fileChooser.isVisible();
     }
     FileFilter lastFilter = null;
 
@@ -205,8 +209,8 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                 });
 //                    }
                 Component[] components = ((Container) comp).getComponents();
-                for (int i = 0; i < components.length; i++) {
-                    Component child = addDeleteListener(components[i]);
+                for (Component component : components) {
+                    Component child = addDeleteListener(component);
                     if (child != null) {
                         return child;
                     }
@@ -235,7 +239,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     public synchronized void startPlayback(File file) throws IOException {
         log.info("starting playback with file=" + file);
         super.startPlayback(file);
-        if (file == null || !file.isFile()) {
+        if ((file == null) || !file.isFile()) {
             throw new FileNotFoundException("file not found: " + file);
         }
         // idea is that we set open the file and set playback mode and the ViewLoop.run
@@ -253,7 +257,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 //            System.out.println("AEViewer.starting playback for DAT file "+file);
         viewer.setCurrentFile(file);
         int tries = 20;
-        while (viewer.getChip() == null && tries-- > 0) {
+        while ((viewer.getChip() == null) && (tries-- > 0)) {
             log.info("null AEChip in AEViewer, waiting... " + tries);
             try {
                 Thread.sleep(500);
@@ -272,7 +276,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         aeFileInputStream.setRepeat(isRepeat());
         aeFileInputStream.getSupport().addPropertyChangeListener(viewer);
         // so that users of the stream can get the file information
-        if (viewer.getJaerViewer() != null && viewer.getJaerViewer().getViewers().size() == 1) {
+        if ((viewer.getJaerViewer() != null) && (viewer.getJaerViewer().getViewers().size() == 1)) {
             // if there is only one viewer, start it there
             try {
                 aeFileInputStream.rewind();
@@ -291,9 +295,10 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         viewer.setPlaybackControlsEnabledState(true);
         viewer.fixLoggingControls();
         // TODO we grab the monitor for the viewLoop here, any other thread which may change playmode should also grab it
-        if (viewer.aemon != null && viewer.aemon.isOpen()) {
+        if ((viewer.aemon != null) && viewer.aemon.isOpen()) {
             try {
-                if (viewer.getPlayMode().equals(viewer.getPlayMode().SEQUENCING)) {
+                viewer.getPlayMode();
+				if (viewer.getPlayMode().equals(PlayMode.SEQUENCING)) {
                     viewer.stopSequencing();
                 } else {
                     viewer.aemon.setEventAcquisitionEnabled(false);
@@ -318,9 +323,14 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             return;
         }
 
-        if (viewer.aemon != null && viewer.aemon.isOpen()) {
+        if (viewer.aemon != null) {
             try {
+            	if (!viewer.aemon.isOpen()) {
+            		viewer.aemon.open();
+            	}
+
                 viewer.aemon.setEventAcquisitionEnabled(true);
+                viewer.aemon.getChip().getBiasgen().sendConfiguration(viewer.aemon.getChip().getBiasgen());
             } catch (HardwareInterfaceException e) {
                 viewer.setPlayMode(AEViewer.PlayMode.WAITING);
                 e.printStackTrace();
@@ -519,19 +529,25 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     @Override
     public long setMarkIn() {
-        if(aeFileInputStream==null) return -1;
+        if(aeFileInputStream==null) {
+			return -1;
+		}
         return aeFileInputStream.setMarkIn();
     }
 
     @Override
     public long setMarkOut() {
-         if(aeFileInputStream==null) return -1;
+         if(aeFileInputStream==null) {
+			return -1;
+		}
        return aeFileInputStream.setMarkOut();
     }
 
     @Override
     public void setFractionalPosition(float frac) {
-        if(aeFileInputStream==null) return;
+        if(aeFileInputStream==null) {
+			return;
+		}
         aeFileInputStream.setFractionalPosition(frac);
     }
 
