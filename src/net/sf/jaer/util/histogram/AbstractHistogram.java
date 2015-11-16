@@ -176,5 +176,12 @@ public abstract class AbstractHistogram implements Histogram {
         }
         return -(float)sum;
     }
+    
+    /** Prints to System.out. Empty implementation by default.
+     * 
+     */
+    public void print(){
+        // empty by default
+    }
 
 }

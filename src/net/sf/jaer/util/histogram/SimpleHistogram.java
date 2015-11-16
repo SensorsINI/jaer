@@ -190,7 +190,9 @@ public class SimpleHistogram extends AbstractHistogram {
          */
         public int meanBin = 0;
         /**
-         * The maximum bin with any value in it. Persistent. Use reset() to reset to zero, which is needed when bogus value causes very high value to be stored for max value.
+         * The maximum bin with any value in it. Persistent. Use reset() to
+         * reset to zero, which is needed when bogus value causes very high
+         * value to be stored for max value.
          */
         public int maxNonZeroBin = 0;
         /**
@@ -315,8 +317,18 @@ public class SimpleHistogram extends AbstractHistogram {
         }
 
         public void reset() {
-            maxNonZeroBin=0;
-            maxCount=0;
+            maxNonZeroBin = 0;
+            maxCount = 0;
+        }
+    }
+
+    @Override
+    public void print() {
+        System.out.println(String.format("Start - Stop: Count"));
+        for (int i = 0; i < nBins; i++) {
+            int st = getStart() + i * getStep();
+            int en = st + getStep();
+            System.out.println(String.format("%8d - %8d: %10d", st, en, (int)get(i)));
         }
     }
 

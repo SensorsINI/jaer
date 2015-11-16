@@ -13,7 +13,7 @@ import java.beans.PropertyChangeSupport;
 
 /**
  * A process/thread (like the Thesycon USB code) that reads AEs can be controlled by these methods that set the FIFO and number of buffer sizes.
- *This interface is implmented by e.g. the CypressFX2 and the StereoHardwareInterface so that the device control menu can be built to control them uniformly.
+ *This interface is implemented by e.g. the CypressFX2 and the StereoHardwareInterface so that the device control menu can be built to control them uniformly.
  *
  * @author tobi
  */

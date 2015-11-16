@@ -6,6 +6,7 @@ package net.sf.jaer.util.histogram;
 
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
+import java.io.PrintWriter;
 
 /**
  *
@@ -111,4 +112,7 @@ public interface Histogram {
      * @see #setDrawAllBins(boolean) 
      */
     public void draw(GLAutoDrawable drawable, TextRenderer renderer, float x, float y, int height, int resolution);
+    
+    /** Prints a string representation of the Histgram System.out */
+    public void print();
 }

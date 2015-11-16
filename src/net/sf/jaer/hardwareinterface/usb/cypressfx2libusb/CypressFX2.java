@@ -5,6 +5,7 @@
  */
 package net.sf.jaer.hardwareinterface.usb.cypressfx2libusb;
 
+import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeSupport;
 import java.nio.ByteBuffer;
@@ -30,6 +31,7 @@ import net.sf.jaer.hardwareinterface.BlankDeviceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.USBPacketStatistics;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
 
 import org.usb4java.BufferUtils;
@@ -66,7 +68,7 @@ import org.usb4java.LibUsb;
  *
  * @author tobi delbruck/raphael berner
  */
-public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBInterface {
+public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBInterface, HasUsbStatistics {
 
 	/** Used to store preferences, e.g. buffer sizes and number of buffers. */
 	protected static Preferences prefs = Preferences.userNodeForPackage(CypressFX2.class);
@@ -327,6 +329,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 	protected AEPacketRawPool aePacketRawPool = new AEPacketRawPool(this);
 	private String stringDescription = "CypressFX2"; // default which is
 														// modified by opening
+       private USBPacketStatistics usbPacketStatistics=new USBPacketStatistics();
 
 	/**
 	 * Populates the device descriptor and the string descriptors and builds the
@@ -843,6 +846,8 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		return support;
 	}
 
+    
+
 	/**
 	 * This threads reads asynchronous status or other data from the device.
 	 * It handles timestamp reset messages from the device and possibly other
@@ -1022,7 +1027,8 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		USBTransferThread usbTransfer;
 		CypressFX2 monitor;
 
-		public AEReader(final CypressFX2 m) throws HardwareInterfaceException {
+ 
+        public AEReader(final CypressFX2 m) throws HardwareInterfaceException {
 			monitor = m;
 			fifoSize = monitor.aeReaderFifoSize;
 			numBuffers = monitor.aeReaderNumBuffers;
@@ -1118,6 +1124,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 			@Override
 			public void processTransfer(final RestrictedTransfer transfer) {
 				cycleCounter++;
+                                usbPacketStatistics.addSample(transfer);
 
 				synchronized (aePacketRawPool) {
 					if ((transfer.status() == LibUsb.TRANSFER_COMPLETED)
@@ -2014,4 +2021,23 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 		return false;
 	}
+
+
+    public void setShowUsbStatistics(boolean yes) {
+        usbPacketStatistics.setShowUsbStatistics(yes);
+    }
+
+    public void setPrintUsbStatistics(boolean yes) {
+        usbPacketStatistics.setPrintUsbStatistics(yes);
+    }
+
+    public boolean isShowUsbStatistics() {
+        return usbPacketStatistics.isShowUsbStatistics();
+    }
+
+    public boolean isPrintUsbStatistics() {
+        return usbPacketStatistics.isPrintUsbStatistics();
+    }
+        
+        
 }

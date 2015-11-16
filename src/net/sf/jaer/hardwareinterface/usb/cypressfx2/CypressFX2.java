@@ -51,6 +51,8 @@ import de.thesycon.usbio.structs.USBIO_PIPE_PARAMETERS;
 import de.thesycon.usbio.structs.USBIO_SET_CONFIGURATION;
 import de.thesycon.usbio.structs.USB_DEVICE_DESCRIPTOR;
 import de.thesycon.usbio.structs.USB_STRING_DESCRIPTOR;
+import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
+import net.sf.jaer.hardwareinterface.usb.USBPacketStatistics;
 
 /**
  * Devices that use the CypressFX2 and the USBIO driver, e.g. the DVS retinas,
@@ -82,7 +84,7 @@ import de.thesycon.usbio.structs.USB_STRING_DESCRIPTOR;
  *
  * @author tobi delbruck/raphael berner
  */
-public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonitorInterface, ReaderBufferControl, USBInterface {
+public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonitorInterface, ReaderBufferControl, USBInterface, HasUsbStatistics {
 
     /**
      * Used to store preferences, e.g. buffer sizes and number of buffers.
@@ -276,7 +278,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     protected AEPacketRawPool aePacketRawPool = new AEPacketRawPool(this);
     private String stringDescription = "CypressFX2"; // default which is modified by opening
 
-    /**
+       private USBPacketStatistics usbPacketStatistics=new USBPacketStatistics();
+
+       /**
      * Populates the device descriptor and the string descriptors and builds the
      * String for toString().
      *
@@ -1490,6 +1494,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         private final int RESET_TIMESTAMPS_INITIAL_PRINTING_LIMIT = 10;
         private final int RESET_TIMESTAMPS_WARNING_INTERVAL = 100000;
         CypressFX2 monitor = null;
+        
 
         public AEReader(CypressFX2 m) throws HardwareInterfaceException {
             super();
@@ -1565,6 +1570,9 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         @Override
         public void processData(UsbIoBuf Buf) {
             cycleCounter++;
+            
+            usbPacketStatistics.addSample(Buf);
+
 ////             instrument cycle times
 //            long thisTime=System.nanoTime();
 //            times[cycleCounter%NTIMES]=thisTime-lastTime;
@@ -3182,4 +3190,22 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         }
         return false;
     }
+
+    public void setShowUsbStatistics(boolean yes) {
+        usbPacketStatistics.setShowUsbStatistics(yes);
+    }
+
+    public void setPrintUsbStatistics(boolean yes) {
+        usbPacketStatistics.setPrintUsbStatistics(yes);
+    }
+
+    public boolean isShowUsbStatistics() {
+        return usbPacketStatistics.isShowUsbStatistics();
+    }
+
+    public boolean isPrintUsbStatistics() {
+        return usbPacketStatistics.isPrintUsbStatistics();
+    }
+    
+    
 }
