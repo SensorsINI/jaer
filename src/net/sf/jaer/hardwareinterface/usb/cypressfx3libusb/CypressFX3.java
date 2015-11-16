@@ -40,8 +40,10 @@ import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.hardwareinterface.BlankDeviceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.USBPacketStatistics;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
 
 /**
@@ -72,7 +74,7 @@ import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
  *
  * @author tobi delbruck/raphael berner
  */
-public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBInterface {
+public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBInterface, HasUsbStatistics {
 
 	/** Used to store preferences, e.g. buffer sizes and number of buffers. */
 	protected static Preferences prefs = Preferences.userNodeForPackage(CypressFX3.class);
@@ -201,6 +203,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	/** The pool of raw AE packets, used for data transfer */
 	protected AEPacketRawPool aePacketRawPool = new AEPacketRawPool(this);
 	private String stringDescription = "CypressFX3"; // default which is
+       private USBPacketStatistics usbPacketStatistics=new USBPacketStatistics();
 
 	// modified by opening
 
@@ -1008,6 +1011,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			public void processTransfer(final RestrictedTransfer transfer) {
 				synchronized (aePacketRawPool) {
 					if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
+                                usbPacketStatistics.addSample(transfer);
 						translateEvents(transfer.buffer());
 
 						if ((chip != null) && (chip.getFilterChain() != null)
@@ -1874,4 +1878,21 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		}
 		return false;
 	}
+        
+    public void setShowUsbStatistics(boolean yes) {
+        usbPacketStatistics.setShowUsbStatistics(yes);
+    }
+
+    public void setPrintUsbStatistics(boolean yes) {
+        usbPacketStatistics.setPrintUsbStatistics(yes);
+    }
+
+    public boolean isShowUsbStatistics() {
+        return usbPacketStatistics.isShowUsbStatistics();
+    }
+
+    public boolean isPrintUsbStatistics() {
+        return usbPacketStatistics.isPrintUsbStatistics();
+    }
+
 }
