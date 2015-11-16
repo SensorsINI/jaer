@@ -76,6 +76,7 @@ public class BinocularRenderer extends AEChipRenderer{
             int rgbChan = 0;
             // leave disparity mode if input is not instanceof BinocularDisparityEvent
             if ( (stereoColorMode == StereoColorMode.Disparity) && !( packet.getEventPrototype() instanceof BinocularDisparityEvent ) ){
+                log.info("Setting color mode to RedGreen rather than Disparity because packet does not contain disparity events");
                 setColorMode(StereoColorMode.RedGreen);
             }
             // reset the min/max values for disparity rendering every time you leave the disparity rendering mode
@@ -146,7 +147,7 @@ public class BinocularRenderer extends AEChipRenderer{
                         f[ind] = disparityColors[idx][0];
                         f[ind + 1] = disparityColors[idx][1];
                         f[ind + 2] = disparityColors[idx][2];
-                    }
+                   }
 
 //                    //display the color scale in the lower left corner
 //                    for (int i=0;i<NOF_DISPARITY_COLORS;i++) {
@@ -175,6 +176,7 @@ public class BinocularRenderer extends AEChipRenderer{
                         }
                         int ind = getPixMapIndex(e.x,e.y) + rgbChan;
                         f[ind] += sc;
+//                        f[ind+3]=1; // alpha
                     }
                     break;
                 default:
