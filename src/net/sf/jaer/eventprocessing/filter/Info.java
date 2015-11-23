@@ -264,11 +264,12 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             }
         }
 
-        synchronized private void draw(GL2 gl) {
+        synchronized private void draw(GLAutoDrawable drawable) {
             int n = rateSamples.size();
             if ((n < 2) || ((endTime - startTime) == 0)) {
                 return;
             }
+            GL2 gl = drawable.getGL().getGL2();
             gl.glColor3f(.8f, .8f, .8f);
             gl.glLineWidth(1.5f);
             // draw xaxis
@@ -300,13 +301,18 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
             gl.glPopMatrix();
             gl.glPushMatrix();
-            gl.glTranslatef(0, (int) (chip.getSizeY() * .5f), 1);
-//			gl.glScalef(.2f, .2f, 1);
-            maxRateString = engFmt.format(maxRate) + "eps";
-            float scale = TextRendererScale.draw3dScale(renderer, maxRateString, chip.getCanvas().getScale(), chip.getCanvas().getCanvas().getWidth(), .05f);
-            renderer.begin3DRendering();
-            renderer.draw3D(maxRateString, 0, 0, 0, scale);
-            renderer.end3DRendering();
+            maxRateString = String.format("max %s eps", engFmt.format(maxRate));
+
+            GLUT glut = chip.getCanvas().getGlut();
+            int font = GLUT.BITMAP_9_BY_15;
+            ChipCanvas.Borders borders = chip.getCanvas().getBorders();
+            float w = drawable.getSurfaceWidth() - (2 * borders.leftRight * chip.getCanvas().getScale());
+            int ntypes = eventRateFilter.getNumCellTypes();
+            final int sx = chip.getSizeX(), sy = chip.getSizeY();
+            float sw = (glut.glutBitmapLength(font, maxRateString) / w) * sx;
+            gl.glRasterPos3f(0, sy / 2, 0);
+            glut.glutBitmapString(font, maxRateString);
+
             gl.glPopMatrix();
         }
 
@@ -455,12 +461,12 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             while (i.hasNext()) {
                 ApsDvsEvent e = i.next();
                 if (e instanceof IMUSample) {
-                    IMUSample imu=(IMUSample) e;
+                    IMUSample imu = (IMUSample) e;
                     if (imu.imuSampleEvent) {
                         accumulatedIMUSampleCount++;
-                    }else if(imu.isAPSSample()){
+                    } else if (imu.isAPSSample()) {
                         accumulatedAPSSampleCount++;
-                    }else if(imu.isDVSEvent()){
+                    } else if (imu.isDVSEvent()) {
                         accumulatedDVSEventCount++;
                     }
                 } else if (e.isAPSSample()) {
@@ -498,7 +504,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         if (chip.getAeViewer() != null) {
             drawTimeScaling(drawable, chip.getAeViewer().getTimeExpansion());
         }
-        drawRateSamples(gl);
+        drawRateSamples(drawable);
     }
 
     private void drawClock(GL2 gl, long t) {
@@ -653,12 +659,12 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 //        glut.glutBitmapString(font, s);
     }
 
-    private void drawRateSamples(GL2 gl) {
+    private void drawRateSamples(GLAutoDrawable drawable) {
         if (!showRateTrace) {
             return;
         }
         synchronized (this) {
-            rateHistory.draw(gl);
+            rateHistory.draw(drawable);
         }
     }
 
