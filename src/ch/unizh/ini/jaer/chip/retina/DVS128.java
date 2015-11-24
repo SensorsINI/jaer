@@ -270,7 +270,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
 
             if (syncEnabledMenuItem == null) {
                 syncEnabledMenuItem = new JCheckBoxMenuItem("Timestamp master / Enable sync event input");
-                syncEnabledMenuItem.setToolTipText("<html>Sets this device as timestamp master and enables sync event generation on external IN pin falling edges (disables slave clock input).<br>Falling edges inject special sync events with bitmask " + HexString.toString(CypressFX2DVS128HardwareInterface.SYNC_EVENT_BITMASK) + " set<br>These events are not rendered but are logged and can be used to synchronize an external signal to the recorded data.<br>If you are only using one camera, enable this option.<br>If you want to synchronize two DVS128, disable this option in one of the cameras and connect the OUT pin of the master to the IN pin of the slave and also connect the two GND pins.");
+                syncEnabledMenuItem.setToolTipText("<html>Sets this device as timestamp master and enables sync event generation on external IN pin falling edges (disables slave clock input).<br>Falling edges inject special sync events with raw event address " + HexString.toString(CypressFX2DVS128HardwareInterface.SYNC_EVENT_BITMASK) +" (see logging output for cooked special event address)<br>These events are not rendered but are logged and can be used to synchronize an external signal to the recorded data.<br>If you are only using one camera, enable this option.<br>If you want to synchronize two DVS128, disable this option in one of the cameras and connect the OUT pin of the master to the IN pin of the slave and also connect the two GND pins.");
                 HasSyncEventOutput h = (HasSyncEventOutput) getHardwareInterface();
 
                 syncEnabledMenuItem.addActionListener(new ActionListener() {
@@ -508,7 +508,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                     e.type = -1;
                     e.polarity = PolarityEvent.Polarity.On;
                     if (printedSyncBitWarningCount > 0) {
-                        log.warning("raw address " + addr + " is >32767 (0xefff); either sync or stereo bit is set");
+                        log.warning("BasicEvent.address="+e.address+" , raw address=" + addr + " is >32767 (0xefff); either sync (external input event) or stereo bit is set");
                         printedSyncBitWarningCount--;
                         if (printedSyncBitWarningCount == 0) {
                             log.warning("suppressing futher warnings about msb of raw address");
