@@ -209,7 +209,9 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     synchronized public void resetFilter() {
         // selection = null;
         stats.resetISIs();
-        if(isIsiAutoScalingEnabled()) setIsiMaxUs(0);
+        if (isIsiAutoScalingEnabled()) {
+            setIsiMaxUs(0);
+        }
     }
 
     @Override
@@ -246,7 +248,9 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         boolean old = this.isiHistEnabled;
         this.isiHistEnabled = isiHistEnabled;
         putBoolean("isiHistEnabled", isiHistEnabled);
-        if(isiHistEnabled) setShowLatencyHistogramToExternalInputEvents(false);
+        if (isiHistEnabled) {
+            setShowLatencyHistogramToExternalInputEvents(false);
+        }
         getSupport().firePropertyChange("isiHistEnabled", old, this.isiHistEnabled);
     }
 
@@ -539,20 +543,16 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                 }
                 if (inSelection(e)) {
                     stats.count++;
-                    if (showLatencyHistogramToExternalInputEvents) {
-                        globalHist.addEventRelativeToExternalInputEvent(e);
-                    } else {
-                        if (individualISIsEnabled) {
-                            ISIHist h = histMap.get(e.address);
-                            if (h == null) {
-                                h = new ISIHist(e.address);
-                                histMap.put(e.address, h);
-                                // System.out.println("added hist for "+e);
-                            }
-                            h.addEvent(e);
-                        } else {
-                            globalHist.addEvent(e);
+                    if (individualISIsEnabled) {
+                        ISIHist h = histMap.get(e.address);
+                        if (h == null) {
+                            h = new ISIHist(e.address);
+                            histMap.put(e.address, h);
+                            // System.out.println("added hist for "+e);
                         }
+                        h.addEvent(e);
+                    } else {
+                        globalHist.addEvent(e);
                     }
                     globalHist.lastT = e.timestamp;
                 }
@@ -560,7 +560,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             if (stats.count > 0) {
                 measureAverageEPS(globalHist.lastT, stats.count);
             }
-            if (individualISIsEnabled && !showLatencyHistogramToExternalInputEvents) {
+            if (individualISIsEnabled) {
                 globalHist.reset();
                 for (ISIHist h : histMap.values()) {
                     for (int i = 0; i < isiNumBins; i++) {
@@ -620,7 +620,9 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             boolean old = this.showLatencyHistogramToExternalInputEvents;
             this.showLatencyHistogramToExternalInputEvents = showLatencyHistogramToExternalInputEvents;
             putBoolean("showLatencyHistogramToExternalInputEvents", showLatencyHistogramToExternalInputEvents);
-            if(showLatencyHistogramToExternalInputEvents) setIsiHistEnabled(false);
+            if (showLatencyHistogramToExternalInputEvents) {
+                setIsiHistEnabled(false);
+            }
             getSupport().firePropertyChange("showLatencyHistogramToExternalInputEvents", old, this.showLatencyHistogramToExternalInputEvents);
         }
 
@@ -671,40 +673,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             @Override
             public String toString() {
                 return String.format("ISIHist: virgin=%s maxCount=%d lessCount=%d moreCount=%d isiMaxUs=% isiMinUs=%d",
-                        virgin,maxCount,lessCount,moreCount,isiMaxUs,isiMinUs);
-            }
-            
-            
-
-            void addEventRelativeToExternalInputEvent(BasicEvent e) {
-                int isi = e.timestamp - lastExternalInputEventTimestamp;
-                if (isi < 0) {
-                    return;
-                }
-                if (isiAutoScalingEnabled) {
-                    if (isi > isiMaxUs) {
-                        setIsiMaxUs(isi);
-                    } else if (isi < isiMinUs) {
-                        setIsiMinUs(isi);
-                    }
-                }
-                int bin = getIsiBin(isi);
-                if (bin < 0) {
-                    lessCount++;
-                    if (scaleHistogramsIncludingOverflow && (lessCount > maxCount)) {
-                        maxCount = lessCount;
-                    }
-                } else if (bin >= isiNumBins) {
-                    moreCount++;
-                    if (scaleHistogramsIncludingOverflow && (moreCount > maxCount)) {
-                        maxCount = moreCount;
-                    }
-                } else {
-                    int v = ++bins[bin];
-                    if (v > maxCount) {
-                        maxCount = v;
-                    }
-                }
+                        virgin, maxCount, lessCount, moreCount, isiMaxUs, isiMinUs);
             }
 
             void addEvent(BasicEvent e) {
@@ -713,7 +682,12 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                     virgin = false;
                     return;
                 }
-                int isi = e.timestamp - lastT;
+                int isi;
+                if (showLatencyHistogramToExternalInputEvents) {
+                    isi = e.timestamp - lastExternalInputEventTimestamp;
+                } else {
+                    isi = e.timestamp - lastT;
+                }
                 if (isi < 0) {
                     lastT = e.timestamp; // handle wrapping
                     return;
@@ -878,11 +852,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                 renderer.draw3D(String.format("%d", isiMaxUs), chip.getSizeX() - 8, -6, 0, scale);
                 renderer.draw3D(logISIEnabled ? "log" : "linear", -15, -6, 0, scale);
 
-                if (showLatencyHistogramToExternalInputEvents) {
-                    gl.glPushMatrix();
-                    globalHist.draw(gl, 2, GLOBAL_HIST_COLOR);
-                    gl.glPopMatrix();
-                } else {
+                {
                     if (individualISIsEnabled) {
                         if (showAverageISIHistogram) {
                             gl.glPushMatrix();
