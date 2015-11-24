@@ -209,7 +209,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     synchronized public void resetFilter() {
         // selection = null;
         stats.resetISIs();
-        if(isScaleHistogramsIncludingOverflow()) setIsiMaxUs(0);
+        if(isIsiAutoScalingEnabled()) setIsiMaxUs(0);
     }
 
     @Override
