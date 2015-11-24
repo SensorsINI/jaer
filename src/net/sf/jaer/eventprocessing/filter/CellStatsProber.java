@@ -209,6 +209,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     synchronized public void resetFilter() {
         // selection = null;
         stats.resetISIs();
+        if(isScaleHistogramsIncludingOverflow()) setIsiMaxUs(0);
     }
 
     @Override
@@ -559,7 +560,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             if (stats.count > 0) {
                 measureAverageEPS(globalHist.lastT, stats.count);
             }
-            if (individualISIsEnabled) {
+            if (individualISIsEnabled && !showLatencyHistogramToExternalInputEvents) {
                 globalHist.reset();
                 for (ISIHist h : histMap.values()) {
                     for (int i = 0; i < isiNumBins; i++) {
@@ -666,6 +667,14 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             public ISIHist(int addr) {
                 address = addr;
             }
+
+            @Override
+            public String toString() {
+                return String.format("ISIHist: virgin=%s maxCount=%d lessCount=%d moreCount=%d isiMaxUs=% isiMinUs=%d",
+                        virgin,maxCount,lessCount,moreCount,isiMaxUs,isiMinUs);
+            }
+            
+            
 
             void addEventRelativeToExternalInputEvent(BasicEvent e) {
                 int isi = e.timestamp - lastExternalInputEventTimestamp;
@@ -864,7 +873,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             renderer.end3DRendering();
 
             // draw hist
-            if (isiHistEnabled) {
+            if (isiHistEnabled || showLatencyHistogramToExternalInputEvents) {
                 renderer.draw3D(String.format("%d", isiMinUs), -1, -6, 0, scale);
                 renderer.draw3D(String.format("%d", isiMaxUs), chip.getSizeX() - 8, -6, 0, scale);
                 renderer.draw3D(logISIEnabled ? "log" : "linear", -15, -6, 0, scale);
