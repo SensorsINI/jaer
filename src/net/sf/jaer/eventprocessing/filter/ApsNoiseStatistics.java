@@ -31,6 +31,7 @@ import net.sf.jaer.util.EngineeringFormat;
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
+import eu.seebetter.ini.chips.DavisChip;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import net.sf.jaer.DevelopmentStatus;
@@ -358,8 +359,9 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if(resetOnBiasChange && evt.getSource() instanceof AEChip){
+        if(resetOnBiasChange && evt.getSource() instanceof AEChip && evt.getPropertyName()!=DavisChip.PROPERTY_FRAME_RATE_HZ && evt.getPropertyName()!=DavisChip.PROPERTY_MEASURED_EXPOSURE_MS){
             resetFilter();
+            log.info("statistics reset because of event "+evt.getPropertyName());
         }
     }
 
