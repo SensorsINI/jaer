@@ -70,6 +70,8 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
 //    private final Lock lock = new ReentrantLock(); // used to prevent open GL calls during mouse event handling at the same time as opengl rendering
     final float textScale = .3f;
     private boolean resetCalled = true;
+    private float adcVref=getFloat("vreadcVreff",3.3f);
+    private int adcResolutionCounts=getInt("adcResolutionCounts",1023);
 
     public ApsNoiseStatistics(AEChip chip) {
         super(chip);
@@ -90,6 +92,8 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
         setPropertyTooltip("spatialHistogramEnabled", "shows the spatial (FPN) histogram for mouse-selected region");
         setPropertyTooltip("temporalNoiseEnabled", "<html>shows the temporal noise (AC RMS) of pixels in mouse-selected region. <br> The AC RMS is computed for each pixel separately and the grand average AC RMS is displayed.");
         setPropertyTooltip("resetOnBiasChange", "Resets filter on any PropertyChangeEvent from the chip's configuration");
+        setPropertyTooltip("adcVref", "Input voltage range of ADC");
+        setPropertyTooltip("adcResolutionCounts", "Resolution of ADC in DN (digital number) counts");
     }
 
     @Override
@@ -366,6 +370,36 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
     }
 
     /**
+     * @return the adcVref
+     */
+    public float getAdcVref() {
+        return adcVref;
+    }
+
+    /**
+     * @param adcVref the adcVref to set
+     */
+    public void setAdcVref(float adcVref) {
+        this.adcVref = adcVref;
+        putFloat("adcVref",adcVref);
+    }
+
+    /**
+     * @return the adcResolutionCounts
+     */
+    public int getAdcResolutionCounts() {
+        return adcResolutionCounts;
+    }
+
+    /**
+     * @param adcResolutionCounts the adcResolutionCounts to set
+     */
+    public void setAdcResolutionCounts(int adcResolutionCounts) {
+        this.adcResolutionCounts = adcResolutionCounts;
+        putInt("adcResolutionCounts",adcResolutionCounts);
+    }
+
+    /**
      * Keeps track of pixel statistics
      */
     class PixelStatistics {
@@ -532,7 +566,9 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                 final float x0 = chip.getSizeX() * offset, y0 = chip.getSizeY() * offset, x1 = chip.getSizeX() * (1 - offset), y1 = chip.getSizeY() * (1 - offset);
 
                 // overall statistics
-                String s = String.format("Temporal noise: %.1f+/-%.2f var=%.1f COV=%.1f%% N=%d", meanmean, rmsAC, meanvar, (100 * rmsAC) / meanmean, nPixels);
+                float kdn=(float)(meanvar/meanmean);
+                float keuV=kdn*adcVref/adcResolutionCounts*1e6f;
+                String s = String.format("Temporal noise: %.1f+/-%.2f var=%.1f COV=%.1f%% var/mean=k=%.2f DN/e, k=%s uV/e N=%d", meanmean, rmsAC, meanvar, (100 * rmsAC) / meanmean, kdn, engFmt.format(keuV), nPixels);
                 renderer.begin3DRendering();
                 renderer.setColor(GLOBAL_HIST_COLOR[0], GLOBAL_HIST_COLOR[1], GLOBAL_HIST_COLOR[2], 1f);
                 renderer.draw3D(s, 1.5f * x0, y1, 0, textScale);
