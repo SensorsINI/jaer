@@ -32,8 +32,10 @@ import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.DavisChip;
+import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.lang.reflect.Array;
 import net.sf.jaer.DevelopmentStatus;
 
 /**
@@ -41,7 +43,7 @@ import net.sf.jaer.DevelopmentStatus;
  *
  * @author tobi
  */
-@Description("Collects and displays APS noise statistics for a selected range of pixels")
+@Description("Collects and displays APS noise statistics for a selected range of pixels. ")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements FrameAnnotater, Observer, PropertyChangeListener {
 
@@ -52,7 +54,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
     public boolean scaleHistogramsIncludingOverflow = getBoolean("scaleHistogramsIncludingOverflow", true);
     protected boolean resetOnBiasChange = getBoolean("resetOnBiasChange", true);
     public int histNumBins = getInt("histNumBins", 30);
-    int startx, starty, endx, endy;
+    int startx, starty, endx, endy; // mouse selection points
     private Point startPoint = null, endPoint = null, clickedPoint = null;
     protected Rectangle selectionRectangle = null;
     private static float lineWidth = 1f;
@@ -70,8 +72,11 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
 //    private final Lock lock = new ReentrantLock(); // used to prevent open GL calls during mouse event handling at the same time as opengl rendering
     final float textScale = .3f;
     private boolean resetCalled = true;
-    private float adcVref=getFloat("vreadcVreff",3.3f);
-    private int adcResolutionCounts=getInt("adcResolutionCounts",1023);
+    private float adcVref = getFloat("vreadcVreff", 3.3f);
+    private int adcResolutionCounts = getInt("adcResolutionCounts", 1023);
+    private boolean useZeroOriginForTemporalNoise = getBoolean("useZeroOriginForTemporalNoise", false);
+    private Point2D.Float temporalNoiseLineStartPoint = null, temporalNoiseLineEndPoint = null;
+//    private boolean hideHelpText=getBoolean("hideHelpText",false);
 
     public ApsNoiseStatistics(AEChip chip) {
         super(chip);
@@ -90,10 +95,13 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
         setPropertyTooltip("scaleHistogramsIncludingOverflow", "Scales histograms to include overflows for ISIs that are outside of range");
         setPropertyTooltip("histNumBins", "number of bins in the spatial (FPN) histogram");
         setPropertyTooltip("spatialHistogramEnabled", "shows the spatial (FPN) histogram for mouse-selected region");
-        setPropertyTooltip("temporalNoiseEnabled", "<html>shows the temporal noise (AC RMS) of pixels in mouse-selected region. <br> The AC RMS is computed for each pixel separately and the grand average AC RMS is displayed.");
+        setPropertyTooltip("temporalNoiseEnabled", "<html>shows the temporal noise (AC RMS) of pixels in mouse-selected region. <br>The AC RMS is computed for each pixel separately and the grand average AC RMS is displayed.<\br>Use left-mouse to drag select a range of pixels.<\br>Use right-mouse to drag a line along temporal noise measurements to estimate conversion gain.");
         setPropertyTooltip("resetOnBiasChange", "Resets filter on any PropertyChangeEvent from the chip's configuration");
         setPropertyTooltip("adcVref", "Input voltage range of ADC");
         setPropertyTooltip("adcResolutionCounts", "Resolution of ADC in DN (digital number) counts");
+        setPropertyTooltip("useZeroOriginForTemporalNoise", "Sets origin for temporal noise plot to 0,0 to help see structure more easily");
+//        setPropertyTooltip("hideHelpText", "Hides the help text");
+
     }
 
     @Override
@@ -155,6 +163,18 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
         int w = endx - startx;
         int h = endy - starty;
         setSelectionRectangle(new Rectangle(startx, starty, w, h));
+    }
+
+    private void setTemporalNoiseLineFromMouseEvent(MouseEvent e) {
+        Point p = getMousePoint(e);
+        endPoint = p;
+        startx = min(startPoint.x, endPoint.x);
+        starty = min(startPoint.y, endPoint.y);
+        endx = max(startPoint.x, endPoint.x);
+        endy = max(startPoint.y, endPoint.y);
+        int w = endx - startx;
+        int h = endy - starty;
+        setTemporalNoiseLinePoints(new Point2D.Float(startx, starty), new Point2D.Float(endx, endy));
     }
 
     /**
@@ -237,7 +257,11 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
         if (startPoint == null) {
             return;
         }
-        setSelectionRectangleFromMouseEvent(e);
+        if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
+            setSelectionRectangleFromMouseEvent(e);
+        } else if ((e.getModifiersEx() & MouseEvent.BUTTON3_DOWN_MASK) == MouseEvent.BUTTON3_DOWN_MASK) {
+            setTemporalNoiseLineFromMouseEvent(e);
+        }
         selecting = false;
     }
 
@@ -286,7 +310,11 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
         if (startPoint == null) {
             return;
         }
-        setSelectionRectangleFromMouseEvent(e);
+        if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
+            setSelectionRectangleFromMouseEvent(e);
+        } else if ((e.getModifiersEx() & MouseEvent.BUTTON3_DOWN_MASK) == MouseEvent.BUTTON3_DOWN_MASK) {
+            setTemporalNoiseLineFromMouseEvent(e);
+        }
     }
 
     /**
@@ -333,7 +361,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
         currentAddress = new int[chip.getNumCellTypes()];
         Arrays.fill(currentAddress, -1);
         frameExtractor.resetFilter();
-        if(chip.getBiasgen()!=null){
+        if (chip.getBiasgen() != null) {
             chip.getBiasgen().getSupport().addPropertyChangeListener(this);
         }
     }
@@ -363,9 +391,9 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if(resetOnBiasChange && evt.getSource() instanceof AEChip && evt.getPropertyName()!=DavisChip.PROPERTY_FRAME_RATE_HZ && evt.getPropertyName()!=DavisChip.PROPERTY_MEASURED_EXPOSURE_MS){
+        if (resetOnBiasChange && evt.getSource() instanceof AEChip && evt.getPropertyName() != DavisChip.PROPERTY_FRAME_RATE_HZ && evt.getPropertyName() != DavisChip.PROPERTY_MEASURED_EXPOSURE_MS) {
             resetFilter();
-            log.info("statistics reset because of event "+evt.getPropertyName());
+            log.info("statistics reset because of event " + evt.getPropertyName());
         }
     }
 
@@ -381,7 +409,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
      */
     public void setAdcVref(float adcVref) {
         this.adcVref = adcVref;
-        putFloat("adcVref",adcVref);
+        putFloat("adcVref", adcVref);
     }
 
     /**
@@ -396,7 +424,28 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
      */
     public void setAdcResolutionCounts(int adcResolutionCounts) {
         this.adcResolutionCounts = adcResolutionCounts;
-        putInt("adcResolutionCounts",adcResolutionCounts);
+        putInt("adcResolutionCounts", adcResolutionCounts);
+    }
+
+    /**
+     * @return the useZeroOriginForTemporalNoise
+     */
+    public boolean isUseZeroOriginForTemporalNoise() {
+        return useZeroOriginForTemporalNoise;
+    }
+
+    /**
+     * @param useZeroOriginForTemporalNoise the useZeroOriginForTemporalNoise to
+     * set
+     */
+    public void setUseZeroOriginForTemporalNoise(boolean useZeroOriginForTemporalNoise) {
+        this.useZeroOriginForTemporalNoise = useZeroOriginForTemporalNoise;
+        putBoolean("useZeroOriginForTemporalNoise", useZeroOriginForTemporalNoise);
+    }
+
+    private void setTemporalNoiseLinePoints(Point2D.Float start, Point2D.Float end) {
+        temporalNoiseLineStartPoint = start;
+        temporalNoiseLineEndPoint = end;
     }
 
     /**
@@ -482,7 +531,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
             /**
              * Adds one pixel sample to temporal noise statistics
              *
-             * @param idx indext of pixel
+             * @param idx index of pixel
              * @param sample sample value
              */
             synchronized void addSample(int idx, int sample) {
@@ -566,8 +615,8 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                 final float x0 = chip.getSizeX() * offset, y0 = chip.getSizeY() * offset, x1 = chip.getSizeX() * (1 - offset), y1 = chip.getSizeY() * (1 - offset);
 
                 // overall statistics
-                float kdn=(float)(meanvar/meanmean);
-                float keuV=kdn*adcVref/adcResolutionCounts*1e6f;
+                float kdn = (float) (meanvar / meanmean);
+                float keuV = kdn * adcVref / adcResolutionCounts * 1e6f;
                 String s = String.format("Temporal noise: %.1f+/-%.2f var=%.1f COV=%.1f%% var/mean=k=%.2f DN/e, k=%s uV/e N=%d", meanmean, rmsAC, meanvar, (100 * rmsAC) / meanmean, kdn, engFmt.format(keuV), nPixels);
                 renderer.begin3DRendering();
                 renderer.setColor(GLOBAL_HIST_COLOR[0], GLOBAL_HIST_COLOR[1], GLOBAL_HIST_COLOR[2], 1f);
@@ -596,6 +645,11 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                 renderer.draw3D("variance", 0, 0, 0, textScale);
                 renderer.end3DRendering();
                 gl.glPopMatrix();
+
+                if (useZeroOriginForTemporalNoise) {
+                    minmean = 0;
+                    minvar = 0;
+                }
                 // axes limits
                 renderer.begin3DRendering();
                 renderer.setColor(GLOBAL_HIST_COLOR[0], GLOBAL_HIST_COLOR[1], GLOBAL_HIST_COLOR[2], 1f);
@@ -617,6 +671,29 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                 }
 
                 gl.glEnd();
+
+                // noise line
+                if (temporalNoiseLineStartPoint != null && temporalNoiseLineEndPoint != null) {
+                    gl.glColor3fv(new float[]{0, .5f, .8f}, 0);
+                    gl.glLineWidth(3);
+                    gl.glBegin(GL.GL_LINES);
+                    gl.glVertex2f(temporalNoiseLineStartPoint.x, temporalNoiseLineStartPoint.y);
+                    gl.glVertex2f(temporalNoiseLineEndPoint.x, temporalNoiseLineEndPoint.y);
+                    gl.glEnd();
+                    // compute line points in mean/var space
+                    float sx = (float) meanrange * (temporalNoiseLineStartPoint.x - x0) / (x1 - x0);
+                    float ex = (float) meanrange * (temporalNoiseLineEndPoint.x - x0) / (x1 - x0);
+                    float sy = (float) varrange * (temporalNoiseLineStartPoint.y - y0) / (y1 - y0);
+                    float ey = (float) varrange * (temporalNoiseLineEndPoint.y - y0) / (y1 - y0);
+                    float dx = ex - sx;
+                    float dy = ey - sy;
+                    float kdnline = dy / dx;
+                    float kuVperElec = 1e6f * kdnline * adcVref / adcResolutionCounts;
+                    renderer.begin3DRendering();
+                    renderer.setColor(0, .5f, .8f, 1f);
+                    renderer.draw3D(String.format("%.3f DN/e, %.1f uV/e", kdnline, kuVperElec), temporalNoiseLineEndPoint.x, temporalNoiseLineEndPoint.y, 0, textScale);
+                    renderer.end3DRendering();
+                }
             }
         }
 
