@@ -37,8 +37,8 @@ import net.sf.jaer.graphics.ImageDisplay.Legend;
  * Extracts CIS APS frames from SBRet10/20 DAVIS sensors. Use
  * <ul>
  * <li>hasNewFrame() to check whether a new frame is available
- * <li>getDisplayBuffer() to get the latest float buffer displayed
- * <li>getNewFrame() to get the latest double buffer
+ * <li>getDisplayBuffer() to get a clone of the latest raw pixel values
+ * <li>getNewFrame() to get the latest double buffer of displayed values
  * </ul>
  *
  * @author Christian Brändli
@@ -342,6 +342,7 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
      * use getIndex(). 
      *
      * @return the double[] frame
+     * @see #getDisplayBuffer() 
      */
     public float[] getNewFrame() {
         newFrame = false;
@@ -349,11 +350,14 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
     }
 
     /**
-     * Returns a clone of the latest float buffer. The array is indexed by <code>y * width + x</code>. 
+     * Returns a clone of the latest float displayBuffer. 
+     * This buffer contains raw pixel values from sensor, before conversion, brightness, etc. 
+     * The array is indexed by <code>y * width + x</code>. 
      * To access a particular pixel, use getIndex() for convenience.
      *
      * @return the float[] of pixel values
      * @see #getIndex(int, int)
+     * @see #getNewFrame() 
      */
     public float[] getDisplayBuffer() {
         newFrame = false;
