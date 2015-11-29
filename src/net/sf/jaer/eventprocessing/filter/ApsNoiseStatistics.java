@@ -685,9 +685,9 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                     float ex = (float) meanrange * (temporalNoiseLineEndPoint.x - x0) / (x1 - x0);
                     float sy = (float) varrange * (temporalNoiseLineStartPoint.y - y0) / (y1 - y0);
                     float ey = (float) varrange * (temporalNoiseLineEndPoint.y - y0) / (y1 - y0);
-                    float dx = ex - sx;
-                    float dy = ey - sy;
-                    float kdnline = dy / dx;
+                    float dmean = ex - sx;
+                    float dvar = ey - sy;
+                    float kdnline = dvar / dmean;
                     float kuVperElec = 1e6f * kdnline * adcVref / adcResolutionCounts;
                     renderer.begin3DRendering();
                     renderer.setColor(0, .5f, .8f, 1f);
