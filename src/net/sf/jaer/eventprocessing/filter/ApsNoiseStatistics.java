@@ -501,7 +501,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
 //                        log.warning(String.format("index out of range: x=%d y=%d, idx=%d frame.length=%d", x, y, idx, frame.length));
                         return;
                     }
-                    int sample = Math.round(frame[idx]);
+                    int sample = (int)(frame[idx]);
                     if (spatialHistogramEnabled) {
                         apsHist.addSample(sample);
                     }
@@ -561,7 +561,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                         continue;
                     }
                     means[i] = sums[i] / pixelSampleCounts[i];
-                    vars[i] = (sum2s[i] - ((sums[i] * sums[i]) / pixelSampleCounts[i])) / (pixelSampleCounts[i] - 1);
+                    vars[i] = (sum2s[i]/pixelSampleCounts[i]) - (means[i]*means[i]);
 //                    if (vars[i] > 1000) {
 //                        log.warning("suspiciously high variance");
 //                    }
