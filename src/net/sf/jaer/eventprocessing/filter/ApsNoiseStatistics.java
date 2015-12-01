@@ -29,6 +29,7 @@ import net.sf.jaer.graphics.DisplayMethod2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.EngineeringFormat;
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
+import com.jogamp.opengl.GLException;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.DavisChip;
@@ -50,7 +51,6 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements FrameAnnotater, Observer, PropertyChangeListener {
 
     ApsFrameExtractor frameExtractor;
-//    private int numFramesToAverage = getInt("numFramesToAverage", 10);
     public boolean temporalNoiseEnabled = getBoolean("temporalNoiseEnabled", true);
     public boolean spatialHistogramEnabled = getBoolean("spatialHistogramEnabled", true);
     public boolean scaleHistogramsIncludingOverflow = getBoolean("scaleHistogramsIncludingOverflow", true);
@@ -69,16 +69,15 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
     final private static float[] SELECT_COLOR = {.8f, 0, 0, .5f};
     private TextRenderer renderer = null;
     PixelStatistics stats = new PixelStatistics();
-    final private static float[] GLOBAL_HIST_COLOR = {0, 0, .8f, .5f}, INDIV_HIST_COLOR = {0, .2f, .6f, .5f}, HIST_OVERFLOW_COLOR = {.6f, .4f, .2f, .6f};
-    private int frameWidth, frameHeight; // set from frame extractor filter
-//    private final Lock lock = new ReentrantLock(); // used to prevent open GL calls during mouse event handling at the same time as opengl rendering
+    final private static float[] TEMPORAL_HIST_COLOR = {0, 0, .8f, .3f},
+            SPATIAL_HIST_COLOR = {.6f, .4f, .2f, .6f},
+            HIST_OVERFLOW_COLOR = {.8f, .3f, .2f, .6f};
     final float textScale = .3f;
     private boolean resetCalled = true;
     private float adcVref = getFloat("vreadcVreff", 1.5f);
     private int adcResolutionCounts = getInt("adcResolutionCounts", 1023);
     private boolean useZeroOriginForTemporalNoise = getBoolean("useZeroOriginForTemporalNoise", false);
     private Point2D.Float temporalNoiseLineStartPoint = null, temporalNoiseLineEndPoint = null;
-//    private boolean hideHelpText=getBoolean("hideHelpText",false);
 
     public ApsNoiseStatistics(AEChip chip) {
         super(chip);
@@ -102,7 +101,6 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
         setPropertyTooltip("adcVref", "Input voltage range of ADC; on DAVIS240 the range is 1.5V with AdcLow=.21, AdcHigh=1.81");
         setPropertyTooltip("adcResolutionCounts", "Resolution of ADC in DN (digital number) counts");
         setPropertyTooltip("useZeroOriginForTemporalNoise", "Sets origin for temporal noise plot to 0,0 to help see structure more easily");
-//        setPropertyTooltip("hideHelpText", "Hides the help text");
 
     }
 
@@ -115,8 +113,6 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
 
     @Override
     synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
-        frameWidth = frameExtractor.getWidth();
-        frameHeight = frameExtractor.getHeight();
         frameExtractor.filterPacket(in);
         if (frameExtractor.hasNewFrame()) {
             if (resetCalled) {
@@ -140,6 +136,13 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
             int sx = chip.getSizeX(), sy = chip.getSizeY();
             Rectangle chipRect = new Rectangle(sx, sy);
             GL2 gl = drawable.getGL().getGL2();
+            try {
+                gl.glEnable(GL.GL_BLEND);
+                gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+                gl.glBlendEquation(GL.GL_FUNC_ADD);
+            } catch (GLException e) {
+                e.printStackTrace();
+            }
             if (!chipRect.intersects(selectionRectangle)) {
                 return;
             }
@@ -615,7 +618,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
 //                renderer.end3DRendering();
                 // draw plot
                 gl.glLineWidth(lineWidth);
-                gl.glColor3fv(GLOBAL_HIST_COLOR, 0);
+                gl.glColor3fv(TEMPORAL_HIST_COLOR, 0);
                 // axes
                 gl.glBegin(GL.GL_LINES);
                 gl.glVertex2f(x0, y0);
@@ -625,7 +628,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                 gl.glEnd();
                 // axes labels
                 renderer.begin3DRendering();
-                renderer.setColor(GLOBAL_HIST_COLOR[0], GLOBAL_HIST_COLOR[1], GLOBAL_HIST_COLOR[2], 1f);
+                renderer.setColor(TEMPORAL_HIST_COLOR[0], TEMPORAL_HIST_COLOR[1], TEMPORAL_HIST_COLOR[2], 1f);
                 renderer.draw3D("signal", (x0 + x1) / 2, y0 / 2, 0, textScale);
                 renderer.end3DRendering();
                 gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
@@ -643,7 +646,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                 }
                 // axes limits
                 renderer.begin3DRendering();
-                renderer.setColor(GLOBAL_HIST_COLOR[0], GLOBAL_HIST_COLOR[1], GLOBAL_HIST_COLOR[2], 1f);
+                renderer.setColor(TEMPORAL_HIST_COLOR[0], TEMPORAL_HIST_COLOR[1], TEMPORAL_HIST_COLOR[2], 1f);
                 renderer.draw3D(String.format("%.1f", minvar), x0 / 2, y0, 0, textScale);
                 renderer.draw3D(String.format("%.1f", maxvar), x0 / 2, y1, 0, textScale);
                 renderer.draw3D(String.format("%.1f", minmean), x0, y0 / 2, 0, textScale);
@@ -651,8 +654,10 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                 renderer.end3DRendering();
 
                 // data points
+                gl.glColor4fv(TEMPORAL_HIST_COLOR, 0);
                 gl.glPointSize(6);
                 gl.glBegin(GL.GL_POINTS);
+
                 final double meanrange = maxmean - minmean;
                 final double varrange = maxvar - minvar;
                 for (int i = 0; i < means.length; i++) {
@@ -695,8 +700,8 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
             int maxCount = 0;
             boolean virgin = true;
             int sampleMin = 0, sampleMax = 1023;
-            float mean=0, var=0, std=0, cov=0;
-            long sum=0, sum2=0;
+            float mean = 0, var = 0, std = 0, cov = 0;
+            long sum = 0, sum2 = 0;
             int count;
 
             public APSHist() {
@@ -721,15 +726,15 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                     }
                 }
                 count++;
-                sum+=sample;
-                sum2+=sample*sample;
-                if(count>2){
-                    mean=(float)sum/count;
-                    var=(float)sum2/count-mean*mean;
-                    std=(float)Math.sqrt(var);
-                    cov=std/mean;
+                sum += sample;
+                sum2 += sample * sample;
+                if (count > 2) {
+                    mean = (float) sum / count;
+                    var = (float) sum2 / count - mean * mean;
+                    std = (float) Math.sqrt(var);
+                    cov = std / mean;
                 }
-                
+
             }
 
             /**
@@ -777,6 +782,8 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                     gl.glPopAttrib();
                 }
                 if (maxCount > 0) {
+                    gl.glPushAttrib(GL2.GL_COLOR | GL.GL_LINE_WIDTH);
+                    gl.glColor4fv(SPATIAL_HIST_COLOR, 0);
                     gl.glBegin(GL.GL_LINE_STRIP);
                     for (int i = 0; i < bins.length; i++) {
                         float y = 1 + (sy * bins[i]);
@@ -787,6 +794,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                         gl.glVertex2f(x2, 1);
                     }
                     gl.glEnd();
+                    gl.glPopAttrib();
                 }
                 if (currentMousePoint != null) {
                     if (currentMousePoint.y <= 0) {
@@ -803,7 +811,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                         gl.glEnd();
                     }
                 }
-               MultilineAnnotationTextRenderer.renderMultilineString(String.format("Spatial histogram: mean=%.1f, std=%.3f, COV=%.3f%%", mean, std, cov*100));
+                MultilineAnnotationTextRenderer.renderMultilineString(String.format("Spatial histogram: mean=%.1f, std=%.3f, COV=%.3f%%", mean, std, cov * 100));
 
             }
 
@@ -825,8 +833,9 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                 moreCount = 0;
                 maxCount = 0;
                 virgin = true;
-                count=0;
-                sum=0; sum2=0;
+                count = 0;
+                sum = 0;
+                sum2 = 0;
             }
 
             private int getSampleBin(int sample) {
