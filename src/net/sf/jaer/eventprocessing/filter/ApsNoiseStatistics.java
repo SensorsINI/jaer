@@ -74,7 +74,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
 //    private final Lock lock = new ReentrantLock(); // used to prevent open GL calls during mouse event handling at the same time as opengl rendering
     final float textScale = .3f;
     private boolean resetCalled = true;
-    private float adcVref = getFloat("vreadcVreff", 3.3f);
+    private float adcVref = getFloat("vreadcVreff", 1.5f);
     private int adcResolutionCounts = getInt("adcResolutionCounts", 1023);
     private boolean useZeroOriginForTemporalNoise = getBoolean("useZeroOriginForTemporalNoise", false);
     private Point2D.Float temporalNoiseLineStartPoint = null, temporalNoiseLineEndPoint = null;
@@ -99,7 +99,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
         setPropertyTooltip("spatialHistogramEnabled", "shows the spatial (FPN) histogram for mouse-selected region");
         setPropertyTooltip("temporalNoiseEnabled", "<html>shows the temporal noise (AC RMS) of pixels in mouse-selected region. <br>The AC RMS is computed for each pixel separately and the grand average AC RMS is displayed.<\br>Use left-mouse to drag select a range of pixels.<\br>Use right-mouse to drag a line along temporal noise measurements to estimate conversion gain.");
         setPropertyTooltip("resetOnBiasChange", "Resets filter on any PropertyChangeEvent from the chip's configuration");
-        setPropertyTooltip("adcVref", "Input voltage range of ADC");
+        setPropertyTooltip("adcVref", "Input voltage range of ADC; on DAVIS240 the range is 1.5V with AdcLow=.21, AdcHigh=1.81");
         setPropertyTooltip("adcResolutionCounts", "Resolution of ADC in DN (digital number) counts");
         setPropertyTooltip("useZeroOriginForTemporalNoise", "Sets origin for temporal noise plot to 0,0 to help see structure more easily");
 //        setPropertyTooltip("hideHelpText", "Hides the help text");
