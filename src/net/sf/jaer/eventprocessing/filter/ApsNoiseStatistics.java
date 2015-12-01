@@ -32,11 +32,13 @@ import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.DavisChip;
+import java.awt.Color;
 import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.lang.reflect.Array;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /**
  * Displays noise statistics for APS frames from DAVIS sensors.
@@ -463,24 +465,11 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
          * draws all statistics
          */
         void draw(GL2 gl) {
-
+            MultilineAnnotationTextRenderer.setColor(Color.CYAN);
+            MultilineAnnotationTextRenderer.setScale(.2f);
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 0.8f);
             apsHist.draw(gl);
             temporalNoise.draw(gl);
-            if (currentMousePoint != null) {
-                if (currentMousePoint.y <= 0) {
-                    float sampleValue = ((float) currentMousePoint.x / chip.getSizeX()) * frameExtractor.getMaxADC();
-                    gl.glColor3fv(SELECT_COLOR, 0);
-                    renderer.begin3DRendering();
-                    renderer.draw3D(String.format("%.0f", sampleValue), currentMousePoint.x, -4, 0, textScale);
-                    renderer.end3DRendering();
-                    gl.glLineWidth(3);
-                    gl.glColor3fv(SELECT_COLOR, 0);
-                    gl.glBegin(GL.GL_LINES);
-                    gl.glVertex2f(currentMousePoint.x, 0);
-                    gl.glVertex2f(currentMousePoint.x, chip.getSizeY());
-                    gl.glEnd();
-                }
-            }
         }
 
         void reset() {
@@ -501,7 +490,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
 //                        log.warning(String.format("index out of range: x=%d y=%d, idx=%d frame.length=%d", x, y, idx, frame.length));
                         return;
                     }
-                    int sample = (int)(frame[idx]);
+                    int sample = (int) (frame[idx]);
                     if (spatialHistogramEnabled) {
                         apsHist.addSample(sample);
                     }
@@ -561,7 +550,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                         continue;
                     }
                     means[i] = sums[i] / pixelSampleCounts[i];
-                    vars[i] = (sum2s[i]/pixelSampleCounts[i]) - (means[i]*means[i]);
+                    vars[i] = (sum2s[i] / pixelSampleCounts[i]) - (means[i] * means[i]);
 //                    if (vars[i] > 1000) {
 //                        log.warning("suspiciously high variance");
 //                    }
@@ -618,10 +607,12 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                 float kdn = (float) (meanvar / meanmean);
                 float keuV = kdn * adcVref / adcResolutionCounts * 1e6f;
                 String s = String.format("Temporal noise: %.1f+/-%.2f var=%.1f COV=%.1f%% var/mean=k=%.2f DN/e, k=%s uV/e N=%d", meanmean, rmsAC, meanvar, (100 * rmsAC) / meanmean, kdn, engFmt.format(keuV), nPixels);
-                renderer.begin3DRendering();
-                renderer.setColor(GLOBAL_HIST_COLOR[0], GLOBAL_HIST_COLOR[1], GLOBAL_HIST_COLOR[2], 1f);
-                renderer.draw3D(s, 1.5f * x0, y1, 0, textScale);
-                renderer.end3DRendering();
+                MultilineAnnotationTextRenderer.renderMultilineString(s);
+//
+//                renderer.begin3DRendering();
+//                renderer.setColor(GLOBAL_HIST_COLOR[0], GLOBAL_HIST_COLOR[1], GLOBAL_HIST_COLOR[2], 1f);
+//                renderer.draw3D(s, 1.5f * x0, y1, 0, textScale);
+//                renderer.end3DRendering();
                 // draw plot
                 gl.glLineWidth(lineWidth);
                 gl.glColor3fv(GLOBAL_HIST_COLOR, 0);
@@ -704,6 +695,9 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
             int maxCount = 0;
             boolean virgin = true;
             int sampleMin = 0, sampleMax = 1023;
+            float mean=0, var=0, std=0, cov=0;
+            long sum=0, sum2=0;
+            int count;
 
             public APSHist() {
             }
@@ -726,6 +720,16 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                         maxCount = v;
                     }
                 }
+                count++;
+                sum+=sample;
+                sum2+=sample*sample;
+                if(count>2){
+                    mean=(float)sum/count;
+                    var=(float)sum2/count-mean*mean;
+                    std=(float)Math.sqrt(var);
+                    cov=std/mean;
+                }
+                
             }
 
             /**
@@ -784,6 +788,23 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                     }
                     gl.glEnd();
                 }
+                if (currentMousePoint != null) {
+                    if (currentMousePoint.y <= 0) {
+                        float sampleValue = ((float) currentMousePoint.x / chip.getSizeX()) * frameExtractor.getMaxADC();
+                        gl.glColor3fv(SELECT_COLOR, 0);
+                        renderer.begin3DRendering();
+                        renderer.draw3D(String.format("%.0f", sampleValue), currentMousePoint.x, -4, 0, textScale);
+                        renderer.end3DRendering();
+                        gl.glLineWidth(3);
+                        gl.glColor3fv(SELECT_COLOR, 0);
+                        gl.glBegin(GL.GL_LINES);
+                        gl.glVertex2f(currentMousePoint.x, 0);
+                        gl.glVertex2f(currentMousePoint.x, chip.getSizeY());
+                        gl.glEnd();
+                    }
+                }
+               MultilineAnnotationTextRenderer.renderMultilineString(String.format("Spatial histogram: mean=%.1f, std=%.3f, COV=%.3f%%", mean, std, cov*100));
+
             }
 
             void draw(GL2 gl, float lineWidth, float[] color) {
@@ -804,6 +825,8 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                 moreCount = 0;
                 maxCount = 0;
                 virgin = true;
+                count=0;
+                sum=0; sum2=0;
             }
 
             private int getSampleBin(int sample) {
