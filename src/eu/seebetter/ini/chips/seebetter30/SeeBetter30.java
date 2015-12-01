@@ -12,7 +12,9 @@ import java.util.logging.Logger;
 
 import javax.swing.JFrame;
 
+import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.RetinaExtractor;
@@ -22,11 +24,9 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.TypedEvent;
-import net.sf.jaer.graphics.RetinaRenderer;
+import net.sf.jaer.graphics.ChipRendererDisplayMethod;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
-import net.sf.jaer.DevelopmentStatus;
 
 /**
  * Describes retina and its event extractor and bias generator.
@@ -46,8 +46,8 @@ import net.sf.jaer.DevelopmentStatus;
 @Description("SeeBetter30 version 1.0, DVS with ADM encoder and high gain preamplifiers, Minhao Yang INI")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class SeeBetter30 extends AETemporalConstastRetina {
-    
-    // following define bit masks for various hardware data types. 
+
+    // following define bit masks for various hardware data types.
     // The hardware interface translateEvents method packs the raw device data into 32 bit 'addresses' and timestamps.
     // timestamps are unwrapped and timestamp resets are handled in translateEvents. Addresses are filled with either AE or ADC data.
     // AEs are filled in according the XMASK, YMASK, XSHIFT, YSHIFT below.
@@ -60,25 +60,25 @@ public class SeeBetter30 extends AETemporalConstastRetina {
             YSHIFT = 16, // so that y addresses don't overlap ADC bits and cause fake ADC events Integer.bitCount(POLMASK | XMASK),
             YMASK = 31 << YSHIFT, // 5 bits
             INTENSITYMASK = 0x40000000;
-//   public static final int 
+//   public static final int
 //            YSHIFT = SeeBetter20.YSHIFT,
 //            YMASK = SeeBetter20.YMASK, // 9 bits
-//            XSHIFT = SeeBetter20.XSHIFT, 
+//            XSHIFT = SeeBetter20.XSHIFT,
 //            XMASK = SeeBetter20.XMASK, // 10 bits
-//            POLSHIFT = 0, 
-//            POLMASK = 1 << POLSHIFT; 
+//            POLSHIFT = 0,
+//            POLMASK = 1 << POLSHIFT;
 
     /*
      * data type fields
      */
-    
+
     /* Address-type refers to data if is it an "address". This data is either an AE address or ADC reading.*/
     public static final int ADDRESS_TYPE_MASK = 0x80000000, ADDRESS_TYPE_DVS = 0x00000000, ADDRESS_TYPE_APS = 0x80000000;
     /** Maximal ADC value */
-    public static final int ADC_BITS = 10, MAX_ADC = (int) ((1 << ADC_BITS) - 1);
+    public static final int ADC_BITS = 10, MAX_ADC = (1 << ADC_BITS) - 1;
     /** For ADC data, the data is defined by the reading cycle (0:reset read, 1 first read, 2 second read). */
-    public static final int ADC_DATA_MASK = MAX_ADC, ADC_READCYCLE_SHIFT = 10, ADC_READCYCLE_MASK = 0xC00; 
-    
+    public static final int ADC_DATA_MASK = MAX_ADC, ADC_READCYCLE_SHIFT = 10, ADC_READCYCLE_MASK = 0xC00;
+
     private boolean ignoreReadout;
     private SeeBetter30config config;
     JFrame controlFrame = null;
@@ -99,10 +99,11 @@ public class SeeBetter30 extends AETemporalConstastRetina {
 
         setBiasgen(config = new SeeBetter30config(this));
 
-        setRenderer(new RetinaRenderer(this));
-
+        ChipRendererDisplayMethod davisDisplayMethod = new ChipRendererDisplayMethod(getCanvas());
+		getCanvas().addDisplayMethod(davisDisplayMethod);
+		getCanvas().setDisplayMethod(davisDisplayMethod);
     }
-    
+
     public void setPowerDown(boolean powerDown){
         config.powerDown.set(powerDown);
         try {
@@ -122,7 +123,7 @@ public class SeeBetter30 extends AETemporalConstastRetina {
 
 //    int pixcnt=0; // TODO debug
     /** The event extractor. Each pixel has two polarities 0 and 1.
-     * 
+     *
      * <p>
      *The bits in the raw data coming from the device are as follows.
      * <p>
@@ -134,11 +135,11 @@ public class SeeBetter30 extends AETemporalConstastRetina {
     public class SeeBetter30Extractor extends RetinaExtractor {
 
         boolean ignore = false;
-        
+
         public SeeBetter30Extractor(SeeBetter30 chip) {
             super(chip);
         }
-        
+
         /** extracts the meaning of the raw events.
          *@param in the raw events, can be null
          *@return out the processed events. these are partially processed in-place. empty packet is returned if null is supplied as in.
@@ -158,7 +159,7 @@ public class SeeBetter30 extends AETemporalConstastRetina {
 
             int skipBy = 1;
             if (isSubSamplingEnabled()) {
-                while (n / skipBy > getSubsampleThresholdEventCount()) {
+                while ((n / skipBy) > getSubsampleThresholdEventCount()) {
                     skipBy++;
                 }
             }
@@ -172,7 +173,7 @@ public class SeeBetter30 extends AETemporalConstastRetina {
                 e.address = addr;
                 e.timestamp = (timestamps[i]);
                 e.setSpecial(false);
-                e.type = (byte) (1 - addr & 1);
+                e.type = (byte) ((1 - addr) & 1);
                 e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
                 e.x = (short) (sxm - ((short) ((addr & XMASK) >>> XSHIFT)));
                 e.y = (short) ((addr & YMASK) >>> YSHIFT);
@@ -182,8 +183,12 @@ public class SeeBetter30 extends AETemporalConstastRetina {
 
         @Override
         public AEPacketRaw reconstructRawPacket(EventPacket packet) {
-            if(raw==null) raw=new AEPacketRaw();
-            if(!(packet instanceof ApsDvsEventPacket)) return null;
+            if(raw==null) {
+				raw=new AEPacketRaw();
+			}
+            if(!(packet instanceof ApsDvsEventPacket)) {
+				return null;
+			}
             ApsDvsEventPacket apsDVSpacket = (ApsDvsEventPacket) packet;
             raw.ensureCapacity(packet.getSize());
             raw.setNumEvents(0);
@@ -195,12 +200,12 @@ public class SeeBetter30 extends AETemporalConstastRetina {
             while(evItr.hasNext()){
                 TypedEvent e=(ApsDvsEvent)evItr.next();
                 ts[k]=e.timestamp;
-                a[k++]=e.address; 
+                a[k++]=e.address;
             }
             raw.setNumEvents(n);
             return raw;
-        } 
-        
+        }
+
     } // extractor
 
     /** overrides the Chip setHardware interface to construct a biasgen if one doesn't exist already.
@@ -224,7 +229,7 @@ public class SeeBetter30 extends AETemporalConstastRetina {
             log.warning(e.getMessage() + ": probably this chip object has a biasgen but the hardware interface doesn't, ignoring");
         }
     }
-    
+
     /**
      * @return the ignoreReadout
      */
@@ -240,5 +245,5 @@ public class SeeBetter30 extends AETemporalConstastRetina {
         getPrefs().putBoolean("ignoreReadout", ignoreReadout);
         getAeViewer().interruptViewloop();
     }
-    
+
 }
