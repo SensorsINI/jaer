@@ -40,9 +40,9 @@ setiinjgnd bitvalue - Set the bitValue of IPot injGnd
 setidiff bitvalue - Set the bitValue of IPot diff
 setipr bitvalue - Set the bitValue of IPot Pr
 >
- * 
+ *
  * </pre>
- * 
+ *
  * Commands are added to an object as shown next; getRemoteControl accesses in this example the Chip's built-in RemoteControl.
  * This object implements RemoteControlled. It adds a single command "setbufferbias".
  * <pre>
@@ -68,9 +68,9 @@ return "?\n";
 return "bufferbias " + getValue()+"\n";
 }
  * </pre>
- * 
- * 
- * 
+ *
+ *
+ *
  * @author tobi
  */
 public class RemoteControl /* implements RemoteControlled */{
@@ -96,10 +96,10 @@ public class RemoteControl /* implements RemoteControlled */{
         this(PORT_DEFAULT);
     }
 
-    /** Creates a new instance. 
-     * 
+    /** Creates a new instance.
+     *
      * @param port the UDP port number this RemoteControl listens on.
-     * 
+     *
      */
     public RemoteControl (int port) throws SocketException{
         this.port = port;
@@ -112,7 +112,8 @@ public class RemoteControl /* implements RemoteControlled */{
         ( T = new RemoteControlDatagramSocketThread() ).start();
     }
 
-    public String toString (){
+    @Override
+	public String toString (){
         return "RemoteControl on port=" + port;
     }
 
@@ -127,21 +128,23 @@ public class RemoteControl /* implements RemoteControlled */{
 
 
     // TODO add removeCommandListener method
-    
-    /** Objects that want to receive commands should add themselves here with a 
+
+    /** Objects that want to receive commands should add themselves here with a
      * command string and command description (for showing help).
-     * 
+     *
      * @param remoteControlled the remote controlled object.
-     * @param cmd a string such as "setipr bitvalue". "setipr" is the command 
+     * @param cmd a string such as "setipr bitvalue". "setipr" is the command
      * and the RemoteControlled is responsible for parsing the rest of the line.
      * @param description for showing help.
      */
     public void addCommandListener (RemoteControlled remoteControlled,String cmd,String description){
         RemoteControlCommand command = new RemoteControlCommand(cmd,description);
         String cmdKey = command.getCmdName();
-        if ( cmdMap.containsKey(cmdKey) && warningCount++<MAX_WARNINGS){
+        if ( cmdMap.containsKey(cmdKey) && (warningCount++<MAX_WARNINGS)){
             log.warning("remote control commands already contains command " + cmdKey + ", replacing existing command with " + cmd + ": " + description);
-            if(warningCount==MAX_WARNINGS) log.warning("suppressing further warnings about replacing commands");
+            if(warningCount==MAX_WARNINGS) {
+				log.warning("suppressing further warnings about replacing commands");
+			}
         }
         cmdMap.put(cmdKey,command);
         controlledMap.put(cmdKey,remoteControlled);
@@ -241,7 +244,7 @@ public class RemoteControl /* implements RemoteControlled */{
         }
 
         private void parseAndDispatchCommand (String line) throws IOException{
-            if ( line == null || line.length() == 0 ){
+            if ( (line == null) || (line.length() == 0) ){
                 echo(PROMPT);
                 return;
             }
@@ -252,7 +255,7 @@ public class RemoteControl /* implements RemoteControlled */{
             } else{
                 String[] tokens = line.split("\\s");
                 String cmdTok = tokens[0];
-                if ( cmdTok == null || cmdTok.length() == 0 ){
+                if ( (cmdTok == null) || (cmdTok.length() == 0) ){
                     return;
                 }
                 if ( !cmdMap.containsKey(cmdTok) ){
@@ -277,7 +280,7 @@ public class RemoteControl /* implements RemoteControlled */{
         }
 
         private void echo (String s) throws IOException{
-            if ( s == null || s.length() == 0 ){
+            if ( (s == null) || (s.length() == 0) ){
                 return;
             }
             byte[] b = s.getBytes();
@@ -296,14 +299,16 @@ public class RemoteControl /* implements RemoteControlled */{
         remoteControl.addCommandListener(processor,"dd","i am dd");
         remoteControl.addCommandListener(processor,"dd","i am dd also");
         remoteControl.addCommandListener(new RemoteControlled(){
-            public String processRemoteControlCommand (RemoteControlCommand command,String input){
+            @Override
+			public String processRemoteControlCommand (RemoteControlCommand command,String input){
                 return "got bogus";
             }
         },"bogus","bogus description");
     }
 }
 class CommandProcessor implements RemoteControlled{
-    public String processRemoteControlCommand (RemoteControlCommand command,String line){
+    @Override
+	public String processRemoteControlCommand (RemoteControlCommand command,String line){
         String[] tokens = line.split("\\s");
         try{
             if ( command.getCmdName().equals("doit") ){

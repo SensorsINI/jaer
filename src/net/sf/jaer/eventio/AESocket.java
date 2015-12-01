@@ -155,21 +155,43 @@ public class AESocket implements AESocketSettings{
      * been received. An EOF exception returns events that have been recieved.
      @return the read packet
      */
+    int nTmp = 0;
+    int nEventCapacity =0;
+    int nTmpCount = 0;
     public synchronized AEPacketRaw readPacket() throws IOException{
         checkDataInputStream();
 
         //        int n = dis.available() / AENetworkInterface.EVENT_SIZE_BYTES;
         packet.setNumEvents(0);
+
         try{
-            while(true){
-                packet.addEvent(readEventForwards());
+            if(((nTmpCount != 0) && (nTmpCount < nEventCapacity)) || ((nTmpCount == 0) && (nEventCapacity != 0))){
+                while(nTmpCount < nEventCapacity){
+                    packet.addEvent(readEventForwards());
+                    nTmpCount += 1;
+                }
             }
+            else{
+                nTmp = swapByteOrder(dis.readInt());
+                if(nTmp != 0x10001)
+                {
+                    log.warning("!!!!!!!!!!The first byte of the packet is not 0x10001, is" + nTmp);
+                }
+                nTmp = swapByteOrder(dis.readInt());     //eventsize
+                nTmp = swapByteOrder(dis.readInt());     //eventoffset
+                nTmp = swapByteOrder(dis.readInt());     //eventoverflow
+                nTmpCount = 0;
+                nEventCapacity = swapByteOrder(dis.readInt());     //eventcapacity
+                nTmp = swapByteOrder(dis.readInt());     //eventnumber
+                nTmp = swapByteOrder(dis.readInt());     //eventvalid
+            }
+            return packet;
         }catch(EOFException e){
             return packet;
-        }catch(SocketTimeoutException eto){
+        }/*catch(SocketTimeoutException eto){
             // ok, this packet done
             return packet;
-        }/*catch(IOException e2){ // removed since other errors should be handled by the user
+        }catch(IOException e2){ // removed since other errors should be handled by the user
             log.warning(e2.toString()+" closing socket");
             close();
             return packet;
@@ -261,12 +283,16 @@ public class AESocket implements AESocketSettings{
     private EventRaw readEventForwards() throws IOException{
         int ts=0;
         int addr=0;
+        byte pTmp[] = new byte[2000];
         if(isSwapBytesEnabled()){
             ts=this.swapByteOrder(normalize(dis.readInt()));
             addr=this.swapByteOrder(dis.readInt());
         } else {
-            ts=normalize(dis.readInt());
-            addr=dis.readInt();
+            // dis.read(pTmp);
+            addr=this.swapByteOrder(dis.readInt());
+            ts=this.swapByteOrder((dis.readInt()));
+            // ts=normalize(dis.readInt());
+            // addr=dis.readInt();
         }
         // check for non-monotonic increasing timestamps, if we get one, reset our notion of the starting time
         if(isWrappedTime(ts,mostRecentTimestamp,1)){
@@ -276,9 +302,14 @@ public class AESocket implements AESocketSettings{
 //            log.warning("AEInputStream.readEventForwards returned ts="+ts+" which goes backwards in time (mostRecentTimestamp="+mostRecentTimestamp+")");
         //                throw new NonMonotonicTimeException(ts,mostRecentTimestamp);
         }
-        tmpEvent.address=addr;
+        // tmpEvent.address=addr;
+        // tmpEvent.timestamp=ts;
+        //                        x_addr                          y_addr          on_off event
+        tmpEvent.address = ((addr & 0xfe0000) >> 16) + ((addr  & 0x1fc) << 6) + ((addr & 2) >> 1);     //just for DVS128 data format convertion
+        // tmpEvent.address = ((addr & 0x7fe0000) >> 5) + ((addr  & 0x7fc) << 20) + ((addr & 2) >> 1);     //just for DAVIS data format convertion
         tmpEvent.timestamp=ts;
         mostRecentTimestamp=ts;
+        // System.out.printf("timestamp = %d,%x\n",ts,addr);
         return tmpEvent;
     }
 

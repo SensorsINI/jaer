@@ -38,6 +38,7 @@ public class AEUnicastDialog extends javax.swing.JDialog{
         initComponents();
         addressFirstEnabledCheckBox.setSelected(unicastInterface.isAddressFirstEnabled());
         sequenceNumberEnabledCheckBox.setSelected(unicastInterface.isSequenceNumberEnabled());
+        cAERDisplayEnabledCheckBox.setSelected(unicastInterface.iscAERDisplayEnabled());
         hostnameTextField.setText(unicastInterface.getHost());
         portTextField.setText(Integer.toString(unicastInterface.getPort()));
         swapBytesCheckBox.setSelected(unicastInterface.isSwapBytesEnabled());
@@ -85,6 +86,7 @@ public class AEUnicastDialog extends javax.swing.JDialog{
         unicastInterface.setPort(port);
         unicastInterface.setAddressFirstEnabled(addressFirstEnabledCheckBox.isSelected());
         unicastInterface.setSequenceNumberEnabled(sequenceNumberEnabledCheckBox.isSelected());
+        unicastInterface.setCAERDisplayEnabled(cAERDisplayEnabledCheckBox.isSelected());
         unicastInterface.setSwapBytesEnabled(swapBytesCheckBox.isSelected());
         unicastInterface.set4ByteAddrTimestampEnabled(use4ByteAddrTsCheckBox.isSelected());
         unicastInterface.setTimestampsEnabled(includeTimestampsCheckBox.isSelected());
@@ -142,6 +144,7 @@ public class AEUnicastDialog extends javax.swing.JDialog{
         applyButton = new javax.swing.JButton();
         useLocalTimestampsEnabledCheckBox = new javax.swing.JCheckBox();
         spinnakerProtocolEnabledCB = new javax.swing.JCheckBox();
+        cAERDisplayEnabledCheckBox = new javax.swing.JCheckBox();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("AEUnicastDialog");
@@ -184,6 +187,11 @@ public class AEUnicastDialog extends javax.swing.JDialog{
 
         hostnameTextField.setText("localhost");
         hostnameTextField.setToolTipText("host from which to recieve events");
+        hostnameTextField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                hostnameTextFieldActionPerformed(evt);
+            }
+        });
 
         portTextField.setToolTipText("port number on host");
         portTextField.addActionListener(new java.awt.event.ActionListener() {
@@ -199,6 +207,11 @@ public class AEUnicastDialog extends javax.swing.JDialog{
 
         addressFirstEnabledCheckBox.setText("addressFirstEnabled");
         addressFirstEnabledCheckBox.setToolTipText("AEs come in address,timestamp order (default)");
+        addressFirstEnabledCheckBox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                addressFirstEnabledCheckBoxActionPerformed(evt);
+            }
+        });
 
         swapBytesCheckBox.setText("swapBytesEnabled");
         swapBytesCheckBox.setToolTipText("<html>Enable to swap bytes of addresses and timestamps to deal with little endian clients/servers (e.g. native intel code). <br>Java and jAER are big endian.</html>");
@@ -260,6 +273,14 @@ public class AEUnicastDialog extends javax.swing.JDialog{
             }
         });
 
+        cAERDisplayEnabledCheckBox.setText("cAERDisplayEnabled");
+        cAERDisplayEnabledCheckBox.setToolTipText("<html>Enable to use System.nanoTime/1000 for all sent or received timstamps. <br>\nCan be useful for unsynchronized input from multple sources.");
+        cAERDisplayEnabledCheckBox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cAERDisplayEnabledCheckBoxActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -298,14 +319,13 @@ public class AEUnicastDialog extends javax.swing.JDialog{
                             .addComponent(includeTimestampsCheckBox)
                             .addGroup(layout.createSequentialGroup()
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                                    .addGroup(layout.createSequentialGroup()
-                                        .addGap(42, 42, 42)
-                                        .addComponent(jLabel3))
+                                    .addComponent(jLabel3)
                                     .addComponent(jLabel2))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addComponent(bufferSizeTextBox, javax.swing.GroupLayout.PREFERRED_SIZE, 90, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(timestampMultiplierTextBox, javax.swing.GroupLayout.PREFERRED_SIZE, 90, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                                    .addComponent(timestampMultiplierTextBox, javax.swing.GroupLayout.PREFERRED_SIZE, 90, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addComponent(cAERDisplayEnabledCheckBox))
                         .addGap(0, 0, Short.MAX_VALUE)))
                 .addContainerGap())
         );
@@ -336,6 +356,8 @@ public class AEUnicastDialog extends javax.swing.JDialog{
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(spinnakerProtocolEnabledCB)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(cAERDisplayEnabledCheckBox)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(bufferSizeTextBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel3))
@@ -343,7 +365,7 @@ public class AEUnicastDialog extends javax.swing.JDialog{
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel2)
                     .addComponent(timestampMultiplierTextBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 37, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jAERDefaultsButton)
                     .addComponent(cancelButton)
@@ -429,6 +451,18 @@ private void applyButtonActionPerformed (java.awt.event.ActionEvent evt) {//GEN-
         unicastInterface.setSpinnakerProtocolEnabled(spinnakerProtocolEnabledCB.isSelected());
     }//GEN-LAST:event_spinnakerProtocolEnabledCBActionPerformed
 
+    private void cAERDisplayEnabledCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cAERDisplayEnabledCheckBoxActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_cAERDisplayEnabledCheckBoxActionPerformed
+
+    private void addressFirstEnabledCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addressFirstEnabledCheckBoxActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_addressFirstEnabledCheckBoxActionPerformed
+
+    private void hostnameTextFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_hostnameTextFieldActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_hostnameTextFieldActionPerformed
+
     private void doClose (int retStatus){
         returnStatus = retStatus;
         setVisible(false);
@@ -438,6 +472,7 @@ private void applyButtonActionPerformed (java.awt.event.ActionEvent evt) {//GEN-
     private javax.swing.JCheckBox addressFirstEnabledCheckBox;
     private javax.swing.JButton applyButton;
     private javax.swing.JTextField bufferSizeTextBox;
+    private javax.swing.JCheckBox cAERDisplayEnabledCheckBox;
     private javax.swing.JButton cancelButton;
     private javax.swing.JTextField hostnameTextField;
     private javax.swing.JCheckBox includeTimestampsCheckBox;

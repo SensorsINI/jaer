@@ -8,11 +8,6 @@
  */
 package net.sf.jaer;
 
-import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.GLCapabilities;
-import com.jogamp.opengl.GLDrawableFactory;
-import com.jogamp.opengl.GLProfile;
-import com.jogamp.opengl.JoglVersion;
 import java.awt.AWTEvent;
 import java.awt.AlphaComposite;
 import java.awt.Color;
@@ -56,27 +51,33 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 import net.sf.jaer.util.LoggingThreadGroup;
 import net.sf.jaer.util.WindowSaver;
 
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLCapabilities;
+import com.jogamp.opengl.GLDrawableFactory;
+import com.jogamp.opengl.GLProfile;
+import com.jogamp.opengl.JoglVersion;
+
 /**
  * Used to show multiple chips simultaneously in separate instances of {@link net.sf.jaer.graphics.AEViewer}, each running
- * in its own thread, and each with its own hardware interface thread or {@link net.sf.jaer.eventio.AEInputStream}. 
- * A single viewer is launched 
- * with a default {@link net.sf.jaer.chip.AEChip}. 
+ * in its own thread, and each with its own hardware interface thread or {@link net.sf.jaer.eventio.AEInputStream}.
+ * A single viewer is launched
+ * with a default {@link net.sf.jaer.chip.AEChip}.
  * New viewers can be constructed from the File menu.
  * @author tobi
  */
 public class JAERViewer {
-    
-    
+
+
     public JAERViewer()
     {   this(false); // set arg to true to enable experiment global view mode of JAERViewer (Peter O'Connor mode)
     }
-        
+
     /** Root preferences object for jAER
-     * 
+     *
      */
     protected static Preferences prefs;
     /** Root Logger
-     * 
+     *
      */
     protected static Logger log;
     private ArrayList<AEViewer> viewers = new ArrayList<AEViewer>();
@@ -98,28 +99,28 @@ public class JAERViewer {
     protected static final String JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY = "JAERViewer.viewerChipClassNames";
 
     public GlobalViewer globalViewer=new GlobalViewer();
-    
+
     // Internal switch: go into multiple-display mode right away?
     boolean multistartmode=false;
-    
+
     /** This shared GLAutoDrawable is constructed here and is used by all ChipCanvas to set the shared JOGL context. */
     public static GLAutoDrawable sharedDrawable; // TODO tobi experimental to deal with graphics creation woes.
     // see also http://forum.jogamp.org/Multiple-GLCanvas-FPSAnimator-Hang-td4030581.html
-    
-    
+
+
     /** Creates a new instance of JAERViewer
-     * 
+     *
      * @param multimode set to true to enable global viewer so that all sources are aggregated to one window.
      * @see net.sf.jaer.graphics.GlobalViewer
      */
     public JAERViewer(boolean multimode) {
-        
+
         multistartmode=multimode;
-                
+
         Thread.UncaughtExceptionHandler handler = new LoggingThreadGroup("jAER UncaughtExceptionHandler");
         Thread.setDefaultUncaughtExceptionHandler(handler);
 
-        
+
         final java.awt.SplashScreen splash = java.awt.SplashScreen.getSplashScreen();
         if (splash != null) {
             new SplashHandler(splash);
@@ -137,8 +138,8 @@ public class JAERViewer {
         sharedDrawable.display(); // triggers GLContext object creation and native realization. sharedDrawable is a static variable that can be used by all AEViewers and file preview dialogs
         log.info("JOGL version information: "+JoglVersion.getInstance().toString());
 
-        
-        
+
+
 //        if(true){
 //        throw new RuntimeException("test exception");
 //        }
@@ -149,7 +150,7 @@ public class JAERViewer {
         Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver, AWTEvent.WINDOW_EVENT_MASK); // adds windowSaver as JVM-wide event handler for window events
 
         SwingUtilities.invokeLater(new RunningThread());
- 
+
          try {
             // Create temp file.
             File temp = new File("JAERViewerRunning.txt");
@@ -165,7 +166,6 @@ public class JAERViewer {
             log.warning(e.getMessage());
         }
         Runtime.getRuntime().addShutdownHook(new Thread() {
-
             @Override
             public void run() {
                 log.info("JAERViewer shutdown hook - saving window settings");
@@ -176,7 +176,7 @@ public class JAERViewer {
                         e.printStackTrace();
                     }
                 }
-                if (viewers != null && !viewers.isEmpty()) {
+                if ((viewers != null) && !viewers.isEmpty()) {
                     log.info("saving list of AEViewer chip classes");
                     try {
 
@@ -202,20 +202,19 @@ public class JAERViewer {
                 }
             }
         });
-
     }
-    
 
-    
+
+
     class RunningThread implements Runnable{
-        
+
         @Override
             public void run() {
                 if (multistartmode)
                 {   setViewMode(true);
                     return;
                 }
-                
+
                 // try to load a list of previous chip classes that running in viewers and then reOGloopen them
                 ArrayList<String> classNames = null;
                 try {
@@ -252,16 +251,16 @@ public class JAERViewer {
                 }
 
             }
-        
+
     }
-    
-    
-    /** The main launcher for AEViewer's. 
+
+
+    /** The main launcher for AEViewer's.
     @param args the first argument can be a recorded AE data filename (.dat) with full path; the viewer will play this file
      */
     public static void main(String[] args) {
         //redirect output to DataViewer window
-        // should be before any logger is initialized 
+        // should be before any logger is initialized
 //        globalDataViewer.redirectStreams(); // tobi removed because AEViewerConsoleOutputFrame replaces this logging output
 
         //init static fields
@@ -288,8 +287,9 @@ public class JAERViewer {
         } else {
             SwingUtilities.invokeLater(new Runnable() {
 
-                public void run() {
-                    new JAERViewer();
+                @Override
+				public void run() {
+                     new JAERViewer();
                 }
             });
         }
@@ -318,7 +318,7 @@ public class JAERViewer {
 
         @Override
         public synchronized void publish(LogRecord record) {
-            if (splashScreen == null || !splashScreen.isVisible()) {
+            if ((splashScreen == null) || !splashScreen.isVisible()) {
                 // DO NOT call log.something here, leads to stack overflow
                 System.out.println("JAERViewer.SplashHandler.publish(): splash screen is null or no longer visible, closing logging to it");
                 close();
@@ -332,12 +332,12 @@ public class JAERViewer {
             int x = 45, starty = 30, textheight = 20, ystep = 15;
             g.setComposite(AlphaComposite.Clear);
             g.setColor(Color.white);
-            g.fillRect(x - textheight / 2, starty - 10 + cursor, (int) d.getWidth(), textheight);
+            g.fillRect(x - (textheight / 2), (starty - 10) + cursor, (int) d.getWidth(), textheight);
             g.setPaintMode();
             g.setColor(Color.white);
             g.drawString(s, x, starty + cursor);
             cursor += ystep;
-            if (starty + cursor > d.height - textheight) {
+            if ((starty + cursor) > (d.height - textheight)) {
                 cursor = 0;
             }
             try{
@@ -520,7 +520,7 @@ public class JAERViewer {
                     }
                 }
             }
-            if (viewers.size() > 1 && writingIndex) {
+            if ((viewers.size() > 1) && writingIndex) {
                 writer.close();
             }
             if (indexFile != null) {
@@ -587,7 +587,8 @@ public class JAERViewer {
             putValue(MNEMONIC_KEY, new Integer(KeyEvent.VK_L));
         }
 
-        public void actionPerformed(ActionEvent e) {
+        @Override
+		public void actionPerformed(ActionEvent e) {
 //            log.info("JAERViewer.ToggleLoggingAction.actionPerformed");
             if (isSyncEnabled()) {
                 toggleSynchronizedLogging();
@@ -608,7 +609,7 @@ public class JAERViewer {
     }
 
     /** Toggles player synchronization over all viewers.
-     * 
+     *
      */
     public class ToggleSyncEnabledAction extends AbstractAction {
 
@@ -619,7 +620,8 @@ public class JAERViewer {
                     + "<br>Device electrical synchronization is independent of this setting.");
         }
 
-        public void actionPerformed(ActionEvent e) {
+        @Override
+		public void actionPerformed(ActionEvent e) {
             log.info("JAERViewer.ToggleSyncEnabledAction.actionPerformed");
             setSyncEnabled(!isSyncEnabled());
             for (AbstractButton b : syncEnableButtons) {
@@ -711,43 +713,43 @@ public class JAERViewer {
 //        splashThread.start();
 //        return splashThread; // call interrupt on it to abort showing
 //    }
-    
+
     //</editor-fold>
-        
+
 //    public void launchMultiModeViewer()
-//    {   
+//    {
 //        // Below lines added to to display problem when reusing open ones
 //        for (AEViewer v:viewers)
 //        {   v.setEnabled(false);
 //            v.dispose();
 //        }
 //        viewers.clear();
-//        
-//        
+//
+//
 //        Runnable multiLaunch=new Runnable(){
 //
 //            @Override
 //            public void run() {
 //                new JAERViewer(true);
 //            }
-//        
+//
 //        };
-//        
-//        
+//
+//
 //        if (SwingUtilities.isEventDispatchThread())
 //        {   multiLaunch.run();
 //        }
 //        else
 //            SwingUtilities.invokeLater(multiLaunch);
-//        
-//        
-//        
+//
+//
+//
 //    }
-    
-    
+
+
     public void setViewMode(final boolean multi)
-    {   
-        
+    {
+
         class MultiLauncher implements Runnable{
 //        SwingUtilities.invokeLater(new Runnable(){
 
@@ -757,57 +759,60 @@ public class JAERViewer {
                 if (multi){
 
                     int nInterfaces=HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
-                    
+
                     // Open however many viewers need to be opened
                     int vsize=viewers.size();
-                    for (int i=0; i<nInterfaces-vsize; i++)
-                        new AEViewer(JAERViewer.this);
-                    
+                    for (int i=0; i<(nInterfaces-vsize); i++) {
+						new AEViewer(JAERViewer.this);
+					}
+
                     // Set one inteface per viewer
                     for (int i=0; i<viewers.size(); i++)
-                    {   
+                    {
                         AEViewer v=viewers.get(i);
                         HardwareInterface hi=HardwareInterfaceFactory.instance().getInterface(i);
                         Class guess=AEViewer.hardwareInterface2chipClassName(hi);
-                        if (guess!=null)
-                            v.setAeChipClass(guess);
-                        
+                        if (guess!=null) {
+							v.setAeChipClass(guess);
+						}
+
                         v.getChip().setHardwareInterface(hi);
 //                        v.setVisible(true);
                     }
-                                        
+
                     globalViewer.setJaerViewer(JAERViewer.this);
-                    
-                    globalViewer.start();            
-                    
+
+                    globalViewer.start();
+
                     globalViewer.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
                 }else{
 
                     for (AEViewer v: viewers)
                     {   v.setVisible(true);
-                        
+
                     }
 
                 }
 
             }
         }
-        
-        
+
+
         if (SwingUtilities.isEventDispatchThread())
         {   MultiLauncher m=new MultiLauncher();
             m.run();
         }
-        else
-            SwingUtilities.invokeLater(new MultiLauncher());
-        
-        
+		else {
+			SwingUtilities.invokeLater(new MultiLauncher());
+		}
+
+
 //        else
 //            SwingUtilities.
 //            SwingUtilities.invokeLater(new MultiLauncher());
-        
+
     }
-    
-    
+
+
 }

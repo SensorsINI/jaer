@@ -62,6 +62,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private boolean printedHost = false;
     private int port = prefs.getInt("AEUnicastInput.port", AENetworkInterfaceConstants.DATAGRAM_PORT);
     private boolean sequenceNumberEnabled = prefs.getBoolean("AEUnicastInput.sequenceNumberEnabled", true);
+    private boolean cAERDisplayEnabled = prefs.getBoolean("AEUnicastInput.cAERDisplayEnabled", true);
     private boolean addressFirstEnabled = prefs.getBoolean("AEUnicastInput.addressFirstEnabled", true);
     private ArrayBlockingQueue<ByteBuffer> filledBufferQueue = new ArrayBlockingQueue(NBUFFERS), availableBufferQueue=new ArrayBlockingQueue(NBUFFERS);
     private AENetworkRawPacket packet = new AENetworkRawPacket();
@@ -147,12 +148,15 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
      * @return the events collected since the last call to readPacket(), or null
      * on a timeout or interrupt.
      */
+    int nTmp = 0;
+    int nEventCapacity = 0;
     public AENetworkRawPacket readPacket() {
         packet.clear();
         readingThread.maxSizeExceeded = false;
         try {
             while (filledBufferQueue.peek() != null) {
                 ByteBuffer buffer = filledBufferQueue.take();
+                // buffer.clear();
                 extractEvents(buffer, packet);
                 buffer.clear();
                 availableBufferQueue.put(buffer);
@@ -233,6 +237,14 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
         return client;
     }
 
+    private static int swapByteOrder(int value) {
+        int b1 = (value >> 0) & 0xff;
+        int b2 = (value >> 8) & 0xff;
+        int b3 = (value >> 16) & 0xff;
+        int b4 = (value >> 24) & 0xff;
+
+        return b1 << 24 | b2 << 16 | b3 << 8 | b4 << 0;
+    }
 
     /**
      * Extracts data from internal buffer and adds to packet, according to all
@@ -384,7 +396,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             int seqNumLength = sequenceNumberEnabled ? Integer.SIZE / 8 : 0;
             int eventSize = eventSize();
             //log.info("event size " + eventSize);
-            int nEventsInPacket = (buffer.limit() - seqNumLength) / eventSize;
+            int nEventsInPacket = (buffer.limit() - seqNumLength - 28) / eventSize;    // 28 is the byte numbers of cAER Header
             //log.info("nr of events " + nEventsInPacket);
             //deprecated ... int ts = !timestampsEnabled || localTimestampsEnabled ? (int)( System.nanoTime() / 1000 ) : 0; // if no timestamps coming, add system clock for all.
             int ts = !timestampsEnabled || localTimestampsEnabled ? (int) (((System.nanoTime() / 1000) << 32) >> 32) : 0; // if no timestamps coming, add system clock for all.
@@ -394,16 +406,32 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             packet.ensureCapacity(newPacketLength);
             final int[] addresses = packet.getAddresses();
             final int[] timestamps = packet.getTimestamps();
+            int nTmpAddr = 0;    //tmp value for address
 
+            nTmp = swapByteOrder(buffer.getInt());
+            if(nTmp != 0x10001)
+            {
+                log.warning("!!!!!!!!!!The first byte of the packet is not 0x10001, is" + nTmp);
+            }
+            nTmp = swapByteOrder(buffer.getInt());     //eventsize
+            nTmp = buffer.getInt();     //eventoffset
+            nTmp = buffer.getInt();     //eventoverflow
+            nEventCapacity = swapByteOrder(buffer.getInt());     //eventcapacity
+            nTmp = buffer.getInt();     //eventnumber
+            nTmp = buffer.getInt();     //eventvalid
+            
             for (int i = 0; i < nEventsInPacket; i++) {
                 if (addressFirstEnabled) {
                     if (use4ByteAddrTs) {
-                        eventRaw.address = buffer.getInt(); // swab(buffer.getInt()); // swapInt is switched to handle big endian event sources (like ARC camera)
+                        nTmpAddr = swapByteOrder(buffer.getInt()); // swab(buffer.getInt()); // swapInt is switched to handle big endian event sources (like ARC camera)
+                        //                        x_addr                          y_addr                     on_off event
+                        // eventRaw.address = ((nTmpAddr & 0xfe0000) >> 16) + ((nTmpAddr  & 0x1fc) << 6) + ((nTmpAddr & 2) >> 1);     //just for DVS128 data format convertion
+                         eventRaw.address = ((0x1de0000 - (nTmpAddr & 0x7fe0000)) >> 5) + ((nTmpAddr  & 0x7fc) << 20) + ((nTmpAddr & 2) >> 1);     //just for DAVIS data format convertion
                         //log.info("address " + eventRaw.address);
                         //int v=buffer.getInt();
                         // if timestamps are enabled, they have to be read out even if they are not used because of local timestamps
                         if (timestampsEnabled && !localTimestampsEnabled) {
-                            int rawTime = buffer.getInt(); //swab(v);
+                            int rawTime = swapByteOrder(buffer.getInt()); //swab(v);
                             //                  if(rawTime<lastts) {
                             //                      System.out.println("backwards timestamp at event "+i+"of "+nEventsInPacket);
                             //                  }else if(rawTime!=lastts){
@@ -607,7 +635,25 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
         this.sequenceNumberEnabled = sequenceNumberEnabled;
         prefs.putBoolean("AEUnicastInput.sequenceNumberEnabled", sequenceNumberEnabled);
     }
-
+    
+    @Override   
+    public boolean iscAERDisplayEnabled() {
+        return cAERDisplayEnabled;
+    }
+    
+    
+    /**
+     * If set true (default), then cAER data can be displayed
+     * the packet. Otherwise the first int32 is part of the first AE.
+     *
+     * @param sequenceNumberEnabled default true
+     */
+    @Override
+    public void setCAERDisplayEnabled(boolean cAERDisplayEnabled) {
+        this.cAERDisplayEnabled = cAERDisplayEnabled;
+        prefs.putBoolean("AEUnicastInput.cAERDisplayEnabled", cAERDisplayEnabled);
+    }
+    
     /**
      * @see #setAddressFirstEnabled
      */

@@ -1990,7 +1990,6 @@ two interfaces). otherwise force user choice.
 						} else {
 							aeRaw = unicastInput.readPacket();  // TODO should throw interruptedexception
 						}
-
 					}
 					if (socketInputEnabled) {
 						if (getAeSocket() == null) {

@@ -76,14 +76,24 @@ public interface AEUnicastSettings {
 
     /** Returns true if packets should include a leading sequence counter. */
     public boolean isSequenceNumberEnabled();
-
+   
     /** If set true (default), then an int32 sequence number is the first word of the packet. Otherwise the
      * first int32 is part of the first AE. 
      * 
      * @param sequenceNumberEnabled default true
      */
     public void setSequenceNumberEnabled(boolean sequenceNumberEnabled);
-
+    
+    /** Returns true if the data is in the cAER format */
+    public boolean iscAERDisplayEnabled();
+    
+    /** If set true (default), then an int32 sequence number is the first word of the packet. Otherwise the
+     * first int32 is part of the first AE. 
+     * 
+     * @param sequenceNumberEnabled default true
+     */
+    public void setCAERDisplayEnabled(boolean cAERDisplayEnabled);
+    
     /** @see #setAddressFirstEnabled */
     public boolean isAddressFirstEnabled();
 

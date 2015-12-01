@@ -25,7 +25,7 @@
   <Layout>
     <DimensionLayout dim="0">
       <Group type="103" groupAlignment="0" attributes="0">
-          <Group type="102" alignment="0" attributes="0">
+          <Group type="102" attributes="0">
               <EmptySpace max="-2" attributes="0"/>
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" alignment="1" attributes="0">
@@ -65,10 +65,7 @@
                           <Component id="includeTimestampsCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
                           <Group type="102" alignment="0" attributes="0">
                               <Group type="103" groupAlignment="1" max="-2" attributes="0">
-                                  <Group type="102" alignment="1" attributes="0">
-                                      <EmptySpace min="42" pref="42" max="-2" attributes="0"/>
-                                      <Component id="jLabel3" min="-2" max="-2" attributes="0"/>
-                                  </Group>
+                                  <Component id="jLabel3" alignment="1" min="-2" max="-2" attributes="0"/>
                                   <Component id="jLabel2" min="-2" max="-2" attributes="0"/>
                               </Group>
                               <EmptySpace max="-2" attributes="0"/>
@@ -77,6 +74,7 @@
                                   <Component id="timestampMultiplierTextBox" alignment="0" min="-2" pref="90" max="-2" attributes="0"/>
                               </Group>
                           </Group>
+                          <Component id="cAERDisplayEnabledCheckBox" alignment="0" min="-2" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
                   </Group>
@@ -115,6 +113,8 @@
               <EmptySpace max="-2" attributes="0"/>
               <Component id="spinnakerProtocolEnabledCB" min="-2" max="-2" attributes="0"/>
               <EmptySpace max="-2" attributes="0"/>
+              <Component id="cAERDisplayEnabledCheckBox" min="-2" max="-2" attributes="0"/>
+              <EmptySpace type="unrelated" max="-2" attributes="0"/>
               <Group type="103" groupAlignment="3" attributes="0">
                   <Component id="bufferSizeTextBox" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="jLabel3" alignment="3" min="-2" max="-2" attributes="0"/>
@@ -124,7 +124,7 @@
                   <Component id="jLabel2" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="timestampMultiplierTextBox" alignment="3" min="-2" max="-2" attributes="0"/>
               </Group>
-              <EmptySpace pref="37" max="32767" attributes="0"/>
+              <EmptySpace max="32767" attributes="0"/>
               <Group type="103" groupAlignment="3" attributes="0">
                   <Component id="jAERDefaultsButton" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="cancelButton" alignment="3" min="-2" max="-2" attributes="0"/>
@@ -181,6 +181,9 @@
         <Property name="text" type="java.lang.String" value="localhost"/>
         <Property name="toolTipText" type="java.lang.String" value="host from which to recieve events"/>
       </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="hostnameTextFieldActionPerformed"/>
+      </Events>
     </Component>
     <Component class="javax.swing.JTextField" name="portTextField">
       <Properties>
@@ -208,6 +211,9 @@
         <Property name="text" type="java.lang.String" value="addressFirstEnabled"/>
         <Property name="toolTipText" type="java.lang.String" value="AEs come in address,timestamp order (default)"/>
       </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="addressFirstEnabledCheckBoxActionPerformed"/>
+      </Events>
     </Component>
     <Component class="javax.swing.JCheckBox" name="swapBytesCheckBox">
       <Properties>
@@ -294,6 +300,15 @@
       </Properties>
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="spinnakerProtocolEnabledCBActionPerformed"/>
+      </Events>
+    </Component>
+    <Component class="javax.swing.JCheckBox" name="cAERDisplayEnabledCheckBox">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="cAERDisplayEnabled"/>
+        <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Enable to use System.nanoTime/1000 for all sent or received timstamps. &lt;br&gt;&#xa;Can be useful for unsynchronized input from multple sources."/>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="cAERDisplayEnabledCheckBoxActionPerformed"/>
       </Events>
     </Component>
   </SubComponents>
