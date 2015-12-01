@@ -49,6 +49,7 @@ public class AEUnicastOutput implements AEUnicastSettings{
     private String host = prefs.get("AEUnicastOutput.host","localhost");
     private int port = prefs.getInt("AEUnicastOutput.port",AENetworkInterfaceConstants.DATAGRAM_PORT);
     private boolean sequenceNumberEnabled = prefs.getBoolean("AEUnicastOutput.sequenceNumberEnabled",true);
+    private boolean cAERDisplayEnabled = prefs.getBoolean("AEUnicastInput.cAERDisplayEnabled", true);
     private boolean addressFirstEnabled = prefs.getBoolean("AEUnicastOutput.addressFirstEnabled",true);
     private float timestampMultiplier = prefs.getFloat("AEUnicastOutput.timestampMultiplier",DEFAULT_TIMESTAMP_MULTIPLIER);
     private float timestampMultiplierReciprocal = 1f / timestampMultiplier;
@@ -503,7 +504,23 @@ public class AEUnicastOutput implements AEUnicastSettings{
         this.sequenceNumberEnabled = sequenceNumberEnabled;
         prefs.putBoolean("AEUnicastOutput.sequenceNumberEnabled",sequenceNumberEnabled);
     }
-
+        
+    @Override   
+    public boolean iscAERDisplayEnabled() {
+        return cAERDisplayEnabled;
+    }
+    
+    /**
+     * If set true (default), then cAER data can be displayed
+     * the packet. Otherwise the first int32 is part of the first AE.
+     *
+     * @param cAERDisplayEnabled default true
+     */
+    @Override
+    public void setCAERDisplayEnabled(boolean cAERDisplayEnabled) {
+        this.cAERDisplayEnabled = cAERDisplayEnabled;
+        prefs.putBoolean("AEUnicastInput.cAERDisplayEnabled", cAERDisplayEnabled);
+    }
     /** @see #setAddressFirstEnabled */
     @Override
 	public boolean isAddressFirstEnabled (){
