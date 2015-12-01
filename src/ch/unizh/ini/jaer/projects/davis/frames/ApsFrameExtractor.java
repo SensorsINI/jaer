@@ -7,8 +7,11 @@ package ch.unizh.ini.jaer.projects.davis.frames;
 import eu.seebetter.ini.chips.DavisChip;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -49,6 +52,7 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
 
     private JFrame apsFrame = null;
     public ImageDisplay apsDisplay;
+   
     private DavisChip apsChip = null;
     private boolean newFrame, useExtRender = false; // useExtRender means using something like OpenCV to render the data. If false, the displayBuffer is displayed
     private float[] resetBuffer, signalBuffer;
@@ -95,6 +99,7 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
     public ApsFrameExtractor(AEChip chip) {
         super(chip);
         apsDisplay = ImageDisplay.createOpenGLCanvas();
+        apsDisplay.addMouseMotionListener(new MouseInfo(apsDisplay));
         apsFrame = new JFrame("APS Frame");
         apsFrame.setPreferredSize(new Dimension(400, 400));
         apsFrame.getContentPane().add(apsDisplay, BorderLayout.CENTER);
@@ -596,4 +601,22 @@ public class ApsFrameExtractor extends EventFilter2D implements Observer /* Obse
             saveImage();
     }
 
+    private class MouseInfo extends MouseMotionAdapter{
+        ImageDisplay apsImageDisplay;
+        
+        public MouseInfo(ImageDisplay display) {
+            this.apsImageDisplay=display;
+        }
+        
+        
+
+        @Override
+        public void mouseMoved(MouseEvent e) {
+            Point2D.Float p=apsImageDisplay.getMouseImagePosition(e);
+            if(p.x>=0&&p.x<chip.getSizeX() && p.y>=0 && p.y<chip.getSizeY()){
+                int idx=getIndex((int)p.x, (int)p.y);
+                log.info(String.format("reset= %d, signal= %d, reset-signal= %+d",(int)resetBuffer[idx],(int)signalBuffer[idx],(int)(resetBuffer[idx]-signalBuffer[idx])));
+            }
+        }
+    }
 }
