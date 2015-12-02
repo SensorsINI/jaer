@@ -77,7 +77,6 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
     private float adcVref = getFloat("vreadcVreff", 1.5f);
     private int adcResolutionCounts = getInt("adcResolutionCounts", 1023);
     private boolean useZeroOriginForTemporalNoise = getBoolean("useZeroOriginForTemporalNoise", false);
-    private Point2D.Float temporalNoiseLineStartPoint = null, temporalNoiseLineEndPoint = null;
 
     public ApsNoiseStatistics(AEChip chip) {
         super(chip);
@@ -170,18 +169,6 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
         setSelectionRectangle(new Rectangle(startx, starty, w, h));
     }
 
-    private void setTemporalNoiseLineFromMouseEvent(MouseEvent e) {
-        Point p = getMousePoint(e);
-        endPoint = p;
-        startx = min(startPoint.x, endPoint.x);
-        starty = min(startPoint.y, endPoint.y);
-        endx = max(startPoint.x, endPoint.x);
-        endy = max(startPoint.y, endPoint.y);
-        int w = endx - startx;
-        int h = endy - starty;
-        setTemporalNoiseLinePoints(new Point2D.Float(startx, starty), new Point2D.Float(endx, endy));
-    }
-
     /**
      * tests if address is in selectionRectangle
      *
@@ -265,7 +252,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
         if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
             setSelectionRectangleFromMouseEvent(e);
         } else if ((e.getModifiersEx() & MouseEvent.BUTTON3_DOWN_MASK) == MouseEvent.BUTTON3_DOWN_MASK) {
-            setTemporalNoiseLineFromMouseEvent(e);
+            stats.temporalNoise.setTemporalNoiseLineFromMouseEvent(e);
         }
         selecting = false;
     }
@@ -318,7 +305,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
         if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
             setSelectionRectangleFromMouseEvent(e);
         } else if ((e.getModifiersEx() & MouseEvent.BUTTON3_DOWN_MASK) == MouseEvent.BUTTON3_DOWN_MASK) {
-            setTemporalNoiseLineFromMouseEvent(e);
+            stats.temporalNoise.setTemporalNoiseLineFromMouseEvent(e);
         }
     }
 
@@ -448,11 +435,6 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
         putBoolean("useZeroOriginForTemporalNoise", useZeroOriginForTemporalNoise);
     }
 
-    private void setTemporalNoiseLinePoints(Point2D.Float start, Point2D.Float end) {
-        temporalNoiseLineStartPoint = start;
-        temporalNoiseLineEndPoint = end;
-    }
-
     /**
      * Keeps track of pixel statistics
      */
@@ -515,10 +497,14 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
             private double[] sums, sum2s, means, vars; // variance computations for pixels, each entry is one pixel cummulation
             private int[] pixelSampleCounts; // how many times each pixel has been sampled (should be same for all pixels)
             int nPixels = 0; // total number of pixels
-            double mean = 0, var = 0, rmsAC = 0;
-            double meanvar = 0;
-            double meanmean = 0;
-            double minmean, maxmean, minvar, maxvar;
+            float mean = 0, var = 0, rmsAC = 0;
+            float meanvar = 0;
+            float meanmean = 0;
+            float minmean, maxmean, minvar, maxvar;
+            float meanrange = maxmean - minmean;
+            float varrange = maxvar - minvar;
+            private Point2D.Float msp = null, mep = null;
+            private Point2D.Float dsp = new Point2D.Float(), dep = new Point2D.Float();
 
             /**
              * Adds one pixel sample to temporal noise statistics
@@ -562,10 +548,10 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                 for (int i = 0; i < pixelSampleCounts.length; i++) {
                     sumvar += vars[i];
                     summean += means[i];
-                    minmean = min(means[i], minmean);
-                    maxmean = max(means[i], maxmean);
-                    minvar = min(vars[i], minvar);
-                    maxvar = max(vars[i], maxvar);
+                    minmean = (float) min(means[i], minmean);
+                    maxmean = (float) max(means[i], maxmean);
+                    minvar = (float) min(vars[i], minvar);
+                    maxvar = (float) max(vars[i], maxvar);
                 }
                 meanvar = sumvar / pixelSampleCounts.length;
                 meanmean = summean / pixelSampleCounts.length;
@@ -658,8 +644,8 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                 gl.glPointSize(6);
                 gl.glBegin(GL.GL_POINTS);
 
-                final double meanrange = maxmean - minmean;
-                final double varrange = maxvar - minvar;
+                meanrange = maxmean - minmean;
+                varrange = maxvar - minvar;
                 for (int i = 0; i < means.length; i++) {
                     final double x = x0 + (((x1 - x0) * (means[i] - minmean)) / meanrange);
                     final double y = y0 + (((y1 - y0) * (vars[i] - minvar)) / varrange);
@@ -669,27 +655,61 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                 gl.glEnd();
 
                 // noise line
-                if (temporalNoiseLineStartPoint != null && temporalNoiseLineEndPoint != null) {
+                if (msp != null && mep != null) {
                     gl.glColor3fv(new float[]{0, .5f, .8f}, 0);
                     gl.glLineWidth(3);
                     gl.glBegin(GL.GL_LINES);
-                    gl.glVertex2f(temporalNoiseLineStartPoint.x, temporalNoiseLineStartPoint.y);
-                    gl.glVertex2f(temporalNoiseLineEndPoint.x, temporalNoiseLineEndPoint.y);
+                    if (!selecting) { // compute pixel points from data points
+                        setTemporalNoiseLinePointsFromDataPoints(dsp, dep);
+                    }
+                    gl.glVertex2f(msp.x, msp.y);
+                    gl.glVertex2f(mep.x, mep.y);
                     gl.glEnd();
                     // compute line points in mean/var space
-                    float sx = (float) meanrange * (temporalNoiseLineStartPoint.x - x0) / (x1 - x0);
-                    float ex = (float) meanrange * (temporalNoiseLineEndPoint.x - x0) / (x1 - x0);
-                    float sy = (float) varrange * (temporalNoiseLineStartPoint.y - y0) / (y1 - y0);
-                    float ey = (float) varrange * (temporalNoiseLineEndPoint.y - y0) / (y1 - y0);
-                    float dmean = ex - sx;
-                    float dvar = ey - sy;
+
+                    float dmean = dep.x - dsp.x;
+                    float dvar = dep.y - dsp.y;
                     float kdnline = dvar / dmean;
                     float kuVperElec = 1e6f * kdnline * adcVref / adcResolutionCounts;
                     renderer.begin3DRendering();
                     renderer.setColor(0, .5f, .8f, 1f);
-                    renderer.draw3D(String.format("%.3f DN/e, %.1f uV/e", kdnline, kuVperElec), temporalNoiseLineEndPoint.x, temporalNoiseLineEndPoint.y, 0, textScale);
+                    renderer.draw3D(String.format("%.3f DN/e, %.1f uV/e", kdnline, kuVperElec), mep.x, mep.y, 0, textScale);
                     renderer.end3DRendering();
                 }
+            }
+
+            // mouse has been pressed, set line from mouse point
+            private void setTemporalNoiseLineFromMouseEvent(MouseEvent e) {
+                Point p = getMousePoint(e);
+                endPoint = p;
+                startx = min(startPoint.x, endPoint.x);
+                starty = min(startPoint.y, endPoint.y);
+                endx = max(startPoint.x, endPoint.x);
+                endy = max(startPoint.y, endPoint.y);
+                setTemporalNoiseLinePointsFromMousePoints(new Point2D.Float(startx, starty), new Point2D.Float(endx, endy));
+            }
+
+            // sets the line from the mouse point
+            private void setTemporalNoiseLinePointsFromMousePoints(Point2D.Float start, Point2D.Float end) {
+                final float offset = .1f;
+                final float x0 = chip.getSizeX() * offset, y0 = chip.getSizeY() * offset, x1 = chip.getSizeX() * (1 - offset), y1 = chip.getSizeY() * (1 - offset);
+                msp = start;
+                mep = end;
+                dsp.x = (float) meanrange * (msp.x - x0) / (x1 - x0);
+                dep.x = (float) meanrange * (mep.x - x0) / (x1 - x0);
+                dsp.y = (float) varrange * (msp.y - y0) / (y1 - y0);
+                dep.y = (float) varrange * (mep.y - y0) / (y1 - y0);
+            }
+
+            // sets the line pixel ends from the line data points
+            private void setTemporalNoiseLinePointsFromDataPoints(Point2D.Float dsp, Point2D.Float dep) {
+                final float offset = .1f;
+                final float x0 = chip.getSizeX() * offset, y0 = chip.getSizeY() * offset, x1 = chip.getSizeX() * (1 - offset), y1 = chip.getSizeY() * (1 - offset);
+
+                msp.x = x0 + (float) (x1 - x0) * (dsp.x - minmean) / (meanrange);
+                msp.y = y0 + (float) (y1 - y0) * (dsp.y - minvar) / (varrange);
+                mep.x = x0 + (float) (x1 - x0) * (dep.x - minmean) / (meanrange);
+                mep.y = y0 + (float) (y1 - y0) * (dep.y - minvar) / (varrange);
             }
         }
 
