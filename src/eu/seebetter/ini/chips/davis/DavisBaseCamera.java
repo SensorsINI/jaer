@@ -23,6 +23,15 @@ import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.glu.GLU;
+import com.jogamp.opengl.glu.GLUquadric;
+import com.jogamp.opengl.util.awt.TextRenderer;
+
+import eu.seebetter.ini.chips.DavisChip;
+import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.Chip;
@@ -44,16 +53,6 @@ import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.TextRendererScale;
 import net.sf.jaer.util.histogram.AbstractHistogram;
-
-import com.jogamp.opengl.GL;
-import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.glu.GLU;
-import com.jogamp.opengl.glu.GLUquadric;
-import com.jogamp.opengl.util.awt.TextRenderer;
-
-import eu.seebetter.ini.chips.DavisChip;
-import eu.seebetter.ini.chips.davis.imu.IMUSample;
 
 /**
  * Abstract base camera class for SeeBetter DAVIS cameras.
@@ -847,9 +846,10 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
 			imuTextRenderer.begin3DRendering();
 			imuTextRenderer.setColor(0, .5f, 0, trans);
-			imuTextRenderer.draw3D(String.format("%.2f,%.2f g", imuSampleRender.getAccelX(), imuSampleRender.getAccelY()), x, y, 0, textScale); // x,y,z,
-																																	// scale
-																																	// factor
+			imuTextRenderer.draw3D(String.format("%.2f,%.2f g", imuSampleRender.getAccelX(), imuSampleRender.getAccelY()), x, y, 0,
+				textScale); // x,y,z,
+			// scale
+			// factor
 			imuTextRenderer.end3DRendering();
 
 			// acceleration z, drawn as circle
@@ -882,8 +882,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
 			imuTextRenderer.begin3DRendering();
 			imuTextRenderer.setColor(1f, 0, 1, trans);
-			imuTextRenderer.draw3D(String.format("%.2f,%.2f dps", imuSampleRender.getGyroYawY(), imuSampleRender.getGyroTiltX()), x, y + 5, 0,
-				textScale); // x,y,z, scale factor
+			imuTextRenderer.draw3D(String.format("%.2f,%.2f dps", imuSampleRender.getGyroYawY(), imuSampleRender.getGyroTiltX()), x, y + 5,
+				0, textScale); // x,y,z, scale factor
 			imuTextRenderer.end3DRendering();
 
 			// gyro roll
@@ -902,7 +902,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 			imuTextRenderer.begin3DRendering();
 			imuTextRenderer.setColor(1, 1, 1, trans);
 			final String ratestr = String.format("IMU: timestamp=%-+9.3fs last dtMs=%-6.1fms  avg dtMs=%-6.1fms",
-				1e-6f * imuSampleRender.getTimestampUs(), imuSampleRender.getDeltaTimeUs() * .001f, IMUSample.getAverageSampleIntervalUs() / 1000);
+				1e-6f * imuSampleRender.getTimestampUs(), imuSampleRender.getDeltaTimeUs() * .001f,
+				IMUSample.getAverageSampleIntervalUs() / 1000);
 			final Rectangle2D raterect = imuTextRenderer.getBounds(ratestr);
 			imuTextRenderer.draw3D(ratestr, -(float) raterect.getWidth() * textScale * 0.5f * .7f, -12, 0, textScale * .7f); // x,y,z,
 																																// scale
@@ -1005,6 +1006,28 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 		catch (final HardwareInterfaceException e) {
 			// Ignore.
 		}
+	}
+
+	public void configureROIRegion(final Point cornerLL, final Point cornerUR) {
+		// First program the new sizes into logic.
+		final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
+		final SPIConfigSequence configSequence = fx3HwIntf.new SPIConfigSequence();
+
+		try {
+			configSequence.addConfig(CypressFX3.FPGA_APS, (short) 9, cornerLL.x);
+			configSequence.addConfig(CypressFX3.FPGA_APS, (short) 10, cornerLL.y);
+			configSequence.addConfig(CypressFX3.FPGA_APS, (short) 11, cornerUR.x);
+			configSequence.addConfig(CypressFX3.FPGA_APS, (short) 12, cornerUR.y);
+
+			configSequence.sendConfigSequence();
+		}
+		catch (final HardwareInterfaceException e) {
+			// Ignore.
+		}
+
+		// Then update first/last pixel coordinates.
+		apsFirstPixelReadOut = new Point(0, (cornerUR.y - cornerLL.y));
+		apsLastPixelReadOut = new Point((cornerUR.x - cornerLL.x), 0);
 	}
 
 	/**
