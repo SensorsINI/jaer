@@ -175,7 +175,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 			Arrays.fill(apsCountX, 0, RetinaAEReader.APS_READOUT_TYPES_NUM, (short) 0);
 			Arrays.fill(apsCountY, 0, RetinaAEReader.APS_READOUT_TYPES_NUM, (short) 0);
 
-			updateROISizes();
+			// Only update ROI info if it was sent by the device.
+			if (apsROIUpdate != 0) {
+				updateROISizes();
+			}
 		}
 
 		private boolean ensureCapacity(final AEPacketRaw buffer, final int capacity) {
@@ -625,7 +628,6 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										// Here we just store the temporary value, and use it again
 										// in the next case statement.
 										apsROITmpData = ((misc8Data & 0xFF) << 8);
-
 
 										break;
 
