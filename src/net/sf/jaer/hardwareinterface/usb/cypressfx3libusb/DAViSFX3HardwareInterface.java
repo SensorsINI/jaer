@@ -130,6 +130,12 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 			apsSizeX = spiConfigReceive(CypressFX3.FPGA_APS, (short) 0);
 			apsSizeY = spiConfigReceive(CypressFX3.FPGA_APS, (short) 1);
 
+			// Set intial ROI sizes.
+			apsROIPositionX[0] = 0;
+			apsROIPositionY[0] = 0;
+			apsROISizeX[0] = (short) apsSizeX;
+			apsROISizeY[0] = (short) apsSizeY;
+
 			final int chipAPSStreamStart = spiConfigReceive(CypressFX3.FPGA_APS, (short) 2);
 			apsInvertXY = (chipAPSStreamStart & 0x04) != 0;
 			apsFlipX = (chipAPSStreamStart & 0x02) != 0;
