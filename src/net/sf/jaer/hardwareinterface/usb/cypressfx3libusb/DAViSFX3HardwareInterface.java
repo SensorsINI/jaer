@@ -95,7 +95,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private final int apsSizeX;
 		private final int apsSizeY;
 
-		private static final int APS_ROI_REGIONS_MAX = 8; // TODO tobi increased, luca, please check
+		private static final int APS_ROI_REGIONS_MAX = 4;
 		private int apsROIUpdate;
 		private int apsROITmpData;
 		private final short apsROISizeX[];
