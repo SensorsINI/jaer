@@ -451,7 +451,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
          */
         void draw(GL2 gl) {
             MultilineAnnotationTextRenderer.setColor(Color.CYAN);
-            MultilineAnnotationTextRenderer.setScale(.2f);
+            MultilineAnnotationTextRenderer.setScale(((float)chip.getSizeX()/240)*.2f); // scaled to fit 240 sensor, scale up for larger sensors
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 0.8f);
             apsHist.draw(gl);
             temporalNoise.draw(gl);
