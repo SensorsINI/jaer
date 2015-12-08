@@ -675,8 +675,8 @@ public class AEFrameChipRenderer extends AEChipRenderer {
 
     /**
      * Overridden to combine ON and OFF map values to a gray value by averaging
-     * them. Note that this method returns rendering of events; it disregards
-     * APS frame values.
+     * them. Note that this method returns rendering of frame image; it  returns the 
+     * rendered APS samples and not the raw ADC values.
      *
      * @param x
      * @param y
