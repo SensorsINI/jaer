@@ -29,88 +29,86 @@ import net.sf.jaer.biasgen.IPotSliderTextControl;
 import net.sf.jaer.util.EngineeringFormat;
 
 /**
- * A GUI control component for controlling a Pot.
- * It shows the name of the Pot, its attributes and
- * provides fields for direct bit editing of the Pot value.
- * Subclasses provide customized control
- * of voltage or current biases via the sliderAndValuePanel contents.
+ * A GUI control component for controlling a Pot. It shows the name of the Pot,
+ * its attributes and provides fields for direct bit editing of the Pot value.
+ * Subclasses provide customized control of voltage or current biases via the
+ * sliderAndValuePanel contents.
  *
  * @author tobi
  */
 public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Observer, StateEditable {
-	// the IPot is the master; it is an Observable that notifies Observers when its value changes.
-	// thus if the slider changes the pot value, the pot calls us back here to update the appearance of the slider and
-	// of the
-	// text field. likewise, if code changes the pot, the appearance here will automagically be updated.
+    // the IPot is the master; it is an Observable that notifies Observers when its value changes.
+    // thus if the slider changes the pot value, the pot calls us back here to update the appearance of the slider and
+    // of the
+    // text field. likewise, if code changes the pot, the appearance here will automagically be updated.
 
-	/**
-	 *
-	 */
-	private static final long serialVersionUID = -1987171851823131804L;
-	static Preferences prefs = Preferences.userNodeForPackage(IPotSliderTextControl.class);
-	static Logger log = Logger.getLogger("ConfigurableIPotGUIControl");
-	static double ln2 = Math.log(2.);
-	TowerOnChip6BitVDAC pot;
-	StateEdit edit = null;
-	UndoableEditSupport editSupport = new UndoableEditSupport();
-	BiasgenFrame frame;
-	public static boolean sliderEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.sliderEnabled", true);
-	public static boolean valueEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.valueEnabled", true);
-	public static boolean bitValueEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.bitValueEnabled", false);
-	public static boolean bitViewEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.bitViewEnabled", true);
-	public static boolean sexEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.sexEnabled", true);
-	public static boolean typeEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.typeEnabled", true);
-	private boolean addedUndoListener = false;
-	private boolean dontProcessRefSlider = false, dontProcessRegBiasSlider = false;
+    /**
+     *
+     */
+    private static final long serialVersionUID = -1987171851823131804L;
+    static Preferences prefs = Preferences.userNodeForPackage(IPotSliderTextControl.class);
+    static Logger log = Logger.getLogger("ConfigurableIPotGUIControl");
+    static double ln2 = Math.log(2.);
+    TowerOnChip6BitVDAC pot;
+    StateEdit edit = null;
+    UndoableEditSupport editSupport = new UndoableEditSupport();
+    BiasgenFrame frame;
+    public static boolean sliderEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.sliderEnabled", true);
+    public static boolean valueEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.valueEnabled", true);
+    public static boolean bitValueEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.bitValueEnabled", false);
+    public static boolean bitViewEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.bitViewEnabled", true);
+    public static boolean sexEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.sexEnabled", true);
+    public static boolean typeEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.typeEnabled", true);
+    private boolean addedUndoListener = false;
+    private boolean dontProcessRefSlider = false, dontProcessRegBiasSlider = false;
 
-	// see java tuturial http://java.sun.com/docs/books/tutorial/uiswing/components/slider.html
-	// and http://java.sun.com/docs/books/tutorial/uiswing/components/formattedtextfield.html
-	/**
-	 * Creates new form IPotSliderTextControl
-	 */
-	public TowerOnChip6BitVDACControl(final TowerOnChip6BitVDAC pot) {
-		this.pot = pot;
-		initComponents(); // this has unfortunate byproduect of resetting pot value to 0... don't know how to prevent
-							// stateChanged event
-		dontProcessRegBiasSlider = true;
-		bufferSllider.setMaximum(pot.maxBufBitValue - 1); // TODO replace with getter, needed to prevent extraneous
-															// callbacks
-		dontProcessRefSlider = true;
-		voltageSlider.setMaximum(pot.maxVdacBitValue - 1);
+    // see java tuturial http://java.sun.com/docs/books/tutorial/uiswing/components/slider.html
+    // and http://java.sun.com/docs/books/tutorial/uiswing/components/formattedtextfield.html
+    /**
+     * Creates new form IPotSliderTextControl
+     */
+    public TowerOnChip6BitVDACControl(final TowerOnChip6BitVDAC pot) {
+        this.pot = pot;
+        initComponents(); // this has unfortunate byproduect of resetting pot value to 0... don't know how to prevent
+        // stateChanged event
+        dontProcessRegBiasSlider = true;
+        bufferSllider.setMaximum(pot.maxBufBitValue - 1); // TODO replace with getter, needed to prevent extraneous
+        // callbacks
+        dontProcessRefSlider = true;
+        voltageSlider.setMaximum(pot.maxVdacBitValue - 1);
 
-		nameLabel.setText(pot.getName()); // the name of the bias
-		nameLabel.setHorizontalAlignment(SwingConstants.TRAILING);
-		nameLabel.setBorder(null);
-		if (pot.getTooltipString() != null) {
-			nameLabel.setToolTipText(pot.getTooltipString());
-		}
+        nameLabel.setText(pot.getName()); // the name of the bias
+        nameLabel.setHorizontalAlignment(SwingConstants.TRAILING);
+        nameLabel.setBorder(null);
+        if (pot.getTooltipString() != null) {
+            nameLabel.setToolTipText(pot.getTooltipString());
+        }
 
-		bitPatternTextField.setColumns(pot.getNumBits() + 1);
+        bitPatternTextField.setColumns(pot.getNumBits() + 1);
 
-		pot.loadPreferences(); // to get around slider value change
-		pot.addObserver(this); // when pot changes, so does this gui control view
+        pot.loadPreferences(); // to get around slider value change
+        pot.addObserver(this); // when pot changes, so does this gui control view
 
-		updateAppearance();
-		TowerOnChip6BitVDACControl.allInstances.add(this);
-		TowerOnChip6BitVDACControl.setBitViewEnabled(true);
-	}
+        updateAppearance();
+        TowerOnChip6BitVDACControl.allInstances.add(this);
+        TowerOnChip6BitVDACControl.setBitViewEnabled(true);
+    }
 
-	@Override
-	public String toString() {
-		return "TowerOnChip6BitVDACControl " + pot.getName();
-	}
+    @Override
+    public String toString() {
+        return "TowerOnChip6BitVDACControl " + pot.getName();
+    }
 
-	void rr() {
-		revalidate();
-		repaint();
-	}
+    void rr() {
+        revalidate();
+        repaint();
+    }
 
-	/**
-	 * This method is called from within the constructor to
-	 * initialize the form.
-	 * WARNING: Do NOT modify this code. The content of this method is
-	 * always regenerated by the Form Editor.
-	 */
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
 	// <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
 	private void initComponents() {
 
@@ -315,393 +313,389 @@ public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Ob
 	}// </editor-fold>//GEN-END:initComponents
 		// Border selectedBorder=new EtchedBorder(), unselectedBorder=new EmptyBorder(1,1,1,1);
 
-	private void formMouseExited(final java.awt.event.MouseEvent evt) {// GEN-FIRST:event_formMouseExited
-		// setBorder(unselectedBorder); // TODO add your handling code here:
-	}// GEN-LAST:event_formMouseExited
+    private void formMouseExited(final java.awt.event.MouseEvent evt) {// GEN-FIRST:event_formMouseExited
+        // setBorder(unselectedBorder); // TODO add your handling code here:
+    }// GEN-LAST:event_formMouseExited
 
-	private void formMouseEntered(final java.awt.event.MouseEvent evt) {// GEN-FIRST:event_formMouseEntered
-		// setBorder(selectedBorder);
-	}// GEN-LAST:event_formMouseEntered
+    private void formMouseEntered(final java.awt.event.MouseEvent evt) {// GEN-FIRST:event_formMouseEntered
+        // setBorder(selectedBorder);
+    }// GEN-LAST:event_formMouseEntered
 
-	private void voltageSliderStateChanged(final javax.swing.event.ChangeEvent evt) {// GEN-FIRST:event_voltageSliderStateChanged
-		// 1. changing slider, e.g. max value, will generate change events here.
-		//
-		// 2. we can get a double send here if user presses uparrow key,
-		// resulting in new pot value,
-		// which updates the slider position, which ends up with
-		// a different bitvalue that makes a new
-		// pot value.
-		// See http://java.sun.com/docs/books/tutorial/uiswing/components/slider.html
-		// System.out.println("slider state changed");
+    private void voltageSliderStateChanged(final javax.swing.event.ChangeEvent evt) {// GEN-FIRST:event_voltageSliderStateChanged
+        // 1. changing slider, e.g. max value, will generate change events here.
+        //
+        // 2. we can get a double send here if user presses uparrow key,
+        // resulting in new pot value,
+        // which updates the slider position, which ends up with
+        // a different bitvalue that makes a new
+        // pot value.
+        // See http://java.sun.com/docs/books/tutorial/uiswing/components/slider.html
+        // System.out.println("slider state changed");
 
-		// 3. slider is only source of ChangeEvents, but we can create these event by changing the slider in code.
+        // 3. slider is only source of ChangeEvents, but we can create these event by changing the slider in code.
+        // 4. to avoid this, we use dontProcessSlider flag to not update slider from change event handler.
+        if (dontProcessRefSlider) {
+            dontProcessRefSlider = false;
+            return;
+        }
+        final int bv = vdacBitValueFromSlider();
+        pot.setVdacBitValue(bv);
+    }// GEN-LAST:event_voltageSliderStateChanged
 
-		// 4. to avoid this, we use dontProcessSlider flag to not update slider from change event handler.
+    private void voltageSliderMousePressed(final java.awt.event.MouseEvent evt) {// GEN-FIRST:event_voltageSliderMousePressed
+        startEdit(); // start slider edit when mouse is clicked in it! not when dragging it
+    }// GEN-LAST:event_voltageSliderMousePressed
 
-		if (dontProcessRefSlider) {
-			dontProcessRefSlider = false;
-			return;
-		}
-		final int bv = vdacBitValueFromSlider();
-		pot.setVdacBitValue(bv);
-	}// GEN-LAST:event_voltageSliderStateChanged
+    private void voltageSliderMouseReleased(final java.awt.event.MouseEvent evt) {// GEN-FIRST:event_voltageSliderMouseReleased
+        endEdit();
+    }// GEN-LAST:event_voltageSliderMouseReleased
 
-	private void voltageSliderMousePressed(final java.awt.event.MouseEvent evt) {// GEN-FIRST:event_voltageSliderMousePressed
-		startEdit(); // start slider edit when mouse is clicked in it! not when dragging it
-	}// GEN-LAST:event_voltageSliderMousePressed
+    private void voltageTFActionPerformed(final java.awt.event.ActionEvent evt) {// GEN-FIRST:event_voltageTFActionPerformed
+        // new pots current value entered
+        // System.out.println("value field action performed");
+        try {
+            // float v=Float.parseFloat(valueTextField.getText());
+            final float v = TowerOnChip6BitVDACControl.engFormat.parseFloat(voltageTF.getText());
+            // System.out.println("parsed "+valueTextField.getText()+" as "+v);
+            startEdit();
+            pot.setVdacVoltage(v);
+            endEdit();
+        } catch (final NumberFormatException e) {
+            Toolkit.getDefaultToolkit().beep();
+            voltageTF.selectAll();
+        }
+    }// GEN-LAST:event_voltageTFActionPerformed
 
-	private void voltageSliderMouseReleased(final java.awt.event.MouseEvent evt) {// GEN-FIRST:event_voltageSliderMouseReleased
-		endEdit();
-	}// GEN-LAST:event_voltageSliderMouseReleased
+    private void voltageTFFocusGained(final java.awt.event.FocusEvent evt) {// GEN-FIRST:event_voltageTFFocusGained
+        voltageTF.setFont(new java.awt.Font("Courier New", 1, 11)); // bold
+    }// GEN-LAST:event_voltageTFFocusGained
 
-	private void voltageTFActionPerformed(final java.awt.event.ActionEvent evt) {// GEN-FIRST:event_voltageTFActionPerformed
-		// new pots current value entered
-		// System.out.println("value field action performed");
-		try {
-			// float v=Float.parseFloat(valueTextField.getText());
-			final float v = TowerOnChip6BitVDACControl.engFormat.parseFloat(voltageTF.getText());
-			// System.out.println("parsed "+valueTextField.getText()+" as "+v);
-			startEdit();
-			pot.setVdacVoltage(v);
-			endEdit();
-		}
-		catch (final NumberFormatException e) {
-			Toolkit.getDefaultToolkit().beep();
-			voltageTF.selectAll();
-		}
-	}// GEN-LAST:event_voltageTFActionPerformed
+    private void voltageTFFocusLost(final java.awt.event.FocusEvent evt) {// GEN-FIRST:event_voltageTFFocusLost
+        voltageTF.setFont(new java.awt.Font("Courier New", 0, 11));
+    }// GEN-LAST:event_voltageTFFocusLost
 
-	private void voltageTFFocusGained(final java.awt.event.FocusEvent evt) {// GEN-FIRST:event_voltageTFFocusGained
-		voltageTF.setFont(new java.awt.Font("Courier New", 1, 11)); // bold
-	}// GEN-LAST:event_voltageTFFocusGained
+    private void voltageTFKeyPressed(final java.awt.event.KeyEvent evt) {// GEN-FIRST:event_voltageTFKeyPressed
+        final int code = evt.getKeyCode();
+        if (code == KeyEvent.VK_UP) {
+            startEdit();
+            pot.setVdacBitValue(pot.getVdacBitValue() + 1);
+            endEdit();
+        } else if (code == KeyEvent.VK_DOWN) {
+            startEdit();
+            pot.setVdacBitValue(pot.getVdacBitValue() - 1);
+        }
+        pot.updateBitValue();
+    }// GEN-LAST:event_voltageTFKeyPressed
 
-	private void voltageTFFocusLost(final java.awt.event.FocusEvent evt) {// GEN-FIRST:event_voltageTFFocusLost
-		voltageTF.setFont(new java.awt.Font("Courier New", 0, 11));
-	}// GEN-LAST:event_voltageTFFocusLost
+    private void voltageTFMouseWheelMoved(final java.awt.event.MouseWheelEvent evt) {// GEN-FIRST:event_voltageTFMouseWheelMoved
+        final int clicks = evt.getWheelRotation();
+        startEdit();
+        pot.setVdacBitValue(pot.getVdacBitValue() - clicks);
+        endEdit();
+    }// GEN-LAST:event_voltageTFMouseWheelMoved
 
-	private void voltageTFKeyPressed(final java.awt.event.KeyEvent evt) {// GEN-FIRST:event_voltageTFKeyPressed
-		final int code = evt.getKeyCode();
-		if (code == KeyEvent.VK_UP) {
-			pot.setVdacBitValue(pot.getVdacBitValue() + 1);
-			endEdit();
-		}
-		else if (code == KeyEvent.VK_DOWN) {
-			startEdit();
-			pot.setVdacBitValue(pot.getVdacBitValue() - 1);
-			endEdit();
-		}
-		pot.updateBitValue();
-	}// GEN-LAST:event_voltageTFKeyPressed
+    private void bufferSlliderStateChanged(final javax.swing.event.ChangeEvent evt) {// GEN-FIRST:event_bufferSlliderStateChanged
+        // we can get a double send here if user presses uparrow key,
+        // resulting in new pot value,
+        // which updates the slider position, which ends up with
+        // a different bitvalue that makes a new
+        // pot value.
+        // See http://java.sun.com/docs/books/tutorial/uiswing/components/slider.html
+        // System.out.println("slider state changed");
+        // slider is only source of ChangeEvents
+        // System.out.println("slider state changed for "+pot);
 
-	private void voltageTFMouseWheelMoved(final java.awt.event.MouseWheelEvent evt) {// GEN-FIRST:event_voltageTFMouseWheelMoved
-		final int clicks = evt.getWheelRotation();
-		pot.setVdacBitValue(pot.getVdacBitValue() - clicks);
-	}// GEN-LAST:event_voltageTFMouseWheelMoved
+        // if(!s.getValueIsAdjusting()){
+        // startEdit();
+        // }
+        if (dontProcessRegBiasSlider) {
+            dontProcessRegBiasSlider = false;
+            return;
+        }
+        final int bbv = bufferBitValueFromSlider();
+        pot.setBufferBitValue(bbv);
+        // log.info("from slider state change got new buffer bit value = " + pot.getBufferBitValue() + " from slider
+        // value =" + s.getValue());
+    }// GEN-LAST:event_bufferSlliderStateChanged
 
-	private void bufferSlliderStateChanged(final javax.swing.event.ChangeEvent evt) {// GEN-FIRST:event_bufferSlliderStateChanged
-		// we can get a double send here if user presses uparrow key,
-		// resulting in new pot value,
-		// which updates the slider position, which ends up with
-		// a different bitvalue that makes a new
-		// pot value.
-		// See http://java.sun.com/docs/books/tutorial/uiswing/components/slider.html
-		// System.out.println("slider state changed");
-		// slider is only source of ChangeEvents
-		// System.out.println("slider state changed for "+pot);
+    private void bufferSlliderMousePressed(final java.awt.event.MouseEvent evt) {// GEN-FIRST:event_bufferSlliderMousePressed
+        startEdit(); // start slider edit when mouse is clicked in it! not when dragging it
+    }// GEN-LAST:event_bufferSlliderMousePressed
 
-		// if(!s.getValueIsAdjusting()){
-		// startEdit();
-		// }
+    private void bufferSlliderMouseReleased(final java.awt.event.MouseEvent evt) {// GEN-FIRST:event_bufferSlliderMouseReleased
+        endEdit();
+    }// GEN-LAST:event_bufferSlliderMouseReleased
 
-		if (dontProcessRegBiasSlider) {
-			dontProcessRegBiasSlider = false;
-			return;
-		}
-		final int bbv = bufferBitValueFromSlider();
-		pot.setBufferBitValue(bbv);
-		// log.info("from slider state change got new buffer bit value = " + pot.getBufferBitValue() + " from slider
-		// value =" + s.getValue());
-	}// GEN-LAST:event_bufferSlliderStateChanged
+    private void bufferCurrentTFActionPerformed(final java.awt.event.ActionEvent evt) {// GEN-FIRST:event_bufferCurrentTFActionPerformed
+        try {
+            final float v = TowerOnChip6BitVDACControl.engFormat.parseFloat(bufferCurrentTF.getText());
+            startEdit();
+            bufferCurrentTF.setText(TowerOnChip6BitVDACControl.engFormat.format(pot.setBufferCurrent(v)));
+            endEdit();
+        } catch (final NumberFormatException e) {
+            Toolkit.getDefaultToolkit().beep();
+            bufferCurrentTF.selectAll();
+        }
+    }// GEN-LAST:event_bufferCurrentTFActionPerformed
 
-	private void bufferSlliderMousePressed(final java.awt.event.MouseEvent evt) {// GEN-FIRST:event_bufferSlliderMousePressed
-		startEdit(); // start slider edit when mouse is clicked in it! not when dragging it
-	}// GEN-LAST:event_bufferSlliderMousePressed
+    private void bufferCurrentTFFocusGained(final java.awt.event.FocusEvent evt) {// GEN-FIRST:event_bufferCurrentTFFocusGained
+        bufferCurrentTF.setFont(new java.awt.Font("Courier New", 1, 11));
+    }// GEN-LAST:event_bufferCurrentTFFocusGained
 
-	private void bufferSlliderMouseReleased(final java.awt.event.MouseEvent evt) {// GEN-FIRST:event_bufferSlliderMouseReleased
-		endEdit();
-	}// GEN-LAST:event_bufferSlliderMouseReleased
+    private void bufferCurrentTFFocusLost(final java.awt.event.FocusEvent evt) {// GEN-FIRST:event_bufferCurrentTFFocusLost
+        bufferCurrentTF.setFont(new java.awt.Font("Courier New", 0, 11));
+    }// GEN-LAST:event_bufferCurrentTFFocusLost
 
-	private void bufferCurrentTFActionPerformed(final java.awt.event.ActionEvent evt) {// GEN-FIRST:event_bufferCurrentTFActionPerformed
-		try {
-			final float v = TowerOnChip6BitVDACControl.engFormat.parseFloat(bufferCurrentTF.getText());
-			startEdit();
-			bufferCurrentTF.setText(TowerOnChip6BitVDACControl.engFormat.format(pot.setBufferCurrent(v)));
-			endEdit();
-		}
-		catch (final NumberFormatException e) {
-			Toolkit.getDefaultToolkit().beep();
-			bufferCurrentTF.selectAll();
-		}
-	}// GEN-LAST:event_bufferCurrentTFActionPerformed
+    private void bufferCurrentTFKeyPressed(final java.awt.event.KeyEvent evt) {// GEN-FIRST:event_bufferCurrentTFKeyPressed
+        // key pressed in text field
+        // System.out.println("keyPressed evt "+evt);
+        // System.out.println("value field key pressed");
+        final int code = evt.getKeyCode();
+        if (code == KeyEvent.VK_UP) {
+            pot.setBufferBitValue(pot.getBufferBitValue() + 1);
+            endEdit();
+        } else if (code == KeyEvent.VK_DOWN) {
+            startEdit();
+            pot.setBufferBitValue(pot.getBufferBitValue() - 1);
+            endEdit();
+        }
+        pot.updateBitValue();
+    }// GEN-LAST:event_bufferCurrentTFKeyPressed
 
-	private void bufferCurrentTFFocusGained(final java.awt.event.FocusEvent evt) {// GEN-FIRST:event_bufferCurrentTFFocusGained
-		bufferCurrentTF.setFont(new java.awt.Font("Courier New", 1, 11));
-	}// GEN-LAST:event_bufferCurrentTFFocusGained
+    private void bufferCurrentTFMouseWheelMoved(final java.awt.event.MouseWheelEvent evt) {// GEN-FIRST:event_bufferCurrentTFMouseWheelMoved
+        final int clicks = evt.getWheelRotation();
+        pot.setBufferBitValue(pot.getBufferBitValue() - clicks); // rotating wheel away gives negative clicks (scrolling
+        // up) but should increase current
+    }// GEN-LAST:event_bufferCurrentTFMouseWheelMoved
 
-	private void bufferCurrentTFFocusLost(final java.awt.event.FocusEvent evt) {// GEN-FIRST:event_bufferCurrentTFFocusLost
-		bufferCurrentTF.setFont(new java.awt.Font("Courier New", 0, 11));
-	}// GEN-LAST:event_bufferCurrentTFFocusLost
+    private void bufferBiasPanelformMouseEntered(final java.awt.event.MouseEvent evt) {// GEN-FIRST:event_bufferBiasPanelformMouseEntered
+        // setBorder(selectedBorder);
+    }// GEN-LAST:event_bufferBiasPanelformMouseEntered
 
-	private void bufferCurrentTFKeyPressed(final java.awt.event.KeyEvent evt) {// GEN-FIRST:event_bufferCurrentTFKeyPressed
-		// key pressed in text field
-		// System.out.println("keyPressed evt "+evt);
-		// System.out.println("value field key pressed");
-		final int code = evt.getKeyCode();
-		if (code == KeyEvent.VK_UP) {
-			pot.setBufferBitValue(pot.getBufferBitValue() + 1);
-			endEdit();
-		}
-		else if (code == KeyEvent.VK_DOWN) {
-			startEdit();
-			pot.setBufferBitValue(pot.getBufferBitValue() - 1);
-			endEdit();
-		}
-		pot.updateBitValue();
-	}// GEN-LAST:event_bufferCurrentTFKeyPressed
+    private void bufferBiasPanelformMouseExited(final java.awt.event.MouseEvent evt) {// GEN-FIRST:event_bufferBiasPanelformMouseExited
+        // setBorder(unselectedBorder); // TODO add your handling code here:
+    }// GEN-LAST:event_bufferBiasPanelformMouseExited
 
-	private void bufferCurrentTFMouseWheelMoved(final java.awt.event.MouseWheelEvent evt) {// GEN-FIRST:event_bufferCurrentTFMouseWheelMoved
-		final int clicks = evt.getWheelRotation();
-		pot.setBufferBitValue(pot.getBufferBitValue() - clicks); // rotating wheel away gives negative clicks (scrolling
-																	// up) but should increase current
-	}// GEN-LAST:event_bufferCurrentTFMouseWheelMoved
+    private void valueTextFieldKeyPressed(final java.awt.event.KeyEvent evt) {// GEN-FIRST:event_valueTextFieldKeyPressed
+        // TODO add your handling code here:
+    }// GEN-LAST:event_valueTextFieldKeyPressed
 
-	private void bufferBiasPanelformMouseEntered(final java.awt.event.MouseEvent evt) {// GEN-FIRST:event_bufferBiasPanelformMouseEntered
-		// setBorder(selectedBorder);
-	}// GEN-LAST:event_bufferBiasPanelformMouseEntered
+    private void formAncestorAdded(final javax.swing.event.AncestorEvent evt) {// GEN-FIRST:event_formAncestorAdded
+        if (addedUndoListener) {
+            return;
+        }
+        addedUndoListener = true;
+        if (evt.getComponent() instanceof Container) {
+            Container anc = evt.getComponent();
+            while ((anc != null) && (anc instanceof Container)) {
+                if (anc instanceof UndoableEditListener) {
+                    editSupport.addUndoableEditListener((UndoableEditListener) anc);
+                    break;
+                }
+                anc = anc.getParent();
+            }
+        }
+    }// GEN-LAST:event_formAncestorAdded
 
-	private void bufferBiasPanelformMouseExited(final java.awt.event.MouseEvent evt) {// GEN-FIRST:event_bufferBiasPanelformMouseExited
-		// setBorder(unselectedBorder); // TODO add your handling code here:
-	}// GEN-LAST:event_bufferBiasPanelformMouseExited
+    // private int oldPotValue=0;
+    /**
+     * when slider is moved, event is sent here. The slider is the 'master' of
+     * the value in the text field. Slider is log scale, from pot min to pot max
+     * with caveat that zero position is zero current (no current splitter
+     * outputs switched on) and rest of values are log scale from
+     * pot.getCurrentResolution to pot.getMaxCurrent
+     *
+     * @param e the ChangeEvent
+     */
+    void startEdit() {
+        // System.out.println("ipot start edit "+pot);
+        edit = new MyStateEdit(this, "ShiftedSourceControlsEdit");
+        // oldPotValue=pot.getVdacBitValue();
+    }
 
-	private void valueTextFieldKeyPressed(final java.awt.event.KeyEvent evt) {// GEN-FIRST:event_valueTextFieldKeyPressed
-		// TODO add your handling code here:
-	}// GEN-LAST:event_valueTextFieldKeyPressed
+    void endEdit() {
+        // if(oldPotValue==pot.getVdacBitValue()){
+        //// System.out.println("no edit, because no change in "+pot);
+        // return;
+        // }
+        // System.out.println("ipot endEdit "+pot);
+        if (edit != null) {
+            edit.end();
+        }
+        // System.out.println("ipot "+pot+" postEdit");
+        editSupport.postEdit(edit);
+    }
 
-	private void formAncestorAdded(final javax.swing.event.AncestorEvent evt) {// GEN-FIRST:event_formAncestorAdded
-		if (addedUndoListener) {
-			return;
-		}
-		addedUndoListener = true;
-		if (evt.getComponent() instanceof Container) {
-			Container anc = evt.getComponent();
-			while ((anc != null) && (anc instanceof Container)) {
-				if (anc instanceof UndoableEditListener) {
-					editSupport.addUndoableEditListener((UndoableEditListener) anc);
-					break;
-				}
-				anc = anc.getParent();
-			}
-		}
-	}// GEN-LAST:event_formAncestorAdded
+    final String KEY_REFBITVALUE = "refBitValue";
+    final String KEY_REGBITVALUE = "regBitValue";
+    final String KEY_OPERATINGMODE = "operatingMode";
+    final String KEY_VOLTAGELEVEL = "voltageLevel";
+    final String KEY_ENABLED = "enabled";
 
-	// private int oldPotValue=0;
-	/**
-	 * when slider is moved, event is sent here. The slider is the 'master' of the value in the text field.
-	 * Slider is log scale, from pot min to pot max with caveat that zero position is zero current (no current splitter
-	 * outputs switched on) and rest of values are log scale from pot.getCurrentResolution to pot.getMaxCurrent
-	 *
-	 * @param e
-	 *            the ChangeEvent
-	 */
-	void startEdit() {
-		// System.out.println("ipot start edit "+pot);
-		edit = new MyStateEdit(this, "ShiftedSourceControlsEdit");
-		// oldPotValue=pot.getVdacBitValue();
-	}
+    @Override
+    public void restoreState(final Hashtable<?, ?> hashtable) {
+        // System.out.println("restore state");
+        if (hashtable == null) {
+            throw new RuntimeException("null hashtable");
+        }
+        if (hashtable.get(KEY_REFBITVALUE) == null) {
+            TowerOnChip6BitVDACControl.log.warning("pot " + pot + " not in hashtable " + hashtable + " with size=" + hashtable.size());
 
-	void endEdit() {
-		// if(oldPotValue==pot.getVdacBitValue()){
-		//// System.out.println("no edit, because no change in "+pot);
-		// return;
-		// }
-		// System.out.println("ipot endEdit "+pot);
-		if (edit != null) {
-			edit.end();
-		}
-		// System.out.println("ipot "+pot+" postEdit");
-		editSupport.postEdit(edit);
-	}
+            return;
+        }
+        if (hashtable.get(KEY_REGBITVALUE) == null) {
+            TowerOnChip6BitVDACControl.log.warning("pot " + pot + " not in hashtable " + hashtable + " with size=" + hashtable.size());
+            return;
+        }
+        pot.setVdacBitValue((Integer) hashtable.get(KEY_REFBITVALUE));
+        pot.setBufferBitValue((Integer) hashtable.get(KEY_REGBITVALUE));
+    }
 
-	final String KEY_REFBITVALUE = "refBitValue";
-	final String KEY_REGBITVALUE = "regBitValue";
-	final String KEY_OPERATINGMODE = "operatingMode";
-	final String KEY_VOLTAGELEVEL = "voltageLevel";
-	final String KEY_ENABLED = "enabled";
+    @Override
+    public void storeState(final Hashtable<Object, Object> hashtable) {
+        // System.out.println(" storeState "+pot);
+        hashtable.put(KEY_REFBITVALUE, new Integer(pot.getVdacBitValue()));
+        hashtable.put(KEY_REGBITVALUE, new Integer(pot.getBufferBitValue()));
 
-	@Override
-	public void restoreState(final Hashtable<?, ?> hashtable) {
-		// System.out.println("restore state");
-		if (hashtable == null) {
-			throw new RuntimeException("null hashtable");
-		}
-		if (hashtable.get(KEY_REFBITVALUE) == null) {
-			TowerOnChip6BitVDACControl.log.warning("pot " + pot + " not in hashtable " + hashtable + " with size=" + hashtable.size());
+    }
 
-			return;
-		}
-		if (hashtable.get(KEY_REGBITVALUE) == null) {
-			TowerOnChip6BitVDACControl.log.warning("pot " + pot + " not in hashtable " + hashtable + " with size=" + hashtable.size());
-			return;
-		}
-		pot.setVdacBitValue((Integer) hashtable.get(KEY_REFBITVALUE));
-		pot.setBufferBitValue((Integer) hashtable.get(KEY_REGBITVALUE));
-	}
+    class MyStateEdit extends StateEdit {
 
-	@Override
-	public void storeState(final Hashtable<Object, Object> hashtable) {
-		// System.out.println(" storeState "+pot);
-		hashtable.put(KEY_REFBITVALUE, new Integer(pot.getVdacBitValue()));
-		hashtable.put(KEY_REGBITVALUE, new Integer(pot.getBufferBitValue()));
+        /**
+         *
+         */
+        private static final long serialVersionUID = -3063837829416111208L;
 
-	}
+        public MyStateEdit(final StateEditable o, final String s) {
+            super(o, s);
+        }
 
-	class MyStateEdit extends StateEdit {
+        @Override
+        protected void removeRedundantState() {
+        }// override this to actually get a state stored!!
+    }
 
-		/**
-		 *
-		 */
-		private static final long serialVersionUID = -3063837829416111208L;
+    private static EngineeringFormat engFormat = new EngineeringFormat();
 
-		public MyStateEdit(final StateEditable o, final String s) {
-			super(o, s);
-		}
+    /**
+     * updates the GUI slider and text fields to match actual pot values. These
+     * updates should not trigger events that cause edits to be stored.
+     */
+    protected final void updateAppearance() {
+        if (pot == null) {
+            return;
+        }
+        if (voltageSlider.isVisible() != TowerOnChip6BitVDACControl.sliderEnabled) {
+            voltageSlider.setVisible(TowerOnChip6BitVDACControl.sliderEnabled);
+            rr();
+        }
+        if (voltageTF.isVisible() != TowerOnChip6BitVDACControl.valueEnabled) {
+            voltageTF.setVisible(TowerOnChip6BitVDACControl.valueEnabled);
+            rr();
+        }
 
-		@Override
-		protected void removeRedundantState() {
-		}// override this to actually get a state stored!!
-	}
+        if (bufferSllider.isVisible() != TowerOnChip6BitVDACControl.sliderEnabled) {
+            bufferSllider.setVisible(TowerOnChip6BitVDACControl.sliderEnabled);
+            rr();
+        }
+        if (bufferSllider.isVisible() != TowerOnChip6BitVDACControl.valueEnabled) {
+            bufferSllider.setVisible(TowerOnChip6BitVDACControl.valueEnabled);
+            rr();
+        }
 
-	private static EngineeringFormat engFormat = new EngineeringFormat();
+        voltageSlider.setValue(vdacSliderFromBitValue());
+        voltageTF.setText(TowerOnChip6BitVDACControl.engFormat.format(pot.getVdacVoltage()));
 
-	/**
-	 * updates the GUI slider and text fields to match actual pot values.
-	 * These updates should not trigger events that cause edits to be stored.
-	 */
-	protected final void updateAppearance() {
-		if (pot == null) {
-			return;
-		}
-		if (voltageSlider.isVisible() != TowerOnChip6BitVDACControl.sliderEnabled) {
-			voltageSlider.setVisible(TowerOnChip6BitVDACControl.sliderEnabled);
-			rr();
-		}
-		if (voltageTF.isVisible() != TowerOnChip6BitVDACControl.valueEnabled) {
-			voltageTF.setVisible(TowerOnChip6BitVDACControl.valueEnabled);
-			rr();
-		}
+        if (bitPatternTextField.isVisible() != TowerOnChip6BitVDACControl.bitViewEnabled) {
+            bitPatternTextField.setVisible(TowerOnChip6BitVDACControl.bitViewEnabled);
+            rr();
+        }
+        bitPatternTextField.setText(String.format("%16s", Integer.toBinaryString(pot.computeBinaryRepresentation())).replace(' ', '0'));
 
-		if (bufferSllider.isVisible() != TowerOnChip6BitVDACControl.sliderEnabled) {
-			bufferSllider.setVisible(TowerOnChip6BitVDACControl.sliderEnabled);
-			rr();
-		}
-		if (bufferSllider.isVisible() != TowerOnChip6BitVDACControl.valueEnabled) {
-			bufferSllider.setVisible(TowerOnChip6BitVDACControl.valueEnabled);
-			rr();
-		}
+        bufferSllider.setValue(bufferSliderFromBitValue());
+        bufferCurrentTF.setText(TowerOnChip6BitVDACControl.engFormat.format(pot.getBufferCurrent()));
 
-		voltageSlider.setValue(vdacSliderFromBitValue());
-		voltageTF.setText(TowerOnChip6BitVDACControl.engFormat.format(pot.getVdacVoltage()));
+        // log.info("update appearance "+pot.getName());
+    }
 
-		if (bitPatternTextField.isVisible() != TowerOnChip6BitVDACControl.bitViewEnabled) {
-			bitPatternTextField.setVisible(TowerOnChip6BitVDACControl.bitViewEnabled);
-			rr();
-		}
-		bitPatternTextField.setText(String.format("%16s", Integer.toBinaryString(pot.computeBinaryRepresentation())).replace(' ', '0'));
+    /**
+     * Maps from bit value to linear/log slider value.
+     *
+     * @param v bit value.
+     * @param vmax max bit value.
+     * @param slider the slider for the value.
+     * @return the correct slider value.
+     */
+    private int bitVal2SliderVal(final int v, final int vmax, final JSlider slider) {
+        int s = 0;
+        final double sm = slider.getMaximum();
+        final double vm = vmax;
+        s = (int) Math.round((sm * v) / vm);
+        // log.info("bitValue=" + v + " -> sliderValue=" + s);
+        return s;
+    }
 
-		bufferSllider.setValue(bufferSliderFromBitValue());
-		bufferCurrentTF.setText(TowerOnChip6BitVDACControl.engFormat.format(pot.getBufferCurrent()));
+    /**
+     * Maps from linear slider to linear/exponential bit value.
+     *
+     * @param vmax max bit value.
+     * @param slider the slider.
+     * @return the bit value.
+     */
+    private int sliderVal2BitVal(final int vmax, final JSlider slider) {
+        int v = 0;
+        final int s = slider.getValue();
+        final double sm = slider.getMaximum();
+        final double vm = vmax;
+        v = (int) Math.round((vm * s) / sm);
+        // log.info("sliderValue=" + s + " -> bitValue=" + v);
+        return v;
+    }
 
-		// log.info("update appearance "+pot.getName());
+    private int vdacSliderFromBitValue() {
+        final int s = bitVal2SliderVal(pot.getVdacBitValue(), pot.maxVdacBitValue, voltageSlider);
+        return s;
+    }
 
-	}
+    private int vdacBitValueFromSlider() {
+        final int v = sliderVal2BitVal(pot.maxVdacBitValue, voltageSlider);
+        return v;
+    }
 
-	/**
-	 * Maps from bit value to linear/log slider value.
-	 *
-	 * @param v
-	 *            bit value.
-	 * @param vmax
-	 *            max bit value.
-	 * @param slider
-	 *            the slider for the value.
-	 * @return the correct slider value.
-	 */
-	private int bitVal2SliderVal(final int v, final int vmax, final JSlider slider) {
-		int s = 0;
-		final double sm = slider.getMaximum();
-		final double vm = vmax;
-		s = (int) Math.round((sm * v) / vm);
-		// log.info("bitValue=" + v + " -> sliderValue=" + s);
-		return s;
-	}
+    /**
+     * Returns slider value for this pots buffer bit value.
+     */
+    private int bufferSliderFromBitValue() {
+        final int v = bitVal2SliderVal(pot.getBufferBitValue(), pot.maxBufBitValue, bufferSllider);
+        return v;
+    }
 
-	/**
-	 * Maps from linear slider to linear/exponential bit value.
-	 *
-	 * @param vmax
-	 *            max bit value.
-	 * @param slider
-	 *            the slider.
-	 * @return the bit value.
-	 */
-	private int sliderVal2BitVal(final int vmax, final JSlider slider) {
-		int v = 0;
-		final int s = slider.getValue();
-		final double sm = slider.getMaximum();
-		final double vm = vmax;
-		v = (int) Math.round((vm * s) / sm);
-		// log.info("sliderValue=" + s + " -> bitValue=" + v);
-		return v;
-	}
+    /**
+     * Returns buffer bit value from the slider value.
+     */
+    private int bufferBitValueFromSlider() {
+        final int v = sliderVal2BitVal(pot.maxBufBitValue, bufferSllider);
+        return v;
+    }
 
-	private int vdacSliderFromBitValue() {
-		final int s = bitVal2SliderVal(pot.getVdacBitValue(), pot.maxVdacBitValue, voltageSlider);
-		return s;
-	}
+    /**
+     * called when Observable changes (pot changes)
+     */
+    @Override
+    public void update(final Observable observable, final Object obj) {
+        if (observable instanceof TowerOnChip6BitVDAC) {
+            // log.info("observable="+observable);
+            SwingUtilities.invokeLater(new Runnable() {
 
-	private int vdacBitValueFromSlider() {
-		final int v = sliderVal2BitVal(pot.maxVdacBitValue, voltageSlider);
-		return v;
-	}
-
-	/** Returns slider value for this pots buffer bit value. */
-	private int bufferSliderFromBitValue() {
-		final int v = bitVal2SliderVal(pot.getBufferBitValue(), pot.maxBufBitValue, bufferSllider);
-		return v;
-	}
-
-	/** Returns buffer bit value from the slider value. */
-	private int bufferBitValueFromSlider() {
-		final int v = sliderVal2BitVal(pot.maxBufBitValue, bufferSllider);
-		return v;
-	}
-
-	/** called when Observable changes (pot changes) */
-	@Override
-	public void update(final Observable observable, final Object obj) {
-		if (observable instanceof TowerOnChip6BitVDAC) {
-			// log.info("observable="+observable);
-			SwingUtilities.invokeLater(new Runnable() {
-
-				@Override
-				public void run() {
-					// don't do the following - it sometimes prevents display updates or results in double updates
-					// slider.setValueIsAdjusting(true); // try to prevent a new event from the slider
-					updateAppearance();
-				}
-			});
-		}
-	}
+                @Override
+                public void run() {
+                    // don't do the following - it sometimes prevents display updates or results in double updates
+                    // slider.setValueIsAdjusting(true); // try to prevent a new event from the slider
+                    updateAppearance();
+                }
+            });
+        }
+    }
 
 	// Variables declaration - do not modify//GEN-BEGIN:variables
 	private javax.swing.JTextField bitPatternTextField;
@@ -713,124 +707,123 @@ public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Ob
 	private javax.swing.JTextField voltageTF;
 	// End of variables declaration//GEN-END:variables
 
-	public JTextField getBitPatternTextField() {
-		return bitPatternTextField;
-	}
+    public JTextField getBitPatternTextField() {
+        return bitPatternTextField;
+    }
 
-	public static boolean isBitValueEnabled() {
-		return TowerOnChip6BitVDACControl.bitValueEnabled;
-	}
+    public static boolean isBitValueEnabled() {
+        return TowerOnChip6BitVDACControl.bitValueEnabled;
+    }
 
-	public static void setBitValueEnabled(final boolean bitValueEnabled) {
-		TowerOnChip6BitVDACControl.bitValueEnabled = bitValueEnabled;
-		TowerOnChip6BitVDACControl.prefs.putBoolean("ConfigurableIPot.bitValueEnabled", bitValueEnabled);
-	}
+    public static void setBitValueEnabled(final boolean bitValueEnabled) {
+        TowerOnChip6BitVDACControl.bitValueEnabled = bitValueEnabled;
+        TowerOnChip6BitVDACControl.prefs.putBoolean("ConfigurableIPot.bitValueEnabled", bitValueEnabled);
+    }
 
-	public static boolean isBitViewEnabled() {
-		return TowerOnChip6BitVDACControl.bitViewEnabled;
-	}
+    public static boolean isBitViewEnabled() {
+        return TowerOnChip6BitVDACControl.bitViewEnabled;
+    }
 
-	public static void setBitViewEnabled(final boolean bitViewEnabled) {
-		TowerOnChip6BitVDACControl.bitViewEnabled = bitViewEnabled;
-		TowerOnChip6BitVDACControl.prefs.putBoolean("ConfigurableIPot.bitViewEnabled", bitViewEnabled);
-	}
+    public static void setBitViewEnabled(final boolean bitViewEnabled) {
+        TowerOnChip6BitVDACControl.bitViewEnabled = bitViewEnabled;
+        TowerOnChip6BitVDACControl.prefs.putBoolean("ConfigurableIPot.bitViewEnabled", bitViewEnabled);
+    }
 
-	public static boolean isValueEnabled() {
-		return TowerOnChip6BitVDACControl.valueEnabled;
-	}
+    public static boolean isValueEnabled() {
+        return TowerOnChip6BitVDACControl.valueEnabled;
+    }
 
-	public static void setValueEnabled(final boolean valueEnabled) {
-		TowerOnChip6BitVDACControl.valueEnabled = valueEnabled;
-		TowerOnChip6BitVDACControl.prefs.putBoolean("ConfigurableIPot.valueEnabled", valueEnabled);
-	}
+    public static void setValueEnabled(final boolean valueEnabled) {
+        TowerOnChip6BitVDACControl.valueEnabled = valueEnabled;
+        TowerOnChip6BitVDACControl.prefs.putBoolean("ConfigurableIPot.valueEnabled", valueEnabled);
+    }
 
-	public static boolean isSexEnabled() {
-		return TowerOnChip6BitVDACControl.sexEnabled;
-	}
+    public static boolean isSexEnabled() {
+        return TowerOnChip6BitVDACControl.sexEnabled;
+    }
 
-	public static void setSexEnabled(final boolean sexEnabled) {
-		TowerOnChip6BitVDACControl.sexEnabled = sexEnabled;
-		TowerOnChip6BitVDACControl.prefs.putBoolean("ConfigurableIPot.sliderEnabled", TowerOnChip6BitVDACControl.sliderEnabled);
-	}
+    public static void setSexEnabled(final boolean sexEnabled) {
+        TowerOnChip6BitVDACControl.sexEnabled = sexEnabled;
+        TowerOnChip6BitVDACControl.prefs.putBoolean("ConfigurableIPot.sliderEnabled", TowerOnChip6BitVDACControl.sliderEnabled);
+    }
 
-	public static boolean isSliderEnabled() {
-		return IPotSliderTextControl.sliderEnabled;
-	}
+    public static boolean isSliderEnabled() {
+        return IPotSliderTextControl.sliderEnabled;
+    }
 
-	public static void setSliderEnabled(final boolean sliderEnabled) {
-		TowerOnChip6BitVDACControl.sliderEnabled = sliderEnabled;
-		TowerOnChip6BitVDACControl.prefs.putBoolean("ConfigurableIPot.sliderEnabled", sliderEnabled);
-	}
+    public static void setSliderEnabled(final boolean sliderEnabled) {
+        TowerOnChip6BitVDACControl.sliderEnabled = sliderEnabled;
+        TowerOnChip6BitVDACControl.prefs.putBoolean("ConfigurableIPot.sliderEnabled", sliderEnabled);
+    }
 
-	public static boolean isTypeEnabled() {
-		return TowerOnChip6BitVDACControl.typeEnabled;
-	}
+    public static boolean isTypeEnabled() {
+        return TowerOnChip6BitVDACControl.typeEnabled;
+    }
 
-	public static void setTypeEnabled(final boolean typeEnabled) {
-		TowerOnChip6BitVDACControl.typeEnabled = typeEnabled;
-		TowerOnChip6BitVDACControl.prefs.putBoolean("ConfigurableIPot.typeEnabled", typeEnabled);
-	}
+    public static void setTypeEnabled(final boolean typeEnabled) {
+        TowerOnChip6BitVDACControl.typeEnabled = typeEnabled;
+        TowerOnChip6BitVDACControl.prefs.putBoolean("ConfigurableIPot.typeEnabled", typeEnabled);
+    }
 
-	static ArrayList<TowerOnChip6BitVDACControl> allInstances = new ArrayList<>();
+    static ArrayList<TowerOnChip6BitVDACControl> allInstances = new ArrayList<>();
 
-	public static void revalidateAllInstances() {
-		for (final TowerOnChip6BitVDACControl c : TowerOnChip6BitVDACControl.allInstances) {
-			c.updateAppearance();
-			c.revalidate();
-		}
-	}
+    public static void revalidateAllInstances() {
+        for (final TowerOnChip6BitVDACControl c : TowerOnChip6BitVDACControl.allInstances) {
+            c.updateAppearance();
+            c.revalidate();
+        }
+    }
 
-	static String[] controlNames = { "Type", "Sex", "Slider" }; // TODO ,"BitValue","BitView"
-	public static JMenu viewMenu;
+    static String[] controlNames = {"Type", "Sex", "Slider"}; // TODO ,"BitValue","BitView"
+    public static JMenu viewMenu;
 
-	static {
-		TowerOnChip6BitVDACControl.viewMenu = new JMenu("View options");
-		TowerOnChip6BitVDACControl.viewMenu.setMnemonic('V');
-		for (final String controlName : TowerOnChip6BitVDACControl.controlNames) {
-			TowerOnChip6BitVDACControl.viewMenu.add(new VisibleSetter(controlName)); // add a menu item to enable view
-																						// of this class of
-			// information
-		}
-	}
+    static {
+        TowerOnChip6BitVDACControl.viewMenu = new JMenu("View options");
+        TowerOnChip6BitVDACControl.viewMenu.setMnemonic('V');
+        for (final String controlName : TowerOnChip6BitVDACControl.controlNames) {
+            TowerOnChip6BitVDACControl.viewMenu.add(new VisibleSetter(controlName)); // add a menu item to enable view
+            // of this class of
+            // information
+        }
+    }
 
-	/**
-	 * this inner static class updates the appearance of all instances of the control
-	 */
-	static class VisibleSetter extends JCheckBoxMenuItem {
+    /**
+     * this inner static class updates the appearance of all instances of the
+     * control
+     */
+    static class VisibleSetter extends JCheckBoxMenuItem {
 
-		/**
-		 *
-		 */
-		private static final long serialVersionUID = -7549681319876593466L;
-		public String myName;
-		Method setMethod, isSetMethod;
+        /**
+         *
+         */
+        private static final long serialVersionUID = -7549681319876593466L;
+        public String myName;
+        Method setMethod, isSetMethod;
 
-		public VisibleSetter(final String myName) {
-			super(myName);
-			this.myName = myName;
-			try {
-				setMethod = TowerOnChip6BitVDACControl.class.getMethod("set" + myName + "Enabled", Boolean.TYPE);
-				isSetMethod = TowerOnChip6BitVDACControl.class.getMethod("is" + myName + "Enabled");
-				final boolean isSel = (Boolean) isSetMethod.invoke(TowerOnChip6BitVDACControl.class);
-				setSelected(isSel);
-			}
-			catch (final Exception e) {
-				e.printStackTrace();
-			}
-			addActionListener(new ActionListener() {
+        public VisibleSetter(final String myName) {
+            super(myName);
+            this.myName = myName;
+            try {
+                setMethod = TowerOnChip6BitVDACControl.class.getMethod("set" + myName + "Enabled", Boolean.TYPE);
+                isSetMethod = TowerOnChip6BitVDACControl.class.getMethod("is" + myName + "Enabled");
+                final boolean isSel = (Boolean) isSetMethod.invoke(TowerOnChip6BitVDACControl.class);
+                setSelected(isSel);
+            } catch (final Exception e) {
+                e.printStackTrace();
+            }
+            addActionListener(new ActionListener() {
 
-				@Override
-				public void actionPerformed(final ActionEvent e) {
-					try {
-						setMethod.invoke(TowerOnChip6BitVDACControl.class, new Boolean(isSelected()));
-						setSelected(isSelected());
-					}
-					catch (final Exception e2) {
-						e2.printStackTrace();
-					}
-					TowerOnChip6BitVDACControl.revalidateAllInstances();
-				}
-			});
-		}
-	}
+                @Override
+                public void actionPerformed(final ActionEvent e) {
+                    try {
+                        setMethod.invoke(TowerOnChip6BitVDACControl.class, new Boolean(isSelected()));
+                        setSelected(isSelected());
+                    } catch (final Exception e2) {
+                        e2.printStackTrace();
+                    }
+                    TowerOnChip6BitVDACControl.revalidateAllInstances();
+                }
+            });
+        }
+    }
 }
