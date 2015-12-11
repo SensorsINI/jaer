@@ -10,11 +10,10 @@
 package net.sf.jaer.chip;
 
 import eu.seebetter.ini.chips.davis.HotPixelFilter;
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -23,6 +22,7 @@ import java.util.prefs.BackingStoreException;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileOutputStream;
 import net.sf.jaer.eventprocessing.EventFilter;
@@ -106,7 +106,7 @@ public class AEChip extends Chip2D {
      */
     public void addDefaultEventFilter(Class f) {
         if (!EventFilter.class.isAssignableFrom(f)) {
-            log.warning("In trying to addDefaultEventFilter, "+f + " is not an EventFilter, ignoring");
+            log.warning("In trying to addDefaultEventFilter, " + f + " is not an EventFilter, ignoring");
             return;
         }
         defaultEventFilters.add(f);
@@ -143,7 +143,7 @@ public class AEChip extends Chip2D {
         addDefaultEventFilter(HotPixelFilter.class);
         addDefaultEventFilter(Info.class);
         addDefaultEventFilter(JaerAviWriter.class);
- 
+
         filterChain = new FilterChain(this);
         filterChain.contructPreferredFilters();
     }
@@ -409,28 +409,40 @@ public class AEChip extends Chip2D {
         aeInputStream = stream;
         return stream;
     }
-    
-    /** This method writes additional header lines to a newly created AEFileOutputStream that logs data from this AEChip.
-     * The default implementation writes the AEChip class name and the complete preferences subtree for this AEChip.
+
+    /**
+     * This method writes additional header lines to a newly created
+     * AEFileOutputStream that logs data from this AEChip. The default
+     * implementation writes the AEChip class name and the complete preferences
+     * subtree for this AEChip.
+     *
      * @param os the AEFileOutputStream that is being written to
      * @see AEFileOutputStream#writeHeaderLine(java.lang.String)
-     * @throws IOException 
+     * @throws IOException
      */
     public void writeAdditionalAEFileOutputStreamHeader(AEFileOutputStream os) throws IOException, BackingStoreException {
-        log.info("writing preferences for "+this.toString()+" to "+os);
+        log.info("writing preferences for " + this.toString() + " to " + os);
         os.writeHeaderLine(" AEChip: " + this.getClass().getName());
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(100000); //  TODO causes excessive delay at start of recording
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(200000);  // bos to hold preferences XML as byte array
         getPrefs().exportSubtree(bos);
         bos.flush();
-        os.writeHeaderLine("Start of Preferences for this AEChip");
-        
+        os.writeHeaderLine("Start of Preferences for this AEChip"); // write header to AE data file for prefs
+
+        // make a reader to read the prefs text line by line
         BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(bos.toByteArray())));
+        ByteArrayOutputStream bos2 = new ByteArrayOutputStream(200000); // make a byte stream to hold lines prepended by comment char
+        DataOutputStream dos = new DataOutputStream(bos2); // wrap in DOS to write comment chars and line endings
+
         String line = null;
-        while ((line = reader.readLine()) != null) {
-            os.writeHeaderLine(line);
+        while ((line = reader.readLine()) != null) { // get a line of prefs from prefs in memory
+            dos.writeByte(AEDataFile.COMMENT_CHAR); // '#' // prepend comment
+            dos.writeBytes(line);
+            dos.writeByte(AEDataFile.EOL[0]); // '\r' 
+            dos.writeByte(AEDataFile.EOL[1]); // '\n'
         }
-        os.writeHeaderLine("End of Preferences for this AEChip");
-        log.info("done writing preferences to "+os);
+        os.write(bos2.toByteArray()); // write out entire reformatted prefs header
+        os.writeHeaderLine("End of Preferences for this AEChip"); // write end of prefs header
+        log.info("done writing preferences to " + os);
 
     }
 }
