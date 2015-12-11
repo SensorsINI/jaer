@@ -68,6 +68,8 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
 		}
 	}
 
+        private boolean printedNoAdcSamplesWarning=false;
+        
 	@Override
 	public void display(GLAutoDrawable drawable) {
 		drawable.getContext().makeCurrent();
@@ -79,6 +81,13 @@ public class CochleaAMS1cRollingCochleagramADCDisplayMethod extends RollingCochl
 			return;
 		}
 
+                if(!(getChipCanvas().getChip() instanceof CochleaAMS1c)){
+                    if(!printedNoAdcSamplesWarning){
+                        log.warning("not a CochleaAMS1c, so cannot currently ADC samples to display; supressing further warnings");
+                        printedNoAdcSamplesWarning=true;
+                    }
+                    return;
+                }
 		CochleaAMS1cADCSamples adcSamples = ((CochleaAMS1c)getChipCanvas().getChip()).getAdcSamples();
 		boolean scannerRunning = adcSamples.isHasScannerData();
 		// branch here depending on whether scanner is running or we are display strip chart
