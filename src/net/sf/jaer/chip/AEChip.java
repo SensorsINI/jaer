@@ -419,7 +419,7 @@ public class AEChip extends Chip2D {
     public void writeAdditionalAEFileOutputStreamHeader(AEFileOutputStream os) throws IOException, BackingStoreException {
         log.info("writing preferences for "+this.toString()+" to "+os);
         os.writeHeaderLine(" AEChip: " + this.getClass().getName());
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(100000);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(100000); //  TODO causes excessive delay at start of recording
         getPrefs().exportSubtree(bos);
         bos.flush();
         os.writeHeaderLine("Start of Preferences for this AEChip");
