@@ -25,7 +25,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  *
  * @author tobi
  */
-@Description("Subsamples x and y addresses")
+@Description("Subsamples X and Y addresses, by right shifting the X and Y addresses. Does not decrease event rate.")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SubSampler extends EventFilter2D {
 
