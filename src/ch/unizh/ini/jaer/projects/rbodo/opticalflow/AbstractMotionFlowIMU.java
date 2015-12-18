@@ -67,9 +67,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
     
     // xyFilter.
     private int xMin = getInt("xMin",0);
-    int xMax = getInt("xMax",sizex);
+    int xMax = getInt("xMax",240);
     private int yMin = getInt("yMin",0);
-    int yMax = getInt("yMax",sizey);
+    int yMax = getInt("yMax",180);
     
     // Display
     private boolean showVectorsEnabled = getBoolean("showVectorsEnabled",true);
@@ -79,7 +79,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Obs
   
     // A pixel can fire an event only after this period. Used for smoother flow
     // and speedup.
-    int refractoryPeriodUs = getInt("refractoryPeriodUs",50000);
+    int refractoryPeriodUs = getInt("refractoryPeriodUs",10000);
     
     // Global translation, rotation and expansion.
     boolean showGlobalEnabled = getBoolean("showGlobalEnabled",true);

@@ -39,7 +39,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     
     // Threshold for flat planes (events that are wrongly interpreted as having
     // infinite velocity).
-    private float th3 = getFloat("th3",100f);
+    private float th3 = getFloat("th3",5e-3f);
     
     private ArrayList<double[]> neighborhood;
     private final float[] planeParameters;

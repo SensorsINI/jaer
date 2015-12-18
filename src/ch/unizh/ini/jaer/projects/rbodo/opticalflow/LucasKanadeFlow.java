@@ -40,7 +40,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
     
     private float lambda1, lambda2;
     
-    private float thr = getFloat("thr",1e6f);
+    private float thr = getFloat("thr",1f);
     
     public enum DerivativeEstimator {
         BackwardFiniteDifference, 
