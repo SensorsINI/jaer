@@ -9,8 +9,8 @@ import net.sf.jaer.event.PolarityEvent;
 /**
  * Draws individual optical flow vectors and computes global motion, 
  * rotation and expansion, based upon motion estimate from IMU gyro sensors.
- * This assumes that the objects seen by the camera are stationary and lie in 
- * the xy-plane (no depth-distinction). 
+ * This assumes that the objects seen by the camera are stationary and the only motion is the motion field caused by
+ * pure camera rotation.
  * @author rbodo
  */
 
