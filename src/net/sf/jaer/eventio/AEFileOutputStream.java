@@ -14,6 +14,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Date;
+import java.util.StringTokenizer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
@@ -114,6 +115,33 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
 		writeByte(AEDataFile.EOL[0]); // '\r'
 		writeByte(AEDataFile.EOL[1]); // '\n'
 	}
+        
+   	/**
+	 * Writes a comment header from an input String s containing multiple lines. Each line is prepended with '#'
+	 *
+	 * @param s the multiline string to write
+	 * @throws java.io.IOException
+	 *             when we try to write header but have already
+	 *             written a data packet
+	 */
+
+	public final void writeHeaderBlock(final String s) throws IOException {
+		if (wrotePacket) {
+			throw new IOException("already wrote a packet, not writing the header");
+		}
+                StringBuilder sb=new StringBuilder();
+                StringTokenizer st=new StringTokenizer(s,System.lineSeparator(),true);
+                while(st.hasMoreElements()){
+                    sb.append(AEDataFile.COMMENT_CHAR);
+                    sb.append(st.nextToken());
+                }
+		writeBytes(sb.toString());
+//		writeByte(AEDataFile.EOL[0]); // '\r'
+//		writeByte(AEDataFile.EOL[1]); // '\n'
+	}
+        
+        
+     
 
 	/**
 	 * Writes the raw (device) address-event packet out as sequence of
