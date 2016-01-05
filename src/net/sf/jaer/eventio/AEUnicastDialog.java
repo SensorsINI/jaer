@@ -274,7 +274,7 @@ public class AEUnicastDialog extends javax.swing.JDialog{
         });
 
         cAERDisplayEnabledCheckBox.setText("cAERDisplayEnabled");
-        cAERDisplayEnabledCheckBox.setToolTipText("<html>Enable to use System.nanoTime/1000 for all sent or received timstamps. <br>\nCan be useful for unsynchronized input from multple sources.");
+        cAERDisplayEnabledCheckBox.setToolTipText("Enable for cAER UDP data streams");
         cAERDisplayEnabledCheckBox.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cAERDisplayEnabledCheckBoxActionPerformed(evt);

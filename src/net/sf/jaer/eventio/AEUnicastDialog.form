@@ -305,7 +305,7 @@
     <Component class="javax.swing.JCheckBox" name="cAERDisplayEnabledCheckBox">
       <Properties>
         <Property name="text" type="java.lang.String" value="cAERDisplayEnabled"/>
-        <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Enable to use System.nanoTime/1000 for all sent or received timstamps. &lt;br&gt;&#xa;Can be useful for unsynchronized input from multple sources."/>
+        <Property name="toolTipText" type="java.lang.String" value="Enable for cAER UDP data streams"/>
       </Properties>
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="cAERDisplayEnabledCheckBoxActionPerformed"/>
