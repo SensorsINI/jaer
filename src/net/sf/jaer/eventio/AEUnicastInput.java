@@ -408,8 +408,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             final int[] timestamps = packet.getTimestamps();
             int nTmpAddr = 0;    //tmp value for address
 
-            if(cAERDisplayEnabled)
-            {
+            if(cAERDisplayEnabled) {
                 nTmp = swapByteOrder(buffer.getInt());
                 if(nTmp != 0x10001)
                 {
@@ -426,8 +425,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             for (int i = 0; i < nEventsInPacket; i++) {
                 if (addressFirstEnabled) {
                     if (use4ByteAddrTs) {
-                        if(cAERDisplayEnabled)
-                        {
+                        if(cAERDisplayEnabled) {
                             nTmpAddr = swapByteOrder(buffer.getInt()); // swab(buffer.getInt()); // swapInt is switched to handle big endian event sources (like ARC camera)          
                             //                        x_addr                          y_addr                     on_off event
                             // eventRaw.address = ((nTmpAddr & 0xfe0000) >> 16) + ((nTmpAddr  & 0x1fc) << 6) + ((nTmpAddr & 2) >> 1);     //just for DVS128 data format convertion
