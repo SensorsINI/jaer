@@ -285,6 +285,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
     }
 
     public final synchronized void setDerivativeEstimator(DerivativeEstimator derivator) {
+        DerivativeEstimator old=this.derivator;
         this.derivator = derivator;
         putString("derivator", derivator.toString());
         backwardFiniteDifference = false;
@@ -318,7 +319,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
                 resetFilter();
                 break;
         }
-        getSupport().firePropertyChange("derivativeEstimator",null,derivator.toString());
+        getSupport().firePropertyChange("derivativeEstimator",old,derivator);
     }
     // </editor-fold>
 

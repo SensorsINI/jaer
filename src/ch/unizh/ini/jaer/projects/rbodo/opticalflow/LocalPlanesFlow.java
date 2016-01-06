@@ -327,6 +327,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     public PlaneEstimator getPlaneEstimator() {return planeEstimator;}
     
     synchronized public void setPlaneEstimator(PlaneEstimator planeEstimator) {
+        PlaneEstimator old=planeEstimator;
         this.planeEstimator = planeEstimator;
         putString("planeEstimator", planeEstimator.toString());
         singleFit = false;
@@ -355,6 +356,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
                 resetFilter();
                 break;
         }
+        getSupport().firePropertyChange("planeEstimator",old,planeEstimator);
     }
     // </editor-fold>
     
