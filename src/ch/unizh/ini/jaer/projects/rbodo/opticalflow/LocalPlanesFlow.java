@@ -9,6 +9,8 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
+import net.sf.jaer.eventprocessing.filter.Steadicam;
 import net.sf.jaer.util.jama.Matrix;
 
 /**
@@ -62,7 +64,13 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         super(chip);
         planeParameters = new float[3];
         planeEstimate = new Matrix(4,1);
-        planeEstimator = PlaneEstimator.IterativeFit;
+        try {
+            planeEstimator = LocalPlanesFlow.PlaneEstimator.valueOf(getString("planeEstimator", "IterativeFit"));
+        } catch (IllegalArgumentException e) {
+            log.warning("bad preference " + getString("planeEstimator", "IterativeFit") + " for preferred PlaneEstimator, choosing default IterativeFit");
+            planeEstimator =  LocalPlanesFlow.PlaneEstimator.IterativeFit;
+            putString("planeEstimator", "IterativeFit");
+        }
         iterativeFit = true;
         numInputTypes = 2;
         resetFilter();
